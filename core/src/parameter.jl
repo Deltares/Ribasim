@@ -423,11 +423,11 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
     concentration_state::Matrix{Float64} = zeros(Float64, 0, 0)  # Basin, substance
     # Vectors with concentration timeseries interpolations for each incoming forcing per Basin per substance
     concentration_itp_drainage::Vector{Vector{ScalarConstantInterpolation}} =
-        Vector{ScalarBlockInterpolation}[]
+        Vector{ScalarConstantInterpolation}[]
     concentration_itp_precipitation::Vector{Vector{ScalarConstantInterpolation}} =
-        Vector{ScalarBlockInterpolation}[]
+        Vector{ScalarConstantInterpolation}[]
     concentration_itp_surface_runoff::Vector{Vector{ScalarConstantInterpolation}} =
-        Vector{ScalarBlockInterpolation}[]
+        Vector{ScalarConstantInterpolation}[]
     # matrix with mass for each Basin and substance
     mass::Vector{Vector{Float64}} = Vector{Float64}[]
     # substances in use by the model (ordered like their axis in the concentration matrices)

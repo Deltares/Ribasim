@@ -176,12 +176,6 @@ function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
     end
 end
 
-function get_storage(p::Parameters, node_id::NodeID, t::Number)::Float64
-    (; p_independent, state_time_dependent_cache, time_dependent_cache) = p
-
-    state_time_dependent_cache.current_storage[node_id.idx]
-end
-
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
 function basin_bottom(basin::Basin, node_id::NodeID)::Tuple{Bool, Float64}
     return if node_id.type == NodeType.Basin
@@ -1244,3 +1238,7 @@ end
 # Bypass Mooncake's parsing of p_independent, possibly related https://github.com/chalk-lab/Mooncake.jl/issues/455
 Mooncake.set_to_zero!!(x::Mooncake.Tangent) =
     hasproperty(x.fields, :starttime) ? x : invoke(Mooncake.set_to_zero!!, Tuple{Any}, x)
+
+get_wrapped_u(model) = wrap_state(model.integrator.u, model.integrator.p.p_independent)
+get_wrapped_du(model) =
+    wrap_state(get_du(model.integrator), model.integrator.p.p_independent)

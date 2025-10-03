@@ -338,6 +338,7 @@ function basin_state_data(model::Model; table::Bool = true)
     (; current_level) = p.state_time_dependent_cache
 
     # ensure the levels are up-to-date
+    u = get_wrapped_u(model)
     set_current_basin_properties!(u, p, t)
 
     return (; node_id = Int32.(p.p_independent.basin.node_id), level = current_level)
@@ -346,8 +347,7 @@ end
 "Create the basin result table from the saved data"
 function basin_data(model::Model; table::Bool = true)
     (; saved) = model
-    (; u) = model.integrator
-    state_ranges = getaxes(u)
+    (; state_ranges) = model.integrator.p.p_independent
 
     # The last timestep is not included; there is no period over which to compute flows.
     data = get_storages_and_levels(model)
@@ -458,8 +458,8 @@ function flow_data(model::Model; table::Bool = true)
 
     for (ti, cvec) in enumerate(saveval)
         (; flow, flow_boundary, flow_convergence) = cvec
-        flow = CVector(flow, getaxes(u))
-        convergence = CVector(flow_convergence, getaxes(u))
+        flow = wrap_state(flow, p_independent)
+        convergence = wrap_state(flow_convergence, p_independent)
         for (fi, link) in enumerate(internal_flow_links)
             internal_flow_rate[fi] =
                 get_flow(flow, p_independent, 0.0, link.link; boundary_flow = flow_boundary)

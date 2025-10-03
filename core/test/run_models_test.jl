@@ -214,7 +214,7 @@ end
     @test state_time_dependent_cache.current_storage ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
-    du = get_du(model.integrator)
+    du = Ribasim.get_wrapped_du(model)
     @test du.evaporation == [0.0]
     @test du.infiltration == [0.0]
     @test success(model)
@@ -233,7 +233,7 @@ end
     @test isdir(results_path(model.config))
 
     (; integrator) = model
-    du = get_du(integrator)
+    du = Ribasim.get_wrapped_du(model)
     (; u, p, t) = integrator
     (; p_independent, state_time_dependent_cache) = p
     (; basin) = p_independent

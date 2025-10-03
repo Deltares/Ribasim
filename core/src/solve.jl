@@ -153,18 +153,49 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
 
     if p_mutable.new_t || p_mutable.new_u
         formulate_storages!(u, p, t)
-        for i in eachindex(basin.node_id)
-            id = basin.node_id[i]
-            s = state_time_dependent_cache.current_storage[i]
-            i = id.idx
-            state_time_dependent_cache.current_low_storage_factor[i] =
-                reduction_factor(s, low_storage_threshold[i])
-            @inbounds state_time_dependent_cache.current_level[i] =
-                get_level_from_storage(basin, i, s)
-            state_time_dependent_cache.current_area[i] =
-                basin.level_to_area[i](state_time_dependent_cache.current_level[i])
-        end
+        set_current_basin_properties!(state_time_dependent_cache, basin)
     end
+end
+
+function set_current_basin_properties!(
+    state_time_dependent_cache::StateTimeDependentCache,
+    basin::Basin,
+)::Nothing
+    @threads for i in eachindex(basin.node_id)
+        set_current_basin_properties!(state_time_dependent_cache, basin, i)
+    end
+    return nothing
+end
+
+function set_current_basin_properties_sequential!(
+    state_time_dependent_cache::StateTimeDependentCache,
+    basin::Basin,
+)::Nothing
+    for i in eachindex(basin.node_id)
+        set_current_basin_properties!(state_time_dependent_cache, basin, i)
+    end
+    return nothing
+end
+
+Mooncake.@mooncake_overlay set_current_basin_properties!(
+    state_time_dependent_cache::StateTimeDependentCache,
+    basin::Basin,
+) = set_current_basin_properties_sequential!(state_time_dependent_cache, basin)
+
+function set_current_basin_properties!(
+    state_time_dependent_cache::StateTimeDependentCache,
+    basin::Basin,
+    i::Int,
+)::Nothing
+    (; current_storage, current_low_storage_factor, current_level, current_area) =
+        state_time_dependent_cache
+    (; low_storage_threshold, level_to_area) = basin
+
+    s = current_storage[i]
+    current_low_storage_factor[i] = reduction_factor(s, low_storage_threshold[i])
+    @inbounds l = current_level[i] = get_level_from_storage(basin, i, s)
+    current_area[i] = level_to_area[i](l)
+    return nothing
 end
 
 function formulate_storages!(

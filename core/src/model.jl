@@ -83,11 +83,7 @@ function get_diff_eval(
         for order in
             (NaturalOrder, LargestFirst, SmallestLast, IncidenceDegree, DynamicLargestFirst)
             backend = get_jac_ad_backend(solver; order)
-            jac_prep_option = try
-                jac_prep_from_backend(backend)
-            catch
-                continue
-            end
+            jac_prep_option = jac_prep_from_backend(backend)
             J = Float64.(sparsity_pattern(jac_prep_option))
             args = (J, u_raw, p, t, jac_prep_option, backend)
             # First evaluate only for precompilation purposes
@@ -98,10 +94,6 @@ function get_diff_eval(
                 backend_jac = backend
                 jac_prep = jac_prep_option
             end
-        end
-        if isnothing(jac_prep)
-            backend_jac = get_jac_ad_backend(solver; specialize, mixed_mode = false)
-            jac_prep = jac_prep_from_backend(backend_jac)
         end
         jac_prototype = sparsity_pattern(jac_prep)
     else

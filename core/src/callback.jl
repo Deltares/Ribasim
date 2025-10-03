@@ -594,8 +594,7 @@ function check_negative_storage(u_raw, t, integrator)::Nothing
     (; p) = integrator
     (; p_independent, state_time_dependent_cache) = p
     (; basin) = p_independent
-    du_raw = get_du(integrator)
-    water_balance!(du_raw, u_raw, p, t)
+    set_current_basin_properties!(wrap_state(u_raw, p_independent), p, t)
 
     errors = false
     for id in basin.node_id
@@ -731,7 +730,7 @@ function get_value(subvariable::SubVariable, p::Parameters, du::CVector, t::Floa
             level = level_boundary.level[listen_node_id.idx](t + look_ahead)
         else
             error(
-                "Level condition node '$node_id' is neither a basin nor a level boundary.",
+                "Level condition node '$listen_node_id' is neither a basin nor a level boundary.",
             )
         end
         value = level
