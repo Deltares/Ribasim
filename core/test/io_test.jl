@@ -275,6 +275,10 @@ end
     # end
 end
 
+@testitem "netcdf input" begin
+    # TODO use NCDatasets.ncgen to create Delft-FEWS flavored NetCDF input files
+end
+
 @testitem "warm state" begin
     using IOCapture: capture
     using Ribasim: solve!, write_results
