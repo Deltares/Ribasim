@@ -373,16 +373,14 @@ function communicate_secondary_network_allocations!(
     end
 end
 
-function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrator)::Nothing
-    (; problem, objectives, node_ids_in_subnetwork) = allocation_model
-    (; user_demand, flow_demand, level_demand) = integrator.p.p_independent
+function reset_demand_coefficients(allocation_model::AllocationModel)::Nothing
+    (; problem, objectives) = allocation_model
 
     average_flow_unit_error = problem[:average_flow_unit_error]
     average_flow_unit_error_constraint = problem[:average_flow_unit_error_constraint]
 
     average_storage_unit_error = problem[:average_storage_unit_error]
     average_storage_unit_error_constraint = problem[:average_storage_unit_error_constraint]
-
     for objective_metadata in objectives.objective_metadata
         (; type, demand_priority) = objective_metadata
 
@@ -404,6 +402,11 @@ function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrato
             end
         end
     end
+end
+
+function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrator)::Nothing
+    (; problem, node_ids_in_subnetwork) = allocation_model
+    (; user_demand, flow_demand, level_demand) = integrator.p.p_independent
 
     # Set demands for all priorities
     set_demands!(
@@ -424,7 +427,6 @@ function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrato
         problem[:flow_demand_relative_error_constraint],
         integrator,
     )
-
     set_demands!(allocation_model, level_demand, integrator)
 
     return nothing
@@ -450,7 +452,7 @@ function set_subnetwork_demand(
         get_objective_data_of_demand_priority(objectives, demand_priority)
 
     # Demand is upper bound of what is allocated
-    # JuMP.set_upper_bound(node_allocated[link, demand_priority], demand)
+    JuMP.set_upper_bound(node_allocated[link, demand_priority], demand)
 
     # Set demand in constraint for error term in first objective
     c = node_relative_error_constraint[link, demand_priority]
@@ -1046,6 +1048,7 @@ function update_allocation!(model)::Nothing
         set_simulation_data!(allocation_model, integrator)
 
         # Set demands for all priorities
+        reset_demand_coefficients(allocation_model)
         set_demands!(allocation_model, integrator)
 
         # Use data from the physical layer to set the initial guess
@@ -1055,6 +1058,7 @@ function update_allocation!(model)::Nothing
     if has_primary_network(allocation)
         # If a primary network is present, collect demands of the secondary network(s)
         primary_network = get_primary_network(allocation_models)
+        reset_demand_coefficients(primary_network)
         for secondary_network in get_secondary_networks(allocation_models)
             collect_demands!(secondary_network, primary_network, model)
             save_flows!(
