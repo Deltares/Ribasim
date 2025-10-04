@@ -16,10 +16,10 @@
     (; u, du) = model.integrator
     (; p_independent) = model.integrator.p
 
-    @test p_independent.node_id == [0, 6, 6]
+    @test p_independent.node_id == [0, 6]
     @test u isa CVector
     @test filter(!isempty, getaxes(u)) ==
-          (; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
+          (; tabulated_rating_curve = 1:1, outward_forcing = 2:2)
 
     # read all results as bytes first to avoid memory mapping
     # which can have cleanup issues due to file locking
@@ -215,8 +215,7 @@ end
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
-    @test du.evaporation == [0.0]
-    @test du.infiltration == [0.0]
+    @test du.outward_forcing == [0.0]
     @test success(model)
 end
 
@@ -241,27 +240,23 @@ end
     Ribasim.water_balance!(du, u, p, t)
     stor = state_time_dependent_cache.current_storage
     prec = basin.vertical_flux.precipitation
-    evap = du.evaporation
+    outf = du.outward_forcing
     drng = basin.vertical_flux.drainage
-    infl = du.infiltration
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
-    @test evap == [0.0]
+    @test outf == [0.0]
     @test drng == [0.003]
-    @test infl == [0.0]
     init_stor = 1000.0
     @test stor == [init_stor]
     BMI.update_until(model, 1.5 * 86400)
     @test prec == [0.0]
-    @test evap == [0.0]
     @test drng == [0.003]
-    @test infl == [0.001]
+    @test outf == [0.001]
     stor ≈ Float32[init_stor + 86400 * (0.003 * 1.5 - 0.001 * 0.5)]
     BMI.update_until(model, 2.5 * 86400)
     @test prec == [0.00]
-    @test evap == [0.0]
     @test drng == [0.001]
-    @test infl == [0.002]
+    @test outf == [0.002]
     stor ≈ Float32[init_stor + 86400 * (0.003 * 2.0 + 0.001 * 0.5 - 0.001 - 0.002 * 0.5)]
     @test success(Ribasim.solve!(model))
 end
@@ -290,7 +285,7 @@ end
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p_independent))
     @test all(isconcretetype, fieldtypes(typeof(p_independent)))
-    @test p_independent.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
+    @test p_independent.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9]
 
     @test success(model)
     @test length(model.integrator.sol) == 2 # start and end

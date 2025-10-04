@@ -122,8 +122,8 @@ Specifically, we first use all the inflows to update the mass of the Basins, rec
 the Basin concentration(s) and then remove the mass that is being lost to the outflows.
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
-    (; cache, p) = integrator
-    (; p_independent, p_mutable, time_dependent_cache) = p
+    (; cache, p, uprev, dt) = integrator
+    (; p_independent, p_mutable, time_dependent_cache, state_time_dependent_cache) = p
     (; basin, flow_boundary, allocation, temp_convergence, convergence, ncalls) =
         p_independent
 
@@ -160,6 +160,52 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         basin.cumulative_surface_runoff
     @. basin.cumulative_surface_runoff =
         time_dependent_cache.basin.current_cumulative_surface_runoff
+
+    # Parse outward_forcing into evaporation and infiltration
+    for (i, id) in enumerate(basin.node_id)
+        outward_forcing_update = u.outward_forcing[i] - uprev.outward_forcing[i]
+        area = state_time_dependent_cache.current_area[i]
+        area_prev = basin.level_to_area[i](basin.level_prev[i])
+        low_storage_factor = state_time_dependent_cache.current_low_storage_factor[i]
+        low_storage_factor_prev =
+            reduction_factor(basin.storage_prev[i], basin.low_storage_threshold[i])
+        # First estimate the infiltration and evaporation updates based on a trapezoid integration
+        infiltration_flux = basin.vertical_flux.infiltration[i]
+        _infiltration_update =
+            dt * infiltration_flux * (low_storage_factor + low_storage_factor_prev) / 2
+        _evaporation_update =
+            dt *
+            basin.vertical_flux.potential_evaporation[i] *
+            (low_storage_factor * area + low_storage_factor_prev * area_prev) / 2
+        # Then scale the updates so that their sum equals outward_forcing_update
+        _outward_forcing_update = _infiltration_update + _evaporation_update
+        if iszero(_outward_forcing_update)
+            infiltration_update = 0.0
+        else
+            # Compute the infiltration first because good bounds can be put on it
+            # (which used to be in flow_limiter!)
+            factor_basin_min = min_low_storage_factor(
+                state_time_dependent_cache.current_storage,
+                basin.storage_prev,
+                basin,
+                id,
+            )
+            infiltration_update = clamp(
+                outward_forcing_update * _infiltration_update / _outward_forcing_update,
+                infiltration_flux * dt * factor_basin_min,
+                infiltration_flux * dt,
+            )
+        end
+        basin.infiltration_update[i] = infiltration_update
+        basin.cumulative_infiltration_saveat[i] += infiltration_update
+        basin.cumulative_infiltration[i] += infiltration_update
+        # Note: This max can break the water balance because it can mean that
+        # infiltration_update + evaporation_update ≠ outward_forcing_update
+        evaporation_update = max(0, outward_forcing_update - infiltration_update)
+        basin.evaporation_update[i] = evaporation_update
+        basin.cumulative_evaporation_saveat[i] += evaporation_update
+        basin.cumulative_evaporation[i] += evaporation_update
+    end
 
     # Update cumulative boundary flow which is integrated exactly
     @. flow_boundary.cumulative_flow_saveat +=
@@ -201,7 +247,7 @@ function update_concentrations!(u, t, integrator)::Nothing
     (; p_independent, state_time_dependent_cache) = p
     (; current_storage, current_level) = state_time_dependent_cache
     (; basin, flow_boundary, do_concentration) = p_independent
-    (; vertical_flux, concentration_data) = basin
+    (; vertical_flux, concentration_data, infiltration_update, evaporation_update) = basin
     (;
         evaporate_mass,
         cumulative_in,
@@ -291,11 +337,11 @@ function update_concentrations!(u, t, integrator)::Nothing
 
         # Evaporate mass to keep the mass balance, if enabled in model config
         if evaporate_mass
-            evaporated_volume = u.evaporation[node_id.idx] - uprev.evaporation[node_id.idx]
+            evaporated_volume = evaporation_update[node_id.idx]
             mass_node .-= concentration_state[node_id.idx, :] .* evaporated_volume
         end
 
-        infiltrated_volume = u.infiltration[node_id.idx] - uprev.infiltration[node_id.idx]
+        infiltrated_volume = infiltration_update[node_id.idx]
         mass_node .-= concentration_state[node_id.idx, :] .* infiltrated_volume
 
         # Take care of infinitely small masses, possibly becoming negative due to truncation.
@@ -351,9 +397,7 @@ function forcing_update(integrator::DEIntegrator, node_id::NodeID)::Tuple{Float6
             vertical_flux.surface_runoff[node_id.idx]
         ) * dt
 
-    outflow_update =
-        (u.evaporation[node_id.idx] - uprev.evaporation[node_id.idx]) +
-        (u.infiltration[node_id.idx] - uprev.infiltration[node_id.idx])
+    outflow_update = u.outward_forcing[node_id.idx] - uprev.outward_forcing[node_id.idx]
 
     return inflow_update, outflow_update
 end
@@ -410,7 +454,6 @@ function save_flow(u, t, integrator)
         u_prev_saveat,
         convergence,
         ncalls,
-        node_id,
     ) = p.p_independent
     Δt = get_Δt(integrator)
     flow_mean = (u - u_prev_saveat) / Δt
@@ -461,21 +504,18 @@ function save_flow(u, t, integrator)
     precipitation = copy(basin.cumulative_precipitation_saveat) ./ Δt
     surface_runoff = copy(basin.cumulative_surface_runoff_saveat) ./ Δt
     drainage = copy(basin.cumulative_drainage_saveat) ./ Δt
+    infiltration = copy(basin.cumulative_infiltration_saveat) ./ Δt
+    evaporation = copy(basin.cumulative_evaporation_saveat) ./ Δt
     @. basin.cumulative_precipitation_saveat = 0.0
     @. basin.cumulative_surface_runoff_saveat = 0.0
     @. basin.cumulative_drainage_saveat = 0.0
+    @. basin.cumulative_infiltration_saveat = 0.0
+    @. basin.cumulative_evaporation_saveat = 0.0
 
     if hasproperty(cache, :nlsolver)
         flow_convergence = convergence ./ ncalls[1]
-        for (i, (evap, infil)) in
-            enumerate(zip(flow_convergence.evaporation, flow_convergence.infiltration))
-            if isnan(evap)
-                basin_convergence[i] = infil
-            elseif isnan(infil)
-                basin_convergence[i] = evap
-            else
-                basin_convergence[i] = max(evap, infil)
-            end
+        for (i, outward_flow) in enumerate(flow_convergence.outward_forcing)
+            basin_convergence[i] = isnan(outward_flow) ? 0.0 : outward_flow
         end
         fill!(convergence, 0)
         ncalls[1] = 0
@@ -490,6 +530,8 @@ function save_flow(u, t, integrator)
         precipitation,
         surface_runoff,
         drainage,
+        infiltration,
+        evaporation,
         concentration,
         flow_convergence,
         basin_convergence,
@@ -515,9 +557,6 @@ function check_water_balance_error!(
     # floating point truncation errors
     formulate_storages!(u, p, t; add_initial_storage = false)
 
-    evaporation = view(saved_flow.flow, state_ranges.evaporation)
-    infiltration = view(saved_flow.flow, state_ranges.infiltration)
-
     for (
         inflow_rate,
         outflow_rate,
@@ -535,8 +574,8 @@ function check_water_balance_error!(
         saved_flow.precipitation,
         saved_flow.surface_runoff,
         saved_flow.drainage,
-        evaporation,
-        infiltration,
+        saved_flow.evaporation,
+        saved_flow.infiltration,
         current_storage,
         basin.Δstorage_prev_saveat,
         basin.node_id,

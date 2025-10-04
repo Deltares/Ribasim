@@ -213,8 +213,7 @@ function update_vertical_flux!(du::CVector, p::Parameters)::Nothing
         evaporation = area * factor * vertical_flux.potential_evaporation[id.idx]
         infiltration = factor * vertical_flux.infiltration[id.idx]
 
-        du.evaporation[id.idx] = evaporation
-        du.infiltration[id.idx] = infiltration
+        du.outward_forcing[id.idx] = evaporation + infiltration
     end
 
     return nothing
@@ -320,8 +319,7 @@ function formulate_dstorage(
     dstorage += fixed_area * vertical_flux.precipitation[node_id.idx]
     dstorage += vertical_flux.surface_runoff[node_id.idx]
     dstorage += vertical_flux.drainage[node_id.idx]
-    dstorage -= du.evaporation[node_id.idx]
-    dstorage -= du.infiltration[node_id.idx]
+    dstorage -= du.outward_forcing[node_id.idx]
 
     return dstorage
 end
@@ -913,21 +911,10 @@ function limit_flow!(
         )
     end
 
-    # Evaporation is in [0, ∞) (stricter bounds would require also estimating the area)
-    # Infiltration is in [f * infiltration, infiltration] where f is a rough estimate of the smallest low storage factor
-    # reduction factor value that was attained over the last timestep
+    # Infiltration + evaporation is positive
     for (id, infiltration) in zip(basin.node_id, basin.vertical_flux.infiltration)
         factor_min = min_low_storage_factor(current_storage, basin.storage_prev, basin, id)
-        limit_flow!(u.evaporation, uprev.evaporation, id, 0.0, Inf, true, dt)
-        limit_flow!(
-            u.infiltration,
-            uprev.infiltration,
-            id,
-            factor_min * infiltration,
-            infiltration,
-            true,
-            dt,
-        )
+        limit_flow!(u.outward_forcing, uprev.outward_forcing, id, 0.0, Inf, true, dt)
     end
 
     return nothing

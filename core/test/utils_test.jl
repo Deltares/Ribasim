@@ -263,8 +263,8 @@ end
 
     # rows, cols, _ = findnz(jac_prototype)
     #! format: off
-    rows_expected = [1, 2, 3, 6, 7, 9, 13, 1, 2, 3, 4, 6, 7, 9, 10, 13, 14, 1, 2, 3, 4, 5, 6, 7, 9, 11, 13, 15, 2, 3, 4, 5, 10, 11, 14, 15, 3, 4, 5, 11, 15, 1, 2, 3, 6, 7, 9, 13, 1, 2, 3, 6, 7, 8, 9, 12, 13, 7, 8, 12, 1, 2, 3, 6, 7, 9, 13, 2, 4, 10, 14, 3, 4, 5, 11, 15, 7, 8, 12, 1, 2, 3, 6, 7, 9, 13, 2, 4, 10, 14, 3, 4, 5, 11, 15]
-    cols_expected = [1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 11, 11, 11, 11, 11, 12, 12, 12, 13, 13, 13, 13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15, 15, 15]
+    rows_expected = [1, 2, 3, 6, 7, 9, 1, 2, 3, 4, 6, 7, 9, 10, 1, 2, 3, 4, 5, 6, 7, 9, 11, 2, 3, 4, 5, 10, 11, 3, 4, 5, 11, 1, 2, 3, 6, 7, 9, 1, 2, 3, 6, 7, 8, 9, 7, 8, 1, 2, 3, 6, 7, 9, 2, 4, 10, 3, 4, 5, 11]
+    cols_expected = [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 8, 8, 9, 9, 9, 9, 9, 9, 10, 10, 10, 11, 11, 11, 11]
     #! format: on
     jac_prototype_expected =
         sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
@@ -284,8 +284,8 @@ end
     jac_prototype, _, _ = Ribasim.get_diff_eval(du0, u0, p, config.solver)
 
     #! format: off
-    rows_expected = [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2]
-    cols_expected = [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 6]
+    rows_expected = [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2]
+    cols_expected = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 5]
     #! format: on
     jac_prototype_expected =
         sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
@@ -387,8 +387,7 @@ end
     state_ranges = getaxes(model.integrator.u)
     n_basins = length(basin.node_id)
 
-    @test flow_to_storage[:, state_ranges.evaporation] == -I
-    @test flow_to_storage[:, state_ranges.infiltration] == -I
+    @test flow_to_storage[:, state_ranges.outward_forcing] == -I
 
     for node_name in
         [:tabulated_rating_curve, :pump, :outlet, :linear_resistance, :manning_resistance]

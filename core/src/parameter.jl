@@ -22,8 +22,7 @@ const state_components = (
     :user_demand_outflow,
     :linear_resistance,
     :manning_resistance,
-    :evaporation,
-    :infiltration,
+    :outward_forcing,
     :integral,
 )
 const n_components = length(state_components)
@@ -378,6 +377,8 @@ In-memory storage of saved mean flows for writing to results.
 - `precipitation`: The exact integrated mean precipitation
 - `surface_runoff`: The exact integrated mean surface_runoff
 - `drainage`: The exact integrated mean drainage
+- `infiltration`: The infiltration derived from `outward_forcing`
+- `evaporation`: The evaporation derived from `outward_forcing`
 - `concentration`: Concentrations for each Basin and substance
 - `balance_error`: The (absolute) water balance error
 - `relative_error`: The relative water balance error
@@ -391,6 +392,8 @@ In-memory storage of saved mean flows for writing to results.
     precipitation::Vector{Float64}
     surface_runoff::Vector{Float64}
     drainage::Vector{Float64}
+    infiltration::Vector{Float64}
+    evaporation::Vector{Float64}
     concentration::Matrix{Float64}
     storage_rate::Vector{Float64} = zero(precipitation)
     balance_error::Vector{Float64} = zero(precipitation)
@@ -511,6 +514,13 @@ Requirements:
     cumulative_precipitation_saveat::Vector{Float64} = zeros(length(node_id))
     cumulative_surface_runoff_saveat::Vector{Float64} = zeros(length(node_id))
     cumulative_drainage_saveat::Vector{Float64} = zeros(length(node_id))
+    # Derived from outward_forcing
+    cumulative_infiltration::Vector{Float64} = zeros(length(node_id))
+    cumulative_evaporation::Vector{Float64} = zeros(length(node_id))
+    cumulative_infiltration_saveat::Vector{Float64} = zeros(length(node_id))
+    cumulative_evaporation_saveat::Vector{Float64} = zeros(length(node_id))
+    infiltration_update::Vector{Float64} = zeros(length(node_id))
+    evaporation_update::Vector{Float64} = zeros(length(node_id))
     # Basin profile interpolations
     storage_to_level::Vector{StorageToLevelType} =
         Vector{StorageToLevelType}(undef, length(node_id))

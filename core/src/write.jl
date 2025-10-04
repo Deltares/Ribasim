@@ -356,30 +356,18 @@ function basin_data(model::Model; table::Bool = true)
 
     nbasin = length(data.node_id)
     ntsteps = length(data.time) - 1
-    nrows = nbasin * ntsteps
 
     inflow_rate = FlatVector(saved.flow.saveval, :inflow)
     outflow_rate = FlatVector(saved.flow.saveval, :outflow)
     drainage = FlatVector(saved.flow.saveval, :drainage)
-    infiltration = zeros(nrows)
-    evaporation = zeros(nrows)
     precipitation = FlatVector(saved.flow.saveval, :precipitation)
+    infiltration = FlatVector(saved.flow.saveval, :infiltration)
+    evaporation = FlatVector(saved.flow.saveval, :evaporation)
     surface_runoff = FlatVector(saved.flow.saveval, :surface_runoff)
     storage_rate = FlatVector(saved.flow.saveval, :storage_rate)
     balance_error = FlatVector(saved.flow.saveval, :balance_error)
     relative_error = FlatVector(saved.flow.saveval, :relative_error)
     convergence = FlatVector(saved.flow.saveval, :basin_convergence)
-
-    idx_row = 0
-    for saved_flow in saved.flow.saveval
-        saved_evaporation = view(saved_flow.flow, state_ranges.evaporation)
-        saved_infiltration = view(saved_flow.flow, state_ranges.infiltration)
-        for (evaporation_, infiltration_) in zip(saved_evaporation, saved_infiltration)
-            idx_row += 1
-            evaporation[idx_row] = evaporation_
-            infiltration[idx_row] = infiltration_
-        end
-    end
 
     time = data.time[begin:(end - 1)]
     node_id = Int32.(data.node_id)
