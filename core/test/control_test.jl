@@ -69,7 +69,7 @@
     @test level[2, t_2_index] >=
           discrete_control.compound_variables[1][2].threshold_high[1](0)
 
-    du = get_du(model.integrator)
+    du = Ribasim.get_wrapped_du(model)
     @test all(iszero, du.linear_resistance)
     @test all(iszero, du.pump)
 end

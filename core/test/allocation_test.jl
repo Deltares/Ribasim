@@ -318,8 +318,9 @@ end
     )][1:2] ≈ [0.001, 0.001] rtol = 1e-4
 
     @test_throws Exception model = Ribasim.run(toml_path)
-    (; u, p, t) = model.integrator
-    Ribasim.formulate_storages!(u, p, t)
+    (; p, t) = model.integrator
+
+    Ribasim.formulate_storages!(Ribasim.get_wrapped_u(model), p, t)
     (; current_storage) = p.state_time_dependent_cache
 
     @test current_storage ≈ Float32[

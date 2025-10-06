@@ -57,9 +57,9 @@ end
 This uses a typeassert to ensure that the return type annotation doesn't create a copy.
 """
 function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
-    (; u, p) = model.integrator
-    (; p_independent, state_time_dependent_cache) = p
+    (; p_independent, state_time_dependent_cache) = model.integrator.p
     (; basin, user_demand, subgrid) = p_independent
+    u = Ribasim.get_wrapped_u(model)
 
     if name == "basin.storage"
         state_time_dependent_cache.current_storage

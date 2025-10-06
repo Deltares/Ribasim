@@ -16,7 +16,7 @@ function set_simulation_data!(
         user_demand,
         tabulated_rating_curve,
     ) = p.p_independent
-    du = get_du(integrator)
+    du = wrap_state(get_du(integrator), p.p_independent)
 
     errors = false
 
@@ -577,7 +577,7 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
     flow = problem[:flow]
     storage_change = problem[:basin_storage_change]
-    du = get_du(integrator)
+    du = wrap_state(get_du(integrator), p.p_independent)
 
     # Extrapolate the current instantaneous flow rates from the physical layer
     for link in only(flow.axes)

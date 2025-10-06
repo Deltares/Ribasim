@@ -257,9 +257,10 @@ end
     p = Ribasim.Parameters(db, config)
     close(db)
     t0 = 0.0
-    u0 = Ribasim.build_state_vector(p.p_independent)
+    (; n_states) = p.p_independent
+    u0 = zeros(n_states)
     du0 = copy(u0)
-    jac_prototype, _, _ = Ribasim.get_diff_eval(du0, u0, p, config.solver)
+    jac_prototype, _, _ = Ribasim.get_diff_eval(du0, u0, p, config)
 
     # rows, cols, _ = findnz(jac_prototype)
     #! format: off
@@ -279,9 +280,10 @@ end
     p = Ribasim.Parameters(db, config)
     (; p_independent) = p
     close(db)
-    u0 = Ribasim.build_state_vector(p_independent)
+    (; n_states) = p.p_independent
+    u0 = zeros(n_states)
     du0 = copy(u0)
-    jac_prototype, _, _ = Ribasim.get_diff_eval(du0, u0, p, config.solver)
+    jac_prototype, _, _ = Ribasim.get_diff_eval(du0, u0, p, config)
 
     #! format: off
     rows_expected = [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2]
@@ -383,8 +385,7 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; basin, flow_to_storage) = model.integrator.p.p_independent
-    state_ranges = getaxes(model.integrator.u)
+    (; basin, flow_to_storage, state_ranges) = model.integrator.p.p_independent
     n_basins = length(basin.node_id)
 
     @test flow_to_storage[:, state_ranges.evaporation] == -I

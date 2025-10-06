@@ -38,8 +38,9 @@ function get_diff_eval(
     du_raw::AbstractVector,
     u_raw::AbstractVector,
     p::Parameters,
-    solver::Solver,
+    config::Config,
 )
+    (; solver, experimental) = config
     (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
     t = 0.0
 
@@ -76,31 +77,33 @@ function get_diff_eval(
     )
 
     # Find the sparse matrix coloring that leads to the cheapest Jacobian evaluation
-    if solver.sparse
+    if solver.sparse && experimental.optimize_jacobian
         backend_jac = nothing
         jac_prep = nothing
         t_min_jac_eval = Inf
         for order in
             (NaturalOrder, LargestFirst, SmallestLast, IncidenceDegree, DynamicLargestFirst)
-            backend = get_jac_ad_backend(solver; order)
+            backend = get_jac_ad_backend(solver; order, mixed_mode = true)
             jac_prep_option = jac_prep_from_backend(backend)
             J = Float64.(sparsity_pattern(jac_prep_option))
             args = (J, u_raw, p, t, jac_prep_option, backend)
             # First evaluate only for precompilation purposes
             jac_from_jac_prep(args...)
-            t_jac_eval = @elapsed jac_from_jac_prep(args...)
+            t_jac_eval = @elapsed for _ in 1:10
+                jac_from_jac_prep(args...)
+            end
             if t_jac_eval < t_min_jac_eval
                 t_min_jac_eval = t_jac_eval
                 backend_jac = backend
                 jac_prep = jac_prep_option
             end
         end
-        jac_prototype = sparsity_pattern(jac_prep)
     else
         backend_jac = get_jac_ad_backend(solver)
         jac_prep = jac_prep_from_backend(backend_jac)
-        jac_prototype = nothing
     end
+
+    jac_prototype = solver.sparse ? sparsity_pattern(jac_prep) : nothing
 
     jac(J, u_raw, p, t) = jac_from_jac_prep(J, u_raw, p, t, jac_prep, backend_jac)
 
@@ -236,7 +239,7 @@ function Model(config::Config)::Model
 
     RHS = ODEFunction{true, specialize ? FullSpecialize : NoSpecialize}(
         water_balance!;
-        get_diff_eval(du0_raw, u0_raw, parameters, config.solver)...,
+        get_diff_eval(du0_raw, u0_raw, parameters, config)...,
     )
     prob = ODEProblem{true, specialize ? FullSpecialize : NoSpecialize}(
         RHS,

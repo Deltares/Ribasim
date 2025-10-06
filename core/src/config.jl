@@ -175,6 +175,7 @@ end
 @option struct Experimental <: TableOption
     concentration::Bool = false
     allocation::Bool = false
+    optimize_jacobian::Bool = false
 end
 
 # For logging enabled experimental features
@@ -367,33 +368,30 @@ get_forward_mode_ad_type(; specialize::Bool = true) =
 
 function get_jac_ad_backend(
     solver::Solver;
-    mixed_mode::Bool = true,
+    mixed_mode::Bool = false,
     specialize = true,
     order::Union{Function, Type{<:AbstractOrder}} = NaturalOrder,
 )
-    if solver.autodiff
-        forward_mode = get_forward_mode_ad_type(; specialize)
-        if solver.sparse
-            sparsity_detector = TracerSparsityDetector()
-            backend = if mixed_mode
-                reverse_mode = AutoMooncake()
-                backend = MixedMode(forward_mode, reverse_mode)
-            else
-                forward_mode
-            end
-            AutoSparse(
-                backend;
-                sparsity_detector,
-                coloring_algorithm = GreedyColoringAlgorithm{:substitution}(
-                    order();
-                    postprocessing = true,
-                ),
-            )
+    forward_mode =
+        solver.autodiff ? get_forward_mode_ad_type(; specialize) : AutoFiniteDiff()
+    if solver.sparse
+        sparsity_detector = TracerSparsityDetector()
+        backend = if mixed_mode
+            reverse_mode = AutoMooncake()
+            backend = MixedMode(forward_mode, reverse_mode)
         else
             forward_mode
         end
+        AutoSparse(
+            backend;
+            sparsity_detector,
+            coloring_algorithm = GreedyColoringAlgorithm{:substitution}(
+                order();
+                postprocessing = true,
+            ),
+        )
     else
-        AutoFiniteDiff()
+        forward_mode
     end
 end
 

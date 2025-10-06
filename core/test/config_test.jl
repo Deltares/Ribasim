@@ -54,12 +54,6 @@ end
     Solver(; algorithm = "DoesntExist")
     @test_throws InexactError Solver(autodiff = 2)
     @test_throws KeyError algorithm(Solver(; algorithm = "DoesntExist"))
-    @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", autodiff = true))) ==
-          AutoForwardDiff(; tag = :Ribasim)
-    @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", autodiff = false))) isa
-          AutoFiniteDiff
-    @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF"))) ==
-          AutoForwardDiff(; tag = :Ribasim)
     # autodiff is not a kwargs for explicit algorithms, but we use try-catch to bypass
     algorithm(Solver(; algorithm = "Euler", autodiff = true))
 

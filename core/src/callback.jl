@@ -340,10 +340,12 @@ end
 Compute the forcing volume entering and leaving the Basin over the last time step
 """
 function forcing_update(integrator::DEIntegrator, node_id::NodeID)::Tuple{Float64, Float64}
-    (; u, uprev, p, dt) = integrator
+    (; p, dt) = integrator
     (; basin) = p.p_independent
     (; vertical_flux) = basin
 
+    u = wrap_state(integrator.u, p.p_independent)
+    uprev = wrap_state(integrator.uprev, p.p_independent)
     @assert node_id.type == NodeType.Basin
 
     fixed_area = basin_areas(basin, node_id.idx)[end]

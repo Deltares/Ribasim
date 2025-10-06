@@ -440,7 +440,7 @@ function set_initial_allocation_cumulative_volume!(integrator)::Nothing
     # At the time of writing water_balance! already
     # gets called once at the problem initialization, this
     # one is just to make sure.
-    du = get_du(integrator)
+    du = wrap_state(get_du(integrator), p_independent)
     water_balance!(du, u, p, t)
 
     for allocation_model in allocation_models

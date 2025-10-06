@@ -13,7 +13,8 @@
     model = Ribasim.run(config)
     @test model isa Ribasim.Model
     @test success(model)
-    (; u, du) = model.integrator
+    u = Ribasim.get_wrapped_u(model)
+    du = Ribasim.get_wrapped_du(model)
     (; p_independent) = model.integrator.p
 
     @test p_independent.node_id == [0, 6, 6]
@@ -444,7 +445,8 @@ end
     model = Ribasim.Model(toml_path)
 
     (; integrator) = model
-    (; u, p, t, sol) = integrator
+    (; p, t, sol) = integrator
+    u = Ribasim.get_wrapped_u(model)
     (; p_independent, state_time_dependent_cache) = p
 
     day = 86400.0
@@ -537,7 +539,7 @@ end
     model = Ribasim.run(toml_path)
     @test success(model)
 
-    du = get_du(model.integrator)
+    du = Ribasim.get_wrapped_du(model)
     (; p, t) = model.integrator
     (; p_independent, state_time_dependent_cache) = p
     (; current_level) = state_time_dependent_cache
