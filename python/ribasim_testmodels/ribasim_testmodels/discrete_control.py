@@ -801,9 +801,9 @@ def transient_condition_model() -> Model:
         ],
     )
 
-    model.edge.add(lb, pmp)
-    model.edge.add(pmp, bsn)
-    model.edge.add(dc, pmp)
+    model.link.add(lb, pmp)
+    model.link.add(pmp, bsn)
+    model.link.add(dc, pmp)
 
     return model
 

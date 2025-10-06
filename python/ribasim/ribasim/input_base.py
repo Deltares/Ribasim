@@ -7,12 +7,7 @@ from contextlib import closing
 from contextvars import ContextVar
 from pathlib import Path
 from sqlite3 import connect
-from typing import (
-    Any,
-    Generic,
-    TypeVar,
-    cast,
-)
+from typing import Any, Generic, TypeVar, cast
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -70,10 +65,10 @@ node_names_snake_case = [
     "user_demand",
 ]
 
-context_file_loading: ContextVar[dict[str, Any]] = ContextVar(
+context_file_loading: ContextVar[dict[str, Path]] = ContextVar(
     "file_loading", default={}
 )
-context_file_writing: ContextVar[dict[str, Any]] = ContextVar(
+context_file_writing: ContextVar[dict[str, Path]] = ContextVar(
     "file_writing", default={}
 )
 
@@ -88,7 +83,7 @@ class BaseModel(PydanticBaseModel):
         validate_default=True,
         populate_by_name=True,
         use_enum_values=True,
-        extra="allow",
+        extra="forbid",
     )
 
     @classmethod
@@ -96,7 +91,7 @@ class BaseModel(PydanticBaseModel):
         """Return the names of the fields contained in the Model."""
         return list(cls.model_fields.keys())
 
-    def model_dump(self, **kwargs) -> dict[str, Any]:
+    def model_dump(self, **kwargs) -> dict[str, object]:
         return super().model_dump(serialize_as_any=True, **kwargs)
 
     def diff(
@@ -132,7 +127,7 @@ class BaseModel(PydanticBaseModel):
             raise ValueError(f"Cannot compare {self} with {other}")
         if self == other:
             return None
-        data = {}
+        data: dict[str, Any] = {}
         for key in self._fields():
             self_attr = getattr(self, key)
             other_attr = getattr(other, key)
@@ -150,7 +145,7 @@ class BaseModel(PydanticBaseModel):
     # __eq__ from Pydantic BaseModel itself, edited to remove the comparison of private attrs
     # https://github.com/pydantic/pydantic/blob/ff3789d4cc06ee024b7253b919d3e36748a72829/pydantic/main.py#L1069
     # The MIT License (MIT) | Copyright (c) 2017 to present Pydantic Services Inc. and individual contributors.
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, BaseModel):
             self_type = self.__pydantic_generic_metadata__["origin"] or self.__class__
             other_type = (
@@ -213,7 +208,7 @@ class FileModel(BaseModel, ABC):
 
     @model_validator(mode="before")
     @classmethod
-    def _check_filepath(cls, value: Any) -> Any:
+    def _check_filepath(cls, value: object) -> object:
         # Enable initialization with a Path.
         if isinstance(value, dict):
             # Pydantic Model init requires a dict
@@ -250,7 +245,7 @@ class FileModel(BaseModel, ABC):
 
     @classmethod
     @abstractmethod
-    def _load(cls, filepath: Path | None) -> dict[str, Any]:
+    def _load(cls, filepath: Path | None) -> dict[str, object]:
         """Load the data at filepath and returns it as a dictionary.
 
         If a derived FileModel does not load data from disk, this should
@@ -271,7 +266,11 @@ class TableModel(FileModel, Generic[TableT]):
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
     _sort_keys: list[str] = PrivateAttr(default=[])
 
-    def __eq__(self, other: Any) -> bool:
+    model_config = ConfigDict(
+        extra="allow",
+    )
+
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, TableModel):
             if self.df is None and other.df is None:
                 return True
@@ -355,7 +354,7 @@ class TableModel(FileModel, Generic[TableT]):
 
     @model_validator(mode="before")
     @classmethod
-    def _check_dataframe(cls, value: Any) -> Any:
+    def _check_dataframe(cls, value: object) -> object:
         # Enable initialization with a Dict.
         if isinstance(value, dict) and len(value) > 0 and "df" not in value:
             value = DataFrame(dict(**value))
@@ -374,7 +373,7 @@ class TableModel(FileModel, Generic[TableT]):
         return node_ids
 
     @classmethod
-    def _load(cls, filepath: Path | None) -> dict[str, Any]:
+    def _load(cls, filepath: Path | None) -> dict[str, object]:
         db = context_file_loading.get().get("database")
         if filepath is not None and db is not None:
             suffix = filepath.suffix.lower()
@@ -600,12 +599,12 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
 
 class ChildModel(BaseModel):
-    _parent: Any | None = None
+    _parent: BaseModel | None = None
     _parent_field: str | None = None
 
     @model_validator(mode="after")
     def _check_parent(self) -> "ChildModel":
-        if self._parent is not None:
+        if self._parent is not None and self._parent_field is not None:
             self._parent.model_fields_set.update({self._parent_field})
         return self
 
@@ -615,14 +614,14 @@ class NodeModel(ChildModel):
 
     @model_serializer(mode="wrap")
     def set_modeld(
-        self, serializer: Callable[["NodeModel"], dict[str, Any]]
-    ) -> dict[str, Any]:
+        self, serializer: Callable[["NodeModel"], dict[str, object]]
+    ) -> dict[str, object]:
         content = serializer(self)
         return dict(filter(lambda x: x[1], content.items()))
 
     @field_validator("*")
     @classmethod
-    def set_sort_keys(cls, v: Any, info: ValidationInfo) -> Any:
+    def set_sort_keys(cls, v: object, info: ValidationInfo) -> object:
         """Set sort keys for all TableModels if present in FieldInfo."""
         if isinstance(v, TableModel):
             field = cls.model_fields[getattr(info, "field_name")]

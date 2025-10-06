@@ -4,6 +4,7 @@ import argparse
 import csv
 import logging
 import shutil
+from collections import defaultdict
 from datetime import timedelta
 from pathlib import Path
 
@@ -377,25 +378,44 @@ def generate(
     nflows = flows.copy()
     nflows = flows.groupby(["time", "link_id"]).sum().reset_index()
     nflows.drop(
-        columns=["from_node_id", "to_node_id"],
+        columns=["from_node_id", "to_node_id", "convergence"],
         inplace=True,
+        errors="ignore",
     )
 
     # Add basin boundaries to flows
+    # Map all boundary node_ids to link_ids (unique per boundary type)
+    lookups: defaultdict[str, dict[int, int]] = defaultdict(dict)
+    dfs = []
     for link_id, (a, b, (node_id, boundary_type)) in enumerate(
         G.edges(data="boundary", default=(None, None))
     ):
         if boundary_type is None:
             continue
-        df = basins[basins.node_id == node_id][["time", boundary_type]].rename(
-            columns={boundary_type: "flow_rate"}
+        lookups[boundary_type][node_id] = link_id
+
+    # Build flows for all basin boundaries
+    boundary_types = ["drainage", "precipitation"]
+    if evaporate_mass:
+        boundary_types.append("evaporation")
+
+    for boundary_type in boundary_types:
+        df = basins[basins.node_id.isin(lookups[boundary_type].keys())][
+            ["node_id", "time", boundary_type]
+        ].rename(columns={boundary_type: "flow_rate"})
+        df["link_id"] = df.node_id.map(lookups[boundary_type])
+        df.drop(
+            columns=["node_id"],
+            inplace=True,
+            errors="ignore",
         )
-        df["link_id"] = link_id
-        nflows = _concat([nflows, df], ignore_index=True)
+        dfs.append(df)
+
+    nflows = _concat([nflows, *dfs], ignore_index=True)
 
     # Save flows to Delwaq format
     nflows.sort_values(by=["time", "link_id"], inplace=True)
-    nflows.to_csv(output_path / "flows.csv", index=False)  # not needed
+    # nflows.to_csv(output_path / "flows.csv", index=False)  # not needed
     nflows.drop(
         columns=["link_id", "riba_link_id"],
         inplace=True,
@@ -412,7 +432,7 @@ def generate(
         volumes["node_id"].map(basin_mapping).astype(pd.Int32Dtype())
     )
     volumes = volumes.sort_values(by=["time", "node_id"])
-    volumes.to_csv(output_path / "volumes.csv", index=False)  # not needed
+    # volumes.to_csv(output_path / "volumes.csv", index=False)  # not needed
     volumes.drop(columns=["node_id", "riba_node_id"], inplace=True)
     write_volumes(output_path / "ribasim.vol", volumes, timestep)
     write_volumes(

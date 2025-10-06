@@ -523,25 +523,21 @@ class DatasetWidget(QWidget):
         """Add arrow output data to the layer and setup its update mechanism."""
         if path.exists() is False:
             return None
-        try:
-            from pyarrow.feather import read_feather
 
-            df = read_feather(path, memory_map=True)
-        except ImportError:
-            dataset = ogr.Open(path)
-            dlayer = dataset.GetLayer(0)
-            stream = dlayer.GetArrowStreamAsNumPy()
-            data = stream.GetNextRecordBatch()
-            if data is None:
-                # Empty arrow file
-                return None
-            else:
-                df = pd.DataFrame(data=data)
+        dataset = ogr.Open(path)
+        dlayer = dataset.GetLayer(0)
+        stream = dlayer.GetArrowStreamAsNumPy()
+        data = stream.GetNextRecordBatch()
+        if data is None:
+            # Empty arrow file
+            return None
+        else:
+            df = pd.DataFrame(data=data)
 
-            # The OGR path introduces strings columns as bytes
-            for column in df.columns:
-                if df.dtypes[column] == object:  # noqa: E721
-                    df[column] = df[column].str.decode("utf-8")
+        # The OGR path introduces strings columns as bytes
+        for column in df.columns:
+            if df.dtypes[column] == object:  # noqa: E721
+                df[column] = df[column].str.decode("utf-8")
 
         df = postprocess(df)
         self.results[path.stem] = df
