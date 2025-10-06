@@ -99,18 +99,12 @@ end
     model = Ribasim.Model(config)
     demand = BMI.get_value_ptr(model, "user_demand.demand")
     inflow = BMI.get_value_ptr(model, "user_demand.cumulative_inflow")
-    # One year in seconds
-    year = model.integrator.p.p_independent.user_demand.demand_interpolation[2][1].t[2]
-    demand_start = 1e-3
-    slope = 1e-3 / year
     day = 86400.0
-    BMI.update_until(model, day)
-    @test inflow ≈ [demand_start * day, demand_start * day + 0.5 * slope * day^2] atol =
-        1e-3
-    demand_later = 2e-3
-    demand[1] = demand_later
     BMI.update_until(model, 2day)
-    @test inflow[1] ≈ demand_start * day + demand_later * day atol = 1e-3
+    @test inflow ≈ [2e-3 * day, 3e-3 * day] atol = 1e-3
+    demand[1] = 3e-3
+    BMI.update_until(model, 3day)
+    @test inflow[1] ≈ 5e-3 * day atol = 2e-3
 end
 
 @testitem "vertical basin flux" begin

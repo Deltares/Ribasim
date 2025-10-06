@@ -5,6 +5,60 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [v2025.5.0] - 2025-09-09
+
+This release focuses on improving allocation capabilities and performance optimizations.
+We linearize the optimization problem, and Pump and Outlets can now listen to allocation to set the flow rate.
+NetCDF output has been added, as well as experimental support for NetCDF input.
+DiscreteControl now supports an upper and lower threshold to model hysteresis.
+Editing models in QGIS is no longer supported; the plugin widget has been reduced one button.
+The [Ribasim Python installation section](https://ribasim.org/install.html#sec-install-python) allows you to pick your favorite package manager.
+Lastly, Ribasim is now multithreaded!
+
+**Breaking changes**: In the `DiscreteControl / condition` table, `greater_than` has been renamed to `threshold_high`, and the optional `threshold_low` column was added.
+The `surface_runoff` column was added to `Basin / static` and `Basin / time`.
+Note that Ribasim Python will migrate existing models automatically, see also the new guide on [updating Ribasim](https://ribasim.org/guide/updating-ribasim.html).
+
+### Added
+- Add `surface_runoff` to Basin fluxes. [#2402](https://github.com/Deltares/Ribasim/pull/2402)
+- Support NetCDF results. [#2497](https://github.com/Deltares/Ribasim/pull/2497)
+- Support NetCDF input. [#2542](https://github.com/Deltares/Ribasim/pull/2542)
+- Add multithreading. [#2562](https://github.com/Deltares/Ribasim/pull/2562)
+- Implement hysteresis on DiscreteControl. [#2564](https://github.com/Deltares/Ribasim/pull/2564)
+- Add `FlowBoundary / area` polygons. [#2537](https://github.com/Deltares/Ribasim/pull/2537)
+- Native multi-objective optimization in allocation. [#2522](https://github.com/Deltares/Ribasim/pull/2522)
+- Add control by allocation functionality. [#2401](https://github.com/Deltares/Ribasim/pull/2401)
+- FlowDemand supports multiple priorities. [#2500](https://github.com/Deltares/Ribasim/pull/2500)
+- Report cause of infeasibility in allocation problems. [#2398](https://github.com/Deltares/Ribasim/pull/2398) [#2481](https://github.com/Deltares/Ribasim/pull/2481)
+- Add `convergence` and `dt` to results for performance monitoring. [#2405](https://github.com/Deltares/Ribasim/pull/2405)
+- Warn when reading a new model with an old Ribasim Python version. [#2410](https://github.com/Deltares/Ribasim/pull/2410)
+- Add instructions to install using Pixi. [#2415](https://github.com/Deltares/Ribasim/pull/2415)
+- Add guide on updating Ribasim models. [#2489](https://github.com/Deltares/Ribasim/pull/2489)
+- Support DiscreteControl listening to a Basin's storage. [#2573](https://github.com/Deltares/Ribasim/pull/2573)
+
+### Changed
+- Allow two incoming control links for Pump and Outlet. [#2531](https://github.com/Deltares/Ribasim/pull/2531)
+- Use FlowDemand demand as minimum Pump/Outlet flow when allocation is not active. [#2506](https://github.com/Deltares/Ribasim/pull/2506)
+- Expand and improve LevelDemand functionality with absolute error handling. [#2386](https://github.com/Deltares/Ribasim/pull/2386) [#2515](https://github.com/Deltares/Ribasim/pull/2515)
+- Allocation optimization with warm start for better performance. [#2466](https://github.com/Deltares/Ribasim/pull/2466)
+- Scale storage and flow in allocation for numerical stability. [#2407](https://github.com/Deltares/Ribasim/pull/2407)
+- Switch from UMFPACK to KLU sparse linear solver for performance. [#2391](https://github.com/Deltares/Ribasim/pull/2391)
+- Use pandera v0.25, and revert using pyarrow dtypes. [#2450](https://github.com/Deltares/Ribasim/pull/2450)
+- QGIS: remove editing features for simplified workflow. [#2472](https://github.com/Deltares/Ribasim/pull/2472)
+- Use smooth interpolation of ContinuousControl and TabulatedRatingCurve functions. [#2446](https://github.com/Deltares/Ribasim/pull/2446) [#2458](https://github.com/Deltares/Ribasim/pull/2458)
+- Use a Reynolds based threshold for the ManningResistance relaxed root [2544](https://github.com/Deltares/Ribasim/pull/2544)
+- Demand nodes with timeseries now use block interpolation [2568](https://github.com/Deltares/Ribasim/pull/2568)
+
+### Fixed
+- Core model initialization speedup. [#2548](https://github.com/Deltares/Ribasim/pull/2548) [#2533](https://github.com/Deltares/Ribasim/pull/2533)
+- Fix validation error on multiple incoming control links. [#2535](https://github.com/Deltares/Ribasim/pull/2535)
+- Improve error message for DiscreteControl with no data. [#2540](https://github.com/Deltares/Ribasim/pull/2540)
+- Make convergence finite to avoid numerical issues. [#2534](https://github.com/Deltares/Ribasim/pull/2534)
+- Cache FlowDemand lookup to avoid expensive operations in `water_balance!`. [#2523](https://github.com/Deltares/Ribasim/pull/2523)
+- Increase stacksize on Windows to 8 MB to prevent stack overflow. [#2546](https://github.com/Deltares/Ribasim/pull/2546)
+- Align timestep allocated and realized results in `allocation.arrow`. [#2554](https://github.com/Deltares/Ribasim/pull/2554)
+- Support GeoPandas 1.1. [#2547](https://github.com/Deltares/Ribasim/pull/2547)
+
 ## [v2025.4.0] - 2025-06-16
 
 This release had a big push on the stability and performance for large models.
@@ -69,7 +123,7 @@ The most visible change is the renaming of Edge to Link. Like always, existing m
 - Check Model equality in Python. [#2057](https://github.com/Deltares/Ribasim/pull/2057)
 - Compare two models in Python. [#2080](https://github.com/Deltares/Ribasim/pull/2080)
 - Support cyclic input timeseries. [#2081](https://github.com/Deltares/Ribasim/pull/2081) [#2102](https://github.com/Deltares/Ribasim/pull/2102)
-- Time dependent `greater_than` thresholds in DiscreteControl. [#2079](https://github.com/Deltares/Ribasim/pull/2079)
+- Time dependent `threshold_high` thresholds in DiscreteControl. [#2079](https://github.com/Deltares/Ribasim/pull/2079)
 - Validation error on connector nodes having the same from and to Basin. [#2112](https://github.com/Deltares/Ribasim/pull/2112)
 - Support time dependent Pump and Outlet tables. [#2110](https://github.com/Deltares/Ribasim/pull/2110)
 

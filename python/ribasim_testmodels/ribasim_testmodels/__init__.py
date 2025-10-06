@@ -47,6 +47,7 @@ from ribasim_testmodels.basic import (
 from ribasim_testmodels.bucket import bucket_model, leaky_bucket_model
 from ribasim_testmodels.continuous_control import outlet_continuous_control_model
 from ribasim_testmodels.discrete_control import (
+    circular_flow_model,
     compound_variable_condition_model,
     concentration_condition_model,
     connector_node_flow_condition_model,
@@ -55,6 +56,7 @@ from ribasim_testmodels.discrete_control import (
     level_boundary_condition_model,
     level_range_model,
     pump_discrete_control_model,
+    storage_condition_model,
     tabulated_rating_curve_control_model,
     transient_condition_model,
 )
@@ -104,6 +106,7 @@ __all__ = [
     "basic_transient_model",
     "bommelerwaard_model",
     "bucket_model",
+    "circular_flow_model",
     "compound_variable_condition_model",
     "concentration_condition_model",
     "continuous_concentration_condition_model",
@@ -152,6 +155,7 @@ __all__ = [
     "secondary_networks_with_sources_model",
     "small_primary_secondary_network_model",
     "small_primary_secondary_network_verification_model",
+    "storage_condition_model",
     "subnetwork_model",
     "tabulated_rating_curve_control_model",
     "tabulated_rating_curve_model",

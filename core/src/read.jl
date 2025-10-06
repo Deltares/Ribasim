@@ -548,7 +548,11 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)
         config,
     )
 
-    flow_rate = get_interpolation_vec(config.interpolation.flow_boundary, node_id)
+    flow_rate = get_interpolation_vec(
+        config.interpolation.flow_boundary,
+        config.interpolation.block_transition_period,
+        node_id,
+    )
 
     flow_boundary = FlowBoundary(; node_id, concentration_itp, flow_rate)
 
@@ -708,6 +712,7 @@ function ConcentrationData(
                 NodeID(:Basin, first_row.node_id, 0),
                 :concentration;
                 cyclic_time,
+                interpolation_type = LinearInterpolation,
             )
             concentration_external_id["concentration_external.$substance"] = itp
             if any(itp.u .< 0)
@@ -806,11 +811,12 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     return basin
 end
 
-function get_greater_than!(
-    greater_than::Vector{<:AbstractInterpolation},
+function get_threshold!(
+    threshold::Vector{<:AbstractInterpolation},
     conditions_compound_variable,
     starttime::DateTime,
-    cyclic_time::Bool,
+    cyclic_time::Bool;
+    field = :threshold_high,
 )::Nothing
     (; node_id) = first(conditions_compound_variable)
     errors = false
@@ -827,8 +833,9 @@ function get_greater_than!(
             errors = true
         else
             push_constant_interpolation!(
-                greater_than,
-                condition_group.greater_than,
+                threshold,
+                field == :threshold_high ? condition_group.threshold_high :
+                coalesce.(condition_group.threshold_low, condition_group.threshold_high),
                 seconds_since.(condition_group.time, starttime),
                 NodeID(:UserDemand, node_id, 0);
                 cyclic_time,
@@ -858,7 +865,7 @@ function CompoundVariable(
         NodeID(node_type, only(unique(variables_compound_variable.node_id)), node_ids_all)
 
     compound_variable = CompoundVariable(; node_id)
-    (; subvariables, greater_than) = compound_variable
+    (; subvariables, threshold_high, threshold_low) = compound_variable
 
     # Each row defines a subvariable
     for row in variables_compound_variable
@@ -878,12 +885,15 @@ function CompoundVariable(
         push!(subvariables, subvariable)
     end
 
-    # Build greater_than ConstantInterpolation objects
-    !isnothing(conditions_compound_variable) && get_greater_than!(
-        greater_than,
+    # Build threshold ConstantInterpolation objects
+    !isnothing(conditions_compound_variable) &&
+        get_threshold!(threshold_high, conditions_compound_variable, starttime, cyclic_time)
+    !isnothing(conditions_compound_variable) && get_threshold!(
+        threshold_low,
         conditions_compound_variable,
         starttime,
-        cyclic_time,
+        cyclic_time;
+        field = :threshold_low,
     )
     return compound_variable
 end
@@ -971,7 +981,8 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
         if isempty(compound_variables)
             error("Missing data for $(node_id[i]).")
         end
-        truth_state_length = sum(length(var.greater_than) for var in compound_variables[i])
+        truth_state_length =
+            sum(length(var.threshold_high) for var in compound_variables[i])
         push!(truth_state, fill(false, truth_state_length))
     end
 
@@ -1169,7 +1180,7 @@ function parse_static_demand_data!(
         demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
         node.has_demand_priority[id.idx, demand_priority_idx] = true
         demand_row = coalesce(row.demand, 0.0)
-        demand_interpolation = trivial_linear_itp(; val = demand_row)
+        demand_interpolation = trivial_constant_itp(; val = demand_row)
         node.demand_interpolation[id.idx][demand_priority_idx] = demand_interpolation
         node.demand[id.idx, demand_priority_idx] = demand_row
     end
@@ -1265,9 +1276,9 @@ function parse_static_demand_data!(
         demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
         level_demand.has_demand_priority[id.idx, demand_priority_idx] = true
         level_demand.min_level[id.idx][demand_priority_idx] =
-            trivial_linear_itp(; val = coalesce(row.min_level, -Inf))
+            trivial_constant_itp(; val = coalesce(row.min_level, -Inf))
         level_demand.max_level[id.idx][demand_priority_idx] =
-            trivial_linear_itp(; val = coalesce(row.max_level, Inf))
+            trivial_constant_itp(; val = coalesce(row.max_level, Inf))
     end
     return nothing
 end
@@ -1711,40 +1722,135 @@ DateTime. This is used to convert between the solver's inner float time, and the
 datetime_since(t::Real, t0::DateTime)::DateTime = t0 + Millisecond(round(1000 * t))
 
 """
-    load_data(db::DB, config::Config, nodetype::Symbol, kind::Symbol)::Union{Arrow.Table, Query, Nothing}
+    load_netcdf(table_path::String, table_type::Type{<:Table})::NamedTuple
 
-Load data from Arrow files if available, otherwise the database.
-Returns either an `Arrow.Table`, `SQLite.Query` or `nothing` if the data is not present.
+Load a table from a NetCDF file. The data is stored as multi-dimensional arrays, and
+converted to a table for compatibility with the rest of the internals.
+"""
+function load_netcdf(table_path::String, table_type::Type{<:Table})::NamedTuple
+    table = NCDataset(table_path) do ds
+        names = fieldnames(table_type)
+        table = OrderedDict{Symbol, AbstractVector}()
+        data_varnames = filter(x -> !(String(x) in nc_dim_names), names)
+        for data_varname in data_varnames
+            var = ds[data_varname]
+            dim_names = dimnames(var)
+            if dim_names == ("node_id",)
+                table[:node_id] = ds["node_id"][:]
+            elseif dim_names == ("node_id", "time")
+                node_id_data = ds["node_id"][:]
+                time_data = ds["time"][:]
+                ntime = length(time_data)
+                nnode = length(node_id_data)
+                table[:node_id] = repeat(node_id_data; outer = ntime)
+                table[:time] = repeat(time_data; inner = nnode)
+            else
+                error("Unsupported dimensions: $dim_names, must be (node_id, [time])")
+            end
+            table[data_varname] = vec(var[:])
+        end
+        table
+    end
+    return columntable(table)
+end
+
+"""
+    load_data(db::DB, config::Config, nodetype::Symbol, kind::Symbol)::Union{NamedTuple, Nothing}
+
+Load data from Arrow or NetCDF files if available, otherwise the database.
+Returns either a `NamedTuple` of Vectors or `nothing` if the data is not present.
 """
 function load_data(
     db::DB,
     config::Config,
     table_type::Type{<:Table},
-)::Union{Arrow.Table, Query, Nothing}
-    # TODO load_data doesn't need both config and db, use config to check which one is needed
-
+)::Union{NamedTuple, Nothing}
     toml = getfield(config, :toml)
     section_name = snake_case(node_type(table_type))
     section = getproperty(toml, section_name)
     kind = table_name(table_type)
     sql_name = sql_table_name(table_type)
 
-    path = if hasproperty(section, kind)
-        getproperty(section, kind)
-    else
-        nothing
-    end
+    path = hasproperty(section, kind) ? getproperty(section, kind) : nothing
 
-    table = if !isnothing(path)
+    if !isnothing(path)
+        # the TOML specifies a file outside the database
+        path = getproperty(section, kind)
         table_path = input_path(config, path)
-        Arrow.Table(read(table_path); convert = false)
-    elseif exists(db, sql_name)
-        execute(db, "select * from $(esc_id(sql_name))")
+        # check suffix and read with Arrow or NCDatasets
+        ext = lowercase(splitext(table_path)[2])
+        if ext == ".nc"
+            return load_netcdf(table_path, table_type)
+        elseif ext == ".arrow"
+            bytes = read(table_path)
+            arrow_table = Arrow.Table(bytes; convert = false)
+            return arrow_columntable(arrow_table, table_type)
+        else
+            error("Unsupported file format: $table_path")
+        end
     else
-        nothing
+        if exists(db, sql_name)
+            table = execute(db, "select * from $(esc_id(sql_name))")
+            return sqlite_columntable(table, db, config, table_type)
+        else
+            return nothing
+        end
     end
+end
 
-    return table
+"Faster alternative to Tables.columntable that preallocates based on the schema."
+function sqlite_columntable(
+    table::Query,
+    db::DB,
+    config::Config,
+    T::Type{<:Table},
+)::NamedTuple
+    sql_name = sql_table_name(T)
+    nrows = execute(db, "SELECT COUNT(*) FROM $(esc_id(sql_name))") |> first |> first
+
+    names = fieldnames(T)
+    types = fieldtypes(T)
+    vals = ntuple(i -> Vector{types[i]}(undef, nrows), length(names))
+    nt = NamedTuple{names}(vals)
+
+    for (i, row) in enumerate(table)
+        for name in names
+            val = row[name]
+            if name == :time
+                # time has type timestamp and is stored as a String in the database
+                # currently SQLite.jl does not automatically convert it to DateTime
+                val = if ismissing(val)
+                    DateTime(config.starttime)
+                else
+                    DateTime(
+                        replace(val, r"(\.\d{3})\d+$" => s"\1"),  # remove sub ms precision
+                        dateformat"yyyy-mm-dd HH:MM:SS.s",
+                    )
+                end
+            end
+            nt[name][i] = val
+        end
+    end
+    nt
+end
+
+"Alternative to Tables.columntable that converts time to our own to_datetime."
+function arrow_columntable(table::Arrow.Table, T::Type{<:Table})::NamedTuple
+    nrows = length(first(table))
+    names = fieldnames(T)
+    types = fieldtypes(T)
+    vals = ntuple(i -> Vector{types[i]}(undef, nrows), length(names))
+    nt = NamedTuple{names}(vals)
+
+    for name in names
+        if name == :time
+            time_col = getproperty(table, name)
+            nt[name] .= [to_datetime(t) for t in time_col]
+        else
+            nt[name] .= getproperty(table, name)
+        end
+    end
+    nt
 end
 
 # alternative to convert that doesn't have warntimestamp
@@ -1759,7 +1865,7 @@ end
 """
     load_structvector(db::DB, config::Config, ::Type{T})::StructVector{T}
 
-Load data from Arrow files if available, otherwise the database.
+Load data from Arrow or NetCDF files if available, otherwise the database.
 Always returns a StructVector of the given struct type T, which is empty if the table is
 not found. This function validates the schema, and enforces the required sort order.
 """
@@ -1768,60 +1874,10 @@ function load_structvector(
     config::Config,
     ::Type{T},
 )::StructVector{T} where {T <: Table}
-    table = load_data(db, config, T)
+    nt = load_data(db, config, T)
 
-    if table === nothing
+    if nt === nothing
         return StructVector{T}(undef, 0)
-    end
-
-    table_in_db = table isa Query
-
-    nt = if table_in_db
-        # faster alternative to Tables.columntable that preallocates based on the schema
-        sql_name = sql_table_name(T)
-        nrows =
-            execute(db, "SELECT COUNT(*) FROM $(esc_id(sql_name))") |> first |> first
-
-        names = fieldnames(T)
-        types = fieldtypes(T)
-        vals = ntuple(i -> Vector{types[i]}(undef, nrows), length(names))
-        nt = NamedTuple{names}(vals)
-
-        for (i, row) in enumerate(table)
-            for name in names
-                val = row[name]
-                if name == :time
-                    # time has type timestamp and is stored as a String in the database
-                    # currently SQLite.jl does not automatically convert it to DateTime
-                    val = if ismissing(val)
-                        DateTime(config.starttime)
-                    else
-                        DateTime(
-                            replace(val, r"(\.\d{3})\d+$" => s"\1"),  # remove sub ms precision
-                            dateformat"yyyy-mm-dd HH:MM:SS.s",
-                        )
-                    end
-                end
-                nt[name][i] = val
-            end
-        end
-        nt
-    else
-        nrows = length(first(table))
-        names = fieldnames(T)
-        types = fieldtypes(T)
-        vals = ntuple(i -> Vector{types[i]}(undef, nrows), length(names))
-        nt = NamedTuple{names}(vals)
-
-        for name in names
-            if name == :time
-                time_col = getproperty(table, name)
-                nt[name] .= [to_datetime(t) for t in time_col]
-            else
-                nt[name] .= getproperty(table, name)
-            end
-        end
-        nt
     end
 
     table = StructVector{T}(nt)
@@ -1934,15 +1990,31 @@ function interpolate_basin_profile!(
             finite_difference(group_storage, group_level, group_area[1])
         end
 
+        for j in 1:(length(dS_dh) - 1)
+            if dS_dh[j + 1] < 0
+                error((
+                    "Invalid profile for $(basin.node_id[i]). The step from (h=$(group_level[j]), S=$(group_storage[j])) to (h=$(group_level[j+1]), S=$(group_storage[j+1])) implies a decreasing area compared to lower points in the profile, which is not allowed."
+                ),)
+            end
+        end
+
+        # Left extension extrapolation is cheap equivalent of linear extrapolation for informative gradients
+        # during the nonlinear solve for negative storage
         level_to_area = LinearInterpolation(
             dS_dh,
             group_level;
-            extrapolation = ConstantExtrapolation,
+            extrapolation_left = ExtrapolationType.Extension,
+            extrapolation_right = ConstantExtrapolation,
             cache_parameters = true,
         )
 
-        basin.storage_to_level[i] =
-            invert_integral(level_to_area; extrapolation_right = ExtrapolationType.Linear)
+        # Left linear extrapolation for usable gradients by the nonlinear solver for negative storages
+        # Right linear extrapolation corresponds with constant extrapolation of area
+        basin.storage_to_level[i] = invert_integral(
+            level_to_area;
+            extrapolation_left = ExtrapolationType.Linear,
+            extrapolation_right = ExtrapolationType.Linear,
+        )
 
         if !all(ismissing, group_area)
             # if all data is present for area, we use it

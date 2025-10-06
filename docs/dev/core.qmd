@@ -16,6 +16,11 @@ A more detailed sequence diagram of the simulation loop is available at the [cor
 
 # Set up the developer environment
 
+## Set the number of threads Julia will use
+
+Set the `JULIA_NUM_THREADS` variable in your environment to `auto` (linux, macos) or the number of physical cores of your machine (windows).
+Multiple threads are used to speed up individual models, as well as running testmodels in parallel.
+
 ## Install optional Julia libraries
 
 Start the Julia [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop) by executing `pixi run julia` in your terminal.

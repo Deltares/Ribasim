@@ -181,15 +181,16 @@ class Model(FileModel):
 
     @field_serializer("input_dir", "results_dir")
     def _serialize_path(self, path: Path) -> str:
-        return str(path)
+        return path.as_posix()
 
     def model_post_init(self, __context: Any) -> None:
         # When serializing we exclude fields that are set to their default values
         # However, we always want to write `input_dir`, `results_dir`, and `ribasim_version`
         # By overriding `BaseModel.model_post_init` we can set them explicitly,
         # and enforce that they are always written.
-        self.model_fields_set.update({"input_dir", "results_dir", "ribasim_version"})
-        self.edge = self.link  # Backwards compatible alias for link
+        # Since migration runs on reading, the ribasim_version should be reset.
+        self.ribasim_version = ribasim.__version__
+        self.model_fields_set.update({"input_dir", "results_dir"})
 
     def __repr__(self) -> str:
         """Generate a succinct overview of the Model content.
@@ -301,7 +302,7 @@ class Model(FileModel):
         )
         return node_table
 
-    def _nodes(self) -> Generator[MultiNodeModel, Any, None]:
+    def _nodes(self) -> Generator[MultiNodeModel, None, None]:
         """Return all non-empty MultiNodeModel instances."""
         for key in self.__class__.model_fields.keys():
             attr = getattr(self, key)
@@ -475,7 +476,7 @@ class Model(FileModel):
         return node_info
 
     @classmethod
-    def _load(cls, filepath: Path | None) -> dict[str, Any]:
+    def _load(cls, filepath: Path | None) -> dict[str, object]:
         context_file_loading.set({})
 
         if filepath is not None and filepath.is_file():

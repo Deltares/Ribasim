@@ -431,7 +431,7 @@ end
     realized_numeric =
         diff(itp_basin_2.(seconds_since.(df_basin_2.time, model.config.starttime))) /
         Δt_allocation
-    @test all(isapprox.(realized_numeric, df_basin_2.realized[2:end], atol = 1e-10))
+    @test all(isapprox.(realized_numeric, df_basin_2.realized[1:(end - 1)], atol = 1e-10))
 
     # Realized user demand
     flow_table = DataFrame(Ribasim.flow_data(model))
@@ -440,8 +440,17 @@ end
         flow_table_user_3.flow_rate,
         Ribasim.seconds_since.(flow_table_user_3.time, model.config.starttime),
     )
-    df_user_3 = allocation_table[(allocation_table.node_id .== 3), :]
-    realized_numeric = diff(integral.(Ref(itp_user_3), df_user_3.time)) ./ Δt_allocation
+    df_user_3 = allocation_table[
+        (allocation_table.node_id .== 3) .&& (allocation_table.demand_priority .== 2),
+        :,
+    ]
+    realized_numeric =
+        diff(
+            integral.(
+                Ref(itp_user_3),
+                seconds_since.(df_user_3.time, model.config.starttime),
+            ),
+        ) ./ Δt_allocation
     @test all(isapprox.(realized_numeric[3:end], df_user_3.realized[4:end], atol = 1e-3))
 end
 
@@ -456,7 +465,10 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     allocation_table = DataFrame(Ribasim.allocation_data(model))
-    df_rating_curve_2 = filter(:node_id => ==(2), allocation_table)
+    df_rating_curve_2 = filter(
+        [:node_id, :demand_priority] => (id, prio) -> (id == 2) && (prio == 2),
+        allocation_table,
+    )
     @test all(≈(0.002), df_rating_curve_2.demand)
     @test all(≈(0.002), df_rating_curve_2.realized[2:end])
 
@@ -464,8 +476,13 @@ end
         allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
         allocation_flow_bytes =
             read(normpath(dirname(toml_path), "results/allocation_flow.arrow"))
+        allocation_control_bytes =
+            read(normpath(dirname(toml_path), "results/allocation_control.arrow"))
+
         allocation = Arrow.Table(allocation_bytes)
         allocation_flow = Arrow.Table(allocation_flow_bytes)
+        allocation_control = Arrow.Table(allocation_control_bytes)
+
         @test Tables.schema(allocation) == Tables.Schema(
             (
                 :time,
@@ -507,8 +524,14 @@ end
                 Bool,
             ),
         )
+        @test Tables.schema(allocation_control) == Tables.Schema(
+            (:time, :node_id, :node_type, :flow_rate),
+            (DateTime, Int32, String, Float64),
+        )
+
         @test nrow(allocation) > 0
         @test nrow(allocation_flow) > 0
+        @test nrow(allocation_control) == 0
     end
 end
 

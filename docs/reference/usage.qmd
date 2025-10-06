@@ -332,6 +332,7 @@ control_state   | String   | -
 
 The allocation table contains a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and realized flow were.
 The realized values at the starting time of the simulation can be ignored.
+
 column           | type     | unit
 ---------------- | -------- | ---------------------
 time             | DateTime | -

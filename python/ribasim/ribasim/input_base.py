@@ -7,12 +7,7 @@ from contextlib import closing
 from contextvars import ContextVar
 from pathlib import Path
 from sqlite3 import connect
-from typing import (
-    Any,
-    Generic,
-    TypeVar,
-    cast,
-)
+from typing import Any, Generic, TypeVar, cast
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -22,6 +17,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pydantic
+import xarray as xr
 from pandera.typing import DataFrame
 from pandera.typing.geopandas import GeoDataFrame
 from pydantic import BaseModel as PydanticBaseModel
@@ -31,6 +27,7 @@ from pydantic import (
     Field,
     PrivateAttr,
     ValidationInfo,
+    field_serializer,
     field_validator,
     model_serializer,
     model_validator,
@@ -68,10 +65,10 @@ node_names_snake_case = [
     "user_demand",
 ]
 
-context_file_loading: ContextVar[dict[str, Any]] = ContextVar(
+context_file_loading: ContextVar[dict[str, Path]] = ContextVar(
     "file_loading", default={}
 )
-context_file_writing: ContextVar[dict[str, Any]] = ContextVar(
+context_file_writing: ContextVar[dict[str, Path]] = ContextVar(
     "file_writing", default={}
 )
 
@@ -86,7 +83,7 @@ class BaseModel(PydanticBaseModel):
         validate_default=True,
         populate_by_name=True,
         use_enum_values=True,
-        extra="allow",
+        extra="forbid",
     )
 
     @classmethod
@@ -94,7 +91,7 @@ class BaseModel(PydanticBaseModel):
         """Return the names of the fields contained in the Model."""
         return list(cls.model_fields.keys())
 
-    def model_dump(self, **kwargs) -> dict[str, Any]:
+    def model_dump(self, **kwargs) -> dict[str, object]:
         return super().model_dump(serialize_as_any=True, **kwargs)
 
     def diff(
@@ -130,7 +127,7 @@ class BaseModel(PydanticBaseModel):
             raise ValueError(f"Cannot compare {self} with {other}")
         if self == other:
             return None
-        data = {}
+        data: dict[str, Any] = {}
         for key in self._fields():
             self_attr = getattr(self, key)
             other_attr = getattr(other, key)
@@ -148,7 +145,7 @@ class BaseModel(PydanticBaseModel):
     # __eq__ from Pydantic BaseModel itself, edited to remove the comparison of private attrs
     # https://github.com/pydantic/pydantic/blob/ff3789d4cc06ee024b7253b919d3e36748a72829/pydantic/main.py#L1069
     # The MIT License (MIT) | Copyright (c) 2017 to present Pydantic Services Inc. and individual contributors.
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, BaseModel):
             self_type = self.__pydantic_generic_metadata__["origin"] or self.__class__
             other_type = (
@@ -211,7 +208,7 @@ class FileModel(BaseModel, ABC):
 
     @model_validator(mode="before")
     @classmethod
-    def _check_filepath(cls, value: Any) -> Any:
+    def _check_filepath(cls, value: object) -> object:
         # Enable initialization with a Path.
         if isinstance(value, dict):
             # Pydantic Model init requires a dict
@@ -242,9 +239,13 @@ class FileModel(BaseModel, ABC):
         self.filepath = filepath
         self.model_config["validate_assignment"] = True
 
+    @field_serializer("filepath")
+    def _serialize_path(self, path: Path) -> str:
+        return path.as_posix()
+
     @classmethod
     @abstractmethod
-    def _load(cls, filepath: Path | None) -> dict[str, Any]:
+    def _load(cls, filepath: Path | None) -> dict[str, object]:
         """Load the data at filepath and returns it as a dictionary.
 
         If a derived FileModel does not load data from disk, this should
@@ -265,7 +266,11 @@ class TableModel(FileModel, Generic[TableT]):
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
     _sort_keys: list[str] = PrivateAttr(default=[])
 
-    def __eq__(self, other: Any) -> bool:
+    model_config = ConfigDict(
+        extra="allow",
+    )
+
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, TableModel):
             if self.df is None and other.df is None:
                 return True
@@ -324,7 +329,7 @@ class TableModel(FileModel, Generic[TableT]):
 
     @model_serializer
     def _set_model(self) -> "str | None":
-        return str(self.filepath.name) if self.filepath is not None else None
+        return self.filepath.as_posix() if self.filepath is not None else None
 
     @classmethod
     def tablename(cls) -> str:
@@ -349,7 +354,7 @@ class TableModel(FileModel, Generic[TableT]):
 
     @model_validator(mode="before")
     @classmethod
-    def _check_dataframe(cls, value: Any) -> Any:
+    def _check_dataframe(cls, value: object) -> object:
         # Enable initialization with a Dict.
         if isinstance(value, dict) and len(value) > 0 and "df" not in value:
             value = DataFrame(dict(**value))
@@ -368,12 +373,21 @@ class TableModel(FileModel, Generic[TableT]):
         return node_ids
 
     @classmethod
-    def _load(cls, filepath: Path | None) -> dict[str, Any]:
+    def _load(cls, filepath: Path | None) -> dict[str, object]:
         db = context_file_loading.get().get("database")
         if filepath is not None and db is not None:
-            adf = cls._from_arrow(filepath)
-            # TODO Store filepath?
-            return {"df": adf}
+            suffix = filepath.suffix.lower()
+            if suffix == ".nc":
+                df = cls._from_netcdf(filepath)
+                return {"df": df}
+            elif suffix == ".arrow":
+                df = cls._from_arrow(filepath)
+                return {"df": df}
+            else:
+                raise ValueError(
+                    f"Unsupported file: '{filepath}'. "
+                    "Only '.nc' and '.arrow' extensions are supported."
+                )
         elif db is not None:
             ddf = cls._from_db(db, cls.tablename())
             return {"df": ddf}
@@ -381,11 +395,19 @@ class TableModel(FileModel, Generic[TableT]):
             return {}
 
     def _save(self, directory: DirectoryPath, input_dir: DirectoryPath) -> None:
-        # TODO directory could be used to save an arrow file
         db_path = context_file_writing.get().get("database")
         self.sort()
         if self.filepath is not None:
-            self._write_arrow(self.filepath, directory, input_dir)
+            suffix = self.filepath.suffix.lower()
+            if suffix == ".nc":
+                self._write_netcdf(self.filepath, directory, input_dir)
+            elif suffix == ".arrow":
+                self._write_arrow(self.filepath, directory, input_dir)
+            else:
+                raise ValueError(
+                    f"Unsupported file: '{self.filepath}'. "
+                    "Only '.nc' and '.arrow' extensions are supported."
+                )
         elif db_path is not None:
             self._write_geopackage(db_path)
 
@@ -424,6 +446,32 @@ class TableModel(FileModel, Generic[TableT]):
             compression_level=6,
         )
 
+    def _write_netcdf(self, filepath: Path, directory: Path, input_dir: Path) -> None:
+        """Write the contents of the input to a NetCDF file."""
+        assert self.df is not None
+
+        cols = self.df.columns
+        err = ValueError(
+            f"Table doesn't support writing to NetCDF: {self.tablename()}."
+        )
+
+        # Convert DataFrame to xarray Dataset
+        # DataFrame indices will become coordinates
+        unsupported_dims = ("link_id", "subgrid_id", "substance", "demand_priority")
+        if any(col in unsupported_dims for col in cols):
+            raise err
+        elif "time" in cols:
+            ds = self.df.set_index(["time", "node_id"]).to_xarray()
+        elif "node_id" in cols:
+            ds = self.df.set_index(["node_id"]).to_xarray()
+        else:
+            raise err
+
+        # Write to NetCDF file
+        path = directory / input_dir / filepath
+        path.parent.mkdir(parents=True, exist_ok=True)
+        ds.to_netcdf(path)
+
     @classmethod
     def _from_db(cls, path: Path, table: str) -> pd.DataFrame | None:
         with closing(connect(path)) as connection:
@@ -446,6 +494,17 @@ class TableModel(FileModel, Generic[TableT]):
     def _from_arrow(cls, path: Path) -> pd.DataFrame:
         directory = context_file_loading.get().get("directory", Path("."))
         return pd.read_feather(directory / path)
+
+    @classmethod
+    def _from_netcdf(cls, path: Path) -> pd.DataFrame:
+        """Read a NetCDF file and convert it back to a DataFrame."""
+        directory = context_file_loading.get().get("directory", Path("."))
+        full_path = directory / path
+
+        with xr.open_dataset(full_path, engine="netcdf4") as ds:
+            df = ds.to_dataframe().reset_index()
+
+        return df
 
     def sort(self):
         """Sort the table as required.
@@ -540,12 +599,12 @@ class SpatialTableModel(TableModel[TableT], Generic[TableT]):
 
 
 class ChildModel(BaseModel):
-    _parent: Any | None = None
+    _parent: BaseModel | None = None
     _parent_field: str | None = None
 
     @model_validator(mode="after")
     def _check_parent(self) -> "ChildModel":
-        if self._parent is not None:
+        if self._parent is not None and self._parent_field is not None:
             self._parent.model_fields_set.update({self._parent_field})
         return self
 
@@ -555,14 +614,14 @@ class NodeModel(ChildModel):
 
     @model_serializer(mode="wrap")
     def set_modeld(
-        self, serializer: Callable[["NodeModel"], dict[str, Any]]
-    ) -> dict[str, Any]:
+        self, serializer: Callable[["NodeModel"], dict[str, object]]
+    ) -> dict[str, object]:
         content = serializer(self)
         return dict(filter(lambda x: x[1], content.items()))
 
     @field_validator("*")
     @classmethod
-    def set_sort_keys(cls, v: Any, info: ValidationInfo) -> Any:
+    def set_sort_keys(cls, v: object, info: ValidationInfo) -> object:
         """Set sort keys for all TableModels if present in FieldInfo."""
         if isinstance(v, TableModel):
             field = cls.model_fields[getattr(info, "field_name")]

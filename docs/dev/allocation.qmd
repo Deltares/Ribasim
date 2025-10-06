@@ -94,7 +94,7 @@ Link capacities are important constraints in the optimization problem. They set 
 The function `get_capacity` obtains the capacities of the links within a subnetwork given a subnetwork ID and the Ribasim model parameters `p`, if the sources of the subnetwork are valid (checked in function `valid_sources`).
 
 ### Handling the connection between the primary network and subnetworks
-The function `find_subnetwork_connetions` finds the links that connected the primary network to a subnetwork. `subnetwork_demands` and `subnetwork_allocateds` will be created, which stores demands and allocated values for subnetworks as a whole.
+The function `find_subnetwork_connections` finds the links that connected the primary network to a subnetwork. `subnetwork_demands` and `subnetwork_allocateds` will be created, which stores demands and allocated values for subnetworks as a whole.
 `primary_network_connections` is a dictionary of links that connect a subnetwork with the primary network.
 
 ## The optimization problem {#sec-optimization-problem}
