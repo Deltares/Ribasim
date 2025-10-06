@@ -170,4 +170,28 @@ end
     config = Ribasim.Config(toml_path; experimental_allocation = true)
     model = Ribasim.Model(config)
     Ribasim.solve!(model)
+    allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
+    basin_data = DataFrame(Ribasim.basin_data(model))
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/small_primary_secondary_network_verification/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    config = Ribasim.Config(toml_path; experimental_allocation = true)
+    model = Ribasim.Model(config)
+    Ribasim.solve!(model)
+    basin_data = DataFrame(Ribasim.basin_data(model))
+    verification_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
+    t = verification_flow_table.time
+
+    link1 = filter(:link_id => ==(1), allocation_flow_table)
+    link3 = filter(:link_id => ==(3), allocation_flow_table)
+
+    vlink1 = filter(:link_id => ==(1), verification_flow_table)
+    vlink3 = filter(:link_id => ==(3), verification_flow_table)
+
+    # assert in both models is the same
+    @test all(isapprox.(link1.flow_rate, vlink1.flow_rate; atol = 1e-5))
+    @test all(isapprox.(link3.flow_rate, vlink3.flow_rate; atol = 1e-5))
 end

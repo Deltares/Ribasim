@@ -1068,8 +1068,10 @@ function update_allocation!(model)::Nothing
 
         reset_demand_coefficients(primary_network)
         for secondary_network in get_secondary_networks(allocation_models)
+            preprocess_demand_collection!(secondary_network, p_independent)
             collect_demands!(secondary_network, primary_network, model)
             delete_temporary_constraints!(secondary_network)
+            # reset_cumulative!(secondary_network) Q: DO WE NEED THIS HERE?
         end
 
         set_demands!(primary_network, integrator)

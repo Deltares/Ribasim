@@ -26,6 +26,7 @@ from ribasim_testmodels.allocation import (
     primary_and_secondary_subnetworks_model,
     secondary_networks_with_sources_model,
     small_primary_secondary_network_model,
+    small_primary_secondary_network_verification_model,
     subnetwork_model,
     user_demand_model,
 )
@@ -150,6 +151,7 @@ __all__ = [
     "rating_curve_between_basins_model",
     "secondary_networks_with_sources_model",
     "small_primary_secondary_network_model",
+    "small_primary_secondary_network_verification_model",
     "subnetwork_model",
     "tabulated_rating_curve_control_model",
     "tabulated_rating_curve_model",

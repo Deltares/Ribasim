@@ -485,6 +485,65 @@ def small_primary_secondary_network_model() -> Model:
         [level_demand.Static(min_level=[0.5], max_level=1.5, demand_priority=1)],
     )
     #################################### end subnetwork 2 ####################################
+    model.link.add(model.basin[2], model.user_demand[3])  # 1
+    model.link.add(model.basin[2], model.outlet[4])  # 2
+    model.link.add(model.outlet[4], model.basin[5])  # 3
+    model.link.add(model.basin[5], model.user_demand[6])  # 4
+    model.link.add(model.user_demand[3], model.basin[2])  # 5
+    model.link.add(model.user_demand[6], model.basin[5])  # 6
+    model.link.add(model.level_demand[7], model.basin[5])  # 7
+
+    return model
+
+
+def small_primary_secondary_network_verification_model() -> Model:
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2020-01-20",
+        crs="EPSG:28992",
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(concentration=True, allocation=True),
+        results=Results(format="netcdf"),
+    )
+
+    basin_data: list[TableModel[Any]] = [
+        basin.Profile(area=300_000.0, level=[0.0, 1.0]),
+        basin.State(level=[0.5]),
+    ]
+
+    model.basin.add(Node(2, Point(1, 0), subnetwork_id=2), basin_data)
+    model.user_demand.add(
+        Node(3, Point(1, 1), subnetwork_id=2),
+        [
+            user_demand.Static(
+                demand=[1.0], return_factor=0.0, min_level=0.5, demand_priority=2
+            )
+        ],
+    )
+    outlet_data = outlet.Static(
+        flow_rate=[3e-3], max_flow_rate=3.0, control_state="Ribasim.allocation"
+    )
+
+    model.outlet.add(
+        Node(4, Point(2, 0), subnetwork_id=2),
+        [outlet_data],
+    )
+
+    model.basin.add(Node(5, Point(3, 0), subnetwork_id=2), basin_data)
+
+    model.user_demand.add(
+        Node(6, Point(3, 1), subnetwork_id=2),
+        [
+            user_demand.Static(
+                demand=[1.0], return_factor=0.0, min_level=0.5, demand_priority=2
+            )
+        ],
+    )
+    model.level_demand.add(
+        Node(7, Point(1, -1), subnetwork_id=2),
+        [level_demand.Static(min_level=[0.5], max_level=1.5, demand_priority=1)],
+    )
+
     model.link.add(model.basin[2], model.user_demand[3])
     model.link.add(model.basin[2], model.outlet[4])
     model.link.add(model.outlet[4], model.basin[5])
