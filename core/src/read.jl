@@ -1722,11 +1722,6 @@ datetime_since(t::Real, t0::DateTime)::DateTime = t0 + Millisecond(round(1000 * 
 
 Load a table from a NetCDF file. The data is stored as multi-dimensional arrays, and
 converted to a table for compatibility with the rest of the internals.
-
-Repeat allows us to expand dimensions to make it fit the tabular format.
-Inner repetition is used to add a dimension before the array.
-Outer repetition is used to add a dimension after the array.
-Use nested repeat calls to add multiple dimensions on one side.
 """
 function load_netcdf(table_path::String, table_type::Type{<:Table})::NamedTuple
     table = OrderedDict{Symbol, AbstractVector}()
@@ -1737,7 +1732,7 @@ function load_netcdf(table_path::String, table_type::Type{<:Table})::NamedTuple
         # Each table has a node_id dimension, some have priority and time dimensions
         node_id = timeseries_ids(ds)
         time_var = findcoord(ds, is_time_coord)
-        priority_var = findcoord(ds, is_realization_coord)
+        priority_var = findcoord(ds, is_priority_coord)
 
         # Get the size of each dimension.
         # We treat missing dimensions as having length 1 for simplicity,
@@ -1748,18 +1743,23 @@ function load_netcdf(table_path::String, table_type::Type{<:Table})::NamedTuple
         n_time = time_var === nothing ? 1 : length(time_var)
         n_priority = priority_var === nothing ? 1 : length(priority_var)
 
-        # repeat (stations) to (stations, realization, time)
+        # `repeat` allows us to expand dimensions to make it fit the tabular format.
+        # The `inner` keyword is used to add a dimension before the array.
+        # The `outer` keyword is used to add a dimension after the array.
+        # Use nested repeat calls to add multiple dimensions on one side.
+
+        # repeat (stations) to (stations, priority, time)
         table[:node_id] = repeat(repeat(node_id; outer = n_priority); outer = n_time)
 
         if priority_var !== nothing
             priority = Int32.(Array(priority_var))
-            # repeat (realization) to (stations, realization, time)
+            # repeat (priority) to (stations, priority, time)
             table[:demand_priority] = repeat(priority; inner = n_node_id, outer = n_time)
         end
 
         if time_var !== nothing
             time = DateTime.(Array(time_var))
-            # repeat (time) to (stations, realization, time)
+            # repeat (time) to (stations, priority, time)
             table[:time] = repeat(repeat(time; inner = n_priority); inner = n_node_id)
         end
 
@@ -1767,21 +1767,18 @@ function load_netcdf(table_path::String, table_type::Type{<:Table})::NamedTuple
             var = ds[data_varname]
             # For most tables, each data variable has all dimensions of the table.
             # For "UserDemand / time", variables are either:
-            # - (stations, time, realization) for demand
+            # - (stations, priority, time) for demand
             # - (stations, time) for return_factor
             # - (stations) for min_level
             # So we have to repeat the 1D and 2D variables to fit the full table.
             # Note that Delft-FEWS also adds time to min_level.
             if table_type == Ribasim.Schema.UserDemand.Time
-                # This can vary only between node_id, not over time or priority
-                # We accept (stations), but also (stations, time) (column major), since Delft-FEWS adds the time
-                # dimension. In this case we only take the first time step.
                 if ndims(var) == 1
-                    # repeat (stations) to (stations, realization, time)
+                    # repeat (stations) to (stations, priority, time)
                     arr = Array(var)
                     data = repeat(repeat(arr; outer = n_priority); outer = n_time)
                 elseif ndims(var) == 2
-                    # repeat (stations, time) to (stations, realization, time)
+                    # repeat (stations, time) to (stations, priority, time)
                     arr = vec(Array(var))
                     data = repeat(arr; outer = n_priority)
                 else
@@ -1823,7 +1820,7 @@ function is_node_id_coord(var::CFVariable)::Bool
     return false
 end
 
-function is_realization_coord(var::CFVariable)::Bool
+function is_priority_coord(var::CFVariable)::Bool
     check_attrib(var, "standard_name", "realization") && return true
     NCDatasets.name(var) == "realization" && return true
     return false
