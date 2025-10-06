@@ -983,6 +983,15 @@ function AllocationModel(
     has_demand_priority =
         has_demand_priority_subnetwork(p_independent, node_ids_in_subnetwork)
 
+    # Initialize secondary_network_demand before constructing AllocationModel
+    secondary_network_demand = Dict{Tuple{NodeID, NodeID}, Vector{Float64}}()
+    if !is_primary_network(subnetwork_id)
+        n_priorities = length(p_independent.allocation.demand_priorities_all)
+        for link in p_independent.allocation.primary_network_connections[subnetwork_id]
+            secondary_network_demand[link] = zeros(n_priorities)
+        end
+    end
+
     allocation_model = AllocationModel(;
         subnetwork_id,
         node_ids_in_subnetwork,
@@ -990,6 +999,7 @@ function AllocationModel(
         Δt_allocation,
         scaling,
         has_demand_priority,
+        secondary_network_demand,
     )
 
     # Volume and flow

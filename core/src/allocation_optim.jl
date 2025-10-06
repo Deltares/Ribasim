@@ -431,11 +431,10 @@ function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrato
     return nothing
 end
 
-function set_subnetwork_demand(
+function set_secondary_network_demands!(
     primary_model::AllocationModel,
-    demand::Float64,
-    link,
-    demand_priority::Int32,
+    secondary_model::AllocationModel,
+    demand_priorities_all::Vector{Int32},
 )::Nothing
     (; problem, objectives) = primary_model
     node_allocated = problem[:secondary_network_allocated]
@@ -446,33 +445,42 @@ function set_subnetwork_demand(
     average_flow_unit_error = problem[:average_flow_unit_error]
     average_flow_unit_error_constraint = problem[:average_flow_unit_error_constraint]
 
-    # Objective metadata corresponding to this demand priority
-    (; expression_first) =
-        get_objective_data_of_demand_priority(objectives, demand_priority)
+    for link in keys(secondary_model.secondary_network_demand)
+        for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
+            if !secondary_model.has_demand_priority[demand_priority_idx]
+                continue
+            end
+            # Objective metadata corresponding to this demand priority
+            (; expression_first) =
+                get_objective_data_of_demand_priority(objectives, demand_priority)
 
-    # Demand is upper bound of what is allocated
-    JuMP.set_upper_bound(node_allocated[link, demand_priority], demand)
+            demand = secondary_model.secondary_network_demand[link][demand_priority_idx]
 
-    # Set demand in constraint for error term in first objective
-    c = node_relative_error_constraint[link, demand_priority]
-    error_term_first = node_error[link, demand_priority, :first]
-    JuMP.set_normalized_coefficient(c, error_term_first, demand)
-    JuMP.set_normalized_rhs(c, demand)
+            # Demand is upper bound of what is allocated
+            JuMP.set_upper_bound(node_allocated[link, demand_priority], demand)
 
-    # Set demand in first objective expression
-    expression_first.terms[error_term_first] = demand
+            # Set demand in constraint for error term in first objective
+            c = node_relative_error_constraint[link, demand_priority]
+            error_term_first = node_error[link, demand_priority, :first]
+            JuMP.set_normalized_coefficient(c, error_term_first, demand)
+            JuMP.set_normalized_rhs(c, demand)
 
-    # Set demand in definition of average relative flow unit error
-    JuMP.set_normalized_coefficient(
-        average_flow_unit_error_constraint[demand_priority],
-        error_term_first,
-        -demand,
-    )
-    add_to_coefficient!(
-        average_flow_unit_error_constraint[demand_priority],
-        average_flow_unit_error[demand_priority],
-        demand,
-    )
+            # Set demand in first objective expression
+            expression_first.terms[error_term_first] = demand
+
+            # Set demand in definition of average relative flow unit error
+            JuMP.set_normalized_coefficient(
+                average_flow_unit_error_constraint[demand_priority],
+                error_term_first,
+                -demand,
+            )
+            add_to_coefficient!(
+                average_flow_unit_error_constraint[demand_priority],
+                average_flow_unit_error[demand_priority],
+                demand,
+            )
+        end
+    end
 end
 
 function set_demands!(
@@ -668,50 +676,14 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     return nothing
 end
 
-function optimize_multi_objective!(allocation_model::AllocationModel)::Nothing
-    (; problem, objectives, temporary_constraints) = allocation_model
-
-    for metadata in objectives.objective_metadata
-        (; expression_first, expression_second) = metadata
-
-        # First expression
-        JuMP.@objective(problem, Min, expression_first)
-        JuMP.optimize!(problem)
-
-        push!(
-            temporary_constraints,
-            JuMP.@constraint(problem, expression_first == JuMP.objective_value(problem))
-        )
-
-        # Second expression
-        JuMP.@objective(problem, Min, expression_second)
-        JuMP.optimize!(problem)
-
-        # check if this is the last objective
-        if metadata != last(objectives.objective_metadata)
-            # If not, fix the value of the second objective
-            push!(
-                temporary_constraints,
-                JuMP.@constraint(
-                    problem,
-                    expression_second == JuMP.objective_value(problem),
-                )
-            )
-        end
-    end
-end
-
-function collect_demands!(
+function optimize_multi_objective!(
     secondary_model::AllocationModel,
-    primary_model::AllocationModel,
-    model,
+    primary_network_connections = [],
 )::Nothing
     (; problem, objectives, temporary_constraints) = secondary_model
-    (; p_independent) = model.integrator.p
-    (; subnetwork_id) = secondary_model
 
     for metadata in objectives.objective_metadata
-        (; expression_first, expression_second, type, demand_priority) = metadata
+        (; expression_first, expression_second, type, demand_priority_idx) = metadata
 
         # First expression
         JuMP.@objective(problem, Min, expression_first)
@@ -724,12 +696,12 @@ function collect_demands!(
         JuMP.@objective(problem, Min, expression_second)
         JuMP.optimize!(problem)
 
-        # set for each priority: the flow demand from sub to primary network
-        if type == AllocationObjectiveType.demand_flow ||
-           type == AllocationObjectiveType.demand_storage
-            for link in p_independent.allocation.primary_network_connections[subnetwork_id]
+        # collect secondary network demands if primary network connections are given
+        for link in primary_network_connections
+            if type == AllocationObjectiveType.demand_flow ||
+               type == AllocationObjectiveType.demand_storage
                 demand = JuMP.value(problem[:flow][link])
-                set_subnetwork_demand(primary_model, demand, link, demand_priority)
+                secondary_model.secondary_network_demand[link][demand_priority_idx] = demand
             end
         end
 
@@ -1035,7 +1007,7 @@ function update_allocation!(model)::Nothing
     (; u, p, t) = integrator
     (; p_independent) = p
     (; allocation, pump, outlet) = p_independent
-    (; allocation_models, primary_network_connections) = allocation
+    (; allocation_models, primary_network_connections, demand_priorities_all) = allocation
 
     # Don't run the allocation algorithm if allocation is not active
     !is_active(allocation) && return nothing
@@ -1066,7 +1038,15 @@ function update_allocation!(model)::Nothing
         for secondary_network in get_secondary_networks(allocation_models)
             delete_temporary_constraints!(secondary_network)
             preprocess_demand_collection!(secondary_network, p_independent)
-            collect_demands!(secondary_network, primary_network, model)
+            optimize_multi_objective!(
+                secondary_network,
+                primary_network_connections[secondary_network.subnetwork_id],
+            )
+            set_secondary_network_demands!(
+                primary_network,
+                secondary_network,
+                demand_priorities_all,
+            )
         end
 
         set_demands!(primary_network, integrator)
