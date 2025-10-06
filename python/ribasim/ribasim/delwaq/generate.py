@@ -356,9 +356,9 @@ def generate(
             )
         )
 
-    # Generate mesh and write to NetCDF
+    # Generate mesh and write to NetCDF, adding optional attributes to avoid Delwaq warnings
     uds = ugrid(G)
-    uds.ugrid.to_netcdf(output_path / "ribasim.nc")
+    uds.ugrid.to_dataset(optional_attributes=True).to_netcdf(output_path / "ribasim.nc")
 
     # Generate area and flows
     # File format is int32, float32 based
