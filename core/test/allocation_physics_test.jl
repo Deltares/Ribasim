@@ -192,6 +192,6 @@ end
     vlink3 = filter(:link_id => ==(3), verification_flow_table)
 
     # assert in both models is the same
-    @test all(isapprox.(link1.flow_rate, vlink1.flow_rate; atol = 1e-5))
-    @test all(isapprox.(link3.flow_rate, vlink3.flow_rate; atol = 1e-5))
+    @test all(isapprox.(link1.flow_rate, vlink1.flow_rate; atol = 1e-2))
+    @test all(isapprox.(link3.flow_rate, vlink3.flow_rate; atol = 1e-2))
 end

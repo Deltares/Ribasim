@@ -664,7 +664,7 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     return nothing
 end
 
-function optimize_multi_objective!(allocation_model::AllocationModel, t, config)::Nothing
+function optimize_multi_objective!(allocation_model::AllocationModel)::Nothing
     (; problem, objectives, temporary_constraints) = allocation_model
 
     for metadata in objectives.objective_metadata
@@ -673,14 +673,7 @@ function optimize_multi_objective!(allocation_model::AllocationModel, t, config)
         # First expression
         JuMP.@objective(problem, Min, expression_first)
         JuMP.optimize!(problem)
-        termination_status = JuMP.termination_status(problem)
-        if termination_status == JuMP.INFEASIBLE
-            # Change to scalar objective since vector-valued objective cannot be written
-            # to .lp
-            set_feasibility_objective!(problem)
-            write_problem_to_file(problem, config)
-            analyze_infeasibility(allocation_model, t, config)
-        end
+
         push!(
             temporary_constraints,
             JuMP.@constraint(problem, expression_first == JuMP.objective_value(problem))
@@ -689,11 +682,10 @@ function optimize_multi_objective!(allocation_model::AllocationModel, t, config)
         # Second expression
         JuMP.@objective(problem, Min, expression_second)
         JuMP.optimize!(problem)
-        termination_status = JuMP.termination_status(problem)
 
         # check if this is the last objective
         if metadata != last(objectives.objective_metadata)
-            # If not, add constraint to fix the value of the second objective
+            # If not, fix the value of the second objective
             push!(
                 temporary_constraints,
                 JuMP.@constraint(
@@ -758,7 +750,7 @@ function optimize!(allocation_model::AllocationModel, model)::Nothing
     (; t) = integrator
     (; problem, subnetwork_id) = allocation_model
 
-    optimize_multi_objective!(allocation_model, t, config)
+    optimize_multi_objective!(allocation_model)
 
     @debug JuMP.solution_summary(problem)
     termination_status = JuMP.termination_status(problem)

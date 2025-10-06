@@ -448,7 +448,7 @@ def small_primary_secondary_network_model() -> Model:
 
     basin_data: list[TableModel[Any]] = [
         basin.Profile(area=300_000.0, level=[0.0, 1.0]),
-        basin.State(level=[0.5]),
+        basin.State(level=[0.9]),
     ]
 
     model.basin.add(Node(2, Point(1, 0), subnetwork_id=1), basin_data)
@@ -508,7 +508,7 @@ def small_primary_secondary_network_verification_model() -> Model:
 
     basin_data: list[TableModel[Any]] = [
         basin.Profile(area=300_000.0, level=[0.0, 1.0]),
-        basin.State(level=[0.5]),
+        basin.State(level=[0.9]),
     ]
 
     model.basin.add(Node(2, Point(1, 0), subnetwork_id=2), basin_data)
