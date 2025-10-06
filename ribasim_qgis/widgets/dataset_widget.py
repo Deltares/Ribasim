@@ -261,8 +261,12 @@ class DatasetWidget(QWidget):
 
     @staticmethod
     def is_layer_visible(layer: QgsMapLayer):
-        layer_tree_root = QgsProject.instance().layerTreeRoot()
+        instance = QgsProject.instance()
+        assert instance is not None
+        layer_tree_root = instance.layerTreeRoot()
+        assert layer_tree_root is not None
         layer_tree_layer = layer_tree_root.findLayer(layer)
+        assert layer_tree_layer is not None
         return layer_tree_layer.isVisible()
 
     def add_reload_context(self) -> None:
@@ -628,12 +632,14 @@ class DatasetWidget(QWidget):
             column_id = dataprovider.fieldNameIndex(column)
             columns[column] = column_id
 
-        data = {fid: {} for fid in fids}
+        data: dict[int, dict[int, float]] = {fid: {} for fid in fids}
         for column, column_id in columns.items():
             for fid, variable in zip(fids, timeslice[column]):
                 data[fid][column_id] = variable
 
-        layer.dataProvider().changeAttributeValues(data)
+        dataprovider = layer.dataProvider()
+        assert dataprovider is not None
+        dataprovider.changeAttributeValues(data)
 
         layer.endEditCommand()
         layer.commitChanges()
