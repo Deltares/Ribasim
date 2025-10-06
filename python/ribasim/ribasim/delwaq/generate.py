@@ -332,6 +332,12 @@ def _setup_boundaries(model):
             boundaries.append(boundary)
             substances.update(substance)
 
+    if model.user_demand.concentration.df is not None:
+        for _, rows in model.flow_boundary.concentration.df.groupby("node_id"):
+            boundary, substance = _make_boundary(rows, "UserDemand")
+            boundaries.append(boundary)
+            substances.update(substance)
+
     if model.basin.concentration.df is not None:
         for _, rows in model.basin.concentration.df.groupby(["node_id"]):
             for boundary_type in ("Drainage", "Precipitation", "Surface_Runoff"):
