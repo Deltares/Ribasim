@@ -119,6 +119,12 @@ function Model(config_path::AbstractString)::Model
     return Model(config)
 end
 
+struct RibasimDummyController <: AbstractController end
+
+function OrdinaryDiffEqCore.accept_step_controller(integrator, ::RibasimDummyController)
+    return true
+end
+
 function Model(config::Config)::Model
     mkpath(results_path(config))
     db_path = database_path(config)
@@ -240,6 +246,7 @@ function Model(config::Config)::Model
         progress_name = "Simulating",
         progress_steps = 100,
         save_everystep = false,
+        controller = RibasimDummyController(),
         callback,
         tstops,
         isoutofdomain,
