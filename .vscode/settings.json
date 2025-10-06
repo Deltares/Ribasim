@@ -63,7 +63,7 @@
         "Ribasim"
     ],
     "files.insertFinalNewline": true,
-    "julia.executablePath": "julia +1.11.6",
+    "julia.executablePath": "julia +1.11.7",
     "julia.additionalArgs": [
         "--check-bounds=yes"
     ],

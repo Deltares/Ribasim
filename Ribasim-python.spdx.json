@@ -6,12 +6,12 @@
     "creators": [
       "Tool: sbom4python-0.12.4"
     ],
-    "created": "2025-09-03T03:14:31Z",
+    "created": "2025-10-03T03:14:30Z",
     "licenseListVersion": "3.26"
   },
   "name": "Python-ribasim",
   "dataLicense": "CC0-1.0",
-  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-3e028e9e-2f4e-4c82-a1fa-5f3e49b4b1f2",
+  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-0203c61e-a38c-4a39-bae0-9a834fd29b75",
   "packages": [
     {
       "SPDXID": "SPDXRef-1-ribasim",
@@ -24,14 +24,14 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "881bc5327b4962f71941682afcbec38a25373f51211eaf009c221c3aeab04d1d"
+          "checksumValue": "d7b4bd741851046bb5d1a727d5cf6e464dc0e36b710783ebe8eef70e2bfa3216"
         }
       ],
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
       "summary": "Pre- and post-process Ribasim",
-      "releaseDate": "2025-06-16T17:02:19Z",
+      "releaseDate": "2025-09-09T21:25:53Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -504,23 +504,22 @@
     {
       "SPDXID": "SPDXRef-12-markupsafe",
       "name": "markupsafe",
-      "versionInfo": "3.0.2",
+      "versionInfo": "3.0.3",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "NOASSERTION",
-      "downloadLocation": "https://pypi.org/project/markupsafe/3.0.2/#files",
+      "downloadLocation": "https://pypi.org/project/markupsafe/3.0.3/#files",
       "filesAnalyzed": false,
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "7e94c425039cde14257288fd61dcfb01963e658efbc0ff54f5306b06054700f8"
+          "checksumValue": "2f981d352f04553a7171b8e44369f2af4055f888dfb147d55e42d29e29e74559"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
-      "licenseComments": "markupsafe declares Copyright 2010 Pallets\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are\nmet:\n\n1.  Redistributions of source code must retain the above copyright\n    notice, this list of conditions and the following disclaimer.\n\n2.  Redistributions in binary form must reproduce the above copyright\n    notice, this list of conditions and the following disclaimer in the\n    documentation and/or other materials provided with the distribution.\n\n3.  Neither the name of the copyright holder nor the names of its\n    contributors may be used to endorse or promote products derived from\n    this software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A\nPARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nHOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED\nTO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR\nPROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF\nLIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING\nNEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\nSOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Safely add untrusted strings to HTML/XML markup.",
-      "releaseDate": "2024-10-18T15:20:51Z",
+      "releaseDate": "2025-09-27T18:36:05Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -535,7 +534,7 @@
         {
           "referenceCategory": "OTHER",
           "referenceType": "log",
-          "referenceLocator": "https://markupsafe.palletsprojects.com/changes/"
+          "referenceLocator": "https://markupsafe.palletsprojects.com/page/changes/"
         },
         {
           "referenceCategory": "OTHER",
@@ -550,7 +549,7 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/markupsafe@3.0.2"
+          "referenceLocator": "pkg:pypi/markupsafe@3.0.3"
         }
       ]
     },
@@ -954,33 +953,33 @@
     {
       "SPDXID": "SPDXRef-22-fonttools",
       "name": "fonttools",
-      "versionInfo": "4.59.2",
+      "versionInfo": "4.60.1",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Just van Rossum (just@letterror.com)",
-      "downloadLocation": "https://pypi.org/project/fonttools/4.59.2/#files",
+      "downloadLocation": "https://pypi.org/project/fonttools/4.60.1/#files",
       "filesAnalyzed": false,
       "homepage": "http://github.com/fonttools/fonttools",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "2a159e36ae530650acd13604f364b3a2477eff7408dcac6a640d74a3744d2514"
+          "checksumValue": "9a52f254ce051e196b8fe2af4634c2d2f02c981756c6464dc192f1b6050b4e28"
         }
       ],
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
       "summary": "Tools to manipulate font files",
-      "releaseDate": "2025-08-27T16:38:30Z",
+      "releaseDate": "2025-09-29T21:10:59Z",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/fonttools@4.59.2"
+          "referenceLocator": "pkg:pypi/fonttools@4.60.1"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:just_van_rossum:fonttools:4.59.2:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:just_van_rossum:fonttools:4.60.1:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -1099,39 +1098,113 @@
     {
       "SPDXID": "SPDXRef-25-pyparsing",
       "name": "pyparsing",
-      "versionInfo": "3.2.3",
+      "versionInfo": "3.2.5",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Paul McGuire (ptmcg.gm+pyparsing@gmail.com)",
-      "downloadLocation": "https://pypi.org/project/pyparsing/3.2.3/#files",
+      "downloadLocation": "https://pypi.org/project/pyparsing/3.2.5/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/pyparsing/pyparsing/",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "a749938e02d6fd0b59b356ca504a24982314bb090c383e3cf201c95ef7e2bfcf"
+          "checksumValue": "e38a4f02064cf41fe6593d328d0512495ad1f3d8a91c4f73fc401b3079a59a5e"
         }
       ],
-      "licenseConcluded": "MIT",
+      "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
-      "licenseComments": "pyparsing declares MIT License which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
-      "summary": "pyparsing module - Classes and methods to define and execute parsing grammars",
-      "releaseDate": "2025-03-25T05:01:24Z",
+      "summary": "pyparsing - Classes and methods to define and execute parsing grammars",
+      "releaseDate": "2025-09-21T04:11:04Z",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/pyparsing@3.2.3"
+          "referenceLocator": "pkg:pypi/pyparsing@3.2.5"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:paul_mcguire:pyparsing:3.2.3:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:paul_mcguire:pyparsing:3.2.5:*:*:*:*:*:*:*"
         }
       ]
     },
     {
-      "SPDXID": "SPDXRef-26-pandera",
+      "SPDXID": "SPDXRef-26-netcdf4",
+      "name": "netcdf4",
+      "versionInfo": "1.7.2",
+      "primaryPackagePurpose": "LIBRARY",
+      "supplier": "Person: Jeff Whitaker (jeffrey.s.whitaker@noaa.gov)",
+      "downloadLocation": "https://pypi.org/project/netcdf4/1.7.2/#files",
+      "filesAnalyzed": false,
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "5e9b485e3bd9294d25ff7dc9addefce42b3d23c1ee7e3627605277d159819392"
+        }
+      ],
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "summary": "Provides an object-oriented python interface to the netCDF version 4 library",
+      "releaseDate": "2024-10-22T19:00:28Z",
+      "externalRefs": [
+        {
+          "referenceCategory": "OTHER",
+          "referenceType": "documentation",
+          "referenceLocator": "https://unidata.github.io/netcdf4-python/"
+        },
+        {
+          "referenceCategory": "OTHER",
+          "referenceType": "vcs",
+          "referenceLocator": "https://github.com/Unidata/netcdf4-python"
+        },
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/netcdf4@1.7.2"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceType": "cpe23Type",
+          "referenceLocator": "cpe:2.3:a:jeff_whitaker:netcdf4:1.7.2:*:*:*:*:*:*:*"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-27-cftime",
+      "name": "cftime",
+      "versionInfo": "1.6.4",
+      "primaryPackagePurpose": "LIBRARY",
+      "supplier": "Person: Jeff Whitaker (jeffrey.s.whitaker@noaa.gov)",
+      "downloadLocation": "https://pypi.org/project/cftime/1.6.4/#files",
+      "filesAnalyzed": false,
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "ee70074df4bae0d9ee98f201cf5f11fd302791cf1cdeb73c34f685d6b632e17d"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "licenseComments": "cftime declares License :: OSI Approved :: MIT License which is not currently a valid SPDX License identifier or expression.",
+      "copyrightText": "NOASSERTION",
+      "summary": "Time-handling functionality from netcdf4-python",
+      "releaseDate": "2024-06-06T20:03:32Z",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/cftime@1.6.4"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceType": "cpe23Type",
+          "referenceLocator": "cpe:2.3:a:jeff_whitaker:cftime:1.6.4:*:*:*:*:*:*:*"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-28-pandera",
       "name": "pandera",
       "versionInfo": "0.26.1",
       "primaryPackagePurpose": "LIBRARY",
@@ -1175,18 +1248,18 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-27-pydantic",
+      "SPDXID": "SPDXRef-29-pydantic",
       "name": "pydantic",
-      "versionInfo": "2.11.7",
+      "versionInfo": "2.11.9",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Samuel Colvin Eric Jolibois Hasan Ramezani Adrian Garcia Badaracco Terrence Dorsey David Montague Serge Matveenko Marcelo Trylesinski Sydney Runkle David Hewitt Alex Hall Victorien Plot (contact@vctrn.dev)",
-      "downloadLocation": "https://pypi.org/project/pydantic/2.11.7/#files",
+      "downloadLocation": "https://pypi.org/project/pydantic/2.11.9/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/pydantic/pydantic",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "dde5df002701f6de26248661f6835bbe296a47bf73990135c7d07ce741b9623b"
+          "checksumValue": "c42dd626f5cfc1c6950ce6205ea58c93efa406da65f479dcb4029d5934857da2"
         }
       ],
       "licenseConcluded": "MIT",
@@ -1194,7 +1267,7 @@
       "licenseComments": "pydantic declares MIT License which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Data validation using Python type hints",
-      "releaseDate": "2025-06-14T08:33:14Z",
+      "releaseDate": "2025-09-13T11:26:36Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1219,17 +1292,17 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/pydantic@2.11.7"
+          "referenceLocator": "pkg:pypi/pydantic@2.11.9"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:samuel_colvin_eric_jolibois_hasan_ramezani_adrian_garcia_badaracco_terrence_dorsey_david_montague_serge_matveenko_marcelo_trylesinski_sydney_runkle_david_hewitt_alex_hall_victorien_plot:pydantic:2.11.7:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:samuel_colvin_eric_jolibois_hasan_ramezani_adrian_garcia_badaracco_terrence_dorsey_david_montague_serge_matveenko_marcelo_trylesinski_sydney_runkle_david_hewitt_alex_hall_victorien_plot:pydantic:2.11.9:*:*:*:*:*:*:*"
         }
       ]
     },
     {
-      "SPDXID": "SPDXRef-28-annotated-types",
+      "SPDXID": "SPDXRef-30-annotated-types",
       "name": "annotated-types",
       "versionInfo": "0.7.0",
       "primaryPackagePurpose": "LIBRARY",
@@ -1273,7 +1346,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-29-typing-extensions",
+      "SPDXID": "SPDXRef-31-typing-extensions",
       "name": "typing-extensions",
       "versionInfo": "4.15.0",
       "primaryPackagePurpose": "LIBRARY",
@@ -1331,7 +1404,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-30-pydantic-core",
+      "SPDXID": "SPDXRef-32-pydantic-core",
       "name": "pydantic-core",
       "versionInfo": "2.33.2",
       "primaryPackagePurpose": "LIBRARY",
@@ -1368,25 +1441,25 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-31-typing-inspection",
+      "SPDXID": "SPDXRef-33-typing-inspection",
       "name": "typing-inspection",
-      "versionInfo": "0.4.1",
+      "versionInfo": "0.4.2",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Victorien Plot (contact@vctrn.dev)",
-      "downloadLocation": "https://pypi.org/project/typing-inspection/0.4.1/#files",
+      "downloadLocation": "https://pypi.org/project/typing-inspection/0.4.2/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/pydantic/typing-inspection",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "389055682238f53b04f7badcb49b989835495a96700ced5dab2d8feae4b26f51"
+          "checksumValue": "4ed1cacbdc298c220f1bd249ed5287caa16f34d44ef4e9c3d0cbad5b521545e7"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "summary": "Runtime typing introspection tools",
-      "releaseDate": "2025-05-21T18:55:22Z",
+      "releaseDate": "2025-10-01T02:14:40Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1406,17 +1479,17 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/typing-inspection@0.4.1"
+          "referenceLocator": "pkg:pypi/typing-inspection@0.4.2"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:victorien_plot:typing-inspection:0.4.1:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:victorien_plot:typing-inspection:0.4.2:*:*:*:*:*:*:*"
         }
       ]
     },
     {
-      "SPDXID": "SPDXRef-32-typeguard",
+      "SPDXID": "SPDXRef-34-typeguard",
       "name": "typeguard",
       "versionInfo": "4.4.4",
       "primaryPackagePurpose": "LIBRARY",
@@ -1468,7 +1541,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-33-importlib-metadata",
+      "SPDXID": "SPDXRef-35-importlib-metadata",
       "name": "importlib-metadata",
       "versionInfo": "8.7.0",
       "primaryPackagePurpose": "LIBRARY",
@@ -1506,7 +1579,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-34-zipp",
+      "SPDXID": "SPDXRef-36-zipp",
       "name": "zipp",
       "versionInfo": "3.23.0",
       "primaryPackagePurpose": "LIBRARY",
@@ -1543,7 +1616,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-35-typing-inspect",
+      "SPDXID": "SPDXRef-37-typing-inspect",
       "name": "typing-inspect",
       "versionInfo": "0.9.0",
       "primaryPackagePurpose": "LIBRARY",
@@ -1576,7 +1649,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-36-mypy-extensions",
+      "SPDXID": "SPDXRef-38-mypy-extensions",
       "name": "mypy-extensions",
       "versionInfo": "1.1.0",
       "primaryPackagePurpose": "LIBRARY",
@@ -1609,7 +1682,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-37-pyarrow",
+      "SPDXID": "SPDXRef-39-pyarrow",
       "name": "pyarrow",
       "versionInfo": "18.1.0",
       "primaryPackagePurpose": "LIBRARY",
@@ -1653,7 +1726,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-38-tomli-w",
+      "SPDXID": "SPDXRef-40-tomli-w",
       "name": "tomli-w",
       "versionInfo": "1.2.0",
       "primaryPackagePurpose": "LIBRARY",
@@ -1692,7 +1765,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-39-tomli",
+      "SPDXID": "SPDXRef-41-tomli",
       "name": "tomli",
       "versionInfo": "2.2.1",
       "primaryPackagePurpose": "LIBRARY",
@@ -1727,6 +1800,59 @@
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
           "referenceLocator": "cpe:2.3:a:taneli_hukkinen:tomli:2.2.1:*:*:*:*:*:*:*"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-42-xarray",
+      "name": "xarray",
+      "versionInfo": "2025.9.0",
+      "primaryPackagePurpose": "LIBRARY",
+      "supplier": "Person: xarray Developers (xarray@googlegroups.com)",
+      "downloadLocation": "https://pypi.org/project/xarray/2025.9.0/#files",
+      "filesAnalyzed": false,
+      "homepage": "https://xarray.dev/",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "79f0e25fb39571f612526ee998ee5404d8725a1db3951aabffdb287388885df0"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "summary": "N-D labeled arrays and datasets in Python",
+      "releaseDate": "2025-09-04T04:20:24Z",
+      "externalRefs": [
+        {
+          "referenceCategory": "OTHER",
+          "referenceType": "documentation",
+          "referenceLocator": "https://docs.xarray.dev"
+        },
+        {
+          "referenceCategory": "OTHER",
+          "referenceType": "other",
+          "referenceLocator": "https://www.youtube.com/watch?v=X0pAhJgySxk"
+        },
+        {
+          "referenceCategory": "OTHER",
+          "referenceType": "issue-tracker",
+          "referenceLocator": "https://github.com/pydata/xarray/issues"
+        },
+        {
+          "referenceCategory": "OTHER",
+          "referenceType": "vcs",
+          "referenceLocator": "https://github.com/pydata/xarray"
+        },
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/xarray@2025.9.0"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceType": "cpe23Type",
+          "referenceLocator": "cpe:2.3:a:xarray_developers:xarray:2025.9.0:*:*:*:*:*:*:*"
         }
       ]
     }
@@ -1914,6 +2040,31 @@
     },
     {
       "spdxElementId": "SPDXRef-1-ribasim",
+      "relatedSpdxElement": "SPDXRef-26-netcdf4",
+      "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-26-netcdf4",
+      "relatedSpdxElement": "SPDXRef-27-cftime",
+      "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-27-cftime",
+      "relatedSpdxElement": "SPDXRef-4-numpy",
+      "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-26-netcdf4",
+      "relatedSpdxElement": "SPDXRef-15-certifi",
+      "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-26-netcdf4",
+      "relatedSpdxElement": "SPDXRef-4-numpy",
+      "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-1-ribasim",
       "relatedSpdxElement": "SPDXRef-4-numpy",
       "relationshipType": "DEPENDS_ON"
     },
@@ -1929,87 +2080,87 @@
     },
     {
       "spdxElementId": "SPDXRef-1-ribasim",
-      "relatedSpdxElement": "SPDXRef-26-pandera",
+      "relatedSpdxElement": "SPDXRef-28-pandera",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-26-pandera",
+      "spdxElementId": "SPDXRef-28-pandera",
       "relatedSpdxElement": "SPDXRef-16-packaging",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-26-pandera",
-      "relatedSpdxElement": "SPDXRef-27-pydantic",
+      "spdxElementId": "SPDXRef-28-pandera",
+      "relatedSpdxElement": "SPDXRef-29-pydantic",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-27-pydantic",
-      "relatedSpdxElement": "SPDXRef-28-annotated-types",
+      "spdxElementId": "SPDXRef-29-pydantic",
+      "relatedSpdxElement": "SPDXRef-30-annotated-types",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-28-annotated-types",
-      "relatedSpdxElement": "SPDXRef-29-typing-extensions",
+      "spdxElementId": "SPDXRef-30-annotated-types",
+      "relatedSpdxElement": "SPDXRef-31-typing-extensions",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-27-pydantic",
-      "relatedSpdxElement": "SPDXRef-30-pydantic-core",
+      "spdxElementId": "SPDXRef-29-pydantic",
+      "relatedSpdxElement": "SPDXRef-32-pydantic-core",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-30-pydantic-core",
-      "relatedSpdxElement": "SPDXRef-29-typing-extensions",
+      "spdxElementId": "SPDXRef-32-pydantic-core",
+      "relatedSpdxElement": "SPDXRef-31-typing-extensions",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-27-pydantic",
-      "relatedSpdxElement": "SPDXRef-29-typing-extensions",
+      "spdxElementId": "SPDXRef-29-pydantic",
+      "relatedSpdxElement": "SPDXRef-31-typing-extensions",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-27-pydantic",
-      "relatedSpdxElement": "SPDXRef-31-typing-inspection",
+      "spdxElementId": "SPDXRef-29-pydantic",
+      "relatedSpdxElement": "SPDXRef-33-typing-inspection",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-31-typing-inspection",
-      "relatedSpdxElement": "SPDXRef-29-typing-extensions",
+      "spdxElementId": "SPDXRef-33-typing-inspection",
+      "relatedSpdxElement": "SPDXRef-31-typing-extensions",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-26-pandera",
-      "relatedSpdxElement": "SPDXRef-32-typeguard",
+      "spdxElementId": "SPDXRef-28-pandera",
+      "relatedSpdxElement": "SPDXRef-34-typeguard",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-32-typeguard",
-      "relatedSpdxElement": "SPDXRef-33-importlib-metadata",
+      "spdxElementId": "SPDXRef-34-typeguard",
+      "relatedSpdxElement": "SPDXRef-35-importlib-metadata",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-32-typeguard",
-      "relatedSpdxElement": "SPDXRef-29-typing-extensions",
+      "spdxElementId": "SPDXRef-34-typeguard",
+      "relatedSpdxElement": "SPDXRef-31-typing-extensions",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-26-pandera",
-      "relatedSpdxElement": "SPDXRef-29-typing-extensions",
+      "spdxElementId": "SPDXRef-28-pandera",
+      "relatedSpdxElement": "SPDXRef-31-typing-extensions",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-26-pandera",
-      "relatedSpdxElement": "SPDXRef-35-typing-inspect",
-      "relationshipType": "DEPENDS_ON"
-    },
-    {
-      "spdxElementId": "SPDXRef-1-ribasim",
-      "relatedSpdxElement": "SPDXRef-37-pyarrow",
+      "spdxElementId": "SPDXRef-28-pandera",
+      "relatedSpdxElement": "SPDXRef-37-typing-inspect",
       "relationshipType": "DEPENDS_ON"
     },
     {
       "spdxElementId": "SPDXRef-1-ribasim",
-      "relatedSpdxElement": "SPDXRef-27-pydantic",
+      "relatedSpdxElement": "SPDXRef-39-pyarrow",
+      "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-1-ribasim",
+      "relatedSpdxElement": "SPDXRef-29-pydantic",
       "relationshipType": "DEPENDS_ON"
     },
     {
@@ -2024,12 +2175,32 @@
     },
     {
       "spdxElementId": "SPDXRef-1-ribasim",
-      "relatedSpdxElement": "SPDXRef-38-tomli-w",
+      "relatedSpdxElement": "SPDXRef-40-tomli-w",
       "relationshipType": "DEPENDS_ON"
     },
     {
       "spdxElementId": "SPDXRef-1-ribasim",
-      "relatedSpdxElement": "SPDXRef-39-tomli",
+      "relatedSpdxElement": "SPDXRef-41-tomli",
+      "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-1-ribasim",
+      "relatedSpdxElement": "SPDXRef-42-xarray",
+      "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-42-xarray",
+      "relatedSpdxElement": "SPDXRef-4-numpy",
+      "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-42-xarray",
+      "relatedSpdxElement": "SPDXRef-16-packaging",
+      "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-42-xarray",
+      "relatedSpdxElement": "SPDXRef-3-pandas",
       "relationshipType": "DEPENDS_ON"
     }
   ]
