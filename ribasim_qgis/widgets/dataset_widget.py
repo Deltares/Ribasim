@@ -259,6 +259,16 @@ class DatasetWidget(QWidget):
         if isinstance(group, QgsLayerTreeGroup):
             return group
 
+    @staticmethod
+    def is_layer_visible(layer: QgsMapLayer):
+        instance = QgsProject.instance()
+        assert instance is not None
+        layer_tree_root = instance.layerTreeRoot()
+        assert layer_tree_root is not None
+        layer_tree_layer = layer_tree_root.findLayer(layer)
+        assert layer_tree_layer is not None
+        return layer_tree_layer.isVisible()
+
     def add_reload_context(self) -> None:
         """Connect to the layer context (right-click) menu opening."""
         ltv = self.ribasim_widget.iface.layerTreeView()
@@ -579,7 +589,11 @@ class DatasetWidget(QWidget):
         force: bool = False,
     ) -> None:
         """Update the layer with the current arrow time slice."""
-        if layer is None or df is None:
+        if (
+            layer is None
+            or df is None
+            or (not force and not self.is_layer_visible(layer))
+        ):
             return
 
         # If we're out of bounds, do nothing, assuming
@@ -592,7 +606,7 @@ class DatasetWidget(QWidget):
                 print(f"Skipping update, out of bounds for {time}")
                 return
 
-        timeslice = df.loc[[time], :]
+        timeslice = df.loc[time]
 
         layer.startEditing()
         layer.beginEditCommand("Group all undos for performance.")
@@ -606,20 +620,26 @@ class DatasetWidget(QWidget):
             layer.commitChanges()
             return
 
+        dataprovider = layer.dataProvider()
+        assert dataprovider is not None
+
+        columns = {}
         for column in df.columns.tolist():
             if (
                 column == fid_column or column == "time"
             ):  # skip the fid (link/node_id) column
                 continue
-            dataprovider = layer.dataProvider()
-            assert dataprovider is not None
             column_id = dataprovider.fieldNameIndex(column)
+            columns[column] = column_id
+
+        data: dict[int, dict[int, float]] = {fid: {} for fid in fids}
+        for column, column_id in columns.items():
             for fid, variable in zip(fids, timeslice[column]):
-                layer.changeAttributeValue(
-                    fid,
-                    column_id,
-                    variable,
-                )
+                data[fid][column_id] = variable
+
+        dataprovider = layer.dataProvider()
+        assert dataprovider is not None
+        dataprovider.changeAttributeValues(data)
 
         layer.endEditCommand()
         layer.commitChanges()
