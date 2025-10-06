@@ -39,42 +39,29 @@ const RibasimCVectorType =
     5 Drainage = 6 Precipitation = 7 SurfaceRunoff = 8
 Base.to_index(id::Substance.T) = Int(id)  # used to index into concentration matrices
 
+const node_type_map::Dict{NodeType.T, Symbol} = Dict(
+    NodeType.Basin => :basin,
+    NodeType.TabulatedRatingCurve => :tabulated_rating_curve,
+    NodeType.Pump => :pump,
+    NodeType.Outlet => :outlet,
+    NodeType.UserDemand => :user_demand,
+    NodeType.FlowDemand => :flow_demand,
+    NodeType.LevelDemand => :level_demand,
+    NodeType.FlowBoundary => :flow_boundary,
+    NodeType.LevelBoundary => :level_boundary,
+    NodeType.LinearResistance => :linear_resistance,
+    NodeType.ManningResistance => :manning_resistance,
+    NodeType.Terminal => :terminal,
+    NodeType.Junction => :junction,
+    NodeType.DiscreteControl => :discrete_control,
+    NodeType.ContinuousControl => :continuous_control,
+    NodeType.PidControl => :pid_control,
+)
+
 function config.snake_case(nt::NodeType.T)::Symbol
-    if nt == NodeType.Basin
-        return :basin
-    elseif nt == NodeType.TabulatedRatingCurve
-        return :tabulated_rating_curve
-    elseif nt == NodeType.Pump
-        return :pump
-    elseif nt == NodeType.Outlet
-        return :outlet
-    elseif nt == NodeType.UserDemand
-        return :user_demand
-    elseif nt == NodeType.FlowDemand
-        return :flow_demand
-    elseif nt == NodeType.LevelDemand
-        return :level_demand
-    elseif nt == NodeType.FlowBoundary
-        return :flow_boundary
-    elseif nt == NodeType.LevelBoundary
-        return :level_boundary
-    elseif nt == NodeType.LinearResistance
-        return :linear_resistance
-    elseif nt == NodeType.ManningResistance
-        return :manning_resistance
-    elseif nt == NodeType.Terminal
-        return :terminal
-    elseif nt == NodeType.Junction
-        return :junction
-    elseif nt == NodeType.DiscreteControl
-        return :discrete_control
-    elseif nt == NodeType.ContinuousControl
-        return :continuous_control
-    elseif nt == NodeType.PidControl
-        return :pid_control
-    else
-        error("Unknown node type: $nt")
-    end
+    out = get(node_type_map, nt, nothing)
+    isnothing(out) && error("Unknown node type: $nt")
+    return out
 end
 
 # Support creating a NodeType enum instance from a symbol or string
@@ -803,7 +790,7 @@ const StateTimeDependentCache{T} = @NamedTuple{
     u_prev_call::Vector{T},
 } where {T}
 
-@enumx CacheType flow_rate_pump flow_rate_outlet basin_level
+@enumx CacheType flow_rate_pump flow_rate_outlet basin_level basin_storage
 
 """
 A cache for intermediate results in `water_balance!` which depend only on the time `t`. A second version of this
@@ -866,6 +853,8 @@ function get_cache_vector(
         state_time_dependent_cache.current_flow_rate_outlet
     elseif type == CacheType.basin_level
         state_time_dependent_cache.current_level
+    elseif type == CacheType.basin_storage
+        state_time_dependent_cache.current_storage
     else
         error("Invalid cache type $type passed.")
     end
@@ -880,16 +869,19 @@ end
 end
 
 """
-The data for a single compound variable
+The data for a single compound variable for DiscreteControl.
 node_id:: The ID of the DiscreteControl that listens to this variable
 subvariables: data for one single subvariable
-greater_than: the thresholds this compound variable will be
-    compared against (in the case of DiscreteControl)
+threshold_high: the thresholds this compound variable will be
+    compared against when the condition in the previous timestep is false
+threshold_low: the thresholds this compound variable will be
+    compared against when the condition in the previous timestep is true
 """
 @kwdef struct CompoundVariable
     node_id::NodeID
     subvariables::Vector{SubVariable} = SubVariable[]
-    greater_than::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+    threshold_high::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+    threshold_low::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
 end
 
 """
@@ -994,12 +986,12 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
     demand::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
-    demand_interpolation::Vector{Vector{ScalarLinearInterpolation}} =
-        trivial_linear_itp_fill(demand_priorities, node_id)
+    demand_interpolation::Vector{Vector{ScalarConstantInterpolation}} =
+        trivial_allocation_itp_fill(demand_priorities, node_id)
     demand_from_timeseries::Vector{Bool} = Vector{Bool}(undef, length(node_id))
     allocated::Matrix{Float64} = fill(Inf, length(node_id), length(demand_priorities))
-    return_factor::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    return_factor::Vector{ScalarConstantInterpolation} =
+        Vector{ScalarConstantInterpolation}(undef, length(node_id))
     min_level::Vector{Float64} = zeros(length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
 end
@@ -1022,10 +1014,10 @@ storage_demand: The storage change each Basin needs to reach the [min, max] wind
     demand_priorities::Vector{Int32} = []
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
-    min_level::Vector{Vector{ScalarLinearInterpolation}} =
-        trivial_linear_itp_fill(demand_priorities, node_id; val = NaN)
-    max_level::Vector{Vector{ScalarLinearInterpolation}} =
-        trivial_linear_itp_fill(demand_priorities, node_id; val = NaN)
+    min_level::Vector{Vector{ScalarConstantInterpolation}} =
+        trivial_allocation_itp_fill(demand_priorities, node_id; val = NaN)
+    max_level::Vector{Vector{ScalarConstantInterpolation}} =
+        trivial_allocation_itp_fill(demand_priorities, node_id; val = NaN)
     basins_with_demand::Vector{Vector{NodeID}} = []
     storage_prev::Dict{NodeID, Float64} = Dict()
     storage_demand::Dict{NodeID, Vector{Float64}} = Dict()
@@ -1045,8 +1037,8 @@ demand: The current demand per FlowDemand node per demand priority (node_idx, de
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
-    demand_interpolation::Vector{Vector{ScalarLinearInterpolation}} =
-        trivial_linear_itp_fill(demand_priorities, node_id; val = NaN)
+    demand_interpolation::Vector{Vector{ScalarConstantInterpolation}} =
+        trivial_allocation_itp_fill(demand_priorities, node_id; val = NaN)
     demand::Matrix{Float64} = fill(NaN, length(node_id), length(demand_priorities))
 end
 

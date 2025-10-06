@@ -2,7 +2,7 @@ name = "Ribasim"
 uuid = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 manifest = "../Manifest.toml"
-version = "2025.4.0"
+version = "2025.5.0"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"

@@ -7,6 +7,10 @@ object WindowsAgent : Template({
     name = "Ribasim_Windows"
     description = "Template for agent that uses Windows OS"
 
+    params {
+        param("env.JULIA_NUM_THREADS", "4")
+    }
+
     requirements {
         contains("teamcity.agent.jvm.os.name", "Windows", "RQ_422")
     }

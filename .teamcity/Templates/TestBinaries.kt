@@ -1,5 +1,6 @@
 package Templates
 
+import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.Template
 import jetbrains.buildServer.configs.kotlin.buildFeatures.buildCache
 import jetbrains.buildServer.configs.kotlin.buildFeatures.XmlReport
@@ -46,6 +47,13 @@ open class TestBinaries (platformOs: String) : Template() {
                 id = "Ribasim${platformOs}Cache"
                 name = "Ribasim${platformOs}Cache"
                 publish = false
+            }
+        }
+
+        dependencies {
+            artifacts(AbsoluteId("Ribasim_${platformOs}_GenerateCache")) {
+                buildRule = lastSuccessful()
+                artifactRules = "cache.zip!** => %teamcity.build.checkoutDir%/.julia"
             }
         }
 

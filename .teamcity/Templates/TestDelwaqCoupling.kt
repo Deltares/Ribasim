@@ -1,6 +1,7 @@
 package Templates
 
 import Ribasim.vcsRoots.Ribasim
+import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.Template
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.buildFeatures.buildCache
@@ -26,6 +27,13 @@ open class TestDelwaqCoupling(platformOs: String) : Template() {
                 id = "Ribasim${platformOs}Cache"
                 name = "Ribasim${platformOs}Cache"
                 publish = false
+            }
+        }
+
+        dependencies {
+            artifacts(AbsoluteId("Ribasim_${platformOs}_GenerateCache")) {
+                buildRule = lastSuccessful()
+                artifactRules = "cache.zip!** => %teamcity.build.checkoutDir%/.julia"
             }
         }
 
