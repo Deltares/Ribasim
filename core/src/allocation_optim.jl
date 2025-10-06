@@ -344,7 +344,6 @@ function preprocess_demand_collection!(
 
     # Allow the inflow from the primary network to be as large as required
     # (will be restricted when optimizing for the actual allocation)
-    #TODO limit upper bound to node limit if applicable:
     for link in p_independent.allocation.primary_network_connections[subnetwork_id]
         JuMP.set_upper_bound(flow[link], MAX_ABS_FLOW / scaling.flow)
         JuMP.set_lower_bound(flow[link], 0)
@@ -1063,13 +1062,16 @@ function update_allocation!(model)::Nothing
     if has_primary_network(allocation)
         # If a primary network is present, collect demands of the secondary network(s)
         primary_network = get_primary_network(allocation_models)
+
+        # Transfer data about physical processes from the simulation to the optimization
+        set_simulation_data!(primary_network, integrator)
+
         reset_demand_coefficients(primary_network)
         for secondary_network in get_secondary_networks(allocation_models)
             collect_demands!(secondary_network, primary_network, model)
             delete_temporary_constraints!(secondary_network)
         end
 
-        set_simulation_data!(primary_network, integrator)
         set_demands!(primary_network, integrator)
         warm_start!(primary_network, integrator)
     end
