@@ -61,6 +61,18 @@ function add_flow!(
         flow_capacity_upper_bound(link, p_independent) / scaling.flow
     )
 
+    # The primary and secondary networks share links, but only the primary network really owns them
+    owned_links = only(problem[:flow].axes)
+    if !is_primary_network(subnetwork_id)
+        filter!(
+            link -> !(link in allocation.primary_network_connections[subnetwork_id]),
+            only(flow.axes),
+        )
+    end
+    for link in owned_links
+        push!(allocation_model.owned_links, link)
+    end
+
     return nothing
 end
 
@@ -992,15 +1004,6 @@ function AllocationModel(
         end
     end
 
-    # The primary and secondary networks share links, but only the primary network really owns them
-    owned_links = only(problem[:flow].axes())
-    if !is_primary_network(subnetwork_id)
-        filter!(
-            link -> !(link in allocation.primary_network_connections[subnetwork_id]),
-            only(flow.axes),
-        )
-    end
-
     allocation_model = AllocationModel(;
         subnetwork_id,
         node_ids_in_subnetwork,
@@ -1009,7 +1012,6 @@ function AllocationModel(
         scaling,
         has_demand_priority,
         secondary_network_demand,
-        owned_links,
     )
 
     # Volume and flow
