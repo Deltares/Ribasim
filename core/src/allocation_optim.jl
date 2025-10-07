@@ -737,12 +737,15 @@ function optimize!(allocation_model::AllocationModel, model)::Nothing
         # to .lp
         set_feasibility_objective!(problem)
         write_problem_to_file(problem, config)
-        analyze_infeasibility(allocation_model, t, config)
+        status = analyze_infeasibility(allocation_model, t, config)
         analyze_scaling(allocation_model, t, config)
-
-        error(
-            "Allocation optimization for subnetwork $subnetwork_id at t = $t s is infeasible",
-        )
+        if status == JuMP.OPTIMAL
+            @info "Allocation optimization for subnetwork $subnetwork_id at t = $t s is feasible after infeasibility analysis, continuing with solution"
+        else
+            error(
+                "Allocation optimization for subnetwork $subnetwork_id at t = $t s is infeasible",
+            )
+        end
     elseif termination_status != JuMP.OPTIMAL
     end
 

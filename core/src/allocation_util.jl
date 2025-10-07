@@ -148,7 +148,7 @@ function analyze_infeasibility(
     allocation_model::AllocationModel,
     t::Float64,
     config::Config,
-)::Nothing
+)::JuMP.TerminationStatusCode
     (; problem, subnetwork_id) = allocation_model
 
     log_path = results_path(config, RESULTS_FILENAME.allocation_analysis_infeasibility)
@@ -156,6 +156,7 @@ function analyze_infeasibility(
 
     # Perform infeasibility analysis
     JuMP.optimize!(problem)
+    status = JuMP.termination_status(problem)
     data_infeasibility = MathOptAnalyzer.analyze(
         MathOptAnalyzer.Infeasibility.Analyzer(),
         problem;
@@ -204,7 +205,7 @@ function analyze_infeasibility(
         end
         @error "Set of incompatible constraints found" constraint_violations
     end
-    return nothing
+    return status
 end
 
 function analyze_scaling(
