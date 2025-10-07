@@ -9,10 +9,8 @@ const conservative_nodetypes = Set{NodeType.T}([
 function initialize_allocation!(
     p_independent::ParametersIndependent,
     config::Config,
-    pump::Pump,
-    outlet::Outlet,
 )::Nothing
-    (; graph, allocation) = p_independent
+    (; graph, allocation, pump, outlet) = p_independent
     (; subnetwork_ids, allocation_models) = allocation
     subnetwork_ids_ = sort(collect(keys(graph[].node_ids)))
 
@@ -1631,7 +1629,7 @@ function Parameters(db::DB, config::Config)::Parameters
 
     # Allocation data structures
     if config.experimental.allocation
-        initialize_allocation!(p_independent, config, nodes.pump, nodes.outlet)
+        initialize_allocation!(p_independent, config)
     end
 
     return Parameters(; p_independent)
