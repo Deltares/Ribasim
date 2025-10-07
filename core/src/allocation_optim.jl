@@ -352,7 +352,7 @@ function preprocess_demand_collection!(
     return nothing
 end
 
-function communicate_secondary_network_allocations!(
+function allocate_flows_to_subnetwork(
     allocation_models::Vector{AllocationModel},
     primary_network_connections,
 )::Nothing
@@ -887,7 +887,8 @@ function save_flows!(
 
     low_storage_factor = problem[:low_storage_factor]
 
-    # primary network connections are links shared with the primary network, but should be recorded only once
+    # primary network connections are links shared between the primary network and a secondary network.
+    # The value should be recorded only once
     if is_primary_network(subnetwork_id)
         valid_links = only(flow.axes)
     else
@@ -1063,12 +1064,9 @@ function update_allocation!(model)::Nothing
         apply_control_from_allocation!(pump, allocation_model, integrator)
         apply_control_from_allocation!(outlet, allocation_model, integrator)
 
-        # Communicate amounts allocated to secondary networks
+        # allocate flows optimized from the primary network to the secondary networks
         if is_primary_network(allocation_model.subnetwork_id)
-            communicate_secondary_network_allocations!(
-                allocation_models,
-                primary_network_connections,
-            )
+            allocate_flows_to_subnetwork(allocation_models, primary_network_connections)
         end
 
         # Reset cumulative data
