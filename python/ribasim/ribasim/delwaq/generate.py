@@ -33,9 +33,6 @@ from ribasim.delwaq.util import (
     write_pointer,
     write_volumes,
 )
-from ribasim.delwaq.util import (
-    model_dir as output_path,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -43,14 +40,10 @@ env = jinja2.Environment(
     autoescape=True, loader=jinja2.FileSystemLoader(delwaq_dir / "template")
 )
 
-# Add evaporation links, so mass balance is correct
-# To simulate salt increase due to evaporation, set to False
-USE_EVAP = True
-
 
 def _boundary_name(id, type):
     # Delwaq has a limit of 12 characters for the boundary name
-    return type[:9] + "_" + str(id)
+    return type.replace("_", "")[:9] + "_" + str(id)
 
 
 def _quote(value):
@@ -113,12 +106,41 @@ def _setup_graph(nodes, link, evaporate_mass=True):
                 row.from_node_id,
                 row.to_node_id,
                 id=[row.Index],
-                duplicate=None,
             )
 
     # Simplify network, only keeping Basins and Boundaries.
     # We find an unwanted node, remove it,
     # and merge the flow links to/from the node.
+    # Remove Junctions first, as they can be chained
+    remove_nodes = []
+    for node_id, out in G.succ.items():
+        if G.nodes[node_id]["type"] == "Junction":
+            inneighbor_ids = G.pred[node_id]
+            remove_nodes.append(node_id)
+
+            converging = True
+            if len(inneighbor_ids) > 1 and len(out) > 1:
+                raise ValueError(
+                    "Cannot simplify network with junctions that have multiple inflow and outflow links."
+                )
+            elif len(inneighbor_ids) == 1 and len(out) >= 1:
+                converging = False
+
+            for inneighbor_id in inneighbor_ids:
+                for outneighbor_id in out.keys():
+                    link = (inneighbor_id, outneighbor_id)
+                    if converging:
+                        link_id = G.get_edge_data(inneighbor_id, node_id)["id"][0]
+                    else:
+                        link_id = G.get_edge_data(node_id, outneighbor_id)["id"][0]
+                    if G.has_edge(*link):
+                        raise ValueError("Merging links would create duplicate links.")
+                    else:
+                        G.add_edge(*link, id=[link_id])
+
+    for node_id in remove_nodes:
+        G.remove_node(node_id)
+
     remove_nodes = []
     for node_id, out in G.succ.items():
         if G.nodes[node_id]["type"] not in [
@@ -222,7 +244,6 @@ def _setup_graph(nodes, link, evaporate_mass=True):
             G.add_edge(
                 boundary_id,
                 node_id,
-                key=link_id,
                 id=[-1],
                 boundary=(node["id"], "drainage"),
             )
@@ -232,14 +253,41 @@ def _setup_graph(nodes, link, evaporate_mass=True):
                 boundary_id,
                 type="Precipitation",
                 id=node["id"],
+                pos=(node["pos"][0] + -0.25, node["pos"][1] + 0.5),
+            )
+            G.add_edge(
+                boundary_id,
+                node_id,
+                id=[-1],
+                boundary=(node["id"], "precipitation"),
+            )
+
+            boundary_id -= 1
+            G.add_node(
+                boundary_id,
+                type="SurfaceRunoff",
+                id=node["id"],
                 pos=(node["pos"][0] + 0, node["pos"][1] + 0.5),
             )
             G.add_edge(
                 boundary_id,
                 node_id,
-                key=link_id,
                 id=[-1],
-                boundary=(node["id"], "precipitation"),
+                boundary=(node["id"], "surface_runoff"),
+            )
+
+            boundary_id -= 1
+            G.add_node(
+                boundary_id,
+                type="Infiltration",
+                id=node["id"],
+                pos=(node["pos"][0] + 0.25, node["pos"][1] + 0.5),
+            )
+            G.add_edge(
+                node_id,
+                boundary_id,
+                id=[-1],
+                boundary=(node["id"], "infiltration"),
             )
 
             if evaporate_mass:
@@ -253,7 +301,6 @@ def _setup_graph(nodes, link, evaporate_mass=True):
                 G.add_edge(
                     node_id,
                     boundary_id,
-                    key=link_id,
                     id=[-1],
                     boundary=(node["id"], "evaporation"),
                 )
@@ -285,9 +332,15 @@ def _setup_boundaries(model):
             boundaries.append(boundary)
             substances.update(substance)
 
+    if model.user_demand.concentration.df is not None:
+        for _, rows in model.flow_boundary.concentration.df.groupby("node_id"):
+            boundary, substance = _make_boundary(rows, "UserDemand")
+            boundaries.append(boundary)
+            substances.update(substance)
+
     if model.basin.concentration.df is not None:
         for _, rows in model.basin.concentration.df.groupby(["node_id"]):
-            for boundary_type in ("Drainage", "Precipitation"):
+            for boundary_type in ("Drainage", "Precipitation", "Surface_Runoff"):
                 nrows = rows.rename(columns={boundary_type.lower(): "concentration"})
                 boundary, substance = _make_boundary(nrows, boundary_type)
                 boundaries.append(boundary)
@@ -297,18 +350,22 @@ def _setup_boundaries(model):
 
 
 def generate(
-    toml_path: Path,
-    output_path: Path = output_path,
+    model: Path | ribasim.Model,
+    output_path: Path | None = None,
 ) -> tuple[nx.DiGraph, set[str]]:
     """Generate a Delwaq model from a Ribasim model and results."""
     # Read in model and results
-    model = ribasim.Model.read(toml_path)
-    results_folder = toml_path.parent / model.results_dir
+    if not isinstance(model, ribasim.Model):
+        model = ribasim.Model.read(model)
+
     evaporate_mass = model.solver.evaporate_mass
 
-    basins = pd.read_feather(toml_path.parent / results_folder / "basin.arrow")
-    flows = pd.read_feather(toml_path.parent / results_folder / "flow.arrow")
+    basins = pd.read_feather(model.results_path / "basin.arrow")
+    flows = pd.read_feather(model.results_path / "flow.arrow")
 
+    if output_path is None:
+        assert model.filepath is not None
+        output_path = model.filepath.parent / "delwaq"
     output_path.mkdir(exist_ok=True)
 
     # Setup flow network
@@ -398,12 +455,7 @@ def generate(
             continue
         lookups[boundary_type][node_id] = link_id
 
-    # Build flows for all basin boundaries
-    boundary_types = ["drainage", "precipitation"]
-    if evaporate_mass:
-        boundary_types.append("evaporation")
-
-    for boundary_type in boundary_types:
+    for boundary_type in lookups.keys():
         df = basins[basins.node_id.isin(lookups[boundary_type].keys())][
             ["node_id", "time", boundary_type]
         ].rename(columns={boundary_type: "flow_rate"})
@@ -468,10 +520,10 @@ def generate(
         "Initial": 1.0,
         "LevelBoundary": 0.0,
         "FlowBoundary": 0.0,
-        "Terminal": 0.0,
         "UserDemand": 0.0,
         "Precipitation": 0.0,
         "Drainage": 0.0,
+        "SurfaceRunoff": 0.0,
     }
     substances.update(defaults.keys())
 
@@ -549,7 +601,7 @@ def generate(
     return G, substances
 
 
-def add_tracer(model, node_id, tracer_name):
+def add_tracer(model, node_id, tracer_name, concentration=1.0):
     """Add a tracer to the Delwaq model."""
     n = model.node_table().df.loc[node_id]
     node_type = n.node_type
@@ -568,7 +620,7 @@ def add_tracer(model, node_id, tracer_name):
         node_id=[node_id],
         time=[model.starttime],
         substance=[tracer_name],
-        concentration=[1.0],
+        concentration=[concentration],
     )
     if nt.concentration is None:
         nt.concentration = table

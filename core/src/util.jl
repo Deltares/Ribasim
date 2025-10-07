@@ -12,7 +12,7 @@ function pkgversion(m::Module)::VersionNumber
 end
 
 """Get the storage of a basin from its level."""
-function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::Float64
+function get_storage_from_level(basin::Basin, state_idx::Int, level::AbstractFloat)::Float64
     level_to_area = basin.level_to_area[state_idx]
     if level < level_to_area.t[1]
         0.0
