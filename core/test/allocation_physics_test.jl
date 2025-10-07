@@ -84,7 +84,7 @@ end
 end
 
 @testitem "Outlet" begin
-    @static if Sys.islinux()
+    if Sys.islinux()
         # On Linux Github CI (#2431)
         # ┌ Warning: At t=0.0, dt was forced below floating point epsilon 5.0e-324, and step error estimate = 1.0. Aborting. There is either an error in your model specification or the true solution is unstable (or the true solution can not be represented in the precision of Float64).
         @test_broken false "Outlet test model is unstable on Linux"
