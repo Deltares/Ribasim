@@ -261,7 +261,6 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     secondary_network_demand::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
     scaling::ScalingFactors = ScalingFactors()
     temporary_constraints::Vector{JuMP.ConstraintRef} = JuMP.ConstraintRef[]
-    owned_links::Vector{Tuple{NodeID, NodeID}}
 end
 
 struct DemandRecordDatum
