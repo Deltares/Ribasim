@@ -352,7 +352,7 @@ function preprocess_demand_collection!(
     return nothing
 end
 
-function allocate_flows_to_subnetwork(
+function assign_optimized_flows_to_subnetwork(
     allocation_models::Vector{AllocationModel},
     primary_network_connections,
 )::Nothing
@@ -881,8 +881,14 @@ function save_flows!(
     optimization_type::AllocationOptimizationType.T,
 )::Nothing
     (; p, t) = integrator
-    (; problem, subnetwork_id, cumulative_forcing_volume, scaling, node_ids_in_subnetwork) =
-        allocation_model
+    (;
+        problem,
+        subnetwork_id,
+        cumulative_forcing_volume,
+        scaling,
+        node_ids_in_subnetwork,
+        owned_links,
+    ) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
     (; graph, allocation) = p.p_independent
     (; record_flow) = allocation
@@ -890,19 +896,8 @@ function save_flows!(
 
     low_storage_factor = problem[:low_storage_factor]
 
-    # primary network connections are links shared between the primary network and a secondary network.
-    # The value should be recorded only once
-    if is_primary_network(subnetwork_id)
-        valid_links = only(flow.axes)
-    else
-        valid_links = filter(
-            link -> !(link in allocation.primary_network_connections[subnetwork_id]),
-            only(flow.axes),
-        )
-    end
-
     # Horizontal flows
-    for link in valid_links
+    for link in owned_links
         (id_from, id_to) = link
         link_metadata = graph[link...]
         flow_variable = flow[link]
@@ -1069,7 +1064,10 @@ function update_allocation!(model)::Nothing
 
         # allocate flows optimized from the primary network to the secondary networks
         if is_primary_network(allocation_model.subnetwork_id)
-            allocate_flows_to_subnetwork(allocation_models, primary_network_connections)
+            assign_optimized_flows_to_subnetwork(
+                allocation_models,
+                primary_network_connections,
+            )
         end
 
         # Reset cumulative data
