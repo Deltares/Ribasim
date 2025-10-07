@@ -38,6 +38,9 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
     (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
     backend = get_ad_type(solver; specialize)
     sparsity_detector = TracerSparsityDetector()
+    # Use non-zero u to avoid missing connections in the sparsity
+    u_ = copy(u)
+    u_ .= 1
 
     backend_jac = if solver.sparse
         AutoSparse(backend; sparsity_detector, coloring_algorithm = GreedyColoringAlgorithm())
@@ -54,7 +57,7 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         water_balance!,
         du,
         backend_jac,
-        u,
+        u_,
         Constant(p_independent),
         Cache(state_time_dependent_cache),
         Constant(time_dependent_cache),
@@ -85,12 +88,12 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         du,
         backend,
         t,
-        Constant(u),
+        Constant(u_),
         Constant(p_independent),
         Cache(state_time_dependent_cache),
         Cache(time_dependent_cache),
         Constant(p_mutable);
-        strict = Val(true),
+        strict=Val(true),
     )
     tgrad(dT, u, p, t) = derivative!(
         water_balance!,
@@ -99,7 +102,7 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         tgrad_prep,
         backend,
         t,
-        Constant(u),
+        Constant(u_),
         Constant(p.p_independent),
         Cache(state_time_dependent_cache),
         Cache(time_dependent_cache),

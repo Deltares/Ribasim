@@ -1089,26 +1089,30 @@ function check_new_input!(p::Parameters, u::CVector, t::Number)::Nothing
     (; state_time_dependent_cache, time_dependent_cache, p_mutable) = p
     (; u_prev_call) = state_time_dependent_cache
     (; t_prev_call) = time_dependent_cache
+    if p_mutable.all_nodes_active
+        p_mutable.new_t = true
+        p_mutable.new_u = true
+    else
+        p_mutable.new_t =
+            !isassigned(t_prev_call, 1) || (
+                t != t_prev_call[1] &&
+                ForwardDiff.partials(t) == ForwardDiff.partials(t_prev_call[1])
+            )
+        if p_mutable.new_t
+            time_dependent_cache.t_prev_call[1] = t
+        end
 
-    p_mutable.new_t =
-        !isassigned(t_prev_call, 1) || (
-            t != t_prev_call[1] &&
-            ForwardDiff.partials(t) == ForwardDiff.partials(t_prev_call[1])
-        )
-    if p_mutable.new_t
-        time_dependent_cache.t_prev_call[1] = t
-    end
-
-    p_mutable.new_u =
-        any(i -> !isassigned(u_prev_call, i), eachindex(u)) || any(
-            i -> !(
-                u[i] == u_prev_call[i] &&
-                ForwardDiff.partials(u[i]) == ForwardDiff.partials(u_prev_call[i])
-            ),
-            eachindex(u),
-        )
-    if p_mutable.new_u
-        state_time_dependent_cache.u_prev_call .= u
+        p_mutable.new_u =
+            any(i -> !isassigned(u_prev_call, i), eachindex(u)) || any(
+                i -> !(
+                    u[i] == u_prev_call[i] &&
+                    ForwardDiff.partials(u[i]) == ForwardDiff.partials(u_prev_call[i])
+                ),
+                eachindex(u),
+            )
+        if p_mutable.new_u
+            state_time_dependent_cache.u_prev_call .= u
+        end
     end
     return nothing
 end
@@ -1120,12 +1124,20 @@ function eval_time_interp(
     p::Parameters,
     t::Number,
 )
-    if p.p_mutable.new_t
-        val = itp(t)
-        cache[idx] = val
-        return val
+    (; all_nodes_active, new_t) = p.p_mutable
+    if all_nodes_active
+        # Set to non-zero value to avoid missing
+        # connections during sparsity detection
+        val = one(t)
+        cache[idx] = 1.0
     else
-        return cache[idx]
+        if new_t
+            val = itp(t)
+            cache[idx] = val
+            return val
+        else
+            return cache[idx]
+        end
     end
 end
 
