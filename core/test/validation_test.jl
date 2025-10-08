@@ -2,7 +2,7 @@
 @testitem "Q(h) validation" begin
     import SQLite
     using Logging
-    using Ribasim: NodeID, qh_interpolation, ScalarPCHIPInterpolation
+    using Ribasim: NodeID, qh_interpolation, ScalarPCHIPInterpolation, OrderedDict
 
     node_id = NodeID(:TabulatedRatingCurve, 1, 1)
     level = [1.0, 2.0]
@@ -193,7 +193,8 @@ end
 
 @testitem "Pump/outlet flow rate sign validation" begin
     using Logging
-    using Ribasim: NodeID, NodeType, ControlStateUpdate, ParameterUpdate, valid_flow_rates
+    using Ribasim:
+        NodeID, NodeType, ControlStateUpdate, ParameterUpdate, valid_flow_rates, OrderedDict
     using DataInterpolations: LinearInterpolation
 
     logger = TestLogger()
@@ -201,7 +202,7 @@ end
 
     with_logger(logger) do
         node_id = [NodeID(:Outlet, 1, 1)]
-        control_mapping = Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+        control_mapping = OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
         @test !valid_flow_rates(node_id, flow_rate, control_mapping)
     end
 
@@ -213,7 +214,7 @@ end
 
     with_logger(logger) do
         node_id = [NodeID(:Pump, 1, 1)]
-        control_mapping = Dict(
+        control_mapping = OrderedDict(
             (NodeID(:Pump, 1, 1), "foo") => ControlStateUpdate(;
                 active = ParameterUpdate(:active, true),
                 itp_update_linear = [

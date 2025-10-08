@@ -434,7 +434,7 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
     substances::OrderedSet{Symbol} = OrderedSet{Symbol}()
     # Data source for external concentrations (used in control)
     concentration_external::Vector{Dict{String, ScalarLinearInterpolation}} =
-        Dict{String, ScalarLinearInterpolation}[]
+        OrderedDict{String, ScalarLinearInterpolation}[]
 end
 
 """
@@ -558,8 +558,8 @@ flow_demand_id: connected flow demand node if applicable
     max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
     interpolations::Vector{ScalarPCHIPInterpolation} = ScalarLinearInterpolation[]
     current_interpolation_index::Vector{IndexLookup} = IndexLookup[]
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
-        Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+    control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
+        OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
     flow_demand_id::Vector{NodeID} =
         fill(NodeID(NodeType.FlowDemand, 0, 0), length(node_id))
 end
@@ -583,8 +583,8 @@ flow_demand_id: connected flow demand node if applicable
     active::Vector{Bool} = ones(Bool, length(node_id))
     resistance::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = zeros(length(node_id))
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
-        Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+    control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
+        OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
     flow_demand_id::Vector{NodeID} =
         fill(NodeID(NodeType.FlowDemand, 0, 0), length(node_id))
 end
@@ -638,8 +638,8 @@ Requirements:
     profile_slope::Vector{Float64} = zeros(size(node_id))
     upstream_bottom::Vector{Float64} = zeros(size(node_id))
     downstream_bottom::Vector{Float64} = zeros(size(node_id))
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
-        Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+    control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
+        OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
     flow_demand_id::Vector{NodeID} = fill(NodeID(NodeType.FlowDemand, 0, 0), size(node_id))
 end
 
@@ -708,8 +708,8 @@ flow_demand_id: connected flow demand node if applicable
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     max_downstream_level::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
-        Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+    control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
+        OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
     control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
     allocation_controlled::Vector{Bool} = fill(false, length(node_id))
@@ -899,9 +899,11 @@ record: Namedtuple with discrete control information for results
     truth_state::Vector{Vector{Bool}}
     control_state::Vector{String} = fill("undefined_state", length(node_id))
     control_state_start::Vector{Float64} = zeros(length(node_id))
-    logic_mapping::Vector{Dict{Vector{Bool}, String}}
-    control_mappings::Dict{NodeType.T, Dict{Tuple{NodeID, String}, ControlStateUpdate}} =
-        Dict{NodeType.T, Dict{Tuple{NodeID, String}, ControlStateUpdate}}()
+    logic_mapping::Vector{OrderedDict{Vector{Bool}, String}}
+    control_mappings::OrderedDict{
+        NodeType.T,
+        OrderedDict{Tuple{NodeID, String}, ControlStateUpdate},
+    } = OrderedDict{NodeType.T, OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}}()
     record::@NamedTuple{
         time::Vector{Float64},
         control_node_id::Vector{Int32},
@@ -950,8 +952,8 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     derivative::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
-        Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+    control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
+        OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
 end
 
 """

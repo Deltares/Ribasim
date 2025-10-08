@@ -1,5 +1,5 @@
 @testitem "Pump discrete control" begin
-    using Ribasim: NodeID
+    using Ribasim: NodeID, OrderedDict
     using OrdinaryDiffEqCore: get_du
     using Dates: DateTime
     import Arrow
@@ -28,14 +28,14 @@
         ).value.u,
     ) == [1.0e-5]
 
-    logic_mapping::Vector{Dict{Vector{Bool}, String}} = [
-        Dict(
+    logic_mapping::Vector{OrderedDict{Vector{Bool}, String}} = [
+        OrderedDict(
             [true, true] => "on",
             [true, false] => "off",
             [false, false] => "on",
             [false, true] => "off",
         ),
-        Dict([true] => "inactive", [false] => "active"),
+        OrderedDict([true] => "inactive", [false] => "active"),
     ]
 
     @test discrete_control.logic_mapping == logic_mapping

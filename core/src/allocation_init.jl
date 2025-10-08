@@ -624,7 +624,7 @@ function add_demand_objectives!(
     level_demand_error = problem[:level_demand_error]
 
     # Collect data to define average errors for second objectives per demand priority
-    first_objective_expressions = Dict{Int, JuMP.AffExpr}()
+    first_objective_expressions = OrderedDict{Int, JuMP.AffExpr}()
     demand_priorities_flow_unit = Int32[]
     demand_priorities_storage_unit = Int[]
 

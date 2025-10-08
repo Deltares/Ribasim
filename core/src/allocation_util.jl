@@ -173,7 +173,7 @@ function analyze_infeasibility(
 
     # We care the most about constraints with names, so give these smaller penalties so
     # that these get relaxed which is more informative
-    constraint_to_penalty = OrderedDict(
+    constraint_to_penalty = Dict(
         violated_constraint => isempty(JuMP.name(violated_constraint)) ? 1.0 : 0.5 for
         violated_constraint in violated_constraints
     )
