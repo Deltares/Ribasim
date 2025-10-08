@@ -367,7 +367,7 @@ function get_ad_type(solver::Solver; specialize = true)
 end
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
-function algorithm(solver::Solver; u0 = [], specialize = true)::OrdinaryDiffEqAlgorithm
+function algorithm(solver::Solver; specialize = true)::OrdinaryDiffEqAlgorithm
     kwargs = Dict{Symbol, Any}()
     algotype = algorithms[solver.algorithm]
 

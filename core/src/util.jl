@@ -728,48 +728,32 @@ function build_reltol_vector(u0::CVector, reltol::Float64)
     reltolv, mask
 end
 
-function build_flow_to_storage(
-    state_ranges::StateTuple{UnitRange{Int}},
-    n_states::Int,
-    basin::Basin,
-    connector_nodes::NamedTuple,
-)::SparseMatrixCSC{Float64,Int}
-    (; user_demand_inflow, user_demand_outflow, evaporation, infiltration) = state_ranges
-    n_basins = length(basin.node_id)
-    flow_to_storage = spzeros(n_basins, n_states)
+function reduce_state!(u_reduced, u, p_independent)::Nothing
+    (; basin) = p_independent
+    (; inflow_ids, outflow_ids) = basin
+    (; combined_cumulative_flows) = u_reduced
+    state_ranges = getaxes(u)
+    u_reduced .= 0
 
-    for (node_name, node) in pairs(connector_nodes)
-        if node_name == :user_demand
-            flow_to_storage_node_inflow = view(flow_to_storage, :, user_demand_inflow)
-            flow_to_storage_node_outflow = view(flow_to_storage, :, user_demand_outflow)
-        else
-            state_range = getproperty(state_ranges, node_name)
-            flow_to_storage_node_inflow = view(flow_to_storage, :, state_range)
-            flow_to_storage_node_outflow = flow_to_storage_node_inflow
+    @threads for i in eachindex(basin.node_id)
+        for inflow_id in inflow_ids[i]
+            state_idx = get_state_index(state_ranges, inflow_id; inflow = false)
+            isnothing(state_idx) && continue
+            combined_cumulative_flows[i] += u[state_idx]
         end
 
-        for (inflow_link, outflow_link) in zip(node.inflow_link, node.outflow_link)
-            inflow_id, node_id = inflow_link.link
-            if inflow_id.type == NodeType.Basin
-                flow_to_storage_node_inflow[inflow_id.idx, node_id.idx] = -1.0
-            end
-
-            outflow_id = outflow_link.link[2]
-            if outflow_id.type == NodeType.Basin
-                flow_to_storage_node_outflow[outflow_id.idx, node_id.idx] = 1.0
-            end
+        for outflow_id in outflow_ids[i]
+            state_idx = get_state_index(state_ranges, outflow_id; inflow = true)
+            isnothing(state_idx) && continue
+            combined_cumulative_flows[i] -= u[state_idx]
         end
+
+        combined_cumulative_flows[i] -= u.evaporation[i]
+        combined_cumulative_flows[i] -= u.infiltration[i]
     end
 
-    flow_to_storage_evaporation = view(flow_to_storage, :, evaporation)
-    flow_to_storage_infiltration = view(flow_to_storage, :, infiltration)
-
-    for i in 1:n_basins
-        flow_to_storage_evaporation[i, i] = -1.0
-        flow_to_storage_infiltration[i, i] = -1.0
-    end
-
-    return flow_to_storage
+    u_reduced.integral .= u.integral
+    return nothing
 end
 
 """
@@ -868,7 +852,9 @@ Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
     (; current_storage) = p.state_time_dependent_cache
-    formulate_storages!(u, p, t)
+    (; u_reduced) = p.p_independent
+    reduce_state!(u_reduced, u, p.p_independent)
+    formulate_storages!(u_reduced, p, t)
     any(<(0), current_storage)
 end
 
@@ -1085,13 +1071,13 @@ Check whether the inputs u and t are different from the previous call of water_b
 update the boolean flags in p_mutable. In several parts of the calculations in water_balance!,
 caches are only updated if the data they depend on is different from the previous water_balance! call.
 """
-function check_new_input!(p::Parameters, u::CVector, t::Number)::Nothing
+function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
     (; state_time_dependent_cache, time_dependent_cache, p_mutable) = p
-    (; u_prev_call) = state_time_dependent_cache
+    (; u_reduced_prev_call) = state_time_dependent_cache
     (; t_prev_call) = time_dependent_cache
     if p_mutable.all_nodes_active
         p_mutable.new_t = true
-        p_mutable.new_u = true
+        p_mutable.new_u_reduced = true
     else
         p_mutable.new_t =
             !isassigned(t_prev_call, 1) || (
@@ -1102,16 +1088,17 @@ function check_new_input!(p::Parameters, u::CVector, t::Number)::Nothing
             time_dependent_cache.t_prev_call[1] = t
         end
 
-        p_mutable.new_u =
-            any(i -> !isassigned(u_prev_call, i), eachindex(u)) || any(
+        p_mutable.new_u_reduced =
+            any(i -> !isassigned(u_reduced_prev_call, i), eachindex(u_reduced)) || any(
                 i -> !(
-                    u[i] == u_prev_call[i] &&
-                    ForwardDiff.partials(u[i]) == ForwardDiff.partials(u_prev_call[i])
+                    u_reduced[i] == u_reduced_prev_call[i] &&
+                    ForwardDiff.partials(u_reduced[i]) ==
+                    ForwardDiff.partials(u_reduced_prev_call[i])
                 ),
-                eachindex(u),
+                eachindex(u_reduced),
             )
-        if p_mutable.new_u
-            state_time_dependent_cache.u_prev_call .= u
+        if p_mutable.new_u_reduced
+            state_time_dependent_cache.u_reduced_prev_call .= u_reduced
         end
     end
     return nothing

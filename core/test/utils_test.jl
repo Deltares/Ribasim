@@ -257,9 +257,8 @@ end
     p = Ribasim.Parameters(db, config)
     close(db)
     t0 = 0.0
-    u0 = Ribasim.build_state_vector(p.p_independent)
-    du0 = copy(u0)
-    jac_prototype, _, _ = Ribasim.get_diff_eval(du0, u0, p, config.solver)
+    du0 = Ribasim.build_state_vector(p.p_independent)
+    jac_prototype, _, _ = Ribasim.get_diff_eval(du0, p, config.solver)
 
     # rows, cols, _ = findnz(jac_prototype)
     #! format: off
@@ -279,9 +278,8 @@ end
     p = Ribasim.Parameters(db, config)
     (; p_independent) = p
     close(db)
-    u0 = Ribasim.build_state_vector(p_independent)
-    du0 = copy(u0)
-    jac_prototype, _, _ = Ribasim.get_diff_eval(du0, u0, p, config.solver)
+    du0 = Ribasim.build_state_vector(p_independent)
+    jac_prototype, _, _ = Ribasim.get_diff_eval(du0, p, config.solver)
 
     #! format: off
     rows_expected = [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2]
@@ -377,29 +375,29 @@ end
     end
 end
 
-@testitem "flow_to_storage matrix" begin
+@testitem "state_reducer matrix" begin
     using LinearAlgebra: I
     using Ribasim: getaxes
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; basin, flow_to_storage) = model.integrator.p.p_independent
+    (; basin, state_reducer) = model.integrator.p.p_independent
     state_ranges = getaxes(model.integrator.u)
     n_basins = length(basin.node_id)
 
-    @test flow_to_storage[:, state_ranges.evaporation] == -I
-    @test flow_to_storage[:, state_ranges.infiltration] == -I
+    @test state_reducer[:, state_ranges.evaporation] == -I
+    @test state_reducer[:, state_ranges.infiltration] == -I
 
     for node_name in
         [:tabulated_rating_curve, :pump, :outlet, :linear_resistance, :manning_resistance]
         state_range = getproperty(state_ranges, node_name)
-        flow_to_storage_node = flow_to_storage[:, state_range]
+        state_reducer_node = state_reducer[:, state_range]
         # In every column there is either 0 or 1 instance of 1.0 (flow into a basin)
         @test all(
             i -> i ∈ (0, 1),
             count(
                 ==(1.0),
-                collect(flow_to_storage[:, state_ranges.tabulated_rating_curve]);
+                collect(state_reducer[:, state_ranges.tabulated_rating_curve]);
                 dims = 1,
             ),
         )
@@ -409,7 +407,7 @@ end
             i -> i ∈ (0, 1),
             count(
                 ==(1 - 0.0),
-                collect(flow_to_storage[:, state_ranges.tabulated_rating_curve]);
+                collect(state_reducer[:, state_ranges.tabulated_rating_curve]);
                 dims = 1,
             ),
         )

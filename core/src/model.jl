@@ -24,96 +24,6 @@ struct Model
     end
 end
 
-"""
-Whether to fully specialize the ODEProblem and automatically choose an AD chunk size
-for full runtime performance, or not for improved (compilation) latency.
-"""
-const specialize = @load_preference("specialize", true)
-
-"""
-Get the Jacobian evaluation function via DifferentiationInterface.jl.
-The time derivative is also supplied in case a Rosenbrock method is used.
-"""
-function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
-    (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
-    backend = get_ad_type(solver; specialize)
-    sparsity_detector = TracerSparsityDetector()
-    # Use non-zero u to avoid missing connections in the sparsity
-    u_ = copy(u)
-    u_ .= 1
-
-    backend_jac = if solver.sparse
-        AutoSparse(backend; sparsity_detector, coloring_algorithm = GreedyColoringAlgorithm())
-    else
-        backend
-    end
-
-    t = 0.0
-
-    # Activate all nodes to catch all possible state dependencies
-    p_mutable.all_nodes_active = true
-
-    jac_prep = prepare_jacobian(
-        water_balance!,
-        du,
-        backend_jac,
-        u_,
-        Constant(p_independent),
-        Cache(state_time_dependent_cache),
-        Constant(time_dependent_cache),
-        Constant(p_mutable),
-        Constant(t);
-        strict = Val(true),
-    )
-    p_mutable.all_nodes_active = false
-
-    jac_prototype = solver.sparse ? sparsity_pattern(jac_prep) : nothing
-
-    jac(J, u, p, t) = jacobian!(
-        water_balance!,
-        du,
-        J,
-        jac_prep,
-        backend_jac,
-        u,
-        Constant(p.p_independent),
-        Cache(state_time_dependent_cache),
-        Constant(time_dependent_cache),
-        Constant(p.p_mutable),
-        Constant(t),
-    )
-
-    tgrad_prep = prepare_derivative(
-        water_balance!,
-        du,
-        backend,
-        t,
-        Constant(u_),
-        Constant(p_independent),
-        Cache(state_time_dependent_cache),
-        Cache(time_dependent_cache),
-        Constant(p_mutable);
-        strict=Val(true),
-    )
-    tgrad(dT, u, p, t) = derivative!(
-        water_balance!,
-        du,
-        dT,
-        tgrad_prep,
-        backend,
-        t,
-        Constant(u_),
-        Constant(p.p_independent),
-        Cache(state_time_dependent_cache),
-        Cache(time_dependent_cache),
-        Constant(p.p_mutable),
-    )
-
-    time_dependent_cache.t_prev_call[1] = -1.0
-
-    return jac_prototype, jac, tgrad
-end
-
 function Model(config_path::AbstractString)::Model
     config = Config(config_path)
     if !valid_config(config)
@@ -195,10 +105,10 @@ function Model(config::Config)::Model
     du0 = zero(u0)
 
     # The Solver algorithm
-    alg = algorithm(config.solver; u0, specialize)
+    alg = algorithm(config.solver; specialize)
 
     # Synchronize level with storage
-    set_current_basin_properties!(u0, parameters, t0)
+    set_current_basin_properties!(p_independent.u_reduced, parameters, t0)
 
     # Previous level is used to estimate the minimum level that was attained during a time step
     # in limit_flow!
@@ -209,12 +119,9 @@ function Model(config::Config)::Model
     tstops = sort(unique(reduce(vcat, tstops)))
     adaptive, dt = convert_dt(config.solver.dt)
 
-    jac_prototype, jac, tgrad = get_diff_eval(du0, u0, parameters, config.solver)
     RHS = ODEFunction{true, specialize ? FullSpecialize : NoSpecialize}(
         water_balance!;
-        jac_prototype,
-        jac,
-        tgrad,
+        get_diff_eval(du0, parameters, config.solver)...,
     )
     prob = ODEProblem{true, specialize ? FullSpecialize : NoSpecialize}(
         RHS,

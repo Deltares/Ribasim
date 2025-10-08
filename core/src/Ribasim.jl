@@ -49,7 +49,7 @@ using SciMLBase:
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
-using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
+using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector, jacobian_sparsity
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
@@ -177,6 +177,7 @@ include("allocation_init.jl")
 include("allocation_optim.jl")
 include("util.jl")
 include("graph.jl")
+include("differentiation.jl")
 include("model.jl")
 include("read.jl")
 include("write.jl")

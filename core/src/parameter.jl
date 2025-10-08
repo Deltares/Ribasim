@@ -28,8 +28,14 @@ const state_components = (
 )
 const n_components = length(state_components)
 const StateTuple{V} = NamedTuple{state_components, NTuple{n_components, V}}
-const RibasimCVectorType =
-    Ribasim.CArrays.CArray{Float64, 1, Vector{Float64}, StateTuple{UnitRange{Int}}}
+const RibasimCVectorType{T} =
+    Ribasim.CArrays.CArray{T, 1, Vector{T}, StateTuple{UnitRange{Int}}}
+const RibasimReducedCVectorType{T} = Ribasim.CArrays.CArray{
+    T,
+    1,
+    Vector{T},
+    @NamedTuple{combined_cumulative_flows::UnitRange{Int}, integral::UnitRange{Int}}
+}
 
 # LinkType.flow and NodeType.FlowBoundary
 @enumx LinkType flow control none
@@ -783,7 +789,7 @@ const StateTimeDependentCache{T} = @NamedTuple{
     current_flow_rate_pump::Vector{T},
     current_flow_rate_outlet::Vector{T},
     current_error_pid_control::Vector{T},
-    u_prev_call::Vector{T},
+    u_reduced_prev_call::Vector{T},
 } where {T}
 
 @enumx CacheType flow_rate_pump flow_rate_outlet basin_level basin_storage
@@ -1098,7 +1104,7 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
 @kwdef mutable struct ParametersMutable
     all_nodes_active::Bool = false
     new_t = true
-    new_u = true
+    new_u_reduced = true
     tprev::Float64 = 0.0
 end
 
@@ -1134,8 +1140,6 @@ the object itself is not.
     # Per state the in- and outflow links associated with that state (if they exist)
     state_inflow_link::Vector{LinkMetadata} = LinkMetadata[]
     state_outflow_link::Vector{LinkMetadata} = LinkMetadata[]
-    # Sparse matrix for combining flows into storages
-    flow_to_storage::SparseMatrixCSC{Float64, Int64} = spzeros(1, 1)
     # Water balance tolerances
     water_balance_abstol::Float64
     water_balance_reltol::Float64
@@ -1146,9 +1150,12 @@ the object itself is not.
     # Callback configurations
     do_concentration::Bool
     do_subgrid::Bool
-    temp_convergence::RibasimCVectorType
-    convergence::RibasimCVectorType
+    temp_convergence::RibasimCVectorType{Float64}
+    convergence::RibasimCVectorType{Float64}
     ncalls::Vector{Int} = [0]
+    # Reduced state where the cumulative flows are combined into Basin
+    # storages (without non-state cumulative_flows)
+    u_reduced::RibasimReducedCVectorType{Float64}
 end
 
 function StateTimeDependentCache(
@@ -1167,7 +1174,7 @@ function StateTimeDependentCache(
         current_flow_rate_pump = zeros(n_pump),
         current_flow_rate_outlet = zeros(n_outlet),
         current_error_pid_control = zeros(n_pid_control),
-        u_prev_call = getdata(build_state_vector(p_independent)) .- 1.0,
+        u_reduced_prev_call = getdata(p_independent.u_reduced) .- 1.0,
     )
 end
 

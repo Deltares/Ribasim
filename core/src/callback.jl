@@ -506,6 +506,7 @@ function check_water_balance_error!(
 )::Nothing
     (; u, p, t) = integrator
     (; p_independent, state_time_dependent_cache) = p
+    (; u_reduced) = p_independent
     (; current_storage) = state_time_dependent_cache
     (; basin, water_balance_abstol, water_balance_reltol, starttime) = p_independent
     errors = false
@@ -513,7 +514,8 @@ function check_water_balance_error!(
 
     # The initial storage is irrelevant for the storage rate and can only cause
     # floating point truncation errors
-    formulate_storages!(u, p, t; add_initial_storage = false)
+    reduce_state!(u_reduced, u, p_independent)
+    formulate_storages!(u_reduced, p, t; add_initial_storage = false)
 
     evaporation = view(saved_flow.flow, state_ranges.evaporation)
     infiltration = view(saved_flow.flow, state_ranges.infiltration)
