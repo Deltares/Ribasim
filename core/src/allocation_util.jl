@@ -181,7 +181,7 @@ function analyze_infeasibility(
     JuMP.optimize!(problem)
 
     for irreducible_infeasible_subset in data_infeasibility.iis
-        constraint_violations = Dict{JuMP.ConstraintRef, Float64}()
+        constraint_violations = OrderedDict{JuMP.ConstraintRef, Float64}()
         for constraint_index in irreducible_infeasible_subset.constraint
             constraint_ref = constraint_ref_from_index(problem, constraint_index)
             if !isempty(JuMP.name(constraint_ref))
