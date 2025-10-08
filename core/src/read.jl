@@ -1725,30 +1725,148 @@ Load a table from a NetCDF file. The data is stored as multi-dimensional arrays,
 converted to a table for compatibility with the rest of the internals.
 """
 function load_netcdf(table_path::String, table_type::Type{<:Table})::NamedTuple
-    table = NCDataset(table_path) do ds
+    table = OrderedDict{Symbol, AbstractVector}()
+    NCDataset(table_path) do ds
         names = fieldnames(table_type)
-        table = OrderedDict{Symbol, AbstractVector}()
         data_varnames = filter(x -> !(String(x) in nc_dim_names), names)
+
+        # Each table has a node_id dimension, some have priority and time dimensions
+        node_id = timeseries_ids(ds)
+        time_var = findcoord(ds, is_time_coord)
+        priority_var = findcoord(ds, is_priority_coord)
+
+        # Get the size of each dimension.
+        # We treat missing dimensions as having length 1 for simplicity,
+        # since repeating something once has no effect.
+        # This also helps us when e.g. Delft-FEWS adds a time dimension of length 1
+        # to variables that do not need it, like Basin / state.
+        n_node_id = length(node_id)
+        n_time = time_var === nothing ? 1 : length(time_var)
+        n_priority = priority_var === nothing ? 1 : length(priority_var)
+
+        # `repeat` allows us to expand dimensions to make it fit the tabular format.
+        # The `inner` keyword is used to add a dimension before the array.
+        # The `outer` keyword is used to add a dimension after the array.
+        # Use nested repeat calls to add multiple dimensions on one side.
+
+        # repeat (stations) to (stations, priority, time)
+        table[:node_id] = repeat(repeat(node_id; outer = n_priority); outer = n_time)
+
+        if priority_var !== nothing
+            priority = Int32.(Array(priority_var))
+            # repeat (priority) to (stations, priority, time)
+            table[:demand_priority] = repeat(priority; inner = n_node_id, outer = n_time)
+        end
+
+        if time_var !== nothing
+            time = DateTime.(Array(time_var))
+            # repeat (time) to (stations, priority, time)
+            table[:time] = repeat(repeat(time; inner = n_priority); inner = n_node_id)
+        end
+
         for data_varname in data_varnames
             var = ds[data_varname]
-            dim_names = dimnames(var)
-            if dim_names == ("node_id",)
-                table[:node_id] = ds["node_id"][:]
-            elseif dim_names == ("node_id", "time")
-                node_id_data = ds["node_id"][:]
-                time_data = ds["time"][:]
-                ntime = length(time_data)
-                nnode = length(node_id_data)
-                table[:node_id] = repeat(node_id_data; outer = ntime)
-                table[:time] = repeat(time_data; inner = nnode)
+            # For most tables, each data variable has all dimensions of the table.
+            # For "UserDemand / time", variables are either:
+            # - (stations, priority, time) for demand
+            # - (stations, time) for return_factor
+            # - (stations) for min_level
+            # So we have to repeat the 1D and 2D variables to fit the full table.
+            # Note that Delft-FEWS also adds time to min_level.
+            if table_type == Ribasim.Schema.UserDemand.Time
+                if ndims(var) == 1
+                    # repeat (stations) to (stations, priority, time)
+                    arr = Array(var)
+                    data = repeat(repeat(arr; outer = n_priority); outer = n_time)
+                elseif ndims(var) == 2
+                    # repeat (stations, time) to (stations, priority, time)
+                    arr = vec(Array(var))
+                    data = repeat(arr; outer = n_priority)
+                else
+                    data = Array(var)
+                end
             else
-                error("Unsupported dimensions: $dim_names, must be (node_id, [time])")
+                data = Array(var)
             end
-            table[data_varname] = vec(var[:])
+            table[data_varname] = vec(data)
         end
-        table
+    end
+    # columntable does not check lengths, so we do it here
+    n = length(first(values(table)))
+    for (name, col) in pairs(table)
+        if length(col) != n
+            error("Inconsistent lengths in NetCDF file $table_path for variable $name")
+        end
     end
     return columntable(table)
+end
+
+function check_attrib(var::CFVariable, attname::String, attval::String)::Bool
+    if attname in NCDatasets.attribnames(var)
+        return NCDatasets.attrib(var, attname) == attval
+    end
+    return false
+end
+
+function is_time_coord(var::CFVariable)::Bool
+    check_attrib(var, "axis", "T") && return true
+    check_attrib(var, "standard_name", "time") && return true
+    NCDatasets.name(var) == "time" && return true
+    return false
+end
+
+function is_node_id_coord(var::CFVariable)::Bool
+    check_attrib(var, "cf_role", "timeseries_id") && return true
+    NCDatasets.name(var) == "node_id" && return true
+    return false
+end
+
+function is_priority_coord(var::CFVariable)::Bool
+    check_attrib(var, "standard_name", "realization") && return true
+    NCDatasets.name(var) == "realization" && return true
+    return false
+end
+
+"Find coordinate variable based on some condition"
+function findcoord(ds::NCDataset, f::Function)::Union{CFVariable, Nothing}
+    # more generic NCDatasets.varbyattrib function
+    for coord_var_name in keys(ds)
+        coord_var = ds[coord_var_name]
+        f(coord_var) && return coord_var
+    end
+    return nothing
+end
+
+"""
+Get the variable by name or by cf_role attribute
+Delft-FEWS uses `char station_id(stations, char_leng_id)`
+"""
+function timeseries_ids(ds::NCDataset)::Vector{Int32}
+    id_var = findcoord(ds, is_node_id_coord)
+
+    # Support NetCDF3 Char Matrix or anything that can convert to Vector{Int32}
+    id_arr = Array(id_var)
+    if eltype(id_arr) == Char && ndims(id_arr) == 2
+        # strip nulls
+        # assumes first dimension is the character length
+        n_char, n_id = size(id_arr)
+        id_vec = Vector{Int32}(undef, n_id)
+        for i in 1:n_id
+            for c in 1:n_char
+                if id_arr[c, i] == '\0'
+                    str = String(id_arr[1:(c - 1), i])
+                    id_vec[i] = parse(Int32, str)
+                    break
+                elseif c == n_char
+                    str = String(id_arr[:, i])
+                    id_vec[i] = parse(Int32, str)
+                end
+            end
+        end
+        return id_vec
+    else
+        return id_arr
+    end
 end
 
 """
