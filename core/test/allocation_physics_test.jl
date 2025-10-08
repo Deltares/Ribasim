@@ -84,28 +84,21 @@ end
 end
 
 @testitem "Outlet" begin
-    if Sys.islinux()
-        # On Linux Github CI (#2431)
-        # ┌ Warning: At t=0.0, dt was forced below floating point epsilon 5.0e-324, and step error estimate = 1.0. Aborting. There is either an error in your model specification or the true solution is unstable (or the true solution can not be represented in the precision of Float64).
-        @test_broken false
-        return
-    else
-        using DataFrames: DataFrame
+    using DataFrames: DataFrame
 
-        toml_path = normpath(@__DIR__, "../../generated_testmodels/outlet/ribasim.toml")
-        @test ispath(toml_path)
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/outlet/ribasim.toml")
+    @test ispath(toml_path)
 
-        config = Ribasim.Config(toml_path; experimental_allocation = true)
-        model = Ribasim.Model(config)
-        Ribasim.solve!(model)
-        allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
-        flow_table = DataFrame(Ribasim.flow_data(model))
+    config = Ribasim.Config(toml_path; experimental_allocation = true)
+    model = Ribasim.Model(config)
+    Ribasim.solve!(model)
+    allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
+    flow_table = DataFrame(Ribasim.flow_data(model))
 
-        filter!(:link_id => ==(1), allocation_flow_table)
-        filter!(:link_id => ==(1), flow_table)
+    filter!(:link_id => ==(1), allocation_flow_table)
+    filter!(:link_id => ==(1), flow_table)
 
-        @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate atol = 7e-4
-    end
+    @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate atol = 7e-4
 end
 
 @testitem "allocation training" begin
