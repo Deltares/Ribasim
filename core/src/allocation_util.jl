@@ -173,7 +173,7 @@ function analyze_infeasibility(
 
     # We care the most about constraints with names, so give these smaller penalties so
     # that these get relaxed which is more informative
-    constraint_to_penalty = Dict(
+    constraint_to_penalty = OrderedDict(
         violated_constraint => isempty(JuMP.name(violated_constraint)) ? 1.0 : 0.5 for
         violated_constraint in violated_constraints
     )
@@ -181,7 +181,7 @@ function analyze_infeasibility(
     JuMP.optimize!(problem)
 
     for irreducible_infeasible_subset in data_infeasibility.iis
-        constraint_violations = Dict{JuMP.ConstraintRef, Float64}()
+        constraint_violations = OrderedDict{JuMP.ConstraintRef, Float64}()
         for constraint_index in irreducible_infeasible_subset.constraint
             constraint_ref = constraint_ref_from_index(problem, constraint_index)
             if !isempty(JuMP.name(constraint_ref))

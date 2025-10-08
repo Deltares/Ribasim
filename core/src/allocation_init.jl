@@ -129,7 +129,7 @@ function add_conservation!(
     storage_change = problem[:basin_storage_change]
     low_storage_factor = problem[:low_storage_factor]
     flow = problem[:flow]
-    inflow_sum = Dict(
+    inflow_sum = OrderedDict(
         basin_id => sum(
             flow[(other_id, basin_id)] for
             other_id in basin.inflow_ids[basin_id.idx] if
@@ -137,7 +137,7 @@ function add_conservation!(
             init = 0,
         ) for basin_id in basin_ids_subnetwork
     )
-    outflow_sum = Dict(
+    outflow_sum = OrderedDict(
         basin_id => sum(
             flow[(basin_id, other_id)] for
             other_id in basin.outflow_ids[basin_id.idx] if

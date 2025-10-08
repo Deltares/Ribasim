@@ -251,11 +251,11 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     problem::JuMP.Model
     Δt_allocation::Float64
     objectives::AllocationObjectives = AllocationObjectives()
-    cumulative_forcing_volume::Dict{NodeID, Tuple{Float64, Float64}} = Dict()
-    cumulative_boundary_volume::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()
-    cumulative_realized_volume::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()
-    sources::Dict{Int32, NodeID} = OrderedDict()
-    subnetwork_demand::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
+    cumulative_forcing_volume::OrderedDict{NodeID, Tuple{Float64, Float64}} = OrderedDict()
+    cumulative_boundary_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict()
+    cumulative_realized_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict()
+    sources::OrderedDict{Int32, NodeID} = OrderedDict()
+    subnetwork_demand::OrderedDict{Tuple{NodeID, NodeID}, Vector{Float64}} = OrderedDict()
     scaling::ScalingFactors = ScalingFactors()
 end
 
@@ -308,7 +308,8 @@ record_control: A record of all flow rates assigned to pumps and outlets by allo
 @kwdef struct Allocation
     subnetwork_ids::Vector{Int32} = Int32[]
     allocation_models::Vector{AllocationModel} = []
-    primary_network_connections::Dict{Int32, Vector{Tuple{NodeID, NodeID}}} = Dict()
+    primary_network_connections::OrderedDict{Int32, Vector{Tuple{NodeID, NodeID}}} =
+        OrderedDict()
     demand_priorities_all::Vector{Int32} = []
     subnetwork_inlet_source_priority::Int32 = 0
     record_demand::Vector{DemandRecordDatum} = []
@@ -748,7 +749,7 @@ flow_demand_id: connected flow demand node if applicable
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     max_downstream_level::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
+    control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} = OrderedDict()
     control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
     allocation_controlled::Vector{Bool} = fill(false, length(node_id))
@@ -1015,8 +1016,8 @@ storage_demand: The storage change each Basin needs to reach the [min, max] wind
     max_level::Vector{Vector{ScalarConstantInterpolation}} =
         trivial_allocation_itp_fill(demand_priorities, node_id; val = NaN)
     basins_with_demand::Vector{Vector{NodeID}} = []
-    storage_prev::Dict{NodeID, Float64} = Dict()
-    storage_demand::Dict{NodeID, Vector{Float64}} = Dict()
+    storage_prev::OrderedDict{NodeID, Float64} = OrderedDict()
+    storage_demand::OrderedDict{NodeID, Vector{Float64}} = OrderedDict()
 end
 
 """
