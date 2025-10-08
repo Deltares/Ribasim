@@ -7,5 +7,3 @@ guide/data/
 *.html
 *.quarto_ipynb
 objects.json
-
-**/*.quarto_ipynb
