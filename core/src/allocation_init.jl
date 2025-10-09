@@ -129,13 +129,13 @@ function add_conservation!(
     storage_change = problem[:basin_storage_change]
     low_storage_factor = problem[:low_storage_factor]
     flow = problem[:flow]
-    inflow_sum = Dict(
+    inflow_sum = OrderedDict(
         basin_id => sum(
             flow[(other_id, basin_id)] for other_id in basin.inflow_ids[basin_id.idx];
             init = 0,
         ) for basin_id in basin_ids_subnetwork
     )
-    outflow_sum = Dict(
+    outflow_sum = OrderedDict(
         basin_id => sum(
             flow[(basin_id, other_id)] for other_id in basin.outflow_ids[basin_id.idx];
             init = 0,
@@ -642,7 +642,7 @@ function add_demand_objectives!(
     level_demand_error = problem[:level_demand_error]
 
     # Collect data to define average errors for second objectives per demand priority
-    first_objective_expressions = Dict{Int, JuMP.AffExpr}()
+    first_objective_expressions = OrderedDict{Int, JuMP.AffExpr}()
     demand_priorities_flow_unit = Int32[]
     demand_priorities_storage_unit = Int[]
 

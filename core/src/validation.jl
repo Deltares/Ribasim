@@ -247,7 +247,7 @@ Test whether static or discrete controlled flow rates are indeed non-negative.
 function valid_flow_rates(
     node_id::Vector{NodeID},
     flow_rate::Vector{ScalarLinearInterpolation},
-    control_mapping::Dict{Tuple{NodeID, String}, <:ControlStateUpdate},
+    control_mapping::OrderedDict{Tuple{NodeID, String}, <:ControlStateUpdate},
 )::Bool
     errors = false
 

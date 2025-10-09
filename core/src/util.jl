@@ -12,7 +12,7 @@ function pkgversion(m::Module)::VersionNumber
 end
 
 """Get the storage of a basin from its level."""
-function get_storage_from_level(basin::Basin, state_idx::Int, level::Float64)::Float64
+function get_storage_from_level(basin::Basin, state_idx::Int, level::AbstractFloat)::Float64
     level_to_area = basin.level_to_area[state_idx]
     if level < level_to_area.t[1]
         0.0
@@ -199,10 +199,11 @@ Replace the truth states in the logic mapping which contain wildcards with
 all possible explicit truth states.
 """
 function expand_logic_mapping(
-    logic_mapping::Vector{Dict{String,String}},
+    logic_mapping::Vector{Dict{String, String}},
     node_ids::Vector{NodeID},
-)::Vector{Dict{Vector{Bool},String}}
-    logic_mapping_expanded = [Dict{Vector{Bool},String}() for _ in eachindex(node_ids)]
+)::Vector{OrderedDict{Vector{Bool}, String}}
+    logic_mapping_expanded =
+        [OrderedDict{Vector{Bool}, String}() for _ in eachindex(node_ids)]
     pattern = r"^[TF\*]+$"
 
     for node_id in node_ids
@@ -576,7 +577,7 @@ function set_discrete_controlled_variable_refs!(
     for nodetype in propertynames(p_independent)
         node = getfield(p_independent, nodetype)
         if node isa AbstractParameterNode && hasfield(typeof(node), :control_mapping)
-            control_mapping::Dict{Tuple{NodeID,String},ControlStateUpdate} =
+            control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
                 node.control_mapping
 
             for ((node_id, control_state), control_state_update) in control_mapping
