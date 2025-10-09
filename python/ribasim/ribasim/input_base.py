@@ -623,8 +623,8 @@ class NodeModel(ChildModel):
     @classmethod
     def set_sort_keys(cls, v: object, info: ValidationInfo) -> object:
         """Set sort keys for all TableModels if present in FieldInfo."""
-        if isinstance(v, TableModel):
-            field = cls.model_fields[getattr(info, "field_name")]
+        if isinstance(v, TableModel) and info.field_name is not None:
+            field = cls.model_fields[info.field_name]
             extra = field.json_schema_extra
             if extra is not None and isinstance(extra, dict):
                 # We set sort_keys ourselves as list[str] in json_schema_extra
