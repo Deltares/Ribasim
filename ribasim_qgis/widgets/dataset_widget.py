@@ -127,7 +127,7 @@ class DatasetWidget(QWidget):
             on_top,
             labels,
         )
-        layer.setCustomProperty("ribasim_path", self.path.as_posix())
+        layer.setCustomProperty("ribasim_path", str(self.path.as_posix()))
         return layer
 
     def add_item_to_qgis(self, item) -> None:

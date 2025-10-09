@@ -241,7 +241,7 @@ class FileModel(BaseModel, ABC):
 
     @field_serializer("filepath")
     def _serialize_path(self, path: Path) -> str:
-        return path.as_posix()
+        return str(path.as_posix())
 
     @classmethod
     @abstractmethod
@@ -329,7 +329,7 @@ class TableModel[TableT: _BaseSchema](FileModel):
 
     @model_serializer
     def _set_model(self) -> "str | None":
-        return self.filepath.as_posix() if self.filepath is not None else None
+        return str(self.filepath.as_posix()) if self.filepath is not None else None
 
     @classmethod
     def tablename(cls) -> str:
