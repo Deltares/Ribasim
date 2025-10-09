@@ -7,7 +7,7 @@ from contextlib import closing
 from contextvars import ContextVar
 from pathlib import Path
 from sqlite3 import connect
-from typing import Any, Generic, TypeVar, cast
+from typing import Any, TypeVar, cast
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -262,7 +262,7 @@ class FileModel(BaseModel, ABC):
         raise NotImplementedError()
 
 
-class TableModel(FileModel, Generic[TableT]):
+class TableModel[TableT: _BaseSchema](FileModel):
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
     _sort_keys: list[str] = PrivateAttr(default=[])
 
@@ -559,7 +559,7 @@ class TableModel(FileModel, Generic[TableT]):
         return self.df.loc[self.df["node_id"].isin(np_index), :]
 
 
-class SpatialTableModel(TableModel[TableT], Generic[TableT]):
+class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
     df: GeoDataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
 
     def sort(self):
