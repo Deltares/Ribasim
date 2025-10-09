@@ -193,3 +193,20 @@ end
     @test all(isapprox.(link1.flow_rate, vlink1.flow_rate; atol = 1e-2))
     @test all(isapprox.(link3.flow_rate, vlink3.flow_rate; atol = 1e-2))
 end
+
+@testitem "Primary Secondary Network Model" begin
+    using Ribasim
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/medium_primary_secondary_network/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    config = Ribasim.Config(toml_path; experimental_allocation = true)
+    model = Ribasim.Model(config)
+    Ribasim.solve!(model)
+    allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
+    basin_data = DataFrame(Ribasim.basin_data(model))
+end
