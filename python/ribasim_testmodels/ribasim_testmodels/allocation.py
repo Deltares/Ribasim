@@ -517,12 +517,12 @@ def medium_primary_secondary_network_model() -> Model:
     )
 
     model.level_demand.add(
-        Node(18, Point(2.5, 1), subnetwork_id=1),
+        Node(18, Point(2.5, -0.5), subnetwork_id=1),
         [level_demand.Static(min_level=[0.5], demand_priority=1)],
     )
 
     model.level_demand.add(
-        Node(19, Point(0, 2), subnetwork_id=2),
+        Node(19, Point(1, 2), subnetwork_id=2),
         [level_demand.Static(min_level=[0.5], demand_priority=2)],
     )
 
