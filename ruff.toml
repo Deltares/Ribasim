@@ -1,5 +1,5 @@
 exclude = ["ribasim_qgis/tomllib/*"]
-target-version = "py311"
+target-version = "py312"
 
 [lint]
 # See https://docs.astral.sh/ruff/rules/
