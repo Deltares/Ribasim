@@ -259,7 +259,6 @@ pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
 python = ">=3.12"
-qgis = "3.40.*"
 qgis-plugin-manager = "*"
 quartodoc = "*"
 ruff = "*"
@@ -289,9 +288,11 @@ python = "3.13.*"
 
 [target.win-64.dependencies]
 rcedit = "*"
+qgis = ">=3.34,<4"
 quarto = "*"
 
 [target.linux-64.dependencies]
+qgis = ">=3.34,<4"
 quarto = "*"
 
 [target.osx-arm64.dependencies]
