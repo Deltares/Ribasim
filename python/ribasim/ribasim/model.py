@@ -181,7 +181,7 @@ class Model(FileModel):
 
     @field_serializer("input_dir", "results_dir")
     def _serialize_path(self, path: Path) -> str:
-        return str(path.as_posix())
+        return path.as_posix()
 
     def model_post_init(self, __context: Any) -> None:
         # When serializing we exclude fields that are set to their default values
