@@ -2,8 +2,8 @@
 The right hand side function of the system of ODEs set up by Ribasim.
 """
 water_balance!(du::CVector, u::CVector, p::Parameters, t::Number)::Nothing = water_balance!(
-    du,
-    u,
+    du::RibasimCVectorType,
+    u::RibasimCVectorType,
     p.p_independent,
     p.state_time_dependent_cache::StateTimeDependentCache,
     p.time_dependent_cache,
@@ -11,29 +11,10 @@ water_balance!(du::CVector, u::CVector, p::Parameters, t::Number)::Nothing = wat
     t,
 )
 
-# Method with `t` as second argument parsable by DifferentiationInterface.jl for time derivative computation
-water_balance!(
-    du::CVector,
-    t::Number,
-    u::CVector,
-    p_independent::ParametersIndependent,
-    state_time_dependent_cache::StateTimeDependentCache,
-    time_dependent_cache::TimeDependentCache,
-    p_mutable::ParametersMutable,
-) = water_balance!(
-    du,
-    u,
-    p_independent,
-    state_time_dependent_cache,
-    time_dependent_cache,
-    p_mutable,
-    t,
-)
-
-# Method with separate parameter parsable by DifferentiationInterface.jl for Jacobian computation
+# Method where u is already parsed to u_reduced so this part is skipped in AD Jacobian computation
 function water_balance!(
-    du::CVector,
-    u::CVector,
+    du::RibasimCVectorType,
+    u_reduced::RibasimReducedCVectorType,
     p_independent::ParametersIndependent,
     state_time_dependent_cache::StateTimeDependentCache,
     time_dependent_cache::TimeDependentCache,
@@ -48,12 +29,12 @@ function water_balance!(
     )
 
     # Check whether t or u is different from the last water_balance! call
-    check_new_input!(p, u, t)
+    check_new_input!(p, u_reduced, t)
 
     du .= 0.0
 
     # Ensures current_* vectors are current
-    set_current_basin_properties!(u, p, t)
+    set_current_basin_properties!(u_reduced, p, t)
 
     # Notes on the ordering of these formulations:
     # - Continuous control can depend on flows (which are not continuously controlled themselves),
@@ -74,7 +55,7 @@ function water_balance!(
     formulate_flows!(du, p, t; control_type = ContinuousControlType.Continuous)
 
     # Compute PID control
-    formulate_pid_control!(du, u, p, t)
+    formulate_pid_control!(du, u_reduced, p, t)
 
     # Formulate intermediate flow (controlled by PID control)
     formulate_flows!(du, p, t; control_type = ContinuousControlType.PID)
@@ -117,7 +98,11 @@ end
 Compute the storages, levels and areas of all Basins given the
 state u and the time t.
 """
-function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::Nothing
+function set_current_basin_properties!(
+    u_reduced::RibasimReducedCVectorType,
+    p::Parameters,
+    t::Number,
+)::Nothing
     (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
     (; basin) = p_independent
     (;
@@ -144,8 +129,8 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
             cumulative_drainage + dt * vertical_flux.drainage
     end
 
-    if p_mutable.new_t || p_mutable.new_u
-        formulate_storages!(u, p, t)
+    if p_mutable.new_t || p_mutable.new_u_reduced
+        formulate_storages!(u_reduced, p, t)
         @threads for i in eachindex(basin.node_id)
             id = basin.node_id[i]
             s = state_time_dependent_cache.current_storage[i]
@@ -161,13 +146,13 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
 end
 
 function formulate_storages!(
-    u::CVector,
+    u_reduced::RibasimReducedCVectorType,
     p::Parameters,
     t::Number;
     add_initial_storage::Bool = true,
 )::Nothing
     (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
-    (; basin, flow_boundary, flow_to_storage) = p_independent
+    (; basin, flow_boundary) = p_independent
     (; current_storage) = state_time_dependent_cache
     # Current storage: initial condition +
     # total inflows and outflows since the start
@@ -178,7 +163,7 @@ function formulate_storages!(
         current_storage .= 0.0
     end
 
-    mul!(current_storage, flow_to_storage, u, 1, 1)
+    current_storage .+= u_reduced.combined_cumulative_flows
     current_storage .+= time_dependent_cache.basin.current_cumulative_precipitation
     current_storage .+= time_dependent_cache.basin.current_cumulative_surface_runoff
     current_storage .+= time_dependent_cache.basin.current_cumulative_drainage
@@ -221,8 +206,8 @@ function update_vertical_flux!(du::CVector, p::Parameters)::Nothing
 end
 
 function set_error!(pid_control::PidControl, p::Parameters, t::Number)
-    (; state_time_dependent_cache, time_dependent_cache, p_mutable) = p
-    (; current_level, current_error_pid_control, current_area) = state_time_dependent_cache
+    (; state_time_dependent_cache, time_dependent_cache) = p
+    (; current_level, current_error_pid_control) = state_time_dependent_cache
     (; current_target) = time_dependent_cache.pid_control
     (; listen_node_id, target) = pid_control
 
@@ -235,7 +220,12 @@ function set_error!(pid_control::PidControl, p::Parameters, t::Number)
     end
 end
 
-function formulate_pid_control!(du::CVector, u::CVector, p::Parameters, t::Number)::Nothing
+function formulate_pid_control!(
+    du::CVector,
+    u_reduced::CVector,
+    p::Parameters,
+    t::Number,
+)::Nothing
     (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
     (; current_proportional, current_integral, current_derivative) =
         time_dependent_cache.pid_control
@@ -249,7 +239,7 @@ function formulate_pid_control!(du::CVector, u::CVector, p::Parameters, t::Numbe
     for i in eachindex(node_id)
         if !(active[i] || all_nodes_active)
             du.integral[i] = 0.0
-            u.integral[i] = 0.0
+            u_reduced.integral[i] = 0.0
             continue
         end
 
@@ -277,7 +267,7 @@ function formulate_pid_control!(du::CVector, u::CVector, p::Parameters, t::Numbe
         end
 
         if !iszero(K_i)
-            flow_rate += K_i * u.integral[i] / D
+            flow_rate += K_i * u_reduced.integral[i] / D
         end
 
         if !iszero(K_d)
@@ -808,13 +798,16 @@ function limit_flow!(
         tabulated_rating_curve,
         basin,
         allocation,
+        u_reduced,
     ) = p_independent
     (; current_storage, current_level) = state_time_dependent_cache
 
     # The current storage and level based on the proposed u are used to estimate the lowest
     # storage and level attained in the last time step to estimate whether there was an effect
     # of reduction factors
-    set_current_basin_properties!(u, p, t)
+
+    reduce_state!(u_reduced, u, p_independent)
+    set_current_basin_properties!(u_reduced, p, t)
 
     # TabulatedRatingCurve flow is in [0, ∞) and can be inactive
     for (id, active) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.active)
