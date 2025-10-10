@@ -29,9 +29,6 @@ jobs:
           git config --global user.name "github-actions[bot]"
       - uses: actions/checkout@v5
       - uses: julia-actions/cache@v2
-        with:
-          cache-compiled: "true"
-          cache-registries: "true"
       - uses: prefix-dev/setup-pixi@v0.9.1
         with:
           pixi-version: "latest"
