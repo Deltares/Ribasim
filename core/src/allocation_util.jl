@@ -204,6 +204,7 @@ function analyze_infeasibility(
             end
         end
         @error "Set of incompatible constraints found" constraint_violations
+        status = JuMP.INFEASIBLE
     end
     return status
 end
