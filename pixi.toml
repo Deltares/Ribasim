@@ -98,7 +98,7 @@ test-ribasim-migration = { cmd = "pytest --numprocesses=4 -m regression python/r
         "hws_migration_test/",
     ] },
 ] }
-test-ribasim-core-cov = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, coverage=true)'", env = { "JULIA_CONDAPKG_BACKEND" = "Null" }, depends-on = [
+test-ribasim-core-cov = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, coverage=true)'", depends-on = [
     "generate-testmodels",
 ] }
 test-ribasim-regression = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"regression\"])'", depends-on = [

@@ -1,27 +1,26 @@
-using Artifacts
-using PackageCompiler
 using TOML
 using LibGit2
+using JuliaC
 
 function (@main)(_)::Cint
-    project_dir = "../core"
-    license_file = "../LICENSE"
-    output_dir = "ribasim"
-    git_repo = ".."
+    project_dir = "core"
+    license_file = "LICENSE"
+    output_dir = "build/ribasim"
+    git_repo = "."
 
-    # change directory to this script's location
-    cd(@__DIR__)
-
-    create_library(
-        project_dir,
-        output_dir;
-        lib_name = "libribasim",
-        precompile_execution_file = "precompile.jl",
-        include_lazy_artifacts = false,
-        include_transitive_dependencies = false,
-        include_preferences = true,
-        force = true,
+    image_recipe = ImageRecipe(;
+        output_type = "--output-lib",
+        file = "build/libribasim.jl",
+        project = project_dir,
+        add_ccallables = true,
+        verbose = true,
     )
+    link_recipe = LinkRecipe(; image_recipe, outname = "build/ribasim/libribasim")
+    bundle_recipe = BundleRecipe(; link_recipe, output_dir)
+
+    compile_products(image_recipe)
+    link_products(link_recipe)
+    bundle_products(bundle_recipe)
 
     add_metadata(project_dir, license_file, output_dir, git_repo, readme_start)
 
@@ -33,9 +32,9 @@ function (@main)(_)::Cint
         env["RUSTFLAGS"] = "-C link-args=/STACK:8388608"
     end
 
-    run(Cmd(`cargo build --release`; dir = "cli", env))
+    run(Cmd(`cargo build --release`; dir = "build/cli", env))
     ribasim = Sys.iswindows() ? "ribasim.exe" : "ribasim"
-    cp("cli/target/release/$ribasim", "ribasim/$ribasim"; force = true)
+    cp("build/cli/target/release/$ribasim", "build/ribasim/$ribasim"; force = true)
     return 0
 end
 
@@ -77,14 +76,12 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
         TOML.print(io, dict)
     end
 
-    # a stripped Project.toml is already added in the same location by PackageCompiler
-    # however it is better to copy the original, since it includes the version and compat
+    # Copy the Project.toml and Manifest.toml so we can see all dependencies and versions
     cp(
         normpath(project_dir, "Project.toml"),
         normpath(output_dir, "share/julia/Project.toml");
         force = true,
     )
-    # the Manifest.toml always gives the exact version of Ribasim that was built
     cp(
         normpath(git_repo, "Manifest.toml"),
         normpath(output_dir, "share/julia/Manifest.toml");
@@ -128,5 +125,5 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
     end
 
     # Override the Cargo.toml file with the git version
-    set_version("cli/Cargo.toml", tag)
+    set_version("build/cli/Cargo.toml", tag)
 end
