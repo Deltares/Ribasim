@@ -160,8 +160,6 @@ using Printf: @sprintf
 
 using Base.Threads: @threads
 
-export libribasim
-
 include("carrays.jl")
 using .CArrays: CVector, getaxes, getdata
 include("schema.jl")
@@ -183,7 +181,6 @@ include("bmi.jl")
 include("callback.jl")
 include("concentration.jl")
 include("main.jl")
-include("libribasim.jl")
 
 @setup_workload begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
