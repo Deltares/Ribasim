@@ -501,7 +501,7 @@ class TableModel[TableT: _BaseSchema](FileModel):
         directory = context_file_loading.get().get("directory", Path("."))
         full_path = directory / path
 
-        with xr.open_dataset(full_path, engine="netcdf4") as ds:
+        with xr.open_dataset(full_path) as ds:
             df = ds.to_dataframe().reset_index()
 
         return df
