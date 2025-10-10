@@ -62,11 +62,9 @@ class DatasetWidget:
         from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
 
         self.ribasim_widget = cast(RibasimWidget, parent)
-        # self.open_model_button = QPushButton("Open")
-        # self.open_model_button.clicked.connect(self.open_model)
         self.link_layer: QgsVectorLayer | None = None
         self.node_layer: QgsVectorLayer | None = None
-        self.path: Path | None = None
+        self.path: Path = Path("")
 
         # Results
         self.flow_layer: QgsVectorLayer | None = None
@@ -220,7 +218,9 @@ class DatasetWidget:
     def open_model(self, path=None) -> None:
         """Open a Ribasim model file."""
         if not path:
-            path, _ = QFileDialog.getOpenFileName(self, "Select file", "", "*.toml")
+            path, _ = QFileDialog.getOpenFileName(
+                self.ribasim_widget, "Select file", "", "*.toml"
+            )
         self._open_model(path)
 
     def _open_model(self, path: str) -> None:
