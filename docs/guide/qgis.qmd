@@ -7,8 +7,6 @@ title: "QGIS plugin"
 This guide assumes you have already installed the Ribasim core, test models and QGIS plugin as described in the [install page](/install.qmd).
 As an example of an existing model, you can use the "basic" model from `generated_testmodels.zip`.
 
-![](https://user-images.githubusercontent.com/4471859/224939126-b38f0eed-2e89-4120-b541-5b8c31798c09.png){fig-align="left"}
-
 # Running a model
 
 - Install the Ribasim core application as described in the [install section](/install.qmd)
