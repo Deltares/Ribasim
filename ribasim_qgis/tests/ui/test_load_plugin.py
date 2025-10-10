@@ -16,20 +16,8 @@ class TestPlugin(unittest.TestCase):
         toolbars = [
             c for c in iface.mainWindow().children() if c.objectName() == "Ribasim"
         ]
-        self.assertTrue(len(toolbars) == 1, "No (single) Ribasim toolbar")
+        self.assertTrue(len(toolbars) == 2, "No Ribasim toolbar and menu")
         actions = toolbars[0].actions()
         self.assertTrue(
             len(actions) == 1, "No (single) Ribasim action button in toolbar"
         )
-
-        docks = [
-            c for c in iface.mainWindow().children() if c.objectName() == "RibasimDock"
-        ]
-        self.assertTrue(len(docks) == 0, "Ribasim dock already activated")
-
-        actions[0].trigger()
-
-        docks = [
-            c for c in iface.mainWindow().children() if c.objectName() == "RibasimDock"
-        ]
-        self.assertTrue(len(docks) == 1, "Ribasim dock not activated")

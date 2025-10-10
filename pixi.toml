@@ -300,3 +300,6 @@ py312 = ["py312"]
 
 [system-requirements]
 linux = "3.10.0"
+
+[activation.env]
+JULIA_CONDAPKG_BACKEND = "Null"
