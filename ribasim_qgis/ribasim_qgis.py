@@ -1,11 +1,12 @@
 """Setup a dockwidget to hold the ribasim plugin widgets."""
 
-import tomllib
 from pathlib import Path
 
 from qgis.gui import QgsCustomDropHandler
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
+
+import ribasim_qgis.tomllib as tomllib
 
 icondir = Path(__file__).parent
 
