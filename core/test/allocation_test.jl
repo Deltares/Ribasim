@@ -622,7 +622,7 @@ end
     end
 
     @test_broken logger.logs[5].level == Error
-    @tes_broken logger.logs[5].message == "Set of incompatible constraints found"
+    @test_broken logger.logs[5].message == "Set of incompatible constraints found"
     # @test sort(name.(keys(logger.logs[5].kwargs[:constraint_violations]))) == [
     #     "linear_resistance_constraint[LinearResistance #2]",
     #     "volume_conservation[Basin #1]",
