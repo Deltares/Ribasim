@@ -20,10 +20,10 @@ flow_conservation_outlet_Outlet_#55_: 1 flow_(Basin_#54,_Outlet_#55)_ - 1 flow_(
 flow_conservation_tabulated_rating_curve_TabulatedRatingCurve_#46_: 1 flow_(Basin_#42,_TabulatedRatingCurve_#46)_ - 1 flow_(TabulatedRatingCurve_#46,_Basin_#48)_ = 0
 flow_conservation_tabulated_rating_curve_TabulatedRatingCurve_#47_: 1 flow_(Basin_#44,_TabulatedRatingCurve_#47)_ - 1 flow_(TabulatedRatingCurve_#47,_Basin_#50)_ = 0
 flow_conservation_tabulated_rating_curve_TabulatedRatingCurve_#52_: 1 flow_(Basin_#48,_TabulatedRatingCurve_#52)_ - 1 flow_(TabulatedRatingCurve_#52,_Basin_#54)_ = 0
-volume_conservation_Basin_#35_: 1 basin_storage_change_Basin_#35_ + 1 low_storage_factor_Basin_#35_ + 1 flow_(Basin_#35,_Outlet_#36)_ + 1 flow_(Basin_#35,_UserDemand_#34)_ + 1 flow_(Basin_#35,_Pump_#39)_ - 1 flow_(UserDemand_#34,_Basin_#35)_ = 1
+volume_conservation_Basin_#35_: 1 basin_storage_change_Basin_#35_ + 1 low_storage_factor_Basin_#35_ - 1 flow_(Pump_#38,_Basin_#35)_ + 1 flow_(Basin_#35,_Outlet_#36)_ + 1 flow_(Basin_#35,_UserDemand_#34)_ + 1 flow_(Basin_#35,_Pump_#39)_ - 1 flow_(UserDemand_#34,_Basin_#35)_ = 1
 volume_conservation_Basin_#40_: 1 basin_storage_change_Basin_#40_ + 1 low_storage_factor_Basin_#40_ - 1 flow_(Outlet_#41,_Basin_#40)_ + 1 flow_(Basin_#40,_UserDemand_#45)_ - 1 flow_(UserDemand_#45,_Basin_#40)_ = 1
 volume_conservation_Basin_#42_: 1 basin_storage_change_Basin_#42_ + 1 low_storage_factor_Basin_#42_ - 1 flow_(Pump_#39,_Basin_#42)_ + 1 flow_(Basin_#42,_Outlet_#41)_ + 1 flow_(Basin_#42,_TabulatedRatingCurve_#46)_ + 1 flow_(Basin_#42,_Outlet_#43)_ = 1
-volume_conservation_Basin_#44_: 1 basin_storage_change_Basin_#44_ + 1 low_storage_factor_Basin_#44_ - 1 flow_(Outlet_#43,_Basin_#44)_ + 1 flow_(Basin_#44,_TabulatedRatingCurve_#47)_ + 1 flow_(Basin_#44,_UserDemand_#57)_ - 1 flow_(UserDemand_#57,_Basin_#44)_ = 1
+volume_conservation_Basin_#44_: 1 basin_storage_change_Basin_#44_ + 1 low_storage_factor_Basin_#44_ - 1 flow_(Outlet_#43,_Basin_#44)_ + 1 flow_(Basin_#44,_TabulatedRatingCurve_#47)_ + 1 flow_(Basin_#44,_UserDemand_#57)_ - 1 flow_(UserDemand_#57,_Basin_#44)_ - 1 flow_(FlowBoundary_#59,_Basin_#44)_ = 1
 volume_conservation_Basin_#48_: 1 basin_storage_change_Basin_#48_ + 1 low_storage_factor_Basin_#48_ - 1 flow_(TabulatedRatingCurve_#46,_Basin_#48)_ + 1 flow_(Basin_#48,_Pump_#49)_ + 1 flow_(Basin_#48,_TabulatedRatingCurve_#52)_ + 1 flow_(Basin_#48,_UserDemand_#51)_ = 1
 volume_conservation_Basin_#50_: 1 basin_storage_change_Basin_#50_ + 1 low_storage_factor_Basin_#50_ - 1 flow_(Pump_#49,_Basin_#50)_ + 1 flow_(Basin_#50,_UserDemand_#53)_ - 1 flow_(TabulatedRatingCurve_#47,_Basin_#50)_ - 1 flow_(UserDemand_#53,_Basin_#50)_ = 1
 volume_conservation_Basin_#54_: 1 basin_storage_change_Basin_#54_ + 1 low_storage_factor_Basin_#54_ - 1 flow_(TabulatedRatingCurve_#52,_Basin_#54)_ - 1 flow_(UserDemand_#51,_Basin_#54)_ + 1 flow_(Basin_#54,_Outlet_#55)_ = 1
@@ -36,11 +36,11 @@ outlet_constraint_Outlet_#36_: -1 low_storage_factor_Basin_#35_ + 1 flow_(Basin_
 outlet_constraint_Outlet_#41_: -1 low_storage_factor_Basin_#42_ + 1 flow_(Basin_#42,_Outlet_#41)_ = 0
 outlet_constraint_Outlet_#43_: -1 low_storage_factor_Basin_#42_ + 1 flow_(Basin_#42,_Outlet_#43)_ = 0
 outlet_constraint_Outlet_#55_: -1 low_storage_factor_Basin_#54_ + 1 flow_(Basin_#54,_Outlet_#55)_ = 0
-c26: 1 flow_(Basin_#35,_UserDemand_#34)_ - 1 user_demand_allocated_UserDemand_#34,2_ = 0
-c27: 1 flow_(Basin_#40,_UserDemand_#45)_ - 1 user_demand_allocated_UserDemand_#45,1_ = 0
-c28: 1 flow_(Basin_#48,_UserDemand_#51)_ - 1 user_demand_allocated_UserDemand_#51,3_ = 0
-c29: 1 flow_(Basin_#50,_UserDemand_#53)_ - 1 user_demand_allocated_UserDemand_#53,3_ = 0
-c30: 1 flow_(Basin_#44,_UserDemand_#57)_ - 1 user_demand_allocated_UserDemand_#57,2_ = 0
+user_demand_allocated_sum_constraint_UserDemand_#34_: 1 flow_(Basin_#35,_UserDemand_#34)_ - 1 user_demand_allocated_UserDemand_#34,2_ = 0
+user_demand_allocated_sum_constraint_UserDemand_#45_: 1 flow_(Basin_#40,_UserDemand_#45)_ - 1 user_demand_allocated_UserDemand_#45,1_ = 0
+user_demand_allocated_sum_constraint_UserDemand_#51_: 1 flow_(Basin_#48,_UserDemand_#51)_ - 1 user_demand_allocated_UserDemand_#51,3_ = 0
+user_demand_allocated_sum_constraint_UserDemand_#53_: 1 flow_(Basin_#50,_UserDemand_#53)_ - 1 user_demand_allocated_UserDemand_#53,3_ = 0
+user_demand_allocated_sum_constraint_UserDemand_#57_: 1 flow_(Basin_#44,_UserDemand_#57)_ - 1 user_demand_allocated_UserDemand_#57,2_ = 0
 user_demand_return_flow_UserDemand_#34_: -0.5 flow_(Basin_#35,_UserDemand_#34)_ + 1 flow_(UserDemand_#34,_Basin_#35)_ = 0
 user_demand_return_flow_UserDemand_#45_: -0.5 flow_(Basin_#40,_UserDemand_#45)_ + 1 flow_(UserDemand_#45,_Basin_#40)_ = 0
 user_demand_return_flow_UserDemand_#51_: -0.5 flow_(Basin_#48,_UserDemand_#51)_ + 1 flow_(UserDemand_#51,_Basin_#54)_ = 0
@@ -93,6 +93,7 @@ Bounds
 0 <= flow_(UserDemand_#53,_Basin_#50)_ <= 86400000
 0 <= flow_(Basin_#44,_UserDemand_#57)_ <= 86400000
 0 <= flow_(UserDemand_#57,_Basin_#44)_ <= 86400000
+0 <= flow_(FlowBoundary_#59,_Basin_#44)_ <= 86400000
 0 <= user_demand_allocated_UserDemand_#34,2_ <= 2
 0 <= user_demand_allocated_UserDemand_#45,1_ <= 2
 0 <= user_demand_allocated_UserDemand_#51,3_ <= 2
