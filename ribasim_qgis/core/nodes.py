@@ -36,9 +36,6 @@ class Table:
         self.input_type = input_type
         self._path = path
 
-    def nodetype(self):
-        return self.input_type.split("/")[0].strip()
-
     @property
     def labels(self) -> Any:
         return None

@@ -189,10 +189,12 @@ class DatasetWidget:
             ids = []
             selection = QgsFeatureRequest().setFilterFids(feature_ids)
             for rel in relationships:
-                for feature in rel.referencedLayer().getFeatures(selection):
-                    ids.extend(f.id() for f in rel.getRelatedFeatures(feature))
+                if rel.isValid() and rel.referencedLayer():
+                    for feature in rel.referencedLayer().getFeatures(selection):
+                        ids.extend(f.id() for f in rel.getRelatedFeatures(feature))
 
-            rel.referencingLayer().selectByIds(ids)
+            if rel.isValid() and rel.referencingLayer():
+                rel.referencingLayer().selectByIds(ids)
 
         # When the Node selection changes, filter all related tables
         link_rels = []

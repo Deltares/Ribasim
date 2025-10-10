@@ -41,7 +41,7 @@ class RibasimPlugin:
         self.pluginIsActive = True
         self.drop_handler = RibasimDropHandler(self)
 
-    def add_action(self, icon_name, text="", callback=None, add_to_menu=True):
+    def add_action(self, icon_name, text="", callback=None):
         icon = QIcon(str(self.plugin_dir / icon_name))
         action = QAction(
             icon,
@@ -49,17 +49,15 @@ class RibasimPlugin:
             self.iface.mainWindow(),
         )
         action.triggered.connect(callback)
-        if add_to_menu:
-            self.toolbar.addAction(action)
-        if add_to_menu:
-            self.iface.addPluginToMenu("Ribasim", action)
+        self.toolbar.addAction(action)
+        self.iface.addPluginToMenu("Ribasim", action)
 
         return action
 
     def initGui(self):
         icon_name = "icon.png"
         self.action_ribasim = self.add_action(
-            icon_name, "Open Ribasim Model", self.open_model, True
+            icon_name, "Open Ribasim Model", self.open_model
         )
         self.iface.registerCustomDropHandler(self.drop_handler)
 
