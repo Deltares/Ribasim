@@ -362,6 +362,7 @@ def generate(
 
     basins = pd.read_feather(model.results_path / "basin.arrow")
     flows = pd.read_feather(model.results_path / "flow.arrow")
+    endtime = min(basins.time.max(), flows.time.max())
 
     if output_path is None:
         assert model.filepath is not None
@@ -582,7 +583,7 @@ def generate(
     shutil.copy(dimrc, output_path / "dimr_config.xml")
 
     # Write main Delwaq input file
-    endtime = min(basins.time.max(), flows.time.max())
+
     if model.endtime > endtime:
         logger.warning(
             f"Model endtime {model.endtime} is later than the result time {endtime}, adjusting endtime."
