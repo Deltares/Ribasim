@@ -249,7 +249,6 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#clean-slate-tests" id="toc-clean-slate-tests" class="nav-link active" data-scroll-target="#clean-slate-tests"><span class="header-section-number">1</span> Clean slate tests</a>
   <ul class="collapse">
   <li><a href="#enable-and-disable" id="toc-enable-and-disable" class="nav-link" data-scroll-target="#enable-and-disable"><span class="header-section-number">1.1</span> Enable and disable</a></li>
-  <li><a href="#open-and-close" id="toc-open-and-close" class="nav-link" data-scroll-target="#open-and-close"><span class="header-section-number">1.2</span> Open and close</a></li>
   </ul></li>
   <li><a href="#model-tab-button-interaction-tests" id="toc-model-tab-button-interaction-tests" class="nav-link" data-scroll-target="#model-tab-button-interaction-tests"><span class="header-section-number">2</span> Model tab button interaction tests</a>
   <ul class="collapse">
@@ -305,14 +304,6 @@ ul.task-list li input[type="checkbox"] {
 <li>Enable the Ribasim plugin: <em>Ribasim button shows on the navigation toolbar</em>.</li>
 </ul>
 </section>
-<section id="open-and-close" class="level2" data-number="1.2">
-<h2 data-number="1.2" class="anchored" data-anchor-id="open-and-close"><span class="header-section-number">1.2</span> Open and close</h2>
-<ul>
-<li>Open QGIS and ensure that the Ribasim plugin is installed and enabled.</li>
-<li>Open the application via the Ribasim button on the QGIS toolbar: <em>Ribasim panel opens</em>.</li>
-<li>Press the Ribasim button on the QGIS toolbar: <em>Ribasim panel hides</em>.</li>
-</ul>
-</section>
 </section>
 <section id="model-tab-button-interaction-tests" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> Model tab button interaction tests</h1>
@@ -320,11 +311,10 @@ ul.task-list li input[type="checkbox"] {
 <h2 data-number="2.1" class="anchored" data-anchor-id="open-model-twice"><span class="header-section-number">2.1</span> Open model twice</h2>
 <ul>
 <li>Open QGIS and ensure that the Ribasim plugin is installed and enabled.</li>
-<li>Open the application via the Ribasim button on the QGIS toolbar: <em>Ribasim panel opens</em>.</li>
-<li>Press the “Open” button in the Ribasim panel: <em>file navigation window pops up</em>.</li>
+<li>Click the Ribasim button on the QGIS toolbar: <em>file navigation window pops up</em>.</li>
 <li>Choose an existing model from the <code>generated_testmodels</code> folder.</li>
 <li>Press OK: <em>The model layers appear in the layer panel and on the map</em>.</li>
-<li>Press the “Open” button: <em>file navigation window pops up</em>.</li>
+<li>Click the Ribasim button on the QGIS toolbar: <em>file navigation window pops up</em>.</li>
 <li>Open the same model again: <em>A new layer group is added to the layers panel</em>.</li>
 </ul>
 <p>Intended behavior: The same model is loaded twice, but there is only a connection on the last loaded model when interacting with the plugin.</p>
@@ -336,10 +326,8 @@ ul.task-list li input[type="checkbox"] {
 <h2 data-number="3.1" class="anchored" data-anchor-id="node-selection-on-map-triggers-table-selection"><span class="header-section-number">3.1</span> Node selection on map triggers table selection</h2>
 <ul>
 <li>Open QGIS and ensure that the Ribasim plugin is installed and enabled.</li>
-<li>Open the application via the Ribasim button on the QGIS toolbar: <em>Ribasim panel opens</em>.</li>
-<li>Press the “Open” button in the Ribasim panel: <em>file navigation window pops up</em>.</li>
-<li>Choose an existing model from the <code>generated_testmodels</code> folder.</li>
-<li>Press OK: <em>The model layers appear in the layer panel and on the map</em>.</li>
+<li>Choose an existing model from the <code>generated_testmodels</code> folder in the file explorer.</li>
+<li>Drag the TOML file onto QGIS: <em>The model layers appear in the layer panel and on the map</em>.</li>
 <li>Select the node layer, and make a subselection of nodes on the map: <em>Nodes are highlighted in yellow, including their links</em>.</li>
 <li>Open the Link attribute table: <em>The highlighted rows are those with a from/to node_id that was selected</em>.</li>
 <li>Open any non-spatial attribute table: <em>The highlighted rows are those with a node_id that was selected</em>.</li>
