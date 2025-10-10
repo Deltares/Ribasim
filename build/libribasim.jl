@@ -1,5 +1,3 @@
-module libribasim
-
 import BasicModelInterface as BMI
 import Ribasim
 using SciMLBase: successful_retcode
@@ -234,5 +232,3 @@ function unsafe_write_to_cstring!(dest::Cstring, src::String)::Nothing
     unsafe_store!(dest_ptr, '\0', length(src) + 1)
     return nothing
 end
-
-end # module libribasim

@@ -3,7 +3,6 @@
 end
 
 @testitem "libribasim" setup = [libribasim] begin
-    libribasim = libribasim.libribasim
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
     # data from which we create pointers for libribasim
