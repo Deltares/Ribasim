@@ -582,12 +582,20 @@ def generate(
     shutil.copy(dimrc, output_path / "dimr_config.xml")
 
     # Write main Delwaq input file
+    endtime = min(basins.time.max(), flows.time.max())
+    if model.endtime > endtime:
+        logger.warning(
+            f"Model endtime {model.endtime} is later than the result time {endtime}, adjusting endtime."
+        )
+    else:
+        endtime = model.endtime
+
     template = env.get_template("delwaq.inp.j2")
     with open(output_path / "delwaq.inp", mode="w") as f:
         f.write(
             template.render(
                 startime=model.starttime,
-                endtime=model.endtime - timestep,
+                endtime=endtime - timestep,
                 timestep=strfdelta(timestep),
                 nsegments=total_segments,
                 nexchanges=total_exchanges,
