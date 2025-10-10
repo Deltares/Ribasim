@@ -224,10 +224,6 @@ quarto-preview = { cmd = "echo 'Skipping quarto preview on ARM64 Linux (Quarto n
 quarto-check = { cmd = "echo 'Skipping quarto check on ARM64 Linux (Quarto not supported)'" }
 quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not supported)'" }
 
-[target.win.activation]
-# Workaround a conflict between conda openssl activation and julia < 1.12
-scripts = ["utils/unset-ssl-cert.bat"]
-
 [dependencies]
 datacompy = ">=0.16"
 geopandas = ">=1.0"
