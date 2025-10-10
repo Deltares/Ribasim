@@ -8,6 +8,8 @@ function (@main)(_)::Cint
     output_dir = "build/ribasim"
     git_repo = "."
 
+    rm(output_dir; force = true, recursive = true)
+
     image_recipe = ImageRecipe(;
         output_type = "--output-lib",
         file = "build/libribasim.jl",
