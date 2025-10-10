@@ -219,25 +219,4 @@ end
     @test all(flow_userdemand_primnet.flow_rate .≈ 0.05)
     @test all(flow_userdemand_subnet_2.flow_rate .≈ 0.1)
     @test all(flow_userdemand_subnet_3.flow_rate .≈ 0.1)
-
-    # using Plots
-
-    # inlet = filter(:link_id => ==(1), allocation_flow_table)
-    # link_outlet = filter(:link_id => ==(2), allocation_flow_table)
-    # link_pump = filter(:link_id => ==(3), allocation_flow_table)
-
-    # Plots.plot(link_outlet.flow_rate; label = "outlet subnet 2")
-    # Plots.plot!(link_pump.flow_rate; label = "pump subnet 2")
-    # Plots.plot!(link_outlet_3a.flow_rate; label = "outlet 3a")
-    # Plots.plot!(link_outlet_3b.flow_rate; label = "outlet 3b")
-    # Plots.plot!(basin_13.level; label = "basin 13 level")
-    # Plots.plot!(basin_17.level; label = "basin 17 level")
-    # Plots.plot!(inlet.flow_rate; label = "inlet")
-
-    # Plots.plot(flow_userdemand_subnet_2.flow_rate; label = "user demand subnet 2")
-    # Plots.plot!(flow_userdemand_subnet_3.flow_rate; label = "user demand subnet 3")
-    # Plots.plot!(flow_userdemand_primnet.flow_rate; label = "user demand primnet")
-
-    # basin_13 = filter(:node_id => ==(13), basin_data)
-    # basin_17 = filter(:node_id => ==(15), basin_data)
 end
