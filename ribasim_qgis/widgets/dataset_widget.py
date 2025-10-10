@@ -18,11 +18,7 @@ from osgeo import ogr
 from PyQt5.QtCore import QDateTime, QVariant
 from PyQt5.QtWidgets import (
     QFileDialog,
-    QHBoxLayout,
-    QLineEdit,
     QMenu,
-    QPushButton,
-    QVBoxLayout,
     QWidget,
 )
 from qgis.core import (
@@ -42,6 +38,12 @@ from qgis.core import (
     QgsVectorLayerTemporalProperties,
 )
 
+from ribasim_qgis.core.arrow import (
+    postprocess_allocation_arrow,
+    postprocess_allocation_flow_arrow,
+    postprocess_concentration_arrow,
+    postprocess_flow_arrow,
+)
 from ribasim_qgis.core.model import (
     get_database_path_from_model_file,
     get_directory_path_from_model_file,
@@ -55,19 +57,16 @@ from ribasim_qgis.core.nodes import (
 group_position_var: ContextVar[int] = ContextVar("group_position", default=0)
 
 
-class DatasetWidget(QWidget):
+class DatasetWidget:
     def __init__(self, parent: QWidget):
         from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
 
-        super().__init__(parent)
-
         self.ribasim_widget = cast(RibasimWidget, parent)
-        self.dataset_line_edit = QLineEdit()
-        self.dataset_line_edit.setEnabled(False)  # Just used as a viewing port
-        self.open_model_button = QPushButton("Open")
-        self.open_model_button.clicked.connect(self.open_model)
+        # self.open_model_button = QPushButton("Open")
+        # self.open_model_button.clicked.connect(self.open_model)
         self.link_layer: QgsVectorLayer | None = None
         self.node_layer: QgsVectorLayer | None = None
+        self.path: Path | None = None
 
         # Results
         self.flow_layer: QgsVectorLayer | None = None
@@ -82,13 +81,6 @@ class DatasetWidget(QWidget):
         if instance is not None:
             instance.layersWillBeRemoved.connect(self.remove_results)
 
-        # Layout
-        dataset_layout = QVBoxLayout()
-        dataset_row = QHBoxLayout()
-        dataset_row.addWidget(self.dataset_line_edit)
-        dataset_row.addWidget(self.open_model_button)
-        dataset_layout.addLayout(dataset_row)
-        self.setLayout(dataset_layout)
         self.add_reload_context()
 
     def remove_results(self, layer_ids: list[str]) -> None:
@@ -109,11 +101,6 @@ class DatasetWidget(QWidget):
             ("allocation_flow_layer", self.allocation_flow_layer),
         ]
 
-    @property
-    def path(self) -> Path:
-        """Returns currently active path to Ribasim model (.toml)."""
-        return Path(self.dataset_line_edit.text())
-
     def add_layer(
         self,
         layer: Any,
@@ -133,10 +120,6 @@ class DatasetWidget(QWidget):
     def add_item_to_qgis(self, item) -> None:
         layer, labels = item.from_geopackage()
         self.add_layer(layer, "Input", labels=labels)
-
-        item.set_editor_widget()
-        item.set_read_only()
-        return
 
     @staticmethod
     def add_relationship(from_layer, to_layer_id, name, fk="node_id") -> None:
@@ -234,14 +217,15 @@ class DatasetWidget(QWidget):
         self.node_layer.selectionChanged.connect(partial(filterbyrel, link_rels))
         return
 
-    def open_model(self) -> None:
+    def open_model(self, path=None) -> None:
         """Open a Ribasim model file."""
-        path, _ = QFileDialog.getOpenFileName(self, "Select file", "", "*.toml")
+        if not path:
+            path, _ = QFileDialog.getOpenFileName(self, "Select file", "", "*.toml")
         self._open_model(path)
 
     def _open_model(self, path: str) -> None:
         if path != "":  # Empty string in case of cancel button press
-            self.dataset_line_edit.setText(path)
+            self.path = Path(path)
             self.set_current_time_extent()
             self.load_geopackage()
             self.add_topology_context()
@@ -278,8 +262,9 @@ class DatasetWidget(QWidget):
     def generate_reload_action(self, menu: QMenu) -> None:
         """Generate reload action in the context menu."""
         print("Generating reload action in context menu...")
+        actiontext = "Reload Ribasim model"
         for action in menu.actions():
-            if action.text() == "Ribasim: Reload":
+            if action.text() == actiontext:
                 return
 
         group = self.activeGroup(self.ribasim_widget.iface)
@@ -296,7 +281,7 @@ class DatasetWidget(QWidget):
 
         # Always add action, as it lives only during this context menu
         menu.addSeparator()
-        action = menu.addAction("Reload Ribasim model")
+        action = menu.addAction(actiontext)
         action.triggered.connect(partial(self.reload_action, path, group))
 
     def reload_action(self, path, group) -> None:
@@ -537,17 +522,24 @@ class DatasetWidget(QWidget):
         dataset = ogr.Open(path)
         dlayer = dataset.GetLayer(0)
         stream = dlayer.GetArrowStreamAsNumPy()
-        data = stream.GetNextRecordBatch()
-        if data is None:
-            # Empty arrow file
-            return None
+
+        dfs = []
+        while (batch := stream.GetNextRecordBatch()) is not None:
+            df = pd.DataFrame(batch)
+            dfs.append(df)
+
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
         else:
-            df = pd.DataFrame(data=data)
+            return None
 
         # The OGR path introduces strings columns as bytes
         for column in df.columns:
             if df.dtypes[column] == object:  # noqa: E721
                 df[column] = df[column].str.decode("utf-8")
+
+        if "fid" in df.columns:
+            df.drop(columns=["fid"], inplace=True)
 
         df = postprocess(df)
         self.results[path.stem] = df
@@ -558,9 +550,6 @@ class DatasetWidget(QWidget):
         df: pd.DataFrame,
         layer: QgsVectorLayer,
         fid_column: str,
-        postprocess: Callable[[pd.DataFrame], pd.DataFrame] = lambda df: df.set_index(
-            pd.DatetimeIndex(df["time"])
-        ),
     ) -> None:
         """Add arrow output data to the layer and setup its update mechanism."""
         # Add the arrow fields to the layer if they doesn't exist
@@ -613,9 +602,7 @@ class DatasetWidget(QWidget):
 
         fids = sorted(layer.allFeatureIds())
         if not len(fids) == len(timeslice):
-            print(
-                f"Can't join data at {time}, shapes of Link and Allocation tables differ."
-            )
+            print(f"Can't join data at {time}, shapes of Link and arrow table differ.")
             layer.endEditCommand()
             layer.commitChanges()
             return
@@ -694,39 +681,6 @@ class DatasetWidget(QWidget):
             layer.setCustomProperty("arrow_fid_column", column)
 
         return path
-
-
-def postprocess_concentration_arrow(df: pd.DataFrame) -> pd.DataFrame:
-    """Postprocess the concentration arrow data to a wide format."""
-    ndf = pd.pivot_table(df, columns="substance", index=["time", "node_id"])
-    ndf.columns = ndf.columns.droplevel(0)
-    ndf.reset_index("node_id", inplace=True)
-    return ndf
-
-
-def postprocess_allocation_arrow(df: pd.DataFrame) -> pd.DataFrame:
-    """Postprocess the allocation arrow data to a wide format by summing over priorities."""
-    ndf = df.groupby(["time", "node_id"]).aggregate(
-        {"demand": "sum", "allocated": "sum", "realized": "sum"}
-    )
-    ndf.reset_index("node_id", inplace=True)
-    return ndf
-
-
-def postprocess_allocation_flow_arrow(df: pd.DataFrame) -> pd.DataFrame:
-    """Postprocess the allocation flow arrow data to a wide format by summing over priorities."""
-    ndf = df.groupby(["time", "link_id"]).aggregate({"flow_rate": "sum"})
-    # Drop Basin to Basin flows, as we can't join/visualize them
-    ndf.drop(ndf[ndf.index.get_level_values("link_id") == 0].index, inplace=True)
-    ndf.reset_index("link_id", inplace=True)
-    return ndf
-
-
-def postprocess_flow_arrow(df: pd.DataFrame) -> pd.DataFrame:
-    """Postprocess the allocation flow arrow data to a wide format by summing over priorities."""
-    ndf = df.set_index(pd.DatetimeIndex(df["time"]))
-    ndf.drop(columns=["time", "from_node_id", "to_node_id"], inplace=True)
-    return ndf
 
 
 def _unset_imod_opengl() -> None:
