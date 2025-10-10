@@ -612,17 +612,17 @@ end
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/invalid_infeasible/ribasim.toml")
-    @test_broken ispath(toml_path)
+    @test ispath(toml_path)
 
-    # logger = TestLogger()
-    # with_logger(logger) do
-    #     @test_throws "Allocation optimization for subnetwork 1 at t = 0.0 s is infeasible" Ribasim.run(
-    #         toml_path,
-    #     )
-    # end
+    logger = TestLogger()
+    with_logger(logger) do
+        @test_throws "Allocation optimization for subnetwork 1 at t = 0.0 s is infeasible" Ribasim.run(
+            toml_path,
+        )
+    end
 
-    # @test logger.logs[5].level == Error
-    # @test logger.logs[5].message == "Set of incompatible constraints found"
+    @test_broken logger.logs[5].level == Error
+    @tes_broken logger.logs[5].message == "Set of incompatible constraints found"
     # @test sort(name.(keys(logger.logs[5].kwargs[:constraint_violations]))) == [
     #     "linear_resistance_constraint[LinearResistance #2]",
     #     "volume_conservation[Basin #1]",
