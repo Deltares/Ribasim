@@ -36,12 +36,10 @@ def test_offline_delwaq_coupling():
     assert df.shape[0] > 0
     assert df.node_id.nunique() == 4
     assert sorted(df.substance.unique()) == [
-        "Bar",
         "Cl",
         "Continuity",
         "Drainage",
         "FlowBoundary",
-        "Foo",
         "Initial",
         "LevelBoundary",
         "Precipitation",
