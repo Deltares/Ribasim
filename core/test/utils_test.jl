@@ -258,12 +258,13 @@ end
     close(db)
     t0 = 0.0
     du0 = Ribasim.build_state_vector(p.p_independent)
-    jac_prototype, _, _ = Ribasim.get_diff_eval(du0, p, config.solver)
+    jac_prototype =
+        Bool.(Ribasim.get_diff_eval(du0, p, config.solver).jac_prototype.J_intermediate)
 
     # rows, cols, _ = findnz(jac_prototype)
     #! format: off
-    rows_expected = [1, 2, 3, 6, 7, 9, 13, 1, 2, 3, 4, 6, 7, 9, 10, 13, 14, 1, 2, 3, 4, 5, 6, 7, 9, 11, 13, 15, 2, 3, 4, 5, 10, 11, 14, 15, 3, 4, 5, 11, 15, 1, 2, 3, 6, 7, 9, 13, 1, 2, 3, 6, 7, 8, 9, 12, 13, 7, 8, 12, 1, 2, 3, 6, 7, 9, 13, 2, 4, 10, 14, 3, 4, 5, 11, 15, 7, 8, 12, 1, 2, 3, 6, 7, 9, 13, 2, 4, 10, 14, 3, 4, 5, 11, 15]
-    cols_expected = [1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 11, 11, 11, 11, 11, 12, 12, 12, 13, 13, 13, 13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15, 15, 15]
+    rows_expected = [7, 8, 12, 1, 2, 3, 6, 7, 9, 13, 2, 4, 10, 14, 3, 4, 5, 11, 15]
+    cols_expected = [1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4]
     #! format: on
     jac_prototype_expected =
         sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
@@ -279,11 +280,12 @@ end
     (; p_independent) = p
     close(db)
     du0 = Ribasim.build_state_vector(p_independent)
-    jac_prototype, _, _ = Ribasim.get_diff_eval(du0, p, config.solver)
+    jac_prototype =
+        Bool.(Ribasim.get_diff_eval(du0, p, config.solver).jac_prototype.J_intermediate)
 
     #! format: off
-    rows_expected = [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2]
-    cols_expected = [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 6]
+    rows_expected = [1, 2, 3, 4, 5, 6, 1, 2]
+    cols_expected = [1, 1, 1, 1, 1, 1, 2, 3]
     #! format: on
     jac_prototype_expected =
         sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
@@ -302,7 +304,7 @@ end
     @test alg isa QNDF
     @test alg.step_limiter! == Ribasim.limit_flow!
     @test alg.nlsolve == NLNewton()
-    @test alg.linsolve == KLUFactorization()
+    @test alg.linsolve == Ribasim.config.RibasimLinearSolve(KLUFactorization())
 end
 
 @testitem "FlatVector" begin

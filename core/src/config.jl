@@ -21,7 +21,7 @@ using OrdinaryDiffEqTsit5: Tsit5
 using OrdinaryDiffEqSDIRK: ImplicitEuler, KenCarp4, TRBDF2
 using OrdinaryDiffEqBDF: FBDF, QNDF
 using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
-using LinearSolve: KLUFactorization
+using LinearSolve: KLUFactorization, SciMLLinearSolveAlgorithm, LinearSolve
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
@@ -366,6 +366,12 @@ function get_ad_type(solver::Solver; specialize = true)
     end
 end
 
+struct RibasimLinearSolve{A} <: SciMLLinearSolveAlgorithm
+    algorithm::A
+end
+
+LinearSolve.needs_concrete_A(::RibasimLinearSolve) = false
+
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver; specialize = true)::OrdinaryDiffEqAlgorithm
     kwargs = Dict{Symbol, Any}()
@@ -374,7 +380,7 @@ function algorithm(solver::Solver; specialize = true)::OrdinaryDiffEqAlgorithm
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
         kwargs[:nlsolve] = NLNewton()
         if solver.sparse
-            kwargs[:linsolve] = KLUFactorization()
+            kwargs[:linsolve] = RibasimLinearSolve(KLUFactorization())
         end
     end
 
