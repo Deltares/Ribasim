@@ -1084,10 +1084,6 @@ function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
                 t != t_prev_call[1] &&
                 ForwardDiff.partials(t) == ForwardDiff.partials(t_prev_call[1])
             )
-        if p_mutable.new_t
-            time_dependent_cache.t_prev_call[1] = t
-        end
-
         p_mutable.new_u_reduced =
             any(i -> !isassigned(u_reduced_prev_call, i), eachindex(u_reduced)) || any(
                 i -> !(
@@ -1097,9 +1093,14 @@ function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
                 ),
                 eachindex(u_reduced),
             )
-        if p_mutable.new_u_reduced
-            state_time_dependent_cache.u_reduced_prev_call .= u_reduced
-        end
+    end
+
+    if p_mutable.new_t
+        time_dependent_cache.t_prev_call[1] = t
+    end
+
+    if p_mutable.new_u_reduced
+        state_time_dependent_cache.u_reduced_prev_call .= u_reduced
     end
     return nothing
 end
@@ -1119,7 +1120,7 @@ function eval_time_interp(
         cache[idx] = 1.0
     else
         if new_t
-            val = itp(t)
+            @inbounds val = itp(t)
             cache[idx] = val
             return val
         else

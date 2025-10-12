@@ -648,7 +648,11 @@ function formulate_pump_or_outlet_flow!(
         end
 
         if control_type == ContinuousControlType.None
-            eval_time_interp(flow_rate_itp, current_flow_rate, id.idx, p, t)
+            # eval_time_interp is not used here because current_flow_rate
+            # lives in state_time_dependent_cache (for ContinuousControl support),
+            # and thus also has to be updated if t is not new but the last evaluation
+            # was with the other version of the cache (normal versus the one for AD)
+            current_flow_rate[id.idx] = flow_rate_itp(t)
         end
 
         flow_rate = current_flow_rate[id.idx]

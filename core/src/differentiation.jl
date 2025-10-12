@@ -172,13 +172,11 @@ function update_J_inner!(
     elseif row in state_ranges.manning_resistance
         update_J_inner!(J_inner, val, node_id, col, manning_resistance)
     elseif row in state_ranges.evaporation
-        basin_idx = row - state_ranges.evaporation.start + 1
-        @assert basin_idx == col
-        J_inner[basin_idx, col] -= val
+        @assert node_id.idx == col
+        J_inner[node_id.idx, col] -= val
     elseif row in state_ranges.infiltration
-        basin_idx = row - state_ranges.infiltration.start + 1
-        @assert basin_idx == col
-        J_inner[basin_idx, col] -= val
+        @assert node_id.idx == col
+        J_inner[node_id.idx, col] -= val
     else # row in state_ranges.integral
         J_inner[col, col] = val
     end
