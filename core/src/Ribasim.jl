@@ -166,7 +166,7 @@ using Dates: Second
 
 using Printf: @sprintf
 
-using Base.Threads: @threads
+using Base.Threads: @threads, nthreads, threadid
 
 export libribasim
 

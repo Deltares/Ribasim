@@ -321,31 +321,23 @@ function formulate_flow!(
     user_demand::UserDemand,
     p::Parameters,
     t::Number,
+    thread_id::Int,
 )::Nothing
     (; p_independent, time_dependent_cache) = p
     (; current_return_factor) = time_dependent_cache.user_demand
     (; allocation) = p_independent
     all_nodes_active = p.p_mutable.all_nodes_active
 
-    for (
-        id,
-        inflow_link,
-        outflow_link,
-        active,
-        has_demand_priority,
-        allocated,
-        return_factor,
-        min_level,
-    ) in zip(
-        user_demand.node_id,
-        user_demand.inflow_link,
-        user_demand.outflow_link,
-        user_demand.active,
-        eachrow(user_demand.has_demand_priority),
-        eachrow(user_demand.allocated),
-        user_demand.return_factor,
-        user_demand.min_level,
-    )
+    for node_idx in thread_node_idxs(user_demand, thread_id)
+        id = user_demand.node_id[node_idx]
+        inflow_link = user_demand.inflow_link[node_idx]
+        outflow_link = user_demand.outflow_link[node_idx]
+        active = user_demand.active[node_idx]
+        has_demand_priority = view(user_demand.has_demand_priority, node_idx, :)
+        allocated = view(user_demand.allocated, node_idx, :)
+        return_factor = user_demand.return_factor[node_idx]
+        min_level = user_demand.min_level[node_idx]
+
         if !(active || all_nodes_active)
             continue
         end
@@ -387,22 +379,25 @@ function formulate_flow!(
     linear_resistance::LinearResistance,
     p::Parameters,
     t::Number,
+    thread_id::Int,
 )::Nothing
     (; p_mutable) = p
     all_nodes_active = p_mutable.all_nodes_active
     (; node_id, active) = linear_resistance
-    for id in node_id
-        inflow_link = linear_resistance.inflow_link[id.idx]
-        outflow_link = linear_resistance.outflow_link[id.idx]
+
+    for node_idx in thread_node_idxs(linear_resistance, thread_id)
+        id = node_id[node_idx]
+        inflow_link = linear_resistance.inflow_link[node_idx]
+        outflow_link = linear_resistance.outflow_link[node_idx]
 
         inflow_id = inflow_link.link[1]
         outflow_id = outflow_link.link[2]
 
-        if (active[id.idx] || all_nodes_active)
+        if (active[node_idx] || all_nodes_active)
             h_a = get_level(p, inflow_id, t)
             h_b = get_level(p, outflow_id, t)
             q = linear_resistance_flow(linear_resistance, id, h_a, h_b, p)
-            du.linear_resistance[id.idx] = q
+            du.linear_resistance[node_idx] = q
         end
     end
     return nothing
@@ -458,17 +453,19 @@ function formulate_flow!(
     tabulated_rating_curve::TabulatedRatingCurve,
     p::Parameters,
     t::Number,
+    thread_id::Int,
 )::Nothing
     (; p_mutable) = p
     all_nodes_active = p_mutable.all_nodes_active
-    (; node_id, active) = tabulated_rating_curve
-    for id in node_id
-        inflow_link = tabulated_rating_curve.inflow_link[id.idx]
-        outflow_link = tabulated_rating_curve.outflow_link[id.idx]
+    (; active) = tabulated_rating_curve
+    for node_idx in thread_node_idxs(tabulated_rating_curve, thread_id)
+        id = tabulated_rating_curve.node_id[node_idx]
+        inflow_link = tabulated_rating_curve.inflow_link[node_idx]
+        outflow_link = tabulated_rating_curve.outflow_link[node_idx]
         inflow_id = inflow_link.link[1]
         outflow_id = outflow_link.link[2]
 
-        if active[id.idx] || all_nodes_active
+        if active[node_idx] || all_nodes_active
             h_a = get_level(p, inflow_id, t)
             h_b = get_level(p, outflow_id, t)
             q = tabulated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p, t)
@@ -476,7 +473,7 @@ function formulate_flow!(
             q = 0.0
         end
 
-        du.tabulated_rating_curve[id.idx] = q
+        du.tabulated_rating_curve[node_idx] = q
     end
     return nothing
 end
@@ -588,18 +585,21 @@ function formulate_flow!(
     manning_resistance::ManningResistance,
     p::Parameters,
     t::Number,
+    thread_id::Int,
 )::Nothing
     (; p_mutable) = p
     (; node_id, active) = manning_resistance
     all_nodes_active = p_mutable.all_nodes_active
-    for id in node_id
-        inflow_link = manning_resistance.inflow_link[id.idx]
-        outflow_link = manning_resistance.outflow_link[id.idx]
+
+    for node_idx in thread_node_idxs(manning_resistance, thread_id)
+        id = node_id[node_idx]
+        inflow_link = manning_resistance.inflow_link[node_idx]
+        outflow_link = manning_resistance.outflow_link[node_idx]
 
         inflow_id = inflow_link.link[1]
         outflow_id = outflow_link.link[2]
 
-        if !(active[id.idx] || all_nodes_active)
+        if !(active[node_idx] || all_nodes_active)
             continue
         end
 
@@ -608,7 +608,7 @@ function formulate_flow!(
 
         q = manning_resistance_flow(manning_resistance, id, h_a, h_b, p)
 
-        du.manning_resistance[id.idx] = q
+        du.manning_resistance[node_idx] = q
     end
     return nothing
 end
@@ -621,6 +621,7 @@ function formulate_pump_or_outlet_flow!(
     control_type_::ContinuousControlType.T,
     current_flow_rate::Vector{<:Number},
     component_cache::NamedTuple,
+    thread_id::Int,
     reduce_Δlevel::Bool = false,
 )::Nothing
     (; allocation, flow_demand) = p.p_independent
@@ -632,16 +633,17 @@ function formulate_pump_or_outlet_flow!(
         current_max_downstream_level,
     ) = component_cache
 
-    for id in node.node_id
-        inflow_link = node.inflow_link[id.idx]
-        outflow_link = node.outflow_link[id.idx]
-        active = node.active[id.idx]
-        flow_rate_itp = node.flow_rate[id.idx]
-        min_flow_rate = node.min_flow_rate[id.idx]
-        max_flow_rate = node.max_flow_rate[id.idx]
-        control_type = node.control_type[id.idx]
-        min_upstream_level = node.min_upstream_level[id.idx]
-        max_downstream_level = node.max_downstream_level[id.idx]
+    for node_idx in thread_node_idxs(node, thread_id)
+        id = node.node_id[node_idx]
+        inflow_link = node.inflow_link[node_idx]
+        outflow_link = node.outflow_link[node_idx]
+        active = node.active[node_idx]
+        flow_rate_itp = node.flow_rate[node_idx]
+        min_flow_rate = node.min_flow_rate[node_idx]
+        max_flow_rate = node.max_flow_rate[node_idx]
+        control_type = node.control_type[node_idx]
+        min_upstream_level = node.min_upstream_level[node_idx]
+        max_downstream_level = node.max_downstream_level[node_idx]
 
         if should_skip_update_q(active, control_type, control_type_, p)
             continue
@@ -652,10 +654,10 @@ function formulate_pump_or_outlet_flow!(
             # lives in state_time_dependent_cache (for ContinuousControl support),
             # and thus also has to be updated if t is not new but the last evaluation
             # was with the other version of the cache (normal versus the one for AD)
-            current_flow_rate[id.idx] = flow_rate_itp(t)
+            current_flow_rate[node_idx] = flow_rate_itp(t)
         end
 
-        flow_rate = current_flow_rate[id.idx]
+        flow_rate = current_flow_rate[node_idx]
 
         inflow_id = inflow_link.link[1]
         outflow_id = outflow_link.link[2]
@@ -664,8 +666,8 @@ function formulate_pump_or_outlet_flow!(
 
         q = flow_rate * get_low_storage_factor(p, inflow_id)
 
-        lower_bound = eval_time_interp(min_flow_rate, current_min_flow_rate, id.idx, p, t)
-        upper_bound = eval_time_interp(max_flow_rate, current_max_flow_rate, id.idx, p, t)
+        lower_bound = eval_time_interp(min_flow_rate, current_min_flow_rate, node_idx, p, t)
+        upper_bound = eval_time_interp(max_flow_rate, current_max_flow_rate, node_idx, p, t)
 
         # When allocation is not active, set the flow demand directly as a lower bound on the
         # pump or outlet flow rate
@@ -700,19 +702,19 @@ function formulate_pump_or_outlet_flow!(
         end
 
         min_upstream_level_ =
-            eval_time_interp(min_upstream_level, current_min_upstream_level, id.idx, p, t)
+            eval_time_interp(min_upstream_level, current_min_upstream_level, node_idx, p, t)
         q *= reduction_factor(src_level - min_upstream_level_, 0.02)
 
         max_downstream_level_ = eval_time_interp(
             max_downstream_level,
             current_max_downstream_level,
-            id.idx,
+            node_idx,
             p,
             t,
         )
         q *= reduction_factor(max_downstream_level_ - dst_level, 0.02)
 
-        du_component[id.idx] = q
+        du_component[node_idx] = q
     end
     return nothing
 end
@@ -723,6 +725,7 @@ function formulate_flow!(
     p::Parameters,
     t::Number,
     control_type_::ContinuousControlType.T,
+    thread_id::Int,
 )::Nothing
     (; time_dependent_cache, state_time_dependent_cache) = p
     formulate_pump_or_outlet_flow!(
@@ -733,6 +736,7 @@ function formulate_flow!(
         control_type_,
         state_time_dependent_cache.current_flow_rate_pump,
         time_dependent_cache.pump,
+        thread_id,
     )
 end
 
@@ -742,6 +746,7 @@ function formulate_flow!(
     p::Parameters,
     t::Number,
     control_type_::ContinuousControlType.T,
+    thread_id::Int,
 )::Nothing
     (; time_dependent_cache, state_time_dependent_cache) = p
     formulate_pump_or_outlet_flow!(
@@ -752,6 +757,7 @@ function formulate_flow!(
         control_type_,
         state_time_dependent_cache.current_flow_rate_outlet,
         time_dependent_cache.outlet,
+        thread_id,
         true,
     )
 end
@@ -771,14 +777,16 @@ function formulate_flows!(
         user_demand,
     ) = p.p_independent
 
-    formulate_flow!(du, pump, p, t, control_type)
-    formulate_flow!(du, outlet, p, t, control_type)
+    @threads for thread_id in 1:nthreads()
+        formulate_flow!(du, pump, p, t, control_type, thread_id)
+        formulate_flow!(du, outlet, p, t, control_type, thread_id)
 
-    if control_type == ContinuousControlType.None
-        formulate_flow!(du, linear_resistance, p, t)
-        formulate_flow!(du, manning_resistance, p, t)
-        formulate_flow!(du, tabulated_rating_curve, p, t)
-        formulate_flow!(du, user_demand, p, t)
+        if control_type == ContinuousControlType.None
+            formulate_flow!(du, linear_resistance, p, t, thread_id)
+            formulate_flow!(du, manning_resistance, p, t, thread_id)
+            formulate_flow!(du, tabulated_rating_curve, p, t, thread_id)
+            formulate_flow!(du, user_demand, p, t, thread_id)
+        end
     end
 end
 
