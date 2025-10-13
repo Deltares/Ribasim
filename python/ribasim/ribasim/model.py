@@ -84,7 +84,7 @@ class Model(FileModel):
     endtime: datetime.datetime
     crs: str
 
-    input_dir: Path = Field(default=Path("."))
+    input_dir: Path = Field(default=Path("input"))
     results_dir: Path = Field(default=Path("results"))
     ribasim_version: str = Field(default_factory=lambda: ribasim.__version__)
 
@@ -483,7 +483,7 @@ class Model(FileModel):
             with open(filepath, "rb") as f:
                 config = tomli.load(f)
 
-            directory = filepath.parent / config.get("input_dir", ".")
+            directory = filepath.parent / config["input_dir"]
             context_file_loading.get()["directory"] = directory
             db_path = directory / "database.gpkg"
 
