@@ -19,7 +19,7 @@ test-ribasim-python-cov = "pytest --numprocesses=4 --cov=ribasim --cov-report=xm
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
 # Installation
 # Keep Julia version synced with julia.executablePath in .vscode/settings.json
-install-julia = "juliaup add 1.11.7 && juliaup override set 1.11.7"
+install-julia = "juliaup add 1.12.0 && juliaup override set 1.12.0"
 install-pre-commit = "pre-commit install"
 # Note that this has a Windows specific override
 install-ci = { depends-on = ["install-julia", "update-registry-julia"] }
@@ -75,7 +75,7 @@ lint = { depends-on = [
     "mypy-ribasim-qgis",
 ] }
 # Build
-build = { "cmd" = "julia --project --check-bounds=yes build.jl", cwd = "build", depends-on = [
+build = { "cmd" = "julia --project --check-bounds=yes build/build.jl", depends-on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
@@ -148,19 +148,9 @@ publish-ribasim-python = { cmd = "twine upload dist/*", cwd = "python/ribasim", 
 publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api", depends-on = [
     "build-ribasim-api-wheel",
 ] }
-# QGIS
-qgis = "qgis --profiles-path .pixi/qgis_env"
-install-ribasim-qgis = "python ribasim_qgis/scripts/install_ribasim_qgis.py"
-install-imod-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py iMOD && python ribasim_qgis/scripts/enable_plugin.py imodqgis"
-install-plugin-reloader-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py \"Plugin Reloader\" && python ribasim_qgis/scripts/enable_plugin.py plugin_reloader"
-install-debugvs-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py debugvs==0.7 && python ribasim_qgis/scripts/enable_plugin.py debug_vs"
+
+
 test-ribasim-qgis-docker = { cmd = "sh ./test.sh", cwd = ".docker" }
-install-qgis-plugins = { depends-on = [
-    "install-plugin-reloader-qgis",
-    "install-ribasim-qgis",
-    "install-imod-qgis",
-    "install-debugvs-qgis",
-] }
 test-ribasim-qgis-ui = { cmd = "python ribasim_qgis/scripts/run_qgis_ui_tests.py", depends-on = [
     "install-ribasim-qgis",
 ] }
@@ -187,6 +177,46 @@ migrate-model = "python utils/migrate_model.py"
 filter-model = "python utils/filter_model.py"
 # Release
 github-release = "python utils/github-release.py"
+
+# QGIS
+[tasks.qgis]
+args = [{ "arg" = "profile_path", "default" = ".pixi/qgis_env" }]
+cmd = "qgis --profiles-path {{ profile_path }}"
+
+[tasks.install-ribasim-qgis]
+args = [{ "arg" = "profile_path", "default" = ".pixi/qgis_env" }]
+cmd = "python ribasim_qgis/scripts/install_ribasim_qgis.py {{ profile_path }}"
+
+[tasks.install-qgis-plugin]
+args = [
+    { "arg" = "package" },
+    { "arg" = "package_name" },
+    { "arg" = "profile_path", "default" = ".pixi/qgis_env" },
+]
+cmd = "python ribasim_qgis/scripts/install_qgis_plugin.py {{ package }} {{ profile_path }} && python ribasim_qgis/scripts/enable_plugin.py {{ package_name }} {{ profile_path }}"
+
+[tasks.install-qgis-plugins]
+args = [{ "arg" = "profile_path", "default" = ".pixi/qgis_env" }]
+depends-on = [
+    { "task" = "install-qgis-plugin", "args" = [
+        "Plugin\\ Reloader",
+        "plugin_reloader",
+        " {{ profile_path }} ",
+    ] },
+    { "task" = "install-ribasim-qgis", "args" = [
+        " {{ profile_path }} ",
+    ] },
+    { "task" = "install-qgis-plugin", "args" = [
+        "iMOD",
+        "imodqgis",
+        " {{ profile_path }} ",
+    ] },
+    { "task" = "install-qgis-plugin", "args" = [
+        "debugvs==0.7",
+        "debug_vs",
+        " {{ profile_path }} ",
+    ] },
+]
 
 [tasks.generate-sbom-ribasim-core]
 cmd = "julia --project --check-bounds=yes -- utils/generate-sbom.jl"
@@ -223,10 +253,6 @@ docs = { cmd = "echo 'Skipping docs build on ARM64 Linux (Quarto not supported)'
 quarto-preview = { cmd = "echo 'Skipping quarto preview on ARM64 Linux (Quarto not supported)'" }
 quarto-check = { cmd = "echo 'Skipping quarto check on ARM64 Linux (Quarto not supported)'" }
 quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not supported)'" }
-
-[target.win.activation]
-# Workaround a conflict between conda openssl activation and julia < 1.12
-scripts = ["utils/unset-ssl-cert.bat"]
 
 [dependencies]
 datacompy = ">=0.16"

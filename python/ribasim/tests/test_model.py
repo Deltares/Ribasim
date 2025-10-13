@@ -133,7 +133,7 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
     assert model_orig.link.df.index.name == "link_id"
 
     model_orig.write(tmp_path / "basic/ribasim.toml")
-    with connect(tmp_path / "basic/database.gpkg") as connection:
+    with connect(tmp_path / "basic/input/database.gpkg") as connection:
         query = f"select * from {esc_id('Basin / profile')}"
         df = pd.read_sql_query(query, connection)
         assert "fid" in df.columns
@@ -264,21 +264,21 @@ def test_styles(tabulated_rating_curve: Model, tmp_path):
     model = tabulated_rating_curve
 
     model.write(tmp_path / "basic" / "ribasim.toml")
-    with connect(tmp_path / "basic" / "database.gpkg") as conn:
+    with connect(tmp_path / "basic/input/database.gpkg") as conn:
         assert conn.execute("SELECT COUNT(*) FROM layer_styles").fetchone()[0] == 3
 
 
-def test_non_existent_files(tmp_path):
+def test_non_existent_files(trivial, tmp_path):
     with pytest.raises(
         FileNotFoundError, match="File 'non_existent_file.toml' does not exist."
     ):
         Model.read("non_existent_file.toml")
 
-    # Create a TOML file without a database.gpkg
-    content = {"input_path": str(tmp_path)}
-    toml_path = tmp_path / "test.toml"
-    with open(toml_path, "wb") as f:
-        tomli_w.dump(content, f)
+    # Write a model but delete database.gpkg
+    toml_path = tmp_path / "ribasim.toml"
+    trivial.write(toml_path)
+    db_path = tmp_path / "input/database.gpkg"
+    db_path.unlink()
 
     with pytest.raises(FileNotFoundError, match=r"Database file .* does not exist\."):
         Model.read(toml_path)

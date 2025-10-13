@@ -6,7 +6,6 @@ import ribasim
 from ribasim_api import RibasimApi
 from ribasim_testmodels import (
     basic_model,
-    basic_transient_model,
     leaky_bucket_model,
     two_basin_model,
     user_demand_model,
@@ -23,13 +22,6 @@ def libribasim_paths() -> tuple[Path, Path]:
     return lib_path, lib_folder
 
 
-@pytest.fixture(scope="session", autouse=True)
-def load_julia(libribasim_paths) -> None:
-    lib_path, lib_folder = libribasim_paths
-    libribasim = RibasimApi(lib_path, lib_folder)
-    libribasim.init_julia()
-
-
 @pytest.fixture(scope="function")
 def libribasim(libribasim_paths, request) -> RibasimApi:
     lib_path, lib_folder = libribasim_paths
@@ -44,11 +36,6 @@ def libribasim(libribasim_paths, request) -> RibasimApi:
 @pytest.fixture(scope="session")
 def basic() -> ribasim.Model:
     return basic_model()
-
-
-@pytest.fixture(scope="session")
-def basic_transient(basic) -> ribasim.Model:
-    return basic_transient_model(basic)
 
 
 @pytest.fixture(scope="session")

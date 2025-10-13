@@ -293,8 +293,8 @@ def test_roundtrip(trivial, tmp_path):
     model2 = Model.read(model1dir / "ribasim.toml")
     model2.write(model2dir / "ribasim.toml")
 
-    assert (model1dir / "database.gpkg").is_file()
-    assert (model2dir / "database.gpkg").is_file()
+    assert (model1dir / "input/database.gpkg").is_file()
+    assert (model2dir / "input/database.gpkg").is_file()
 
     assert (model1dir / "ribasim.toml").read_text() == (
         model2dir / "ribasim.toml"
