@@ -87,7 +87,6 @@ using DataInterpolations.ExtrapolationType:
 # Modeling language for Mathematical Optimization.
 # Used for allocation, see the docs: https://ribasim.org/dev/allocation.html
 import JuMP
-import MultiObjectiveAlgorithms as MOA
 # The optimization backend of JuMP.
 import HiGHS
 # Analyze infeasibilities and numerical properties
@@ -168,8 +167,6 @@ using Printf: @sprintf
 
 using Base.Threads: @threads, nthreads, threadid
 
-export libribasim
-
 include("carrays.jl")
 using .CArrays: CVector, getaxes, getdata
 include("schema.jl")
@@ -192,7 +189,6 @@ include("bmi.jl")
 include("callback.jl")
 include("concentration.jl")
 include("main.jl")
-include("libribasim.jl")
 
 @setup_workload begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")

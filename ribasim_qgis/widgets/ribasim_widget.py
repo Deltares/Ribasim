@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast
 
-from PyQt5.QtWidgets import QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QWidget
 from qgis.core import (
     QgsAbstractVectorLayerLabeling,
     QgsCoordinateReferenceSystem,
@@ -29,17 +29,12 @@ PYQT_DELETED_ERROR = "wrapped C/C++ object of type QgsLayerTreeGroup has been de
 
 
 class RibasimWidget(QWidget):
-    def __init__(self, parent: QWidget, iface: QgisInterface):
-        super().__init__(parent)
+    def __init__(self, iface: QgisInterface):
+        super().__init__()
 
         self.iface = iface
         self.message_bar = self.iface.messageBar()
         self.__dataset_widget = DatasetWidget(self)
-
-        # Layout
-        layout = QVBoxLayout()
-        layout.addWidget(self.__dataset_widget)
-        self.setLayout(layout)
 
         # QGIS Layers Panel groups
         self.group: QgsLayerTreeGroup | None = None
@@ -84,6 +79,9 @@ class RibasimWidget(QWidget):
         map_settings = map_canvas.mapSettings()
         assert map_settings is not None
         return map_settings.destinationCrs()
+
+    def open_model(self, path=None) -> None:
+        self.__dataset_widget.open_model(path)
 
     # QGIS layers
     # -----------

@@ -247,7 +247,7 @@ Test whether static or discrete controlled flow rates are indeed non-negative.
 function valid_flow_rates(
     node_id::Vector{NodeID},
     flow_rate::Vector{ScalarLinearInterpolation},
-    control_mapping::Dict{Tuple{NodeID, String}, <:ControlStateUpdate},
+    control_mapping::OrderedDict{Tuple{NodeID, String}, <:ControlStateUpdate},
 )::Bool
     errors = false
 
@@ -416,8 +416,17 @@ end
 
 function incomplete_subnetwork(graph::MetaGraph, node_ids::Dict{Int32, Set{NodeID}})::Bool
     errors = false
-    for (subnetwork_id, subnetwork_node_ids) in node_ids
-        subnetwork, _ = induced_subgraph(graph, code_for.(Ref(graph), subnetwork_node_ids))
+
+    # analyze the subnetwork without junctions
+    node_ids_without_junctions = Dict{Int32, Set{NodeID}}()
+    for (subnetwork_id, node_ids_in_subnetwork) in node_ids
+        node_ids_without_junctions[subnetwork_id] =
+            Set(filter(x -> x.type != NodeType.Junction, node_ids_in_subnetwork))
+    end
+
+    for (subnetwork_id, node_ids_in_subnetwork) in node_ids_without_junctions
+        subnetwork, _ =
+            induced_subgraph(graph, code_for.(Ref(graph), node_ids_in_subnetwork))
         if !is_connected(subnetwork)
             @error "All nodes in subnetwork $subnetwork_id should be connected"
             errors = true

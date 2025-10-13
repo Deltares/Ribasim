@@ -10,7 +10,7 @@ function initialize_allocation!(
     p_independent::ParametersIndependent,
     config::Config,
 )::Nothing
-    (; graph, allocation) = p_independent
+    (; graph, allocation, pump, outlet) = p_independent
     (; subnetwork_ids, allocation_models) = allocation
     subnetwork_ids_ = sort(collect(keys(graph[].node_ids)))
 
@@ -21,7 +21,7 @@ function initialize_allocation!(
 
     # Detect connections between the primary network and subnetworks:
     # (upstream_id: pump or outlet in the primary network, node_id: node in the subnetwork, generally a basin)
-    collect_primary_network_connections!(allocation, graph)
+    collect_primary_network_connections!(allocation, graph, pump, outlet)
 
     non_positive_subnetwork_id(graph) && error("Allocation network initialization failed.")
 
@@ -29,12 +29,14 @@ function initialize_allocation!(
         push!(subnetwork_ids, subnetwork_id)
     end
 
-    for subnetwork_id in subnetwork_ids_
+    # Make sure the primary network is initialized last if it exists
+    for subnetwork_id in circshift(subnetwork_ids_, -1)
         push!(
             allocation_models,
             AllocationModel(subnetwork_id, p_independent, config.allocation),
         )
     end
+    allocation_models .= reverse!(allocation_models)
     return nothing
 end
 

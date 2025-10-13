@@ -36,11 +36,11 @@ outlet_constraint_Outlet_#3_: -1 low_storage_factor_Basin_#2_ + 1 flow_(Basin_#2
 outlet_constraint_Outlet_#8_: -1 low_storage_factor_Basin_#9_ + 1 flow_(Basin_#9,_Outlet_#8)_ = 0
 outlet_constraint_Outlet_#10_: -1 low_storage_factor_Basin_#9_ + 1 flow_(Basin_#9,_Outlet_#10)_ = 0
 outlet_constraint_Outlet_#22_: -1 low_storage_factor_Basin_#21_ + 1 flow_(Basin_#21,_Outlet_#22)_ = 0
-c26: 1 flow_(Basin_#2,_UserDemand_#1)_ - 1 user_demand_allocated_UserDemand_#1,2_ = 0
-c27: 1 flow_(Basin_#7,_UserDemand_#12)_ - 1 user_demand_allocated_UserDemand_#12,1_ = 0
-c28: 1 flow_(Basin_#15,_UserDemand_#18)_ - 1 user_demand_allocated_UserDemand_#18,3_ = 0
-c29: 1 flow_(Basin_#17,_UserDemand_#20)_ - 1 user_demand_allocated_UserDemand_#20,3_ = 0
-c30: 1 flow_(Basin_#11,_UserDemand_#24)_ - 1 user_demand_allocated_UserDemand_#24,2_ = 0
+user_demand_allocated_sum_constraint_UserDemand_#1_: 1 flow_(Basin_#2,_UserDemand_#1)_ - 1 user_demand_allocated_UserDemand_#1,2_ = 0
+user_demand_allocated_sum_constraint_UserDemand_#12_: 1 flow_(Basin_#7,_UserDemand_#12)_ - 1 user_demand_allocated_UserDemand_#12,1_ = 0
+user_demand_allocated_sum_constraint_UserDemand_#18_: 1 flow_(Basin_#15,_UserDemand_#18)_ - 1 user_demand_allocated_UserDemand_#18,3_ = 0
+user_demand_allocated_sum_constraint_UserDemand_#20_: 1 flow_(Basin_#17,_UserDemand_#20)_ - 1 user_demand_allocated_UserDemand_#20,3_ = 0
+user_demand_allocated_sum_constraint_UserDemand_#24_: 1 flow_(Basin_#11,_UserDemand_#24)_ - 1 user_demand_allocated_UserDemand_#24,2_ = 0
 user_demand_return_flow_UserDemand_#1_: -0.5 flow_(Basin_#2,_UserDemand_#1)_ + 1 flow_(UserDemand_#1,_Basin_#2)_ = 0
 user_demand_return_flow_UserDemand_#12_: -0.5 flow_(Basin_#7,_UserDemand_#12)_ + 1 flow_(UserDemand_#12,_Basin_#7)_ = 0
 user_demand_return_flow_UserDemand_#18_: -0.5 flow_(Basin_#15,_UserDemand_#18)_ + 1 flow_(UserDemand_#18,_Basin_#21)_ = 0

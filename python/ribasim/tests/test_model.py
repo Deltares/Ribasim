@@ -211,8 +211,8 @@ def test_to_xugrid(model, tmp_path):
     assert uds.grid.crs == CRS.from_epsg(28992)
     assert uds.node_id.dtype == np.int32
     uds.ugrid.to_netcdf(tmp_path / "ribasim.nc")
-    uds = xugrid.open_dataset(tmp_path / "ribasim.nc")
-    assert uds.attrs["Conventions"] == "CF-1.9 UGRID-1.0"
+    with xugrid.open_dataset(tmp_path / "ribasim.nc") as uds:
+        assert uds.attrs["Conventions"] == "CF-1.9 UGRID-1.0"
 
     with pytest.raises(FileNotFoundError, match="Model must be written to disk"):
         model.to_xugrid(add_flow=True)

@@ -16,22 +16,15 @@ Before starting with data, perform the following tests to see if the plugin does
 - Disable the Ribasim plugin: _Ribasim plugin panel hides if it was open, Ribasim button hides from navigation toolbar_.
 - Enable the Ribasim plugin: _Ribasim button shows on the navigation toolbar_.
 
-## Open and close
-
-- Open QGIS and ensure that the Ribasim plugin is installed and enabled.
-- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- Press the Ribasim button on the QGIS toolbar: _Ribasim panel hides_.
-
 # Model tab button interaction tests
 
 ## Open model twice
 
 - Open QGIS and ensure that the Ribasim plugin is installed and enabled.
-- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- Press the "Open" button in the Ribasim panel: _file navigation window pops up_.
+- Click the Ribasim button on the QGIS toolbar: _file navigation window pops up_.
 - Choose an existing model from the `generated_testmodels` folder.
 - Press OK: _The model layers appear in the layer panel and on the map_.
-- Press the "Open" button: _file navigation window pops up_.
+- Click the Ribasim button on the QGIS toolbar: _file navigation window pops up_.
 - Open the same model again: _A new layer group is added to the layers panel_.
 
 Intended behavior: The same model is loaded twice, but there is only a connection on the last loaded model when interacting with the plugin.
@@ -41,10 +34,8 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 ## Node selection on map triggers table selection
 
 - Open QGIS and ensure that the Ribasim plugin is installed and enabled.
-- Open the application via the Ribasim button on the QGIS toolbar: _Ribasim panel opens_.
-- Press the "Open" button in the Ribasim panel: _file navigation window pops up_.
-- Choose an existing model from the `generated_testmodels` folder.
-- Press OK: _The model layers appear in the layer panel and on the map_.
+- Choose an existing model from the `generated_testmodels` folder in the file explorer.
+- Drag the TOML file onto QGIS: _The model layers appear in the layer panel and on the map_.
 - Select the node layer, and make a subselection of nodes on the map: _Nodes are highlighted in yellow, including their links_.
 - Open the Link attribute table: _The highlighted rows are those with a from/to node\_id that was selected_.
 - Open any non-spatial attribute table: _The highlighted rows are those with a node\_id that was selected_.

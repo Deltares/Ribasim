@@ -23,31 +23,30 @@ def parse(
     if output_folder is None:
         assert model.filepath is not None
         output_folder = model.filepath.parent / "delwaq"
-    ug = xu.open_dataset(output_folder / "delwaq_map.nc")
+    with xu.open_dataset(output_folder / "delwaq_map.nc") as ug:
+        mapping = dict(graph.nodes(data="id"))
+        # Continuity is a (default) tracer representing the mass balance
+        substances.add("Continuity")
 
-    mapping = dict(graph.nodes(data="id"))
-    # Continuity is a (default) tracer representing the mass balance
-    substances.add("Continuity")
+        dfs = []
+        for substance in substances:
+            df = ug[f"ribasim_{substance}"].to_dataframe().reset_index()
+            df.rename(
+                columns={
+                    "ribasim_nNodes": "node_id",
+                    "nTimesDlwq": "time",
+                    f"ribasim_{substance}": "concentration",
+                },
+                inplace=True,
+            )
+            df["substance"] = substance
+            df.drop(columns=["ribasim_node_x", "ribasim_node_y"], inplace=True)
+            # Map the node_id (logical index) to the original node_id
+            # TODO Check if this is correct
+            df.node_id += 1
+            df.node_id = df.node_id.map(mapping)
 
-    dfs = []
-    for substance in substances:
-        df = ug[f"ribasim_{substance}"].to_dataframe().reset_index()
-        df.rename(
-            columns={
-                "ribasim_nNodes": "node_id",
-                "nTimesDlwq": "time",
-                f"ribasim_{substance}": "concentration",
-            },
-            inplace=True,
-        )
-        df["substance"] = substance
-        df.drop(columns=["ribasim_node_x", "ribasim_node_y"], inplace=True)
-        # Map the node_id (logical index) to the original node_id
-        # TODO Check if this is correct
-        df.node_id += 1
-        df.node_id = df.node_id.map(mapping)
-
-        dfs.append(df)
+            dfs.append(df)
 
     df = _concat(dfs).reset_index(drop=True)
     df.sort_values(["time", "node_id"], inplace=True)
