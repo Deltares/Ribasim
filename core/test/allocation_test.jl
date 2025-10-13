@@ -621,21 +621,21 @@ end
         )
     end
 
-    @test_broken logger.logs[5].level == Error
-    @test_broken logger.logs[5].message == "Set of incompatible constraints found"
-    # @test sort(name.(keys(logger.logs[5].kwargs[:constraint_violations]))) == [
-    #     "linear_resistance_constraint[LinearResistance #2]",
-    #     "volume_conservation[Basin #1]",
-    # ]
+    logger.logs[5].level == Error
+    logger.logs[5].message == "Set of incompatible constraints found"
+    @test sort(name.(keys(logger.logs[5].kwargs[:constraint_violations]))) == [
+        "linear_resistance_constraint[LinearResistance #2]",
+        "volume_conservation[Basin #1]",
+    ]
 
-    # @test ispath(
-    #     @__DIR__,
-    #     "../../generated_testmodels/invalid_infeasible/results/allocation_analysis_infeasibility.log",
-    # )
-    # @test ispath(
-    #     @__DIR__,
-    #     "../../generated_testmodels/invalid_infeasible/results/allocation_analysis_scaling.log",
-    # )
+    @test ispath(
+        @__DIR__,
+        "../../generated_testmodels/invalid_infeasible/results/allocation_analysis_infeasibility.log",
+    )
+    @test ispath(
+        @__DIR__,
+        "../../generated_testmodels/invalid_infeasible/results/allocation_analysis_scaling.log",
+    )
 end
 
 @testitem "drain surplus" begin

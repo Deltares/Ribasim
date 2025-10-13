@@ -206,10 +206,6 @@ end
     config = Ribasim.Config(toml_path; experimental_allocation = true)
     model = Ribasim.run(toml_path)
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
-    basin_data = DataFrame(Ribasim.basin_data(model))
-
-    link_outlet_3a = filter(:link_id => ==(23), allocation_flow_table)
-    link_outlet_3b = filter(:link_id => ==(24), allocation_flow_table)
 
     flow_userdemand_primnet = filter(:link_id => ==(12), allocation_flow_table)
     flow_userdemand_subnet_2 = filter(:link_id => ==(20), allocation_flow_table)

@@ -1794,7 +1794,7 @@ def invalid_infeasible_model() -> Model:
     )
     model.linear_resistance.add(
         Node(2, Point(1, 0), subnetwork_id=1),
-        [linear_resistance.Static(resistance=[5e4], max_flow_rate=[6e-5])],
+        [linear_resistance.Static(resistance=[5e3], max_flow_rate=[6e-5])],
     )
     model.level_boundary.add(
         Node(3, Point(2, 0), subnetwork_id=1), [level_boundary.Static(level=[11.0])]
