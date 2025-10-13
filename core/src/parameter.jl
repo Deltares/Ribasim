@@ -1155,6 +1155,7 @@ the object itself is not.
     u_prev_saveat::Vector{Float64} = Float64[]
     # Node ID associated with each state
     node_id::Vector{NodeID} = NodeID[]
+    state_ranges::StateTuple{UnitRange{Int}}
     # Callback configurations
     do_concentration::Bool
     do_subgrid::Bool

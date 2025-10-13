@@ -535,11 +535,8 @@ end
 """
 Set references to all variables that are listened to by discrete/continuous control
 """
-function set_listen_cache_refs!(
-    p_independent::ParametersIndependent,
-    state_ranges::StateTuple{UnitRange{Int}},
-)::Nothing
-    (; discrete_control, continuous_control) = p_independent
+function set_listen_cache_refs!(p_independent::ParametersIndependent)::Nothing
+    (; discrete_control, continuous_control, state_ranges) = p_independent
     compound_variable_sets =
         [discrete_control.compound_variables..., continuous_control.compound_variable]
     errors = false
@@ -705,8 +702,8 @@ end
 function build_state_vector(p_independent::ParametersIndependent)
     # It is assumed that the horizontal flow states come first in
     # p_independent.state_inflow_link and p_independent.state_outflow_link
+    (; state_ranges) = p_independent
     u_ids = state_node_ids(p_independent)
-    state_ranges = count_state_ranges(u_ids)
     data = zeros(length(p_independent.node_id))
     u = CVector(data, state_ranges)
     # Ensure p_independent.node_id, state_ranges and u have the same length and order

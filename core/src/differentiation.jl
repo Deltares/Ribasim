@@ -69,11 +69,11 @@ function LinearAlgebra.mul!(
     _v::RibasimCVectorType,
 )
     (; J_intermediate, p_independent) = J
-    (; u_reduced, convergence) = p_independent
+    (; u_reduced, state_ranges) = p_independent
     # The input vectors are rewrapped because somewhere
     # they obtain wrong axes
-    u = CVector(getdata(_u), getaxes(convergence))
-    v = CVector(getdata(_v), getaxes(convergence))
+    u = CVector(getdata(_u), state_ranges)
+    v = CVector(getdata(_v), state_ranges)
     reduce_state!(u_reduced, v, p_independent)
     mul!(u, J_intermediate, u_reduced)
     return nothing
@@ -115,31 +115,35 @@ function calc_J_inner!(
     n_states_reduced = size(J_inner)[1]
 
     if threads
-        @threads for col in 1:n_states_reduced
-            update_J_inner!(J_inner, J, col)
+        @threads for col_reduced in 1:n_states_reduced
+            update_J_inner!(J_inner, J, col_reduced)
         end
     else
-        for col in 1:n_states_reduced
-            update_J_inner!(J_inner, J, col)
+        for col_reduced in 1:n_states_reduced
+            update_J_inner!(J_inner, J, col_reduced)
         end
     end
     return nothing
 end
 
-function update_J_inner!(J_inner::SparseMatrixCSC, J::HalfLazyJacobian, col::Int)::Nothing
+function update_J_inner!(
+    J_inner::SparseMatrixCSC,
+    J::HalfLazyJacobian,
+    col_reduced::Int,
+)::Nothing
     (; J_intermediate, p_independent) = J
-    for nz_idx in nzrange(J_intermediate, col)
+    for nz_idx in nzrange(J_intermediate, col_reduced)
         row = J_intermediate.rowval[nz_idx]
         val = J_intermediate.nzval[nz_idx]
-        update_J_inner!(J_inner, p_independent, row, col, val)
+        update_J_inner!(J_inner, p_independent, row, col_reduced, val)
     end
 end
 
-function update_J_inner!(J_inner::Matrix, J::HalfLazyJacobian, col::Int)::Nothing
+function update_J_inner!(J_inner::Matrix, J::HalfLazyJacobian, col_reduced::Int)::Nothing
     (; J_intermediate, p_independent) = J
     for row in 1:size(J_intermediate)[2]
-        val = J_inner[row, col]
-        !iszero(val) && update_J_inner!(J_inner, p_independent, row, col, val)
+        val = J_inner[row, col_reduced]
+        !iszero(val) && update_J_inner!(J_inner, p_independent, row, col_reduced, val)
     end
 end
 
@@ -147,7 +151,7 @@ function update_J_inner!(
     J_inner::AbstractMatrix,
     p_independent::ParametersIndependent,
     row::Int,
-    col::Int,
+    col_reduced::Int,
     val::Float64,
 )
     (;
@@ -157,33 +161,38 @@ function update_J_inner!(
         user_demand,
         linear_resistance,
         manning_resistance,
-        convergence,
+        basin,
+        state_ranges,
     ) = p_independent
-    state_ranges = getaxes(convergence)
     node_id = p_independent.node_id[row]
 
     if row in state_ranges.tabulated_rating_curve
-        update_J_inner!(J_inner, val, node_id, col, tabulated_rating_curve)
+        update_J_inner!(J_inner, val, node_id, col_reduced, tabulated_rating_curve)
     elseif row in state_ranges.pump
-        update_J_inner!(J_inner, val, node_id, col, pump)
+        update_J_inner!(J_inner, val, node_id, col_reduced, pump)
     elseif row in state_ranges.outlet
-        update_J_inner!(J_inner, val, node_id, col, outlet)
+        update_J_inner!(J_inner, val, node_id, col_reduced, outlet)
     elseif row in state_ranges.user_demand_inflow
-        update_J_inner!(J_inner, val, node_id, col, user_demand; do_outflow = false)
+        update_J_inner!(J_inner, val, node_id, col_reduced, user_demand; do_outflow = false)
     elseif row in state_ranges.user_demand_outflow
-        update_J_inner!(J_inner, val, node_id, col, user_demand; do_inflow = false)
+        update_J_inner!(J_inner, val, node_id, col_reduced, user_demand; do_inflow = false)
     elseif row in state_ranges.linear_resistance
-        update_J_inner!(J_inner, val, node_id, col, linear_resistance)
+        update_J_inner!(J_inner, val, node_id, col_reduced, linear_resistance)
     elseif row in state_ranges.manning_resistance
-        update_J_inner!(J_inner, val, node_id, col, manning_resistance)
+        update_J_inner!(J_inner, val, node_id, col_reduced, manning_resistance)
     elseif row in state_ranges.evaporation
-        @assert node_id.idx == col
-        J_inner[node_id.idx, col] -= val
+        @assert node_id.type == NodeType.Basin
+        @assert node_id.idx == col_reduced
+        J_inner[node_id.idx, col_reduced] -= val
     elseif row in state_ranges.infiltration
-        @assert node_id.idx == col
-        J_inner[node_id.idx, col] -= val
-    else # row in state_ranges.integral
-        J_inner[col, col] = val
+        @assert node_id.type == NodeType.Basin
+        @assert node_id.idx == col_reduced
+        J_inner[node_id.idx, col_reduced] -= val
+    else
+        @assert node_id.type == NodeType.PidControl
+        @assert row in state_ranges.integral
+        row_reduced = length(basin.node_id) + (row - state_ranges.integral.start + 1)
+        J_inner[row_reduced, col_reduced] += val
     end
 end
 
@@ -191,7 +200,7 @@ function update_J_inner!(
     J_inner::AbstractMatrix,
     val::Float64,
     node_id::NodeID,
-    col::Int,
+    col_reduced::Int,
     node::AbstractParameterNode;
     do_inflow::Bool = true,
     do_outflow::Bool = true,
@@ -199,14 +208,14 @@ function update_J_inner!(
     if do_inflow
         inflow_id = node.inflow_link[node_id.idx].link[1]
         if inflow_id.type == NodeType.Basin
-            J_inner[inflow_id.idx, col] -= val
+            J_inner[inflow_id.idx, col_reduced] -= val
         end
     end
 
     if do_outflow
         outflow_id = node.outflow_link[node_id.idx].link[2]
         if outflow_id.type == NodeType.Basin
-            J_inner[outflow_id.idx, col] += val
+            J_inner[outflow_id.idx, col_reduced] += val
         end
     end
     return nothing

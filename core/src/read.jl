@@ -1615,6 +1615,7 @@ function Parameters(db::DB, config::Config)::Parameters
         config.solver.water_balance_reltol,
         u_prev_saveat = zeros(n_states),
         node_id,
+        state_ranges,
         do_concentration = config.experimental.concentration,
         do_subgrid = config.results.subgrid,
         temp_convergence = CVector(zeros(n_states), state_ranges),
@@ -1623,7 +1624,7 @@ function Parameters(db::DB, config::Config)::Parameters
     )
 
     collect_control_mappings!(p_independent)
-    set_listen_cache_refs!(p_independent, state_ranges)
+    set_listen_cache_refs!(p_independent)
     set_discrete_controlled_variable_refs!(p_independent)
 
     # Allocation data structures

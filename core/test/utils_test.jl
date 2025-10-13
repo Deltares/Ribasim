@@ -377,43 +377,75 @@ end
     end
 end
 
-@testitem "state_reducer matrix" begin
-    using LinearAlgebra: I
-    using Ribasim: getaxes
+@testitem "Reduce state" begin
+    using Ribasim: reduce_state!, calc_J_inner!
+    using SparseArrays: spzeros, sparse
+
+    function get_concrete_A(model)
+        (; u, p) = model.integrator
+        (; p_independent) = p
+        (; u_reduced) = p_independent
+
+        n_states = length(u)
+        n_states_reduced = length(u_reduced)
+
+        A = spzeros(n_states_reduced, n_states)
+        unit_vector = copy(u)
+
+        for i in 1:n_states
+            unit_vector .= 0
+            unit_vector[i] = 1
+            reduce_state!(u_reduced, unit_vector, p_independent)
+            A[:, i] .= u_reduced
+        end
+        return A
+    end
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; basin, state_reducer) = model.integrator.p.p_independent
-    state_ranges = getaxes(model.integrator.u)
-    n_basins = length(basin.node_id)
+    (; cache) = model.integrator.cache.nlsolver
+    (; J_intermediate) = cache.J
+    J_inner = cache.linsolve.cache_inner.A.J.A
+    A = get_concrete_A(model)
 
-    @test state_reducer[:, state_ranges.evaporation] == -I
-    @test state_reducer[:, state_ranges.infiltration] == -I
+    # rows, cols, vals = findnz(A)
+    #! format: off
+    rows_expected = [2, 2, 3, 2, 4, 3, 4, 4, 2, 1, 2, 1, 2, 3, 4, 1, 2, 3, 4]
+    cols_expected = [1, 2, 2, 3, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    vals_expected = [-1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]
+    #! format: on
+    A_expected = sparse(rows_expected, cols_expected, vals_expected)
+    @test A == A_expected
 
-    for node_name in
-        [:tabulated_rating_curve, :pump, :outlet, :linear_resistance, :manning_resistance]
-        state_range = getproperty(state_ranges, node_name)
-        state_reducer_node = state_reducer[:, state_range]
-        # In every column there is either 0 or 1 instance of 1.0 (flow into a basin)
-        @test all(
-            i -> i ∈ (0, 1),
-            count(
-                ==(1.0),
-                collect(state_reducer[:, state_ranges.tabulated_rating_curve]);
-                dims = 1,
-            ),
-        )
+    #! format: off
+    J_intermediate.nzval .= [0.020047016741082002, 0.8755256160248737, 0.36909649531559285, 0.7632298275012108, 0.9240314657308235, 0.49544793385910524, 0.10528087709131306, 0.020608175445295474, 0.9691738934605421, 0.4218954216679456, 0.5058554068921941, 0.2896077753195684, 0.8694315735708924, 0.8458965765906646, 0.7966585871607135, 0.2581915440964345, 0.6505806124461845, 0.8411882038236067, 0.8067685192045705]
+    #! format: on
+    J_inner_expected = A * J_intermediate
+    calc_J_inner!(J_inner, cache.J)
+    @test J_inner ≈ J_inner_expected
 
-        # In every column there is either 0 or 1 instance of -1.0 (flow out of a basin)
-        @test all(
-            i -> i ∈ (0, 1),
-            count(
-                ==(1 - 0.0),
-                collect(state_reducer[:, state_ranges.tabulated_rating_curve]);
-                dims = 1,
-            ),
-        )
-    end
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    (; cache) = model.integrator.cache.nlsolver
+    (; J_intermediate) = cache.J
+    J_inner = cache.linsolve.cache_inner.A.J.A
+    A = get_concrete_A(model)
+    #! format: off
+    rows_expected = [1, 1, 1, 1, 2, 3]
+    cols_expected = [1, 2, 3, 4, 5, 6]
+    vals_expected = [-1.0, 1.0, -1.0, -1.0, 1.0, 1.0]
+    #! format: on
+    A_expected = sparse(rows_expected, cols_expected, vals_expected)
+    @test A == A_expected
+
+    #! format: off
+    J_intermediate.nzval .= [0.449381314574683, 0.4542317082538514, 0.599934409205972, 0.30717602583409154, 0.9795352040440034, 0.7127522193125262, 0.5170645177542447, 0.9487984760519759]
+    #! format: on
+    J_inner_expected = A * J_intermediate
+    calc_J_inner!(J_inner, cache.J)
+    @test J_inner ≈ J_inner_expected
 end
 
 @testitem "unsafe_array" begin
