@@ -799,7 +799,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         # and 10 cm above the bottom
         bottom = basin_bottom(basin, id)[2]
         basin.low_storage_threshold[id.idx] =
-            get_storage_from_level(basin, id.idx, bottom + LOW_STORAGE_DEPTH)
+            get_storage_from_level(basin, id.idx, bottom + config.solver.low_storage_depth)
 
         # Cache the connected LevelDemand node if applicable
         level_demand_id = get_external_demand_id(graph, id)
@@ -1621,6 +1621,8 @@ function Parameters(db::DB, config::Config)::Parameters
         do_subgrid = config.results.subgrid,
         temp_convergence = CVector(zeros(n_states), state_ranges),
         convergence = CVector(zeros(n_states), state_ranges),
+        config.solver.user_demand_min_level_threshold,
+        config.solver.flow_reduction_factor_threshold,
     )
 
     collect_control_mappings!(p_independent)

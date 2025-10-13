@@ -48,6 +48,9 @@ maxiters = 1e9      # optional, default 1e9
 sparse = true       # optional, default true
 autodiff = true     # optional, default true
 evaporate_mass = true  # optional, default true to simulate a correct mass balance
+low_storage_depth = 0.1  # optional, universal depth at which the low storage factor kicks in, default 0.1
+user_demand_min_level_threshold = 0.1 # optional, universal reduction factor threshold for the minimum upstream level of UserDemand nodes, defaults to 0.1
+flow_reduction_factor_threshold = 0.02 # optional, universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes, defaults to 0.02
 
 [logging]
 # defines the logging level of Ribasim
