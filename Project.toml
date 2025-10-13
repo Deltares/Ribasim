@@ -1,9 +1,6 @@
-name = "root"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 description = "Meta-project used to share the Manifest of Ribasim and its dependents"
-
-[workspace]
-projects = ["core"]
+name = "root"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -82,11 +79,16 @@ TestEnv = "1e6cf692-eddd-4d53-88a5-2d735e33781b"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 
-[sources]
-PackageCompiler = {rev = "bundle_less_artifacts", url = "https://github.com/visr/PackageCompiler.jl"}
-Ribasim = {path = "core"}
-TestItemRunner = {rev = "main", url = "https://github.com/julia-vscode/TestItemRunner.jl"}
+[sources.PackageCompiler]
+rev = "bundle_less_artifacts"
+url = "https://github.com/visr/PackageCompiler.jl"
 
-[preferences.Ribasim]
-precompile_workload = false
-specialize = false
+[sources.Ribasim]
+path = "core"
+
+[sources.TestItemRunner]
+rev = "main"
+url = "https://github.com/julia-vscode/TestItemRunner.jl"
+
+[workspace]
+projects = ["core"]
