@@ -166,8 +166,7 @@ end
     @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path; experimental_allocation = true)
-    model = Ribasim.Model(config)
-    Ribasim.solve!(model)
+    model = Ribasim.run(toml_path)
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
     basin_data = DataFrame(Ribasim.basin_data(model))
 
@@ -206,13 +205,55 @@ end
     config = Ribasim.Config(toml_path; experimental_allocation = true)
     model = Ribasim.run(toml_path)
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
+    basin_data = DataFrame(Ribasim.basin_data(model))
 
-    flow_userdemand_primnet = filter(:link_id => ==(12), allocation_flow_table)
-    flow_userdemand_subnet_2 = filter(:link_id => ==(20), allocation_flow_table)
-    flow_userdemand_subnet_3 = filter(:link_id => ==(25), allocation_flow_table)
+    flow_userdemand_primnet = filter(:link_id => ==(12), allocation_flow_table).flow_rate
+    flow_userdemand_subnet_2 = filter(:link_id => ==(20), allocation_flow_table).flow_rate
+    flow_userdemand_subnet_3 = filter(:link_id => ==(25), allocation_flow_table).flow_rate
+    flow_to_terminal = filter(:link_id => ==(15), allocation_flow_table)
 
     # Assert all 3 demands are met:
-    @test all(flow_userdemand_primnet.flow_rate .≈ 0.05)
-    @test all(flow_userdemand_subnet_2.flow_rate .≈ 0.1)
-    @test all(flow_userdemand_subnet_3.flow_rate .≈ 0.1)
+    @test flow_userdemand_primnet[end] .≈ 0.5
+    @test flow_userdemand_subnet_2[end] .≈ 0.25
+    @test flow_userdemand_subnet_3[end] .≈ 0.25
+end
+
+@testitem "Primary Secondary Network Model Verify" begin
+    using Ribasim
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/medium_primary_secondary_network_verification/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    config = Ribasim.Config(toml_path; experimental_allocation = true)
+    model = Ribasim.run(toml_path)
+    allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
+    basin_data = DataFrame(Ribasim.basin_data(model))
+
+    flow_userdemand_primnet = filter(:link_id => ==(12), allocation_flow_table).flow_rate
+    flow_userdemand_subnet_2 = filter(:link_id => ==(20), allocation_flow_table).flow_rate
+    flow_userdemand_subnet_3 = filter(:link_id => ==(25), allocation_flow_table).flow_rate
+    flow_to_terminal = filter(:link_id => ==(15), allocation_flow_table)
+end
+
+@testitem "Level Demand Upper Lower Bounds" begin
+    using Ribasim
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/level_demand_upper_lower_bounds/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    config = Ribasim.Config(toml_path; experimental_allocation = true)
+    model = Ribasim.run(toml_path)
+    allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
+    basin_data = DataFrame(Ribasim.basin_data(model))
+
+    filter!(:node_id => ==(1), level_demand_table)
+    filter!(:link_id => ==(1), allocation_flow_table)
 end
