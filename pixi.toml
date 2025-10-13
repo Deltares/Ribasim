@@ -148,19 +148,9 @@ publish-ribasim-python = { cmd = "twine upload dist/*", cwd = "python/ribasim", 
 publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api", depends-on = [
     "build-ribasim-api-wheel",
 ] }
-# QGIS
-qgis = "qgis --profiles-path .pixi/qgis_env"
-install-ribasim-qgis = "python ribasim_qgis/scripts/install_ribasim_qgis.py"
-install-imod-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py iMOD && python ribasim_qgis/scripts/enable_plugin.py imodqgis"
-install-plugin-reloader-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py \"Plugin Reloader\" && python ribasim_qgis/scripts/enable_plugin.py plugin_reloader"
-install-debugvs-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py debugvs==0.7 && python ribasim_qgis/scripts/enable_plugin.py debug_vs"
+
+
 test-ribasim-qgis-docker = { cmd = "sh ./test.sh", cwd = ".docker" }
-install-qgis-plugins = { depends-on = [
-    "install-plugin-reloader-qgis",
-    "install-ribasim-qgis",
-    "install-imod-qgis",
-    "install-debugvs-qgis",
-] }
 test-ribasim-qgis-ui = { cmd = "python ribasim_qgis/scripts/run_qgis_ui_tests.py", depends-on = [
     "install-ribasim-qgis",
 ] }
@@ -187,6 +177,46 @@ migrate-model = "python utils/migrate_model.py"
 filter-model = "python utils/filter_model.py"
 # Release
 github-release = "python utils/github-release.py"
+
+# QGIS
+[tasks.qgis]
+args = [{ "arg" = "profile_path", "default" = ".pixi/qgis_env" }]
+cmd = "qgis --profiles-path {{ profile_path }}"
+
+[tasks.install-ribasim-qgis]
+args = [{ "arg" = "profile_path", "default" = ".pixi/qgis_env" }]
+cmd = "python ribasim_qgis/scripts/install_ribasim_qgis.py {{ profile_path }}"
+
+[tasks.install-qgis-plugin]
+args = [
+    { "arg" = "package" },
+    { "arg" = "package_name" },
+    { "arg" = "profile_path", "default" = ".pixi/qgis_env" },
+]
+cmd = "python ribasim_qgis/scripts/install_qgis_plugin.py {{ package }} {{ profile_path }} && python ribasim_qgis/scripts/enable_plugin.py {{ package_name }} {{ profile_path }}"
+
+[tasks.install-qgis-plugins]
+args = [{ "arg" = "profile_path", "default" = ".pixi/qgis_env" }]
+depends-on = [
+    { "task" = "install-qgis-plugin", "args" = [
+        "Plugin\\ Reloader",
+        "plugin_reloader",
+        " {{ profile_path }} ",
+    ] },
+    { "task" = "install-ribasim-qgis", "args" = [
+        " {{ profile_path }} ",
+    ] },
+    { "task" = "install-qgis-plugin", "args" = [
+        "iMOD",
+        "imodqgis",
+        " {{ profile_path }} ",
+    ] },
+    { "task" = "install-qgis-plugin", "args" = [
+        "debugvs==0.7",
+        "debug_vs",
+        " {{ profile_path }} ",
+    ] },
+]
 
 [tasks.generate-sbom-ribasim-core]
 cmd = "julia --project --check-bounds=yes -- utils/generate-sbom.jl"
