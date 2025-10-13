@@ -1,7 +1,9 @@
 """Setup a dockwidget to hold the ribasim plugin widgets."""
 
+import importlib
 from pathlib import Path
 
+from qgis.core import Qgis
 from qgis.gui import QgsCustomDropHandler
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
@@ -63,6 +65,13 @@ class RibasimPlugin:
 
     def open_model(self, path=None):
         if self.ribasim_widget is None:
+            if importlib.util.find_spec("pandas") is None:
+                self.iface.messageBar().pushMessage(
+                    "Error: The Ribasim plugin requires the `pandas` package.",
+                    level=Qgis.MessageLevel.Critical,
+                )
+                return
+
             from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
 
             self.ribasim_widget = RibasimWidget(self.iface)
