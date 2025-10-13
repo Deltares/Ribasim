@@ -26,7 +26,8 @@ as a matrix-matrix product using the chain rule:
 
 Note that the Jacobian of `g` has `length(u)` rows and `length(u_reduced)` columns. It turns out that taking this multiplication
 with `A` out of the AD Jacobian computation is very advantageous in terms of computation time. In the code `f` and `g` are both methods
-of `water_balance!`. We denote the Jacobian of `g` as `J_intermediate`.
+of `water_balance!`. We denote the Jacobian of `g` as `J_intermediate`. The custom Jacobian object that wraps `J_intermediate` is called
+`HalfLazyJacobian`, which contains the parameters to implicitly define `A` and other parameters needed for AD Jacobian evaluation.
 
 It turns out that we can make use of this structure of the Jacobian in the linear solve as well. The linear system is of the form
 `Wa = b`, where `W = -γ⁻¹I - J_intermediate*A`. It turns out this special form of the Jacobian can be utilized to solve the linear system in 2
@@ -38,7 +39,11 @@ For more details on the derivation of this see https://github.com/Deltares/Ribas
 The crucial detail here is that the linear system to be solved has much fewer equations. We denote `J_inner = A * J_intermediate`,
 which is explicitly computed as a sparse matrix in `calc_J_inner`. The above computation is incorporated in the ODE solve as follows:
 
-TBD
+- A custom linear solve algorithm `RibasimLinearSolve` wraps a default linear solve algorithm, used for sparse solves
+- `SciMLBase.init` is overloaded for `RibasimLinearSolve`, initializing the cache for the inner solve (i.e. the solve in 'storage space')
+    and returns this in the `RibasimLinearSolveCache`
+- `OrdinaryDiffEqDifferentiation.dolinsolve` is overloaded for `RibasimLinearSolveCache`, which
+  transforms the problem to 'storage space', solves the problem, and translates the result back to 'flow space'
 =#
 
 """

@@ -768,6 +768,30 @@ function formulate_flows!(
     t::Number;
     control_type::ContinuousControlType.T = ContinuousControlType.None,
 )::Nothing
+    # Don't use more threads than the maximum amount of nodes of one type
+    # to reduce overhead in small models
+    n_threads = min(
+        nthreads(),
+        max(
+            length(p.p_independent.linear_resistance.node_id),
+            length(p.p_independent.manning_resistance.node_id),
+            length(p.p_independent.tabulated_rating_curve.node_id),
+            length(p.p_independent.pump.node_id),
+            length(p.p_independent.outlet.node_id),
+            length(p.p_independent.user_demand.node_id),
+        ),
+    )
+
+    if isone(n_threads)
+        formulate_flows!(du, p, t, control_type, 1)
+    else
+        @threads for thread_id in 1:n_threads
+            formulate_flows!(du, p, t, control_type, thread_id)
+        end
+    end
+end
+
+function formulate_flows!(du, p, t, control_type, thread_id)
     (;
         linear_resistance,
         manning_resistance,
@@ -776,31 +800,14 @@ function formulate_flows!(
         outlet,
         user_demand,
     ) = p.p_independent
+    formulate_flow!(du, pump, p, t, control_type, thread_id)
+    formulate_flow!(du, outlet, p, t, control_type, thread_id)
 
-    # Don't use more threads than the maximum amount of nodes of one type
-    # to reduce overhead in small models
-    n_threads = min(
-        nthreads(),
-        max(
-            length(linear_resistance.node_id),
-            length(manning_resistance.node_id),
-            length(tabulated_rating_curve.node_id),
-            length(pump.node_id),
-            length(outlet.node_id),
-            length(user_demand.node_id),
-        ),
-    )
-
-    @threads for thread_id in 1:n_threads
-        formulate_flow!(du, pump, p, t, control_type, thread_id)
-        formulate_flow!(du, outlet, p, t, control_type, thread_id)
-
-        if control_type == ContinuousControlType.None
-            formulate_flow!(du, linear_resistance, p, t, thread_id)
-            formulate_flow!(du, manning_resistance, p, t, thread_id)
-            formulate_flow!(du, tabulated_rating_curve, p, t, thread_id)
-            formulate_flow!(du, user_demand, p, t, thread_id)
-        end
+    if control_type == ContinuousControlType.None
+        formulate_flow!(du, linear_resistance, p, t, thread_id)
+        formulate_flow!(du, manning_resistance, p, t, thread_id)
+        formulate_flow!(du, tabulated_rating_curve, p, t, thread_id)
+        formulate_flow!(du, user_demand, p, t, thread_id)
     end
 end
 
