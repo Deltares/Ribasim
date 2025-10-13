@@ -75,7 +75,7 @@ lint = { depends-on = [
     "mypy-ribasim-qgis",
 ] }
 # Build
-build = { "cmd" = "julia --project --check-bounds=yes build/build.jl", depends-on = [
+build = { "cmd" = "julia --project --check-bounds=yes build/build.jl", env = { "JULIA_CPU_TARGET" = "generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1)" }, depends-on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
