@@ -1073,35 +1073,39 @@ caches are only updated if the data they depend on is different from the previou
 """
 function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
     (; state_time_dependent_cache, time_dependent_cache, p_mutable) = p
-    (; u_reduced_prev_call) = state_time_dependent_cache
-    (; t_prev_call) = time_dependent_cache
-    if p_mutable.all_nodes_active
-        p_mutable.new_t = true
-        p_mutable.new_u_reduced = true
-    else
-        p_mutable.new_t =
-            !isassigned(t_prev_call, 1) || (
-                t != t_prev_call[1] &&
-                ForwardDiff.partials(t) == ForwardDiff.partials(t_prev_call[1])
-            )
-        p_mutable.new_u_reduced =
-            any(i -> !isassigned(u_reduced_prev_call, i), eachindex(u_reduced)) || any(
-                i -> !(
-                    u_reduced[i] == u_reduced_prev_call[i] &&
-                    ForwardDiff.partials(u_reduced[i]) ==
-                    ForwardDiff.partials(u_reduced_prev_call[i])
-                ),
-                eachindex(u_reduced),
-            )
-    end
 
-    if p_mutable.new_t
-        time_dependent_cache.t_prev_call[1] = t
-    end
+    # Whether the time dependent cache must be renewed
+    p_mutable.new_time_dependent_cache =
+        !isassigned(time_dependent_cache.t_prev_call, 1) || (
+            t != time_dependent_cache.t_prev_call[1] &&
+            ForwardDiff.partials(t) ==
+            ForwardDiff.partials(time_dependent_cache.t_prev_call[1])
+        )
+    time_dependent_cache.t_prev_call[1] = t
 
-    if p_mutable.new_u_reduced
-        state_time_dependent_cache.u_reduced_prev_call .= u_reduced
-    end
+    # Whether the state time dependent cache must be renewed
+    new_t_state_time_dependent_cache =
+        !isassigned(state_time_dependent_cache.t_prev_call, 1) || (
+            t != state_time_dependent_cache.t_prev_call[1] &&
+            ForwardDiff.partials(t) ==
+            ForwardDiff.partials(state_time_dependent_cache.t_prev_call[1])
+        )
+    new_u_state_time_dependent_cache =
+        any(
+            i -> !isassigned(state_time_dependent_cache.u_reduced_prev_call, i),
+            eachindex(u_reduced),
+        ) || any(
+            i -> !(
+                u_reduced[i] == state_time_dependent_cache.u_reduced_prev_call[i] &&
+                ForwardDiff.partials(u_reduced[i]) ==
+                ForwardDiff.partials(state_time_dependent_cache.u_reduced_prev_call[i])
+            ),
+            eachindex(u_reduced),
+        )
+    state_time_dependent_cache.u_reduced_prev_call .= u_reduced
+    state_time_dependent_cache.t_prev_call[1] = t
+    p_mutable.new_state_time_dependent_cache =
+        new_t_state_time_dependent_cache || new_u_state_time_dependent_cache
     return nothing
 end
 
@@ -1112,14 +1116,14 @@ function eval_time_interp(
     p::Parameters,
     t::Number,
 )
-    (; all_nodes_active, new_t) = p.p_mutable
+    (; all_nodes_active, new_time_dependent_cache) = p.p_mutable
     if all_nodes_active
         # Set to non-zero value to avoid missing
         # connections during sparsity detection
         val = one(t)
         cache[idx] = 1.0
     else
-        if new_t
+        if new_time_dependent_cache
             @inbounds val = itp(t)
             cache[idx] = val
             return val

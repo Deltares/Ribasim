@@ -67,9 +67,9 @@ function formulate_flow_boundary!(p::Parameters, t::Number)::Nothing
     (; p_independent, time_dependent_cache, p_mutable) = p
     (; node_id, flow_rate, active, cumulative_flow) = p_independent.flow_boundary
     (; current_cumulative_boundary_flow) = time_dependent_cache.flow_boundary
-    (; tprev, new_t) = p_mutable
+    (; tprev, new_time_dependent_cache) = p_mutable
 
-    if new_t
+    if new_time_dependent_cache
         for id in node_id
             if active[id.idx]
                 current_cumulative_boundary_flow[id.idx] =
@@ -115,7 +115,7 @@ function set_current_basin_properties!(
     ) = basin
 
     # The exact cumulative precipitation and drainage up to the t of this water_balance call
-    if p_mutable.new_t
+    if p_mutable.new_time_dependent_cache
         dt = t - p_mutable.tprev
         for id in node_id
             fixed_area = basin_areas(basin, id.idx)[end]
@@ -129,7 +129,7 @@ function set_current_basin_properties!(
             cumulative_drainage + dt * vertical_flux.drainage
     end
 
-    if p_mutable.new_t || p_mutable.new_u_reduced
+    if p_mutable.new_state_time_dependent_cache
         formulate_storages!(u_reduced, p, t)
         @threads for i in eachindex(basin.node_id)
             id = basin.node_id[i]
@@ -169,7 +169,7 @@ function formulate_storages!(
     current_storage .+= time_dependent_cache.basin.current_cumulative_drainage
 
     # Formulate storage contributions of flow boundaries
-    p_mutable.new_t && formulate_flow_boundary!(p, t)
+    formulate_flow_boundary!(p, t)
     for (outflow_link, cumulative_flow) in zip(
         flow_boundary.outflow_link,
         time_dependent_cache.flow_boundary.current_cumulative_boundary_flow,
@@ -777,7 +777,21 @@ function formulate_flows!(
         user_demand,
     ) = p.p_independent
 
-    @threads for thread_id in 1:nthreads()
+    # Don't use more threads than the maximum amount of nodes of one type
+    # to reduce overhead in small models
+    n_threads = min(
+        nthreads(),
+        max(
+            length(linear_resistance.node_id),
+            length(manning_resistance.node_id),
+            length(tabulated_rating_curve.node_id),
+            length(pump.node_id),
+            length(outlet.node_id),
+            length(user_demand.node_id),
+        ),
+    )
+
+    @threads for thread_id in 1:n_threads
         formulate_flow!(du, pump, p, t, control_type, thread_id)
         formulate_flow!(du, outlet, p, t, control_type, thread_id)
 

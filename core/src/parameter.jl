@@ -790,6 +790,7 @@ const StateTimeDependentCache{T} = @NamedTuple{
     current_flow_rate_outlet::Vector{T},
     current_error_pid_control::Vector{T},
     u_reduced_prev_call::Vector{T},
+    t_prev_call::Vector{T},
 } where {T}
 
 @enumx CacheType flow_rate_pump flow_rate_outlet basin_level basin_storage
@@ -1100,11 +1101,18 @@ const ModelGraph = MetaGraph{
 
 """
 The part of the parameters passed to the rhs and callbacks that are mutable.
+- `all_nodes_active`: Whether `active = true` is assumed for all nodes, so that no
+   dependencies are missed during sparsity detection
+- `new_time_dependent_cache`: Whether the `t` with which `water_balance!` is called is considered new,
+   and thus whether `time_dependent_cache` must be updated
+- `new_state_time_dependent_cache`: Whether the `t` and/or `u_reduced` with which `water_balance!` are called are
+   considered new, and thus whether caches that (only) depend on `u_reduced` must be updated
+- `tprev`: The previous `t` before the latest time step
 """
 @kwdef mutable struct ParametersMutable
     all_nodes_active::Bool = false
-    new_t = true
-    new_u_reduced = true
+    new_time_dependent_cache::Bool = true
+    new_state_time_dependent_cache::Bool = true
     tprev::Float64 = 0.0
 end
 
@@ -1175,6 +1183,7 @@ function StateTimeDependentCache(
         current_flow_rate_outlet = zeros(n_outlet),
         current_error_pid_control = zeros(n_pid_control),
         u_reduced_prev_call = getdata(p_independent.u_reduced) .- 1.0,
+        t_prev_call = [-1.0],
     )
 end
 
@@ -1187,8 +1196,6 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
         current_potential_evaporation = zeros(n_basin),
         current_infiltration = zeros(n_basin),
     )
-
-    n_rating_curve = length(p_independent.tabulated_rating_curve.node_id)
 
     n_level_boundary = length(p_independent.level_boundary.node_id)
     level_boundary = (; current_level = zeros(n_level_boundary))
