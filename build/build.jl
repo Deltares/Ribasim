@@ -15,7 +15,7 @@ function (@main)(_)::Cint
     uuid = UUID("aac5e3d9-0b8f-4d4f-8241-b1a7a9632635")  # Ribasim
     Pkg.activate("core")
     set_preferences!(uuid, "precompile_workload" => true; force = true)
-    set_preferences!(uuid, "specialize" => true; force = true)
+    set_preferences!(uuid, "specialize" => true; force = false)
     Pkg.activate(".")
 
     rm(output_dir; force = true, recursive = true)
