@@ -278,7 +278,21 @@ ul.task-list li input[type="checkbox"] {
 
 <section id="set-up-the-developer-environment" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Set up the developer environment</h1>
-<p>After you have installed the environment as described <a href="../dev/core.html">here</a> you must still activate the QGIS plugins. The simplest way to do this is by running <code>pixi run install-qgis-plugins</code>. It grabs the latest version of the iMOD QGIS plugin and it makes a symlink to the ribasim_qgis folder so that QGIS can find it. It also installs plugins that make it possible to reload and debug your plugin while QGIS is open.</p>
+<p>After you have installed the environment as described <a href="../dev/core.html">here</a> you must still activate the QGIS plugins.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Note that on macOS you currently need to manually install and point to a QGIS executable in your path. If you use pixi that could be as simple as: <code>pixi global install --environment qgis qgis pandas</code>.</p>
+</div>
+</div>
+<p>The simplest way to do this is by running <code>pixi run install-qgis-plugins</code>. It grabs the latest version of the iMOD QGIS plugin and it makes a symlink to the ribasim_qgis folder so that QGIS can find it. It also installs plugins that make it possible to reload and debug your plugin while QGIS is open.</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
