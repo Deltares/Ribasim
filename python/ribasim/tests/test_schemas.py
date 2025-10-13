@@ -21,7 +21,7 @@ def test_config_inheritance():
 @patch("ribasim.schemas.migrations.nodeschema_migration")
 def test_migration(migration, basic, tmp_path):
     toml_path = tmp_path / "basic.toml"
-    db_path = tmp_path / "database.gpkg"
+    db_path = tmp_path / "input/database.gpkg"
     basic.write(toml_path)
 
     # Migration is not needed on default model
@@ -36,7 +36,7 @@ def test_migration(migration, basic, tmp_path):
 
 def test_model_schema(basic, tmp_path):
     toml_path = tmp_path / "basic.toml"
-    db_path = tmp_path / "database.gpkg"
+    db_path = tmp_path / "input/database.gpkg"
     basic.write(toml_path)
 
     assert _get_db_schema_version(db_path) == ribasim.__schema_version__
