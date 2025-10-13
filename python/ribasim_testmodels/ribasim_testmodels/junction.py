@@ -24,26 +24,26 @@ def junction_combined() -> Model:
         ],
     )
 
-    model.junction.add(Node(2, Point(1.0, 0.0)))
+    model.junction.add(Node(2, Point(1.0, 0.0), subnetwork_id=2))
 
     model.linear_resistance.add(
-        Node(3, Point(2.0, 0.0)),
+        Node(3, Point(2.0, 0.0), subnetwork_id=2),
         [linear_resistance.Static(resistance=[200.0])],
     )
     model.linear_resistance.add(
-        Node(4, Point(2.0, 1.0)),
+        Node(4, Point(2.0, 1.0), subnetwork_id=2),
         [linear_resistance.Static(resistance=[200.0])],
     )
 
     model.basin.add(
-        Node(5, Point(3.0, 0.0)),
+        Node(5, Point(3.0, 0.0), subnetwork_id=2),
         [
             basin.Profile(area=[10.0, 10.0], level=[0.0, 1.0]),
             basin.State(level=[0.0]),
         ],
     )
     model.basin.add(
-        Node(6, Point(3.0, 1.0)),
+        Node(6, Point(3.0, 1.0), subnetwork_id=2),
         [
             basin.Profile(area=[10.0, 10.0], level=[0.0, 1.0]),
             basin.State(level=[0.0]),
@@ -51,18 +51,18 @@ def junction_combined() -> Model:
     )
 
     model.linear_resistance.add(
-        Node(7, Point(4.0, 0.0)),
+        Node(7, Point(4.0, 0.0), subnetwork_id=2),
         [linear_resistance.Static(resistance=[200.0])],
     )
     model.linear_resistance.add(
-        Node(8, Point(4.0, 1.0)),
+        Node(8, Point(4.0, 1.0), subnetwork_id=2),
         [linear_resistance.Static(resistance=[200.0])],
     )
 
-    model.junction.add(Node(9, Point(5.0, 0.0)))
+    model.junction.add(Node(9, Point(5.0, 0.0), subnetwork_id=2))
 
     model.basin.add(
-        Node(10, Point(6.0, 0.0)),
+        Node(10, Point(6.0, 0.0), subnetwork_id=2),
         [
             basin.Profile(area=[10.0, 10.0], level=[0.0, 1.0]),
             basin.State(level=[0.0]),

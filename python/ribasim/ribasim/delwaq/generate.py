@@ -360,8 +360,17 @@ def generate(
 
     evaporate_mass = model.solver.evaporate_mass
 
-    basins = pd.read_feather(model.results_path / "basin.arrow")
-    flows = pd.read_feather(model.results_path / "flow.arrow")
+    basin_fn = model.results_path / "basin.arrow"
+    assert basin_fn.exists(), f"Missing results file {basin_fn}."
+    basins = pd.read_feather(basin_fn)
+
+    flow_fn = model.results_path / "flow.arrow"
+    assert flow_fn.exists(), f"Missing results file {flow_fn}."
+    flows = pd.read_feather(flow_fn)
+
+    assert len(basins) > 0, "Empty basin results file."
+    assert len(flows) > 0, "Empty flows results file."
+    endtime = basins.time.max()
 
     if output_path is None:
         assert model.filepath is not None
@@ -582,12 +591,19 @@ def generate(
     shutil.copy(dimrc, output_path / "dimr_config.xml")
 
     # Write main Delwaq input file
+    if (model.endtime - timestep) > endtime:
+        logger.warning(
+            f"Model endtime {model.endtime} is later than the result time {endtime}, adjusting endtime."
+        )
+    else:
+        endtime = model.endtime
+
     template = env.get_template("delwaq.inp.j2")
     with open(output_path / "delwaq.inp", mode="w") as f:
         f.write(
             template.render(
                 startime=model.starttime,
-                endtime=model.endtime - timestep,
+                endtime=endtime - timestep,
                 timestep=strfdelta(timestep),
                 nsegments=total_segments,
                 nexchanges=total_exchanges,
