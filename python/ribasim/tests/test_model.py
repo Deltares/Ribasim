@@ -133,7 +133,7 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
     assert model_orig.link.df.index.name == "link_id"
 
     model_orig.write(tmp_path / "basic/ribasim.toml")
-    with connect(tmp_path / "basic/database.gpkg") as connection:
+    with connect(tmp_path / "basic/input/database.gpkg") as connection:
         query = f"select * from {esc_id('Basin / profile')}"
         df = pd.read_sql_query(query, connection)
         assert "fid" in df.columns
@@ -264,7 +264,7 @@ def test_styles(tabulated_rating_curve: Model, tmp_path):
     model = tabulated_rating_curve
 
     model.write(tmp_path / "basic" / "ribasim.toml")
-    with connect(tmp_path / "basic" / "database.gpkg") as conn:
+    with connect(tmp_path / "basic/input/database.gpkg") as conn:
         assert conn.execute("SELECT COUNT(*) FROM layer_styles").fetchone()[0] == 3
 
 
