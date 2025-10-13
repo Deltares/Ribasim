@@ -268,17 +268,17 @@ def test_styles(tabulated_rating_curve: Model, tmp_path):
         assert conn.execute("SELECT COUNT(*) FROM layer_styles").fetchone()[0] == 3
 
 
-def test_non_existent_files(tmp_path):
+def test_non_existent_files(trivial, tmp_path):
     with pytest.raises(
         FileNotFoundError, match="File 'non_existent_file.toml' does not exist."
     ):
         Model.read("non_existent_file.toml")
 
-    # Create a TOML file without a database.gpkg
-    content = {"input_path": str(tmp_path)}
-    toml_path = tmp_path / "test.toml"
-    with open(toml_path, "wb") as f:
-        tomli_w.dump(content, f)
+    # Write a model but delete database.gpkg
+    toml_path = tmp_path / "ribasim.toml"
+    trivial.write(toml_path)
+    db_path = tmp_path / "input/database.gpkg"
+    db_path.unlink()
 
     with pytest.raises(FileNotFoundError, match=r"Database file .* does not exist\."):
         Model.read(toml_path)
