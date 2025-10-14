@@ -19,6 +19,7 @@ function (@main)(_)::Cint
     Pkg.activate(".")
 
     rm(output_dir; force = true, recursive = true)
+    cpu_target = default_app_cpu_target()
 
     image_recipe = ImageRecipe(;
         output_type = "--output-lib",
@@ -26,6 +27,7 @@ function (@main)(_)::Cint
         project = project_dir,
         add_ccallables = true,
         verbose = true,
+        cpu_target,
     )
     link_recipe = LinkRecipe(; image_recipe, outname = "build/ribasim/libribasim")
     bundle_recipe = BundleRecipe(; link_recipe, output_dir)
@@ -145,4 +147,14 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
 
     # Override the Cargo.toml file with the git version
     set_version("build/cli/Cargo.toml", tag)
+end
+
+# TODO make the default https://github.com/JuliaLang/JuliaC.jl/issues/33
+function default_app_cpu_target()
+    Sys.ARCH === :i686 ? "pentium4;sandybridge,-xsaveopt,clone_all" :
+    Sys.ARCH === :x86_64 ?
+    "generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1)" :
+    Sys.ARCH === :arm ? "armv7-a;armv7-a,neon;armv7-a,neon,vfp4" :
+    Sys.ARCH === :aarch64 ? "generic" :   #= is this really the best here? =#
+    Sys.ARCH === :powerpc64le ? "pwr8" : "generic"
 end
