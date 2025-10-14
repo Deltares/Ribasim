@@ -595,14 +595,14 @@ def medium_primary_secondary_network_model() -> Model:
         Node(12, Point(4.5, 0), subnetwork_id=1),
         [
             user_demand.Static(
-                demand=[0.05], return_factor=0.0, min_level=0.5, demand_priority=3
+                demand=[0.05], return_factor=0.0, min_level=0.0, demand_priority=3
             )
         ],
     )
 
-    # # outlet for overflow
-    # model.outlet.add(Node(21, Point(4, -0.5), subnetwork_id=1), [outlet_data])
-    # model.terminal.add(Node(22, Point(4, -1), subnetwork_id=1))
+    # outlet for overflow
+    model.outlet.add(Node(21, Point(4, -0.5), subnetwork_id=1), [outlet_data])
+    model.terminal.add(Node(22, Point(4, -1), subnetwork_id=1))
 
     ##################################### end subnetwork 1 #####################################
 
@@ -613,7 +613,7 @@ def medium_primary_secondary_network_model() -> Model:
         Node(14, Point(1.5, 2), subnetwork_id=2),
         [
             user_demand.Static(
-                demand=[0.1], return_factor=0.0, min_level=0.5, demand_priority=3
+                demand=[0.1], return_factor=0.0, min_level=0.0, demand_priority=3
             )
         ],
     )
@@ -626,7 +626,7 @@ def medium_primary_secondary_network_model() -> Model:
         Node(17, Point(3.5, 2), subnetwork_id=3),
         [
             user_demand.Static(
-                demand=[0.1], return_factor=0.0, min_level=0.5, demand_priority=3
+                demand=[0.1], return_factor=0.0, min_level=0.0, demand_priority=3
             )
         ],
     )
@@ -645,8 +645,8 @@ def medium_primary_secondary_network_model() -> Model:
     model.link.add(model.basin[10], model.outlet[11])
     model.link.add(model.basin[10], model.user_demand[12])
     model.link.add(model.user_demand[12], model.basin[10])
-    # model.link.add(model.basin[10], model.outlet[21])
-    # model.link.add(model.outlet[21], model.terminal[22])
+    model.link.add(model.basin[10], model.outlet[21])
+    model.link.add(model.outlet[21], model.terminal[22])
 
     model.link.add(model.level_demand[18], model.basin[2])
     model.link.add(model.level_demand[18], model.basin[5])
@@ -770,14 +770,14 @@ def medium_primary_secondary_network_verification_model() -> Model:
         Node(12, Point(4.5, 0), subnetwork_id=2),
         [
             user_demand.Static(
-                demand=[0.05], return_factor=0.0, min_level=0.5, demand_priority=3
+                demand=[0.05], return_factor=0.0, min_level=0.0, demand_priority=3
             )
         ],
     )
 
-    # # outlet for overflow
-    # model.outlet.add(Node(21, Point(4, -0.5), subnetwork_id=1), [outlet_data])
-    # model.terminal.add(Node(22, Point(4, -1), subnetwork_id=1))
+    # outlet for overflow
+    model.outlet.add(Node(21, Point(4, -0.5), subnetwork_id=2), [outlet_data])
+    model.terminal.add(Node(22, Point(4, -1), subnetwork_id=2))
 
     ##################################### end subnetwork 1 #####################################
 
@@ -788,11 +788,10 @@ def medium_primary_secondary_network_verification_model() -> Model:
         Node(14, Point(1.5, 2), subnetwork_id=2),
         [
             user_demand.Static(
-                demand=[0.1], return_factor=0.0, min_level=0.5, demand_priority=3
+                demand=[0.1], return_factor=0.0, min_level=0.0, demand_priority=3
             )
         ],
     )
-
     #################################### end subnetwork 2 ####################################
 
     ################################# begin subnetwork 3 ####################################
@@ -801,7 +800,7 @@ def medium_primary_secondary_network_verification_model() -> Model:
         Node(17, Point(3.5, 2), subnetwork_id=2),
         [
             user_demand.Static(
-                demand=[0.1], return_factor=0.0, min_level=0.5, demand_priority=3
+                demand=[0.1], return_factor=0.0, min_level=0.0, demand_priority=3
             )
         ],
     )
@@ -820,8 +819,8 @@ def medium_primary_secondary_network_verification_model() -> Model:
     model.link.add(model.basin[10], model.outlet[11])
     model.link.add(model.basin[10], model.user_demand[12])
     model.link.add(model.user_demand[12], model.basin[10])
-    # model.link.add(model.basin[10], model.outlet[21])
-    # model.link.add(model.outlet[21], model.terminal[22])
+    model.link.add(model.basin[10], model.outlet[21])
+    model.link.add(model.outlet[21], model.terminal[22])
 
     model.link.add(model.level_demand[18], model.basin[2])
     model.link.add(model.level_demand[18], model.basin[5])
@@ -869,7 +868,7 @@ def level_demand_upper_lower_bounds_model() -> Model:
         Node(3, Point(1, 1), subnetwork_id=2),
         [
             user_demand.Static(
-                demand=[1.0], return_factor=0.0, min_level=0.0, demand_priority=2
+                demand=[1.0], return_factor=0.0, min_level=0.5, demand_priority=2
             )
         ],
     )

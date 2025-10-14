@@ -202,41 +202,33 @@ end
     )
     @test ispath(toml_path)
 
-    config = Ribasim.Config(toml_path; experimental_allocation = true)
     model = Ribasim.run(toml_path)
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
-    basin_data = DataFrame(Ribasim.basin_data(model))
-
-    flow_userdemand_primnet = filter(:link_id => ==(12), allocation_flow_table).flow_rate
-    flow_userdemand_subnet_2 = filter(:link_id => ==(20), allocation_flow_table).flow_rate
-    flow_userdemand_subnet_3 = filter(:link_id => ==(25), allocation_flow_table).flow_rate
-    flow_to_terminal = filter(:link_id => ==(15), allocation_flow_table)
-
-    # Assert all 3 demands are met:
-    @test flow_userdemand_primnet[end] .≈ 0.5
-    @test flow_userdemand_subnet_2[end] .≈ 0.25
-    @test flow_userdemand_subnet_3[end] .≈ 0.25
-end
-
-@testitem "Primary Secondary Network Model Verify" begin
-    using Ribasim
-    using DataFrames: DataFrame
 
     toml_path = normpath(
         @__DIR__,
         "../../generated_testmodels/medium_primary_secondary_network_verification/ribasim.toml",
     )
-    @test ispath(toml_path)
-
-    config = Ribasim.Config(toml_path; experimental_allocation = true)
     model = Ribasim.run(toml_path)
-    allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
-    basin_data = DataFrame(Ribasim.basin_data(model))
+    allocation_flow_table_v = DataFrame(Ribasim.allocation_flow_data(model))
 
     flow_userdemand_primnet = filter(:link_id => ==(12), allocation_flow_table).flow_rate
     flow_userdemand_subnet_2 = filter(:link_id => ==(20), allocation_flow_table).flow_rate
     flow_userdemand_subnet_3 = filter(:link_id => ==(25), allocation_flow_table).flow_rate
-    flow_to_terminal = filter(:link_id => ==(15), allocation_flow_table)
+
+    basin_data = DataFrame(Ribasim.basin_data(model))
+
+    flow_userdemand_primnet_v =
+        filter(:link_id => ==(12), allocation_flow_table_v).flow_rate
+    flow_userdemand_subnet_2_v =
+        filter(:link_id => ==(20), allocation_flow_table_v).flow_rate
+    flow_userdemand_subnet_3_v =
+        filter(:link_id => ==(25), allocation_flow_table_v).flow_rate
+
+    # Assert flows correspond in the model with and without subnetworks
+    @test all(isapprox.(flow_userdemand_primnet, flow_userdemand_primnet_v; atol = 1e-2))
+    @test all(isapprox.(flow_userdemand_subnet_2, flow_userdemand_subnet_2_v; atol = 1e-2))
+    @test all(isapprox.(flow_userdemand_subnet_3, flow_userdemand_subnet_3_v; atol = 1e-2))
 end
 
 @testitem "Level Demand Upper Lower Bounds" begin
