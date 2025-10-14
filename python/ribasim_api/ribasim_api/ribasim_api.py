@@ -21,9 +21,9 @@ class RibasimApi(XmiWrapper):
                 return 1025
         raise ValueError(f"{name} does not map to an integer exposed by Ribasim")
 
-    def init_julia(self) -> None:
+    def jl_init_with_image_handle(self) -> None:
         argument = create_string_buffer(0)
-        self.lib.init_julia(c_int(0), byref(argument))
+        self.lib.jl_init_with_image_handle(c_int(0), byref(argument))
 
     def shutdown_julia(self) -> None:
         self.lib.shutdown_julia(c_int(0))

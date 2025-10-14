@@ -27,7 +27,7 @@ def libribasim_paths() -> tuple[Path, Path]:
 def load_julia(libribasim_paths) -> None:
     lib_path, lib_folder = libribasim_paths
     libribasim = RibasimApi(lib_path, lib_folder)
-    libribasim.init_julia()
+    libribasim.jl_init_with_image_handle()
 
 
 @pytest.fixture(scope="function")

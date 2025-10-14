@@ -31,7 +31,7 @@ In [1]: from ctypes import CDLL, c_int, c_char_p, create_string_buffer, byref
 In [2]: c_dll = CDLL("libribasim", winmode=0x08)  # winmode for Windows
 
 In [3]: argument = create_string_buffer(0)
-   ...: c_dll.init_julia(c_int(0), byref(argument))
+   ...: c_dll.jl_init_with_image_handle(c_int(0), byref(argument))
 Out[3]: 1
 
 In [4]: config_path = "ribasim.toml"

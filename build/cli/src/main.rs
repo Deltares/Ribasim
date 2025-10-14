@@ -64,9 +64,9 @@ fn main() -> ExitCode {
         let lib = Library::new(shared_lib_path).unwrap();
 
         // Init Julia
-        let init_julia: Symbol<unsafe extern "C" fn(i32, *const libc::c_char) -> i32> =
-            lib.get(b"init_julia").unwrap();
-        init_julia(0, CString::default().as_ptr());
+        let jl_init_with_image_handle: Symbol<unsafe extern "C" fn(i32, *const libc::c_char) -> i32> =
+            lib.get(b"jl_init_with_image_handle").unwrap();
+        jl_init_with_image_handle(0, CString::default().as_ptr());
 
         // Execute
         let execute: Symbol<unsafe extern "C" fn(*const libc::c_char) -> i32> =
