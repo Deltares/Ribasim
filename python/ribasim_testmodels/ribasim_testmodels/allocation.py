@@ -844,48 +844,6 @@ def medium_primary_secondary_network_verification_model() -> Model:
     return model
 
 
-def level_demand_upper_lower_bounds_model() -> Model:
-    model = Model(
-        starttime="2020-01-01",
-        endtime="2020-01-20",
-        crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
-        experimental=Experimental(concentration=True, allocation=True),
-    )
-
-    basin_data: list[TableModel[Any]] = [
-        basin.Profile(area=300_000.0, level=[0.0, 1.0]),
-        basin.State(level=[0.5]),
-    ]
-
-    model.flow_boundary.add(
-        Node(1, Point(0, 0), subnetwork_id=2), [flow_boundary.Static(flow_rate=[1.0])]
-    )
-
-    model.basin.add(Node(2, Point(1, 0), subnetwork_id=2), basin_data)
-
-    model.user_demand.add(
-        Node(3, Point(1, 1), subnetwork_id=2),
-        [
-            user_demand.Static(
-                demand=[1.0], return_factor=0.0, min_level=0.5, demand_priority=2
-            )
-        ],
-    )
-
-    model.level_demand.add(
-        Node(5, Point(1, -1), subnetwork_id=2),
-        [level_demand.Static(min_level=[0.5], max_level=[0.5], demand_priority=1)],
-    )
-
-    model.link.add(model.flow_boundary[1], model.basin[2])
-    model.link.add(model.basin[2], model.user_demand[3])
-    model.link.add(model.user_demand[3], model.basin[2])
-    model.link.add(model.level_demand[5], model.basin[2])
-
-    return model
-
-
 def small_primary_secondary_network_verification_model() -> Model:
     model = Model(
         starttime="2020-01-01",
