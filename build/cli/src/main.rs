@@ -54,19 +54,23 @@ fn main() -> ExitCode {
     }
 
     let shared_lib_path = match OS {
-        "windows" => exe_dir.join("bin/libribasim.dll"),
-        "linux" => exe_dir.join("lib/libribasim.so"),
-        "macos" => exe_dir.join("lib/libribasim.dylib"),
+        "windows" => "bin/libribasim.dll",
+        "linux" => "lib/libribasim.so",
+        "macos" => "lib/libribasim.dylib",
         _ => unimplemented!("Your OS is not supported yet."),
     };
+    let full_shared_lib_path = exe_dir.join(shared_lib_path);
     unsafe {
         // Load the library
-        let lib = Library::new(shared_lib_path).unwrap();
+        let lib = Library::new(full_shared_lib_path).unwrap();
 
         // Init Julia
-        let jl_init_with_image_handle: Symbol<unsafe extern "C" fn(i32, *const libc::c_char) -> i32> =
-            lib.get(b"jl_init_with_image_handle").unwrap();
-        jl_init_with_image_handle(0, CString::default().as_ptr());
+        let jl_init_with_image_file: Symbol<unsafe extern "C" fn(*const libc::c_char, *const libc::c_char) -> i32> =
+            lib.get(b"jl_init_with_image_file").unwrap();
+
+        let julia_bindir = CString::new(exe_dir.to_str().unwrap()).unwrap();
+        let image_path = CString::new(shared_lib_path).unwrap();
+        jl_init_with_image_file(julia_bindir.as_ptr(), image_path.as_ptr());
 
         // Execute
         let execute: Symbol<unsafe extern "C" fn(*const libc::c_char) -> i32> =
