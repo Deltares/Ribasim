@@ -1,6 +1,6 @@
+name = "root"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 description = "Meta-project used to share the Manifest of Ribasim and its dependents"
-name = "root"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -34,7 +34,6 @@ InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
-JuliaC = "acedd4c2-ced6-4a15-accc-2607eb759ba2"
 JuliaInterpreter = "aa1ae85d-cabe-5617-a682-6adf51b2e16a"
 LibGit2 = "76f85450-5226-5b5a-8eaa-529ad045b433"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -79,16 +78,9 @@ TestEnv = "1e6cf692-eddd-4d53-88a5-2d735e33781b"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 
-[sources.PackageCompiler]
-rev = "bundle_less_artifacts"
-url = "https://github.com/visr/PackageCompiler.jl"
+[sources]
+Ribasim = {path = "core"}
 
-[sources.Ribasim]
-path = "core"
-
-[sources.TestItemRunner]
-rev = "main"
-url = "https://github.com/julia-vscode/TestItemRunner.jl"
-
-[workspace]
-projects = ["core"]
+[preferences.Ribasim]
+precompile_workload = false
+specialize = false
