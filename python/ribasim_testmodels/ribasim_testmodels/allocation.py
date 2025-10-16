@@ -509,6 +509,10 @@ def medium_primary_secondary_network_model() -> Model:
         basin.State(level=[0.5]),
     ]
     outlet_data = outlet.Static(
+        flow_rate=[0.0], max_flow_rate=3.0, control_state="Ribasim.allocation"
+    )
+
+    outlet_data_2 = outlet.Static(
         flow_rate=[0.0], max_flow_rate=1.0, control_state="Ribasim.allocation"
     )
 
@@ -545,7 +549,7 @@ def medium_primary_secondary_network_model() -> Model:
     # outlet towards first subnetwork
     model.outlet.add(
         Node(3, Point(1, 1), subnetwork_id=1),
-        [outlet_data],
+        [outlet_data_2],
     )
 
     # outlet towards second basin
@@ -575,7 +579,7 @@ def medium_primary_secondary_network_model() -> Model:
     # outlet towards second subnetwork
     model.outlet.add(
         Node(8, Point(3, 1), subnetwork_id=1),
-        [outlet_data],
+        [outlet_data_2],
     )
 
     # outlet towards fourth basin
@@ -671,176 +675,10 @@ def medium_primary_secondary_network_model() -> Model:
 
 
 def medium_primary_secondary_network_verification_model() -> Model:
-    model = Model(
-        starttime="2020-01-01",
-        endtime="2020-01-20",
-        crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
-        experimental=Experimental(allocation=True),
-    )
-
-    basin_data: list[TableModel[Any]] = [
-        basin.Profile(area=100_000.0, level=[0.0, 1.0]),
-        basin.State(level=[0.5]),
-    ]
-    outlet_data = outlet.Static(
-        flow_rate=[0.0], max_flow_rate=1.0, control_state="Ribasim.allocation"
-    )
-
-    pump_data = pump.Static(
-        flow_rate=[0.0], max_flow_rate=1.0, control_state="Ribasim.allocation"
-    )
-
-    model.level_demand.add(
-        Node(18, Point(2.5, -0.5), subnetwork_id=2),
-        [level_demand.Static(min_level=[0.5], max_level=[0.5], demand_priority=1)],
-    )
-
-    model.level_demand.add(
-        Node(19, Point(1, 2), subnetwork_id=2),
-        [level_demand.Static(min_level=[0.5], max_level=[0.5], demand_priority=2)],
-    )
-
-    model.level_demand.add(
-        Node(20, Point(4, 2), subnetwork_id=2),
-        [level_demand.Static(min_level=[0.5], max_level=[0.5], demand_priority=2)],
-    )
-
-    ##################################### begin subnetwork 1 ####################################
-
-    # Inlet
-    model.flow_boundary.add(
-        Node(1, Point(0.0, 0.0), subnetwork_id=2),
-        [flow_boundary.Static(flow_rate=[0.09])],
-    )
-
-    # first basin
-    model.basin.add(Node(2, Point(1, 0), subnetwork_id=2), basin_data)
-
-    # outlet towards first subnetwork
-    model.outlet.add(
-        Node(3, Point(1, 1), subnetwork_id=2),
-        [outlet_data],
-    )
-
-    # outlet towards second basin
-    model.outlet.add(
-        Node(4, Point(1.5, 0), subnetwork_id=2),
-        [outlet_data],
-    )
-
-    # second basin
-    model.basin.add(Node(5, Point(2, 0), subnetwork_id=2), basin_data)
-
-    # pump towards first subnetwork
-    model.pump.add(
-        Node(6, Point(2, 1), subnetwork_id=2),
-        [pump_data],
-    )
-
-    # outlet towards fourth basin
-    model.outlet.add(
-        Node(16, Point(2.5, 0), subnetwork_id=2),
-        [outlet_data],
-    )
-
-    # third basin
-    model.basin.add(Node(7, Point(3, 0), subnetwork_id=2), basin_data)
-
-    # outlet towards second subnetwork
-    model.outlet.add(
-        Node(8, Point(3, 1), subnetwork_id=2),
-        [outlet_data],
-    )
-
-    # outlet towards fourth basin
-    model.outlet.add(
-        Node(9, Point(3.5, 0), subnetwork_id=2),
-        [outlet_data],
-    )
-
-    # fourth basin
-    model.basin.add(Node(10, Point(4, 0), subnetwork_id=2), basin_data)
-
-    # outlet towards second subnetwork
-    model.outlet.add(Node(11, Point(4, 1), subnetwork_id=2), [outlet_data])
-
-    # user demand at the end of primary network
-    model.user_demand.add(
-        Node(12, Point(4.5, 0), subnetwork_id=2),
-        [
-            user_demand.Static(
-                demand=[0.05], return_factor=0.0, min_level=0.0, demand_priority=3
-            )
-        ],
-    )
-
-    # outlet for overflow
-    model.outlet.add(Node(21, Point(4, -0.5), subnetwork_id=2), [outlet_data])
-    model.terminal.add(Node(22, Point(4, -1), subnetwork_id=2))
-
-    ##################################### end subnetwork 1 #####################################
-
-    #################################### begin subnetwork 2 ####################################
-    model.basin.add(Node(13, Point(1.5, 1.5), subnetwork_id=2), basin_data)
-
-    model.user_demand.add(
-        Node(14, Point(1.5, 2), subnetwork_id=2),
-        [
-            user_demand.Static(
-                demand=[0.1], return_factor=0.0, min_level=0.0, demand_priority=3
-            )
-        ],
-    )
-    #################################### end subnetwork 2 ####################################
-
-    ################################# begin subnetwork 3 ####################################
-    model.basin.add(Node(15, Point(3.5, 1.5), subnetwork_id=2), basin_data)
-    model.user_demand.add(
-        Node(17, Point(3.5, 2), subnetwork_id=2),
-        [
-            user_demand.Static(
-                demand=[0.1], return_factor=0.0, min_level=0.0, demand_priority=3
-            )
-        ],
-    )
-    ################################# end subnetwork 3 ####################################
-
-    model.link.add(model.flow_boundary[1], model.basin[2])
-    model.link.add(model.basin[2], model.outlet[3])
-    model.link.add(model.basin[2], model.outlet[4])
-    model.link.add(model.outlet[4], model.basin[5])
-    model.link.add(model.basin[5], model.pump[6])
-    model.link.add(model.basin[5], model.outlet[16])
-    model.link.add(model.outlet[16], model.basin[7])
-    model.link.add(model.basin[7], model.outlet[8])
-    model.link.add(model.basin[7], model.outlet[9])
-    model.link.add(model.outlet[9], model.basin[10])
-    model.link.add(model.basin[10], model.outlet[11])
-    model.link.add(model.basin[10], model.user_demand[12])
-    model.link.add(model.user_demand[12], model.basin[10])
-    model.link.add(model.basin[10], model.outlet[21])
-    model.link.add(model.outlet[21], model.terminal[22])
-
-    model.link.add(model.level_demand[18], model.basin[2])
-    model.link.add(model.level_demand[18], model.basin[5])
-    model.link.add(model.level_demand[18], model.basin[7])
-    model.link.add(model.level_demand[18], model.basin[10])
-
-    # connect to first subnetwork
-    model.link.add(model.outlet[3], model.basin[13])
-    model.link.add(model.pump[6], model.basin[13])
-    model.link.add(model.basin[13], model.user_demand[14])
-    model.link.add(model.user_demand[14], model.basin[13])
-    model.link.add(model.level_demand[19], model.basin[13])
-
-    # connect to second subnetwork
-    model.link.add(model.outlet[8], model.basin[15])
-    model.link.add(model.outlet[11], model.basin[15])
-    model.link.add(model.basin[15], model.user_demand[17])
-    model.link.add(model.user_demand[17], model.basin[15])
-    model.link.add(model.level_demand[20], model.basin[15])
-
+    model = medium_primary_secondary_network_model()
+    # set all subnetwork ids to 2 for verification purposes
+    for node in model._nodes():
+        node.node.df.subnetwork_id = 2
     return model
 
 
@@ -869,7 +707,7 @@ def small_primary_secondary_network_verification_model() -> Model:
         ],
     )
     outlet_data = outlet.Static(
-        flow_rate=[3e-3], max_flow_rate=3.0, control_state="Ribasim.allocation"
+        flow_rate=[3e-3], max_flow_rate=1.0, control_state="Ribasim.allocation"
     )
 
     model.outlet.add(

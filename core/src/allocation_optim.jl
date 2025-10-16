@@ -345,7 +345,10 @@ function preprocess_demand_collection!(
     # Allow the inflow from the primary network to be as large as required
     # (will be restricted when optimizing for the actual allocation)
     for link in p_independent.allocation.primary_network_connections[subnetwork_id]
-        JuMP.set_upper_bound(flow[link], MAX_ABS_FLOW / scaling.flow)
+        JuMP.set_upper_bound(
+            flow[link],
+            flow_capacity_upper_bound(link, p_independent) / scaling.flow,
+        )
         JuMP.set_lower_bound(flow[link], 0)
     end
 
