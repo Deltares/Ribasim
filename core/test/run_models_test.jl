@@ -14,11 +14,11 @@
     @test model isa Ribasim.Model
     @test success(model)
     (; u, du) = model.integrator
-    (; p_independent) = model.integrator.p
+    (; p_independent, state_time_dependent_cache) = model.integrator.p
+    (; current_instantaneous_flow) = state_time_dependent_cache
 
-    @test p_independent.node_id == [0, 6, 6]
     @test u isa CVector
-    @test filter(!isempty, getaxes(u)) ==
+    @test filter(!isempty, getaxes(current_instantaneous_flow)) ==
           (; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
 
     # read all results as bytes first to avoid memory mapping
@@ -45,15 +45,8 @@
 
     @testset Teamcity.TeamcityTestSet "Schema" begin
         @test Tables.schema(flow) == Tables.Schema(
-            (:time, :link_id, :from_node_id, :to_node_id, :flow_rate, :convergence),
-            (
-                DateTime,
-                Union{Int32, Missing},
-                Int32,
-                Int32,
-                Float64,
-                Union{Missing, Float64},
-            ),
+            (:time, :link_id, :from_node_id, :to_node_id, :flow_rate),
+            (DateTime, Union{Int32, Missing}, Int32, Int32, Float64),
         )
         @test Tables.schema(basin) == Tables.Schema(
             (

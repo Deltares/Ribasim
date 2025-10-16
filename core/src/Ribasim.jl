@@ -53,10 +53,10 @@ using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
-using SparseArrays: SparseMatrixCSC, spzeros, sparse
+using SparseArrays: SparseArrays, SparseMatrixCSC, spzeros, sparse
 
 # Linear algebra
-using LinearAlgebra: mul!
+using LinearAlgebra: mul!, ldiv!, cholesky
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node

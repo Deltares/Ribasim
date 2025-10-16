@@ -38,11 +38,12 @@ Process all mass inflows to basins
 """
 function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
     (; p, t) = integrator
-    (; basin, state_inflow_link, state_outflow_link, level_boundary) = p.p_independent
+    (; basin, flow_node_inflow_link, flow_node_outflow_link, level_boundary) =
+        p.p_independent
     (; cumulative_in, concentration_state, mass) = basin.concentration_data
 
     # Loop over connections that have state
-    for (inflow_link, outflow_link) in zip(state_inflow_link, state_outflow_link)
+    for (inflow_link, outflow_link) in zip(flow_node_inflow_link, flow_node_outflow_link)
         from_node = inflow_link.link[1]
         state_node = inflow_link.link[2]
         to_node = outflow_link.link[2]
@@ -108,10 +109,11 @@ end
 Process all mass outflows from Basins
 """
 function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
-    (; state_inflow_link, state_outflow_link, basin) = integrator.p.p_independent
+    (; flow_node_inflow_link, flow_node_outflow_link, basin) = integrator.p.p_independent
     (; mass, concentration_state) = basin.concentration_data
 
-    @views for (inflow_link, outflow_link) in zip(state_inflow_link, state_outflow_link)
+    @views for (inflow_link, outflow_link) in
+               zip(flow_node_inflow_link, flow_node_outflow_link)
         from_node = inflow_link.link[1]
         to_node = outflow_link.link[2]
 

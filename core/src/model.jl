@@ -145,7 +145,7 @@ function Model(config::Config)::Model
     t0 = zero(t_end)
     timespan = (t0, t_end)
 
-    local parameters, p_independent, state_time_dependent_cache, p_mutable, tstops
+    local parameters, p_independent, state_time_dependent_cache, p_mutable, tstops, storage0
     try
         parameters = Parameters(db, config)
         (; p_independent, state_time_dependent_cache, p_mutable) = parameters
@@ -171,6 +171,10 @@ function Model(config::Config)::Model
             error("Invalid level of TabulatedRatingCurve.")
         end
 
+        state = load_structvector(db, config, Schema.Basin.State)
+        storage0 = get_storages_from_levels(basin, state.level)
+        basin.storage_prev_saveat .= storage0
+
         # Tell the solver to stop at all data points from timeseries,
         # extrapolating periodically if applicable.
         tstops = get_timeseries_tstops(p_independent, t_end)
@@ -181,21 +185,21 @@ function Model(config::Config)::Model
     end
     @debug "Read database into memory."
 
-    u0 = build_state_vector(parameters.p_independent)
+    u0 = build_state_vector(parameters.p_independent; storage0)
+    du0 = zero(u0)
     if isempty(u0)
         @error "Models without states are unsupported, please add a Basin node."
         error("Model has no state.")
     end
 
-    reltol, relmask = build_reltol_vector(u0, config.solver.reltol)
-    parameters.p_independent.relmask .= relmask
-    du0 = zero(u0)
-
     # The Solver algorithm
     alg = algorithm(config.solver; u0, specialize)
 
     # Synchronize level with storage
-    set_current_basin_properties!(u0, parameters, t0)
+    set_current_basin_properties!(u0, parameters)
+
+    # was initialized by concentration_state, resulting in mass
+    p_independent.basin.concentration_data.mass .*= u0.storage
 
     # Previous level is used to estimate the minimum level that was attained during a time step
     # in limit_flow!
@@ -242,14 +246,14 @@ function Model(config::Config)::Model
         save_everystep = false,
         callback,
         tstops,
-        isoutofdomain,
+        isoutofdomain = (u, p, t) -> any(<(0), u.storage),
         adaptive,
         dt,
         config.solver.dtmin,
         dtmax = something(config.solver.dtmax, t_end),
         config.solver.force_dtmin,
         config.solver.abstol,
-        reltol,
+        config.solver.reltol,
         config.solver.maxiters,
     )
     @debug "Setup integrator."

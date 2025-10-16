@@ -62,7 +62,7 @@ function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     (; basin, user_demand, subgrid) = p_independent
 
     if name == "basin.storage"
-        state_time_dependent_cache.current_storage
+        unsafe_array(u.storage)::Vector{Float64}
     elseif name == "basin.level"
         state_time_dependent_cache.current_level
     elseif name == "basin.infiltration"
@@ -72,17 +72,17 @@ function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     elseif name == "basin.surface_runoff"
         basin.vertical_flux.surface_runoff::Vector{Float64}
     elseif name == "basin.cumulative_infiltration"
-        unsafe_array(u.infiltration)::Vector{Float64}
+        basin.cumulative_infiltration_full::Vector{Float64}
     elseif name == "basin.cumulative_drainage"
-        basin.cumulative_drainage::Vector{Float64}
+        basin.cumulative_drainage_full::Vector{Float64}
     elseif name == "basin.cumulative_surface_runoff"
-        basin.cumulative_surface_runoff::Vector{Float64}
+        basin.cumulative_surface_runoff_full::Vector{Float64}
     elseif name == "basin.subgrid_level"
         subgrid.level::Vector{Float64}
     elseif name == "user_demand.demand"
         vec(user_demand.demand)::Vector{Float64}
     elseif name == "user_demand.cumulative_inflow"
-        unsafe_array(u.user_demand_inflow)::Vector{Float64}
+        user_demand.cumulative_inflow_full::Vector{Float64}
     else
         error("Unknown variable $name")
     end

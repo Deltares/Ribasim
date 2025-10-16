@@ -1,21 +1,22 @@
 """
 The right hand side function of the system of ODEs set up by Ribasim.
 """
-water_balance!(du::CVector, u::CVector, p::Parameters, t::Number)::Nothing = water_balance!(
-    du,
-    u,
-    p.p_independent,
-    p.state_time_dependent_cache::StateTimeDependentCache,
-    p.time_dependent_cache,
-    p.p_mutable,
-    t,
-)
+water_balance!(du::StateCVector, u::StateCVector, p::Parameters, t::Number)::Nothing =
+    water_balance!(
+        du,
+        u,
+        p.p_independent,
+        p.state_time_dependent_cache::StateTimeDependentCache,
+        p.time_dependent_cache,
+        p.p_mutable,
+        t,
+    )
 
 # Method with `t` as second argument parsable by DifferentiationInterface.jl for time derivative computation
 water_balance!(
-    du::CVector,
+    du::StateCVector,
     t::Number,
-    u::CVector,
+    u::StateCVector,
     p_independent::ParametersIndependent,
     state_time_dependent_cache::StateTimeDependentCache,
     time_dependent_cache::TimeDependentCache,
@@ -32,8 +33,8 @@ water_balance!(
 
 # Method with separate parameter parsable by DifferentiationInterface.jl for Jacobian computation
 function water_balance!(
-    du::CVector,
-    u::CVector,
+    du::StateCVector,
+    u::StateCVector,
     p_independent::ParametersIndependent,
     state_time_dependent_cache::StateTimeDependentCache,
     time_dependent_cache::TimeDependentCache,
@@ -50,10 +51,10 @@ function water_balance!(
     # Check whether t or u is different from the last water_balance! call
     check_new_input!(p, u, t)
 
-    du .= 0.0
+    state_time_dependent_cache.current_instantaneous_flow .= 0
 
     # Ensures current_* vectors are current
-    set_current_basin_properties!(u, p, t)
+    set_current_basin_properties!(u, p)
 
     # Notes on the ordering of these formulations:
     # - Continuous control can depend on flows (which are not continuously controlled themselves),
@@ -62,13 +63,14 @@ function water_balance!(
     #   because of the error derivative term.
 
     # Basin forcings
-    update_vertical_flux!(du, p)
+    update_vertical_flux!(p)
+    formulate_flow_boundary!(p, t)
 
     # Formulate intermediate flows (non continuously controlled)
     formulate_flows!(du, p, t)
 
     # Compute continuous control
-    formulate_continuous_control!(du, p, t)
+    formulate_continuous_control!(p, t)
 
     # Formulate intermediate flows (controlled by ContinuousControl)
     formulate_flows!(du, p, t; control_type = ContinuousControlType.Continuous)
@@ -83,30 +85,24 @@ function water_balance!(
 end
 
 function formulate_flow_boundary!(p::Parameters, t::Number)::Nothing
-    (; p_independent, time_dependent_cache, p_mutable) = p
-    (; node_id, flow_rate, active, cumulative_flow) = p_independent.flow_boundary
-    (; current_cumulative_boundary_flow) = time_dependent_cache.flow_boundary
-    (; tprev, new_t) = p_mutable
+    (; p_independent, time_dependent_cache) = p
+    (; node_id, flow_rate) = p_independent.flow_boundary
+    (; current_flow_rate) = time_dependent_cache.flow_boundary
 
-    if new_t
-        for id in node_id
-            if active[id.idx]
-                current_cumulative_boundary_flow[id.idx] =
-                    cumulative_flow[id.idx] + integral(flow_rate[id.idx], tprev, t)
-            end
-        end
+    for node_idx in eachindex(node_id)
+        eval_time_interp(flow_rate[node_idx], current_flow_rate, node_idx, p, t)
     end
     return nothing
 end
 
-function formulate_continuous_control!(du::CVector, p::Parameters, t::Number)::Nothing
+function formulate_continuous_control!(p::Parameters, t::Number)::Nothing
     (; compound_variable, target_ref, func) = p.p_independent.continuous_control
 
     for i in eachindex(compound_variable)
         cvar = compound_variable[i]
         ref = target_ref[i]
         func_ = func[i]
-        value = compound_variable_value(cvar, p, du, t)
+        value = compound_variable_value(cvar, p, t)
         set_value!(ref, p, func_(value))
     end
 
@@ -117,38 +113,15 @@ end
 Compute the storages, levels and areas of all Basins given the
 state u and the time t.
 """
-function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::Nothing
-    (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
+function set_current_basin_properties!(u::CVector, p::Parameters)::Nothing
+    (; p_independent, state_time_dependent_cache, p_mutable) = p
     (; basin) = p_independent
-    (;
-        node_id,
-        cumulative_precipitation,
-        cumulative_surface_runoff,
-        cumulative_drainage,
-        vertical_flux,
-        low_storage_threshold,
-    ) = basin
-
-    # The exact cumulative precipitation and drainage up to the t of this water_balance call
-    if p_mutable.new_t
-        dt = t - p_mutable.tprev
-        for id in node_id
-            fixed_area = basin_areas(basin, id.idx)[end]
-            time_dependent_cache.basin.current_cumulative_precipitation[id.idx] =
-                cumulative_precipitation[id.idx] +
-                fixed_area * vertical_flux.precipitation[id.idx] * dt
-        end
-        @. time_dependent_cache.basin.current_cumulative_surface_runoff =
-            cumulative_surface_runoff + dt * vertical_flux.surface_runoff
-        @. time_dependent_cache.basin.current_cumulative_drainage =
-            cumulative_drainage + dt * vertical_flux.drainage
-    end
+    (; low_storage_threshold,) = basin
 
     if p_mutable.new_t || p_mutable.new_u
-        formulate_storages!(u, p, t)
         @threads for i in eachindex(basin.node_id)
             id = basin.node_id[i]
-            s = state_time_dependent_cache.current_storage[i]
+            s = u.storage[i]
             i = id.idx
             state_time_dependent_cache.current_low_storage_factor[i] =
                 reduction_factor(s, low_storage_threshold[i])
@@ -160,51 +133,15 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
     end
 end
 
-function formulate_storages!(
-    u::CVector,
-    p::Parameters,
-    t::Number;
-    add_initial_storage::Bool = true,
-)::Nothing
-    (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
-    (; basin, flow_boundary, flow_to_storage) = p_independent
-    (; current_storage) = state_time_dependent_cache
-    # Current storage: initial condition +
-    # total inflows and outflows since the start
-    # of the simulation
-    if add_initial_storage
-        current_storage .= basin.storage0
-    else
-        current_storage .= 0.0
-    end
-
-    mul!(current_storage, flow_to_storage, u, 1, 1)
-    current_storage .+= time_dependent_cache.basin.current_cumulative_precipitation
-    current_storage .+= time_dependent_cache.basin.current_cumulative_surface_runoff
-    current_storage .+= time_dependent_cache.basin.current_cumulative_drainage
-
-    # Formulate storage contributions of flow boundaries
-    p_mutable.new_t && formulate_flow_boundary!(p, t)
-    for (outflow_link, cumulative_flow) in zip(
-        flow_boundary.outflow_link,
-        time_dependent_cache.flow_boundary.current_cumulative_boundary_flow,
-    )
-        outflow_id = outflow_link.link[2]
-        if outflow_id.type == NodeType.Basin
-            current_storage[outflow_id.idx] += cumulative_flow
-        end
-    end
-    return nothing
-end
-
 """
 Smoothly let the evaporation and infiltration flux go to 0 when the storage is less than 10 m^3
 """
-function update_vertical_flux!(du::CVector, p::Parameters)::Nothing
+function update_vertical_flux!(p::Parameters)::Nothing
     (; p_independent, state_time_dependent_cache) = p
     (; basin) = p_independent
     (; vertical_flux) = basin
-    (; current_area, current_low_storage_factor) = state_time_dependent_cache
+    (; current_area, current_low_storage_factor, current_instantaneous_flow) =
+        state_time_dependent_cache
 
     for id in basin.node_id
         area = current_area[id.idx]
@@ -213,16 +150,16 @@ function update_vertical_flux!(du::CVector, p::Parameters)::Nothing
         evaporation = area * factor * vertical_flux.potential_evaporation[id.idx]
         infiltration = factor * vertical_flux.infiltration[id.idx]
 
-        du.evaporation[id.idx] = evaporation
-        du.infiltration[id.idx] = infiltration
+        current_instantaneous_flow.evaporation[id.idx] = evaporation
+        current_instantaneous_flow.infiltration[id.idx] = infiltration
     end
 
     return nothing
 end
 
 function set_error!(pid_control::PidControl, p::Parameters, t::Number)
-    (; state_time_dependent_cache, time_dependent_cache, p_mutable) = p
-    (; current_level, current_error_pid_control, current_area) = state_time_dependent_cache
+    (; state_time_dependent_cache, time_dependent_cache) = p
+    (; current_level, current_error_pid_control) = state_time_dependent_cache
     (; current_target) = time_dependent_cache.pid_control
     (; listen_node_id, target) = pid_control
 
@@ -282,8 +219,7 @@ function formulate_pid_control!(du::CVector, u::CVector, p::Parameters, t::Numbe
 
         if !iszero(K_d)
             dlevel_demand = derivative(target[i], t)
-            dstorage_listened_basin_old =
-                formulate_dstorage(du, p_independent, t, listened_node_id)
+            dstorage_listened_basin_old = u.storage[listened_node_id.idx]
             # The expression below is the solution to an implicit equation for
             # dstorage_listened_basin. This equation results from the fact that if the derivative
             # term in the PID controller is used, the controlled pump flow rate depends on itself.
@@ -296,43 +232,9 @@ function formulate_pid_control!(du::CVector, u::CVector, p::Parameters, t::Numbe
     return nothing
 end
 
-"""
-Formulate the time derivative of the storage in a single Basin.
-"""
-function formulate_dstorage(
-    du::CVector,
-    p_independent::ParametersIndependent,
-    t::Number,
-    node_id::NodeID,
-)
-    (; basin) = p_independent
-    (; inflow_ids, outflow_ids, vertical_flux) = basin
-    @assert node_id.type == NodeType.Basin
-    dstorage = 0.0
-    for inflow_id in inflow_ids[node_id.idx]
-        dstorage += get_flow(du, p_independent, t, (inflow_id, node_id))
-    end
-    for outflow_id in outflow_ids[node_id.idx]
-        dstorage -= get_flow(du, p_independent, t, (node_id, outflow_id))
-    end
-
-    fixed_area = basin_areas(basin, node_id.idx)[end]
-    dstorage += fixed_area * vertical_flux.precipitation[node_id.idx]
-    dstorage += vertical_flux.surface_runoff[node_id.idx]
-    dstorage += vertical_flux.drainage[node_id.idx]
-    dstorage -= du.evaporation[node_id.idx]
-    dstorage -= du.infiltration[node_id.idx]
-
-    return dstorage
-end
-
-function formulate_flow!(
-    du::CVector,
-    user_demand::UserDemand,
-    p::Parameters,
-    t::Number,
-)::Nothing
-    (; p_independent, time_dependent_cache) = p
+function formulate_flow!(user_demand::UserDemand, p::Parameters, t::Number)::Nothing
+    (; p_independent, time_dependent_cache, state_time_dependent_cache) = p
+    (; current_instantaneous_flow) = state_time_dependent_cache
     (; current_return_factor) = time_dependent_cache.user_demand
     (; allocation) = p_independent
     all_nodes_active = p.p_mutable.all_nodes_active
@@ -385,20 +287,20 @@ function formulate_flow!(
         Δsource_level = source_level - min_level
         factor_level = reduction_factor(Δsource_level, USER_DEMAND_MIN_LEVEL_THRESHOLD)
         q *= factor_level
-        du.user_demand_inflow[id.idx] = q
-        du.user_demand_outflow[id.idx] =
+        current_instantaneous_flow.user_demand_inflow[id.idx] = q
+        current_instantaneous_flow.user_demand_outflow[id.idx] =
             q * eval_time_interp(return_factor, current_return_factor, id.idx, p, t)
     end
     return nothing
 end
 
 function formulate_flow!(
-    du::CVector,
     linear_resistance::LinearResistance,
     p::Parameters,
     t::Number,
 )::Nothing
-    (; p_mutable) = p
+    (; p_mutable, state_time_dependent_cache) = p
+    (; current_instantaneous_flow) = state_time_dependent_cache
     all_nodes_active = p_mutable.all_nodes_active
     (; node_id, active) = linear_resistance
     for id in node_id
@@ -412,7 +314,7 @@ function formulate_flow!(
             h_a = get_level(p, inflow_id, t)
             h_b = get_level(p, outflow_id, t)
             q = linear_resistance_flow(linear_resistance, id, h_a, h_b, p)
-            du.linear_resistance[id.idx] = q
+            current_instantaneous_flow.linear_resistance[id.idx] = q
         end
     end
     return nothing
@@ -464,12 +366,12 @@ function tabulated_rating_curve_flow(
 end
 
 function formulate_flow!(
-    du::CVector,
     tabulated_rating_curve::TabulatedRatingCurve,
     p::Parameters,
     t::Number,
 )::Nothing
-    (; p_mutable) = p
+    (; p_mutable, state_time_dependent_cache) = p
+    (; current_instantaneous_flow) = state_time_dependent_cache
     all_nodes_active = p_mutable.all_nodes_active
     (; node_id, active) = tabulated_rating_curve
     for id in node_id
@@ -486,7 +388,7 @@ function formulate_flow!(
             q = 0.0
         end
 
-        du.tabulated_rating_curve[id.idx] = q
+        current_instantaneous_flow.tabulated_rating_curve[id.idx] = q
     end
     return nothing
 end
@@ -594,12 +496,12 @@ hydraulic radius. This ensures that a basin can receive water after it has gone
 dry.
 """
 function formulate_flow!(
-    du::CVector,
     manning_resistance::ManningResistance,
     p::Parameters,
     t::Number,
 )::Nothing
-    (; p_mutable) = p
+    (; p_mutable, state_time_dependent_cache) = p
+    (; current_instantaneous_flow) = state_time_dependent_cache
     (; node_id, active) = manning_resistance
     all_nodes_active = p_mutable.all_nodes_active
     for id in node_id
@@ -618,13 +520,13 @@ function formulate_flow!(
 
         q = manning_resistance_flow(manning_resistance, id, h_a, h_b, p)
 
-        du.manning_resistance[id.idx] = q
+        current_instantaneous_flow.manning_resistance[id.idx] = q
     end
     return nothing
 end
 
 function formulate_pump_or_outlet_flow!(
-    du_component::SubArray{<:Number},
+    instantaneous_flow_component::SubArray{<:Number},
     node::Union{Pump, Outlet},
     p::Parameters,
     t::Number,
@@ -718,21 +620,21 @@ function formulate_pump_or_outlet_flow!(
         )
         q *= reduction_factor(max_downstream_level_ - dst_level, 0.02)
 
-        du_component[id.idx] = q
+        instantaneous_flow_component[id.idx] = q
     end
     return nothing
 end
 
 function formulate_flow!(
-    du::CVector,
     pump::Pump,
     p::Parameters,
     t::Number,
     control_type_::ContinuousControlType.T,
 )::Nothing
     (; time_dependent_cache, state_time_dependent_cache) = p
+    (; current_instantaneous_flow) = state_time_dependent_cache
     formulate_pump_or_outlet_flow!(
-        du.pump,
+        current_instantaneous_flow.pump,
         pump,
         p,
         t,
@@ -743,15 +645,15 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-    du::CVector,
     outlet::Outlet,
     p::Parameters,
     t::Number,
     control_type_::ContinuousControlType.T,
 )::Nothing
     (; time_dependent_cache, state_time_dependent_cache) = p
+    (; current_instantaneous_flow) = state_time_dependent_cache
     formulate_pump_or_outlet_flow!(
-        du.outlet,
+        current_instantaneous_flow.outlet,
         outlet,
         p,
         t,
@@ -763,7 +665,7 @@ function formulate_flow!(
 end
 
 function formulate_flows!(
-    du::CVector,
+    du::StateCVector,
     p::Parameters,
     t::Number;
     control_type::ContinuousControlType.T = ContinuousControlType.None,
@@ -777,50 +679,69 @@ function formulate_flows!(
         user_demand,
     ) = p.p_independent
 
-    formulate_flow!(du, pump, p, t, control_type)
-    formulate_flow!(du, outlet, p, t, control_type)
+    formulate_flow!(pump, p, t, control_type)
+    formulate_flow!(outlet, p, t, control_type)
 
     if control_type == ContinuousControlType.None
-        formulate_flow!(du, linear_resistance, p, t)
-        formulate_flow!(du, manning_resistance, p, t)
-        formulate_flow!(du, tabulated_rating_curve, p, t)
-        formulate_flow!(du, user_demand, p, t)
+        formulate_flow!(linear_resistance, p, t)
+        formulate_flow!(manning_resistance, p, t)
+        formulate_flow!(tabulated_rating_curve, p, t)
+        formulate_flow!(user_demand, p, t)
     end
+
+    accumulate_flows!(du, p)
 end
 
-"""
-Clamp the cumulative flow states within the minimum and maximum
-flow rates for the last time step if these flow rate bounds are known.
-"""
-function limit_flow!(
-    u::CVector,
-    integrator::DEIntegrator,
-    p::Parameters,
-    t::Number,
-)::Nothing
-    (; uprev, dt) = integrator
-    (; p_independent, state_time_dependent_cache) = p
+function accumulate_flows!(du::StateCVector, p::Parameters)::Nothing
+    (; p_independent, state_time_dependent_cache, time_dependent_cache) = p
+    (; flow_to_storage, flow_boundary, basin) = p_independent
+    (; current_instantaneous_flow) = state_time_dependent_cache
+
+    # Horizontal state and time dependent flows
+    mul!(du.storage, flow_to_storage, current_instantaneous_flow)
+
+    # Horizontal time dependent flows
+    for node_idx in eachindex(flow_boundary.node_id)
+        outflow_id = flow_boundary.outflow_link[node_idx].link[2]
+        if flow_boundary.active[node_idx] && outflow_id.type == NodeType.Basin
+            du.storage[outflow_id.idx] +=
+                time_dependent_cache.flow_boundary.current_flow_rate[node_idx]
+        end
+    end
+
+    # Vertical time dependent flows
+    @. du.storage += basin.vertical_flux.surface_runoff + basin.vertical_flux.drainage
+    for node_idx in eachindex(basin.node_id)
+        fixed_area = basin_areas(basin, node_idx)[end]
+        du.storage[node_idx] += fixed_area * basin.vertical_flux.precipitation[node_idx]
+    end
+
+    # Vertical state and time dependent flows
+    @. du.storage +=
+        current_instantaneous_flow.evaporation + current_instantaneous_flow.infiltration
+
+    return nothing
+end
+
+function update_bounds!(integrator)::Nothing
+    (; u, uprev, p, dt) = integrator
     (;
+        flow_reconstructor,
+        basin,
+        tabulated_rating_curve,
         pump,
         outlet,
         linear_resistance,
         user_demand,
-        tabulated_rating_curve,
-        basin,
-        allocation,
-    ) = p_independent
-    (; current_storage, current_level) = state_time_dependent_cache
-
-    # The current storage and level based on the proposed u are used to estimate the lowest
-    # storage and level attained in the last time step to estimate whether there was an effect
-    # of reduction factors
-    set_current_basin_properties!(u, p, t)
+    ) = p.p_independent
+    (; cumulative_flow_dt, problem) = flow_reconstructor
+    flow_ranges = getaxes(cumulative_flow_dt)
 
     # TabulatedRatingCurve flow is in [0, ∞) and can be inactive
     for (id, active) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.active)
-        limit_flow!(
-            u.tabulated_rating_curve,
-            uprev.tabulated_rating_curve,
+        update_bounds!(
+            problem,
+            flow_ranges.tabulated_rating_curve,
             id,
             0.0,
             Inf,
@@ -832,15 +753,23 @@ function limit_flow!(
     # Pump flow is in [min_flow_rate, max_flow_rate] and can be inactive
     for (id, min_flow_rate, max_flow_rate, active) in
         zip(pump.node_id, pump.min_flow_rate, pump.max_flow_rate, pump.active)
-        limit_flow!(u.pump, uprev.pump, id, min_flow_rate(t), max_flow_rate(t), active, dt)
+        update_bounds!(
+            problem,
+            flow_ranges.pump,
+            id,
+            min_flow_rate(t),
+            max_flow_rate(t),
+            active,
+            dt,
+        )
     end
 
     # Outlet flow is in [min_flow_rate, max_flow_rate] and can be inactive
     for (id, min_flow_rate, max_flow_rate, active) in
         zip(outlet.node_id, outlet.min_flow_rate, outlet.max_flow_rate, outlet.active)
-        limit_flow!(
-            u.outlet,
-            uprev.outlet,
+        update_bounds!(
+            problem,
+            flow_ranges.outlet,
             id,
             min_flow_rate(t),
             max_flow_rate(t),
@@ -855,9 +784,9 @@ function limit_flow!(
         linear_resistance.max_flow_rate,
         linear_resistance.active,
     )
-        limit_flow!(
-            u.linear_resistance,
-            uprev.linear_resistance,
+        update_bounds!(
+            problem,
+            flow_ranges.linear_resistance,
             id,
             -max_flow_rate,
             max_flow_rate,
@@ -902,9 +831,9 @@ function limit_flow!(
             )
             factor_basin_min * factor_level_min * allocated_total, allocated_total
         end
-        limit_flow!(
-            u.user_demand_inflow,
-            uprev.user_demand_inflow,
+        update_bounds!(
+            problem,
+            flow_ranges.user_demand_inflow,
             id,
             min_flow_rate,
             max_flow_rate,
@@ -917,11 +846,11 @@ function limit_flow!(
     # Infiltration is in [f * infiltration, infiltration] where f is a rough estimate of the smallest low storage factor
     # reduction factor value that was attained over the last timestep
     for (id, infiltration) in zip(basin.node_id, basin.vertical_flux.infiltration)
-        factor_min = min_low_storage_factor(current_storage, basin.storage_prev, basin, id)
-        limit_flow!(u.evaporation, uprev.evaporation, id, 0.0, Inf, true, dt)
-        limit_flow!(
-            u.infiltration,
-            uprev.infiltration,
+        factor_min = min_low_storage_factor(u.storage, uprev.storage, basin, id)
+        update_bounds!(problem, flow_ranges.evaporation, id, 0.0, Inf, true, dt)
+        update_bounds!(
+            problem,
+            flow_ranges.infiltration,
             id,
             factor_min * infiltration,
             infiltration,
@@ -933,24 +862,35 @@ function limit_flow!(
     return nothing
 end
 
-function limit_flow!(
-    u_component,
-    uprev_component,
+function update_bounds!(
+    problem::JuMP.Model,
+    flow_range::UnitRange{Int},
     id::NodeID,
     min_flow_rate::Number,
     max_flow_rate::Number,
     active::Bool,
     dt::Number,
 )::Nothing
-    u_prev = uprev_component[id.idx]
+    cumulative_flow_dt_var = problem[:cumulative_flow_dt_var]
+    flow_var = cumulative_flow_dt_var[flow_range[id.idx]]
     if active
-        u_component[id.idx] = clamp(
-            u_component[id.idx],
-            u_prev + min_flow_rate * dt,
-            u_prev + max_flow_rate * dt,
-        )
+        if min_flow_rate == max_flow_rate
+            JuMP.fix(flow_var, min_flow_rate * dt)
+        else
+            JuMP.is_fixed(flow_var) && JuMP.unfix(flow_var)
+            if isinf(min_flow_rate)
+                JuMP.has_lower_bound(flow_var) && JuMP.delete_lower_bound(flow_var)
+            else
+                JuMP.set_lower_bound(flow_var, min_flow_rate * dt)
+            end
+            if isinf(max_flow_rate)
+                JuMP.has_upper_bound(flow_var) && JuMP.delete_upper_bound(flow_var)
+            else
+                JuMP.set_upper_bound(flow_var, max_flow_rate * dt)
+            end
+        end
     else
-        u_component[id.idx] = uprev_component[id.idx]
+        JuMP.fix(flow_var, 0.0)
     end
     return nothing
 end

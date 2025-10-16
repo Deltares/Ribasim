@@ -334,11 +334,11 @@ end
 
 "Create the basin state table from the saved data"
 function basin_state_data(model::Model; table::Bool = true)
-    (; u, p, t) = model.integrator
+    (; u, p) = model.integrator
     (; current_level) = p.state_time_dependent_cache
 
     # ensure the levels are up-to-date
-    set_current_basin_properties!(u, p, t)
+    set_current_basin_properties!(u, p)
 
     return (; node_id = Int32.(p.p_independent.basin.node_id), level = current_level)
 end
@@ -346,8 +346,6 @@ end
 "Create the basin result table from the saved data"
 function basin_data(model::Model; table::Bool = true)
     (; saved) = model
-    (; u) = model.integrator
-    state_ranges = getaxes(u)
 
     # The last timestep is not included; there is no period over which to compute flows.
     data = get_storages_and_levels(model)
@@ -372,9 +370,8 @@ function basin_data(model::Model; table::Bool = true)
 
     idx_row = 0
     for saved_flow in saved.flow.saveval
-        saved_evaporation = view(saved_flow.flow, state_ranges.evaporation)
-        saved_infiltration = view(saved_flow.flow, state_ranges.infiltration)
-        for (evaporation_, infiltration_) in zip(saved_evaporation, saved_infiltration)
+        for (evaporation_, infiltration_) in
+            zip(saved_flow.flow.evaporation, saved_flow.flow.infiltration)
             idx_row += 1
             evaporation[idx_row] = evaporation_
             infiltration[idx_row] = infiltration_
@@ -452,29 +449,18 @@ function flow_data(model::Model; table::Bool = true)
     nflow = length(unique_link_ids_flow)
     ntsteps = length(t)
     flow_rate = zeros(nflow * ntsteps)
-    flow_rate_conv = zeros(Union{Missing, Float64}, nflow * ntsteps)
     internal_flow_rate = zeros(length(internal_flow_links))
-    internal_flow_rate_conv = zeros(Union{Missing, Float64}, length(internal_flow_links))
 
     for (ti, cvec) in enumerate(saveval)
-        (; flow, flow_boundary, flow_convergence) = cvec
-        flow = CVector(flow, getaxes(u))
-        convergence = CVector(flow_convergence, getaxes(u))
+        (; flow, flow_boundary) = cvec
         for (fi, link) in enumerate(internal_flow_links)
             internal_flow_rate[fi] =
                 get_flow(flow, p_independent, 0.0, link.link; boundary_flow = flow_boundary)
-
-            internal_flow_rate_conv[fi] = get_convergence(convergence, link.link)
         end
         mul!(
             view(flow_rate, (1 + (ti - 1) * nflow):(ti * nflow)),
             flow_link_map,
             internal_flow_rate,
-        )
-        mul!(
-            view(flow_rate_conv, (1 + (ti - 1) * nflow):(ti * nflow)),
-            flow_link_map,
-            internal_flow_rate_conv,
         )
     end
 
@@ -496,17 +482,9 @@ function flow_data(model::Model; table::Bool = true)
         to_node_id = repeat(to_node_id; outer = ntsteps)
     else
         flow_rate = reshape(flow_rate, nflow, ntsteps)
-        flow_rate_conv = reshape(flow_rate_conv, nflow, ntsteps)
     end
 
-    return (;
-        time,
-        link_id,
-        from_node_id,
-        to_node_id,
-        flow_rate,
-        convergence = flow_rate_conv,
-    )
+    return (; time, link_id, from_node_id, to_node_id, flow_rate)
 end
 
 "Create a concentration result table from the saved data"
@@ -552,9 +530,8 @@ end
 "Create an allocation result table for the saved data"
 function allocation_data(model::Model; table::Bool = true)
     (; config, integrator) = model
-    (; p_independent, state_time_dependent_cache) = integrator.p
-    (; current_storage) = state_time_dependent_cache
-    (; allocation, graph, basin, user_demand, flow_demand, level_demand) = p_independent
+    (; p_independent) = integrator.p
+    (; allocation, graph, user_demand, flow_demand, level_demand) = p_independent
     (; demand_priorities_all, allocation_models) = allocation
     record_demand = StructVector(model.integrator.p.p_independent.allocation.record_demand)
 

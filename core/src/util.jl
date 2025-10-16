@@ -61,9 +61,9 @@ function get_scalar_interpolation(
     time::AbstractVector,
     node_id::NodeID,
     param::Symbol;
-    default_value::Float64=0.0,
-    interpolation_type::Type{<:AbstractInterpolation}=ConstantInterpolation,
-    cyclic_time::Bool=false,
+    default_value::Float64 = 0.0,
+    interpolation_type::Type{<:AbstractInterpolation} = ConstantInterpolation,
+    cyclic_time::Bool = false,
 )::interpolation_type
     rows = searchsorted(time.node_id, node_id)
     parameter = getproperty(time, param)[rows]
@@ -75,8 +75,8 @@ function get_scalar_interpolation(
     return interpolation_type(
         parameter,
         times;
-        extrapolation=cyclic_time ? Periodic : ConstantExtrapolation,
-        cache_parameters=true,
+        extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
+        cache_parameters = true,
     )
 end
 
@@ -120,9 +120,9 @@ function qh_interpolation(
     return PCHIPInterpolation(
         flow_rate,
         level;
-        extrapolation_left=ConstantExtrapolation,
-        extrapolation_right=Linear,
-        cache_parameters=true,
+        extrapolation_left = ConstantExtrapolation,
+        extrapolation_right = Linear,
+        cache_parameters = true,
     )
 end
 
@@ -131,7 +131,7 @@ Find the index of element x in a sorted collection a.
 Returns the index of x if it exists, or nothing if it doesn't.
 If x occurs more than once, throw an error.
 """
-function findsorted(a, x)::Union{Int,Nothing}
+function findsorted(a, x)::Union{Int, Nothing}
     r = searchsorted(a, x)
     return if isempty(r)
         nothing
@@ -183,7 +183,7 @@ function get_storage(p::Parameters, node_id::NodeID, t::Number)::Float64
 end
 
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
-function basin_bottom(basin::Basin, node_id::NodeID)::Tuple{Bool,Float64}
+function basin_bottom(basin::Basin, node_id::NodeID)::Tuple{Bool, Float64}
     return if node_id.type == NodeType.Basin
         # get level(storage) interpolation function
         level_discrete = basin_levels(basin, node_id.idx)
@@ -280,8 +280,8 @@ Base.size(fv::FlatVector) = (length(fv),)
 function Base.getindex(fv::FlatVector, i::Int)
     veclen = length(first(fv.v))
     d, r = divrem(i - 1, veclen)
-    v = fv.v[d+1]
-    return v[r+1]
+    v = fv.v[d + 1]
+    return v[r + 1]
 end
 
 "Construct a FlatVector from one of the fields of SavedFlow."
@@ -295,7 +295,7 @@ FlatVector(v::Vector{Matrix{Float64}}) = FlatVector(vec.(v))
 Function that goes smoothly from 0 to 1 in the interval [0,threshold],
 and is constant outside this interval.
 """
-function reduction_factor(x::T, threshold::Real)::T where {T<:Real}
+function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
     return if x < 0
         zero(T)
     elseif x < threshold
@@ -371,7 +371,7 @@ function get_all_demand_priorities(db::DB, config::Config;)::Vector{Int32}
     end
 end
 
-const control_type_mapping = Dict{NodeType.T,ContinuousControlType.T}(
+const control_type_mapping = Dict{NodeType.T, ContinuousControlType.T}(
     NodeType.PidControl => ContinuousControlType.PID,
     NodeType.ContinuousControl => ContinuousControlType.Continuous,
 )
@@ -494,15 +494,15 @@ Get the reference to a parameter
 function get_cache_ref(
     node_id::NodeID,
     variable::String,
-    state_ranges::StateTuple{UnitRange{Int}};
-    listen::Bool=true,
-)::Tuple{CacheRef,Bool}
+    flow_ranges::FlowTuple{UnitRange{Int}};
+    listen::Bool = true,
+)::Tuple{CacheRef, Bool}
     errors = false
 
     ref = if node_id.type == NodeType.Basin && variable == "level"
-        CacheRef(; type=CacheType.basin_level, node_id.idx)
+        CacheRef(; type = CacheType.basin_level, node_id.idx)
     elseif node_id.type == NodeType.Basin && variable == "storage"
-        CacheRef(; type=CacheType.basin_storage, node_id.idx)
+        CacheRef(; type = CacheType.basin_storage, node_id.idx)
     elseif variable == "flow_rate" && node_id.type != NodeType.FlowBoundary
         if listen
             if node_id.type ∉ conservative_nodetypes
@@ -511,8 +511,8 @@ function get_cache_ref(
                 CacheRef()
             else
                 # Index in the state vector (inflow)
-                idx = get_state_index(state_ranges, node_id)
-                CacheRef(; idx, from_du=true)
+                idx = get_flow_index(flow_ranges, node_id)
+                CacheRef(; idx, from_du = true)
             end
         else
             type = if node_id.type == NodeType.Pump
@@ -538,7 +538,7 @@ Set references to all variables that are listened to by discrete/continuous cont
 """
 function set_listen_cache_refs!(
     p_independent::ParametersIndependent,
-    state_ranges::StateTuple{UnitRange{Int}},
+    flow_ranges::FlowTuple{UnitRange{Int}},
 )::Nothing
     (; discrete_control, continuous_control) = p_independent
     compound_variable_sets =
@@ -552,7 +552,7 @@ function set_listen_cache_refs!(
                 ref, error = get_cache_ref(
                     subvariable.listen_node_id,
                     subvariable.variable,
-                    state_ranges,
+                    flow_ranges,
                 )
                 if !error
                     subvariables[j] = @set subvariable.cache_ref = ref
@@ -619,14 +619,14 @@ function set_target_ref!(
     target_ref::Vector{CacheRef},
     node_id::Vector{NodeID},
     controlled_variable::Vector{String},
-    state_ranges::StateTuple{UnitRange{Int}},
+    flow_ranges::FlowTuple{UnitRange{Int}},
     graph::MetaGraph,
 )::Nothing
     errors = false
     for (i, (id, variable)) in enumerate(zip(node_id, controlled_variable))
         controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
         ref, error =
-            get_cache_ref(controlled_node_id, variable, state_ranges; listen=false)
+            get_cache_ref(controlled_node_id, variable, flow_ranges; listen = false)
         target_ref[i] = ref
         errors |= error
     end
@@ -681,40 +681,58 @@ relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
 
 "Create a NamedTuple of the node IDs per state component in the state order"
-function state_node_ids(
-    p::Union{ParametersIndependent,NamedTuple},
-)::StateTuple{Vector{NodeID}}
+function flow_node_ids(
+    p::Union{ParametersIndependent, NamedTuple},
+)::FlowTuple{Vector{NodeID}}
     (;
-        tabulated_rating_curve=p.tabulated_rating_curve.node_id,
-        pump=p.pump.node_id,
-        outlet=p.outlet.node_id,
-        user_demand_inflow=p.user_demand.node_id,
-        user_demand_outflow=p.user_demand.node_id,
-        linear_resistance=p.linear_resistance.node_id,
-        manning_resistance=p.manning_resistance.node_id,
-        evaporation=p.basin.node_id,
-        infiltration=p.basin.node_id,
-        integral=p.pid_control.node_id,
+        tabulated_rating_curve = p.tabulated_rating_curve.node_id,
+        pump = p.pump.node_id,
+        outlet = p.outlet.node_id,
+        user_demand_inflow = p.user_demand.node_id,
+        user_demand_outflow = p.user_demand.node_id,
+        linear_resistance = p.linear_resistance.node_id,
+        manning_resistance = p.manning_resistance.node_id,
+        evaporation = p.basin.node_id,
+        infiltration = p.basin.node_id,
     )
 end
 
-"Create the axis of the state vector"
-function count_state_ranges(u_ids::StateTuple{Vector{NodeID}})::StateTuple{UnitRange{Int}}
-    StateTuple{UnitRange{Int}}(ranges(map(length, collect(u_ids))))
+"Create the axis of the flow vector"
+function count_flow_ranges(flow_ids::FlowTuple{Vector{NodeID}})::FlowTuple{UnitRange{Int}}
+    FlowTuple{UnitRange{Int}}(ranges(map(length, collect(flow_ids))))
 end
 
-function build_state_vector(p_independent::ParametersIndependent)
-    # It is assumed that the horizontal flow states come first in
-    # p_independent.state_inflow_link and p_independent.state_outflow_link
-    u_ids = state_node_ids(p_independent)
-    state_ranges = count_state_ranges(u_ids)
-    data = zeros(length(p_independent.node_id))
-    u = CVector(data, state_ranges)
-    # Ensure p_independent.node_id, state_ranges and u have the same length and order
-    ranges = (getproperty(state_ranges, x) for x in propertynames(state_ranges))
-    @assert length(u) == length(p_independent.node_id) == mapreduce(length, +, ranges)
-    @assert keys(u_ids) == state_components
+function build_state_vector(
+    p_independent::ParametersIndependent;
+    storage0::Union{Nothing, Vector{Float64}} = nothing,
+)::StateCVector{Float64}
+    (; basin, pid_control) = p_independent
+    return build_state_vector(basin, pid_control; storage0)
+end
+
+function build_state_vector(
+    basin::Basin,
+    pid_control::PidControl;
+    storage0::Union{Nothing, Vector{Float64}} = nothing,
+)::StateCVector{Float64}
+    n_basin = length(basin.node_id)
+    n_pid_control = length(pid_control.node_id)
+    n_states = n_basin + n_pid_control
+    state_ranges = (; storage = 1:n_basin, integral = (n_basin + 1):n_states)
+    u = CVector(zeros(n_states), state_ranges)
+    if !isnothing(storage0)
+        u.storage .= storage0
+    end
     return u
+end
+
+function build_flow_vector(p_independent::ParametersIndependent)::FlowCVector{Float64}
+    flow_ids = flow_node_ids(p_independent)
+    flow_ranges = count_flow_ranges(flow_ids)
+    n_flows = mapreduce(length, +, flow_ranges)
+    flow = CVector(zeros(n_flows), flow_ranges)
+    @assert keys(flow_ids) == flow_components
+    return flow
 end
 
 function build_reltol_vector(u0::CVector, reltol::Float64)
@@ -730,21 +748,21 @@ function build_reltol_vector(u0::CVector, reltol::Float64)
 end
 
 function build_flow_to_storage(
-    state_ranges::StateTuple{UnitRange{Int}},
-    n_states::Int,
+    flow_ranges::FlowTuple{UnitRange{Int}},
+    n_flows::Int,
     basin::Basin,
     connector_nodes::NamedTuple,
-)::SparseMatrixCSC{Float64,Int}
-    (; user_demand_inflow, user_demand_outflow, evaporation, infiltration) = state_ranges
+)::SparseMatrixCSC{Float64, Int}
+    (; user_demand_inflow, user_demand_outflow, evaporation, infiltration) = flow_ranges
     n_basins = length(basin.node_id)
-    flow_to_storage = spzeros(n_basins, n_states)
+    flow_to_storage = spzeros(n_basins, n_flows)
 
     for (node_name, node) in pairs(connector_nodes)
         if node_name == :user_demand
             flow_to_storage_node_inflow = view(flow_to_storage, :, user_demand_inflow)
             flow_to_storage_node_outflow = view(flow_to_storage, :, user_demand_outflow)
         else
-            state_range = getproperty(state_ranges, node_name)
+            state_range = getproperty(flow_ranges, node_name)
             flow_to_storage_node_inflow = view(flow_to_storage, :, state_range)
             flow_to_storage_node_outflow = flow_to_storage_node_inflow
         end
@@ -774,22 +792,22 @@ function build_flow_to_storage(
 end
 
 """
-Create vectors state_inflow_link and state_outflow_link which give for each state
-in the state vector in order the metadata of the link that is associated with that state.
+Create vectors flow_node_inflow_link and flow_node_outflow_link which give for each element
+in `c the metadata of the link that is associated with that state.
 Only for horizontal flows, which are assumed to come first in the state vector.
 """
-function get_state_flow_links(
+function get_flow_node_flow_links(
     graph::MetaGraph,
     nodes::NamedTuple,
-)::Tuple{Vector{LinkMetadata},Vector{LinkMetadata}}
+)::Tuple{Vector{LinkMetadata}, Vector{LinkMetadata}}
     (; user_demand) = nodes
-    state_inflow_link = LinkMetadata[]
-    state_outflow_link = LinkMetadata[]
+    flow_node_inflow_link = LinkMetadata[]
+    flow_node_outflow_link = LinkMetadata[]
 
     placeholder_link =
         LinkMetadata(0, LinkType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
 
-    for node_name in state_components
+    for node_name in flow_components
         if hasproperty(nodes, node_name)
             node::AbstractParameterNode = getproperty(nodes, node_name)
             for id in node.node_id
@@ -804,7 +822,7 @@ function get_state_flow_links(
                 else
                     error("Multiple inflows not supported")
                 end
-                push!(state_inflow_link, inflow_link)
+                push!(flow_node_inflow_link, inflow_link)
 
                 outflow_link = if length(outflow_ids_) == 0
                     placeholder_link
@@ -814,21 +832,21 @@ function get_state_flow_links(
                 else
                     error("Multiple outflows not supported")
                 end
-                push!(state_outflow_link, outflow_link)
+                push!(flow_node_outflow_link, outflow_link)
             end
         elseif startswith(String(node_name), "user_demand")
             placeholder_links = fill(placeholder_link, length(user_demand.node_id))
             if node_name == :user_demand_inflow
-                append!(state_inflow_link, user_demand.inflow_link)
-                append!(state_outflow_link, placeholder_links)
+                append!(flow_node_inflow_link, user_demand.inflow_link)
+                append!(flow_node_outflow_link, placeholder_links)
             elseif node_name == :user_demand_outflow
-                append!(state_inflow_link, placeholder_links)
-                append!(state_outflow_link, user_demand.outflow_link)
+                append!(flow_node_inflow_link, placeholder_links)
+                append!(flow_node_outflow_link, user_demand.outflow_link)
             end
         end
     end
 
-    return state_inflow_link, state_outflow_link
+    return flow_node_inflow_link, flow_node_outflow_link
 end
 
 """
@@ -836,41 +854,32 @@ Get the index of the state vector corresponding to the given NodeID.
 Use the inflow Boolean argument to disambiguite for node types that have multiple states.
 Can return nothing for node types that do not have a state, like Terminal.
 """
-function get_state_index(
-    state_ranges::StateTuple{UnitRange{Int}},
+function get_flow_index(
+    flow_ranges::FlowTuple{UnitRange{Int}},
     id::NodeID;
-    inflow::Bool=true,
-)::Union{Int,Nothing}
+    inflow::Bool = true,
+)::Union{Int, Nothing}
     component_name = if id.type == NodeType.UserDemand
         inflow ? :user_demand_inflow : :user_demand_outflow
     else
         snake_case(id)
     end
 
-    if hasproperty(state_ranges, component_name)
-        state_range = getproperty(state_ranges, component_name)
-        return state_range[id.idx]
+    if hasproperty(flow_ranges, component_name)
+        flow_range = getproperty(flow_ranges, component_name)
+        return flow_range[id.idx]
     else
         return nothing
     end
 end
 
 "Get the state index of the to-node of the link if it exists, otherwise the from-node."
-function get_state_index(
-    state_ranges::StateTuple{UnitRange{Int}},
-    link::Tuple{NodeID,NodeID},
-)::Union{Int,Nothing}
-    idx = get_state_index(state_ranges, link[2])
-    isnothing(idx) ? get_state_index(state_ranges, link[1]; inflow=false) : idx
-end
-
-"""
-Check whether any storages are negative given the state u.
-"""
-function isoutofdomain(u, p, t)
-    (; current_storage) = p.state_time_dependent_cache
-    formulate_storages!(u, p, t)
-    any(<(0), current_storage)
+function get_flow_index(
+    flow_ranges::FlowTuple{UnitRange{Int}},
+    link::Tuple{NodeID, NodeID},
+)::Union{Int, Nothing}
+    idx = get_flow_index(flow_ranges, link[2])
+    isnothing(idx) ? get_flow_index(flow_ranges, link[1]; inflow = false) : idx
 end
 
 function get_demand(user_demand, id, demand_priority_idx, t)::Float64
@@ -937,7 +946,7 @@ address to data of the requested length, and it will not prevent the input array
 being freed.
 """
 function unsafe_array(
-    A::SubArray{Float64,1,Vector{Float64},Tuple{UnitRange{Int64}},true},
+    A::SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true},
 )::Vector{Float64}
     GC.@preserve A unsafe_wrap(Array, pointer(A), length(A))
 end
@@ -1037,7 +1046,7 @@ function get_timeseries_tstops(itp::AbstractInterpolation, t_end::Float64)::Vect
             # Because of floating point errors last(transition_ts) = first(transition_ts) + T
             # does not always hold exactly, so to prevent that these become separate
             # very close tstops we only use the last time point of the period in the last period
-            append!(tstops, filter(t -> 0 ≤ t ≤ t_end, transition_ts[1:(end-1)] .+ i * T))
+            append!(tstops, filter(t -> 0 ≤ t ≤ t_end, transition_ts[1:(end - 1)] .+ i * T))
         end
     end
 
@@ -1066,7 +1075,11 @@ function ranges(lengths::Vector{<:Integer})
     return ranges
 end
 
-function get_interpolation_vec(interpolation_type::String, block_transition_period::Float64, node_id::Vector{NodeID})::Vector
+function get_interpolation_vec(
+    interpolation_type::String,
+    block_transition_period::Float64,
+    node_id::Vector{NodeID},
+)::Vector
     type = if interpolation_type == "linear"
         ScalarLinearInterpolation
     elseif interpolation_type == "block"
@@ -1130,19 +1143,19 @@ function eval_time_interp(
     end
 end
 
-function trivial_constant_itp(; val=0.0)
-    ConstantInterpolation([val, val], [0.0, 1.0]; extrapolation=ConstantExtrapolation)
+function trivial_constant_itp(; val = 0.0)
+    ConstantInterpolation([val, val], [0.0, 1.0]; extrapolation = ConstantExtrapolation)
 end
 
 function trivial_allocation_itp_fill(
     demand_priorities,
     node_id;
-    val=0.0,
+    val = 0.0,
 )::Vector{Vector{ScalarConstantInterpolation}}
     return [fill(trivial_constant_itp(; val), length(demand_priorities)) for _ in node_id]
 end
 
-function finitemaximum(u::AbstractVector; init=0)
+function finitemaximum(u::AbstractVector; init = 0)
     # Find the maximum finite value in the vector
     max_val = init
     for val in u
@@ -1156,7 +1169,7 @@ end
 function initialize_concentration_itp(
     n_substance,
     substance_idx_node_type;
-    continuity_tracer=true,
+    continuity_tracer = true,
 )::Vector{ScalarConstantInterpolation}
     # Default: concentration of 0
     concentration_itp = fill(zero_constant_itp, n_substance)
@@ -1183,7 +1196,7 @@ function filtered_constant_interpolation(
         ConstantInterpolation(
             values[mask],
             seconds_since.(times[mask], config.starttime);
-            extrapolation=cyclic_time ? Periodic : ConstantExtrapolation,
+            extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
         )
     else
         zero_constant_itp
@@ -1197,7 +1210,7 @@ function get_concentration_itp(
     substance_idx_node_type,
     cyclic_times,
     config;
-    continuity_tracer=true,
+    continuity_tracer = true,
 )::Vector{Vector{ScalarConstantInterpolation}}
     concentration_itp = [
         initialize_concentration_itp(
@@ -1247,3 +1260,8 @@ function should_skip_update_q(
 
     return control_type != control_type_
 end
+
+trivial_flow_vector()::FlowCVector = CVector(
+    zeros(0),
+    NamedTuple{flow_components}(ntuple(Returns(1:0), length(flow_components))),
+)

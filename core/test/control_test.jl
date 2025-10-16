@@ -9,7 +9,7 @@
         normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    (; p_independent) = model.integrator.p
+    (; p_independent, state_time_dependent_cache) = model.integrator.p
     (; discrete_control, pump, graph) = p_independent
 
     # Control input(flow rates)
@@ -69,9 +69,9 @@
     @test level[2, t_2_index] >=
           discrete_control.compound_variables[1][2].threshold_high[1](0)
 
-    du = get_du(model.integrator)
-    @test all(iszero, du.linear_resistance)
-    @test all(iszero, du.pump)
+    (; current_instantaneous_flow) = state_time_dependent_cache
+    @test all(iszero, current_instantaneous_flow.linear_resistance)
+    @test all(iszero, current_instantaneous_flow.pump)
 end
 
 @testitem "Flow condition control" begin

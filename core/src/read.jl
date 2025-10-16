@@ -744,7 +744,6 @@ end
 function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     static = load_structvector(db, config, Schema.Basin.Static)
     time = load_structvector(db, config, Schema.Basin.Time)
-    state = load_structvector(db, config, Schema.Basin.State)
     concentration_time = load_structvector(db, config, Schema.Basin.Concentration)
     node_id = get_node_ids(db, NodeType.Basin)
     cyclic_times = get_cyclic_time(db, "Basin")
@@ -788,11 +787,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     # Ensure the initial data is loaded at t0 for BMI
     update_basin!(basin, 0.0)
-
-    storage0 = get_storages_from_levels(basin, state.level)
-    basin.storage0 .= storage0
-    basin.storage_prev .= storage0
-    basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
 
     for id in node_id
         # Compute the low storage threshold as the disk of water between the bottom
@@ -1530,6 +1524,31 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
     )
 end
 
+function FlowReconstructor(p_independent::ParametersIndependent)
+    (; basin, flow_to_storage) = p_independent
+
+    prev_instantaneous_flow = build_flow_vector(p_independent)
+    cumulative_flow_dt_initial = copy(prev_instantaneous_flow)
+    cumulative_flow_dt = copy(prev_instantaneous_flow)
+    cumulative_flow_saveat = copy(prev_instantaneous_flow)
+    Δstorage = zeros(length(basin.node_id))
+
+    problem = JuMP.Model(get_optimizer())
+    problem[:cumulative_flow_dt_var] =
+        JuMP.@variable(problem, cumulative_flow_dt_var[i = eachindex(cumulative_flow_dt)])
+    problem[:constraints] =
+        JuMP.@constraint(problem, flow_to_storage * cumulative_flow_dt_var .== Δstorage)
+
+    return FlowReconstructor(;
+        prev_instantaneous_flow,
+        cumulative_flow_dt_initial,
+        cumulative_flow_dt,
+        cumulative_flow_saveat,
+        Δstorage,
+        problem,
+    )
+end
+
 function Parameters(db::DB, config::Config)::Parameters
     graph = create_graph(db, config)
     allocation = Allocation(db, config, graph)
@@ -1563,7 +1582,7 @@ function Parameters(db::DB, config::Config)::Parameters
 
     subgrid = Subgrid(db, config, basin)
 
-    u_ids = state_node_ids((;
+    flow_ids = flow_node_ids((;
         nodes.tabulated_rating_curve,
         nodes.pump,
         nodes.outlet,
@@ -1571,7 +1590,6 @@ function Parameters(db::DB, config::Config)::Parameters
         nodes.linear_resistance,
         nodes.manning_resistance,
         nodes.basin,
-        nodes.pid_control,
     ))
     connector_nodes = (;
         nodes.tabulated_rating_curve,
@@ -1581,56 +1599,53 @@ function Parameters(db::DB, config::Config)::Parameters
         nodes.manning_resistance,
         nodes.user_demand,
     )
-    node_id = reduce(vcat, u_ids)
-    n_states = length(node_id)
-    state_ranges = count_state_ranges(u_ids)
-    flow_to_storage = build_flow_to_storage(state_ranges, n_states, basin, connector_nodes)
-    state_inflow_link, state_outflow_link = get_state_flow_links(graph, nodes)
+    flow_ranges = count_flow_ranges(flow_ids)
+    n_flows = mapreduce(length, +, flow_ids)
+    flow_to_storage = build_flow_to_storage(flow_ranges, n_flows, basin, connector_nodes)
+    flow_node_inflow_link, flow_node_outflow_link = get_flow_node_flow_links(graph, nodes)
 
     set_target_ref!(
         nodes.pid_control.target_ref,
         nodes.pid_control.node_id,
-        fill("flow_rate", length(node_id)),
-        state_ranges,
+        fill("flow_rate", length(nodes.pid_control.node_id)),
+        flow_ranges,
         graph,
     )
     set_target_ref!(
         nodes.continuous_control.target_ref,
         nodes.continuous_control.node_id,
         nodes.continuous_control.controlled_variable,
-        state_ranges,
+        flow_ranges,
         graph,
     )
 
     p_independent = ParametersIndependent(;
         config.starttime,
-        config.solver.reltol,
-        relmask = collect(trues(n_states)),
         graph,
         allocation,
         nodes...,
         subgrid,
-        state_inflow_link,
-        state_outflow_link,
+        flow_node_inflow_link,
+        flow_node_outflow_link,
         flow_to_storage,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
-        u_prev_saveat = zeros(n_states),
-        node_id,
         do_concentration = config.experimental.concentration,
         do_subgrid = config.results.subgrid,
-        temp_convergence = CVector(zeros(n_states), state_ranges),
-        convergence = CVector(zeros(n_states), state_ranges),
+        temp_convergence = build_state_vector(basin, nodes.pid_control),
+        convergence = build_state_vector(basin, nodes.pid_control),
     )
 
     collect_control_mappings!(p_independent)
-    set_listen_cache_refs!(p_independent, state_ranges)
+    set_listen_cache_refs!(p_independent, flow_ranges)
     set_discrete_controlled_variable_refs!(p_independent)
 
     # Allocation data structures
     if config.experimental.allocation
         initialize_allocation!(p_independent, config)
     end
+
+    @reset p_independent.flow_reconstructor = FlowReconstructor(p_independent)
 
     return Parameters(; p_independent)
 end
