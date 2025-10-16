@@ -1,3 +1,6 @@
+# %%
+from ctypes import byref, c_int, create_string_buffer
+
 from xmipy import XmiWrapper
 
 
@@ -17,6 +20,13 @@ class RibasimApi(XmiWrapper):
             case "BMI_LENERRMESSAGE":
                 return 1025
         raise ValueError(f"{name} does not map to an integer exposed by Ribasim")
+
+    def init_julia(self) -> None:
+        argument = create_string_buffer(0)
+        self.lib.init_julia(c_int(0), byref(argument))
+
+    def shutdown_julia(self) -> None:
+        self.lib.shutdown_julia(c_int(0))
 
     def update_subgrid_level(self) -> None:
         self.lib.update_subgrid_level()

@@ -16,15 +16,14 @@ function main(ARGS)
     n_pass = 0
     n_fail = 0
     lk = ReentrantLock()
-    failed = fill("", length(toml_paths))
-    skipped_allocation = fill("", length(toml_paths))
+    failed = String[]
+    skipped_allocation = String[]
 
-    Threads.@threads for i in eachindex(toml_paths)
-        toml_path = toml_paths[i]
+    Threads.@threads for toml_path in toml_paths
         modelname = basename(dirname(toml_path))
 
         if Ribasim.Config(toml_path).experimental.allocation
-            skipped_allocation[i] = modelname
+            push!(skipped_allocation, modelname)
             continue
         end
 
@@ -37,7 +36,7 @@ function main(ARGS)
 
         lock(lk) do
             if ret_code != 0
-                failed[i] = modelname
+                push!(failed, modelname)
                 n_fail += 1
             else
                 n_pass += 1
