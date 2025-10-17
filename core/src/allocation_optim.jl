@@ -345,7 +345,10 @@ function preprocess_demand_collection!(
     # Allow the inflow from the primary network to be as large as required
     # (will be restricted when optimizing for the actual allocation)
     for link in p_independent.allocation.primary_network_connections[subnetwork_id]
-        JuMP.set_upper_bound(flow[link], MAX_ABS_FLOW / scaling.flow)
+        JuMP.set_upper_bound(
+            flow[link],
+            flow_capacity_upper_bound(link, p_independent) / scaling.flow,
+        )
         JuMP.set_lower_bound(flow[link], 0)
     end
 
@@ -455,8 +458,9 @@ function set_secondary_network_demands!(
                 get_objective_data_of_demand_priority(objectives, demand_priority)
 
             demand = secondary_model.secondary_network_demand[link][demand_priority_idx]
+            demand *= secondary_model.scaling.flow / primary_model.scaling.flow
 
-            # Demand is upper bound of what is allocated
+            # Demand is upper bound of what can be allocated
             JuMP.set_upper_bound(node_allocated[link, demand_priority], demand)
 
             # Set demand in constraint for error term in first objective
@@ -1039,7 +1043,8 @@ function update_allocation!(model)::Nothing
         set_simulation_data!(primary_network, integrator)
 
         reset_demand_coefficients(primary_network)
-        for secondary_network in get_secondary_networks(allocation_models)
+        for secondary_network in
+            sort(get_secondary_networks(allocation_models); by = x -> x.subnetwork_id)
             delete_temporary_constraints!(secondary_network)
             preprocess_demand_collection!(secondary_network, p_independent)
             optimize_multi_objective!(

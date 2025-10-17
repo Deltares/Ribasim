@@ -166,8 +166,7 @@ end
     @test ispath(toml_path)
 
     config = Ribasim.Config(toml_path; experimental_allocation = true)
-    model = Ribasim.Model(config)
-    Ribasim.solve!(model)
+    model = Ribasim.run(toml_path)
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
     basin_data = DataFrame(Ribasim.basin_data(model))
 
@@ -197,9 +196,38 @@ end
     using Ribasim
     using DataFrames: DataFrame
 
-    toml_path = normpath(
+    toml_path_1 = normpath(
         @__DIR__,
         "../../generated_testmodels/medium_primary_secondary_network/ribasim.toml",
+    )
+    toml_path_2 = normpath(
+        @__DIR__,
+        "../../generated_testmodels/medium_primary_secondary_network_verification/ribasim.toml",
+    )
+    model_1 = Ribasim.run(toml_path_1)
+    model_2 = Ribasim.run(toml_path_2)
+
+    allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model_1))
+    allocation_flow_table_v = DataFrame(Ribasim.allocation_flow_data(model_2))
+
+    # Assert that the flows over all links are the same
+    for link_id in unique(allocation_flow_table.link_id)
+        multiple_subs = filter(:link_id => ==(link_id), allocation_flow_table).flow_rate
+        single_sub = filter(:link_id => ==(link_id), allocation_flow_table_v).flow_rate
+        if !all(isapprox.(multiple_subs, single_sub; rtol = 1e-2))
+            println("Link $link_id does not match")
+            @test false
+        end
+    end
+end
+
+@testitem "Level Demand Upper Lower Bounds" begin
+    using Ribasim
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/level_demand_upper_lower_bounds/ribasim.toml",
     )
     @test ispath(toml_path)
 
@@ -208,15 +236,6 @@ end
     allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
     basin_data = DataFrame(Ribasim.basin_data(model))
 
-    link_outlet_3a = filter(:link_id => ==(23), allocation_flow_table)
-    link_outlet_3b = filter(:link_id => ==(24), allocation_flow_table)
-
-    flow_userdemand_primnet = filter(:link_id => ==(12), allocation_flow_table)
-    flow_userdemand_subnet_2 = filter(:link_id => ==(20), allocation_flow_table)
-    flow_userdemand_subnet_3 = filter(:link_id => ==(25), allocation_flow_table)
-
-    # Assert all 3 demands are met:
-    @test all(flow_userdemand_primnet.flow_rate .≈ 0.05)
-    @test all(flow_userdemand_subnet_2.flow_rate .≈ 0.1)
-    @test all(flow_userdemand_subnet_3.flow_rate .≈ 0.1)
+    filter!(:node_id => ==(1), level_demand_table)
+    filter!(:link_id => ==(1), allocation_flow_table)
 end
