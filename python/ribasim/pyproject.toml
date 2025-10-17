@@ -24,6 +24,7 @@ dependencies = [
     "packaging >=23.0",
     "pandas >=2.2",
     "pandera >=0.25",
+    "platformdirs >=4.0",
     "pyarrow >=17.0",
     "pydantic >=2.0",
     "pyogrio >=0.8",
@@ -33,6 +34,9 @@ dependencies = [
     "xarray >=2023.11",
 ]
 dynamic = ["version"]
+
+[project.scripts]
+ribasim = "ribasim.cli:main"
 
 [project.optional-dependencies]
 tests = [
