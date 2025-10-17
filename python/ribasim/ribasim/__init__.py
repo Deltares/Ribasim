@@ -5,8 +5,17 @@ import logging
 
 logging.getLogger("datacompy").setLevel(logging.ERROR)
 
+from ribasim.cli import run_ribasim  # noqa: E402
 from ribasim.config import Allocation, Logging, Node, Solver  # noqa: E402
 from ribasim.geometry.link import LinkTable  # noqa: E402
 from ribasim.model import Model  # noqa: E402
 
-__all__ = ["LinkTable", "Allocation", "Logging", "Model", "Solver", "Node"]
+__all__ = [
+    "LinkTable",
+    "Allocation",
+    "Logging",
+    "Model",
+    "Solver",
+    "Node",
+    "run_ribasim",
+]
