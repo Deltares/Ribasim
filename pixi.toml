@@ -14,7 +14,7 @@ repository = "https://github.com/Deltares/Ribasim"
 
 [tasks]
 # Tests
-test-ribasim-python = "pytest --numprocesses=4 -m 'not regression' python/ribasim/tests"
+test-ribasim-python = "pytest --basetemp=python/ribasim/tests/temp --numprocesses=4 -m 'not regression' python/ribasim/tests"
 test-ribasim-python-cov = "pytest --numprocesses=4 --cov=ribasim --cov-report=xml -m 'not regression' python/ribasim/tests"
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
 # Installation
@@ -117,7 +117,7 @@ generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
     "generated_testmodels",
 ] }
 tests = { depends-on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
-delwaq = { cmd = "pytest python/ribasim/tests/test_delwaq.py" }
+delwaq = { cmd = "pytest --basetemp=python/ribasim/ribasim/delwaq/model python/ribasim/tests/test_delwaq.py" }
 gen-delwaq = { cmd = "python python/ribasim/ribasim/delwaq/generate.py" }
 model-integration-test = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"integration\"])'", depends-on = [
     { task = "s3-download", args = [
