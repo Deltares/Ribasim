@@ -130,7 +130,6 @@ LoadMKL_JLL = false
 
 [preferences.Ribasim]
 precompile_workload = false
-specialize = false
 
 [targets]
 test = ["Aqua", "CSV", "DataFrames", "Glob", "IOCapture", "Logging", "Statistics", "TerminalLoggers", "Test", "TOML", "TestItemRunner"]
