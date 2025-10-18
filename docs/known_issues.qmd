@@ -9,4 +9,3 @@ Besides the issues that need to be fixed, there are also considerations that had
 
 - Input tables that are in Arrow files are currently not automatically loaded in QGIS ([#318](https://github.com/Deltares/Ribasim/issues/318)).
 - Results in NetCDF format are currently not automatically loaded in QGIS ([#2519](https://github.com/Deltares/Ribasim/issues/2519)).
-- If you encounter a black plotting pane in the iMOD timeseries widget, [reload](/guide/qgis.qmd#sec-reload) the Ribasim model.
