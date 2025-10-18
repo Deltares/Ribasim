@@ -28,8 +28,14 @@ const state_components = (
 )
 const n_components = length(state_components)
 const StateTuple{V} = NamedTuple{state_components, NTuple{n_components, V}}
-const RibasimCVectorType =
-    Ribasim.CArrays.CArray{Float64, 1, Vector{Float64}, StateTuple{UnitRange{Int}}}
+const RibasimCVectorType{T} =
+    Ribasim.CArrays.CArray{T, 1, Vector{T}, StateTuple{UnitRange{Int}}}
+const RibasimReducedCVectorType{T} = Ribasim.CArrays.CArray{
+    T,
+    1,
+    Vector{T},
+    @NamedTuple{combined_cumulative_flows::UnitRange{Int}, integral::UnitRange{Int}}
+}
 
 # LinkType.flow and NodeType.FlowBoundary
 @enumx LinkType flow control none
@@ -789,7 +795,8 @@ const StateTimeDependentCache{T} = @NamedTuple{
     current_flow_rate_pump::Vector{T},
     current_flow_rate_outlet::Vector{T},
     current_error_pid_control::Vector{T},
-    u_prev_call::Vector{T},
+    u_reduced_prev_call::Vector{T},
+    t_prev_call::Vector{T},
 } where {T}
 
 @enumx CacheType flow_rate_pump flow_rate_outlet basin_level basin_storage
@@ -1102,11 +1109,18 @@ const ModelGraph = MetaGraph{
 
 """
 The part of the parameters passed to the rhs and callbacks that are mutable.
+- `all_nodes_active`: Whether `active = true` is assumed for all nodes, so that no
+   dependencies are missed during sparsity detection
+- `new_time_dependent_cache`: Whether the `t` with which `water_balance!` is called is considered new,
+   and thus whether `time_dependent_cache` must be updated
+- `new_state_time_dependent_cache`: Whether the `t` and/or `u_reduced` with which `water_balance!` are called are
+   considered new, and thus whether caches that (only) depend on `u_reduced` must be updated
+- `tprev`: The previous `t` before the latest time step
 """
 @kwdef mutable struct ParametersMutable
     all_nodes_active::Bool = false
-    new_t = true
-    new_u = true
+    new_time_dependent_cache::Bool = true
+    new_state_time_dependent_cache::Bool = true
     tprev::Float64 = 0.0
 end
 
@@ -1142,8 +1156,6 @@ the object itself is not.
     # Per state the in- and outflow links associated with that state (if they exist)
     state_inflow_link::Vector{LinkMetadata} = LinkMetadata[]
     state_outflow_link::Vector{LinkMetadata} = LinkMetadata[]
-    # Sparse matrix for combining flows into storages
-    flow_to_storage::SparseMatrixCSC{Float64, Int64} = spzeros(1, 1)
     # Water balance tolerances
     water_balance_abstol::Float64
     water_balance_reltol::Float64
@@ -1151,12 +1163,16 @@ the object itself is not.
     u_prev_saveat::Vector{Float64} = Float64[]
     # Node ID associated with each state
     node_id::Vector{NodeID} = NodeID[]
+    state_ranges::StateTuple{UnitRange{Int}}
     # Callback configurations
     do_concentration::Bool
     do_subgrid::Bool
-    temp_convergence::RibasimCVectorType
-    convergence::RibasimCVectorType
+    temp_convergence::RibasimCVectorType{Float64}
+    convergence::RibasimCVectorType{Float64}
     ncalls::Vector{Int} = [0]
+    # Reduced state where the cumulative flows are combined into Basin
+    # storages (without non-state cumulative_flows)
+    u_reduced::RibasimReducedCVectorType{Float64}
 end
 
 function StateTimeDependentCache(
@@ -1175,7 +1191,8 @@ function StateTimeDependentCache(
         current_flow_rate_pump = zeros(n_pump),
         current_flow_rate_outlet = zeros(n_outlet),
         current_error_pid_control = zeros(n_pid_control),
-        u_prev_call = getdata(build_state_vector(p_independent)) .- 1.0,
+        u_reduced_prev_call = getdata(p_independent.u_reduced) .- 1.0,
+        t_prev_call = [-1.0],
     )
 end
 
@@ -1188,8 +1205,6 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
         current_potential_evaporation = zeros(n_basin),
         current_infiltration = zeros(n_basin),
     )
-
-    n_rating_curve = length(p_independent.tabulated_rating_curve.node_id)
 
     n_level_boundary = length(p_independent.level_boundary.node_id)
     level_boundary = (; current_level = zeros(n_level_boundary))

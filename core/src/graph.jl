@@ -338,7 +338,7 @@ function get_flow(
     link::Tuple{NodeID, NodeID};
     boundary_flow = nothing,
 )
-    (; flow_boundary) = p_independent
+    (; flow_boundary, state_ranges) = p_independent
     from_id = link[1]
     if from_id.type == NodeType.FlowBoundary
         if boundary_flow === nothing
@@ -348,7 +348,6 @@ function get_flow(
             boundary_flow[from_id.idx]
         end
     else
-        state_ranges = getaxes(flow)
         flow[get_state_index(state_ranges, link)]
     end
 end
