@@ -14,12 +14,12 @@ repository = "https://github.com/Deltares/Ribasim"
 
 [tasks]
 # Tests
-test-ribasim-python = "pytest --numprocesses=4 -m 'not regression' python/ribasim/tests"
+test-ribasim-python = "pytest --basetemp=python/ribasim/tests/temp --numprocesses=4 -m 'not regression' python/ribasim/tests"
 test-ribasim-python-cov = "pytest --numprocesses=4 --cov=ribasim --cov-report=xml -m 'not regression' python/ribasim/tests"
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
 # Installation
 # Keep Julia version synced with julia.executablePath in .vscode/settings.json
-install-julia = "juliaup add 1.12.0 && juliaup override set 1.12.0"
+install-julia = "juliaup add 1.11.7 && juliaup override set 1.11.7"
 install-pre-commit = "pre-commit install"
 # Note that this has a Windows specific override
 install-ci = { depends-on = ["install-julia", "update-registry-julia"] }
@@ -75,7 +75,7 @@ lint = { depends-on = [
     "mypy-ribasim-qgis",
 ] }
 # Build
-build = { "cmd" = "julia --project --check-bounds=yes build/build.jl", depends-on = [
+build = { "cmd" = "julia --project --check-bounds=yes build.jl", cwd = "build", depends-on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
@@ -117,7 +117,7 @@ generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
     "generated_testmodels",
 ] }
 tests = { depends-on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
-delwaq = { cmd = "pytest python/ribasim/tests/test_delwaq.py" }
+delwaq = { cmd = "pytest --basetemp=python/ribasim/ribasim/delwaq/model python/ribasim/tests/test_delwaq.py" }
 gen-delwaq = { cmd = "python python/ribasim/ribasim/delwaq/generate.py" }
 model-integration-test = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"integration\"])'", depends-on = [
     { task = "s3-download", args = [
@@ -254,6 +254,10 @@ quarto-preview = { cmd = "echo 'Skipping quarto preview on ARM64 Linux (Quarto n
 quarto-check = { cmd = "echo 'Skipping quarto check on ARM64 Linux (Quarto not supported)'" }
 quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not supported)'" }
 
+[target.win.activation]
+# Workaround a conflict between conda openssl activation and julia < 1.12
+scripts = ["utils/unset-ssl-cert.bat"]
+
 [dependencies]
 datacompy = ">=0.16"
 geopandas = ">=1.0"
@@ -276,7 +280,7 @@ pandera = ">=0.25"
 plotly = "*"
 pre-commit = "*"
 pyarrow = ">=17.0"
-pydantic = ">=2.0,<2.12"
+pydantic = ">=2.0"
 pydantic-settings = "*"
 pyjuliacall = ">=0.9.27,<0.10"
 pyogrio = ">=0.8"

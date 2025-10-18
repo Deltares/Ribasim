@@ -5,7 +5,6 @@ import numpy as np
 import pytest
 from ribasim import Model
 from ribasim.delwaq import add_tracer, generate, parse, run_delwaq
-from ribasim.delwaq.util import model_dir
 
 delwaq_dir = Path(__file__).parent
 
@@ -19,9 +18,10 @@ delwaq_dir = Path(__file__).parent
     ),
     reason="Requires Delwaq to be installed and basic model results.",
 )
-def test_offline_delwaq_coupling():
+def test_offline_delwaq_coupling(tmp_path):
     repo_dir = delwaq_dir.parents[2]
     toml_path = repo_dir / "generated_testmodels/basic/ribasim.toml"
+    model_dir = tmp_path / "delwaq"
 
     model = Model.read(toml_path)
 
@@ -51,7 +51,26 @@ def test_offline_delwaq_coupling():
     assert all(df[df.substance == "Continuity"].concentration >= 1.0 - 1e-6)
     assert all(np.isclose(df[df.substance == "UserDemand"].concentration, 0.0))
 
-    # With evaporation of mass disabled
+    model.write(tmp_path / "basic/ribasim.toml")
+
+
+@pytest.mark.skipif(
+    not (
+        ("D3D_HOME" in os.environ)
+        and (
+            delwaq_dir.parents[2] / "generated_testmodels/basic/results/flow.arrow"
+        ).is_file()
+    ),
+    reason="Requires Delwaq to be installed and basic model results.",
+)
+def test_offline_delwaq_coupling_evaporate_mass(tmp_path):
+    repo_dir = delwaq_dir.parents[2]
+    toml_path = repo_dir / "generated_testmodels/basic/ribasim.toml"
+    model_dir = tmp_path / "delwaq"
+
+    model = Model.read(toml_path)
+
+    # With evaporation of mass enabled
     model.solver.evaporate_mass = True
     add_tracer(model, 11, "Foo")
     add_tracer(model, 15, "Bar")
@@ -82,4 +101,4 @@ def test_offline_delwaq_coupling():
     assert all(np.isclose(df[df.substance == "Continuity"].concentration, 1.0))
     assert all(np.isclose(df[df.substance == "UserDemand"].concentration, 0.0))
 
-    model.write(toml_path)
+    model.write(tmp_path / "basic/ribasim.toml")

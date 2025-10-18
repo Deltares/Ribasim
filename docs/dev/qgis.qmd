@@ -5,6 +5,12 @@ title: "QGIS plugin development"
 # Set up the developer environment
 
 After you have installed the environment as described [here](/dev/core.qmd) you must still activate the QGIS plugins.
+
+::: {.callout-note}
+Note that on macOS you currently need to manually install and point to a QGIS executable in your path.
+If you use pixi that could be as simple as: `pixi global install --environment qgis qgis pandas`.
+:::
+
 The simplest way to do this is by running `pixi run install-qgis-plugins`.
 It grabs the latest version of the iMOD QGIS plugin and it makes a symlink to the ribasim_qgis folder so that QGIS can find it.
 It also installs plugins that make it possible to reload and debug your plugin while QGIS is open.

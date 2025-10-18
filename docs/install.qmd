@@ -191,7 +191,8 @@ For Ribasim Python documentation please see the [examples](/guide/examples.qmd) 
 
 # Install Ribasim QGIS plugin {#sec-install-qgis-plugin}
 
-The Ribasim QGIS plugin requires [QGIS](https://qgis.org/en/site/) 3.34 or higher.
+The Ribasim QGIS plugin requires [QGIS](https://qgis.org/en/site/) 3.34 or higher, and the `pandas` package
+in the QGIS Python environment (which is the case by default).
 The Ribasim QGIS plugin is only distributed as a .zip archive and must be downloaded and installed in QGIS.
 
 ## Install Ribasim plugin
