@@ -232,7 +232,6 @@ class DatasetWidget:
             self.load_geopackage()
             self.add_topology_context()
             self.refresh_results()
-            _unset_imod_opengl()
 
     @staticmethod
     def activeGroup(iface):
@@ -683,15 +682,3 @@ class DatasetWidget:
             layer.setCustomProperty("arrow_fid_column", column)
 
         return path
-
-
-def _unset_imod_opengl() -> None:
-    """Try to avoid black plotting pane in iMOD timeseries widget by disabling OpenGL."""
-    # Temporary workaround until we have https://github.com/Deltares/imod-qgis/pull/89
-    # Triggered on model load or reload.
-    try:
-        from imodqgis.dependencies import pyqtgraph_0_12_3
-
-        pyqtgraph_0_12_3.setConfigOptions(useOpenGL=False)
-    except Exception:
-        pass
