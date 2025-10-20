@@ -6,12 +6,12 @@
 [general]
 name=Ribasim
 qgisMinimumVersion=3.34
-description=QGIS plugin to setup Ribasim models
+description=QGIS plugin to inspect Ribasim models
 version=2025.6.0
 author=Deltares and contributors
 email=ribasim.info@deltares.nl
 
-about=QGIS plugin to setup Ribasim models
+about=QGIS plugin to inspect Ribasim models. Requires `pandas` to be installed in the QGIS Python environment.
 
 tracker=https://github.com/Deltares/Ribasim/issues
 repository=https://github.com/Deltares/Ribasim
@@ -37,7 +37,7 @@ deprecated=False
 # Since QGIS 3.8, a comma separated list of plugins to be installed
 # (or upgraded) can be specified.
 # Check the documentation for more information.
-# plugin_dependencies=
+plugin_dependencies=iMOD==0.5.3
 
 Category of the plugin: Raster, Vector, Database or Web
 # category=

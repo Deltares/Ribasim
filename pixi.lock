@@ -486,7 +486,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyzmq-27.1.0-py312hfb55c3c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/qca-2.3.10-h71e8f01_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/qgis-3.44.2-py313h8c3fdef_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/qgis-plugin-manager-1.6.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/qhull-2020.2-h434a139_5.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/qjson-0.9.0-h0c700ba_1009.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/qscintilla2-2.14.1-py313h938ae94_2.conda
@@ -618,6 +617,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/6e/96/32318c76bb511e18b4accef245877778542d3390664a0acc77ccc6209ef4/lib4sbom-0.8.8-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6c/73/9f872cb81fc5c3bb48f7227872c28975f998f3e7c2b1c16e95e6432bbb90/python_magic-0.4.27-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/08/0e/870870f739384938a361c6cf89305a9b5f90a8f0ff74909f5ab11b14f532/qgis_plugin_manager-1.7.2.tar.gz
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/13/cbf8f3937c6bb9f59b19281998589097769057d38e5af894db78ae95386f/sbom4python-0.12.4-py2.py3-none-any.whl
@@ -1014,7 +1014,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pytz-2025.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pyyaml-6.0.3-py313hd3a54cf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pyzmq-27.1.0-py312h4552c38_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/qgis-plugin-manager-1.6.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/qhull-2020.2-h70be974_5.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/qt-main-5.15.15-hbe73643_5.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/qt6-main-6.9.2-h6c90349_1.conda
@@ -1132,6 +1131,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/6e/96/32318c76bb511e18b4accef245877778542d3390664a0acc77ccc6209ef4/lib4sbom-0.8.8-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6c/73/9f872cb81fc5c3bb48f7227872c28975f998f3e7c2b1c16e95e6432bbb90/python_magic-0.4.27-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/08/0e/870870f739384938a361c6cf89305a9b5f90a8f0ff74909f5ab11b14f532/qgis_plugin_manager-1.7.2.tar.gz
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/13/cbf8f3937c6bb9f59b19281998589097769057d38e5af894db78ae95386f/sbom4python-0.12.4-py2.py3-none-any.whl
@@ -1480,7 +1480,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pytz-2025.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyyaml-6.0.3-py313h7d74516_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyzmq-27.1.0-py312hd65ceae_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/qgis-plugin-manager-1.6.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/qhull-2020.2-h420ef59_5.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/qt-main-5.15.15-hac936aa_5.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/quarto-1.8.25-hb67532b_0.conda
@@ -1574,6 +1573,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/6e/96/32318c76bb511e18b4accef245877778542d3390664a0acc77ccc6209ef4/lib4sbom-0.8.8-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6c/73/9f872cb81fc5c3bb48f7227872c28975f998f3e7c2b1c16e95e6432bbb90/python_magic-0.4.27-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/08/0e/870870f739384938a361c6cf89305a9b5f90a8f0ff74909f5ab11b14f532/qgis_plugin_manager-1.7.2.tar.gz
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/13/cbf8f3937c6bb9f59b19281998589097769057d38e5af894db78ae95386f/sbom4python-0.12.4-py2.py3-none-any.whl
@@ -1991,7 +1991,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyzmq-27.1.0-py312hbb5da91_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qca-2.3.10-hcfd1de8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qgis-3.44.3-py313hd499ea6_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/qgis-plugin-manager-1.6.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qhull-2020.2-hc790b64_5.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qjson-0.9.0-h04a78d6_1009.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qscintilla2-2.14.1-py313h1048830_2.conda
@@ -2103,6 +2102,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6c/73/9f872cb81fc5c3bb48f7227872c28975f998f3e7c2b1c16e95e6432bbb90/python_magic-0.4.27-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/07/c2/094e3d62b906d952537196603a23aec4bcd7c6126bf80eb14e6f9f4be3a2/python_magic_bin-0.4.14-py2.py3-none-win_amd64.whl
+      - pypi: https://files.pythonhosted.org/packages/08/0e/870870f739384938a361c6cf89305a9b5f90a8f0ff74909f5ab11b14f532/qgis_plugin_manager-1.7.2.tar.gz
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/13/cbf8f3937c6bb9f59b19281998589097769057d38e5af894db78ae95386f/sbom4python-0.12.4-py2.py3-none-any.whl
@@ -2596,7 +2596,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyzmq-27.1.0-py312hfb55c3c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/qca-2.3.10-h71e8f01_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/qgis-3.44.2-py312h533294e_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/qgis-plugin-manager-1.6.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/qhull-2020.2-h434a139_5.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/qjson-0.9.0-h0c700ba_1009.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/qscintilla2-2.14.1-py312h82c0db2_2.conda
@@ -2729,6 +2728,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/6e/96/32318c76bb511e18b4accef245877778542d3390664a0acc77ccc6209ef4/lib4sbom-0.8.8-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6c/73/9f872cb81fc5c3bb48f7227872c28975f998f3e7c2b1c16e95e6432bbb90/python_magic-0.4.27-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/08/0e/870870f739384938a361c6cf89305a9b5f90a8f0ff74909f5ab11b14f532/qgis_plugin_manager-1.7.2.tar.gz
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/13/cbf8f3937c6bb9f59b19281998589097769057d38e5af894db78ae95386f/sbom4python-0.12.4-py2.py3-none-any.whl
@@ -3124,7 +3124,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pytz-2025.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pyyaml-6.0.3-py312ha4530ae_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pyzmq-27.1.0-py312h4552c38_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/qgis-plugin-manager-1.6.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/qhull-2020.2-h70be974_5.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/qt-main-5.15.15-hbe73643_5.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/qt6-main-6.9.2-h6c90349_1.conda
@@ -3243,6 +3242,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/6e/96/32318c76bb511e18b4accef245877778542d3390664a0acc77ccc6209ef4/lib4sbom-0.8.8-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6c/73/9f872cb81fc5c3bb48f7227872c28975f998f3e7c2b1c16e95e6432bbb90/python_magic-0.4.27-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/08/0e/870870f739384938a361c6cf89305a9b5f90a8f0ff74909f5ab11b14f532/qgis_plugin_manager-1.7.2.tar.gz
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/13/cbf8f3937c6bb9f59b19281998589097769057d38e5af894db78ae95386f/sbom4python-0.12.4-py2.py3-none-any.whl
@@ -3590,7 +3590,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/pytz-2025.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyyaml-6.0.3-py312h5748b74_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyzmq-27.1.0-py312hd65ceae_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/qgis-plugin-manager-1.6.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/qhull-2020.2-h420ef59_5.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/qt-main-5.15.15-hac936aa_5.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/quarto-1.8.25-hb67532b_0.conda
@@ -3685,6 +3684,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/6e/96/32318c76bb511e18b4accef245877778542d3390664a0acc77ccc6209ef4/lib4sbom-0.8.8-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6c/73/9f872cb81fc5c3bb48f7227872c28975f998f3e7c2b1c16e95e6432bbb90/python_magic-0.4.27-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/08/0e/870870f739384938a361c6cf89305a9b5f90a8f0ff74909f5ab11b14f532/qgis_plugin_manager-1.7.2.tar.gz
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/13/cbf8f3937c6bb9f59b19281998589097769057d38e5af894db78ae95386f/sbom4python-0.12.4-py2.py3-none-any.whl
@@ -4101,7 +4101,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyzmq-27.1.0-py312hbb5da91_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qca-2.3.10-hcfd1de8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qgis-3.44.3-py312h069140f_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/qgis-plugin-manager-1.6.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qhull-2020.2-hc790b64_5.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qjson-0.9.0-h04a78d6_1009.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/qscintilla2-2.14.1-py312h7eb3e20_2.conda
@@ -4214,6 +4213,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6c/73/9f872cb81fc5c3bb48f7227872c28975f998f3e7c2b1c16e95e6432bbb90/python_magic-0.4.27-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/07/c2/094e3d62b906d952537196603a23aec4bcd7c6126bf80eb14e6f9f4be3a2/python_magic_bin-0.4.14-py2.py3-none-win_amd64.whl
+      - pypi: https://files.pythonhosted.org/packages/08/0e/870870f739384938a361c6cf89305a9b5f90a8f0ff74909f5ab11b14f532/qgis_plugin_manager-1.7.2.tar.gz
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/13/cbf8f3937c6bb9f59b19281998589097769057d38e5af894db78ae95386f/sbom4python-0.12.4-py2.py3-none-any.whl
@@ -24128,17 +24128,13 @@ packages:
   purls: []
   size: 74219893
   timestamp: 1758047281601
-- conda: https://conda.anaconda.org/conda-forge/noarch/qgis-plugin-manager-1.6.1-pyhd8ed1ab_0.conda
-  sha256: 9df61faa73fb66315430af866fe90076fb363893ae6fe31d4105e36072b74a0a
-  md5: 3039cc77e9dd82d527de5d77933a5d76
-  depends:
-  - python >=3.7
-  license: GPL-3.0-only
-  license_family: GPL
-  purls:
-  - pkg:pypi/qgis-plugin-manager?source=hash-mapping
-  size: 44219
-  timestamp: 1694708722178
+- pypi: https://files.pythonhosted.org/packages/08/0e/870870f739384938a361c6cf89305a9b5f90a8f0ff74909f5ab11b14f532/qgis_plugin_manager-1.7.2.tar.gz
+  name: qgis-plugin-manager
+  version: 1.7.2
+  sha256: afe83869da3976146df96477dbef40bc98aa4406a12e9ffd7024638ea5568315
+  requires_dist:
+  - semver==3.0.4
+  requires_python: '>=3.9'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/qhull-2020.2-h434a139_5.conda
   sha256: 776363493bad83308ba30bcb88c2552632581b143e8ee25b1982c8c743e73abc
   md5: 353823361b1d27eb3960efb076dfcaf6

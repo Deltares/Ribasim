@@ -254,6 +254,16 @@ class DatasetWidget:
         assert layer_tree_layer is not None
         return layer_tree_layer.isVisible()
 
+    @staticmethod
+    def set_layer_visible(layer: QgsMapLayer, visible: bool = True):
+        instance = QgsProject.instance()
+        assert instance is not None
+        layer_tree_root = instance.layerTreeRoot()
+        assert layer_tree_root is not None
+        layer_tree_layer = layer_tree_root.findLayer(layer)
+        assert layer_tree_layer is not None
+        return layer_tree_layer.setItemVisibilityChecked(visible)
+
     def add_reload_context(self) -> None:
         """Connect to the layer context (right-click) menu opening."""
         ltv = self.ribasim_widget.iface.layerTreeView()
@@ -436,6 +446,7 @@ class DatasetWidget:
                 link_layer, "Flow", "link_id", "link_type", "flow"
             )
             assert self.flow_layer is not None
+            self.set_layer_visible(self.flow_layer, True)
             self._edit_arrow_layer(df, self.flow_layer, "link_id")
 
         # Add the allocation flow output
@@ -497,6 +508,7 @@ class DatasetWidget:
             return
 
         maplayer = self.add_layer(duplicate, "Results", False, labels=None)
+        self.set_layer_visible(duplicate, False)
 
         toml = get_toml_dict(self.path)
         trange = QgsDateTimeRange(
