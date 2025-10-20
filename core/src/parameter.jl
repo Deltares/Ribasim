@@ -1,8 +1,3 @@
-# Universal depth at which the low storage factor kicks in
-const LOW_STORAGE_DEPTH = 0.1
-
-# Universal reduction factor threshold for the minimum upstream level of UserDemand nodes
-const USER_DEMAND_MIN_LEVEL_THRESHOLD = 0.1
 
 const SolverStats = @NamedTuple{
     time::Float64,
@@ -1157,6 +1152,9 @@ the object itself is not.
     temp_convergence::RibasimCVectorType
     convergence::RibasimCVectorType
     ncalls::Vector{Int} = [0]
+    # Solver constants
+    user_demand_min_level_threshold::Float64
+    flow_reduction_factor_threshold::Float64
 end
 
 function StateTimeDependentCache(
