@@ -1,5 +1,6 @@
 ---
-title: Getting started
+title: Natural flow
+sidebar: ../_sidebar.yml
 jupyter: python3
 ---
 
