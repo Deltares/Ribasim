@@ -251,7 +251,8 @@ class DatasetWidget:
         layer_tree_root = instance.layerTreeRoot()
         assert layer_tree_root is not None
         layer_tree_layer = layer_tree_root.findLayer(layer)
-        assert layer_tree_layer is not None
+        if layer_tree_layer is None:
+            return False
         return layer_tree_layer.isVisible()
 
     @staticmethod
