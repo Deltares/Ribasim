@@ -232,7 +232,6 @@ class DatasetWidget:
             self.load_geopackage()
             self.add_topology_context()
             self.refresh_results()
-            _unset_imod_opengl()
 
     @staticmethod
     def activeGroup(iface):
@@ -254,6 +253,16 @@ class DatasetWidget:
         layer_tree_layer = layer_tree_root.findLayer(layer)
         assert layer_tree_layer is not None
         return layer_tree_layer.isVisible()
+
+    @staticmethod
+    def set_layer_visible(layer: QgsMapLayer, visible: bool = True):
+        instance = QgsProject.instance()
+        assert instance is not None
+        layer_tree_root = instance.layerTreeRoot()
+        assert layer_tree_root is not None
+        layer_tree_layer = layer_tree_root.findLayer(layer)
+        assert layer_tree_layer is not None
+        return layer_tree_layer.setItemVisibilityChecked(visible)
 
     def add_reload_context(self) -> None:
         """Connect to the layer context (right-click) menu opening."""
@@ -437,6 +446,7 @@ class DatasetWidget:
                 link_layer, "Flow", "link_id", "link_type", "flow"
             )
             assert self.flow_layer is not None
+            self.set_layer_visible(self.flow_layer, True)
             self._edit_arrow_layer(df, self.flow_layer, "link_id")
 
         # Add the allocation flow output
@@ -498,6 +508,7 @@ class DatasetWidget:
             return
 
         maplayer = self.add_layer(duplicate, "Results", False, labels=None)
+        self.set_layer_visible(duplicate, False)
 
         toml = get_toml_dict(self.path)
         trange = QgsDateTimeRange(
@@ -683,15 +694,3 @@ class DatasetWidget:
             layer.setCustomProperty("arrow_fid_column", column)
 
         return path
-
-
-def _unset_imod_opengl() -> None:
-    """Try to avoid black plotting pane in iMOD timeseries widget by disabling OpenGL."""
-    # Temporary workaround until we have https://github.com/Deltares/imod-qgis/pull/89
-    # Triggered on model load or reload.
-    try:
-        from imodqgis.dependencies import pyqtgraph_0_12_3
-
-        pyqtgraph_0_12_3.setConfigOptions(useOpenGL=False)
-    except Exception:
-        pass

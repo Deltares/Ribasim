@@ -221,7 +221,7 @@ Open the Ribasim plugin panel.
 In QGIS, navigate to "Plugins > Manage and Install Plugins > All".
 In the search bar, type: "iMOD". Select the iMOD plugin, and click "Install".
 
-At least version 0.5.2 of the iMOD plugin is required.
+At least version 0.5.3 of the iMOD plugin is required.
 
 The Time Series widget from the iMOD plugin is used for visualizing Ribasim results, which is described in the [results section](#sec-results).
 Documentation on the Time Series widget can be found in the [iMOD documentation](https://deltares.github.io/iMOD-Documentation/qgis_user_manual.html#time-series-time-series).
