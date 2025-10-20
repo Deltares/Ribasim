@@ -82,8 +82,6 @@ using DataInterpolations.ExtrapolationType:
 import JuMP
 # The optimization backend of JuMP.
 import HiGHS
-# Represent piecewise linear functions in JuMP
-using PiecewiseLinearOpt: piecewiselinear
 # Analyze infeasibilities and numerical properties
 import MathOptAnalyzer
 
@@ -153,12 +151,14 @@ using StructArrays: StructVector
 # OrderedDict is used to store the order of the sources in a subnetwork.
 using DataStructures: OrderedSet, OrderedDict, counter, inc!
 
-# NCDatasets is used to read and write NetCDF files.
-using NCDatasets: NCDataset, defDim, defVar
+# NCDatasets and CommonDataModel are used to read and write NetCDF files.
+using NCDatasets: NCDatasets, NCDataset, defDim, defVar, dimnames, CFVariable
 
 using Dates: Second
 
 using Printf: @sprintf
+
+using Base.Threads: @threads
 
 export libribasim
 

@@ -1,4 +1,4 @@
-__version__ = "2024.4.0"
+__version__ = "2025.5.0"
 
 from collections.abc import Callable
 
@@ -19,12 +19,16 @@ from ribasim_testmodels.allocation import (
     level_demand_model,
     linear_resistance_demand_model,
     looped_subnetwork_model,
-    main_network_with_subnetworks_model,
+    medium_primary_secondary_network_model,
     minimal_subnetwork_model,
     multi_level_demand_model,
     multi_priority_flow_demand_model,
+    multiple_source_priorities_model,
+    primary_and_secondary_subnetworks_model,
+    secondary_networks_with_sources_model,
+    small_primary_secondary_network_model,
+    small_primary_secondary_network_verification_model,
     subnetwork_model,
-    subnetworks_with_sources_model,
     user_demand_model,
 )
 from ribasim_testmodels.backwater import backwater_model
@@ -44,6 +48,7 @@ from ribasim_testmodels.basic import (
 from ribasim_testmodels.bucket import bucket_model, leaky_bucket_model
 from ribasim_testmodels.continuous_control import outlet_continuous_control_model
 from ribasim_testmodels.discrete_control import (
+    circular_flow_model,
     compound_variable_condition_model,
     concentration_condition_model,
     connector_node_flow_condition_model,
@@ -52,6 +57,7 @@ from ribasim_testmodels.discrete_control import (
     level_boundary_condition_model,
     level_range_model,
     pump_discrete_control_model,
+    storage_condition_model,
     tabulated_rating_curve_control_model,
     transient_condition_model,
 )
@@ -101,6 +107,7 @@ __all__ = [
     "basic_transient_model",
     "bommelerwaard_model",
     "bucket_model",
+    "circular_flow_model",
     "compound_variable_condition_model",
     "concentration_condition_model",
     "continuous_concentration_condition_model",
@@ -132,10 +139,12 @@ __all__ = [
     "linear_resistance_model",
     "local_pidcontrolled_cascade_model",
     "looped_subnetwork_model",
-    "main_network_with_subnetworks_model",
+    "primary_and_secondary_subnetworks_model",
     "manning_resistance_model",
+    "medium_primary_secondary_network_model",
     "minimal_subnetwork_model",
     "misc_nodes_model",
+    "multiple_source_priorities_model",
     "multi_level_demand_model",
     "multi_priority_flow_demand_model",
     "outlet_continuous_control_model",
@@ -145,8 +154,11 @@ __all__ = [
     "pump_discrete_control_model",
     "rating_curve_model",
     "rating_curve_between_basins_model",
+    "secondary_networks_with_sources_model",
+    "small_primary_secondary_network_model",
+    "small_primary_secondary_network_verification_model",
+    "storage_condition_model",
     "subnetwork_model",
-    "subnetworks_with_sources_model",
     "tabulated_rating_curve_control_model",
     "tabulated_rating_curve_model",
     "transient_condition_model",

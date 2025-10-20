@@ -9,7 +9,7 @@ from geopandas import GeoDataFrame
 from pydantic import ConfigDict, Field, NonNegativeInt, model_validator
 from shapely.geometry import Point
 
-from ribasim.geometry import BasinAreaSchema, NodeTable
+from ribasim.geometry import BasinAreaSchema, FlowBoundaryAreaSchema, NodeTable
 from ribasim.geometry.link import NodeData
 from ribasim.input_base import (
     ChildModel,
@@ -200,7 +200,7 @@ class Node(pydantic.BaseModel):
 
     Attributes
     ----------
-    node_id : Optional[NonNegativeInt]
+    node_id : NonNegativeInt | None
         Integer ID of the node. Must be unique for the model.
     geometry : shapely.geometry.Point
         The coordinates of the node.
@@ -292,6 +292,7 @@ class MultiNodeModel(NodeModel):
                 f"You can only add to a {self._node_type} MultiNodeModel when attached to a Model."
             )
 
+        assert hasattr(self._parent, "_used_node_ids")
         if node_id is None:
             node_id = self._parent._used_node_ids.new_id()
         elif node_id in self._parent._used_node_ids:
@@ -299,6 +300,7 @@ class MultiNodeModel(NodeModel):
                 f"Node IDs have to be unique, but {node_id} already exists."
             )
 
+        assert hasattr(self._parent, "crs")
         for table in tables:
             member_name = _pascal_to_snake(table.__class__.__name__)
             existing_member = getattr(self, member_name)
@@ -432,6 +434,10 @@ class FlowBoundary(MultiNodeModel):
     concentration: TableModel[FlowBoundaryConcentrationSchema] = Field(
         default_factory=TableModel[FlowBoundaryConcentrationSchema],
         json_schema_extra={"sort_keys": ["node_id", "substance", "time"]},
+    )
+    area: SpatialTableModel[FlowBoundaryAreaSchema] = Field(
+        default_factory=SpatialTableModel[FlowBoundaryAreaSchema],
+        json_schema_extra={"sort_keys": ["node_id"]},
     )
 
 

@@ -102,10 +102,14 @@ end
 function formulate_continuous_control!(du::CVector, p::Parameters, t::Number)::Nothing
     (; compound_variable, target_ref, func) = p.p_independent.continuous_control
 
-    for (cvar, ref, func_) in zip(compound_variable, target_ref, func)
+    for i in eachindex(compound_variable)
+        cvar = compound_variable[i]
+        ref = target_ref[i]
+        func_ = func[i]
         value = compound_variable_value(cvar, p, du, t)
         set_value!(ref, p, func_(value))
     end
+
     return nothing
 end
 
@@ -142,12 +146,13 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
 
     if p_mutable.new_t || p_mutable.new_u
         formulate_storages!(u, p, t)
-
-        for (id, s) in zip(basin.node_id, state_time_dependent_cache.current_storage)
+        @threads for i in eachindex(basin.node_id)
+            id = basin.node_id[i]
+            s = state_time_dependent_cache.current_storage[i]
             i = id.idx
             state_time_dependent_cache.current_low_storage_factor[i] =
                 reduction_factor(s, low_storage_threshold[i])
-            state_time_dependent_cache.current_level[i] =
+            @inbounds state_time_dependent_cache.current_level[i] =
                 get_level_from_storage(basin, i, s)
             state_time_dependent_cache.current_area[i] =
                 basin.level_to_area[i](state_time_dependent_cache.current_level[i])
@@ -241,8 +246,7 @@ function formulate_pid_control!(du::CVector, u::CVector, p::Parameters, t::Numbe
     all_nodes_active = p_mutable.all_nodes_active
 
     set_error!(pid_control, p, t)
-
-    for (i, _) in enumerate(node_id)
+    for i in eachindex(node_id)
         if !(active[i] || all_nodes_active)
             du.integral[i] = 0.0
             u.integral[i] = 0.0
@@ -333,11 +337,21 @@ function formulate_flow!(
     (; allocation) = p_independent
     all_nodes_active = p.p_mutable.all_nodes_active
 
-    for (id, inflow_link, outflow_link, active, allocated, return_factor, min_level) in zip(
+    for (
+        id,
+        inflow_link,
+        outflow_link,
+        active,
+        has_demand_priority,
+        allocated,
+        return_factor,
+        min_level,
+    ) in zip(
         user_demand.node_id,
         user_demand.inflow_link,
         user_demand.outflow_link,
         user_demand.active,
+        eachrow(user_demand.has_demand_priority),
         eachrow(user_demand.allocated),
         user_demand.return_factor,
         user_demand.min_level,
@@ -353,6 +367,7 @@ function formulate_flow!(
         # If allocation is not optimized then allocated = Inf, so the result is always
         # effectively allocated = demand.
         for demand_priority_idx in eachindex(allocation.demand_priorities_all)
+            !has_demand_priority[demand_priority_idx] && continue
             alloc_prio = allocated[demand_priority_idx]
             demand_prio = get_demand(user_demand, id, demand_priority_idx, t)
             alloc = min(alloc_prio, demand_prio)
@@ -371,7 +386,6 @@ function formulate_flow!(
         factor_level = reduction_factor(Δsource_level, USER_DEMAND_MIN_LEVEL_THRESHOLD)
         q *= factor_level
         du.user_demand_inflow[id.idx] = q
-        du.user_demand_outflow[id.idx] = q * return_factor(t)
         du.user_demand_outflow[id.idx] =
             q * eval_time_interp(return_factor, current_return_factor, id.idx, p, t)
     end
@@ -387,7 +401,6 @@ function formulate_flow!(
     (; p_mutable) = p
     all_nodes_active = p_mutable.all_nodes_active
     (; node_id, active) = linear_resistance
-
     for id in node_id
         inflow_link = linear_resistance.inflow_link[id.idx]
         outflow_link = linear_resistance.outflow_link[id.idx]
@@ -459,7 +472,6 @@ function formulate_flow!(
     (; p_mutable) = p
     all_nodes_active = p_mutable.all_nodes_active
     (; node_id, active) = tabulated_rating_curve
-
     for id in node_id
         inflow_link = tabulated_rating_curve.inflow_link[id.idx]
         outflow_link = tabulated_rating_curve.outflow_link[id.idx]
@@ -527,7 +539,18 @@ function manning_resistance_flow(
 
     Δh = h_a - h_b
 
-    q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, 1e-5)
+    # Calculate Reynolds number for open channel flow
+    # Re = V * A / ( R_h * ν )
+    # V: average velocity, R_h: hydraulic radius, ν: kinematic viscosity of water
+
+    # Kinematic viscosity of water (ν), typical value at 20°C [m²/s]
+    ν = 1.004e-6
+    Re_laminar = 2000
+    threshold = (Re_laminar * ν * n * ∛R_h / A)^2
+    threshold = max(threshold, 1e-5) # Avoid too small thresholds
+
+    q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, threshold)
+
     return q * low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
 end
 
@@ -578,7 +601,6 @@ function formulate_flow!(
 )::Nothing
     (; p_mutable) = p
     (; node_id, active) = manning_resistance
-
     all_nodes_active = p_mutable.all_nodes_active
     for id in node_id
         inflow_link = manning_resistance.inflow_link[id.idx]
@@ -611,7 +633,7 @@ function formulate_pump_or_outlet_flow!(
     component_cache::NamedTuple,
     reduce_Δlevel::Bool = false,
 )::Nothing
-    (; allocation, graph, flow_demand) = p.p_independent
+    (; allocation, flow_demand) = p.p_independent
 
     (;
         current_min_flow_rate,
@@ -630,7 +652,6 @@ function formulate_pump_or_outlet_flow!(
         control_type = node.control_type[id.idx]
         min_upstream_level = node.min_upstream_level[id.idx]
         max_downstream_level = node.max_downstream_level[id.idx]
-        flow_demand_data = node.flow_demand_data[id.idx]
 
         if should_skip_update_q(active, control_type, control_type_, p)
             continue
@@ -655,7 +676,7 @@ function formulate_pump_or_outlet_flow!(
         # When allocation is not active, set the flow demand directly as a lower bound on the
         # pump or outlet flow rate
         if !is_active(allocation)
-            has_demand, flow_demand_id = flow_demand_data
+            has_demand, flow_demand_id = has_external_demand(node, id)
             if has_demand
                 total_demand = 0.0
                 has_any_demand_priority = false

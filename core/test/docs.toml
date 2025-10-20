@@ -8,11 +8,11 @@ endtime = 2021-01-01   # required
 # https://proj.org/en/9.4/development/reference/functions.html#c.proj_create
 crs = "EPSG:4326"      # required
 
-# input files
-input_dir = "."         # required
+# input and results directories relative to the TOML file
+input_dir = "input"     # required
 results_dir = "results" # required
 
-ribasim_version = "2025.4.0" # required
+ribasim_version = "2025.5.0" # required
 
 # Specific tables can also go into Arrow files rather than the database.
 # For large tables this can benefit from better compressed file sizes.

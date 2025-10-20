@@ -82,22 +82,25 @@ executable is in the main folder.
 
 To download the Ribasim core, download the appropriate zip file for your operating system:
 
-- Ribasim executable - Windows: [ribasim_windows.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.4.0/ribasim_windows.zip)
-- Ribasim executable - Linux: [ribasim_linux.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.4.0/ribasim_linux.zip)
+- Ribasim executable - Windows: [ribasim_windows.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.5.0/ribasim_windows.zip)
+- Ribasim executable - Linux: [ribasim_linux.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.5.0/ribasim_linux.zip)
 
 Note that we currently only support and provide binaries for Windows and Linux, for the x86_64 architecture.
 
 To check whether the installation was performed successfully, open a terminal and go to the path where the executable is for example `C:\bin\ribasim\`.
-If you are using cmd.exe type `ribasim`, or for PowerShell `./ribasim`.
+If you are using cmd.exe type `ribasim --help`, or for PowerShell `./ribasim`.
 
 This will give the following message if it is installed correctly:
 ```
-error: the following required arguments were not provided:
-  <TOML_PATH>
+Usage: ribasim [OPTIONS] <TOML_PATH>
 
-Usage: ribasim <TOML_PATH>
+Arguments:
+  <TOML_PATH>  Path to the TOML file
 
-For more information, try '--help'.'
+Options:
+  -t, --threads <#THREADS>  Number of threads to use. Defaults to the JULIA_NUM_THREADS environment variable, and when unset, to using all (hyper)threads.
+  -h, --help                Print help
+  -V, --version             Print version
 ```
 
 ## Adding Ribasim to Path on Windows
@@ -136,7 +139,7 @@ pixi init
 ```
 Now add Ribasim Python:
 ```sh
-pixi add ribasim==2025.4.0
+pixi add ribasim==2025.5.0
 ```
 To start Python, run:
 ```sh
@@ -160,7 +163,7 @@ uv init
 ```
 Now add Ribasim Python:
 ```sh
-uv add ribasim==2025.4.0
+uv add ribasim==2025.5.0
 ```
 To start Python, run:
 ```sh
@@ -170,7 +173,7 @@ uv run python
 ## pip
 
 ```sh
-pip install --upgrade ribasim==2025.4.0
+pip install --upgrade ribasim==2025.5.0
 ```
 
 ## conda
@@ -180,7 +183,7 @@ Ribasim is available in the [conda-forge](https://conda-forge.org/) channel.
 It may not work well when combined with the Anaconda default channel, see [transitioning from defaults](https://conda-forge.org/docs/user/transitioning_from_defaults/).
 
 ```sh
-conda install -c conda-forge ribasim=2025.4.0
+conda install -c conda-forge ribasim=2025.5.0
 ```
 
 :::
@@ -189,14 +192,15 @@ For Ribasim Python documentation please see the [examples](/guide/examples.qmd) 
 
 # Install Ribasim QGIS plugin {#sec-install-qgis-plugin}
 
-The Ribasim QGIS plugin requires [QGIS](https://qgis.org/en/site/) 3.34 or higher.
+The Ribasim QGIS plugin requires [QGIS](https://qgis.org/en/site/) 3.34 or higher, and the `pandas` package
+in the QGIS Python environment (which is the case by default).
 The Ribasim QGIS plugin is only distributed as a .zip archive and must be downloaded and installed in QGIS.
 
 ## Install Ribasim plugin
 
 Download `ribasim_qgis.zip`:
 
-- QGIS plugin: [ribasim_qgis.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.4.0/ribasim_qgis.zip).
+- QGIS plugin: [ribasim_qgis.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.5.0/ribasim_qgis.zip).
 
 In QGIS, go to Plugins menu > Manage and Install Plugins...
 

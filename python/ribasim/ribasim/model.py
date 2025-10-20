@@ -84,7 +84,7 @@ class Model(FileModel):
     endtime: datetime.datetime
     crs: str
 
-    input_dir: Path = Field(default=Path("."))
+    input_dir: Path = Field(default=Path("input"))
     results_dir: Path = Field(default=Path("results"))
     ribasim_version: str = Field(default_factory=lambda: ribasim.__version__)
 
@@ -161,7 +161,10 @@ class Model(FileModel):
     @model_validator(mode="after")
     def _ensure_link_table_is_present(self) -> "Model":
         if self.link.df is None:
-            self.link.df = GeoDataFrame[LinkSchema](index=pd.Index([], name="link_id"))
+            self.link.df = GeoDataFrame[LinkSchema](
+                index=pd.Index([], name="link_id"),
+                geometry=[],
+            )
         self.link.df = self.link.df.set_geometry("geometry", crs=self.crs)
         return self
 
@@ -178,15 +181,16 @@ class Model(FileModel):
 
     @field_serializer("input_dir", "results_dir")
     def _serialize_path(self, path: Path) -> str:
-        return str(path)
+        return path.as_posix()
 
     def model_post_init(self, __context: Any) -> None:
         # When serializing we exclude fields that are set to their default values
         # However, we always want to write `input_dir`, `results_dir`, and `ribasim_version`
         # By overriding `BaseModel.model_post_init` we can set them explicitly,
         # and enforce that they are always written.
-        self.model_fields_set.update({"input_dir", "results_dir", "ribasim_version"})
-        self.edge = self.link  # Backwards compatible alias for link
+        # Since migration runs on reading, the ribasim_version should be reset.
+        self.ribasim_version = ribasim.__version__
+        self.model_fields_set.update({"input_dir", "results_dir"})
 
     def __repr__(self) -> str:
         """Generate a succinct overview of the Model content.
@@ -298,7 +302,7 @@ class Model(FileModel):
         )
         return node_table
 
-    def _nodes(self) -> Generator[MultiNodeModel, Any, None]:
+    def _nodes(self) -> Generator[MultiNodeModel, None, None]:
         """Return all non-empty MultiNodeModel instances."""
         for key in self.__class__.model_fields.keys():
             attr = getattr(self, key)
@@ -472,14 +476,14 @@ class Model(FileModel):
         return node_info
 
     @classmethod
-    def _load(cls, filepath: Path | None) -> dict[str, Any]:
+    def _load(cls, filepath: Path | None) -> dict[str, object]:
         context_file_loading.set({})
 
         if filepath is not None and filepath.is_file():
             with open(filepath, "rb") as f:
                 config = tomli.load(f)
 
-            directory = filepath.parent / config.get("input_dir", ".")
+            directory = filepath.parent / config["input_dir"]
             context_file_loading.get()["directory"] = directory
             db_path = directory / "database.gpkg"
 

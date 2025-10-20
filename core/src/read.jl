@@ -10,7 +10,7 @@ function initialize_allocation!(
     p_independent::ParametersIndependent,
     config::Config,
 )::Nothing
-    (; graph, allocation) = p_independent
+    (; graph, allocation, pump, outlet) = p_independent
     (; subnetwork_ids, allocation_models) = allocation
     subnetwork_ids_ = sort(collect(keys(graph[].node_ids)))
 
@@ -21,7 +21,7 @@ function initialize_allocation!(
 
     # Detect connections between the primary network and subnetworks:
     # (upstream_id: pump or outlet in the primary network, node_id: node in the subnetwork, generally a basin)
-    collect_primary_network_connections!(allocation, graph)
+    collect_primary_network_connections!(allocation, graph, pump, outlet)
 
     non_positive_subnetwork_id(graph) && error("Allocation network initialization failed.")
 
@@ -29,15 +29,25 @@ function initialize_allocation!(
         push!(subnetwork_ids, subnetwork_id)
     end
 
-    for subnetwork_id in subnetwork_ids_
+    # Make sure the primary network is initialized last if it exists
+    for subnetwork_id in circshift(subnetwork_ids_, -1)
         push!(
             allocation_models,
             AllocationModel(subnetwork_id, p_independent, config.allocation),
         )
     end
-
-    validate_objectives(allocation_models, p_independent)
+    allocation_models .= reverse!(allocation_models)
     return nothing
+end
+
+function set_external_flow_demand_nodes!(
+    node::AbstractParameterNode,
+    graph::MetaGraph,
+)::Nothing
+    for id in node.node_id
+        flow_demand_id = get_external_demand_id(graph, id)
+        !isnothing(flow_demand_id) && (node.flow_demand_id[id.idx] = flow_demand_id)
+    end
 end
 
 # Get a number parameter value
@@ -322,18 +332,6 @@ function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inf
     map!(node_id -> outflow_link(graph, node_id), node.outflow_link, node.node_id)
 end
 
-function set_flow_demand_data!(node::Union{Pump, Outlet}, graph)::Nothing
-    (; node_id, flow_demand_data) = node
-
-    for id in node_id
-        has_demand, flow_demand_id = has_external_flow_demand(graph, id, :flow_demand)
-        if has_demand
-            flow_demand_data[id.idx] = (has_demand, flow_demand_id)
-        end
-    end
-    return nothing
-end
-
 function LinearResistance(db, config, graph)
     static = load_structvector(db, config, Schema.LinearResistance.Static)
     node_id = get_node_ids(db, NodeType.LinearResistance)
@@ -342,6 +340,7 @@ function LinearResistance(db, config, graph)
 
     initialize_control_mapping!(linear_resistance, static)
     set_inoutflow_links!(linear_resistance, graph)
+    set_external_flow_demand_nodes!(linear_resistance, graph)
     errors = parse_parameter!(linear_resistance, config, :active; static, default = true)
     errors |= parse_parameter!(linear_resistance, config, :resistance; static)
     errors |=
@@ -361,6 +360,7 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
     rating_curve = TabulatedRatingCurve(; node_id)
 
     set_inoutflow_links!(rating_curve, graph)
+    set_external_flow_demand_nodes!(rating_curve, graph)
     errors = parse_parameter!(rating_curve, config, :active; static, time, default = true)
     errors |= parse_parameter!(
         rating_curve,
@@ -480,6 +480,7 @@ function ManningResistance(db::DB, config::Config, graph::MetaGraph, basin::Basi
 
     initialize_control_mapping!(manning_resistance, static)
     set_inoutflow_links!(manning_resistance, graph)
+    set_external_flow_demand_nodes!(manning_resistance, graph)
     errors = parse_parameter!(manning_resistance, config, :active; static, default = true)
     errors |= parse_parameter!(manning_resistance, config, :length; static)
     errors |= parse_parameter!(manning_resistance, config, :manning_n; static)
@@ -545,7 +546,11 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)
         config,
     )
 
-    flow_rate = get_interpolation_vec(config.interpolation.flow_boundary, node_id)
+    flow_rate = get_interpolation_vec(
+        config.interpolation.flow_boundary,
+        config.interpolation.block_transition_period,
+        node_id,
+    )
 
     flow_boundary = FlowBoundary(; node_id, concentration_itp, flow_rate)
 
@@ -572,7 +577,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph)
     initialize_control_mapping!(pump, static)
     set_control_type!(pump, graph)
     set_inoutflow_links!(pump, graph)
-    set_flow_demand_data!(pump, graph)
+    set_external_flow_demand_nodes!(pump, graph)
 
     errors = parse_parameter!(pump, config, :active; static, time, default = true)
     errors |= parse_parameter!(pump, config, :flow_rate; static, time)
@@ -600,7 +605,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)
     initialize_control_mapping!(outlet, static)
     set_control_type!(outlet, graph)
     set_inoutflow_links!(outlet, graph)
-    set_flow_demand_data!(outlet, graph)
+    set_external_flow_demand_nodes!(outlet, graph)
 
     errors = parse_parameter!(outlet, config, :active; static, time, default = true)
     errors |= parse_parameter!(outlet, config, :flow_rate; static, time)
@@ -705,6 +710,7 @@ function ConcentrationData(
                 NodeID(:Basin, first_row.node_id, 0),
                 :concentration;
                 cyclic_time,
+                interpolation_type = LinearInterpolation,
             )
             concentration_external_id["concentration_external.$substance"] = itp
             if any(itp.u .< 0)
@@ -788,22 +794,27 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     basin.storage_prev .= storage0
     basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
 
-    # Compute the low storage threshold as the disk of water between the bottom
-    # and 10 cm above the bottom
     for id in node_id
+        # Compute the low storage threshold as the disk of water between the bottom
+        # and 10 cm above the bottom
         bottom = basin_bottom(basin, id)[2]
         basin.low_storage_threshold[id.idx] =
             get_storage_from_level(basin, id.idx, bottom + LOW_STORAGE_DEPTH)
+
+        # Cache the connected LevelDemand node if applicable
+        level_demand_id = get_external_demand_id(graph, id)
+        !isnothing(level_demand_id) && (basin.level_demand_id[id.idx] = level_demand_id)
     end
 
     return basin
 end
 
-function get_greater_than!(
-    greater_than::Vector{<:AbstractInterpolation},
+function get_threshold!(
+    threshold::Vector{<:AbstractInterpolation},
     conditions_compound_variable,
     starttime::DateTime,
-    cyclic_time::Bool,
+    cyclic_time::Bool;
+    field = :threshold_high,
 )::Nothing
     (; node_id) = first(conditions_compound_variable)
     errors = false
@@ -820,8 +831,9 @@ function get_greater_than!(
             errors = true
         else
             push_constant_interpolation!(
-                greater_than,
-                condition_group.greater_than,
+                threshold,
+                field == :threshold_high ? condition_group.threshold_high :
+                coalesce.(condition_group.threshold_low, condition_group.threshold_high),
                 seconds_since.(condition_group.time, starttime),
                 NodeID(:UserDemand, node_id, 0);
                 cyclic_time,
@@ -851,7 +863,7 @@ function CompoundVariable(
         NodeID(node_type, only(unique(variables_compound_variable.node_id)), node_ids_all)
 
     compound_variable = CompoundVariable(; node_id)
-    (; subvariables, greater_than) = compound_variable
+    (; subvariables, threshold_high, threshold_low) = compound_variable
 
     # Each row defines a subvariable
     for row in variables_compound_variable
@@ -871,12 +883,15 @@ function CompoundVariable(
         push!(subvariables, subvariable)
     end
 
-    # Build greater_than ConstantInterpolation objects
-    !isnothing(conditions_compound_variable) && get_greater_than!(
-        greater_than,
+    # Build threshold ConstantInterpolation objects
+    !isnothing(conditions_compound_variable) &&
+        get_threshold!(threshold_high, conditions_compound_variable, starttime, cyclic_time)
+    !isnothing(conditions_compound_variable) && get_threshold!(
+        threshold_low,
         conditions_compound_variable,
         starttime,
-        cyclic_time,
+        cyclic_time;
+        field = :threshold_low,
     )
     return compound_variable
 end
@@ -961,7 +976,11 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
     # Initialize the truth state per DiscreteControl node
     truth_state = Vector{Bool}[]
     for i in eachindex(node_id)
-        truth_state_length = sum(length(var.greater_than) for var in compound_variables[i])
+        if isempty(compound_variables)
+            error("Missing data for $(node_id[i]).")
+        end
+        truth_state_length =
+            sum(length(var.threshold_high) for var in compound_variables[i])
         push!(truth_state, fill(false, truth_state_length))
     end
 
@@ -1159,7 +1178,7 @@ function parse_static_demand_data!(
         demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
         node.has_demand_priority[id.idx, demand_priority_idx] = true
         demand_row = coalesce(row.demand, 0.0)
-        demand_interpolation = trivial_linear_itp(; val = demand_row)
+        demand_interpolation = trivial_constant_itp(; val = demand_row)
         node.demand_interpolation[id.idx][demand_priority_idx] = demand_interpolation
         node.demand[id.idx, demand_priority_idx] = demand_row
     end
@@ -1239,8 +1258,8 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
             user_demand.demand_priorities,
         )
 
+    user_demand.allocated[.!user_demand.has_demand_priority] .= 0
     errors && error("Errors encountered when parsing LevelDemand data.")
-
     user_demand
 end
 
@@ -1255,9 +1274,9 @@ function parse_static_demand_data!(
         demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
         level_demand.has_demand_priority[id.idx, demand_priority_idx] = true
         level_demand.min_level[id.idx][demand_priority_idx] =
-            trivial_linear_itp(; val = coalesce(row.min_level, -Inf))
+            trivial_constant_itp(; val = coalesce(row.min_level, -Inf))
         level_demand.max_level[id.idx][demand_priority_idx] =
-            trivial_linear_itp(; val = coalesce(row.max_level, Inf))
+            trivial_constant_itp(; val = coalesce(row.max_level, Inf))
     end
     return nothing
 end
@@ -1328,11 +1347,8 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
         basin_ids = collect(outneighbor_labels_type(graph, id, LinkType.control))
         push!(level_demand.basins_with_demand, basin_ids)
         for basin_id in basin_ids
-            level_demand.target_storage_min[basin_id] = fill(NaN, n_demand_priorities)
-            level_demand.target_storage_max[basin_id] = fill(NaN, n_demand_priorities)
+            level_demand.storage_demand[basin_id] = zeros(n_demand_priorities)
             level_demand.storage_prev[basin_id] = 0.0
-            level_demand.storage_allocated[basin_id] = zeros(n_demand_priorities)
-            level_demand.storage_demand[basin_id] = fill(NaN, n_demand_priorities)
         end
     end
 
@@ -1704,46 +1720,268 @@ DateTime. This is used to convert between the solver's inner float time, and the
 datetime_since(t::Real, t0::DateTime)::DateTime = t0 + Millisecond(round(1000 * t))
 
 """
-    load_data(db::DB, config::Config, nodetype::Symbol, kind::Symbol)::Union{Arrow.Table, Query, Nothing}
+    load_netcdf(table_path::String, table_type::Type{<:Table})::NamedTuple
 
-Load data from Arrow files if available, otherwise the database.
-Returns either an `Arrow.Table`, `SQLite.Query` or `nothing` if the data is not present.
+Load a table from a NetCDF file. The data is stored as multi-dimensional arrays, and
+converted to a table for compatibility with the rest of the internals.
+"""
+function load_netcdf(table_path::String, table_type::Type{<:Table})::NamedTuple
+    table = OrderedDict{Symbol, AbstractVector}()
+    NCDataset(table_path) do ds
+        names = fieldnames(table_type)
+        data_varnames = filter(x -> !(String(x) in nc_dim_names), names)
+
+        # Each table has a node_id dimension, some have priority and time dimensions
+        node_id = timeseries_ids(ds)
+        time_var = findcoord(ds, is_time_coord)
+        priority_var = findcoord(ds, is_priority_coord)
+
+        # Get the size of each dimension.
+        # We treat missing dimensions as having length 1 for simplicity,
+        # since repeating something once has no effect.
+        # This also helps us when e.g. Delft-FEWS adds a time dimension of length 1
+        # to variables that do not need it, like Basin / state.
+        n_node_id = length(node_id)
+        n_time = time_var === nothing ? 1 : length(time_var)
+        n_priority = priority_var === nothing ? 1 : length(priority_var)
+
+        # `repeat` allows us to expand dimensions to make it fit the tabular format.
+        # The `inner` keyword is used to add a dimension before the array.
+        # The `outer` keyword is used to add a dimension after the array.
+        # Use nested repeat calls to add multiple dimensions on one side.
+
+        # repeat (stations) to (stations, priority, time)
+        table[:node_id] = repeat(repeat(node_id; outer = n_priority); outer = n_time)
+
+        if priority_var !== nothing
+            priority = Int32.(Array(priority_var))
+            # repeat (priority) to (stations, priority, time)
+            table[:demand_priority] = repeat(priority; inner = n_node_id, outer = n_time)
+        end
+
+        if time_var !== nothing
+            time = DateTime.(Array(time_var))
+            # repeat (time) to (stations, priority, time)
+            table[:time] = repeat(repeat(time; inner = n_priority); inner = n_node_id)
+        end
+
+        for data_varname in data_varnames
+            var = ds[data_varname]
+            # For most tables, each data variable has all dimensions of the table.
+            # For "UserDemand / time", variables are either:
+            # - (stations, priority, time) for demand
+            # - (stations, time) for return_factor
+            # - (stations) for min_level
+            # So we have to repeat the 1D and 2D variables to fit the full table.
+            # Note that Delft-FEWS also adds time to min_level.
+            if table_type == Ribasim.Schema.UserDemand.Time
+                if ndims(var) == 1
+                    # repeat (stations) to (stations, priority, time)
+                    arr = Array(var)
+                    data = repeat(repeat(arr; outer = n_priority); outer = n_time)
+                elseif ndims(var) == 2
+                    # repeat (stations, time) to (stations, priority, time)
+                    arr = vec(Array(var))
+                    data = repeat(arr; outer = n_priority)
+                else
+                    data = Array(var)
+                end
+            else
+                data = Array(var)
+            end
+            table[data_varname] = vec(data)
+        end
+    end
+    # columntable does not check lengths, so we do it here
+    n = length(first(values(table)))
+    for (name, col) in pairs(table)
+        if length(col) != n
+            error("Inconsistent lengths in NetCDF file $table_path for variable $name")
+        end
+    end
+    return columntable(table)
+end
+
+function check_attrib(var::CFVariable, attname::String, attval::String)::Bool
+    if attname in NCDatasets.attribnames(var)
+        return NCDatasets.attrib(var, attname) == attval
+    end
+    return false
+end
+
+function is_time_coord(var::CFVariable)::Bool
+    check_attrib(var, "axis", "T") && return true
+    check_attrib(var, "standard_name", "time") && return true
+    NCDatasets.name(var) == "time" && return true
+    return false
+end
+
+function is_node_id_coord(var::CFVariable)::Bool
+    check_attrib(var, "cf_role", "timeseries_id") && return true
+    NCDatasets.name(var) == "node_id" && return true
+    return false
+end
+
+function is_priority_coord(var::CFVariable)::Bool
+    check_attrib(var, "standard_name", "realization") && return true
+    NCDatasets.name(var) == "realization" && return true
+    return false
+end
+
+"Find coordinate variable based on some condition"
+function findcoord(ds::NCDataset, f::Function)::Union{CFVariable, Nothing}
+    # more generic NCDatasets.varbyattrib function
+    for coord_var_name in keys(ds)
+        coord_var = ds[coord_var_name]
+        f(coord_var) && return coord_var
+    end
+    return nothing
+end
+
+"""
+Get the variable by name or by cf_role attribute
+Delft-FEWS uses `char station_id(stations, char_leng_id)`
+"""
+function timeseries_ids(ds::NCDataset)::Vector{Int32}
+    id_var = findcoord(ds, is_node_id_coord)
+
+    # Support NetCDF3 Char Matrix or anything that can convert to Vector{Int32}
+    id_arr = Array(id_var)
+    if eltype(id_arr) == Char && ndims(id_arr) == 2
+        # strip nulls
+        # assumes first dimension is the character length
+        n_char, n_id = size(id_arr)
+        id_vec = Vector{Int32}(undef, n_id)
+        for i in 1:n_id
+            for c in 1:n_char
+                if id_arr[c, i] == '\0'
+                    str = String(id_arr[1:(c - 1), i])
+                    id_vec[i] = parse(Int32, str)
+                    break
+                elseif c == n_char
+                    str = String(id_arr[:, i])
+                    id_vec[i] = parse(Int32, str)
+                end
+            end
+        end
+        return id_vec
+    else
+        return id_arr
+    end
+end
+
+"""
+    load_data(db::DB, config::Config, nodetype::Symbol, kind::Symbol)::Union{NamedTuple, Nothing}
+
+Load data from Arrow or NetCDF files if available, otherwise the database.
+Returns either a `NamedTuple` of Vectors or `nothing` if the data is not present.
 """
 function load_data(
     db::DB,
     config::Config,
     table_type::Type{<:Table},
-)::Union{Arrow.Table, Query, Nothing}
-    # TODO load_data doesn't need both config and db, use config to check which one is needed
-
+)::Union{NamedTuple, Nothing}
     toml = getfield(config, :toml)
     section_name = snake_case(node_type(table_type))
     section = getproperty(toml, section_name)
     kind = table_name(table_type)
     sql_name = sql_table_name(table_type)
 
-    path = if hasproperty(section, kind)
-        getproperty(section, kind)
-    else
-        nothing
-    end
+    path = hasproperty(section, kind) ? getproperty(section, kind) : nothing
 
-    table = if !isnothing(path)
+    if !isnothing(path)
+        # the TOML specifies a file outside the database
+        path = getproperty(section, kind)
         table_path = input_path(config, path)
-        Arrow.Table(read(table_path))
-    elseif exists(db, sql_name)
-        execute(db, "select * from $(esc_id(sql_name))")
+        # check suffix and read with Arrow or NCDatasets
+        ext = lowercase(splitext(table_path)[2])
+        if ext == ".nc"
+            return load_netcdf(table_path, table_type)
+        elseif ext == ".arrow"
+            bytes = read(table_path)
+            arrow_table = Arrow.Table(bytes; convert = false)
+            return arrow_columntable(arrow_table, table_type)
+        else
+            error("Unsupported file format: $table_path")
+        end
     else
-        nothing
+        if exists(db, sql_name)
+            table = execute(db, "select * from $(esc_id(sql_name))")
+            return sqlite_columntable(table, db, config, table_type)
+        else
+            return nothing
+        end
     end
+end
 
-    return table
+"Faster alternative to Tables.columntable that preallocates based on the schema."
+function sqlite_columntable(
+    table::Query,
+    db::DB,
+    config::Config,
+    T::Type{<:Table},
+)::NamedTuple
+    sql_name = sql_table_name(T)
+    nrows = execute(db, "SELECT COUNT(*) FROM $(esc_id(sql_name))") |> first |> first
+
+    names = fieldnames(T)
+    types = fieldtypes(T)
+    vals = ntuple(i -> Vector{types[i]}(undef, nrows), length(names))
+    nt = NamedTuple{names}(vals)
+
+    for (i, row) in enumerate(table)
+        for name in names
+            val = row[name]
+            if name == :time
+                # time has type timestamp and is stored as a String in the database
+                # currently SQLite.jl does not automatically convert it to DateTime
+                val = if ismissing(val)
+                    DateTime(config.starttime)
+                else
+                    DateTime(
+                        replace(val, r"(\.\d{3})\d+$" => s"\1"),  # remove sub ms precision
+                        dateformat"yyyy-mm-dd HH:MM:SS.s",
+                    )
+                end
+            end
+            nt[name][i] = val
+        end
+    end
+    nt
+end
+
+"Alternative to Tables.columntable that converts time to our own to_datetime."
+function arrow_columntable(table::Arrow.Table, T::Type{<:Table})::NamedTuple
+    nrows = length(first(table))
+    names = fieldnames(T)
+    types = fieldtypes(T)
+    vals = ntuple(i -> Vector{types[i]}(undef, nrows), length(names))
+    nt = NamedTuple{names}(vals)
+
+    for name in names
+        if name == :time
+            time_col = getproperty(table, name)
+            nt[name] .= [to_datetime(t) for t in time_col]
+        else
+            nt[name] .= getproperty(table, name)
+        end
+    end
+    nt
+end
+
+# alternative to convert that doesn't have warntimestamp
+# https://github.com/apache/arrow-julia/issues/559
+function to_datetime(x::Arrow.Timestamp{U, nothing})::DateTime where {U}
+    x_since_epoch = Arrow.periodtype(U)(x.x)
+    ms_since_epoch = Dates.toms(x_since_epoch)
+    ut_instant = Dates.UTM(ms_since_epoch + Arrow.UNIX_EPOCH_DATETIME)
+    return DateTime(ut_instant)
 end
 
 """
     load_structvector(db::DB, config::Config, ::Type{T})::StructVector{T}
 
-Load data from Arrow files if available, otherwise the database.
+Load data from Arrow or NetCDF files if available, otherwise the database.
 Always returns a StructVector of the given struct type T, which is empty if the table is
 not found. This function validates the schema, and enforces the required sort order.
 """
@@ -1752,30 +1990,10 @@ function load_structvector(
     config::Config,
     ::Type{T},
 )::StructVector{T} where {T <: Table}
-    table = load_data(db, config, T)
+    nt = load_data(db, config, T)
 
-    if table === nothing
+    if nt === nothing
         return StructVector{T}(undef, 0)
-    end
-
-    nt = columntable(table)
-    if table isa Query && haskey(nt, :time)
-        # time has type timestamp and is stored as a String in the database
-        # currently SQLite.jl does not automatically convert it to DateTime
-        nt = merge(
-            nt,
-            (;
-                time = map(
-                    val ->
-                        ismissing(val) ? DateTime(config.starttime) :
-                        DateTime(
-                            replace(val, r"(\.\d{3})\d+$" => s"\1"),  # remove sub ms precision
-                            dateformat"yyyy-mm-dd HH:MM:SS.s",
-                        ),
-                    nt.time,
-                ),
-            ),
-        )
     end
 
     table = StructVector{T}(nt)
@@ -1888,15 +2106,31 @@ function interpolate_basin_profile!(
             finite_difference(group_storage, group_level, group_area[1])
         end
 
+        for j in 1:(length(dS_dh) - 1)
+            if dS_dh[j + 1] < 0
+                error((
+                    "Invalid profile for $(basin.node_id[i]). The step from (h=$(group_level[j]), S=$(group_storage[j])) to (h=$(group_level[j+1]), S=$(group_storage[j+1])) implies a decreasing area compared to lower points in the profile, which is not allowed."
+                ),)
+            end
+        end
+
+        # Left extension extrapolation is cheap equivalent of linear extrapolation for informative gradients
+        # during the nonlinear solve for negative storage
         level_to_area = LinearInterpolation(
             dS_dh,
             group_level;
-            extrapolation = ConstantExtrapolation,
+            extrapolation_left = ExtrapolationType.Extension,
+            extrapolation_right = ConstantExtrapolation,
             cache_parameters = true,
         )
 
-        basin.storage_to_level[i] =
-            invert_integral(level_to_area; extrapolation_right = ExtrapolationType.Linear)
+        # Left linear extrapolation for usable gradients by the nonlinear solver for negative storages
+        # Right linear extrapolation corresponds with constant extrapolation of area
+        basin.storage_to_level[i] = invert_integral(
+            level_to_area;
+            extrapolation_left = ExtrapolationType.Linear,
+            extrapolation_right = ExtrapolationType.Linear,
+        )
 
         if !all(ismissing, group_area)
             # if all data is present for area, we use it

@@ -83,8 +83,8 @@ n_neighbor_bounds_control(::Val{:ManningResistance}) = n_neighbor_bounds(0, 1, 0
 n_neighbor_bounds_control(::Val{:TabulatedRatingCurve}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:LevelBoundary}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 0, 0)
-n_neighbor_bounds_control(::Val{:Pump}) = n_neighbor_bounds(0, 1, 0, 0)
-n_neighbor_bounds_control(::Val{:Outlet}) = n_neighbor_bounds(0, 1, 0, 0)
+n_neighbor_bounds_control(::Val{:Pump}) = n_neighbor_bounds(0, 2, 0, 0)
+n_neighbor_bounds_control(::Val{:Outlet}) = n_neighbor_bounds(0, 2, 0, 0)
 n_neighbor_bounds_control(::Val{:Terminal}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:Junction}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:PidControl}) = n_neighbor_bounds(0, 1, 1, 1)
@@ -177,22 +177,16 @@ sort_by(::StructVector{Schema.UserDemand.Time}) =
     x -> (x.node_id, x.demand_priority, x.time)
 
 """
-Depending on if a table can be sorted, either sort it or assert that it is sorted.
+Sort a table in place in the required order.
 
-Tables loaded from the database into memory can be sorted.
-Tables loaded from Arrow files are memory mapped and can therefore not be sorted.
+The parameter initialization code after this assumes the function is sorted, using e.g.
+`IterTools.groupby`.
+
+Note that Ribasim-Python also sorts tables in the required order on write.
 """
-function sorted_table!(table::StructVector{<:Table})::StructVector{<:Table}
+function sorted_table!(table::StructVector{T})::StructVector{T} where {T <: Table}
     by = sort_by(table)
-    if any((typeof(col) <: Arrow.Primitive for col in Tables.columns(table)))
-        et = eltype(table)
-        if !issorted(table; by)
-            error("Arrow table for $et not sorted as required.")
-        end
-    else
-        sort!(table; by)
-    end
-    return table
+    return sort!(table; by)
 end
 
 function valid_config(config::Config)::Bool
@@ -253,7 +247,7 @@ Test whether static or discrete controlled flow rates are indeed non-negative.
 function valid_flow_rates(
     node_id::Vector{NodeID},
     flow_rate::Vector{ScalarLinearInterpolation},
-    control_mapping::Dict{Tuple{NodeID, String}, <:ControlStateUpdate},
+    control_mapping::OrderedDict{Tuple{NodeID, String}, <:ControlStateUpdate},
 )::Bool
     errors = false
 
@@ -353,7 +347,7 @@ end
 
 function valid_demand(
     node_id::Vector{NodeID},
-    demand_interpolation::Vector{Vector{ScalarLinearInterpolation}},
+    demand_interpolation::Vector{Vector{ScalarConstantInterpolation}},
     demand_priorities::Vector{Int32},
 )::Bool
     errors = false
@@ -422,8 +416,17 @@ end
 
 function incomplete_subnetwork(graph::MetaGraph, node_ids::Dict{Int32, Set{NodeID}})::Bool
     errors = false
-    for (subnetwork_id, subnetwork_node_ids) in node_ids
-        subnetwork, _ = induced_subgraph(graph, code_for.(Ref(graph), subnetwork_node_ids))
+
+    # analyze the subnetwork without junctions
+    node_ids_without_junctions = Dict{Int32, Set{NodeID}}()
+    for (subnetwork_id, node_ids_in_subnetwork) in node_ids
+        node_ids_without_junctions[subnetwork_id] =
+            Set(filter(x -> x.type != NodeType.Junction, node_ids_in_subnetwork))
+    end
+
+    for (subnetwork_id, node_ids_in_subnetwork) in node_ids_without_junctions
+        subnetwork, _ =
+            induced_subgraph(graph, code_for.(Ref(graph), node_ids_in_subnetwork))
         if !is_connected(subnetwork)
             @error "All nodes in subnetwork $subnetwork_id should be connected"
             errors = true
@@ -531,7 +534,7 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
 
         # The number of conditions of this DiscreteControl node
         n_conditions = sum(
-            length(compound_variable.greater_than) for
+            length(compound_variable.threshold_high) for
             compound_variable in compound_variables
         )
 
@@ -579,6 +582,17 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
                 undefined_list = collect(undefined_control_states)
                 @error "These control states from $id are not defined for controlled $id_outneighbor: $undefined_list."
                 errors = true
+            end
+        end
+
+        # Validate threshold_low
+        for compound_variable in compound_variables
+            for (threshold_high, threshold_low) in
+                zip(compound_variable.threshold_high, compound_variable.threshold_low)
+                if any(threshold_low.u .> threshold_high.u)
+                    errors = true
+                    @error "threshold_low is not less than or equal to threshold_high for '$(compound_variable.node_id)'"
+                end
             end
         end
 
@@ -669,7 +683,7 @@ function validate_consistent_basin_initialization(
         n = length(group_level)
         if n < 2
             errors = true
-            @error "$node_id profile must have at least two data points, got $n."
+            @error "Basin #$node_id profile must have at least two data points, got $n."
         end
         if !allunique(group_level)
             errors = true
@@ -728,9 +742,9 @@ function validate_consistent_basin_initialization(
 end
 
 function invalid_nested_interpolation_times(
-    interpolations_min::Vector{ScalarLinearInterpolation};
-    interpolations_max::Vector{ScalarLinearInterpolation} = fill(
-        trivial_linear_itp(; val = Inf),
+    interpolations_min::Vector{ScalarConstantInterpolation};
+    interpolations_max::Vector{ScalarConstantInterpolation} = fill(
+        trivial_constant_itp(; val = Inf),
         length(interpolations_min),
     ),
 )::Vector{Float64}

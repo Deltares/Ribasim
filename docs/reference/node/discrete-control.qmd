@@ -57,11 +57,12 @@ column               | type     | unit       | restriction
 node_id              | Int32    | -          |
 compound_variable_id | Int32    | -          |
 listen_node_id       | Int32    | -          | cannot be a Junction
-variable             | String   | -          | must be "level" or "flow_rate"
+variable             | String   | -          | must be "level", "storage" or "flow_rate"
 weight               | Float64  | -          | (optional, default 1.0)
 look_ahead           | Float64  | $\text{s}$ | Only on transient boundary conditions, non-negative (optional, default 0.0).
 
 These variables can be listened to:
+- The storage of a Basin
 - The level of a Basin
 - The level of a LevelBoundary (supports look ahead)
 - The flow rate through one of these node types: Pump, Outlet, TabulatedRatingCurve, LinearResistance, ManningResistance
@@ -69,25 +70,29 @@ These variables can be listened to:
 
 ## Condition
 
-The condition schema defines conditions of the form 'the `discrete_control` node with this `node_id` listens to whether the variable given by the `node_id` and `compound_variable_id` is greater than `greater_than`' (at time $t$). In equation form:
+The condition schema defines conditions of the form the `discrete_control` node with this `node_id` listens to whether the variable given by the `node_id` and `compound_variable_id` is greater than `threshold_high` (at time $t$) when the condition was false previously, or `threshold_low` when true previously. Using `threshold_low` is optional and defaults to `threshold_high`. When set to a different value---smaller than or equal to `threshold_high`---it defines a [deadband]("https://en.wikipedia.org/wiki/Deadband") and thus enables hysteresis. In equation form:
 
 $$
-    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots > \text{greater\_than}(t).
+condition=\begin{cases}
+    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots > \text{greater\_than}(t), !condition\_{prev} \\
+    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots >= \text{less\_than}(t), condition\_{prev}
+\end{cases}
 $$
 
-Multiple conditions with different `greater_than` values can be defined on the same compound_variable, each with their own unique `condition_id`.
+Multiple conditions with different `threshold_high` and/or `threshold_low` values can be defined on the same compound_variable, each with their own unique `condition_id`.
 
-Note the strict inequality '$>$' in the equation above. This means for instance that if a simulation starts with a compound variable exactly at the `greater_than` value, the condition is false.
+Note the strict inequality '$>$' in the equation above. This means for instance that if a simulation starts with a compound variable exactly at the `threshold_high` value, the condition is false. The same holds for the `threshold_low` value, using '$>=$', so the deadband is *inclusive* of the thresholds.
 
 column               | type     | unit    | restriction
 -------------------- | -------- | ------- | -----------
 node_id              | Int32    | -       | -
 compound_variable_id | Int32    | -       | -
 condition_id         | Int32    | -       | -
-greater_than         | Float64  | various | -
+threshold_high       | Float64  | various | -
+threshold_low        | Float64  | various | (optional), <= threshold_high
 time                 | DateTime | -       | (optional)
 
-When no (or only a single) `time` is supplied for a given `condition_id`, the `greater_than` value of this condition is unchanging over time.
+When no (or only a single) `time` is supplied for a given `condition_id`, the `threshold_high` value of this condition is unchanging over time.
 
 ## Logic
 

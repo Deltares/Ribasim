@@ -64,7 +64,7 @@ Note that this thus requires an evaluation of the Jacobian of $\mathbf{f}$ and s
 
 # The advantage of implicit methods
 
-The implicit method @eq-eulerbackward is a coupled system of equations for $\mathbf{w}_{n+1}$, while the explicit @eq-eulerforward is fully decoupled. This means in general that in a time integration step with an implicit method the basins communicate information with eachother, while in an explicit method this does not happen. A consequence of this is that local events (e.g. a pump turns on) propagate slowly trough the model using an explicit method but quickly using an implicit method, making implicit methods more stable.
+The implicit method @eq-eulerbackward is a coupled system of equations for $\mathbf{w}_{n+1}$, while the explicit @eq-eulerforward is fully decoupled. This means in general that in a time integration step with an implicit method the basins communicate information with eachother, while in an explicit method this does not happen. A consequence of this is that local events (e.g. a pump turns on) propagate slowly through the model using an explicit method but quickly using an implicit method, making implicit methods more stable.
 
 # Jacobian computations
 The Newton iterations above require an evaluation of the Jacobian of $\mathbf{f}$. The Jacobian of `water_balance!` is discussed [here](/concept/equations.qmd#the-jacobian).

@@ -18,11 +18,7 @@ from osgeo import ogr
 from PyQt5.QtCore import QDateTime, QVariant
 from PyQt5.QtWidgets import (
     QFileDialog,
-    QHBoxLayout,
-    QLineEdit,
     QMenu,
-    QPushButton,
-    QVBoxLayout,
     QWidget,
 )
 from qgis.core import (
@@ -42,6 +38,12 @@ from qgis.core import (
     QgsVectorLayerTemporalProperties,
 )
 
+from ribasim_qgis.core.arrow import (
+    postprocess_allocation_arrow,
+    postprocess_allocation_flow_arrow,
+    postprocess_concentration_arrow,
+    postprocess_flow_arrow,
+)
 from ribasim_qgis.core.model import (
     get_database_path_from_model_file,
     get_directory_path_from_model_file,
@@ -55,19 +57,14 @@ from ribasim_qgis.core.nodes import (
 group_position_var: ContextVar[int] = ContextVar("group_position", default=0)
 
 
-class DatasetWidget(QWidget):
+class DatasetWidget:
     def __init__(self, parent: QWidget):
         from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
 
-        super().__init__(parent)
-
         self.ribasim_widget = cast(RibasimWidget, parent)
-        self.dataset_line_edit = QLineEdit()
-        self.dataset_line_edit.setEnabled(False)  # Just used as a viewing port
-        self.open_model_button = QPushButton("Open")
-        self.open_model_button.clicked.connect(self.open_model)
         self.link_layer: QgsVectorLayer | None = None
         self.node_layer: QgsVectorLayer | None = None
+        self.path: Path = Path("")
 
         # Results
         self.flow_layer: QgsVectorLayer | None = None
@@ -82,13 +79,6 @@ class DatasetWidget(QWidget):
         if instance is not None:
             instance.layersWillBeRemoved.connect(self.remove_results)
 
-        # Layout
-        dataset_layout = QVBoxLayout()
-        dataset_row = QHBoxLayout()
-        dataset_row.addWidget(self.dataset_line_edit)
-        dataset_row.addWidget(self.open_model_button)
-        dataset_layout.addLayout(dataset_row)
-        self.setLayout(dataset_layout)
         self.add_reload_context()
 
     def remove_results(self, layer_ids: list[str]) -> None:
@@ -109,11 +99,6 @@ class DatasetWidget(QWidget):
             ("allocation_flow_layer", self.allocation_flow_layer),
         ]
 
-    @property
-    def path(self) -> Path:
-        """Returns currently active path to Ribasim model (.toml)."""
-        return Path(self.dataset_line_edit.text())
-
     def add_layer(
         self,
         layer: Any,
@@ -133,10 +118,6 @@ class DatasetWidget(QWidget):
     def add_item_to_qgis(self, item) -> None:
         layer, labels = item.from_geopackage()
         self.add_layer(layer, "Input", labels=labels)
-
-        item.set_editor_widget()
-        item.set_read_only()
-        return
 
     @staticmethod
     def add_relationship(from_layer, to_layer_id, name, fk="node_id") -> None:
@@ -208,10 +189,12 @@ class DatasetWidget(QWidget):
             ids = []
             selection = QgsFeatureRequest().setFilterFids(feature_ids)
             for rel in relationships:
-                for feature in rel.referencedLayer().getFeatures(selection):
-                    ids.extend(f.id() for f in rel.getRelatedFeatures(feature))
+                if rel.isValid() and rel.referencedLayer():
+                    for feature in rel.referencedLayer().getFeatures(selection):
+                        ids.extend(f.id() for f in rel.getRelatedFeatures(feature))
 
-            rel.referencingLayer().selectByIds(ids)
+            if rel.isValid() and rel.referencingLayer():
+                rel.referencingLayer().selectByIds(ids)
 
         # When the Node selection changes, filter all related tables
         link_rels = []
@@ -234,18 +217,22 @@ class DatasetWidget(QWidget):
         self.node_layer.selectionChanged.connect(partial(filterbyrel, link_rels))
         return
 
-    def open_model(self) -> None:
+    def open_model(self, path=None) -> None:
         """Open a Ribasim model file."""
-        path, _ = QFileDialog.getOpenFileName(self, "Select file", "", "*.toml")
+        if not path:
+            path, _ = QFileDialog.getOpenFileName(
+                self.ribasim_widget, "Select file", "", "*.toml"
+            )
         self._open_model(path)
 
     def _open_model(self, path: str) -> None:
         if path != "":  # Empty string in case of cancel button press
-            self.dataset_line_edit.setText(path)
+            self.path = Path(path)
             self.set_current_time_extent()
             self.load_geopackage()
             self.add_topology_context()
             self.refresh_results()
+            _unset_imod_opengl()
 
     @staticmethod
     def activeGroup(iface):
@@ -258,6 +245,16 @@ class DatasetWidget(QWidget):
         if isinstance(group, QgsLayerTreeGroup):
             return group
 
+    @staticmethod
+    def is_layer_visible(layer: QgsMapLayer):
+        instance = QgsProject.instance()
+        assert instance is not None
+        layer_tree_root = instance.layerTreeRoot()
+        assert layer_tree_root is not None
+        layer_tree_layer = layer_tree_root.findLayer(layer)
+        assert layer_tree_layer is not None
+        return layer_tree_layer.isVisible()
+
     def add_reload_context(self) -> None:
         """Connect to the layer context (right-click) menu opening."""
         ltv = self.ribasim_widget.iface.layerTreeView()
@@ -267,8 +264,9 @@ class DatasetWidget(QWidget):
     def generate_reload_action(self, menu: QMenu) -> None:
         """Generate reload action in the context menu."""
         print("Generating reload action in context menu...")
+        actiontext = "Reload Ribasim model"
         for action in menu.actions():
-            if action.text() == "Ribasim: Reload":
+            if action.text() == actiontext:
                 return
 
         group = self.activeGroup(self.ribasim_widget.iface)
@@ -285,7 +283,7 @@ class DatasetWidget(QWidget):
 
         # Always add action, as it lives only during this context menu
         menu.addSeparator()
-        action = menu.addAction("Reload Ribasim model")
+        action = menu.addAction(actiontext)
         action.triggered.connect(partial(self.reload_action, path, group))
 
     def reload_action(self, path, group) -> None:
@@ -387,8 +385,8 @@ class DatasetWidget(QWidget):
         node_layer = self.ribasim_widget.node_layer
         assert node_layer is not None
         path = self._set_results(node_layer, "node_id", "basin.arrow")
-        if path.exists():
-            df = self._add_arrow_layer(path)
+        df = self._add_arrow_layer(path)
+        if df is not None:
             self.basin_layer = self._duplicate_layer(
                 node_layer, "Basin", "node_id", "node_type", "Basin"
             )
@@ -402,8 +400,8 @@ class DatasetWidget(QWidget):
             )
             / "concentration.arrow"
         )
-        if path.exists():
-            df = self._add_arrow_layer(path, postprocess_concentration_arrow)
+        df = self._add_arrow_layer(path, postprocess_concentration_arrow)
+        if df is not None:
             self.concentration_layer = self._duplicate_layer(
                 node_layer, "Concentration", "node_id", "node_type", "Basin"
             )
@@ -421,8 +419,8 @@ class DatasetWidget(QWidget):
             )
             / "allocation.arrow"
         )
-        if path.exists():
-            df = self._add_arrow_layer(path, postprocess_allocation_arrow)
+        df = self._add_arrow_layer(path, postprocess_allocation_arrow)
+        if df is not None:
             self.allocation_layer = self._duplicate_layer(
                 node_layer, "Allocation", "node_id", fids=list(df["node_id"].unique())
             )
@@ -433,8 +431,8 @@ class DatasetWidget(QWidget):
         link_layer = self.ribasim_widget.link_layer
         assert link_layer is not None
         path = self._set_results(link_layer, "link_id", "flow.arrow")
-        if path.exists():
-            df = self._add_arrow_layer(path, postprocess_flow_arrow)
+        df = self._add_arrow_layer(path, postprocess_flow_arrow)
+        if df is not None:
             self.flow_layer = self._duplicate_layer(
                 link_layer, "Flow", "link_id", "link_type", "flow"
             )
@@ -448,8 +446,8 @@ class DatasetWidget(QWidget):
             )
             / "allocation_flow.arrow"
         )
-        if path.exists():
-            df = self._add_arrow_layer(path, postprocess_allocation_flow_arrow)
+        df = self._add_arrow_layer(path, postprocess_allocation_flow_arrow)
+        if df is not None:
             self.allocation_flow_layer = self._duplicate_layer(
                 link_layer,
                 "AllocationFlow",
@@ -518,23 +516,32 @@ class DatasetWidget(QWidget):
         postprocess: Callable[[pd.DataFrame], pd.DataFrame] = lambda df: df.set_index(
             pd.DatetimeIndex(df["time"])
         ),
-    ) -> pd.DataFrame:
+    ) -> pd.DataFrame | None:
         """Add arrow output data to the layer and setup its update mechanism."""
-        try:
-            from pyarrow.feather import read_feather
+        if path.exists() is False:
+            return None
 
-            df = read_feather(path, memory_map=True)
-        except ImportError:
-            dataset = ogr.Open(path)
-            dlayer = dataset.GetLayer(0)
-            stream = dlayer.GetArrowStreamAsNumPy()
-            data = stream.GetNextRecordBatch()
-            df = pd.DataFrame(data=data)
+        dataset = ogr.Open(path)
+        dlayer = dataset.GetLayer(0)
+        stream = dlayer.GetArrowStreamAsNumPy()
 
-            # The OGR path introduces strings columns as bytes
-            for column in df.columns:
-                if df.dtypes[column] == object:  # noqa: E721
-                    df[column] = df[column].str.decode("utf-8")
+        dfs = []
+        while (batch := stream.GetNextRecordBatch()) is not None:
+            df = pd.DataFrame(batch)
+            dfs.append(df)
+
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
+        else:
+            return None
+
+        # The OGR path introduces strings columns as bytes
+        for column in df.columns:
+            if df.dtypes[column] == object:  # noqa: E721
+                df[column] = df[column].str.decode("utf-8")
+
+        if "fid" in df.columns:
+            df.drop(columns=["fid"], inplace=True)
 
         df = postprocess(df)
         self.results[path.stem] = df
@@ -545,9 +552,6 @@ class DatasetWidget(QWidget):
         df: pd.DataFrame,
         layer: QgsVectorLayer,
         fid_column: str,
-        postprocess: Callable[[pd.DataFrame], pd.DataFrame] = lambda df: df.set_index(
-            pd.DatetimeIndex(df["time"])
-        ),
     ) -> None:
         """Add arrow output data to the layer and setup its update mechanism."""
         # Add the arrow fields to the layer if they doesn't exist
@@ -576,7 +580,11 @@ class DatasetWidget(QWidget):
         force: bool = False,
     ) -> None:
         """Update the layer with the current arrow time slice."""
-        if layer is None or df is None:
+        if (
+            layer is None
+            or df is None
+            or (not force and not self.is_layer_visible(layer))
+        ):
             return
 
         # If we're out of bounds, do nothing, assuming
@@ -589,34 +597,38 @@ class DatasetWidget(QWidget):
                 print(f"Skipping update, out of bounds for {time}")
                 return
 
-        timeslice = df.loc[[time], :]
+        timeslice = df.loc[time]
 
         layer.startEditing()
         layer.beginEditCommand("Group all undos for performance.")
 
         fids = sorted(layer.allFeatureIds())
         if not len(fids) == len(timeslice):
-            print(
-                f"Can't join data at {time}, shapes of Link and Allocation tables differ."
-            )
+            print(f"Can't join data at {time}, shapes of Link and arrow table differ.")
             layer.endEditCommand()
             layer.commitChanges()
             return
 
+        dataprovider = layer.dataProvider()
+        assert dataprovider is not None
+
+        columns = {}
         for column in df.columns.tolist():
             if (
                 column == fid_column or column == "time"
             ):  # skip the fid (link/node_id) column
                 continue
-            dataprovider = layer.dataProvider()
-            assert dataprovider is not None
             column_id = dataprovider.fieldNameIndex(column)
+            columns[column] = column_id
+
+        data: dict[int, dict[int, float]] = {fid: {} for fid in fids}
+        for column, column_id in columns.items():
             for fid, variable in zip(fids, timeslice[column]):
-                layer.changeAttributeValue(
-                    fid,
-                    column_id,
-                    variable,
-                )
+                data[fid][column_id] = variable
+
+        dataprovider = layer.dataProvider()
+        assert dataprovider is not None
+        dataprovider.changeAttributeValues(data)
 
         layer.endEditCommand()
         layer.commitChanges()
@@ -673,34 +685,13 @@ class DatasetWidget(QWidget):
         return path
 
 
-def postprocess_concentration_arrow(df: pd.DataFrame) -> pd.DataFrame:
-    """Postprocess the concentration arrow data to a wide format."""
-    ndf = pd.pivot_table(df, columns="substance", index=["time", "node_id"])
-    ndf.columns = ndf.columns.droplevel(0)
-    ndf.reset_index("node_id", inplace=True)
-    return ndf
+def _unset_imod_opengl() -> None:
+    """Try to avoid black plotting pane in iMOD timeseries widget by disabling OpenGL."""
+    # Temporary workaround until we have https://github.com/Deltares/imod-qgis/pull/89
+    # Triggered on model load or reload.
+    try:
+        from imodqgis.dependencies import pyqtgraph_0_12_3
 
-
-def postprocess_allocation_arrow(df: pd.DataFrame) -> pd.DataFrame:
-    """Postprocess the allocation arrow data to a wide format by summing over priorities."""
-    ndf = df.groupby(["time", "node_id"]).aggregate(
-        {"demand": "sum", "allocated": "sum", "realized": "sum"}
-    )
-    ndf.reset_index("node_id", inplace=True)
-    return ndf
-
-
-def postprocess_allocation_flow_arrow(df: pd.DataFrame) -> pd.DataFrame:
-    """Postprocess the allocation flow arrow data to a wide format by summing over priorities."""
-    ndf = df.groupby(["time", "link_id"]).aggregate({"flow_rate": "sum"})
-    # Drop Basin to Basin flows, as we can't join/visualize them
-    ndf.drop(ndf[ndf.index.get_level_values("link_id") == 0].index, inplace=True)
-    ndf.reset_index("link_id", inplace=True)
-    return ndf
-
-
-def postprocess_flow_arrow(df: pd.DataFrame) -> pd.DataFrame:
-    """Postprocess the allocation flow arrow data to a wide format by summing over priorities."""
-    ndf = df.set_index(pd.DatetimeIndex(df["time"]))
-    ndf.drop(columns=["time", "from_node_id", "to_node_id"], inplace=True)
-    return ndf
+        pyqtgraph_0_12_3.setConfigOptions(useOpenGL=False)
+    except Exception:
+        pass

@@ -202,3 +202,47 @@ end
     DataInterpolations.integral(basin.level_to_area[1], 2.0) ≈ 500.0005 + 1000.0
     @test basin.storage_to_level[1](500.0005 + 1000.0) ≈ 2.0
 end
+
+@testitem "decreasing area (dS_dh) from S(h)" begin
+    using Ribasim: Schema, Basin, StructVector, NodeID, interpolate_basin_profile!
+
+    # user input
+    group_area = [missing, missing, missing, missing, missing, missing]
+    group_level = [265.0, 270.0, 275.0, 280.0, 285.0, 287.0]
+    group_storage = [0.0, 3.551e6, 1.6238e7, 4.5444e7, 1.06217e8, 1.08e8]
+    n = length(group_level)
+    node_1 = fill(1, n)
+    basin = Ribasim.Basin(; node_id = NodeID.(:Basin, [1], 1))
+
+    profiles = StructVector{Schema.Basin.Profile}(;
+        node_id = node_1,
+        level = group_level,
+        area = group_area,
+        storage = group_storage,
+    )
+
+    # Test that an error is thrown when area is decreasing
+    error_string = "Invalid profile for Basin #1. The step from (h=285.0, S=1.06217e8) to (h=287.0, S=1.08e8) implies a decreasing area compared to lower points in the profile, which is not allowed."
+    @test_throws error_string interpolate_basin_profile!(basin, profiles)
+end
+
+@testitem "Interpolation type" begin
+    using DataInterpolations: ConstantInterpolation, SmoothedConstantInterpolation
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/flow_boundary_time/ribasim.toml")
+    @test ispath(toml_path)
+    config = Ribasim.Config(
+        toml_path;
+        interpolation_flow_boundary = "block",
+        interpolation_block_transition_period = 0.0,
+    )
+    @test Ribasim.Model(config).integrator.p.p_independent.flow_boundary.flow_rate isa
+          Vector{<:ConstantInterpolation}
+    config = Ribasim.Config(
+        toml_path;
+        interpolation_flow_boundary = "block",
+        interpolation_block_transition_period = 1.0,
+    )
+    @test Ribasim.Model(config).integrator.p.p_independent.flow_boundary.flow_rate isa
+          Vector{<:SmoothedConstantInterpolation}
+end

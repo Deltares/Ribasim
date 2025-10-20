@@ -14,14 +14,15 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Hydrology",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "datacompy >=0.16",
-    "geopandas >=1.0, <1.1",
-    "matplotlib >=3.7",
-    "numpy >=1.25",
+    "geopandas >=1.0",
+    "matplotlib >=3.9",
+    "netCDF4 >=1.7.1",
+    "numpy >=2.0",
     "packaging >=23.0",
-    "pandas >=2.0",
+    "pandas >=2.2",
     "pandera >=0.25",
     "pyarrow >=17.0",
     "pydantic >=2.0",
@@ -29,6 +30,7 @@ dependencies = [
     "shapely >=2.0",
     "tomli >=2.0",
     "tomli-w >=1.0",
+    "xarray >=2023.11",
 ]
 dynamic = ["version"]
 

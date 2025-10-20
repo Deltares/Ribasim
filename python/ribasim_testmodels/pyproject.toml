@@ -6,19 +6,16 @@ build-backend = "hatchling.build"
 name = "ribasim_testmodels"
 description = "Ribasim Testmodels"
 readme = "README.md"
-authors = [{ name = "Deltares and contributors", email = "ribasim.info@deltares.nl" }]
+authors = [
+    { name = "Deltares and contributors", email = "ribasim.info@deltares.nl" },
+]
 license = { text = "MIT" }
 classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Hydrology",
 ]
-requires-python = ">=3.11"
-dependencies = [
-    "geopandas >=1.0, <1.1",
-    "numpy >=1.25",
-    "pandas >=2.0",
-    "ribasim",
-]
+requires-python = ">=3.12"
+dependencies = ["geopandas >=1.0", "numpy >=2.0", "pandas >=2.2", "ribasim"]
 dynamic = ["version"]
 
 [project.optional-dependencies]

@@ -133,7 +133,14 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     # Update convergence measure
     if hasproperty(cache, :nlsolver)
         @. temp_convergence = abs(cache.nlsolver.cache.atmp / u)
-        convergence .+= temp_convergence / finitemaximum(temp_convergence)
+        @inbounds for I in eachindex(temp_convergence)
+            if !isfinite(temp_convergence[I])
+                temp_convergence[I] = zero(eltype(temp_convergence))
+            end
+        end
+        convergence .+=
+            temp_convergence /
+            finitemaximum(temp_convergence; init = one(eltype(temp_convergence)))
         ncalls[1] += 1
     end
 
@@ -170,8 +177,10 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         ) = allocation_model
         # Basin forcing input
         for basin_id in keys(cumulative_forcing_volume)
-            cumulative_forcing_volume[basin_id] +=
-                flow_update_on_link(integrator, (basin_id, basin_id))
+            volume_update = forcing_update(integrator, basin_id)
+            values_prev = cumulative_forcing_volume[basin_id]
+            cumulative_forcing_volume[basin_id] =
+                (values_prev[1] + volume_update[1], values_prev[2] + volume_update[2])
         end
 
         # Flow boundary input
@@ -324,29 +333,47 @@ function update_concentrations!(u, t, integrator)::Nothing
 end
 
 """
+Compute the forcing volume entering and leaving the Basin over the last time step
+"""
+function forcing_update(integrator::DEIntegrator, node_id::NodeID)::Tuple{Float64, Float64}
+    (; u, uprev, p, dt) = integrator
+    (; basin) = p.p_independent
+    (; vertical_flux) = basin
+
+    @assert node_id.type == NodeType.Basin
+
+    fixed_area = basin_areas(basin, node_id.idx)[end]
+
+    inflow_update =
+        (
+            fixed_area * vertical_flux.precipitation[node_id.idx] +
+            vertical_flux.drainage[node_id.idx] +
+            vertical_flux.surface_runoff[node_id.idx]
+        ) * dt
+
+    outflow_update =
+        (u.evaporation[node_id.idx] - uprev.evaporation[node_id.idx]) +
+        (u.infiltration[node_id.idx] - uprev.infiltration[node_id.idx])
+
+    return inflow_update, outflow_update
+end
+
+"""
 Given an link (from_id, to_id), compute the cumulative flow over that
-link over the latest time step. If from_id and to_id are both the same Basin,
-the function returns the sum of the Basin forcings.
+link over the latest time step.
 """
 function flow_update_on_link(
     integrator::DEIntegrator,
     link_src::Tuple{NodeID, NodeID},
 )::Float64
-    (; u, uprev, p, t, tprev, dt) = integrator
-    (; basin, flow_boundary) = p.p_independent
-    (; vertical_flux) = basin
+    (; u, uprev, p, t, tprev) = integrator
+    (; flow_boundary) = p.p_independent
 
     from_id, to_id = link_src
     if from_id == to_id
-        @assert from_id.type == to_id.type == NodeType.Basin
-        idx = from_id.idx
-        fixed_area = basin_areas(basin, idx)[end]
-        (
-            fixed_area * vertical_flux.precipitation[idx] +
-            vertical_flux.drainage[idx] +
-            vertical_flux.surface_runoff[idx]
-        ) * dt - (u.evaporation[idx] - uprev.evaporation[idx]) -
-        (u.infiltration[idx] - uprev.infiltration[idx])
+        error(
+            "Cannot get flow update when from_id = to_id. For Basin forcing use `forcing_update`.",
+        )
     elseif from_id.type == NodeType.FlowBoundary
         if flow_boundary.active[from_id.idx]
             integral(flow_boundary.flow_rate[from_id.idx], tprev, t)
@@ -581,8 +608,8 @@ end
 Apply the discrete control logic. There's somewhat of a complex structure:
 - Each DiscreteControl node can have one or multiple compound variables it listens to
 - A compound variable is defined as a linear combination of state/time derived parameters of the model
-- Each compound variable has associated with it a vector greater_than of forward fill interpolation objects over time
-  which defines a list of conditions of the form (compound_variable_value) > greater_than[i](t)
+- Each compound variable has associated with it a vector threshold_high and threshold_low of forward fill interpolation objects over time
+  which defines a list of conditions of the form (compound_variable_value) > threshold[i](t)
 - The boolean truth value of all these conditions of a discrete control node, sorted first by compound_variable_id and then by
   condition_id, are concatenated into what is called the node's truth state
 - The DiscreteControl node maps this truth state via the logic mapping to a control state, which is a string
@@ -611,10 +638,18 @@ function apply_discrete_control!(u, t, integrator)::Nothing
         for compound_variable in compound_variables_node
             value = compound_variable_value(compound_variable, p, du, t)
 
-            # Loop over the greater_than interpolations associated with the current compound variable
-            for greater_than in compound_variable.greater_than
+            # Loop over the threshold interpolations associated with the current compound variable
+            for (threshold_low, threshold_high) in
+                zip(compound_variable.threshold_low, compound_variable.threshold_high)
                 truth_value_old = truth_state_node[truth_state_idx]
-                truth_value_new = (value > greater_than(t))
+
+                # Hysteresis deadband: if the condition was true before, only switch to false
+                # when below threshold_low, otherwise only switch to true when above threshold_high
+                if truth_value_old
+                    truth_value_new = (value >= threshold_low(t))
+                else
+                    truth_value_new = (value > threshold_high(t))
+                end
 
                 if truth_value_old != truth_value_new
                     truth_state_change = true

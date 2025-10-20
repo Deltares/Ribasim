@@ -1,7 +1,7 @@
 exclude: 'core/test/data/allocation_problems'
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
       - id: check-case-conflict
@@ -13,9 +13,9 @@ repos:
         exclude: '.teamcity'
       - id: trailing-whitespace
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.7
+    rev: v0.13.3
     hooks:
-      - id: ruff
+      - id: ruff-check
         types_or: [python, pyi, jupyter]
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
@@ -29,6 +29,6 @@ repos:
     hooks:
       - id: nbstripout
   - repo: https://github.com/adhtruong/mirrors-typos
-    rev: v1.34.0
+    rev: v1.37.1
     hooks:
       - id: typos

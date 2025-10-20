@@ -1,5 +1,5 @@
 @testitem "Pump discrete control" begin
-    using Ribasim: NodeID
+    using Ribasim: NodeID, OrderedDict
     using OrdinaryDiffEqCore: get_du
     using Dates: DateTime
     import Arrow
@@ -28,14 +28,14 @@
         ).value.u,
     ) == [1.0e-5]
 
-    logic_mapping::Vector{Dict{Vector{Bool}, String}} = [
-        Dict(
+    logic_mapping::Vector{OrderedDict{Vector{Bool}, String}} = [
+        OrderedDict(
             [true, true] => "on",
             [true, false] => "off",
             [false, false] => "on",
             [false, true] => "off",
         ),
-        Dict([true] => "inactive", [false] => "active"),
+        OrderedDict([true] => "inactive", [false] => "active"),
     ]
 
     @test discrete_control.logic_mapping == logic_mapping
@@ -62,12 +62,12 @@
     t_1 = discrete_control.record.time[3]
     t_1_index = findfirst(>=(t_1), t)
     @test level[1, t_1_index] <=
-          discrete_control.compound_variables[1][1].greater_than[1](0)
+          discrete_control.compound_variables[1][1].threshold_high[1](0)
 
     t_2 = discrete_control.record.time[4]
     t_2_index = findfirst(>=(t_2), t)
     @test level[2, t_2_index] >=
-          discrete_control.compound_variables[1][2].greater_than[1](0)
+          discrete_control.compound_variables[1][2].threshold_high[1](0)
 
     du = get_du(model.integrator)
     @test all(iszero, du.linear_resistance)
@@ -86,12 +86,12 @@ end
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
-    greater_than = discrete_control.compound_variables[1][1].greater_than[1](0)
+    threshold_high = discrete_control.compound_variables[1][1].threshold_high[1](0)
     flow_t_control = flow_boundary.flow_rate[1](t_control)
     flow_t_control_ahead = flow_boundary.flow_rate[1](t_control + Δt)
 
-    @test !isapprox(flow_t_control, greater_than; rtol = 0.005)
-    @test isapprox(flow_t_control_ahead, greater_than, rtol = 0.005)
+    @test !isapprox(flow_t_control, threshold_high; rtol = 0.005)
+    @test isapprox(flow_t_control_ahead, threshold_high, rtol = 0.005)
 end
 
 @testitem "Transient level boundary condition control" begin
@@ -109,12 +109,12 @@ end
     t_control = discrete_control.record.time[2]
     t_control_index = searchsortedfirst(t, t_control)
 
-    greater_than = discrete_control.compound_variables[1][1].greater_than[1](0)
+    threshold_high = discrete_control.compound_variables[1][1].threshold_high[1](0)
     level_t_control = level_boundary.level[1](t_control)
     level_t_control_ahead = level_boundary.level[1](t_control + Δt)
 
-    @test !isapprox(level_t_control, greater_than; rtol = 0.005)
-    @test isapprox(level_t_control_ahead, greater_than, rtol = 0.005)
+    @test !isapprox(level_t_control, threshold_high; rtol = 0.005)
+    @test isapprox(level_t_control_ahead, threshold_high, rtol = 0.005)
 end
 
 @testitem "PID control" begin
@@ -337,7 +337,7 @@ end
     model = Ribasim.run(toml_path)
     (; record, compound_variables) = model.integrator.p.p_independent.discrete_control
 
-    itp = compound_variables[1][1].greater_than[1]
+    itp = compound_variables[1][1].threshold_high[1]
     @test itp.extrapolation_left == Periodic
     @test itp.extrapolation_right == Periodic
 
@@ -349,4 +349,46 @@ end
 
     # Control state changes precisely when the condition changes
     @test record.time[1:2] ≈ [0, t_condition_change]
+end
+
+@testitem "Circular flow with hysteresis control" begin
+    using DataFrames: DataFrame
+    using Arrow
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/circular_flow/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+
+    control_bytes = read(normpath(dirname(toml_path), "results/control.arrow"))
+    control = DataFrame(Arrow.Table(control_bytes))
+
+    basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
+    basin = DataFrame(Arrow.Table(basin_bytes))
+    basin6 = filter(:node_id => ==(6), basin)
+
+    # Pump is initially off because level is below 0.9
+    t0 = control.time[1]
+    @test control.truth_state[1] == "F"
+    @test basin6.level[findfirst(>=(t0), basin6.time)] <= 0.9 + 1e-10
+
+    # Switches on when level exceeds 0.95
+    t1 = control.time[2]
+    @test control.truth_state[2] == "T"
+    @test basin6.level[findfirst(>=(t1), basin6.time)] > 0.95
+
+    # And only switches off when level goes below 0.9 again
+    t2 = control.time[3]
+    @test control.truth_state[3] == "F"
+    @test basin6.level[findfirst(>=(t2), basin6.time)] <= 0.9 + 1e-2
+end
+
+@testitem "Storage condition" begin
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/storage_condition/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    storage = Ribasim.get_storages_and_levels(model).storage[1, :]
+    @test all(storage .< 7500 + 6)
 end

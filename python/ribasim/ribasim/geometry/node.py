@@ -1,5 +1,3 @@
-from typing import Any
-
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -45,7 +43,9 @@ class NodeTable(SpatialTableModel[NodeSchema]):
             mask = self.df[self.df["node_type"] != nodetype].index
             self.df.drop(mask, inplace=True)
 
-    def plot_allocation_networks(self, ax=None, zorder=None) -> Any:
+    def plot_allocation_networks(
+        self, ax=None, zorder=None
+    ) -> tuple[list[Patch], list[str]]:
         if ax is None:
             _, ax = plt.subplots()
             ax.axis("off")
@@ -85,7 +85,7 @@ class NodeTable(SpatialTableModel[NodeSchema]):
 
         return handles, labels
 
-    def plot(self, ax=None, zorder=None) -> Any:
+    def plot(self, ax=None, zorder=None) -> plt.Axes:
         """
         Plot the nodes. Each node type is given a separate marker.
 
@@ -142,7 +142,7 @@ class NodeTable(SpatialTableModel[NodeSchema]):
             "": "k",
         }
         if self.df is None:
-            return
+            return ax
 
         for nodetype, df in self.df.groupby("node_type"):
             assert isinstance(nodetype, str)

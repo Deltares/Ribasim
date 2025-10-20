@@ -2,7 +2,7 @@
 @testitem "Q(h) validation" begin
     import SQLite
     using Logging
-    using Ribasim: NodeID, qh_interpolation, ScalarPCHIPInterpolation
+    using Ribasim: NodeID, qh_interpolation, ScalarPCHIPInterpolation, OrderedDict
 
     node_id = NodeID(:TabulatedRatingCurve, 1, 1)
     level = [1.0, 2.0]
@@ -193,7 +193,8 @@ end
 
 @testitem "Pump/outlet flow rate sign validation" begin
     using Logging
-    using Ribasim: NodeID, NodeType, ControlStateUpdate, ParameterUpdate, valid_flow_rates
+    using Ribasim:
+        NodeID, NodeType, ControlStateUpdate, ParameterUpdate, valid_flow_rates, OrderedDict
     using DataInterpolations: LinearInterpolation
 
     logger = TestLogger()
@@ -201,7 +202,7 @@ end
 
     with_logger(logger) do
         node_id = [NodeID(:Outlet, 1, 1)]
-        control_mapping = Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+        control_mapping = OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
         @test !valid_flow_rates(node_id, flow_rate, control_mapping)
     end
 
@@ -213,7 +214,7 @@ end
 
     with_logger(logger) do
         node_id = [NodeID(:Pump, 1, 1)]
-        control_mapping = Dict(
+        control_mapping = OrderedDict(
             (NodeID(:Pump, 1, 1), "foo") => ControlStateUpdate(;
                 active = ParameterUpdate(:active, true),
                 itp_update_linear = [
@@ -298,7 +299,7 @@ end
 
 @testitem "negative demand" begin
     using Logging
-    using DataInterpolations: LinearInterpolation
+    using DataInterpolations: ConstantInterpolation
     using DataInterpolations.ExtrapolationType: Constant
     using Ribasim: NodeID, valid_demand
 
@@ -307,7 +308,7 @@ end
     with_logger(logger) do
         node_id = [NodeID(:UserDemand, 1, 1)]
         demand_interpolation =
-            [[LinearInterpolation([-5.0, -5.0], [-1.8, 1.8]; extrapolation = Constant)]]
+            [[ConstantInterpolation([-5.0, -5.0], [-1.8, 1.8]; extrapolation = Constant)]]
         demand_priorities = Int32[1]
         @test !valid_demand(node_id, demand_interpolation, demand_priorities)
     end
@@ -517,28 +518,28 @@ end
 
 @testitem "nested interpolations" begin
     using Ribasim: invalid_nested_interpolation_times
-    using DataInterpolations: LinearInterpolation, ExtrapolationType
+    using DataInterpolations: ConstantInterpolation, ExtrapolationType
 
     t = [1.0, 2.0, 3.0, 4.0]
     u1 = [1.0, 2.0, 3.0, 4.0]
     u2 = [6.0, 5.0, 4.0, 3.0]
 
-    interpolations_min = [LinearInterpolation(u1, t)]
-    interpolations_max = [LinearInterpolation(u2, t)]
+    interpolations_min = [ConstantInterpolation(u1, t)]
+    interpolations_max = [ConstantInterpolation(u2, t)]
 
     @test invalid_nested_interpolation_times(interpolations_min; interpolations_max) ==
           [4.0]
 
     extrapolation = ExtrapolationType.Linear
     interpolations_min = [
-        LinearInterpolation([0.88, 1.18], [0.3, 0.8]; extrapolation),
-        LinearInterpolation([1.1, 1.15], [0.1, 0.15]; extrapolation),
+        ConstantInterpolation([0.88, 1.18], [0.3, 0.8]; extrapolation),
+        ConstantInterpolation([1.1, 1.2], [0.1, 0.15]; extrapolation),
     ]
     @test isempty(invalid_nested_interpolation_times(interpolations_min))
 
     interpolations_max = [
-        LinearInterpolation([9.92, 9.901], [0.8, 0.99]; extrapolation),
-        LinearInterpolation([5.6488, 5.3976], [0.314, 0.628]; extrapolation),
+        ConstantInterpolation([9.92, 9.901], [0.8, 0.99]; extrapolation),
+        ConstantInterpolation([5.6488, 5.3976], [0.314, 0.628]; extrapolation),
     ]
     @test isempty(
         invalid_nested_interpolation_times(interpolations_min; interpolations_max),

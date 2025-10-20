@@ -5,6 +5,7 @@ import datacompy
 import numpy as np
 import pandas as pd
 import pytest
+import ribasim
 import tomli
 import tomli_w
 import xugrid
@@ -132,7 +133,7 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
     assert model_orig.link.df.index.name == "link_id"
 
     model_orig.write(tmp_path / "basic/ribasim.toml")
-    with connect(tmp_path / "basic/database.gpkg") as connection:
+    with connect(tmp_path / "basic/input/database.gpkg") as connection:
         query = f"select * from {esc_id('Basin / profile')}"
         df = pd.read_sql_query(query, connection)
         assert "fid" in df.columns
@@ -210,8 +211,8 @@ def test_to_xugrid(model, tmp_path):
     assert uds.grid.crs == CRS.from_epsg(28992)
     assert uds.node_id.dtype == np.int32
     uds.ugrid.to_netcdf(tmp_path / "ribasim.nc")
-    uds = xugrid.open_dataset(tmp_path / "ribasim.nc")
-    assert uds.attrs["Conventions"] == "CF-1.9 UGRID-1.0"
+    with xugrid.open_dataset(tmp_path / "ribasim.nc") as uds:
+        assert uds.attrs["Conventions"] == "CF-1.9 UGRID-1.0"
 
     with pytest.raises(FileNotFoundError, match="Model must be written to disk"):
         model.to_xugrid(add_flow=True)
@@ -263,21 +264,21 @@ def test_styles(tabulated_rating_curve: Model, tmp_path):
     model = tabulated_rating_curve
 
     model.write(tmp_path / "basic" / "ribasim.toml")
-    with connect(tmp_path / "basic" / "database.gpkg") as conn:
+    with connect(tmp_path / "basic/input/database.gpkg") as conn:
         assert conn.execute("SELECT COUNT(*) FROM layer_styles").fetchone()[0] == 3
 
 
-def test_non_existent_files(tmp_path):
+def test_non_existent_files(trivial, tmp_path):
     with pytest.raises(
         FileNotFoundError, match="File 'non_existent_file.toml' does not exist."
     ):
         Model.read("non_existent_file.toml")
 
-    # Create a TOML file without a database.gpkg
-    content = {"input_path": str(tmp_path)}
-    toml_path = tmp_path / "test.toml"
-    with open(toml_path, "wb") as f:
-        tomli_w.dump(content, f)
+    # Write a model but delete database.gpkg
+    toml_path = tmp_path / "ribasim.toml"
+    trivial.write(toml_path)
+    db_path = tmp_path / "input/database.gpkg"
+    db_path.unlink()
 
     with pytest.raises(FileNotFoundError, match=r"Database file .* does not exist\."):
         Model.read(toml_path)
@@ -387,7 +388,16 @@ def test_version_mismatch_warning_newer_version(basic, tmp_path):
         UserWarning,
         match="version in the TOML file.*3030.1.0.*is newer than the Python package version",
     ):
-        Model.read(toml_path)
+        model = Model.read(toml_path)
+
+    # Check that the version is reset correctly
+    assert model.ribasim_version == ribasim.__version__
+
+    # Check that the TOML file contains the correct version
+    model._write_toml(toml_path)
+    with open(toml_path, "rb") as f:
+        config = tomli.load(f)
+    assert config["ribasim_version"] == ribasim.__version__
 
 
 def test_invalid_version_string_warning(basic, tmp_path):
@@ -415,3 +425,17 @@ def test_invalid_version_string_warning(basic, tmp_path):
         match="version in the TOML file.*invalid_version_string.*does not match the Python package version",
     ):
         Model.read(toml_path)
+
+
+def test_path_serialization_uses_forward_slashes(drought, tmp_path):
+    """Test that paths in TOML files always use forward slashes for cross-platform compatibility."""
+    model = drought
+    toml_path = tmp_path / "ribasim.toml"
+    model.write(toml_path)
+
+    with open(toml_path, "rb") as f:
+        config = tomli.load(f)
+
+    assert config["input_dir"] == "nested/input"
+    assert config["results_dir"] == "nested/results"
+    assert config["basin"]["time"] == "subdir/basin-time.nc"

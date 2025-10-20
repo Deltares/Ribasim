@@ -5,8 +5,8 @@ import sys
 from pathlib import Path
 
 
-def install_qgis_plugin(plugin_name: str):
-    plugin_path = Path(".pixi/qgis_env/profiles/default/python/plugins")
+def install_qgis_plugin(plugin_name: str, profile_path: str) -> None:
+    plugin_path = Path(profile_path) / "python/plugins"
     plugin_path.mkdir(parents=True, exist_ok=True)
 
     try:
@@ -22,5 +22,5 @@ def install_qgis_plugin(plugin_name: str):
 
 
 if __name__ == "__main__":
-    print(f"Installing QGIS plugin {sys.argv[1]}")
-    install_qgis_plugin(sys.argv[1])
+    print(f"Installing QGIS plugin {sys.argv[1]} to profile {sys.argv[2]}")
+    install_qgis_plugin(sys.argv[1], sys.argv[2])

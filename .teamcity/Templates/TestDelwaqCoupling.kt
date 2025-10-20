@@ -1,6 +1,7 @@
 package Templates
 
 import Ribasim.vcsRoots.Ribasim
+import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.Template
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.buildFeatures.buildCache
@@ -29,6 +30,13 @@ open class TestDelwaqCoupling(platformOs: String) : Template() {
             }
         }
 
+        dependencies {
+            artifacts(AbsoluteId("Ribasim_${platformOs}_GenerateCache")) {
+                buildRule = lastSuccessful()
+                artifactRules = "cache.zip!** => %teamcity.build.checkoutDir%/.julia"
+            }
+        }
+
         steps {
             script {
                 name = "Set up pixi"
@@ -54,7 +62,7 @@ open class TestDelwaqCoupling(platformOs: String) : Template() {
                 id = "Delwaq_upload"
                 workingDir = "ribasim"
                 scriptContent = """
-                pixi run s3-upload "python/ribasim/ribasim/delwaq/model/delwaq_map.nc" "doc-image/delwaq/delwaq_map.nc"
+                pixi run s3-upload "python/ribasim/ribasim/delwaq/model/test_offline_delwaq_couplingcurrent/delwaq/delwaq_map.nc" "doc-image/delwaq/delwaq_map.nc"
                 """.trimIndent()
             }
         }

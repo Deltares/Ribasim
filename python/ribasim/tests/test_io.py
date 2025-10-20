@@ -255,28 +255,28 @@ def test_sort(level_range, tmp_path):
     link = model.link
 
     # apply a wrong sort, then call the sort method to restore order
-    table.df.sort_values("greater_than", ascending=False, inplace=True)
-    assert table.df.iloc[0]["greater_than"] == 15.0
+    table.df.sort_values("threshold_high", ascending=False, inplace=True)
+    assert table.df.iloc[0]["threshold_high"] == 15.0
     assert table._sort_keys == [
         "node_id",
         "compound_variable_id",
         "condition_id",
     ]
     table.sort()
-    assert table.df.iloc[0]["greater_than"] == 5.0
+    assert table.df.iloc[0]["threshold_high"] == 5.0
 
     # The link table is not sorted
     assert link.df.iloc[1]["from_node_id"] == 3
 
     # re-apply wrong sort, then check if it gets sorted on write
-    table.df.sort_values("greater_than", ascending=False, inplace=True)
+    table.df.sort_values("threshold_high", ascending=False, inplace=True)
     model.write(tmp_path / "basic/ribasim.toml")
     # write sorts the model in place
-    assert table.df.iloc[0]["greater_than"] == 5.0
+    assert table.df.iloc[0]["threshold_high"] == 5.0
     model_loaded = ribasim.Model.read(filepath=tmp_path / "basic/ribasim.toml")
     table_loaded = model_loaded.discrete_control.condition
     link_loaded = model_loaded.link
-    assert table_loaded.df.iloc[0]["greater_than"] == 5.0
+    assert table_loaded.df.iloc[0]["threshold_high"] == 5.0
     assert link.df.iloc[1]["from_node_id"] == 3
     __assert_equal(table.df, table_loaded.df)
     __assert_equal(link.df, link_loaded.df)
@@ -293,8 +293,8 @@ def test_roundtrip(trivial, tmp_path):
     model2 = Model.read(model1dir / "ribasim.toml")
     model2.write(model2dir / "ribasim.toml")
 
-    assert (model1dir / "database.gpkg").is_file()
-    assert (model2dir / "database.gpkg").is_file()
+    assert (model1dir / "input/database.gpkg").is_file()
+    assert (model2dir / "input/database.gpkg").is_file()
 
     assert (model1dir / "ribasim.toml").read_text() == (
         model2dir / "ribasim.toml"
@@ -310,6 +310,27 @@ def test_roundtrip(trivial, tmp_path):
     for node1, node2 in zip(model1._nodes(), model2._nodes()):
         for table1, table2 in zip(node1._tables(), node2._tables()):
             __assert_equal(table1.df, table2.df)
+
+
+def test_roundtrip_netcdf(tabulated_rating_curve_control, tmp_path):
+    model1 = tabulated_rating_curve_control
+    # confirm NetCDF is configured for Basin / state
+    assert model1.basin.state.filepath == Path("basin-state.nc")
+    model1dir = tmp_path / "model1"
+    # read a model and then write it to a different path
+    model1.write(model1dir / "ribasim.toml")
+    model2 = Model.read(model1dir / "ribasim.toml")
+
+    assert (model1dir / "input/database.gpkg").is_file()
+    assert (model1dir / "input/basin-state.nc").is_file()
+
+    df1 = model1.basin.state.df
+    df2 = model2.basin.state.df
+    assert df2 is not None
+    __assert_equal(df1, df2)
+    assert df2.shape == (1, 2)
+    assert df2["node_id"].dtype == np.int32
+    assert df2["level"].dtype == float
 
 
 def test_datetime_timezone():

@@ -73,15 +73,15 @@ def user_demand_model() -> Model:
         Node(4, Point(1, 0)),
         [
             user_demand.Time(
-                time=[
-                    "2020-08-01 00:00:00",
-                    "2020-09-01 00:00:00",
-                    "2020-10-01 00:00:00",
-                    "2020-11-01 00:00:00",
-                ],
+                time=list(pd.date_range(start="2020-08-01", end="2020-09-01"))
+                + list(pd.date_range(start="2020-10-01", end="2020-11-01")),
+                demand=np.concatenate(
+                    [np.linspace(0.0, 1e-4, num=32), np.linspace(2e-4, 0.0, num=32)]
+                ),
                 min_level=0.0,
-                demand=[0.0, 1e-4, 2e-4, 0.0],
-                return_factor=[0.0, 0.1, 0.2, 0.3],
+                return_factor=np.concatenate(
+                    [np.linspace(0.0, 0.1, num=32), np.linspace(0.2, 0.3, num=32)]
+                ),
                 demand_priority=1,
             )
         ],
@@ -101,7 +101,7 @@ def user_demand_model() -> Model:
 def subnetwork_model() -> Model:
     """Create a UserDemand testmodel representing a subnetwork.
 
-    This model is merged into main_network_with_subnetworks_model.
+    This model is merged into primary_and_secondary_subnetworks_model.
     """
     model = Model(
         starttime="2020-01-01",
@@ -188,7 +188,7 @@ def subnetwork_model() -> Model:
 def looped_subnetwork_model() -> Model:
     """Create a UserDemand testmodel representing a subnetwork containing a loop in the topology.
 
-    This model is merged into main_network_with_subnetworks_model.
+    This model is merged into primary_and_secondary_subnetworks_model.
     """
     model = Model(
         starttime="2020-01-01",
@@ -352,7 +352,7 @@ def minimal_subnetwork_model() -> Model:
         Node(6, Point(1, 4), subnetwork_id=2),
         [
             user_demand.Time(
-                time=["2020-01-01", "2021-01-01"],
+                time=["2020-01-01", "2020-01-02"],
                 demand=[1e-3, 2e-3],
                 return_factor=0.9,
                 min_level=0.9,
@@ -436,14 +436,299 @@ def allocation_example_model() -> Model:
     return model
 
 
-def main_network_with_subnetworks_model() -> Model:
+def small_primary_secondary_network_model() -> Model:
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2020-01-20",
+        crs="EPSG:28992",
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(concentration=True, allocation=True),
+    )
+
+    basin_data: list[TableModel[Any]] = [
+        basin.Profile(area=300_000.0, level=[0.0, 1.0]),
+        basin.State(level=[0.9]),
+    ]
+
+    model.basin.add(Node(2, Point(1, 0), subnetwork_id=1), basin_data)
+    model.user_demand.add(
+        Node(3, Point(1, 1), subnetwork_id=1),
+        [
+            user_demand.Static(
+                demand=[1.0], return_factor=0.0, min_level=0.5, demand_priority=2
+            )
+        ],
+    )
+    outlet_data = outlet.Static(
+        flow_rate=[3e-3], max_flow_rate=3.0, control_state="Ribasim.allocation"
+    )
+
+    model.outlet.add(
+        Node(4, Point(2, 0), subnetwork_id=1),
+        [outlet_data],
+    )
+
+    #################################### begin subnetwork 2 ####################################
+    model.basin.add(Node(5, Point(3, 0), subnetwork_id=2), basin_data)
+
+    model.user_demand.add(
+        Node(6, Point(3, 1), subnetwork_id=2),
+        [
+            user_demand.Static(
+                demand=[1.0], return_factor=0.0, min_level=0.5, demand_priority=2
+            )
+        ],
+    )
+    model.level_demand.add(
+        Node(7, Point(1, -1), subnetwork_id=2),
+        [level_demand.Static(min_level=[0.5], max_level=1.5, demand_priority=1)],
+    )
+    #################################### end subnetwork 2 ####################################
+    model.link.add(model.basin[2], model.user_demand[3])  # 1
+    model.link.add(model.basin[2], model.outlet[4])  # 2
+    model.link.add(model.outlet[4], model.basin[5])  # 3
+    model.link.add(model.basin[5], model.user_demand[6])  # 4
+    model.link.add(model.user_demand[3], model.basin[2])  # 5
+    model.link.add(model.user_demand[6], model.basin[5])  # 6
+    model.link.add(model.level_demand[7], model.basin[5])  # 7
+
+    return model
+
+
+def medium_primary_secondary_network_model() -> Model:
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2020-01-20",
+        crs="EPSG:28992",
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(allocation=True),
+    )
+
+    basin_data: list[TableModel[Any]] = [
+        basin.Profile(area=100_000.0, level=[0.0, 1.0]),
+        basin.State(level=[0.5]),
+    ]
+    outlet_data = outlet.Static(
+        flow_rate=[1.0], max_flow_rate=1.0, control_state="Ribasim.allocation"
+    )
+
+    pump_data = pump.Static(
+        flow_rate=[1.0], max_flow_rate=1.0, control_state="Ribasim.allocation"
+    )
+
+    model.level_demand.add(
+        Node(18, Point(2.5, -0.5), subnetwork_id=1),
+        [level_demand.Static(min_level=[0.5], demand_priority=1)],
+    )
+
+    model.level_demand.add(
+        Node(19, Point(1, 2), subnetwork_id=2),
+        [level_demand.Static(min_level=[0.5], demand_priority=2)],
+    )
+
+    model.level_demand.add(
+        Node(20, Point(4, 2), subnetwork_id=3),
+        [level_demand.Static(min_level=[0.5], demand_priority=2)],
+    )
+
+    ##################################### begin subnetwork 1 ####################################
+
+    # Inlet
+    model.flow_boundary.add(
+        Node(1, Point(0.0, 0.0)), [flow_boundary.Static(flow_rate=[0.1])]
+    )
+
+    # first basin
+    model.basin.add(Node(2, Point(1, 0), subnetwork_id=1), basin_data)
+
+    # outlet towards first subnetwork
+    model.outlet.add(
+        Node(3, Point(1, 1), subnetwork_id=1),
+        [outlet_data],
+    )
+
+    # outlet towards second basin
+    model.outlet.add(
+        Node(4, Point(1.5, 0), subnetwork_id=1),
+        [outlet_data],
+    )
+
+    # second basin
+    model.basin.add(Node(5, Point(2, 0), subnetwork_id=1), basin_data)
+
+    # pump towards first subnetwork
+    model.pump.add(
+        Node(6, Point(2, 1), subnetwork_id=1),
+        [pump_data],
+    )
+
+    # outlet towards fourth basin
+    model.outlet.add(
+        Node(16, Point(2.5, 0), subnetwork_id=1),
+        [outlet_data],
+    )
+
+    # third basin
+    model.basin.add(Node(7, Point(3, 0), subnetwork_id=1), basin_data)
+
+    # outlet towards second subnetwork
+    model.outlet.add(
+        Node(8, Point(3, 1), subnetwork_id=1),
+        [outlet_data],
+    )
+
+    # outlet towards fourth basin
+    model.outlet.add(
+        Node(9, Point(3.5, 0), subnetwork_id=1),
+        [outlet_data],
+    )
+
+    # fourth basin
+    model.basin.add(Node(10, Point(4, 0), subnetwork_id=1), basin_data)
+
+    # outlet towards second subnetwork
+    model.outlet.add(Node(11, Point(4, 1), subnetwork_id=1), [outlet_data])
+
+    # user demand at the end of primary network
+    model.user_demand.add(
+        Node(12, Point(4.5, 0), subnetwork_id=1),
+        [
+            user_demand.Static(
+                demand=[0.05], return_factor=0.0, min_level=0.5, demand_priority=3
+            )
+        ],
+    )
+    ##################################### end subnetwork 1 #####################################
+
+    #################################### begin subnetwork 2 ####################################
+    model.basin.add(Node(13, Point(1.5, 1.5), subnetwork_id=2), basin_data)
+
+    model.user_demand.add(
+        Node(14, Point(1.5, 2), subnetwork_id=2),
+        [
+            user_demand.Static(
+                demand=[0.1], return_factor=0.0, min_level=0.5, demand_priority=3
+            )
+        ],
+    )
+
+    #################################### end subnetwork 2 ####################################
+
+    ################################# begin subnetwork 3 ####################################
+    model.basin.add(Node(15, Point(3.5, 1.5), subnetwork_id=3), basin_data)
+    model.user_demand.add(
+        Node(17, Point(3.5, 2), subnetwork_id=3),
+        [
+            user_demand.Static(
+                demand=[0.1], return_factor=0.0, min_level=0.5, demand_priority=3
+            )
+        ],
+    )
+    ################################# end subnetwork 3 ####################################
+
+    model.link.add(model.flow_boundary[1], model.basin[2])
+    model.link.add(model.basin[2], model.outlet[3])
+    model.link.add(model.basin[2], model.outlet[4])
+    model.link.add(model.outlet[4], model.basin[5])
+    model.link.add(model.basin[5], model.pump[6])
+    model.link.add(model.basin[5], model.outlet[16])
+    model.link.add(model.outlet[16], model.basin[7])
+    model.link.add(model.basin[7], model.outlet[8])
+    model.link.add(model.basin[7], model.outlet[9])
+    model.link.add(model.outlet[9], model.basin[10])
+    model.link.add(model.basin[10], model.outlet[11])
+    model.link.add(model.basin[10], model.user_demand[12])
+    model.link.add(model.user_demand[12], model.basin[10])
+
+    model.link.add(model.level_demand[18], model.basin[2])
+    model.link.add(model.level_demand[18], model.basin[5])
+    model.link.add(model.level_demand[18], model.basin[7])
+    model.link.add(model.level_demand[18], model.basin[10])
+
+    # connect to first subnetwork
+    model.link.add(model.outlet[3], model.basin[13])
+    model.link.add(model.pump[6], model.basin[13])
+    model.link.add(model.basin[13], model.user_demand[14])
+    model.link.add(model.user_demand[14], model.basin[13])
+    model.link.add(model.level_demand[19], model.basin[13])
+
+    # connect to second subnetwork
+    model.link.add(model.outlet[8], model.basin[15])
+    model.link.add(model.outlet[11], model.basin[15])
+    model.link.add(model.basin[15], model.user_demand[17])
+    model.link.add(model.user_demand[17], model.basin[15])
+    model.link.add(model.level_demand[20], model.basin[15])
+
+    return model
+
+
+def small_primary_secondary_network_verification_model() -> Model:
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2020-01-20",
+        crs="EPSG:28992",
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(concentration=True, allocation=True),
+        results=Results(format="netcdf"),
+    )
+
+    basin_data: list[TableModel[Any]] = [
+        basin.Profile(area=300_000.0, level=[0.0, 1.0]),
+        basin.State(level=[0.9]),
+    ]
+
+    model.basin.add(Node(2, Point(1, 0), subnetwork_id=2), basin_data)
+    model.user_demand.add(
+        Node(3, Point(1, 1), subnetwork_id=2),
+        [
+            user_demand.Static(
+                demand=[1.0], return_factor=0.0, min_level=0.5, demand_priority=2
+            )
+        ],
+    )
+    outlet_data = outlet.Static(
+        flow_rate=[3e-3], max_flow_rate=3.0, control_state="Ribasim.allocation"
+    )
+
+    model.outlet.add(
+        Node(4, Point(2, 0), subnetwork_id=2),
+        [outlet_data],
+    )
+
+    model.basin.add(Node(5, Point(3, 0), subnetwork_id=2), basin_data)
+
+    model.user_demand.add(
+        Node(6, Point(3, 1), subnetwork_id=2),
+        [
+            user_demand.Static(
+                demand=[1.0], return_factor=0.0, min_level=0.5, demand_priority=2
+            )
+        ],
+    )
+    model.level_demand.add(
+        Node(7, Point(1, -1), subnetwork_id=2),
+        [level_demand.Static(min_level=[0.5], max_level=1.5, demand_priority=1)],
+    )
+
+    model.link.add(model.basin[2], model.user_demand[3])
+    model.link.add(model.basin[2], model.outlet[4])
+    model.link.add(model.outlet[4], model.basin[5])
+    model.link.add(model.basin[5], model.user_demand[6])
+    model.link.add(model.user_demand[3], model.basin[2])
+    model.link.add(model.user_demand[6], model.basin[5])
+    model.link.add(model.level_demand[7], model.basin[5])
+
+    return model
+
+
+def primary_and_secondary_subnetworks_model() -> Model:
     """Generate a model which consists of a main network and multiple connected subnetworks."""
     model = Model(
         starttime="2020-01-01",
         endtime="2020-03-01",
         crs="EPSG:28992",
         allocation=Allocation(timestep=86400),
-        experimental=Experimental(concentration=True, allocation=True),
+        experimental=Experimental(concentration=False, allocation=True),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -451,7 +736,7 @@ def main_network_with_subnetworks_model() -> Model:
         basin.State(level=[1.0]),
     ]
     large_basin_data: list[TableModel[Any]] = [
-        basin.Profile(area=100000.0, level=[0.0, 1.0]),
+        basin.Profile(area=100000.0, level=[0.0, 10.0]),
         basin.State(level=[10.0]),
     ]
 
@@ -713,9 +998,9 @@ def main_network_with_subnetworks_model() -> Model:
     return model
 
 
-def subnetworks_with_sources_model() -> Model:
+def secondary_networks_with_sources_model() -> Model:
     """Generate a model with subnetworks which contain sources."""
-    model = main_network_with_subnetworks_model()
+    model = primary_and_secondary_subnetworks_model()
 
     model.flow_boundary.add(
         Node(58, Point(3, 5), subnetwork_id=3),
@@ -907,96 +1192,37 @@ def fair_distribution_model():
     """See the behavior of allocation with few restrictions within the graph."""
     model = Model(
         starttime="2020-01-01 00:00:00",
-        endtime="2020-01-07 00:00:00",
+        endtime="2020-01-02 00:00:00",
         crs="EPSG:28992",
         experimental=Experimental(concentration=True, allocation=True),
     )
 
-    model.level_boundary.add(
-        Node(1, Point(0, 0), subnetwork_id=1),
-        [
-            level_boundary.Static(
-                level=[1.0],
-            )
-        ],
+    b = model.basin.add(
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [basin.Profile(level=[0.0, 10.0], area=1000.0), basin.State(level=[1.0])],
     )
 
-    model.pump.add(
-        Node(
-            2,
-            Point(1, 0),
-            subnetwork_id=1,
-        ),
-        [pump.Static(flow_rate=9.0, max_flow_rate=[9.0])],
-    )
+    n_user_demand = 25
 
-    model.basin.add(
-        Node(3, Point(2, 0), subnetwork_id=1),
-        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
-    )
+    for i in range(n_user_demand):
+        theta = 2 * np.pi * i / n_user_demand
+        ud = model.user_demand.add(
+            Node(i + 2, Point(np.cos(theta), np.sin(theta)), subnetwork_id=2),
+            [
+                user_demand.Static(
+                    demand_priority=[1],
+                    # Demands sum to twice the initial storage in the Basin
+                    demand=2000
+                    * (i + 1)
+                    / (0.5 * n_user_demand * (n_user_demand + 1) * 86400),
+                    return_factor=0.0,
+                    min_level=0.0,
+                )
+            ],
+        )
 
-    model.linear_resistance.add(
-        Node(4, Point(3, 0), subnetwork_id=1),
-        [linear_resistance.Static(resistance=[1.0])],
-    )
-
-    model.basin.add(
-        Node(5, Point(4, 0), subnetwork_id=1),
-        [basin.Profile(area=1e3, level=[0.0, 10.0]), basin.State(level=[1.0])],
-    )
-
-    model.user_demand.add(
-        Node(6, Point(2, 1), subnetwork_id=1),
-        [
-            user_demand.Static(
-                demand_priority=[1], demand=1.0, return_factor=1.0, min_level=0.2
-            )
-        ],
-    )
-
-    model.user_demand.add(
-        Node(7, Point(2, -1), subnetwork_id=1),
-        [
-            user_demand.Static(
-                demand_priority=[1], demand=2.0, return_factor=1.0, min_level=0.2
-            )
-        ],
-    )
-
-    model.user_demand.add(
-        Node(8, Point(4, 1), subnetwork_id=1),
-        [
-            user_demand.Static(
-                demand_priority=[1], demand=3.0, return_factor=1.0, min_level=0.2
-            )
-        ],
-    )
-
-    model.user_demand.add(
-        Node(9, Point(4, -1), subnetwork_id=1),
-        [
-            user_demand.Time(
-                demand_priority=1,
-                time=pd.date_range(start="2020-01", end="2021-01", freq="MS"),
-                demand=np.linspace(1.0, 5.0, 13),
-                return_factor=1.0,
-                min_level=0.2,
-            )
-        ],
-    )
-
-    model.link.add(model.level_boundary[1], model.pump[2])
-    model.link.add(model.pump[2], model.basin[3])
-    model.link.add(model.basin[3], model.linear_resistance[4])
-    model.link.add(model.linear_resistance[4], model.basin[5])
-    model.link.add(model.basin[3], model.user_demand[6])
-    model.link.add(model.basin[3], model.user_demand[7])
-    model.link.add(model.basin[5], model.user_demand[8])
-    model.link.add(model.basin[5], model.user_demand[9])
-    model.link.add(model.user_demand[6], model.basin[3])
-    model.link.add(model.user_demand[7], model.basin[3])
-    model.link.add(model.user_demand[8], model.basin[5])
-    model.link.add(model.user_demand[9], model.basin[5])
+        model.link.add(ud, b)
+        model.link.add(b, ud)
 
     return model
 
@@ -1006,7 +1232,7 @@ def allocation_training_model() -> Model:
         starttime="2022-01-01",
         endtime="2023-01-01",
         crs="EPSG:4326",
-        experimental=Experimental(concentration=True, allocation=True),
+        experimental=Experimental(allocation=True),
         interpolation=Interpolation(flow_boundary="linear"),
     )
 
@@ -1281,7 +1507,7 @@ def bommelerwaard_model():
             [tabulated_rating_curve.Static(level=level, flow_rate=[0.0, 0.1, 1.0])],
         )
 
-    for node_id, listen_node_id, greater_than in zip(
+    for node_id, listen_node_id, threshold_high in zip(
         range(45, 52),
         [31, 31, 32, 32, 33, 35, 34],
         [
@@ -1310,7 +1536,7 @@ def bommelerwaard_model():
                     node_id=2 * [node_id],
                     compound_variable_id=2 * [node_id],
                     condition_id=[1, 2],
-                    greater_than=greater_than,
+                    threshold_high=threshold_high,
                 ),
                 discrete_control.Logic(
                     node_id=3 * [node_id],
@@ -1462,7 +1688,7 @@ def allocation_control_model() -> Model:
     )
 
     lb = model.level_boundary.add(
-        Node(1, Point(0, 0), subnetwork_id=1), [level_boundary.Static(level=[1.0])]
+        Node(1, Point(0, 0), subnetwork_id=1), [level_boundary.Static(level=[5.0])]
     )
 
     out = model.outlet.add(
@@ -1710,5 +1936,68 @@ def allocation_off_flow_demand_model() -> Model:
     model.link.add(bsn, pmp)
     model.link.add(pmp, tml)
     model.link.add(fdm, pmp)
+
+    return model
+
+
+def multiple_source_priorities_model() -> Model:
+    """Set up a model to test source prioritization."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+
+    ud = model.user_demand.add(
+        Node(1, Point(10, 10), subnetwork_id=1),
+        [
+            user_demand.Time(
+                demand_priority=2,
+                time=pd.date_range(start="2020-01-01", end="2021-01-01"),
+                demand=np.linspace(0.0, 3.0, num=367),
+                return_factor=0,
+                min_level=0,
+            )
+        ],
+    )
+
+    bsn = model.basin.add(
+        Node(
+            2,
+            Point(10, 9),
+            subnetwork_id=1,
+            source_priority=100000,  # Ignore Basin as source
+        ),
+        [basin.Profile(area=1000, level=[0, 10]), basin.State(level=[2.0])],
+    )
+
+    # The LevelDemand node makes sure that Basins #2 and #9 are not used as sources
+    ld = model.level_demand.add(
+        Node(3, Point(9, 9), subnetwork_id=1),
+        [level_demand.Static(min_level=[2.0], max_level=[2.0], demand_priority=1)],
+    )
+
+    for x in range(9, 12):
+        pmp = model.pump.add(
+            Node(x - 5, Point(x, 8), subnetwork_id=1),
+            [
+                pump.Static(
+                    flow_rate=0, max_flow_rate=[1.0], control_state="Ribasim.allocation"
+                )
+            ],
+        )
+
+        lb = model.level_boundary.add(
+            Node(x - 2, Point(x, 7), subnetwork_id=1, source_priority=3000 + x),
+            [level_boundary.Static(level=[1.0])],
+        )
+
+        model.link.add(pmp, bsn)
+        model.link.add(lb, pmp)
+
+    model.link.add(bsn, ud)
+    model.link.add(ud, bsn)
+    model.link.add(ld, bsn)
 
     return model

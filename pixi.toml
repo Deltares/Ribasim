@@ -1,6 +1,6 @@
 [project]
 name = "Ribasim"
-version = "2025.4.0"
+version = "2025.5.0"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge"]
@@ -14,12 +14,12 @@ repository = "https://github.com/Deltares/Ribasim"
 
 [tasks]
 # Tests
-test-ribasim-python = "pytest --numprocesses=4 -m 'not regression' python/ribasim/tests"
+test-ribasim-python = "pytest --basetemp=python/ribasim/tests/temp --numprocesses=4 -m 'not regression' python/ribasim/tests"
 test-ribasim-python-cov = "pytest --numprocesses=4 --cov=ribasim --cov-report=xml -m 'not regression' python/ribasim/tests"
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
 # Installation
 # Keep Julia version synced with julia.executablePath in .vscode/settings.json
-install-julia = "juliaup add 1.11.6 && juliaup override set 1.11.6"
+install-julia = "juliaup add 1.11.7 && juliaup override set 1.11.7"
 install-pre-commit = "pre-commit install"
 # Note that this has a Windows specific override
 install-ci = { depends-on = ["install-julia", "update-registry-julia"] }
@@ -37,6 +37,9 @@ initialize-julia = { depends-on = [
     "update-registry-julia",
     "instantiate-julia",
 ] }
+initialize-julia-test = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"skip\"])'", depends-on = [
+    "initialize-julia",
+] }
 # Docs
 quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs", inputs = [
     "docs/_quarto.yml",
@@ -48,13 +51,15 @@ quarto-preview = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto prev
     "quartodoc-build",
     "generate-testmodels",
     "initialize-julia",
-] }
+], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "yes", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
 quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
 quarto-render = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto render docs", depends-on = [
     "quartodoc-build",
     "generate-testmodels",
     "initialize-julia",
-], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "no", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
+], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "yes", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
+# Publish pre-rendered docs to ribasim.org; should normally only run on CI on main
+quarto-publish = { cmd = "quarto publish gh-pages --no-render --no-prompt --no-browser", cwd = "docs", env = { "PRE_COMMIT_ALLOW_NO_CONFIG" = "1" } }
 docs = { depends-on = ["quarto-preview"] }
 # Lint
 mypy-ribasim-python = "mypy python/ribasim/ribasim"
@@ -112,7 +117,7 @@ generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
     "generated_testmodels",
 ] }
 tests = { depends-on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
-delwaq = { cmd = "pytest python/ribasim/tests/test_delwaq.py" }
+delwaq = { cmd = "pytest --basetemp=python/ribasim/ribasim/delwaq/model python/ribasim/tests/test_delwaq.py" }
 gen-delwaq = { cmd = "python python/ribasim/ribasim/delwaq/generate.py" }
 model-integration-test = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"integration\"])'", depends-on = [
     { task = "s3-download", args = [
@@ -143,19 +148,9 @@ publish-ribasim-python = { cmd = "twine upload dist/*", cwd = "python/ribasim", 
 publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api", depends-on = [
     "build-ribasim-api-wheel",
 ] }
-# QGIS
-qgis = "qgis --profiles-path .pixi/qgis_env"
-install-ribasim-qgis = "python ribasim_qgis/scripts/install_ribasim_qgis.py"
-install-imod-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py iMOD && python ribasim_qgis/scripts/enable_plugin.py imodqgis"
-install-plugin-reloader-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py \"Plugin Reloader\" && python ribasim_qgis/scripts/enable_plugin.py plugin_reloader"
-install-debugvs-qgis = "python ribasim_qgis/scripts/install_qgis_plugin.py debugvs==0.7 && python ribasim_qgis/scripts/enable_plugin.py debug_vs"
+
+
 test-ribasim-qgis-docker = { cmd = "sh ./test.sh", cwd = ".docker" }
-install-qgis-plugins = { depends-on = [
-    "install-plugin-reloader-qgis",
-    "install-ribasim-qgis",
-    "install-imod-qgis",
-    "install-debugvs-qgis",
-] }
 test-ribasim-qgis-ui = { cmd = "python ribasim_qgis/scripts/run_qgis_ui_tests.py", depends-on = [
     "install-ribasim-qgis",
 ] }
@@ -170,20 +165,58 @@ mypy-ribasim-qgis = "mypy ribasim_qgis"
 ribasim-core = { cmd = "julia --project=core --check-bounds=yes -e 'using Ribasim; Ribasim.main(ARGS)'", depends-on = [
     "initialize-julia",
 ] }
-ribasim-core-testmodels = { cmd = "julia --project --check-bounds=yes --threads=4 utils/testmodelrun.jl", depends-on = [
+ribasim-core-testmodels = { cmd = "julia --project --check-bounds=yes utils/testmodelrun.jl", depends-on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
-write-allocation-problems = { cmd = "julia --project --check-bounds=yes --threads=4 utils/write_allocation_problems.jl", depends-on = [
+write-allocation-problems = { cmd = "julia --project --check-bounds=yes utils/write_allocation_problems.jl", depends-on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
-migrate-model = { cmd = "python utils/migrate_model.py {{ input_toml }} {{ output_toml }}", args = [
-    "input_toml",
-    "output_toml",
-] }
+migrate-model = "python utils/migrate_model.py"
+filter-model = "python utils/filter_model.py"
 # Release
 github-release = "python utils/github-release.py"
+
+# QGIS
+[tasks.qgis]
+args = [{ "arg" = "profile_path", "default" = ".pixi/qgis_env" }]
+cmd = "qgis --profiles-path {{ profile_path }}"
+
+[tasks.install-ribasim-qgis]
+args = [{ "arg" = "profile_path", "default" = ".pixi/qgis_env" }]
+cmd = "python ribasim_qgis/scripts/install_ribasim_qgis.py {{ profile_path }}"
+
+[tasks.install-qgis-plugin]
+args = [
+    { "arg" = "package" },
+    { "arg" = "package_name" },
+    { "arg" = "profile_path", "default" = ".pixi/qgis_env" },
+]
+cmd = "python ribasim_qgis/scripts/install_qgis_plugin.py {{ package }} {{ profile_path }} && python ribasim_qgis/scripts/enable_plugin.py {{ package_name }} {{ profile_path }}"
+
+[tasks.install-qgis-plugins]
+args = [{ "arg" = "profile_path", "default" = ".pixi/qgis_env" }]
+depends-on = [
+    { "task" = "install-qgis-plugin", "args" = [
+        "Plugin\\ Reloader",
+        "plugin_reloader",
+        " {{ profile_path }} ",
+    ] },
+    { "task" = "install-ribasim-qgis", "args" = [
+        " {{ profile_path }} ",
+    ] },
+    { "task" = "install-qgis-plugin", "args" = [
+        "iMOD",
+        "imodqgis",
+        " {{ profile_path }} ",
+    ] },
+    { "task" = "install-qgis-plugin", "args" = [
+        "debugvs==0.7",
+        "debug_vs",
+        " {{ profile_path }} ",
+    ] },
+]
 
 [tasks.generate-sbom-ribasim-core]
 cmd = "julia --project --check-bounds=yes -- utils/generate-sbom.jl"
@@ -227,36 +260,35 @@ scripts = ["utils/unset-ssl-cert.bat"]
 
 [dependencies]
 datacompy = ">=0.16"
-geopandas = "1.0.*"
+geopandas = ">=1.0"
 gh = "*"
 hatch = "*"
 hatchling = "*"
 jinja2 = "*"
 juliaup = "*"
 jupyter = "*"
-matplotlib = ">=3.7"
+matplotlib = ">=3.9"
 minio = "*"
 mypy = "*"
-netcdf4 = "*"
+netcdf4 = ">=1.7.1"
 networkx = ">=3.3"
-numpy = ">=1.25, <2.2"
+numpy = ">=2.0"
 packaging = ">=23.0"
-pandas = ">=2.0"
-pandas-stubs = "*"
+pandas = ">=2.2"
+pandas-stubs = "2.3.0.250703.*"
 pandera = ">=0.25"
 plotly = "*"
 pre-commit = "*"
 pyarrow = ">=17.0"
 pydantic = ">=2.0"
 pydantic-settings = "*"
-pyjuliacall = "*"
+pyjuliacall = ">=0.9.27,<0.10"
 pyogrio = ">=0.8"
 pyqt-stubs = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
-python = ">=3.11"
-qgis = "3.40.*"
+python = ">=3.12"
 qgis-plugin-manager = "*"
 quartodoc = "*"
 ruff = "*"
@@ -266,7 +298,7 @@ teamcity-messages = "*"
 tomli = ">=2.0"
 tomli-w = ">=1.0"
 twine = "*"
-xarray = "*"
+xarray = ">=2023.11"
 xmipy = ">=1.3"
 xugrid = "*"
 
@@ -281,22 +313,27 @@ python-magic = ">=0.4.27"
 [feature.py312.dependencies]
 python = "3.12.*"
 
-[feature.py311.dependencies]
-python = "3.11.*"
+[feature.py313.dependencies]
+python = "3.13.*"
 
 [target.win-64.dependencies]
 rcedit = "*"
+qgis = ">=3.34,<4"
 quarto = "*"
 
 [target.linux-64.dependencies]
+qgis = ">=3.34,<4"
 quarto = "*"
 
 [target.osx-arm64.dependencies]
 quarto = "*"
 
 [environments]
-default = ["py312"]
-py311 = ["py311"]
+default = ["py313"]
+py312 = ["py312"]
 
 [system-requirements]
 linux = "3.10.0"
+
+[activation.env]
+JULIA_CONDAPKG_BACKEND = "Null"
