@@ -203,9 +203,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-attributes anchored" data-number="1.1" data-anchor-id="attributes"><span class="header-section-number">1.1</span> Attributes</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 7%">
+<col style="width: 9%">
 <col style="width: 4%">
-<col style="width: 87%">
+<col style="width: 86%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -269,6 +269,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>autodiff</td>
 <td>bool</td>
 <td>Whether automatic differentiation instead of fine difference is used to compute the Jacobian. (Optional, defaults to true)</td>
+</tr>
+<tr class="even">
+<td>evaporate_mass</td>
+<td>bool</td>
+<td>Whether mass is lost due to evaporation in water quality calculations. (Optional, defaults to true)</td>
+</tr>
+<tr class="odd">
+<td>specialize</td>
+<td>bool</td>
+<td>Trades initialization speed for simulation speed, useful for long-running simulations. (Optional, defaults to false)</td>
 </tr>
 </tbody>
 </table>
