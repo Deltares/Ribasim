@@ -25,18 +25,12 @@ struct Model
 end
 
 """
-Whether to fully specialize the ODEProblem and automatically choose an AD chunk size
-for full runtime performance, or not for improved (compilation) latency.
-"""
-const specialize = @load_preference("specialize", true)
-
-"""
 Get the Jacobian evaluation function via DifferentiationInterface.jl.
 The time derivative is also supplied in case a Rosenbrock method is used.
 """
 function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
     (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
-    backend = get_ad_type(solver; specialize)
+    backend = get_ad_type(solver)
     sparsity_detector = TracerSparsityDetector()
 
     backend_jac = if solver.sparse
@@ -192,7 +186,7 @@ function Model(config::Config)::Model
     du0 = zero(u0)
 
     # The Solver algorithm
-    alg = algorithm(config.solver; u0, specialize)
+    alg = algorithm(config.solver)
 
     # Synchronize level with storage
     set_current_basin_properties!(u0, parameters, t0)
@@ -207,18 +201,9 @@ function Model(config::Config)::Model
     adaptive, dt = convert_dt(config.solver.dt)
 
     jac_prototype, jac, tgrad = get_diff_eval(du0, u0, parameters, config.solver)
-    RHS = ODEFunction{true, specialize ? FullSpecialize : NoSpecialize}(
-        water_balance!;
-        jac_prototype,
-        jac,
-        tgrad,
-    )
-    prob = ODEProblem{true, specialize ? FullSpecialize : NoSpecialize}(
-        RHS,
-        u0,
-        timespan,
-        parameters;
-    )
+    specialize = config.solver.specialize ? FullSpecialize : NoSpecialize
+    RHS = ODEFunction{true, specialize}(water_balance!; jac_prototype, jac, tgrad)
+    prob = ODEProblem{true, specialize}(RHS, u0, timespan, parameters)
     @debug "Setup ODEProblem."
 
     callback, saved = create_callbacks(p_independent, config, saveat)

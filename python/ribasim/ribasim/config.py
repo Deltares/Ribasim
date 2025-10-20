@@ -142,6 +142,10 @@ class Solver(ChildModel):
         Whether a sparse Jacobian matrix is used, which gives a significant speedup for models with >~10 basins.
     autodiff : bool
         Whether automatic differentiation instead of fine difference is used to compute the Jacobian. (Optional, defaults to true)
+    evaporate_mass : bool
+        Whether mass is lost due to evaporation in water quality calculations. (Optional, defaults to true)
+    specialize : bool
+        Trades initialization speed for simulation speed, useful for long-running simulations. (Optional, defaults to false)
     """
 
     algorithm: str = "QNDF"
@@ -156,6 +160,7 @@ class Solver(ChildModel):
     sparse: bool = True
     autodiff: bool = True
     evaporate_mass: bool = True
+    specialize: bool = False
 
 
 class Verbosity(str, Enum):
