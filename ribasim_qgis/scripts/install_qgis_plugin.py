@@ -10,10 +10,24 @@ def install_qgis_plugin(plugin_name: str, profile_path: str) -> None:
     plugin_path.mkdir(parents=True, exist_ok=True)
 
     try:
-        subprocess.check_call(["qgis-plugin-manager", "init"], cwd=plugin_path)
-        subprocess.check_call(["qgis-plugin-manager", "update"], cwd=plugin_path)
+        env = os.environ.copy()
+        env["QGIS_PLUGIN_MANAGER_QGIS_VERSION"] = "3.40"
+
+        subprocess.check_call(["qgis-plugin-manager", "init"], cwd=plugin_path, env=env)
         subprocess.check_call(
-            ["qgis-plugin-manager", "install", plugin_name], cwd=plugin_path
+            ["qgis-plugin-manager", "update"], cwd=plugin_path, env=env
+        )
+        subprocess.check_call(
+            [
+                "qgis-plugin-manager",
+                "install",
+                plugin_name,
+                "--deprecated",
+                "--force",
+                "--upgrade",
+            ],
+            cwd=plugin_path,
+            env=env,
         )
     finally:
         # remove the qgis-manager-plugin cache, because QGIS tries to load it as a plugin
