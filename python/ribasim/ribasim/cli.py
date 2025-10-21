@@ -195,13 +195,46 @@ def _find_cli() -> Path:
     return _download_cli()
 
 
-def run_ribasim(*args: str) -> None:
+def _is_notebook() -> bool:
+    """Check if we're running in a Jupyter or Marimo notebook (not IPython terminal)."""
+    # Check for Marimo first
+    try:
+        import marimo as mo  # type: ignore
+
+        if mo.running_in_notebook():
+            return True
+    except ImportError:
+        pass
+
+    # Check for Jupyter/IPython
+    try:
+        # Try to get IPython instance
+        from IPython.core.getipython import get_ipython
+
+        ipy = get_ipython()
+        if ipy is None:
+            return False
+
+        # Check the shell type
+        shell = ipy.__class__.__name__
+        if shell == "ZMQInteractiveShell":
+            return True  # Jupyter notebook or qtconsole
+        elif shell == "TerminalInteractiveShell":
+            return False  # Terminal running IPython - display() doesn't work well here
+        else:
+            return False  # Other type
+    except (NameError, ImportError):
+        return False  # Standard Python interpreter
+
+
+def run_ribasim(*args: str | Path) -> None:
     """Run the Ribasim CLI executable with the given arguments.
 
     Parameters
     ----------
-    *args : str
-        Arguments to pass to the Ribasim CLI.
+    *args : str | Path
+        Arguments to pass to the Ribasim CLI, such as the path to the TOML file.
+        Pass '--help' to see all options.
 
     Raises
     ------
@@ -212,12 +245,49 @@ def run_ribasim(*args: str) -> None:
     """
     cli_path = _find_cli()
 
-    result = subprocess.run(
-        [str(cli_path), *args], capture_output=True, encoding="utf-8"
-    )
-    print(result.stderr, end="")
-    print(result.stdout, end="")
-    result.check_returncode()
+    # Check if we're running in a Jupyter notebook (not IPython terminal)
+    in_notebook = _is_notebook()
+
+    if in_notebook:
+        # In notebook: use IPython display for better progress bar handling
+        from IPython.display import HTML, display, update_display
+
+        progress_display_id = "ribasim_progress"
+        progress_displayed = False
+
+        with subprocess.Popen(
+            [str(cli_path), *args],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            encoding="utf-8",
+            bufsize=1,
+        ) as proc:
+            if proc.stdout:
+                for line in proc.stdout:
+                    line = line.rstrip()
+                    if line.startswith("Simulating"):
+                        # This is a progress bar line - use display for smooth updates
+                        if not progress_displayed:
+                            display(
+                                HTML(f"<pre>{line}</pre>"),
+                                display_id=progress_display_id,
+                            )
+                            progress_displayed = True
+                        else:
+                            update_display(
+                                HTML(f"<pre>{line}</pre>"),
+                                display_id=progress_display_id,
+                            )
+                    else:
+                        print(line)
+
+        if proc.returncode != 0:
+            raise subprocess.CalledProcessError(proc.returncode, [str(cli_path), *args])
+    else:
+        # In terminal: direct forwarding preserves colors and formatting
+        result = subprocess.run([str(cli_path), *args])
+        result.check_returncode()
 
 
 def main() -> None:
