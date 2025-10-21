@@ -110,7 +110,7 @@ def run_ribasim(
         cli = Path(cli_path)
 
     # Build command arguments
-    args = []
+    args: list[str | Path] = []
 
     if threads is not None:
         args.extend(["--threads", str(threads)])
