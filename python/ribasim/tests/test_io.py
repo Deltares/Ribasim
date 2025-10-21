@@ -183,17 +183,20 @@ def test_node_autoincrement():
     )
 
     model.basin.add(Node(20, Point(0, 0)), [basin.State(level=[1.0])])
-    with pytest.raises(
-        ValueError, match="Node IDs have to be unique, but 20 already exists."
-    ):
-        model.user_demand.add(
-            Node(20, Point(1, 0.5)),
-            [
-                user_demand.Static(
-                    demand=[1e-4], return_factor=0.9, min_level=0.9, demand_priority=1
-                )
-            ],
-        )
+
+    # When adding a node with an existing ID, it should replace the old one
+    model.user_demand.add(
+        Node(20, Point(1, 0.5)),
+        [
+            user_demand.Static(
+                demand=[1e-4], return_factor=0.9, min_level=0.9, demand_priority=1
+            )
+        ],
+    )
+    # Node 20 should now be a user_demand, not a basin
+    assert 20 in model.user_demand.node.df.index
+    # Basin node table should be empty (None) since we replaced its only node
+    assert model.basin.node.df is None or 20 not in model.basin.node.df.index
 
     nbasin = model.basin.add(Node(geometry=Point(0, 0)), [basin.State(level=[1.0])])
     assert nbasin.node_id == 21
