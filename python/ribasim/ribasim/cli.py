@@ -5,28 +5,20 @@ import subprocess
 from pathlib import Path
 
 
-def _find_cli() -> Path:
+def _find_cli() -> Path | None:
     """Find the Ribasim CLI executable on PATH.
 
     Returns
     -------
-    Path
-        Path to the Ribasim CLI executable.
-
-    Raises
-    ------
-    FileNotFoundError
-        If the Ribasim CLI is not found on PATH.
+    Path | None
+        Path to the Ribasim CLI executable, or None if not found.
     """
     cli_path = shutil.which("ribasim")
 
     if cli_path is not None:
         return Path(cli_path)
 
-    raise FileNotFoundError(
-        "Ribasim CLI executable 'ribasim' not found on PATH. "
-        "Please ensure Ribasim is installed and available on your PATH."
-    )
+    return None
 
 
 def _is_notebook() -> bool:
@@ -106,8 +98,18 @@ def run_ribasim(
     """
     if cli_path is None:
         cli = _find_cli()
+        if cli is None:
+            raise FileNotFoundError(
+                "Ribasim CLI executable 'ribasim' not found on PATH. "
+                "Please ensure Ribasim is installed and available on your PATH."
+            )
     else:
         cli = Path(cli_path)
+        if not cli.exists():
+            raise FileNotFoundError(
+                f"Ribasim CLI executable not found at '{cli_path}'. "
+                "Please ensure the path is correct."
+            )
 
     # Build command arguments
     args: list[str | Path] = []
