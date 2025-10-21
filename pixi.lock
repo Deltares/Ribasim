@@ -25001,7 +25001,7 @@ packages:
 - pypi: ./python/ribasim
   name: ribasim
   version: 2025.5.0
-  sha256: e23121ef170746671f39cd4a7eab9e8a1bb8f627aad92fe3dcbd3cf8fb42efa2
+  sha256: a04bfab0069c19d26f96c306d3ffa5f8624f51a301e81602ec309a6db60e314a
   requires_dist:
   - datacompy>=0.16
   - geopandas>=1.0
@@ -25011,7 +25011,6 @@ packages:
   - packaging>=23.0
   - pandas>=2.2
   - pandera>=0.25
-  - platformdirs>=4.0
   - pyarrow>=17.0
   - pydantic>=2.0
   - pyogrio>=0.8
