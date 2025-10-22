@@ -368,10 +368,13 @@ function allocate_flows_to_subnetwork(
                 JuMP.value(primary_problem[:flow][link]) * primary_network.scaling.flow /
                 secondary_network.scaling.flow
 
-            JuMP.fix(
+            JuMP.set_upper_bound(
                 secondary_network.problem[:flow][link],
                 allocated_flow_value;
-                force = true,
+            )
+            JuMP.set_lower_bound(
+                secondary_network.problem[:flow][link],
+                allocated_flow_value,
             )
         end
     end
