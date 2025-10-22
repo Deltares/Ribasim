@@ -25,7 +25,7 @@ changelog=https://ribasim.org/changelog
 # Tags are comma separated with spaces allowed
 tags=hydrology, water, water resources, model, julia
 
-homepage=https://ribasim.org/
+homepage=https://ribasim.org/guide/qgis
 category=Plugins
 icon=icon.png
 # experimental flag
