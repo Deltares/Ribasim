@@ -214,8 +214,8 @@ def test_node_autoincrement():
     assert nbasin.node_id == 101
 
 
-def test_remove_node_id():
-    """Test the _remove_node_id method with various scenarios."""
+def test_add_existing():
+    """Test replacement on add and `_remove_node_id`."""
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
@@ -224,7 +224,13 @@ def test_remove_node_id():
 
     # Add multiple basins
     model.basin.add(Node(10, Point(0, 0)), [basin.State(level=[1.0])])
+    model.basin.add(Node(10, Point(0, 1)), [basin.State(level=[1.1])])
     model.basin.add(Node(11, Point(1, 0)), [basin.State(level=[2.0])])
+
+    # Check that node_id 10 has the updated Point(0, 1) and level=1.1
+    assert model.basin.node.df.loc[10, "geometry"] == Point(0, 1)
+    state = model.basin.state.df
+    assert state.loc[state["node_id"] == 10, "level"].iloc[0] == [1.1]
 
     # Add a terminal
     model.terminal.add(Node(20, Point(0, 1)))
