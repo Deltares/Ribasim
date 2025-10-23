@@ -270,35 +270,6 @@ class MultiNodeModel(NodeModel):
         self.node.filter(self.__class__.__name__)
         return self
 
-    def _remove_node_id(self, node_id: int) -> None:
-        """Remove a node ID from this MultiNodeModel's tables.
-
-        Parameters
-        ----------
-        node_id : int
-            The node ID to remove
-        """
-        # Remove from node table
-        if self.node.df is not None and node_id in self.node.df.index:
-            self.node.df = self.node.df.drop(node_id)
-            # Reset to None if dataframe is empty
-            if self.node.df.empty:
-                self.node.df = None
-
-        # Remove from all associated data tables (static, time, etc.)
-        for field_name, field_info in self.__class__.model_fields.items():
-            if field_name == "node" or field_name.startswith("_"):
-                continue
-
-            attr = getattr(self, field_name)
-            if isinstance(attr, TableModel) and attr.df is not None:
-                # Filter out rows with this node_id
-                if "node_id" in attr.df.columns:
-                    attr.df = attr.df[attr.df["node_id"] != node_id]
-                    # Reset to None if dataframe is empty
-                    if attr.df.empty:
-                        attr.df = None
-
     def add(
         self,
         node: Node,
@@ -306,8 +277,7 @@ class MultiNodeModel(NodeModel):
     ) -> NodeData:
         """Add a node and the associated data to the model.
 
-        If a node with the same ID already exists (even of a different type),
-        it will be removed first along with all its associated data.
+        If a node with the same Node ID already exists, it will be replaced.
 
         Parameters
         ----------
@@ -328,13 +298,8 @@ class MultiNodeModel(NodeModel):
         if node_id is None:
             node_id = self._parent._used_node_ids.new_id()
         elif node_id in self._parent._used_node_ids:
-            # Remove the existing node from all node types (check all, not just non-empty)
-            for field_name in self._parent.__class__.model_fields.keys():
-                attr = getattr(self._parent, field_name)
-                if isinstance(attr, MultiNodeModel):
-                    attr._remove_node_id(node_id)
-            # Also remove from UsedIDs
-            self._parent._used_node_ids.node_ids.discard(node_id)
+            # Remove the existing node from all node types and their tables
+            self._parent._remove_node_id(node_id)
 
         assert hasattr(self._parent, "crs")
         for table in tables:
