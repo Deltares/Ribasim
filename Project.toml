@@ -84,4 +84,3 @@ Ribasim = {path = "core"}
 
 [preferences.Ribasim]
 precompile_workload = false
-specialize = false

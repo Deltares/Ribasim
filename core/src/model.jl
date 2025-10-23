@@ -105,7 +105,7 @@ function Model(config::Config)::Model
     du0 = zero(u0)
 
     # The Solver algorithm
-    alg = algorithm(config.solver; specialize)
+    alg = algorithm(config.solver)
 
     # Synchronize level with storage
     set_current_basin_properties!(p_independent.u_reduced, parameters, t0)
@@ -119,16 +119,12 @@ function Model(config::Config)::Model
     tstops = sort(unique(reduce(vcat, tstops)))
     adaptive, dt = convert_dt(config.solver.dt)
 
-    RHS = ODEFunction{true, specialize ? FullSpecialize : NoSpecialize}(
+    specialize = config.solver.specialize ? FullSpecialize : NoSpecialize
+    RHS = ODEFunction{true, specialize}(
         water_balance!;
         get_diff_eval(du0, parameters, config.solver)...,
     )
-    prob = ODEProblem{true, specialize ? FullSpecialize : NoSpecialize}(
-        RHS,
-        u0,
-        timespan,
-        parameters;
-    )
+    prob = ODEProblem{true, specialize}(RHS, u0, timespan, parameters;)
     @debug "Setup ODEProblem."
 
     callback, saved = create_callbacks(p_independent, config, saveat)

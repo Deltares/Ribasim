@@ -21,7 +21,8 @@ using OrdinaryDiffEqTsit5: Tsit5
 using OrdinaryDiffEqSDIRK: ImplicitEuler, KenCarp4, TRBDF2
 using OrdinaryDiffEqBDF: FBDF, QNDF
 using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
-using LinearSolve: KLUFactorization, SciMLLinearSolveAlgorithm, LinearSolve
+using LinearSolve:
+    KLUFactorization, SciMLLinearSolveAlgorithm, LinearSolve, SciMLLinearSolveAlgorithm
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
@@ -137,6 +138,7 @@ end
     sparse::Bool = true
     autodiff::Bool = true
     evaporate_mass::Bool = true
+    specialize::Bool = false
 end
 
 @option struct Interpolation <: TableOption
@@ -358,22 +360,27 @@ function function_accepts_kwarg(f, kwarg)::Bool
     return false
 end
 
-function get_ad_type(solver::Solver; specialize = true)
+function get_ad_type(solver::Solver)
+    chunksize = solver.specialize ? nothing : 1
     if solver.autodiff
-        AutoForwardDiff(; chunksize = specialize ? nothing : 1, tag = :Ribasim)
+        AutoForwardDiff(; chunksize, tag = :Ribasim)
     else
         AutoFiniteDiff()
     end
 end
 
-struct RibasimLinearSolve{A} <: SciMLLinearSolveAlgorithm
-    algorithm::A
+"""
+A wrapper of a SciMLLinearSolveAlgorithm to dispatch on for the specialized Jacobian
+matrix of Ribasim.
+"""
+struct RibasimLinearSolve{AType <: SciMLLinearSolveAlgorithm} <: SciMLLinearSolveAlgorithm
+    algorithm::AType
 end
 
 LinearSolve.needs_concrete_A(::RibasimLinearSolve) = false
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
-function algorithm(solver::Solver; specialize = true)::OrdinaryDiffEqAlgorithm
+function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     kwargs = Dict{Symbol, Any}()
     algotype = algorithms[solver.algorithm]
 
@@ -389,7 +396,7 @@ function algorithm(solver::Solver; specialize = true)::OrdinaryDiffEqAlgorithm
     end
 
     if function_accepts_kwarg(algotype, :autodiff)
-        kwargs[:autodiff] = get_ad_type(solver; specialize)
+        kwargs[:autodiff] = get_ad_type(solver)
     end
 
     algotype(; kwargs...)

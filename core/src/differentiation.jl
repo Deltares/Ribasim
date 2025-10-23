@@ -11,11 +11,13 @@ the Basin storages, and this is the only way these states are used in the RHS. T
 `f(u) = g(A*u)` where `A` is a highly sparse matrix with the following structure:
 
     ⎡ max one 1 and ⎢         ⎢         ⎢  ⠀⎤
-    ⎢ one -1 per    ⎢    I    ⎢    I    ⎢ 0 ⎢      Basin rows
+    ⎢ one -1 per    ⎢   -I    ⎢   -I    ⎢ 0 ⎢      Basin rows
 A = ⎢ col by graph  ⎢  evap.  ⎢  infl.  ⎢   ⎢
     ⎢---------------⎢---------⎢---------⎢---⎢
     ⎣       0       ⎢    0    ⎢    0    ⎢ I⠀⎦      PID integral rows
 
+The upper left section of `A` depends on the graph of the model. The evaporation and infiltration sections are simply
+identity matrices multiplied by -1, subtracting these fluxes from the corresponding Basin Storages.
 We call `u_reduced = A*u`. The matrix `A` is never explicitly constructed in the code (not even as a `SparseMatrixCSC`).
 Instead, the matrix-vector multiplication `A*u` is defined in the function `reduce_state!`.
 
@@ -30,7 +32,8 @@ of `water_balance!`. We denote the Jacobian of `g` as `J_intermediate`. The cust
 `HalfLazyJacobian`, which contains the parameters to implicitly define `A` and other parameters needed for AD Jacobian evaluation.
 
 It turns out that we can make use of this structure of the Jacobian in the linear solve as well. The linear system is of the form
-`Wa = b`, where `W = -γ⁻¹I - J_intermediate*A`. It turns out this special form of the Jacobian can be utilized to solve the linear system in 2
+`Wa = b`, where `W = -γ⁻¹I - J_intermediate*A`, as explained in https://book.sciml.ai/notes/09-Solving_Stiff_Ordinary_Differential_Equations/.
+It turns out this special form of the Jacobian can be utilized to solve the linear system in 2
 steps:
 - Solve `(-γ⁻¹I - A * J_intermediate)*c = A*b` for `c`,
 - Compute `a = -γ * (b + J_intermediate * c)`.
@@ -347,19 +350,13 @@ function get_jacobian!(J::HalfLazyJacobian, du, u, p, t, prep, backend)
 end
 
 """
-Whether to fully specialize the ODEProblem and automatically choose an AD chunk size
-for full runtime performance, or not for improved (compilation) latency.
-"""
-const specialize = @load_preference("specialize", true)
-
-"""
 Get the Jacobian evaluation function via DifferentiationInterface.jl.
 The time derivative is also supplied in case a Rosenbrock method is used.
 """
 function get_diff_eval(du::CVector, p::Parameters, solver::Solver)
     (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
     (; u_reduced) = p_independent
-    backend = get_ad_type(solver; specialize)
+    backend = get_ad_type(solver)
     sparsity_detector = TracerSparsityDetector()
     # Use non-zero u to avoid missing connections in the sparsity
     u_reduced_ = copy(u_reduced)

@@ -180,23 +180,27 @@ github-release = "python utils/github-release.py"
 
 # QGIS
 [tasks.qgis]
-args = [{ "arg" = "profile_path", "default" = ".pixi/qgis_env" }]
-cmd = "qgis --profiles-path {{ profile_path }}"
+args = [{ "arg" = "profiles_path", "default" = ".pixi/qgis_env" }]
+cmd = "qgis --profiles-path {{ profiles_path }}"
 
 [tasks.install-ribasim-qgis]
-args = [{ "arg" = "profile_path", "default" = ".pixi/qgis_env" }]
+args = [
+    { "arg" = "profile_path", "default" = ".pixi/qgis_env/profiles/default" },
+]
 cmd = "python ribasim_qgis/scripts/install_ribasim_qgis.py {{ profile_path }}"
 
 [tasks.install-qgis-plugin]
 args = [
     { "arg" = "package" },
     { "arg" = "package_name" },
-    { "arg" = "profile_path", "default" = ".pixi/qgis_env" },
+    { "arg" = "profile_path", "default" = ".pixi/qgis_env/profiles/default" },
 ]
 cmd = "python ribasim_qgis/scripts/install_qgis_plugin.py {{ package }} {{ profile_path }} && python ribasim_qgis/scripts/enable_plugin.py {{ package_name }} {{ profile_path }}"
 
 [tasks.install-qgis-plugins]
-args = [{ "arg" = "profile_path", "default" = ".pixi/qgis_env" }]
+args = [
+    { "arg" = "profile_path", "default" = ".pixi/qgis_env/profiles/default" },
+]
 depends-on = [
     { "task" = "install-qgis-plugin", "args" = [
         "Plugin\\ Reloader",
@@ -212,7 +216,7 @@ depends-on = [
         " {{ profile_path }} ",
     ] },
     { "task" = "install-qgis-plugin", "args" = [
-        "debugvs==0.7",
+        "debugvs",
         "debug_vs",
         " {{ profile_path }} ",
     ] },
@@ -289,7 +293,6 @@ pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
 python = ">=3.12"
-qgis-plugin-manager = "*"
 quartodoc = "*"
 ruff = "*"
 rust = "*"
@@ -309,6 +312,7 @@ ribasim_api = { path = "python/ribasim_api", editable = true }
 ribasim_testmodels = { path = "python/ribasim_testmodels", editable = true }
 sbom4python = ">=0.12.3"
 python-magic = ">=0.4.27"
+qgis-plugin-manager = ">=1.7.2"
 
 [feature.py312.dependencies]
 python = "3.12.*"
