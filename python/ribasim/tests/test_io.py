@@ -195,8 +195,10 @@ def test_node_autoincrement():
     )
     # Node 20 should now be a user_demand, not a basin
     assert 20 in model.user_demand.node.df.index
-    # Basin node table should be empty (None) since we replaced its only node
-    assert model.basin.node.df is None or 20 not in model.basin.node.df.index
+    assert 20 in model.user_demand.static.df["node_id"].to_numpy()
+    # Basin tables should be None since we replaced its only node
+    assert model.basin.node.df is None
+    assert model.basin.state.df is None
 
     nbasin = model.basin.add(Node(geometry=Point(0, 0)), [basin.State(level=[1.0])])
     assert nbasin.node_id == 21
@@ -210,6 +212,52 @@ def test_node_autoincrement():
 
     nbasin = model.basin.add(Node(geometry=Point(0, 0)), [basin.State(level=[1.0])])
     assert nbasin.node_id == 101
+
+
+def test_remove_node_id():
+    """Test the _remove_node_id method with various scenarios."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+    )
+
+    # Add multiple basins
+    model.basin.add(Node(10, Point(0, 0)), [basin.State(level=[1.0])])
+    model.basin.add(Node(11, Point(1, 0)), [basin.State(level=[2.0])])
+
+    # Add a terminal
+    model.terminal.add(Node(20, Point(0, 1)))
+
+    # Add user demands with static data
+    model.user_demand.add(
+        Node(30, Point(0, 2)),
+        [
+            user_demand.Static(
+                demand=[1e-4], return_factor=0.9, min_level=0.9, demand_priority=1
+            )
+        ],
+    )
+
+    # Remove one Basin, not all
+    model._remove_node_id(11)
+    assert len(model.basin.node.df) == 1
+    assert 10 in model.basin.node.df.index
+    assert 11 not in model.basin.node.df.index
+    assert (model.basin.state.df["node_id"] == 10).any()
+    assert not (model.basin.state.df["node_id"] == 11).any()
+
+    # Remove the only Terminal
+    model._remove_node_id(20)
+    assert model.terminal.node.df is None
+
+    # Remove the only UserDemand
+    model._remove_node_id(30)
+    assert model.user_demand.node.df is None
+    assert model.user_demand.static.df is None
+
+    # Do nothing if the node doesn't exist
+    model._remove_node_id(999)
 
 
 def test_node_autoincrement_existing_model(basic, tmp_path):

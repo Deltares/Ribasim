@@ -299,7 +299,7 @@ class MultiNodeModel(NodeModel):
             node_id = self._parent._used_node_ids.new_id()
         elif node_id in self._parent._used_node_ids:
             # Remove the existing node from all node types and their tables
-            self._parent._remove_node_id(node_id)
+            self._parent._remove_node_id(node_id)  # type: ignore[attr-defined]
 
         assert hasattr(self._parent, "crs")
         for table in tables:
