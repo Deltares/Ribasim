@@ -1,3 +1,4 @@
+import logging
 import numbers
 from collections.abc import Sequence
 from enum import Enum
@@ -298,6 +299,7 @@ class MultiNodeModel(NodeModel):
         if node_id is None:
             node_id = self._parent._used_node_ids.new_id()
         elif node_id in self._parent._used_node_ids:
+            logging.warning(f"Replacing node #{node_id}")
             # Remove the existing node from all node types and their tables
             self._parent._remove_node_id(node_id)  # type: ignore[attr-defined]
 
