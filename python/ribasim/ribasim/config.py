@@ -1,3 +1,4 @@
+import logging
 import numbers
 from collections.abc import Sequence
 from enum import Enum
@@ -277,15 +278,12 @@ class MultiNodeModel(NodeModel):
     ) -> NodeData:
         """Add a node and the associated data to the model.
 
+        If a node with the same Node ID already exists, it will be replaced.
+
         Parameters
         ----------
         node : Ribasim.Node
         tables : Sequence[TableModel[Any]] | None
-
-        Raises
-        ------
-        ValueError
-            When the given node ID already exists
         """
         if tables is None:
             tables = []
@@ -301,9 +299,9 @@ class MultiNodeModel(NodeModel):
         if node_id is None:
             node_id = self._parent._used_node_ids.new_id()
         elif node_id in self._parent._used_node_ids:
-            raise ValueError(
-                f"Node IDs have to be unique, but {node_id} already exists."
-            )
+            logging.warning(f"Replacing node #{node_id}")
+            # Remove the existing node from all node types and their tables
+            self._parent._remove_node_id(node_id)  # type: ignore[attr-defined]
 
         assert hasattr(self._parent, "crs")
         for table in tables:
