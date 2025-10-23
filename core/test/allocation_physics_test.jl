@@ -207,14 +207,16 @@ end
     model_1 = Ribasim.run(toml_path_1)
     model_2 = Ribasim.run(toml_path_2)
 
-    allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model_1))
-    allocation_flow_table_v = DataFrame(Ribasim.allocation_flow_data(model_2))
+    flow_results_multiple_subnetwork = DataFrame(Ribasim.allocation_flow_data(model_1))
+    flow_results_single_subnetwork = DataFrame(Ribasim.allocation_flow_data(model_2))
 
     # Assert that the flows over all links are the same
-    for link_id in unique(allocation_flow_table.link_id)
-        multiple_subs = filter(:link_id => ==(link_id), allocation_flow_table).flow_rate
-        single_sub = filter(:link_id => ==(link_id), allocation_flow_table_v).flow_rate
-        if !all(isapprox.(multiple_subs, single_sub; rtol = 1e-2))
+    for link_id in unique(flow_results_multiple_subnetwork.link_id)
+        multiple_subs =
+            filter(:link_id => ==(link_id), flow_results_multiple_subnetwork).flow_rate
+        single_sub =
+            filter(:link_id => ==(link_id), flow_results_single_subnetwork).flow_rate
+        if !all(isapprox.(multiple_subs, single_sub; atol = 1e-8))
             println("Link $link_id does not match")
             @test false
         end

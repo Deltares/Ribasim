@@ -945,7 +945,7 @@ function has_demand_priority_subnetwork(
     p_independent::ParametersIndependent,
     node_ids_in_subnetwork::NodeIDsInSubnetwork,
 )::Vector{Bool}
-    (; allocation, graph, user_demand, flow_demand, level_demand) = p_independent
+    (; allocation, user_demand, flow_demand, level_demand) = p_independent
     (; demand_priorities_all) = allocation
     (;
         user_demand_ids_subnetwork,

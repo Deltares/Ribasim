@@ -540,7 +540,7 @@ def medium_primary_secondary_network_model() -> Model:
     # Inlet
     model.flow_boundary.add(
         Node(1, Point(0.0, 0.0), subnetwork_id=1),
-        [flow_boundary.Static(flow_rate=[0.09])],
+        [flow_boundary.Static(flow_rate=[0.08])],
     )
 
     # first basin
@@ -602,7 +602,7 @@ def medium_primary_secondary_network_model() -> Model:
         Node(12, Point(4.5, 0), subnetwork_id=1),
         [
             user_demand.Static(
-                demand=[0.05], return_factor=0.0, min_level=0.0, demand_priority=3
+                demand=[0.03], return_factor=0.0, min_level=0.0, demand_priority=3
             )
         ],
     )
@@ -620,7 +620,7 @@ def medium_primary_secondary_network_model() -> Model:
         Node(14, Point(1.5, 2), subnetwork_id=2),
         [
             user_demand.Static(
-                demand=[0.1], return_factor=0.0, min_level=0.0, demand_priority=3
+                demand=[0.03], return_factor=0.0, min_level=0.0, demand_priority=3
             )
         ],
     )
@@ -633,7 +633,7 @@ def medium_primary_secondary_network_model() -> Model:
         Node(17, Point(3.5, 2), subnetwork_id=3),
         [
             user_demand.Static(
-                demand=[0.1], return_factor=0.0, min_level=0.0, demand_priority=3
+                demand=[0.03], return_factor=0.0, min_level=0.0, demand_priority=3
             )
         ],
     )

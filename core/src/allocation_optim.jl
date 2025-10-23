@@ -709,7 +709,12 @@ function optimize_multi_objective!(
         for link in primary_network_connections
             if type == AllocationObjectiveType.demand_flow ||
                type == AllocationObjectiveType.demand_storage
-                demand = JuMP.value(problem[:flow][link])
+                previous_demand = 0
+                if demand_priority_idx > 1
+                    previous_demand =
+                        secondary_model.secondary_network_demand[link][demand_priority_idx - 1]
+                end
+                demand = JuMP.value(problem[:flow][link]) - previous_demand
                 secondary_model.secondary_network_demand[link][demand_priority_idx] = demand
             end
         end
