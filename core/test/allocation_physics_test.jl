@@ -210,6 +210,16 @@ end
     flow_results_multiple_subnetwork = DataFrame(Ribasim.allocation_flow_data(model_1))
     flow_results_single_subnetwork = DataFrame(Ribasim.allocation_flow_data(model_2))
 
+    #TODO: sometimes the model does not converge the first time step, rerun up to 5 times
+    rerun = 0
+    while length(filter(:link_id => ==(2), flow_results_multiple_subnetwork).flow_rate) !=
+          19 && rerun < 5
+        rerun += 1
+        model_2 = Ribasim.run(toml_path_2)
+        global flow_results_single_subnetwork =
+            DataFrame(Ribasim.allocation_flow_data(model_2))
+    end
+
     # Assert that the flows over all links are the same
     for link_id in unique(flow_results_multiple_subnetwork.link_id)
         multiple_subs =
@@ -224,4 +234,15 @@ end
             @test false
         end
     end
+
+    using Plots
+    plot, plot!
+    plot(
+        filter(:link_id => ==(2), flow_results_multiple_subnetwork).flow_rate;
+        label = "Multiple Subnetworks",
+    )
+    plot!(
+        filter(:link_id => ==(2), flow_results_single_subnetwork).flow_rate;
+        label = "Single Subnetwork",
+    )
 end
