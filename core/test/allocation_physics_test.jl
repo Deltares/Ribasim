@@ -234,15 +234,4 @@ end
             @test false
         end
     end
-
-    using Plots
-    plot, plot!
-    plot(
-        filter(:link_id => ==(2), flow_results_multiple_subnetwork).flow_rate;
-        label = "Multiple Subnetworks",
-    )
-    plot!(
-        filter(:link_id => ==(2), flow_results_single_subnetwork).flow_rate;
-        label = "Single Subnetwork",
-    )
 end
