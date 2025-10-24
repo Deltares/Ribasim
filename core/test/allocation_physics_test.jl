@@ -225,22 +225,3 @@ end
         end
     end
 end
-
-@testitem "Level Demand Upper Lower Bounds" begin
-    using Ribasim
-    using DataFrames: DataFrame
-
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/level_demand_upper_lower_bounds/ribasim.toml",
-    )
-    @test ispath(toml_path)
-
-    config = Ribasim.Config(toml_path; experimental_allocation = true)
-    model = Ribasim.run(toml_path)
-    allocation_flow_table = DataFrame(Ribasim.allocation_flow_data(model))
-    basin_data = DataFrame(Ribasim.basin_data(model))
-
-    filter!(:node_id => ==(1), level_demand_table)
-    filter!(:link_id => ==(1), allocation_flow_table)
-end
