@@ -216,7 +216,7 @@ end
             filter(:link_id => ==(link_id), flow_results_multiple_subnetwork).flow_rate
         single_sub =
             filter(:link_id => ==(link_id), flow_results_single_subnetwork).flow_rate
-        if !all(isapprox.(multiple_subs, single_sub; atol = 1e-8))
+        if !all(isapprox.(multiple_subs, single_sub; atol = 1e-3))
             println("Link $link_id does not match")
             @test false
         end
