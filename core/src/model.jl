@@ -248,8 +248,29 @@ function solve!(model::Model)::Model
     else
         SciMLBase.solve!(integrator)
     end
+    final_progress!(model)
     check_error!(integrator)
     comptime = canonicalize(Millisecond(round(Int, comptime_s * 1000)))
     @info "Computation time: $comptime"
     return model
+end
+
+"""
+Update the progress bar after the simulation.
+
+TODO upstream https://github.com/Deltares/Ribasim/issues/2663
+"""
+function final_progress!(model::Model)::Nothing
+    integrator = model.integrator
+    log_step!(
+        integrator.opts.progress_name,
+        integrator.opts.progress_id,
+        integrator.opts.progress_message,
+        integrator.dt,
+        integrator.u,
+        integrator.p,
+        integrator.t,
+        integrator.sol.prob.tspan,
+    )
+    return nothing
 end

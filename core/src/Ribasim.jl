@@ -30,7 +30,7 @@ using DifferentiationInterface:
 using ForwardDiff: derivative as forward_diff
 
 # Algorithms for solving ODEs.
-using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du
+using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, log_step!
 using OrdinaryDiffEqDifferentiation:
     WOperator, OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
 import ADTypes
