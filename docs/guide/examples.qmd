@@ -4,6 +4,11 @@ jupyter: python3
 ---
 
 ```{python}
+#| eval: false
+from ribasim import run_ribasim
+```
+
+```{python}
 #| include: false
 %run ../run_ribasim.py
 ```
@@ -227,13 +232,14 @@ toml_path = datadir / "basic/ribasim.toml"
 model.write(toml_path)
 ```
 
+## Running a model
+Now run the model:
+
 ```{python}
-#| include: false
 run_ribasim(toml_path)
 ```
 
-## Running a model
-Now run the model. You can open a terminal and run it from there. For example, to run the basic model, input:
+You can also open a terminal and run it from there. For example, to run the basic model, input:
 
 ```bash
 ribasim basic/ribasim.toml
@@ -386,12 +392,12 @@ datadir = Path("data")
 model.write(datadir / "level_range/ribasim.toml")
 ```
 
+Now run the model.
+
 ```{python}
-#| include: false
 run_ribasim(datadir / "level_range/ribasim.toml")
 ```
 
-Now run the model (for running instructions see [here](#running-a-model)).
 After running the model, read back the results:
 
 ```{python}
@@ -526,12 +532,12 @@ datadir = Path("data")
 model.write(datadir / "pid_control/ribasim.toml")
 ```
 
+Now run the model.
+
 ```{python}
-#| include: false
 run_ribasim(datadir / "pid_control/ribasim.toml")
 ```
 
-Now run the model (for running instructions see [here](#running-a-model)).
 After running the model, read back the results:
 
 ```{python}
@@ -762,12 +768,12 @@ datadir = Path("data")
 model.write(datadir / "local_pidcontrolled_cascade/ribasim.toml")
 ```
 
+Now run the model.
+
 ```{python}
-#| include: false
 run_ribasim(datadir / "local_pidcontrolled_cascade/ribasim.toml")
 ```
 
-Now run the model (for running instructions see [here](#running-a-model)).
 After running the model, read back the result to plot the flow of each polder basin.
 
 ```{python}
@@ -938,12 +944,12 @@ toml_path = datadir / "outlet_continuous_control/ribasim.toml"
 model.write(toml_path)
 ```
 
+Now run the model.
+
 ```{python}
-#| include: false
 run_ribasim(toml_path)
 ```
 
-Now run the model (for running instructions see [here](#running-a-model)).
 After running the model, read back the results:
 
 ```{python}

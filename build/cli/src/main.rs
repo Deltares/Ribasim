@@ -34,7 +34,6 @@ fn main() -> ExitCode {
             ),
         );
     }
-    // TODO: Do we need to set LD_LIBRARY_PATH on linux?
 
     // Parse command line arguments
     let cli = Cli::parse();

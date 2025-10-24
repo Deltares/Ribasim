@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 import ribasim
 import ribasim_testmodels
+from ribasim.cli import run_ribasim
 
 executable = Path(__file__).parents[1] / "ribasim" / "ribasim"
 
@@ -119,3 +120,121 @@ def test_threads_cli_overrides_env(tmp_path):
     assert result.returncode == 0
     # Should use CLI value (2), not env var value (3)
     assert "threads = 2" in result.stderr
+
+
+def test_run_ribasim_basic(tmp_path):
+    """Test run_ribasim() with a basic model using cli_path."""
+    model = ribasim_testmodels.basic_model()
+    toml_path = tmp_path / "ribasim.toml"
+    model.write(toml_path)
+
+    # Should run successfully
+    run_ribasim(toml_path, cli_path=executable)
+
+    # Check that results were produced
+    results_path = tmp_path / "results" / "basin.arrow"
+    assert results_path.exists()
+
+
+def test_run_ribasim_with_threads(tmp_path):
+    """Test run_ribasim() with threads argument."""
+    model = ribasim_testmodels.basic_model()
+    toml_path = tmp_path / "ribasim.toml"
+    model.write(toml_path)
+
+    # Pass threads kwarg
+    run_ribasim(toml_path, cli_path=executable, threads=2)
+
+    # Check that threads were set correctly in the log
+    log_path = tmp_path / "results" / "ribasim.log"
+    assert log_path.exists()
+    log_content = log_path.read_text()
+    assert "threads = 2" in log_content
+
+
+def test_run_ribasim_version(capfd):
+    """Test run_ribasim() with version=True."""
+    run_ribasim(version=True, cli_path=executable)
+
+    # Capture the output
+    captured = capfd.readouterr()
+
+    # Check that version output was printed
+    version_pattern = r"ribasim \d{4,}\.\d+\.\d+"
+    assert re.search(version_pattern, captured.out)
+
+
+def test_run_ribasim_no_args():
+    """Test run_ribasim() raises ValueError with no arguments."""
+    with pytest.raises(ValueError, match="Provide a toml_path, or set version=True"):
+        run_ribasim()
+
+
+def test_run_ribasim_not_on_path(tmp_path):
+    """Test run_ribasim() raises FileNotFoundError when ribasim is not on PATH."""
+    model = ribasim_testmodels.basic_model()
+    toml_path = tmp_path / "ribasim.toml"
+    model.write(toml_path)
+
+    # Save and clear PATH
+    old_path = os.environ.get("PATH", "")
+    os.environ["PATH"] = ""
+
+    try:
+        with pytest.raises(
+            FileNotFoundError,
+            match="Ribasim CLI executable 'ribasim' not found on PATH.",
+        ):
+            run_ribasim(toml_path)
+    finally:
+        os.environ["PATH"] = old_path
+
+
+def test_run_ribasim_invalid_model(tmp_path):
+    """Test run_ribasim() raises CalledProcessError on invalid model."""
+    model = ribasim_testmodels.invalid_discrete_control_model()
+    toml_path = tmp_path / "ribasim.toml"
+    model.write(toml_path)
+
+    with pytest.raises(subprocess.CalledProcessError):
+        run_ribasim(toml_path, cli_path=executable)
+
+
+def test_run_ribasim_in_notebook(tmp_path, monkeypatch):
+    """Test run_ribasim() in notebook mode by mocking _subprocess_handling."""
+    from ribasim import cli
+    from ribasim.cli import SubprocessHandling
+
+    model = ribasim_testmodels.basic_model()
+    toml_path = tmp_path / "ribasim.toml"
+    model.write(toml_path)
+
+    # Mock _subprocess_handling to return DISPLAY (notebook mode)
+    monkeypatch.setattr(cli, "_subprocess_handling", lambda: SubprocessHandling.DISPLAY)
+
+    # Should run successfully using the notebook path
+    run_ribasim(toml_path, cli_path=executable)
+
+    # Check that results were produced
+    results_path = tmp_path / "results" / "basin.arrow"
+    assert results_path.exists()
+
+
+def test_run_ribasim_in_spyder(tmp_path, monkeypatch):
+    """Test run_ribasim() in Spyder mode by mocking _subprocess_handling."""
+    from ribasim import cli
+    from ribasim.cli import SubprocessHandling
+
+    model = ribasim_testmodels.basic_model()
+    toml_path = tmp_path / "ribasim.toml"
+    model.write(toml_path)
+
+    # Mock _subprocess_handling to return SPYDER
+    monkeypatch.setattr(cli, "_subprocess_handling", lambda: SubprocessHandling.SPYDER)
+
+    # Should run successfully using the Spyder path
+    run_ribasim(toml_path, cli_path=executable)
+
+    # Check that results were produced
+    results_path = tmp_path / "results" / "basin.arrow"
+    assert results_path.exists()
