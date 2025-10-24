@@ -201,17 +201,38 @@ def test_run_ribasim_invalid_model(tmp_path):
 
 
 def test_run_ribasim_in_notebook(tmp_path, monkeypatch):
-    """Test run_ribasim() in notebook mode by mocking _is_notebook."""
+    """Test run_ribasim() in notebook mode by mocking _subprocess_handling."""
     from ribasim import cli
+    from ribasim.cli import SubprocessHandling
 
     model = ribasim_testmodels.basic_model()
     toml_path = tmp_path / "ribasim.toml"
     model.write(toml_path)
 
-    # Mock _is_notebook to return True
-    monkeypatch.setattr(cli, "_is_notebook", lambda: True)
+    # Mock _subprocess_handling to return DISPLAY (notebook mode)
+    monkeypatch.setattr(cli, "_subprocess_handling", lambda: SubprocessHandling.DISPLAY)
 
     # Should run successfully using the notebook path
+    run_ribasim(toml_path, cli_path=executable)
+
+    # Check that results were produced
+    results_path = tmp_path / "results" / "basin.arrow"
+    assert results_path.exists()
+
+
+def test_run_ribasim_in_spyder(tmp_path, monkeypatch):
+    """Test run_ribasim() in Spyder mode by mocking _subprocess_handling."""
+    from ribasim import cli
+    from ribasim.cli import SubprocessHandling
+
+    model = ribasim_testmodels.basic_model()
+    toml_path = tmp_path / "ribasim.toml"
+    model.write(toml_path)
+
+    # Mock _subprocess_handling to return SPYDER
+    monkeypatch.setattr(cli, "_subprocess_handling", lambda: SubprocessHandling.SPYDER)
+
+    # Should run successfully using the Spyder path
     run_ribasim(toml_path, cli_path=executable)
 
     # Check that results were produced
