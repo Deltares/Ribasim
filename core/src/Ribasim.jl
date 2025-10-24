@@ -31,6 +31,9 @@ using ForwardDiff: derivative as forward_diff
 
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du
+using OrdinaryDiffEqDifferentiation:
+    WOperator, OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
+import ADTypes
 import ForwardDiff
 
 # Interface for defining and solving the ODE problem of the physical layer.
@@ -45,18 +48,22 @@ using SciMLBase:
     get_proposed_dt,
     DEIntegrator,
     FullSpecialize,
-    NoSpecialize
+    NoSpecialize,
+    SciMLOperators,
+    AbstractSciMLOperator,
+    LinearProblem,
+    LinearSolution
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
-using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
+using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector, jacobian_sparsity
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
-using SparseArrays: SparseMatrixCSC, spzeros, sparse
+using SparseArrays: SparseMatrixCSC, spzeros, sparse, nzrange
 
 # Linear algebra
-using LinearAlgebra: mul!
+using LinearAlgebra: LinearAlgebra, mul!
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node
@@ -158,7 +165,7 @@ using Dates: Second
 
 using Printf: @sprintf
 
-using Base.Threads: @threads
+using Base.Threads: @threads, nthreads
 
 export libribasim
 
@@ -176,6 +183,7 @@ include("allocation_init.jl")
 include("allocation_optim.jl")
 include("util.jl")
 include("graph.jl")
+include("differentiation.jl")
 include("model.jl")
 include("read.jl")
 include("write.jl")
