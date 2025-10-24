@@ -23,7 +23,7 @@ def backwater_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
-        solver=ribasim.Solver(autodiff=True),
+        solver=ribasim.Solver(autodiff=True, specialize=True),
         experimental=Experimental(concentration=True),
     )
 

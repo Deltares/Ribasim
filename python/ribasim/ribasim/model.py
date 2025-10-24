@@ -286,6 +286,36 @@ class Model(FileModel):
                     getattr(table.df, function_name)(crs, inplace=True)
         self.crs = crs
 
+    def _remove_node_id(self, node_id: int) -> None:
+        """Remove a node from the model.
+
+        Data for this node ID is removed as well.
+
+        This method is used for replacing nodes with the same ID,
+        hence does not remove links or nodes listening to this node ID.
+
+        Parameters
+        ----------
+        node_id : int
+            The node ID to remove from the model
+        """
+        for sub in self._nodes():
+            assert sub.node.df is not None
+            if node_id in sub.node.df.index:
+                # Remove from node table
+                sub.node.df = sub.node.df.drop(node_id)
+                if sub.node.df.empty:
+                    sub.node.df = None
+
+                # Remove from data tables
+                for table in sub._tables():
+                    if table.df is not None and "node_id" in table.df.columns:
+                        table.df = table.df[table.df["node_id"] != node_id]
+                        if table.df.empty:
+                            table.df = None
+
+                break
+
     def node_table(self) -> NodeTable:
         """Compute the full sorted NodeTable from all node types."""
         df_chunks = [node.node.df for node in self._nodes()]
