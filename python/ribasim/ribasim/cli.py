@@ -15,20 +15,45 @@ class SubprocessHandling(Enum):
     FORWARD = "forward"  # Terminal with direct forwarding
 
 
-def _find_cli() -> Path | None:
-    """Find the Ribasim CLI executable on PATH.
+def _find_cli(cli_path: str | Path | None = None) -> Path:
+    """Find the Ribasim CLI executable on PATH or at cli_path.
+
+    Parameters
+    ----------
+    cli_path : str | Path | None, optional
+        Path to the Ribasim CLI executable. If None, searches PATH.
 
     Returns
     -------
-    Path | None
-        Path to the Ribasim CLI executable, or None if not found.
+    Path
+        Path to the Ribasim CLI executable.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the Ribasim CLI is not found on PATH (when cli_path is None),
+        or if the executable is not found at the specified cli_path.
     """
-    cli_path = shutil.which("ribasim")
+    if cli_path is None:
+        cli = shutil.which("ribasim")
+        if cli is None:
+            raise FileNotFoundError(
+                "Ribasim CLI executable 'ribasim' not found on PATH. "
+                "Please ensure Ribasim is installed and available on your PATH."
+            )
+    else:
+        cli_path = Path(cli_path)
+        # Use shutil.which() to resolve the executable with proper extensions.
+        # This allows users to specify "path/to/ribasim" instead of "path/to/ribasim.exe"
+        # It also gives the absolute paths for clearer error messages.
+        cli = shutil.which(cli_path.name, path=cli_path.parent)
+        if cli is None:
+            raise FileNotFoundError(
+                f"Ribasim CLI executable not found at '{cli}'. "
+                "Please ensure the path is correct."
+            )
 
-    if cli_path is not None:
-        return Path(cli_path)
-
-    return None
+    return Path(cli)
 
 
 def _subprocess_handling() -> SubprocessHandling:
@@ -114,21 +139,6 @@ def run_ribasim(
     >>> run_ribasim("model.toml", cli_path="/path/to/ribasim")
     >>> run_ribasim(version=True)
     """
-    if cli_path is None:
-        cli = _find_cli()
-        if cli is None:
-            raise FileNotFoundError(
-                "Ribasim CLI executable 'ribasim' not found on PATH. "
-                "Please ensure Ribasim is installed and available on your PATH."
-            )
-    else:
-        cli = Path(cli_path)
-        if not cli.exists():
-            raise FileNotFoundError(
-                f"Ribasim CLI executable not found at '{cli_path}'. "
-                "Please ensure the path is correct."
-            )
-
     # Build command arguments
     args: list[str | Path] = []
 
@@ -148,6 +158,7 @@ def run_ribasim(
     else:
         raise ValueError("Provide a toml_path, or set version=True")
 
+    cli = _find_cli(cli_path)
     handling = _subprocess_handling()
 
     if handling == SubprocessHandling.FORWARD:
