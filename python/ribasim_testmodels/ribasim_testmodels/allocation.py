@@ -540,7 +540,7 @@ def medium_primary_secondary_network_model() -> Model:
     # Inlet
     model.flow_boundary.add(
         Node(1, Point(0.0, 0.0), subnetwork_id=1),
-        [flow_boundary.Static(flow_rate=[0.08])],
+        [flow_boundary.Static(flow_rate=[0.09])],
     )
 
     # first basin
