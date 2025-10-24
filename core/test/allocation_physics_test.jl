@@ -215,7 +215,7 @@ end
     while length(filter(:link_id => ==(2), flow_results_multiple_subnetwork).flow_rate) !=
           19 && rerun < 5
         global rerun += 1
-        model_2 = Ribasim.run(toml_path_2)
+        global model_2 = Ribasim.run(toml_path_2)
         global flow_results_single_subnetwork =
             DataFrame(Ribasim.allocation_flow_data(model_2))
     end
