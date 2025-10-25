@@ -4,6 +4,11 @@ jupyter: python3
 ---
 
 ```{python}
+#| eval: false
+from ribasim import run_ribasim
+```
+
+```{python}
 #| include: false
 %run ../run_ribasim.py
 ```
@@ -195,7 +200,6 @@ model.plot();
 ```
 
 ```{python}
-#| include: false
 run_ribasim(toml_path)
 ```
 

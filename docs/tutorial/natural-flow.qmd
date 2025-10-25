@@ -4,6 +4,11 @@ jupyter: python3
 ---
 
 ```{python}
+#| eval: false
+from ribasim import run_ribasim
+```
+
+```{python}
 #| include: false
 %run ../run_ribasim.py
 ```
@@ -240,11 +245,6 @@ After running `model.write` a subfolder `Crystal-1` is created, which contains t
 - ribasim.toml: The model configuration
 - database.gpkg: A GeoPackage containing the network geometry and input data of the nodes used.
 
-```{python}
-#| include: false
-run_ribasim(toml_path)
-```
-
 Now run the model. You can open a terminal and run it from there. For example:
 
 ```bash
@@ -253,16 +253,11 @@ ribasim Crystal-1/ribasim.toml
 
 From Python you can run it with:
 
-```python
-import subprocess
-result = subprocess.run([cli_path, toml_path], capture_output=True, encoding="utf-8")
-print(result.stderr)
-result.check_returncode()
+```{python}
+run_ribasim(toml_path)
 ```
 
-Where `cli_path` is a string with either the full path to the Ribasim executable, like `r"c:\bin\ribasim\ribasim"`, or just `"ribasim"` in case you added the `ribasim` folder to your PATH.
-
-The `print(result.stderr)` ensures you see the same logging and error messages that you would see in the terminal. And `result.check_returncode()` will throw an error when the simulation was not successful.
+By default it will search for `ribasim` in the PATH, but you can supply the `cli_path` keyword argument which points to the `ribasim` executable: `run_ribasim(toml_path, cli_path="bin/ribasim/ribasim.exe")`. Use `run_ribasim(version=True)` to check the version.
 
 ### Post-processing results
 Read the Arrow files and plot the simulated flows from different links and the levels and storages at our confluence point:

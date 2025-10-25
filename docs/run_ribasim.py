@@ -7,6 +7,11 @@ import Ribasim, and define the `run_ribasim` function.
 
 In a file where multiple simulations are run this has the benefit
 of only needing to start Julia once, compared to `subprocess.run`.
+
+Since Ribasim Python also has `run_ribasim`, we can include
+this script in a hidden evaluated cell, and put `from ribasim import run_ribasim`
+in a visible unevaluated cell. That way we can run this version on CI but
+it looks like we run the Ribasim Python version.
 """
 
 from pathlib import Path
