@@ -345,7 +345,10 @@ function preprocess_demand_collection!(
     # Allow the inflow from the primary network to be as large as required
     # (will be restricted when optimizing for the actual allocation)
     for link in p_independent.allocation.primary_network_connections[subnetwork_id]
-        JuMP.set_upper_bound(flow[link], MAX_ABS_FLOW / scaling.flow)
+        JuMP.set_upper_bound(
+            flow[link],
+            flow_capacity_upper_bound(link, p_independent) / scaling.flow,
+        )
         JuMP.set_lower_bound(flow[link], 0)
     end
 
@@ -360,14 +363,19 @@ function allocate_flows_to_subnetwork(
     primary_problem = primary_network.problem
 
     for secondary_network in get_secondary_networks(allocation_models)
-        (; problem, subnetwork_id) = secondary_network
+        for link in primary_network_connections[secondary_network.subnetwork_id]
+            allocated_flow_value =
+                JuMP.value(primary_problem[:flow][link]) * primary_network.scaling.flow /
+                secondary_network.scaling.flow
 
-        for link in primary_network_connections[subnetwork_id]
-            primary_flow = primary_problem[:flow]
-            primary_flow_value = JuMP.value(primary_flow[link])
-            secondary_flow = problem[:flow]
-            JuMP.set_upper_bound(secondary_flow[link], primary_flow_value)
-            JuMP.set_lower_bound(secondary_flow[link], primary_flow_value)
+            JuMP.set_upper_bound(
+                secondary_network.problem[:flow][link],
+                allocated_flow_value;
+            )
+            JuMP.set_lower_bound(
+                secondary_network.problem[:flow][link],
+                allocated_flow_value,
+            )
         end
     end
 end
@@ -444,40 +452,41 @@ function set_secondary_network_demands!(
     # Retrieve variable and constraint collections from the JuMP problem
     average_flow_unit_error = problem[:average_flow_unit_error]
     average_flow_unit_error_constraint = problem[:average_flow_unit_error_constraint]
+    for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
+        if !secondary_model.has_demand_priority[demand_priority_idx]
+            continue
+        end
+        # Objective metadata corresponding to this demand priority
+        (; expression_first) =
+            get_objective_data_of_demand_priority(objectives, demand_priority)
 
-    for link in keys(secondary_model.secondary_network_demand)
-        for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
-            if !secondary_model.has_demand_priority[demand_priority_idx]
-                continue
-            end
-            # Objective metadata corresponding to this demand priority
-            (; expression_first) =
-                get_objective_data_of_demand_priority(objectives, demand_priority)
+        for link in keys(secondary_model.secondary_network_demand)
+            d =
+                secondary_model.secondary_network_demand[link][demand_priority_idx] *
+                secondary_model.scaling.flow / primary_model.scaling.flow
 
-            demand = secondary_model.secondary_network_demand[link][demand_priority_idx]
-
-            # Demand is upper bound of what is allocated
-            JuMP.set_upper_bound(node_allocated[link, demand_priority], demand)
+            # Demand is upper bound of what can be allocated
+            JuMP.set_upper_bound(node_allocated[link, demand_priority], d)
 
             # Set demand in constraint for error term in first objective
             c = node_relative_error_constraint[link, demand_priority]
             error_term_first = node_error[link, demand_priority, :first]
-            JuMP.set_normalized_coefficient(c, error_term_first, demand)
-            JuMP.set_normalized_rhs(c, demand)
+            JuMP.set_normalized_coefficient(c, error_term_first, d)
+            JuMP.set_normalized_rhs(c, d)
 
             # Set demand in first objective expression
-            expression_first.terms[error_term_first] = demand
+            expression_first.terms[error_term_first] = d
 
             # Set demand in definition of average relative flow unit error
             JuMP.set_normalized_coefficient(
                 average_flow_unit_error_constraint[demand_priority],
                 error_term_first,
-                -demand,
+                -d,
             )
             add_to_coefficient!(
                 average_flow_unit_error_constraint[demand_priority],
                 average_flow_unit_error[demand_priority],
-                demand,
+                d,
             )
         end
     end
@@ -700,7 +709,12 @@ function optimize_multi_objective!(
         for link in primary_network_connections
             if type == AllocationObjectiveType.demand_flow ||
                type == AllocationObjectiveType.demand_storage
-                demand = JuMP.value(problem[:flow][link])
+                previous_demand = 0
+                if demand_priority_idx > 1
+                    previous_demand =
+                        secondary_model.secondary_network_demand[link][demand_priority_idx - 1]
+                end
+                demand = JuMP.value(problem[:flow][link]) - previous_demand
                 secondary_model.secondary_network_demand[link][demand_priority_idx] = demand
             end
         end
@@ -746,7 +760,6 @@ function optimize!(allocation_model::AllocationModel, model)::Nothing
                 "Allocation optimization for subnetwork $subnetwork_id at t = $t s is infeasible",
             )
         end
-    elseif termination_status != JuMP.OPTIMAL
     end
 
     return nothing
@@ -1039,7 +1052,8 @@ function update_allocation!(model)::Nothing
         set_simulation_data!(primary_network, integrator)
 
         reset_demand_coefficients(primary_network)
-        for secondary_network in get_secondary_networks(allocation_models)
+        for secondary_network in
+            sort(get_secondary_networks(allocation_models); by = x -> x.subnetwork_id)
             delete_temporary_constraints!(secondary_network)
             preprocess_demand_collection!(secondary_network, p_independent)
             optimize_multi_objective!(
@@ -1062,15 +1076,14 @@ function update_allocation!(model)::Nothing
         delete_temporary_constraints!(allocation_model)
         optimize!(allocation_model, model)
         parse_allocations!(integrator, allocation_model)
-
-        save_flows!(integrator, allocation_model, AllocationOptimizationType.allocate)
-        apply_control_from_allocation!(pump, allocation_model, integrator)
-        apply_control_from_allocation!(outlet, allocation_model, integrator)
-
         # allocate flows optimized from the primary network to the secondary networks
         if is_primary_network(allocation_model.subnetwork_id)
             allocate_flows_to_subnetwork(allocation_models, primary_network_connections)
         end
+
+        save_flows!(integrator, allocation_model, AllocationOptimizationType.allocate)
+        apply_control_from_allocation!(pump, allocation_model, integrator)
+        apply_control_from_allocation!(outlet, allocation_model, integrator)
 
         # Reset cumulative data
         reset_cumulative!(allocation_model)
