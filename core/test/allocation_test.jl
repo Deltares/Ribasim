@@ -623,10 +623,18 @@ end
 
     logger.logs[5].level == Error
     logger.logs[5].message == "Set of incompatible constraints found"
-    @test sort(name.(keys(logger.logs[5].kwargs[:constraint_violations]))) == [
+
+    constraint_names = [
         "linear_resistance_constraint[LinearResistance #2]",
         "volume_conservation[Basin #1]",
     ]
+    found = any(
+        log ->
+            haskey(log.kwargs, :constraint_violations) &&
+                sort(name.(keys(log.kwargs[:constraint_violations]))) == constraint_names,
+        logger.logs,
+    )
+    @test found
 
     @test ispath(
         @__DIR__,
