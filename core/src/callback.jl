@@ -367,7 +367,7 @@ function flow_update_on_link(
     link_src::Tuple{NodeID, NodeID},
 )::Float64
     (; u, uprev, p, t, tprev) = integrator
-    (; flow_boundary, state_ranges) = p.p_independent
+    (; flow_boundary) = p.p_independent
 
     from_id, to_id = link_src
     if from_id == to_id
@@ -381,6 +381,7 @@ function flow_update_on_link(
             0.0
         end
     else
+        state_ranges = getaxes(u)
         flow_idx = get_state_index(state_ranges, link_src)
         u[flow_idx] - uprev[flow_idx]
     end
@@ -505,15 +506,14 @@ function check_water_balance_error!(
 )::Nothing
     (; u, p, t) = integrator
     (; p_independent, state_time_dependent_cache) = p
-    (; u_reduced, state_ranges) = p_independent
     (; current_storage) = state_time_dependent_cache
     (; basin, water_balance_abstol, water_balance_reltol, starttime) = p_independent
     errors = false
+    state_ranges = getaxes(u)
 
     # The initial storage is irrelevant for the storage rate and can only cause
     # floating point truncation errors
-    reduce_state!(u_reduced, u, p_independent)
-    formulate_storages!(u_reduced, p, t; add_initial_storage = false)
+    formulate_storages!(u, p, t; add_initial_storage = false)
 
     evaporation = view(saved_flow.flow, state_ranges.evaporation)
     infiltration = view(saved_flow.flow, state_ranges.infiltration)

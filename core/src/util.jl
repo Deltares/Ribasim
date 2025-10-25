@@ -536,8 +536,11 @@ end
 """
 Set references to all variables that are listened to by discrete/continuous control
 """
-function set_listen_cache_refs!(p_independent::ParametersIndependent)::Nothing
-    (; discrete_control, continuous_control, state_ranges) = p_independent
+function set_listen_cache_refs!(
+    p_independent::ParametersIndependent,
+    state_ranges::StateTuple{UnitRange{Int}},
+)::Nothing
+    (; discrete_control, continuous_control) = p_independent
     compound_variable_sets =
         [discrete_control.compound_variables..., continuous_control.compound_variable]
     errors = false
@@ -703,8 +706,8 @@ end
 function build_state_vector(p_independent::ParametersIndependent)
     # It is assumed that the horizontal flow states come first in
     # p_independent.state_inflow_link and p_independent.state_outflow_link
-    (; state_ranges) = p_independent
     u_ids = state_node_ids(p_independent)
+    state_ranges = count_state_ranges(u_ids)
     data = zeros(length(p_independent.node_id))
     u = CVector(data, state_ranges)
     # Ensure p_independent.node_id, state_ranges and u have the same length and order
@@ -726,32 +729,48 @@ function build_reltol_vector(u0::CVector, reltol::Float64)
     reltolv, mask
 end
 
-function reduce_state!(u_reduced, u, p_independent)::Nothing
-    (; basin) = p_independent
-    (; inflow_ids, outflow_ids) = basin
-    (; combined_cumulative_flows) = u_reduced
-    state_ranges = getaxes(u)
-    u_reduced .= 0
+function build_flow_to_storage(
+    state_ranges::StateTuple{UnitRange{Int}},
+    n_states::Int,
+    basin::Basin,
+    connector_nodes::NamedTuple,
+)::SparseMatrixCSC{Float64,Int}
+    (; user_demand_inflow, user_demand_outflow, evaporation, infiltration) = state_ranges
+    n_basins = length(basin.node_id)
+    flow_to_storage = spzeros(n_basins, n_states)
 
-    @threads for i in eachindex(basin.node_id)
-        for inflow_id in inflow_ids[i]
-            state_idx = get_state_index(state_ranges, inflow_id; inflow = false)
-            isnothing(state_idx) && continue
-            combined_cumulative_flows[i] += u[state_idx]
+    for (node_name, node) in pairs(connector_nodes)
+        if node_name == :user_demand
+            flow_to_storage_node_inflow = view(flow_to_storage, :, user_demand_inflow)
+            flow_to_storage_node_outflow = view(flow_to_storage, :, user_demand_outflow)
+        else
+            state_range = getproperty(state_ranges, node_name)
+            flow_to_storage_node_inflow = view(flow_to_storage, :, state_range)
+            flow_to_storage_node_outflow = flow_to_storage_node_inflow
         end
 
-        for outflow_id in outflow_ids[i]
-            state_idx = get_state_index(state_ranges, outflow_id; inflow = true)
-            isnothing(state_idx) && continue
-            combined_cumulative_flows[i] -= u[state_idx]
-        end
+        for (inflow_link, outflow_link) in zip(node.inflow_link, node.outflow_link)
+            inflow_id, node_id = inflow_link.link
+            if inflow_id.type == NodeType.Basin
+                flow_to_storage_node_inflow[inflow_id.idx, node_id.idx] = -1.0
+            end
 
-        combined_cumulative_flows[i] -= u.evaporation[i]
-        combined_cumulative_flows[i] -= u.infiltration[i]
+            outflow_id = outflow_link.link[2]
+            if outflow_id.type == NodeType.Basin
+                flow_to_storage_node_outflow[outflow_id.idx, node_id.idx] = 1.0
+            end
+        end
     end
 
-    u_reduced.integral .= u.integral
-    return nothing
+    flow_to_storage_evaporation = view(flow_to_storage, :, evaporation)
+    flow_to_storage_infiltration = view(flow_to_storage, :, infiltration)
+
+    for i in 1:n_basins
+        flow_to_storage_evaporation[i, i] = -1.0
+        flow_to_storage_infiltration[i, i] = -1.0
+    end
+
+    return flow_to_storage
 end
 
 """
@@ -850,9 +869,7 @@ Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
     (; current_storage) = p.state_time_dependent_cache
-    (; u_reduced) = p.p_independent
-    reduce_state!(u_reduced, u, p.p_independent)
-    formulate_storages!(u_reduced, p, t)
+    formulate_storages!(u, p, t)
     any(<(0), current_storage)
 end
 
@@ -1069,41 +1086,31 @@ Check whether the inputs u and t are different from the previous call of water_b
 update the boolean flags in p_mutable. In several parts of the calculations in water_balance!,
 caches are only updated if the data they depend on is different from the previous water_balance! call.
 """
-function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
+function check_new_input!(p::Parameters, u::CVector, t::Number)::Nothing
     (; state_time_dependent_cache, time_dependent_cache, p_mutable) = p
+    (; u_prev_call) = state_time_dependent_cache
+    (; t_prev_call) = time_dependent_cache
 
-    # Whether the time dependent cache must be renewed
-    p_mutable.new_time_dependent_cache =
-        !isassigned(time_dependent_cache.t_prev_call, 1) || (
-            t != time_dependent_cache.t_prev_call[1] &&
-            ForwardDiff.partials(t) ==
-            ForwardDiff.partials(time_dependent_cache.t_prev_call[1])
+    p_mutable.new_t =
+        !isassigned(t_prev_call, 1) || (
+            t != t_prev_call[1] &&
+            ForwardDiff.partials(t) == ForwardDiff.partials(t_prev_call[1])
         )
-    time_dependent_cache.t_prev_call[1] = t
+    if p_mutable.new_t
+        time_dependent_cache.t_prev_call[1] = t
+    end
 
-    # Whether the state time dependent cache must be renewed
-    new_t_state_time_dependent_cache =
-        !isassigned(state_time_dependent_cache.t_prev_call, 1) || (
-            t != state_time_dependent_cache.t_prev_call[1] &&
-            ForwardDiff.partials(t) ==
-            ForwardDiff.partials(state_time_dependent_cache.t_prev_call[1])
-        )
-    new_u_state_time_dependent_cache =
-        any(
-            i -> !isassigned(state_time_dependent_cache.u_reduced_prev_call, i),
-            eachindex(u_reduced),
-        ) || any(
+    p_mutable.new_u =
+        any(i -> !isassigned(u_prev_call, i), eachindex(u)) || any(
             i -> !(
-                u_reduced[i] == state_time_dependent_cache.u_reduced_prev_call[i] &&
-                ForwardDiff.partials(u_reduced[i]) ==
-                ForwardDiff.partials(state_time_dependent_cache.u_reduced_prev_call[i])
+                u[i] == u_prev_call[i] &&
+                ForwardDiff.partials(u[i]) == ForwardDiff.partials(u_prev_call[i])
             ),
-            eachindex(u_reduced),
+            eachindex(u),
         )
-    state_time_dependent_cache.u_reduced_prev_call .= u_reduced
-    state_time_dependent_cache.t_prev_call[1] = t
-    p_mutable.new_state_time_dependent_cache =
-        new_t_state_time_dependent_cache || new_u_state_time_dependent_cache
+    if p_mutable.new_u
+        state_time_dependent_cache.u_prev_call .= u
+    end
     return nothing
 end
 
@@ -1114,20 +1121,12 @@ function eval_time_interp(
     p::Parameters,
     t::Number,
 )
-    (; all_nodes_active, new_time_dependent_cache) = p.p_mutable
-    if all_nodes_active
-        # Set to non-zero value to avoid missing
-        # connections during sparsity detection
-        val = one(t)
-        cache[idx] = 1.0
+    if p.p_mutable.new_t
+        val = itp(t)
+        cache[idx] = val
+        return val
     else
-        if new_time_dependent_cache
-            @inbounds val = itp(t)
-            cache[idx] = val
-            return val
-        else
-            return cache[idx]
-        end
+        return cache[idx]
     end
 end
 
@@ -1248,6 +1247,3 @@ function should_skip_update_q(
 
     return control_type != control_type_
 end
-
-thread_node_idxs(node::AbstractParameterNode, thread_id::Int) =
-    thread_id:nthreads():length(node.node_id)
