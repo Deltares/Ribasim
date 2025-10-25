@@ -410,7 +410,7 @@ def outlet_model() -> Model:
 def cyclic_time_model() -> Model:
     model = Model(
         starttime="2020-01-01",
-        endtime="2121-01-01",
+        endtime="3021-01-01",
         crs="EPSG:28992",
         solver=Solver(saveat=7 * 24 * 60 * 60),
         interpolation=Interpolation(flow_boundary="linear"),
@@ -428,7 +428,7 @@ def cyclic_time_model() -> Model:
                     "2020-10-01",
                     "2021-01-01",
                 ],
-                precipitation=[10.0, 20.0, 10.0, 20.0, 10.0],
+                precipitation=[1.0, 2.0, 1.0, 2.0, 1.0],
             ),
             basin.State(level=[5.0]),
         ],
@@ -454,7 +454,7 @@ def cyclic_time_model() -> Model:
         [
             flow_boundary.Time(
                 time=["2020-01-01", "2020-07-01", "2020-08-01"],
-                flow_rate=[10.0, 20.0, 10.0],
+                flow_rate=[1.0, 2.0, 1.0],
             ),
             flow_boundary.Area(
                 geometry=[MultiPolygon([flow_boundary_geometry.buffer(1.0)])]
