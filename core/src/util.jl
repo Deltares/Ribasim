@@ -917,12 +917,13 @@ function min_low_user_demand_level_factor(
     min_level,
     id_user_demand,
     id_inflow,
+    user_demand_min_level_threshold,
 ) where {T}
     if id_inflow.type == NodeType.Basin
         reduction_factor(
             min(level_now[id_inflow.idx], level_prev[id_inflow.idx]) -
-            min_level[id_user_demand.idx] - 2USER_DEMAND_MIN_LEVEL_THRESHOLD,
-            USER_DEMAND_MIN_LEVEL_THRESHOLD,
+            min_level[id_user_demand.idx] - 2user_demand_min_level_threshold,
+            user_demand_min_level_threshold,
         )
     else
         one(T)

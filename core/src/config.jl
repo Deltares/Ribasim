@@ -137,6 +137,12 @@ end
     sparse::Bool = true
     autodiff::Bool = true
     evaporate_mass::Bool = true
+    # Universal depth at which the low storage factor kicks in
+    low_storage_depth::Float64 = 0.1
+    # Universal reduction factor threshold for the minimum upstream level of UserDemand nodes
+    user_demand_min_level_threshold::Float64 = 0.1
+    # Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes
+    flow_reduction_factor_threshold::Float64 = 0.02
     specialize::Bool = false
 end
 
