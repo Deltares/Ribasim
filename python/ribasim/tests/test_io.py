@@ -236,15 +236,19 @@ def test_add_existing():
     # Add a terminal
     model.terminal.add(Node(20, Point(0, 1)))
 
-    # Test replacing with replace=False (should warn)
+    # Test replacing with default replace=None (should warn)
     with pytest.warns(UserWarning, match="Replacing node #20"):
-        model.terminal.add(Node(20, Point(0, 1)), replace=False)
+        model.terminal.add(Node(20, Point(0.5, 1)))
+
+    # Test replacing with replace=False (should raise error)
+    with pytest.raises(ValueError, match="Node #20 already exists"):
+        model.terminal.add(Node(20, Point(1, 1)), replace=False)
 
     # Test replacing with replace=True (should not warn)
     with warnings.catch_warnings():
         warnings.simplefilter("error")  # Turn warnings into errors
         # This should not raise because no warning should be emitted
-        model.terminal.add(Node(20, Point(0, 1)), replace=True)
+        model.terminal.add(Node(20, Point(1.5, 1)), replace=True)
 
     # Add user demands with static data
     model.user_demand.add(

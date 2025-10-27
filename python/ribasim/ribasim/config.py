@@ -275,18 +275,21 @@ class MultiNodeModel(NodeModel):
         self,
         node: Node,
         tables: Sequence[TableModel] | None = None,  # type: ignore[type-arg]
-        replace: bool = False,
+        replace: bool | None = None,
     ) -> NodeData:
         """Add a node and the associated data to the model.
 
-        If a node with the same Node ID already exists, it will be replaced.
+        If a node with the same Node ID already exists, the behavior depends on the `replace` parameter.
 
         Parameters
         ----------
         node : Ribasim.Node
         tables : Sequence[TableModel[Any]] | None
-        replace : bool
-            If True, suppresses the warning when replacing an existing node (default is False)
+        replace : bool | None
+            Controls replacement behavior when a node with the same ID exists:
+            - None (default): Replace with a warning
+            - True: Replace without warning
+            - False: Raise a ValueError instead of replacing
         """
         if tables is None:
             tables = []
@@ -302,8 +305,15 @@ class MultiNodeModel(NodeModel):
         if node_id is None:
             node_id = self._parent._used_node_ids.new_id()
         elif node_id in self._parent._used_node_ids:
-            if not replace:
-                warnings.warn(f"Replacing node #{node_id}", UserWarning, stacklevel=1)
+            if replace is False:
+                raise ValueError(f"Node #{node_id} already exists.")
+            elif replace is None:
+                warnings.warn(
+                    f"Replacing node #{node_id}",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            # If replace is True, silently replace
             # Remove the existing node from all node types and their tables
             self._parent._remove_node_id(node_id)  # type: ignore[attr-defined]
 
