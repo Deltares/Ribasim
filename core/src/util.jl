@@ -908,7 +908,7 @@ end
 """
 Estimate the minimum level reduction factor achieved over the last time step by
 estimating the lowest level achieved over the last time step. To make sure
-it is an underestimate of the minimum, 2USER_DEMAND_MIN_LEVEL_THRESHOLD is subtracted from this lowest level.
+it is an underestimate of the minimum, 2 * level_difference_threshold is subtracted from this lowest level.
 This is done to not be too strict in clamping the flow in the limiter
 """
 function min_low_user_demand_level_factor(
@@ -917,13 +917,13 @@ function min_low_user_demand_level_factor(
     min_level,
     id_user_demand,
     id_inflow,
-    user_demand_min_level_threshold,
+    level_difference_threshold,
 ) where {T}
     if id_inflow.type == NodeType.Basin
         reduction_factor(
             min(level_now[id_inflow.idx], level_prev[id_inflow.idx]) -
-            min_level[id_user_demand.idx] - 2user_demand_min_level_threshold,
-            user_demand_min_level_threshold,
+            min_level[id_user_demand.idx] - 2 * level_difference_threshold,
+            level_difference_threshold,
         )
     else
         one(T)

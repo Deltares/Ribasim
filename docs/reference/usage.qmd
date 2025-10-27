@@ -57,7 +57,12 @@ The absolute and relative tolerance for adaptive timestepping can be set with `a
 The `evaporate_mass = true` setting determines whether mass is lost due to evaporation in water quality calculations, by default set to true.
 While physically incorrect, it is useful for a first correctness check on a model in terms of mass balance (Continuity tracer should always have a concentration of 1). To simulate increasing concentrations (e.g. salinity) due to evaporation, change the setting to `false`.
 
-Finally there's `specialize = false`. By default it is turned off to reduce the time it takes to initialize fully. It can be enabled for long-running simulations, trading initialization speed for simulation speed. Concretely, setting it will set the [specialization level](https://docs.sciml.ai/SciMLBase/stable/interfaces/Problems/#Specialization-Levels) to NoSpecialize for false, and FullSpecialize for true. Additionally setting it to false also fixes the [autodiff chunk size](https://juliadiff.org/ForwardDiff.jl/stable/user/advanced/#Configuring-Chunk-Size) to 1, making a similar tradeoff as the specialization level.
+By default `specialize = false` to reduce the time it takes to initialize fully. It can be enabled for long-running simulations, trading initialization speed for simulation speed. Concretely, setting it will set the [specialization level](https://docs.sciml.ai/SciMLBase/stable/interfaces/Problems/#Specialization-Levels) to NoSpecialize for false, and FullSpecialize for true. Additionally setting it to false also fixes the [autodiff chunk size](https://juliadiff.org/ForwardDiff.jl/stable/user/advanced/#Configuring-Chunk-Size) to 1, making a similar tradeoff as the specialization level.
+
+There are two threshold parameters that control when reduction factors start smoothly reducing flow.
+Note that these are global settings, and cannot be set for individual nodes.
+`depth_threshold = 0.1` is the water depth (level - profile bottom) in meters at which the low storage factor kicks in. This will limit the evaporation and infiltration from nearly empty Basins.
+`level_difference_threshold = 0.02` is the level difference below which several flows are reduced. Examples are approaching `min_upstream_level` from above and `max_downstream_level` from below, level difference across TabulatedRatingCurve and Outlet nodes, and UserDemand approaching the `min_level` from above. For details see the equations on the node [reference pages](/reference/index.qmd)
 
 ## Interpolation settings
 There are the following interpolation settings:
