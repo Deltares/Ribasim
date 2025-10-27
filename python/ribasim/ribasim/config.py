@@ -1,5 +1,5 @@
-import logging
 import numbers
+import warnings
 from collections.abc import Sequence
 from enum import Enum
 
@@ -278,7 +278,7 @@ class MultiNodeModel(NodeModel):
     ) -> NodeData:
         """Add a node and the associated data to the model.
 
-        If a node with the same Node ID already exists, it will be replaced.
+        If a node with the same Node ID already exists, it will be replaced (with a warning).
 
         Parameters
         ----------
@@ -299,7 +299,11 @@ class MultiNodeModel(NodeModel):
         if node_id is None:
             node_id = self._parent._used_node_ids.new_id()
         elif node_id in self._parent._used_node_ids:
-            logging.warning(f"Replacing node #{node_id}")
+            warnings.warn(
+                f"Replacing node #{node_id}",
+                UserWarning,
+                stacklevel=2,
+            )
             # Remove the existing node from all node types and their tables
             self._parent._remove_node_id(node_id)  # type: ignore[attr-defined]
 
