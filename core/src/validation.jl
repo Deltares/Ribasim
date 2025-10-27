@@ -1,10 +1,11 @@
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(config.snake_case(nodetype)))
-neighbortypes(::Val{:pump}) = Set((:basin, :terminal, :level_boundary, :junction))
-neighbortypes(::Val{:outlet}) = Set((:basin, :terminal, :level_boundary, :junction))
-neighbortypes(::Val{:user_demand}) = Set((:basin, :terminal, :level_boundary, :junction))
-neighbortypes(::Val{:level_demand}) = Set((:basin,))
-neighbortypes(::Val{:basin}) = Set((
+neighbortypes(::Val{:pump}) = OrderedSet((:basin, :terminal, :level_boundary, :junction))
+neighbortypes(::Val{:outlet}) = OrderedSet((:basin, :terminal, :level_boundary, :junction))
+neighbortypes(::Val{:user_demand}) =
+    OrderedSet((:basin, :terminal, :level_boundary, :junction))
+neighbortypes(::Val{:level_demand}) = OrderedSet((:basin,))
+neighbortypes(::Val{:basin}) = OrderedSet((
     :linear_resistance,
     :tabulated_rating_curve,
     :manning_resistance,
@@ -13,8 +14,8 @@ neighbortypes(::Val{:basin}) = Set((
     :user_demand,
     :junction,
 ))
-neighbortypes(::Val{:terminal}) = Set{Symbol}()
-neighbortypes(::Val{:junction}) = Set((
+neighbortypes(::Val{:terminal}) = OrderedSet{Symbol}()
+neighbortypes(::Val{:junction}) = OrderedSet((
     :basin,
     :junction,
     :linear_resistance,
@@ -25,13 +26,14 @@ neighbortypes(::Val{:junction}) = Set((
     :user_demand,
     :terminal,
 ))
-neighbortypes(::Val{:flow_boundary}) = Set((:basin, :terminal, :level_boundary, :junction))
+neighbortypes(::Val{:flow_boundary}) =
+    OrderedSet((:basin, :terminal, :level_boundary, :junction))
 neighbortypes(::Val{:level_boundary}) =
-    Set((:linear_resistance, :pump, :outlet, :tabulated_rating_curve))
-neighbortypes(::Val{:linear_resistance}) = Set((:basin, :level_boundary, :junction))
-neighbortypes(::Val{:manning_resistance}) = Set((:basin, :junction))
-neighbortypes(::Val{:continuous_control}) = Set((:pump, :outlet))
-neighbortypes(::Val{:discrete_control}) = Set((
+    OrderedSet((:linear_resistance, :pump, :outlet, :tabulated_rating_curve))
+neighbortypes(::Val{:linear_resistance}) = OrderedSet((:basin, :level_boundary, :junction))
+neighbortypes(::Val{:manning_resistance}) = OrderedSet((:basin, :junction))
+neighbortypes(::Val{:continuous_control}) = OrderedSet((:pump, :outlet))
+neighbortypes(::Val{:discrete_control}) = OrderedSet((
     :pump,
     :outlet,
     :tabulated_rating_curve,
@@ -39,12 +41,17 @@ neighbortypes(::Val{:discrete_control}) = Set((
     :manning_resistance,
     :pid_control,
 ))
-neighbortypes(::Val{:pid_control}) = Set((:pump, :outlet))
+neighbortypes(::Val{:pid_control}) = OrderedSet((:pump, :outlet))
 neighbortypes(::Val{:tabulated_rating_curve}) =
-    Set((:basin, :terminal, :level_boundary, :junction))
-neighbortypes(::Val{:flow_demand}) =
-    Set((:linear_resistance, :manning_resistance, :tabulated_rating_curve, :pump, :outlet))
-neighbortypes(::Any) = Set{Symbol}()
+    OrderedSet((:basin, :terminal, :level_boundary, :junction))
+neighbortypes(::Val{:flow_demand}) = OrderedSet((
+    :linear_resistance,
+    :manning_resistance,
+    :tabulated_rating_curve,
+    :pump,
+    :outlet,
+))
+neighbortypes(::Any) = OrderedSet{Symbol}()
 
 # Allowed number of inneighbors and outneighbors per node type
 struct n_neighbor_bounds
@@ -99,14 +106,14 @@ n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
 controllablefields(nodetype::Symbol) = controllablefields(Val(nodetype))
-controllablefields(::Val{:LinearResistance}) = Set((:active, :resistance))
-controllablefields(::Val{:ManningResistance}) = Set((:active, :manning_n))
-controllablefields(::Val{:TabulatedRatingCurve}) = Set((:active, :table))
-controllablefields(::Val{:Pump}) = Set((:active, :flow_rate))
-controllablefields(::Val{:Outlet}) = Set((:active, :flow_rate))
+controllablefields(::Val{:LinearResistance}) = OrderedSet((:active, :resistance))
+controllablefields(::Val{:ManningResistance}) = OrderedSet((:active, :manning_n))
+controllablefields(::Val{:TabulatedRatingCurve}) = OrderedSet((:active, :table))
+controllablefields(::Val{:Pump}) = OrderedSet((:active, :flow_rate))
+controllablefields(::Val{:Outlet}) = OrderedSet((:active, :flow_rate))
 controllablefields(::Val{:PidControl}) =
-    Set((:active, :target, :proportional, :integral, :derivative))
-controllablefields(nodetype) = Set{Symbol}()
+    OrderedSet((:active, :target, :proportional, :integral, :derivative))
+controllablefields(nodetype) = OrderedSet{Symbol}()
 
 "Get the right sort by function (by in `sort(x; by)`) given the Schema"
 function sort_by end
@@ -414,14 +421,17 @@ function valid_tabulated_curve_level(
     return !errors
 end
 
-function incomplete_subnetwork(graph::MetaGraph, node_ids::Dict{Int32, Set{NodeID}})::Bool
+function incomplete_subnetwork(
+    graph::MetaGraph,
+    node_ids::Dict{Int32, OrderedSet{NodeID}},
+)::Bool
     errors = false
 
     # analyze the subnetwork without junctions
-    node_ids_without_junctions = Dict{Int32, Set{NodeID}}()
+    node_ids_without_junctions = Dict{Int32, OrderedSet{NodeID}}()
     for (subnetwork_id, node_ids_in_subnetwork) in node_ids
         node_ids_without_junctions[subnetwork_id] =
-            Set(filter(x -> x.type != NodeType.Junction, node_ids_in_subnetwork))
+            OrderedSet(filter(x -> x.type != NodeType.Junction, node_ids_in_subnetwork))
     end
 
     for (subnetwork_id, node_ids_in_subnetwork) in node_ids_without_junctions
@@ -539,7 +549,7 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
         )
 
         # The control states of this DiscreteControl node
-        control_states_discrete_control = Set{String}()
+        control_states_discrete_control = OrderedSet{String}()
 
         # The truth states of this DiscreteControl node with the wrong length
         truth_states_wrong_length = Vector{Bool}[]
@@ -565,7 +575,7 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
             node = getfield(p, graph[id_outneighbor].type)
 
             # Get control states of the controlled node
-            control_states_controlled = Set{String}()
+            control_states_controlled = OrderedSet{String}()
 
             # It is known that this node type has a control mapping, otherwise
             # connectivity validation would have failed.
