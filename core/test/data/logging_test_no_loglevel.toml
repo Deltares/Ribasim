@@ -1,6 +1,6 @@
 starttime = 2019-01-01
 endtime = 2019-12-31
 crs = "EPSG:28992"
-input_dir = "."
+input_dir = "input"
 results_dir = "results"
 ribasim_version = "2025.5.0"

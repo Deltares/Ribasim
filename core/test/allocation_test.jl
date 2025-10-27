@@ -119,7 +119,7 @@ end
 
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml",
+        "../../generated_testmodels/primary_and_secondary_subnetworks/ribasim.toml",
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
@@ -155,7 +155,7 @@ end
 
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/main_network_with_subnetworks/ribasim.toml",
+        "../../generated_testmodels/primary_and_secondary_subnetworks/ribasim.toml",
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
@@ -270,7 +270,7 @@ end
 
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/subnetworks_with_sources/ribasim.toml",
+        "../../generated_testmodels/secondary_networks_with_sources/ribasim.toml",
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
@@ -621,12 +621,22 @@ end
         )
     end
 
-    @test logger.logs[5].level == Error
-    @test logger.logs[5].message == "Set of incompatible constraints found"
-    @test sort(name.(keys(logger.logs[5].kwargs[:constraint_violations]))) == [
+    # We need to check this way if this log message exists, because different hardware/OS can log in different order
+    found_message =
+        any(log -> log.message == "Set of incompatible constraints found", logger.logs)
+    @test found_message
+
+    constraint_names = [
         "linear_resistance_constraint[LinearResistance #2]",
         "volume_conservation[Basin #1]",
     ]
+    found_message = any(
+        log ->
+            haskey(log.kwargs, :constraint_violations) &&
+                sort(name.(keys(log.kwargs[:constraint_violations]))) == constraint_names,
+        logger.logs,
+    )
+    @test found_message
 
     @test ispath(
         @__DIR__,

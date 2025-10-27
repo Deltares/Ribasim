@@ -334,7 +334,7 @@ function set_simulation_data!(
     return nothing
 end
 
-function prepare_demand_collection!(
+function preprocess_demand_collection!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
@@ -345,22 +345,49 @@ function prepare_demand_collection!(
     # Allow the inflow from the primary network to be as large as required
     # (will be restricted when optimizing for the actual allocation)
     for link in p_independent.allocation.primary_network_connections[subnetwork_id]
-        JuMP.set_upper_bound(flow[link], MAX_ABS_FLOW / scaling.flow)
+        JuMP.set_upper_bound(
+            flow[link],
+            flow_capacity_upper_bound(link, p_independent) / scaling.flow,
+        )
+        JuMP.set_lower_bound(flow[link], 0)
     end
 
     return nothing
 end
 
-function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrator)::Nothing
-    (; problem, objectives, node_ids_in_subnetwork) = allocation_model
-    (; user_demand, flow_demand, level_demand) = integrator.p.p_independent
+function allocate_flows_to_subnetwork(
+    allocation_models::Vector{AllocationModel},
+    primary_network_connections,
+)::Nothing
+    primary_network = get_primary_network(allocation_models)
+    primary_problem = primary_network.problem
+
+    for secondary_network in get_secondary_networks(allocation_models)
+        for link in primary_network_connections[secondary_network.subnetwork_id]
+            allocated_flow_value =
+                JuMP.value(primary_problem[:flow][link]) * primary_network.scaling.flow /
+                secondary_network.scaling.flow
+
+            JuMP.set_upper_bound(
+                secondary_network.problem[:flow][link],
+                allocated_flow_value;
+            )
+            JuMP.set_lower_bound(
+                secondary_network.problem[:flow][link],
+                allocated_flow_value,
+            )
+        end
+    end
+end
+
+function reset_demand_coefficients(allocation_model::AllocationModel)::Nothing
+    (; problem, objectives) = allocation_model
 
     average_flow_unit_error = problem[:average_flow_unit_error]
     average_flow_unit_error_constraint = problem[:average_flow_unit_error_constraint]
 
     average_storage_unit_error = problem[:average_storage_unit_error]
     average_storage_unit_error_constraint = problem[:average_storage_unit_error_constraint]
-
     for objective_metadata in objectives.objective_metadata
         (; type, demand_priority) = objective_metadata
 
@@ -382,6 +409,11 @@ function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrato
             end
         end
     end
+end
+
+function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrator)::Nothing
+    (; problem, node_ids_in_subnetwork) = allocation_model
+    (; user_demand, flow_demand, level_demand) = integrator.p.p_independent
 
     # Set demands for all priorities
     set_demands!(
@@ -403,13 +435,67 @@ function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrato
         integrator,
     )
     set_demands!(allocation_model, level_demand, integrator)
+
     return nothing
+end
+
+function set_secondary_network_demands!(
+    primary_model::AllocationModel,
+    secondary_model::AllocationModel,
+    demand_priorities_all::Vector{Int32},
+)::Nothing
+    (; problem, objectives) = primary_model
+    node_allocated = problem[:secondary_network_allocated]
+    node_error = problem[:secondary_network_error]
+    node_relative_error_constraint = problem[:secondary_network_relative_error_constraint]
+
+    # Retrieve variable and constraint collections from the JuMP problem
+    average_flow_unit_error = problem[:average_flow_unit_error]
+    average_flow_unit_error_constraint = problem[:average_flow_unit_error_constraint]
+    for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
+        if !secondary_model.has_demand_priority[demand_priority_idx]
+            continue
+        end
+        # Objective metadata corresponding to this demand priority
+        (; expression_first) =
+            get_objective_data_of_demand_priority(objectives, demand_priority)
+
+        for link in keys(secondary_model.secondary_network_demand)
+            d =
+                secondary_model.secondary_network_demand[link][demand_priority_idx] *
+                secondary_model.scaling.flow / primary_model.scaling.flow
+
+            # Demand is upper bound of what can be allocated
+            JuMP.set_upper_bound(node_allocated[link, demand_priority], d)
+
+            # Set demand in constraint for error term in first objective
+            c = node_relative_error_constraint[link, demand_priority]
+            error_term_first = node_error[link, demand_priority, :first]
+            JuMP.set_normalized_coefficient(c, error_term_first, d)
+            JuMP.set_normalized_rhs(c, d)
+
+            # Set demand in first objective expression
+            expression_first.terms[error_term_first] = d
+
+            # Set demand in definition of average relative flow unit error
+            JuMP.set_normalized_coefficient(
+                average_flow_unit_error_constraint[demand_priority],
+                error_term_first,
+                -d,
+            )
+            add_to_coefficient!(
+                average_flow_unit_error_constraint[demand_priority],
+                average_flow_unit_error[demand_priority],
+                d,
+            )
+        end
+    end
 end
 
 function set_demands!(
     allocation_model::AllocationModel,
     node::Union{UserDemand, FlowDemand},
-    node_ids_subnetwork::Vector{NodeID},
+    demand_node_ids_subnetwork::Vector{NodeID},
     node_allocated::JuMP.Containers.SparseAxisArray,
     node_error::JuMP.Containers.SparseAxisArray,
     node_relative_error_constraint::JuMP.Containers.SparseAxisArray,
@@ -432,7 +518,7 @@ function set_demands!(
             get_objective_data_of_demand_priority(objectives, demand_priority)
         (type != AllocationObjectiveType.demand_flow) && continue
 
-        for node_id in node_ids_subnetwork
+        for node_id in demand_node_ids_subnetwork
             !has_demand_priority[node_id.idx, demand_priority_idx] && continue
 
             # Update transient demands
@@ -599,13 +685,63 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     return nothing
 end
 
+function optimize_multi_objective!(
+    secondary_model::AllocationModel,
+    primary_network_connections = [],
+)::Nothing
+    (; problem, objectives, temporary_constraints) = secondary_model
+
+    for metadata in objectives.objective_metadata
+        (; expression_first, expression_second, type, demand_priority_idx) = metadata
+
+        # First expression
+        JuMP.@objective(problem, Min, expression_first)
+        JuMP.optimize!(problem)
+        push!(
+            temporary_constraints,
+            JuMP.@constraint(problem, expression_first == JuMP.objective_value(problem))
+        )
+        # Second expression
+        JuMP.@objective(problem, Min, expression_second)
+        JuMP.optimize!(problem)
+
+        # collect secondary network demands if primary network connections are given
+        for link in primary_network_connections
+            if type == AllocationObjectiveType.demand_flow ||
+               type == AllocationObjectiveType.demand_storage
+                previous_demand = 0
+                if demand_priority_idx > 1
+                    previous_demand =
+                        secondary_model.secondary_network_demand[link][demand_priority_idx - 1]
+                end
+                demand = JuMP.value(problem[:flow][link]) - previous_demand
+                secondary_model.secondary_network_demand[link][demand_priority_idx] = demand
+            end
+        end
+
+        # check if this is the last objective
+        if metadata != last(objectives.objective_metadata)
+            # If not, add constraint to fix the value of the second objective
+            push!(
+                temporary_constraints,
+                JuMP.@constraint(
+                    problem,
+                    expression_second == JuMP.objective_value(problem),
+                )
+            )
+        end
+    end
+
+    return nothing
+end
+
 function optimize!(allocation_model::AllocationModel, model)::Nothing
     (; config, integrator) = model
     (; t) = integrator
-    (; problem, objectives, subnetwork_id) = allocation_model
+    (; problem, subnetwork_id) = allocation_model
 
-    JuMP.@objective(problem, Min, objectives.objective_expressions_all)
-    JuMP.optimize!(problem)
+    optimize_multi_objective!(allocation_model)
+
     @debug JuMP.solution_summary(problem)
     termination_status = JuMP.termination_status(problem)
 
@@ -615,13 +751,15 @@ function optimize!(allocation_model::AllocationModel, model)::Nothing
         # to .lp
         set_feasibility_objective!(problem)
         write_problem_to_file(problem, config)
-        analyze_infeasibility(allocation_model, t, config)
+        status = analyze_infeasibility(allocation_model, t, config)
         analyze_scaling(allocation_model, t, config)
-
-        error(
-            "Allocation optimization for subnetwork $subnetwork_id at t = $t s is infeasible",
-        )
-    elseif termination_status != JuMP.OPTIMAL
+        if status == JuMP.OPTIMAL
+            @info "Allocation optimization for subnetwork $subnetwork_id at t = $t s is feasible after infeasibility analysis, continuing with solution"
+        else
+            error(
+                "Allocation optimization for subnetwork $subnetwork_id at t = $t s is infeasible",
+            )
+        end
     end
 
     return nothing
@@ -762,10 +900,22 @@ function save_flows!(
     (; graph, allocation) = p.p_independent
     (; record_flow) = allocation
     flow = problem[:flow]
+
     low_storage_factor = problem[:low_storage_factor]
 
+    # primary network connections are links shared between the primary network and a secondary network.
+    # The value should be recorded only once
+    if is_primary_network(subnetwork_id)
+        valid_links = only(flow.axes)
+    else
+        valid_links = filter(
+            link -> !(link in allocation.primary_network_connections[subnetwork_id]),
+            only(flow.axes),
+        )
+    end
+
     # Horizontal flows
-    for link in only(flow.axes)
+    for link in valid_links
         (id_from, id_to) = link
         link_metadata = graph[link...]
         flow_variable = flow[link]
@@ -868,18 +1018,13 @@ function reset_cumulative!(allocation_model::AllocationModel)::Nothing
     return nothing
 end
 
-function get_subnetwork_demands!(allocation_model::AllocationModel)::Nothing
-    #TODO
-    return nothing
-end
-
 "Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(model)::Nothing
     (; integrator) = model
     (; u, p, t) = integrator
     (; p_independent) = p
     (; allocation, pump, outlet) = p_independent
-    (; allocation_models) = allocation
+    (; allocation_models, primary_network_connections, demand_priorities_all) = allocation
 
     # Don't run the allocation algorithm if allocation is not active
     !is_active(allocation) && return nothing
@@ -887,44 +1032,55 @@ function update_allocation!(model)::Nothing
     du = get_du(integrator)
     water_balance!(du, u, p, t)
 
-    for allocation_model in allocation_models
+    for allocation_model in get_secondary_networks(allocation_models)
         # Transfer data about physical processes from the simulation to the optimization
         set_simulation_data!(allocation_model, integrator)
 
         # Set demands for all priorities
+        reset_demand_coefficients(allocation_model)
         set_demands!(allocation_model, integrator)
 
         # Use data from the physical layer to set the initial guess
         warm_start!(allocation_model, integrator)
     end
 
+    if has_primary_network(allocation)
+        # If a primary network is present, collect demands of the secondary network(s)
+        primary_network = get_primary_network(allocation_models)
+
+        # Transfer data about physical processes from the simulation to the optimization
+        set_simulation_data!(primary_network, integrator)
+
+        reset_demand_coefficients(primary_network)
+        for secondary_network in
+            sort(get_secondary_networks(allocation_models); by = x -> x.subnetwork_id)
+            delete_temporary_constraints!(secondary_network)
+            preprocess_demand_collection!(secondary_network, p_independent)
+            optimize_multi_objective!(
+                secondary_network,
+                primary_network_connections[secondary_network.subnetwork_id],
+            )
+            set_secondary_network_demands!(
+                primary_network,
+                secondary_network,
+                demand_priorities_all,
+            )
+        end
+
+        set_demands!(primary_network, integrator)
+        warm_start!(primary_network, integrator)
+    end
+
     # Allocate in all networks, starting with the primary network if it exists
-    # TODO
-
-    # for allocation_model in allocation_models
-    #     set_allocation_bounds!(allocation_model, p_independent)
-    # end
-
-    # # If a primary network is present, collect demands of subnetworks
-    # if has_primary_network(allocation)
-    #     for allocation_model in Iterators.drop(allocation_models, 1)
-    #         prepare_demand_collection!(allocation_model, p_independent)
-    #         for objective in allocation_model.objectives
-    #             optimize_for_objective!(allocation_model, integrator, objective, config)
-    #         end
-    #         save_allocation_flows!(
-    #             p_independent,
-    #             t,
-    #             allocation_model,
-    #             AllocationOptimizationType.collect_demands,
-    #         )
-    #         #TODO: get_subnetwork_demand!(allocation_model)
-    #     end
-    # end
-
     for allocation_model in allocation_models
+        delete_temporary_constraints!(allocation_model)
         optimize!(allocation_model, model)
         parse_allocations!(integrator, allocation_model)
+        # allocate flows optimized from the primary network to the secondary networks
+        if is_primary_network(allocation_model.subnetwork_id)
+            allocate_flows_to_subnetwork(allocation_models, primary_network_connections)
+        end
+
         save_flows!(integrator, allocation_model, AllocationOptimizationType.allocate)
         apply_control_from_allocation!(pump, allocation_model, integrator)
         apply_control_from_allocation!(outlet, allocation_model, integrator)
@@ -932,27 +1088,6 @@ function update_allocation!(model)::Nothing
         # Reset cumulative data
         reset_cumulative!(allocation_model)
     end
-    # # Allocate first in the primary network if it is present, and then in the secondary networks
-    # for allocation_model in allocation_models
-    #     reset_goal_programming!(allocation_model, p_independent)
-    #     for objective in allocation_model.objectives
-    #         optimize_for_objective!(allocation_model, integrator, objective, config)
-    #     end
-
-    #     if is_primary_network(allocation_model.subnetwork_id)
-    #         # TODO: Transfer allocated to secondary networks
-    #     end
-
-    #     # Update parameters in physical layer based on allocation results
-    #     apply_control_from_allocation!(pump, allocation_model, integrator)
-    #     apply_control_from_allocation!(outlet, allocation_model, integrator)
-
-    #     save_allocation_flows!(
-    #         p_independent,
-    #         t,
-    #         allocation_model,
-    #         AllocationOptimizationType.collect_demands,
-    #     )
 
     # Update storage_prev for level_demand
     update_storage_prev!(p)

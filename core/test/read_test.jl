@@ -4,6 +4,7 @@
     using Logging
     using Ribasim: NodeID
     using Accessors: @set, @reset
+    using DataStructures: OrderedSet
 
     graph = MetaGraph(
         DiGraph();
@@ -18,9 +19,9 @@
 
     graph[1, 2] = :yes
 
-    node_ids = Dict{Int32, Set{NodeID}}()
-    node_ids[0] = Set{NodeID}()
-    node_ids[-1] = Set{NodeID}()
+    node_ids = Dict{Int32, OrderedSet{NodeID}}()
+    node_ids[0] = OrderedSet{NodeID}()
+    node_ids[-1] = OrderedSet{NodeID}()
     push!(node_ids[0], NodeID(:Basin, 1, 1))
     push!(node_ids[-1], NodeID(:Basin, 2, 1))
 
@@ -46,6 +47,7 @@ end
     using Graphs
     using Logging
     using Ribasim: NodeID
+    using DataStructures: OrderedSet
 
     graph = MetaGraph(
         DiGraph();
@@ -55,12 +57,12 @@ end
         graph_data = Tuple,
     )
 
-    node_ids = Dict{Int32, Set{NodeID}}()
-    node_ids[1] = Set{NodeID}()
+    node_ids = Dict{Int32, OrderedSet{NodeID}}()
+    node_ids[1] = OrderedSet{NodeID}()
     push!(node_ids[1], NodeID(:Basin, 1, 1))
     push!(node_ids[1], NodeID(:Basin, 2, 1))
     push!(node_ids[1], NodeID(:Basin, 3, 1))
-    node_ids[2] = Set{NodeID}()
+    node_ids[2] = OrderedSet{NodeID}()
     push!(node_ids[2], NodeID(:Basin, 4, 1))
     push!(node_ids[2], NodeID(:Basin, 5, 1))
     push!(node_ids[2], NodeID(:Basin, 6, 1))
@@ -201,6 +203,29 @@ end
 
     DataInterpolations.integral(basin.level_to_area[1], 2.0) ≈ 500.0005 + 1000.0
     @test basin.storage_to_level[1](500.0005 + 1000.0) ≈ 2.0
+end
+
+@testitem "decreasing area (dS_dh) from S(h)" begin
+    using Ribasim: Schema, Basin, StructVector, NodeID, interpolate_basin_profile!
+
+    # user input
+    group_area = [missing, missing, missing, missing, missing, missing]
+    group_level = [265.0, 270.0, 275.0, 280.0, 285.0, 287.0]
+    group_storage = [0.0, 3.551e6, 1.6238e7, 4.5444e7, 1.06217e8, 1.08e8]
+    n = length(group_level)
+    node_1 = fill(1, n)
+    basin = Ribasim.Basin(; node_id = NodeID.(:Basin, [1], 1))
+
+    profiles = StructVector{Schema.Basin.Profile}(;
+        node_id = node_1,
+        level = group_level,
+        area = group_area,
+        storage = group_storage,
+    )
+
+    # Test that an error is thrown when area is decreasing
+    error_string = "Invalid profile for Basin #1. The step from (h=285.0, S=1.06217e8) to (h=287.0, S=1.08e8) implies a decreasing area compared to lower points in the profile, which is not allowed."
+    @test_throws error_string interpolate_basin_profile!(basin, profiles)
 end
 
 @testitem "Interpolation type" begin

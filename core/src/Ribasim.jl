@@ -30,7 +30,7 @@ using DifferentiationInterface:
 using ForwardDiff: derivative as forward_diff
 
 # Algorithms for solving ODEs.
-using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du
+using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, log_step!
 import ForwardDiff
 
 # Interface for defining and solving the ODE problem of the physical layer.
@@ -80,7 +80,6 @@ using DataInterpolations.ExtrapolationType:
 # Modeling language for Mathematical Optimization.
 # Used for allocation, see the docs: https://ribasim.org/dev/allocation.html
 import JuMP
-import MultiObjectiveAlgorithms as MOA
 # The optimization backend of JuMP.
 import HiGHS
 # Analyze infeasibilities and numerical properties
@@ -152,8 +151,8 @@ using StructArrays: StructVector
 # OrderedDict is used to store the order of the sources in a subnetwork.
 using DataStructures: OrderedSet, OrderedDict, counter, inc!
 
-# NCDatasets is used to read and write NetCDF files.
-using NCDatasets: NCDataset, defDim, defVar, dimnames
+# NCDatasets and CommonDataModel are used to read and write NetCDF files.
+using NCDatasets: NCDatasets, NCDataset, defDim, defVar, dimnames, CFVariable
 
 using Dates: Second
 

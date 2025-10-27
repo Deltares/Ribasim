@@ -25,6 +25,9 @@ object Ribasim_MakeQgisPlugin : BuildType({
                 module load pixi
                 pixi run install-ribasim-qgis
 
+                rm --recursive ribasim_qgis/scripts
+                rm --recursive ribasim_qgis/tests
+                rm ribasim_qgis/.coveragerc
                 rsync --verbose --recursive --delete ribasim_qgis/ ribasim_qgis
                 rm --force ribasim_qgis.zip
                 zip -r ribasim_qgis.zip ribasim_qgis

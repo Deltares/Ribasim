@@ -52,7 +52,7 @@ open class GenerateCache(platformOs: String) : Template() {
                 """
                 pixi --version
                 pixi run install-ci
-                pixi run instantiate-julia-test
+                pixi run initialize-julia-test
                 """.trimIndent()
             }
         }

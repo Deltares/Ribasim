@@ -12,7 +12,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Hydrology",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "xmipy >=1.3"
 ]

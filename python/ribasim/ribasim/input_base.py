@@ -7,7 +7,7 @@ from contextlib import closing
 from contextvars import ContextVar
 from pathlib import Path
 from sqlite3 import connect
-from typing import Any, Generic, TypeVar, cast
+from typing import Any, TypeVar, cast
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -83,7 +83,7 @@ class BaseModel(PydanticBaseModel):
         validate_default=True,
         populate_by_name=True,
         use_enum_values=True,
-        extra="allow",
+        extra="forbid",
     )
 
     @classmethod
@@ -262,9 +262,13 @@ class FileModel(BaseModel, ABC):
         raise NotImplementedError()
 
 
-class TableModel(FileModel, Generic[TableT]):
+class TableModel[TableT: _BaseSchema](FileModel):
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
     _sort_keys: list[str] = PrivateAttr(default=[])
+
+    model_config = ConfigDict(
+        extra="allow",
+    )
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, TableModel):
@@ -497,7 +501,7 @@ class TableModel(FileModel, Generic[TableT]):
         directory = context_file_loading.get().get("directory", Path("."))
         full_path = directory / path
 
-        with xr.open_dataset(full_path, engine="netcdf4") as ds:
+        with xr.open_dataset(full_path) as ds:
             df = ds.to_dataframe().reset_index()
 
         return df
@@ -555,7 +559,7 @@ class TableModel(FileModel, Generic[TableT]):
         return self.df.loc[self.df["node_id"].isin(np_index), :]
 
 
-class SpatialTableModel(TableModel[TableT], Generic[TableT]):
+class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
     df: GeoDataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
 
     def sort(self):
@@ -619,8 +623,8 @@ class NodeModel(ChildModel):
     @classmethod
     def set_sort_keys(cls, v: object, info: ValidationInfo) -> object:
         """Set sort keys for all TableModels if present in FieldInfo."""
-        if isinstance(v, TableModel):
-            field = cls.model_fields[getattr(info, "field_name")]
+        if isinstance(v, TableModel) and info.field_name is not None:
+            field = cls.model_fields[info.field_name]
             extra = field.json_schema_extra
             if extra is not None and isinstance(extra, dict):
                 # We set sort_keys ourselves as list[str] in json_schema_extra

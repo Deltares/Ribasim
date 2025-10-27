@@ -2,6 +2,7 @@ import Ribasim
 using Dates: DateTime
 using InteractiveUtils: subtypes
 using OteraEngine: Template
+using DataStructures: OrderedSet
 
 """
 Map a Julia type to the best matching Python type.
@@ -54,7 +55,9 @@ function get_connectivity()
     [
         (
             name = T,
-            connectivity = Set(Ribasim.camel_case(x) for x in Ribasim.neighbortypes(T)),
+            connectivity = OrderedSet(
+                Ribasim.camel_case(x) for x in Ribasim.neighbortypes(T)
+            ),
             flow_neighbor_bound = Ribasim.n_neighbor_bounds_flow(T),
             control_neighbor_bound = Ribasim.n_neighbor_bounds_control(T),
         ) for T in keys(Ribasim.node_kinds)

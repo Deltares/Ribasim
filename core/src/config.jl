@@ -143,6 +143,7 @@ end
     user_demand_min_level_threshold::Float64 = 0.1
     # Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes
     flow_reduction_factor_threshold::Float64 = 0.02
+    specialize::Bool = false
 end
 
 @option struct Interpolation <: TableOption
@@ -364,16 +365,17 @@ function function_accepts_kwarg(f, kwarg)::Bool
     return false
 end
 
-function get_ad_type(solver::Solver; specialize = true)
+function get_ad_type(solver::Solver)
+    chunksize = solver.specialize ? nothing : 1
     if solver.autodiff
-        AutoForwardDiff(; chunksize = specialize ? nothing : 1, tag = :Ribasim)
+        AutoForwardDiff(; chunksize, tag = :Ribasim)
     else
         AutoFiniteDiff()
     end
 end
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
-function algorithm(solver::Solver; u0 = [], specialize = true)::OrdinaryDiffEqAlgorithm
+function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     kwargs = Dict{Symbol, Any}()
     algotype = algorithms[solver.algorithm]
 
@@ -389,7 +391,7 @@ function algorithm(solver::Solver; u0 = [], specialize = true)::OrdinaryDiffEqAl
     end
 
     if function_accepts_kwarg(algotype, :autodiff)
-        kwargs[:autodiff] = get_ad_type(solver; specialize)
+        kwargs[:autodiff] = get_ad_type(solver)
     end
 
     algotype(; kwargs...)

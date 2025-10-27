@@ -10,10 +10,10 @@
     )
 
     # default dirs
-    toml = Toml(; input_dir = ".", results_dir = "results", kwargs...)
+    toml = Toml(; input_dir = "input", results_dir = "results", kwargs...)
     config = Config(toml, "model")
-    @test database_path(config) == normpath("model/database.gpkg")
-    @test input_path(config, "path/to/file") == normpath("model/path/to/file")
+    @test database_path(config) == normpath("model/input/database.gpkg")
+    @test input_path(config, "path/to/file") == normpath("model/input/path/to/file")
     @test results_path(config, "path/to/file.txt") ==
           normpath("model/results/path/to/file.txt")
     @test results_path(config, "path/to/file") ==
@@ -22,20 +22,20 @@
 
     # non-default dirs, and netcdf results
     toml = Toml(;
-        input_dir = "input",
+        input_dir = ".",
         results_dir = "output",
         results = Results(; format = "netcdf"),
         kwargs...,
     )
     config = Config(toml, "model")
-    @test database_path(config) == normpath("model/input/database.gpkg")
-    @test input_path(config, "path/to/file") == normpath("model/input/path/to/file")
+    @test database_path(config) == normpath("model/database.gpkg")
+    @test input_path(config, "path/to/file") == normpath("model/path/to/file")
     @test results_path(config, "path/to/file.txt") ==
           normpath("model/output/path/to/file.txt")
     @test results_path(config, "path/to/file") == normpath("model/output/path/to/file.nc")
 
     # absolute path
-    toml = Toml(; input_dir = ".", results_dir = "results", kwargs...)
+    toml = Toml(; input_dir = "input", results_dir = "results", kwargs...)
     config = Config(toml)
     @test input_path(config, "/path/to/file") == abspath("/path/to/file")
     @test results_path(config, "/path/to/file.txt") == abspath("/path/to/file.txt")
@@ -273,6 +273,10 @@ end
     #     @test size(ds["demand"]) == (nnode, nprio, ntime)
     #     @test dimnames(ds["demand"]) == ("demand_priority", "node_id", "time")
     # end
+end
+
+@testitem "netcdf input" begin
+    # TODO use NCDatasets.ncgen to create Delft-FEWS flavored NetCDF input files
 end
 
 @testitem "warm state" begin

@@ -1,4 +1,5 @@
 import numbers
+import warnings
 from collections.abc import Sequence
 from enum import Enum
 
@@ -148,6 +149,10 @@ class Solver(ChildModel):
         Universal reduction factor threshold for the minimum upstream level of UserDemand nodes
     flow_reduction_factor_threshold : float
         Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes
+    evaporate_mass : bool
+        Whether mass is lost due to evaporation in water quality calculations. (Optional, defaults to true)
+    specialize : bool
+        Trades initialization speed for simulation speed, useful for long-running simulations. (Optional, defaults to false)
     """
 
     algorithm: str = "QNDF"
@@ -165,6 +170,7 @@ class Solver(ChildModel):
     low_storage_depth: float = 0.1
     user_demand_min_level_threshold: float = 0.1
     flow_reduction_factor_threshold: float = 0.02
+    specialize: bool = False
 
 
 class Verbosity(str, Enum):
@@ -281,15 +287,12 @@ class MultiNodeModel(NodeModel):
     ) -> NodeData:
         """Add a node and the associated data to the model.
 
+        If a node with the same Node ID already exists, it will be replaced (with a warning).
+
         Parameters
         ----------
         node : Ribasim.Node
         tables : Sequence[TableModel[Any]] | None
-
-        Raises
-        ------
-        ValueError
-            When the given node ID already exists
         """
         if tables is None:
             tables = []
@@ -305,9 +308,13 @@ class MultiNodeModel(NodeModel):
         if node_id is None:
             node_id = self._parent._used_node_ids.new_id()
         elif node_id in self._parent._used_node_ids:
-            raise ValueError(
-                f"Node IDs have to be unique, but {node_id} already exists."
+            warnings.warn(
+                f"Replacing node #{node_id}",
+                UserWarning,
+                stacklevel=2,
             )
+            # Remove the existing node from all node types and their tables
+            self._parent._remove_node_id(node_id)  # type: ignore[attr-defined]
 
         assert hasattr(self._parent, "crs")
         for table in tables:

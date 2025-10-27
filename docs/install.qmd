@@ -191,7 +191,8 @@ For Ribasim Python documentation please see the [examples](/guide/examples.qmd) 
 
 # Install Ribasim QGIS plugin {#sec-install-qgis-plugin}
 
-The Ribasim QGIS plugin requires [QGIS](https://qgis.org/en/site/) 3.34 or higher.
+The Ribasim QGIS plugin requires [QGIS](https://qgis.org/en/site/) 3.34 or higher, and the `pandas` package
+in the QGIS Python environment (which is the case by default).
 The Ribasim QGIS plugin is only distributed as a .zip archive and must be downloaded and installed in QGIS.
 
 ## Install Ribasim plugin
@@ -220,7 +221,7 @@ Open the Ribasim plugin panel.
 In QGIS, navigate to "Plugins > Manage and Install Plugins > All".
 In the search bar, type: "iMOD". Select the iMOD plugin, and click "Install".
 
-At least version 0.5.2 of the iMOD plugin is required.
+At least version 0.5.3 of the iMOD plugin is required.
 
 The Time Series widget from the iMOD plugin is used for visualizing Ribasim results, which is described in the [results section](#sec-results).
 Documentation on the Time Series widget can be found in the [iMOD documentation](https://deltares.github.io/iMOD-Documentation/qgis_user_manual.html#time-series-time-series).

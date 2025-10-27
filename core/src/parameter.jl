@@ -229,7 +229,9 @@ Store information for a subnetwork used for allocation.
 subnetwork_id: The ID of this subnetwork
 node_ids_in_subnetwork: Per node type a vector of the nodes of that type in the subnetwork
 problem: The JuMP.jl model for solving the allocation problem
-Δt_allocation: The time interval between consecutive allocation solves'
+Δt_allocation: The time interval between consecutive allocation solves
+has_demand_priority: Per demand priority in the whole model whether a demand of this priority is present in this
+    subnetwork
 objectives: The objectives (goals) in the order in which they will be optimized for
 cumulative_forcing_volume: The volume of forcing exchanged with each Basin in the subnetwork in the last Δt_allocation
     split in (positive forcing, negative_forcing)
@@ -237,7 +239,7 @@ cumulative_boundary_volume: The net volume of boundary flow into the model for e
     over the last Δt_allocation
 cumulative_realized_volume: The net volume of flow realized by a demand node over the last Δt_allocation
 sources: The nodes in the subnetwork which can act as sources, sorted by source priority
-subnetwork_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
+secondary_network_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
 scaling: The flow and storage scaling factors to make the optimization problem more numerically stable
 """
 @kwdef struct AllocationModel
@@ -245,13 +247,16 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     node_ids_in_subnetwork::NodeIDsInSubnetwork
     problem::JuMP.Model
     Δt_allocation::Float64
+    has_demand_priority::Vector{Bool}
     objectives::AllocationObjectives = AllocationObjectives()
-    cumulative_forcing_volume::Dict{NodeID, Tuple{Float64, Float64}} = Dict()
-    cumulative_boundary_volume::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()
-    cumulative_realized_volume::Dict{Tuple{NodeID, NodeID}, Float64} = Dict()
-    sources::Dict{Int32, NodeID} = OrderedDict()
-    subnetwork_demand::Dict{Tuple{NodeID, NodeID}, Vector{Float64}} = Dict()
+    cumulative_forcing_volume::OrderedDict{NodeID, Tuple{Float64, Float64}} = OrderedDict()
+    cumulative_boundary_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict()
+    cumulative_realized_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict()
+    sources::OrderedDict{Int32, NodeID} = OrderedDict()
+    secondary_network_demand::OrderedDict{Tuple{NodeID, NodeID}, Vector{Float64}} =
+        OrderedDict()
     scaling::ScalingFactors = ScalingFactors()
+    temporary_constraints::Vector{JuMP.ConstraintRef} = JuMP.ConstraintRef[]
 end
 
 struct DemandRecordDatum
@@ -303,7 +308,8 @@ record_control: A record of all flow rates assigned to pumps and outlets by allo
 @kwdef struct Allocation
     subnetwork_ids::Vector{Int32} = Int32[]
     allocation_models::Vector{AllocationModel} = []
-    primary_network_connections::Dict{Int32, Vector{Tuple{NodeID, NodeID}}} = Dict()
+    primary_network_connections::OrderedDict{Int32, Vector{Tuple{NodeID, NodeID}}} =
+        OrderedDict()
     demand_priorities_all::Vector{Int32} = []
     subnetwork_inlet_source_priority::Int32 = 0
     record_demand::Vector{DemandRecordDatum} = []
@@ -428,7 +434,7 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
     substances::OrderedSet{Symbol} = OrderedSet{Symbol}()
     # Data source for external concentrations (used in control)
     concentration_external::Vector{Dict{String, ScalarLinearInterpolation}} =
-        Dict{String, ScalarLinearInterpolation}[]
+        OrderedDict{String, ScalarLinearInterpolation}[]
 end
 
 """
@@ -552,8 +558,8 @@ flow_demand_id: connected flow demand node if applicable
     max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
     interpolations::Vector{ScalarPCHIPInterpolation} = ScalarLinearInterpolation[]
     current_interpolation_index::Vector{IndexLookup} = IndexLookup[]
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
-        Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+    control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
+        OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
     flow_demand_id::Vector{NodeID} =
         fill(NodeID(NodeType.FlowDemand, 0, 0), length(node_id))
 end
@@ -577,8 +583,8 @@ flow_demand_id: connected flow demand node if applicable
     active::Vector{Bool} = ones(Bool, length(node_id))
     resistance::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = zeros(length(node_id))
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
-        Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+    control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
+        OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
     flow_demand_id::Vector{NodeID} =
         fill(NodeID(NodeType.FlowDemand, 0, 0), length(node_id))
 end
@@ -632,8 +638,8 @@ Requirements:
     profile_slope::Vector{Float64} = zeros(size(node_id))
     upstream_bottom::Vector{Float64} = zeros(size(node_id))
     downstream_bottom::Vector{Float64} = zeros(size(node_id))
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
-        Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+    control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
+        OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
     flow_demand_id::Vector{NodeID} = fill(NodeID(NodeType.FlowDemand, 0, 0), size(node_id))
 end
 
@@ -702,8 +708,8 @@ flow_demand_id: connected flow demand node if applicable
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     max_downstream_level::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
-        Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+    control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
+        OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
     control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
     allocation_controlled::Vector{Bool} = fill(false, length(node_id))
@@ -743,7 +749,7 @@ flow_demand_id: connected flow demand node if applicable
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     max_downstream_level::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} = Dict()
+    control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} = OrderedDict()
     control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
     allocation_controlled::Vector{Bool} = fill(false, length(node_id))
@@ -893,9 +899,11 @@ record: Namedtuple with discrete control information for results
     truth_state::Vector{Vector{Bool}}
     control_state::Vector{String} = fill("undefined_state", length(node_id))
     control_state_start::Vector{Float64} = zeros(length(node_id))
-    logic_mapping::Vector{Dict{Vector{Bool}, String}}
-    control_mappings::Dict{NodeType.T, Dict{Tuple{NodeID, String}, ControlStateUpdate}} =
-        Dict{NodeType.T, Dict{Tuple{NodeID, String}, ControlStateUpdate}}()
+    logic_mapping::Vector{OrderedDict{Vector{Bool}, String}}
+    control_mappings::OrderedDict{
+        NodeType.T,
+        OrderedDict{Tuple{NodeID, String}, ControlStateUpdate},
+    } = OrderedDict{NodeType.T, OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}}()
     record::@NamedTuple{
         time::Vector{Float64},
         control_node_id::Vector{Int32},
@@ -944,8 +952,8 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     derivative::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    control_mapping::Dict{Tuple{NodeID, String}, ControlStateUpdate} =
-        Dict{Tuple{NodeID, String}, ControlStateUpdate}()
+    control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
+        OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
 end
 
 """
@@ -1010,8 +1018,8 @@ storage_demand: The storage change each Basin needs to reach the [min, max] wind
     max_level::Vector{Vector{ScalarConstantInterpolation}} =
         trivial_allocation_itp_fill(demand_priorities, node_id; val = NaN)
     basins_with_demand::Vector{Vector{NodeID}} = []
-    storage_prev::Dict{NodeID, Float64} = Dict()
-    storage_demand::Dict{NodeID, Vector{Float64}} = Dict()
+    storage_prev::OrderedDict{NodeID, Float64} = OrderedDict()
+    storage_demand::OrderedDict{NodeID, Vector{Float64}} = OrderedDict()
 end
 
 """
@@ -1077,7 +1085,7 @@ const ModelGraph = MetaGraph{
     NodeMetadata,
     LinkMetadata,
     @NamedTuple{
-        node_ids::Dict{Int32, Set{NodeID}},
+        node_ids::Dict{Int32, OrderedSet{NodeID}},
         saveat::Float64,
         internal_flow_links::Vector{LinkMetadata},
         external_flow_links::Vector{LinkMetadata},

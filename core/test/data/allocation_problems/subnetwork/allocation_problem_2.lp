@@ -18,9 +18,9 @@ pump_constraint_Pump_#5_: -1 low_storage_factor_Basin_#2_ + 1 flow_(Basin_#2,_Pu
 outlet_constraint_Outlet_#3_: -1 low_storage_factor_Basin_#2_ + 1 flow_(Basin_#2,_Outlet_#3)_ = 0
 outlet_constraint_Outlet_#7_: -1 low_storage_factor_Basin_#6_ + 1 flow_(Basin_#6,_Outlet_#7)_ = 0
 outlet_constraint_Outlet_#13_: -1 low_storage_factor_Basin_#6_ + 1 flow_(Basin_#6,_Outlet_#13)_ = 0
-c12: 1 flow_(Basin_#2,_UserDemand_#10)_ - 1 user_demand_allocated_UserDemand_#10,2_ = 0
-c13: 1 flow_(Basin_#6,_UserDemand_#11)_ - 1 user_demand_allocated_UserDemand_#11,1_ = 0
-c14: 1 flow_(Basin_#8,_UserDemand_#12)_ - 1 user_demand_allocated_UserDemand_#12,2_ = 0
+user_demand_allocated_sum_constraint_UserDemand_#10_: 1 flow_(Basin_#2,_UserDemand_#10)_ - 1 user_demand_allocated_UserDemand_#10,2_ = 0
+user_demand_allocated_sum_constraint_UserDemand_#11_: 1 flow_(Basin_#6,_UserDemand_#11)_ - 1 user_demand_allocated_UserDemand_#11,1_ = 0
+user_demand_allocated_sum_constraint_UserDemand_#12_: 1 flow_(Basin_#8,_UserDemand_#12)_ - 1 user_demand_allocated_UserDemand_#12,2_ = 0
 user_demand_return_flow_UserDemand_#10_: -0.5 flow_(Basin_#2,_UserDemand_#10)_ + 1 flow_(UserDemand_#10,_Basin_#2)_ = 0
 user_demand_return_flow_UserDemand_#11_: -0.5 flow_(Basin_#6,_UserDemand_#11)_ + 1 flow_(UserDemand_#11,_Basin_#6)_ = 0
 user_demand_return_flow_UserDemand_#12_: -0.5 flow_(Basin_#8,_UserDemand_#12)_ + 1 flow_(UserDemand_#12,_Basin_#8)_ = 0
