@@ -79,7 +79,24 @@ archive, that must be downloaded and unpacked. It can be placed anywhere, howeve
 important that the contents of the zip file are kept together in a directory. The Ribasim
 executable is in the main folder.
 
-To download the Ribasim core, download the appropriate zip file for your operating system:
+## Windows installation script (recommended)
+
+The easiest way to install Ribasim on Windows is to use the installation script.
+Open a terminal and run:
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://ribasim.org/install.ps1 | iex"
+```
+
+This will download and install the latest version of Ribasim to `%LOCALAPPDATA%\ribasim` and automatically add it to your PATH.
+After installation, you can run `ribasim --help` from any directory.
+
+You can set the `RIBASIM_HOME` environment variable if you wish to install it in a different directory.
+Use the manual installation to install older versions of Ribasim, or if you don't want to add it to your PATH.
+
+## Manual installation
+
+To download the Ribasim core manually, download the appropriate zip file for your operating system:
 
 - Ribasim executable - Windows: [ribasim_windows.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.6.0/ribasim_windows.zip)
 - Ribasim executable - Linux: [ribasim_linux.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.6.0/ribasim_linux.zip)
@@ -104,7 +121,7 @@ Options:
 
 ## Adding Ribasim to Path on Windows
 
-To use Ribasim from any directory without specifying the full path, you can add the Ribasim executable directory to your Windows Path environment variable.
+If you used the installation script, Ribasim is already on your PATH. For manual installations, you can add the Ribasim executable directory to your Windows Path environment variable.
 
 The Path environment variable tells Windows where to look for programs when you type their name in a terminal. By adding Ribasim to your Path, you can type `ribasim` from any folder instead of having to navigate to the Ribasim folder first or typing the full path like `C:\bin\ribasim\ribasim.exe`.
 
