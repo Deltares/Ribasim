@@ -1153,8 +1153,7 @@ the object itself is not.
     convergence::RibasimCVectorType
     ncalls::Vector{Int} = [0]
     # Solver constants
-    user_demand_min_level_threshold::Float64
-    flow_reduction_factor_threshold::Float64
+    level_difference_threshold::Float64
 end
 
 function StateTimeDependentCache(
