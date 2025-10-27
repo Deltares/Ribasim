@@ -1,5 +1,5 @@
-import logging
 import numbers
+import warnings
 from collections.abc import Sequence
 from enum import Enum
 
@@ -275,6 +275,7 @@ class MultiNodeModel(NodeModel):
         self,
         node: Node,
         tables: Sequence[TableModel] | None = None,  # type: ignore[type-arg]
+        replace: bool = False,
     ) -> NodeData:
         """Add a node and the associated data to the model.
 
@@ -284,6 +285,8 @@ class MultiNodeModel(NodeModel):
         ----------
         node : Ribasim.Node
         tables : Sequence[TableModel[Any]] | None
+        replace : bool
+            If True, suppresses the warning when replacing an existing node (default is False)
         """
         if tables is None:
             tables = []
@@ -299,7 +302,8 @@ class MultiNodeModel(NodeModel):
         if node_id is None:
             node_id = self._parent._used_node_ids.new_id()
         elif node_id in self._parent._used_node_ids:
-            logging.warning(f"Replacing node #{node_id}")
+            if not replace:
+                warnings.warn(f"Replacing node #{node_id}", UserWarning, stacklevel=1)
             # Remove the existing node from all node types and their tables
             self._parent._remove_node_id(node_id)  # type: ignore[attr-defined]
 

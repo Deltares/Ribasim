@@ -1,3 +1,4 @@
+import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -234,6 +235,16 @@ def test_add_existing():
 
     # Add a terminal
     model.terminal.add(Node(20, Point(0, 1)))
+
+    # Test replacing with replace=False (should warn)
+    with pytest.warns(UserWarning, match="Replacing node #20"):
+        model.terminal.add(Node(20, Point(0, 1)), replace=False)
+
+    # Test replacing with replace=True (should not warn)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")  # Turn warnings into errors
+        # This should not raise because no warning should be emitted
+        model.terminal.add(Node(20, Point(0, 1)), replace=True)
 
     # Add user demands with static data
     model.user_demand.add(
