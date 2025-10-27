@@ -185,7 +185,7 @@ ax.plot(x, y_s, color = "C0", label = r"$s\left(x; 10^{-5} \right)$")
 ax.legend();
 ```
 
-and $\phi$ is the reduction factor which makes the flow go smoothly to $0$ as the upstream storage (as determined by the flow direction) becomes smaller than the equivalent of a water depth of $10 \;\text{cm}$.
+and $\phi$ is the reduction factor which makes the flow go smoothly to $0$ as the upstream storage (as determined by the flow direction) becomes smaller than the equivalent of a water depth of $10 \;\text{cm}$ (change with solver setting `depth_threshold`).
 
 :::{.callout-note}
 The computation of $S_f$ is not exact: we base it on a representative area and hydraulic radius, rather than integrating $S_f$ along the length of a reach.
