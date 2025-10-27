@@ -203,9 +203,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-attributes anchored" data-number="1.1" data-anchor-id="attributes"><span class="header-section-number">1.1</span> Attributes</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 17%">
+<col style="width: 15%">
 <col style="width: 4%">
-<col style="width: 78%">
+<col style="width: 80%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -271,26 +271,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Whether automatic differentiation instead of fine difference is used to compute the Jacobian. (Optional, defaults to true)</td>
 </tr>
 <tr class="even">
-<td>low_storage_depth</td>
+<td>depth_threshold</td>
 <td>float</td>
 <td>Universal depth at which the low storage factor kicks in</td>
 </tr>
 <tr class="odd">
-<td>user_demand_min_level_threshold</td>
-<td>float</td>
-<td>Universal reduction factor threshold for the minimum upstream level of UserDemand nodes</td>
-</tr>
-<tr class="even">
-<td>flow_reduction_factor_threshold</td>
+<td>level_difference_threshold</td>
 <td>float</td>
 <td>Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>evaporate_mass</td>
 <td>bool</td>
 <td>Whether mass is lost due to evaporation in water quality calculations. (Optional, defaults to true)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>specialize</td>
 <td>bool</td>
 <td>Trades initialization speed for simulation speed, useful for long-running simulations. (Optional, defaults to false)</td>

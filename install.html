@@ -352,8 +352,8 @@ Note
 <p>Ribasim is typically used as a command-line interface (CLI). It is distributed as a <code>.zip</code> archive, that must be downloaded and unpacked. It can be placed anywhere, however it is important that the contents of the zip file are kept together in a directory. The Ribasim executable is in the main folder.</p>
 <p>To download the Ribasim core, download the appropriate zip file for your operating system:</p>
 <ul>
-<li>Ribasim executable - Windows: <a href="https://github.com/Deltares/Ribasim/releases/download/v2025.5.0/ribasim_windows.zip">ribasim_windows.zip</a></li>
-<li>Ribasim executable - Linux: <a href="https://github.com/Deltares/Ribasim/releases/download/v2025.5.0/ribasim_linux.zip">ribasim_linux.zip</a></li>
+<li>Ribasim executable - Windows: <a href="https://github.com/Deltares/Ribasim/releases/download/v2025.6.0/ribasim_windows.zip">ribasim_windows.zip</a></li>
+<li>Ribasim executable - Linux: <a href="https://github.com/Deltares/Ribasim/releases/download/v2025.6.0/ribasim_linux.zip">ribasim_linux.zip</a></li>
 </ul>
 <p>Note that we currently only support and provide binaries for Windows and Linux, for the x86_64 architecture.</p>
 <p>To check whether the installation was performed successfully, open a terminal and go to the path where the executable is for example <code>C:\bin\ribasim\</code>. If you are using cmd.exe type <code>ribasim --help</code>, or for PowerShell <code>./ribasim</code>.</p>
@@ -395,7 +395,7 @@ Options:
 <p>Open a terminal in your project directory, and create an empty pixi environment:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> init</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Now add Ribasim Python:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> add ribasim==2025.5.0</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> add ribasim==2025.6.0</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>To start Python, run:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run python</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>If you wish to check what is installed in your workspace, run <code>pixi list</code>. When you run into what seems like installation issues, try <code>pixi clean</code>, followed by <code>pixi install</code>.</p>
@@ -406,16 +406,16 @@ Options:
 <p>Open a terminal in your project directory, and create an empty uv project:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> init</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Now add Ribasim Python:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> add ribasim==2025.5.0</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> add ribasim==2025.6.0</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>To start Python, run:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> run python</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div id="tabset-1-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-3-tab">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install <span class="at">--upgrade</span> ribasim==2025.5.0</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install <span class="at">--upgrade</span> ribasim==2025.6.0</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div id="tabset-1-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-4-tab">
 <p>Ribasim is available in the <a href="https://conda-forge.org/">conda-forge</a> channel. <a href="https://conda-forge.org/download/">Miniforge</a> is the preferred conda-forge installer and includes <code>conda</code>, <code>mamba</code>, and their dependencies. It may not work well when combined with the Anaconda default channel, see <a href="https://conda-forge.org/docs/user/transitioning_from_defaults/">transitioning from defaults</a>.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">conda</span> install <span class="at">-c</span> conda-forge ribasim=2025.5.0</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">conda</span> install <span class="at">-c</span> conda-forge ribasim=2025.6.0</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </div>
 </div>
@@ -428,7 +428,7 @@ Options:
 <h2 data-number="4.1" class="anchored" data-anchor-id="install-ribasim-plugin"><span class="header-section-number">4.1</span> Install Ribasim plugin</h2>
 <p>Download <code>ribasim_qgis.zip</code>:</p>
 <ul>
-<li>QGIS plugin: <a href="https://github.com/Deltares/Ribasim/releases/download/v2025.5.0/ribasim_qgis.zip">ribasim_qgis.zip</a>.</li>
+<li>QGIS plugin: <a href="https://github.com/Deltares/Ribasim/releases/download/v2025.6.0/ribasim_qgis.zip">ribasim_qgis.zip</a>.</li>
 </ul>
 <p>In QGIS, go to Plugins menu &gt; Manage and Install Plugins…</p>
 <div class="quarto-figure quarto-figure-left">

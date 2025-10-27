@@ -616,7 +616,7 @@ Q = \phi f(h)
 <li><span class="math inline">\(f\)</span> is a function describing the given rating curve <span class="math inline">\(Q(h)\)</span></li>
 <li><span class="math inline">\(\phi\)</span> is the reduction factor, which smoothly reduces flow based on all of these criteria:
 <ul>
-<li>The upstream volume is below the equivalent of a water depth of <span class="math inline">\(10 \;\text{cm}\)</span>.</li>
+<li>The upstream volume is below the equivalent of a water depth of <span class="math inline">\(10 \;\text{cm}\)</span> (change with solver setting <code>depth_threshold</code>, the others below with <code>level_difference_threshold</code>).</li>
 <li>The upstream level is less than <span class="math inline">\(0.02 \;\text{m}\)</span> above the downstream level.</li>
 <li>The downstream level is above <code>max_downstream_level</code> - <span class="math inline">\(0.02 \;\text{m}\)</span></li>
 </ul></li>

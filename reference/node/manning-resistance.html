@@ -562,7 +562,7 @@ s(x; x_0)
 <p><span class="math display">\[
 x_0 = \left( \text{Re}_0 \frac{ n \nu \sqrt[3]{R_h}}{A} \right)^2
 \]</span></p>
-<div id="3e5bf408" class="cell" data-execution_count="1">
+<div id="f616b39b" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
@@ -597,7 +597,7 @@ x_0 = \left( \text{Re}_0 \frac{ n \nu \sqrt[3]{R_h}}{A} \right)^2
 </div>
 </div>
 </div>
-<p>and <span class="math inline">\(\phi\)</span> is the reduction factor which makes the flow go smoothly to <span class="math inline">\(0\)</span> as the upstream storage (as determined by the flow direction) becomes smaller than the equivalent of a water depth of <span class="math inline">\(10 \;\text{cm}\)</span>.</p>
+<p>and <span class="math inline">\(\phi\)</span> is the reduction factor which makes the flow go smoothly to <span class="math inline">\(0\)</span> as the upstream storage (as determined by the flow direction) becomes smaller than the equivalent of a water depth of <span class="math inline">\(10 \;\text{cm}\)</span> (change with solver setting <code>depth_threshold</code>).</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">

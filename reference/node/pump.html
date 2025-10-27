@@ -510,7 +510,7 @@ Q = \mathrm{clamp}(\phi Q_\text{set}, Q_{\min}, Q_{\max})
 <li><span class="math inline">\(Q_{\min}\)</span> and <span class="math inline">\(Q_{\max}\)</span> are the Pump <code>min_flow_rate</code> and <code>max_flow_rate</code>.</li>
 <li><span class="math inline">\(\phi\)</span> is the reduction factor, which smoothly reduces flow based on all of these criteria:
 <ul>
-<li>The upstream volume is below the equivalent of a water depth of <span class="math inline">\(10 \;\text{cm}\)</span>.</li>
+<li>The upstream volume is below the equivalent of a water depth of <span class="math inline">\(10 \;\text{cm}\)</span> (change with solver setting <code>depth_threshold</code>, the others below with <code>level_difference_threshold</code>).</li>
 <li>The upstream level is below <code>min_upstream_level</code> + <span class="math inline">\(0.02 \;\text{m}\)</span></li>
 <li>The downstream level is above <code>max_downstream_level</code> - <span class="math inline">\(0.02 \;\text{m}\)</span></li>
 </ul></li>
