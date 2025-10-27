@@ -5,6 +5,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [v2025.6.0] - 2025-10-27
+
+This release brings significant improvements to the QGIS plugin, allocation, and CLI latency.
+The QGIS plugin is now published in the QGIS plugin repository and has a simplified UI; you can drag a TOML to QGIS to open a model.
+The black screen in the iMOD plugin is fixed in the latest version of the iMOD plugin, and the Arrow errors on loading results are also fixed.
+
+Iteratively working on a model in a Python session has become easier now that `model.<node_type>.add` can replace existing nodes, and `run_ribasim(toml_path)` shows you live progress in all editors.
+
+**Breaking changes**: There are two changes that shouldn't be breaking but might affect some users nonetheless. The `input_dir` default has been changed to "input". Python models now forbid any extra values in schema validation for stricter data integrity.
+
+### Added
+- Add `run_ribasim(toml_path)` convenience function. [#2653](https://github.com/Deltares/Ribasim/pull/2653)
+- Allow replacing nodes with add API. [#2664](https://github.com/Deltares/Ribasim/pull/2664)
+- Flow communication between primary and secondary networks. [#2556](https://github.com/Deltares/Ribasim/pull/2556)
+- Read NetCDF files with demand_priority. [#2604](https://github.com/Deltares/Ribasim/pull/2604)
+- QGIS: Add menu and dropdown interface. [#2634](https://github.com/Deltares/Ribasim/pull/2634)
+- Add docs on reloading model in QGIS plugin guide. [#2583](https://github.com/Deltares/Ribasim/pull/2583)
+- Document `pandas` requirement for QGIS plugin. [#2642](https://github.com/Deltares/Ribasim/pull/2642)
+
+### Changed
+- Set `input_dir` default to "input". [#2641](https://github.com/Deltares/Ribasim/pull/2641)
+- Python: Forbid any extra values in (base)model for stricter validation. [#2595](https://github.com/Deltares/Ribasim/pull/2595)
+- Support Scientific Python SPEC 0 for broader compatibility. [#2630](https://github.com/Deltares/Ribasim/pull/2630)
+- QGIS: Always use GDAL instead of pyarrow for better stability. [#2591](https://github.com/Deltares/Ribasim/pull/2591)
+- Publish QGIS plugin. [#2654](https://github.com/Deltares/Ribasim/pull/2654) [#2658](https://github.com/Deltares/Ribasim/pull/2658)
+- Improved build performance and compilation. [#2652](https://github.com/Deltares/Ribasim/pull/2652)
+
+### Fixed
+- Finalize progress bar. [#2665](https://github.com/Deltares/Ribasim/pull/2665)
+- Fix Junctions with subnetwork ID. [#2633](https://github.com/Deltares/Ribasim/pull/2633)
+- Delwaq: Restore correct water/mass balance with Junctions. [#2607](https://github.com/Deltares/Ribasim/pull/2607)
+- Delwaq: Limit endtime for partially failed Ribasim runs. [#2637](https://github.com/Deltares/Ribasim/pull/2637)
+- Delwaq: Improved performance of flow boundary concatenation. [#2597](https://github.com/Deltares/Ribasim/pull/2597)
+- Fix remaining DelWAQ netCDF warnings. [#2621](https://github.com/Deltares/Ribasim/pull/2621)
+- Fix DataInterpolations integration bug. [#2576](https://github.com/Deltares/Ribasim/pull/2576)
+- QGIS: Fix empty Arrow results. [#2585](https://github.com/Deltares/Ribasim/pull/2585)
+- Log clear error on decreasing area in `S(h)`. [#2600](https://github.com/Deltares/Ribasim/pull/2600)
+- QGIS: Faster results drawing. [#2618](https://github.com/Deltares/Ribasim/pull/2618)
+- QGIS: Fix crash on Reload Ribasim model. [#2661](https://github.com/Deltares/Ribasim/pull/2661)
+- Reset `ribasim_version` in `model_post_init`. [#2578](https://github.com/Deltares/Ribasim/pull/2578)
+- Convert Path to str with `.as_posix()` for cross-platform compatibility. [#2579](https://github.com/Deltares/Ribasim/pull/2579)
+- Support pydantic 2.12. [#2650](https://github.com/Deltares/Ribasim/pull/2650)
+
 ## [v2025.5.0] - 2025-09-09
 
 This release focuses on improving allocation capabilities and performance optimizations.
