@@ -167,13 +167,6 @@ class DatasetWidget:
         )
         self.add_relationship(link.layer, node.layer.id(), "LinkToNode", "to_node_id")
 
-        basin_area_layer = nodes.pop("Basin / area", None)
-        if basin_area_layer is not None:
-            self.add_item_to_qgis(basin_area_layer)
-            self.add_relationship(
-                basin_area_layer.layer, node.layer.id(), "Basin / area"
-            )
-
         # Add the remaining layers
         for table_name, node_layer in nodes.items():
             self.add_item_to_qgis(node_layer)

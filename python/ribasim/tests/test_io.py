@@ -235,6 +235,10 @@ def test_add_existing():
     # Add a terminal
     model.terminal.add(Node(20, Point(0, 1)))
 
+    # Test replacement warning
+    with pytest.warns(UserWarning, match="Replacing node #20"):
+        model.terminal.add(Node(20, Point(0.5, 1)))
+
     # Add user demands with static data
     model.user_demand.add(
         Node(30, Point(0, 2)),
