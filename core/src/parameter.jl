@@ -1090,7 +1090,7 @@ const ModelGraph = MetaGraph{
     NodeMetadata,
     LinkMetadata,
     @NamedTuple{
-        node_ids::Dict{Int32, Set{NodeID}},
+        node_ids::Dict{Int32, OrderedSet{NodeID}},
         saveat::Float64,
         internal_flow_links::Vector{LinkMetadata},
         external_flow_links::Vector{LinkMetadata},

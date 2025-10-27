@@ -1,4 +1,4 @@
-const conservative_nodetypes = Set{NodeType.T}([
+const conservative_nodetypes = OrderedSet{NodeType.T}([
     NodeType.Pump,
     NodeType.Outlet,
     NodeType.TabulatedRatingCurve,
