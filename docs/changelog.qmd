@@ -20,6 +20,7 @@ Iteratively working on a model in a Python session has become easier now that `m
 - Allow replacing nodes with add API. [#2664](https://github.com/Deltares/Ribasim/pull/2664)
 - Flow communication between primary and secondary networks. [#2556](https://github.com/Deltares/Ribasim/pull/2556)
 - Read NetCDF files with demand_priority. [#2604](https://github.com/Deltares/Ribasim/pull/2604)
+- Make reduction factor thresholds configurable. [#2592](https://github.com/Deltares/Ribasim/pull/2592) [#2681](https://github.com/Deltares/Ribasim/pull/2681)
 - QGIS: Add menu and dropdown interface. [#2634](https://github.com/Deltares/Ribasim/pull/2634)
 - Add docs on reloading model in QGIS plugin guide. [#2583](https://github.com/Deltares/Ribasim/pull/2583)
 - Document `pandas` requirement for QGIS plugin. [#2642](https://github.com/Deltares/Ribasim/pull/2642)
