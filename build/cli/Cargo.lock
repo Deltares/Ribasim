@@ -174,7 +174,7 @@ dependencies = [
 
 [[package]]
 name = "ribasim"
-version = "2025.5.0"
+version = "2025.6.0"
 dependencies = [
  "clap",
  "libc",
