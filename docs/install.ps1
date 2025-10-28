@@ -131,6 +131,13 @@ catch {
     Write-Warning "Could not determine exact CPU architecture. Ribasim requires x64 (Intel/AMD 64-bit)."
 }
 
+# Safety check: require that the directory name contains "ribasim"
+# to avoid accidental deletions when RIBASIM_HOME is set incorrectly
+$DirectoryName = Split-Path -Leaf $RibasimHome
+if (-not $DirectoryName.ToLower().Contains("ribasim")) {
+    throw "Error: Installation directory name must contain 'ribasim'. Current: '$RibasimHome'"
+}
+
 $TEMP_FILE = [System.IO.Path]::GetTempFileName()
 $ZIP_FILE = $TEMP_FILE + ".zip"
 
@@ -147,9 +154,21 @@ try {
     New-Item -ItemType Directory -Path $RibasimHome | Out-Null
 
     Write-Host "Extracting Ribasim..."
-    # Extract the zip file (which contains a ribasim directory) to the parent directory
-    $ParentDir = Split-Path -Parent $RibasimHome
-    Expand-Archive -Path $ZIP_FILE -DestinationPath $ParentDir -Force
+    # Extract to temporary location first
+    $TempExtract = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString())
+    New-Item -ItemType Directory -Path $TempExtract | Out-Null
+    Expand-Archive -Path $ZIP_FILE -DestinationPath $TempExtract -Force
+
+    # Move contents from ribasim_windows.zip/ribasim/ to RibasimHome
+    $ExtractedRibasimDir = Join-Path $TempExtract "ribasim"
+    if (Test-Path -Path $ExtractedRibasimDir) {
+        Get-ChildItem -Path $ExtractedRibasimDir | Move-Item -Destination $RibasimHome -Force
+    } else {
+        throw "Error: Expected 'ribasim' directory not found in zip archive"
+    }
+
+    # Clean up temp extraction directory
+    Remove-Item -Path $TempExtract -Recurse -Force -ErrorAction SilentlyContinue
 
     # Verify ribasim.exe exists
     $RibasimExe = Join-Path $RibasimHome "ribasim.exe"
