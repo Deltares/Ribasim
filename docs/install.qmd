@@ -88,7 +88,7 @@ Open a terminal and run:
 powershell -ExecutionPolicy ByPass -c "irm https://ribasim.org/install.ps1 | iex"
 ```
 
-This will download and install the latest version of Ribasim to `%USERPROFILE%\ribasim` and automatically add it to your PATH.
+This will download and install the latest version of Ribasim to `%USERPROFILE%\.ribasim` and automatically add it to your PATH.
 After installation, you can run `ribasim --help` from any directory.
 
 You can set the `RIBASIM_HOME` environment variable if you wish to install it in a different directory.
