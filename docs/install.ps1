@@ -27,7 +27,7 @@ public static extern IntPtr SendMessageTimeout(
     $WM_SETTINGCHANGE = 0x1a
     $result = [UIntPtr]::Zero
 
-    [Win32.Nativemethods]::SendMessageTimeout($HWND_BROADCAST,
+    [Win32.NativeMethods]::SendMessageTimeout($HWND_BROADCAST,
         $WM_SETTINGCHANGE,
         [UIntPtr]::Zero,
         "Environment",
