@@ -312,7 +312,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
     # Build new solution object
     return LinearSolution{
         Float64,
-        length(integrator.u),
+        1,
         RibasimCVectorType{Float64},
         typeof(linres.resid),
         typeof(linres.alg),
