@@ -782,12 +782,8 @@ function formulate_flows!(
         ),
     )
 
-    if isone(n_threads)
-        formulate_flows!(du, p, t, control_type, 1)
-    else
-        @threads for thread_id in 1:n_threads
-            formulate_flows!(du, p, t, control_type, thread_id)
-        end
+    @threads for thread_id in 1:n_threads
+        formulate_flows!(du, p, t, control_type, thread_id)
     end
 end
 
