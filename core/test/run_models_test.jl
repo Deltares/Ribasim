@@ -457,7 +457,7 @@ end
     formulate_storages!(u_reduced, p, t)
     @test only(state_time_dependent_cache.current_storage) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
-    BMI.update_until(model, 220day)
+    BMI.update_until(model, 200day)
     formulate_storages!(u_reduced, p, t)
     @test only(state_time_dependent_cache.current_storage) ≈ 500 atol = 2
 

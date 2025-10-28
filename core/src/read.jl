@@ -1,4 +1,4 @@
-const conservative_nodetypes = Set{NodeType.T}([
+const conservative_nodetypes = OrderedSet{NodeType.T}([
     NodeType.Pump,
     NodeType.Outlet,
     NodeType.TabulatedRatingCurve,
@@ -796,10 +796,10 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     for id in node_id
         # Compute the low storage threshold as the disk of water between the bottom
-        # and 10 cm above the bottom
+        # and `depth_threshold` meters above the bottom
         bottom = basin_bottom(basin, id)[2]
         basin.low_storage_threshold[id.idx] =
-            get_storage_from_level(basin, id.idx, bottom + LOW_STORAGE_DEPTH)
+            get_storage_from_level(basin, id.idx, bottom + config.solver.depth_threshold)
 
         # Cache the connected LevelDemand node if applicable
         level_demand_id = get_external_demand_id(graph, id)
@@ -1623,6 +1623,7 @@ function Parameters(db::DB, config::Config)::Parameters
         temp_convergence = CVector(zeros(n_states), state_ranges),
         convergence = CVector(zeros(n_states), state_ranges),
         u_reduced,
+        config.solver.level_difference_threshold,
     )
 
     collect_control_mappings!(p_independent)

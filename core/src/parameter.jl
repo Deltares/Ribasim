@@ -1,8 +1,3 @@
-# Universal depth at which the low storage factor kicks in
-const LOW_STORAGE_DEPTH = 0.1
-
-# Universal reduction factor threshold for the minimum upstream level of UserDemand nodes
-const USER_DEMAND_MIN_LEVEL_THRESHOLD = 0.1
 
 const SolverStats = @NamedTuple{
     time::Float64,
@@ -1097,7 +1092,7 @@ const ModelGraph = MetaGraph{
     NodeMetadata,
     LinkMetadata,
     @NamedTuple{
-        node_ids::Dict{Int32, Set{NodeID}},
+        node_ids::Dict{Int32, OrderedSet{NodeID}},
         saveat::Float64,
         internal_flow_links::Vector{LinkMetadata},
         external_flow_links::Vector{LinkMetadata},
@@ -1173,6 +1168,8 @@ the object itself is not.
     # Reduced state where the cumulative flows are combined into Basin
     # storages (without non-state cumulative_flows)
     u_reduced::RibasimReducedCVectorType{Float64}
+    # Solver constants
+    level_difference_threshold::Float64
 end
 
 function StateTimeDependentCache(

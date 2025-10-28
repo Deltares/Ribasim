@@ -12,7 +12,7 @@ crs = "EPSG:4326"      # required
 input_dir = "input"     # required
 results_dir = "results" # required
 
-ribasim_version = "2025.5.0" # required
+ribasim_version = "2025.6.0" # required
 
 # Specific tables can also go into Arrow files rather than the database.
 # For large tables this can benefit from better compressed file sizes.
@@ -48,6 +48,8 @@ maxiters = 1e9      # optional, default 1e9
 sparse = true       # optional, default true
 autodiff = true     # optional, default true
 evaporate_mass = true  # optional, default true to simulate a correct mass balance
+depth_threshold = 0.1  # optional, default 0.1
+level_difference_threshold = 0.02 # optional, default 0.02
 specialize = false  # optional, default false
 
 [logging]

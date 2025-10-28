@@ -27,7 +27,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         """,
     )
     # Node IDs per subnetwork
-    node_ids = Dict{Int32, Set{NodeID}}()
+    node_ids = Dict{Int32, OrderedSet{NodeID}}()
 
     # The metadata of the flow links in the order in which they are in the input
     # and will be in the output
@@ -57,7 +57,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         else
             subnetwork_id = row.subnetwork_id
             if !haskey(node_ids, subnetwork_id)
-                node_ids[subnetwork_id] = Set{NodeID}()
+                node_ids[subnetwork_id] = OrderedSet{NodeID}()
             end
             push!(node_ids[subnetwork_id], node_id)
         end

@@ -28,4 +28,4 @@ $$
 Here $h_a$ is the water level in the incoming Basin and $h_b$ is the water level in the outgoing Basin.
 $R$ is the resistance of the link, and $Q_{\max}$ is the maximum flow rate.
 Water flows from high to low; either direction is possible.
-$\phi$ is the reduction factor which makes the flow go smoothly to $0$ as the upstream storage (as determined by the flow direction) becomes smaller than the equivalent of a water depth of $10 \;\text{cm}$.
+$\phi$ is the reduction factor which makes the flow go smoothly to $0$ as the upstream storage (as determined by the flow direction) becomes smaller than the equivalent of a water depth of $10 \;\text{cm}$ by default (change with solver setting `depth_threshold`).

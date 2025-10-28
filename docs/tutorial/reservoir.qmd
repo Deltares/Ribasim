@@ -4,6 +4,11 @@ jupyter: python3
 ---
 
 ```{python}
+#| eval: false
+from ribasim import run_ribasim
+```
+
+```{python}
 #| include: false
 %run ../run_ribasim.py
 ```
@@ -189,7 +194,6 @@ model.write(toml_path)
 Adjust the naming of the Basin in the dictionary mapping and the saving file should be `Crystal-3`.
 
 ```{python}
-#| include: false
 run_ribasim(toml_path)
 ```
 

@@ -1,4 +1,4 @@
-__version__ = "2025.5.0"
+__version__ = "2025.6.0"
 
 from collections.abc import Callable
 
@@ -20,6 +20,7 @@ from ribasim_testmodels.allocation import (
     linear_resistance_demand_model,
     looped_subnetwork_model,
     medium_primary_secondary_network_model,
+    medium_primary_secondary_network_verification_model,
     minimal_subnetwork_model,
     multi_level_demand_model,
     multi_priority_flow_demand_model,
@@ -142,6 +143,7 @@ __all__ = [
     "primary_and_secondary_subnetworks_model",
     "manning_resistance_model",
     "medium_primary_secondary_network_model",
+    "medium_primary_secondary_network_verification_model",
     "minimal_subnetwork_model",
     "misc_nodes_model",
     "multiple_source_priorities_model",

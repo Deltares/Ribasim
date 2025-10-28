@@ -69,13 +69,13 @@ concentration  | Float64  | $\text{g}/\text{m}^3$ |
 UserDemand receive an allocated flow rate $F^p$ per demand priority $p=1,2,\ldots, p_{\max}$, which is either determined by [allocation optimization](/concept/allocation.qmd) or simply equal to the demand at time $t$; $F^p = d^p(t)$.
 The realized abstraction rate of a UserDemand is given by
 $$
-    Q_\text{in} = \phi(u, 10.0)\phi(h-l_{\min}, 0.1)\sum_{p=1}^{p_{\max}} \min\left(F^p, d^p(t)\right).
+    Q_\text{in} = \phi(u, S_{wd0.1})\phi(h-l_{\min}, 0.02)\sum_{p=1}^{p_{\max}} \min\left(F^p, d^p(t)\right).
 $$
 
 From left to right:
 
-- The first reduction factor lets the UserDemand abstraction go smoothly to $0$ as the source Basin dries out below a storage which is the equivalent of a water depth of $10 \;\text{cm}$;
-- The second reduction factor lets the UserDemand abstraction go smoothly to $0$ as the source Basin level approaches the minimum source Basin level (from above);
+- The first reduction factor lets the UserDemand abstraction go smoothly to $0$ as the source Basin dries out below a storage which is the equivalent of a water depth of $10 \;\text{cm}$ (change with solver setting `depth_threshold`);
+- The second reduction factor lets the UserDemand abstraction go smoothly to $0$ as the source Basin level approaches the minimum source Basin level (from above) (change with solver setting `level_difference_threshold`);
 - The last term is the sum of the allocations over the priorities.
   If the current demand happens to be lower than the allocation at some demand priority, the demand is taken instead.
 
