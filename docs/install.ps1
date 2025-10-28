@@ -11,7 +11,7 @@
 Set-StrictMode -Version Latest
 
 $RibasimVersion = 'v2025.6.0'
-$RibasimHome = "$Env:LOCALAPPDATA\ribasim"
+$RibasimHome = "$Env:USERPROFILE\.ribasim"
 
 function Publish-Env {
     if (-not ("Win32.NativeMethods" -as [Type])) {
