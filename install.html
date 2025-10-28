@@ -242,8 +242,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#sec-install-python" id="toc-sec-install-python" class="nav-link" data-scroll-target="#sec-install-python"><span class="header-section-number">3</span> Install Ribasim Python</a></li>
   <li><a href="#sec-install-qgis-plugin" id="toc-sec-install-qgis-plugin" class="nav-link" data-scroll-target="#sec-install-qgis-plugin"><span class="header-section-number">4</span> Install Ribasim QGIS plugin</a>
   <ul class="collapse">
-  <li><a href="#install-ribasim-plugin" id="toc-install-ribasim-plugin" class="nav-link" data-scroll-target="#install-ribasim-plugin"><span class="header-section-number">4.1</span> Install Ribasim plugin</a></li>
-  <li><a href="#install-imod-plugin" id="toc-install-imod-plugin" class="nav-link" data-scroll-target="#install-imod-plugin"><span class="header-section-number">4.2</span> Install iMOD plugin</a></li>
+  <li><a href="#install-from-qgis-plugin-repository-recommended" id="toc-install-from-qgis-plugin-repository-recommended" class="nav-link" data-scroll-target="#install-from-qgis-plugin-repository-recommended"><span class="header-section-number">4.1</span> Install from QGIS Plugin Repository (recommended)</a></li>
+  <li><a href="#alternative-install-from-zip-file" id="toc-alternative-install-from-zip-file" class="nav-link" data-scroll-target="#alternative-install-from-zip-file"><span class="header-section-number">4.2</span> Alternative: Install from ZIP file</a></li>
+  <li><a href="#install-imod-plugin" id="toc-install-imod-plugin" class="nav-link" data-scroll-target="#install-imod-plugin"><span class="header-section-number">4.3</span> Install iMOD plugin</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -356,7 +357,7 @@ Note
 <h2 data-number="2.1" class="anchored" data-anchor-id="windows-installation-script-recommended"><span class="header-section-number">2.1</span> Windows installation script (recommended)</h2>
 <p>The easiest way to install Ribasim on Windows is to use the installation script. Open a terminal and run:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode powershell code-with-copy"><code class="sourceCode powershell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>powershell <span class="op">-</span>ExecutionPolicy ByPass <span class="op">-</span>c <span class="st">"irm https://ribasim.org/install.ps1 | iex"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This will download and install the latest version of Ribasim to <code>%USERPROFILE%\ribasim</code> and automatically add it to your PATH. After installation, you can run <code>ribasim --help</code> from any directory.</p>
+<p>This will download and install the latest version of Ribasim to <code>%USERPROFILE%\.ribasim</code> and automatically add it to your PATH. After installation, you can run <code>ribasim --help</code> from any directory.</p>
 <p>You can set the <code>RIBASIM_HOME</code> environment variable if you wish to install it in a different directory. Use the manual installation to install older versions of Ribasim, or if you don’t want to add it to your PATH.</p>
 </section>
 <section id="manual-installation" class="level2" data-number="2.2">
@@ -435,19 +436,39 @@ Options:
 </section>
 <section id="sec-install-qgis-plugin" class="level1" data-number="4">
 <h1 data-number="4"><span class="header-section-number">4</span> Install Ribasim QGIS plugin</h1>
-<p>The Ribasim QGIS plugin requires <a href="https://qgis.org/en/site/">QGIS</a> 3.34 or higher, and the <code>pandas</code> package in the QGIS Python environment (which is the case by default). The Ribasim QGIS plugin is only distributed as a .zip archive and must be downloaded and installed in QGIS.</p>
-<section id="install-ribasim-plugin" class="level2" data-number="4.1">
-<h2 data-number="4.1" class="anchored" data-anchor-id="install-ribasim-plugin"><span class="header-section-number">4.1</span> Install Ribasim plugin</h2>
-<p>Download <code>ribasim_qgis.zip</code>:</p>
-<ul>
-<li>QGIS plugin: <a href="https://github.com/Deltares/Ribasim/releases/download/v2025.6.0/ribasim_qgis.zip">ribasim_qgis.zip</a>.</li>
-</ul>
+<p>The Ribasim QGIS plugin requires <a href="https://qgis.org/en/site/">QGIS</a> 3.34 or higher, and the <code>pandas</code> package in the QGIS Python environment (which is the case by default).</p>
+<section id="install-from-qgis-plugin-repository-recommended" class="level2" data-number="4.1">
+<h2 data-number="4.1" class="anchored" data-anchor-id="install-from-qgis-plugin-repository-recommended"><span class="header-section-number">4.1</span> Install from QGIS Plugin Repository (recommended)</h2>
+<p>The easiest way to install the Ribasim QGIS plugin is through the <a href="https://plugins.qgis.org/plugins/ribasim_qgis/">QGIS Plugin Repository</a>.</p>
 <p>In QGIS, go to Plugins menu &gt; Manage and Install Plugins…</p>
 <div class="quarto-figure quarto-figure-left">
 <figure class="figure">
 <p><img src="https://user-images.githubusercontent.com/4471859/224939069-9aae77ea-898f-442f-83b5-f2671c114956.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
 </figure>
 </div>
+<p>Select “All” and search for “Ribasim”:</p>
+<ul>
+<li>Type “Ribasim” in the search bar</li>
+<li>Select the “Ribasim” plugin from the results</li>
+<li>Click “Install Plugin”</li>
+</ul>
+<p>For more information on installing plugins in QGIS, see the <a href="https://docs.qgis.org/3.40/en/docs/training_manual/qgis_plugins/fetching_plugins.html#follow-along-installing-new-plugins">QGIS documentation on installing plugins</a>.</p>
+<p>After installation the Ribasim icon should appear on the QGIS toolbar:</p>
+<div class="quarto-figure quarto-figure-left">
+<figure class="figure">
+<p><img src="https://user-images.githubusercontent.com/4471859/224939101-228e068a-875b-4df2-98bb-6ee6a3830ddd.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
+</figure>
+</div>
+<p>See the <a href="./guide/qgis.html">Ribasim QGIS guide</a> for how to use the plugin.</p>
+</section>
+<section id="alternative-install-from-zip-file" class="level2" data-number="4.2">
+<h2 data-number="4.2" class="anchored" data-anchor-id="alternative-install-from-zip-file"><span class="header-section-number">4.2</span> Alternative: Install from ZIP file</h2>
+<p>If the plugin repository method doesn’t work or you need a specific version, you can manually install the plugin from a ZIP file.</p>
+<p>Download <code>ribasim_qgis.zip</code>:</p>
+<ul>
+<li>QGIS plugin: <a href="https://github.com/Deltares/Ribasim/releases/download/v2025.6.0/ribasim_qgis.zip">ribasim_qgis.zip</a>.</li>
+</ul>
+<p>In QGIS, go to Plugins menu &gt; Manage and Install Plugins…</p>
 <p>Select “Install from ZIP”:</p>
 <ul>
 <li>Browse to the <code>ribasim_qgis.zip</code> file containing the plugin that was downloaded earlier</li>
@@ -458,15 +479,9 @@ Options:
 <p><img src="https://user-images.githubusercontent.com/4471859/224939080-7fec5db2-4417-4f7b-8e45-034d4cf4fd75.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
 </figure>
 </div>
-<p>Open the Ribasim plugin panel.</p>
-<div class="quarto-figure quarto-figure-left">
-<figure class="figure">
-<p><img src="https://user-images.githubusercontent.com/4471859/224939101-228e068a-875b-4df2-98bb-6ee6a3830ddd.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
-</figure>
-</div>
 </section>
-<section id="install-imod-plugin" class="level2" data-number="4.2">
-<h2 data-number="4.2" class="anchored" data-anchor-id="install-imod-plugin"><span class="header-section-number">4.2</span> Install iMOD plugin</h2>
+<section id="install-imod-plugin" class="level2" data-number="4.3">
+<h2 data-number="4.3" class="anchored" data-anchor-id="install-imod-plugin"><span class="header-section-number">4.3</span> Install iMOD plugin</h2>
 <p>In QGIS, navigate to “Plugins &gt; Manage and Install Plugins &gt; All”. In the search bar, type: “iMOD”. Select the iMOD plugin, and click “Install”.</p>
 <p>At least version 0.5.3 of the iMOD plugin is required.</p>
 <p>The Time Series widget from the iMOD plugin is used for visualizing Ribasim results, which is described in the <a href="#sec-results">results section</a>. Documentation on the Time Series widget can be found in the <a href="https://deltares.github.io/iMOD-Documentation/qgis_user_manual.html#time-series-time-series">iMOD documentation</a>.</p>
