@@ -40,52 +40,21 @@ public static extern IntPtr SendMessageTimeout(
 function Write-Env {
     param(
         [String] $name,
-        [String] $val,
-        [Switch] $global
+        [String] $val
     )
 
-    $RegisterKey = if ($global) {
-        Get-Item -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager'
-    }
-    else {
-        Get-Item -Path 'HKCU:'
-    }
-
-    $EnvRegisterKey = $RegisterKey.OpenSubKey('Environment', $true)
-    if ($null -eq $val) {
-        $EnvRegisterKey.DeleteValue($name)
-    }
-    else {
-        $RegistryValueKind = if ($val.Contains('%')) {
-            [Microsoft.Win32.RegistryValueKind]::ExpandString
-        }
-        elseif ($EnvRegisterKey.GetValue($name)) {
-            $EnvRegisterKey.GetValueKind($name)
-        }
-        else {
-            [Microsoft.Win32.RegistryValueKind]::String
-        }
-        $EnvRegisterKey.SetValue($name, $val, $RegistryValueKind)
-    }
+    $EnvRegisterKey = (Get-Item -Path 'HKCU:').OpenSubKey('Environment', $true)
+    $EnvRegisterKey.SetValue($name, $val, [Microsoft.Win32.RegistryValueKind]::ExpandString)
     Publish-Env
 }
 
 function Get-Env {
     param(
-        [String] $name,
-        [Switch] $global
+        [String] $name
     )
 
-    $RegisterKey = if ($global) {
-        Get-Item -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager'
-    }
-    else {
-        Get-Item -Path 'HKCU:'
-    }
-
-    $EnvRegisterKey = $RegisterKey.OpenSubKey('Environment')
-    $RegistryValueOption = [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames
-    $EnvRegisterKey.GetValue($name, $null, $RegistryValueOption)
+    $EnvRegisterKey = (Get-Item -Path 'HKCU:').OpenSubKey('Environment')
+    $EnvRegisterKey.GetValue($name, '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
 }
 
 # Check for environment variable overrides
@@ -198,9 +167,9 @@ $PATH = Get-Env 'PATH'
 if ($PATH -notlike "*$RibasimHome*") {
     Write-Host "Adding $RibasimHome to PATH"
     # For future sessions
-    Write-Env -name 'PATH' -val "$RibasimHome;$PATH"
+    Write-Env -name 'PATH' -val "$PATH;$RibasimHome"
     # For current session
-    $Env:PATH = "$RibasimHome;$PATH"
+    $Env:PATH = "$PATH;$RibasimHome"
     Write-Host ""
     Write-Host "Ribasim has been added to your PATH."
 }
