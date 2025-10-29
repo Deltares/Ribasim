@@ -3,7 +3,6 @@ package Templates
 import Ribasim.vcsRoots.Ribasim
 import jetbrains.buildServer.configs.kotlin.Template
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
-import jetbrains.buildServer.configs.kotlin.buildFeatures.buildCache
 import jetbrains.buildServer.configs.kotlin.*
 
 fun generateJuliaDepotPath(platformOs: String): String {
@@ -29,17 +28,6 @@ open class GenerateCache(platformOs: String) : Template() {
         val depot_path = generateJuliaDepotPath(platformOs)
         params {
             param("env.JULIA_DEPOT_PATH", depot_path)
-        }
-
-        features {
-            buildCache {
-                id = "Ribasim${platformOs}Cache"
-                name = "Ribasim${platformOs}Cache"
-                use = false
-                rules = """
-                    %teamcity.build.checkoutDir%/.julia
-                """.trimIndent()
-            }
         }
 
         val header = generateTestBinariesHeader(platformOs)

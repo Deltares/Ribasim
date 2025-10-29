@@ -14,6 +14,11 @@ object Ribasim_UploadToMinio : BuildType({
     templates(LinuxAgent)
     name = "Upload binaries to Minio"
 
+    check(paused == false) {
+        "Unexpected paused: '$paused'"
+    }
+    paused = true
+
     params {
         param("env.GITHUB_TOKEN", "%github_deltares-service-account_access_token%")
         param("env.AWS_ENDPOINT_URL", "https://s3.deltares.nl")
