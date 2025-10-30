@@ -21,6 +21,10 @@ object Ribasim_MakeGitHubRelease : BuildType({
     vcs {
         root(Ribasim.vcsRoots.Ribasim)
         cleanCheckout = true
+        branchFilter = """
+            +:v20*
+            +:release*
+        """.trimIndent()
     }
 
     steps {
@@ -44,6 +48,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
             branchFilter = """
                 +:v20*
                 +:release*
+                -:<default>
             """.trimIndent()
         }
     }
@@ -71,7 +76,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
             }
         }
         snapshot(Linux_TestRibasimBinaries) {
-            onDependencyFailure = FailureAction.FAIL_TO_START
+            reuseBuilds = ReuseBuilds.ANY
         }
         dependency(Ribasim_MakeQgisPlugin) {
             snapshot {
@@ -95,7 +100,7 @@ object Ribasim_MakeGitHubRelease : BuildType({
             }
         }
         snapshot(Windows_TestRibasimBinaries) {
-            onDependencyFailure = FailureAction.FAIL_TO_START
+            reuseBuilds = ReuseBuilds.ANY
         }
     }
 

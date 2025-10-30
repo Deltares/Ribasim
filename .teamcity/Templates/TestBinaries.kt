@@ -2,7 +2,6 @@ package Templates
 
 import jetbrains.buildServer.configs.kotlin.*
 import jetbrains.buildServer.configs.kotlin.Template
-import jetbrains.buildServer.configs.kotlin.buildFeatures.buildCache
 import jetbrains.buildServer.configs.kotlin.buildFeatures.XmlReport
 import jetbrains.buildServer.configs.kotlin.buildFeatures.xmlReport
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
@@ -40,14 +39,6 @@ open class TestBinaries (platformOs: String) : Template() {
             param("env.MINIO_ACCESS_KEY", "KwKRzscudy3GvRB8BN1Z")
             password("env.MINIO_SECRET_KEY", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
             param("env.JULIA_DEPOT_PATH", depot_path)
-        }
-
-        features {
-            buildCache {
-                id = "Ribasim${platformOs}Cache"
-                name = "Ribasim${platformOs}Cache"
-                publish = false
-            }
         }
 
         dependencies {
