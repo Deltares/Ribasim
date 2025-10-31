@@ -1097,7 +1097,9 @@ function check_new_input!(p::Parameters, u::CVector, t::Number)::Nothing
     (; t_prev_call) = time_dependent_cache
 
     p_mutable.new_t =
-        !isassigned(t_prev_call, 1) || (
+        t == 0.0 ||
+        !isassigned(t_prev_call, 1) ||
+        (
             t != t_prev_call[1] &&
             ForwardDiff.partials(t) == ForwardDiff.partials(t_prev_call[1])
         )
@@ -1126,13 +1128,13 @@ function eval_time_interp(
     p::Parameters,
     t::Number,
 )
-    # if p.p_mutable.new_t
-    val = itp(t)
-    cache[idx] = val
-    return val
-    # else
-    #     return cache[idx]
-    # end
+    if p.p_mutable.new_t
+        val = itp(t)
+        cache[idx] = val
+        return val
+    else
+        return cache[idx]
+    end
 end
 
 function trivial_constant_itp(; val = 0.0)
