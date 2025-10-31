@@ -221,7 +221,7 @@ end
                 "The flows over link $link_id differ by ",
                 maximum(single_sub .- multiple_subs),
             )
-            @test false broken = true
+            @test false
         end
     end
 end
