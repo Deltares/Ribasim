@@ -1126,13 +1126,13 @@ function eval_time_interp(
     p::Parameters,
     t::Number,
 )
-    if p.p_mutable.new_t
-        val = itp(t)
-        cache[idx] = val
-        return val
-    else
-        return cache[idx]
-    end
+    # if p.p_mutable.new_t
+    val = itp(t)
+    cache[idx] = val
+    return val
+    # else
+    #     return cache[idx]
+    # end
 end
 
 function trivial_constant_itp(; val = 0.0)
