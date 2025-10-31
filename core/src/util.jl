@@ -1253,6 +1253,3 @@ function should_skip_update_q(
 
     return control_type != control_type_
 end
-
-thread_node_idxs(node::AbstractParameterNode, thread_id::Int) =
-    thread_id:nthreads():length(node.node_id)
