@@ -1242,15 +1242,15 @@ end
 function should_skip_update_q(
     active::Bool,
     control_type::ContinuousControlType.T,
-    control_type_::ContinuousControlType.T,
+    relevant_control_type::ContinuousControlType.T,
     p::Parameters,
 )::Bool
     (; p_mutable) = p
     (; all_nodes_active) = p_mutable
-    # Update is not needed if inactive and all nodes are not active
+    # Update is not needed if this node is not active and all nodes are not active
     if !active && !all_nodes_active
         return true
     end
 
-    return control_type != control_type_
+    return control_type != relevant_control_type
 end

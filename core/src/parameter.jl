@@ -776,7 +776,7 @@ A cache for intermediate results in `water_balance!` which can depend on both th
 this cache is required for automatic differentiation, where e.g. ForwardDiff requires these vectors to
 be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
 """
-const StateTimeDependentCache{T} = @NamedTuple{
+const StateAndTimeDependentCache{T} = @NamedTuple{
     current_storage::Vector{T},
     current_low_storage_factor::Vector{T},
     current_level::Vector{T},
@@ -841,7 +841,7 @@ end
 Get one of the vectors of the StateTimeDependentCache based on the passed type.
 """
 function get_cache_vector(
-    state_time_dependent_cache::StateTimeDependentCache,
+    state_time_dependent_cache::StateAndTimeDependentCache,
     type::CacheType.T,
 )
     if type == CacheType.flow_rate_pump
@@ -1156,9 +1156,12 @@ the object itself is not.
     level_difference_threshold::Float64
 end
 
-function StateTimeDependentCache(
+"""
+All cache that depend on both the state vector `u` and time `t`.
+"""
+function StateAndTimeDependentCache(
     p_independent::ParametersIndependent,
-)::StateTimeDependentCache
+)::StateAndTimeDependentCache
     n_basin = length(p_independent.basin.node_id)
     n_pump = length(p_independent.pump.node_id)
     n_outlet = length(p_independent.outlet.node_id)
@@ -1176,6 +1179,9 @@ function StateTimeDependentCache(
     )
 end
 
+"""
+All cached values that depend on time `t`.
+"""
 function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependentCache
     n_basin = length(p_independent.basin.node_id)
     basin = (;
@@ -1241,8 +1247,8 @@ The collection of all parameters that are passed to the rhs (`water_balance!`) a
 """
 @kwdef struct Parameters{C1, T1, T2}
     p_independent::ParametersIndependent{C1}
-    state_time_dependent_cache::StateTimeDependentCache{T1} =
-        StateTimeDependentCache(p_independent)
+    state_and_time_dependent_cache::StateAndTimeDependentCache{T1} =
+        StateAndTimeDependentCache(p_independent)
     time_dependent_cache::TimeDependentCache{T2} = TimeDependentCache(p_independent)
     p_mutable::ParametersMutable = ParametersMutable()
 end

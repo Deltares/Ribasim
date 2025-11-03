@@ -5,7 +5,7 @@ water_balance!(du::CVector, u::CVector, p::Parameters, t::Number)::Nothing = wat
     du,
     u,
     p.p_independent,
-    p.state_time_dependent_cache::StateTimeDependentCache,
+    p.state_time_dependent_cache::StateAndTimeDependentCache,
     p.time_dependent_cache,
     p.p_mutable,
     t,
@@ -17,7 +17,7 @@ water_balance!(
     t::Number,
     u::CVector,
     p_independent::ParametersIndependent,
-    state_time_dependent_cache::StateTimeDependentCache,
+    state_time_dependent_cache::StateAndTimeDependentCache,
     time_dependent_cache::TimeDependentCache,
     p_mutable::ParametersMutable,
 ) = water_balance!(
@@ -35,7 +35,7 @@ function water_balance!(
     du::CVector,
     u::CVector,
     p_independent::ParametersIndependent,
-    state_time_dependent_cache::StateTimeDependentCache,
+    state_time_dependent_cache::StateAndTimeDependentCache,
     time_dependent_cache::TimeDependentCache,
     p_mutable::ParametersMutable,
     t::Number,
@@ -629,7 +629,7 @@ function formulate_pump_or_outlet_flow!(
     node::Union{Pump, Outlet},
     p::Parameters,
     t::Number,
-    control_type_::ContinuousControlType.T,
+    relevant_control_type::ContinuousControlType.T,
     current_flow_rate::Vector{<:Number},
     component_cache::NamedTuple,
     reduce_Δlevel::Bool = false,
@@ -653,14 +653,20 @@ function formulate_pump_or_outlet_flow!(
         min_upstream_level = node.min_upstream_level[id.idx]
         max_downstream_level = node.max_downstream_level[id.idx]
 
-        if should_skip_update_q(active, control_type, control_type_, p)
+        if should_skip_update_q(active, control_type, relevant_control_type, p)
             continue
         end
 
         if control_type == ContinuousControlType.None
             eval_time_interp(flow_rate_itp, current_flow_rate, id.idx, p, t)
         end
+        # flow_rate = if time_dependent_flow
+        #     # <get flow rate from interpolation or cached value in `current_flow_rate_*`, now from `TimeDependentCache`>
+        #     eval_time_interp(flow_rate_itp, current_flow_rate, id.idx, p, t)
+        # else
+        #     # <get flow rate from new cache for `DiscreteControl`, Control by allocation and flows from the `Static` table>
 
+        # end
         flow_rate = current_flow_rate[id.idx]
 
         inflow_id = inflow_link.link[1]
@@ -728,7 +734,7 @@ function formulate_flow!(
     pump::Pump,
     p::Parameters,
     t::Number,
-    control_type_::ContinuousControlType.T,
+    relevant_control_type::ContinuousControlType.T,
 )::Nothing
     (; time_dependent_cache, state_time_dependent_cache) = p
     formulate_pump_or_outlet_flow!(
@@ -736,7 +742,7 @@ function formulate_flow!(
         pump,
         p,
         t,
-        control_type_,
+        relevant_control_type,
         state_time_dependent_cache.current_flow_rate_pump,
         time_dependent_cache.pump,
     )
@@ -747,15 +753,15 @@ function formulate_flow!(
     outlet::Outlet,
     p::Parameters,
     t::Number,
-    control_type_::ContinuousControlType.T,
+    relevant_control_type::ContinuousControlType.T,
 )::Nothing
-    (; time_dependent_cache, state_time_dependent_cache) = p
+    time_dependent_cache, state_time_dependent_cache = p
     formulate_pump_or_outlet_flow!(
         du.outlet,
         outlet,
         p,
         t,
-        control_type_,
+        relevant_control_type,
         state_time_dependent_cache.current_flow_rate_outlet,
         time_dependent_cache.outlet,
         true,
@@ -766,7 +772,7 @@ function formulate_flows!(
     du::CVector,
     p::Parameters,
     t::Number;
-    control_type::ContinuousControlType.T = ContinuousControlType.None,
+    relevant_control_type::ContinuousControlType.T = ContinuousControlType.None,
 )::Nothing
     (;
         linear_resistance,
@@ -777,10 +783,10 @@ function formulate_flows!(
         user_demand,
     ) = p.p_independent
 
-    formulate_flow!(du, pump, p, t, control_type)
-    formulate_flow!(du, outlet, p, t, control_type)
+    formulate_flow!(du, pump, p, t, relevant_control_type)
+    formulate_flow!(du, outlet, p, t, relevant_control_type)
 
-    if control_type == ContinuousControlType.None
+    if relevant_control_type == ContinuousControlType.None
         formulate_flow!(du, linear_resistance, p, t)
         formulate_flow!(du, manning_resistance, p, t)
         formulate_flow!(du, tabulated_rating_curve, p, t)
