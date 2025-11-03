@@ -29,7 +29,7 @@ Get the Jacobian evaluation function via DifferentiationInterface.jl.
 The time derivative is also supplied in case a Rosenbrock method is used.
 """
 function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
-    (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
+    (; p_independent, state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
     backend = get_ad_type(solver)
     sparsity_detector = TracerSparsityDetector()
 
@@ -50,7 +50,7 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         backend_jac,
         u,
         Constant(p_independent),
-        Cache(state_time_dependent_cache),
+        Cache(state_and_time_dependent_cache),
         Constant(time_dependent_cache),
         Constant(p_mutable),
         Constant(t);
@@ -68,7 +68,7 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         backend_jac,
         u,
         Constant(p.p_independent),
-        Cache(state_time_dependent_cache),
+        Cache(state_and_time_dependent_cache),
         Constant(time_dependent_cache),
         Constant(p.p_mutable),
         Constant(t),
@@ -81,7 +81,7 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         t,
         Constant(u),
         Constant(p_independent),
-        Cache(state_time_dependent_cache),
+        Cache(state_and_time_dependent_cache),
         Cache(time_dependent_cache),
         Constant(p_mutable);
         strict = Val(true),
@@ -95,7 +95,7 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         t,
         Constant(u),
         Constant(p.p_independent),
-        Cache(state_time_dependent_cache),
+        Cache(state_and_time_dependent_cache),
         Cache(time_dependent_cache),
         Constant(p.p_mutable),
     )
@@ -139,10 +139,10 @@ function Model(config::Config)::Model
     t0 = zero(t_end)
     timespan = (t0, t_end)
 
-    local parameters, p_independent, state_time_dependent_cache, p_mutable, tstops
+    local parameters, p_independent, state_and_time_dependent_cache, p_mutable, tstops
     try
         parameters = Parameters(db, config)
-        (; p_independent, state_time_dependent_cache, p_mutable) = parameters
+        (; p_independent, state_and_time_dependent_cache, p_mutable) = parameters
 
         if !valid_discrete_control(parameters.p_independent, config)
             error("Invalid discrete control state definition(s).")
@@ -193,7 +193,7 @@ function Model(config::Config)::Model
 
     # Previous level is used to estimate the minimum level that was attained during a time step
     # in limit_flow!
-    p_independent.basin.level_prev .= state_time_dependent_cache.current_level
+    p_independent.basin.level_prev .= state_and_time_dependent_cache.current_level
 
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))

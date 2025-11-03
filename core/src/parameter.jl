@@ -841,17 +841,17 @@ end
 Get one of the vectors of the StateTimeDependentCache based on the passed type.
 """
 function get_cache_vector(
-    state_time_dependent_cache::StateAndTimeDependentCache,
+    state_and_time_dependent_cache::StateAndTimeDependentCache,
     type::CacheType.T,
 )
     if type == CacheType.flow_rate_pump
-        state_time_dependent_cache.current_flow_rate_pump
+        state_and_time_dependent_cache.current_flow_rate_pump
     elseif type == CacheType.flow_rate_outlet
-        state_time_dependent_cache.current_flow_rate_outlet
+        state_and_time_dependent_cache.current_flow_rate_outlet
     elseif type == CacheType.basin_level
-        state_time_dependent_cache.current_level
+        state_and_time_dependent_cache.current_level
     elseif type == CacheType.basin_storage
-        state_time_dependent_cache.current_storage
+        state_and_time_dependent_cache.current_storage
     else
         error("Invalid cache type $type passed.")
     end
@@ -1049,7 +1049,7 @@ end
     # Static part
     # Static subgrid ids
     subgrid_id_static::Vector{Int32} = []
-    # index into the p.state_time_dependent_cache.current_level vector for each static subgrid_id
+    # index into the p.state_and_time_dependent_cache.current_level vector for each static subgrid_id
     basin_id_static::Vector{NodeID} = []
     # index into the subgrid.level vector for each static subgrid_id
     level_index_static::Vector{Int} = []
@@ -1059,7 +1059,7 @@ end
     # Dynamic part
     # Dynamic subgrid ids
     subgrid_id_time::Vector{Int32} = []
-    # index into the p.state_time_dependent_cache.current_level vector for each dynamic subgrid_id
+    # index into the p.state_and_time_dependent_cache.current_level vector for each dynamic subgrid_id
     basin_id_time::Vector{NodeID} = []
     # index into the subgrid.level vector for each dynamic subgrid_id
     level_index_time::Vector{Int} = []
@@ -1260,11 +1260,11 @@ function get_value(ref::CacheRef, p::Parameters, du::CVector)
     if ref.from_du
         du[ref.idx]
     else
-        get_cache_vector(p.state_time_dependent_cache, ref.type)[ref.idx]
+        get_cache_vector(p.state_and_time_dependent_cache, ref.type)[ref.idx]
     end
 end
 
 function set_value!(ref::CacheRef, p::Parameters, value)
     @assert !ref.from_du
-    get_cache_vector(p.state_time_dependent_cache, ref.type)[ref.idx] = value
+    get_cache_vector(p.state_and_time_dependent_cache, ref.type)[ref.idx] = value
 end

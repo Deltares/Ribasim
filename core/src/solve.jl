@@ -5,7 +5,7 @@ water_balance!(du::CVector, u::CVector, p::Parameters, t::Number)::Nothing = wat
     du,
     u,
     p.p_independent,
-    p.state_time_dependent_cache::StateAndTimeDependentCache,
+    p.state_and_time_dependent_cache::StateAndTimeDependentCache,
     p.time_dependent_cache,
     p.p_mutable,
     t,
@@ -17,14 +17,14 @@ water_balance!(
     t::Number,
     u::CVector,
     p_independent::ParametersIndependent,
-    state_time_dependent_cache::StateAndTimeDependentCache,
+    state_and_time_dependent_cache::StateAndTimeDependentCache,
     time_dependent_cache::TimeDependentCache,
     p_mutable::ParametersMutable,
 ) = water_balance!(
     du,
     u,
     p_independent,
-    state_time_dependent_cache,
+    state_and_time_dependent_cache,
     time_dependent_cache,
     p_mutable,
     t,
@@ -35,14 +35,14 @@ function water_balance!(
     du::CVector,
     u::CVector,
     p_independent::ParametersIndependent,
-    state_time_dependent_cache::StateAndTimeDependentCache,
+    state_and_time_dependent_cache::StateAndTimeDependentCache,
     time_dependent_cache::TimeDependentCache,
     p_mutable::ParametersMutable,
     t::Number,
 )::Nothing
     p = Parameters(
         p_independent,
-        state_time_dependent_cache,
+        state_and_time_dependent_cache,
         time_dependent_cache,
         p_mutable,
     )
@@ -118,7 +118,7 @@ Compute the storages, levels and areas of all Basins given the
 state u and the time t.
 """
 function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::Nothing
-    (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
+    (; p_independent, state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
     (; basin) = p_independent
     (;
         node_id,
@@ -148,14 +148,14 @@ function set_current_basin_properties!(u::CVector, p::Parameters, t::Number)::No
         formulate_storages!(u, p, t)
         @threads for i in eachindex(basin.node_id)
             id = basin.node_id[i]
-            s = state_time_dependent_cache.current_storage[i]
+            s = state_and_time_dependent_cache.current_storage[i]
             i = id.idx
-            state_time_dependent_cache.current_low_storage_factor[i] =
+            state_and_time_dependent_cache.current_low_storage_factor[i] =
                 reduction_factor(s, low_storage_threshold[i])
-            @inbounds state_time_dependent_cache.current_level[i] =
+            @inbounds state_and_time_dependent_cache.current_level[i] =
                 get_level_from_storage(basin, i, s)
-            state_time_dependent_cache.current_area[i] =
-                basin.level_to_area[i](state_time_dependent_cache.current_level[i])
+            state_and_time_dependent_cache.current_area[i] =
+                basin.level_to_area[i](state_and_time_dependent_cache.current_level[i])
         end
     end
 end
@@ -166,9 +166,9 @@ function formulate_storages!(
     t::Number;
     add_initial_storage::Bool = true,
 )::Nothing
-    (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
+    (; p_independent, state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
     (; basin, flow_boundary, flow_to_storage) = p_independent
-    (; current_storage) = state_time_dependent_cache
+    (; current_storage) = state_and_time_dependent_cache
     # Current storage: initial condition +
     # total inflows and outflows since the start
     # of the simulation
@@ -201,10 +201,10 @@ end
 Smoothly let the evaporation and infiltration flux go to 0 when the storage is less than 10 m^3
 """
 function update_vertical_flux!(du::CVector, p::Parameters)::Nothing
-    (; p_independent, state_time_dependent_cache) = p
+    (; p_independent, state_and_time_dependent_cache) = p
     (; basin) = p_independent
     (; vertical_flux) = basin
-    (; current_area, current_low_storage_factor) = state_time_dependent_cache
+    (; current_area, current_low_storage_factor) = state_and_time_dependent_cache
 
     for id in basin.node_id
         area = current_area[id.idx]
@@ -221,8 +221,9 @@ function update_vertical_flux!(du::CVector, p::Parameters)::Nothing
 end
 
 function set_error!(pid_control::PidControl, p::Parameters, t::Number)
-    (; state_time_dependent_cache, time_dependent_cache, p_mutable) = p
-    (; current_level, current_error_pid_control, current_area) = state_time_dependent_cache
+    (; state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
+    (; current_level, current_error_pid_control, current_area) =
+        state_and_time_dependent_cache
     (; current_target) = time_dependent_cache.pid_control
     (; listen_node_id, target) = pid_control
 
@@ -236,11 +237,11 @@ function set_error!(pid_control::PidControl, p::Parameters, t::Number)
 end
 
 function formulate_pid_control!(du::CVector, u::CVector, p::Parameters, t::Number)::Nothing
-    (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
+    (; p_independent, state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
     (; current_proportional, current_integral, current_derivative) =
         time_dependent_cache.pid_control
     (; pid_control) = p_independent
-    (; current_error_pid_control, current_area) = state_time_dependent_cache
+    (; current_error_pid_control, current_area) = state_and_time_dependent_cache
     (; node_id, active, target, listen_node_id) = p_independent.pid_control
 
     all_nodes_active = p_mutable.all_nodes_active
@@ -736,14 +737,14 @@ function formulate_flow!(
     t::Number,
     relevant_control_type::ContinuousControlType.T,
 )::Nothing
-    (; time_dependent_cache, state_time_dependent_cache) = p
+    (; time_dependent_cache, state_and_time_dependent_cache) = p
     formulate_pump_or_outlet_flow!(
         du.pump,
         pump,
         p,
         t,
         relevant_control_type,
-        state_time_dependent_cache.current_flow_rate_pump,
+        state_and_time_dependent_cache.current_flow_rate_pump,
         time_dependent_cache.pump,
     )
 end
@@ -755,14 +756,14 @@ function formulate_flow!(
     t::Number,
     relevant_control_type::ContinuousControlType.T,
 )::Nothing
-    time_dependent_cache, state_time_dependent_cache = p
+    time_dependent_cache, state_and_time_dependent_cache = p
     formulate_pump_or_outlet_flow!(
         du.outlet,
         outlet,
         p,
         t,
         relevant_control_type,
-        state_time_dependent_cache.current_flow_rate_outlet,
+        state_and_time_dependent_cache.current_flow_rate_outlet,
         time_dependent_cache.outlet,
         true,
     )
@@ -805,7 +806,7 @@ function limit_flow!(
     t::Number,
 )::Nothing
     (; uprev, dt) = integrator
-    (; p_independent, state_time_dependent_cache) = p
+    (; p_independent, state_and_time_dependent_cache) = p
     (;
         pump,
         outlet,
@@ -816,7 +817,7 @@ function limit_flow!(
         allocation,
         level_difference_threshold,
     ) = p_independent
-    (; current_storage, current_level) = state_time_dependent_cache
+    (; current_storage, current_level) = state_and_time_dependent_cache
 
     # The current storage and level based on the proposed u are used to estimate the lowest
     # storage and level attained in the last time step to estimate whether there was an effect

@@ -209,9 +209,9 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    (; p_independent, state_time_dependent_cache) = model.integrator.p
+    (; p_independent, state_and_time_dependent_cache) = model.integrator.p
     (; basin) = p_independent
-    @test state_time_dependent_cache.current_storage ≈ [1000]
+    @test state_and_time_dependent_cache.current_storage ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
@@ -235,11 +235,11 @@ end
     (; integrator) = model
     du = get_du(integrator)
     (; u, p, t) = integrator
-    (; p_independent, state_time_dependent_cache) = p
+    (; p_independent, state_and_time_dependent_cache) = p
     (; basin) = p_independent
 
     Ribasim.water_balance!(du, u, p, t)
-    stor = state_time_dependent_cache.current_storage
+    stor = state_and_time_dependent_cache.current_storage
     prec = basin.vertical_flux.precipitation
     evap = du.evaporation
     drng = basin.vertical_flux.drainage
@@ -285,7 +285,7 @@ end
 
     (; integrator) = model
     (; p) = integrator
-    (; p_independent, state_time_dependent_cache) = p
+    (; p_independent, state_and_time_dependent_cache) = p
 
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p_independent))
@@ -294,7 +294,7 @@ end
 
     @test success(model)
     @test length(model.integrator.sol) == 2 # start and end
-    @test state_time_dependent_cache.current_storage ≈
+    @test state_and_time_dependent_cache.current_storage ≈
           Float32[775.23576, 775.23365, 572.60102, 1130.005] skip = Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
@@ -330,10 +330,10 @@ end
     @test model isa Ribasim.Model
     @test success(model)
     @test allunique(Ribasim.tsaves(model))
-    (; p_independent, state_time_dependent_cache) = model.integrator.p
+    (; p_independent, state_and_time_dependent_cache) = model.integrator.p
     precipitation = p_independent.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
-    @test state_time_dependent_cache.current_storage ≈
+    @test state_and_time_dependent_cache.current_storage ≈
           Float32[691.797, 691.795, 459.022, 1136.969] atol = 2.0 skip = Sys.isapple()
 end
 
@@ -381,8 +381,8 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test success(model)
-    (; p_independent, state_time_dependent_cache) = model.integrator.p
-    @test state_time_dependent_cache.current_storage ≈ Float32[368.31558, 365.68442] skip =
+    (; p_independent, state_and_time_dependent_cache) = model.integrator.p
+    @test state_and_time_dependent_cache.current_storage ≈ Float32[368.31558, 365.68442] skip =
         Sys.isapple()
     (; tabulated_rating_curve) = p_independent
     # The first node is static, the first interpolation object always applies
@@ -445,19 +445,19 @@ end
 
     (; integrator) = model
     (; u, p, t, sol) = integrator
-    (; p_independent, state_time_dependent_cache) = p
+    (; p_independent, state_and_time_dependent_cache) = p
 
     day = 86400.0
 
-    @test only(state_time_dependent_cache.current_storage) ≈ 1000.0
+    @test only(state_and_time_dependent_cache.current_storage) ≈ 1000.0
     # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
     BMI.update_until(model, 150day)
     formulate_storages!(u, p, t)
-    @test only(state_time_dependent_cache.current_storage) ≈ 900 atol = 5
+    @test only(state_and_time_dependent_cache.current_storage) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
     BMI.update_until(model, 200day)
     formulate_storages!(u, p, t)
-    @test only(state_time_dependent_cache.current_storage) ≈ 500 atol = 2
+    @test only(state_and_time_dependent_cache.current_storage) ≈ 500 atol = 2
 
     # Transient return factor
     flow = DataFrame(Ribasim.flow_data(model))
@@ -539,8 +539,8 @@ end
 
     du = get_du(model.integrator)
     (; p, t) = model.integrator
-    (; p_independent, state_time_dependent_cache) = p
-    (; current_level) = state_time_dependent_cache
+    (; p_independent, state_and_time_dependent_cache) = p
+    (; current_level) = state_and_time_dependent_cache
     h_actual = current_level[1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)

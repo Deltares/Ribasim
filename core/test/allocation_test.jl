@@ -320,7 +320,7 @@ end
     @test_throws Exception model = Ribasim.run(toml_path)
     (; u, p, t) = model.integrator
     Ribasim.formulate_storages!(u, p, t)
-    (; current_storage) = p.state_time_dependent_cache
+    (; current_storage) = p.state_and_time_dependent_cache
 
     @test current_storage ≈ Float32[
         1.0346908f6,

@@ -154,10 +154,10 @@ The ID can belong to either a Basin or a LevelBoundary.
 du: tells ForwardDiff whether this call is for differentiation or not
 """
 function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
-    (; p_independent, state_time_dependent_cache, time_dependent_cache) = p
+    (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
 
     if node_id.type == NodeType.Basin
-        state_time_dependent_cache.current_level[node_id.idx]
+        state_and_time_dependent_cache.current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
         itp = p_independent.level_boundary.level[node_id.idx]
         eval_time_interp(
@@ -177,9 +177,9 @@ function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
 end
 
 function get_storage(p::Parameters, node_id::NodeID, t::Number)::Float64
-    (; p_independent, state_time_dependent_cache, time_dependent_cache) = p
+    (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
 
-    state_time_dependent_cache.current_storage[node_id.idx]
+    state_and_time_dependent_cache.current_storage[node_id.idx]
 end
 
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
@@ -307,7 +307,7 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
 end
 
 function get_low_storage_factor(p::Parameters, id::NodeID)
-    (; current_low_storage_factor) = p.state_time_dependent_cache
+    (; current_low_storage_factor) = p.state_and_time_dependent_cache
     if id.type == NodeType.Basin
         current_low_storage_factor[id.idx]
     else
@@ -868,7 +868,7 @@ end
 Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
-    (; current_storage) = p.state_time_dependent_cache
+    (; current_storage) = p.state_and_time_dependent_cache
     formulate_storages!(u, p, t)
     any(<(0), current_storage)
 end
@@ -1092,8 +1092,8 @@ update the boolean flags in p_mutable. In several parts of the calculations in w
 caches are only updated if the data they depend on is different from the previous water_balance! call.
 """
 function check_new_input!(p::Parameters, u::CVector, t::Number)::Nothing
-    (; state_time_dependent_cache, time_dependent_cache, p_mutable) = p
-    (; u_prev_call) = state_time_dependent_cache
+    (; state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
+    (; u_prev_call) = state_and_time_dependent_cache
     (; t_prev_call) = time_dependent_cache
 
     p_mutable.new_t =
@@ -1116,7 +1116,7 @@ function check_new_input!(p::Parameters, u::CVector, t::Number)::Nothing
             eachindex(u),
         )
     if p_mutable.new_u
-        state_time_dependent_cache.u_prev_call .= u
+        state_and_time_dependent_cache.u_prev_call .= u
     end
     return nothing
 end
