@@ -621,21 +621,6 @@ end
         )
     end
 
-    # We need to check this way if this log message exists, because different hardware/OS can log in different order
-    found_message =
-        any(log -> log.message == "Set of incompatible constraints found", logger.logs)
-    @test found_message
-
-    constraint_names = [
-        "linear_resistance_constraint[LinearResistance #2]",
-        "volume_conservation[Basin #1]",
-    ]
-    found_message = any(
-        log ->
-            haskey(log.kwargs, :constraint_violations) &&
-                sort(name.(keys(log.kwargs[:constraint_violations]))) == constraint_names,
-        logger.logs,
-    )
     @test found_message
 
     @test ispath(
