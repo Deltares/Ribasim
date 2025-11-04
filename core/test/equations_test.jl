@@ -171,7 +171,7 @@ end
     (; flow_boundary, pump) = p_independent
 
     q_boundary = flow_boundary.flow_rate[1].u[1]
-    q_pump = pump.flow_rate[1].u[1]
+    q_pump = pump.flow_rate[1]
     storage_both = get_storages_and_levels(model).storage
     t = tsaves(model)
     tspan = model.integrator.sol.prob.tspan

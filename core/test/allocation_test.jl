@@ -25,7 +25,7 @@
     flow_value(id_1, id_2) = JuMP.value(flow[(id_1, id_2)]) * allocation_model.scaling.flow
 
     @test flow_value(NodeID(:Basin, 2, p_independent), NodeID(:Pump, 5, p_independent)) ≈
-          pump.flow_rate[1](t)
+          pump.flow_rate[1]
     @test flow_value(
         NodeID(:Basin, 2, p_independent),
         NodeID(:UserDemand, 10, p_independent),
