@@ -756,7 +756,7 @@ function formulate_flow!(
     t::Number,
     relevant_control_type::ContinuousControlType.T,
 )::Nothing
-    time_dependent_cache, state_and_time_dependent_cache = p
+    (; time_dependent_cache, state_and_time_dependent_cache) = p
     formulate_pump_or_outlet_flow!(
         du.outlet,
         outlet,
@@ -773,7 +773,7 @@ function formulate_flows!(
     du::CVector,
     p::Parameters,
     t::Number;
-    relevant_control_type::ContinuousControlType.T = ContinuousControlType.None,
+    control_type::ContinuousControlType.T = ContinuousControlType.None,
 )::Nothing
     (;
         linear_resistance,
@@ -784,10 +784,10 @@ function formulate_flows!(
         user_demand,
     ) = p.p_independent
 
-    formulate_flow!(du, pump, p, t, relevant_control_type)
-    formulate_flow!(du, outlet, p, t, relevant_control_type)
+    formulate_flow!(du, pump, p, t, control_type)
+    formulate_flow!(du, outlet, p, t, control_type)
 
-    if relevant_control_type == ContinuousControlType.None
+    if control_type == ContinuousControlType.None
         formulate_flow!(du, linear_resistance, p, t)
         formulate_flow!(du, manning_resistance, p, t)
         formulate_flow!(du, tabulated_rating_curve, p, t)
