@@ -77,6 +77,10 @@ object Windows_TestRibasimBinaries : BuildType({
     templates(WindowsAgent, GithubCommitStatusIntegration, TestBinariesWindows)
     name = "Test Ribasim Binaries"
 
+    failureConditions {
+        executionTimeoutMin = 21
+    }
+
     dependencies {
         dependency(Windows_BuildRibasim) {
             snapshot {
