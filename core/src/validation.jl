@@ -253,6 +253,49 @@ Test whether static or discrete controlled flow rates are indeed non-negative.
 """
 function valid_flow_rates(
     node_id::Vector{NodeID},
+    flow_rate::Vector{Float64},
+    control_mapping::OrderedDict{Tuple{NodeID, String}, <:ControlStateUpdate},
+)::Bool
+    errors = false
+    # Collect ids of discrete controlled nodes so that they do not give another error
+    # if their initial value is also invalid.
+    ids_controlled = NodeID[]
+
+    for (key, control_state_update) in pairs(control_mapping)
+        id_controlled = key[1]
+        push!(ids_controlled, id_controlled)
+        flow_rate_update_idx = findfirst(
+            parameter_update -> parameter_update.name == :flow_rate,
+            control_state_update.scalar_update,
+        )
+        @assert !isnothing(flow_rate_update_idx)
+        flow_rate_update = control_state_update.scalar_update[flow_rate_update_idx]
+        flow_rate_ = flow_rate_update.value
+
+        if flow_rate_ < 0.0
+            errors = true
+            control_state = key[2]
+            @error "Negative flow rate(s) found." node_id = id_controlled control_state
+        end
+    end
+    for (id, flow_rate_) in zip(node_id, flow_rate)
+        if id in ids_controlled
+            continue
+        end
+        if flow_rate_ < 0.0
+            errors = true
+            @error "Negative flow rate(s) for $id found."
+        end
+    end
+
+    return !errors
+end
+
+"""
+Test whether static or discrete controlled flow rates are indeed non-negative.
+"""
+function valid_flow_rates(
+    node_id::Vector{NodeID},
     flow_rate::Vector{ScalarLinearInterpolation},
     control_mapping::OrderedDict{Tuple{NodeID, String}, <:ControlStateUpdate},
 )::Bool

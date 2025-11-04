@@ -698,7 +698,8 @@ flow_demand_id: connected flow demand node if applicable
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     active::Vector{Bool} = fill(true, length(node_id))
-    flow_rate::Vector{ScalarLinearInterpolation} =
+    flow_rate::Vector{Float64} = Vector{Float64}(undef, length(node_id))
+    time_dependent_flow_rate::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     min_flow_rate::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
@@ -739,7 +740,8 @@ flow_demand_id: connected flow demand node if applicable
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     active::Vector{Bool} = ones(Bool, length(node_id))
-    flow_rate::Vector{ScalarLinearInterpolation} =
+    flow_rate::Vector{Float64} = Vector{Float64}(undef, length(node_id))
+    time_dependent_flow_rate::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     min_flow_rate::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))

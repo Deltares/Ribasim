@@ -231,7 +231,7 @@ function set_error!(pid_control::PidControl, p::Parameters, t::Number)
         listened_node_id = listen_node_id[i]
         @assert listened_node_id.type == NodeType.Basin lazy"Listen node $listened_node_id is not a Basin."
         current_error_pid_control[i] =
-            eval_time_interp(target[i], current_target, i, p, t) -
+            eval_time_interpolation(target[i], current_target, i, p, t) -
             current_level[listened_node_id.idx]
     end
 end
@@ -260,9 +260,16 @@ function formulate_pid_control!(du::CVector, u::CVector, p::Parameters, t::Numbe
 
         flow_rate = zero(eltype(du))
 
-        K_p = eval_time_interp(pid_control.proportional[i], current_proportional, i, p, t)
-        K_i = eval_time_interp(pid_control.integral[i], current_integral, i, p, t)
-        K_d = eval_time_interp(pid_control.derivative[i], current_derivative, i, p, t)
+        K_p = eval_time_interpolation(
+            pid_control.proportional[i],
+            current_proportional,
+            i,
+            p,
+            t,
+        )
+        K_i = eval_time_interpolation(pid_control.integral[i], current_integral, i, p, t)
+        K_d =
+            eval_time_interpolation(pid_control.derivative[i], current_derivative, i, p, t)
 
         if !iszero(K_d)
             # dlevel/dstorage = 1/area
@@ -388,7 +395,7 @@ function formulate_flow!(
         q *= factor_level
         du.user_demand_inflow[id.idx] = q
         du.user_demand_outflow[id.idx] =
-            q * eval_time_interp(return_factor, current_return_factor, id.idx, p, t)
+            q * eval_time_interpolation(return_factor, current_return_factor, id.idx, p, t)
     end
     return nothing
 end
@@ -647,7 +654,6 @@ function formulate_pump_or_outlet_flow!(
         inflow_link = node.inflow_link[id.idx]
         outflow_link = node.outflow_link[id.idx]
         active = node.active[id.idx]
-        flow_rate_itp = node.flow_rate[id.idx]
         min_flow_rate = node.min_flow_rate[id.idx]
         max_flow_rate = node.max_flow_rate[id.idx]
         control_type = node.control_type[id.idx]
@@ -658,17 +664,21 @@ function formulate_pump_or_outlet_flow!(
             continue
         end
 
-        if control_type == ContinuousControlType.None
-            eval_time_interp(flow_rate_itp, current_flow_rate, id.idx, p, t)
+        flow_rate = if control_type != ContinuousControlType.None
+            current_flow_rate[id.idx]
+        elseif isassigned(node.time_dependent_flow_rate, id.idx)
+            # get the time dependent flow rate from interpolation or cached value
+            eval_time_interpolation(
+                node.time_dependent_flow_rate[id.idx],
+                current_flow_rate,
+                id.idx,
+                p,
+                t,
+            )
+        else
+            # get the scalar flow rate from  (for DiscreteControl, Control by allocation or flows from the Static table)
+            node.flow_rate[id.idx]
         end
-        # flow_rate = if time_dependent_flow
-        #     # <get flow rate from interpolation or cached value in `current_flow_rate_*`, now from `TimeDependentCache`>
-        #     eval_time_interp(flow_rate_itp, current_flow_rate, id.idx, p, t)
-        # else
-        #     # <get flow rate from new cache for `DiscreteControl`, Control by allocation and flows from the `Static` table>
-
-        # end
-        flow_rate = current_flow_rate[id.idx]
 
         inflow_id = inflow_link.link[1]
         outflow_id = outflow_link.link[2]
@@ -677,8 +687,10 @@ function formulate_pump_or_outlet_flow!(
 
         q = flow_rate * get_low_storage_factor(p, inflow_id)
 
-        lower_bound = eval_time_interp(min_flow_rate, current_min_flow_rate, id.idx, p, t)
-        upper_bound = eval_time_interp(max_flow_rate, current_max_flow_rate, id.idx, p, t)
+        lower_bound =
+            eval_time_interpolation(min_flow_rate, current_min_flow_rate, id.idx, p, t)
+        upper_bound =
+            eval_time_interpolation(max_flow_rate, current_max_flow_rate, id.idx, p, t)
 
         # When allocation is not active, set the flow demand directly as a lower bound on the
         # pump or outlet flow rate
@@ -712,11 +724,16 @@ function formulate_pump_or_outlet_flow!(
             q *= reduction_factor(Δlevel, level_difference_threshold)
         end
 
-        min_upstream_level_ =
-            eval_time_interp(min_upstream_level, current_min_upstream_level, id.idx, p, t)
+        min_upstream_level_ = eval_time_interpolation(
+            min_upstream_level,
+            current_min_upstream_level,
+            id.idx,
+            p,
+            t,
+        )
         q *= reduction_factor(src_level - min_upstream_level_, level_difference_threshold)
 
-        max_downstream_level_ = eval_time_interp(
+        max_downstream_level_ = eval_time_interpolation(
             max_downstream_level,
             current_max_downstream_level,
             id.idx,

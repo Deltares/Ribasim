@@ -160,7 +160,7 @@ function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
         state_and_time_dependent_cache.current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
         itp = p_independent.level_boundary.level[node_id.idx]
-        eval_time_interp(
+        eval_time_interpolation(
             itp,
             time_dependent_cache.level_boundary.current_level,
             node_id.idx,
@@ -1097,9 +1097,7 @@ function check_new_input!(p::Parameters, u::CVector, t::Number)::Nothing
     (; t_prev_call) = time_dependent_cache
 
     p_mutable.new_t =
-        t == 0.0 ||
-        !isassigned(t_prev_call, 1) ||
-        (
+        !isassigned(t_prev_call, 1) || (
             t != t_prev_call[1] &&
             ForwardDiff.partials(t) == ForwardDiff.partials(t_prev_call[1])
         )
@@ -1121,7 +1119,7 @@ function check_new_input!(p::Parameters, u::CVector, t::Number)::Nothing
     return nothing
 end
 
-function eval_time_interp(
+function eval_time_interpolation(
     itp::AbstractInterpolation,
     cache::Vector,
     idx::Int,

@@ -170,6 +170,7 @@ function parse_parameter!(
     field_name::Symbol = parameter_name,
     take_first::NTuple{N, Symbol} where {N} = (),
     node_ids_all::Union{Vector{NodeID}, Nothing} = nothing,
+    is_optional::Bool = false,
 )
     param_vec = getfield(node, field_name)
     T = eltype(param_vec)
@@ -215,7 +216,9 @@ function parse_parameter!(
             @error "Data for $id found in both Static and Time tables."
             error = true
         elseif !in_static && !in_time
-            if is_complete
+            if is_optional
+                return true
+            elseif is_complete
                 @error "Data for $id found in neither Static nor Time table."
                 error = true
             else
@@ -235,7 +238,7 @@ function parse_parameter!(
             error |= !valid
             param_vec[id.idx] = val
             is_controllable &&
-                parse_control_states!(node, T, static_group, id, parameter_name)
+                parse_control_states!(node, T, static_group, id, parameter_name, field_name)
         elseif in_time
             val, valid = get_parameter_value(
                 time_group,
@@ -267,6 +270,7 @@ function parse_control_states!(
     static_group::Vector,
     node_id::NodeID,
     parameter_name::Symbol,
+    field_name::Symbol = parameter_name,
 ) where {T <: Union{<:Number, <:AbstractInterpolation}}
     !hasproperty(first(static_group), :control_state) && return
     for group in
@@ -278,7 +282,7 @@ function parse_control_states!(
             push!(
                 node.control_mapping[(node_id, control_state)].itp_update_linear,
                 ParameterUpdate(
-                    parameter_name,
+                    field_name,
                     LinearInterpolation(
                         [val, val],
                         [0.0, 1.0];
@@ -290,14 +294,21 @@ function parse_control_states!(
         else
             push!(
                 node.control_mapping[(node_id, control_state)].scalar_update,
-                ParameterUpdate(parameter_name, val),
+                ParameterUpdate(field_name, val),
             )
         end
     end
 end
 
-parse_control_states!(::AbstractParameterNode, ::Type{Bool}, ::Vector, ::NodeID, ::Symbol) =
-    nothing
+parse_control_states!(
+    ::AbstractParameterNode,
+    ::Type{Bool},
+    ::Vector,
+    ::NodeID,
+    ::Symbol,
+    ::Symbol,
+) = nothing
+
 parse_control_states!(::BasinForcing, args...) = nothing
 
 function initialize_control_mapping!(node::AbstractParameterNode, static::StructVector)
@@ -580,16 +591,32 @@ function Pump(db::DB, config::Config, graph::MetaGraph)
     set_external_flow_demand_nodes!(pump, graph)
 
     errors = parse_parameter!(pump, config, :active; static, time, default = true)
-    errors |= parse_parameter!(pump, config, :flow_rate; static, time)
+
+    # flow_rate can come from either static or time, and ends up in a different cache
+    errors_s = parse_parameter!(pump, config, :flow_rate; static, is_optional = true)
+    errors_t = parse_parameter!(
+        pump,
+        config,
+        :flow_rate;
+        time,
+        field_name = :time_dependent_flow_rate,
+        is_optional = true,
+    )
+    if !errors_t
+        errors |=
+            !valid_flow_rates(node_id, pump.time_dependent_flow_rate, pump.control_mapping)
+    end
+    if !errors_s
+        errors |= !valid_flow_rates(node_id, pump.flow_rate, pump.control_mapping)
+    end
+    errors |= errors_t && errors_s
+
     errors |= parse_parameter!(pump, config, :min_flow_rate; static, time, default = 0.0)
     errors |= parse_parameter!(pump, config, :max_flow_rate; static, time, default = Inf)
     errors |=
         parse_parameter!(pump, config, :min_upstream_level; static, time, default = -Inf)
     errors |=
         parse_parameter!(pump, config, :max_downstream_level; static, time, default = Inf)
-
-    errors |= !valid_flow_rates(node_id, pump.flow_rate, pump.control_mapping)
-
     errors && error("Errors encountered when parsing Pump data.")
 
     pump
@@ -608,16 +635,36 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)
     set_external_flow_demand_nodes!(outlet, graph)
 
     errors = parse_parameter!(outlet, config, :active; static, time, default = true)
-    errors |= parse_parameter!(outlet, config, :flow_rate; static, time)
+
+    # flow_rate can come from either static or time, and ends up in a different cache
+    errors_s = parse_parameter!(outlet, config, :flow_rate; static, is_optional = true)
+    errors_t = parse_parameter!(
+        outlet,
+        config,
+        :flow_rate;
+        time,
+        field_name = :time_dependent_flow_rate,
+        is_optional = true,
+    )
+    if !errors_t
+        errors |=
+            !valid_flow_rates(
+                node_id,
+                outlet.time_dependent_flow_rate,
+                outlet.control_mapping,
+            )
+    end
+    if !errors_s
+        errors |= !valid_flow_rates(node_id, outlet.flow_rate, outlet.control_mapping)
+    end
+    errors |= errors_t && errors_s
+
     errors |= parse_parameter!(outlet, config, :min_flow_rate; static, time, default = 0.0)
     errors |= parse_parameter!(outlet, config, :max_flow_rate; static, time, default = Inf)
     errors |=
         parse_parameter!(outlet, config, :min_upstream_level; static, time, default = -Inf)
     errors |=
         parse_parameter!(outlet, config, :max_downstream_level; static, time, default = Inf)
-
-    errors |= !valid_flow_rates(node_id, outlet.flow_rate, outlet.control_mapping)
-
     errors && error("Errors encountered when parsing Outlet data.")
 
     outlet
