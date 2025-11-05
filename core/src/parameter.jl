@@ -1125,7 +1125,7 @@ and not derived from the state vector `u` (or the time `t`). In this context e.g
 of floats (not dependent on `u`) is not considered mutable, because even though it's elements are mutable,
 the object itself is not.
 """
-@kwdef struct ParametersIndependent
+@kwdef struct ParametersIndependent{C1}
     starttime::DateTime
     reltol::Float64
     relmask::Vector{Bool}
@@ -1136,7 +1136,7 @@ the object itself is not.
     manning_resistance::ManningResistance
     tabulated_rating_curve::TabulatedRatingCurve
     level_boundary::LevelBoundary
-    flow_boundary::FlowBoundary
+    flow_boundary::FlowBoundary{C1}
     pump::Pump
     outlet::Outlet
     terminal::Terminal
@@ -1254,8 +1254,8 @@ end
 """
 The collection of all parameters that are passed to the rhs (`water_balance!`) and callbacks.
 """
-@kwdef struct Parameters{T1, T2}
-    p_independent::ParametersIndependent
+@kwdef struct Parameters{C1, T1, T2}
+    p_independent::ParametersIndependent{C1}
     state_time_dependent_cache::StateTimeDependentCache{T1} =
         StateTimeDependentCache(p_independent)
     time_dependent_cache::TimeDependentCache{T2} = TimeDependentCache(p_independent)

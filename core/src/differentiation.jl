@@ -49,6 +49,8 @@ which is explicitly computed as a sparse matrix in `calc_J_inner`. The above com
   transforms the problem to 'storage space', solves the problem, and translates the result back to 'flow space'
 =#
 
+import SparseArrays
+
 """
 The HalfLazyJacobian represents the Ribasim Jacobian in the form `J = J_intermediate * A`
 (see also the theoretical background in differentiation.jl).
@@ -56,12 +58,12 @@ The HalfLazyJacobian represents the Ribasim Jacobian in the form `J = J_intermed
 - `reduce_state!`, which defines the matrix-vector product `u_reduced = A * u`;
 - `calc_J_inner!`, which defined the matrix-matrix product `J_inner =  A * J_intermediate`.
 """
-struct HalfLazyJacobian{Jtype, PI, D, P, B} <: AbstractSciMLOperator{Float64}
-    J_intermediate::Jtype
-    p_independent::PI
-    du::D
-    prep::P
-    backend::B
+struct HalfLazyJacobian <: AbstractSciMLOperator{Float64}
+    J_intermediate::SparseArrays.SparseMatrixCSC{Float64, Int64}
+    p_independent::ParametersIndependent
+    du::Ribasim.CArrays.CVector
+    prep::Any
+    backend::Any
 end
 
 # Used in the default GMRES linear solve for
