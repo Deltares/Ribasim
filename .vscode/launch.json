@@ -5,7 +5,7 @@
             "type": "julia",
             "request": "launch",
             "name": "debug Ribasim",
-            "program": "generated_testmodels/debug.jl",
+            "program": "debug/debug.jl",
             "stopOnEntry": false,
             "cwd": "${workspaceFolder}",
             "juliaEnv": "${command:activeJuliaEnvironment}"
