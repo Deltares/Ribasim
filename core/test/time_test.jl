@@ -134,6 +134,6 @@ end
     @test all(isapprox.(storage[1, 2:end], storage[1, end]; rtol = 1e-4))
 
     t_end = model.integrator.t
-    flow_rate_end = model.integrator.p.p_independent.pump.flow_rate[1].u[end]
+    flow_rate_end = model.integrator.p.p_independent.pump.time_dependent_flow_rate[1].u[end]
     @test storage[2, end] ≈ storage[2, 1] + 0.5 * flow_rate_end * t_end
 end
