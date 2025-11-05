@@ -578,6 +578,44 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)
     flow_boundary
 end
 
+function parse_pump_or_outlet_parameters!(
+    node::Union{Pump, Outlet},
+    config::Config,
+    static,
+    time,
+    node_id,
+)::Bool
+    errors = parse_parameter!(node, config, :active; static, time, default = true)
+
+    # flow_rate can come from either static or time, and ends up in a different cache
+    errors_s = parse_parameter!(node, config, :flow_rate; static, is_optional = true)
+    errors_t = parse_parameter!(
+        node,
+        config,
+        :flow_rate;
+        time,
+        field_name = :time_dependent_flow_rate,
+        is_optional = true,
+    )
+    if !errors_t
+        errors |=
+            !valid_flow_rates(node_id, node.time_dependent_flow_rate, node.control_mapping)
+    end
+    if !errors_s
+        errors |= !valid_flow_rates(node_id, node.flow_rate, node.control_mapping)
+    end
+    errors |= errors_t && errors_s
+
+    errors |= parse_parameter!(node, config, :min_flow_rate; static, time, default = 0.0)
+    errors |= parse_parameter!(node, config, :max_flow_rate; static, time, default = Inf)
+    errors |=
+        parse_parameter!(node, config, :min_upstream_level; static, time, default = -Inf)
+    errors |=
+        parse_parameter!(node, config, :max_downstream_level; static, time, default = Inf)
+
+    return errors
+end
+
 function Pump(db::DB, config::Config, graph::MetaGraph)
     static = load_structvector(db, config, Schema.Pump.Static)
     time = load_structvector(db, config, Schema.Pump.Time)
@@ -590,33 +628,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph)
     set_inoutflow_links!(pump, graph)
     set_external_flow_demand_nodes!(pump, graph)
 
-    errors = parse_parameter!(pump, config, :active; static, time, default = true)
-
-    # flow_rate can come from either static or time, and ends up in a different cache
-    errors_s = parse_parameter!(pump, config, :flow_rate; static, is_optional = true)
-    errors_t = parse_parameter!(
-        pump,
-        config,
-        :flow_rate;
-        time,
-        field_name = :time_dependent_flow_rate,
-        is_optional = true,
-    )
-    if !errors_t
-        errors |=
-            !valid_flow_rates(node_id, pump.time_dependent_flow_rate, pump.control_mapping)
-    end
-    if !errors_s
-        errors |= !valid_flow_rates(node_id, pump.flow_rate, pump.control_mapping)
-    end
-    errors |= errors_t && errors_s
-
-    errors |= parse_parameter!(pump, config, :min_flow_rate; static, time, default = 0.0)
-    errors |= parse_parameter!(pump, config, :max_flow_rate; static, time, default = Inf)
-    errors |=
-        parse_parameter!(pump, config, :min_upstream_level; static, time, default = -Inf)
-    errors |=
-        parse_parameter!(pump, config, :max_downstream_level; static, time, default = Inf)
+    errors = parse_pump_or_outlet_parameters!(pump, config, static, time, node_id)
     errors && error("Errors encountered when parsing Pump data.")
 
     pump
@@ -634,37 +646,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)
     set_inoutflow_links!(outlet, graph)
     set_external_flow_demand_nodes!(outlet, graph)
 
-    errors = parse_parameter!(outlet, config, :active; static, time, default = true)
-
-    # flow_rate can come from either static or time, and ends up in a different cache
-    errors_s = parse_parameter!(outlet, config, :flow_rate; static, is_optional = true)
-    errors_t = parse_parameter!(
-        outlet,
-        config,
-        :flow_rate;
-        time,
-        field_name = :time_dependent_flow_rate,
-        is_optional = true,
-    )
-    if !errors_t
-        errors |=
-            !valid_flow_rates(
-                node_id,
-                outlet.time_dependent_flow_rate,
-                outlet.control_mapping,
-            )
-    end
-    if !errors_s
-        errors |= !valid_flow_rates(node_id, outlet.flow_rate, outlet.control_mapping)
-    end
-    errors |= errors_t && errors_s
-
-    errors |= parse_parameter!(outlet, config, :min_flow_rate; static, time, default = 0.0)
-    errors |= parse_parameter!(outlet, config, :max_flow_rate; static, time, default = Inf)
-    errors |=
-        parse_parameter!(outlet, config, :min_upstream_level; static, time, default = -Inf)
-    errors |=
-        parse_parameter!(outlet, config, :max_downstream_level; static, time, default = Inf)
+    errors = parse_pump_or_outlet_parameters!(outlet, config, static, time, node_id)
     errors && error("Errors encountered when parsing Outlet data.")
 
     outlet

@@ -275,12 +275,9 @@ function valid_flow_rates(
         flow_rate_update =
             getfield(control_state_update, update_field)[flow_rate_update_idx]
 
-        # Extract minimum flow rate value based on type
-        flow_rate_min = if T == Float64
-            flow_rate_update.value
-        else
-            minimum(flow_rate_update.value.u)
-        end
+        # Check minimum flow rate value based on type
+        flow_rate_min =
+            T == Float64 ? flow_rate_update.value : minimum(flow_rate_update.value.u)
 
         if flow_rate_min < 0.0
             errors = true
