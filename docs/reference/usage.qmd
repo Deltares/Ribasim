@@ -335,6 +335,12 @@ control_node_id | Int32    | -
 truth_state     | String   | -
 control_state   | String   | -
 
+## Control by allocation
+
+When a node is to be controlled by allocation, use a special control state name. In the Static table, set `control_state = "allocation"` to indicate that this node's flow rate can be dynamically adjusted by the allocation algorithm to achieve optimal water distribution.
+
+
+
 ## Allocation - `allocation`
 
 The allocation table contains a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and realized flow were.
