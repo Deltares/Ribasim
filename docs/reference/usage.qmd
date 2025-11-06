@@ -335,10 +335,6 @@ control_node_id | Int32    | -
 truth_state     | String   | -
 control_state   | String   | -
 
-## Control by allocation
-
-When a node is to be controlled by allocation, use a special control state name. In the Static table, set `control_state = "allocation"` to indicate that this node's flow rate can be dynamically adjusted by the allocation algorithm to achieve optimal water distribution.
-
 
 
 ## Allocation - `allocation`
@@ -446,3 +442,12 @@ linear_solves       | Int      | -
 accepted_timesteps  | Int      | -
 rejected_timesteps  | Int      | -
 dt                  | Float64  | $\text{s}$
+
+# Allocation {#sec-allocation}
+
+## Subnetwork ID
+Nodes can only be controlled by allocation if the have a subnetwork id. In the Node table, give for example subnetwork_id and integer value
+
+## Control by allocation
+
+When a node is to be controlled by allocation, use a special control state name. In the Static table, set `control_state = "Ribasim.allocation"` to indicate that this node's flow rate can be dynamically adjusted by the allocation algorithm to influence water distribution.

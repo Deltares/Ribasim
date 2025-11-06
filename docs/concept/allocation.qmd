@@ -243,18 +243,17 @@ We separate these out because these different types optimize for different quant
 
 ### Control by allocation
 
-When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must be given the special control state `Ribasim.allocation`. When a Pump or Outlet has this control state, the flow through the node is only bounded by its capacity and <span style="color: red;">#TODO: Pump or Node specific constraints based on the difference between upstream and downstream level.</span>. After all goals have been optimized for, the flow rate through the Pump or Outlet is communicated to the physical layer.
+When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must be given the special control state `Ribasim.allocation` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static). When a Pump or Outlet has this control state, the flow through the node is only bounded by its capacity and Pump or Outlet specific constraints based on the difference between upstream and downstream level (see [Pump equations](/reference/node/pump.qmd#equations) or [Outlet equations](/reference/node/outlet.qmd#equations)). After all goals have been optimized for, the flow rate through the Pump or Outlet is communicated to the physical layer.
 
 ### Interaction of allocation with other control systems
 
 There are several other control systems in Ribasim:
 
-- [DiscreteControl](/reference/node/discrete-control.qmd): This node type can change parameters of other nodes in between time steps of the solver of the physical layer. If the affected node is within a subnetwork, the parameter change will also be taken into account in the next allocation run  <span style="color: red;">#TODO: This has not been implemented yet.</span>. So the parameters in the allocation layer are always up to date with those in the physical layer, but the allocation algorithm cannot anticipate parameter changes from DiscreteControl that occur within the allocation time step which is being optimized over, so this can be a source of discrepancies between the physical layer and the allocation layer.
-- [ContinuousControl](/reference/node/continuous-control.qmd): <span style="color: red;">#TODO: Undecided. Some ContinuousControl relationships could be implemented in allocation, but this requires validation.</span>
+- [DiscreteControl](/reference/node/discrete-control.qmd): This node type can change parameters of other nodes in between time steps of the solver of the physical layer. If the affected node is within a subnetwork, the parameter change will also be taken into account in the next allocation run. So the parameters in the allocation layer are always up to date with those in the physical layer, but the allocation algorithm cannot anticipate parameter changes from DiscreteControl that occur within the allocation time step which is being optimized over, so this can be a source of discrepancies between the physical layer and the allocation layer.
+- [ContinuousControl](/reference/node/continuous-control.qmd): The continuous nature of this control type is not taken into account. The flow rate the controlled structure has at the start of the allocation optimization step will be extrapolated in a constant manner.
+
 - [PidControl](/reference/node/pid-control.qmd): The continuous nature of this control type is not taken into account. The flow rate the controlled structure has at the start of the allocation optimization step will be extrapolated in a constant manner.
 
-
-See [here](/reference/usage.qmd#results).
 
 
 The following data of the parameters and state of a Ribasim model are relevant for the allocation problem.
