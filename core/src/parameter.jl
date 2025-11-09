@@ -37,7 +37,7 @@ const RibasimReducedCVectorType{T} = Ribasim.CArrays.CArray{
 @eval @enumx NodeType $(node_types...)
 @enumx ContinuousControlType None Continuous PID
 @enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =
-    5 Drainage = 6 Precipitation = 7 SurfaceRunoff = 8
+    5 Drainage = 6 Precipitation = 7 SurfaceRunoff = 8 ResidenceTime = 9
 Base.to_index(id::Substance.T) = Int(id)  # used to index into concentration matrices
 
 const node_type_map::Dict{NodeType.T, Symbol} = Dict(
