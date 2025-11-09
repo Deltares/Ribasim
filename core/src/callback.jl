@@ -276,8 +276,7 @@ function update_concentrations!(u, t, integrator)::Nothing
         storage_only_in = basin.storage_prev[node_id.idx] + cumulative_in[node_id.idx]
 
         # The residence time tracer gets older
-        mass[node_id.idx][Substance.ResidenceTime] +=
-            subdt * basin.storage_prev[node_id.idx]
+        mass[node_id.idx][Substance.ResidenceTime] += dt * basin.storage_prev[node_id.idx]
         if iszero(storage_only_in)
             concentration_state[node_id.idx, :] .= 0
         else
