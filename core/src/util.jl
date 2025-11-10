@@ -1087,28 +1087,29 @@ function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
     time_dependent_cache.t_prev_call[1] = t
 
     # Whether the state time dependent cache must be renewed
-    new_t_state_time_dependent_cache =
-        !isassigned(state_time_dependent_cache.t_prev_call, 1) || (
-            t != state_time_dependent_cache.t_prev_call[1] &&
+    new_t_state_and_time_dependent_cache =
+        !isassigned(state_and_time_dependent_cache.t_prev_call, 1) || (
+            t != state_and_time_dependent_cache.t_prev_call[1] &&
             ForwardDiff.partials(t) ==
-            ForwardDiff.partials(state_time_dependent_cache.t_prev_call[1])
+            ForwardDiff.partials(state_and_time_dependent_cache.t_prev_call[1])
         )
-    new_u_state_time_dependent_cache =
+    new_u_state_and_time_dependent_cache =
         any(
-            i -> !isassigned(state_time_dependent_cache.u_reduced_prev_call, i),
+            i -> !isassigned(state_and_time_dependent_cache.u_reduced_prev_call, i),
             eachindex(u_reduced),
         ) || any(
             i -> !(
-                u_reduced[i] == state_time_dependent_cache.u_reduced_prev_call[i] &&
-                ForwardDiff.partials(u_reduced[i]) ==
-                ForwardDiff.partials(state_time_dependent_cache.u_reduced_prev_call[i])
+                u_reduced[i] == state_and_time_dependent_cache.u_reduced_prev_call[i] &&
+                ForwardDiff.partials(u_reduced[i]) == ForwardDiff.partials(
+                    state_and_time_dependent_cache.u_reduced_prev_call[i],
+                )
             ),
             eachindex(u_reduced),
         )
     state_and_time_dependent_cache.u_reduced_prev_call .= u_reduced
     state_and_time_dependent_cache.t_prev_call[1] = t
-    p_mutable.new_state_time_dependent_cache =
-        new_t_state_time_dependent_cache || new_u_state_time_dependent_cache
+    p_mutable.new_state_and_time_dependent_cache =
+        new_t_state_and_time_dependent_cache || new_u_state_and_time_dependent_cache
     return nothing
 end
 

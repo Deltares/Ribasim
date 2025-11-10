@@ -11,7 +11,6 @@ water_balance!(du::CVector, u::CVector, p::Parameters, t::Number)::Nothing = wat
     t,
 )
 
-
 # Method with `t` as second argument parsable by DifferentiationInterface.jl for time derivative computation
 water_balance!(
     du::CVector,
@@ -152,7 +151,7 @@ function set_current_basin_properties!(
             cumulative_drainage + dt * vertical_flux.drainage
     end
 
-    if p_mutable.new_state_time_dependent_cache
+    if p_mutable.new_state_and_time_dependent_cache
         formulate_storages!(u_reduced, p, t)
         @threads for i in eachindex(basin.node_id)
             id = basin.node_id[i]
@@ -176,7 +175,7 @@ function formulate_storages!(
 )::Nothing
     (; p_independent, state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
     (; basin, flow_boundary) = p_independent
-    (; current_storage) = state_time_dependent_cache
+    (; current_storage) = state_and_time_dependent_cache
 
     # Current storage: initial condition +
     # total inflows and outflows since the start
@@ -231,7 +230,7 @@ end
 
 function set_error!(pid_control::PidControl, p::Parameters, t::Number)
     (; state_and_time_dependent_cache, time_dependent_cache) = p
-    (; current_level, current_error_pid_control) = state_time_dependent_cache
+    (; current_level, current_error_pid_control) = state_and_time_dependent_cache
 
     (; current_target) = time_dependent_cache.pid_control
     (; listen_node_id, target) = pid_control
@@ -244,7 +243,6 @@ function set_error!(pid_control::PidControl, p::Parameters, t::Number)
             current_level[listened_node_id.idx]
     end
 end
-
 
 function formulate_pid_control!(
     du::CVector,
@@ -682,10 +680,10 @@ function formulate_pump_or_outlet_flow!(
         elseif isassigned(node.time_dependent_flow_rate, id.idx)
             # get the time dependent flow rate from interpolation or cached value
             # eval_time_interp is not used here because current_flow_rate
-            # lives in state_time_dependent_cache (for ContinuousControl support),
+            # lives in state_and_time_dependent_cache (for ContinuousControl support),
             # and thus also has to be updated if t is not new but the last evaluation
             # was with the other version of the cache (normal versus the one for AD)
-          flow_rate_itp(t)
+            flow_rate_itp(t)
         else
             # get the scalar flow rate from  (for DiscreteControl, Control by allocation or flows from the Static table)
             node.flow_rate[id.idx]

@@ -504,7 +504,7 @@ function check_water_balance_error!(
     Δt::Float64,
 )::Nothing
     (; u, p, t) = integrator
-    (; p_independent, state_time_dependent_cache) = p
+    (; p_independent, state_and_time_dependent_cache) = p
     (; u_reduced, state_ranges) = p_independent
     (; current_storage) = state_and_time_dependent_cache
 

@@ -343,7 +343,7 @@ function get_jacobian!(J::HalfLazyJacobian, du, u, p, t, prep, backend)
         backend,
         u_reduced,
         Constant(p.p_independent),
-        Cache(p.state_time_dependent_cache),
+        Cache(p.state_and_time_dependent_cache),
         Constant(p.time_dependent_cache),
         Constant(p.p_mutable),
         Constant(t),
@@ -356,7 +356,7 @@ Get the Jacobian evaluation function via DifferentiationInterface.jl.
 The time derivative is also supplied in case a Rosenbrock method is used.
 """
 function get_diff_eval(du::CVector, p::Parameters, solver::Solver)
-    (; p_independent, state_time_dependent_cache, time_dependent_cache, p_mutable) = p
+    (; p_independent, state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
     (; u_reduced) = p_independent
     backend = get_ad_type(solver)
     sparsity_detector = TracerSparsityDetector()
@@ -381,7 +381,7 @@ function get_diff_eval(du::CVector, p::Parameters, solver::Solver)
         backend_jac,
         u_reduced_,
         Constant(p_independent),
-        Cache(state_time_dependent_cache),
+        Cache(state_and_time_dependent_cache),
         Constant(time_dependent_cache),
         Constant(p_mutable),
         Constant(t);
@@ -409,7 +409,7 @@ function get_diff_eval(du::CVector, p::Parameters, solver::Solver)
         t,
         Constant(copy(du)),
         Constant(p_independent),
-        Cache(state_time_dependent_cache),
+        Cache(state_and_time_dependent_cache),
         Cache(time_dependent_cache),
         Constant(p_mutable);
         strict = Val(true),
@@ -423,7 +423,7 @@ function get_diff_eval(du::CVector, p::Parameters, solver::Solver)
         t,
         Constant(u),
         Constant(p.p_independent),
-        Cache(state_time_dependent_cache),
+        Cache(state_and_time_dependent_cache),
         Cache(time_dependent_cache),
         Constant(p.p_mutable),
     )
@@ -439,14 +439,14 @@ water_balance!(
     t::Number,
     u::RibasimCVectorType,
     p_independent::ParametersIndependent,
-    state_time_dependent_cache::StateTimeDependentCache,
+    state_and_time_dependent_cache::StateAndTimeDependentCache,
     time_dependent_cache::TimeDependentCache,
     p_mutable::ParametersMutable,
 ) = water_balance!(
     du,
     u,
     p_independent,
-    state_time_dependent_cache,
+    state_and_time_dependent_cache,
     time_dependent_cache,
     p_mutable,
     t,
@@ -457,7 +457,7 @@ function water_balance!(
     du::RibasimCVectorType,
     u::RibasimCVectorType,
     p_independent::ParametersIndependent,
-    state_time_dependent_cache::StateTimeDependentCache,
+    state_and_time_dependent_cache::StateAndTimeDependentCache,
     time_dependent_cache::TimeDependentCache,
     p_mutable::ParametersMutable,
     t::Number,
@@ -468,7 +468,7 @@ function water_balance!(
         du,
         u_reduced,
         p_independent,
-        state_time_dependent_cache,
+        state_and_time_dependent_cache,
         time_dependent_cache,
         p_mutable,
         t,

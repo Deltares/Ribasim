@@ -836,7 +836,7 @@ const TimeDependentCache{T} = @NamedTuple{
 } where {T}
 
 """
-A reference to an element of either the StateTimeDependentCache or the state derivative `du`.
+A reference to an element of either the StateAndTimeDependentCache or the state derivative `du`.
 This is not a direct reference to the memory, because it depends on the type of call
 of `water_balance!` (AD versus 'normal') which version of these objects is passed.
 """
@@ -847,7 +847,7 @@ of `water_balance!` (AD versus 'normal') which version of these objects is passe
 end
 
 """
-Get one of the vectors of the StateTimeDependentCache based on the passed type.
+Get one of the vectors of the StateAndTimeDependentCache based on the passed type.
 """
 function get_cache_vector(
     state_and_time_dependent_cache::StateAndTimeDependentCache,
@@ -1110,14 +1110,14 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
    dependencies are missed during sparsity detection
 - `new_time_dependent_cache`: Whether the `t` with which `water_balance!` is called is considered new,
    and thus whether `time_dependent_cache` must be updated
-- `new_state_time_dependent_cache`: Whether the `t` and/or `u_reduced` with which `water_balance!` are called are
+- `new_state_and_time_dependent_cache`: Whether the `t` and/or `u_reduced` with which `water_balance!` are called are
    considered new, and thus whether caches that (only) depend on `u_reduced` must be updated
 - `tprev`: The previous `t` before the latest time step
 """
 @kwdef mutable struct ParametersMutable
     all_nodes_active::Bool = false
     new_time_dependent_cache::Bool = true
-    new_state_time_dependent_cache::Bool = true
+    new_state_and_time_dependent_cache::Bool = true
     tprev::Float64 = 0.0
 end
 
