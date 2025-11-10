@@ -587,9 +587,11 @@ function parse_pump_or_outlet_parameters!(
 )::Bool
     errors = parse_parameter!(node, config, :active; static, time, default = true)
 
-    # flow_rate can come from either static or time, and ends up in a different cache
-    errors_s = parse_parameter!(node, config, :flow_rate; static, is_optional = true)
-    errors_t = parse_parameter!(
+    # flow_rate can come from either static or time, and ends up in a different cache.
+    # that is why we parse it once from static and store error_static and once from time and store error_time
+    # It may be in either of them, so we parse them as optional parameters.
+    errors_static = parse_parameter!(node, config, :flow_rate; static, is_optional = true)
+    errors_time = parse_parameter!(
         node,
         config,
         :flow_rate;
@@ -597,14 +599,18 @@ function parse_pump_or_outlet_parameters!(
         field_name = :time_dependent_flow_rate,
         is_optional = true,
     )
-    if !errors_t
+
+    # If there are no errors in parsing flow_rate from time, it was found there so we check if the flow rates are valid
+    if !errors_time
         errors |=
             !valid_flow_rates(node_id, node.time_dependent_flow_rate, node.control_mapping)
     end
-    if !errors_s
+    # same for static
+    if !errors_static
         errors |= !valid_flow_rates(node_id, node.flow_rate, node.control_mapping)
     end
-    errors |= errors_t && errors_s
+    # Only add error to errors, if both time and static had errors parsing flow_rate.
+    errors |= errors_time && errors_static
 
     errors |= parse_parameter!(node, config, :min_flow_rate; static, time, default = 0.0)
     errors |= parse_parameter!(node, config, :max_flow_rate; static, time, default = Inf)

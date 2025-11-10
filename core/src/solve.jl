@@ -5,7 +5,7 @@ water_balance!(du::CVector, u::CVector, p::Parameters, t::Number)::Nothing = wat
     du,
     u,
     p.p_independent,
-    p.state_and_time_dependent_cache::StateAndTimeDependentCache,
+    p.state_and_time_dependent_cache,
     p.time_dependent_cache,
     p.p_mutable,
     t,
