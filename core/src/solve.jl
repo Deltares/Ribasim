@@ -679,7 +679,7 @@ function formulate_pump_or_outlet_flow!(
             current_flow_rate[id.idx]
         elseif isassigned(node.time_dependent_flow_rate, id.idx)
             # get the time dependent flow rate from interpolation or cached value
-            # eval_time_interp is not used here because current_flow_rate
+            # eval_time_interpolation is not used here because current_flow_rate
             # lives in state_and_time_dependent_cache (for ContinuousControl support),
             # and thus also has to be updated if t is not new but the last evaluation
             # was with the other version of the cache (normal versus the one for AD)
@@ -696,8 +696,10 @@ function formulate_pump_or_outlet_flow!(
 
         q = flow_rate * get_low_storage_factor(p, inflow_id)
 
-        lower_bound = eval_time_interp(min_flow_rate, current_min_flow_rate, node_idx, p, t)
-        upper_bound = eval_time_interp(max_flow_rate, current_max_flow_rate, node_idx, p, t)
+        lower_bound =
+            eval_time_interpolation(min_flow_rate, current_min_flow_rate, node_idx, p, t)
+        upper_bound =
+            eval_time_interpolation(max_flow_rate, current_max_flow_rate, node_idx, p, t)
 
         # When allocation is not active, set the flow demand directly as a lower bound on the
         # pump or outlet flow rate
@@ -731,8 +733,13 @@ function formulate_pump_or_outlet_flow!(
             q *= reduction_factor(Δlevel, level_difference_threshold)
         end
 
-        min_upstream_level_ =
-            eval_time_interp(min_upstream_level, current_min_upstream_level, node_idx, p, t)
+        min_upstream_level_ = eval_time_interpolation(
+            min_upstream_level,
+            current_min_upstream_level,
+            node_idx,
+            p,
+            t,
+        )
         q *= reduction_factor(src_level - min_upstream_level_, level_difference_threshold)
 
         max_downstream_level_ = eval_time_interpolation(
