@@ -146,3 +146,4 @@ By default the following source tracers are enabled.
 - Continuity (mass balance, fraction of all water sources, sum of all other source tracers)
 - Initial (fraction of initial storages)
 - LevelBoundary, FlowBoundary, UserDemand, Drainage, Precipitation (fraction of different boundaries)
+- ResidenceTime (the average residence time of a water body in seconds)
