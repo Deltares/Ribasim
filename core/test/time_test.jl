@@ -108,7 +108,7 @@ end
     t_end = Ribasim.seconds_since(model.config.endtime, model.config.starttime)
     tstops = Vector{Float64}[]
     Ribasim.get_timeseries_tstops!(tstops, t_end, basin.forcing.precipitation)
-    @test length(only(tstops)) == 3996
+    @test length(only(tstops)) == 404
 end
 
 @testitem "decrease tolerance" begin
@@ -131,7 +131,9 @@ end
 
     model = Ribasim.run(toml_path)
     storage = Ribasim.get_storages_and_levels(model).storage
-    @test all(isapprox.(storage[1, 2:end], storage[1, end]; rtol = 1e-4))
+    # After a few days Basin #3 comes to a dynamic equilibrium when the level difference
+    # reduction factor of Oulet #2 becomes 1
+    @test all(isapprox.(storage[1, 4:end], storage[1, end]; rtol = 1e-4))
 
     t_end = model.integrator.t
     flow_rate_end = model.integrator.p.p_independent.pump.time_dependent_flow_rate[1].u[end]

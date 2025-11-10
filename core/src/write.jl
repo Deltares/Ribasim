@@ -338,7 +338,9 @@ function basin_state_data(model::Model; table::Bool = true)
     (; current_level) = p.state_and_time_dependent_cache
 
     # ensure the levels are up-to-date
-    set_current_basin_properties!(u, p, t)
+    (; u_reduced) = p.p_independent
+    reduce_state!(u_reduced, u, p.p_independent)
+    set_current_basin_properties!(u_reduced, p, t)
 
     return (; node_id = Int32.(p.p_independent.basin.node_id), level = current_level)
 end

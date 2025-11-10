@@ -1608,18 +1608,9 @@ function Parameters(db::DB, config::Config)::Parameters
         nodes.basin,
         nodes.pid_control,
     ))
-    connector_nodes = (;
-        nodes.tabulated_rating_curve,
-        nodes.pump,
-        nodes.outlet,
-        nodes.linear_resistance,
-        nodes.manning_resistance,
-        nodes.user_demand,
-    )
     node_id = reduce(vcat, u_ids)
     n_states = length(node_id)
     state_ranges = count_state_ranges(u_ids)
-    flow_to_storage = build_flow_to_storage(state_ranges, n_states, basin, connector_nodes)
     state_inflow_link, state_outflow_link = get_state_flow_links(graph, nodes)
 
     set_target_ref!(
@@ -1637,6 +1628,16 @@ function Parameters(db::DB, config::Config)::Parameters
         graph,
     )
 
+    n_basin = length(nodes.basin.node_id)
+    n_pid_control = length(nodes.pid_control.node_id)
+    u_reduced = CVector(
+        zeros(n_basin + n_pid_control),
+        (;
+            combined_cumulative_flows = 1:n_basin,
+            integral = (n_basin + 1):(n_basin + n_pid_control),
+        ),
+    )
+
     p_independent = ParametersIndependent(;
         config.starttime,
         config.solver.reltol,
@@ -1647,20 +1648,21 @@ function Parameters(db::DB, config::Config)::Parameters
         subgrid,
         state_inflow_link,
         state_outflow_link,
-        flow_to_storage,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
         u_prev_saveat = zeros(n_states),
         node_id,
+        state_ranges,
         do_concentration = config.experimental.concentration,
         do_subgrid = config.results.subgrid,
         temp_convergence = CVector(zeros(n_states), state_ranges),
         convergence = CVector(zeros(n_states), state_ranges),
+        u_reduced,
         config.solver.level_difference_threshold,
     )
 
     collect_control_mappings!(p_independent)
-    set_listen_cache_refs!(p_independent, state_ranges)
+    set_listen_cache_refs!(p_independent)
     set_discrete_controlled_variable_refs!(p_independent)
 
     # Allocation data structures

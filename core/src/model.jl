@@ -189,7 +189,7 @@ function Model(config::Config)::Model
     alg = algorithm(config.solver)
 
     # Synchronize level with storage
-    set_current_basin_properties!(u0, parameters, t0)
+    set_current_basin_properties!(p_independent.u_reduced, parameters, t0)
 
     # Previous level is used to estimate the minimum level that was attained during a time step
     # in limit_flow!
@@ -200,10 +200,12 @@ function Model(config::Config)::Model
     tstops = sort(unique(reduce(vcat, tstops)))
     adaptive, dt = convert_dt(config.solver.dt)
 
-    jac_prototype, jac, tgrad = get_diff_eval(du0, u0, parameters, config.solver)
     specialize = config.solver.specialize ? FullSpecialize : NoSpecialize
-    RHS = ODEFunction{true, specialize}(water_balance!; jac_prototype, jac, tgrad)
-    prob = ODEProblem{true, specialize}(RHS, u0, timespan, parameters)
+    RHS = ODEFunction{true, specialize}(
+        water_balance!;
+        get_diff_eval(du0, parameters, config.solver)...,
+    )
+    prob = ODEProblem{true, specialize}(RHS, u0, timespan, parameters;)
     @debug "Setup ODEProblem."
 
     callback, saved = create_callbacks(p_independent, config, saveat)
