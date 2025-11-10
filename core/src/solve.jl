@@ -678,12 +678,13 @@ function formulate_pump_or_outlet_flow!(
             current_flow_rate[id.idx]
         elseif isassigned(node.time_dependent_flow_rate, node_idx)
             # get the time dependent flow rate from interpolation or cached value
-
-            # eval_time_interp is not used here because current_flow_rate
-            # lives in state_time_dependent_cache (for ContinuousControl support),
-            # and thus also has to be updated if t is not new but the last evaluation
-            # was with the other version of the cache (normal versus the one for AD)
-            node.time_dependent_flow_rate[node_idx](t)
+            eval_time_interpolation(
+                node.time_dependent_flow_rate[node_idx],
+                current_flow_rate,
+                id.idx,
+                p,
+                t,
+            )
         else
             # get the scalar flow rate from  (for DiscreteControl, Control by allocation or flows from the Static table)
             node.flow_rate[id.idx]
