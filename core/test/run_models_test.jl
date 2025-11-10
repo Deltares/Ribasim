@@ -310,6 +310,21 @@ end
     table = Ribasim.concentration_data(model)
     @test "Continuity" in table.substance
     @test all(isapprox.(table.concentration[table.substance .== "Continuity"], 1.0))
+    summed_source_concentrations = reduce(
+        +,
+        [
+            table.concentration[table.substance .== substance] for substance in [
+                "Initial",
+                "LevelBoundary",
+                "FlowBoundary",
+                "UserDemand",
+                "Drainage",
+                "Precipitation",
+                "SurfaceRunoff",
+            ]
+        ],
+    )
+    @test all(isapprox.(summed_source_concentrations, 1.0))
 
     @test unique(table.substance) ⊆ [
         "Tracer",
