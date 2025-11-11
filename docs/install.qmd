@@ -27,13 +27,14 @@ end
 modeler-->|prepare model|qgisBoundary
 
 model[("input model data
-        [TOML + GeoPackage + Arrow]")]
+        [TOML, GeoPackage,
+         Arrow, NetCDF]")]
 qgisPlugin-->|read/write|model
 python-->|read/write|model
 core-->|simulate|model
 
 output[("simulation results
-         [Arrow]")]
+         [Arrow, NetCDF]")]
 core-->|write|output
 
 class qgisBoundary boundary
