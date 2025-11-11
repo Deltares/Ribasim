@@ -402,6 +402,7 @@ window.Quarto = {
   <li><a href="#sec-node" id="toc-sec-node" class="nav-link" data-scroll-target="#sec-node"><span class="header-section-number">3</span> Node</a>
   <ul class="collapse">
   <li><a href="#cyclic-time-series" id="toc-cyclic-time-series" class="nav-link" data-scroll-target="#cyclic-time-series"><span class="header-section-number">3.1</span> Cyclic time series</a></li>
+  <li><a href="#subnetwork-id" id="toc-subnetwork-id" class="nav-link" data-scroll-target="#subnetwork-id"><span class="header-section-number">3.2</span> Subnetwork ID</a></li>
   </ul></li>
   <li><a href="#sec-link" id="toc-sec-link" class="nav-link" data-scroll-target="#sec-link"><span class="header-section-number">4</span> Link</a></li>
   <li><a href="#sec-results" id="toc-sec-results" class="nav-link" data-scroll-target="#sec-results"><span class="header-section-number">5</span> Results</a>
@@ -795,6 +796,11 @@ Important
 <h2 data-number="3.1" class="anchored" data-anchor-id="cyclic-time-series"><span class="header-section-number">3.1</span> Cyclic time series</h2>
 <p>When <code>cyclic_time</code> is set to true for a node in the Node table, every time series associated with that node in the corresponding table(s) will be interpreted as cyclic. That is: the time series is exactly repeated left and right of the original time interval to cover the whole simulation period. For this it is validated that the first and last data values in the timeseries are the same. For instance, quarterly precipitation requires giving values for every quarter at the start of the quarter, and then the value for the first quarter again at the start of the next year.</p>
 <p>Note that periods like months or years are not of constant length in the calendar, so over long simulation periods the timeseries can get out of sync with these periods on the calendar.</p>
+</section>
+<section id="subnetwork-id" class="level2" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="subnetwork-id"><span class="header-section-number">3.2</span> Subnetwork ID</h2>
+<p>Nodes can only be controlled by allocation if the have a subnetwork_id. In the Node table, give for example subnetwork_id an integer value of 1 or 2.</p>
+<p>When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, besides a subnetwork_id, they must be given the special control state <code>Ribasim.allocation</code> in the static table for <a href="../reference/node/pump.html#static">Pump</a> or <a href="../reference/node/outlet.html#static">Outlet</a>.</p>
 </section>
 </section>
 <section id="sec-link" class="level1" data-number="4">

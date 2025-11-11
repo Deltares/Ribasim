@@ -20,6 +20,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -270,6 +305,7 @@ window.Quarto = {
   <li><a href="#objectives-goals-1" id="toc-objectives-goals-1" class="nav-link" data-scroll-target="#objectives-goals-1"><span class="header-section-number">3.1</span> Objectives (goals)</a>
   <ul class="collapse">
   <li><a href="#demand-objectives" id="toc-demand-objectives" class="nav-link" data-scroll-target="#demand-objectives"><span class="header-section-number">3.1.1</span> Demand objectives</a></li>
+  <li><a href="#formulation" id="toc-formulation" class="nav-link" data-scroll-target="#formulation"><span class="header-section-number">3.1.2</span> Formulation</a></li>
   </ul></li>
   <li><a href="#control" id="toc-control" class="nav-link" data-scroll-target="#control"><span class="header-section-number">3.2</span> Control</a>
   <ul class="collapse">
@@ -326,15 +362,36 @@ window.Quarto = {
 <p>The allocation problem is solved per subnetwork of the Ribasim model. A subnetwork is defined by all nodes that have the same subnetwork ID in the <a href="../reference/usage.html#node">Node table</a>. Each subnetwork is used to formulate a linear optimization problem with the <a href="https://jump.dev/JuMP.jl/stable/">JuMP</a> package, which is solved using the <a href="https://highs.dev/">HiGHS solver</a>. For more in-depth information see also the example of solving the maximum flow problem with <code>JuMP.jl</code> <a href="https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem">here</a>.</p>
 <p>When we build a Ribasim model in which we want to utilize allocation, it can be computationally efficient and stable to divide a large allocation network into a primary network which connects to multiple subnetworks. The primary network should be the main water system and treats each connected subnetwork as a single demand node.</p>
 <p>We can then first solve an allocation optimization for the primary network, that calculates how to optimally divide the available water to each subnetwork. With this allocated amount for a subnetwork, we can optimize how to divide this water within the subnetwork to the demand nodes.</p>
-<p>Subnetworks are defined by grouping nodes that share the same subnetwork ID in the <a href="../reference/usage.html#node">Node table</a>. The primary network needs to be assigned with subnetwork ID 1. This will always represent the main water system.</p>
-<p><span style="color: red;">#TODO: Add model image with primary network and secondary networks.</span></p>
+<p>Subnetworks are defined by grouping nodes that share the same subnetwork ID in the <a href="../reference/usage.html#node">Node table</a>. The primary network needs to be assigned with subnetwork ID 1. This will always represent the main water system. Below is an example of a primary network with multiple subnetworks.</p>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> ribasim_testmodels</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> IPython.display <span class="im">import</span> Markdown, display</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> model_name, model_constructor <span class="kw">in</span> ribasim_testmodels.constructors.items():</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> model_name<span class="op">!=</span> <span class="st">"medium_primary_secondary_network"</span>:</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">continue</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> model_constructor.__doc__ <span class="kw">is</span> <span class="kw">not</span> <span class="va">None</span>:</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        display(Markdown(model_constructor.__doc__))</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    model <span class="op">=</span> model_constructor()</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">6</span>, <span class="dv">4</span>))</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    model.plot(ax)</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    ax.axis(<span class="st">"off"</span>)</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    plt.show()</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    plt.close(fig)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<p><img src="allocation_files/figure-html/cell-2-output-1.png" width="646" height="394"></p>
 <p>Secondary networks:</p>
 <ul>
 <li>Can only connect to the primary network via Pump or Outlet nodes</li>
 <li>Cannot connect directly to other secondary networks</li>
 <li>The demand of a subnetwork to the primary network is the sum of all unmet demands within the subnetwork</li>
 </ul>
-<p>For each subnetwork, a linear optimization problem is formulated .</p>
+<p>For each subnetwork, a linear optimization problem is formulated.</p>
 </section>
 <section id="mathematical-formulation" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="mathematical-formulation"><span class="header-section-number">1.2</span> Mathematical formulation</h2>
@@ -521,7 +578,6 @@ Note
 <section id="objectives-goals-1" class="level2" data-number="3.1">
 <h2 data-number="3.1" class="anchored" data-anchor-id="objectives-goals-1"><span class="header-section-number">3.1</span> Objectives (goals)</h2>
 <p>The allocation algorithm optimizes for a sequence of objectives in succession, adding constraints after optimization for each goal to retain the result of that optimization in the subsequent optimizations. This approach is known as <a href="https://en.wikipedia.org/wiki/Goal_programming">goal programming</a>.</p>
-<p><span style="color: red;">At the time of writing it is not completely clear yet which parts of the physics will be added as hard constraints and which ones will be optimized for (and how).</span></p>
 <section id="demand-objectives" class="level3" data-number="3.1.1">
 <h3 data-number="3.1.1" class="anchored" data-anchor-id="demand-objectives"><span class="header-section-number">3.1.1</span> Demand objectives</h3>
 <p>There are several types of demand nodes:</p>
@@ -536,24 +592,150 @@ Note
 <li>Level demand (LevelDemand)</li>
 </ul>
 <p>We separate these out because these different types optimize for different quantities (flow and storage respectively), and combining demands of these two types within the same subnetwork within the same demand priority is not allowed. Given a demand priority <span class="math inline">\(d\)</span>, the objective function looks like</p>
-<p><span style="color: red;">#TODO: Write out objective functions.</span></p>
+</section>
+<section id="formulation" class="level3" data-number="3.1.2">
+<h3 data-number="3.1.2" class="anchored" data-anchor-id="formulation"><span class="header-section-number">3.1.2</span> Formulation</h3>
+<p>In the following we assume lexicographic multi-objective optimization.</p>
+<section id="userdemand-and-flowdemand" class="level4" data-number="3.1.2.1">
+<h4 data-number="3.1.2.1" class="anchored" data-anchor-id="userdemand-and-flowdemand"><span class="header-section-number">3.1.2.1</span> UserDemand and FlowDemand</h4>
+<p>Say we have a subnetwork with UserDemand nodes <span class="math inline">\(UD\)</span> and FlowDemand nodes <span class="math inline">\(FD\)</span> and each node <span class="math inline">\(v \in UD \cup FD\)</span> has demands for priorities <span class="math inline">\(P_v\)</span>. Then for every one of these demand nodes for every priority for which they have a demand (at some point in time) we define a special flow decision variable which denotes how much is allocated to that node for that priority:</p>
+<p><span class="math display">\[
+    0 \le F^p_v \le d_v^p, \quad \forall v \in (UD \cup FD),\\; p \in P_v.
+\]</span></p>
+<p>As indicated, each of these allocated flow variables is bounded between 0 and the corresponding demand (NOTE: in this text we assume that the demands are already expressed in the scaled flow unit). For UserDemand nodes we have that the sum of these allocated flow variables over the priorities is equal to the total flow into that node:</p>
+<p><span class="math display">\[
+    F_{(b_\text{upstream}, v)} = \sum_{p \in P_v} F^p_v, \quad \forall v
+    \in UD.
+\]</span></p>
+<p>Note that this means that we enforce that only allocated flow can enter a UserDemand node, and so there can not be more flow into the UserDemand node than the total demand of that node. For FlowDemand we do allow that there is more flow through the node with the flow demand than the total demand (or even negative flow). To allow this freedom, we introduce a special ‘demand priority 0’ variable</p>
+<p><span class="math display">\[
+    0 \le F^0_v \le \frac{\text{MAX\_ABS\_FLOW}}{\text{scaling.flow}}, \quad \forall v \in FD
+\]</span></p>
+<p>We only let <span class="math inline">\(F^0_v\)</span> account for surplus flow, because if we allow that variable to be negative it can be used to allocate to demands. To make sure we still account for the possibility that the flow through the node with the flow demand is negative, we allow the allocated flow variable with the earliest priority to be negative, and account for this when writing the results.</p>
+<p>With this we formulate the constraints</p>
+<p><span class="math display">\[
+    F_{(b_\text{upstream}, v)} = \sum_{p} F^p_v, \quad \forall v
+    \in FD.
+\]</span></p>
+<p>We define relative error variables per demand node per priority for which they have a demand:</p>
+<p><span class="math display">\[
+    E^p_v \ge 0, \quad \forall v \in (UD \cup FD),\\; p \in P_v.
+\]</span></p>
+<p>The constraints on these relative error terms are similar as before:</p>
+<p><span class="math display">\[
+    d_v^p \cdot E_v^p \ge d_v^p - F_v^p, \quad \forall v \in (UD \cup FD),\\; p \in P_v.
+\]</span></p>
+<p>With these relative error terms we formulate an objective per demand priority for which any of these nodes have a demand (<span class="math inline">\(P^\text{flow} = \bigcup_{v \in UD \cup FD} P_v\)</span>):</p>
+<p><span class="math display">\[
+    \min \sum_{v,p} d_v^p \cdot E_v^p, \quad \forall p \in P^\text{flow}.
+\]</span></p>
+<p>Note the multiplication by the demand here, which makes this effectively a minimization in the absolute error. There is a reason we formulate relative in stead of absolute errors: to optimize for a fair distribution of water. To that end we can formulate per demand priority a global relative allocation error:</p>
+<p><span class="math display">\[
+    G^p = \frac{\sum_{v,p} d_v^p \cdot E_v^p}{\sum_{v,p} d^p_v}, \quad \forall p \in P^\text{flow},
+\]</span></p>
+<p>where in practice we multiply both sides by the denominator to prevent division by zero problems. Also note that the enumerator is precisely the expression for the aforementioned objective. Now in a subsequent objective, we want to penalize relative errors being larger than <span class="math inline">\(G^p\)</span>. So we define new errors</p>
+<p><span class="math display">\[
+    \overline{E}_v^p \ge 0, \quad \forall v \in (UD \cup FD),\\; p \in P_v,
+\]</span></p>
+<p>on which we define the constraints</p>
+<p><span class="math display">\[
+    \overline{E}_v^p \ge E_v^p - G^p, \quad \forall v \in (UD \cup FD),\\; p \in P_v
+\]</span></p>
+<p>and with which we formulate the objectives</p>
+<p><span class="math display">\[
+    \min \sum_{v,p} \overline{E}_v^p, \quad \forall p \in P^\text{flow}.
+\]</span></p>
+<p>Of course the order of objectives is important. For each demand priority of the flow type described here, first the weighted sum of the errors <span class="math inline">\(E_v^p\)</span> must be minimized, then the sum of the errors <span class="math inline">\(\overline{E}_v^p\)</span>.</p>
+</section>
+<section id="leveldemand" class="level4" data-number="3.1.2.2">
+<h4 data-number="3.1.2.2" class="anchored" data-anchor-id="leveldemand"><span class="header-section-number">3.1.2.2</span> LevelDemand</h4>
+<p>Say we have Basins with LevelDemand <span class="math inline">\(B\)</span> where each Basin <span class="math inline">\(b \in B\)</span> has a minimum level <span class="math inline">\(h_{b,\min}^p\)</span> for demand priorities <span class="math inline">\(P^\min_b\)</span> and a maximum level <span class="math inline">\(h_{b,\max}^p\)</span> for demand priorities <span class="math inline">\(P_b^\max\)</span>. Furthermore each Basin has a level to storage function <span class="math inline">\(s_b(h)\)</span>. For all Basins <span class="math inline">\(b\)</span> in the subnetwork (not just the ones with a level demand) we also have</p>
+<ul>
+<li>The known initial level at the beginning of the allocation timestep <span class="math inline">\(h_b^\text{init}\)</span></li>
+<li>The decision variable of the change in storage over the allocation timestep <span class="math inline">\(\Delta S_b\)</span></li>
+</ul>
+<p>For Basins with a level demand <span class="math inline">\(b \in B\)</span> we additionally have</p>
+<ul>
+<li>The lower absolute storage error</li>
+</ul>
+<p><span class="math display">\[
+    E_{b, \text{lower}}^p  \ge 0 \quad \forall b \in B, \\; p \in P^\text{min}_b
+\]</span></p>
+<ul>
+<li>The incoming storage demand</li>
+</ul>
+<p><span class="math display">\[
+    d^p_{b, +} = s\left(h_{b, \min}^p\right) - s_b\left(\text{clamp}\left(h_b^\text{init}, h_{b,\min}^{\text{prev}(p)}, h_{b,\min}^p \right)\right)
+    \quad \forall b \in B, \\; p \in P^\text{min}_b
+\]</span></p>
+<p>which is the volume of water needed to get to the minimum level of the current demand priority from the minimum level of the previous demand priority (or the starting level if that’s higher). If there is no priority in <span class="math inline">\(P_b^\min\)</span> lower than the current priority <span class="math inline">\(p\)</span> we say <span class="math inline">\(h^{\text{prev}(p)}_{b, \min}\)</span> is equal to the Basin bottom.</p>
+<ul>
+<li>The upper absolute storage error</li>
+</ul>
+<p><span class="math display">\[
+E_{b, \text{upper}}^p \ge 0 \quad \forall b \in B, \\; p \in P_b^\max
+\]</span></p>
+<ul>
+<li>The outgoing storage demand:</li>
+</ul>
+<p><span class="math display">\[
+    d^p_{b, -} = s_b\left(\text{clamp}\left(h_b^\text{init}, h_{b, \max}^p, h_{b, \max}^{\text{prev}(p)}\right)\right) - s\left(h_{b, \max}^p\right) \quad \forall b \in B, \\; p \in P^\text{max}_b
+\]</span></p>
+<p>which is the volume of water needed to get from the maximum level of the current demand priority to the maximum level of the previous demand priority (or the starting level if that’s lower). If there is no priority in <span class="math inline">\(P_b^\max\)</span> lower than the current priority <span class="math inline">\(p\)</span> we say <span class="math inline">\(h^{\text{prev}(p)}_{b, \max} := \infty\)</span>.</p>
+<p>We define the following constraints on the errors:</p>
+<p><span class="math display">\[
+    E^p_{b, \text{lower}} \ge s\left(h^p_{b, \min}\right) -\left(s\left(h_b^\text{init}\right) + \Delta S_b\right) \quad \forall b \in S, \\; p \in P^\min_b
+\]</span></p>
+<p><span class="math display">\[
+    E^p_{b, \text{upper}} \ge \left(s\left(h_b^\text{init}\right) + \Delta S_b\right) - s\left(h^p_{b, \max}\right) \quad \forall b \in S, \\; p \in P^\max_b.
+\]</span></p>
+<p>Note that unlike with UserDemand and LevelDemand, the allocated amounts are not present as variables in the problem. The allocated amounts have to be derived from <span class="math inline">\(\Delta S_b\)</span>. Also note that the demands, which depend on the state of the physical layer and the start of the allocation timestep, do not appear in the LP problem. These are only computed for output.</p>
+<p>Then given all this we define the objective for minimizing the absolute error sum per priority for which there is at least one level demand (<span class="math inline">\(P_\text{lower}^\text{level} = \bigcup_{b \in B} P^\min_b\)</span>, <span class="math inline">\(P_\text{upper}^\text{level} = \bigcup_{b \in B} P^\max_b\)</span>, <span class="math inline">\(P^\text{level} = P_\text{lower}^\text{level} \cup P_\text{upper}^\text{level}\)</span>):</p>
+<p><span class="math display">\[
+    \min \sum_{b; p\in P^\min_b} E^p_{b, \text{lower}} + \sum_{b \in B \\; : \\; p\in P^\max_b} E^p_{b, \text{upper}}, \qquad \forall p \in P^\text{level}
+\]</span></p>
+<p>Now, just as in the previous section, we want to add a subsequent objective for fair distribution. Given the Basin area <span class="math inline">\(A_b\)</span> (which is assumed to be constant over the allocation timestep), we can define the average lower and upper level error</p>
+<p><span class="math display">\[
+    \Delta H^p_\text{lower} = \frac{\sum_{b \in B \\; : \\; p\in P^\min_b} E^p_{b, \text{lower}}}{\sum_{b \in B \\; : \\; p\in P^\min_b} A_b}, \qquad \forall p \in P_\text{lower}^\text{level};
+\]</span></p>
+<p><span class="math display">\[
+    \Delta H^p_\text{upper} = \frac{\sum_{b \in B \\; : \\; p\in P^\max_b} E^p_{b, \text{upper}}}{\sum_{b \in B \\; : \\; p\in P^\max_b} A_b}, \qquad \forall p \in P_\text{upper}^\text{level};
+\]</span></p>
+<p>Again we define new errors:</p>
+<p><span class="math display">\[
+    \overline{E}_{b, \text{lower}}^p \ge 0, \quad \forall b \in B, \\; p \in P_b^\min;
+\]</span></p>
+<p><span class="math display">\[
+    \overline{E}_{b, \text{upper}}^p \ge 0, \quad \forall b \in B, \\; p \in P_b^\max.
+\]</span></p>
+<p>On these errors we define the following constraints:</p>
+<p><span class="math display">\[
+    \overline{E}^p_{b, \text{lower}} \ge \frac{E^p_{b, \text{lower}}}{A_b} - \Delta H^p_\text{lower}, \quad \forall b \in B, \\;p \in P_b^\text{min};
+\]</span></p>
+<p><span class="math display">\[
+    \overline{E}^p_{b, \text{upper}} \ge \frac{E^p_{b, \text{upper}}}{A_b} - \Delta H^p_\text{upper}, \quad \forall b \in B, \\;p \in P_b^\text{max},
+\]</span></p>
+<p>and the following objectives:</p>
+<p><span class="math display">\[
+    \min \sum_{b \in B \\; : \\; p \in P_b^\min} \overline{E}^p_{b, \text{lower}} + \sum_{b \in B \\; : \\; p \in P_b^\max} \overline{E}^p_{b, \text{upper}}, \qquad \forall p \in P^\text{level}.
+\]</span></p>
+</section>
 </section>
 </section>
 <section id="control" class="level2" data-number="3.2">
 <h2 data-number="3.2" class="anchored" data-anchor-id="control"><span class="header-section-number">3.2</span> Control</h2>
 <section id="control-by-allocation" class="level3" data-number="3.2.1">
 <h3 data-number="3.2.1" class="anchored" data-anchor-id="control-by-allocation"><span class="header-section-number">3.2.1</span> Control by allocation</h3>
-<p>When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must be given the special control state <code>Ribasim.allocation</code>. When a Pump or Outlet has this control state, the flow through the node is only bounded by its capacity and <span style="color: red;">#TODO: Pump or Node specific constraints based on the difference between upstream and downstream level.</span>. After all goals have been optimized for, the flow rate through the Pump or Outlet is communicated to the physical layer.</p>
+<p>When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must be given the special control state <code>Ribasim.allocation</code> in the static table for <a href="../reference/node/pump.html#static">Pump</a> or <a href="../reference/node/outlet.html#static">Outlet</a>. When a Pump or Outlet has this control state, the flow through the node is only bounded by its capacity and Pump or Outlet specific constraints based on the difference between upstream and downstream level (see <a href="../reference/node/pump.html#equations">Pump equations</a> or <a href="../reference/node/outlet.html#equations">Outlet equations</a>). After all goals have been optimized for, the flow rate through the Pump or Outlet is communicated to the physical layer.</p>
 </section>
 <section id="interaction-of-allocation-with-other-control-systems" class="level3" data-number="3.2.2">
 <h3 data-number="3.2.2" class="anchored" data-anchor-id="interaction-of-allocation-with-other-control-systems"><span class="header-section-number">3.2.2</span> Interaction of allocation with other control systems</h3>
 <p>There are several other control systems in Ribasim:</p>
 <ul>
-<li><a href="../reference/node/discrete-control.html">DiscreteControl</a>: This node type can change parameters of other nodes in between time steps of the solver of the physical layer. If the affected node is within a subnetwork, the parameter change will also be taken into account in the next allocation run <span style="color: red;">#TODO: This has not been implemented yet.</span>. So the parameters in the allocation layer are always up to date with those in the physical layer, but the allocation algorithm cannot anticipate parameter changes from DiscreteControl that occur within the allocation time step which is being optimized over, so this can be a source of discrepancies between the physical layer and the allocation layer.</li>
-<li><a href="../reference/node/continuous-control.html">ContinuousControl</a>: <span style="color: red;">#TODO: Undecided. Some ContinuousControl relationships could be implemented in allocation, but this requires validation.</span></li>
-<li><a href="../reference/node/pid-control.html">PidControl</a>: The continuous nature of this control type is not taken into account. The flow rate the controlled structure has at the start of the allocation optimization step will be extrapolated in a constant manner.</li>
+<li><p><a href="../reference/node/discrete-control.html">DiscreteControl</a>: This node type can change parameters of other nodes in between time steps of the solver of the physical layer. If the affected node is within a subnetwork, the parameter change will also be taken into account in the next allocation run. So the parameters in the allocation layer are always up to date with those in the physical layer, but the allocation algorithm cannot anticipate parameter changes from DiscreteControl that occur within the allocation time step which is being optimized over, so this can be a source of discrepancies between the physical layer and the allocation layer.</p></li>
+<li><p><a href="../reference/node/continuous-control.html">ContinuousControl</a>: The continuous nature of this control type is not taken into account. The flow rate the controlled structure has at the start of the allocation optimization step will be extrapolated in a constant manner.</p></li>
+<li><p><a href="../reference/node/pid-control.html">PidControl</a>: The continuous nature of this control type is not taken into account. The flow rate the controlled structure has at the start of the allocation optimization step will be extrapolated in a constant manner.</p></li>
 </ul>
-<p>See <a href="../reference/usage.html#results">here</a>.</p>
 <p>The following data of the parameters and state of a Ribasim model are relevant for the allocation problem.</p>
 </section>
 </section>
