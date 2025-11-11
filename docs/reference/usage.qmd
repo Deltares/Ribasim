@@ -219,6 +219,11 @@ When `cyclic_time` is set to true for a node in the Node table, every time serie
 
 Note that periods like months or years are not of constant length in the calendar, so over long simulation periods the timeseries can get out of sync with these periods on the calendar.
 
+## Subnetwork ID
+Nodes can only be controlled by allocation if the have a subnetwork_id. In the Node table, give for example subnetwork_id an integer value of 1 or 2.
+
+When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, besides a subnetwork_id, they must be given the special control state `Ribasim.allocation` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static).
+
 # Link {#sec-link}
 
 Links define connections between nodes. The only thing that defines an link is the nodes it connects, and in what direction.
@@ -334,6 +339,8 @@ time            | DateTime | -
 control_node_id | Int32    | -
 truth_state     | String   | -
 control_state   | String   | -
+
+
 
 ## Allocation - `allocation`
 

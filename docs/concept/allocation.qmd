@@ -14,9 +14,33 @@ When we build a Ribasim model in which we want to utilize allocation, it can be 
 
 We can then first solve an allocation optimization for the primary network, that calculates how to optimally divide the available water to each subnetwork. With this allocated amount for a subnetwork, we can optimize how to divide this water within the subnetwork to the demand nodes.
 
-Subnetworks are defined by grouping nodes that share the same subnetwork ID in the [Node table](../reference/usage.qmd#node). The primary network needs to be assigned with subnetwork ID 1. This will always represent the main water system.
+Subnetworks are defined by grouping nodes that share the same subnetwork ID in the [Node table](/reference/usage.qmd#node). The primary network needs to be assigned with subnetwork ID 1. This will always represent the main water system. Below is an example of a primary network with multiple subnetworks.
 
-<span style="color: red;">#TODO: Add model image with primary network and secondary networks.</span>
+
+```{python}
+# | output: asis
+# | code-fold: true
+import ribasim_testmodels
+import matplotlib.pyplot as plt
+from IPython.display import Markdown, display
+
+for model_name, model_constructor in ribasim_testmodels.constructors.items():
+
+    if model_name!= "medium_primary_secondary_network":
+        continue
+
+    if model_constructor.__doc__ is not None:
+        display(Markdown(model_constructor.__doc__))
+
+    model = model_constructor()
+    fig, ax = plt.subplots(figsize=(6, 4))
+    model.plot(ax)
+    ax.axis("off")
+    plt.show()
+    plt.close(fig)
+```
+
+
 
 Secondary networks:
 
@@ -24,7 +48,7 @@ Secondary networks:
 - Cannot connect directly to other secondary networks
 - The demand of a subnetwork to the primary network is the sum of all unmet demands within the subnetwork
 
-For each subnetwork, a linear optimization problem is formulated .
+For each subnetwork, a linear optimization problem is formulated.
 
 ## Mathematical formulation
 
@@ -220,7 +244,6 @@ For the resistance nodes [the phantom storage introduced above](#the-basin-profi
 
 The allocation algorithm optimizes for a sequence of objectives in succession, adding constraints after optimization for each goal to retain the result of that optimization in the subsequent optimizations. This approach is known as [goal programming](https://en.wikipedia.org/wiki/Goal_programming).
 
-<span style="color: red;">At the time of writing it is not completely clear yet which parts of the physics will be added as hard constraints and which ones will be optimized for (and how).</span>
 
 ### Demand objectives
 
@@ -237,24 +260,192 @@ Demand objectives come in 2 categories:
 
 We separate these out because these different types optimize for different quantities (flow and storage respectively), and combining demands of these two types within the same subnetwork within the same demand priority is not allowed. Given a demand priority $d$, the objective function looks like
 
-<span style="color: red;">#TODO: Write out objective functions.</span>
+### Formulation
+In the following we assume lexicographic multi-objective optimization.
+
+#### UserDemand and FlowDemand
+
+Say we have a subnetwork with UserDemand nodes $UD$ and FlowDemand nodes $FD$ and each node $v \in UD \cup FD$ has demands for priorities $P_v$. Then for every one of these demand nodes for every priority for which they have a demand (at some point in time) we define a special flow decision variable which denotes how much is allocated to that node for that priority:
+
+$$
+	0 \le F^p_v \le d_v^p, \quad \forall v \in (UD \cup FD),\\; p \in P_v.
+$$
+
+As indicated, each of these allocated flow variables is bounded between 0 and the corresponding demand (NOTE: in this text we assume that the demands are already expressed in the scaled flow unit). For UserDemand nodes we have that the sum of these allocated flow variables over the priorities is equal to the total flow into that node:
+
+$$
+	F_{(b_\text{upstream}, v)} = \sum_{p \in P_v} F^p_v, \quad \forall v
+	\in UD.
+$$
+
+Note that this means that we enforce that only allocated flow can enter a UserDemand node, and so there can not be more flow into the UserDemand node than the total demand of that node.
+For FlowDemand we do allow that there is more flow through the node with the flow demand than the total demand (or even negative flow). To allow this freedom, we introduce a special 'demand priority 0' variable
+
+$$
+	0 \le F^0_v \le \frac{\text{MAX\_ABS\_FLOW}}{\text{scaling.flow}}, \quad \forall v \in FD
+$$
+
+We only let $F^0_v$ account for surplus flow, because if we allow that variable to be negative it can be used to allocate to demands. To make sure we still account for the possibility that the flow through the node with the flow demand is negative, we allow the allocated flow variable with the earliest priority to be negative, and account for this when writing the results.
+
+With this we formulate the constraints
+
+$$
+	F_{(b_\text{upstream}, v)} = \sum_{p} F^p_v, \quad \forall v
+	\in FD.
+$$
+
+We define relative error variables per demand node per priority for which they have a demand:
+
+$$
+	E^p_v \ge 0, \quad \forall v \in (UD \cup FD),\\; p \in P_v.
+$$
+
+The constraints on these relative error terms are similar as before:
+
+$$
+	d_v^p \cdot E_v^p \ge d_v^p - F_v^p, \quad \forall v \in (UD \cup FD),\\; p \in P_v.
+$$
+
+With these relative error terms we formulate an objective per demand priority for which any of these nodes have a demand ($P^\text{flow} = \bigcup_{v \in UD \cup FD} P_v$):
+
+$$
+	\min \sum_{v,p} d_v^p \cdot E_v^p, \quad \forall p \in P^\text{flow}.
+$$
+
+Note the multiplication by the demand here, which makes this effectively a minimization in the absolute error. There is a reason we formulate relative in stead of absolute errors: to optimize for a fair distribution of water. To that end we can formulate per demand priority a global relative allocation error:
+
+$$
+	G^p = \frac{\sum_{v,p} d_v^p \cdot E_v^p}{\sum_{v,p} d^p_v}, \quad \forall p \in P^\text{flow},
+$$
+
+where in practice we multiply both sides by the denominator to prevent division by zero problems. Also note that the enumerator is precisely the expression for the aforementioned objective.
+Now in a subsequent objective, we want to penalize relative errors being larger than $G^p$. So we define new errors
+
+$$
+	\overline{E}_v^p \ge 0, \quad \forall v \in (UD \cup FD),\\; p \in P_v,
+$$
+
+on which we define the constraints
+
+$$
+	\overline{E}_v^p \ge E_v^p - G^p, \quad \forall v \in (UD \cup FD),\\; p \in P_v
+$$
+
+and with which we formulate the objectives
+
+$$
+	\min \sum_{v,p} \overline{E}_v^p, \quad \forall p \in P^\text{flow}.
+$$
+
+Of course the order of objectives is important. For each demand priority of the flow type described here, first the weighted sum of the errors $E_v^p$ must be minimized, then the sum of the errors $\overline{E}_v^p$.
+
+#### LevelDemand
+
+Say we have Basins with LevelDemand $B$ where each Basin $b \in B$ has a minimum level $h_{b,\min}^p$ for demand priorities $P^\min_b$ and a maximum level $h_{b,\max}^p$ for demand priorities $P_b^\max$. Furthermore each Basin has a level to storage function $s_b(h)$. For all Basins $b$ in the subnetwork (not just the ones with a level demand) we also have
+
+- The known initial level at the beginning of the allocation timestep $h_b^\text{init}$
+- The decision variable of the change in storage over the allocation timestep $\Delta S_b$
+
+For Basins with a level demand $b \in B$ we additionally have
+
+- The lower absolute storage error
+
+$$
+	E_{b, \text{lower}}^p  \ge 0 \quad \forall b \in B, \\; p \in P^\text{min}_b
+$$
+
+- The incoming storage demand
+
+$$
+	d^p_{b, +} = s\left(h_{b, \min}^p\right) - s_b\left(\text{clamp}\left(h_b^\text{init}, h_{b,\min}^{\text{prev}(p)}, h_{b,\min}^p \right)\right)
+	\quad \forall b \in B, \\; p \in P^\text{min}_b
+$$
+
+which is the volume of water needed to get to the minimum level of the current demand priority from the minimum level of the previous demand priority (or the starting level if that's higher). If there is no priority in $P_b^\min$ lower than the current priority $p$ we say $h^{\text{prev}(p)}_{b, \min}$ is equal to the Basin bottom.
+
+- The upper absolute storage error
+
+$$
+E_{b, \text{upper}}^p \ge 0 \quad \forall b \in B, \\; p \in P_b^\max
+$$
+
+- The outgoing storage demand:
+
+$$
+	d^p_{b, -} = s_b\left(\text{clamp}\left(h_b^\text{init}, h_{b, \max}^p, h_{b, \max}^{\text{prev}(p)}\right)\right) - s\left(h_{b, \max}^p\right) \quad \forall b \in B, \\; p \in P^\text{max}_b
+$$
+
+which is the volume of water needed to get from the maximum level of the current demand priority to the maximum level of the previous demand priority (or the starting level if that's lower). If there is no priority in $P_b^\max$ lower than the current priority $p$ we say $h^{\text{prev}(p)}_{b, \max} := \infty$.
+
+We define the following constraints on the errors:
+
+$$
+	E^p_{b, \text{lower}} \ge s\left(h^p_{b, \min}\right) -\left(s\left(h_b^\text{init}\right) + \Delta S_b\right) \quad \forall b \in S, \\; p \in P^\min_b
+$$
+
+$$
+	E^p_{b, \text{upper}} \ge \left(s\left(h_b^\text{init}\right) + \Delta S_b\right) - s\left(h^p_{b, \max}\right) \quad \forall b \in S, \\; p \in P^\max_b.
+$$
+
+Note that unlike with UserDemand and LevelDemand, the allocated amounts are not present as variables in the problem. The allocated amounts have to be derived from $\Delta S_b$. Also note that the demands, which depend on the state of the physical layer and the start of the allocation timestep, do not appear in the LP problem. These are only computed for output.
+
+Then given all this we define the objective for minimizing the absolute error sum per priority for which there is at least one level demand ($P_\text{lower}^\text{level} = \bigcup_{b \in B} P^\min_b$, $P_\text{upper}^\text{level} = \bigcup_{b \in B} P^\max_b$, $P^\text{level} = P_\text{lower}^\text{level} \cup P_\text{upper}^\text{level}$):
+
+$$
+	\min \sum_{b; p\in P^\min_b} E^p_{b, \text{lower}} + \sum_{b \in B \\; : \\; p\in P^\max_b} E^p_{b, \text{upper}}, \qquad \forall p \in P^\text{level}
+$$
+
+Now, just as in the previous section, we want to add a subsequent objective for fair distribution. Given the Basin area $A_b$ (which is assumed to be constant over the allocation timestep), we can define the average lower and upper level error
+
+$$
+	\Delta H^p_\text{lower} = \frac{\sum_{b \in B \\; : \\; p\in P^\min_b} E^p_{b, \text{lower}}}{\sum_{b \in B \\; : \\; p\in P^\min_b} A_b}, \qquad \forall p \in P_\text{lower}^\text{level};
+$$
+
+$$
+	\Delta H^p_\text{upper} = \frac{\sum_{b \in B \\; : \\; p\in P^\max_b} E^p_{b, \text{upper}}}{\sum_{b \in B \\; : \\; p\in P^\max_b} A_b}, \qquad \forall p \in P_\text{upper}^\text{level};
+$$
+
+Again we define new errors:
+
+$$
+	\overline{E}_{b, \text{lower}}^p \ge 0, \quad \forall b \in B, \\; p \in P_b^\min;
+$$
+
+$$
+	\overline{E}_{b, \text{upper}}^p \ge 0, \quad \forall b \in B, \\; p \in P_b^\max.
+$$
+
+On these errors we define the following constraints:
+
+$$
+	\overline{E}^p_{b, \text{lower}} \ge \frac{E^p_{b, \text{lower}}}{A_b} - \Delta H^p_\text{lower}, \quad \forall b \in B, \\;p \in P_b^\text{min};
+$$
+
+$$
+	\overline{E}^p_{b, \text{upper}} \ge \frac{E^p_{b, \text{upper}}}{A_b} - \Delta H^p_\text{upper}, \quad \forall b \in B, \\;p \in P_b^\text{max},
+$$
+
+and the following objectives:
+
+$$
+	\min \sum_{b \in B \\; : \\; p \in P_b^\min} \overline{E}^p_{b, \text{lower}} + \sum_{b \in B \\; : \\; p \in P_b^\max} \overline{E}^p_{b, \text{upper}}, \qquad \forall p \in P^\text{level}.
+$$
 
 ## Control
 
 ### Control by allocation
 
-When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must be given the special control state `Ribasim.allocation`. When a Pump or Outlet has this control state, the flow through the node is only bounded by its capacity and <span style="color: red;">#TODO: Pump or Node specific constraints based on the difference between upstream and downstream level.</span>. After all goals have been optimized for, the flow rate through the Pump or Outlet is communicated to the physical layer.
+When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must be given the special control state `Ribasim.allocation` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static). When a Pump or Outlet has this control state, the flow through the node is only bounded by its capacity and Pump or Outlet specific constraints based on the difference between upstream and downstream level (see [Pump equations](/reference/node/pump.qmd#equations) or [Outlet equations](/reference/node/outlet.qmd#equations)). After all goals have been optimized for, the flow rate through the Pump or Outlet is communicated to the physical layer.
 
 ### Interaction of allocation with other control systems
 
 There are several other control systems in Ribasim:
 
-- [DiscreteControl](/reference/node/discrete-control.qmd): This node type can change parameters of other nodes in between time steps of the solver of the physical layer. If the affected node is within a subnetwork, the parameter change will also be taken into account in the next allocation run  <span style="color: red;">#TODO: This has not been implemented yet.</span>. So the parameters in the allocation layer are always up to date with those in the physical layer, but the allocation algorithm cannot anticipate parameter changes from DiscreteControl that occur within the allocation time step which is being optimized over, so this can be a source of discrepancies between the physical layer and the allocation layer.
-- [ContinuousControl](/reference/node/continuous-control.qmd): <span style="color: red;">#TODO: Undecided. Some ContinuousControl relationships could be implemented in allocation, but this requires validation.</span>
+- [DiscreteControl](/reference/node/discrete-control.qmd): This node type can change parameters of other nodes in between time steps of the solver of the physical layer. If the affected node is within a subnetwork, the parameter change will also be taken into account in the next allocation run. So the parameters in the allocation layer are always up to date with those in the physical layer, but the allocation algorithm cannot anticipate parameter changes from DiscreteControl that occur within the allocation time step which is being optimized over, so this can be a source of discrepancies between the physical layer and the allocation layer.
+- [ContinuousControl](/reference/node/continuous-control.qmd): The continuous nature of this control type is not taken into account. The flow rate the controlled structure has at the start of the allocation optimization step will be extrapolated in a constant manner.
+
 - [PidControl](/reference/node/pid-control.qmd): The continuous nature of this control type is not taken into account. The flow rate the controlled structure has at the start of the allocation optimization step will be extrapolated in a constant manner.
 
-
-See [here](/reference/usage.qmd#results).
 
 
 The following data of the parameters and state of a Ribasim model are relevant for the allocation problem.
