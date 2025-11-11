@@ -341,12 +341,12 @@ Of course the order of objectives is important. For each demand priority of the 
 
 #### LevelDemand
 
-Say we have basins with LevelDemand $B$ where each basin $b \in B$ has a minimum level $h_{b,\min}^p$ for demand priorities $P^\min_b$ and a maximum level $h_{b,\max}^p$ for demand priorities $P_b^\max$. Furthermore each basin has a level to storage function $s_b(h)$. For all basins $b$ in the subnetwork (not just the ones with a level demand) we also have
+Say we have Basins with LevelDemand $B$ where each Basin $b \in B$ has a minimum level $h_{b,\min}^p$ for demand priorities $P^\min_b$ and a maximum level $h_{b,\max}^p$ for demand priorities $P_b^\max$. Furthermore each Basin has a level to storage function $s_b(h)$. For all Basins $b$ in the subnetwork (not just the ones with a level demand) we also have
 
 - The known initial level at the beginning of the allocation timestep $h_b^\text{init}$
 - The decision variable of the change in storage over the allocation timestep $\Delta S_b$
 
-For basins with a level demand $b \in B$ we additionally have
+For Basins with a level demand $b \in B$ we additionally have
 
 - The lower absolute storage error
 
