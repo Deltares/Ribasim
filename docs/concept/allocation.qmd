@@ -14,7 +14,7 @@ When we build a Ribasim model in which we want to utilize allocation, it can be 
 
 We can then first solve an allocation optimization for the primary network, that calculates how to optimally divide the available water to each subnetwork. With this allocated amount for a subnetwork, we can optimize how to divide this water within the subnetwork to the demand nodes.
 
-Subnetworks are defined by grouping nodes that share the same subnetwork ID in the [Node table](../reference/usage.qmd#node). The primary network needs to be assigned with subnetwork ID 1. This will always represent the main water system. Below is an example of a primary network with multiple subnetworks.
+Subnetworks are defined by grouping nodes that share the same subnetwork ID in the [Node table](/reference/usage.qmd#node). The primary network needs to be assigned with subnetwork ID 1. This will always represent the main water system. Below is an example of a primary network with multiple subnetworks.
 
 
 ```{python}
