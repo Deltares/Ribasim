@@ -50,7 +50,7 @@ function set_simulation_data!(
     storage_change = problem[:basin_storage_change]
     volume_conservation = problem[:volume_conservation]
     low_storage_factor = problem[:low_storage_factor]
-    (; current_storage) = p.state_time_dependent_cache
+    (; current_storage) = p.state_and_time_dependent_cache
 
     errors = false
 
@@ -129,7 +129,7 @@ function set_partial_derivative_wrt_level!(
     constraint::JuMP.ConstraintRef,
 )::Nothing
     (; problem, scaling) = allocation_model
-    (; current_area) = p.state_time_dependent_cache
+    (; current_area) = p.state_and_time_dependent_cache
 
     storage_change = problem[:basin_storage_change][node_id]
     JuMP.set_normalized_coefficient(
@@ -569,8 +569,8 @@ function set_demands!(
     integrator::DEIntegrator,
 )::Nothing
     (; p, t) = integrator
-    (; p_independent, state_time_dependent_cache) = p
-    (; current_level, current_area, current_storage) = state_time_dependent_cache
+    (; p_independent, state_and_time_dependent_cache) = p
+    (; current_level, current_area, current_storage) = state_and_time_dependent_cache
     (; basin, allocation) = p_independent
     (; demand_priorities_all) = allocation
     (; has_demand_priority, min_level, max_level, storage_demand) = level_demand
@@ -842,8 +842,8 @@ function parse_allocations!(
     allocation_model::AllocationModel,
 )::Nothing
     (; p, t) = integrator
-    (; p_independent, state_time_dependent_cache) = p
-    (; current_storage) = state_time_dependent_cache
+    (; p_independent, state_and_time_dependent_cache) = p
+    (; current_storage) = state_and_time_dependent_cache
     (; allocation, basin) = p_independent
     (; record_demand, demand_priorities_all) = allocation
     (; has_demand_priority, storage_prev, storage_demand) = level_demand
@@ -984,7 +984,7 @@ function apply_control_from_allocation!(
         in_subnetwork = (graph[node_id].subnetwork_id == subnetwork_id)
         if in_subnetwork && node.allocation_controlled[node_id.idx]
             flow_rate = JuMP.value(flow[inflow_link.link]) * scaling.flow
-            node.flow_rate[node_id.idx].u .= flow_rate
+            node.flow_rate[node_id.idx] = flow_rate
             push!(
                 record_control,
                 AllocationControlRecordDatum(

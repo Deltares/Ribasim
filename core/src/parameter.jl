@@ -704,7 +704,8 @@ flow_demand_id: connected flow demand node if applicable
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     active::Vector{Bool} = fill(true, length(node_id))
-    flow_rate::Vector{ScalarLinearInterpolation} =
+    flow_rate::Vector{Float64} = Vector{Float64}(undef, length(node_id))
+    time_dependent_flow_rate::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     min_flow_rate::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
@@ -745,7 +746,8 @@ flow_demand_id: connected flow demand node if applicable
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     active::Vector{Bool} = ones(Bool, length(node_id))
-    flow_rate::Vector{ScalarLinearInterpolation} =
+    flow_rate::Vector{Float64} = Vector{Float64}(undef, length(node_id))
+    time_dependent_flow_rate::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     min_flow_rate::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
@@ -782,7 +784,7 @@ A cache for intermediate results in `water_balance!` which can depend on both th
 this cache is required for automatic differentiation, where e.g. ForwardDiff requires these vectors to
 be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
 """
-const StateTimeDependentCache{T} = @NamedTuple{
+const StateAndTimeDependentCache{T} = @NamedTuple{
     current_storage::Vector{T},
     current_low_storage_factor::Vector{T},
     current_level::Vector{T},
@@ -834,7 +836,7 @@ const TimeDependentCache{T} = @NamedTuple{
 } where {T}
 
 """
-A reference to an element of either the StateTimeDependentCache or the state derivative `du`.
+A reference to an element of either the StateAndTimeDependentCache or the state derivative `du`.
 This is not a direct reference to the memory, because it depends on the type of call
 of `water_balance!` (AD versus 'normal') which version of these objects is passed.
 """
@@ -845,20 +847,20 @@ of `water_balance!` (AD versus 'normal') which version of these objects is passe
 end
 
 """
-Get one of the vectors of the StateTimeDependentCache based on the passed type.
+Get one of the vectors of the StateAndTimeDependentCache based on the passed type.
 """
 function get_cache_vector(
-    state_time_dependent_cache::StateTimeDependentCache,
+    state_and_time_dependent_cache::StateAndTimeDependentCache,
     type::CacheType.T,
 )
     if type == CacheType.flow_rate_pump
-        state_time_dependent_cache.current_flow_rate_pump
+        state_and_time_dependent_cache.current_flow_rate_pump
     elseif type == CacheType.flow_rate_outlet
-        state_time_dependent_cache.current_flow_rate_outlet
+        state_and_time_dependent_cache.current_flow_rate_outlet
     elseif type == CacheType.basin_level
-        state_time_dependent_cache.current_level
+        state_and_time_dependent_cache.current_level
     elseif type == CacheType.basin_storage
-        state_time_dependent_cache.current_storage
+        state_and_time_dependent_cache.current_storage
     else
         error("Invalid cache type $type passed.")
     end
@@ -1056,7 +1058,7 @@ end
     # Static part
     # Static subgrid ids
     subgrid_id_static::Vector{Int32} = []
-    # index into the p.state_time_dependent_cache.current_level vector for each static subgrid_id
+    # index into the p.state_and_time_dependent_cache.current_level vector for each static subgrid_id
     basin_id_static::Vector{NodeID} = []
     # index into the subgrid.level vector for each static subgrid_id
     level_index_static::Vector{Int} = []
@@ -1066,7 +1068,7 @@ end
     # Dynamic part
     # Dynamic subgrid ids
     subgrid_id_time::Vector{Int32} = []
-    # index into the p.state_time_dependent_cache.current_level vector for each dynamic subgrid_id
+    # index into the p.state_and_time_dependent_cache.current_level vector for each dynamic subgrid_id
     basin_id_time::Vector{NodeID} = []
     # index into the subgrid.level vector for each dynamic subgrid_id
     level_index_time::Vector{Int} = []
@@ -1108,14 +1110,14 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
    dependencies are missed during sparsity detection
 - `new_time_dependent_cache`: Whether the `t` with which `water_balance!` is called is considered new,
    and thus whether `time_dependent_cache` must be updated
-- `new_state_time_dependent_cache`: Whether the `t` and/or `u_reduced` with which `water_balance!` are called are
+- `new_state_and_time_dependent_cache`: Whether the `t` and/or `u_reduced` with which `water_balance!` are called are
    considered new, and thus whether caches that (only) depend on `u_reduced` must be updated
 - `tprev`: The previous `t` before the latest time step
 """
 @kwdef mutable struct ParametersMutable
     all_nodes_active::Bool = false
     new_time_dependent_cache::Bool = true
-    new_state_time_dependent_cache::Bool = true
+    new_state_and_time_dependent_cache::Bool = true
     tprev::Float64 = 0.0
 end
 
@@ -1172,9 +1174,12 @@ the object itself is not.
     level_difference_threshold::Float64
 end
 
-function StateTimeDependentCache(
+"""
+All cache that depend on both the state vector `u` and time `t`.
+"""
+function StateAndTimeDependentCache(
     p_independent::ParametersIndependent,
-)::StateTimeDependentCache
+)::StateAndTimeDependentCache
     n_basin = length(p_independent.basin.node_id)
     n_pump = length(p_independent.pump.node_id)
     n_outlet = length(p_independent.outlet.node_id)
@@ -1193,6 +1198,9 @@ function StateTimeDependentCache(
     )
 end
 
+"""
+All cached values that depend on time `t`.
+"""
 function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependentCache
     n_basin = length(p_independent.basin.node_id)
     basin = (;
@@ -1256,8 +1264,8 @@ The collection of all parameters that are passed to the rhs (`water_balance!`) a
 """
 @kwdef struct Parameters{C1, T1, T2}
     p_independent::ParametersIndependent{C1}
-    state_time_dependent_cache::StateTimeDependentCache{T1} =
-        StateTimeDependentCache(p_independent)
+    state_and_time_dependent_cache::StateAndTimeDependentCache{T1} =
+        StateAndTimeDependentCache(p_independent)
     time_dependent_cache::TimeDependentCache{T2} = TimeDependentCache(p_independent)
     p_mutable::ParametersMutable = ParametersMutable()
 end
@@ -1269,11 +1277,11 @@ function get_value(ref::CacheRef, p::Parameters, du::CVector)
     if ref.from_du
         du[ref.idx]
     else
-        get_cache_vector(p.state_time_dependent_cache, ref.type)[ref.idx]
+        get_cache_vector(p.state_and_time_dependent_cache, ref.type)[ref.idx]
     end
 end
 
 function set_value!(ref::CacheRef, p::Parameters, value)
     @assert !ref.from_du
-    get_cache_vector(p.state_time_dependent_cache, ref.type)[ref.idx] = value
+    get_cache_vector(p.state_and_time_dependent_cache, ref.type)[ref.idx] = value
 end

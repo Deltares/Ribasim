@@ -154,13 +154,13 @@ The ID can belong to either a Basin or a LevelBoundary.
 du: tells ForwardDiff whether this call is for differentiation or not
 """
 function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
-    (; p_independent, state_time_dependent_cache, time_dependent_cache) = p
+    (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
 
     if node_id.type == NodeType.Basin
-        state_time_dependent_cache.current_level[node_id.idx]
+        state_and_time_dependent_cache.current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
         itp = p_independent.level_boundary.level[node_id.idx]
-        eval_time_interp(
+        eval_time_interpolation(
             itp,
             time_dependent_cache.level_boundary.current_level,
             node_id.idx,
@@ -177,9 +177,9 @@ function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
 end
 
 function get_storage(p::Parameters, node_id::NodeID, t::Number)::Float64
-    (; p_independent, state_time_dependent_cache, time_dependent_cache) = p
+    (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
 
-    state_time_dependent_cache.current_storage[node_id.idx]
+    state_and_time_dependent_cache.current_storage[node_id.idx]
 end
 
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
@@ -307,7 +307,7 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
 end
 
 function get_low_storage_factor(p::Parameters, id::NodeID)
-    (; current_low_storage_factor) = p.state_time_dependent_cache
+    (; current_low_storage_factor) = p.state_and_time_dependent_cache
     if id.type == NodeType.Basin
         current_low_storage_factor[id.idx]
     else
@@ -849,7 +849,7 @@ end
 Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
-    (; current_storage) = p.state_time_dependent_cache
+    (; current_storage) = p.state_and_time_dependent_cache
     (; u_reduced) = p.p_independent
     reduce_state!(u_reduced, u, p.p_independent)
     formulate_storages!(u_reduced, p, t)
@@ -1075,7 +1075,7 @@ update the boolean flags in p_mutable. In several parts of the calculations in w
 caches are only updated if the data they depend on is different from the previous water_balance! call.
 """
 function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
-    (; state_time_dependent_cache, time_dependent_cache, p_mutable) = p
+    (; state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
 
     # Whether the time dependent cache must be renewed
     p_mutable.new_time_dependent_cache =
@@ -1087,32 +1087,33 @@ function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
     time_dependent_cache.t_prev_call[1] = t
 
     # Whether the state time dependent cache must be renewed
-    new_t_state_time_dependent_cache =
-        !isassigned(state_time_dependent_cache.t_prev_call, 1) || (
-            t != state_time_dependent_cache.t_prev_call[1] &&
+    new_t_state_and_time_dependent_cache =
+        !isassigned(state_and_time_dependent_cache.t_prev_call, 1) || (
+            t != state_and_time_dependent_cache.t_prev_call[1] &&
             ForwardDiff.partials(t) ==
-            ForwardDiff.partials(state_time_dependent_cache.t_prev_call[1])
+            ForwardDiff.partials(state_and_time_dependent_cache.t_prev_call[1])
         )
-    new_u_state_time_dependent_cache =
+    new_u_state_and_time_dependent_cache =
         any(
-            i -> !isassigned(state_time_dependent_cache.u_reduced_prev_call, i),
+            i -> !isassigned(state_and_time_dependent_cache.u_reduced_prev_call, i),
             eachindex(u_reduced),
         ) || any(
             i -> !(
-                u_reduced[i] == state_time_dependent_cache.u_reduced_prev_call[i] &&
-                ForwardDiff.partials(u_reduced[i]) ==
-                ForwardDiff.partials(state_time_dependent_cache.u_reduced_prev_call[i])
+                u_reduced[i] == state_and_time_dependent_cache.u_reduced_prev_call[i] &&
+                ForwardDiff.partials(u_reduced[i]) == ForwardDiff.partials(
+                    state_and_time_dependent_cache.u_reduced_prev_call[i],
+                )
             ),
             eachindex(u_reduced),
         )
-    state_time_dependent_cache.u_reduced_prev_call .= u_reduced
-    state_time_dependent_cache.t_prev_call[1] = t
-    p_mutable.new_state_time_dependent_cache =
-        new_t_state_time_dependent_cache || new_u_state_time_dependent_cache
+    state_and_time_dependent_cache.u_reduced_prev_call .= u_reduced
+    state_and_time_dependent_cache.t_prev_call[1] = t
+    p_mutable.new_state_and_time_dependent_cache =
+        new_t_state_and_time_dependent_cache || new_u_state_and_time_dependent_cache
     return nothing
 end
 
-function eval_time_interp(
+function eval_time_interpolation(
     itp::AbstractInterpolation,
     cache::Vector,
     idx::Int,
@@ -1241,15 +1242,15 @@ end
 function should_skip_update_q(
     active::Bool,
     control_type::ContinuousControlType.T,
-    control_type_::ContinuousControlType.T,
+    relevant_control_type::ContinuousControlType.T,
     p::Parameters,
 )::Bool
     (; p_mutable) = p
     (; all_nodes_active) = p_mutable
-    # Update is not needed if inactive and all nodes are not active
+    # Update is not needed if this node is not active and all nodes are not active
     if !active && !all_nodes_active
         return true
     end
 
-    return control_type != control_type_
+    return control_type != relevant_control_type
 end

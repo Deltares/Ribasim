@@ -14,19 +14,12 @@
 
     # Control input(flow rates)
     pump_control_mapping = pump.control_mapping
-    @test unique(
-        only(
-            pump_control_mapping[(
-                NodeID(:Pump, 4, p_independent),
-                "off",
-            )].itp_update_linear,
-        ).value.u,
-    ) == [0]
-    @test unique(
-        only(
-            pump_control_mapping[(NodeID(:Pump, 4, p_independent), "on")].itp_update_linear,
-        ).value.u,
-    ) == [1.0e-5]
+    @test only(
+        pump_control_mapping[(NodeID(:Pump, 4, p_independent), "off")].scalar_update,
+    ).value == 0
+    @test only(
+        pump_control_mapping[(NodeID(:Pump, 4, p_independent), "on")].scalar_update,
+    ).value == 1.0e-5
 
     logic_mapping::Vector{OrderedDict{Vector{Bool}, String}} = [
         OrderedDict(

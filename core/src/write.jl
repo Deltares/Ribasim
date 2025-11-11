@@ -335,7 +335,7 @@ end
 "Create the basin state table from the saved data"
 function basin_state_data(model::Model; table::Bool = true)
     (; u, p, t) = model.integrator
-    (; current_level) = p.state_time_dependent_cache
+    (; current_level) = p.state_and_time_dependent_cache
 
     # ensure the levels are up-to-date
     (; u_reduced) = p.p_independent
@@ -554,8 +554,8 @@ end
 "Create an allocation result table for the saved data"
 function allocation_data(model::Model; table::Bool = true)
     (; config, integrator) = model
-    (; p_independent, state_time_dependent_cache) = integrator.p
-    (; current_storage) = state_time_dependent_cache
+    (; p_independent, state_and_time_dependent_cache) = integrator.p
+    (; current_storage) = state_and_time_dependent_cache
     (; allocation, graph, basin, user_demand, flow_demand, level_demand) = p_independent
     (; demand_priorities_all, allocation_models) = allocation
     record_demand = StructVector(model.integrator.p.p_independent.allocation.record_demand)

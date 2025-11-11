@@ -198,8 +198,8 @@ end
 
 function update_concentrations!(u, t, integrator)::Nothing
     (; uprev, p, tprev, dt) = integrator
-    (; p_independent, state_time_dependent_cache) = p
-    (; current_storage, current_level) = state_time_dependent_cache
+    (; p_independent, state_and_time_dependent_cache) = p
+    (; current_storage, current_level) = state_and_time_dependent_cache
     (; basin, flow_boundary, do_concentration) = p_independent
     (; vertical_flux, concentration_data) = basin
     (;
@@ -392,7 +392,7 @@ end
 Save the storages and levels at the latest t.
 """
 function save_basin_state(u, t, integrator)
-    (; current_storage, current_level) = integrator.p.state_time_dependent_cache
+    (; current_storage, current_level) = integrator.p.state_and_time_dependent_cache
     SavedBasinState(; storage = copy(current_storage), level = copy(current_level), t)
 end
 
@@ -506,9 +506,10 @@ function check_water_balance_error!(
     Δt::Float64,
 )::Nothing
     (; u, p, t) = integrator
-    (; p_independent, state_time_dependent_cache) = p
+    (; p_independent, state_and_time_dependent_cache) = p
     (; u_reduced, state_ranges) = p_independent
-    (; current_storage) = state_time_dependent_cache
+    (; current_storage) = state_and_time_dependent_cache
+
     (; basin, water_balance_abstol, water_balance_reltol, starttime) = p_independent
     errors = false
 
@@ -586,14 +587,14 @@ end
 
 function check_negative_storage(u, t, integrator)::Nothing
     (; p) = integrator
-    (; p_independent, state_time_dependent_cache) = p
+    (; p_independent, state_and_time_dependent_cache) = p
     (; basin) = p_independent
     du = get_du(integrator)
     water_balance!(du, u, p, t)
 
     errors = false
     for id in basin.node_id
-        if state_time_dependent_cache.current_storage[id.idx] < 0
+        if state_and_time_dependent_cache.current_storage[id.idx] < 0
             @error "Negative storage detected in $id"
             errors = true
         end
@@ -786,8 +787,8 @@ end
 
 function update_subgrid_level!(integrator)::Nothing
     (; p, t) = integrator
-    (; p_independent, state_time_dependent_cache) = p
-    (; current_level) = state_time_dependent_cache
+    (; p_independent, state_and_time_dependent_cache) = p
+    (; current_level) = state_and_time_dependent_cache
     subgrid = p_independent.subgrid
 
     # First update the all the subgrids with static h(h) relations

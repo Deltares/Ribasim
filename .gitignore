@@ -164,3 +164,6 @@ ribasim_qgis/core/styles
 
 pyjuliapkg/
 .CondaPkg/
+
+# debugging files
+debug/*

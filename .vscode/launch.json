@@ -4,6 +4,15 @@
         {
             "type": "julia",
             "request": "launch",
+            "name": "debug Ribasim",
+            "program": "debug/debug.jl",
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "juliaEnv": "${command:activeJuliaEnvironment}"
+        },
+        {
+            "type": "julia",
+            "request": "launch",
             "name": "Julia: current file",
             "program": "${file}",
             "stopOnEntry": false,

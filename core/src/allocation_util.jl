@@ -457,8 +457,8 @@ function add_to_coefficient!(
 end
 
 function update_storage_prev!(p::Parameters)::Nothing
-    (; p_independent, state_time_dependent_cache) = p
-    (; current_storage) = state_time_dependent_cache
+    (; p_independent, state_and_time_dependent_cache) = p
+    (; current_storage) = state_and_time_dependent_cache
     (; storage_prev) = p_independent.level_demand
 
     for node_id in keys(storage_prev)

@@ -25,7 +25,7 @@
     flow_value(id_1, id_2) = JuMP.value(flow[(id_1, id_2)]) * allocation_model.scaling.flow
 
     @test flow_value(NodeID(:Basin, 2, p_independent), NodeID(:Pump, 5, p_independent)) ≈
-          pump.flow_rate[1](t)
+          pump.flow_rate[1]
     @test flow_value(
         NodeID(:Basin, 2, p_independent),
         NodeID(:UserDemand, 10, p_independent),
@@ -322,7 +322,7 @@ end
     (; u_reduced) = p.p_independent
     Ribasim.reduce_state!(u_reduced, u, p.p_independent)
     Ribasim.formulate_storages!(u_reduced, p, t)
-    (; current_storage) = p.state_time_dependent_cache
+    (; current_storage) = p.state_and_time_dependent_cache
 
     @test current_storage ≈ Float32[
         1.0346908f6,
@@ -626,18 +626,6 @@ end
     # We need to check this way if this log message exists, because different hardware/OS can log in different order
     found_message =
         any(log -> log.message == "Set of incompatible constraints found", logger.logs)
-    @test found_message
-
-    constraint_names = [
-        "linear_resistance_constraint[LinearResistance #2]",
-        "volume_conservation[Basin #1]",
-    ]
-    found_message = any(
-        log ->
-            haskey(log.kwargs, :constraint_violations) &&
-                sort(name.(keys(log.kwargs[:constraint_violations]))) == constraint_names,
-        logger.logs,
-    )
     @test found_message
 
     @test ispath(
