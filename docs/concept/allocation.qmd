@@ -118,80 +118,6 @@ The full algorithm goes through the following steps:
 If no primary network is present, then step 1 and 2 are skipped and the entire network is treated as a single subnetwork.
 
 
-<!-- ## The Basin profile
-## Water balance
-
-Just as the physical layer, the allocation layer must satisfy the water balance, in this case over the allocation timestep $\Delta t_\text{allocation}$. To explain how this is done, we give an algebraic description of some basic aspects of the subnetworks. Say we denote the set of all nodes in the model by $V$, and the subset that forms a subnetwork by $S \subseteq V$. We also have the the set of all flow links in the model $L \subseteq V \times V$, i.e. the links are ordered pairs of nodes. The set of links associated with the subnetwork is derived from $S$ as
-
-$$
-    E_S = \{l \in L \; : \; l \cap S \ne\emptyset\},
-$$
-
-<span style="color: red;">#TODO: Add image with which links are assumed to be part of the subnetwork.</span>
-
-i.e. all links in the model that have at least one node in the subnetwork. For each link in the subnetwork we define a flow variable ($\text{m}^3/\text{s}$):
-
-$$
-    -F_\max \le \mathcal{F}_l \le F_\max, \quad l \in E_S.
-$$
-
-Here each $\mathcal{F}_l$ denotes the flow over the link $l$ over the timestep. These are decision variables, i.e. values that are an output of the optimization, which we denote in cursive script. The variable can attain values between the bounds $-F_\max$ and $F_\max$, where $F_\max = 500.000 \;\text{m}^3/\text{s}$. The bound $F_\max$ is chosen as a reasonable maximum value that flows can attain. We assume these flows to be constant over the period $\Delta t_\text{allocation}$. We will see later that certain parameters of the model can put stricter bounds on these flows.
-
-For the basins $B_S \subset S$ in the subnetwork we define storage parameters ($\text{m}^3$) for the start of the allocation time step $\Delta t_\text{allocation}$:
-
-$$
-    S^\text{start}_b, \quad b \in B_S.
-$$
-
-These are set to the values that hey have in the physical layer at the start of the allocation timestep. The storages at the end of this timestep are decision variables:
-
-$$
-    0 \le \mathcal{S}^\text{end}_b \le S_b^\max, b \in B_S,
-$$
-
-<span style="color: red;">#TODO: We might decide to relax this upper bound a bit.</span>
-
-where $S_b^\max$ is the largest storage within the [Basin profile](/reference/node/basin.qmd#profile). Lastly we have a horizontal forcing variable for each basin
-
-$$
-    \mathcal{H}^\text{end}, \quad b \in B_S,
-$$
-
-whose value will be discussed later. Given these variables, we can set up a water balance constraint for each basin in the subnetwork:
-
-$$
-    \mathcal{S}_b^\text{end} - S_b^\text{start} = \Delta t_\text{allocation}
-    \left(
-        \mathcal{H}_b
-        +
-        \sum_{(n, b) \in E_S} \mathcal{F}_{(n,b)}
-        -
-        \sum_{(b, n) \in E_S} \mathcal{F}_{(b,n)}
-    \right),
-    \quad
-    b \in B_S.
-$$
-
-## The Basin profile
-
-For most of the physical layer, flows depend on levels. Therefore level variables have to be introduced:
-
-$$
-    L_b^\min \ge \mathcal{L}^\text{end}_b \ge L_b^\max, \quad b \in B_S,
-$$
-
-
-where $L_b^\min$ is the bottom level of the Basin and $L_b^\max$ is the highest level available in the Basin profile. Note that this means that the problem becomes infeasible if the level in a basin exceeds this value, and the solver will attempt to avoid this from happening. The level in a basin depends on the storage via the [Basin profile](/reference/node/basin.qmd#profile), here denoted by the function $P_b$:
-
-$$
-    \mathcal{L}^\text{end}_b = P_b(\mathcal{S}^\text{end}_b)
-$$
-
-<span style="color: red;">#TODO: Explain how the level(storage) relationship is linearized, and how some 'phantom storage' is introduced into the profile.</span>
-
-Just like the initial storages, each Basin has an initial level $L_b^\text{start}$ known from the physical layer which we need to compute flows.
--->
-
 # Implementation
 ## The basin profile
 The level in a basin is generally a non-linear function of the storage (except when the area is constant). To incorporate this into a linear programming framework, we linearize the basin profile at the current timestep.
@@ -236,11 +162,6 @@ The flow rate of a FlowBoundary is given as a timeseries so we could use the int
 
 
 # Objectives (goals)
-In Ribasim we have [LinearResistance](/reference/node/linear-resistance.qmd) and [ManningResistance](/reference/node/manning-resistance.qmd) nodes. The linear resistance node is already linear and therefore can be directly incorporated in the allocation problem. For ManningResistance we linearize the flow relationship with respect to the upstream and downstream level at the beginning of the allocation timestep.
-
-For the resistance nodes [the phantom storage introduced above](#the-basin-profile) is very helpful, because it prevents that according to the formula water has to flow from an empty basin with a high bottom to a lower basin.
-
-## Objectives (goals)
 
 The allocation algorithm optimizes for a sequence of objectives in succession, adding constraints after optimization for each goal to retain the result of that optimization in the subsequent optimizations. This approach is known as [goal programming](https://en.wikipedia.org/wiki/Goal_programming).
 
