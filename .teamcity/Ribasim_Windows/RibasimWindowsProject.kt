@@ -15,6 +15,7 @@ object RibasimWindowsProject : Project({
 
     buildType(Windows_Main)
     buildType(Windows_BuildRibasim)
+    buildType(Windows_BuildMsix)
     buildType(Windows_TestDelwaqCoupling)
     buildType(Windows_TestRibasimBinaries)
 
@@ -71,6 +72,50 @@ object Windows_BuildRibasim : BuildType({
         }
     }
     artifactRules = """ribasim\build\ribasim => ribasim_windows.zip!/ribasim"""
+})
+
+object Windows_BuildMsix : BuildType({
+    templates(WindowsAgent, GithubCommitStatusIntegration)
+    name = "Build MSIX Package"
+
+    vcs {
+        root(RibasimVcs, ". => ribasim")
+        cleanCheckout = true
+    }
+
+    steps {
+        script {
+            name = "Create MSIX package"
+            id = "RUNNER_MSIX"
+            workingDir = "ribasim/build"
+            scriptContent = """
+                # Copy files needed for MSIX into the directory we will pack
+                Copy-Item AppxManifest.xml ribasim/
+                Copy-Item logo-150.png ribasim/
+                Copy-Item logo-44.png ribasim/
+
+                # Pack the ribasim directory to ribasim_windows.msix, overwriting existing msix files
+                makeappx pack /o /d ribasim /p ribasim_windows.msix
+            """.trimIndent()
+        }
+    }
+
+    artifactRules = """ribasim\build\ribasim_windows.msix"""
+
+    dependencies {
+        dependency(Windows_BuildRibasim) {
+            snapshot {
+            }
+
+            artifacts {
+                id = "ARTIFACT_DEPENDENCY_570"
+                cleanDestination = true
+                artifactRules = """
+                    ribasim_windows.zip!/ribasim/** => ribasim/build/ribasim
+                """.trimIndent()
+            }
+        }
+    }
 })
 
 object Windows_TestRibasimBinaries : BuildType({
