@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
+  <Identity Name="Deltares.Ribasim" Version="2025.6.0.0"
+    Publisher="CN=Stichting Deltares, O=Stichting Deltares, L=Delft, C=NL"
+    ProcessorArchitecture="x64" />
+  <Properties>
+    <DisplayName>Ribasim</DisplayName>
+    <PublisherDisplayName>Deltares</PublisherDisplayName>
+    <Description>Water resources modeling</Description>
+    <Logo>logo-150.png</Logo>
+  </Properties>
+  <Resources>
+    <Resource Language="en-US" />
+  </Resources>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.14393.0"
+      MaxVersionTested="10.0.26200.0" />
+  </Dependencies>
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+  <Applications>
+    <Application Id="Ribasim" Executable="ribasim.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="Ribasim" Description="Water resources modeling"
+        BackgroundColor="transparent" Square150x150Logo="logo-150.png" Square44x44Logo="logo-44.png" />
+      <Extensions>
+        <uap3:Extension Category="windows.appExecutionAlias">
+          <uap3:AppExecutionAlias>
+            <desktop:ExecutionAlias Alias="ribasim.exe" />
+          </uap3:AppExecutionAlias>
+        </uap3:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+</Package>
