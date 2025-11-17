@@ -3,7 +3,15 @@ title: "Allocation"
 ---
 
 # Introduction
-In water resources management, allocation deals with distributing limited water resources among competing demands in a fair and efficient manner. This is particularly important in situations where water demands exceed available supply, requiring a systematic approach to prioritize and optimize water distribution across the entire network. In Ribasim we formulate this with linear programming using [JuMP](https://jump.dev/JuMP.jl/stable/) and solve the problem using the the [HiGHS solver](https://highs.dev/).
+In water resources management, allocation deals with distributing limited water resources among competing demands in a fair and efficient manner. This is particularly important in situations where water demands exceed available supply, requiring a systematic approach to prioritize and optimize water distribution across the entire network. In Ribasim we formulate this with linear programming using [JuMP](https://jump.dev/JuMP.jl/stable/) and solve the problem using the the [HiGHS solver](https://highs.dev/). A concise overview of the interaction between the physical and allocation layers of Ribasim is show in the diagram below.
+
+```{mermaid}
+sequenceDiagram
+    Physical layer->>+ Allocation layer: Storages, linearized physics
+    Note over Allocation layer: Allocation timestep <br/> t → t + Δt_allocation <br/> "Prediction"
+    Allocation layer->> Physical layer: Allocated flow rates, <br/> Controlled Pump/Outlet flow rates
+    Note over Physical layer: Physical layer timesteps <br/> t → t + Δt_allocation <br/> Attempted realization of <br/> allocated flows
+```
 
 ## Allocation Networks
 Allocation is the process of assigning an optimized allocated flow rate to demand nodes in the physical layer of the model based on information about sources and their source priorities, the different demand nodes over various demand priorities, constraints introduced by nodes, local water availability and graph topology. It solves a linearized version of the problem formulated for the [physical layer](/concept/modelconcept.qmd#physical-layer) a period of time ahead of the physical layer, while simultaneously optimizing allocated flows and steering certain structures to get the water from (preferred) source to demand. The physics is implemented in an implicit manner, rather like the [implicit Euler](https://en.wikipedia.org/wiki/Backward_Euler_method) numerical method.
