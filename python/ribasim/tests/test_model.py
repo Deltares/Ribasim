@@ -1,7 +1,6 @@
 import re
 from sqlite3 import connect
 
-import datacompy
 import numpy as np
 import pandas as pd
 import pytest
@@ -9,6 +8,7 @@ import ribasim
 import tomli
 import tomli_w
 import xugrid
+from datacompy.core import Compare
 from pydantic import ValidationError
 from pyproj import CRS
 from ribasim import Node
@@ -338,7 +338,7 @@ def test_model_diff(basic):
     x = nbasic.basin.static.diff(basic.basin.static, ignore_meta=False)
     assert isinstance(x, dict)
     assert "diff" in x
-    assert isinstance(x["diff"], datacompy.Compare)
+    assert isinstance(x["diff"], Compare)
 
     # Reset and add new basin / static node.
     nbasic.basin.static.df = basic.basin.static.df.copy()
@@ -354,7 +354,7 @@ def test_model_diff(basic):
     x = nbasic.basin.static.diff(basic.basin.static)
     assert isinstance(x, dict)
     assert "diff" in x
-    assert isinstance(x["diff"], datacompy.Compare)
+    assert isinstance(x["diff"], Compare)
 
     # Test DataFrame difference on model level
     x = nbasic.diff(basic)
@@ -363,7 +363,7 @@ def test_model_diff(basic):
     assert len(x) == 1  # only basin is different
     assert "static" in x["basin"]
     assert "diff" in x["basin"]["static"]
-    assert isinstance(x["basin"]["static"]["diff"], datacompy.Compare)
+    assert isinstance(x["basin"]["static"]["diff"], Compare)
 
 
 def test_version_mismatch_warning_newer_version(basic, tmp_path):
