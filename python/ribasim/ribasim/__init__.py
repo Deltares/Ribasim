@@ -11,11 +11,11 @@ from ribasim.geometry.link import LinkTable  # noqa: E402
 from ribasim.model import Model  # noqa: E402
 
 __all__ = [
-    "LinkTable",
     "Allocation",
+    "LinkTable",
     "Logging",
     "Model",
-    "Solver",
     "Node",
+    "Solver",
     "run_ribasim",
 ]

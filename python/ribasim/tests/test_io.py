@@ -165,7 +165,7 @@ def test_link_autoincrement(basic):
 
     with pytest.raises(
         ValueError,
-        match="Link IDs have to be unique, but 1 already exists.",
+        match=r"Link IDs have to be unique, but 1 already exists.",
     ):
         model.link.add(
             model.linear_resistance[10],

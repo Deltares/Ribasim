@@ -5,7 +5,7 @@ from ribasim.schemas import (
     LevelBoundaryTimeSchema,
 )
 
-__all__ = ["Static", "Time", "Concentration"]
+__all__ = ["Concentration", "Static", "Time"]
 
 
 class Static(TableModel[LevelBoundaryStaticSchema]):

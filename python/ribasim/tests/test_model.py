@@ -218,9 +218,9 @@ def test_to_xugrid(model, tmp_path):
         model.to_xugrid(add_flow=True)
 
     model.write(tmp_path / "ribasim.toml")
-    with pytest.raises(FileNotFoundError, match="Cannot find basin_state.arrow"):
+    with pytest.raises(FileNotFoundError, match=r"Cannot find basin_state.arrow"):
         model.to_xugrid(add_flow=True)
-    with pytest.raises(FileNotFoundError, match="Cannot find basin_state.arrow"):
+    with pytest.raises(FileNotFoundError, match=r"Cannot find basin_state.arrow"):
         model.to_xugrid(add_flow=False, add_allocation=True)
     with pytest.raises(ValueError, match="Cannot add both allocation and flow results"):
         model.to_xugrid(add_flow=True, add_allocation=True)
@@ -245,7 +245,7 @@ def test_to_fews(model, tmp_path):
     assert (network_dir / "{ModelId}Nodes.shp").is_file()
 
     # Cannot test results=True without results
-    with pytest.raises(FileNotFoundError, match="Cannot find basin_state.arrow"):
+    with pytest.raises(FileNotFoundError, match=r"Cannot find basin_state.arrow"):
         model.to_fews(region_home, add_results=True)
 
 
@@ -270,7 +270,7 @@ def test_styles(tabulated_rating_curve: Model, tmp_path):
 
 def test_non_existent_files(trivial, tmp_path):
     with pytest.raises(
-        FileNotFoundError, match="File 'non_existent_file.toml' does not exist."
+        FileNotFoundError, match=r"File 'non_existent_file.toml' does not exist."
     ):
         Model.read("non_existent_file.toml")
 

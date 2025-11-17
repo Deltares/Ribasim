@@ -3,7 +3,7 @@ target-version = "py312"
 
 [lint]
 # See https://docs.astral.sh/ruff/rules/
-select = ["C4", "D2", "D3", "D4", "E", "F", "I", "NPY", "PD", "UP"]
+select = ["C4", "D2", "D3", "D4", "E", "F", "I", "NPY", "PD", "UP", "RUF"]
 ignore = [
     "E501",
     "PD002",

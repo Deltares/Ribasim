@@ -207,7 +207,7 @@ class Model(FileModel):
                 if isinstance(attr, MultiNodeModel) and attr.node.df is None:
                     # Skip unused node types
                     continue
-                content.append(f"{INDENT}{field}={repr(attr)},")
+                content.append(f"{INDENT}{field}={attr!r},")
 
         content.append(")")
         return "\n".join(content)
