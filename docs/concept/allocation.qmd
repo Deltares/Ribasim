@@ -9,7 +9,7 @@ In water resources management, allocation deals with distributing limited water 
 sequenceDiagram
     Physical layer->>+ Allocation layer: Storages, linearized physics
     Note over Allocation layer: Allocation timestep <br/> t → t + Δt_allocation <br/> "Prediction"
-    Allocation layer->> Physical layer: Allocated flow rates, <br/> Controlled Pump/Outlet flow rates
+    Allocation layer->> Physical layer: Allocated flow rates, <br/> controlled Pump/Outlet flow rates
     Note over Physical layer: Physical layer timesteps <br/> t → t + Δt_allocation <br/> Attempted realization of <br/> allocated flows
 ```
 
