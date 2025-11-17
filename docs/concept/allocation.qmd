@@ -3,7 +3,7 @@ title: "Allocation"
 ---
 
 # Introduction
-In water resources management, allocation deals with distributing limited water resources among competing demands in a fair and efficient manner. This is particularly important in situations where water demands exceed available supply, requiring a systematic approach to prioritize and optimize water distribution across the entire network. In Ribasim we formulate this with linear programming using [JuMP](https://jump.dev/JuMP.jl/stable/) and solve the problem using the the [HiGHS solver](https://highs.dev/). A concise overview of the interaction between the physical and allocation layers of Ribasim is show in the diagram below.
+In water resources management, allocation deals with distributing limited water resources among competing demands in a fair and efficient manner. This is particularly important in situations where water demands exceed available supply, requiring a systematic approach to prioritize and optimize water distribution across the entire network. In Ribasim we formulate this with linear programming using [JuMP](https://jump.dev/JuMP.jl/stable/) and solve the problem using the the [HiGHS solver](https://highs.dev/). A concise overview of the interaction between the physical and allocation layers of Ribasim is shown in the diagram below.
 
 ```{mermaid}
 sequenceDiagram
