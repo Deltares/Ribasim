@@ -4,7 +4,7 @@ from ribasim.schemas import (
     ContinuousControlVariableSchema,
 )
 
-__all__ = ["Variable", "Function"]
+__all__ = ["Function", "Variable"]
 
 
 class Variable(TableModel[ContinuousControlVariableSchema]):

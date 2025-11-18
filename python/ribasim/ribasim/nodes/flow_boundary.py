@@ -6,7 +6,7 @@ from ribasim.schemas import (
     FlowBoundaryTimeSchema,
 )
 
-__all__ = ["Static", "Time", "Concentration"]
+__all__ = ["Concentration", "Static", "Time"]
 
 
 class Static(TableModel[FlowBoundaryStaticSchema]):

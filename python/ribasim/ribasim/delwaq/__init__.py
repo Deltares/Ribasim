@@ -4,10 +4,10 @@ from .plot import plot_fraction, plot_spatial
 from .util import run_delwaq
 
 __all__ = [
+    "add_tracer",
     "generate",
     "parse",
-    "run_delwaq",
-    "add_tracer",
     "plot_fraction",
     "plot_spatial",
+    "run_delwaq",
 ]

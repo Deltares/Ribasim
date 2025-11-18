@@ -7,11 +7,11 @@ from ribasim.geometry.link import LinkTable
 from ribasim.model import Model
 
 __all__ = [
-    "LinkTable",
     "Allocation",
+    "LinkTable",
     "Logging",
     "Model",
-    "Solver",
     "Node",
+    "Solver",
     "run_ribasim",
 ]
