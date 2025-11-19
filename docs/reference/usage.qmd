@@ -73,10 +73,10 @@ There are the following interpolation settings:
 - `flow_boundary`: The interpolation type of flow boundary timeseries. This is `linear` by default, but can also be set to `block`.
 - `block_transition_period`: When an interpolation type is set to `block`, this parameter determines an interval in time on either side of each data point which is used to smooth the transition between data points. See also the [documentation](https://docs.sciml.ai/DataInterpolations/dev/methods/#Smoothed-Constant-Interpolation) for this interpolation type.
 
-## Allocation settings
+## Allocation settings {#allocation-settings}
 There are the following allocation settings:
 - `timestep`: A float value in seconds which dictates the update interval for allocations;
-- `source_priority`: An integer per source type for the allocation algorithm: `user_demand`, `boundary`, `level_demand`, `flow_demand`, `subnetwork_inlet`. Flow boundaries and level boundaries are combined in the single category `boundary`. By default all nodes of the same type have the same source priority, so to obtain a strict source ordering the sources are sorted by node ID for each source priority within a subnetwork.  When no default source priorities are specified, default defaults are applied (see the TOML example above).
+- `source_priority`: An integer per source type for the allocation algorithm: `user_demand`, `boundary`, `level_demand`, `flow_demand`, `subnetwork_inlet`. If you wish to set the source priority for specific nodes rather than a fallback per node type, these can be set in the [Node table](#sec-node). Flow boundaries and level boundaries are combined in the single category `boundary`. By default all nodes of the same type have the same source priority, so to obtain a strict source ordering the sources are sorted by node ID for each source priority within a subnetwork.  When no default source priorities are specified, default defaults are applied (see the TOML example above).
 
 ## Results settings
 
@@ -213,6 +213,8 @@ name            | String   | (optional, does not have to be unique)
 subnetwork_id   | Int32    | (optional)
 source_priority | Int32    | (optional, does not have to be unique)
 cyclic_time     | Bool     | (optional, defaults to false)
+
+If not set, the `source_priority` is fixed per node type as explained in the [allocation settings](#sec-allocation-settings).
 
 Adding a point geometry to the node table can be helpful to examine models in [QGIS](https://qgis.org/en/site/), as it will show the location of the nodes on the map.
 The geometry is not used by Ribasim.
