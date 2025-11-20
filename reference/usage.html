@@ -532,11 +532,25 @@ window.Quarto = {
 </section>
 <section id="interpolation-settings" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="interpolation-settings"><span class="header-section-number">1.2</span> Interpolation settings</h2>
-<p>There are the following interpolation settings: - <code>flow_boundary</code>: The interpolation type of flow boundary timeseries. This is <code>linear</code> by default, but can also be set to <code>block</code>. - <code>block_transition_period</code>: When an interpolation type is set to <code>block</code>, this parameter determines an interval in time on either side of each data point which is used to smooth the transition between data points. See also the <a href="https://docs.sciml.ai/DataInterpolations/dev/methods/#Smoothed-Constant-Interpolation">documentation</a> for this interpolation type.</p>
+<p>There are the following interpolation settings:</p>
+<ul>
+<li><code>flow_boundary</code>: The interpolation type of flow boundary timeseries. This is <code>linear</code> by default, but can also be set to <code>block</code>.</li>
+<li><code>block_transition_period</code>: When an interpolation type is set to <code>block</code>, this parameter determines an interval in time on either side of each data point which is used to smooth the transition between data points. See also the <a href="https://docs.sciml.ai/DataInterpolations/dev/methods/#Smoothed-Constant-Interpolation">documentation</a> for this interpolation type.</li>
+</ul>
 </section>
 <section id="sec-allocation-settings" class="level2" data-number="1.3">
 <h2 data-number="1.3" class="anchored" data-anchor-id="sec-allocation-settings"><span class="header-section-number">1.3</span> Allocation settings</h2>
-<p>There are the following allocation settings: - <code>timestep</code>: A float value in seconds which dictates the update interval for allocations; - <code>source_priority</code>: An integer per source type for the allocation algorithm. The available source types are: <code>user_demand</code>, <code>boundary</code>, <code>level_demand</code>, <code>flow_demand</code>, and <code>subnetwork_inlet</code>. - If you wish to set the source priority for specific nodes rather than a fallback per node type, these can be set in the <a href="#sec-node">Node table</a>. - Flow boundaries and level boundaries are combined in the single category <code>boundary</code>. - By default, all nodes of the same type have the same source priority. To obtain a strict source ordering, the sources are sorted by node ID for each source priority within a subnetwork. - When no default source priorities are specified, default values are applied (see the TOML example above).</p>
+<p>There are the following allocation settings:</p>
+<ul>
+<li><code>timestep</code>: A float value in seconds which dictates the update interval for allocations;</li>
+<li><code>source_priority</code>: An integer per source type for the allocation algorithm. The available source types are: <code>user_demand</code>, <code>boundary</code>, <code>level_demand</code>, <code>flow_demand</code>, and <code>subnetwork_inlet</code>.
+<ul>
+<li>If you wish to set the source priority for specific nodes rather than a fallback per node type, these can be set in the <a href="#sec-node">Node table</a>.</li>
+<li>Flow boundaries and level boundaries are combined in the single category <code>boundary</code>.</li>
+<li>By default, all nodes of the same type have the same source priority. To obtain a strict source ordering, the sources are sorted by node ID for each source priority within a subnetwork.</li>
+<li>When no default source priorities are specified, default values are applied (see the TOML example above).</li>
+</ul></li>
+</ul>
 </section>
 <section id="results-settings" class="level2" data-number="1.4">
 <h2 data-number="1.4" class="anchored" data-anchor-id="results-settings"><span class="header-section-number">1.4</span> Results settings</h2>
