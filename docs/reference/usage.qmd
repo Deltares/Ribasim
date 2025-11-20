@@ -70,11 +70,13 @@ Note that these are global settings, and cannot be set for individual nodes.
 
 ## Interpolation settings
 There are the following interpolation settings:
+
 - `flow_boundary`: The interpolation type of flow boundary timeseries. This is `linear` by default, but can also be set to `block`.
 - `block_transition_period`: When an interpolation type is set to `block`, this parameter determines an interval in time on either side of each data point which is used to smooth the transition between data points. See also the [documentation](https://docs.sciml.ai/DataInterpolations/dev/methods/#Smoothed-Constant-Interpolation) for this interpolation type.
 
 ## Allocation settings {#sec-allocation-settings}
 There are the following allocation settings:
+
 - `timestep`: A float value in seconds which dictates the update interval for allocations;
 - `source_priority`: An integer per source type for the allocation algorithm. The available source types are: `user_demand`, `boundary`, `level_demand`, `flow_demand`, and `subnetwork_inlet`.
   - If you wish to set the source priority for specific nodes rather than a fallback per node type, these can be set in the [Node table](#sec-node).
