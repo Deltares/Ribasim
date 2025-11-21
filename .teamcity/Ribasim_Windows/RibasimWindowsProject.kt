@@ -6,8 +6,10 @@ import jetbrains.buildServer.configs.kotlin.BuildType
 import jetbrains.buildServer.configs.kotlin.FailureAction
 import jetbrains.buildServer.configs.kotlin.Project
 import jetbrains.buildServer.configs.kotlin.triggers.vcs
-import Ribasim.vcsRoots.Ribasim as RibasimVcs
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
+import jetbrains.buildServer.configs.kotlin.buildSteps.PowerShellStep
+import jetbrains.buildServer.configs.kotlin.buildSteps.powerShell
+import Ribasim.vcsRoots.Ribasim as RibasimVcs
 
 object RibasimWindowsProject : Project({
     id("Ribasim_Windows")
@@ -84,19 +86,27 @@ object Windows_BuildMsix : BuildType({
     }
 
     steps {
-        script {
+        powerShell {
             name = "Create MSIX package"
             id = "RUNNER_MSIX"
             workingDir = "ribasim/build"
-            scriptContent = """
-                # Copy files needed for MSIX into the directory we will pack
-                Copy-Item AppxManifest.xml ribasim/
-                Copy-Item logo-150.png ribasim/
-                Copy-Item logo-44.png ribasim/
+            scriptMode = script {
+                    content = """
+                try {
+                    # Copy files needed for MSIX into the directory we will pack
+                    Copy-Item AppxManifest.xml ribasim/
+                    Copy-Item logo-150.png ribasim/
+                    Copy-Item logo-44.png ribasim/
 
-                # Pack the ribasim directory to ribasim_windows.msix, overwriting existing msix files
-                makeappx pack /o /d ribasim /p ribasim_windows.msix
+                    # Pack the ribasim directory to ribasim_windows.msix, overwriting existing msix files
+                    makeappx pack /o /d ribasim /p ribasim_windows.msix
+                } Catch {
+                    ${'$'}ErrorMessage = ${'$'}_.Exception.Message
+                    Write-Output ${'$'}ErrorMessage
+                    exit(1)
+                }
             """.trimIndent()
+            }
         }
     }
 

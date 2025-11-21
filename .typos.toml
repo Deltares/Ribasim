@@ -1,4 +1,5 @@
 [default.extend-words]
 # Ignore false-positives
 Missings = "Missings"
+stichting = "stichting"
 typ = "typ"
