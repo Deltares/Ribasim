@@ -165,6 +165,8 @@ end
     level_boundary::Int32 = 3000
     basin::Int32 = 4000
     subnetwork_inlet::Int32 = 5000
+    outlet::Int32 = 6000
+    pump::Int32 = 7000
 end
 
 @option struct Allocation <: TableOption

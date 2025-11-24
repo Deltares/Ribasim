@@ -26,12 +26,15 @@ block_transition_period = 0  # optional, default 0
 
 [allocation]
 timestep = 86400         # optional (required if experimental.allocation = true), default 86400
+
 [allocation.source_priority]
 user_demand = 1000       # optional, default 1000
 flow_boundary = 2000     # optional, default 2000
 level_boundary = 3000    # optional, default 3000
 basin = 4000             # optional, default 4000
 subnetwork_inlet = 5000  # optional, default 5000
+outlet = 6000            # optional, default 6000
+pump = 7000              # optional, default 7000
 
 [solver]
 algorithm = "QNDF"  # optional, default "QNDF"
