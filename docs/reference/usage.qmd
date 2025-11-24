@@ -78,7 +78,7 @@ There are the following interpolation settings:
 There are the following allocation settings:
 
 - `timestep`: A float value in seconds which dictates the update interval for allocations;
-- `source_priority`: An integer per source type for the allocation algorithm. The available source types are: `user_demand`, `boundary`, `level_demand`, `flow_demand`, and `subnetwork_inlet`.
+- `source_priority`: An integer per source type for the allocation algorithm. The available source types are: `user_demand`, `boundary`, `level_demand` and `flow_demand`.
   - If you wish to set the source priority for specific nodes rather than a fallback per node type, these can be set in the [Node table](#sec-node).
   - Flow boundaries and level boundaries are combined in the single category `boundary`.
   - By default, all nodes of the same type have the same source priority. To obtain a strict source ordering, the sources are sorted by node ID for each source priority within a subnetwork.

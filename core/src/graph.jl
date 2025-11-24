@@ -43,10 +43,11 @@ function create_graph(db::DB, config::Config)::MetaGraph
     )
 
     default_source_priority = Dict(
-        "UserDemand" => config.allocation.source_priority.user_demand,
         "FlowBoundary" => config.allocation.source_priority.flow_boundary,
         "LevelBoundary" => config.allocation.source_priority.level_boundary,
         "Basin" => config.allocation.source_priority.basin,
+        "LinearResistance" => config.allocation.source_priority.linear_resistance,
+        "ManningResistance" => config.allocation.source_priority.manning_resistance,
         "Outlet" => config.allocation.source_priority.outlet,
         "Pump" => config.allocation.source_priority.pump,
     )

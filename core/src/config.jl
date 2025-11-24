@@ -160,13 +160,13 @@ end
 end
 
 @option struct SourcePriority <: TableOption
-    user_demand::Int32 = 1000
-    flow_boundary::Int32 = 2000
-    level_boundary::Int32 = 3000
-    basin::Int32 = 4000
-    subnetwork_inlet::Int32 = 5000
-    outlet::Int32 = 6000
-    pump::Int32 = 7000
+    flow_boundary::Int32 = 1000
+    level_boundary::Int32 = 2000
+    basin::Int32 = 3000
+    linear_resistance::Int32 = 100
+    manning_resistance::Int32 = 100
+    outlet::Int32 = 100
+    pump::Int32 = 200
 end
 
 @option struct Allocation <: TableOption

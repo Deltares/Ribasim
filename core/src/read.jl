@@ -1561,7 +1561,6 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
     return Allocation(;
         demand_priorities_all = get_all_demand_priorities(db, config),
         subnetwork_ids = sort(collect(keys(graph[].node_ids))),
-        subnetwork_inlet_source_priority = config.allocation.source_priority.subnetwork_inlet,
     )
 end
 

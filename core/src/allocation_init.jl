@@ -855,7 +855,6 @@ function add_source_priority_objective!(
     p_independent::ParametersIndependent,
 )::Nothing
     (; graph, allocation) = p_independent
-    (; subnetwork_inlet_source_priority) = allocation
     (; problem, subnetwork_id, objectives) = allocation_model
     (; objective_expressions_all, objective_metadata) = objectives
     flow = problem[:flow]
@@ -874,15 +873,6 @@ function add_source_priority_objective!(
                     expression,
                     source_priority * flow[(node_id, downstream_id)],
                 )
-            end
-        else
-            for link in primary_network_connections
-                if link[2] == node_id
-                    source_priority = graph[node_id].source_priority
-                    iszero(source_priority) &&
-                        (source_priority = subnetwork_inlet_source_priority)
-                    JuMP.add_to_expression!(expression, source_priority * flow[link])
-                end
             end
         end
     end
