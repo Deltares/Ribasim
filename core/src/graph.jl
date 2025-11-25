@@ -47,6 +47,8 @@ function create_graph(db::DB, config::Config)::MetaGraph
         "Basin" => config.allocation.source_priority.basin,
         "LinearResistance" => config.allocation.source_priority.linear_resistance,
         "ManningResistance" => config.allocation.source_priority.manning_resistance,
+        "TabulatedRatingCurve" =>
+            config.allocation.source_priority.tabulated_rating_curve,
         "Outlet" => config.allocation.source_priority.outlet,
         "Pump" => config.allocation.source_priority.pump,
     )

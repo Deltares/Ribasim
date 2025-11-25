@@ -164,8 +164,9 @@ end
     basin::Int32 = 2000
     manning_resistance::Int32 = 10
     linear_resistance::Int32 = 20
-    outlet::Int32 = 30
-    pump::Int32 = 40
+    tabulated_rating_curve::Int32 = 30
+    outlet::Int32 = 40
+    pump::Int32 = 50
 end
 
 @option struct Allocation <: TableOption

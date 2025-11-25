@@ -30,10 +30,11 @@ timestep = 86400         # optional (required if experimental.allocation = true)
 [allocation.source_priority]
 level_boundary = 1000       # optional, default 1000
 basin = 2000                # optional, default 2000
-manning_resistance = 10    # optional, default 10
-linear_resistance = 20     # optional, default 20
-outlet = 30                # optional, default 30
-pump = 40                  # optional, default 40
+manning_resistance = 10     # optional, default 10
+linear_resistance = 20      # optional, default 20
+tabulated_rating_curve = 30 # optional, default 30
+outlet = 30                 # optional, default 40
+pump = 40                   # optional, default 50
 
 [solver]
 algorithm = "QNDF"  # optional, default "QNDF"
