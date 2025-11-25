@@ -117,7 +117,7 @@ using TerminalLoggers: TerminalLogger
 
 # Date and time handling; externally we use the proleptic Gregorian calendar,
 # internally we use a Float64; seconds since the start of the simulation.
-using Dates: Dates, DateTime, Millisecond, @dateformat_str, canonicalize
+using Dates: Dates, DateTime, Millisecond, @dateformat_str, canonicalize, now
 
 # Callbacks are used to trigger function calls at specific points in the simulation.
 # E.g. after each timestep for discrete control,

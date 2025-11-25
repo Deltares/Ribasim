@@ -9,7 +9,7 @@
         config = Ribasim.Config(normpath(dir, "ribasim.toml"))
         mkdir(Ribasim.results_path(config))
         open(Ribasim.results_path(config, "ribasim.log"), "w") do io
-            logger =
+            logger, _ =
                 Ribasim.setup_logger(; verbosity = config.logging.verbosity, stream = io)
             @test Logging.shouldlog(logger, Logging.Error, Ribasim, :group, :message)
             @test Logging.shouldlog(logger, Logging.Info, Ribasim, :group, :message)
@@ -30,7 +30,7 @@ end
         config = Ribasim.Config(normpath(dir, "ribasim.toml"))
         mkdir(Ribasim.results_path(config))
         open(Ribasim.results_path(config, "ribasim.log"), "w") do io
-            logger =
+            logger, _ =
                 Ribasim.setup_logger(; verbosity = config.logging.verbosity, stream = io)
             @test Logging.shouldlog(logger, Logging.Error, Ribasim, :group, :message)
             @test Logging.shouldlog(logger, Logging.Info, Ribasim, :group, :message)
@@ -52,7 +52,7 @@ end
         config = Ribasim.Config(normpath(dir, "ribasim.toml"))
         mkdir(Ribasim.results_path(config))
         open(Ribasim.results_path(config, "ribasim.log"), "w") do io
-            logger = Ribasim.setup_logger(;
+            logger, _ = Ribasim.setup_logger(;
                 verbosity = Logging.Debug,
                 stream = io,
                 module_filter_function = log -> log._module == @__MODULE__,
