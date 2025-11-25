@@ -590,7 +590,7 @@ def medium_primary_secondary_network_model() -> Model:
 
     # outlet towards fourth basin
     model.outlet.add(
-        Node(9, Point(3.5, 0), subnetwork_id=1),
+        Node(9, Point(3.5, 0), subnetwork_id=1, source_priority=0),
         [outlet_data],
     )
 
@@ -599,7 +599,7 @@ def medium_primary_secondary_network_model() -> Model:
         Node(10, Point(4, 0), subnetwork_id=1, source_priority=0), basin_data
     )
 
-    # pump towards first subnetwork
+    # pump towards second subnetwork
     model.pump.add(
         Node(11, Point(4, 1), subnetwork_id=1, source_priority=0),
         [pump_data],
