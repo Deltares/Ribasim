@@ -20,7 +20,7 @@ In this tutorial, the schematization of models is done in Python using the Ribas
 The Ribasim Python package (named `ribasim`) simplifies the process of building, updating, and analyzing Ribasim model programmatically.
 It also allows for the creation of entire models from base data, ensuring that your model setup is fully reproducible.
 
-To run this tutorial locally, install the latest release of Ribasim as documented in [the installation guide](/install.qmd).
+To run this tutorial locally, install the latest release of Ribasim as documented in [the installation guide](/getting-started/install.qmd).
 Some of the tutorials use a Python package that must be installed separately, [Plotly](https://plotly.com/python/getting-started/#installation).
 
 ## Learning objectives
