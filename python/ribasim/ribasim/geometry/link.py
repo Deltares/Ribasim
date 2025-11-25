@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -138,9 +139,12 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         if link_id is None:
             link_id = self._used_link_ids.new_id()
         elif link_id in self._used_link_ids:
-            raise ValueError(
-                f"Link IDs have to be unique, but {link_id} already exists."
+            warnings.warn(
+                f"Replacing link #{link_id}",
+                UserWarning,
+                stacklevel=2,
             )
+            self._remove_link_id(link_id)
 
         table_to_append = GeoDataFrame[LinkSchema](
             data={
@@ -161,6 +165,23 @@ class LinkTable(SpatialTableModel[LinkSchema]):
                 f"Links have to be unique, but link with from_node_id {from_node.node_id} to_node_id {to_node.node_id} already exists."
             )
         self._used_link_ids.add(link_id)
+
+    def _remove_link_id(self, link_id: NonNegativeInt):
+        if self.df is not None:
+            if link_id in self.df.index:
+                # Remove from node table
+                self.df = self.df.drop(link_id)
+                if self.df.empty:
+                    self.df = None
+
+    def _remove_node_id(self, node_id: NonNegativeInt):
+        if self.df is not None:
+            self.df = self.df.loc[
+                (self.df["from_node_id"] != node_id)
+                & (self.df["to_node_id"] != node_id)
+            ]
+            if self.df.empty:
+                self.df = None
 
     def _validate_link(self, to_node: NodeData, from_node: NodeData, link_type: str):
         assert self.df is not None
