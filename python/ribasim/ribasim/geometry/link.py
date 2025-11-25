@@ -167,11 +167,12 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         self._used_link_ids.add(link_id)
 
     def _remove_link_id(self, link_id: NonNegativeInt):
-        if link_id in self.df.index:
-            # Remove from node table
-            self.df = self.df.drop(link_id)
-            if self.df.empty:
-                self.df = None
+        if self.df is not None:
+            if link_id in self.df.index:
+                # Remove from node table
+                self.df = self.df.drop(link_id)
+                if self.df.empty:
+                    self.df = None
 
     def _remove_node_id(self, node_id: NonNegativeInt):
         if self.df is not None:
