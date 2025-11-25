@@ -299,23 +299,11 @@ function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::Abst
         ),
     )
 end
+Configurations.to_dict(::Type, x::LogLevel) = lowercase(string(x))
 
-# TODO Use with proper alignment
 function Base.show(io::IO, c::Config)
     println(io, "Ribasim Configuration:")
-    println(io, getfield(c, :toml))
-end
-
-function Base.show(io::IO, c::TableOption)
-    for field in fieldnames(typeof(c))
-        f = getfield(c, field)
-        # f === nothing && continue
-        if f isa TableOption
-            print(io, "\n[$field]\n$f")
-        else
-            println(io, "$field = $f")
-        end
-    end
+    println(io, Configurations.to_toml(getfield(c, :toml); include_defaults = true))
 end
 
 """
