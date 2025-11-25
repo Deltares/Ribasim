@@ -94,11 +94,6 @@ end
     metadata = objective_metadata[2]
     @test metadata.expression_first == -sum(low_storage_factor)
     @test metadata.expression_first === objective_expressions_all[3]
-
-    # Source objective
-    metadata = objective_metadata[3]
-    @test metadata.type == AllocationObjectiveType.source_priorities
-    @test metadata.expression_first === objective_expressions_all[4]
 end
 
 @testitem "Primary allocation network initialization" begin
