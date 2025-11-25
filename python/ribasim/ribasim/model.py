@@ -316,6 +316,15 @@ class Model(FileModel):
 
                 break
 
+    def remove_node(self, node_id: int):
+        """Remove a node from the model."""
+        self._remove_node_id(node_id)
+        self.link._remove_node_id(node_id)
+
+    def remove_link(self, link_id: int):
+        """Remove a link from the model."""
+        self.link._remove_link_id(link_id)
+
     def node_table(self) -> NodeTable:
         """Compute the full sorted NodeTable from all node types."""
         df_chunks = [node.node.df for node in self._nodes()]
