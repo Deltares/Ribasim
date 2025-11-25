@@ -263,6 +263,7 @@ scaling: The flow and storage scaling factors to make the optimization problem m
         OrderedDict()
     scaling::ScalingFactors = ScalingFactors()
     temporary_constraints::Vector{JuMP.ConstraintRef} = JuMP.ConstraintRef[]
+    source_priority_expression::JuMP.AffExpr = JuMP.AffExpr()
 end
 
 struct DemandRecordDatum

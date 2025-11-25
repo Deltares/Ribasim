@@ -855,14 +855,24 @@ function add_source_priority_objective!(
     p_independent::ParametersIndependent,
 )::Nothing
     (; graph, allocation) = p_independent
-    (; problem, subnetwork_id, objectives) = allocation_model
+    (; problem, subnetwork_id, objectives, source_priority_expression) = allocation_model
     (; objective_expressions_all, objective_metadata) = objectives
     flow = problem[:flow]
 
+    # Add source priorities from primary network connections
     primary_network_connections =
         get(allocation.primary_network_connections, subnetwork_id, ())
 
-    expression = JuMP.AffExpr()
+    for link in primary_network_connections
+        upstream_node = link[1]
+        source_priority = graph[upstream_node].source_priority
+        if !iszero(source_priority)
+            JuMP.add_to_expression!(
+                source_priority_expression,
+                source_priority * flow[link],
+            )
+        end
+    end
 
     # Sort node IDs for deterministic problem generation
     for node_id in sort!(collect(graph[].node_ids[subnetwork_id]))
@@ -870,21 +880,13 @@ function add_source_priority_objective!(
         if !iszero(source_priority)
             for downstream_id in outflow_ids(graph, node_id)
                 JuMP.add_to_expression!(
-                    expression,
+                    source_priority_expression,
                     source_priority * flow[(node_id, downstream_id)],
                 )
             end
         end
     end
 
-    push!(objective_expressions_all, expression)
-    push!(
-        objective_metadata,
-        AllocationObjectiveMetadata(;
-            type = AllocationObjectiveType.source_priorities,
-            expression_first = expression,
-        ),
-    )
     return nothing
 end
 
