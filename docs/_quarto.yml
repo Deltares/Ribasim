@@ -11,7 +11,7 @@ website:
     left:
       - text: "Overview"
         file: index.qmd
-      - text: "Getting Started"
+      - text: "Getting started"
         file: getting-started/install.qmd
       - text: "How-to guides"
         file: guide/qgis.qmd
