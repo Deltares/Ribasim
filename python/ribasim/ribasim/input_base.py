@@ -1,6 +1,5 @@
 import operator
 import re
-import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from contextlib import closing
@@ -9,15 +8,12 @@ from pathlib import Path
 from sqlite3 import connect
 from typing import Any, TypeVar, cast
 
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    import datacompy
-
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pydantic
 import xarray as xr
+from datacompy.core import Compare
 from pandera.typing import DataFrame
 from pandera.typing.geopandas import GeoDataFrame
 from pydantic import BaseModel as PydanticBaseModel
@@ -301,9 +297,7 @@ class TableModel[TableT: _BaseSchema](FileModel):
                 a = self.df
                 b = other.df
 
-            comp = datacompy.Compare(
-                a, b, on_index=True, df1_name="self", df2_name="other"
-            )
+            comp = Compare(a, b, on_index=True, df1_name="self", df2_name="other")
             return {"diff": comp}
         # One of the instances is None
         else:

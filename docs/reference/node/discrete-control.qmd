@@ -62,6 +62,7 @@ weight               | Float64  | -          | (optional, default 1.0)
 look_ahead           | Float64  | $\text{s}$ | Only on transient boundary conditions, non-negative (optional, default 0.0).
 
 These variables can be listened to:
+
 - The storage of a Basin
 - The level of a Basin
 - The level of a LevelBoundary (supports look ahead)

@@ -183,7 +183,7 @@ def test_run_ribasim_not_on_path(tmp_path):
     try:
         with pytest.raises(
             FileNotFoundError,
-            match="Ribasim CLI executable 'ribasim' not found on PATH.",
+            match=r"Ribasim CLI executable 'ribasim' not found on PATH.",
         ):
             run_ribasim(toml_path)
     finally:

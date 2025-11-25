@@ -1,7 +1,6 @@
 import re
 from sqlite3 import connect
 
-import datacompy
 import numpy as np
 import pandas as pd
 import pytest
@@ -9,6 +8,7 @@ import ribasim
 import tomli
 import tomli_w
 import xugrid
+from datacompy.core import Compare
 from pydantic import ValidationError
 from pyproj import CRS
 from ribasim import Node
@@ -218,9 +218,9 @@ def test_to_xugrid(model, tmp_path):
         model.to_xugrid(add_flow=True)
 
     model.write(tmp_path / "ribasim.toml")
-    with pytest.raises(FileNotFoundError, match="Cannot find basin_state.arrow"):
+    with pytest.raises(FileNotFoundError, match=r"Cannot find basin_state.arrow"):
         model.to_xugrid(add_flow=True)
-    with pytest.raises(FileNotFoundError, match="Cannot find basin_state.arrow"):
+    with pytest.raises(FileNotFoundError, match=r"Cannot find basin_state.arrow"):
         model.to_xugrid(add_flow=False, add_allocation=True)
     with pytest.raises(ValueError, match="Cannot add both allocation and flow results"):
         model.to_xugrid(add_flow=True, add_allocation=True)
@@ -245,7 +245,7 @@ def test_to_fews(model, tmp_path):
     assert (network_dir / "{ModelId}Nodes.shp").is_file()
 
     # Cannot test results=True without results
-    with pytest.raises(FileNotFoundError, match="Cannot find basin_state.arrow"):
+    with pytest.raises(FileNotFoundError, match=r"Cannot find basin_state.arrow"):
         model.to_fews(region_home, add_results=True)
 
 
@@ -270,7 +270,7 @@ def test_styles(tabulated_rating_curve: Model, tmp_path):
 
 def test_non_existent_files(trivial, tmp_path):
     with pytest.raises(
-        FileNotFoundError, match="File 'non_existent_file.toml' does not exist."
+        FileNotFoundError, match=r"File 'non_existent_file.toml' does not exist."
     ):
         Model.read("non_existent_file.toml")
 
@@ -338,7 +338,7 @@ def test_model_diff(basic):
     x = nbasic.basin.static.diff(basic.basin.static, ignore_meta=False)
     assert isinstance(x, dict)
     assert "diff" in x
-    assert isinstance(x["diff"], datacompy.Compare)
+    assert isinstance(x["diff"], Compare)
 
     # Reset and add new basin / static node.
     nbasic.basin.static.df = basic.basin.static.df.copy()
@@ -354,7 +354,7 @@ def test_model_diff(basic):
     x = nbasic.basin.static.diff(basic.basin.static)
     assert isinstance(x, dict)
     assert "diff" in x
-    assert isinstance(x["diff"], datacompy.Compare)
+    assert isinstance(x["diff"], Compare)
 
     # Test DataFrame difference on model level
     x = nbasic.diff(basic)
@@ -363,7 +363,7 @@ def test_model_diff(basic):
     assert len(x) == 1  # only basin is different
     assert "static" in x["basin"]
     assert "diff" in x["basin"]["static"]
-    assert isinstance(x["basin"]["static"]["diff"], datacompy.Compare)
+    assert isinstance(x["basin"]["static"]["diff"], Compare)
 
 
 def test_version_mismatch_warning_newer_version(basic, tmp_path):
