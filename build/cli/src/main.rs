@@ -23,18 +23,6 @@ fn main() -> ExitCode {
     // Get the path to the directory containing the current executable
     let exe_dir = env::current_exe().unwrap().parent().unwrap().to_owned();
 
-    // Set the appropriate environment variable for the current platform
-    if OS == "windows" {
-        env::set_var(
-            "PATH",
-            format!(
-                "{};{}",
-                exe_dir.join("bin").display(),
-                env::var("PATH").unwrap_or_default()
-            ),
-        );
-    }
-
     // Parse command line arguments
     let cli = Cli::parse();
 
@@ -53,14 +41,21 @@ fn main() -> ExitCode {
     }
 
     let shared_lib_path = match OS {
-        "windows" => exe_dir.join("bin/libribasim.dll"),
-        "linux" => exe_dir.join("lib/libribasim.so"),
-        "macos" => exe_dir.join("lib/libribasim.dylib"),
+        "windows" => exe_dir.join("libribasim.dll"),
+        "linux" => exe_dir.join("../lib/libribasim.so"),
+        "macos" => exe_dir.join("../lib/libribasim.dylib"),
         _ => unimplemented!("Your OS is not supported yet."),
     };
     unsafe {
         // Load the library
-        let lib = Library::new(shared_lib_path).unwrap();
+        let lib = match Library::new(&shared_lib_path) {
+            Ok(lib) => lib,
+            Err(e) => {
+                eprintln!("Failed to load libribasim from {:?}", shared_lib_path);
+                eprintln!("Error: {:?}", e);
+                return ExitCode::FAILURE;
+            }
+        };
 
         // Init Julia
         let init_julia: Symbol<unsafe extern "C" fn(i32, *const libc::c_char) -> i32> =

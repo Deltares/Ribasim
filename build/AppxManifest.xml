@@ -24,7 +24,7 @@
     <rescap:Capability Name="runFullTrust" />
   </Capabilities>
   <Applications>
-    <Application Id="Ribasim" Executable="ribasim.exe" EntryPoint="Windows.FullTrustApplication">
+    <Application Id="Ribasim" Executable="bin/ribasim.exe" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements DisplayName="Ribasim" Description="Water resources modeling"
         BackgroundColor="transparent" Square150x150Logo="logo-150.png" Square44x44Logo="logo-44.png" />
       <Extensions>
