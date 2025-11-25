@@ -2,8 +2,8 @@
 /_site/
 /site_libs/
 /reference/python/
-/tutorial/crystal-basin/
-guide/data/
+/getting-started/tutorial/crystal-basin/
+/getting-started/data/
 *.html
 objects.json
 

@@ -3,7 +3,7 @@ title: "Updating Ribasim"
 ---
 
 This guide explains how to update Ribasim models from older versions to newer versions.
-To update the Ribasim installation itself, follow the [installation steps](/install.qmd), ensuring that all installed components are the same.
+To update the Ribasim installation itself, follow the [installation steps](/getting-started/install.qmd), ensuring that all installed components are the same.
 To see the most important changes in Ribasim, consult the [changelog](/changelog.qmd).
 
 # Version numbers and breaking changes
