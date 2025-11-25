@@ -10,7 +10,7 @@ from ribasim import run_ribasim
 
 ```{python}
 #| include: false
-%run ../run_ribasim.py
+%run ../../run_ribasim.py
 ```
 
 # Introduction
