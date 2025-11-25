@@ -316,12 +316,12 @@ class Model(FileModel):
 
                 break
 
-    def remove_node(self, node_id: int):
-        """Remove a node from the model."""
+    def remove_node(self, node_id: int) -> None:
+        """Remove a node from the model, including connected links."""
         self._remove_node_id(node_id)
         self.link._remove_node_id(node_id)
 
-    def remove_link(self, link_id: int):
+    def remove_link(self, link_id: int) -> None:
         """Remove a link from the model."""
         self.link._remove_link_id(link_id)
 
