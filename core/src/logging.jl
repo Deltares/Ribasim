@@ -24,7 +24,7 @@ function setup_logger(;
     verbosity::LogLevel,
     stream::IOStream,
     module_filter_function::Function = is_current_module,
-)::AbstractLogger
+)::NTuple{3, AbstractLogger}
     file_logger = MinLevelLogger(FileLogger(stream), verbosity)
     terminal_logger = MinLevelLogger(
         TerminalLogger(),
@@ -33,7 +33,9 @@ function setup_logger(;
     return EarlyFilteredLogger(
         module_filter_function,
         TeeLogger(file_logger, terminal_logger),
-    )
+    ),
+    file_logger,
+    terminal_logger
 end
 
 "Log messages before the model is initialized."
@@ -43,10 +45,10 @@ function log_startup(config, toml_path::AbstractString)::Nothing
     if config.ribasim_version != cli.ribasim_version
         @warn "The Ribasim version in the TOML config file does not match the used Ribasim CLI version." config.ribasim_version cli.ribasim_version
     end
-    @info "Starting a Ribasim simulation." toml_path cli.ribasim_version starttime endtime threads =
+    @info "Starting a Ribasim simulation at $(now())." toml_path cli.ribasim_version starttime endtime threads =
         Threads.nthreads()
     if any(config.experimental)
-        @warn "The following *experimental* features are enabled: $(config.experimental)"
+        @warn "The following *experimental* features are enabled: $(showexperimental(config))"
     end
     return nothing
 end
@@ -94,7 +96,7 @@ end
 "Log messages after the computation."
 function log_finalize(model)::Cint
     if success(model)
-        @info "The model finished successfully."
+        @info "The model finished successfully at $(now())."
         return 0
     else
         # OrdinaryDiffEq doesn't error on e.g. convergence failure,
@@ -102,7 +104,7 @@ function log_finalize(model)::Cint
         log_bottlenecks(model; interrupt = false)
         t = datetime_since(model.integrator.t, model.config.starttime)
         (; retcode) = model.integrator.sol
-        @error """The model exited at model time $t with return code $retcode.
+        @error """The model exited at model time $t with return code $retcode at $(now()).
         See https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes"""
         return 1
     end
