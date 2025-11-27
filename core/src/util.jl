@@ -56,6 +56,15 @@ function get_level_from_storage(basin::Basin, state_idx::Int, storage::T)::T whe
     return basin.storage_to_level[state_idx](storage)
 end
 
+"""
+Compute the area of a basin given its storage.
+"""
+function get_area_from_storage(basin::Basin, state_idx::Int, storage::T)::T where {T}
+    level = get_level_from_storage(basin, state_idx, storage)
+    level_to_area = basin.level_to_area[state_idx]
+    return level_to_area(level)
+end
+
 function get_scalar_interpolation(
     starttime::DateTime,
     time::AbstractVector,

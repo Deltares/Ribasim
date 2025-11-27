@@ -20,7 +20,7 @@ function set_simulation_data!(
 
     errors = false
 
-    errors |= set_simulation_data!(allocation_model, basin, p)
+    errors |= set_simulation_data!(allocation_model, basin, p, t)
     set_simulation_data!(allocation_model, level_boundary, t)
     set_simulation_data!(allocation_model, flow_boundary)
     set_simulation_data!(allocation_model, linear_resistance, p, t)
@@ -41,11 +41,12 @@ function set_simulation_data!(
     allocation_model::AllocationModel,
     basin::Basin,
     p::Parameters,
+    t::Float64,
 )::Bool
-    (; problem, node_ids_in_subnetwork, cumulative_forcing_volume, scaling) =
+    (; problem, node_ids_in_subnetwork, cumulative_forcing_volume, scaling, Δt_allocation) =
         allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
-    (; storage_to_level) = basin
+    (; storage_to_level, vertical_flux) = basin
 
     storage_change = problem[:basin_storage_change]
     volume_conservation = problem[:volume_conservation]
@@ -56,8 +57,9 @@ function set_simulation_data!(
 
     # Set Basin starting storages and levels
     for basin_id in basin_ids_subnetwork
-        storage_now = current_storage[basin_id.idx]
-        storage_max = storage_to_level[basin_id.idx].t[end]
+        idx = basin_id.idx
+        storage_now = current_storage[idx]
+        storage_max = storage_to_level[idx].t[end]
 
         # Check whether the storage in the physical layer is within the maximum storage bound
         if storage_now > storage_max
@@ -70,19 +72,25 @@ function set_simulation_data!(
         JuMP.set_lower_bound(Δstorage, -storage_now / scaling.storage)
         JuMP.set_upper_bound(Δstorage, (storage_max - storage_now) / scaling.storage)
 
-        # Set forcing
-        (forcing_volume_positive, forcing_volume_negative) =
-            cumulative_forcing_volume[basin_id]
+        A = get_area_from_storage(basin, idx, storage_now)
+        A_max = get_area_from_storage(basin, idx, storage_max)
 
         volume_conservation_constraint = volume_conservation[basin_id]
         JuMP.set_normalized_rhs(
             volume_conservation_constraint,
-            forcing_volume_positive / scaling.storage,
+            (
+                A_max * vertical_flux.precipitation[idx] +
+                vertical_flux.drainage[idx] +
+                vertical_flux.surface_runoff[idx]
+            ) * Δt_allocation / scaling.storage,
         )
         JuMP.set_normalized_coefficient(
             volume_conservation_constraint,
             low_storage_factor[basin_id],
-            forcing_volume_negative / scaling.storage,
+            (
+                A * vertical_flux.potential_evaporation[idx] +
+                vertical_flux.infiltration[idx]
+            ) * Δt_allocation / scaling.storage,
         )
     end
     return errors

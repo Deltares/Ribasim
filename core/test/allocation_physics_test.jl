@@ -225,3 +225,12 @@ end
         end
     end
 end
+
+@testitem "Allocation polder level management" begin
+    using Ribasim
+    using DataFrames: DataFrame
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/polder_management/ribasim.toml")
+    model = Ribasim.run(toml_path)
+end
