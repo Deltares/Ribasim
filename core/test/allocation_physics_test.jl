@@ -233,4 +233,12 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/polder_management/ribasim.toml")
     model = Ribasim.run(toml_path)
+
+    basin_results = DataFrame(Ribasim.basin_data(model))
+    level_polder_4 = filter(:node_id => ==(4), basin_results).level
+    level_polder_6 = filter(:node_id => ==(6), basin_results).level
+    # Test level at polder 6 approx 0.9 meter
+    @test all(isapprox.(level_polder_6, 0.9; atol = 0.1e-3))
+    # Test all level except first approx 1.0 meter at polder 4
+    @test all(isapprox.(level_polder_4[2:end], 1.0; atol = 1e-3))
 end
