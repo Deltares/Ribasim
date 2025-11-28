@@ -2047,8 +2047,6 @@ def polder_management_model() -> Model:
     time = pd.date_range(model.starttime, model.endtime)
     day_of_year = time.day_of_year.to_numpy()
     precipitation = np.zeros(day_of_year.size)
-    # precipitation[0] = 1e-6
-    # pecipitation[1] = 0
     precipitation[0:90] = 1e-6
     precipitation[90:180] = 0
     precipitation[180:270] = 1e-6

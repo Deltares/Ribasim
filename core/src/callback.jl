@@ -170,19 +170,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
 
     # Update realized flows for allocation input and output
     for allocation_model in allocation.allocation_models
-        (;
-            cumulative_forcing_volume,
-            cumulative_boundary_volume,
-            cumulative_realized_volume,
-        ) = allocation_model
-        # Basin forcing input
-        for basin_id in keys(cumulative_forcing_volume)
-            volume_update = forcing_update(integrator, basin_id)
-            values_prev = cumulative_forcing_volume[basin_id]
-            cumulative_forcing_volume[basin_id] =
-                (values_prev[1] + volume_update[1], values_prev[2] + volume_update[2])
-        end
-
+        (; cumulative_boundary_volume, cumulative_realized_volume) = allocation_model
         # Flow boundary input
         for link in keys(cumulative_boundary_volume)
             cumulative_boundary_volume[link] += flow_update_on_link(integrator, link)

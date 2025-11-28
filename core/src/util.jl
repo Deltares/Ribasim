@@ -448,8 +448,7 @@ as input. Therefore we set the instantaneous flows as the mean flows as allocati
 function set_initial_allocation_cumulative_volume!(integrator)::Nothing
     (; u, p, t) = integrator
     (; p_independent) = p
-    (; basin, allocation, flow_boundary) = p_independent
-    (; vertical_flux) = basin
+    (; allocation, flow_boundary) = p_independent
     (; allocation_models) = allocation
     (; Δt_allocation) = allocation_models[1]
 
@@ -460,19 +459,7 @@ function set_initial_allocation_cumulative_volume!(integrator)::Nothing
     water_balance!(du, u, p, t)
 
     for allocation_model in allocation_models
-        (; cumulative_forcing_volume, cumulative_boundary_volume) = allocation_model
-
-        # Basin forcing
-        for node_id in keys(cumulative_forcing_volume)
-            fixed_area = basin_areas(basin, node_id.idx)[end]
-            forcing_positive =
-                fixed_area * vertical_flux.precipitation[node_id.idx] +
-                vertical_flux.surface_runoff[node_id.idx] +
-                vertical_flux.drainage[node_id.idx]
-            forcing_negative = du.evaporation[node_id.idx] + du.infiltration[node_id.idx]
-            cumulative_forcing_volume[node_id] =
-                (forcing_positive * Δt_allocation, forcing_negative * Δt_allocation)
-        end
+        (; cumulative_boundary_volume) = allocation_model
 
         # Boundary flow
         for link in keys(cumulative_boundary_volume)

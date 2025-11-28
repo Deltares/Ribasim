@@ -43,8 +43,14 @@ function set_simulation_data!(
     p::Parameters,
     t::Float64,
 )::Bool
-    (; problem, node_ids_in_subnetwork, cumulative_forcing_volume, scaling, Δt_allocation) =
-        allocation_model
+    (;
+        problem,
+        node_ids_in_subnetwork,
+        explicit_positive_forcing_volume,
+        implicit_negative_forcing_volume,
+        scaling,
+        Δt_allocation,
+    ) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
     (; storage_to_level, vertical_flux) = basin
 
@@ -75,22 +81,32 @@ function set_simulation_data!(
         A = get_area_from_storage(basin, idx, storage_now)
         A_max = get_area_from_storage(basin, idx, storage_max)
 
-        volume_conservation_constraint = volume_conservation[basin_id]
-        JuMP.set_normalized_rhs(
-            volume_conservation_constraint,
+        explicit_positive_forcing_volume[basin_id] =
             (
                 A_max * vertical_flux.precipitation[idx] +
                 vertical_flux.drainage[idx] +
                 vertical_flux.surface_runoff[idx]
-            ) * Δt_allocation / scaling.storage,
-        )
-        JuMP.set_normalized_coefficient(
-            volume_conservation_constraint,
-            low_storage_factor[basin_id],
+            ) * Δt_allocation
+
+        implicit_negative_forcing_volume[basin_id] =
             (
                 A * vertical_flux.potential_evaporation[idx] +
                 vertical_flux.infiltration[idx]
-            ) * Δt_allocation / scaling.storage,
+            ) * Δt_allocation
+
+        volume_conservation_constraint = volume_conservation[basin_id]
+
+        ### This is an euler-backward discretization in disguise:
+        # where the positive forcing is independent on the state so it can be calculated explicitly and ends up in the rhs of Ax = b
+        JuMP.set_normalized_rhs(
+            volume_conservation_constraint,
+            explicit_positive_forcing_volume[basin_id] / scaling.storage,
+        )
+        # The negative forcing depends on the state through the low storage factor, it is thus evaluated implicitly and ends up in the coefficient matrix A
+        JuMP.set_normalized_coefficient(
+            volume_conservation_constraint,
+            low_storage_factor[basin_id],
+            implicit_negative_forcing_volume[basin_id] / scaling.storage,
         )
     end
     return errors
@@ -900,8 +916,14 @@ function save_flows!(
     optimization_type::AllocationOptimizationType.T,
 )::Nothing
     (; p, t) = integrator
-    (; problem, subnetwork_id, cumulative_forcing_volume, scaling, node_ids_in_subnetwork) =
-        allocation_model
+    (;
+        problem,
+        subnetwork_id,
+        scaling,
+        node_ids_in_subnetwork,
+        explicit_positive_forcing_volume,
+        implicit_negative_forcing_volume,
+    ) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
     (; graph, allocation) = p.p_independent
     (; record_flow) = allocation
@@ -949,8 +971,6 @@ function save_flows!(
     for node_id in basin_ids_subnetwork
         low_storage_factor_variable = low_storage_factor[node_id]
         hit_lower_bound, hit_upper_bound = get_bounds_hit(low_storage_factor_variable)
-        (forcing_volume_positive, forcing_volume_negative) =
-            cumulative_forcing_volume[node_id]
         push!(
             record_flow,
             FlowRecordDatum(
@@ -961,8 +981,9 @@ function save_flows!(
                 string(NodeType.Basin),
                 Int32(node_id),
                 subnetwork_id,
-                forcing_volume_positive -
-                forcing_volume_negative * JuMP.value(low_storage_factor_variable),
+                explicit_positive_forcing_volume[node_id] -
+                implicit_negative_forcing_volume[node_id] *
+                JuMP.value(low_storage_factor_variable),
                 string(optimization_type),
                 hit_lower_bound,
                 hit_upper_bound,
@@ -1006,15 +1027,10 @@ function apply_control_from_allocation!(
 end
 
 function reset_cumulative!(allocation_model::AllocationModel)::Nothing
-    (; cumulative_forcing_volume, cumulative_boundary_volume, cumulative_realized_volume) =
-        allocation_model
+    (; cumulative_boundary_volume, cumulative_realized_volume) = allocation_model
 
     for link in keys(cumulative_realized_volume)
         cumulative_realized_volume[link] = 0
-    end
-
-    for node_id in keys(cumulative_forcing_volume)
-        cumulative_forcing_volume[node_id] = (0.0, 0.0)
     end
 
     for link in keys(cumulative_boundary_volume)
