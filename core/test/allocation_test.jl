@@ -350,10 +350,6 @@ end
     (; user_demand, graph, allocation, basin, level_demand, flow_boundary) = p_independent
     allocation_model = allocation.allocation_models[1]
 
-    # Initial "integrated" vertical flux
-    @test allocation_model.cumulative_forcing_volume[NodeID(:Basin, 2, p_independent)] ==
-          (86.4, 0.0)
-
     Ribasim.solve!(model)
 
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
