@@ -1,15 +1,16 @@
 {
     "recommendations": [
-        "julialang.language-julia",
-        "ms-python.python",
-        "ms-python.mypy-type-checker",
         "charliermarsh.ruff",
+        "julialang.language-julia",
+        "ms-python.mypy-type-checker",
+        "ms-python.python",
+        "ms-toolsai.jupyter",
         "njpwerner.autodocstring",
         "quarto.quarto",
-        "tamasfe.even-better-toml",
+        "renan-r-santos.pixi-code",
         "samuelcolvin.jinjahtml",
-        "yy0931.vscode-sqlite3-editor",
         "streetsidesoftware.code-spell-checker",
-        "ms-toolsai.jupyter",
+        "tamasfe.even-better-toml",
+        "yy0931.vscode-sqlite3-editor",
     ]
 }

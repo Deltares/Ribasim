@@ -39,7 +39,8 @@ export algorithm,
     node_kinds,
     table_name,
     sql_table_name,
-    table_types
+    table_types,
+    showexperimental
 
 "Schema.Basin.State -> :Basin"
 node_type(table_type::Type{<:Table})::Symbol = fullname(parentmodule(table_type))[end]
@@ -183,9 +184,9 @@ function Base.iterate(exp::Experimental, state = 0)
     return Base.getfield(exp, state + 1), state + 1
 end
 
-function Base.show(io::IO, exp::Experimental)
-    fields = (field for field in fieldnames(typeof(exp)) if getfield(exp, field))
-    print(io, join(fields, " "))
+function showexperimental(exp::Experimental)
+    fields = filter(x -> getfield(exp, x), fieldnames(typeof(exp)))
+    join(fields, " ")
 end
 
 @option @addnodetypes struct Toml <: TableOption
@@ -222,6 +223,8 @@ function Config(config_path::AbstractString; kwargs...)::Config
     validate_config(toml)
     Config(toml, dir)
 end
+
+showexperimental(config::Config) = showexperimental(config.experimental)
 
 """
 Do extra validation on the validity of the TOML config.
@@ -296,25 +299,11 @@ function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::Abst
         ),
     )
 end
+Configurations.to_dict(::Type, x::LogLevel) = lowercase(string(x))
 
-# TODO Use with proper alignment
 function Base.show(io::IO, c::Config)
-    println(io, "Ribasim Config")
-    for field in fieldnames(typeof(c))
-        f = getfield(c, field)
-        f === nothing || println(io, "\t$field\t= $f")
-    end
-end
-
-function Base.show(io::IO, c::TableOption)
-    first = true
-    for field in fieldnames(typeof(c))
-        f = getfield(c, field)
-        if f !== nothing
-            first && (first = false; println(io))
-            println(io, "\t\t$field\t= $f")
-        end
-    end
+    println(io, "Ribasim Configuration:")
+    println(io, Configurations.to_toml(getfield(c, :toml); include_defaults = true))
 end
 
 """

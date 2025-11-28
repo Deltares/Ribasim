@@ -163,10 +163,7 @@ def test_link_autoincrement(basic):
     model.link.add(model.basin[3], model.tabulated_rating_curve[8], link_id=1)
     assert model.link.df.index[-1] == 1
 
-    with pytest.raises(
-        ValueError,
-        match=r"Link IDs have to be unique, but 1 already exists.",
-    ):
+    with pytest.warns(UserWarning, match="Replacing link #1"):
         model.link.add(
             model.linear_resistance[10],
             model.level_boundary[17],
@@ -248,9 +245,10 @@ def test_add_existing():
             )
         ],
     )
+    model.link.add(model.basin[10], model.user_demand[30], link_id=1)
 
     # Remove one Basin, not all
-    model._remove_node_id(11)
+    model.remove_node(11)
     assert len(model.basin.node.df) == 1
     assert 10 in model.basin.node.df.index
     assert 11 not in model.basin.node.df.index
@@ -258,8 +256,13 @@ def test_add_existing():
     assert not (model.basin.state.df["node_id"] == 11).any()
 
     # Remove the only Terminal
-    model._remove_node_id(20)
+    model.remove_node(20)
     assert model.terminal.node.df is None
+
+    # Remove the only Link
+    assert model.link.df is not None
+    model.remove_link(1)
+    assert model.link.df is None
 
     # Remove the only UserDemand
     model._remove_node_id(30)
@@ -267,7 +270,7 @@ def test_add_existing():
     assert model.user_demand.static.df is None
 
     # Do nothing if the node doesn't exist
-    model._remove_node_id(999)
+    model.remove_node(999)
 
 
 def test_node_autoincrement_existing_model(basic, tmp_path):

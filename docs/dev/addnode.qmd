@@ -212,7 +212,7 @@ There are several parts of the documentation which should be updated with the ne
 - If the node has a rol in the physical layer, `docs/core/equations` should contain a short explanation and if possible an analytical expression for the behavior of the new node;
 - If the node has a role in allocation, `docs/core/allocation` should make this role clear;
 - `docs/reference/node/new-node-type.qmd` should contain a short explanation of the node and the possible schemas associated with it;
-- The example models constructed in `docs/guide/examples.qmd` should be extended with the new node type or a new example model with the new node type should be made.
+- The example models constructed in `docs/getting-started/examples.qmd` should be extended with the new node type or a new example model with the new node type should be made.
 - In `_quarto.yml` add `NewNodeType` to the "Node types" contents for the Python API reference.
 
 

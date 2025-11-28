@@ -29,9 +29,13 @@ function main(toml_path::AbstractString)::Cint
         config = Config(toml_path)
         mkpath(results_path(config))
         open(results_path(config, "ribasim.log"), "w") do io
-            logger = setup_logger(; verbosity = config.logging.verbosity, stream = io)
+            logger, file_logger =
+                setup_logger(; verbosity = config.logging.verbosity, stream = io)
             with_logger(logger) do
                 log_startup(config, toml_path)
+                with_logger(file_logger) do
+                    @info config
+                end
                 try
                     model = Model(config)
                     try

@@ -205,7 +205,7 @@ conda install -c conda-forge ribasim=2025.6.0
 
 :::
 
-For Ribasim Python documentation please see the [examples](/guide/examples.qmd) and [API reference](/reference/python/index.qmd).
+For Ribasim Python documentation please see the [examples](/getting-started/examples.qmd) and [API reference](/reference/python/index.qmd).
 
 # Install Ribasim QGIS plugin {#sec-install-qgis-plugin}
 

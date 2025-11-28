@@ -11,10 +11,10 @@ website:
     left:
       - text: "Overview"
         file: index.qmd
-      - text: "Tutorials"
-        file: tutorial/natural-flow.qmd
+      - text: "Getting started"
+        file: getting-started/install.qmd
       - text: "How-to guides"
-        file: guide/examples.qmd
+        file: guide/qgis.qmd
       - text: "Concepts"
         file: concept/concept.qmd
       - text: "Reference"
@@ -33,17 +33,20 @@ website:
         - changelog.qmd
         - known_issues.qmd
         - contact.qmd
-    - title: "Tutorials"
+    - title: "Getting started"
       contents:
-        - tutorial/natural-flow.qmd
-        - tutorial/irrigation-demand.qmd
-        - tutorial/reservoir.qmd
+        - getting-started/install.qmd
+        - section: "Tutorials"
+          contents:
+            - getting-started/tutorial/natural-flow.qmd
+            - getting-started/tutorial/irrigation-demand.qmd
+            - getting-started/tutorial/reservoir.qmd
+        - getting-started/examples.qmd
     - title: "How-to guides"
       contents:
-        - guide/examples.qmd
+        - guide/qgis.qmd
         - guide/modeling-process.qmd
         - guide/updating-ribasim.qmd
-        - guide/qgis.qmd
         - guide/coupling.qmd
         - section: "Coupling guides"
           contents:

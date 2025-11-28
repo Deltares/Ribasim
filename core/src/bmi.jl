@@ -7,7 +7,7 @@ function BMI.initialize(T::Type{Model}, config_path::AbstractString)::Model
     config = Config(config_path)
     mkpath(results_path(config))
     io = open(results_path(config, "ribasim.log"), "w")
-    logger = setup_logger(; verbosity = config.logging.verbosity, stream = io)
+    logger, _ = setup_logger(; verbosity = config.logging.verbosity, stream = io)
     # We rely on setting the global logger, if this causes issues
     # we should store the logger in the Model.
     global_logger(logger)
