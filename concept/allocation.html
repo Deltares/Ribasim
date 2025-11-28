@@ -20,41 +20,6 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
-/* CSS for syntax highlighting */
-html { -webkit-text-size-adjust: 100%; }
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
-code.sourceCode > span { color: inherit; text-decoration: inherit; }
-div.sourceCode { margin: 1em 0; }
-pre.sourceCode { margin: 0; }
-@media screen {
-div.sourceCode { overflow: auto; }
-}
-@media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
-}
-pre.numberSource code
-  { counter-reset: source-line 0; }
-pre.numberSource code > span
-  { position: relative; left: -4em; counter-increment: source-line; }
-pre.numberSource code > span > a:first-child::before
-  { content: counter(source-line);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-  }
-pre.numberSource { margin-left: 3em;  padding-left: 4px; }
-div.sourceCode
-  {   }
-@media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
-}
 </style>
 
 
@@ -327,6 +292,10 @@ window.Quarto = {
   <ul class="collapse">
   <li><a href="#capacities" id="toc-capacities" class="nav-link" data-scroll-target="#capacities"><span class="header-section-number">3.4.1</span> Capacities</a></li>
   </ul></li>
+  <li><a href="#source-priority" id="toc-source-priority" class="nav-link" data-scroll-target="#source-priority"><span class="header-section-number">3.5</span> Source priority</a>
+  <ul class="collapse">
+  <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example"><span class="header-section-number">3.5.1</span> Example</a></li>
+  </ul></li>
   </ul></li>
   </ul>
 </nav>
@@ -378,29 +347,17 @@ window.Quarto = {
 <p>The allocation problem is solved per subnetwork of the Ribasim model. A subnetwork is defined by all nodes that have the same subnetwork ID in the <a href="../reference/usage.html#node">Node table</a>. Each subnetwork is used to formulate a linear optimization problem with the <a href="https://jump.dev/JuMP.jl/stable/">JuMP</a> package, which is solved using the <a href="https://highs.dev/">HiGHS solver</a>. For more in-depth information see also the example of solving the maximum flow problem with <code>JuMP.jl</code> <a href="https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem">here</a>.</p>
 <p>When we build a Ribasim model in which we want to utilize allocation, it can be computationally efficient and stable to divide a large allocation network into a primary network which connects to multiple subnetworks. The primary network should be the main water system and treats each connected subnetwork as a single demand node.</p>
 <p>We can first solve an allocation optimization for the primary network, that calculates how to optimally divide the available water to each subnetwork. With this allocated amount for a subnetwork, we can optimize how to divide this water within the subnetwork to the demand nodes.</p>
-<p>Subnetworks are defined by grouping nodes that share the same subnetwork ID in the <a href="../reference/usage.html#node">Node table</a>. The primary network needs to be assigned with subnetwork ID 1. This will always represent the main water system. Below is an example of a primary network with multiple subnetworks.</p>
-<details class="code-fold">
-<summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> ribasim_testmodels</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> IPython.display <span class="im">import</span> Markdown, display</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> model_name, model_constructor <span class="kw">in</span> ribasim_testmodels.constructors.items():</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> model_name<span class="op">!=</span> <span class="st">"medium_primary_secondary_network"</span>:</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">continue</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> model_constructor.__doc__ <span class="kw">is</span> <span class="kw">not</span> <span class="va">None</span>:</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        display(Markdown(model_constructor.__doc__))</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    model <span class="op">=</span> model_constructor()</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">6</span>, <span class="dv">4</span>))</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    model.plot(ax)</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    ax.axis(<span class="st">"off"</span>)</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    plt.show()</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    plt.close(fig)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
-<p><img src="allocation_files/figure-html/cell-2-output-1.png" width="646" height="394"></p>
+<p>Subnetworks are defined by grouping nodes that share the same subnetwork ID in the <a href="../reference/usage.html#node">Node table</a>. The primary network needs to be assigned with subnetwork ID 1. This will always represent the main water system. This is shown in <a href="#fig-subnetwork-example" class="quarto-xref">Figure&nbsp;1</a> below.</p>
+<div id="fig-subnetwork-example" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-subnetwork-example-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="https://s3.deltares.nl/ribasim/doc-image/concept/medium_sized_subnetwork_model.png" class="img-fluid figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-subnetwork-example-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: The primary network (subnetwork 1, blue) with connected secondary subnetworks (subnetwork 2 and 3, grey).
+</figcaption>
+</figure>
+</div>
 <p>Secondary networks:</p>
 <ul>
 <li>Can only connect to the primary network via Pump or Outlet nodes</li>
@@ -418,12 +375,12 @@ window.Quarto = {
 <li>Constraints from nodes, local water availability and network topology</li>
 </ul>
 <p>The optimization problem aims to minimize the difference between requested demands and supplied amounts, subject to water balance constraints:</p>
-<p><span class="math display">\[
+<p><span id="eq-allocation-problem"><span class="math display">\[
 \begin{aligned}
 \text{min}\quad &amp; z = \sum_{i=0}^{N_d} E_i(Q, S) \\
 \text{s.t.}\quad &amp; \frac{dS_j}{dt} = \sum_{k=1}^{N_l} Q_{k}\\
 \end{aligned}
-\]</span></p>
+\tag{1}\]</span></span></p>
 <p>where:</p>
 <ul>
 <li><span class="math inline">\(z\)</span> is the total error</li>
@@ -757,6 +714,33 @@ Note
 <li><span class="math inline">\(C^{FD}_S \in \mathbb{R}^c_{\ge 0}\)</span> where <span class="math inline">\(c = \# FD_S\)</span> is the number of nodes with a flow demand, for the flow supplied by flow buffers at these nodes with a flow demand.</li>
 <li><span class="math inline">\(C^{UD}_S \in \mathbb{R}^f_{\ge 0}\)</span> where <span class="math inline">\(f = \# U_S\)</span>, for the flow supplied by the user demand outflow source whose capacity is given by return flows.</li>
 </ul>
+</section>
+</section>
+<section id="source-priority" class="level2" data-number="3.5">
+<h2 data-number="3.5" class="anchored" data-anchor-id="source-priority"><span class="header-section-number">3.5</span> Source priority</h2>
+<p>Nodes can be assigned priorities that influence how water is allocated from different sources. These priorities are given as weights <span class="math inline">\(w_i \geq 0\)</span> for node <span class="math inline">\(i\)</span> with an outflow link <span class="math inline">\(Q_i\)</span>.</p>
+<p>The source priority weights act as a cost per flow rate. For a given demand priority <span class="math inline">\(p\)</span>, the objective is to minimize the cost of the water allocation:</p>
+<p><span class="math display">\[
+\min \sum w_i \cdot Q_{i}
+\]</span></p>
+<p>This term is added to the optimization problem after the demand objectives have been satisfied, ensuring that:</p>
+<ol type="1">
+<li>Demands are met first according to their priority</li>
+<li>Among solutions that satisfy demands equally well, water is preferentially allocated via routes with the lowest cost</li>
+</ol>
+<section id="example" class="level3" data-number="3.5.1">
+<h3 data-number="3.5.1" class="anchored" data-anchor-id="example"><span class="header-section-number">3.5.1</span> Example</h3>
+<p>In <a href="#fig-subnetwork-example" class="quarto-xref">Figure&nbsp;1</a> the water can take multiple routes from the flow boundary to user demands 14 and 17. We have set all source priorities (cost) to 0 except for outlets 3 and 8, which have a higher cost (lower priority). This results in the flow routing preferentially through the pumps, since flowing through the outlets incurs a higher penalty in the objective function due to their non-zero source priority. The results are shown in <a href="#fig-subnetwork-results" class="quarto-xref">Figure&nbsp;2</a>.</p>
+<div id="fig-subnetwork-results" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-subnetwork-results-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="https://s3.deltares.nl/ribasim/doc-image/concept/source_priority_results.png" class="img-fluid figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-subnetwork-results-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: Flow rate results with a preferential routes via the pumps
+</figcaption>
+</figure>
+</div>
 
 
 </section>
