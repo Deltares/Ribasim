@@ -689,7 +689,8 @@ function optimize_multi_objective!(
     secondary_model::AllocationModel,
     primary_network_connections = [],
 )::Nothing
-    (; problem, objectives, temporary_constraints) = secondary_model
+    (; problem, objectives, temporary_constraints, source_priority_expression) =
+        secondary_model
 
     for metadata in objectives.objective_metadata
         (; expression_first, expression_second, type, demand_priority_idx) = metadata
@@ -701,34 +702,31 @@ function optimize_multi_objective!(
             temporary_constraints,
             JuMP.@constraint(problem, expression_first == JuMP.objective_value(problem))
         )
+
         # Second expression
         JuMP.@objective(problem, Min, expression_second)
         JuMP.optimize!(problem)
+        push!(
+            temporary_constraints,
+            JuMP.@constraint(problem, expression_second == JuMP.objective_value(problem),)
+        )
+
+        # Source priority
+        JuMP.@objective(problem, Min, source_priority_expression)
+        JuMP.optimize!(problem)
 
         # collect secondary network demands if primary network connections are given
-        for link in primary_network_connections
-            if type == AllocationObjectiveType.demand_flow ||
-               type == AllocationObjectiveType.demand_storage
-                previous_demand = 0
+        if type == AllocationObjectiveType.demand_flow ||
+           type == AllocationObjectiveType.demand_storage
+            for link in primary_network_connections
+                demand_of_previous_priority = 0
                 if demand_priority_idx > 1
-                    previous_demand =
+                    demand_of_previous_priority =
                         secondary_model.secondary_network_demand[link][demand_priority_idx - 1]
                 end
-                demand = JuMP.value(problem[:flow][link]) - previous_demand
+                demand = JuMP.value(problem[:flow][link]) - demand_of_previous_priority
                 secondary_model.secondary_network_demand[link][demand_priority_idx] = demand
             end
-        end
-
-        # check if this is the last objective
-        if metadata != last(objectives.objective_metadata)
-            # If not, add constraint to fix the value of the second objective
-            push!(
-                temporary_constraints,
-                JuMP.@constraint(
-                    problem,
-                    expression_second == JuMP.objective_value(problem),
-                )
-            )
         end
     end
 

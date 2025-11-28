@@ -94,23 +94,6 @@ end
     metadata = objective_metadata[2]
     @test metadata.expression_first == -sum(low_storage_factor)
     @test metadata.expression_first === objective_expressions_all[3]
-
-    # Source objective
-    metadata = objective_metadata[3]
-    @test metadata.type == AllocationObjectiveType.source_priorities
-    @test metadata.expression_first === objective_expressions_all[4]
-
-    ## UserDemand return flow source
-    user_demand_source_priority = model.config.allocation.source_priority.user_demand
-    user_demand_id = NodeID(:UserDemand, 5, p_independent)
-    return_flow = flow[user_demand.outflow_link[user_demand_id.idx].link]
-    @test metadata.expression_first.terms[return_flow] == user_demand_source_priority
-
-    ## FlowBoundary source
-    flow_boundary_source_priority = model.config.allocation.source_priority.flow_boundary
-    flow_boundary_id = NodeID(:FlowBoundary, 1, p_independent)
-    outflow = flow[flow_boundary.outflow_link[flow_boundary_id.idx].link]
-    @test metadata.expression_first.terms[outflow] == flow_boundary_source_priority
 end
 
 @testitem "Primary allocation network initialization" begin

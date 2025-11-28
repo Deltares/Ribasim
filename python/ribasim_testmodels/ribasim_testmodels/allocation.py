@@ -544,7 +544,9 @@ def medium_primary_secondary_network_model() -> Model:
     )
 
     # first basin
-    model.basin.add(Node(2, Point(1, 0), subnetwork_id=1), basin_data)
+    model.basin.add(
+        Node(2, Point(1, 0), subnetwork_id=1, source_priority=0), basin_data
+    )
 
     # outlet towards first subnetwork
     model.outlet.add(
@@ -554,27 +556,31 @@ def medium_primary_secondary_network_model() -> Model:
 
     # outlet towards second basin
     model.outlet.add(
-        Node(4, Point(1.5, 0), subnetwork_id=1),
+        Node(4, Point(1.5, 0), subnetwork_id=1, source_priority=0),
         [outlet_data],
     )
 
     # second basin
-    model.basin.add(Node(5, Point(2, 0), subnetwork_id=1), basin_data)
+    model.basin.add(
+        Node(5, Point(2, 0), subnetwork_id=1, source_priority=0), basin_data
+    )
 
     # pump towards first subnetwork
     model.pump.add(
-        Node(6, Point(2, 1), subnetwork_id=1),
+        Node(6, Point(2, 1), subnetwork_id=1, source_priority=0),
         [pump_data],
     )
 
     # outlet towards fourth basin
     model.outlet.add(
-        Node(16, Point(2.5, 0), subnetwork_id=1),
+        Node(16, Point(2.5, 0), subnetwork_id=1, source_priority=0),
         [outlet_data],
     )
 
     # third basin
-    model.basin.add(Node(7, Point(3, 0), subnetwork_id=1), basin_data)
+    model.basin.add(
+        Node(7, Point(3, 0), subnetwork_id=1, source_priority=0), basin_data
+    )
 
     # outlet towards second subnetwork
     model.outlet.add(
@@ -584,16 +590,18 @@ def medium_primary_secondary_network_model() -> Model:
 
     # outlet towards fourth basin
     model.outlet.add(
-        Node(9, Point(3.5, 0), subnetwork_id=1),
+        Node(9, Point(3.5, 0), subnetwork_id=1, source_priority=0),
         [outlet_data],
     )
 
     # fourth basin
-    model.basin.add(Node(10, Point(4, 0), subnetwork_id=1), basin_data)
+    model.basin.add(
+        Node(10, Point(4, 0), subnetwork_id=1, source_priority=0), basin_data
+    )
 
-    # pump towards first subnetwork
+    # pump towards second subnetwork
     model.pump.add(
-        Node(11, Point(4, 1), subnetwork_id=1),
+        Node(11, Point(4, 1), subnetwork_id=1, source_priority=0),
         [pump_data],
     )
 
