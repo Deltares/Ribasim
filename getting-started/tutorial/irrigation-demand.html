@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.25">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Irrigation demand – Ribasim</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script><script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../getting-started/tutorial/reservoir.html" rel="next">
+<link href="../../getting-started/tutorial/natural-flow.html" rel="prev">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-0b1189524dc19e09ab363e9b4d3e2f65.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.min.js" integrity="sha384-c9c+LnTbwQ3aujuU7ULEPVvgLs+Fn6fJUvIGTsuu1ZcCf11fiEubah0ttpca4ntM sha384-6V1/AdqZRWk1KAlWbKBlGhN7VG4iE/yAZcO6NZPMF8od0vukrvr0tg4qY6NSrItx" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+<script type="text/javascript">
+window.PlotlyConfig = {MathJaxConfig: 'local'};
+if (window.MathJax && window.MathJax.Hub && window.MathJax.Hub.Config) {window.MathJax.Hub.Config({SVG: {font: "STIX-Web"}});}
+</script>
+<script type="module">import "https://cdn.plot.ly/plotly-3.1.1.min"</script>
+
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../../assets/styles.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="../../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo light-content">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo dark-content">
+    </a>
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">Ribasim</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link active" href="../../index.html" aria-current="page"> 
+<span class="menu-text">Overview</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../getting-started/install.html"> 
+<span class="menu-text">Getting started</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../guide/qgis.html"> 
+<span class="menu-text">How-to guides</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../concept/concept.html"> 
+<span class="menu-text">Concepts</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../reference/index.html"> 
+<span class="menu-text">Reference</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../dev/index.html"> 
+<span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/Deltares/Ribasim"> <i class="bi bi-github" role="img" aria-label="GitHub">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../getting-started/tutorial/natural-flow.html">Tutorials</a></li><li class="breadcrumb-item"><a href="../../getting-started/tutorial/irrigation-demand.html">Irrigation demand</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header sidebar-header-stacked">
+      <a href="../../index.html" class="sidebar-logo-link">
+      </a>
+      </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../getting-started/install.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Installation</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Tutorials</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../getting-started/tutorial/natural-flow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Natural flow</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../getting-started/tutorial/irrigation-demand.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Irrigation demand</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../getting-started/tutorial/reservoir.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Reservoir</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../getting-started/examples.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Examples</span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#irrigation-demand" id="toc-irrigation-demand" class="nav-link active" data-scroll-target="#irrigation-demand"><span class="header-section-number">1</span> Irrigation demand</a>
+  <ul class="collapse">
+  <li><a href="#add-a-second-basin-node" id="toc-add-a-second-basin-node" class="nav-link" data-scroll-target="#add-a-second-basin-node"><span class="header-section-number">1.1</span> Add a second Basin node</a></li>
+  <li><a href="#add-the-irrigation-demand" id="toc-add-the-irrigation-demand" class="nav-link" data-scroll-target="#add-the-irrigation-demand"><span class="header-section-number">1.2</span> Add the irrigation demand</a></li>
+  <li><a href="#add-a-tabulatedratingcurve" id="toc-add-a-tabulatedratingcurve" class="nav-link" data-scroll-target="#add-a-tabulatedratingcurve"><span class="header-section-number">1.3</span> Add a TabulatedRatingCurve</a></li>
+  <li><a href="#add-links" id="toc-add-links" class="nav-link" data-scroll-target="#add-links"><span class="header-section-number">1.4</span> Add links</a></li>
+  <li><a href="#plot-model-and-run" id="toc-plot-model-and-run" class="nav-link" data-scroll-target="#plot-model-and-run"><span class="header-section-number">1.5</span> Plot model and run</a></li>
+  <li><a href="#plot-and-compare-the-basin-results" id="toc-plot-and-compare-the-basin-results" class="nav-link" data-scroll-target="#plot-and-compare-the-basin-results"><span class="header-section-number">1.6</span> Plot and compare the Basin results</a></li>
+  <li><a href="#plot-and-compare-the-flow-results" id="toc-plot-and-compare-the-flow-results" class="nav-link" data-scroll-target="#plot-and-compare-the-flow-results"><span class="header-section-number">1.7</span> Plot and compare the flow results</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../getting-started/tutorial/natural-flow.html">Tutorials</a></li><li class="breadcrumb-item"><a href="../../getting-started/tutorial/irrigation-demand.html">Irrigation demand</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">Irrigation demand</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div id="e14d7d45" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim <span class="im">import</span> run_ribasim</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="2be8793e" class="cell" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> plotly.express <span class="im">as</span> px</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim <span class="im">import</span> Model, Node</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.nodes <span class="im">import</span> (</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    basin,</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    flow_boundary,</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    tabulated_rating_curve,</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    user_demand,</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> shapely.geometry <span class="im">import</span> Point</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="6a3f2a1a" class="cell" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>base_dir <span class="op">=</span> Path(<span class="st">"crystal-basin"</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>starttime <span class="op">=</span> <span class="st">"2022-01-01"</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>endtime <span class="op">=</span> <span class="st">"2023-01-01"</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> Model(</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    starttime<span class="op">=</span>starttime,</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    endtime<span class="op">=</span>endtime,</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    crs<span class="op">=</span><span class="st">"EPSG:4326"</span>,</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>These nodes are identical to the previous tutorial:</p>
+<div id="3ed8a173" class="cell" data-execution_count="5">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># FlowBoundary</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> pd.DataFrame({</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"time"</span>: pd.date_range(start<span class="op">=</span><span class="st">"2022-01-01"</span>, end<span class="op">=</span><span class="st">"2023-01-01"</span>, freq<span class="op">=</span><span class="st">"MS"</span>),</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"main"</span>: [<span class="fl">74.7</span>, <span class="fl">57.9</span>, <span class="fl">63.2</span>, <span class="fl">183.9</span>, <span class="fl">91.8</span>, <span class="fl">47.5</span>, <span class="fl">32.6</span>, <span class="fl">27.6</span>, <span class="fl">26.5</span>, <span class="fl">25.1</span>, <span class="fl">39.3</span>, <span class="fl">37.8</span>, <span class="fl">57.9</span>],</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"minor"</span>: [<span class="fl">16.3</span>, <span class="fl">3.8</span>, <span class="fl">3.0</span>, <span class="fl">37.6</span>, <span class="fl">18.2</span>, <span class="fl">11.1</span>, <span class="fl">12.9</span>, <span class="fl">12.2</span>, <span class="fl">11.2</span>, <span class="fl">10.8</span>, <span class="fl">15.1</span>, <span class="fl">14.3</span>, <span class="fl">11.8</span>]</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>})  <span class="co"># fmt: skip</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>data[<span class="st">"total"</span>] <span class="op">=</span> data[<span class="st">"minor"</span>] <span class="op">+</span> data[<span class="st">"main"</span>]</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>main <span class="op">=</span> model.flow_boundary.add(</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">1</span>, Point(<span class="fl">0.0</span>, <span class="fl">0.0</span>), name<span class="op">=</span><span class="st">"main"</span>),</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    [</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>        flow_boundary.Time(</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>            time<span class="op">=</span>data.time,</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>            flow_rate<span class="op">=</span>data.main,</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    ],</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>minor <span class="op">=</span> model.flow_boundary.add(</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">2</span>, Point(<span class="op">-</span><span class="fl">3.0</span>, <span class="fl">0.0</span>), name<span class="op">=</span><span class="st">"minor"</span>),</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    [</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>        flow_boundary.Time(</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>            time<span class="op">=</span>data.time,</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>            flow_rate<span class="op">=</span>data.minor,</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>    ],</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a><span class="co"># Basin</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>confluence <span class="op">=</span> model.basin.add(</span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">3</span>, Point(<span class="op">-</span><span class="fl">1.5</span>, <span class="op">-</span><span class="dv">1</span>), name<span class="op">=</span><span class="st">"confluence"</span>),</span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>    [</span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>        basin.Profile(area<span class="op">=</span>[<span class="dv">672000</span>, <span class="dv">5600000</span>], level<span class="op">=</span>[<span class="dv">0</span>, <span class="dv">6</span>]),</span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>        basin.State(level<span class="op">=</span>[<span class="dv">4</span>]),</span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>        basin.Time(time<span class="op">=</span>[starttime, endtime]),</span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>    ],</span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a><span class="co"># TabulatedRatingCurve</span></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>weir <span class="op">=</span> model.tabulated_rating_curve.add(</span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">4</span>, Point(<span class="op">-</span><span class="fl">1.5</span>, <span class="op">-</span><span class="fl">1.5</span>), name<span class="op">=</span><span class="st">"weir"</span>),</span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a>    [</span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a>        tabulated_rating_curve.Static(</span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a>            level<span class="op">=</span>[<span class="fl">0.0</span>, <span class="dv">2</span>, <span class="dv">5</span>],</span>
+<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a>            flow_rate<span class="op">=</span>[<span class="fl">0.0</span>, <span class="dv">50</span>, <span class="dv">200</span>],</span>
+<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb4-45"><a href="#cb4-45" aria-hidden="true" tabindex="-1"></a>    ],</span>
+<span id="cb4-46"><a href="#cb4-46" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-47"><a href="#cb4-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-48"><a href="#cb4-48" aria-hidden="true" tabindex="-1"></a><span class="co"># Terminal</span></span>
+<span id="cb4-49"><a href="#cb4-49" aria-hidden="true" tabindex="-1"></a>sea <span class="op">=</span> model.terminal.add(Node(<span class="dv">5</span>, Point(<span class="op">-</span><span class="fl">1.5</span>, <span class="op">-</span><span class="fl">3.0</span>), name<span class="op">=</span><span class="st">"sea"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<section id="irrigation-demand" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="irrigation-demand"><span class="header-section-number">1</span> Irrigation demand</h2>
+<p>Let us modify the environment to include agricultural activities within the basin, which necessitate irrigation. Water is diverted from the main river through an irrigation canal, with a portion of it eventually returning to the main river (see <a href="#fig-irrigation" class="quarto-xref">Figure&nbsp;1</a>).</p>
+<div id="fig-irrigation" class="quarto-float quarto-figure quarto-figure-left anchored" data-fig-align="left">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-irrigation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="https://s3.deltares.nl/ribasim/doc-image/quickstart/Crystal-basin-with-irrigation.png" class="img-fluid quarto-figure quarto-figure-left figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-irrigation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Crystal basin with irrigation
+</figcaption>
+</figure>
+</div>
+<p>For this schematization update, we need to incorporate three additional nodes:</p>
+<ul>
+<li>Basin: Represents a cross-sectional point where water is diverted.</li>
+<li>UserDemand: Represents the irrigation demand.</li>
+<li>TabulatedRatingCurve: Defines the remaining water flow from the main river at the diversion point.</li>
+</ul>
+<section id="add-a-second-basin-node" class="level3" data-number="1.1">
+<h3 data-number="1.1" class="anchored" data-anchor-id="add-a-second-basin-node"><span class="header-section-number">1.1</span> Add a second Basin node</h3>
+<p>This Basin will portray as the point in the river where the diversion takes place, getting the name <code>diversion</code>. Its profile area at this intersection is slightly smaller than at the confluence.</p>
+<div id="ea213af9" class="cell" data-execution_count="6">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>diversion_basin <span class="op">=</span> model.basin.add(</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">6</span>, Point(<span class="op">-</span><span class="fl">0.75</span>, <span class="op">-</span><span class="fl">0.5</span>), name<span class="op">=</span><span class="st">"diversion_basin"</span>),</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    [</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>        basin.Profile(area<span class="op">=</span>[<span class="dv">500000</span>, <span class="dv">5000000</span>], level<span class="op">=</span>[<span class="dv">0</span>, <span class="dv">6</span>]),</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>        basin.State(level<span class="op">=</span>[<span class="dv">3</span>]),</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>        basin.Time(time<span class="op">=</span>[starttime, endtime]),</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    ],</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="add-the-irrigation-demand" class="level3" data-number="1.2">
+<h3 data-number="1.2" class="anchored" data-anchor-id="add-the-irrigation-demand"><span class="header-section-number">1.2</span> Add the irrigation demand</h3>
+<p>An irrigation district needs to apply irrigation to its field starting from April to September. The irrigated area is <span class="math inline">\(&gt; 17000 \text{ ha}\)</span> and requires around <span class="math inline">\(5 \text{ mm/day}\)</span>. In this case the irrigation district diverts from the main river an average flow rate of <span class="math inline">\(10 \text{ m}^3/\text{s}\)</span> and <span class="math inline">\(12 \text{ m}^3/\text{s}\)</span> during spring and summer, respectively. Start of irrigation takes place on the 1st of April until the end of September. The water intake is through a canal (demand).</p>
+<p>For now, let’s assume the return flow remains <span class="math inline">\(0.0\)</span> (<code>return_factor</code>). Meaning all the supplied water to fulfill the demand is consumed and does not return back to the river. The user demand node interpolates the demand values. Thus the following code needs to be implemented:</p>
+<div id="38d5d365" class="cell" data-execution_count="7">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>irrigation <span class="op">=</span> model.user_demand.add(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">7</span>, Point(<span class="op">-</span><span class="fl">1.5</span>, <span class="fl">0.5</span>), name<span class="op">=</span><span class="st">"irrigation"</span>),</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    [</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>        user_demand.Time(</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>            demand<span class="op">=</span>[<span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="dv">10</span>, <span class="dv">12</span>, <span class="dv">12</span>, <span class="fl">0.0</span>],</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>            return_factor<span class="op">=</span><span class="dv">0</span>,</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>            min_level<span class="op">=</span><span class="dv">0</span>,</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>            demand_priority<span class="op">=</span><span class="dv">1</span>,</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>            time<span class="op">=</span>[</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>                starttime,</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>                <span class="st">"2022-03-31"</span>,</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>                <span class="st">"2022-04-01"</span>,</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>                <span class="st">"2022-07-01"</span>,</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>                <span class="st">"2022-09-30"</span>,</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>                <span class="st">"2022-10-01"</span>,</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>            ],</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>    ],</span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="add-a-tabulatedratingcurve" class="level3" data-number="1.3">
+<h3 data-number="1.3" class="anchored" data-anchor-id="add-a-tabulatedratingcurve"><span class="header-section-number">1.3</span> Add a TabulatedRatingCurve</h3>
+<p>The second TabulatedRatingCurve node will simulate the rest of the water that is left after diverting a part from the main river to the irrigation disctrict. The rest of the water will flow naturally towards the confluence:</p>
+<div id="3ad1c0d1" class="cell" data-execution_count="8">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>diversion_weir <span class="op">=</span> model.tabulated_rating_curve.add(</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">8</span>, Point(<span class="op">-</span><span class="fl">1.125</span>, <span class="op">-</span><span class="fl">0.75</span>), name<span class="op">=</span><span class="st">"diversion_weir"</span>),</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    [</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>        tabulated_rating_curve.Static(</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>            level<span class="op">=</span>[<span class="fl">0.0</span>, <span class="fl">1.5</span>, <span class="dv">5</span>],</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>            flow_rate<span class="op">=</span>[<span class="fl">0.0</span>, <span class="dv">45</span>, <span class="dv">200</span>],</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    ],</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="add-links" class="level3" data-number="1.4">
+<h3 data-number="1.4" class="anchored" data-anchor-id="add-links"><span class="header-section-number">1.4</span> Add links</h3>
+<div id="6ffe849a" class="cell" data-execution_count="9">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>model.link.add(main, diversion_basin, name<span class="op">=</span><span class="st">"main"</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>model.link.add(minor, confluence, name<span class="op">=</span><span class="st">"minor"</span>)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>model.link.add(diversion_basin, irrigation, name<span class="op">=</span><span class="st">"irrigation"</span>)</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>model.link.add(irrigation, confluence)</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>model.link.add(diversion_basin, diversion_weir, name<span class="op">=</span><span class="st">"not diverted"</span>)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>model.link.add(diversion_weir, confluence)</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>model.link.add(confluence, weir)</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>model.link.add(weir, sea, name<span class="op">=</span><span class="st">"sea"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="8bec05cb" class="cell" data-execution_count="10">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>toml_path <span class="op">=</span> base_dir <span class="op">/</span> <span class="st">"Crystal-2/ribasim.toml"</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>model.write(toml_path)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>cli_path <span class="op">=</span> <span class="st">"ribasim"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="plot-model-and-run" class="level3" data-number="1.5">
+<h3 data-number="1.5" class="anchored" data-anchor-id="plot-model-and-run"><span class="header-section-number">1.5</span> Plot model and run</h3>
+<p>Plot the schematization and run the model. This time the new outputs should be written in a new folder called <code>Crystal-2</code>:</p>
+<div id="95a380f4" class="cell" data-execution_count="11">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>model.plot()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="irrigation-demand_files/figure-html/cell-12-output-1.png" width="537" height="389" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<div id="e2f38be7" class="cell" data-execution_count="12">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>run_ribasim(toml_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>┌ Info: Starting a Ribasim simulation at 2025-11-28T10:13:26.255.
+│   toml_path = "crystal-basin/Crystal-2/ribasim.toml"
+│   cli.ribasim_version = "2025.6.0"
+│   starttime = 2022-01-01T00:00:00
+│   endtime = 2023-01-01T00:00:00
+└   threads = 1
+Simulating   0%|                                        |  ETA: N/A
+Simulating   0%|                                        |  ETA: 20:14:40
+Simulating   2%|▉                                       |  ETA: 0:31:59
+Simulating   9%|███▍                                    |  ETA: 0:07:43
+Simulating  12%|████▉                                   |  ETA: 0:05:14
+Simulating  17%|██████▊                                 |  ETA: 0:03:34
+Simulating  25%|█████████▊                              |  ETA: 0:02:12
+Simulating  25%|█████████▉                              |  ETA: 0:02:12
+Simulating  25%|█████████▉                              |  ETA: 0:02:13
+Simulating  25%|█████████▉                              |  ETA: 0:02:13
+Simulating  25%|█████████▉                              |  ETA: 0:02:13
+Simulating  25%|██████████                              |  ETA: 0:02:11
+Simulating  28%|███████████▏                            |  ETA: 0:01:53
+Simulating  33%|█████████████▏                          |  ETA: 0:01:28
+Simulating  37%|██████████████▋                         |  ETA: 0:01:15
+Simulating  42%|████████████████▊                       |  ETA: 0:01:01
+Simulating  47%|██████████████████▊                     |  ETA: 0:00:49
+Simulating  50%|███████████████████▉                    |  ETA: 0:00:44
+Simulating  51%|████████████████████▎                   |  ETA: 0:00:42
+Simulating  58%|███████████████████████▎                |  ETA: 0:00:31
+Simulating  61%|████████████████████████▌               |  ETA: 0:00:28
+Simulating  68%|███████████████████████████▎            |  ETA: 0:00:20
+Simulating  75%|█████████████████████████████▉          |  ETA: 0:00:15
+Simulating  75%|█████████████████████████████▉          |  ETA: 0:00:15
+Simulating  75%|██████████████████████████████          |  ETA: 0:00:15
+Simulating  82%|████████████████████████████████▉       |  ETA: 0:00:09
+Simulating  84%|█████████████████████████████████▋      |  ETA: 0:00:08
+Simulating  92%|████████████████████████████████████▋   |  ETA: 0:00:04
+Simulating  95%|█████████████████████████████████████▉  |  ETA: 0:00:02
+Simulating 100%|████████████████████████████████████████| Time: 0:00:43
+[ Info: Computation time: 19 seconds, 320 milliseconds
+[ Info: The model finished successfully at 2025-11-28T10:15:31.361.</code></pre>
+</div>
+</div>
+</section>
+<section id="plot-and-compare-the-basin-results" class="level3" data-number="1.6">
+<h3 data-number="1.6" class="anchored" data-anchor-id="plot-and-compare-the-basin-results"><span class="header-section-number">1.6</span> Plot and compare the Basin results</h3>
+<p>Plot the simulated levels and storages at the diverted section and at the confluence.</p>
+<div id="f8c1b354" class="cell" data-execution_count="13">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>df_basin <span class="op">=</span> pd.read_feather(base_dir <span class="op">/</span> <span class="st">"Crystal-2/results/basin.arrow"</span>)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Create pivot tables and plot for basin data</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>df_basin_wide <span class="op">=</span> df_basin.pivot_table(</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    index<span class="op">=</span><span class="st">"time"</span>, columns<span class="op">=</span><span class="st">"node_id"</span>, values<span class="op">=</span>[<span class="st">"storage"</span>, <span class="st">"level"</span>]</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>df_basin_div <span class="op">=</span> df_basin_wide.loc[:, pd.IndexSlice[:, diversion_basin.node_id]]</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>df_basin_conf <span class="op">=</span> df_basin_wide.loc[:, pd.IndexSlice[:, confluence.node_id]]</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> plot_basin_data(</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>    ax, ax_twin, df_basin, level_color<span class="op">=</span><span class="st">"b"</span>, storage_color<span class="op">=</span><span class="st">"r"</span>, title<span class="op">=</span><span class="st">"Basin"</span></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>):</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Plot level data</span></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> column <span class="kw">in</span> df_basin[<span class="st">"level"</span>].columns:</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>        ax.plot(</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>            df_basin.index,</span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>            df_basin[<span class="st">"level"</span>][column],</span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>            linestyle<span class="op">=</span><span class="st">"-"</span>,</span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a>            color<span class="op">=</span>level_color,</span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a>            label<span class="op">=</span><span class="ss">f"Level - </span><span class="sc">{</span>column<span class="sc">}</span><span class="ss">"</span>,</span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Plot storage data</span></span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> column <span class="kw">in</span> df_basin[<span class="st">"storage"</span>].columns:</span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a>        ax_twin.plot(</span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a>            df_basin.index,</span>
+<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a>            df_basin[<span class="st">"storage"</span>][column],</span>
+<span id="cb13-30"><a href="#cb13-30" aria-hidden="true" tabindex="-1"></a>            linestyle<span class="op">=</span><span class="st">"--"</span>,</span>
+<span id="cb13-31"><a href="#cb13-31" aria-hidden="true" tabindex="-1"></a>            color<span class="op">=</span>storage_color,</span>
+<span id="cb13-32"><a href="#cb13-32" aria-hidden="true" tabindex="-1"></a>            label<span class="op">=</span><span class="ss">f"Storage - </span><span class="sc">{</span>column<span class="sc">}</span><span class="ss">"</span>,</span>
+<span id="cb13-33"><a href="#cb13-33" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb13-34"><a href="#cb13-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-35"><a href="#cb13-35" aria-hidden="true" tabindex="-1"></a>    ax.set_ylabel(<span class="st">"Level [m]"</span>, color<span class="op">=</span>level_color)</span>
+<span id="cb13-36"><a href="#cb13-36" aria-hidden="true" tabindex="-1"></a>    ax_twin.set_ylabel(<span class="st">"Storage [m³]"</span>, color<span class="op">=</span>storage_color)</span>
+<span id="cb13-37"><a href="#cb13-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-38"><a href="#cb13-38" aria-hidden="true" tabindex="-1"></a>    ax.tick_params(axis<span class="op">=</span><span class="st">"y"</span>, labelcolor<span class="op">=</span>level_color)</span>
+<span id="cb13-39"><a href="#cb13-39" aria-hidden="true" tabindex="-1"></a>    ax_twin.tick_params(axis<span class="op">=</span><span class="st">"y"</span>, labelcolor<span class="op">=</span>storage_color)</span>
+<span id="cb13-40"><a href="#cb13-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-41"><a href="#cb13-41" aria-hidden="true" tabindex="-1"></a>    ax.set_title(title)</span>
+<span id="cb13-42"><a href="#cb13-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-43"><a href="#cb13-43" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Combine legends from both axes</span></span>
+<span id="cb13-44"><a href="#cb13-44" aria-hidden="true" tabindex="-1"></a>    lines, labels <span class="op">=</span> ax.get_legend_handles_labels()</span>
+<span id="cb13-45"><a href="#cb13-45" aria-hidden="true" tabindex="-1"></a>    lines_twin, labels_twin <span class="op">=</span> ax_twin.get_legend_handles_labels()</span>
+<span id="cb13-46"><a href="#cb13-46" aria-hidden="true" tabindex="-1"></a>    ax.legend(lines <span class="op">+</span> lines_twin, labels <span class="op">+</span> labels_twin, loc<span class="op">=</span><span class="st">"upper left"</span>)</span>
+<span id="cb13-47"><a href="#cb13-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-48"><a href="#cb13-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-49"><a href="#cb13-49" aria-hidden="true" tabindex="-1"></a><span class="co"># Create subplots</span></span>
+<span id="cb13-50"><a href="#cb13-50" aria-hidden="true" tabindex="-1"></a>fig, (ax1, ax3) <span class="op">=</span> plt.subplots(<span class="dv">2</span>, <span class="dv">1</span>, figsize<span class="op">=</span>(<span class="dv">12</span>, <span class="dv">12</span>), sharex<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb13-51"><a href="#cb13-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-52"><a href="#cb13-52" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot Div basin data</span></span>
+<span id="cb13-53"><a href="#cb13-53" aria-hidden="true" tabindex="-1"></a>ax2 <span class="op">=</span> ax1.twinx()  <span class="co"># Secondary y-axis for storage</span></span>
+<span id="cb13-54"><a href="#cb13-54" aria-hidden="true" tabindex="-1"></a>plot_basin_data(ax1, ax2, df_basin_div, title<span class="op">=</span><span class="st">"Diversion Basin level and storage"</span>)</span>
+<span id="cb13-55"><a href="#cb13-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-56"><a href="#cb13-56" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot Conf basin data</span></span>
+<span id="cb13-57"><a href="#cb13-57" aria-hidden="true" tabindex="-1"></a>ax4 <span class="op">=</span> ax3.twinx()  <span class="co"># Secondary y-axis for storage</span></span>
+<span id="cb13-58"><a href="#cb13-58" aria-hidden="true" tabindex="-1"></a>plot_basin_data(ax3, ax4, df_basin_conf, title<span class="op">=</span><span class="st">"Confluence Basin level and storage"</span>)</span>
+<span id="cb13-59"><a href="#cb13-59" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-60"><a href="#cb13-60" aria-hidden="true" tabindex="-1"></a><span class="co"># Common X label</span></span>
+<span id="cb13-61"><a href="#cb13-61" aria-hidden="true" tabindex="-1"></a>ax3.set_xlabel(<span class="st">"Time"</span>)</span>
+<span id="cb13-62"><a href="#cb13-62" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()  <span class="co"># Adjust layout to fit labels</span></span>
+<span id="cb13-63"><a href="#cb13-63" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="irrigation-demand_files/figure-html/cell-14-output-1.png" width="1140" height="1140" class="figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The figure above illustrates the water levels and storage capacities for each Basin.</p>
+<p>When compared to the natural flow conditions, where no water is abstracted for irrigation (See Crystal 1), there is a noticeable decrease in both storage and water levels at the confluence downstream. This reduction is attributed to the irrigation demand upstream with no return flow, which decreases the amount of available water in the main river, resulting in lower water levels at the confluence.</p>
+</section>
+<section id="plot-and-compare-the-flow-results" class="level3" data-number="1.7">
+<h3 data-number="1.7" class="anchored" data-anchor-id="plot-and-compare-the-flow-results"><span class="header-section-number">1.7</span> Plot and compare the flow results</h3>
+<p>Plot the flow results in an interactive plotting tool.</p>
+<div id="bc304498" class="cell" data-execution_count="14">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>df_flow <span class="op">=</span> pd.read_feather(base_dir <span class="op">/</span> <span class="st">"Crystal-2/results/flow.arrow"</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Add the link names and then remove unnamed links</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>df_flow[<span class="st">"name"</span>] <span class="op">=</span> model.link.df[<span class="st">"name"</span>].loc[df_flow[<span class="st">"link_id"</span>]].to_numpy()</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>df_flow <span class="op">=</span> df_flow[df_flow[<span class="st">"name"</span>].astype(<span class="bu">bool</span>)]</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot the flow data, interactive plot with Plotly</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>pivot_flow <span class="op">=</span> df_flow.pivot_table(</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>    index<span class="op">=</span><span class="st">"time"</span>, columns<span class="op">=</span><span class="st">"name"</span>, values<span class="op">=</span><span class="st">"flow_rate"</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>).reset_index()</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>fig <span class="op">=</span> px.line(pivot_flow, x<span class="op">=</span><span class="st">"time"</span>, y<span class="op">=</span>pivot_flow.columns[<span class="dv">1</span>:], title<span class="op">=</span><span class="st">"Flow [m3/s]"</span>)</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>fig.update_layout(legend_title_text<span class="op">=</span><span class="st">"Link"</span>)</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>fig.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>            <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_SVG"></script><script type="text/javascript">if (window.MathJax && window.MathJax.Hub && window.MathJax.Hub.Config) {window.MathJax.Hub.Config({SVG: {font: "STIX-Web"}});}</script>                <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.1.1.min.js" integrity="sha256-HUEFyfiTnZJxCxur99FjbKYTvKSzwDaD3/x5TqHpFu4=" crossorigin="anonymous"></script>                <div id="c7755b07-0509-4ae1-b272-c6650d7d8ef1" class="plotly-graph-div" style="height:525px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("c7755b07-0509-4ae1-b272-c6650d7d8ef1")) {                    Plotly.newPlot(                        "c7755b07-0509-4ae1-b272-c6650d7d8ef1",                        [{"hovertemplate":"variable=irrigation\u003cbr\u003etime=%{x}\u003cbr\u003evalue=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"irrigation","line":{"color":"#636efa","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines","name":"irrigation","showlegend":true,"x":["2022-01-01T00:00:00.000","2022-01-02T00:00:00.000","2022-01-03T00:00:00.000","2022-01-04T00:00:00.000","2022-01-05T00:00:00.000","2022-01-06T00:00:00.000","2022-01-07T00:00:00.000","2022-01-08T00:00:00.000","2022-01-09T00:00:00.000","2022-01-10T00:00:00.000","2022-01-11T00:00:00.000","2022-01-12T00:00:00.000","2022-01-13T00:00:00.000","2022-01-14T00:00:00.000","2022-01-15T00:00:00.000","2022-01-16T00:00:00.000","2022-01-17T00:00:00.000","2022-01-18T00:00:00.000","2022-01-19T00:00:00.000","2022-01-20T00:00:00.000","2022-01-21T00:00:00.000","2022-01-22T00:00:00.000","2022-01-23T00:00:00.000","2022-01-24T00:00:00.000","2022-01-25T00:00:00.000","2022-01-26T00:00:00.000","2022-01-27T00:00:00.000","2022-01-28T00:00:00.000","2022-01-29T00:00:00.000","2022-01-30T00:00:00.000","2022-01-31T00:00:00.000","2022-02-01T00:00:00.000","2022-02-02T00:00:00.000","2022-02-03T00:00:00.000","2022-02-04T00:00:00.000","2022-02-05T00:00:00.000","2022-02-06T00:00:00.000","2022-02-07T00:00:00.000","2022-02-08T00:00:00.000","2022-02-09T00:00:00.000","2022-02-10T00:00:00.000","2022-02-11T00:00:00.000","2022-02-12T00:00:00.000","2022-02-13T00:00:00.000","2022-02-14T00:00:00.000","2022-02-15T00:00:00.000","2022-02-16T00:00:00.000","2022-02-17T00:00:00.000","2022-02-18T00:00:00.000","2022-02-19T00:00:00.000","2022-02-20T00:00:00.000","2022-02-21T00:00:00.000","2022-02-22T00:00:00.000","2022-02-23T00:00:00.000","2022-02-24T00:00:00.000","2022-02-25T00:00:00.000","2022-02-26T00:00:00.000","2022-02-27T00:00:00.000","2022-02-28T00:00:00.000","2022-03-01T00:00:00.000","2022-03-02T00:00:00.000","2022-03-03T00:00:00.000","2022-03-04T00:00:00.000","2022-03-05T00:00:00.000","2022-03-06T00:00:00.000","2022-03-07T00:00:00.000","2022-03-08T00:00:00.000","2022-03-09T00:00:00.000","2022-03-10T00:00:00.000","2022-03-11T00:00:00.000","2022-03-12T00:00:00.000","2022-03-13T00:00:00.000","2022-03-14T00:00:00.000","2022-03-15T00:00:00.000","2022-03-16T00:00:00.000","2022-03-17T00:00:00.000","2022-03-18T00:00:00.000","2022-03-19T00:00:00.000","2022-03-20T00:00:00.000","2022-03-21T00:00:00.000","2022-03-22T00:00:00.000","2022-03-23T00:00:00.000","2022-03-24T00:00:00.000","2022-03-25T00:00:00.000","2022-03-26T00:00:00.000","2022-03-27T00:00:00.000","2022-03-28T00:00:00.000","2022-03-29T00:00:00.000","2022-03-30T00:00:00.000","2022-03-31T00:00:00.000","2022-04-01T00:00:00.000","2022-04-02T00:00:00.000","2022-04-03T00:00:00.000","2022-04-04T00:00:00.000","2022-04-05T00:00:00.000","2022-04-06T00:00:00.000","2022-04-07T00:00:00.000","2022-04-08T00:00:00.000","2022-04-09T00:00:00.000","2022-04-10T00:00:00.000","2022-04-11T00:00:00.000","2022-04-12T00:00:00.000","2022-04-13T00:00:00.000","2022-04-14T00:00:00.000","2022-04-15T00:00:00.000","2022-04-16T00:00:00.000","2022-04-17T00:00:00.000","2022-04-18T00:00:00.000","2022-04-19T00:00:00.000","2022-04-20T00:00:00.000","2022-04-21T00:00:00.000","2022-04-22T00:00:00.000","2022-04-23T00:00:00.000","2022-04-24T00:00:00.000","2022-04-25T00:00:00.000","2022-04-26T00:00:00.000","2022-04-27T00:00:00.000","2022-04-28T00:00:00.000","2022-04-29T00:00:00.000","2022-04-30T00:00:00.000","2022-05-01T00:00:00.000","2022-05-02T00:00:00.000","2022-05-03T00:00:00.000","2022-05-04T00:00:00.000","2022-05-05T00:00:00.000","2022-05-06T00:00:00.000","2022-05-07T00:00:00.000","2022-05-08T00:00:00.000","2022-05-09T00:00:00.000","2022-05-10T00:00:00.000","2022-05-11T00:00:00.000","2022-05-12T00:00:00.000","2022-05-13T00:00:00.000","2022-05-14T00:00:00.000","2022-05-15T00:00:00.000","2022-05-16T00:00:00.000","2022-05-17T00:00:00.000","2022-05-18T00:00:00.000","2022-05-19T00:00:00.000","2022-05-20T00:00:00.000","2022-05-21T00:00:00.000","2022-05-22T00:00:00.000","2022-05-23T00:00:00.000","2022-05-24T00:00:00.000","2022-05-25T00:00:00.000","2022-05-26T00:00:00.000","2022-05-27T00:00:00.000","2022-05-28T00:00:00.000","2022-05-29T00:00:00.000","2022-05-30T00:00:00.000","2022-05-31T00:00:00.000","2022-06-01T00:00:00.000","2022-06-02T00:00:00.000","2022-06-03T00:00:00.000","2022-06-04T00:00:00.000","2022-06-05T00:00:00.000","2022-06-06T00:00:00.000","2022-06-07T00:00:00.000","2022-06-08T00:00:00.000","2022-06-09T00:00:00.000","2022-06-10T00:00:00.000","2022-06-11T00:00:00.000","2022-06-12T00:00:00.000","2022-06-13T00:00:00.000","2022-06-14T00:00:00.000","2022-06-15T00:00:00.000","2022-06-16T00:00:00.000","2022-06-17T00:00:00.000","2022-06-18T00:00:00.000","2022-06-19T00:00:00.000","2022-06-20T00:00:00.000","2022-06-21T00:00:00.000","2022-06-22T00:00:00.000","2022-06-23T00:00:00.000","2022-06-24T00:00:00.000","2022-06-25T00:00:00.000","2022-06-26T00:00:00.000","2022-06-27T00:00:00.000","2022-06-28T00:00:00.000","2022-06-29T00:00:00.000","2022-06-30T00:00:00.000","2022-07-01T00:00:00.000","2022-07-02T00:00:00.000","2022-07-03T00:00:00.000","2022-07-04T00:00:00.000","2022-07-05T00:00:00.000","2022-07-06T00:00:00.000","2022-07-07T00:00:00.000","2022-07-08T00:00:00.000","2022-07-09T00:00:00.000","2022-07-10T00:00:00.000","2022-07-11T00:00:00.000","2022-07-12T00:00:00.000","2022-07-13T00:00:00.000","2022-07-14T00:00:00.000","2022-07-15T00:00:00.000","2022-07-16T00:00:00.000","2022-07-17T00:00:00.000","2022-07-18T00:00:00.000","2022-07-19T00:00:00.000","2022-07-20T00:00:00.000","2022-07-21T00:00:00.000","2022-07-22T00:00:00.000","2022-07-23T00:00:00.000","2022-07-24T00:00:00.000","2022-07-25T00:00:00.000","2022-07-26T00:00:00.000","2022-07-27T00:00:00.000","2022-07-28T00:00:00.000","2022-07-29T00:00:00.000","2022-07-30T00:00:00.000","2022-07-31T00:00:00.000","2022-08-01T00:00:00.000","2022-08-02T00:00:00.000","2022-08-03T00:00:00.000","2022-08-04T00:00:00.000","2022-08-05T00:00:00.000","2022-08-06T00:00:00.000","2022-08-07T00:00:00.000","2022-08-08T00:00:00.000","2022-08-09T00:00:00.000","2022-08-10T00:00:00.000","2022-08-11T00:00:00.000","2022-08-12T00:00:00.000","2022-08-13T00:00:00.000","2022-08-14T00:00:00.000","2022-08-15T00:00:00.000","2022-08-16T00:00:00.000","2022-08-17T00:00:00.000","2022-08-18T00:00:00.000","2022-08-19T00:00:00.000","2022-08-20T00:00:00.000","2022-08-21T00:00:00.000","2022-08-22T00:00:00.000","2022-08-23T00:00:00.000","2022-08-24T00:00:00.000","2022-08-25T00:00:00.000","2022-08-26T00:00:00.000","2022-08-27T00:00:00.000","2022-08-28T00:00:00.000","2022-08-29T00:00:00.000","2022-08-30T00:00:00.000","2022-08-31T00:00:00.000","2022-09-01T00:00:00.000","2022-09-02T00:00:00.000","2022-09-03T00:00:00.000","2022-09-04T00:00:00.000","2022-09-05T00:00:00.000","2022-09-06T00:00:00.000","2022-09-07T00:00:00.000","2022-09-08T00:00:00.000","2022-09-09T00:00:00.000","2022-09-10T00:00:00.000","2022-09-11T00:00:00.000","2022-09-12T00:00:00.000","2022-09-13T00:00:00.000","2022-09-14T00:00:00.000","2022-09-15T00:00:00.000","2022-09-16T00:00:00.000","2022-09-17T00:00:00.000","2022-09-18T00:00:00.000","2022-09-19T00:00:00.000","2022-09-20T00:00:00.000","2022-09-21T00:00:00.000","2022-09-22T00:00:00.000","2022-09-23T00:00:00.000","2022-09-24T00:00:00.000","2022-09-25T00:00:00.000","2022-09-26T00:00:00.000","2022-09-27T00:00:00.000","2022-09-28T00:00:00.000","2022-09-29T00:00:00.000","2022-09-30T00:00:00.000","2022-10-01T00:00:00.000","2022-10-02T00:00:00.000","2022-10-03T00:00:00.000","2022-10-04T00:00:00.000","2022-10-05T00:00:00.000","2022-10-06T00:00:00.000","2022-10-07T00:00:00.000","2022-10-08T00:00:00.000","2022-10-09T00:00:00.000","2022-10-10T00:00:00.000","2022-10-11T00:00:00.000","2022-10-12T00:00:00.000","2022-10-13T00:00:00.000","2022-10-14T00:00:00.000","2022-10-15T00:00:00.000","2022-10-16T00:00:00.000","2022-10-17T00:00:00.000","2022-10-18T00:00:00.000","2022-10-19T00:00:00.000","2022-10-20T00:00:00.000","2022-10-21T00:00:00.000","2022-10-22T00:00:00.000","2022-10-23T00:00:00.000","2022-10-24T00:00:00.000","2022-10-25T00:00:00.000","2022-10-26T00:00:00.000","2022-10-27T00:00:00.000","2022-10-28T00:00:00.000","2022-10-29T00:00:00.000","2022-10-30T00:00:00.000","2022-10-31T00:00:00.000","2022-11-01T00:00:00.000","2022-11-02T00:00:00.000","2022-11-03T00:00:00.000","2022-11-04T00:00:00.000","2022-11-05T00:00:00.000","2022-11-06T00:00:00.000","2022-11-07T00:00:00.000","2022-11-08T00:00:00.000","2022-11-09T00:00:00.000","2022-11-10T00:00:00.000","2022-11-11T00:00:00.000","2022-11-12T00:00:00.000","2022-11-13T00:00:00.000","2022-11-14T00:00:00.000","2022-11-15T00:00:00.000","2022-11-16T00:00:00.000","2022-11-17T00:00:00.000","2022-11-18T00:00:00.000","2022-11-19T00:00:00.000","2022-11-20T00:00:00.000","2022-11-21T00:00:00.000","2022-11-22T00:00:00.000","2022-11-23T00:00:00.000","2022-11-24T00:00:00.000","2022-11-25T00:00:00.000","2022-11-26T00:00:00.000","2022-11-27T00:00:00.000","2022-11-28T00:00:00.000","2022-11-29T00:00:00.000","2022-11-30T00:00:00.000","2022-12-01T00:00:00.000","2022-12-02T00:00:00.000","2022-12-03T00:00:00.000","2022-12-04T00:00:00.000","2022-12-05T00:00:00.000","2022-12-06T00:00:00.000","2022-12-07T00:00:00.000","2022-12-08T00:00:00.000","2022-12-09T00:00:00.000","2022-12-10T00:00:00.000","2022-12-11T00:00:00.000","2022-12-12T00:00:00.000","2022-12-13T00:00:00.000","2022-12-14T00:00:00.000","2022-12-15T00:00:00.000","2022-12-16T00:00:00.000","2022-12-17T00:00:00.000","2022-12-18T00:00:00.000","2022-12-19T00:00:00.000","2022-12-20T00:00:00.000","2022-12-21T00:00:00.000","2022-12-22T00:00:00.000","2022-12-23T00:00:00.000","2022-12-24T00:00:00.000","2022-12-25T00:00:00.000","2022-12-26T00:00:00.000","2022-12-27T00:00:00.000","2022-12-28T00:00:00.000","2022-12-29T00:00:00.000","2022-12-30T00:00:00.000","2022-12-31T00:00:00.000"],"xaxis":"x","y":{"dtype":"f8","bdata":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWY2CbL1g0+KXMBAAAAJEBT\u002f\u002f\u002f\u002f\u002f\u002f8jQGT\u002f\u002f\u002f\u002f\u002f\u002fyNASv\u002f\u002f\u002f\u002f\u002f\u002fI0AJAAAAAAAkQHT\u002f\u002f\u002f\u002f\u002f\u002fyNAIwEAAAAAJEDp\u002fv\u002f\u002f\u002f\u002f8jQFMCAAAAACRAt\u002f\u002f\u002f\u002f\u002f\u002f\u002fI0BVAAAAAAAkQFUAAAAAACRAwgAAAAAAJEAAAAAAAAAkQAAAAAAAACRADAAAAAAAJEAkAAAAAAAkQFUAAAAAACRAGAAAAAAAJEBhAAAAAAAkQAAAAAAAACRApQQAAAAAJEBhAAAAAAAkQFj9\u002f\u002f\u002f\u002f\u002fyNA6v3\u002f\u002f\u002f\u002f\u002fI0BW\u002f\u002f\u002f\u002f\u002f\u002f8jQBgAAAAAACRAMQAAAAAAJEAYAAAAAAAkQBgAAAAAACRATfz\u002f\u002f\u002f\u002f\u002fI0DE\u002fv\u002f\u002f\u002f\u002f8jQHkAAAAAACRAbv\u002f\u002f\u002f\u002f\u002f\u002fI0Bx\u002ff\u002f\u002f\u002f\u002f8jQKH9\u002f\u002f\u002f\u002f\u002fyNAWP3\u002f\u002f\u002f\u002f\u002fI0CH\u002f\u002f\u002f\u002f\u002f\u002f8jQG7\u002f\u002f\u002f\u002f\u002f\u002fyNAAAAAAAAAJEBu\u002f\u002f\u002f\u002f\u002f\u002f8jQG7\u002f\u002f\u002f\u002f\u002f\u002fyNAMQAAAAAAJEAAAAAAAAAkQJIAAAAAACRAz\u002f\u002f\u002f\u002f\u002f\u002f\u002fI0Cf\u002f\u002f\u002f\u002f\u002f\u002f8jQJIAAAAAACRAn\u002f\u002f\u002f\u002f\u002f\u002f\u002fI0Dd\u002fv\u002f\u002f\u002f\u002f8jQDEAAAAAACRAMQAAAAAAJEAAAAAAAAAkQJ\u002f\u002f\u002f\u002f\u002f\u002f\u002fyNAAAAAAAAAJEAAAAAAAAAkQAAAAAAAACRAAAAAAAAAJEAAAAAAAAAkQAAAAAAAACRAAAAAAAAAJEBu\u002f\u002f\u002f\u002f\u002f\u002f8jQJ\u002f\u002f\u002f\u002f\u002f\u002f\u002fyNAWP3\u002f\u002f\u002f\u002f\u002fI0B8\u002fv\u002f\u002f\u002f\u002f8jQJ\u002f\u002f\u002f\u002f\u002f\u002f\u002fyNAtQEAAAAAJEDzAAAAAAAkQAAAAAAAACRADf\u002f\u002f\u002f\u002f\u002f\u002fI0AAAAAAAAAkQM\u002f\u002f\u002f\u002f\u002f\u002f\u002fyNAAAAAAAAAJEBu\u002f\u002f\u002f\u002f\u002f\u002f8jQAAAAAAAACRAz\u002f\u002f\u002f\u002f\u002f\u002f\u002fI0Cf\u002f\u002f\u002f\u002f\u002f\u002f8jQGEAAAAAACRAPv\u002f\u002f\u002f\u002f\u002f\u002fI0Cf\u002f\u002f\u002f\u002f\u002f\u002f8jQAAAAAAAACRAYQAAAAAAJECf\u002f\u002f\u002f\u002f\u002f\u002f8jQGEAAAAAACRAYQAAAAAAJEAAAAAAAAAkQAAAAAAAACRAYQAAAAAAJEBhAAAAAAAkQGEAAAAAACRAfsfFugQAJEA5mUdc\u002fv8nQCwEAAAAAChAuf3\u002f\u002f\u002f\u002f\u002fJ0BPEAAAAAAoQMIAAAAAAChA5QEAAAAAKEDd\u002fv\u002f\u002f\u002f\u002f8nQAkDAAAAAChAYQAAAAAAKECf\u002f\u002f\u002f\u002f\u002f\u002f8nQGEAAAAAAChAuf3\u002f\u002f\u002f\u002f\u002fJ0Cf\u002f\u002f\u002f\u002f\u002f\u002f8nQJ\u002f\u002f\u002f\u002f\u002f\u002f\u002fydAYQAAAAAAKEAjAQAAAAAoQJ\u002f\u002f\u002f\u002f\u002f\u002f\u002fydA3f7\u002f\u002f\u002f\u002f\u002fJ0A+\u002f\u002f\u002f\u002f\u002f\u002f8nQGEAAAAAAChAIwEAAAAAKEDCAAAAAAAoQGEAAAAAAChAYQAAAAAAKEBhAAAAAAAoQAAAAAAAAChAAAAAAAAAKEAAAAAAAAAoQAAAAAAAAChAAAAAAAAAKEBhAAAAAAAoQNT7\u002f\u002f\u002f\u002f\u002fydAavj\u002f\u002f\u002f\u002f\u002fJ0DzgAAAAAAoQDCW\u002f\u002f\u002f\u002f\u002fydAlgcAAAAAKECF9v\u002f\u002f\u002f\u002f8nQDX8\u002f\u002f\u002f\u002f\u002fydAIwEAAAAAKEAJ7f\u002f\u002f\u002f\u002f8nQI0EAAAAAChAwgAAAAAAKEB7CQAAAAAoQFj9\u002f\u002f\u002f\u002f\u002fydA3f7\u002f\u002f\u002f\u002f\u002fJ0Cf\u002f\u002f\u002f\u002f\u002f\u002f8nQD7\u002f\u002f\u002f\u002f\u002f\u002fydAPv\u002f\u002f\u002f\u002f\u002f\u002fJ0AAAAAAAAAoQJ\u002f\u002f\u002f\u002f\u002f\u002f\u002fydAAAAAAAAAKEAAAAAAAAAoQAAAAAAAAChAAAAAAAAAKEAAAAAAAAAoQMIAAAAAAChAAAAAAAAAKEAAAAAAAAAoQAAAAAAAAChAAAAAAAAAKEAAAAAAAAAoQAAAAAAAAChAAAAAAAAAKEA+\u002f\u002f\u002f\u002f\u002f\u002f8nQJYHAAAAAChAwgAAAAAAKEB8\u002fv\u002f\u002f\u002f\u002f8nQBEGAAAAAChAPv\u002f\u002f\u002f\u002f\u002f\u002fJ0DM7f\u002f\u002f\u002f\u002f8nQD7\u002f\u002f\u002f\u002f\u002f\u002fydAwgAAAAAAKEDcFAUAAAAoQOQtAQAAAChAYt\u002f\u002f\u002f\u002f\u002f\u002fJ0A+\u002f\u002f\u002f\u002f\u002f\u002f8nQD7\u002f\u002f\u002f\u002f\u002f\u002fydAAAAAAAAAKEAAAAAAAAAoQAAAAAAAAChAAAAAAAAAKEAAAAAAAAAoQAAAAAAAAChAAAAAAAAAKEAAAAAAAAAoQAAAAAAAAChAAAAAAAAAKEA+\u002f\u002f\u002f\u002f\u002f\u002f8nQAAAAAAAAChAAAAAAAAAKEAAAAAAAAAoQN+x8zf+\u002fydA5utG9\u002fylqj7fvJp4VjRyPd+8mnhWNII9KVHOoMhFaD3fvJp4VjSCPSlRzqDIRXg9KVHOoMhFWD0AAAAAAAAAAClRzqDIRYg9KVHOoMhFaD0Eh7SMDz2FPQAAAAAAAAAAAAAAAAAAAAApUc6gyEVYPQAAAAAAAAAAAAAAAAAAAADfvJp4VjRyPSlRzqDIRWg9KVHOoMhFWD0pUc6gyEVYPQAAAAAAAAAAKVHOoMhFWD0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXbMEWbMG2Pd+8mnhWNII937yaeFY0cj105QHJOld+PU8b6LSBTqs9BIe0jA89hT0pUc6gyEVYPQAAAAAAAAAAKVHOoMhFaD0pUc6gyEVYPXTlAck6V44937yaeFY0cj0pUc6gyEVYPSlRzqDIRWg9dOUByTpXnj0AAAAAAAAAAClRzqDIRXg9KVHOoMhFaD0pUc6gyEV4PSlRzqDIRWg9KVHOoMhFWD0pUc6gyEVYPSlRzqDIRVg9AAAAAAAAAAAAAAAAAAAAAClRzqDIRVg9KVHOoMhFWD0pUc6gyEVYPSlRzqDIRVg9AAAAAAAAAABPG+i0gU6bPU8b6LSBTos9KVHOoMhFeD0pUc6gyEVYPcadIE4mqdY9BIe0jA89tT1hAPU+3tKcPSlRzqDIRXg9KVHOoMhFaD0AAAAAAAAAAHTlAck6V349KVHOoMhFWD3fvJp4VjRyPSlRzqDIRWg937yaeFY0cj0pUc6gyEVoPQAAAAAAAAAAKVHOoMhFWD0pUc6gyEVYPSlRzqDIRVg9AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="},"yaxis":"y","type":"scattergl"},{"hovertemplate":"variable=main\u003cbr\u003etime=%{x}\u003cbr\u003evalue=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"main","line":{"color":"#EF553B","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines","name":"main","showlegend":true,"x":["2022-01-01T00:00:00.000","2022-01-02T00:00:00.000","2022-01-03T00:00:00.000","2022-01-04T00:00:00.000","2022-01-05T00:00:00.000","2022-01-06T00:00:00.000","2022-01-07T00:00:00.000","2022-01-08T00:00:00.000","2022-01-09T00:00:00.000","2022-01-10T00:00:00.000","2022-01-11T00:00:00.000","2022-01-12T00:00:00.000","2022-01-13T00:00:00.000","2022-01-14T00:00:00.000","2022-01-15T00:00:00.000","2022-01-16T00:00:00.000","2022-01-17T00:00:00.000","2022-01-18T00:00:00.000","2022-01-19T00:00:00.000","2022-01-20T00:00:00.000","2022-01-21T00:00:00.000","2022-01-22T00:00:00.000","2022-01-23T00:00:00.000","2022-01-24T00:00:00.000","2022-01-25T00:00:00.000","2022-01-26T00:00:00.000","2022-01-27T00:00:00.000","2022-01-28T00:00:00.000","2022-01-29T00:00:00.000","2022-01-30T00:00:00.000","2022-01-31T00:00:00.000","2022-02-01T00:00:00.000","2022-02-02T00:00:00.000","2022-02-03T00:00:00.000","2022-02-04T00:00:00.000","2022-02-05T00:00:00.000","2022-02-06T00:00:00.000","2022-02-07T00:00:00.000","2022-02-08T00:00:00.000","2022-02-09T00:00:00.000","2022-02-10T00:00:00.000","2022-02-11T00:00:00.000","2022-02-12T00:00:00.000","2022-02-13T00:00:00.000","2022-02-14T00:00:00.000","2022-02-15T00:00:00.000","2022-02-16T00:00:00.000","2022-02-17T00:00:00.000","2022-02-18T00:00:00.000","2022-02-19T00:00:00.000","2022-02-20T00:00:00.000","2022-02-21T00:00:00.000","2022-02-22T00:00:00.000","2022-02-23T00:00:00.000","2022-02-24T00:00:00.000","2022-02-25T00:00:00.000","2022-02-26T00:00:00.000","2022-02-27T00:00:00.000","2022-02-28T00:00:00.000","2022-03-01T00:00:00.000","2022-03-02T00:00:00.000","2022-03-03T00:00:00.000","2022-03-04T00:00:00.000","2022-03-05T00:00:00.000","2022-03-06T00:00:00.000","2022-03-07T00:00:00.000","2022-03-08T00:00:00.000","2022-03-09T00:00:00.000","2022-03-10T00:00:00.000","2022-03-11T00:00:00.000","2022-03-12T00:00:00.000","2022-03-13T00:00:00.000","2022-03-14T00:00:00.000","2022-03-15T00:00:00.000","2022-03-16T00:00:00.000","2022-03-17T00:00:00.000","2022-03-18T00:00:00.000","2022-03-19T00:00:00.000","2022-03-20T00:00:00.000","2022-03-21T00:00:00.000","2022-03-22T00:00:00.000","2022-03-23T00:00:00.000","2022-03-24T00:00:00.000","2022-03-25T00:00:00.000","2022-03-26T00:00:00.000","2022-03-27T00:00:00.000","2022-03-28T00:00:00.000","2022-03-29T00:00:00.000","2022-03-30T00:00:00.000","2022-03-31T00:00:00.000","2022-04-01T00:00:00.000","2022-04-02T00:00:00.000","2022-04-03T00:00:00.000","2022-04-04T00:00:00.000","2022-04-05T00:00:00.000","2022-04-06T00:00:00.000","2022-04-07T00:00:00.000","2022-04-08T00:00:00.000","2022-04-09T00:00:00.000","2022-04-10T00:00:00.000","2022-04-11T00:00:00.000","2022-04-12T00:00:00.000","2022-04-13T00:00:00.000","2022-04-14T00:00:00.000","2022-04-15T00:00:00.000","2022-04-16T00:00:00.000","2022-04-17T00:00:00.000","2022-04-18T00:00:00.000","2022-04-19T00:00:00.000","2022-04-20T00:00:00.000","2022-04-21T00:00:00.000","2022-04-22T00:00:00.000","2022-04-23T00:00:00.000","2022-04-24T00:00:00.000","2022-04-25T00:00:00.000","2022-04-26T00:00:00.000","2022-04-27T00:00:00.000","2022-04-28T00:00:00.000","2022-04-29T00:00:00.000","2022-04-30T00:00:00.000","2022-05-01T00:00:00.000","2022-05-02T00:00:00.000","2022-05-03T00:00:00.000","2022-05-04T00:00:00.000","2022-05-05T00:00:00.000","2022-05-06T00:00:00.000","2022-05-07T00:00:00.000","2022-05-08T00:00:00.000","2022-05-09T00:00:00.000","2022-05-10T00:00:00.000","2022-05-11T00:00:00.000","2022-05-12T00:00:00.000","2022-05-13T00:00:00.000","2022-05-14T00:00:00.000","2022-05-15T00:00:00.000","2022-05-16T00:00:00.000","2022-05-17T00:00:00.000","2022-05-18T00:00:00.000","2022-05-19T00:00:00.000","2022-05-20T00:00:00.000","2022-05-21T00:00:00.000","2022-05-22T00:00:00.000","2022-05-23T00:00:00.000","2022-05-24T00:00:00.000","2022-05-25T00:00:00.000","2022-05-26T00:00:00.000","2022-05-27T00:00:00.000","2022-05-28T00:00:00.000","2022-05-29T00:00:00.000","2022-05-30T00:00:00.000","2022-05-31T00:00:00.000","2022-06-01T00:00:00.000","2022-06-02T00:00:00.000","2022-06-03T00:00:00.000","2022-06-04T00:00:00.000","2022-06-05T00:00:00.000","2022-06-06T00:00:00.000","2022-06-07T00:00:00.000","2022-06-08T00:00:00.000","2022-06-09T00:00:00.000","2022-06-10T00:00:00.000","2022-06-11T00:00:00.000","2022-06-12T00:00:00.000","2022-06-13T00:00:00.000","2022-06-14T00:00:00.000","2022-06-15T00:00:00.000","2022-06-16T00:00:00.000","2022-06-17T00:00:00.000","2022-06-18T00:00:00.000","2022-06-19T00:00:00.000","2022-06-20T00:00:00.000","2022-06-21T00:00:00.000","2022-06-22T00:00:00.000","2022-06-23T00:00:00.000","2022-06-24T00:00:00.000","2022-06-25T00:00:00.000","2022-06-26T00:00:00.000","2022-06-27T00:00:00.000","2022-06-28T00:00:00.000","2022-06-29T00:00:00.000","2022-06-30T00:00:00.000","2022-07-01T00:00:00.000","2022-07-02T00:00:00.000","2022-07-03T00:00:00.000","2022-07-04T00:00:00.000","2022-07-05T00:00:00.000","2022-07-06T00:00:00.000","2022-07-07T00:00:00.000","2022-07-08T00:00:00.000","2022-07-09T00:00:00.000","2022-07-10T00:00:00.000","2022-07-11T00:00:00.000","2022-07-12T00:00:00.000","2022-07-13T00:00:00.000","2022-07-14T00:00:00.000","2022-07-15T00:00:00.000","2022-07-16T00:00:00.000","2022-07-17T00:00:00.000","2022-07-18T00:00:00.000","2022-07-19T00:00:00.000","2022-07-20T00:00:00.000","2022-07-21T00:00:00.000","2022-07-22T00:00:00.000","2022-07-23T00:00:00.000","2022-07-24T00:00:00.000","2022-07-25T00:00:00.000","2022-07-26T00:00:00.000","2022-07-27T00:00:00.000","2022-07-28T00:00:00.000","2022-07-29T00:00:00.000","2022-07-30T00:00:00.000","2022-07-31T00:00:00.000","2022-08-01T00:00:00.000","2022-08-02T00:00:00.000","2022-08-03T00:00:00.000","2022-08-04T00:00:00.000","2022-08-05T00:00:00.000","2022-08-06T00:00:00.000","2022-08-07T00:00:00.000","2022-08-08T00:00:00.000","2022-08-09T00:00:00.000","2022-08-10T00:00:00.000","2022-08-11T00:00:00.000","2022-08-12T00:00:00.000","2022-08-13T00:00:00.000","2022-08-14T00:00:00.000","2022-08-15T00:00:00.000","2022-08-16T00:00:00.000","2022-08-17T00:00:00.000","2022-08-18T00:00:00.000","2022-08-19T00:00:00.000","2022-08-20T00:00:00.000","2022-08-21T00:00:00.000","2022-08-22T00:00:00.000","2022-08-23T00:00:00.000","2022-08-24T00:00:00.000","2022-08-25T00:00:00.000","2022-08-26T00:00:00.000","2022-08-27T00:00:00.000","2022-08-28T00:00:00.000","2022-08-29T00:00:00.000","2022-08-30T00:00:00.000","2022-08-31T00:00:00.000","2022-09-01T00:00:00.000","2022-09-02T00:00:00.000","2022-09-03T00:00:00.000","2022-09-04T00:00:00.000","2022-09-05T00:00:00.000","2022-09-06T00:00:00.000","2022-09-07T00:00:00.000","2022-09-08T00:00:00.000","2022-09-09T00:00:00.000","2022-09-10T00:00:00.000","2022-09-11T00:00:00.000","2022-09-12T00:00:00.000","2022-09-13T00:00:00.000","2022-09-14T00:00:00.000","2022-09-15T00:00:00.000","2022-09-16T00:00:00.000","2022-09-17T00:00:00.000","2022-09-18T00:00:00.000","2022-09-19T00:00:00.000","2022-09-20T00:00:00.000","2022-09-21T00:00:00.000","2022-09-22T00:00:00.000","2022-09-23T00:00:00.000","2022-09-24T00:00:00.000","2022-09-25T00:00:00.000","2022-09-26T00:00:00.000","2022-09-27T00:00:00.000","2022-09-28T00:00:00.000","2022-09-29T00:00:00.000","2022-09-30T00:00:00.000","2022-10-01T00:00:00.000","2022-10-02T00:00:00.000","2022-10-03T00:00:00.000","2022-10-04T00:00:00.000","2022-10-05T00:00:00.000","2022-10-06T00:00:00.000","2022-10-07T00:00:00.000","2022-10-08T00:00:00.000","2022-10-09T00:00:00.000","2022-10-10T00:00:00.000","2022-10-11T00:00:00.000","2022-10-12T00:00:00.000","2022-10-13T00:00:00.000","2022-10-14T00:00:00.000","2022-10-15T00:00:00.000","2022-10-16T00:00:00.000","2022-10-17T00:00:00.000","2022-10-18T00:00:00.000","2022-10-19T00:00:00.000","2022-10-20T00:00:00.000","2022-10-21T00:00:00.000","2022-10-22T00:00:00.000","2022-10-23T00:00:00.000","2022-10-24T00:00:00.000","2022-10-25T00:00:00.000","2022-10-26T00:00:00.000","2022-10-27T00:00:00.000","2022-10-28T00:00:00.000","2022-10-29T00:00:00.000","2022-10-30T00:00:00.000","2022-10-31T00:00:00.000","2022-11-01T00:00:00.000","2022-11-02T00:00:00.000","2022-11-03T00:00:00.000","2022-11-04T00:00:00.000","2022-11-05T00:00:00.000","2022-11-06T00:00:00.000","2022-11-07T00:00:00.000","2022-11-08T00:00:00.000","2022-11-09T00:00:00.000","2022-11-10T00:00:00.000","2022-11-11T00:00:00.000","2022-11-12T00:00:00.000","2022-11-13T00:00:00.000","2022-11-14T00:00:00.000","2022-11-15T00:00:00.000","2022-11-16T00:00:00.000","2022-11-17T00:00:00.000","2022-11-18T00:00:00.000","2022-11-19T00:00:00.000","2022-11-20T00:00:00.000","2022-11-21T00:00:00.000","2022-11-22T00:00:00.000","2022-11-23T00:00:00.000","2022-11-24T00:00:00.000","2022-11-25T00:00:00.000","2022-11-26T00:00:00.000","2022-11-27T00:00:00.000","2022-11-28T00:00:00.000","2022-11-29T00:00:00.000","2022-11-30T00:00:00.000","2022-12-01T00:00:00.000","2022-12-02T00:00:00.000","2022-12-03T00:00:00.000","2022-12-04T00:00:00.000","2022-12-05T00:00:00.000","2022-12-06T00:00:00.000","2022-12-07T00:00:00.000","2022-12-08T00:00:00.000","2022-12-09T00:00:00.000","2022-12-10T00:00:00.000","2022-12-11T00:00:00.000","2022-12-12T00:00:00.000","2022-12-13T00:00:00.000","2022-12-14T00:00:00.000","2022-12-15T00:00:00.000","2022-12-16T00:00:00.000","2022-12-17T00:00:00.000","2022-12-18T00:00:00.000","2022-12-19T00:00:00.000","2022-12-20T00:00:00.000","2022-12-21T00:00:00.000","2022-12-22T00:00:00.000","2022-12-23T00:00:00.000","2022-12-24T00:00:00.000","2022-12-25T00:00:00.000","2022-12-26T00:00:00.000","2022-12-27T00:00:00.000","2022-12-28T00:00:00.000","2022-12-29T00:00:00.000","2022-12-30T00:00:00.000","2022-12-31T00:00:00.000"],"xaxis":"x","y":{"dtype":"f8","bdata":"zszMzMysUkDMzMzMzKxSQM3MzMzMrFJA0MzMzMysUkDHzMzMzKxSQNDMzMzMrFJAwczMzMysUkDNzMzMzKxSQNnMzMzMrFJAx8zMzMysUkDTzMzMzKxSQNnMzMzMrFJAzczMzMysUkDNzMzMzKxSQM3MzMzMrFJAzczMzMysUkDNzMzMzKxSQM3MzMzMrFJAzczMzMysUkDNzMzMzKxSQNnMzMzMrFJAzczMzMysUkDNzMzMzKxSQM3MzMzMrFJAzczMzMysUkDNzMzMzKxSQM3MzMzMrFJAzczMzMysUkDNzMzMzKxSQM3MzMzMrFJAzczMzMysUkDoNDMzM\u002fNMQAMzMzMz80xAxTMzMzPzTEBkMzMzM\u002fNMQNIyMzMz80xAlDMzMzPzTEADMzMzM\u002fNMQGQzMzMz80xAMzMzMzPzTEDSMjMzM\u002fNMQGQzMzMz80xAMzMzMzPzTEAzMzMzM\u002fNMQDMzMzMz80xAlDMzMzPzTECUMzMzM\u002fNMQDMzMzMz80xAMzMzMzPzTEAzMzMzM\u002fNMQDMzMzMz80xAMzMzMzPzTEAzMzMzM\u002fNMQDMzMzMz80xAMzMzMzPzTEAzMzMzM\u002fNMQDMzMzMz80xAMzMzMzPzTEAzMzMzM\u002fNMQPuZmZmZmU9AXJqZmZmZT0C9mpmZmZlPQJqZmZmZmU9AmpmZmZmZT0A5mZmZmZlPQNeYmZmZmU9AOZmZmZmZT0CamZmZmZlPQNeYmZmZmU9AmpmZmZmZT0CamZmZmZlPQPuZmZmZmU9A+5mZmZmZT0A5mZmZmZlPQJqZmZmZmU9AmpmZmZmZT0CamZmZmZlPQJqZmZmZmU9AmpmZmZmZT0CamZmZmZlPQJqZmZmZmU9AmpmZmZmZT0CamZmZmZlPQJqZmZmZmU9AmpmZmZmZT0CamZmZmZlPQJqZmZmZmU9AmpmZmZmZT0CamZmZmZlPQPuZmZmZmU9AXs3MzMz8ZkAuzczMzPxmQC7NzMzM\u002fGZAXs3MzMz8ZkA7zMzMzPxmQM3MzMzM\u002fGZALs3MzMz8ZkDNzMzMzPxmQM3MzMzM\u002fGZAnMzMzMz8ZkDNzMzMzPxmQJzMzMzM\u002fGZAzczMzMz8ZkD9zMzMzPxmQM3MzMzM\u002fGZAnMzMzMz8ZkD9zMzMzPxmQM3MzMzM\u002fGZAnMzMzMz8ZkDNzMzMzPxmQM3MzMzM\u002fGZAzczMzMz8ZkDNzMzMzPxmQM3MzMzM\u002fGZAzczMzMz8ZkDNzMzMzPxmQM3MzMzM\u002fGZAzczMzMz8ZkDNzMzMzPxmQM3MzMzM\u002fGZA0jIzMzPzVkDSMjMzM\u002fNWQJQzMzMz81ZAlDMzMzPzVkD1MzMzM\u002fNWQNIyMzMz81ZAMzMzMzPzVkBxMjMzM\u002fNWQJQzMzMz81ZAlDMzMzPzVkAzMzMzM\u002fNWQJQzMzMz81ZAcTIzMzPzVkBxMjMzM\u002fNWQHEyMzMz81ZAcTIzMzPzVkBxMjMzM\u002fNWQDMzMzMz81ZAcTIzMzPzVkAzMzMzM\u002fNWQDMzMzMz81ZAMzMzMzPzVkAzMzMzM\u002fNWQDMzMzMz81ZAMzMzMzPzVkAzMzMzM\u002fNWQDMzMzMz81ZAMzMzMzPzVkAzMzMzM\u002fNWQDMzMzMz81ZAMzMzMzPzVkCNBAAAAMBHQAAAAAAAwEdAAAAAAADAR0AAAAAAAMBHQHP7\u002f\u002f\u002f\u002fv0dAfP7\u002f\u002f\u002f+\u002fR0AAAAAAAMBHQAAAAAAAwEdAhAEAAADAR0B8\u002fv\u002f\u002f\u002f79HQIQBAAAAwEdAAAAAAADAR0AAAAAAAMBHQAAAAAAAwEdAAAAAAADAR0B8\u002fv\u002f\u002f\u002f79HQAAAAAAAwEdAhAEAAADAR0AAAAAAAMBHQAAAAAAAwEdAhAEAAADAR0AAAAAAAMBHQAAAAAAAwEdAAAAAAADAR0AAAAAAAMBHQAAAAAAAwEdAAAAAAADAR0AAAAAAAMBHQAAAAAAAwEdAjQQAAADAR0B02szMzExAQN7SzMzMTEBASMvMzMxMQEDEyczMzExAQEjLzMzMTEBAzczMzMxMQEDWz8zMzExAQEjLzMzMTEBAUc7MzMxMQEBIy8zMzExAQFHOzMzMTEBASMvMzMxMQEDNzMzMzExAQM3MzMzMTEBAzczMzMxMQEDNzMzMzExAQM3MzMzMTEBAzczMzMxMQEDNzMzMzExAQM3MzMzMTEBAzczMzMxMQEDNzMzMzExAQM3MzMzMTEBAzczMzMxMQEDNzMzMzExAQM3MzMzMTEBAzczMzMxMQEDNzMzMzExAQM3MzMzMTEBAzczMzMxMQEDNzMzMzExAQH+QmZmZmTtAkZaZmZmZO0CinJmZmZk7QKKcmZmZmTtAopyZmZmZO0CinJmZmZk7QKufmZmZmTtAkZaZmZmZO0CRlpmZmZk7QJGWmZmZmTtAmpmZmZmZO0CamZmZmZk7QKKcmZmZmTtAmpmZmZmZO0CamZmZmZk7QJqZmZmZmTtAmpmZmZmZO0CamZmZmZk7QJqZmZmZmTtAmpmZmZmZO0CamZmZmZk7QJqZmZmZmTtAmpmZmZmZO0CamZmZmZk7QJqZmZmZmTtAmpmZmZmZO0CamZmZmZk7QJqZmZmZmTtAmpmZmZmZO0CamZmZmZk7QJqZmZmZmTtA9\u002fz\u002f\u002f\u002f9\u002fOkAJAwAAAIA6QBoJAAAAgDpACQMAAACAOkARBgAAAIA6QPf8\u002f\u002f\u002f\u002ffzpA9\u002fz\u002f\u002f\u002f9\u002fOkD3\u002fP\u002f\u002f\u002f386QAAAAAAAgDpACQMAAACAOkD3\u002fP\u002f\u002f\u002f386QAAAAAAAgDpA9\u002fz\u002f\u002f\u002f9\u002fOkAAAAAAAIA6QAAAAAAAgDpAAAAAAACAOkAAAAAAAIA6QAAAAAAAgDpAAAAAAACAOkAAAAAAAIA6QAAAAAAAgDpAAAAAAACAOkAAAAAAAIA6QAAAAAAAgDpAAAAAAACAOkAAAAAAAIA6QAAAAAAAgDpAAAAAAACAOkAAAAAAAIA6QAAAAAAAgDpAd42ZmZkZOUB\u002fkJmZmRk5QJGWmZmZGTlAtKKZmZkZOUC0opmZmRk5QJqZmZmZGTlAopyZmZkZOUCinJmZmRk5QKKcmZmZGTlAopyZmZkZOUCamZmZmRk5QJqZmZmZGTlAmpmZmZkZOUCamZmZmRk5QJqZmZmZGTlAmpmZmZkZOUCamZmZmRk5QJqZmZmZGTlAmpmZmZkZOUCamZmZmRk5QJqZmZmZGTlAmpmZmZkZOUCamZmZmRk5QJqZmZmZGTlAmpmZmZkZOUCamZmZmRk5QJqZmZmZGTlAmpmZmZkZOUCamZmZmRk5QJqZmZmZGTlAmpmZmZkZOUDiZGZmZqZDQGZmZmZmpkNA62dmZmamQ0BmZmZmZqZDQG9pZmZmpkNAb2lmZmamQ0DiZGZmZqZDQOtnZmZmpkNAZmZmZmamQ0DiZGZmZqZDQG9pZmZmpkNAXmNmZmamQ0BmZmZmZqZDQGZmZmZmpkNAZmZmZmamQ0DrZ2ZmZqZDQGZmZmZmpkNAZmZmZmamQ0BmZmZmZqZDQGZmZmZmpkNAZmZmZmamQ0BmZmZmZqZDQGZmZmZmpkNAZmZmZmamQ0BmZmZmZqZDQGZmZmZmpkNAZmZmZmamQ0BmZmZmZqZDQGZmZmZmpkNAZmZmZmamQ0BvaWZmZuZCQF5jZmZm5kJA4mRmZmbmQkDiZGZmZuZCQGZmZmZm5kJA62dmZmbmQkDrZ2ZmZuZCQGZmZmZm5kJAZmZmZmbmQkBmZmZmZuZCQGZmZmZm5kJAZmZmZmbmQkBmZmZmZuZCQGZmZmZm5kJAZmZmZmbmQkBmZmZmZuZCQGZmZmZm5kJAZmZmZmbmQkBmZmZmZuZCQGZmZmZm5kJAZmZmZmbmQkBmZmZmZuZCQGZmZmZm5kJAZmZmZmbmQkBmZmZmZuZCQGZmZmZm5kJAZmZmZmbmQkBmZmZmZuZCQGZmZmZm5kJAZmZmZmbmQkBmZmZmZuZCQA=="},"yaxis":"y","type":"scattergl"},{"hovertemplate":"variable=minor\u003cbr\u003etime=%{x}\u003cbr\u003evalue=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"minor","line":{"color":"#00cc96","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines","name":"minor","showlegend":true,"x":["2022-01-01T00:00:00.000","2022-01-02T00:00:00.000","2022-01-03T00:00:00.000","2022-01-04T00:00:00.000","2022-01-05T00:00:00.000","2022-01-06T00:00:00.000","2022-01-07T00:00:00.000","2022-01-08T00:00:00.000","2022-01-09T00:00:00.000","2022-01-10T00:00:00.000","2022-01-11T00:00:00.000","2022-01-12T00:00:00.000","2022-01-13T00:00:00.000","2022-01-14T00:00:00.000","2022-01-15T00:00:00.000","2022-01-16T00:00:00.000","2022-01-17T00:00:00.000","2022-01-18T00:00:00.000","2022-01-19T00:00:00.000","2022-01-20T00:00:00.000","2022-01-21T00:00:00.000","2022-01-22T00:00:00.000","2022-01-23T00:00:00.000","2022-01-24T00:00:00.000","2022-01-25T00:00:00.000","2022-01-26T00:00:00.000","2022-01-27T00:00:00.000","2022-01-28T00:00:00.000","2022-01-29T00:00:00.000","2022-01-30T00:00:00.000","2022-01-31T00:00:00.000","2022-02-01T00:00:00.000","2022-02-02T00:00:00.000","2022-02-03T00:00:00.000","2022-02-04T00:00:00.000","2022-02-05T00:00:00.000","2022-02-06T00:00:00.000","2022-02-07T00:00:00.000","2022-02-08T00:00:00.000","2022-02-09T00:00:00.000","2022-02-10T00:00:00.000","2022-02-11T00:00:00.000","2022-02-12T00:00:00.000","2022-02-13T00:00:00.000","2022-02-14T00:00:00.000","2022-02-15T00:00:00.000","2022-02-16T00:00:00.000","2022-02-17T00:00:00.000","2022-02-18T00:00:00.000","2022-02-19T00:00:00.000","2022-02-20T00:00:00.000","2022-02-21T00:00:00.000","2022-02-22T00:00:00.000","2022-02-23T00:00:00.000","2022-02-24T00:00:00.000","2022-02-25T00:00:00.000","2022-02-26T00:00:00.000","2022-02-27T00:00:00.000","2022-02-28T00:00:00.000","2022-03-01T00:00:00.000","2022-03-02T00:00:00.000","2022-03-03T00:00:00.000","2022-03-04T00:00:00.000","2022-03-05T00:00:00.000","2022-03-06T00:00:00.000","2022-03-07T00:00:00.000","2022-03-08T00:00:00.000","2022-03-09T00:00:00.000","2022-03-10T00:00:00.000","2022-03-11T00:00:00.000","2022-03-12T00:00:00.000","2022-03-13T00:00:00.000","2022-03-14T00:00:00.000","2022-03-15T00:00:00.000","2022-03-16T00:00:00.000","2022-03-17T00:00:00.000","2022-03-18T00:00:00.000","2022-03-19T00:00:00.000","2022-03-20T00:00:00.000","2022-03-21T00:00:00.000","2022-03-22T00:00:00.000","2022-03-23T00:00:00.000","2022-03-24T00:00:00.000","2022-03-25T00:00:00.000","2022-03-26T00:00:00.000","2022-03-27T00:00:00.000","2022-03-28T00:00:00.000","2022-03-29T00:00:00.000","2022-03-30T00:00:00.000","2022-03-31T00:00:00.000","2022-04-01T00:00:00.000","2022-04-02T00:00:00.000","2022-04-03T00:00:00.000","2022-04-04T00:00:00.000","2022-04-05T00:00:00.000","2022-04-06T00:00:00.000","2022-04-07T00:00:00.000","2022-04-08T00:00:00.000","2022-04-09T00:00:00.000","2022-04-10T00:00:00.000","2022-04-11T00:00:00.000","2022-04-12T00:00:00.000","2022-04-13T00:00:00.000","2022-04-14T00:00:00.000","2022-04-15T00:00:00.000","2022-04-16T00:00:00.000","2022-04-17T00:00:00.000","2022-04-18T00:00:00.000","2022-04-19T00:00:00.000","2022-04-20T00:00:00.000","2022-04-21T00:00:00.000","2022-04-22T00:00:00.000","2022-04-23T00:00:00.000","2022-04-24T00:00:00.000","2022-04-25T00:00:00.000","2022-04-26T00:00:00.000","2022-04-27T00:00:00.000","2022-04-28T00:00:00.000","2022-04-29T00:00:00.000","2022-04-30T00:00:00.000","2022-05-01T00:00:00.000","2022-05-02T00:00:00.000","2022-05-03T00:00:00.000","2022-05-04T00:00:00.000","2022-05-05T00:00:00.000","2022-05-06T00:00:00.000","2022-05-07T00:00:00.000","2022-05-08T00:00:00.000","2022-05-09T00:00:00.000","2022-05-10T00:00:00.000","2022-05-11T00:00:00.000","2022-05-12T00:00:00.000","2022-05-13T00:00:00.000","2022-05-14T00:00:00.000","2022-05-15T00:00:00.000","2022-05-16T00:00:00.000","2022-05-17T00:00:00.000","2022-05-18T00:00:00.000","2022-05-19T00:00:00.000","2022-05-20T00:00:00.000","2022-05-21T00:00:00.000","2022-05-22T00:00:00.000","2022-05-23T00:00:00.000","2022-05-24T00:00:00.000","2022-05-25T00:00:00.000","2022-05-26T00:00:00.000","2022-05-27T00:00:00.000","2022-05-28T00:00:00.000","2022-05-29T00:00:00.000","2022-05-30T00:00:00.000","2022-05-31T00:00:00.000","2022-06-01T00:00:00.000","2022-06-02T00:00:00.000","2022-06-03T00:00:00.000","2022-06-04T00:00:00.000","2022-06-05T00:00:00.000","2022-06-06T00:00:00.000","2022-06-07T00:00:00.000","2022-06-08T00:00:00.000","2022-06-09T00:00:00.000","2022-06-10T00:00:00.000","2022-06-11T00:00:00.000","2022-06-12T00:00:00.000","2022-06-13T00:00:00.000","2022-06-14T00:00:00.000","2022-06-15T00:00:00.000","2022-06-16T00:00:00.000","2022-06-17T00:00:00.000","2022-06-18T00:00:00.000","2022-06-19T00:00:00.000","2022-06-20T00:00:00.000","2022-06-21T00:00:00.000","2022-06-22T00:00:00.000","2022-06-23T00:00:00.000","2022-06-24T00:00:00.000","2022-06-25T00:00:00.000","2022-06-26T00:00:00.000","2022-06-27T00:00:00.000","2022-06-28T00:00:00.000","2022-06-29T00:00:00.000","2022-06-30T00:00:00.000","2022-07-01T00:00:00.000","2022-07-02T00:00:00.000","2022-07-03T00:00:00.000","2022-07-04T00:00:00.000","2022-07-05T00:00:00.000","2022-07-06T00:00:00.000","2022-07-07T00:00:00.000","2022-07-08T00:00:00.000","2022-07-09T00:00:00.000","2022-07-10T00:00:00.000","2022-07-11T00:00:00.000","2022-07-12T00:00:00.000","2022-07-13T00:00:00.000","2022-07-14T00:00:00.000","2022-07-15T00:00:00.000","2022-07-16T00:00:00.000","2022-07-17T00:00:00.000","2022-07-18T00:00:00.000","2022-07-19T00:00:00.000","2022-07-20T00:00:00.000","2022-07-21T00:00:00.000","2022-07-22T00:00:00.000","2022-07-23T00:00:00.000","2022-07-24T00:00:00.000","2022-07-25T00:00:00.000","2022-07-26T00:00:00.000","2022-07-27T00:00:00.000","2022-07-28T00:00:00.000","2022-07-29T00:00:00.000","2022-07-30T00:00:00.000","2022-07-31T00:00:00.000","2022-08-01T00:00:00.000","2022-08-02T00:00:00.000","2022-08-03T00:00:00.000","2022-08-04T00:00:00.000","2022-08-05T00:00:00.000","2022-08-06T00:00:00.000","2022-08-07T00:00:00.000","2022-08-08T00:00:00.000","2022-08-09T00:00:00.000","2022-08-10T00:00:00.000","2022-08-11T00:00:00.000","2022-08-12T00:00:00.000","2022-08-13T00:00:00.000","2022-08-14T00:00:00.000","2022-08-15T00:00:00.000","2022-08-16T00:00:00.000","2022-08-17T00:00:00.000","2022-08-18T00:00:00.000","2022-08-19T00:00:00.000","2022-08-20T00:00:00.000","2022-08-21T00:00:00.000","2022-08-22T00:00:00.000","2022-08-23T00:00:00.000","2022-08-24T00:00:00.000","2022-08-25T00:00:00.000","2022-08-26T00:00:00.000","2022-08-27T00:00:00.000","2022-08-28T00:00:00.000","2022-08-29T00:00:00.000","2022-08-30T00:00:00.000","2022-08-31T00:00:00.000","2022-09-01T00:00:00.000","2022-09-02T00:00:00.000","2022-09-03T00:00:00.000","2022-09-04T00:00:00.000","2022-09-05T00:00:00.000","2022-09-06T00:00:00.000","2022-09-07T00:00:00.000","2022-09-08T00:00:00.000","2022-09-09T00:00:00.000","2022-09-10T00:00:00.000","2022-09-11T00:00:00.000","2022-09-12T00:00:00.000","2022-09-13T00:00:00.000","2022-09-14T00:00:00.000","2022-09-15T00:00:00.000","2022-09-16T00:00:00.000","2022-09-17T00:00:00.000","2022-09-18T00:00:00.000","2022-09-19T00:00:00.000","2022-09-20T00:00:00.000","2022-09-21T00:00:00.000","2022-09-22T00:00:00.000","2022-09-23T00:00:00.000","2022-09-24T00:00:00.000","2022-09-25T00:00:00.000","2022-09-26T00:00:00.000","2022-09-27T00:00:00.000","2022-09-28T00:00:00.000","2022-09-29T00:00:00.000","2022-09-30T00:00:00.000","2022-10-01T00:00:00.000","2022-10-02T00:00:00.000","2022-10-03T00:00:00.000","2022-10-04T00:00:00.000","2022-10-05T00:00:00.000","2022-10-06T00:00:00.000","2022-10-07T00:00:00.000","2022-10-08T00:00:00.000","2022-10-09T00:00:00.000","2022-10-10T00:00:00.000","2022-10-11T00:00:00.000","2022-10-12T00:00:00.000","2022-10-13T00:00:00.000","2022-10-14T00:00:00.000","2022-10-15T00:00:00.000","2022-10-16T00:00:00.000","2022-10-17T00:00:00.000","2022-10-18T00:00:00.000","2022-10-19T00:00:00.000","2022-10-20T00:00:00.000","2022-10-21T00:00:00.000","2022-10-22T00:00:00.000","2022-10-23T00:00:00.000","2022-10-24T00:00:00.000","2022-10-25T00:00:00.000","2022-10-26T00:00:00.000","2022-10-27T00:00:00.000","2022-10-28T00:00:00.000","2022-10-29T00:00:00.000","2022-10-30T00:00:00.000","2022-10-31T00:00:00.000","2022-11-01T00:00:00.000","2022-11-02T00:00:00.000","2022-11-03T00:00:00.000","2022-11-04T00:00:00.000","2022-11-05T00:00:00.000","2022-11-06T00:00:00.000","2022-11-07T00:00:00.000","2022-11-08T00:00:00.000","2022-11-09T00:00:00.000","2022-11-10T00:00:00.000","2022-11-11T00:00:00.000","2022-11-12T00:00:00.000","2022-11-13T00:00:00.000","2022-11-14T00:00:00.000","2022-11-15T00:00:00.000","2022-11-16T00:00:00.000","2022-11-17T00:00:00.000","2022-11-18T00:00:00.000","2022-11-19T00:00:00.000","2022-11-20T00:00:00.000","2022-11-21T00:00:00.000","2022-11-22T00:00:00.000","2022-11-23T00:00:00.000","2022-11-24T00:00:00.000","2022-11-25T00:00:00.000","2022-11-26T00:00:00.000","2022-11-27T00:00:00.000","2022-11-28T00:00:00.000","2022-11-29T00:00:00.000","2022-11-30T00:00:00.000","2022-12-01T00:00:00.000","2022-12-02T00:00:00.000","2022-12-03T00:00:00.000","2022-12-04T00:00:00.000","2022-12-05T00:00:00.000","2022-12-06T00:00:00.000","2022-12-07T00:00:00.000","2022-12-08T00:00:00.000","2022-12-09T00:00:00.000","2022-12-10T00:00:00.000","2022-12-11T00:00:00.000","2022-12-12T00:00:00.000","2022-12-13T00:00:00.000","2022-12-14T00:00:00.000","2022-12-15T00:00:00.000","2022-12-16T00:00:00.000","2022-12-17T00:00:00.000","2022-12-18T00:00:00.000","2022-12-19T00:00:00.000","2022-12-20T00:00:00.000","2022-12-21T00:00:00.000","2022-12-22T00:00:00.000","2022-12-23T00:00:00.000","2022-12-24T00:00:00.000","2022-12-25T00:00:00.000","2022-12-26T00:00:00.000","2022-12-27T00:00:00.000","2022-12-28T00:00:00.000","2022-12-29T00:00:00.000","2022-12-30T00:00:00.000","2022-12-31T00:00:00.000"],"xaxis":"x","y":{"dtype":"f8","bdata":"y8zMzMxMMEDQzMzMzEwwQM7MzMzMTDBAzczMzMxMMEDTzMzMzEwwQNDMzMzMTDBA2czMzMxMMEDNzMzMzEwwQMHMzMzMTDBAx8zMzMxMMEDNzMzMzEwwQNPMzMzMTDBAwczMzMxMMEDNzMzMzEwwQMHMzMzMTDBA2czMzMxMMEDNzMzMzEwwQM3MzMzMTDBAzczMzMxMMEDNzMzMzEwwQM3MzMzMTDBAzczMzMxMMEDNzMzMzEwwQM3MzMzMTDBAzczMzMxMMEDNzMzMzEwwQM3MzMzMTDBAzczMzMxMMEDNzMzMzEwwQM3MzMzMTDBAzczMzMxMMEDzamZmZmYOQGZmZmZmZg5A4mRmZmZmDkDrZ2ZmZmYOQOtnZmZmZg5ApGVmZmZmDkApZ2ZmZmYOQClnZmZmZg5AKWdmZmZmDkApZ2ZmZmYOQKRlZmZmZg5ApGVmZmZmDkBmZmZmZmYOQClnZmZmZg5ApGVmZmZmDkBmZmZmZmYOQClnZmZmZg5AZmZmZmZmDkBmZmZmZmYOQGZmZmZmZg5AZmZmZmZmDkBmZmZmZmYOQGZmZmZmZg5AZmZmZmZmDkBmZmZmZmYOQGZmZmZmZg5AZmZmZmZmDkBmZmZmZmYOQMIAAAAAAAhAAAAAAAAACEC5\u002ff\u002f\u002f\u002f\u002f8HQMIAAAAAAAhAfP7\u002f\u002f\u002f\u002f\u002fB0DCAAAAAAAIQMIAAAAAAAhAPv\u002f\u002f\u002f\u002f\u002f\u002fB0A+\u002f\u002f\u002f\u002f\u002f\u002f8HQAAAAAAAAAhAAAAAAAAACEAAAAAAAAAIQAAAAAAAAAhAAAAAAAAACEAAAAAAAAAIQAAAAAAAAAhAAAAAAAAACEAAAAAAAAAIQAAAAAAAAAhAAAAAAAAACEAAAAAAAAAIQAAAAAAAAAhAAAAAAAAACEAAAAAAAAAIQAAAAAAAAAhAAAAAAAAACEAAAAAAAAAIQAAAAAAAAAhAAAAAAAAACEAAAAAAAAAIQD7\u002f\u002f\u002f\u002f\u002f\u002fwdAOs3MzMzMQkCozMzMzMxCQOXMzMzMzEJAFs3MzMzMQkAuzczMzMxCQM3MzMzMzEJAzczMzMzMQkDNzMzMzMxCQM3MzMzMzEJAnMzMzMzMQkDNzMzMzMxCQOXMzMzMzEJAzczMzMzMQkC1zMzMzMxCQLXMzMzMzEJAtczMzMzMQkDNzMzMzMxCQM3MzMzMzEJAtczMzMzMQkDNzMzMzMxCQLXMzMzMzEJAzczMzMzMQkDNzMzMzMxCQM3MzMzMzEJAzczMzMzMQkDNzMzMzMxCQM3MzMzMzEJAzczMzMzMQkDNzMzMzMxCQM3MzMzMzEJArzEzMzMzMkAQMjMzMzMyQHEyMzMzMzJAlDMzMzMzMkBxMjMzMzMyQJQzMzMzMzJAMzMzMzMzMkCUMzMzMzMyQJQzMzMzMzJAlDMzMzMzMkCUMzMzMzMyQDMzMzMzMzJAMzMzMzMzMkCUMzMzMzMyQDMzMzMzMzJA0jIzMzMzMkAzMzMzMzMyQDMzMzMzMzJAlDMzMzMzMkAzMzMzMzMyQDMzMzMzMzJAMzMzMzMzMkAzMzMzMzMyQDMzMzMzMzJAMzMzMzMzMkAzMzMzMzMyQDMzMzMzMzJAMzMzMzMzMkAzMzMzMzMyQDMzMzMzMzJAMzMzMzMzMkCvMTMzMzMmQPUzMzMzMyZAMzMzMzMzJkAzMzMzMzMmQHo1MzMzMyZAcTIzMzMzJkAzMzMzMzMmQDMzMzMzMyZAuDQzMzMzJkC4NDMzMzMmQPUzMzMzMyZAMzMzMzMzJkAzMzMzMzMmQHEyMzMzMyZA9TMzMzMzJkBxMjMzMzMmQDMzMzMzMyZAcTIzMzMzJkAzMzMzMzMmQDMzMzMzMyZAcTIzMzMzJkAzMzMzMzMmQDMzMzMzMyZAMzMzMzMzJkAzMzMzMzMmQDMzMzMzMyZAMzMzMzMzJkAzMzMzMzMmQDMzMzMzMyZAuDQzMzMzJkBAyMzMzMwpQI\u002fNzMzMzClAhsrMzMzMKUCPzczMzMwpQIbKzMzMzClAUc7MzMzMKUALzMzMzMwpQAvMzMzMzClAzczMzMzMKUDNzMzMzMwpQI\u002fNzMzMzClAzczMzMzMKUDNzMzMzMwpQI\u002fNzMzMzClAzczMzMzMKUDNzMzMzMwpQM3MzMzMzClAzczMzMzMKUDNzMzMzMwpQM3MzMzMzClAzczMzMzMKUDNzMzMzMwpQM3MzMzMzClAzczMzMzMKUDNzMzMzMwpQM3MzMzMzClAzczMzMzMKUDNzMzMzMwpQM3MzMzMzClAC8zMzMzMKUDNzMzMzMwpQGZmZmZmZihA2WFmZmZmKEBmZmZmZmYoQGZmZmZmZihA2WFmZmZmKEDrZ2ZmZmYoQOJkZmZmZihA4mRmZmZmKEBmZmZmZmYoQOtnZmZmZihA62dmZmZmKEDiZGZmZmYoQGZmZmZmZihAZmZmZmZmKEBmZmZmZmYoQGZmZmZmZihAZmZmZmZmKEBmZmZmZmYoQGZmZmZmZihAZmZmZmZmKEBmZmZmZmYoQGZmZmZmZihAZmZmZmZmKEBmZmZmZmYoQGZmZmZmZihAZmZmZmZmKEBmZmZmZmYoQGZmZmZmZihAZmZmZmZmKEBmZmZmZmYoQGZmZmZmZihA2WFmZmZmJkBvaWZmZmYmQOJkZmZmZiZA62dmZmZmJkDiZGZmZmYmQGZmZmZmZiZA62dmZmZmJkBmZmZmZmYmQOtnZmZmZiZAZmZmZmZmJkDiZGZmZmYmQGZmZmZmZiZA4mRmZmZmJkBmZmZmZmYmQGZmZmZmZiZAZmZmZmZmJkBmZmZmZmYmQGZmZmZmZiZAZmZmZmZmJkBmZmZmZmYmQGZmZmZmZiZAZmZmZmZmJkBmZmZmZmYmQGZmZmZmZiZAZmZmZmZmJkBmZmZmZmYmQGZmZmZmZiZAZmZmZmZmJkBmZmZmZmYmQFVgZmZmZiZAFZiZmZmZJUAvoZmZmZklQKKcmZmZmSVAFZiZmZmZJUAem5mZmZklQB6bmZmZmSVAFZiZmZmZJUAem5mZmZklQJqZmZmZmSVAmpmZmZmZJUAem5mZmZklQJqZmZmZmSVAmpmZmZmZJUCamZmZmZklQJqZmZmZmSVAmpmZmZmZJUCamZmZmZklQJqZmZmZmSVAmpmZmZmZJUCamZmZmZklQJqZmZmZmSVAmpmZmZmZJUCamZmZmZklQJqZmZmZmSVAmpmZmZmZJUCamZmZmZklQJqZmZmZmSVAmpmZmZmZJUCamZmZmZklQJqZmZmZmSVAmpmZmZmZJUCdKzMzMzMuQEU5MzMzMy5APDYzMzMzLkA8NjMzMzMuQCowMzMzMy5ArzEzMzMzLkAzMzMzMzMuQK8xMzMzMy5AMzMzMzMzLkC4NDMzMzMuQCowMzMzMy5AuDQzMzMzLkAzMzMzMzMuQDMzMzMzMy5AMzMzMzMzLkC4NDMzMzMuQDMzMzMzMy5AMzMzMzMzLkC4NDMzMzMuQDMzMzMzMy5AuDQzMzMzLkAzMzMzMzMuQDMzMzMzMy5AMzMzMzMzLkAzMzMzMzMuQDMzMzMzMy5AMzMzMzMzLkAzMzMzMzMuQDMzMzMzMy5AMzMzMzMzLkCamZmZmZksQJqZmZmZmSxAHpuZmZmZLEAVmJmZmZksQB6bmZmZmSxAmpmZmZmZLEAVmJmZmZksQJqZmZmZmSxAmpmZmZmZLECamZmZmZksQB6bmZmZmSxAmpmZmZmZLECamZmZmZksQB6bmZmZmSxAmpmZmZmZLECamZmZmZksQJqZmZmZmSxAmpmZmZmZLECamZmZmZksQJqZmZmZmSxAmpmZmZmZLECamZmZmZksQJqZmZmZmSxAmpmZmZmZLECamZmZmZksQJqZmZmZmSxAmpmZmZmZLECamZmZmZksQJqZmZmZmSxAmpmZmZmZLECamZmZmZksQA=="},"yaxis":"y","type":"scattergl"},{"hovertemplate":"variable=not diverted\u003cbr\u003etime=%{x}\u003cbr\u003evalue=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"not diverted","line":{"color":"#ab63fa","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines","name":"not diverted","showlegend":true,"x":["2022-01-01T00:00:00.000","2022-01-02T00:00:00.000","2022-01-03T00:00:00.000","2022-01-04T00:00:00.000","2022-01-05T00:00:00.000","2022-01-06T00:00:00.000","2022-01-07T00:00:00.000","2022-01-08T00:00:00.000","2022-01-09T00:00:00.000","2022-01-10T00:00:00.000","2022-01-11T00:00:00.000","2022-01-12T00:00:00.000","2022-01-13T00:00:00.000","2022-01-14T00:00:00.000","2022-01-15T00:00:00.000","2022-01-16T00:00:00.000","2022-01-17T00:00:00.000","2022-01-18T00:00:00.000","2022-01-19T00:00:00.000","2022-01-20T00:00:00.000","2022-01-21T00:00:00.000","2022-01-22T00:00:00.000","2022-01-23T00:00:00.000","2022-01-24T00:00:00.000","2022-01-25T00:00:00.000","2022-01-26T00:00:00.000","2022-01-27T00:00:00.000","2022-01-28T00:00:00.000","2022-01-29T00:00:00.000","2022-01-30T00:00:00.000","2022-01-31T00:00:00.000","2022-02-01T00:00:00.000","2022-02-02T00:00:00.000","2022-02-03T00:00:00.000","2022-02-04T00:00:00.000","2022-02-05T00:00:00.000","2022-02-06T00:00:00.000","2022-02-07T00:00:00.000","2022-02-08T00:00:00.000","2022-02-09T00:00:00.000","2022-02-10T00:00:00.000","2022-02-11T00:00:00.000","2022-02-12T00:00:00.000","2022-02-13T00:00:00.000","2022-02-14T00:00:00.000","2022-02-15T00:00:00.000","2022-02-16T00:00:00.000","2022-02-17T00:00:00.000","2022-02-18T00:00:00.000","2022-02-19T00:00:00.000","2022-02-20T00:00:00.000","2022-02-21T00:00:00.000","2022-02-22T00:00:00.000","2022-02-23T00:00:00.000","2022-02-24T00:00:00.000","2022-02-25T00:00:00.000","2022-02-26T00:00:00.000","2022-02-27T00:00:00.000","2022-02-28T00:00:00.000","2022-03-01T00:00:00.000","2022-03-02T00:00:00.000","2022-03-03T00:00:00.000","2022-03-04T00:00:00.000","2022-03-05T00:00:00.000","2022-03-06T00:00:00.000","2022-03-07T00:00:00.000","2022-03-08T00:00:00.000","2022-03-09T00:00:00.000","2022-03-10T00:00:00.000","2022-03-11T00:00:00.000","2022-03-12T00:00:00.000","2022-03-13T00:00:00.000","2022-03-14T00:00:00.000","2022-03-15T00:00:00.000","2022-03-16T00:00:00.000","2022-03-17T00:00:00.000","2022-03-18T00:00:00.000","2022-03-19T00:00:00.000","2022-03-20T00:00:00.000","2022-03-21T00:00:00.000","2022-03-22T00:00:00.000","2022-03-23T00:00:00.000","2022-03-24T00:00:00.000","2022-03-25T00:00:00.000","2022-03-26T00:00:00.000","2022-03-27T00:00:00.000","2022-03-28T00:00:00.000","2022-03-29T00:00:00.000","2022-03-30T00:00:00.000","2022-03-31T00:00:00.000","2022-04-01T00:00:00.000","2022-04-02T00:00:00.000","2022-04-03T00:00:00.000","2022-04-04T00:00:00.000","2022-04-05T00:00:00.000","2022-04-06T00:00:00.000","2022-04-07T00:00:00.000","2022-04-08T00:00:00.000","2022-04-09T00:00:00.000","2022-04-10T00:00:00.000","2022-04-11T00:00:00.000","2022-04-12T00:00:00.000","2022-04-13T00:00:00.000","2022-04-14T00:00:00.000","2022-04-15T00:00:00.000","2022-04-16T00:00:00.000","2022-04-17T00:00:00.000","2022-04-18T00:00:00.000","2022-04-19T00:00:00.000","2022-04-20T00:00:00.000","2022-04-21T00:00:00.000","2022-04-22T00:00:00.000","2022-04-23T00:00:00.000","2022-04-24T00:00:00.000","2022-04-25T00:00:00.000","2022-04-26T00:00:00.000","2022-04-27T00:00:00.000","2022-04-28T00:00:00.000","2022-04-29T00:00:00.000","2022-04-30T00:00:00.000","2022-05-01T00:00:00.000","2022-05-02T00:00:00.000","2022-05-03T00:00:00.000","2022-05-04T00:00:00.000","2022-05-05T00:00:00.000","2022-05-06T00:00:00.000","2022-05-07T00:00:00.000","2022-05-08T00:00:00.000","2022-05-09T00:00:00.000","2022-05-10T00:00:00.000","2022-05-11T00:00:00.000","2022-05-12T00:00:00.000","2022-05-13T00:00:00.000","2022-05-14T00:00:00.000","2022-05-15T00:00:00.000","2022-05-16T00:00:00.000","2022-05-17T00:00:00.000","2022-05-18T00:00:00.000","2022-05-19T00:00:00.000","2022-05-20T00:00:00.000","2022-05-21T00:00:00.000","2022-05-22T00:00:00.000","2022-05-23T00:00:00.000","2022-05-24T00:00:00.000","2022-05-25T00:00:00.000","2022-05-26T00:00:00.000","2022-05-27T00:00:00.000","2022-05-28T00:00:00.000","2022-05-29T00:00:00.000","2022-05-30T00:00:00.000","2022-05-31T00:00:00.000","2022-06-01T00:00:00.000","2022-06-02T00:00:00.000","2022-06-03T00:00:00.000","2022-06-04T00:00:00.000","2022-06-05T00:00:00.000","2022-06-06T00:00:00.000","2022-06-07T00:00:00.000","2022-06-08T00:00:00.000","2022-06-09T00:00:00.000","2022-06-10T00:00:00.000","2022-06-11T00:00:00.000","2022-06-12T00:00:00.000","2022-06-13T00:00:00.000","2022-06-14T00:00:00.000","2022-06-15T00:00:00.000","2022-06-16T00:00:00.000","2022-06-17T00:00:00.000","2022-06-18T00:00:00.000","2022-06-19T00:00:00.000","2022-06-20T00:00:00.000","2022-06-21T00:00:00.000","2022-06-22T00:00:00.000","2022-06-23T00:00:00.000","2022-06-24T00:00:00.000","2022-06-25T00:00:00.000","2022-06-26T00:00:00.000","2022-06-27T00:00:00.000","2022-06-28T00:00:00.000","2022-06-29T00:00:00.000","2022-06-30T00:00:00.000","2022-07-01T00:00:00.000","2022-07-02T00:00:00.000","2022-07-03T00:00:00.000","2022-07-04T00:00:00.000","2022-07-05T00:00:00.000","2022-07-06T00:00:00.000","2022-07-07T00:00:00.000","2022-07-08T00:00:00.000","2022-07-09T00:00:00.000","2022-07-10T00:00:00.000","2022-07-11T00:00:00.000","2022-07-12T00:00:00.000","2022-07-13T00:00:00.000","2022-07-14T00:00:00.000","2022-07-15T00:00:00.000","2022-07-16T00:00:00.000","2022-07-17T00:00:00.000","2022-07-18T00:00:00.000","2022-07-19T00:00:00.000","2022-07-20T00:00:00.000","2022-07-21T00:00:00.000","2022-07-22T00:00:00.000","2022-07-23T00:00:00.000","2022-07-24T00:00:00.000","2022-07-25T00:00:00.000","2022-07-26T00:00:00.000","2022-07-27T00:00:00.000","2022-07-28T00:00:00.000","2022-07-29T00:00:00.000","2022-07-30T00:00:00.000","2022-07-31T00:00:00.000","2022-08-01T00:00:00.000","2022-08-02T00:00:00.000","2022-08-03T00:00:00.000","2022-08-04T00:00:00.000","2022-08-05T00:00:00.000","2022-08-06T00:00:00.000","2022-08-07T00:00:00.000","2022-08-08T00:00:00.000","2022-08-09T00:00:00.000","2022-08-10T00:00:00.000","2022-08-11T00:00:00.000","2022-08-12T00:00:00.000","2022-08-13T00:00:00.000","2022-08-14T00:00:00.000","2022-08-15T00:00:00.000","2022-08-16T00:00:00.000","2022-08-17T00:00:00.000","2022-08-18T00:00:00.000","2022-08-19T00:00:00.000","2022-08-20T00:00:00.000","2022-08-21T00:00:00.000","2022-08-22T00:00:00.000","2022-08-23T00:00:00.000","2022-08-24T00:00:00.000","2022-08-25T00:00:00.000","2022-08-26T00:00:00.000","2022-08-27T00:00:00.000","2022-08-28T00:00:00.000","2022-08-29T00:00:00.000","2022-08-30T00:00:00.000","2022-08-31T00:00:00.000","2022-09-01T00:00:00.000","2022-09-02T00:00:00.000","2022-09-03T00:00:00.000","2022-09-04T00:00:00.000","2022-09-05T00:00:00.000","2022-09-06T00:00:00.000","2022-09-07T00:00:00.000","2022-09-08T00:00:00.000","2022-09-09T00:00:00.000","2022-09-10T00:00:00.000","2022-09-11T00:00:00.000","2022-09-12T00:00:00.000","2022-09-13T00:00:00.000","2022-09-14T00:00:00.000","2022-09-15T00:00:00.000","2022-09-16T00:00:00.000","2022-09-17T00:00:00.000","2022-09-18T00:00:00.000","2022-09-19T00:00:00.000","2022-09-20T00:00:00.000","2022-09-21T00:00:00.000","2022-09-22T00:00:00.000","2022-09-23T00:00:00.000","2022-09-24T00:00:00.000","2022-09-25T00:00:00.000","2022-09-26T00:00:00.000","2022-09-27T00:00:00.000","2022-09-28T00:00:00.000","2022-09-29T00:00:00.000","2022-09-30T00:00:00.000","2022-10-01T00:00:00.000","2022-10-02T00:00:00.000","2022-10-03T00:00:00.000","2022-10-04T00:00:00.000","2022-10-05T00:00:00.000","2022-10-06T00:00:00.000","2022-10-07T00:00:00.000","2022-10-08T00:00:00.000","2022-10-09T00:00:00.000","2022-10-10T00:00:00.000","2022-10-11T00:00:00.000","2022-10-12T00:00:00.000","2022-10-13T00:00:00.000","2022-10-14T00:00:00.000","2022-10-15T00:00:00.000","2022-10-16T00:00:00.000","2022-10-17T00:00:00.000","2022-10-18T00:00:00.000","2022-10-19T00:00:00.000","2022-10-20T00:00:00.000","2022-10-21T00:00:00.000","2022-10-22T00:00:00.000","2022-10-23T00:00:00.000","2022-10-24T00:00:00.000","2022-10-25T00:00:00.000","2022-10-26T00:00:00.000","2022-10-27T00:00:00.000","2022-10-28T00:00:00.000","2022-10-29T00:00:00.000","2022-10-30T00:00:00.000","2022-10-31T00:00:00.000","2022-11-01T00:00:00.000","2022-11-02T00:00:00.000","2022-11-03T00:00:00.000","2022-11-04T00:00:00.000","2022-11-05T00:00:00.000","2022-11-06T00:00:00.000","2022-11-07T00:00:00.000","2022-11-08T00:00:00.000","2022-11-09T00:00:00.000","2022-11-10T00:00:00.000","2022-11-11T00:00:00.000","2022-11-12T00:00:00.000","2022-11-13T00:00:00.000","2022-11-14T00:00:00.000","2022-11-15T00:00:00.000","2022-11-16T00:00:00.000","2022-11-17T00:00:00.000","2022-11-18T00:00:00.000","2022-11-19T00:00:00.000","2022-11-20T00:00:00.000","2022-11-21T00:00:00.000","2022-11-22T00:00:00.000","2022-11-23T00:00:00.000","2022-11-24T00:00:00.000","2022-11-25T00:00:00.000","2022-11-26T00:00:00.000","2022-11-27T00:00:00.000","2022-11-28T00:00:00.000","2022-11-29T00:00:00.000","2022-11-30T00:00:00.000","2022-12-01T00:00:00.000","2022-12-02T00:00:00.000","2022-12-03T00:00:00.000","2022-12-04T00:00:00.000","2022-12-05T00:00:00.000","2022-12-06T00:00:00.000","2022-12-07T00:00:00.000","2022-12-08T00:00:00.000","2022-12-09T00:00:00.000","2022-12-10T00:00:00.000","2022-12-11T00:00:00.000","2022-12-12T00:00:00.000","2022-12-13T00:00:00.000","2022-12-14T00:00:00.000","2022-12-15T00:00:00.000","2022-12-16T00:00:00.000","2022-12-17T00:00:00.000","2022-12-18T00:00:00.000","2022-12-19T00:00:00.000","2022-12-20T00:00:00.000","2022-12-21T00:00:00.000","2022-12-22T00:00:00.000","2022-12-23T00:00:00.000","2022-12-24T00:00:00.000","2022-12-25T00:00:00.000","2022-12-26T00:00:00.000","2022-12-27T00:00:00.000","2022-12-28T00:00:00.000","2022-12-29T00:00:00.000","2022-12-30T00:00:00.000","2022-12-31T00:00:00.000"],"xaxis":"x","y":{"dtype":"f8","bdata":"0P01p3EXUEBus\u002fARJLJTQNwB19gHNFNAvXqxL7\u002fyUkCeoMEV+dBSQGnULl6Bv1JAGFut9Hi2UkBWquwnzbFSQAAlEOBir1JAexl\u002fIiOuUkDqSHXefa1SQIOCHEsorVJAAT8PIfysUkAm3yg+5axSQLMYSn\u002fZrFJA24quWNOsUkDM93Mg0KxSQMC3M5zOrFJA7fAqtM2sUkB31yBDzaxSQCv6EgfNrFJA4m+17MysUkBksz7dzKxSQFY0s9TMrFJAwgsl0MysUkDylk\u002fOzKxSQI3Ep83MrFJAohxvzcysUkCowi\u002fNzKxSQGgFBs3MrFJAw1\u002ftzMysUkDm63h05ftQQGNUqH0niU9ANfGx2dxITkDuhLMOu6NNQLOtGFx6Tk1AtfYzzWoiTUBD5VN9oQtNQP8goOLX\u002f0xAQgaZP775TEDvY0MKlvZMQGWHqo7z9ExAb\u002fROcxv0TEB2GGxzq\u002fNMQAXxmT5x80xA\u002fjaIdlPzTEAUuUDjQ\u002fNMQCXVE9o780xAY74MsTfzTEAWjfGANfNMQDxBR2w080xAJ4gP0jPzTEDiZJaBM\u002fNMQJ\u002f0LFwz80xAQL1ASjPzTEBChqVAM\u002fNMQNl3Bjoz80xAbaAGNjPzTEAlykw0M\u002fNMQJxXp9uE005AocgrSbYzT0ANihml52RPQMTJAHdafk9AiYiUdoOLT0CF9oB4UZJPQCFD1t7VlU9A2Xe6UKeXT0Br10\u002fxl5hPQFOXA40UmU9AdqOk21SZT0CRi4r\u002fdZlPQEGnVDWHmU9AizuPDZCZT0DWubOolJlPQPKWrg6XmU9AGgmGQJiZT0CAesXnmJlPQBhA9zuZmU9AuDQBbpmZT0BFLiiGmZlPQPU+DZCZmU9AtYHlk5mZT0Bz8IiVmZlPQIbKO5eZmU9A9xJAmJmZT0DNwdWYmZlPQNbPKpmZmU9AR\u002fdamZmZT0BxMnaZmZlPQICFg5mZmU9ANXwSj+ylXkA2Gw\u002fL4Y5iQFul6I52CGRAavgtl2HTZEBL86+sRD9lQBhLFk7OeGVAj0JFmcyXZUB2oxdsnahlQL75axTGsWVAqHfAtcW2ZUB\u002fG9nsgLllQPIWmS3\u002fumVAEL1kTNC7ZUC0oiGkQrxlQFMXFDOBvGVA4YWycaO8ZUBr100qtrxlQAK+tXXAvGVA1Vr0A8a8ZUCrqrEXybxlQJJq7MPKvGVAv9jnscu8ZUC1AZQzzLxlQOS4x3XMvGVA1PD7mcy8ZUDAQoGwzLxlQIMt5b7MvGVAv2NQxsy8ZUAOaYLJzLxlQFKt3MrMvGVAfP6FmRVAXkBRzqSb251ZQJqOzA4sJldAF2EaUm\u002faVUBvdD3SlC1VQBzHzyHQ01RAC7Y6d0KlVEDQaew5Io1UQO\u002fuqBqigFRATTzodSh6VEB6KgfQzXZUQAVmJAcRdVRA1PBTySp0VEDd\u002fk1is3NUQCsaSaJ1c1RANCi8llVzVEA9FW4FRXNUQIe0kGk8c1RAhBdo9zdzVEAYVuetNXNUQAgZKHg0c1RA6n3e4TNzVECkZRqLM3NUQKrLcV0zc1RA+NueSTNzVEAPU9c+M3NUQCee2zkzc1RApxj7NjNzVEDyoVc1M3NUQAK+aTQzc1RAYQDjMzNzVEBAva\u002f7k5VLQKq1b8FfSkdA9h1zcEoYRUDGnQScDPdDQKRlGCuaYUNAopwlXxUUQ0BwU+DOlutCQCsaZUN01kJAZmairYbLQkAhTp7o58VCQGWHkRMGw0JARSP9+4vBQkA25iuwysBCQAgkX65nwEJAHpsJDjXAQkDD6k\u002f7GsBCQHeNGRMOwEJATwWqCQfAQkC0l9isA8BCQMhbjrYBwEJAeGF18QDAQkAFcSqJAMBCQPNqmjwAwEJA7\u002flXIQDAQkBoRScRAMBCQLvRnQoAwEJAd40BBgDAQkCN+RoDAMBCQKDpaAEAwEJAWsaj\u002f\u002f+\u002fQkAA9Z4HbKk5QNejkOxw9zZArzHHfAuqNUCSaj2u0BE1QPU+Fl43zjRAUsOvVIywNEBxJxAdmKM0QM62AvfynTRADnQSFX6bNECAhQBBbJo0QGAW91X1mTRAVkr0hMGZNEB2mKLgqpk0QG9pzjuhmTRADX\u002fz05yZNECsfr4Gm5k0QHMGPTiamTRAwgtr5JmZNEAt7gy8mZk0QP1iGaWZmTRArkfZmZmZNEB7CY2ZmZk0QEKG0puZmTRA5C0Vm5mZNECX8QmamZk0QNwUw5mZmTRA83WrmZmZNECO7qGZmZk0QCeenZmZmTRAQpGbmZmZNEBcj5qZmZk0QNwUE+04YzFAc\u002fAa2OlaMECamSkBT9UvQAHfbHTcdi9AMzOjGGRPL0DBId2f7z4vQHEyiQgVOC9AtKIBcjs1L0B4bMaFCzQvQPq6gYGNMy9AmplZ11gzL0CKUTPAQjMvQJmkSto5My9A1Pvo4jUzL0D1SZ9YNDMvQAntVa4zMy9Aa+KZWDMzL0B90jdGMzMvQMILezwzMy9A5QGpNzMzL0Btq1Q1MzMvQLg0NzQzMy9AIwGvMzMzL0CvJm4zMzMvQNI9TzMzMy9Ao5FAMzMzL0B3jTkzMzMvQNs1NjMzMy9AW6U0MzMzL0Ac3TMzMzMvQCeIMzMzMy9AQL0foVxJLkDQdFTN34ctQEf3fFHnNy1Axoc+OPgWLUD2HUvJbgktQOxGd3XfAy1AAPWON5cBLUDV2sUrpwAtQLHkV0BEAC1AwgurLRwALUD9THfkCwAtQO\u002fjTa4EAC1A\u002fyBzyAEALUDv462iAAAtQGAhyEsAAC1AJ4gjIQAALUBFI8EQAAAtQOUXGwgAAC1ADX\u002fbAwAALUBQ5NIBAAAtQPYo3AAAAC1AN7pnAAAALUB02jAAAAAtQAn4FgAAAC1AJdUKAAAALUCnGAUAAAAtQPNqAgAAAC1ANB0BAAAALUCRiwAAAAAtQK1zFQAAAC1A7gQpC1fxNUAOdPq7UsI3QKKcofvBgzhAEDLEsYnXOEC\u002fYxsSWPw4QEREvDyeDDlAIFmHktUTOUCND53dCRc5QAD1zjV2GDlAtmA7\u002fRcZOUDGnYgLYBk5QCsaAe9\u002fGTlAgW8uNo4ZOUCInpqtlBk5QOxGN2CXGTlAJPaVmJgZOUCBZC0bmRk5QDmZHGSZGTlA4ZCmiJkZOUCEAayUmRk5QFgI9paZGTlABXGylpkZOUB02piXmRk5QMaHfpiZGTlA38f7mJkZOUBlklKZmRk5QIB6d5mZGTlAHbyImZkZOUB6NZGZmRk5QIFklZmZGTlAiX2XmZkZOUCeIK6fCahAQIXrAY\u002fJL0JAh6mD8uPkQkAVmIlksEFDQOfKc5AKckNABJIFgTGLQ0A\u002f00kqRJhDQBzdPwUPn0NAS4nGWZaiQ0CzuP9ka6RDQBhA+RBfpUNA7TCJpN2lQ0DcCfJiH6ZDQNMcxIVBpkNAA52qFFOmQ0BSrcGSXKZDQClcf0NhpkNACA7BtmOmQ0DJOvcIZaZDQI7juKRlpkNAss6VBWamQ0C\u002fWI4yZqZDQNl3lExmpkNA8pYKW2amQ0BSwz9hZqZDQC7YmmNmpkNAaRlnZGamQ0DzgDBlZqZDQOUXs2VmpkNALA8AZmamQ0Br7cYy\u002fkpDQImImM6WGkNAE+VUUYcBQ0C70ZlGgfRCQASHKC687UJA\u002fWKRBzfqQkDOoJxaYuhCQJ\u002f01WRu50JAcEjn0u\u002fmQkCN+Yr6reZCQOfKT4mL5kJAjDAYvHnmQkDd6A5ocOZCQJChWq1r5kJAZLMlGGnmQkCeIHLJZ+ZCQPxttihn5kJAoNM6ymbmQkA18eiYZuZCQK5HFYFm5kJAn\u002f+2cmbmQkAXYWxsZuZCQGzB2mlm5kJARS5eaGbmQkC7xoRnZuZCQCMXCWdm5kJAj83CZmbmQkBI4ZpmZuZCQBk1hGZm5kJAk1R3ZmbmQkAJA3BmZuZCQA=="},"yaxis":"y","type":"scattergl"},{"hovertemplate":"variable=sea\u003cbr\u003etime=%{x}\u003cbr\u003evalue=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"sea","line":{"color":"#FFA15A","dash":"solid"},"marker":{"symbol":"circle"},"mode":"lines","name":"sea","showlegend":true,"x":["2022-01-01T00:00:00.000","2022-01-02T00:00:00.000","2022-01-03T00:00:00.000","2022-01-04T00:00:00.000","2022-01-05T00:00:00.000","2022-01-06T00:00:00.000","2022-01-07T00:00:00.000","2022-01-08T00:00:00.000","2022-01-09T00:00:00.000","2022-01-10T00:00:00.000","2022-01-11T00:00:00.000","2022-01-12T00:00:00.000","2022-01-13T00:00:00.000","2022-01-14T00:00:00.000","2022-01-15T00:00:00.000","2022-01-16T00:00:00.000","2022-01-17T00:00:00.000","2022-01-18T00:00:00.000","2022-01-19T00:00:00.000","2022-01-20T00:00:00.000","2022-01-21T00:00:00.000","2022-01-22T00:00:00.000","2022-01-23T00:00:00.000","2022-01-24T00:00:00.000","2022-01-25T00:00:00.000","2022-01-26T00:00:00.000","2022-01-27T00:00:00.000","2022-01-28T00:00:00.000","2022-01-29T00:00:00.000","2022-01-30T00:00:00.000","2022-01-31T00:00:00.000","2022-02-01T00:00:00.000","2022-02-02T00:00:00.000","2022-02-03T00:00:00.000","2022-02-04T00:00:00.000","2022-02-05T00:00:00.000","2022-02-06T00:00:00.000","2022-02-07T00:00:00.000","2022-02-08T00:00:00.000","2022-02-09T00:00:00.000","2022-02-10T00:00:00.000","2022-02-11T00:00:00.000","2022-02-12T00:00:00.000","2022-02-13T00:00:00.000","2022-02-14T00:00:00.000","2022-02-15T00:00:00.000","2022-02-16T00:00:00.000","2022-02-17T00:00:00.000","2022-02-18T00:00:00.000","2022-02-19T00:00:00.000","2022-02-20T00:00:00.000","2022-02-21T00:00:00.000","2022-02-22T00:00:00.000","2022-02-23T00:00:00.000","2022-02-24T00:00:00.000","2022-02-25T00:00:00.000","2022-02-26T00:00:00.000","2022-02-27T00:00:00.000","2022-02-28T00:00:00.000","2022-03-01T00:00:00.000","2022-03-02T00:00:00.000","2022-03-03T00:00:00.000","2022-03-04T00:00:00.000","2022-03-05T00:00:00.000","2022-03-06T00:00:00.000","2022-03-07T00:00:00.000","2022-03-08T00:00:00.000","2022-03-09T00:00:00.000","2022-03-10T00:00:00.000","2022-03-11T00:00:00.000","2022-03-12T00:00:00.000","2022-03-13T00:00:00.000","2022-03-14T00:00:00.000","2022-03-15T00:00:00.000","2022-03-16T00:00:00.000","2022-03-17T00:00:00.000","2022-03-18T00:00:00.000","2022-03-19T00:00:00.000","2022-03-20T00:00:00.000","2022-03-21T00:00:00.000","2022-03-22T00:00:00.000","2022-03-23T00:00:00.000","2022-03-24T00:00:00.000","2022-03-25T00:00:00.000","2022-03-26T00:00:00.000","2022-03-27T00:00:00.000","2022-03-28T00:00:00.000","2022-03-29T00:00:00.000","2022-03-30T00:00:00.000","2022-03-31T00:00:00.000","2022-04-01T00:00:00.000","2022-04-02T00:00:00.000","2022-04-03T00:00:00.000","2022-04-04T00:00:00.000","2022-04-05T00:00:00.000","2022-04-06T00:00:00.000","2022-04-07T00:00:00.000","2022-04-08T00:00:00.000","2022-04-09T00:00:00.000","2022-04-10T00:00:00.000","2022-04-11T00:00:00.000","2022-04-12T00:00:00.000","2022-04-13T00:00:00.000","2022-04-14T00:00:00.000","2022-04-15T00:00:00.000","2022-04-16T00:00:00.000","2022-04-17T00:00:00.000","2022-04-18T00:00:00.000","2022-04-19T00:00:00.000","2022-04-20T00:00:00.000","2022-04-21T00:00:00.000","2022-04-22T00:00:00.000","2022-04-23T00:00:00.000","2022-04-24T00:00:00.000","2022-04-25T00:00:00.000","2022-04-26T00:00:00.000","2022-04-27T00:00:00.000","2022-04-28T00:00:00.000","2022-04-29T00:00:00.000","2022-04-30T00:00:00.000","2022-05-01T00:00:00.000","2022-05-02T00:00:00.000","2022-05-03T00:00:00.000","2022-05-04T00:00:00.000","2022-05-05T00:00:00.000","2022-05-06T00:00:00.000","2022-05-07T00:00:00.000","2022-05-08T00:00:00.000","2022-05-09T00:00:00.000","2022-05-10T00:00:00.000","2022-05-11T00:00:00.000","2022-05-12T00:00:00.000","2022-05-13T00:00:00.000","2022-05-14T00:00:00.000","2022-05-15T00:00:00.000","2022-05-16T00:00:00.000","2022-05-17T00:00:00.000","2022-05-18T00:00:00.000","2022-05-19T00:00:00.000","2022-05-20T00:00:00.000","2022-05-21T00:00:00.000","2022-05-22T00:00:00.000","2022-05-23T00:00:00.000","2022-05-24T00:00:00.000","2022-05-25T00:00:00.000","2022-05-26T00:00:00.000","2022-05-27T00:00:00.000","2022-05-28T00:00:00.000","2022-05-29T00:00:00.000","2022-05-30T00:00:00.000","2022-05-31T00:00:00.000","2022-06-01T00:00:00.000","2022-06-02T00:00:00.000","2022-06-03T00:00:00.000","2022-06-04T00:00:00.000","2022-06-05T00:00:00.000","2022-06-06T00:00:00.000","2022-06-07T00:00:00.000","2022-06-08T00:00:00.000","2022-06-09T00:00:00.000","2022-06-10T00:00:00.000","2022-06-11T00:00:00.000","2022-06-12T00:00:00.000","2022-06-13T00:00:00.000","2022-06-14T00:00:00.000","2022-06-15T00:00:00.000","2022-06-16T00:00:00.000","2022-06-17T00:00:00.000","2022-06-18T00:00:00.000","2022-06-19T00:00:00.000","2022-06-20T00:00:00.000","2022-06-21T00:00:00.000","2022-06-22T00:00:00.000","2022-06-23T00:00:00.000","2022-06-24T00:00:00.000","2022-06-25T00:00:00.000","2022-06-26T00:00:00.000","2022-06-27T00:00:00.000","2022-06-28T00:00:00.000","2022-06-29T00:00:00.000","2022-06-30T00:00:00.000","2022-07-01T00:00:00.000","2022-07-02T00:00:00.000","2022-07-03T00:00:00.000","2022-07-04T00:00:00.000","2022-07-05T00:00:00.000","2022-07-06T00:00:00.000","2022-07-07T00:00:00.000","2022-07-08T00:00:00.000","2022-07-09T00:00:00.000","2022-07-10T00:00:00.000","2022-07-11T00:00:00.000","2022-07-12T00:00:00.000","2022-07-13T00:00:00.000","2022-07-14T00:00:00.000","2022-07-15T00:00:00.000","2022-07-16T00:00:00.000","2022-07-17T00:00:00.000","2022-07-18T00:00:00.000","2022-07-19T00:00:00.000","2022-07-20T00:00:00.000","2022-07-21T00:00:00.000","2022-07-22T00:00:00.000","2022-07-23T00:00:00.000","2022-07-24T00:00:00.000","2022-07-25T00:00:00.000","2022-07-26T00:00:00.000","2022-07-27T00:00:00.000","2022-07-28T00:00:00.000","2022-07-29T00:00:00.000","2022-07-30T00:00:00.000","2022-07-31T00:00:00.000","2022-08-01T00:00:00.000","2022-08-02T00:00:00.000","2022-08-03T00:00:00.000","2022-08-04T00:00:00.000","2022-08-05T00:00:00.000","2022-08-06T00:00:00.000","2022-08-07T00:00:00.000","2022-08-08T00:00:00.000","2022-08-09T00:00:00.000","2022-08-10T00:00:00.000","2022-08-11T00:00:00.000","2022-08-12T00:00:00.000","2022-08-13T00:00:00.000","2022-08-14T00:00:00.000","2022-08-15T00:00:00.000","2022-08-16T00:00:00.000","2022-08-17T00:00:00.000","2022-08-18T00:00:00.000","2022-08-19T00:00:00.000","2022-08-20T00:00:00.000","2022-08-21T00:00:00.000","2022-08-22T00:00:00.000","2022-08-23T00:00:00.000","2022-08-24T00:00:00.000","2022-08-25T00:00:00.000","2022-08-26T00:00:00.000","2022-08-27T00:00:00.000","2022-08-28T00:00:00.000","2022-08-29T00:00:00.000","2022-08-30T00:00:00.000","2022-08-31T00:00:00.000","2022-09-01T00:00:00.000","2022-09-02T00:00:00.000","2022-09-03T00:00:00.000","2022-09-04T00:00:00.000","2022-09-05T00:00:00.000","2022-09-06T00:00:00.000","2022-09-07T00:00:00.000","2022-09-08T00:00:00.000","2022-09-09T00:00:00.000","2022-09-10T00:00:00.000","2022-09-11T00:00:00.000","2022-09-12T00:00:00.000","2022-09-13T00:00:00.000","2022-09-14T00:00:00.000","2022-09-15T00:00:00.000","2022-09-16T00:00:00.000","2022-09-17T00:00:00.000","2022-09-18T00:00:00.000","2022-09-19T00:00:00.000","2022-09-20T00:00:00.000","2022-09-21T00:00:00.000","2022-09-22T00:00:00.000","2022-09-23T00:00:00.000","2022-09-24T00:00:00.000","2022-09-25T00:00:00.000","2022-09-26T00:00:00.000","2022-09-27T00:00:00.000","2022-09-28T00:00:00.000","2022-09-29T00:00:00.000","2022-09-30T00:00:00.000","2022-10-01T00:00:00.000","2022-10-02T00:00:00.000","2022-10-03T00:00:00.000","2022-10-04T00:00:00.000","2022-10-05T00:00:00.000","2022-10-06T00:00:00.000","2022-10-07T00:00:00.000","2022-10-08T00:00:00.000","2022-10-09T00:00:00.000","2022-10-10T00:00:00.000","2022-10-11T00:00:00.000","2022-10-12T00:00:00.000","2022-10-13T00:00:00.000","2022-10-14T00:00:00.000","2022-10-15T00:00:00.000","2022-10-16T00:00:00.000","2022-10-17T00:00:00.000","2022-10-18T00:00:00.000","2022-10-19T00:00:00.000","2022-10-20T00:00:00.000","2022-10-21T00:00:00.000","2022-10-22T00:00:00.000","2022-10-23T00:00:00.000","2022-10-24T00:00:00.000","2022-10-25T00:00:00.000","2022-10-26T00:00:00.000","2022-10-27T00:00:00.000","2022-10-28T00:00:00.000","2022-10-29T00:00:00.000","2022-10-30T00:00:00.000","2022-10-31T00:00:00.000","2022-11-01T00:00:00.000","2022-11-02T00:00:00.000","2022-11-03T00:00:00.000","2022-11-04T00:00:00.000","2022-11-05T00:00:00.000","2022-11-06T00:00:00.000","2022-11-07T00:00:00.000","2022-11-08T00:00:00.000","2022-11-09T00:00:00.000","2022-11-10T00:00:00.000","2022-11-11T00:00:00.000","2022-11-12T00:00:00.000","2022-11-13T00:00:00.000","2022-11-14T00:00:00.000","2022-11-15T00:00:00.000","2022-11-16T00:00:00.000","2022-11-17T00:00:00.000","2022-11-18T00:00:00.000","2022-11-19T00:00:00.000","2022-11-20T00:00:00.000","2022-11-21T00:00:00.000","2022-11-22T00:00:00.000","2022-11-23T00:00:00.000","2022-11-24T00:00:00.000","2022-11-25T00:00:00.000","2022-11-26T00:00:00.000","2022-11-27T00:00:00.000","2022-11-28T00:00:00.000","2022-11-29T00:00:00.000","2022-11-30T00:00:00.000","2022-12-01T00:00:00.000","2022-12-02T00:00:00.000","2022-12-03T00:00:00.000","2022-12-04T00:00:00.000","2022-12-05T00:00:00.000","2022-12-06T00:00:00.000","2022-12-07T00:00:00.000","2022-12-08T00:00:00.000","2022-12-09T00:00:00.000","2022-12-10T00:00:00.000","2022-12-11T00:00:00.000","2022-12-12T00:00:00.000","2022-12-13T00:00:00.000","2022-12-14T00:00:00.000","2022-12-15T00:00:00.000","2022-12-16T00:00:00.000","2022-12-17T00:00:00.000","2022-12-18T00:00:00.000","2022-12-19T00:00:00.000","2022-12-20T00:00:00.000","2022-12-21T00:00:00.000","2022-12-22T00:00:00.000","2022-12-23T00:00:00.000","2022-12-24T00:00:00.000","2022-12-25T00:00:00.000","2022-12-26T00:00:00.000","2022-12-27T00:00:00.000","2022-12-28T00:00:00.000","2022-12-29T00:00:00.000","2022-12-30T00:00:00.000","2022-12-31T00:00:00.000"],"xaxis":"x","y":{"dtype":"f8","bdata":"FFxVZ1ecW0AJS22x\u002fO1YQGul3Dfe4FdAVqKjIHRVV0CtiE7\u002fTA1XQMQEP87551ZAENLlE6zUVkDSgnNzsMpWQOhkUAqHxVZAaAVRq9vCVkBCEfhyesFWQKWEhYzDwFZAZ9sbKGXAVkBKv989NMBWQC1OSCMbwFZAf1De\u002fQ3AVkCewD0cB8BWQGVSbt4DwFZABtCA7gHAVkC1TOf8AMBWQOStjHwAwFZAKdwyRADAVkBg1iUjAMBWQEt+4hAAwFZAmg4mBwDAVkAqsDoDAMBWQM\u002f\u002f0wEAwFZADulaAQDAVkAugtMAAMBWQJxMegAAwFZA0Z5FAADAVkC5\u002fQIh2MlUQPHsXvEKMlJAv5hFw0LbUEALNoOwQipQQDJf1wiYnU9AWfIaFQE\u002fT0BJtdCuEg5PQLn9qsPB9E5AFoKHk6fnTkBdhFuV3+BOQKcYE69c3U5A0xxve4zbTkDuD1Tnm9pOQI7uzt8e2k5Aoqf\u002f5t7ZTkANlSdyvdlOQC3jQC+s2U5APRWHP6PZTkA9IGWMntlOQCslGzqc2U5Aw\u002fXW7prZTkBa0fpBmtlOQKcNnvGZ2U5ATF0ey5nZTkB93Xu2mdlOQHTPQqiZ2U5AFo2rn5nZTkAWd\u002fabmdlOQO0wlJWvck9Ac3AeRm0fUEA3Og6vPlRQQNORg3qPb1BAjm7HGK99UEAx9UZ6\u002fIRQQEnAsqzCiFBAt78tH7aKUECx+i5TuItQQJqDtQg+jFBAb2mnCYOMUEADHSSZpoxQQCwErxC5jFBATxBGjsKMUEDdaIZ\u002fx4xQQBaCWBLKjFBAoNOFWsuMUEDTEfwNzIxQQLrnU2jMjFBA3l0FnsyMUEAK4u+3zIxQQB\u002fvjcLMjFBAShSuxsyMUECmI3DIzIxQQOi\u002fQsrMjFBAPQpay8yMUEBBp\u002frLzIxQQObrVczMjFBAtJeJzMyMUEB0z6bMzIxQQCMXtczMjFBAbLZsVzerWUBuijciwZtjQJoDv7D30GZAkgByamKAaEB2LpHSiWVpQLMtW2mx32lAg6K5TnohakAcxwNfKkVqQMjQxROaWGpArH4YizVjakAO3pBMAWlqQMhQWnEsbGpAaEX0MehtakC7UULU2m5qQO\u002fuvZNfb2pALW5cPqhvakCx+i\u002f4z29qQNVleNDlb2pADl5ymvFvakBw3gMi+G9qQGzBta77b2pAJx60p\u002f1vakAGxd26\u002fm9qQH1dWEf\u002fb2pA6ogrlP9vakBNR\u002fXD\u002f29qQNeYfuL\u002fb2pAdpg88v9vakDYggT5\u002f29qQK484\u002fv\u002fb2pA1rn2bbriZkDE1PMgEP9hQAVx6ms4wF5A5Rdjaxz+W0B2o82mso1aQGSz3+g2zllAq59j5t1qWUAnk8ApXjdZQEqfbFCuHFlAaSSgNtsOWUDlAdXqsQdZQMBCxj38A1lACfi8oxACWUC0lwKyEQFZQNlsJdmNAFlAZ1AebUkAWUAFfC0NJgBZQLZViKsTAFlAuClcLQoAWUDEyTRLBQBZQE0817UCAFlAYCzzdAEAWUBMXbC7AABZQCsaM1oAAFlA9TPfLwAAWUArGtsYAABZQE08Nw4AAFlAU6ISCAAAWUAjAZMEAABZQI0PlwIAAFlArV13AQAAWUCO7tE815FVQNwfCJ+GBFFAYCGUsJlWTUAT2rsFCOpKQHd3n6fEqElAAsm+eu4BSUDNzCQ4uKpIQFKtAb0vfUhA0jKal6NlSEACvl0ah1lIQCslOghRU0hApiPuMyJQSEAfha+fgU5IQItGwj+sTUhAJqk+JD9NSECuRynzBk1IQKDTDiLrTEhAR\u002fes99tMSEDPf3m41ExIQEt+9X3QTEhAZZIu1c5MSEByEWr0zUxIQAHfaE\u002fNTEhAcTKpFM1MSECHtMTxzExIQCIiruPMTEhAm3i+2cxMSEAIGX7TzExIQJCh1s\u002fMTEhATUdczsxMSEBNUt3UaC5GQFny95rFTkNA4ZCmacjmQUBoOhreJEJBQIJOR\u002f75+EBAqdbKSdrYQEAVoz790spAQGLfNdq1xEBAKjC\u002fuwzCQED48fYn5MBAQBaNnFtjwEBAvnl1PCvAQEANlYm2EsBAQBEGlEQIwEBA5usCfwPAQEDNwXuLAcBAQI\u002fC0asAwEBACuIIUQDAQEBXHlAlAMBAQJNfdAwAwEBAy\u002fhEAADAQEBmZvL\u002f\u002f79AQBAyaAIAwEBA9h2bAQDAQEBSrXkAAMBAQC3uLAAAwEBAIFkTAADAQEDuBAkAAMBAQIFZBAAAwEBAniACAADAQECEDAEAAMBAQNXl9m3LqD9AiJOhGFdwPUDrXGHTznw8QHBIa8VHFjxAXI+SMWvrO0AsD+gYjNk7QMztJ1ka0jtAA6jX4gHPO0DfvLrEt807QGg60uMuzTtA2I2Or\u002fXMO0BtoPOw3cw7QH+QsQbUzDtAju7Jt8\u002fMO0CQrIMLzsw7QJC3jFLNzDtAu8Zs9czMO0CnGHXhzMw7QChy4dbMzDtAagOl0czMO0BETx3PzMw7QLg0583MzDtAcEhTzczMO0De0gzNzMw7QGhF68zMzDtAgk7bzMzMO0CistPMzMw7QD0V0MzMzDtARFrOzMzMO0Dyi83MzMw7QNInzczMzDtAP9M5JdYYO0BSuI5Q6kY6QLHkrzD97zlAA53W4y3MOUAxgGpcdb05QH3SN3ZptzlAxahxEu60OUAFfDMC6bM5QGH1c219szlA38eD2FGzOUDIW0IiQLM5QCwEb0o4szlAaQ6eIzWzOUAmtB\u002fkM7M5QHIRnoUzszlA+449VzOzOUA25mtFM7M5QI0EBDwzszlA0idlNzOzOUAA9S41M7M5QKKnIjQzszlAhAGkMzOzOUDsUWgzM7M5QBk1TDMzszlACfg+MzOzOUAmvzgzM7M5QLLONTMzszlAvm40MzOzOUDnyjMzM7M5QIJOMzMzszlA0xz8elsVPUB+vBk2OH9AQDJUBrH0UEFAH4VHW7GrQUAk6+x2idNBQI353p4m5UFAMIt73vXsQUD7mYKVbfBBQLgeZd738UFADKur8KbyQUAjDJTq9PJBQHd3w2wX80FAVHZA4CbzQUDm667fLfNBQD0gCcsw80FAxNQRHTLzQUDm9mOqMvNBQO0wUfky80FADKvbIDPzQUAk9t0tM\u002fNBQFceWDAz80FAlvwOMDPzQUD0VAgxM\u002fNBQIXgADIz80FAMWqIMjPzQUAyVOYyM\u002fNBQIJDDjMz80FAR\u002fcgMzPzQUARHCozM\u002fNBQB6mLjMz80FAJOswMzPzQUC68mgp3L9EQE1SGW6tC0hAJ57x+3uSSUBszMMHb1pKQOfgDauIwkpAHN3\u002f\u002fqn4SkDQdGD3yhRLQAHflA9oI0tAa9docv8qS0DU+yCA8C5LQGPJO7T8MEtA5QGBAA0yS0AGUNdumjJLQG9pJt7jMktAlRLBowkzS0B3gnQPHjNLQEqfiCYoM0tA5C3pay0zS0AJA3xDMDNLQLyljZIxM0tAUq3tYjIzS0At46vDMjNLQIepp\u002fsyM0tA+dDDGjMzS0AofR4oMzNLQC3jLy0zM0tAX0LnLjMzS0AWjZgwMzNLQDp4sTEzM0tAuQhXMjMzS0DV5UK+7eRKQBPlPLAdfUpAnTZw6zBHSkB7CTFUKStKQKyJe+6WHEpA1eXmJAMVSkCx+l1CEhFKQENwgBgFD0pAZnyMofQNSkDUBhLjZg1KQD0gSb4cDUpATib9a\u002fYMSkAk9kVX4gxKQPuZ\u002fijYDEpAju6dmdIMSkCVKBvJzwxKQM6gGG\u002fODEpAnwq0o80MSkCBWYg5zQxKQCeePQbNDEpAOmJP58wMSkAhOMTZzAxKQJqOPNTMDEpArkcJ0cwMSkAySTXPzAxKQDUHK87MDEpAqrWTzcwMSkAcxz3NzAxKQEf3DM3MDEpAED3xzMwMSkDHfOHMzAxKQA=="},"yaxis":"y","type":"scattergl"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"},"margin":{"b":0,"l":0,"r":0,"t":30}}},"xaxis":{"anchor":"y","domain":[0.0,1.0],"title":{"text":"time"}},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"value"}},"legend":{"title":{"text":"Link"},"tracegroupgap":0},"title":{"text":"Flow [m3\u002fs]"}},                        {"responsive": true}                    ).then(function(){
+                            
+var gd = document.getElementById('c7755b07-0509-4ae1-b272-c6650d7d8ef1');
+var x = new MutationObserver(function (mutations, observer) {{
+        var display = window.getComputedStyle(gd).display;
+        if (!display || display === 'none') {{
+            console.log([gd, 'removed!']);
+            Plotly.purge(gd);
+            observer.disconnect();
+        }}
+}});
+
+// Listen for the removal of the full notebook cells
+var notebookContainer = gd.closest('#notebook-container');
+if (notebookContainer) {{
+    x.observe(notebookContainer, {childList: true});
+}}
+
+// Listen for the clearing of the current output cell
+var outputEl = gd.closest('.output');
+if (outputEl) {{
+    x.observe(outputEl, {childList: true});
+}}
+
+                        })                };            </script>        </div>
+</div>
+</div>
+<p>Try toggling the links on and off by clicking on them in the links.</p>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../../getting-started/tutorial/natural-flow.html" class="pagination-link" aria-label="Natural flow">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Natural flow</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../../getting-started/tutorial/reservoir.html" class="pagination-link" aria-label="Reservoir">
+        <span class="nav-page-text">Reservoir</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

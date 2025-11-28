@@ -153,11 +153,11 @@ window.Quarto = {
 <span class="menu-text">Overview</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="../tutorial/natural-flow.html"> 
-<span class="menu-text">Tutorials</span></a>
+    <a class="nav-link" href="../getting-started/install.html"> 
+<span class="menu-text">Getting started</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="../guide/examples.html"> 
+    <a class="nav-link" href="../guide/qgis.html"> 
 <span class="menu-text">How-to guides</span></a>
   </li>  
   <li class="nav-item">
@@ -427,7 +427,7 @@ Figure&nbsp;3: Hupsel: tertiary surface water.
 <p>In addition to free flowing waterbodies, a watersystem typically has structures to control the flow of water. Ribasim uses connector nodes which simplify the hydraulic behavior for the free flowing conditions or structures. The following type of connector nodes are available for this purpose:</p>
 <ul>
 <li><a href="../reference/node/tabulated-rating-curve.html">TabulatedRatingCurve</a>: one-directional flow based on upstream head. Node type typically used for gravity flow conditions either free flowing open water channels or over a fixed structure.</li>
-<li><a href="../reference/node/linear-resistance.html">LinearResistance</a>: bi-directional flow based on head difference and linear resistance. Node type typically used for bi-directional flow situations or situations where head difference over a structure determines its actual flow capacity.</li>
+<li><a href="../reference/node/linear-resistance.html">LinearResistance</a>: bi-directional flow based on head difference and linear resistance. Node type typically used for bi-directional flow situations or situations where the head difference over a structure determines its actual flow capacity.</li>
 <li><a href="../reference/node/manning-resistance.html">ManningResistance</a>: bi-directional flow based on head difference and resistance using Manning-Gauckler formula. Same usage as LinearResistance, providing a better hydrological meaning to the resistance parameterization.</li>
 <li><a href="../reference/node/pump.html">Pump</a>: one-directional structure with a set flow rate. Node type typically used in combination with control to force water over the link.</li>
 <li><a href="../reference/node/outlet.html">Outlet</a>: one-directional gravity structure with a set flow rate. Node type typically used in combination with control to force water over the link, even if their is a mismatch in actual hydraulic capacity. The node type has an automated mechanism to stop the flow when the head difference is zero.</li>

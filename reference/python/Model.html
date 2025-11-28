@@ -134,11 +134,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span class="menu-text">Overview</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="../../tutorial/natural-flow.html"> 
-<span class="menu-text">Tutorials</span></a>
+    <a class="nav-link" href="../../getting-started/install.html"> 
+<span class="menu-text">Getting started</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="../../guide/examples.html"> 
+    <a class="nav-link" href="../../guide/qgis.html"> 
 <span class="menu-text">How-to guides</span></a>
   </li>  
   <li class="nav-item">
@@ -188,12 +188,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#ribasim.Model.plot" id="toc-ribasim.Model.plot" class="nav-link" data-scroll-target="#ribasim.Model.plot"><span class="header-section-number">1.2.5</span> plot</a></li>
   <li><a href="#ribasim.Model.plot_control_listen" id="toc-ribasim.Model.plot_control_listen" class="nav-link" data-scroll-target="#ribasim.Model.plot_control_listen"><span class="header-section-number">1.2.6</span> plot_control_listen</a></li>
   <li><a href="#ribasim.Model.read" id="toc-ribasim.Model.read" class="nav-link" data-scroll-target="#ribasim.Model.read"><span class="header-section-number">1.2.7</span> read</a></li>
-  <li><a href="#ribasim.Model.set_crs" id="toc-ribasim.Model.set_crs" class="nav-link" data-scroll-target="#ribasim.Model.set_crs"><span class="header-section-number">1.2.8</span> set_crs</a></li>
-  <li><a href="#ribasim.Model.set_filepath" id="toc-ribasim.Model.set_filepath" class="nav-link" data-scroll-target="#ribasim.Model.set_filepath"><span class="header-section-number">1.2.9</span> set_filepath</a></li>
-  <li><a href="#ribasim.Model.to_crs" id="toc-ribasim.Model.to_crs" class="nav-link" data-scroll-target="#ribasim.Model.to_crs"><span class="header-section-number">1.2.10</span> to_crs</a></li>
-  <li><a href="#ribasim.Model.to_fews" id="toc-ribasim.Model.to_fews" class="nav-link" data-scroll-target="#ribasim.Model.to_fews"><span class="header-section-number">1.2.11</span> to_fews</a></li>
-  <li><a href="#ribasim.Model.to_xugrid" id="toc-ribasim.Model.to_xugrid" class="nav-link" data-scroll-target="#ribasim.Model.to_xugrid"><span class="header-section-number">1.2.12</span> to_xugrid</a></li>
-  <li><a href="#ribasim.Model.write" id="toc-ribasim.Model.write" class="nav-link" data-scroll-target="#ribasim.Model.write"><span class="header-section-number">1.2.13</span> write</a></li>
+  <li><a href="#ribasim.Model.remove_link" id="toc-ribasim.Model.remove_link" class="nav-link" data-scroll-target="#ribasim.Model.remove_link"><span class="header-section-number">1.2.8</span> remove_link</a></li>
+  <li><a href="#ribasim.Model.remove_node" id="toc-ribasim.Model.remove_node" class="nav-link" data-scroll-target="#ribasim.Model.remove_node"><span class="header-section-number">1.2.9</span> remove_node</a></li>
+  <li><a href="#ribasim.Model.set_crs" id="toc-ribasim.Model.set_crs" class="nav-link" data-scroll-target="#ribasim.Model.set_crs"><span class="header-section-number">1.2.10</span> set_crs</a></li>
+  <li><a href="#ribasim.Model.set_filepath" id="toc-ribasim.Model.set_filepath" class="nav-link" data-scroll-target="#ribasim.Model.set_filepath"><span class="header-section-number">1.2.11</span> set_filepath</a></li>
+  <li><a href="#ribasim.Model.to_crs" id="toc-ribasim.Model.to_crs" class="nav-link" data-scroll-target="#ribasim.Model.to_crs"><span class="header-section-number">1.2.12</span> to_crs</a></li>
+  <li><a href="#ribasim.Model.to_fews" id="toc-ribasim.Model.to_fews" class="nav-link" data-scroll-target="#ribasim.Model.to_fews"><span class="header-section-number">1.2.13</span> to_fews</a></li>
+  <li><a href="#ribasim.Model.to_xugrid" id="toc-ribasim.Model.to_xugrid" class="nav-link" data-scroll-target="#ribasim.Model.to_xugrid"><span class="header-section-number">1.2.14</span> to_xugrid</a></li>
+  <li><a href="#ribasim.Model.write" id="toc-ribasim.Model.write" class="nav-link" data-scroll-target="#ribasim.Model.write"><span class="header-section-number">1.2.15</span> write</a></li>
   </ul></li>
   </ul></li>
   </ul>
@@ -397,6 +399,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Read a model from a TOML file.</td>
 </tr>
 <tr class="even">
+<td><a href="#ribasim.Model.remove_link">remove_link</a></td>
+<td>Remove a link from the model.</td>
+</tr>
+<tr class="odd">
+<td><a href="#ribasim.Model.remove_node">remove_node</a></td>
+<td>Remove a node from the model, including connected links.</td>
+</tr>
+<tr class="even">
 <td><a href="#ribasim.Model.set_crs">set_crs</a></td>
 <td>Set the coordinate reference system of the data in the model.</td>
 </tr>
@@ -556,12 +566,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 </section>
 </section>
-<section id="ribasim.Model.set_crs" class="level3" data-number="1.2.8">
-<h3 data-number="1.2.8" class="anchored" data-anchor-id="ribasim.Model.set_crs"><span class="header-section-number">1.2.8</span> set_crs</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>Model.set_crs(crs)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="ribasim.Model.remove_link" class="level3" data-number="1.2.8">
+<h3 data-number="1.2.8" class="anchored" data-anchor-id="ribasim.Model.remove_link"><span class="header-section-number">1.2.8</span> remove_link</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>Model.remove_link(link_id)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Remove a link from the model.</p>
+</section>
+<section id="ribasim.Model.remove_node" class="level3" data-number="1.2.9">
+<h3 data-number="1.2.9" class="anchored" data-anchor-id="ribasim.Model.remove_node"><span class="header-section-number">1.2.9</span> remove_node</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>Model.remove_node(node_id)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Remove a node from the model, including connected links.</p>
+</section>
+<section id="ribasim.Model.set_crs" class="level3" data-number="1.2.10">
+<h3 data-number="1.2.10" class="anchored" data-anchor-id="ribasim.Model.set_crs"><span class="header-section-number">1.2.10</span> set_crs</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>Model.set_crs(crs)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Set the coordinate reference system of the data in the model.</p>
-<section id="parameters-2" class="level4 doc-section doc-section-parameters" data-number="1.2.8.1">
-<h4 class="doc-section doc-section-parameters anchored" data-number="1.2.8.1" data-anchor-id="parameters-2"><span class="header-section-number">1.2.8.1</span> Parameters</h4>
+<section id="parameters-2" class="level4 doc-section doc-section-parameters" data-number="1.2.10.1">
+<h4 class="doc-section doc-section-parameters anchored" data-number="1.2.10.1" data-anchor-id="parameters-2"><span class="header-section-number">1.2.10.1</span> Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 7%">
@@ -588,24 +608,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 </section>
 </section>
-<section id="ribasim.Model.set_filepath" class="level3" data-number="1.2.9">
-<h3 data-number="1.2.9" class="anchored" data-anchor-id="ribasim.Model.set_filepath"><span class="header-section-number">1.2.9</span> set_filepath</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>Model.set_filepath(filepath)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="ribasim.Model.set_filepath" class="level3" data-number="1.2.11">
+<h3 data-number="1.2.11" class="anchored" data-anchor-id="ribasim.Model.set_filepath"><span class="header-section-number">1.2.11</span> set_filepath</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>Model.set_filepath(filepath)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Set the filepath of this instance.</p>
 <p>Args: filepath (Path): The filepath to set.</p>
 </section>
-<section id="ribasim.Model.to_crs" class="level3" data-number="1.2.10">
-<h3 data-number="1.2.10" class="anchored" data-anchor-id="ribasim.Model.to_crs"><span class="header-section-number">1.2.10</span> to_crs</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>Model.to_crs(crs)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="ribasim.Model.to_crs" class="level3" data-number="1.2.12">
+<h3 data-number="1.2.12" class="anchored" data-anchor-id="ribasim.Model.to_crs"><span class="header-section-number">1.2.12</span> to_crs</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>Model.to_crs(crs)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="ribasim.Model.to_fews" class="level3" data-number="1.2.11">
-<h3 data-number="1.2.11" class="anchored" data-anchor-id="ribasim.Model.to_fews"><span class="header-section-number">1.2.11</span> to_fews</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>Model.to_fews(region_home, add_network<span class="op">=</span><span class="va">True</span>, add_results<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="ribasim.Model.to_fews" class="level3" data-number="1.2.13">
+<h3 data-number="1.2.13" class="anchored" data-anchor-id="ribasim.Model.to_fews"><span class="header-section-number">1.2.13</span> to_fews</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>Model.to_fews(region_home, add_network<span class="op">=</span><span class="va">True</span>, add_results<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Write the model network and results into files used by Delft-FEWS.</p>
 <p>** Warning: This method is experimental and is likely to change. **</p>
 <p>To run this method, the model needs to be written to disk, and have results. The Node, Link and Basin / area tables are written to shapefiles in the REGION_HOME/Config directory. The results are written to NetCDF files in the REGION_HOME/Modules directory. The netCDF files are NetCDF4 with CF-conventions.</p>
-<section id="parameters-3" class="level4 doc-section doc-section-parameters" data-number="1.2.11.1">
-<h4 class="doc-section doc-section-parameters anchored" data-number="1.2.11.1" data-anchor-id="parameters-3"><span class="header-section-number">1.2.11.1</span> Parameters</h4>
+<section id="parameters-3" class="level4 doc-section doc-section-parameters" data-number="1.2.13.1">
+<h4 class="doc-section doc-section-parameters anchored" data-number="1.2.13.1" data-anchor-id="parameters-3"><span class="header-section-number">1.2.13.1</span> Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 11%">
@@ -644,13 +664,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 </section>
 </section>
-<section id="ribasim.Model.to_xugrid" class="level3" data-number="1.2.12">
-<h3 data-number="1.2.12" class="anchored" data-anchor-id="ribasim.Model.to_xugrid"><span class="header-section-number">1.2.12</span> to_xugrid</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>Model.to_xugrid(add_flow<span class="op">=</span><span class="va">False</span>, add_allocation<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="ribasim.Model.to_xugrid" class="level3" data-number="1.2.14">
+<h3 data-number="1.2.14" class="anchored" data-anchor-id="ribasim.Model.to_xugrid"><span class="header-section-number">1.2.14</span> to_xugrid</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>Model.to_xugrid(add_flow<span class="op">=</span><span class="va">False</span>, add_allocation<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Convert the network to a <code>xugrid.UgridDataset</code>.</p>
 <p>Either the flow or the allocation data can be added, but not both simultaneously. This method will throw <code>ImportError</code> if the optional dependency <code>xugrid</code> isn’t installed.</p>
-<section id="parameters-4" class="level4 doc-section doc-section-parameters" data-number="1.2.12.1">
-<h4 class="doc-section doc-section-parameters anchored" data-number="1.2.12.1" data-anchor-id="parameters-4"><span class="header-section-number">1.2.12.1</span> Parameters</h4>
+<section id="parameters-4" class="level4 doc-section doc-section-parameters" data-number="1.2.14.1">
+<h4 class="doc-section doc-section-parameters anchored" data-number="1.2.14.1" data-anchor-id="parameters-4"><span class="header-section-number">1.2.14.1</span> Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 17%">
@@ -683,13 +703,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 </section>
 </section>
-<section id="ribasim.Model.write" class="level3" data-number="1.2.13">
-<h3 data-number="1.2.13" class="anchored" data-anchor-id="ribasim.Model.write"><span class="header-section-number">1.2.13</span> write</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>Model.write(filepath)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="ribasim.Model.write" class="level3" data-number="1.2.15">
+<h3 data-number="1.2.15" class="anchored" data-anchor-id="ribasim.Model.write"><span class="header-section-number">1.2.15</span> write</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>Model.write(filepath)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Write the contents of the model to disk and save it as a TOML configuration file.</p>
 <p>If <code>filepath.parent</code> does not exist, it is created before writing.</p>
-<section id="parameters-5" class="level4 doc-section doc-section-parameters" data-number="1.2.13.1">
-<h4 class="doc-section doc-section-parameters anchored" data-number="1.2.13.1" data-anchor-id="parameters-5"><span class="header-section-number">1.2.13.1</span> Parameters</h4>
+<section id="parameters-5" class="level4 doc-section doc-section-parameters" data-number="1.2.15.1">
+<h4 class="doc-section doc-section-parameters anchored" data-number="1.2.15.1" data-anchor-id="parameters-5"><span class="header-section-number">1.2.15.1</span> Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 12%">

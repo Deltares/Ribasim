@@ -150,11 +150,11 @@ window.Quarto = {
 <span class="menu-text">Overview</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="../tutorial/natural-flow.html"> 
-<span class="menu-text">Tutorials</span></a>
+    <a class="nav-link" href="../getting-started/install.html"> 
+<span class="menu-text">Getting started</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="../guide/examples.html"> 
+    <a class="nav-link" href="../guide/qgis.html"> 
 <span class="menu-text">How-to guides</span></a>
   </li>  
   <li class="nav-item">
@@ -355,7 +355,7 @@ window.Quarto = {
 <p>The Jacobian is an <span class="math inline">\(N \times N\)</span> matrix where <span class="math inline">\(N\)</span> is the number of states in the simulation. It is computed as part of implicit time stepping methods. There are 2 different methods available for computing this matrix: finite difference or automatic differentiation. For more details on the computation of the Jacobian and how it is used in the solvers see <a href="../concept/numerics.html">numerical considerations</a>.</p>
 <p>The entries of the Jacobian <span class="math inline">\(J\)</span> are given by <span class="math display">\[
     J_{i,j} = \frac{\partial f_j}{\partial u_i},
-\]</span> i.e.&nbsp;<span class="math inline">\(J_{i,j}\)</span> quantifies how <span class="math inline">\(f_j\)</span>. the time derivative of state <span class="math inline">\(j\)</span>, changes with respect to changes in state <span class="math inline">\(i\)</span>. Most of these entries are <span class="math inline">\(0\)</span>, because flows in distant parts of the model do not depend on each other.</p>
+\]</span> i.e.&nbsp;<span class="math inline">\(J_{i,j}\)</span> quantifies how <span class="math inline">\(f_j\)</span>, the time derivative of state <span class="math inline">\(j\)</span>, changes with respect to changes in state <span class="math inline">\(i\)</span>. Most of these entries are <span class="math inline">\(0\)</span>, because flows in distant parts of the model do not depend on each other.</p>
 </section>
 <section id="the-water-balance-error" class="level2" data-number="1.4">
 <h2 data-number="1.4" class="anchored" data-anchor-id="the-water-balance-error"><span class="header-section-number">1.4</span> The water balance error</h2>
@@ -414,7 +414,7 @@ window.Quarto = {
 </section>
 <section id="numerical-solution" class="level2" data-number="1.6">
 <h2 data-number="1.6" class="anchored" data-anchor-id="numerical-solution"><span class="header-section-number">1.6</span> Numerical solution</h2>
-<p>Ribasim uses <a href="https://github.com/SciML/OrdinaryDiffEq.jl/">OrdinaryDiffEq.jl</a> to provide a numerical solution to the water balance equations. Changes to forcings or parameters such as precipitation, but also the allocated water abstraction is managed through the use of callback functions <span class="citation" data-cites="callbacks">(<a href="#ref-callbacks" role="doc-biblioref">SciML Development Team 2022</a>)</span>. In a coupled run, the exchanges with MODFLOW 6 are also managed via the use of a callback function. For more a more in-depth discussion of numerical computations see <a href="../concept/numerics.html">Numerical considerations</a>.</p>
+<p>Ribasim uses <a href="https://github.com/SciML/OrdinaryDiffEq.jl/">OrdinaryDiffEq.jl</a> to provide a numerical solution to the water balance equations. Changes to forcings or parameters such as precipitation, but also the allocated water abstraction is managed through the use of callback functions <span class="citation" data-cites="callbacks">(<a href="#ref-callbacks" role="doc-biblioref">SciML Development Team 2022</a>)</span>. In a coupled run, the exchanges with MODFLOW 6 are also managed via the use of a callback function. For a more in-depth discussion of numerical computations see <a href="../concept/numerics.html">Numerical considerations</a>.</p>
 </section>
 </section>
 <section id="performance" class="level1" data-number="2">

@@ -167,11 +167,11 @@ window.Quarto = {
 <span class="menu-text">Overview</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="../tutorial/natural-flow.html"> 
-<span class="menu-text">Tutorials</span></a>
+    <a class="nav-link" href="../getting-started/install.html"> 
+<span class="menu-text">Getting started</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="../guide/examples.html"> 
+    <a class="nav-link" href="../guide/qgis.html"> 
 <span class="menu-text">How-to guides</span></a>
   </li>  
   <li class="nav-item">
@@ -377,7 +377,7 @@ window.Quarto = {
 <p>Allocation is the process of assigning an optimized allocated flow rate to demand nodes in the physical layer of the model based on information about sources and their source priorities, the different demand nodes over various demand priorities, constraints introduced by nodes, local water availability and graph topology. It solves a linearized version of the problem formulated for the <a href="../concept/modelconcept.html#physical-layer">physical layer</a> a period of time ahead of the physical layer, while simultaneously optimizing allocated flows and steering certain structures to get the water from (preferred) source to demand. The physics is implemented in an implicit manner, rather like the <a href="https://en.wikipedia.org/wiki/Backward_Euler_method">implicit Euler</a> numerical method.</p>
 <p>The allocation problem is solved per subnetwork of the Ribasim model. A subnetwork is defined by all nodes that have the same subnetwork ID in the <a href="../reference/usage.html#node">Node table</a>. Each subnetwork is used to formulate a linear optimization problem with the <a href="https://jump.dev/JuMP.jl/stable/">JuMP</a> package, which is solved using the <a href="https://highs.dev/">HiGHS solver</a>. For more in-depth information see also the example of solving the maximum flow problem with <code>JuMP.jl</code> <a href="https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem">here</a>.</p>
 <p>When we build a Ribasim model in which we want to utilize allocation, it can be computationally efficient and stable to divide a large allocation network into a primary network which connects to multiple subnetworks. The primary network should be the main water system and treats each connected subnetwork as a single demand node.</p>
-<p>We can then first solve an allocation optimization for the primary network, that calculates how to optimally divide the available water to each subnetwork. With this allocated amount for a subnetwork, we can optimize how to divide this water within the subnetwork to the demand nodes.</p>
+<p>We can first solve an allocation optimization for the primary network, that calculates how to optimally divide the available water to each subnetwork. With this allocated amount for a subnetwork, we can optimize how to divide this water within the subnetwork to the demand nodes.</p>
 <p>Subnetworks are defined by grouping nodes that share the same subnetwork ID in the <a href="../reference/usage.html#node">Node table</a>. The primary network needs to be assigned with subnetwork ID 1. This will always represent the main water system. Below is an example of a primary network with multiple subnetworks.</p>
 <details class="code-fold">
 <summary>Code</summary>

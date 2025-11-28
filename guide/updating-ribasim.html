@@ -65,7 +65,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../guide/qgis.html" rel="next">
+<link href="../guide/coupling.html" rel="next">
 <link href="../guide/modeling-process.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -136,11 +136,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span class="menu-text">Overview</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="../tutorial/natural-flow.html"> 
-<span class="menu-text">Tutorials</span></a>
+    <a class="nav-link" href="../getting-started/install.html"> 
+<span class="menu-text">Getting started</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="../guide/examples.html"> 
+    <a class="nav-link" href="../guide/qgis.html"> 
 <span class="menu-text">How-to guides</span></a>
   </li>  
   <li class="nav-item">
@@ -191,8 +191,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../guide/examples.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Examples</span></a>
+  <a href="../guide/qgis.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">QGIS plugin</span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -205,12 +205,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <div class="sidebar-item-container"> 
   <a href="../guide/updating-ribasim.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Updating Ribasim</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../guide/qgis.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">QGIS plugin</span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -279,7 +273,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>This guide explains how to update Ribasim models from older versions to newer versions. To update the Ribasim installation itself, follow the <a href="../install.html">installation steps</a>, ensuring that all installed components are the same. To see the most important changes in Ribasim, consult the <a href="../changelog.html">changelog</a>.</p>
+<p>This guide explains how to update Ribasim models from older versions to newer versions. To update the Ribasim installation itself, follow the <a href="../getting-started/install.html">installation steps</a>, ensuring that all installed components are the same. To see the most important changes in Ribasim, consult the <a href="../changelog.html">changelog</a>.</p>
 <section id="version-numbers-and-breaking-changes" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Version numbers and breaking changes</h1>
 <p>Ribasim uses version numbers like <code>2023.1.0</code>, following <code>YYYY.MINOR.MICRO</code> from <a href="https://calver.org/">calver</a>. It starts with the year the release was made, followed by the minor version number for normal releases, and a micro number for non-breaking, hotfix releases. This means that whenever the year or minor version changes, there is a possibility that the user has to make changes to the model for it to keep working. If this is the case, it will be highlighted in the <a href="../changelog.html">changelog</a>. When possible, we automate this process using model migration in Ribasim Python, see the section below.</p>
@@ -710,8 +704,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../guide/qgis.html" class="pagination-link" aria-label="QGIS plugin">
-        <span class="nav-page-text">QGIS plugin</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../guide/coupling.html" class="pagination-link" aria-label="Coupling">
+        <span class="nav-page-text">Coupling</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
