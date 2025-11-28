@@ -24,7 +24,7 @@ It helps to set the attribute table of a table of interest to show selected feat
 
 # Inspecting results {#sec-results}
 
-Before inspecting the results, verify that the run was successfully and the output files are there.
+Before inspecting the results, verify that the run was successful and the output files are there.
 
 Click the "Time Series" button of the iMOD plugin.
 

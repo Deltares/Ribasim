@@ -117,7 +117,7 @@ The following type of connector nodes are available for this purpose:
 - [TabulatedRatingCurve](/reference/node/tabulated-rating-curve.qmd): one-directional flow based on upstream head. Node type typically used for gravity flow conditions either free flowing open water channels
 or over a fixed structure.
 - [LinearResistance](/reference/node/linear-resistance.qmd): bi-directional flow based on head difference and linear resistance. Node type typically used for bi-directional flow
-situations or situations where head difference over a structure determines its actual flow capacity.
+situations or situations where the head difference over a structure determines its actual flow capacity.
 - [ManningResistance](/reference/node/manning-resistance.qmd): bi-directional flow based on head difference and resistance using Manning-Gauckler formula. Same usage as LinearResistance,
 providing a better hydrological meaning to the resistance parameterization.
 - [Pump](/reference/node/pump.qmd): one-directional structure with a set flow rate. Node type typically used in combination with control to force water over the link.
