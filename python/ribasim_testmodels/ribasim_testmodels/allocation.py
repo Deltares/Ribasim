@@ -2058,7 +2058,7 @@ def polder_management_model() -> Model:
     evaporation[180:270] = 0
     evaporation[270:366] = 1e-6
 
-    basin_data = [
+    basin_data: list[TableModel[Any]] = [
         basin.Profile(area=[0.01, 1000000.0, 1000000.0], level=[-10, 1.0, 2.0]),
         basin.Time(
             time=pd.date_range(model.starttime, model.endtime),
