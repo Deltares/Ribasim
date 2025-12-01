@@ -1,5 +1,6 @@
 """Utilities to write Delwaq (binary) input files."""
 
+import logging
 import os
 import platform
 import struct
@@ -21,6 +22,8 @@ except ImportError:
 
 delwaq_dir = Path(__file__).parent
 model_dir = delwaq_dir / "model"
+
+logger = logging.getLogger(__name__)
 
 
 def strfdelta(tdelta) -> str:
@@ -187,3 +190,22 @@ def run_delwaq(
         subprocess.run([binfolder / "run_delwaq.sh", inp_path.absolute()], check=True)
     else:
         raise OSError(f"No support for running Delwaq automatically on {system}.")
+
+
+def is_valid_substance(name: str) -> bool:
+    """Check if a substance name is valid for Delwaq."""
+    try:
+        name = name.encode("ascii")  # ensure ascii
+    except UnicodeEncodeError:
+        logger.error(f"{name} is an invalid substance name; must be ASCII.")
+        return False
+    if len(name) > 20:
+        logger.error(
+            f"{name} is an invalid substance name; must be at most 20 characters."
+        )
+        return False
+    if name.find(b";") >= 0:
+        logger.error(f"{name} is an invalid substance name; cannot contain semicolon.")
+        return False
+
+    return True
