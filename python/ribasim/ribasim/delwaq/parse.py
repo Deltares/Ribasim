@@ -30,12 +30,16 @@ def parse(
 
         dfs = []
         for substance in substances:
-            df = ug[f"ribasim_{substance}"].to_dataframe().reset_index()
+            df = (
+                ug[f"ribasim_{substance.replace(' ', '_')}"]
+                .to_dataframe()
+                .reset_index()
+            )
             df.rename(
                 columns={
                     "ribasim_nNodes": "node_id",
                     "nTimesDlwq": "time",
-                    f"ribasim_{substance}": "concentration",
+                    f"ribasim_{substance.replace(' ', '_')}": "concentration",
                 },
                 inplace=True,
             )

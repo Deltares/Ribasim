@@ -14,7 +14,7 @@
 {{substances|length}}             0
         ; active substances
 {% for substance in substances -%}
-{{ loop.index }} '{{substance}}'
+{{ loop.index }} "{{substance}}"
 {% endfor -%}
         ; passive substances
 
@@ -138,7 +138,7 @@ MASS/M2 ; The bed substances are specified in mass/m2
 1 ; Input without defaults
 {{ substances | length }}*1.0 ; Scale value
 
-; {{ substances | join(" ") }}
+; "{{ substances | join('" "') }}"
 {{ initial_concentrations }}
 #8
 ;###############################################################################

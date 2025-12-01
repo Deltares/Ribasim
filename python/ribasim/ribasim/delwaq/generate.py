@@ -38,7 +38,7 @@ from ribasim.delwaq.util import (
 logger = logging.getLogger(__name__)
 
 env = jinja2.Environment(
-    autoescape=True, loader=jinja2.FileSystemLoader(delwaq_dir / "template")
+    autoescape=False, loader=jinja2.FileSystemLoader(delwaq_dir / "template")
 )
 
 
@@ -48,7 +48,7 @@ def _boundary_name(id, type):
 
 
 def _quote(value):
-    return f"'{value}'"
+    return f'"{value}"'
 
 
 def _make_boundary(data, boundary_type):
