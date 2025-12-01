@@ -106,19 +106,9 @@ def test_offline_delwaq_coupling_evaporate_mass(tmp_path):
     model.write(tmp_path / "basic/ribasim.toml")
 
 
-def test_invalid_substance_name():
-    repo_dir = delwaq_dir.parents[2]
-    toml_path = repo_dir / "generated_testmodels/basic/ribasim.toml"
-    model = Model.read(toml_path)
-
+@pytest.mark.parametrize(
+    "name", ["Foo;123", "π", "AVeryLongSubstanceName", 'Double"Quote']
+)
+def test_invalid_substance_name(basic, name):
     with pytest.raises(ValueError, match="Invalid Delwaq substance"):
-        add_tracer(model, 11, "Foo;123")
-
-    with pytest.raises(ValueError, match="Invalid Delwaq substance"):
-        add_tracer(model, 11, "π")
-
-    with pytest.raises(ValueError, match="Invalid Delwaq substance"):
-        add_tracer(model, 11, "AVeryLongSubstanceName")
-
-    with pytest.raises(ValueError, match="Invalid Delwaq substance"):
-        add_tracer(model, 11, 'Double"Quote')
+        add_tracer(basic, 11, name)

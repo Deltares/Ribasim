@@ -195,7 +195,7 @@ def run_delwaq(
 def is_valid_substance(name: str) -> bool:
     """Check if a substance name is valid for Delwaq."""
     try:
-        name = name.encode("ascii")  # ensure ascii
+        name.encode("ascii")  # ensure ascii
     except UnicodeEncodeError:
         logger.error(f"{name} is an invalid substance name; must be ASCII.")
         return False
@@ -204,13 +204,13 @@ def is_valid_substance(name: str) -> bool:
             f"{name} is an invalid substance name; must be at most 20 characters."
         )
         return False
-    if name.find(b";") >= 0:
+    if name.find(";") >= 0:
         logger.error(
             f"{name} is an invalid substance name; cannot contain semicolon ;."
         )
         return False
 
-    if name.find(b'"') >= 0:
+    if name.find('"') >= 0:
         logger.error(
             f'{name} is an invalid substance name; cannot contain double quote ".'
         )
