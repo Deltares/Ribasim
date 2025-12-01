@@ -2037,6 +2037,11 @@ def multiple_source_priorities_model() -> Model:
 
 
 def polder_management_model() -> Model:
+    """Set up a model where the water level in the boezem is be higher than in the polder system.
+
+    To maintain the target water levels in dry periods in the polder system, a water supply of 2 m³/s is required during two periods of the year: day 90 to 180 and day 270 to 366.
+    Flushing is included as well: 1.5 m³/s during day 90 to 180.
+    """
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",

@@ -167,3 +167,5 @@ pyjuliapkg/
 
 # debugging files
 debug/*
+
+.DS_Store
