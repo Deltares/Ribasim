@@ -27,6 +27,7 @@ except ImportError:
 import ribasim
 from ribasim.delwaq.util import (
     delwaq_dir,
+    is_valid_substance,
     strfdelta,
     ugrid,
     write_flows,
@@ -37,7 +38,7 @@ from ribasim.delwaq.util import (
 logger = logging.getLogger(__name__)
 
 env = jinja2.Environment(
-    autoescape=True, loader=jinja2.FileSystemLoader(delwaq_dir / "template")
+    autoescape=False, loader=jinja2.FileSystemLoader(delwaq_dir / "template")
 )
 
 
@@ -47,7 +48,7 @@ def _boundary_name(id, type):
 
 
 def _quote(value):
-    return f"'{value}'"
+    return f'"{value}"'
 
 
 def _make_boundary(data, boundary_type):
@@ -82,6 +83,9 @@ def _make_boundary(data, boundary_type):
         ),
     }
     substances = data.substance.unique()
+    assert all(map(is_valid_substance, substances)), (
+        "Invalid Delwaq substance name(s) found."
+    )
     return boundary, substances
 
 
@@ -619,6 +623,9 @@ def generate(
 
 def add_tracer(model, node_id, tracer_name, concentration=1.0):
     """Add a tracer to the Delwaq model."""
+    if not is_valid_substance(tracer_name):
+        raise ValueError(f"Invalid Delwaq substance name {tracer_name}")
+
     n = model.node_table().df.loc[node_id]
     node_type = n.node_type
     if node_type not in [
