@@ -15,7 +15,7 @@ from ribasim import run_ribasim
 
 In order to generate the Delwaq input files, we need a completed Ribasim simulation (typically one with a results folder) that ideally also includes some substances and initial concentrations. Let's take the basic test model for example, which already has set some initial concentrations.
 
-All testmodels can be [downloaded from here](/install.qmd).
+All testmodels can be [downloaded from here](/getting-started/install.qmd).
 
 ## Generating Delwaq input
 

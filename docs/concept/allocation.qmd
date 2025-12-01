@@ -20,11 +20,11 @@ The allocation problem is solved per subnetwork of the Ribasim model. A subnetwo
 
 When we build a Ribasim model in which we want to utilize allocation, it can be computationally efficient and stable to divide a large allocation network into a primary network which connects to multiple subnetworks. The primary network should be the main water system and treats each connected subnetwork as a single demand node.
 
-We can then first solve an allocation optimization for the primary network, that calculates how to optimally divide the available water to each subnetwork. With this allocated amount for a subnetwork, we can optimize how to divide this water within the subnetwork to the demand nodes.
+We can first solve an allocation optimization for the primary network, that calculates how to optimally divide the available water to each subnetwork. With this allocated amount for a subnetwork, we can optimize how to divide this water within the subnetwork to the demand nodes.
 
 Subnetworks are defined by grouping nodes that share the same subnetwork ID in the [Node table](/reference/usage.qmd#node). The primary network needs to be assigned with subnetwork ID 1. This will always represent the main water system. This is shown in @fig-subnetwork-example below.
 
-![The primary network (subnetwork 1, blue) with connected secondary subnetworks (subnetwork 2 and 3, green and purple respectively).](https://s3.deltares.nl/ribasim/doc-image/concept/medium_sized_subnetwork_model.png){#fig-subnetwork-example}
+![The primary network (subnetwork 1, blue) with connected secondary subnetworks (subnetwork 2 and 3, grey).](https://s3.deltares.nl/ribasim/doc-image/concept/medium_sized_subnetwork_model.png){#fig-subnetwork-example}
 
 Secondary networks:
 
@@ -49,7 +49,7 @@ $$
 \text{min}\quad & z = \sum_{i=0}^{N_d} E_i(Q, S) \\
 \text{s.t.}\quad & \frac{dS_j}{dt} = \sum_{k=1}^{N_l} Q_{k}\\
 \end{aligned}
-$$
+$$ {#eq-allocation-problem}
 
 where:
 
@@ -433,26 +433,24 @@ There are also capacities for special links:
 - $C^{FD}_S \in \mathbb{R}^c_{\ge 0}$ where $c = \# FD_S$ is the number of nodes with a flow demand, for the flow supplied by flow buffers at these nodes with a flow demand.
 - $C^{UD}_S \in \mathbb{R}^f_{\ge 0}$ where $f = \# U_S$, for the flow supplied by the user demand outflow source whose capacity is given by return flows.
 
-## Source Priorities
+## Source priority
 
-Source nodes can be assigned priorities that influence how water is allocated from different sources. These priorities are given as weights $w_i \geq 0$ for each source node $i$ with a source link $(i,j) \in E_S^\text{source}$.
+Nodes can be assigned priorities that influence how water is allocated from different sources. These priorities are given as weights $w_i \geq 0$ for node $i$ with an outflow link $Q_i$.
 
-The source priority weights modify the objective function by penalizing flow from lower priority (higher weight) sources. For a given demand priority $p$, the objective includes a term:
+The source priority weights act as a cost per flow rate. For a given demand priority $p$, the objective is to minimize the cost of the water allocation:
 
 $$
-\min \sum_{(i,j) \in E_S^\text{source}} w_i \cdot F_{(i,j)}
+\min \sum w_i \cdot Q_{i}
 $$
 
 This term is added to the optimization problem after the demand objectives have been satisfied, ensuring that:
 
 1. Demands are met first according to their priority
-2. Among solutions that satisfy demands equally well, water is preferentially allocated from sources with lower weights (higher priority)
-
-Source priorities are specified in the allocation configuration and remain constant throughout the simulation. A weight of 0 indicates the highest priority source, while higher weights indicate lower priority sources.
+2. Among solutions that satisfy demands equally well, water is preferentially allocated via routes with the lowest cost
 
 ### Example
 
-In @fig-subnetwork-example the water can take multiple routes from the flow boundary to user demands 14 and 17. We have set all source priorities to 0 except for outlets 3 and 8, which have higher weights (lower priority). This results in the flow routing preferentially through the pumps, since flowing through the outlets incurs a higher penalty in the objective function due to their non-zero source priority weights. The results are shown in @fig-subnetwork_results.
+In @fig-subnetwork-example the water can take multiple routes from the flow boundary to user demands 14 and 17. We have set all source priorities (cost) to 0 except for outlets 3 and 8, which have a higher cost (lower priority). This results in the flow routing preferentially through the pumps, since flowing through the outlets incurs a higher penalty in the objective function due to their non-zero source priority. The results are shown in @fig-subnetwork-results.
 
 
-![Flow rate results with a preferential routes via the pumps](https://s3.deltares.nl/ribasim/doc-image/concept/source_priority_results.png){#fig-subnetwork_results}
+![Flow rate results with a preferential routes via the pumps](https://s3.deltares.nl/ribasim/doc-image/concept/source_priority_results.png){#fig-subnetwork-results}
