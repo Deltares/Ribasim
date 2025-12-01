@@ -8,7 +8,7 @@ from collections import defaultdict
 from datetime import timedelta
 from pathlib import Path
 
-from ribasim import nodes
+from ribasim import Model, nodes
 from ribasim.utils import MissingOptionalModule, _concat, _pascal_to_snake
 
 try:
@@ -612,6 +612,22 @@ def generate(
                 nsegments=total_segments,
                 nexchanges=total_exchanges,
                 substances=sorted(substances),
+                ribasim_version=ribasim.__version__,
+            )
+        )
+
+    # Create wasteloads file with zero loads that can be
+    # extended by the user later
+    wasteloads = output_path / "B6_wasteloads.inc"
+    if not wasteloads.exists():
+        with open(wasteloads, mode="w") as f:
+            f.write("0; Number of loads\n")
+
+    template = env.get_template("B8_initials.inc.j2")
+    with open(output_path / "B8_initials.inc", mode="w") as f:
+        f.write(
+            template.render(
+                substances=sorted(substances),
                 initial_concentrations=initial_concentrations,
             )
         )
@@ -621,7 +637,9 @@ def generate(
     return G, substances
 
 
-def add_tracer(model, node_id, tracer_name, concentration=1.0):
+def add_tracer(
+    model: Model, node_id: int, tracer_name: str, concentration: float = 1.0
+) -> None:
     """Add a tracer to the Delwaq model."""
     if not is_valid_substance(tracer_name):
         raise ValueError(f"Invalid Delwaq substance name {tracer_name}")
