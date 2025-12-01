@@ -20,7 +20,7 @@ function set_simulation_data!(
 
     errors = false
 
-    errors |= set_simulation_data!(allocation_model, basin, p)
+    errors |= set_simulation_data!(allocation_model, basin, p, t)
     set_simulation_data!(allocation_model, level_boundary, t)
     set_simulation_data!(allocation_model, flow_boundary)
     set_simulation_data!(allocation_model, linear_resistance, p, t)
@@ -41,11 +41,18 @@ function set_simulation_data!(
     allocation_model::AllocationModel,
     basin::Basin,
     p::Parameters,
+    t::Float64,
 )::Bool
-    (; problem, node_ids_in_subnetwork, cumulative_forcing_volume, scaling) =
-        allocation_model
+    (;
+        problem,
+        node_ids_in_subnetwork,
+        explicit_positive_forcing_volume,
+        implicit_negative_forcing_volume,
+        scaling,
+        Δt_allocation,
+    ) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
-    (; storage_to_level) = basin
+    (; storage_to_level, vertical_flux) = basin
 
     storage_change = problem[:basin_storage_change]
     volume_conservation = problem[:volume_conservation]
@@ -56,8 +63,9 @@ function set_simulation_data!(
 
     # Set Basin starting storages and levels
     for basin_id in basin_ids_subnetwork
-        storage_now = current_storage[basin_id.idx]
-        storage_max = storage_to_level[basin_id.idx].t[end]
+        idx = basin_id.idx
+        storage_now = current_storage[idx]
+        storage_max = storage_to_level[idx].t[end]
 
         # Check whether the storage in the physical layer is within the maximum storage bound
         if storage_now > storage_max
@@ -70,19 +78,35 @@ function set_simulation_data!(
         JuMP.set_lower_bound(Δstorage, -storage_now / scaling.storage)
         JuMP.set_upper_bound(Δstorage, (storage_max - storage_now) / scaling.storage)
 
-        # Set forcing
-        (forcing_volume_positive, forcing_volume_negative) =
-            cumulative_forcing_volume[basin_id]
+        A = get_area_from_storage(basin, idx, storage_now)
+        A_max = get_area_from_storage(basin, idx, storage_max)
+
+        explicit_positive_forcing_volume[basin_id] =
+            (
+                A_max * vertical_flux.precipitation[idx] +
+                vertical_flux.drainage[idx] +
+                vertical_flux.surface_runoff[idx]
+            ) * Δt_allocation
+
+        implicit_negative_forcing_volume[basin_id] =
+            (
+                A * vertical_flux.potential_evaporation[idx] +
+                vertical_flux.infiltration[idx]
+            ) * Δt_allocation
 
         volume_conservation_constraint = volume_conservation[basin_id]
+
+        ### This is an euler-backward discretization in disguise:
+        # where the positive forcing is independent on the state so it can be calculated explicitly and ends up in the rhs of Ax = b
         JuMP.set_normalized_rhs(
             volume_conservation_constraint,
-            forcing_volume_positive / scaling.storage,
+            explicit_positive_forcing_volume[basin_id] / scaling.storage,
         )
+        # The negative forcing depends on the state through the low storage factor, it is thus evaluated implicitly and ends up in the coefficient matrix A
         JuMP.set_normalized_coefficient(
             volume_conservation_constraint,
             low_storage_factor[basin_id],
-            forcing_volume_negative / scaling.storage,
+            implicit_negative_forcing_volume[basin_id] / scaling.storage,
         )
     end
     return errors
@@ -892,8 +916,14 @@ function save_flows!(
     optimization_type::AllocationOptimizationType.T,
 )::Nothing
     (; p, t) = integrator
-    (; problem, subnetwork_id, cumulative_forcing_volume, scaling, node_ids_in_subnetwork) =
-        allocation_model
+    (;
+        problem,
+        subnetwork_id,
+        scaling,
+        node_ids_in_subnetwork,
+        explicit_positive_forcing_volume,
+        implicit_negative_forcing_volume,
+    ) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
     (; graph, allocation) = p.p_independent
     (; record_flow) = allocation
@@ -941,8 +971,6 @@ function save_flows!(
     for node_id in basin_ids_subnetwork
         low_storage_factor_variable = low_storage_factor[node_id]
         hit_lower_bound, hit_upper_bound = get_bounds_hit(low_storage_factor_variable)
-        (forcing_volume_positive, forcing_volume_negative) =
-            cumulative_forcing_volume[node_id]
         push!(
             record_flow,
             FlowRecordDatum(
@@ -953,8 +981,9 @@ function save_flows!(
                 string(NodeType.Basin),
                 Int32(node_id),
                 subnetwork_id,
-                forcing_volume_positive -
-                forcing_volume_negative * JuMP.value(low_storage_factor_variable),
+                explicit_positive_forcing_volume[node_id] -
+                implicit_negative_forcing_volume[node_id] *
+                JuMP.value(low_storage_factor_variable),
                 string(optimization_type),
                 hit_lower_bound,
                 hit_upper_bound,
@@ -998,15 +1027,10 @@ function apply_control_from_allocation!(
 end
 
 function reset_cumulative!(allocation_model::AllocationModel)::Nothing
-    (; cumulative_forcing_volume, cumulative_boundary_volume, cumulative_realized_volume) =
-        allocation_model
+    (; cumulative_boundary_volume, cumulative_realized_volume) = allocation_model
 
     for link in keys(cumulative_realized_volume)
         cumulative_realized_volume[link] = 0
-    end
-
-    for node_id in keys(cumulative_forcing_volume)
-        cumulative_forcing_volume[node_id] = (0.0, 0.0)
     end
 
     for link in keys(cumulative_boundary_volume)

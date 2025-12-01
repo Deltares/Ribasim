@@ -2,8 +2,13 @@
 Add variables defining the Basin profiles
 """
 function add_basin!(allocation_model::AllocationModel)::Nothing
-    (; problem, cumulative_forcing_volume, scaling, node_ids_in_subnetwork) =
-        allocation_model
+    (;
+        problem,
+        scaling,
+        node_ids_in_subnetwork,
+        explicit_positive_forcing_volume,
+        implicit_negative_forcing_volume,
+    ) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
 
     # Define decision variables: storage change (scaling.storage * m^3) (at the start of the allocation time step
@@ -24,9 +29,10 @@ function add_basin!(allocation_model::AllocationModel)::Nothing
     problem[:low_storage_factor] =
         JuMP.@variable(problem, 0 ≤ low_storage_factor[basin_ids_subnetwork] ≤ 1)
 
-    # Initialize cumulative forcing volumes (positive, negative) for each basin
+    # Initialize forcing volumes (positive, negative) for each basin
     for node_id in basin_ids_subnetwork
-        cumulative_forcing_volume[node_id] = (0.0, 0.0)
+        explicit_positive_forcing_volume[node_id] = 0.0
+        implicit_negative_forcing_volume[node_id] = 0.0
     end
     return nothing
 end
