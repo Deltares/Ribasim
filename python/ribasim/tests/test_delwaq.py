@@ -119,3 +119,6 @@ def test_invalid_substance_name():
 
     with pytest.raises(ValueError, match="Invalid Delwaq substance"):
         add_tracer(model, 11, "AVeryLongSubstanceName")
+
+    with pytest.raises(ValueError, match="Invalid Delwaq substance"):
+        add_tracer(model, 11, 'Double"Quote')

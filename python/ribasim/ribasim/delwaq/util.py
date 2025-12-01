@@ -205,7 +205,15 @@ def is_valid_substance(name: str) -> bool:
         )
         return False
     if name.find(b";") >= 0:
-        logger.error(f"{name} is an invalid substance name; cannot contain semicolon.")
+        logger.error(
+            f"{name} is an invalid substance name; cannot contain semicolon ;."
+        )
+        return False
+
+    if name.find(b'"') >= 0:
+        logger.error(
+            f'{name} is an invalid substance name; cannot contain double quote ".'
+        )
         return False
 
     return True
