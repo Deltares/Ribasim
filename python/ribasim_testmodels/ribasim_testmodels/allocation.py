@@ -2147,7 +2147,7 @@ def polder_management_model() -> Model:
         ],
     )
 
-    # Maak een dagreeks over de hele simulatieperiode
+    # Create a daily timeseries over the entire simulation period
     t = pd.date_range(model.starttime, model.endtime, freq="D")
     d = np.zeros(len(t))
     d[0:90] = 0.0
