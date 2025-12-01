@@ -117,19 +117,17 @@ and $A^n$ is the area evaluated at the beginning of the time step
 $$h^{n+1} \approx h^{n} + \frac{1}{A^n}(S^{n+1} - S^n)$$
 
 
-## Connector nodes
+## In and out flows
 
-In Ribasim, connector nodes can determine the flow as function of upstream and/or downstream level. These are [LinearResistance](../reference/node/linear-resistance.qmd), [ManningResistance](../reference/node/manning-resistance.qmd) and [TabulatedRatingCurve](../reference/node/tabulated-rating-curve.qmd) nodes. Hence if we apply multi variable linearisation:
+In Ribasim, the in and out flows on a basin are determined by connector nodes ([LinearResistance](../reference/node/linear-resistance.qmd), [ManningResistance](../reference/node/manning-resistance.qmd) and [TabulatedRatingCurve](../reference/node/tabulated-rating-curve.qmd)) and basin forcings ([Precipitation](/reference/node/basin.qmd#precipitation), [Evaporation](/reference/node/basin.qmd#evaporation) and [Infiltration, Surface Runoff and Drainage](/reference/node/basin.qmd#infiltration-surface-runoff-and-drainage)). These flows can be a function of the current basin state and/or a neighboring basin state. Accounting for the non-linearity in allocation can be done through multi variable linearisation:
 
-$$ Q^{n+1} = Q^{n} + \frac{\partial Q}{\partial h_1}(h_1^n,h_2^n)(h_1^{n+1} - h_1^{n}) + \frac{\partial Q}{\partial h_2}(h_1^n,h_2^n)(h_2^{n+1} - h_2^{n}) $$
+$$ Q^{n+1} \approx Q^{n} + \frac{\partial Q}{\partial h_1}(h_1^n,h_2^n)(h_1^{n+1} - h_1^{n}) + \frac{\partial Q}{\partial h_2}(h_1^n,h_2^n)(h_2^{n+1} - h_2^{n}) $$
 
 However, we need to relate the level to a storage (in case of a basin). So we can substitute the linearised basin profile. For example if a non linear flow node connects downstream to a basin and upstream to a level boundary:
 
 
-$$ Q_m^{n+1} = Q_m^{n} + \frac{1}{A^n}\frac{\partial Q_m}{\partial h_1}(h_1^n, h_2^n) (S_1^{n+1} - S_1^n) + \frac{\partial Q}{\partial h_2}(h_1^n,h_2^n)(h_2^{n+1} - h_2^{n}) $$
+$$ Q_m^{n+1} \approx Q_m^{n} + \frac{1}{A^n}\frac{\partial Q_m}{\partial h_1}(h_1^n, h_2^n) (S_1^{n+1} - S_1^n) + \frac{\partial Q}{\partial h_2}(h_1^n,h_2^n)(h_2^{n+1} - h_2^{n}) $$
 
-
-## Basin forcings
 
 ## Boundary nodes
 
