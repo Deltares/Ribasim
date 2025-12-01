@@ -644,7 +644,9 @@ def add_tracer(
     if not is_valid_substance(tracer_name):
         raise ValueError(f"Invalid Delwaq substance name {tracer_name}")
 
-    n = model.node_table().df.loc[node_id]
+    df = model.node_table().df
+    assert df is not None
+    n = df.loc[node_id]
     node_type = n.node_type
     if node_type not in [
         "Basin",
