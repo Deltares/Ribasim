@@ -264,9 +264,8 @@ window.Quarto = {
   <li><a href="#implementation" id="toc-implementation" class="nav-link" data-scroll-target="#implementation"><span class="header-section-number">2</span> Implementation</a>
   <ul class="collapse">
   <li><a href="#the-basin-profile" id="toc-the-basin-profile" class="nav-link" data-scroll-target="#the-basin-profile"><span class="header-section-number">2.1</span> The basin profile</a></li>
-  <li><a href="#connector-nodes" id="toc-connector-nodes" class="nav-link" data-scroll-target="#connector-nodes"><span class="header-section-number">2.2</span> Connector nodes</a></li>
-  <li><a href="#basin-forcings" id="toc-basin-forcings" class="nav-link" data-scroll-target="#basin-forcings"><span class="header-section-number">2.3</span> Basin forcings</a></li>
-  <li><a href="#boundary-nodes" id="toc-boundary-nodes" class="nav-link" data-scroll-target="#boundary-nodes"><span class="header-section-number">2.4</span> Boundary nodes</a></li>
+  <li><a href="#in-and-out-flows" id="toc-in-and-out-flows" class="nav-link" data-scroll-target="#in-and-out-flows"><span class="header-section-number">2.2</span> In and out flows</a></li>
+  <li><a href="#boundary-nodes" id="toc-boundary-nodes" class="nav-link" data-scroll-target="#boundary-nodes"><span class="header-section-number">2.3</span> Boundary nodes</a></li>
   </ul></li>
   <li><a href="#objectives-goals" id="toc-objectives-goals" class="nav-link" data-scroll-target="#objectives-goals"><span class="header-section-number">3</span> Objectives (goals)</a>
   <ul class="collapse">
@@ -438,18 +437,15 @@ Figure&nbsp;1: The primary network (subnetwork 1, blue) with connected secondary
 <p>and <span class="math inline">\(A^n\)</span> is the area evaluated at the beginning of the time step</p>
 <p><span class="math display">\[h^{n+1} \approx h^{n} + \frac{1}{A^n}(S^{n+1} - S^n)\]</span></p>
 </section>
-<section id="connector-nodes" class="level2" data-number="2.2">
-<h2 data-number="2.2" class="anchored" data-anchor-id="connector-nodes"><span class="header-section-number">2.2</span> Connector nodes</h2>
-<p>In Ribasim, connector nodes can determine the flow as function of upstream and/or downstream level. These are <a href="../reference/node/linear-resistance.html">LinearResistance</a>, <a href="../reference/node/manning-resistance.html">ManningResistance</a> and <a href="../reference/node/tabulated-rating-curve.html">TabulatedRatingCurve</a> nodes. Hence if we apply multi variable linearisation:</p>
-<p><span class="math display">\[ Q^{n+1} = Q^{n} + \frac{\partial Q}{\partial h_1}(h_1^n,h_2^n)(h_1^{n+1} - h_1^{n}) + \frac{\partial Q}{\partial h_2}(h_1^n,h_2^n)(h_2^{n+1} - h_2^{n}) \]</span></p>
+<section id="in-and-out-flows" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="in-and-out-flows"><span class="header-section-number">2.2</span> In and out flows</h2>
+<p>In Ribasim, the in and out flows on a basin are determined by connector nodes (<a href="../reference/node/linear-resistance.html">LinearResistance</a>, <a href="../reference/node/manning-resistance.html">ManningResistance</a> and <a href="../reference/node/tabulated-rating-curve.html">TabulatedRatingCurve</a>) and basin forcings (<a href="../reference/node/basin.html#precipitation">Precipitation</a>, <a href="../reference/node/basin.html#evaporation">Evaporation</a> and <a href="../reference/node/basin.html#infiltration-surface-runoff-and-drainage">Infiltration, Surface Runoff and Drainage</a>). These flows can be a function of the current basin state and/or a neighboring basin state. Accounting for the non-linearity in allocation can be done through multi variable linearisation:</p>
+<p><span class="math display">\[ Q^{n+1} \approx Q^{n} + \frac{\partial Q}{\partial h_1}(h_1^n,h_2^n)(h_1^{n+1} - h_1^{n}) + \frac{\partial Q}{\partial h_2}(h_1^n,h_2^n)(h_2^{n+1} - h_2^{n}) \]</span></p>
 <p>However, we need to relate the level to a storage (in case of a basin). So we can substitute the linearised basin profile. For example if a non linear flow node connects downstream to a basin and upstream to a level boundary:</p>
-<p><span class="math display">\[ Q_m^{n+1} = Q_m^{n} + \frac{1}{A^n}\frac{\partial Q_m}{\partial h_1}(h_1^n, h_2^n) (S_1^{n+1} - S_1^n) + \frac{\partial Q}{\partial h_2}(h_1^n,h_2^n)(h_2^{n+1} - h_2^{n}) \]</span></p>
+<p><span class="math display">\[ Q_m^{n+1} \approx Q_m^{n} + \frac{1}{A^n}\frac{\partial Q_m}{\partial h_1}(h_1^n, h_2^n) (S_1^{n+1} - S_1^n) + \frac{\partial Q}{\partial h_2}(h_1^n,h_2^n)(h_2^{n+1} - h_2^{n}) \]</span></p>
 </section>
-<section id="basin-forcings" class="level2" data-number="2.3">
-<h2 data-number="2.3" class="anchored" data-anchor-id="basin-forcings"><span class="header-section-number">2.3</span> Basin forcings</h2>
-</section>
-<section id="boundary-nodes" class="level2" data-number="2.4">
-<h2 data-number="2.4" class="anchored" data-anchor-id="boundary-nodes"><span class="header-section-number">2.4</span> Boundary nodes</h2>
+<section id="boundary-nodes" class="level2" data-number="2.3">
+<h2 data-number="2.3" class="anchored" data-anchor-id="boundary-nodes"><span class="header-section-number">2.3</span> Boundary nodes</h2>
 <p>We have the following boundary nodes in Ribasim:</p>
 <ul>
 <li>The Terminal, where water simply leaves the model</li>
