@@ -4,7 +4,7 @@
 
 ; TEMPLATE FILE FOR WATER QUALITY CALCULATION
 ; First input block
-'Water quality calculation'
+'Water quality calculation produced from Ribasim version {{ ribasim_version }}'
 ' '
 ' '
 'T0: {{startime.strftime("%Y.%m.%d %H:%M:%S")}}  (scu=       1s)'
@@ -55,11 +55,11 @@ UGRID 'ribasim.nc'          ; Reference to the waqgeom file for UGRID NetCDF out
 
  2                                                  ; Structure matrix not used
 
-INCLUDE 'ribasim.atr'     ; From UI: attributes file
+INCLUDE 'ribasim.atr'     ; From Ribasim: attributes file
 
 ; Volume file
 -2 ; volumes will be interpolated from a binary file
-'ribasim.vol'        ; From UI: volumes-file
+'ribasim.vol'        ; From Ribasim: volumes-file
 
 #3;
 ;###############################################################################
@@ -97,18 +97,18 @@ INCLUDE 'ribasim.atr'     ; From UI: attributes file
 
 ; Boundary list
 ;'NodeID' 'Comment field' 'Boundary name used for data grouping'
-INCLUDE 'ribasim_bndlist.inc'      ; From UI: Boundary segments
+INCLUDE 'ribasim_bndlist.inc'      ; From Ribasim: Boundary data
 
 0                                                   ; No Tatcher-Harleman time lags
 ; Boundary data:
-INCLUDE 'B5_bounddata.inc'      ; From UI: Boundary data
+INCLUDE 'B5_bounddata.inc'      ; From Ribasim: Boundary data
 
 
 #5;
 ;###############################################################################
 ; Sixth input block, Dry Waste Loads block
 
-0; Number of loads
+INCLUDE 'B6_wasteloads.inc'      ; Not used by Ribasim
 
 #6;
 ;###############################################################################
@@ -130,16 +130,8 @@ CONSTANTS  'ONLY_ACTIVE' 	DATA	0               ; Only active processes
 ;###############################################################################
 ; Eighth input block
 
-;INCLUDE 'includes_deltashell/B8_initials.inc'       ; From UI: Initials
+INCLUDE 'B8_initials.inc'       ; From Ribasim: Initial concentrations
 
-; Hard coded initials for mass balance check.
-MASS/M2 ; The bed substances are specified in mass/m2
-1 ; Input in this file
-1 ; Input without defaults
-{{ substances | length }}*1.0 ; Scale value
-
-; "{{ substances | join('" "') }}"
-{{ initial_concentrations }}
 #8
 ;###############################################################################
 ; Ninth input block
