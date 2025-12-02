@@ -45,7 +45,7 @@ Hold the Ctrl key to select multiple nodes.
 
 ![](https://user-images.githubusercontent.com/4471859/224939450-e369791d-3229-4621-87b0-7e1d34d0514d.png){fig-align="left"}
 
-The associated time series are shown the the graph.
+The associated time series are shown in the graph.
 
 ![](https://user-images.githubusercontent.com/4471859/224939471-85a23936-6eb6-4a80-a5b7-8c9a55ddc7f7.png){fig-align="left"}
 

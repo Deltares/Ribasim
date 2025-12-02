@@ -27,7 +27,7 @@ jobs:
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: julia-actions/cache@v2
       - uses: prefix-dev/setup-pixi@v0.9.3
         with:
@@ -40,6 +40,9 @@ jobs:
         run: pixi run quarto-render
       - name: Publish Quarto Project
         if: github.ref == 'refs/heads/main'
-        run: pixi run quarto-publish
+        uses: quarto-dev/quarto-actions/publish@v2
+        with:
+          path: "docs"
+          render: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
