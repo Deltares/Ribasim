@@ -677,6 +677,7 @@ class DatasetWidget:
         column: str,
         output_file_name: str,
     ) -> Path:
+        """Set custom properties on the layer for iMOD-QGIS to find associated results."""
         path = (
             get_directory_path_from_model_file(
                 self.ribasim_widget.path, property="results_dir"

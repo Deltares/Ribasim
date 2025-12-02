@@ -28,11 +28,19 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
       - uses: actions/checkout@v6
+      - name: Propagate git credentials for v6
+        run: |
+          # Propagate git credentials to worktrees (required for actions/checkout@v6)
+          # See: https://github.com/quarto-dev/quarto-actions/issues/133
+          if git config get includeIf.gitdir:"$(git rev-parse --path-format=absolute --git-dir)".path &>/dev/null; then
+            GIT_DIR=$(git rev-parse --path-format=absolute --git-dir)
+            CRED_PATH=$(git config get --path includeIf.gitdir:"${GIT_DIR}".path)
+            git config set --path includeIf.gitdir:"${GIT_DIR}/worktrees/*".path "${CRED_PATH}"
+          fi
       - uses: julia-actions/cache@v2
       - uses: prefix-dev/setup-pixi@v0.9.3
         with:
           pixi-version: "latest"
-          activate-environment: true
       - name: Prepare pixi
         run: pixi run install-ci
       - name: Check Quarto installation and all engines
@@ -41,9 +49,6 @@ jobs:
         run: pixi run quarto-render
       - name: Publish Quarto Project
         if: github.ref == 'refs/heads/main'
-        uses: quarto-dev/quarto-actions/publish@v2
-        with:
-          path: "docs"
-          render: false
+        run: pixi run quarto-publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
