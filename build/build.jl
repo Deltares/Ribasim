@@ -35,7 +35,7 @@ function (@main)(_)::Cint
 
     run(Cmd(`cargo build --release`; dir = "cli", env))
     ribasim = Sys.iswindows() ? "ribasim.exe" : "ribasim"
-    cp("cli/target/release/$ribasim", "ribasim/$ribasim"; force = true)
+    cp("cli/target/release/$ribasim", "ribasim/bin/$ribasim"; force = true)
     return 0
 end
 
