@@ -1,27 +1,37 @@
-using Artifacts
-using PackageCompiler
 using TOML
 using LibGit2
+using JuliaC
+using Preferences: set_preferences!, delete_preferences!
+using UUIDs: UUID
+import Pkg
 
 function (@main)(_)::Cint
-    project_dir = "../core"
-    license_file = "../LICENSE"
-    output_dir = "ribasim"
-    git_repo = ".."
+    project_dir = "core"
+    license_file = "LICENSE"
+    output_dir = "build/ribasim"
+    git_repo = "."
 
-    # change directory to this script's location
-    cd(@__DIR__)
+    # Set release options in core/LocalPreferences.toml
+    uuid = UUID("aac5e3d9-0b8f-4d4f-8241-b1a7a9632635")  # Ribasim
+    Pkg.activate("core")
+    set_preferences!(uuid, "precompile_workload" => true; force = true)
+    Pkg.activate(".")
 
-    create_library(
-        project_dir,
-        output_dir;
-        lib_name = "libribasim",
-        precompile_execution_file = "precompile.jl",
-        include_lazy_artifacts = false,
-        include_transitive_dependencies = false,
-        include_preferences = true,
-        force = true,
+    rm(output_dir; force = true, recursive = true)
+
+    image_recipe = ImageRecipe(;
+        output_type = "--output-lib",
+        file = "build/libribasim.jl",
+        project = project_dir,
+        add_ccallables = true,
+        verbose = true,
     )
+    link_recipe = LinkRecipe(; image_recipe, outname = "build/ribasim/libribasim")
+    bundle_recipe = BundleRecipe(; link_recipe, output_dir)
+
+    compile_products(image_recipe)
+    link_products(link_recipe)
+    bundle_products(bundle_recipe)
 
     add_metadata(project_dir, license_file, output_dir, git_repo, readme_start)
 
@@ -33,10 +43,16 @@ function (@main)(_)::Cint
         env["RUSTFLAGS"] = "-C link-args=/STACK:8388608"
     end
 
-    run(Cmd(`cargo build --release`; dir = "cli", env))
+    run(Cmd(`cargo build --release`; dir = "build/cli", env))
     ribasim = Sys.iswindows() ? "ribasim.exe" : "ribasim"
-    mkpath("ribasim/bin")
-    cp("cli/target/release/$ribasim", "ribasim/bin/$ribasim"; force = true)
+    mkpath("build/ribasim/bin")
+    cp("build/cli/target/release/$ribasim", "build/ribasim/bin/$ribasim"; force = true)
+
+    # Restore development options in core/LocalPreferences.toml
+    Pkg.activate("core")
+    delete_preferences!(uuid, "precompile_workload"; force = true)
+    Pkg.activate(".")
+
     return 0
 end
 
@@ -78,8 +94,7 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
         TOML.print(io, dict)
     end
 
-    # a stripped Project.toml is already added in the same location by PackageCompiler
-    # however it is better to copy the original, since it includes the version and compat
+    # Copy the Project.toml and Manifest.toml so we can see all dependencies and versions
     cp(
         normpath(project_dir, "Project.toml"),
         normpath(output_dir, "share/julia/Project.toml");
@@ -129,5 +144,5 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
     end
 
     # Override the Cargo.toml file with the git version
-    set_version("cli/Cargo.toml", tag)
+    set_version("build/cli/Cargo.toml", tag)
 end
