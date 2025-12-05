@@ -29,7 +29,6 @@ website:
     - title: "Overview"
       contents:
         - index.qmd
-        - install.qmd
         - changelog.qmd
         - known_issues.qmd
         - contact.qmd

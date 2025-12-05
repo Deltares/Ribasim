@@ -2,8 +2,13 @@
 Add variables defining the Basin profiles
 """
 function add_basin!(allocation_model::AllocationModel)::Nothing
-    (; problem, cumulative_forcing_volume, scaling, node_ids_in_subnetwork) =
-        allocation_model
+    (;
+        problem,
+        scaling,
+        node_ids_in_subnetwork,
+        explicit_positive_forcing_volume,
+        implicit_negative_forcing_volume,
+    ) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
 
     # Define decision variables: storage change (scaling.storage * m^3) (at the start of the allocation time step
@@ -24,9 +29,10 @@ function add_basin!(allocation_model::AllocationModel)::Nothing
     problem[:low_storage_factor] =
         JuMP.@variable(problem, 0 ≤ low_storage_factor[basin_ids_subnetwork] ≤ 1)
 
-    # Initialize cumulative forcing volumes (positive, negative) for each basin
+    # Initialize forcing volumes (positive, negative) for each basin
     for node_id in basin_ids_subnetwork
-        cumulative_forcing_volume[node_id] = (0.0, 0.0)
+        explicit_positive_forcing_volume[node_id] = 0.0
+        implicit_negative_forcing_volume[node_id] = 0.0
     end
     return nothing
 end
@@ -855,15 +861,24 @@ function add_source_priority_objective!(
     p_independent::ParametersIndependent,
 )::Nothing
     (; graph, allocation) = p_independent
-    (; subnetwork_inlet_source_priority) = allocation
-    (; problem, subnetwork_id, objectives) = allocation_model
+    (; problem, subnetwork_id, objectives, source_priority_expression) = allocation_model
     (; objective_expressions_all, objective_metadata) = objectives
     flow = problem[:flow]
 
+    # Add source priorities from primary network connections
     primary_network_connections =
         get(allocation.primary_network_connections, subnetwork_id, ())
 
-    expression = JuMP.AffExpr()
+    for link in primary_network_connections
+        upstream_node = link[1]
+        source_priority = graph[upstream_node].source_priority
+        if !iszero(source_priority)
+            JuMP.add_to_expression!(
+                source_priority_expression,
+                source_priority * flow[link],
+            )
+        end
+    end
 
     # Sort node IDs for deterministic problem generation
     for node_id in sort!(collect(graph[].node_ids[subnetwork_id]))
@@ -871,30 +886,13 @@ function add_source_priority_objective!(
         if !iszero(source_priority)
             for downstream_id in outflow_ids(graph, node_id)
                 JuMP.add_to_expression!(
-                    expression,
+                    source_priority_expression,
                     source_priority * flow[(node_id, downstream_id)],
                 )
-            end
-        else
-            for link in primary_network_connections
-                if link[2] == node_id
-                    source_priority = graph[node_id].source_priority
-                    iszero(source_priority) &&
-                        (source_priority = subnetwork_inlet_source_priority)
-                    JuMP.add_to_expression!(expression, source_priority * flow[link])
-                end
             end
         end
     end
 
-    push!(objective_expressions_all, expression)
-    push!(
-        objective_metadata,
-        AllocationObjectiveMetadata(;
-            type = AllocationObjectiveType.source_priorities,
-            expression_first = expression,
-        ),
-    )
     return nothing
 end
 

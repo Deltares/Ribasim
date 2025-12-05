@@ -2,6 +2,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from ribasim import Model
 from ribasim.config import (
     Allocation,
     Experimental,
@@ -12,7 +13,6 @@ from ribasim.config import (
 )
 from ribasim.geometry.link import NodeData
 from ribasim.input_base import TableModel
-from ribasim.model import Model
 from ribasim.nodes import (
     basin,
     discrete_control,
@@ -544,7 +544,9 @@ def medium_primary_secondary_network_model() -> Model:
     )
 
     # first basin
-    model.basin.add(Node(2, Point(1, 0), subnetwork_id=1), basin_data)
+    model.basin.add(
+        Node(2, Point(1, 0), subnetwork_id=1, source_priority=0), basin_data
+    )
 
     # outlet towards first subnetwork
     model.outlet.add(
@@ -554,27 +556,31 @@ def medium_primary_secondary_network_model() -> Model:
 
     # outlet towards second basin
     model.outlet.add(
-        Node(4, Point(1.5, 0), subnetwork_id=1),
+        Node(4, Point(1.5, 0), subnetwork_id=1, source_priority=0),
         [outlet_data],
     )
 
     # second basin
-    model.basin.add(Node(5, Point(2, 0), subnetwork_id=1), basin_data)
+    model.basin.add(
+        Node(5, Point(2, 0), subnetwork_id=1, source_priority=0), basin_data
+    )
 
     # pump towards first subnetwork
     model.pump.add(
-        Node(6, Point(2, 1), subnetwork_id=1),
+        Node(6, Point(2, 1), subnetwork_id=1, source_priority=0),
         [pump_data],
     )
 
     # outlet towards fourth basin
     model.outlet.add(
-        Node(16, Point(2.5, 0), subnetwork_id=1),
+        Node(16, Point(2.5, 0), subnetwork_id=1, source_priority=0),
         [outlet_data],
     )
 
     # third basin
-    model.basin.add(Node(7, Point(3, 0), subnetwork_id=1), basin_data)
+    model.basin.add(
+        Node(7, Point(3, 0), subnetwork_id=1, source_priority=0), basin_data
+    )
 
     # outlet towards second subnetwork
     model.outlet.add(
@@ -584,16 +590,18 @@ def medium_primary_secondary_network_model() -> Model:
 
     # outlet towards fourth basin
     model.outlet.add(
-        Node(9, Point(3.5, 0), subnetwork_id=1),
+        Node(9, Point(3.5, 0), subnetwork_id=1, source_priority=0),
         [outlet_data],
     )
 
     # fourth basin
-    model.basin.add(Node(10, Point(4, 0), subnetwork_id=1), basin_data)
+    model.basin.add(
+        Node(10, Point(4, 0), subnetwork_id=1, source_priority=0), basin_data
+    )
 
-    # pump towards first subnetwork
+    # pump towards second subnetwork
     model.pump.add(
-        Node(11, Point(4, 1), subnetwork_id=1),
+        Node(11, Point(4, 1), subnetwork_id=1, source_priority=0),
         [pump_data],
     )
 
@@ -2024,5 +2032,173 @@ def multiple_source_priorities_model() -> Model:
     model.link.add(bsn, ud)
     model.link.add(ud, bsn)
     model.link.add(ld, bsn)
+
+    return model
+
+
+def polder_management_model() -> Model:
+    """Set up a model where the water level in the boezem is be higher than in the polder system.
+
+    To maintain the target water levels in dry periods in the polder system, a water supply of 2 m³/s is required during two periods of the year: day 90 to 180 and day 270 to 366.
+    Flushing is included as well: 1.5 m³/s during day 90 to 180.
+    """
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:4326",
+        experimental=Experimental(allocation=True),
+    )
+
+    time = pd.date_range(model.starttime, model.endtime)
+    day_of_year = time.day_of_year.to_numpy()
+    precipitation = np.zeros(day_of_year.size)
+    precipitation[0:90] = 1e-6
+    precipitation[90:180] = 0
+    precipitation[180:270] = 1e-6
+    precipitation[270:366] = 0
+
+    evaporation = np.zeros(day_of_year.size)
+    evaporation[0:90] = 0
+    evaporation[90:180] = 1e-6
+    evaporation[180:270] = 0
+    evaporation[270:366] = 1e-6
+
+    basin_data: list[TableModel[Any]] = [
+        basin.Profile(area=[0.01, 1000000.0, 1000000.0], level=[-10, 1.0, 2.0]),
+        basin.Time(
+            time=pd.date_range(model.starttime, model.endtime),
+            drainage=0.0,
+            potential_evaporation=evaporation,
+            infiltration=0.0,
+            precipitation=precipitation,
+        ),
+        basin.State(level=[0.9]),
+    ]
+
+    basin3 = model.basin.add(Node(3, Point(2.0, 0.0), name="Boezem"), basin_data)
+    basin4 = model.basin.add(Node(4, Point(2.0, 2.0), name="Polder"), basin_data)
+    basin6 = model.basin.add(Node(6, Point(4.0, 2.0), name="Polder"), basin_data)
+    basin9 = model.basin.add(Node(9, Point(4.0, 0.0), name="Boezem"), basin_data)
+
+    # Level demand on polder 4 exactly maintain 1 m
+    level4 = model.level_demand.add(
+        Node(100, Point(2.0, 2.5), name="polder#4 level demand"),
+        [level_demand.Static(min_level=[1.0], max_level=1.0, demand_priority=1)],
+    )
+    # Level demand on polder 6 exactly maintain 0.9 m
+    level6 = model.level_demand.add(
+        Node(101, Point(4.0, 2.5), name="polder#6 level demand"),
+        [level_demand.Static(min_level=[0.9], max_level=0.9, demand_priority=1)],
+    )
+
+    model.link.add(level4, basin4)
+    model.link.add(level6, basin6)
+
+    ###Setup outlet:
+    outlet10 = model.outlet.add(
+        Node(10, Point(5.0, 0.0)),
+        [outlet.Static(flow_rate=20, min_upstream_level=[1.2])],
+    )
+
+    outlet12 = model.outlet.add(
+        Node(12, Point(1.0, 0)),
+        [outlet.Static(flow_rate=[10])],
+    )
+
+    # --- Outlet 5 Controlled by Allocation ---
+    outlet5 = model.outlet.add(
+        Node(5, Point(2, 1), name="inlaat"),
+        [
+            outlet.Static(
+                control_state="Ribasim.allocation", flow_rate=[1.0], max_flow_rate=5.0
+            )
+        ],
+    )
+
+    # --- Outlet 13 Controlled by Allocation ---
+    outlet13 = model.outlet.add(
+        Node(13, Point(3, 2), name="inlaat/uitlaat"),
+        [
+            outlet.Static(
+                control_state="Ribasim.allocation", flow_rate=[1.0], max_flow_rate=5.0
+            )
+        ],
+    )
+
+    ###Setup Manning resistance:
+    manning_resistance2 = model.manning_resistance.add(
+        Node(2, Point(3, 0.0)),
+        [
+            manning_resistance.Static(
+                length=[900], manning_n=[0.04], profile_width=[6.0], profile_slope=[3.0]
+            )
+        ],
+    )
+
+    # --- Pump 7 Controlled by Allocation ---
+    pump7 = model.pump.add(
+        Node(7, Point(4, 1), name="afvoergemaal"),
+        [
+            pump.Static(
+                control_state="Ribasim.allocation",
+                flow_rate=[1.0],
+                max_flow_rate=20.0,
+            )
+        ],
+    )
+
+    # Create a daily timeseries over the entire simulation period
+    t = pd.date_range(model.starttime, model.endtime, freq="D")
+    d = np.zeros(len(t))
+    d[0:90] = 0.0
+    d[90:180] = 1.5
+    d[180:270] = 0.0
+    d[270:366] = 0
+    pump7_alloc = model.flow_demand.add(
+        Node(70, Point(5.0, 1.1), name="doorspoeling=1.5m3/s"),
+        [
+            flow_demand.Time(
+                time=t,
+                demand_priority=[2] * len(t),
+                demand=d,
+            )
+        ],
+    )
+    model.link.add(pump7_alloc, pump7)
+
+    ##Setup level boundary
+    level_boundary11 = model.level_boundary.add(
+        Node(11, Point(0, 0)), [level_boundary.Static(level=[1.3])]
+    )
+    level_boundary17 = model.level_boundary.add(
+        Node(17, Point(6, 0)), [level_boundary.Static(level=[0.9])]
+    )
+
+    ##Setup the links:
+    model.link.add(manning_resistance2, basin9)
+    model.link.add(
+        basin3,
+        outlet5,
+    )
+    model.link.add(
+        basin3,
+        manning_resistance2,
+    )
+
+    model.link.add(outlet5, basin4)
+    model.link.add(basin4, outlet13)
+    model.link.add(outlet13, basin6)
+    model.link.add(basin6, pump7)
+    model.link.add(pump7, basin9)
+    model.link.add(basin9, outlet10)
+    model.link.add(level_boundary11, outlet12)
+    model.link.add(outlet12, basin3)
+    model.link.add(outlet10, level_boundary17)
+
+    # Give all nodes subnetwork_id 1
+    for node in model._nodes():
+        # check if node is None
+        if node.node.df is not None:
+            node.node.df.subnetwork_id = 1
 
     return model

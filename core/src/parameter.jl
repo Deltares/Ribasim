@@ -239,8 +239,6 @@ problem: The JuMP.jl model for solving the allocation problem
 has_demand_priority: Per demand priority in the whole model whether a demand of this priority is present in this
     subnetwork
 objectives: The objectives (goals) in the order in which they will be optimized for
-cumulative_forcing_volume: The volume of forcing exchanged with each Basin in the subnetwork in the last Δt_allocation
-    split in (positive forcing, negative_forcing)
 cumulative_boundary_volume: The net volume of boundary flow into the model for each FlowBoundary in the subnetwork
     over the last Δt_allocation
 cumulative_realized_volume: The net volume of flow realized by a demand node over the last Δt_allocation
@@ -255,7 +253,8 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     Δt_allocation::Float64
     has_demand_priority::Vector{Bool}
     objectives::AllocationObjectives = AllocationObjectives()
-    cumulative_forcing_volume::OrderedDict{NodeID, Tuple{Float64, Float64}} = OrderedDict()
+    explicit_positive_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
+    implicit_negative_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
     cumulative_boundary_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict()
     cumulative_realized_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict()
     sources::OrderedDict{Int32, NodeID} = OrderedDict()
@@ -263,6 +262,7 @@ scaling: The flow and storage scaling factors to make the optimization problem m
         OrderedDict()
     scaling::ScalingFactors = ScalingFactors()
     temporary_constraints::Vector{JuMP.ConstraintRef} = JuMP.ConstraintRef[]
+    source_priority_expression::JuMP.AffExpr = JuMP.AffExpr()
 end
 
 struct DemandRecordDatum
@@ -305,7 +305,6 @@ allocation_models: The allocation models for the primary network and subnetworks
 primary_network_connections: (from_id: pump or outlet in the primary network, to_id: node in the subnetwork, generally a basin)
     per subnetwork
 demand_priorities_all: All used demand priority values from all subnetworks
-subnetwork_inlet_source_priority: The default source priority for subnetwork inlets
 record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
@@ -317,7 +316,6 @@ record_control: A record of all flow rates assigned to pumps and outlets by allo
     primary_network_connections::OrderedDict{Int32, Vector{Tuple{NodeID, NodeID}}} =
         OrderedDict()
     demand_priorities_all::Vector{Int32} = []
-    subnetwork_inlet_source_priority::Int32 = 0
     record_demand::Vector{DemandRecordDatum} = []
     record_flow::Vector{FlowRecordDatum} = []
     record_control::Vector{AllocationControlRecordDatum} = []

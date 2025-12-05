@@ -78,11 +78,12 @@ There are the following interpolation settings:
 There are the following allocation settings:
 
 - `timestep`: A float value in seconds which dictates the update interval for allocations;
-- `source_priority`: An integer per source type for the allocation algorithm. The available source types are: `user_demand`, `boundary`, `level_demand`, `flow_demand`, and `subnetwork_inlet`.
+- `source_priority`: An integer per source type for the allocation algorithm. The prioritisable sources are: `basin`, `level_boundary`, `linear_resistance`, `manning_resistance`, `outlet` and `pump`.
   - If you wish to set the source priority for specific nodes rather than a fallback per node type, these can be set in the [Node table](#sec-node).
-  - Flow boundaries and level boundaries are combined in the single category `boundary`.
   - By default, all nodes of the same type have the same source priority. To obtain a strict source ordering, the sources are sorted by node ID for each source priority within a subnetwork.
   - When no default source priorities are specified, default values are applied (see the TOML example above).
+
+  The way the source priorities work is as follows: The priority that is assigned to a node is interpreted as the cost it takes for water to flow through that node. The flow through each node is multiplied with the priority, and we find the water distribution solution that has the lowest cost of fulfilling the desired demands.
 
 ## Results settings
 

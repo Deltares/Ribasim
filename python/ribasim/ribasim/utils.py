@@ -1,4 +1,5 @@
 import re
+from typing import cast
 from warnings import catch_warnings, filterwarnings
 
 import numpy as np
@@ -35,10 +36,13 @@ def _node_lookup_numpy(node_id) -> Series[Int32]:
 
     Used when adding data onto the nodes of an xugrid dataset.
     """
-    return pd.Series(
-        index=node_id,
-        data=node_id.argsort().astype(np.int32),
-        name="node_index",
+    return cast(
+        Series[Int32],
+        pd.Series(
+            index=node_id,
+            data=node_id.argsort().astype(np.int32),
+            name="node_index",
+        ).astype("Int32"),
     )
 
 
@@ -47,10 +51,13 @@ def _node_lookup(uds) -> Series[Int32]:
 
     Used when adding data onto the nodes of an xugrid dataset.
     """
-    return pd.Series(
-        index=uds["node_id"],
-        data=uds[uds.grid.node_dimension],
-        name="node_index",
+    return cast(
+        Series[Int32],
+        pd.Series(
+            index=uds["node_id"],
+            data=uds[uds.grid.node_dimension],
+            name="node_index",
+        ).astype("Int32"),
     )
 
 
@@ -59,10 +66,13 @@ def _link_lookup(uds) -> Series[Int32]:
 
     Used when adding data onto the links of an xugrid dataset.
     """
-    return pd.Series(
-        index=uds["link_id"],
-        data=uds[uds.grid.edge_dimension],
-        name="link_index",
+    return cast(
+        Series[Int32],
+        pd.Series(
+            index=uds["link_id"],
+            data=uds[uds.grid.edge_dimension],
+            name="link_index",
+        ).astype("Int32"),
     )
 
 

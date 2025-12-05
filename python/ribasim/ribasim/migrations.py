@@ -142,7 +142,7 @@ def discretecontrolconditionschema_migration(
             "Migrating outdated DiscreteControl / condition table.", UserWarning
         )
         n_rows = len(df)
-        df["time"] = [None] * n_rows
+        df["time"] = None
         df["condition_id"] = range(1, n_rows + 1)
     if schema_version < 8:
         warnings.warn(

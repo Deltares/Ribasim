@@ -8,7 +8,7 @@ from collections import defaultdict
 from datetime import timedelta
 from pathlib import Path
 
-from ribasim import nodes
+from ribasim import Model, nodes
 from ribasim.utils import MissingOptionalModule, _concat, _pascal_to_snake
 
 try:
@@ -27,6 +27,7 @@ except ImportError:
 import ribasim
 from ribasim.delwaq.util import (
     delwaq_dir,
+    is_valid_substance,
     strfdelta,
     ugrid,
     write_flows,
@@ -37,7 +38,7 @@ from ribasim.delwaq.util import (
 logger = logging.getLogger(__name__)
 
 env = jinja2.Environment(
-    autoescape=True, loader=jinja2.FileSystemLoader(delwaq_dir / "template")
+    autoescape=False, loader=jinja2.FileSystemLoader(delwaq_dir / "template")
 )
 
 
@@ -47,7 +48,7 @@ def _boundary_name(id, type):
 
 
 def _quote(value):
-    return f"'{value}'"
+    return f'"{value}"'
 
 
 def _make_boundary(data, boundary_type):
@@ -82,6 +83,9 @@ def _make_boundary(data, boundary_type):
         ),
     }
     substances = data.substance.unique()
+    assert all(map(is_valid_substance, substances)), (
+        "Invalid Delwaq substance name(s) found."
+    )
     return boundary, substances
 
 
@@ -608,6 +612,22 @@ def generate(
                 nsegments=total_segments,
                 nexchanges=total_exchanges,
                 substances=sorted(substances),
+                ribasim_version=ribasim.__version__,
+            )
+        )
+
+    # Create wasteloads file with zero loads that can be
+    # extended by the user later
+    wasteloads = output_path / "B6_wasteloads.inc"
+    if not wasteloads.exists():
+        with open(wasteloads, mode="w") as f:
+            f.write("0; Number of loads\n")
+
+    template = env.get_template("B8_initials.inc.j2")
+    with open(output_path / "B8_initials.inc", mode="w") as f:
+        f.write(
+            template.render(
+                substances=sorted(substances),
                 initial_concentrations=initial_concentrations,
             )
         )
@@ -617,9 +637,16 @@ def generate(
     return G, substances
 
 
-def add_tracer(model, node_id, tracer_name, concentration=1.0):
+def add_tracer(
+    model: Model, node_id: int, tracer_name: str, concentration: float = 1.0
+) -> None:
     """Add a tracer to the Delwaq model."""
-    n = model.node_table().df.loc[node_id]
+    if not is_valid_substance(tracer_name):
+        raise ValueError(f"Invalid Delwaq substance name {tracer_name}")
+
+    df = model.node_table().df
+    assert df is not None
+    n = df.loc[node_id]
     node_type = n.node_type
     if node_type not in [
         "Basin",

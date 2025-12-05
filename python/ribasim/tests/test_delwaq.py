@@ -74,6 +74,7 @@ def test_offline_delwaq_coupling_evaporate_mass(tmp_path):
     model.solver.evaporate_mass = True
     add_tracer(model, 11, "Foo")
     add_tracer(model, 15, "Bar")
+    add_tracer(model, 15, "Terrible' &%20Name")
 
     graph, substances = generate(model, model_dir)
     run_delwaq(model_dir)
@@ -94,6 +95,7 @@ def test_offline_delwaq_coupling_evaporate_mass(tmp_path):
         "LevelBoundary",
         "Precipitation",
         "SurfaceRunoff",
+        "Terrible' &%20Name",
         "Tracer",
         "UserDemand",
     ]
@@ -102,3 +104,11 @@ def test_offline_delwaq_coupling_evaporate_mass(tmp_path):
     assert all(np.isclose(df[df.substance == "UserDemand"].concentration, 0.0))
 
     model.write(tmp_path / "basic/ribasim.toml")
+
+
+@pytest.mark.parametrize(
+    "name", ["Foo;123", "π", "AVeryLongSubstanceName", 'Double"Quote']
+)
+def test_invalid_substance_name(basic, name):
+    with pytest.raises(ValueError, match="Invalid Delwaq substance"):
+        add_tracer(basic, 11, name)
