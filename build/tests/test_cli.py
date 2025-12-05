@@ -8,7 +8,7 @@ import ribasim
 import ribasim_testmodels
 from ribasim.cli import run_ribasim
 
-executable = Path(__file__).parents[1] / "ribasim" / "ribasim"
+executable = Path(__file__).parents[1] / "ribasim/bin/ribasim"
 
 
 @pytest.mark.parametrize(

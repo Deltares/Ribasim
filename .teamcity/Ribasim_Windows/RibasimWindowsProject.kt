@@ -80,6 +80,9 @@ object Windows_BuildMsix : BuildType({
     templates(WindowsAgent, GithubCommitStatusIntegration)
     name = "Build MSIX Package"
 
+    // Disable this until signtool is updated so we can sign the MSIX
+    paused = true
+
     vcs {
         root(RibasimVcs, ". => ribasim")
         cleanCheckout = true
