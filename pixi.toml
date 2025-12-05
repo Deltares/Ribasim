@@ -282,7 +282,6 @@ pre-commit = "*"
 pyarrow = ">=17.0"
 pydantic = ">=2.0"
 pydantic-settings = "*"
-pyjuliacall = ">=0.9.27"
 pyogrio = ">=0.8"
 pyqt-stubs = "*"
 pytest = "*"
@@ -303,6 +302,7 @@ xugrid = "*"
 
 [pypi-dependencies]
 ptvsd = "*"
+juliacall = "==0.9.30"
 ribasim = { path = "python/ribasim", editable = true }
 ribasim_api = { path = "python/ribasim_api", editable = true }
 ribasim_testmodels = { path = "python/ribasim_testmodels", editable = true }

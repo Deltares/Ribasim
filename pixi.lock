@@ -449,8 +449,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pydantic-core-2.41.5-py313h843e2db_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.12.0-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.22-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyogrio-0.12.1-py313hae45665_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.5-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyproj-3.7.2-py313h77f6078_2.conda
@@ -508,7 +506,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/scikit-learn-1.7.2-py313h06d4379_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/scipy-1.16.3-py313h11c21cd_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/secretstorage-3.4.1-py313h78bf25f_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/semver-3.0.4-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/send2trash-1.8.3-pyh0d859eb_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-80.9.0-pyhff2d567_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/shapely-2.1.2-py313had47c43_2.conda
@@ -604,6 +601,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstandard-0.25.0-py313h54dd161_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-h3691f8a_5.conda
       - pypi: https://files.pythonhosted.org/packages/a9/b6/f85666707b9f9ff94ada851cbaa6f1c91a0f5802aa5e498772251e1e7772/elementpath-5.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/b3/5d/15b1436d3a7a5de7d062335bde1086119eb747b8b4587938bd5f625a32a6/juliacall-0.9.30-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/39/6e/361d176cc94ccb8aac22a39677e146a91406005f8f6bb098b15606c523f6/juliapkg-0.1.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/28/8c/8233645bb766f831eed65a2116749a6ed8bc9f00cdc2caf80ec5f1af2dfb/lib4sbom-0.9.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
@@ -613,6 +612,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/13/cbf8f3937c6bb9f59b19281998589097769057d38e5af894db78ae95386f/sbom4python-0.12.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a6/24/4d91e05817e92e3a61c8a21e08fd0f390f5301f1c448b137c57c4bc6e543/semver-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/1a/81ac398d35be848f3655893b6260f227b29ca6acf5c2674dc5ed9af63027/xmlschema-4.2.0-py3-none-any.whl
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
@@ -981,8 +981,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pydantic-core-2.41.5-py313h5e7b836_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.12.0-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.22-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pyogrio-0.12.1-py313hea1baa3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.5-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pyproj-3.7.2-py313hb5f415d_2.conda
@@ -1030,7 +1028,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/scikit-learn-1.7.2-py313haf615d3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/scipy-1.16.3-py313he5bcb21_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/secretstorage-3.4.1-py313h1258fbd_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/semver-3.0.4-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/send2trash-1.8.3-pyh0d859eb_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-80.9.0-pyhff2d567_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/shapely-2.1.2-py313ha011489_2.conda
@@ -1120,6 +1117,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/zstandard-0.25.0-py313h62ef0ea_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/zstd-1.5.7-hefd9da6_5.conda
       - pypi: https://files.pythonhosted.org/packages/a9/b6/f85666707b9f9ff94ada851cbaa6f1c91a0f5802aa5e498772251e1e7772/elementpath-5.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/b3/5d/15b1436d3a7a5de7d062335bde1086119eb747b8b4587938bd5f625a32a6/juliacall-0.9.30-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/39/6e/361d176cc94ccb8aac22a39677e146a91406005f8f6bb098b15606c523f6/juliapkg-0.1.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/28/8c/8233645bb766f831eed65a2116749a6ed8bc9f00cdc2caf80ec5f1af2dfb/lib4sbom-0.9.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
@@ -1129,6 +1128,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/13/cbf8f3937c6bb9f59b19281998589097769057d38e5af894db78ae95386f/sbom4python-0.12.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a6/24/4d91e05817e92e3a61c8a21e08fd0f390f5301f1c448b137c57c4bc6e543/semver-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/1a/81ac398d35be848f3655893b6260f227b29ca6acf5c2674dc5ed9af63027/xmlschema-4.2.0-py3-none-any.whl
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
@@ -1452,8 +1452,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pydantic-core-2.41.5-py313h2c089d5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.12.0-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.22-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyobjc-core-12.1-py313h40b429f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyobjc-framework-cocoa-12.1-py313hcc5defa_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyogrio-0.12.1-py313he6d61f9_0.conda
@@ -1500,7 +1498,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/rust-std-aarch64-apple-darwin-1.91.1-hf6ec828_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/scikit-learn-1.7.2-py313h6eea1c5_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/scipy-1.16.3-py313h0d10b07_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/semver-3.0.4-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/send2trash-1.8.3-pyh31c8845_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-80.9.0-pyhff2d567_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/shapely-2.1.2-py313h10b2fc2_2.conda
@@ -1568,6 +1565,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstandard-0.25.0-py313h9734d34_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hd0aec43_5.conda
       - pypi: https://files.pythonhosted.org/packages/a9/b6/f85666707b9f9ff94ada851cbaa6f1c91a0f5802aa5e498772251e1e7772/elementpath-5.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/b3/5d/15b1436d3a7a5de7d062335bde1086119eb747b8b4587938bd5f625a32a6/juliacall-0.9.30-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/39/6e/361d176cc94ccb8aac22a39677e146a91406005f8f6bb098b15606c523f6/juliapkg-0.1.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/28/8c/8233645bb766f831eed65a2116749a6ed8bc9f00cdc2caf80ec5f1af2dfb/lib4sbom-0.9.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
@@ -1577,6 +1576,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/13/cbf8f3937c6bb9f59b19281998589097769057d38e5af894db78ae95386f/sbom4python-0.12.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a6/24/4d91e05817e92e3a61c8a21e08fd0f390f5301f1c448b137c57c4bc6e543/semver-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/1a/81ac398d35be848f3655893b6260f227b29ca6acf5c2674dc5ed9af63027/xmlschema-4.2.0-py3-none-any.whl
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
@@ -1946,8 +1946,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pydantic-core-2.41.5-py313hfbe8231_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.12.0-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.22-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyogrio-0.12.1-py313h8b19803_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.5-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyproj-3.7.2-py313h24787ba_2.conda
@@ -2005,7 +2003,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/rust-std-x86_64-pc-windows-msvc-1.91.1-h17fc481_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/scikit-learn-1.7.2-py313he28f1d7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/scipy-1.16.3-py313h7aa983e_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/semver-3.0.4-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/send2trash-1.8.3-pyh5737063_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-80.9.0-pyhff2d567_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/shapely-2.1.2-py313h64ccc5a_2.conda
@@ -2083,6 +2080,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstandard-0.25.0-py313h5fd188c_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h1b5488d_5.conda
       - pypi: https://files.pythonhosted.org/packages/a9/b6/f85666707b9f9ff94ada851cbaa6f1c91a0f5802aa5e498772251e1e7772/elementpath-5.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/b3/5d/15b1436d3a7a5de7d062335bde1086119eb747b8b4587938bd5f625a32a6/juliacall-0.9.30-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/39/6e/361d176cc94ccb8aac22a39677e146a91406005f8f6bb098b15606c523f6/juliapkg-0.1.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/28/8c/8233645bb766f831eed65a2116749a6ed8bc9f00cdc2caf80ec5f1af2dfb/lib4sbom-0.9.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
@@ -2093,6 +2092,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/13/cbf8f3937c6bb9f59b19281998589097769057d38e5af894db78ae95386f/sbom4python-0.12.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a6/24/4d91e05817e92e3a61c8a21e08fd0f390f5301f1c448b137c57c4bc6e543/semver-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/1a/81ac398d35be848f3655893b6260f227b29ca6acf5c2674dc5ed9af63027/xmlschema-4.2.0-py3-none-any.whl
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
@@ -2545,8 +2545,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pydantic-core-2.41.5-py312h868fb18_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.12.0-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.22-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyogrio-0.12.1-py312h053e1f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.5-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyproj-3.7.2-py312h9b6a7d9_2.conda
@@ -2604,7 +2602,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/scikit-learn-1.7.2-py312h4f0b9e3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/scipy-1.16.3-py312h7a1785b_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/secretstorage-3.4.1-py312h7900ff3_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/semver-3.0.4-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/send2trash-1.8.3-pyh0d859eb_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-80.9.0-pyhff2d567_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/shapely-2.1.2-py312h383787d_2.conda
@@ -2701,6 +2698,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstandard-0.25.0-py312h5253ce2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-h3691f8a_5.conda
       - pypi: https://files.pythonhosted.org/packages/a9/b6/f85666707b9f9ff94ada851cbaa6f1c91a0f5802aa5e498772251e1e7772/elementpath-5.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/b3/5d/15b1436d3a7a5de7d062335bde1086119eb747b8b4587938bd5f625a32a6/juliacall-0.9.30-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/39/6e/361d176cc94ccb8aac22a39677e146a91406005f8f6bb098b15606c523f6/juliapkg-0.1.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/28/8c/8233645bb766f831eed65a2116749a6ed8bc9f00cdc2caf80ec5f1af2dfb/lib4sbom-0.9.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
@@ -2710,6 +2709,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/13/cbf8f3937c6bb9f59b19281998589097769057d38e5af894db78ae95386f/sbom4python-0.12.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a6/24/4d91e05817e92e3a61c8a21e08fd0f390f5301f1c448b137c57c4bc6e543/semver-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/1a/81ac398d35be848f3655893b6260f227b29ca6acf5c2674dc5ed9af63027/xmlschema-4.2.0-py3-none-any.whl
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
@@ -3077,8 +3077,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pydantic-core-2.41.5-py312h5eb8f6c_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.12.0-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.22-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pyogrio-0.12.1-py312h2d25c45_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.5-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/pyproj-3.7.2-py312hf28bb2b_2.conda
@@ -3126,7 +3124,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/scikit-learn-1.7.2-py312hb982b15_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/scipy-1.16.3-py312h410a068_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/secretstorage-3.4.1-py312h8025657_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/semver-3.0.4-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/send2trash-1.8.3-pyh0d859eb_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-80.9.0-pyhff2d567_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/shapely-2.1.2-py312h2a437b9_2.conda
@@ -3217,6 +3214,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/zstandard-0.25.0-py312hd41f8a7_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/zstd-1.5.7-hefd9da6_5.conda
       - pypi: https://files.pythonhosted.org/packages/a9/b6/f85666707b9f9ff94ada851cbaa6f1c91a0f5802aa5e498772251e1e7772/elementpath-5.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/b3/5d/15b1436d3a7a5de7d062335bde1086119eb747b8b4587938bd5f625a32a6/juliacall-0.9.30-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/39/6e/361d176cc94ccb8aac22a39677e146a91406005f8f6bb098b15606c523f6/juliapkg-0.1.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/28/8c/8233645bb766f831eed65a2116749a6ed8bc9f00cdc2caf80ec5f1af2dfb/lib4sbom-0.9.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
@@ -3226,6 +3225,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/13/cbf8f3937c6bb9f59b19281998589097769057d38e5af894db78ae95386f/sbom4python-0.12.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a6/24/4d91e05817e92e3a61c8a21e08fd0f390f5301f1c448b137c57c4bc6e543/semver-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/1a/81ac398d35be848f3655893b6260f227b29ca6acf5c2674dc5ed9af63027/xmlschema-4.2.0-py3-none-any.whl
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
@@ -3548,8 +3548,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pydantic-core-2.41.5-py312h6ef9ec0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.12.0-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.22-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyobjc-core-12.1-py312h19bbe71_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyobjc-framework-cocoa-12.1-py312h1de3e18_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyogrio-0.12.1-py312h07dd7c3_0.conda
@@ -3596,7 +3594,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/rust-std-aarch64-apple-darwin-1.91.1-hf6ec828_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/scikit-learn-1.7.2-py312h79e0ffc_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/scipy-1.16.3-py312ha6bbf71_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/semver-3.0.4-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/send2trash-1.8.3-pyh31c8845_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-80.9.0-pyhff2d567_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/shapely-2.1.2-py312h35cd81b_2.conda
@@ -3665,6 +3662,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstandard-0.25.0-py312h37e1c23_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hd0aec43_5.conda
       - pypi: https://files.pythonhosted.org/packages/a9/b6/f85666707b9f9ff94ada851cbaa6f1c91a0f5802aa5e498772251e1e7772/elementpath-5.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/b3/5d/15b1436d3a7a5de7d062335bde1086119eb747b8b4587938bd5f625a32a6/juliacall-0.9.30-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/39/6e/361d176cc94ccb8aac22a39677e146a91406005f8f6bb098b15606c523f6/juliapkg-0.1.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/28/8c/8233645bb766f831eed65a2116749a6ed8bc9f00cdc2caf80ec5f1af2dfb/lib4sbom-0.9.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
@@ -3674,6 +3673,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/13/cbf8f3937c6bb9f59b19281998589097769057d38e5af894db78ae95386f/sbom4python-0.12.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a6/24/4d91e05817e92e3a61c8a21e08fd0f390f5301f1c448b137c57c4bc6e543/semver-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/1a/81ac398d35be848f3655893b6260f227b29ca6acf5c2674dc5ed9af63027/xmlschema-4.2.0-py3-none-any.whl
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
@@ -4042,8 +4042,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pydantic-core-2.41.5-py312hdabe01f_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pydantic-settings-2.12.0-pyh3cfb1c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pygments-2.19.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.22-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyogrio-0.12.1-py312h3f2e00f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.5-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyproj-3.7.2-py312habbd053_2.conda
@@ -4101,7 +4099,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/rust-std-x86_64-pc-windows-msvc-1.91.1-h17fc481_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/scikit-learn-1.7.2-py312h91ac024_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/scipy-1.16.3-py312hd0164fe_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/semver-3.0.4-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/send2trash-1.8.3-pyh5737063_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-80.9.0-pyhff2d567_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/shapely-2.1.2-py312h37f46ab_2.conda
@@ -4180,6 +4177,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstandard-0.25.0-py312he5662c2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h1b5488d_5.conda
       - pypi: https://files.pythonhosted.org/packages/a9/b6/f85666707b9f9ff94ada851cbaa6f1c91a0f5802aa5e498772251e1e7772/elementpath-5.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/b3/5d/15b1436d3a7a5de7d062335bde1086119eb747b8b4587938bd5f625a32a6/juliacall-0.9.30-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/39/6e/361d176cc94ccb8aac22a39677e146a91406005f8f6bb098b15606c523f6/juliapkg-0.1.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/28/8c/8233645bb766f831eed65a2116749a6ed8bc9f00cdc2caf80ec5f1af2dfb/lib4sbom-0.9.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/5b/fa477e4fd8e62c722febdc52462d7b037a77aa963c3e400a8e90e8f0d2c0/ptvsd-4.3.2-py2.py3-none-any.whl
@@ -4190,6 +4189,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/dc/6f/09acbe8b17a427e89f92ed03ae2b102aa77f911f094834214e82d0d36416/sbom4files-0.4.5-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/13/cbf8f3937c6bb9f59b19281998589097769057d38e5af894db78ae95386f/sbom4python-0.12.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a6/24/4d91e05817e92e3a61c8a21e08fd0f390f5301f1c448b137c57c4bc6e543/semver-3.0.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/dc/1a/81ac398d35be848f3655893b6260f227b29ca6acf5c2674dc5ed9af63027/xmlschema-4.2.0-py3-none-any.whl
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
@@ -10220,6 +10220,24 @@ packages:
   purls: []
   size: 4744
   timestamp: 1755595646123
+- pypi: https://files.pythonhosted.org/packages/b3/5d/15b1436d3a7a5de7d062335bde1086119eb747b8b4587938bd5f625a32a6/juliacall-0.9.30-py3-none-any.whl
+  name: juliacall
+  version: 0.9.30
+  sha256: bf76a85954fa23fee57e164896835e1ab62678669fde3008cd6ba21c9fc5f318
+  requires_dist:
+  - juliapkg>=0.1.21,<0.2
+  requires_python: '>=3.10,<4'
+- pypi: https://files.pythonhosted.org/packages/39/6e/361d176cc94ccb8aac22a39677e146a91406005f8f6bb098b15606c523f6/juliapkg-0.1.22-py3-none-any.whl
+  name: juliapkg
+  version: 0.1.22
+  sha256: fc197c21087345e296036190c769b888f7701bf1fb47d7036a20d01221ec550a
+  requires_dist:
+  - filelock>=3.16,<4.0
+  - semver>=3.0,<4.0
+  - tomli>=2.0,<3.0
+  - tomlkit>=0.13.3,<0.14
+  - click>=8.0,<9.0 ; extra == 'cli'
+  requires_python: '>=3.9'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/juliaup-1.18.9-hdab8a38_0.conda
   sha256: 97606405d90edd1dacaa1cc67c243c72acc58856cd1f1582ef35dce0f8579f32
   md5: ad16f11e214e345f20c54b8a5e3386c0
@@ -21820,33 +21838,6 @@ packages:
   - pkg:pypi/pygments?source=hash-mapping
   size: 889287
   timestamp: 1750615908735
-- conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliacall-0.9.28-pyhd8ed1ab_0.conda
-  sha256: 8e00651ffcef09ceb8b984ea48918e931b457027191c6ce6dff91451c90ee98f
-  md5: 1a048ae5083617d15aa5f67156c301a9
-  depends:
-  - pyjuliapkg >=0.1.17,<0.2.dev0
-  - python >=3.9
-  license: MIT
-  license_family: MIT
-  purls:
-  - pkg:pypi/juliacall?source=hash-mapping
-  size: 17857
-  timestamp: 1758160918530
-- conda: https://conda.anaconda.org/conda-forge/noarch/pyjuliapkg-0.1.22-pyhd8ed1ab_0.conda
-  sha256: 870ec094c6517fe7d4c074e0677e8eacf79406c02ecf18185f958e6e5b47dadb
-  md5: 1e5ae21d6c4b37eba7bc664640c0d4c0
-  depends:
-  - filelock >=3.16,<4.dev0
-  - python >=3.10
-  - semver >=3.0,<4.dev0
-  - tomli >=2.0,<3.dev0
-  - tomlkit >=0.13.3,<0.14
-  license: MIT
-  license_family: MIT
-  purls:
-  - pkg:pypi/juliapkg?source=hash-mapping
-  size: 25522
-  timestamp: 1759955628995
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyobjc-core-12.1-py312h19bbe71_0.conda
   sha256: b015f430fe9ea2c53e14be13639f1b781f68deaa5ae74cd8c1d07720890cd02a
   md5: c65d7abdc9e60fd3af0ed852591adf1b
@@ -25673,17 +25664,11 @@ packages:
   - sphinx ; extra == 'doc'
   - sphinx-rtd-theme ; extra == 'doc'
   requires_python: '>=2.7'
-- conda: https://conda.anaconda.org/conda-forge/noarch/semver-3.0.4-pyhd8ed1ab_0.conda
-  sha256: 7d3f5531269e15cb533b60009aa2a950f9844acf31f38c1b55c8000dbb316676
-  md5: 982aa48accc06494cbd2b51af69e17c7
-  depends:
-  - python >=3.9
-  license: BSD-3-Clause
-  license_family: BSD
-  purls:
-  - pkg:pypi/semver?source=hash-mapping
-  size: 21110
-  timestamp: 1737841666447
+- pypi: https://files.pythonhosted.org/packages/a6/24/4d91e05817e92e3a61c8a21e08fd0f390f5301f1c448b137c57c4bc6e543/semver-3.0.4-py3-none-any.whl
+  name: semver
+  version: 3.0.4
+  sha256: 9c824d87ba7f7ab4a1890799cec8596f15c1241cb473404ea1cb0c55e4b04746
+  requires_python: '>=3.7'
 - conda: https://conda.anaconda.org/conda-forge/noarch/send2trash-1.8.3-pyh0d859eb_1.conda
   sha256: 00926652bbb8924e265caefdb1db100f86a479e8f1066efe395d5552dde54d02
   md5: 938c8de6b9de091997145b3bf25cdbf9
