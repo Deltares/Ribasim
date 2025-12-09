@@ -43,7 +43,7 @@ def pump_discrete_control_model() -> Model:
         Node(2, Point(1, -1)),
         [
             linear_resistance.Static(
-                resistance=[1e5, 0.0],
+                resistance=[1e5, np.inf],
                 control_state=["active", "inactive"],
             )
         ],
@@ -554,7 +554,7 @@ def connector_node_flow_condition_model() -> Model:
     )
     model.linear_resistance.add(
         Node(2, Point(1, 0)),
-        [linear_resistance.Static(control_state=["On", "Off"], resistance=[1e4, 0])],
+        [linear_resistance.Static(control_state=["On", "Off"], resistance=[1e4, np.inf])],
     )
     model.basin.add(
         Node(3, Point(2, 0)),
