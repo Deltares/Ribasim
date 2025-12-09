@@ -596,7 +596,7 @@ class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
                 self.tableschema()._index_name(),
                 unique=True,
             )
-        _add_styles_to_geopackage(path, self.tablename())
+            _add_styles_to_geopackage(connection, self.tablename())
 
 
 class ChildModel(BaseModel):
