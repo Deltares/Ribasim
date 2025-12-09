@@ -68,7 +68,7 @@ def _set_db_schema_version(db_path: Path, version: int = 1) -> None:
 def create_index(
     connection: Connection, table: str, column: str, unique: bool = True
 ) -> None:
-    """Create an index on a table column."""
+    """Create an index on a table column for faster relations in QGIS."""
     index_name = f"ix_{table}_{column}"
     with closing(connection.cursor()) as cursor:
         if unique:
