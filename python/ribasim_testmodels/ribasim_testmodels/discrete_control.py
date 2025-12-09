@@ -554,7 +554,11 @@ def connector_node_flow_condition_model() -> Model:
     )
     model.linear_resistance.add(
         Node(2, Point(1, 0)),
-        [linear_resistance.Static(control_state=["On", "Off"], resistance=[1e4, np.inf])],
+        [
+            linear_resistance.Static(
+                control_state=["On", "Off"], resistance=[1e4, np.inf]
+            )
+        ],
     )
     model.basin.add(
         Node(3, Point(2, 0)),

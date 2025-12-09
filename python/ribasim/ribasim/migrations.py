@@ -21,6 +21,17 @@ def _rename_column(df, from_colname, to_colname):
     return df
 
 
+def check_inactive(df: DataFrame, name: str):
+    """Check that inactive nodes are not present in the series, as removing them would alter model behavior."""
+    if "active" not in df.columns:
+        return
+    nodes = df["node_id"][~df["active"].isin([True, None])].tolist()
+    if len(nodes) > 0:
+        raise ValueError(
+            f"Inactive nodes {nodes} in {name} cannot be migrated automatically, and should either be removed, or the respective attribute set to zero in the case of flows, or Infinity in the case of resistance."
+        )
+
+
 def nodeschema_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame:
     if schema_version == 0 and "node_id" in gdf.columns:
         warnings.warn("Migrating outdated Node table.", UserWarning)
@@ -105,6 +116,7 @@ def pidcontrolstaticschema_migration(df: DataFrame, schema_version: int) -> Data
         df.drop(columns="listen_node_type", inplace=True, errors="ignore")
     if schema_version < 9:
         warnings.warn("Migrating outdated PidControl / static table.", UserWarning)
+        check_inactive(df, name="PidControl / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
 
@@ -115,6 +127,7 @@ def outletstaticschema_migration(df: DataFrame, schema_version: int) -> DataFram
         _rename_column(df, "min_crest_level", "min_upstream_level")
     if schema_version < 9:
         warnings.warn("Migrating outdated Outlet / static table.", UserWarning)
+        check_inactive(df, name="Outlet / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
 
@@ -167,6 +180,7 @@ def basinprofileschema_migration(df: DataFrame, schema_version: int) -> DataFram
 def pumpstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if schema_version < 9:
         warnings.warn("Migrating outdated Pump / static table.", UserWarning)
+        check_inactive(df, name="Pump / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
 
@@ -176,6 +190,7 @@ def levelboundarystaticschema_migration(
 ) -> DataFrame:
     if schema_version < 9:
         warnings.warn("Migrating outdated LevelBoundary / static table.", UserWarning)
+        check_inactive(df, name="LevelBoundary / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
 
@@ -183,6 +198,7 @@ def levelboundarystaticschema_migration(
 def flowboundarystaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if schema_version < 9:
         warnings.warn("Migrating outdated FlowBoundary / static table.", UserWarning)
+        check_inactive(df, name="FlowBoundary / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
 
@@ -194,6 +210,7 @@ def linearresistancestaticschema_migration(
         warnings.warn(
             "Migrating outdated LinearResistance / static table.", UserWarning
         )
+        check_inactive(df, name="LinearResistance / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
 
@@ -205,6 +222,7 @@ def manningresistancestaticschema_migration(
         warnings.warn(
             "Migrating outdated ManningResistance / static table.", UserWarning
         )
+        check_inactive(df, name="ManningResistance / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
 
@@ -216,5 +234,6 @@ def tabulatedratingcurvestaticschema_migration(
         warnings.warn(
             "Migrating outdated TabulatedRatingCurve / static table.", UserWarning
         )
+        check_inactive(df, name="TabulatedRatingCurve / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df

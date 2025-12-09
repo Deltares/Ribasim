@@ -23,3 +23,16 @@ def test_hws_migration(tmp_path):
     assert model.link.df.index.name == "link_id"
     assert len(model.link.df) == 454
     model.write(tmp_path / "hws_migrated.toml")
+
+
+def test_active_migration():
+    from pandas import DataFrame
+    from ribasim.migrations import check_inactive
+
+    df = DataFrame({"node_id": [1, 2, 3], "active": [True, False, None]})
+
+    with pytest.raises(
+        ValueError,
+        match="Inactive nodes \[2\] in test_nodes cannot be migrated automatically",
+    ):
+        check_inactive(df, "test_nodes")
