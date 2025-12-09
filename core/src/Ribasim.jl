@@ -107,7 +107,7 @@ using DelimitedFiles: writedlm
 
 # Reading GeoPackage files, which are SQLite databases with spatial data
 using SQLite: SQLite, DB, Query, esc_id
-using DBInterface: execute
+using DBInterface: execute, prepare
 
 # Logging to both the console and a file
 using Logging: with_logger, @logmsg, LogLevel, AbstractLogger, Debug, global_logger

@@ -1927,7 +1927,7 @@ function load_data(
         end
     else
         if exists(db, sql_name)
-            table = execute(db, "select * from $(esc_id(sql_name))")
+            table = execute(prepare(db, "select * from $(esc_id(sql_name))"), (), strict=true)
             return sqlite_columntable(table, db, config, table_type)
         else
             return nothing
@@ -1950,22 +1950,15 @@ function sqlite_columntable(
     vals = ntuple(i -> Vector{types[i]}(undef, nrows), length(names))
     nt = NamedTuple{names}(vals)
 
-    for (i, row) in enumerate(table)
-        for name in names
-            val = row[name]
-            if name == :time
-                # time has type timestamp and is stored as a String in the database
-                # currently SQLite.jl does not automatically convert it to DateTime
-                val = if ismissing(val)
-                    DateTime(config.starttime)
-                else
-                    DateTime(
-                        replace(val, r"(\.\d{3})\d+$" => s"\1"),  # remove sub ms precision
-                        dateformat"yyyy-mm-dd HH:MM:SS.s",
-                    )
-                end
-            end
-            nt[name][i] = val
+    for (name, column) in pairs(columntable(table))
+        if name == :time
+            df = dateformat"yyyy-mm-dd HH:MM:SS.s"
+            @. nt[name] = [
+                ismissing(val) ? DateTime(config.starttime) :
+                DateTime(replace(val, r"(\.\d{3})\d+$" => s"\1"), df) for val in column
+            ]
+        elseif name in names
+            nt[name] .= column
         end
     end
     nt

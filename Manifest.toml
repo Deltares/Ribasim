@@ -2102,9 +2102,11 @@ version = "0.4.2"
 
 [[deps.SQLite]]
 deps = ["DBInterface", "Random", "SQLite_jll", "Serialization", "Tables", "WeakRefStrings"]
-git-tree-sha1 = "38b82dbc52b7db40bea182688c7a1103d06948a4"
+git-tree-sha1 = "5993602b0628a8f91538ebe16cf990bcf40a3d69"
+repo-rev = "0d28652"
+repo-url = "https://github.com/evetion/SQLite.jl.git"
 uuid = "0aa819cd-b072-5ff4-a722-6bc24af294d9"
-version = "1.6.1"
+version = "1.6.0"
 
 [[deps.SQLite_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Zlib_jll"]
