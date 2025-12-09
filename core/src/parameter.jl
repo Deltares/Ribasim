@@ -549,7 +549,7 @@ outflow_link: outgoing flow link metadata
 max_downstream_level: The downstream level above which the TabulatedRatingCurve flow goes to zero
 interpolations: All Q(h) relationships for the nodes over time
 current_interpolation_index: Per node 1 lookup from t to an index in `interpolations`
-control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active state
+control_mapping: dictionary from (node_id, control_state) to Q(h)
 flow_demand_id: connected flow demand node if applicable
 """
 @kwdef struct TabulatedRatingCurve <: AbstractParameterNode
@@ -573,7 +573,7 @@ outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the LinearResistance node
 resistance: the resistance to flow; `Q_unlimited = Δh/resistance`
 max_flow_rate: the maximum flow rate allowed through the node; `Q = clamp(Q_unlimited, -max_flow_rate, max_flow_rate)`
-control_mapping: dictionary from (node_id, control_state) to resistance and/or active state
+control_mapping: dictionary from (node_id, control_state) to resistance
 flow_demand_id: connected flow demand node if applicable
 """
 @kwdef struct LinearResistance <: AbstractParameterNode

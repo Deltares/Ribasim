@@ -63,8 +63,8 @@
           discrete_control.compound_variables[1][2].threshold_high[1](0)
 
     du = get_du(model.integrator)
-    @test all(iszero, du.linear_resistance)
-    @test all(iszero, du.pump)
+    @test sum(!iszero, du.linear_resistance) == 1
+    @test sum(!iszero, du.pump) == 1
 end
 
 @testitem "Flow condition control" begin
