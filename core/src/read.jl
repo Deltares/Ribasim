@@ -1968,13 +1968,14 @@ function sqlite_columntable(
     for (name, column) in pairs(columntable(table))
         if name == :time
             df = dateformat"yyyy-mm-dd HH:MM:SS.s"
-            # remove sub ms precision
-            @. nt[name] = [ismissing(val) ? DateTime(config.starttime) : DateTime(replace(val, r"(\.\d{3})\d+$" => s"\1"), df) for val in column]
+            @. nt[name] = [
+                ismissing(val) ? DateTime(config.starttime) :
+                DateTime(replace(val, r"(\.\d{3})\d+$" => s"\1"), df) for val in column
+            ]
         elseif name in names
             nt[name] .= column
         end
     end
-
     nt
 end
 
