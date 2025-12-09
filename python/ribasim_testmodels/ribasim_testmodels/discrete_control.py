@@ -43,9 +43,8 @@ def pump_discrete_control_model() -> Model:
         Node(2, Point(1, -1)),
         [
             linear_resistance.Static(
-                resistance=1e5,
+                resistance=[1e5, 0.0],
                 control_state=["active", "inactive"],
-                active=[True, False],
             )
         ],
     )
@@ -217,11 +216,7 @@ def level_boundary_condition_model() -> Model:
     )
     model.outlet.add(
         Node(4, Point(3, 0)),
-        [
-            outlet.Static(
-                active=[True, False], flow_rate=0.5 / 3600, control_state=["on", "off"]
-            )
-        ],
+        [outlet.Static(flow_rate=[0.5 / 3600, 0], control_state=["on", "off"])],
     )
     model.terminal.add(Node(5, Point(4, 0)))
     model.discrete_control.add(
@@ -515,11 +510,7 @@ def storage_condition_model() -> Model:
 
     pmp = model.pump.add(
         Node(3, Point(2, 0)),
-        [
-            pump.Static(
-                control_state=["off", "on"], flow_rate="1e-3", active=[False, True]
-            )
-        ],
+        [pump.Static(control_state=["off", "on"], flow_rate=[0, "1e-3"])],
     )
 
     tmn = model.terminal.add(Node(4, Point(3, 0)))
@@ -563,11 +554,7 @@ def connector_node_flow_condition_model() -> Model:
     )
     model.linear_resistance.add(
         Node(2, Point(1, 0)),
-        [
-            linear_resistance.Static(
-                control_state=["On", "Off"], resistance=1e4, active=[True, False]
-            )
-        ],
+        [linear_resistance.Static(control_state=["On", "Off"], resistance=[1e4, 0])],
     )
     model.basin.add(
         Node(3, Point(2, 0)),
@@ -624,11 +611,7 @@ def concentration_condition_model() -> Model:
 
     model.pump.add(
         Node(2, Point(1, 0)),
-        [
-            pump.Static(
-                control_state=["On", "Off"], active=[True, False], flow_rate=1e-3
-            )
-        ],
+        [pump.Static(control_state=["On", "Off"], flow_rate=[1e-3, 0])],
     )
 
     model.terminal.add(Node(3, Point(2, 0)))

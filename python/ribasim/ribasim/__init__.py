@@ -1,5 +1,5 @@
 __version__ = "2025.6.0"
-__schema_version__ = 8
+__schema_version__ = 9
 
 from ribasim.cli import run_ribasim
 from ribasim.config import Allocation, Logging, Node, Solver

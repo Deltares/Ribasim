@@ -452,12 +452,9 @@ def test_pandas_dtype():
     df = pump.Static(
         flow_rate=np.ones(2),
         control_state=["foo", pd.NA],
-        active=[None, False],
     ).df
 
     assert df["control_state"].dtype == "string[python]"
-    assert df["active"].dtype == "boolean"
-    assert df["active"].isna().iloc[0]
 
     # Optional integer column
     df = flow_demand.Static(

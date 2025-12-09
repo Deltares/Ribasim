@@ -346,8 +346,7 @@ function get_flow(
     from_id = link[1]
     if from_id.type == NodeType.FlowBoundary
         if boundary_flow === nothing
-            flow_boundary.active[from_id.idx] ? flow_boundary.flow_rate[from_id.idx](t) :
-            0.0
+            flow_boundary.flow_rate[from_id.idx](t)
         else
             boundary_flow[from_id.idx]
         end

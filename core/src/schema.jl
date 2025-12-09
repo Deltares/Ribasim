@@ -83,7 +83,6 @@ using ...Ribasim: DateTime, Table
 
 struct Static <: Table
     node_id::Int32
-    active::Union{Missing, Bool}
     flow_rate::Float64
     min_flow_rate::Union{Missing, Float64}
     max_flow_rate::Union{Missing, Float64}
@@ -110,7 +109,6 @@ using ...Ribasim: DateTime, Table
 
 struct Static <: Table
     node_id::Int32
-    active::Union{Missing, Bool}
     flow_rate::Float64
     min_flow_rate::Union{Missing, Float64}
     max_flow_rate::Union{Missing, Float64}
@@ -137,7 +135,6 @@ using ...Ribasim: DateTime, Table
 
 struct Static <: Table
     node_id::Int32
-    active::Union{Missing, Bool}
     level::Float64
 end
 
@@ -162,7 +159,6 @@ using ...Ribasim: DateTime, Table
 
 struct Static <: Table
     node_id::Int32
-    active::Union{Missing, Bool}
     flow_rate::Float64
 end
 
@@ -187,7 +183,6 @@ using ...Ribasim: DateTime, Table
 
 struct Static <: Table
     node_id::Int32
-    active::Union{Missing, Bool}
     resistance::Float64
     max_flow_rate::Union{Missing, Float64}
     control_state::Union{Missing, String}
@@ -201,7 +196,6 @@ using ...Ribasim: DateTime, Table
 
 struct Static <: Table
     node_id::Int32
-    active::Union{Missing, Bool}
     length::Float64
     manning_n::Float64
     profile_width::Float64
@@ -217,7 +211,6 @@ using ...Ribasim: DateTime, Table
 
 struct Static <: Table
     node_id::Int32
-    active::Union{Missing, Bool}
     level::Float64
     flow_rate::Float64
     max_downstream_level::Union{Missing, Float64}
@@ -291,7 +284,6 @@ using ...Ribasim: DateTime, Table
 
 struct Static <: Table
     node_id::Int32
-    active::Union{Missing, Bool}
     listen_node_id::Int32
     target::Float64
     proportional::Float64
@@ -318,7 +310,6 @@ using ...Ribasim: DateTime, Table
 
 struct Static <: Table
     node_id::Int32
-    active::Union{Missing, Bool}
     demand::Union{Missing, Float64}
     return_factor::Float64
     min_level::Float64

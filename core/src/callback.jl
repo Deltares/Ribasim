@@ -237,23 +237,20 @@ function update_concentrations!(u, t, integrator)::Nothing
     end
 
     # Exact boundary flow over time step
-    for (id, flow_rate, active, outflow_link) in zip(
+    for (id, flow_rate, outflow_link) in zip(
         flow_boundary.node_id,
         flow_boundary.flow_rate,
-        flow_boundary.active,
         flow_boundary.outflow_link,
     )
-        if active
-            outflow_id = outflow_link.link[2]
-            added_boundary_flow = integral(flow_rate, tprev, t)
-            add_substance_mass!(
-                mass[outflow_id.idx],
-                flow_boundary.concentration_itp[id.idx],
-                added_boundary_flow,
-                t,
-            )
-            cumulative_in[outflow_id.idx] += added_boundary_flow
-        end
+        outflow_id = outflow_link.link[2]
+        added_boundary_flow = integral(flow_rate, tprev, t)
+        add_substance_mass!(
+            mass[outflow_id.idx],
+            flow_boundary.concentration_itp[id.idx],
+            added_boundary_flow,
+            t,
+        )
+        cumulative_in[outflow_id.idx] += added_boundary_flow
     end
 
     mass_inflows_from_user_demand!(integrator)
@@ -365,11 +362,7 @@ function flow_update_on_link(
             "Cannot get flow update when from_id = to_id. For Basin forcing use `forcing_update`.",
         )
     elseif from_id.type == NodeType.FlowBoundary
-        if flow_boundary.active[from_id.idx]
-            integral(flow_boundary.flow_rate[from_id.idx], tprev, t)
-        else
-            0.0
-        end
+        integral(flow_boundary.flow_rate[from_id.idx], tprev, t)
     else
         flow_idx = get_state_index(state_ranges, link_src)
         u[flow_idx] - uprev[flow_idx]
@@ -752,8 +745,7 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
     (; discrete_control) = p.p_independent
     (; control_mappings) = discrete_control
     control_state_update = control_mappings[node_id.type][(node_id, control_state)]
-    (; active, scalar_update, itp_update_linear, itp_update_lookup) = control_state_update
-    apply_parameter_update!(active)
+    (; scalar_update, itp_update_linear, itp_update_lookup) = control_state_update
     apply_parameter_update!.(scalar_update)
     apply_parameter_update!.(itp_update_linear)
     apply_parameter_update!.(itp_update_lookup)
@@ -764,9 +756,7 @@ end
 function apply_parameter_update!(parameter_update)::Nothing
     (; name, value, ref) = parameter_update
 
-    # Ignore this parameter update if the associated node does
-    # not have an 'active' field
-    if name == :active && ref.i == 0
+    if ref.i == 0
         return nothing
     end
     ref[] = value

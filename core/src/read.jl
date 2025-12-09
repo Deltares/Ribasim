@@ -60,11 +60,7 @@ function get_parameter_value(
     from_static = true,
     kwargs...,
 )::Tuple{Union{Missing, T}, Bool}
-    val = if !from_static && parameter_name == :active
-        true
-    else
-        coalesce(getfield(last(data_group), parameter_name), default)
-    end
+    val = coalesce(getfield(last(data_group), parameter_name), default)
     val, true
 end
 
@@ -323,11 +319,7 @@ function initialize_control_mapping!(node::AbstractParameterNode, static::Struct
                 first_row = first(control_state_group)
                 control_state = first_row.control_state
                 ismissing(control_state) && continue
-                active_bool =
-                    hasproperty(first_row, :active) ? coalesce(first_row.active, true) :
-                    true
-                node.control_mapping[(node_id, control_state)] =
-                    ControlStateUpdate(; active = ParameterUpdate(:active, active_bool))
+                node.control_mapping[(node_id, control_state)] = ControlStateUpdate(;)
             end
             if static_idx[1]
                 static_group, static_idx = iterate(static_groups, static_idx)
@@ -352,8 +344,7 @@ function LinearResistance(db, config, graph)
     initialize_control_mapping!(linear_resistance, static)
     set_inoutflow_links!(linear_resistance, graph)
     set_external_flow_demand_nodes!(linear_resistance, graph)
-    errors = parse_parameter!(linear_resistance, config, :active; static, default = true)
-    errors |= parse_parameter!(linear_resistance, config, :resistance; static)
+    errors = parse_parameter!(linear_resistance, config, :resistance; static)
     errors |=
         parse_parameter!(linear_resistance, config, :max_flow_rate; static, default = Inf)
 
@@ -372,8 +363,7 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
 
     set_inoutflow_links!(rating_curve, graph)
     set_external_flow_demand_nodes!(rating_curve, graph)
-    errors = parse_parameter!(rating_curve, config, :active; static, time, default = true)
-    errors |= parse_parameter!(
+    errors = parse_parameter!(
         rating_curve,
         config,
         :max_downstream_level;
@@ -416,10 +406,8 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
                     if !ismissing(control_state)
                         # let control swap out the static lookup object
                         index_lookup = static_lookup(interpolation_index)
-                        is_active = coalesce(first(qh_group).active, true)
                         rating_curve.control_mapping[(id, control_state)] =
                             ControlStateUpdate(;
-                                active = ParameterUpdate(:active, is_active),
                                 itp_update_lookup = [
                                     ParameterUpdate(
                                         :current_interpolation_index,
@@ -492,8 +480,7 @@ function ManningResistance(db::DB, config::Config, graph::MetaGraph, basin::Basi
     initialize_control_mapping!(manning_resistance, static)
     set_inoutflow_links!(manning_resistance, graph)
     set_external_flow_demand_nodes!(manning_resistance, graph)
-    errors = parse_parameter!(manning_resistance, config, :active; static, default = true)
-    errors |= parse_parameter!(manning_resistance, config, :length; static)
+    errors = parse_parameter!(manning_resistance, config, :length; static)
     errors |= parse_parameter!(manning_resistance, config, :manning_n; static)
     errors |= parse_parameter!(manning_resistance, config, :profile_width; static)
     errors |= parse_parameter!(manning_resistance, config, :profile_slope; static)
@@ -585,8 +572,7 @@ function parse_pump_or_outlet_parameters!(
     time,
     node_id,
 )::Bool
-    errors = parse_parameter!(node, config, :active; static, time, default = true)
-
+    errors = false
     # flow_rate can come from either static or time, and ends up in a different cache.
     # that is why we parse it once from static and store error_static and once from time and store error_time
     # It may be in either of them, so we parse them as optional parameters.
@@ -1123,8 +1109,7 @@ function PidControl(db::DB, config::Config)
     pid_control = PidControl(; node_id)
 
     initialize_control_mapping!(pid_control, static)
-    errors = parse_parameter!(pid_control, config, :active; static, time, default = true)
-    errors |= parse_parameter!(
+    errors = parse_parameter!(
         pid_control,
         config,
         :listen_node_id;
@@ -1272,8 +1257,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
     user_demand = UserDemand(; node_id, concentration_itp, demand_priorities)
 
     set_inoutflow_links!(user_demand, graph)
-    errors = parse_parameter!(user_demand, config, :active; static, time, default = true)
-    errors |= parse_parameter!(
+    errors = parse_parameter!(
         user_demand,
         config,
         :return_factor;
