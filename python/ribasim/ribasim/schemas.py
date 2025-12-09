@@ -167,7 +167,6 @@ class FlowBoundaryConcentrationSchema(_BaseSchema):
 class FlowBoundaryStaticSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
-    active: pd.BooleanDtype = pa.Field(nullable=True)
     flow_rate: float = pa.Field(nullable=False)
 
 
@@ -204,7 +203,6 @@ class LevelBoundaryConcentrationSchema(_BaseSchema):
 class LevelBoundaryStaticSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
-    active: pd.BooleanDtype = pa.Field(nullable=True)
     level: float = pa.Field(nullable=False)
 
 
@@ -235,7 +233,6 @@ class LevelDemandTimeSchema(_BaseSchema):
 class LinearResistanceStaticSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
-    active: pd.BooleanDtype = pa.Field(nullable=True)
     resistance: float = pa.Field(nullable=False)
     max_flow_rate: float = pa.Field(nullable=True)
     control_state: pd.StringDtype = pa.Field(nullable=True)
@@ -244,7 +241,6 @@ class LinearResistanceStaticSchema(_BaseSchema):
 class ManningResistanceStaticSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
-    active: pd.BooleanDtype = pa.Field(nullable=True)
     length: float = pa.Field(nullable=False)
     manning_n: float = pa.Field(nullable=False)
     profile_width: float = pa.Field(nullable=False)
@@ -255,7 +251,6 @@ class ManningResistanceStaticSchema(_BaseSchema):
 class OutletStaticSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
-    active: pd.BooleanDtype = pa.Field(nullable=True)
     flow_rate: float = pa.Field(nullable=False)
     min_flow_rate: float = pa.Field(nullable=True)
     max_flow_rate: float = pa.Field(nullable=True)
@@ -278,7 +273,6 @@ class OutletTimeSchema(_BaseSchema):
 class PidControlStaticSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
-    active: pd.BooleanDtype = pa.Field(nullable=True)
     listen_node_id: np.int32 = pa.Field(nullable=False)
     target: float = pa.Field(nullable=False)
     proportional: float = pa.Field(nullable=False)
@@ -301,7 +295,6 @@ class PidControlTimeSchema(_BaseSchema):
 class PumpStaticSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
-    active: pd.BooleanDtype = pa.Field(nullable=True)
     flow_rate: float = pa.Field(nullable=False)
     min_flow_rate: float = pa.Field(nullable=True)
     max_flow_rate: float = pa.Field(nullable=True)
@@ -324,7 +317,6 @@ class PumpTimeSchema(_BaseSchema):
 class TabulatedRatingCurveStaticSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
-    active: pd.BooleanDtype = pa.Field(nullable=True)
     level: float = pa.Field(nullable=False)
     flow_rate: float = pa.Field(nullable=False)
     max_downstream_level: float = pa.Field(nullable=True)
@@ -351,7 +343,6 @@ class UserDemandConcentrationSchema(_BaseSchema):
 class UserDemandStaticSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
-    active: pd.BooleanDtype = pa.Field(nullable=True)
     demand: float = pa.Field(nullable=True)
     return_factor: float = pa.Field(nullable=False)
     min_level: float = pa.Field(nullable=False)

@@ -596,12 +596,6 @@ function set_discrete_controlled_variable_refs!(
                     itp_update_lookup[i] =
                         @set parameter_update.ref = Ref(field, node_id.idx)
                 end
-
-                # Reference to 'active' parameter if it exists
-                if hasfield(typeof(node), :active)
-                    control_mapping[(node_id, control_state)] =
-                        @set control_state_update.active.ref = Ref(node.active, node_id.idx)
-                end
             end
         end
     end
@@ -1116,20 +1110,13 @@ function eval_time_interpolation(
     p::Parameters,
     t::Number,
 )
-    (; all_nodes_active, new_time_dependent_cache) = p.p_mutable
-    if all_nodes_active
-        # Set to non-zero value to avoid missing
-        # connections during sparsity detection
-        val = one(t)
-        cache[idx] = 1.0
+    (; new_time_dependent_cache) = p.p_mutable
+    if new_time_dependent_cache
+        @inbounds val = itp(t)
+        cache[idx] = val
+        return val
     else
-        if new_time_dependent_cache
-            @inbounds val = itp(t)
-            cache[idx] = val
-            return val
-        else
-            return cache[idx]
-        end
+        return cache[idx]
     end
 end
 
@@ -1233,20 +1220,4 @@ function add_substance_mass!(
         mass[substance_idx] += cumulative_flow * itp(t)
     end
     return nothing
-end
-
-function should_skip_update_q(
-    active::Bool,
-    control_type::ContinuousControlType.T,
-    relevant_control_type::ContinuousControlType.T,
-    p::Parameters,
-)::Bool
-    (; p_mutable) = p
-    (; all_nodes_active) = p_mutable
-    # Update is not needed if this node is not active and all nodes are not active
-    if !active && !all_nodes_active
-        return true
-    end
-
-    return control_type != relevant_control_type
 end

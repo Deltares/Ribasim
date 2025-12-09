@@ -366,7 +366,6 @@ end
 The parameter update associated with a certain control state for discrete control
 """
 @kwdef struct ControlStateUpdate
-    active::ParameterUpdate{Bool}
     scalar_update::Vector{ParameterUpdate{Float64}} = ParameterUpdate{Float64}[]
     itp_update_linear::Vector{ParameterUpdate{ScalarLinearInterpolation}} =
         ParameterUpdate{ScalarLinearInterpolation}[]
@@ -547,18 +546,16 @@ inflow_link: incoming flow link metadata
     The ID of the destination node is always the ID of the TabulatedRatingCurve node
 outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the TabulatedRatingCurve node
-active: whether this node is active and thus contributes flows
 max_downstream_level: The downstream level above which the TabulatedRatingCurve flow goes to zero
 interpolations: All Q(h) relationships for the nodes over time
 current_interpolation_index: Per node 1 lookup from t to an index in `interpolations`
-control_mapping: dictionary from (node_id, control_state) to Q(h) and/or active state
+control_mapping: dictionary from (node_id, control_state) to Q(h)
 flow_demand_id: connected flow demand node if applicable
 """
 @kwdef struct TabulatedRatingCurve <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    active::Vector{Bool} = ones(Bool, length(node_id))
     max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
     interpolations::Vector{ScalarPCHIPInterpolation} = ScalarLinearInterpolation[]
     current_interpolation_index::Vector{IndexLookup} = IndexLookup[]
@@ -574,17 +571,15 @@ inflow_link: incoming flow link metadata
     The ID of the destination node is always the ID of the LinearResistance node
 outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the LinearResistance node
-active: whether this node is active and thus contributes flows
 resistance: the resistance to flow; `Q_unlimited = Δh/resistance`
 max_flow_rate: the maximum flow rate allowed through the node; `Q = clamp(Q_unlimited, -max_flow_rate, max_flow_rate)`
-control_mapping: dictionary from (node_id, control_state) to resistance and/or active state
+control_mapping: dictionary from (node_id, control_state) to resistance
 flow_demand_id: connected flow demand node if applicable
 """
 @kwdef struct LinearResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    active::Vector{Bool} = ones(Bool, length(node_id))
     resistance::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = zeros(length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
@@ -635,7 +630,6 @@ Requirements:
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    active::Vector{Bool} = ones(Bool, length(node_id))
     length::Vector{Float64} = zeros(size(node_id))
     manning_n::Vector{Float64} = zeros(size(node_id))
     profile_width::Vector{Float64} = zeros(size(node_id))
@@ -649,13 +643,11 @@ end
 
 """
 node_id: node ID of the LevelBoundary node
-active: whether this node is active
 level: the fixed level of this 'infinitely big Basin'
 concentration_itp: matrix with timeseries interpolations of concentrations per LevelBoundary per substance
 """
 @kwdef struct LevelBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}
-    active::Vector{Bool} = ones(Bool, length(node_id))
     level::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
@@ -664,7 +656,6 @@ end
 """
 node_id: node ID of the FlowBoundary node
 outflow_link: The outgoing flow link metadata
-active: whether this node is active and thus contributes flow
 cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
 cumulative_flow_saveat: The exactly integrated cumulative boundary flow since the last saveat
 flow_rate: flow rate (exact)
@@ -673,7 +664,6 @@ concentration_itp: matrix with boundary concentrations per FlowBoundary per subs
 @kwdef struct FlowBoundary{I} <: AbstractParameterNode
     node_id::Vector{NodeID}
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    active::Vector{Bool} = ones(Bool, length(node_id))
     cumulative_flow::Vector{Float64} = zeros(length(node_id))
     cumulative_flow_saveat::Vector{Float64} = zeros(length(node_id))
     flow_rate::Vector{I}
@@ -686,7 +676,6 @@ inflow_link: incoming flow link metadata
     The ID of the destination node is always the ID of the Pump node
 outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the Pump node
-active: whether this node is active and thus contributes flow
 flow_rate: timeseries for transient flow data if available
 min_flow_rate: The minimal flow rate of the pump
 max_flow_rate: The maximum flow rate of the pump
@@ -701,7 +690,6 @@ flow_demand_id: connected flow demand node if applicable
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    active::Vector{Bool} = fill(true, length(node_id))
     flow_rate::Vector{Float64} = Vector{Float64}(undef, length(node_id))
     time_dependent_flow_rate::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
@@ -728,7 +716,6 @@ inflow_link: incoming flow link metadata.
     The ID of the destination node is always the ID of the Outlet node
 outflow_link: outgoing flow link metadata.
     The ID of the source node is always the ID of the Outlet node
-active: whether this node is active and thus contributes flow
 flow_rate: timeseries for transient flow data if available
 min_flow_rate: The minimal flow rate of the outlet
 max_flow_rate: The maximum flow rate of the outlet
@@ -743,7 +730,6 @@ flow_demand_id: connected flow demand node if applicable
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    active::Vector{Bool} = ones(Bool, length(node_id))
     flow_rate::Vector{Float64} = Vector{Float64}(undef, length(node_id))
     time_dependent_flow_rate::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
@@ -936,7 +922,6 @@ end
 PID control currently only supports regulating basin levels.
 
 node_id: node ID of the PidControl node
-active: whether this node is active and thus sets flow rates
 controlled_node_id: The node that is being controlled
 listen_node_id: the id of the basin being controlled
 target: target level (possibly time dependent)
@@ -948,7 +933,6 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
 """
 @kwdef struct PidControl <: AbstractParameterNode
     node_id::Vector{NodeID}
-    active::Vector{Bool} = ones(Bool, length(node_id))
     listen_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     target::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
@@ -970,7 +954,6 @@ inflow_link: incoming flow link
     The ID of the destination node is always the ID of the UserDemand node
 outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the UserDemand node
-active: whether this node is active and thus demands water
 has_demand_priority: boolean matrix stating per UserDemand node per demand priority index whether the (node_idx, demand_priority_idx)
     node will ever have a demand of that priority
 demand: water flux demand of UserDemand per demand priority (node_idx, demand_priority_idx)
@@ -988,7 +971,6 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
     demand_priorities::Vector{Int32} = Int32[]
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    active::Vector{Bool} = ones(Bool, length(node_id))
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
     demand::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
@@ -1104,8 +1086,6 @@ const ModelGraph = MetaGraph{
 
 """
 The part of the parameters passed to the rhs and callbacks that are mutable.
-- `all_nodes_active`: Whether `active = true` is assumed for all nodes, so that no
-   dependencies are missed during sparsity detection
 - `new_time_dependent_cache`: Whether the `t` with which `water_balance!` is called is considered new,
    and thus whether `time_dependent_cache` must be updated
 - `new_state_and_time_dependent_cache`: Whether the `t` and/or `u_reduced` with which `water_balance!` are called are
@@ -1113,7 +1093,6 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
 - `tprev`: The previous `t` before the latest time step
 """
 @kwdef mutable struct ParametersMutable
-    all_nodes_active::Bool = false
     new_time_dependent_cache::Bool = true
     new_state_and_time_dependent_cache::Bool = true
     tprev::Float64 = 0.0

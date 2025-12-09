@@ -85,16 +85,14 @@ end
 
 function formulate_flow_boundary!(p::Parameters, t::Number)::Nothing
     (; p_independent, time_dependent_cache, p_mutable) = p
-    (; node_id, flow_rate, active, cumulative_flow) = p_independent.flow_boundary
+    (; node_id, flow_rate, cumulative_flow) = p_independent.flow_boundary
     (; current_cumulative_boundary_flow) = time_dependent_cache.flow_boundary
     (; tprev, new_time_dependent_cache) = p_mutable
 
     if new_time_dependent_cache
         for id in node_id
-            if active[id.idx]
-                current_cumulative_boundary_flow[id.idx] =
-                    cumulative_flow[id.idx] + integral(flow_rate[id.idx], tprev, t)
-            end
+            current_cumulative_boundary_flow[id.idx] =
+                cumulative_flow[id.idx] + integral(flow_rate[id.idx], tprev, t)
         end
     end
     return nothing
@@ -255,17 +253,11 @@ function formulate_pid_control!(
         time_dependent_cache.pid_control
     (; pid_control) = p_independent
     (; current_error_pid_control, current_area) = state_and_time_dependent_cache
-    (; node_id, active, target, listen_node_id) = p_independent.pid_control
+    (; node_id, target, listen_node_id) = p_independent.pid_control
 
-    all_nodes_active = p_mutable.all_nodes_active
 
     set_error!(pid_control, p, t)
     for i in eachindex(node_id)
-        if !(active[i] || all_nodes_active)
-            du.integral[i] = 0.0
-            u_reduced.integral[i] = 0.0
-            continue
-        end
 
         du.integral[i] = current_error_pid_control[i]
 
@@ -356,21 +348,15 @@ function formulate_flow!(
     (; p_independent, time_dependent_cache) = p
     (; current_return_factor) = time_dependent_cache.user_demand
     (; allocation, level_difference_threshold) = p_independent
-    all_nodes_active = p.p_mutable.all_nodes_active
 
     for node_idx in eachindex(user_demand.node_id)
         id = user_demand.node_id[node_idx]
         inflow_link = user_demand.inflow_link[node_idx]
         outflow_link = user_demand.outflow_link[node_idx]
-        active = user_demand.active[node_idx]
         has_demand_priority = view(user_demand.has_demand_priority, node_idx, :)
         allocated = view(user_demand.allocated, node_idx, :)
         return_factor = user_demand.return_factor[node_idx]
         min_level = user_demand.min_level[node_idx]
-
-        if !(active || all_nodes_active)
-            continue
-        end
 
         q = 0.0
 
@@ -411,8 +397,7 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; p_mutable) = p
-    all_nodes_active = p_mutable.all_nodes_active
-    (; node_id, active) = linear_resistance
+    (; node_id) = linear_resistance
 
     for node_idx in eachindex(linear_resistance.node_id)
         id = node_id[node_idx]
@@ -422,12 +407,10 @@ function formulate_flow!(
         inflow_id = inflow_link.link[1]
         outflow_id = outflow_link.link[2]
 
-        if (active[node_idx] || all_nodes_active)
-            h_a = get_level(p, inflow_id, t)
-            h_b = get_level(p, outflow_id, t)
-            q = linear_resistance_flow(linear_resistance, id, h_a, h_b, p)
-            du.linear_resistance[node_idx] = q
-        end
+        h_a = get_level(p, inflow_id, t)
+        h_b = get_level(p, outflow_id, t)
+        q = linear_resistance_flow(linear_resistance, id, h_a, h_b, p)
+        du.linear_resistance[node_idx] = q
     end
     return nothing
 end
@@ -485,8 +468,6 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; p_mutable) = p
-    all_nodes_active = p_mutable.all_nodes_active
-    (; active) = tabulated_rating_curve
     for node_idx in eachindex(tabulated_rating_curve.node_id)
         id = tabulated_rating_curve.node_id[node_idx]
         inflow_link = tabulated_rating_curve.inflow_link[node_idx]
@@ -494,13 +475,9 @@ function formulate_flow!(
         inflow_id = inflow_link.link[1]
         outflow_id = outflow_link.link[2]
 
-        if active[node_idx] || all_nodes_active
-            h_a = get_level(p, inflow_id, t)
-            h_b = get_level(p, outflow_id, t)
-            q = tabulated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p, t)
-        else
-            q = 0.0
-        end
+        h_a = get_level(p, inflow_id, t)
+        h_b = get_level(p, outflow_id, t)
+        q = tabulated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p, t)
 
         du.tabulated_rating_curve[node_idx] = q
     end
@@ -616,8 +593,7 @@ function formulate_flow!(
     t::Number,
 )::Nothing
     (; p_mutable) = p
-    (; node_id, active) = manning_resistance
-    all_nodes_active = p_mutable.all_nodes_active
+    (; node_id) = manning_resistance
 
     for node_idx in eachindex(manning_resistance.node_id)
         id = node_id[node_idx]
@@ -626,10 +602,6 @@ function formulate_flow!(
 
         inflow_id = inflow_link.link[1]
         outflow_id = outflow_link.link[2]
-
-        if !(active[node_idx] || all_nodes_active)
-            continue
-        end
 
         h_a = get_level(p, inflow_id, t)
         h_b = get_level(p, outflow_id, t)
@@ -663,14 +635,13 @@ function formulate_pump_or_outlet_flow!(
         id = node.node_id[node_idx]
         inflow_link = node.inflow_link[node_idx]
         outflow_link = node.outflow_link[node_idx]
-        active = node.active[node_idx]
         min_flow_rate = node.min_flow_rate[node_idx]
         max_flow_rate = node.max_flow_rate[node_idx]
         control_type = node.control_type[node_idx]
         min_upstream_level = node.min_upstream_level[node_idx]
         max_downstream_level = node.max_downstream_level[node_idx]
 
-        if should_skip_update_q(active, control_type, relevant_control_type, p)
+        if control_type != relevant_control_type
             continue
         end
 
@@ -853,44 +824,41 @@ function limit_flow!(
     reduce_state!(u_reduced, u, p_independent)
     set_current_basin_properties!(u_reduced, p, t)
 
-    # TabulatedRatingCurve flow is in [0, ∞) and can be inactive
-    for (id, active) in zip(tabulated_rating_curve.node_id, tabulated_rating_curve.active)
+    # TabulatedRatingCurve flow is in [0, ∞)
+    for id in tabulated_rating_curve.node_id
         limit_flow!(
             u.tabulated_rating_curve,
             uprev.tabulated_rating_curve,
             id,
             0.0,
             Inf,
-            active,
             dt,
         )
     end
 
-    # Pump flow is in [min_flow_rate, max_flow_rate] and can be inactive
-    for (id, min_flow_rate, max_flow_rate, active) in
-        zip(pump.node_id, pump.min_flow_rate, pump.max_flow_rate, pump.active)
-        limit_flow!(u.pump, uprev.pump, id, min_flow_rate(t), max_flow_rate(t), active, dt)
+    # Pump flow is in [min_flow_rate, max_flow_rate]
+    for (id, min_flow_rate, max_flow_rate) in
+        zip(pump.node_id, pump.min_flow_rate, pump.max_flow_rate)
+        limit_flow!(u.pump, uprev.pump, id, min_flow_rate(t), max_flow_rate(t), dt)
     end
 
-    # Outlet flow is in [min_flow_rate, max_flow_rate] and can be inactive
-    for (id, min_flow_rate, max_flow_rate, active) in
-        zip(outlet.node_id, outlet.min_flow_rate, outlet.max_flow_rate, outlet.active)
+    # Outlet flow is in [min_flow_rate, max_flow_rate]
+    for (id, min_flow_rate, max_flow_rate) in
+        zip(outlet.node_id, outlet.min_flow_rate, outlet.max_flow_rate)
         limit_flow!(
             u.outlet,
             uprev.outlet,
             id,
             min_flow_rate(t),
             max_flow_rate(t),
-            active,
             dt,
         )
     end
 
-    # LinearResistance flow is in [-max_flow_rate, max_flow_rate] and can be inactive
-    for (id, max_flow_rate, active) in zip(
+    # LinearResistance flow is in [-max_flow_rate, max_flow_rate]
+    for (id, max_flow_rate) in zip(
         linear_resistance.node_id,
         linear_resistance.max_flow_rate,
-        linear_resistance.active,
     )
         limit_flow!(
             u.linear_resistance,
@@ -898,15 +866,13 @@ function limit_flow!(
             id,
             -max_flow_rate,
             max_flow_rate,
-            active,
             dt,
         )
     end
 
     # UserDemand inflow bounds depend on multiple aspects of the simulation
-    for (id, active, inflow_link, demand_from_timeseries) in zip(
+    for (id, inflow_link, demand_from_timeseries) in zip(
         user_demand.node_id,
-        user_demand.active,
         user_demand.inflow_link,
         user_demand.demand_from_timeseries,
     )
@@ -946,7 +912,6 @@ function limit_flow!(
             id,
             min_flow_rate,
             max_flow_rate,
-            active,
             dt,
         )
     end
@@ -956,14 +921,13 @@ function limit_flow!(
     # reduction factor value that was attained over the last timestep
     for (id, infiltration) in zip(basin.node_id, basin.vertical_flux.infiltration)
         factor_min = min_low_storage_factor(current_storage, basin.storage_prev, basin, id)
-        limit_flow!(u.evaporation, uprev.evaporation, id, 0.0, Inf, true, dt)
+        limit_flow!(u.evaporation, uprev.evaporation, id, 0.0, Inf, dt)
         limit_flow!(
             u.infiltration,
             uprev.infiltration,
             id,
             factor_min * infiltration,
             infiltration,
-            true,
             dt,
         )
     end
@@ -977,18 +941,13 @@ function limit_flow!(
     id::NodeID,
     min_flow_rate::Number,
     max_flow_rate::Number,
-    active::Bool,
     dt::Number,
 )::Nothing
     u_prev = uprev_component[id.idx]
-    if active
-        u_component[id.idx] = clamp(
-            u_component[id.idx],
-            u_prev + min_flow_rate * dt,
-            u_prev + max_flow_rate * dt,
-        )
-    else
-        u_component[id.idx] = uprev_component[id.idx]
-    end
+    u_component[id.idx] = clamp(
+        u_component[id.idx],
+        u_prev + min_flow_rate * dt,
+        u_prev + max_flow_rate * dt,
+    )
     return nothing
 end

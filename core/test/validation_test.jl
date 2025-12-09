@@ -216,7 +216,6 @@ end
         node_id = [NodeID(:Pump, 1, 1)]
         control_mapping = OrderedDict(
             (NodeID(:Pump, 1, 1), "foo") => ControlStateUpdate(;
-                active = ParameterUpdate(:active, true),
                 itp_update_linear = [
                     ParameterUpdate(
                         :flow_rate,

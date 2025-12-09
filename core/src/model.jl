@@ -41,9 +41,6 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
 
     t = 0.0
 
-    # Activate all nodes to catch all possible state dependencies
-    p_mutable.all_nodes_active = true
-
     jac_prep = prepare_jacobian(
         water_balance!,
         du,
@@ -56,7 +53,6 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         Constant(t);
         strict = Val(true),
     )
-    p_mutable.all_nodes_active = false
 
     jac_prototype = solver.sparse ? sparsity_pattern(jac_prep) : nothing
 

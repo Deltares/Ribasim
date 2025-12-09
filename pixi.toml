@@ -110,7 +110,7 @@ test-ribasim-regression = { cmd = "julia --project=core --check-bounds=yes --eva
     ] },
 ] }
 generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
-    "python/ribasim",
+    "python/ribasim/ribasim",
     "python/ribasim_testmodels",
     "utils/generate-testmodels.py",
 ], outputs = [
