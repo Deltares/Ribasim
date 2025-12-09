@@ -34,6 +34,7 @@ import ribasim
 from ribasim.db_utils import (
     _get_db_schema_version,
     _set_gpkg_attribute_table,
+    create_index,
     esc_id,
     exists,
 )
@@ -425,9 +426,8 @@ class TableModel[TableT: _BaseSchema](FileModel):
                 if_exists="replace",
                 dtype={"fid": "INTEGER PRIMARY KEY AUTOINCREMENT"},
             )
-
+            create_index(connection, table, "node_id", unique=False)
             _set_gpkg_attribute_table(connection, table)
-            # Set geopackage attribute table
 
     def _write_arrow(self, filepath: Path, directory: Path, input_dir: Path) -> None:
         """Write the contents of the input to an arrow file."""
@@ -589,6 +589,13 @@ class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
             index=True,
             fid=self.df.index.name,
         )
+        with closing(connect(path)) as connection:
+            create_index(
+                connection,
+                self.tablename(),
+                self.tableschema()._index_name(),
+                unique=True,
+            )
         _add_styles_to_geopackage(path, self.tablename())
 
 
@@ -637,11 +644,7 @@ class NodeModel(ChildModel):
     def _tables(self):
         for key in self._fields():
             attr = getattr(self, key)
-            if (
-                isinstance(attr, TableModel)
-                and (attr.df is not None)
-                and not (isinstance(attr, ribasim.geometry.node.NodeTable))
-            ):
+            if isinstance(attr, TableModel) and (attr.df is not None) and key != "node":
                 yield attr
 
     def _node_ids(self) -> set[int]:

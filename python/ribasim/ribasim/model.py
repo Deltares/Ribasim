@@ -387,7 +387,7 @@ class Model(FileModel):
             self._validate_model()
 
         filepath = Path(filepath)
-        self.filepath = filepath
+        self.set_filepath(filepath)
         if not filepath.suffix == ".toml":
             raise ValueError(f"Filepath '{filepath}' is not a .toml file.")
         context_file_writing.set({})
