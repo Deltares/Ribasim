@@ -33,6 +33,6 @@ def test_active_migration():
 
     with pytest.raises(
         ValueError,
-        match="Inactive nodes \[2\] in test_nodes cannot be migrated automatically",
+        match=r"Inactive node\(s\) with node_id \[2\] in test_nodes cannot be migrated automatically",
     ):
         check_inactive(df, "test_nodes")

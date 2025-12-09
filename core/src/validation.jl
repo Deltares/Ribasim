@@ -106,11 +106,11 @@ n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
 controllablefields(nodetype::Symbol) = controllablefields(Val(nodetype))
-controllablefields(::Val{:LinearResistance}) = OrderedSet((:resistance))
-controllablefields(::Val{:ManningResistance}) = OrderedSet((:manning_n))
-controllablefields(::Val{:TabulatedRatingCurve}) = OrderedSet((:table))
-controllablefields(::Val{:Pump}) = OrderedSet((:flow_rate))
-controllablefields(::Val{:Outlet}) = OrderedSet((:flow_rate))
+controllablefields(::Val{:LinearResistance}) = OrderedSet((:resistance,))
+controllablefields(::Val{:ManningResistance}) = OrderedSet((:manning_n,))
+controllablefields(::Val{:TabulatedRatingCurve}) = OrderedSet((:table,))
+controllablefields(::Val{:Pump}) = OrderedSet((:flow_rate,))
+controllablefields(::Val{:Outlet}) = OrderedSet((:flow_rate,))
 controllablefields(::Val{:PidControl}) =
     OrderedSet((:target, :proportional, :integral, :derivative))
 controllablefields(nodetype) = OrderedSet{Symbol}()

@@ -28,7 +28,7 @@ def check_inactive(df: DataFrame, name: str):
     nodes = df["node_id"][~df["active"].isin([True, None])].tolist()
     if len(nodes) > 0:
         raise ValueError(
-            f"Inactive nodes {nodes} in {name} cannot be migrated automatically, and should either be removed, or the respective attribute set to zero in the case of flows, or Infinity in the case of resistance."
+            f"Inactive node(s) with node_id {nodes} in {name} cannot be migrated automatically, and should either be removed, or the respective attribute set to zero in the case of flows, or infinity in the case of resistance."
         )
 
 
