@@ -1951,6 +1951,7 @@ function load_data(
     end
 end
 
+"Faster alternative to Tables.columntable that preallocates based on the schema."
 function sqlite_columntable(
     table::Query,
     db::DB,
