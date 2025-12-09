@@ -64,7 +64,7 @@
 
     du = get_du(model.integrator)
     @test sum(!iszero, du.linear_resistance) == 1
-    @test sum(!iszero, du.pump) == 1
+    @test all(iszero, du.pump)
 end
 
 @testitem "Flow condition control" begin
