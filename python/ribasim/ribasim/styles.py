@@ -1,8 +1,7 @@
 import logging
-from contextlib import closing
 from datetime import datetime
 from pathlib import Path
-from sqlite3 import connect
+from sqlite3 import Connection
 
 STYLES_DIR = Path(__file__).parent / "styles"
 
@@ -98,29 +97,28 @@ def _no_existing_style(conn, style_name):
     return not style_exists
 
 
-def _add_styles_to_geopackage(gpkg_path: Path, layer: str):
-    with closing(connect(gpkg_path)) as connection:
-        if not connection.execute(SQL_STYLES_EXIST).fetchone()[0]:
-            connection.execute(CREATE_TABLE_SQL)
-            connection.execute(INSERT_CONTENTS_SQL)
+def _add_styles_to_geopackage(connection: Connection, layer: str):
+    if not connection.execute(SQL_STYLES_EXIST).fetchone()[0]:
+        connection.execute(CREATE_TABLE_SQL)
+        connection.execute(INSERT_CONTENTS_SQL)
 
-        style_name = f"{layer.replace(' / ', '_')}Style"
-        style_qml = STYLES_DIR / f"{style_name}.qml"
+    style_name = f"{layer.replace(' / ', '_')}Style"
+    style_qml = STYLES_DIR / f"{style_name}.qml"
 
-        if style_qml.exists() and _no_existing_style(connection, style_name):
-            description = f"Ribasim style for layer: {layer}"
-            update_date_time = f"{datetime.now().isoformat()}Z"
+    if style_qml.exists() and _no_existing_style(connection, style_name):
+        description = f"Ribasim style for layer: {layer}"
+        update_date_time = f"{datetime.now().isoformat()}Z"
 
-            connection.execute(
-                INSERT_ROW_SQL,
-                {
-                    "layer": layer,
-                    "style_qml": style_qml.read_bytes(),
-                    "style_name": style_name,
-                    "description": description,
-                    "update_date_time": update_date_time,
-                },
-            )
-            connection.commit()
-        else:
-            logging.warning(f"Style not found for layer: {layer}")
+        connection.execute(
+            INSERT_ROW_SQL,
+            {
+                "layer": layer,
+                "style_qml": style_qml.read_bytes(),
+                "style_name": style_name,
+                "description": description,
+                "update_date_time": update_date_time,
+            },
+        )
+        connection.commit()
+    else:
+        logging.warning(f"Style not found for layer: {layer}")
