@@ -2,6 +2,10 @@ from contextlib import closing
 from pathlib import Path
 from sqlite3 import Connection, connect
 
+# A fixed date for `last_change` fields in the metadata tables in a geopackage
+# so the hash of the geopackage doesn't change when regenerated.
+fake_date = "2022-02-22T20:22:02Z"  # %Y-%m-%dT%H:%M:%fZ
+
 
 def esc_id(identifier: str) -> str:
     """Escape SQLite identifiers."""
@@ -20,8 +24,6 @@ def exists(connection: Connection, name: str) -> bool:
 
 
 def _set_gpkg_attribute_table(connection: Connection, table: str) -> None:
-    from ribasim import fake_date
-
     # Set geopackage attribute table
     with closing(connection.cursor()) as cursor:
         sql = "INSERT OR REPLACE INTO gpkg_contents (table_name, data_type, identifier, last_change) VALUES (?, ?, ?, ?)"
