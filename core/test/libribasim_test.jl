@@ -1,4 +1,8 @@
-@testitem "libribasim" begin
+@testmodule libribasim begin
+    include("../../build/libribasim.jl")
+end
+
+@testitem "libribasim" setup = [libribasim] begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
     # data from which we create pointers for libribasim
