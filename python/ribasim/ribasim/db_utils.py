@@ -20,10 +20,12 @@ def exists(connection: Connection, name: str) -> bool:
 
 
 def _set_gpkg_attribute_table(connection: Connection, table: str) -> None:
+    from ribasim import fake_date
+
     # Set geopackage attribute table
     with closing(connection.cursor()) as cursor:
-        sql = "INSERT OR REPLACE INTO gpkg_contents (table_name, data_type, identifier) VALUES (?, ?, ?)"
-        cursor.execute(sql, (table, "attributes", table))
+        sql = "INSERT OR REPLACE INTO gpkg_contents (table_name, data_type, identifier, last_change) VALUES (?, ?, ?, ?)"
+        cursor.execute(sql, (table, "attributes", table, fake_date))
     connection.commit()
 
 
