@@ -1,5 +1,7 @@
+import hashlib
 from datetime import datetime
 from pathlib import Path
+from time import sleep
 
 import numpy as np
 import pandas as pd
@@ -472,3 +474,23 @@ def test_pandas_dtype():
 
     assert df["demand_priority"].dtype == "Int32"
     assert df["demand_priority"].isna().all()
+
+
+def test_consistent_binary_output(basic, tmp_path):
+    # Test whether regenerated file is identical to original
+    # so tools like DVC can be used to track changes
+    toml_path = tmp_path / "basic/ribasim.toml"
+    basic.write(toml_path)
+
+    db_path = toml_path.parent / basic.input_dir / "database.gpkg"
+    with open(db_path, "rb") as f:
+        res = hashlib.md5(f.read())
+        original_hash = res.hexdigest()
+
+    sleep(2)  # ensure timestamps change
+    basic.write(toml_path)
+    with open(db_path, "rb") as f:
+        res = hashlib.md5(f.read())
+        new_hash = res.hexdigest()
+
+    assert original_hash == new_hash

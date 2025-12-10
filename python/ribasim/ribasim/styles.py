@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 from pathlib import Path
 from sqlite3 import Connection
 
@@ -107,7 +106,6 @@ def _add_styles_to_geopackage(connection: Connection, layer: str):
 
     if style_qml.exists() and _no_existing_style(connection, style_name):
         description = f"Ribasim style for layer: {layer}"
-        update_date_time = f"{datetime.now().isoformat()}Z"
 
         connection.execute(
             INSERT_ROW_SQL,
@@ -116,7 +114,7 @@ def _add_styles_to_geopackage(connection: Connection, layer: str):
                 "style_qml": style_qml.read_bytes(),
                 "style_name": style_name,
                 "description": description,
-                "update_date_time": update_date_time,
+                "update_date_time": None,
             },
         )
         connection.commit()
