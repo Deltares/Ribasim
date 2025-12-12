@@ -9,7 +9,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
     node_table = get_node_ids(db)
     node_rows = execute(
         db,
-        "SELECT node_id, node_type, subnetwork_id, source_priority FROM Node ORDER BY node_type, node_id",
+        "SELECT node_id, node_type, subnetwork_id, route_priority FROM Node ORDER BY node_type, node_id",
     )
     link_rows = execute(
         db,
@@ -42,15 +42,15 @@ function create_graph(db::DB, config::Config)::MetaGraph
         weight_function = Returns(1.0),
     )
 
-    default_source_priority = Dict(
-        "LevelBoundary" => config.allocation.source_priority.level_boundary,
-        "Basin" => config.allocation.source_priority.basin,
-        "LinearResistance" => config.allocation.source_priority.linear_resistance,
-        "ManningResistance" => config.allocation.source_priority.manning_resistance,
+    default_route_priority = Dict(
+        "LevelBoundary" => config.allocation.route_priority.level_boundary,
+        "Basin" => config.allocation.route_priority.basin,
+        "LinearResistance" => config.allocation.route_priority.linear_resistance,
+        "ManningResistance" => config.allocation.route_priority.manning_resistance,
         "TabulatedRatingCurve" =>
-            config.allocation.source_priority.tabulated_rating_curve,
-        "Outlet" => config.allocation.source_priority.outlet,
-        "Pump" => config.allocation.source_priority.pump,
+            config.allocation.route_priority.tabulated_rating_curve,
+        "Outlet" => config.allocation.route_priority.outlet,
+        "Pump" => config.allocation.route_priority.pump,
     )
 
     for row in node_rows
@@ -65,11 +65,11 @@ function create_graph(db::DB, config::Config)::MetaGraph
             end
             push!(node_ids[subnetwork_id], node_id)
         end
-        # Process source priority
-        source_priority =
-            coalesce(row.source_priority, get(default_source_priority, row.node_type, 0))
+        # Process route priority
+        route_priority =
+            coalesce(row.route_priority, get(default_route_priority, row.node_type, 0))
         graph[node_id] =
-            NodeMetadata(Symbol(snake_case(row.node_type)), subnetwork_id, source_priority)
+            NodeMetadata(Symbol(snake_case(row.node_type)), subnetwork_id, route_priority)
     end
 
     errors = false

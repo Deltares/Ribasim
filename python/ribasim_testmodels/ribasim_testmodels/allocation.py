@@ -544,9 +544,7 @@ def medium_primary_secondary_network_model() -> Model:
     )
 
     # first basin
-    model.basin.add(
-        Node(2, Point(1, 0), subnetwork_id=1, source_priority=0), basin_data
-    )
+    model.basin.add(Node(2, Point(1, 0), subnetwork_id=1, route_priority=0), basin_data)
 
     # outlet towards first subnetwork
     model.outlet.add(
@@ -556,31 +554,27 @@ def medium_primary_secondary_network_model() -> Model:
 
     # outlet towards second basin
     model.outlet.add(
-        Node(4, Point(1.5, 0), subnetwork_id=1, source_priority=0),
+        Node(4, Point(1.5, 0), subnetwork_id=1, route_priority=0),
         [outlet_data],
     )
 
     # second basin
-    model.basin.add(
-        Node(5, Point(2, 0), subnetwork_id=1, source_priority=0), basin_data
-    )
+    model.basin.add(Node(5, Point(2, 0), subnetwork_id=1, route_priority=0), basin_data)
 
     # pump towards first subnetwork
     model.pump.add(
-        Node(6, Point(2, 1), subnetwork_id=1, source_priority=0),
+        Node(6, Point(2, 1), subnetwork_id=1, route_priority=0),
         [pump_data],
     )
 
     # outlet towards fourth basin
     model.outlet.add(
-        Node(16, Point(2.5, 0), subnetwork_id=1, source_priority=0),
+        Node(16, Point(2.5, 0), subnetwork_id=1, route_priority=0),
         [outlet_data],
     )
 
     # third basin
-    model.basin.add(
-        Node(7, Point(3, 0), subnetwork_id=1, source_priority=0), basin_data
-    )
+    model.basin.add(Node(7, Point(3, 0), subnetwork_id=1, route_priority=0), basin_data)
 
     # outlet towards second subnetwork
     model.outlet.add(
@@ -590,18 +584,18 @@ def medium_primary_secondary_network_model() -> Model:
 
     # outlet towards fourth basin
     model.outlet.add(
-        Node(9, Point(3.5, 0), subnetwork_id=1, source_priority=0),
+        Node(9, Point(3.5, 0), subnetwork_id=1, route_priority=0),
         [outlet_data],
     )
 
     # fourth basin
     model.basin.add(
-        Node(10, Point(4, 0), subnetwork_id=1, source_priority=0), basin_data
+        Node(10, Point(4, 0), subnetwork_id=1, route_priority=0), basin_data
     )
 
     # pump towards second subnetwork
     model.pump.add(
-        Node(11, Point(4, 1), subnetwork_id=1, source_priority=0),
+        Node(11, Point(4, 1), subnetwork_id=1, route_priority=0),
         [pump_data],
     )
 
@@ -1210,7 +1204,7 @@ def linear_resistance_demand_model():
     )
 
     model.flow_demand.add(
-        Node(4, Point(1, 1), subnetwork_id=2, source_priority=1),
+        Node(4, Point(1, 1), subnetwork_id=2, route_priority=1),
         [flow_demand.Static(demand_priority=[1], demand=2.0)],
     )
 
@@ -2000,7 +1994,7 @@ def multiple_source_priorities_model() -> Model:
             2,
             Point(10, 9),
             subnetwork_id=1,
-            source_priority=100000,  # Ignore Basin as source
+            route_priority=100000,  # Ignore Basin as source
         ),
         [basin.Profile(area=1000, level=[0, 10]), basin.State(level=[2.0])],
     )
@@ -2022,7 +2016,7 @@ def multiple_source_priorities_model() -> Model:
         )
 
         lb = model.level_boundary.add(
-            Node(x - 2, Point(x, 7), subnetwork_id=1, source_priority=3000 + x),
+            Node(x - 2, Point(x, 7), subnetwork_id=1, route_priority=3000 + x),
             [level_boundary.Static(level=[1.0])],
         )
 

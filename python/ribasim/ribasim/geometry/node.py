@@ -23,7 +23,7 @@ class NodeSchema(_GeoBaseSchema):
     subnetwork_id: Series[pd.Int32Dtype] = pa.Field(
         default=pd.NA, nullable=True, coerce=True
     )
-    source_priority: Series[pd.Int32Dtype] = pa.Field(
+    route_priority: Series[pd.Int32Dtype] = pa.Field(
         default=pd.NA, nullable=True, coerce=True
     )
     cyclic_time: Series[bool] = pa.Field(default=False)
