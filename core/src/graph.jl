@@ -57,7 +57,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         node_id = NodeID(row.node_type, row.node_id, node_table)
         # Process allocation network ID
         if ismissing(row.subnetwork_id)
-            subnetwork_id = 0
+            subnetwork_id = 1
         else
             subnetwork_id = row.subnetwork_id
             if !haskey(node_ids, subnetwork_id)
