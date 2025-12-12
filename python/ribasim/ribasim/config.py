@@ -63,7 +63,7 @@ from ribasim.utils import _concat, _pascal_to_snake
 
 
 class SourcePriority(ChildModel):
-    """Specify per source node type what its default source priority is."""
+    """Specify per source node type what its default route priority is."""
 
     user_demand: int = 1000
     flow_boundary: int = 2000
@@ -220,7 +220,7 @@ class Node(pydantic.BaseModel):
     subnetwork_id : int
         Optionally adds this node to a subnetwork, which is input for the allocation algorithm.
     route_priority : int
-        Optionally overrides the source priority for this node, which is used in the allocation algorithm.
+        Optionally overrides the route priority for this node, which is used in the allocation algorithm.
     cyclic_time : bool
         Optionally extrapolate forcing timeseries periodically. Defaults to False.
     """

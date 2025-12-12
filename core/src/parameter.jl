@@ -242,7 +242,7 @@ objectives: The objectives (goals) in the order in which they will be optimized 
 cumulative_boundary_volume: The net volume of boundary flow into the model for each FlowBoundary in the subnetwork
     over the last Δt_allocation
 cumulative_realized_volume: The net volume of flow realized by a demand node over the last Δt_allocation
-sources: The nodes in the subnetwork which can act as sources, sorted by source priority
+sources: The nodes in the subnetwork which can act as sources, sorted by route priority
 secondary_network_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
 scaling: The flow and storage scaling factors to make the optimization problem more numerically stable
 """

@@ -65,7 +65,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
             end
             push!(node_ids[subnetwork_id], node_id)
         end
-        # Process source priority
+        # Process route priority
         route_priority =
             coalesce(row.route_priority, get(default_route_priority, row.node_type, 0))
         graph[node_id] =

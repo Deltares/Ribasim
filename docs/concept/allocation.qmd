@@ -431,11 +431,11 @@ There are also capacities for special links:
 - $C^{FD}_S \in \mathbb{R}^c_{\ge 0}$ where $c = \# FD_S$ is the number of nodes with a flow demand, for the flow supplied by flow buffers at these nodes with a flow demand.
 - $C^{UD}_S \in \mathbb{R}^f_{\ge 0}$ where $f = \# U_S$, for the flow supplied by the user demand outflow source whose capacity is given by return flows.
 
-## Source priority
+## Route priority
 
-Nodes can be assigned priorities that influence how water is allocated from different sources. These priorities are given as weights $w_i \geq 0$ for node $i$ with an outflow link $Q_i$.
+Nodes can be assigned priorities that influence how water is preferentially routed. These priorities are given as weights $w_i \geq 0$ for node $i$ with an outflow link $Q_i$.
 
-The source priority weights act as a cost per flow rate. For a given demand priority $p$, the objective is to minimize the cost of the water allocation:
+The route priority weights act as a cost per flow rate. For a given demand priority $p$, the objective is to minimize the cost of the water allocation:
 
 $$
 \min \sum w_i \cdot Q_{i}
@@ -448,7 +448,7 @@ This term is added to the optimization problem after the demand objectives have 
 
 ### Example
 
-In @fig-subnetwork-example the water can take multiple routes from the flow boundary to user demands 14 and 17. We have set all source priorities (cost) to 0 except for outlets 3 and 8, which have a higher cost (lower priority). This results in the flow routing preferentially through the pumps, since flowing through the outlets incurs a higher penalty in the objective function due to their non-zero source priority. The results are shown in @fig-subnetwork-results.
+In @fig-subnetwork-example the water can take multiple routes from the flow boundary to user demands 14 and 17. We have set all source priorities (cost) to 0 except for outlets 3 and 8, which have a higher cost (lower priority). This results in the flow routing preferentially through the pumps, since flowing through the outlets incurs a higher penalty in the objective function due to their non-zero route priority. The results are shown in @fig-subnetwork-results.
 
 
 ![Flow rate results with a preferential routes via the pumps](https://s3.deltares.nl/ribasim/doc-image/concept/route_priority_results.png){#fig-subnetwork-results}

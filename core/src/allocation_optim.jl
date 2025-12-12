@@ -735,7 +735,7 @@ function optimize_multi_objective!(
             JuMP.@constraint(problem, expression_second == JuMP.objective_value(problem),)
         )
 
-        # Source priority
+        # Route priority
         JuMP.@objective(problem, Min, route_priority_expression)
         JuMP.optimize!(problem)
 
