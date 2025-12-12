@@ -27,7 +27,7 @@ block_transition_period = 0  # optional, default 0
 [allocation]
 timestep = 86400         # optional (required if experimental.allocation = true), default 86400
 
-[allocation.source_priority]
+[allocation.route_priority]
 level_boundary = 1000       # optional, default 1000
 basin = 2000                # optional, default 2000
 manning_resistance = 10     # optional, default 10

@@ -451,4 +451,4 @@ This term is added to the optimization problem after the demand objectives have 
 In @fig-subnetwork-example the water can take multiple routes from the flow boundary to user demands 14 and 17. We have set all source priorities (cost) to 0 except for outlets 3 and 8, which have a higher cost (lower priority). This results in the flow routing preferentially through the pumps, since flowing through the outlets incurs a higher penalty in the objective function due to their non-zero source priority. The results are shown in @fig-subnetwork-results.
 
 
-![Flow rate results with a preferential routes via the pumps](https://s3.deltares.nl/ribasim/doc-image/concept/source_priority_results.png){#fig-subnetwork-results}
+![Flow rate results with a preferential routes via the pumps](https://s3.deltares.nl/ribasim/doc-image/concept/route_priority_results.png){#fig-subnetwork-results}

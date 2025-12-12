@@ -172,7 +172,7 @@ end
 
 @option struct Allocation <: TableOption
     timestep::Float64 = 86400
-    source_priority::SourcePriority = SourcePriority()
+    route_priority::SourcePriority = SourcePriority()
 end
 
 @option struct Experimental <: TableOption

@@ -1181,7 +1181,7 @@
     </config>
    </editWidget>
   </field>
-  <field name="source_priority" configurationFlags="NoFlag">
+  <field name="route_priority" configurationFlags="NoFlag">
    <editWidget type="">
     <config>
      <Option/>
@@ -1201,7 +1201,7 @@
   <alias name="" field="node_type" index="1"/>
   <alias name="" field="name" index="2"/>
   <alias name="" field="subnetwork_id" index="3"/>
-  <alias name="" field="source_priority" index="4"/>
+  <alias name="" field="route_priority" index="4"/>
   <alias name="" field="cyclic_time" index="5"/>
  </aliases>
  <splitPolicies>
@@ -1209,7 +1209,7 @@
   <policy field="node_type" policy="Duplicate"/>
   <policy field="name" policy="Duplicate"/>
   <policy field="subnetwork_id" policy="Duplicate"/>
-  <policy field="source_priority" policy="Duplicate"/>
+  <policy field="route_priority" policy="Duplicate"/>
   <policy field="cyclic_time" policy="Duplicate"/>
  </splitPolicies>
  <duplicatePolicies>
@@ -1217,7 +1217,7 @@
   <policy field="node_type" policy="Duplicate"/>
   <policy field="name" policy="Duplicate"/>
   <policy field="subnetwork_id" policy="Duplicate"/>
-  <policy field="source_priority" policy="Duplicate"/>
+  <policy field="route_priority" policy="Duplicate"/>
   <policy field="cyclic_time" policy="Duplicate"/>
  </duplicatePolicies>
  <defaults>
@@ -1225,7 +1225,7 @@
   <default field="node_type" applyOnUpdate="0" expression=""/>
   <default field="name" applyOnUpdate="0" expression=""/>
   <default field="subnetwork_id" applyOnUpdate="0" expression=""/>
-  <default field="source_priority" applyOnUpdate="0" expression=""/>
+  <default field="route_priority" applyOnUpdate="0" expression=""/>
   <default field="cyclic_time" applyOnUpdate="0" expression=""/>
  </defaults>
  <constraints>
@@ -1233,7 +1233,7 @@
   <constraint unique_strength="0" exp_strength="0" constraints="0" notnull_strength="0" field="node_type"/>
   <constraint unique_strength="0" exp_strength="0" constraints="0" notnull_strength="0" field="name"/>
   <constraint unique_strength="0" exp_strength="0" constraints="0" notnull_strength="0" field="subnetwork_id"/>
-  <constraint unique_strength="0" exp_strength="0" constraints="0" notnull_strength="0" field="source_priority"/>
+  <constraint unique_strength="0" exp_strength="0" constraints="0" notnull_strength="0" field="route_priority"/>
   <constraint unique_strength="0" exp_strength="0" constraints="0" notnull_strength="0" field="cyclic_time"/>
  </constraints>
  <constraintExpressions>
@@ -1241,7 +1241,7 @@
   <constraint desc="" exp="" field="node_type"/>
   <constraint desc="" exp="" field="name"/>
   <constraint desc="" exp="" field="subnetwork_id"/>
-  <constraint desc="" exp="" field="source_priority"/>
+  <constraint desc="" exp="" field="route_priority"/>
   <constraint desc="" exp="" field="cyclic_time"/>
  </constraintExpressions>
  <expressionfields/>

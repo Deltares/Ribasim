@@ -100,7 +100,7 @@ class Allocation(ChildModel):
     """
 
     timestep: float = 86400.0
-    default_source_priority: SourcePriority = SourcePriority()
+    default_route_priority: SourcePriority = SourcePriority()
 
 
 class Results(ChildModel):
@@ -219,7 +219,7 @@ class Node(pydantic.BaseModel):
         An optional name of the node.
     subnetwork_id : int
         Optionally adds this node to a subnetwork, which is input for the allocation algorithm.
-    source_priority : int
+    route_priority : int
         Optionally overrides the source priority for this node, which is used in the allocation algorithm.
     cyclic_time : bool
         Optionally extrapolate forcing timeseries periodically. Defaults to False.
@@ -229,7 +229,7 @@ class Node(pydantic.BaseModel):
     geometry: Point
     name: str = ""
     subnetwork_id: int | None = None
-    source_priority: int | None = None
+    route_priority: int | None = None
     cyclic_time: bool = False
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
@@ -255,8 +255,8 @@ class Node(pydantic.BaseModel):
                 "node_type": pd.Series([node_type], dtype=str),
                 "name": pd.Series([self.name], dtype=str),
                 "subnetwork_id": pd.Series([self.subnetwork_id], dtype=pd.Int32Dtype()),
-                "source_priority": pd.Series(
-                    [self.source_priority], dtype=pd.Int32Dtype()
+                "route_priority": pd.Series(
+                    [self.route_priority], dtype=pd.Int32Dtype()
                 ),
                 "cyclic_time": pd.Series([self.cyclic_time], dtype=bool),
                 **extra,
