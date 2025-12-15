@@ -20,7 +20,7 @@ jobs:
         run: |
           pixi run pre-commit
         continue-on-error: true
-      - uses: peter-evans/create-pull-request@v7
+      - uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.CI_PR_PAT }}
           branch: update/pre-commit
