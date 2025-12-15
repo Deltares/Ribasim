@@ -128,7 +128,7 @@ When the analysis situation needs global allocation decisions, the input for the
 
 ## Necessary input data
 
-- Reservoir operation and allocation policy information (demands, allocation and source priorities, reservoir rules etc).
+- Reservoir operation and allocation policy information (demands, allocation and route priorities, reservoir rules etc).
 
 ## Output
 

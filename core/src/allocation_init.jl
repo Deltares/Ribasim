@@ -854,7 +854,7 @@ function add_low_storage_factor_objective!(allocation_model::AllocationModel)::N
 end
 
 """
-Add the objective optimizing for source priorities to the vector all objectives for this allocation model.
+Add the objective optimizing for route priorities to the vector all objectives for this allocation model.
 """
 function add_route_priority_objective!(
     allocation_model::AllocationModel,
@@ -865,7 +865,7 @@ function add_route_priority_objective!(
     (; objective_expressions_all, objective_metadata) = objectives
     flow = problem[:flow]
 
-    # Add source priorities from primary network connections
+    # Add route priorities from primary network connections
     primary_network_connections =
         get(allocation.primary_network_connections, subnetwork_id, ())
 
