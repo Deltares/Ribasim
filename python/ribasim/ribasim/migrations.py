@@ -134,6 +134,8 @@ def outletstaticschema_migration(df: DataFrame, schema_version: int) -> DataFram
 
 for node_type in ["UserDemand", "LevelDemand", "FlowDemand"]:
     for table_type in ["static", "time"]:
+        if table_type == "static" and node_type == "UserDemand":
+            continue  # see below
 
         def migration_func(
             df: DataFrame,
@@ -240,6 +242,11 @@ def tabulatedratingcurvestaticschema_migration(
 
 
 def userdemandstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
+    if schema_version < 4:
+        warnings.warn(
+            f"Migrating outdated {node_type} / {table_type} table.", UserWarning
+        )
+        df.rename(columns={"priority": "demand_priority"}, inplace=True)
     if schema_version < 9:
         warnings.warn(
             "Migrating outdated TabulatedRatingCurve / static table.", UserWarning
