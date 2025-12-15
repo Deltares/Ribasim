@@ -179,7 +179,7 @@ const ScalarPCHIPInterpolation = CubicHermiteSpline{
 const IndexLookup =
     ConstantInterpolation{Vector{Int64}, Vector{Float64}, Vector{Float64}, Int64}
 
-@enumx AllocationObjectiveType demand_flow demand_storage low_storage_factor source_priorities none
+@enumx AllocationObjectiveType demand_flow demand_storage low_storage_factor route_priorities none
 
 """
 TODO: Add docstring

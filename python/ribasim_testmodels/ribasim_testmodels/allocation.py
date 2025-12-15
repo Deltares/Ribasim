@@ -1967,7 +1967,7 @@ def allocation_off_flow_demand_model() -> Model:
     return model
 
 
-def multiple_source_priorities_model() -> Model:
+def multiple_route_priorities_model() -> Model:
     """Set up a model to test source prioritization."""
     model = Model(
         starttime="2020-01-01",
