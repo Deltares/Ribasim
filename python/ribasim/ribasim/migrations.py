@@ -237,3 +237,13 @@ def tabulatedratingcurvestaticschema_migration(
         check_inactive(df, name="TabulatedRatingCurve / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
+
+
+def userdemandstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
+    if schema_version < 9:
+        warnings.warn(
+            "Migrating outdated TabulatedRatingCurve / static table.", UserWarning
+        )
+        check_inactive(df, name="UserDemand / static")
+        df.drop(columns="active", inplace=True, errors="ignore")
+    return df
