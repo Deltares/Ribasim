@@ -3,7 +3,7 @@ import warnings
 from geopandas import GeoDataFrame
 from pandas import DataFrame
 
-# On each breaking change, increment the __schema_version__ by one.
+# On each breaking change, increment the __schema_version__
 
 
 def _rename_column(df, from_colname, to_colname):
@@ -249,6 +249,8 @@ def sourcepriority_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataF
             gdf["route_priority"] = None
 
     return gdf
+
+
 def userdemandstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if schema_version < 4:
         warnings.warn(
