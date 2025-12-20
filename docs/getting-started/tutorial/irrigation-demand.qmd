@@ -188,7 +188,6 @@ model.link.add(weir, sea, name="sea")
 ```{python}
 toml_path = base_dir / "Crystal-2/ribasim.toml"
 model.write(toml_path)
-cli_path = "ribasim"
 ```
 
 ### Plot model and run
