@@ -40,7 +40,7 @@ For each subnetwork, a linear optimization problem is formulated. If a node has 
 
 In Ribasim, we optimize and assign allocated flow rates to demand nodes based on:
 
-- Information about sources and their priorities
+- Information about sources and their route priorities
 - Different demand nodes and their priorities
 - Constraints from nodes, local water availability and network topology
 

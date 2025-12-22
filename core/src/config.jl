@@ -160,7 +160,7 @@ end
     verbosity::LogLevel = Info
 end
 
-@option struct SourcePriority <: TableOption
+@option struct RoutePriority <: TableOption
     level_boundary::Int32 = 1000
     basin::Int32 = 2000
     manning_resistance::Int32 = 10
@@ -172,7 +172,7 @@ end
 
 @option struct Allocation <: TableOption
     timestep::Float64 = 86400
-    route_priority::SourcePriority = SourcePriority()
+    route_priority::RoutePriority = RoutePriority()
 end
 
 @option struct Experimental <: TableOption

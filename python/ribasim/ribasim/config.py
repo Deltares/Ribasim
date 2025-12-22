@@ -62,8 +62,8 @@ from ribasim.schemas import (
 from ribasim.utils import _concat, _pascal_to_snake
 
 
-class SourcePriority(ChildModel):
-    """Specify per source node type what its default route priority is."""
+class RoutePriority(ChildModel):
+    """Specify per node type what its default route priority is."""
 
     user_demand: int = 1000
     flow_boundary: int = 2000
@@ -100,7 +100,7 @@ class Allocation(ChildModel):
     """
 
     timestep: float = 86400.0
-    default_route_priority: SourcePriority = SourcePriority()
+    default_route_priority: RoutePriority = RoutePriority()
 
 
 class Results(ChildModel):

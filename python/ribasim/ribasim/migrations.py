@@ -16,6 +16,9 @@ def _rename_column(df, from_colname, to_colname):
         )
         return df
 
+    if from_colname not in df.columns:
+        return df
+
     df.drop(columns=to_colname, inplace=True, errors="ignore")
     df.rename(columns={from_colname: to_colname}, inplace=True, errors="raise")
     return df
@@ -37,8 +40,9 @@ def nodeschema_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame
         warnings.warn("Migrating outdated Node table.", UserWarning)
         assert gdf["node_id"].is_unique, "Node IDs have to be unique."
         gdf.set_index("node_id", inplace=True)
-
-    sourcepriority_migration(gdf, schema_version)
+    if schema_version < 10:
+        warnings.warn("Migrating outdated Node table.", UserWarning)
+        _rename_column(gdf, "source_priority", "route_priority")
 
     return gdf
 
@@ -241,14 +245,6 @@ def tabulatedratingcurvestaticschema_migration(
         check_inactive(df, name="TabulatedRatingCurve / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
-
-
-def sourcepriority_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame:
-    if schema_version < 10:
-        warnings.warn("Migrating outdated Node table.", UserWarning)
-        _rename_column(gdf, "source_priority", "route_priority")
-
-    return gdf
 
 
 def userdemandstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
