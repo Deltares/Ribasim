@@ -712,12 +712,12 @@ end
     end
 end
 
-@testitem "Source priorities" begin
+@testitem "Route priorities" begin
     using DataFrames: DataFrame
 
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/multiple_source_priorities/ribasim.toml",
+        "../../generated_testmodels/multiple_route_priorities/ribasim.toml",
     )
     @test ispath(toml_path)
 

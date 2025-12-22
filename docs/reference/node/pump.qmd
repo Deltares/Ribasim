@@ -15,7 +15,6 @@ When PID controlled, the pump must point away from the controlled basin in terms
 column                | type    | unit         | restriction
 ---------             | ------- | ------------ | -----------
 node_id               | Int32   | -            |
-active                | Bool    | -            | (optional, default true)
 flow_rate             | Float64 | $\text{m}^3/\text{s}$ | non-negative
 min_flow_rate         | Float64 | $\text{m}^3/\text{s}$ | (optional, default 0.0)
 max_flow_rate         | Float64 | $\text{m}^3/\text{s}$ | (optional)

@@ -3,7 +3,7 @@ import warnings
 from geopandas import GeoDataFrame
 from pandas import DataFrame
 
-# On each breaking change, increment the __schema_version__ by one.
+# On each breaking change, increment the __schema_version__
 
 
 def _rename_column(df, from_colname, to_colname):
@@ -14,6 +14,9 @@ def _rename_column(df, from_colname, to_colname):
         warnings.warn(
             "Already migrated, your model (version) might be inconsistent.", UserWarning
         )
+        return df
+
+    if from_colname not in df.columns:
         return df
 
     df.drop(columns=to_colname, inplace=True, errors="ignore")
@@ -37,6 +40,9 @@ def nodeschema_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame
         warnings.warn("Migrating outdated Node table.", UserWarning)
         assert gdf["node_id"].is_unique, "Node IDs have to be unique."
         gdf.set_index("node_id", inplace=True)
+    if schema_version < 10:
+        warnings.warn("Migrating outdated Node table.", UserWarning)
+        _rename_column(gdf, "source_priority", "route_priority")
 
     return gdf
 

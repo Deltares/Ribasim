@@ -11,7 +11,6 @@ Bidirectional flow proportional to the level difference between the connected ba
 column        | type    | unit                  | restriction
 ------------- | ------- | --------------------- | -----------
 node_id       | Int32   | -                     |
-active        | Bool    | -                     | (optional, default true)
 resistance    | Float64 | $\text{s}/\text{m}^2$ | -
 max_flow_rate | Float64 | $\text{m}^3/s$        | non-negative
 control_state | String  | -                     | (optional)

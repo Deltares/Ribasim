@@ -13,13 +13,12 @@ We require that an link connected to a FlowBoundary is always outgoing, and poin
 column        | type    | unit                  | restriction
 ------------- | ------- | --------------------- | -----------
 node_id       | Int32   | -                     |
-active        | Bool    | -                     | (optional, default true)
 flow_rate     | Float64 | $\text{m}^3/\text{s}$ | non-negative
 
 ## Time
 
 This table is the transient form of the `FlowBoundary` table.
-The only differences are that a time column is added and the nodes are assumed to be active so this column is not present.
+The only difference is that a time column is added.
 With this the flow rates can be updated over time. In between the given times the
 flow rate is interpolated in a way specified in the [interpolation settings](/reference/usage.qmd#interpolation-settings) (block interpolation by default), and outside the flow rate is constant given by the
 nearest time value unless the node is cyclic in time.

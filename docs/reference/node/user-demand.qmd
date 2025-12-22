@@ -25,7 +25,6 @@ This table contains the static form of the `UserDemand` node.
 column          | type    | unit                  | restriction
 --------------- | ------- | ----------------------| -----------
 node_id         | Int32   | -                     |
-active          | Bool    | -                     | (optional, default true)
 demand          | Float64 | $\text{m}^3/\text{s}$ | non-negative
 return_factor   | Float64 | -                     | between [0 - 1]
 min_level       | Float64 | $\text{m}$            | -
@@ -34,7 +33,7 @@ demand_priority | Int32   | -                     | positive
 ## Time
 
 This table is the transient form of the `UserDemand` table.
-The only difference is that a time column is added and activity is assumed to be true.
+The only difference is that a time column is added.
 With this the demand and return factor can be updated over time. In between the given times the
 values are block interpolated (forward fill), and outside the demand is constant given by the
 nearest time value. The allocation algorithm evaluates the interpolation at the start of the allocation time step.

@@ -713,7 +713,7 @@ function optimize_multi_objective!(
     secondary_model::AllocationModel,
     primary_network_connections = [],
 )::Nothing
-    (; problem, objectives, temporary_constraints, source_priority_expression) =
+    (; problem, objectives, temporary_constraints, route_priority_expression) =
         secondary_model
 
     for metadata in objectives.objective_metadata
@@ -735,8 +735,8 @@ function optimize_multi_objective!(
             JuMP.@constraint(problem, expression_second == JuMP.objective_value(problem),)
         )
 
-        # Source priority
-        JuMP.@objective(problem, Min, source_priority_expression)
+        # Route priority
+        JuMP.@objective(problem, Min, route_priority_expression)
         JuMP.optimize!(problem)
 
         # collect secondary network demands if primary network connections are given

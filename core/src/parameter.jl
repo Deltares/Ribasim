@@ -179,7 +179,7 @@ const ScalarPCHIPInterpolation = CubicHermiteSpline{
 const IndexLookup =
     ConstantInterpolation{Vector{Int64}, Vector{Float64}, Vector{Float64}, Int64}
 
-@enumx AllocationObjectiveType demand_flow demand_storage low_storage_factor source_priorities none
+@enumx AllocationObjectiveType demand_flow demand_storage low_storage_factor route_priorities none
 
 """
 TODO: Add docstring
@@ -242,7 +242,7 @@ objectives: The objectives (goals) in the order in which they will be optimized 
 cumulative_boundary_volume: The net volume of boundary flow into the model for each FlowBoundary in the subnetwork
     over the last Δt_allocation
 cumulative_realized_volume: The net volume of flow realized by a demand node over the last Δt_allocation
-sources: The nodes in the subnetwork which can act as sources, sorted by source priority
+sources: The nodes in the subnetwork which can act as sources, sorted by route priority
 secondary_network_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
 scaling: The flow and storage scaling factors to make the optimization problem more numerically stable
 """
@@ -262,7 +262,7 @@ scaling: The flow and storage scaling factors to make the optimization problem m
         OrderedDict()
     scaling::ScalingFactors = ScalingFactors()
     temporary_constraints::Vector{JuMP.ConstraintRef} = JuMP.ConstraintRef[]
-    source_priority_expression::JuMP.AffExpr = JuMP.AffExpr()
+    route_priority_expression::JuMP.AffExpr = JuMP.AffExpr()
 end
 
 struct DemandRecordDatum
@@ -325,12 +325,12 @@ end
 Type for storing metadata of nodes in the graph
 type: type of the node
 subnetwork_id: Allocation network ID (0 if not in any subnetwork)
-source_priority: Priority of a source in the subnetwork (0 if not a source)
+route_priority: Priority of a source in the subnetwork (0 if not a source)
 """
 @kwdef struct NodeMetadata
     type::Symbol
     subnetwork_id::Int32
-    source_priority::Int32
+    route_priority::Int32
 end
 
 """

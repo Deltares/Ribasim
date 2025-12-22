@@ -62,12 +62,16 @@ from ribasim.schemas import (
 from ribasim.utils import _concat, _pascal_to_snake
 
 
-class SourcePriority(ChildModel):
-    """Specify per source node type what its default source priority is."""
+class RoutePriority(ChildModel):
+    """Specify per node type what its default route priority is."""
 
-    user_demand: int = 1000
-    flow_boundary: int = 2000
-    basin: int = 3000
+    level_boundary: int = 1000
+    basin: int = 2000
+    manning_resistance: int = 10
+    linear_resistance: int = 20
+    tabulated_rating_curve: int = 30
+    outlet: int = 40
+    pump: int = 50
 
 
 class Interpolation(ChildModel):
@@ -100,7 +104,7 @@ class Allocation(ChildModel):
     """
 
     timestep: float = 86400.0
-    default_source_priority: SourcePriority = SourcePriority()
+    default_route_priority: RoutePriority = RoutePriority()
 
 
 class Results(ChildModel):
@@ -219,8 +223,8 @@ class Node(pydantic.BaseModel):
         An optional name of the node.
     subnetwork_id : int
         Optionally adds this node to a subnetwork, which is input for the allocation algorithm.
-    source_priority : int
-        Optionally overrides the source priority for this node, which is used in the allocation algorithm.
+    route_priority : int
+        Optionally overrides the route priority for this node, which is used in the allocation algorithm.
     cyclic_time : bool
         Optionally extrapolate forcing timeseries periodically. Defaults to False.
     """
@@ -229,7 +233,7 @@ class Node(pydantic.BaseModel):
     geometry: Point
     name: str = ""
     subnetwork_id: int | None = None
-    source_priority: int | None = None
+    route_priority: int | None = None
     cyclic_time: bool = False
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
@@ -255,8 +259,8 @@ class Node(pydantic.BaseModel):
                 "node_type": pd.Series([node_type], dtype=str),
                 "name": pd.Series([self.name], dtype=str),
                 "subnetwork_id": pd.Series([self.subnetwork_id], dtype=pd.Int32Dtype()),
-                "source_priority": pd.Series(
-                    [self.source_priority], dtype=pd.Int32Dtype()
+                "route_priority": pd.Series(
+                    [self.route_priority], dtype=pd.Int32Dtype()
                 ),
                 "cyclic_time": pd.Series([self.cyclic_time], dtype=bool),
                 **extra,

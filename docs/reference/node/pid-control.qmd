@@ -5,8 +5,6 @@ title: "PidControl"
 The PidControl node controls the level in a Basin by continuously controlling the flow rate of a connected Pump or Outlet.
 See also [PID controller](https://en.wikipedia.org/wiki/PID_controller).
 
-When a PidControl node is made inactive, the node under its control retains the last flow rate value, and the error integral is reset to 0.
-
 In the future controlling the flow on a particular link could be supported.
 
 # Tables
@@ -16,7 +14,6 @@ In the future controlling the flow on a particular link could be supported.
 column           | type     | unit            | restriction
 ---------------- | -------- | --------------- | -----------
 node_id          | Int32    | -               |
-active           | Bool     | -               | (optional, default true)
 listen_node_id   | Int32    | -               | must be a Basin
 target           | Float64  | $\text{m}$      | -
 proportional     | Float64  | $\text{s}^{-1}$ | -
@@ -27,7 +24,7 @@ control_state    | String   | -               | (optional)
 ## Time
 
 This table is the transient form of the `PidControl` table.
-The differences are that a time column is added and the nodes are assumed to be active so this column is removed.
+The difference is that a time column is added.
 With this the target level and PID coefficients can be updated over time. In between the given times the
 these values interpolated linearly, and outside these values area constant given by the
 nearest time value.
@@ -67,7 +64,7 @@ $$
 I(t) = \int_{t_0}^t e(\tau)\text{d}\tau,
 $$
 
-where $t_0$ is the last time the PID controller was made active.
+where $t_0$ is the simulation start time.
 $I(t)$ is treated as a state of the system and thus it has its own equation in [the system](/concept/equations.qmd):
 $$
 \frac{\text{d}I}{\text{d}t} = e(t).

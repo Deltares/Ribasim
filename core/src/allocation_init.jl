@@ -854,40 +854,37 @@ function add_low_storage_factor_objective!(allocation_model::AllocationModel)::N
 end
 
 """
-Add the objective optimizing for source priorities to the vector all objectives for this allocation model.
+Add the objective optimizing for route priorities to the vector all objectives for this allocation model.
 """
-function add_source_priority_objective!(
+function add_route_priority_objective!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
     (; graph, allocation) = p_independent
-    (; problem, subnetwork_id, objectives, source_priority_expression) = allocation_model
+    (; problem, subnetwork_id, objectives, route_priority_expression) = allocation_model
     (; objective_expressions_all, objective_metadata) = objectives
     flow = problem[:flow]
 
-    # Add source priorities from primary network connections
+    # Add route priorities from primary network connections
     primary_network_connections =
         get(allocation.primary_network_connections, subnetwork_id, ())
 
     for link in primary_network_connections
         upstream_node = link[1]
-        source_priority = graph[upstream_node].source_priority
-        if !iszero(source_priority)
-            JuMP.add_to_expression!(
-                source_priority_expression,
-                source_priority * flow[link],
-            )
+        route_priority = graph[upstream_node].route_priority
+        if !iszero(route_priority)
+            JuMP.add_to_expression!(route_priority_expression, route_priority * flow[link])
         end
     end
 
     # Sort node IDs for deterministic problem generation
     for node_id in sort!(collect(graph[].node_ids[subnetwork_id]))
-        (; source_priority) = graph[node_id]
-        if !iszero(source_priority)
+        (; route_priority) = graph[node_id]
+        if !iszero(route_priority)
             for downstream_id in outflow_ids(graph, node_id)
                 JuMP.add_to_expression!(
-                    source_priority_expression,
-                    source_priority * flow[(node_id, downstream_id)],
+                    route_priority_expression,
+                    route_priority * flow[(node_id, downstream_id)],
                 )
             end
         end
@@ -1035,7 +1032,7 @@ function AllocationModel(
     # Objectives (goals)
     add_demand_objectives!(allocation_model, p_independent)
     add_low_storage_factor_objective!(allocation_model)
-    add_source_priority_objective!(allocation_model, p_independent)
+    add_route_priority_objective!(allocation_model, p_independent)
     filter!(!iszero, allocation_model.objectives.objective_expressions_all)
 
     return allocation_model
