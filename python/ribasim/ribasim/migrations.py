@@ -244,9 +244,7 @@ def tabulatedratingcurvestaticschema_migration(
 def sourcepriority_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame:
     if schema_version < 10:
         warnings.warn("Migrating outdated Node table.", UserWarning)
-        gdf.drop(columns="source_priority", inplace=True, errors="ignore")
-        if "route_priority" not in gdf.columns:
-            gdf["route_priority"] = None
+        _rename_column(gdf, "source_priority", "route_priority")
 
     return gdf
 
