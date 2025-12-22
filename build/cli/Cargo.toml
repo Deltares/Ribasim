@@ -1,6 +1,6 @@
 [package]
 name = "ribasim"
-version = "2025.6.0"
+version = "2026.1.0-dev1"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
