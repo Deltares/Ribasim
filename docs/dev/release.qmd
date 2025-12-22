@@ -13,7 +13,7 @@ For maximum interoperability it is suggested to only release all components toge
 
 This section provides a guide for developers to follow when preparing a new release.
 
-## Pre-release checks
+## Pre release checks
 
 Before starting the release process, ensure that all tests are passing and that all features intended for the release are complete and merged into the main branch.
 
@@ -35,9 +35,6 @@ Then follow the instructions as described in the [QGIS manual test plan](/dev/qg
 
 Determine the new version number like `2023.1.0`, filling in the current year, a bumped `MINOR` number for normal releases and a bumped `MICRO` number for non-breaking, hotfix releases.
 This follows `YYYY.MINOR.MICRO` from [calver](https://calver.org/).
-
-Create a branch that starts with `release`, like `release-2023.1.0`.
-It needs to start with `release` to trigger extra TeamCity checks.
 
 Update the version numbers in the repository to the new version number.
 See also the [latest Ribasim release](https://github.com/Deltares/Ribasim/releases/latest).
@@ -103,3 +100,16 @@ In order to publish Ribasim Python or Ribasim API follow the following steps:
 Announce the release in appropriate channels.
 Include a link to the release notes and assets, which is whatever [this](https://github.com/Deltares/Ribasim/releases/latest) resolves to at that time.
 Also include a link to the [documentation](https://ribasim.org/).
+
+## Create a release branch
+
+If it is a new stable non-hotfix release (`MICRO` is equal to 0, and not a pre-release), we need to create and push a release branch.
+For example, if the release is `v2023.1.0`, follow these steps:
+
+```
+git checkout v2023.1.0
+git switch -c release/v2023.1
+git push
+```
+
+The release branch will be the target for (backport of) bugfixes.
