@@ -65,9 +65,13 @@ from ribasim.utils import _concat, _pascal_to_snake
 class RoutePriority(ChildModel):
     """Specify per node type what its default route priority is."""
 
-    user_demand: int = 1000
-    flow_boundary: int = 2000
-    basin: int = 3000
+    level_boundary: int = 1000
+    basin: int = 2000
+    manning_resistance: int = 10
+    linear_resistance: int = 20
+    tabulated_rating_curve: int = 30
+    outlet: int = 40
+    pump: int = 50
 
 
 class Interpolation(ChildModel):
