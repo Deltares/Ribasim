@@ -2075,10 +2075,27 @@ def polder_management_model() -> Model:
         basin.State(level=[0.9]),
     ]
 
-    basin3 = model.basin.add(Node(3, Point(2.0, 0.0), name="Boezem"), basin_data)
+    evaporation[0:90] = 1e-6
+    evaporation[90:180] = 1e-6
+    evaporation[180:270] = 1.1e-6
+    evaporation[270:366] = 1.1e-6
+
+    basin_data_boezem: list[TableModel[Any]] = [
+        basin.Profile(area=[0.01, 1000000.0, 1000000.0], level=[-10, 1.5, 3.0]),
+        basin.Time(
+            time=pd.date_range(model.starttime, model.endtime),
+            drainage=0.0,
+            potential_evaporation=evaporation,
+            infiltration=0.0,
+            precipitation=precipitation,
+        ),
+        basin.State(level=[2.0]),
+    ]
+
+    basin3 = model.basin.add(Node(3, Point(2.0, 0.0), name="Boezem"), basin_data_boezem)
     basin4 = model.basin.add(Node(4, Point(2.0, 2.0), name="Polder"), basin_data)
     basin6 = model.basin.add(Node(6, Point(4.0, 2.0), name="Polder"), basin_data)
-    basin9 = model.basin.add(Node(9, Point(4.0, 0.0), name="Boezem"), basin_data)
+    basin9 = model.basin.add(Node(9, Point(4.0, 0.0), name="Boezem"), basin_data_boezem)
 
     # Level demand on polder 4 exactly maintain 1 m
     level4 = model.level_demand.add(
@@ -2091,8 +2108,14 @@ def polder_management_model() -> Model:
         [level_demand.Static(min_level=[0.9], max_level=0.9, demand_priority=1)],
     )
 
+    level9 = model.level_demand.add(
+        Node(102, Point(4.0, -0.5), name="boezem#9 level demand"),
+        [level_demand.Static(min_level=[5.0], max_level=5.0, demand_priority=1)],
+    )
+
     model.link.add(level4, basin4)
     model.link.add(level6, basin6)
+    model.link.add(level9, basin9)
 
     ###Setup outlet:
     outlet10 = model.outlet.add(
@@ -2100,10 +2123,10 @@ def polder_management_model() -> Model:
         [outlet.Static(flow_rate=20, min_upstream_level=[1.2])],
     )
 
-    outlet12 = model.outlet.add(
-        Node(12, Point(1.0, 0)),
-        [outlet.Static(flow_rate=[10])],
-    )
+    # outlet12 = model.outlet.add(
+    #     Node(12, Point(1.0, 0)),
+    #     [outlet.Static(flow_rate=[10])],
+    # )
 
     # --- Outlet 5 Controlled by Allocation ---
     outlet5 = model.outlet.add(
@@ -2166,10 +2189,10 @@ def polder_management_model() -> Model:
     )
     model.link.add(pump7_alloc, pump7)
 
-    ##Setup level boundary
-    level_boundary11 = model.level_boundary.add(
-        Node(11, Point(0, 0)), [level_boundary.Static(level=[1.3])]
-    )
+    # ##Setup level boundary
+    # level_boundary11 = model.level_boundary.add(
+    #     Node(11, Point(0, 0)), [level_boundary.Static(level=[1.3])]
+    # )
     level_boundary17 = model.level_boundary.add(
         Node(17, Point(6, 0)), [level_boundary.Static(level=[0.9])]
     )
@@ -2191,8 +2214,8 @@ def polder_management_model() -> Model:
     model.link.add(basin6, pump7)
     model.link.add(pump7, basin9)
     model.link.add(basin9, outlet10)
-    model.link.add(level_boundary11, outlet12)
-    model.link.add(outlet12, basin3)
+    # model.link.add(level_boundary11, outlet12)
+    # model.link.add(outlet12, basin3)
     model.link.add(outlet10, level_boundary17)
 
     # Give all nodes subnetwork_id 1

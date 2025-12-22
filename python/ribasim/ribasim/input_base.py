@@ -614,7 +614,7 @@ class NodeModel(ChildModel):
     """Base class to handle combining the tables for a single node type."""
 
     @model_serializer(mode="wrap")
-    def set_modeld(
+    def set_model(
         self, serializer: Callable[["NodeModel"], dict[str, object]]
     ) -> dict[str, object]:
         content = serializer(self)

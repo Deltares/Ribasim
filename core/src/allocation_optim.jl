@@ -719,7 +719,7 @@ function optimize_multi_objective!(
     for metadata in objectives.objective_metadata
         (; expression_first, expression_second, type, demand_priority_idx) = metadata
 
-        # First expression
+        # Optimize the absolute error in the system
         JuMP.@objective(problem, Min, expression_first)
         JuMP.optimize!(problem)
         push!(
@@ -727,15 +727,15 @@ function optimize_multi_objective!(
             JuMP.@constraint(problem, expression_first == JuMP.objective_value(problem))
         )
 
-        # Second expression
-        JuMP.@objective(problem, Min, expression_second)
-        JuMP.optimize!(problem)
-        push!(
-            temporary_constraints,
-            JuMP.@constraint(problem, expression_second == JuMP.objective_value(problem),)
-        )
+        # # Optimize sum of errors for fair distribution of resources
+        # JuMP.@objective(problem, Min, expression_second)
+        # JuMP.optimize!(problem)
+        # push!(
+        #     temporary_constraints,
+        #     JuMP.@constraint(problem, expression_second == JuMP.objective_value(problem),)
+        # )
 
-        # Source priority
+        # Optimize for source priorities
         JuMP.@objective(problem, Min, source_priority_expression)
         JuMP.optimize!(problem)
 
