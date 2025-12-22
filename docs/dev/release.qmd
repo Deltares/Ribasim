@@ -33,8 +33,17 @@ Then follow the instructions as described in the [QGIS manual test plan](/dev/qg
 
 ## Update version numbers of the components
 
-Determine the new version number like `2023.1.0`, filling in the current year, a bumped `MINOR` number for normal releases and a bumped `MICRO` number for non-breaking, hotfix releases.
+Determine the new version like `2023.1.0`, filling in the current year, a bumped `MINOR` number for normal releases (starting at 1) and a bumped `MICRO` number for non-breaking, hotfix releases (starting at 0).
 This follows `YYYY.MINOR.MICRO` from [calver](https://calver.org/).
+
+For developmental releases, add `-devN` to the end of the version, or `-rcN` ror release candidates.
+Here `N` represents an integer, starting at 1, so we can have, in chronological order:
+
+```
+2023.1.0-dev1 as the first development pre-release of 2023.1.0
+2023.1.0-rc1 as the first release candidate pre-release of 2023.1.0
+2023.1.0 as the release
+```
 
 Update the version numbers in the repository to the new version number.
 See also the [latest Ribasim release](https://github.com/Deltares/Ribasim/releases/latest).
@@ -56,7 +65,7 @@ Now submit a pull request with the updated the version numbers and changelog.
 
 When the pull request is merged to main, checkout the commit that updates the version numbers.
 
-Create a new tag, which is the letter `v` followed by the version number, like, `v2023.8.0`.
+Create a new tag, which is the letter `v` followed by the version, like, `v2023.8.0`.
 
 This can be done by executing:
 ```bash
