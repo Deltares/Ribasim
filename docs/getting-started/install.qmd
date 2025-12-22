@@ -140,10 +140,27 @@ The Path environment variable tells Windows where to look for programs when you 
 The Ribasim Python package (named `ribasim`) aims to make it easy to build, update and analyze Ribasim models
 programmatically.
 
-The Ribasim Python package is [registered in PyPI](https://pypi.org/project/ribasim/) and [conda-forge](https://prefix.dev/channels/conda-forge/packages/ribasim) and can therefore be installed with [pixi](https://pixi.sh/), [uv](https://docs.astral.sh/uv/), [pip](https://docs.python.org/3/installing/index.html) or [conda](https://docs.conda.io/).
-We recommend Pixi, but installation instructions for all are provided below.
+The Ribasim Python package is [registered in PyPI](https://pypi.org/project/ribasim/) and [conda-forge](https://prefix.dev/channels/conda-forge/packages/ribasim) and can therefore be installed with [uv](https://docs.astral.sh/uv/), [pixi](https://pixi.sh/), [pip](https://docs.python.org/3/installing/index.html) or [conda](https://docs.conda.io/).
+We recommend uv, but installation instructions for all are provided below.
 
 ::: {.panel-tabset}
+
+## uv
+
+Install `uv` following the [instructions in the uv documentation](https://docs.astral.sh/uv/getting-started/installation/).
+
+Open a terminal in your project directory, and create an empty uv project:
+```sh
+uv init --python '>=3.12'
+```
+Now add Ribasim Python:
+```sh
+uv add ribasim==2025.6.0
+```
+If you wish to start Python, run:
+```sh
+uv run python
+```
 
 ## pixi
 
@@ -158,7 +175,7 @@ Now add Ribasim Python:
 ```sh
 pixi add ribasim==2025.6.0
 ```
-To start Python, run:
+If you wish to start Python, run:
 ```sh
 pixi run python
 ```
@@ -169,23 +186,6 @@ When you run into what seems like installation issues, try `pixi clean`, followe
 If your editor does not automatically detect the right Python environment, point it to `.pixi/envs/default/python.exe`.
 Starting your editor via Pixi will also help it find the environment since it will already be active.
 For Visual Studio Code, you can run `pixi run code .` to open your workspace.
-
-## uv
-
-Install `uv` following the [instructions in the uv documentation](https://docs.astral.sh/uv/getting-started/installation/).
-
-Open a terminal in your project directory, and create an empty uv project:
-```sh
-uv init
-```
-Now add Ribasim Python:
-```sh
-uv add ribasim==2025.6.0
-```
-To start Python, run:
-```sh
-uv run python
-```
 
 ## pip
 

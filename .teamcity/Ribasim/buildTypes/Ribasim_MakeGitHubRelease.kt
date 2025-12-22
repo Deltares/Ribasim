@@ -23,7 +23,6 @@ object Ribasim_MakeGitHubRelease : BuildType({
         cleanCheckout = true
         branchFilter = """
             +:v20*
-            +:release*
         """.trimIndent()
     }
 
@@ -47,7 +46,6 @@ object Ribasim_MakeGitHubRelease : BuildType({
             id = "TRIGGER_637"
             branchFilter = """
                 +:v20*
-                +:release*
                 -:<default>
             """.trimIndent()
         }

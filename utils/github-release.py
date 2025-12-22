@@ -1,3 +1,4 @@
+import re
 import subprocess
 
 
@@ -15,20 +16,39 @@ def main(proc: subprocess.CompletedProcess[str]):
 
     print(f"Currently checked out tag: {tag_name}")
 
-    # Create a release using gh
-    subprocess.check_call(
+    # Define regex patterns for valid tag names
+    normal_pattern = r"^v20\d{2}\.[1-9]\.\d{1,2}$"
+    prerelease_pattern = r"^v20\d{2}\.[1-9]\.\d{1,2}-(dev|rc)[1-9]\d?$"
+
+    is_normal = re.match(normal_pattern, tag_name)
+    is_prerelease = re.match(prerelease_pattern, tag_name)
+
+    if not (is_normal or is_prerelease):
+        raise ValueError(f"Tag name '{tag_name}' does not match expected pattern.")
+
+    # Build the command
+    cmd = [
+        "gh",
+        "release",
+        "create",
+        tag_name,
+        "--generate-notes",
+    ]
+
+    if is_prerelease:
+        cmd.append("--prerelease")
+
+    cmd.extend(
         [
-            "gh",
-            "release",
-            "create",
-            tag_name,
-            "--generate-notes",
             "ribasim_linux.zip",
             "ribasim_windows.zip",
             "ribasim_qgis.zip",
             "generated_testmodels.zip",
         ]
     )
+
+    # Create a release using gh
+    subprocess.check_call(cmd)
 
 
 if __name__ == "__main__":
