@@ -123,13 +123,13 @@ def test_threads_cli_overrides_env(tmp_path):
 
 
 def test_run_ribasim_basic(tmp_path):
-    """Test run_ribasim() with a basic model using cli_path."""
+    """Test run_ribasim() with a basic model using ribasim_exe."""
     model = ribasim_testmodels.basic_model()
     toml_path = tmp_path / "ribasim.toml"
     model.write(toml_path)
 
     # Should run successfully
-    run_ribasim(toml_path, cli_path=executable)
+    run_ribasim(toml_path, ribasim_exe=executable)
 
     # Check that results were produced
     results_path = tmp_path / "results" / "basin.arrow"
@@ -143,7 +143,7 @@ def test_run_ribasim_with_threads(tmp_path):
     model.write(toml_path)
 
     # Pass threads kwarg
-    run_ribasim(toml_path, cli_path=executable, threads=2)
+    run_ribasim(toml_path, ribasim_exe=executable, threads=2)
 
     # Check that threads were set correctly in the log
     log_path = tmp_path / "results" / "ribasim.log"
@@ -154,7 +154,7 @@ def test_run_ribasim_with_threads(tmp_path):
 
 def test_run_ribasim_version(capfd):
     """Test run_ribasim() with version=True."""
-    run_ribasim(version=True, cli_path=executable)
+    run_ribasim(version=True, ribasim_exe=executable)
 
     # Capture the output
     captured = capfd.readouterr()
@@ -176,18 +176,83 @@ def test_run_ribasim_not_on_path(tmp_path):
     toml_path = tmp_path / "ribasim.toml"
     model.write(toml_path)
 
-    # Save and clear PATH
+    # Save and clear PATH and RIBASIM_EXE
     old_path = os.environ.get("PATH", "")
+    old_ribasim_exe = os.environ.get("RIBASIM_EXE")
     os.environ["PATH"] = ""
+    if old_ribasim_exe is not None:
+        del os.environ["RIBASIM_EXE"]
 
     try:
         with pytest.raises(
             FileNotFoundError,
-            match=r"Ribasim CLI executable 'ribasim' not found on PATH.",
+            match=r"Ribasim CLI executable 'ribasim' not found\.",
         ):
             run_ribasim(toml_path)
     finally:
         os.environ["PATH"] = old_path
+        if old_ribasim_exe is not None:
+            os.environ["RIBASIM_EXE"] = old_ribasim_exe
+
+
+def test_run_ribasim_with_ribasim_exe(tmp_path):
+    """Test run_ribasim() uses RIBASIM_EXE environment variable."""
+    model = ribasim_testmodels.basic_model()
+    toml_path = tmp_path / "ribasim.toml"
+    model.write(toml_path)
+
+    # Save current RIBASIM_EXE and PATH
+    old_ribasim_exe = os.environ.get("RIBASIM_EXE")
+    old_path = os.environ.get("PATH", "")
+
+    try:
+        # Set RIBASIM_EXE to the executable path and clear PATH
+        os.environ["RIBASIM_EXE"] = str(executable)
+        os.environ["PATH"] = ""  # Clear PATH to ensure RIBASIM_EXE is used
+
+        # Should find executable via RIBASIM_EXE
+        run_ribasim(toml_path)
+
+        # Check that results were produced
+        results_path = tmp_path / "results" / "basin.arrow"
+        assert results_path.exists()
+    finally:
+        # Restore environment
+        os.environ["PATH"] = old_path
+        if old_ribasim_exe is not None:
+            os.environ["RIBASIM_EXE"] = old_ribasim_exe
+        else:
+            os.environ.pop("RIBASIM_EXE", None)
+
+
+def test_run_ribasim_ribasim_exe_invalid_path(tmp_path):
+    """Test run_ribasim() raises FileNotFoundError with invalid RIBASIM_EXE."""
+    model = ribasim_testmodels.basic_model()
+    toml_path = tmp_path / "ribasim.toml"
+    model.write(toml_path)
+
+    # Save current RIBASIM_EXE and PATH
+    old_ribasim_exe = os.environ.get("RIBASIM_EXE")
+    old_path = os.environ.get("PATH", "")
+
+    try:
+        # Set invalid RIBASIM_EXE
+        invalid_path = tmp_path / "nonexistent" / "ribasim"
+        os.environ["RIBASIM_EXE"] = str(invalid_path)
+        os.environ["PATH"] = ""  # Clear PATH to ensure RIBASIM_EXE is used
+
+        with pytest.raises(
+            FileNotFoundError,
+            match=r"Ribasim CLI executable not found at RIBASIM_EXE=",
+        ):
+            run_ribasim(toml_path)
+    finally:
+        # Restore environment
+        os.environ["PATH"] = old_path
+        if old_ribasim_exe is not None:
+            os.environ["RIBASIM_EXE"] = old_ribasim_exe
+        else:
+            os.environ.pop("RIBASIM_EXE", None)
 
 
 def test_run_ribasim_invalid_model(tmp_path):
@@ -197,7 +262,7 @@ def test_run_ribasim_invalid_model(tmp_path):
     model.write(toml_path)
 
     with pytest.raises(subprocess.CalledProcessError):
-        run_ribasim(toml_path, cli_path=executable)
+        run_ribasim(toml_path, ribasim_exe=executable)
 
 
 def test_run_ribasim_in_notebook(tmp_path, monkeypatch):
@@ -213,7 +278,7 @@ def test_run_ribasim_in_notebook(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "_subprocess_handling", lambda: SubprocessHandling.DISPLAY)
 
     # Should run successfully using the notebook path
-    run_ribasim(toml_path, cli_path=executable)
+    run_ribasim(toml_path, ribasim_exe=executable)
 
     # Check that results were produced
     results_path = tmp_path / "results" / "basin.arrow"
@@ -233,8 +298,23 @@ def test_run_ribasim_in_spyder(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "_subprocess_handling", lambda: SubprocessHandling.SPYDER)
 
     # Should run successfully using the Spyder path
-    run_ribasim(toml_path, cli_path=executable)
+    run_ribasim(toml_path, ribasim_exe=executable)
 
     # Check that results were produced
+    results_path = tmp_path / "results" / "basin.arrow"
+    assert results_path.exists()
+
+
+def test_run_ribasim_cli_path_deprecated(tmp_path):
+    """Test that cli_path parameter raises a deprecation warning."""
+    model = ribasim_testmodels.basic_model()
+    toml_path = tmp_path / "ribasim.toml"
+    model.write(toml_path)
+
+    # Using deprecated cli_path should raise a DeprecationWarning
+    with pytest.warns(DeprecationWarning, match="cli_path.*deprecated.*ribasim_exe"):
+        run_ribasim(toml_path, cli_path=executable)
+
+    # Check that results were still produced
     results_path = tmp_path / "results" / "basin.arrow"
     assert results_path.exists()

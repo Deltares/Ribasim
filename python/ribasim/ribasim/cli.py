@@ -1,8 +1,10 @@
 """Command-line interface utilities for running Ribasim."""
 
+import os
 import shutil
 import subprocess
 import sys
+import warnings
 from enum import Enum
 from pathlib import Path
 
@@ -15,13 +17,50 @@ class SubprocessHandling(Enum):
     FORWARD = "forward"  # Terminal with direct forwarding
 
 
-def _find_cli(cli_path: str | Path | None = None) -> Path:
-    """Find the Ribasim CLI executable on PATH or at cli_path.
+def _resolve_executable(executable: str | Path, error_msg: str = "") -> Path:
+    """Resolve an executable using shutil.which().
+
+    This allows users to specify "path/to/ribasim" instead of "path/to/ribasim.exe".
 
     Parameters
     ----------
-    cli_path : str | Path | None, optional
-        Path to the Ribasim CLI executable. If None, searches PATH.
+    executable : str | Path
+        If a Path, searches for the executable name in the parent directory.
+        If a str, searches for the executable name in the system PATH.
+    error_msg : str
+        Custom error message to raise if executable is not found.
+
+    Returns
+    -------
+    Path
+        Path to the resolved executable.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the executable is not found.
+    """
+    if isinstance(executable, Path):
+        name = executable.name
+        search_path = executable.parent
+    else:
+        name = executable
+        search_path = None
+
+    cli = shutil.which(name, path=search_path)
+    if cli is None:
+        raise FileNotFoundError(error_msg)
+    return Path(cli)
+
+
+def _find_cli(ribasim_exe: str | Path | None = None) -> Path:
+    """Find the Ribasim CLI executable on ribasim_exe or the PATH.
+
+    Parameters
+    ----------
+    ribasim_exe : str | Path | None, optional
+        Path to the Ribasim CLI executable. If None, first checks the RIBASIM_EXE
+        environment variable, then searches the PATH.
 
     Returns
     -------
@@ -31,29 +70,35 @@ def _find_cli(cli_path: str | Path | None = None) -> Path:
     Raises
     ------
     FileNotFoundError
-        If the Ribasim CLI is not found on PATH (when cli_path is None),
-        or if the executable is not found at the specified cli_path.
+        If the Ribasim CLI is not found via RIBASIM_EXE or on the PATH (when ribasim_exe is None),
+        or if the executable is not found at the specified ribasim_exe.
     """
-    if cli_path is None:
-        cli = shutil.which("ribasim")
-        if cli is None:
-            raise FileNotFoundError(
-                "Ribasim CLI executable 'ribasim' not found on PATH. "
-                "Please ensure Ribasim is installed and available on your PATH."
-            )
+    if ribasim_exe is not None:
+        # Use ribasim_exe argument if provided
+        ribasim_exe = Path(ribasim_exe)
+        return _resolve_executable(
+            ribasim_exe,
+            f"Ribasim CLI executable not found at '{ribasim_exe.resolve()}'. "
+            "Please ensure the path is correct.",
+        )
     else:
-        cli_path = Path(cli_path)
-        # Use shutil.which() to resolve the executable with proper extensions.
-        # This allows users to specify "path/to/ribasim" instead of "path/to/ribasim.exe"
-        # It also gives the absolute paths for clearer error messages.
-        cli = shutil.which(cli_path.name, path=cli_path.parent)
-        if cli is None:
-            raise FileNotFoundError(
-                f"Ribasim CLI executable not found at '{cli}'. "
-                "Please ensure the path is correct."
-            )
+        # Else check RIBASIM_EXE environment variable
+        if (ribasim_exe_env := os.environ.get("RIBASIM_EXE")) is not None:
+            ribasim_exe = Path(ribasim_exe_env)
 
-    return Path(cli)
+            return _resolve_executable(
+                ribasim_exe,
+                f"Ribasim CLI executable not found at RIBASIM_EXE='{ribasim_exe.resolve()}'. "
+                "Please ensure the path is correct.",
+            )
+        else:
+            # Fall back to searching the PATH
+            return _resolve_executable(
+                "ribasim",
+                "Ribasim CLI executable 'ribasim' not found. "
+                "Please ensure Ribasim is installed and available on your PATH, "
+                "or set the RIBASIM_EXE environment variable.",
+            )
 
 
 def _subprocess_handling() -> SubprocessHandling:
@@ -103,6 +148,7 @@ def _subprocess_handling() -> SubprocessHandling:
 def run_ribasim(
     toml_path: str | Path | None = None,
     *,
+    ribasim_exe: str | Path | None = None,
     cli_path: str | Path | None = None,
     version: bool = False,
     threads: int | None = None,
@@ -114,8 +160,11 @@ def run_ribasim(
     toml_path : str | Path | None, optional
         Path to the TOML file.
         Required unless version=True.
+    ribasim_exe : str | Path | None, optional
+        Path to the Ribasim CLI executable. If not provided, first checks the
+        RIBASIM_EXE environment variable, then searches PATH.
     cli_path : str | Path | None, optional
-        Path to the Ribasim CLI executable. If not provided, searches PATH.
+        Deprecated alias for ribasim_exe. Use ribasim_exe instead.
     version : bool, default False
         Print version
     threads : int | None, optional
@@ -125,7 +174,7 @@ def run_ribasim(
     Raises
     ------
     FileNotFoundError
-        If the Ribasim CLI is not found on PATH (when cli_path is not provided),
+        If the Ribasim CLI is not found via RIBASIM_EXE or on PATH (when ribasim_exe is not provided),
         or the toml_path does not exist.
     ValueError
         If neither toml_path nor version is provided.
@@ -136,9 +185,23 @@ def run_ribasim(
     --------
     >>> run_ribasim("model.toml")
     >>> run_ribasim("model.toml", threads=4)
-    >>> run_ribasim("model.toml", cli_path="/path/to/ribasim")
+    >>> run_ribasim("model.toml", ribasim_exe="/path/to/ribasim")
     >>> run_ribasim(version=True)
     """
+    # Handle deprecated cli_path parameter
+    if cli_path is not None:
+        if ribasim_exe is not None:
+            raise ValueError(
+                "Cannot specify both 'ribasim_exe' and deprecated 'cli_path'. "
+                "Use 'ribasim_exe' only."
+            )
+        warnings.warn(
+            "The 'cli_path' parameter is deprecated. Use 'ribasim_exe' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        ribasim_exe = cli_path
+
     # Build command arguments
     args: list[str | Path] = []
 
@@ -158,7 +221,7 @@ def run_ribasim(
     else:
         raise ValueError("Provide a toml_path, or set version=True")
 
-    cli = _find_cli(cli_path)
+    cli = _find_cli(ribasim_exe)
     handling = _subprocess_handling()
 
     if handling == SubprocessHandling.FORWARD:
