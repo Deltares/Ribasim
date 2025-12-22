@@ -361,7 +361,6 @@ window.Quarto = {
 
 
 <p>The PidControl node controls the level in a Basin by continuously controlling the flow rate of a connected Pump or Outlet. See also <a href="https://en.wikipedia.org/wiki/PID_controller">PID controller</a>.</p>
-<p>When a PidControl node is made inactive, the node under its control retains the last flow rate value, and the error integral is reset to 0.</p>
 <p>In the future controlling the flow on a particular link could be supported.</p>
 <section id="tables" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Tables</h1>
@@ -369,12 +368,6 @@ window.Quarto = {
 <section id="static" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> Static</h1>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 32%">
-<col style="width: 16%">
-<col style="width: 30%">
-<col style="width: 22%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
@@ -391,42 +384,36 @@ window.Quarto = {
 <td></td>
 </tr>
 <tr class="even">
-<td>active</td>
-<td>Bool</td>
-<td>-</td>
-<td>(optional, default true)</td>
-</tr>
-<tr class="odd">
 <td>listen_node_id</td>
 <td>Int32</td>
 <td>-</td>
 <td>must be a Basin</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>target</td>
 <td>Float64</td>
 <td><span class="math inline">\(\text{m}\)</span></td>
 <td>-</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>proportional</td>
 <td>Float64</td>
 <td><span class="math inline">\(\text{s}^{-1}\)</span></td>
 <td>-</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>integral</td>
 <td>Float64</td>
 <td><span class="math inline">\(\text{s}^{-2}\)</span></td>
 <td>-</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>derivative</td>
 <td>Float64</td>
 <td>-</td>
 <td>-</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>control_state</td>
 <td>String</td>
 <td>-</td>
@@ -436,7 +423,7 @@ window.Quarto = {
 </table>
 <section id="time" class="level2" data-number="2.1">
 <h2 data-number="2.1" class="anchored" data-anchor-id="time"><span class="header-section-number">2.1</span> Time</h2>
-<p>This table is the transient form of the <code>PidControl</code> table. The differences are that a time column is added and the nodes are assumed to be active so this column is removed. With this the target level and PID coefficients can be updated over time. In between the given times the these values interpolated linearly, and outside these values area constant given by the nearest time value. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
+<p>This table is the transient form of the <code>PidControl</code> table. The difference is that a time column is added. With this the target level and PID coefficients can be updated over time. In between the given times the these values interpolated linearly, and outside these values area constant given by the nearest time value. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -508,7 +495,7 @@ e(t) = \text{SP}(t) - y(t).
 <p>For the integral term we denote <span class="math display">\[
 I(t) = \int_{t_0}^t e(\tau)\text{d}\tau,
 \]</span></p>
-<p>where <span class="math inline">\(t_0\)</span> is the last time the PID controller was made active. <span class="math inline">\(I(t)\)</span> is treated as a state of the system and thus it has its own equation in <a href="../../concept/equations.html">the system</a>: <span class="math display">\[
+<p>where <span class="math inline">\(t_0\)</span> is the simulation start time. <span class="math inline">\(I(t)\)</span> is treated as a state of the system and thus it has its own equation in <a href="../../concept/equations.html">the system</a>: <span class="math display">\[
 \frac{\text{d}I}{\text{d}t} = e(t).
 \]</span></p>
 <div class="callout callout-style-default callout-note callout-titled">

@@ -281,7 +281,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#what-is-a-release" id="toc-what-is-a-release" class="nav-link active" data-scroll-target="#what-is-a-release"><span class="header-section-number">1</span> What is a release</a></li>
   <li><a href="#release-steps" id="toc-release-steps" class="nav-link" data-scroll-target="#release-steps"><span class="header-section-number">2</span> Release steps</a>
   <ul class="collapse">
-  <li><a href="#pre-release-checks" id="toc-pre-release-checks" class="nav-link" data-scroll-target="#pre-release-checks"><span class="header-section-number">2.1</span> Pre-release checks</a></li>
+  <li><a href="#pre-release-checks" id="toc-pre-release-checks" class="nav-link" data-scroll-target="#pre-release-checks"><span class="header-section-number">2.1</span> Pre release checks</a></li>
   <li><a href="#qgis-manual-testing" id="toc-qgis-manual-testing" class="nav-link" data-scroll-target="#qgis-manual-testing"><span class="header-section-number">2.2</span> QGIS manual testing</a></li>
   <li><a href="#update-version-numbers-of-the-components" id="toc-update-version-numbers-of-the-components" class="nav-link" data-scroll-target="#update-version-numbers-of-the-components"><span class="header-section-number">2.3</span> Update version numbers of the components</a></li>
   <li><a href="#update-the-changelog" id="toc-update-the-changelog" class="nav-link" data-scroll-target="#update-the-changelog"><span class="header-section-number">2.4</span> Update the changelog</a></li>
@@ -289,6 +289,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#create-a-new-release" id="toc-create-a-new-release" class="nav-link" data-scroll-target="#create-a-new-release"><span class="header-section-number">2.6</span> Create a new release</a></li>
   <li><a href="#release-the-ribasim-python-packages-to-pypi" id="toc-release-the-ribasim-python-packages-to-pypi" class="nav-link" data-scroll-target="#release-the-ribasim-python-packages-to-pypi"><span class="header-section-number">2.7</span> Release the Ribasim Python packages to PyPI</a></li>
   <li><a href="#announce-release" id="toc-announce-release" class="nav-link" data-scroll-target="#announce-release"><span class="header-section-number">2.8</span> Announce release</a></li>
+  <li><a href="#create-a-release-branch" id="toc-create-a-release-branch" class="nav-link" data-scroll-target="#create-a-release-branch"><span class="header-section-number">2.9</span> Create a release branch</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -323,7 +324,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h1 data-number="2"><span class="header-section-number">2</span> Release steps</h1>
 <p>This section provides a guide for developers to follow when preparing a new release.</p>
 <section id="pre-release-checks" class="level2" data-number="2.1">
-<h2 data-number="2.1" class="anchored" data-anchor-id="pre-release-checks"><span class="header-section-number">2.1</span> Pre-release checks</h2>
+<h2 data-number="2.1" class="anchored" data-anchor-id="pre-release-checks"><span class="header-section-number">2.1</span> Pre release checks</h2>
 <p>Before starting the release process, ensure that all tests are passing and that all features intended for the release are complete and merged into the main branch.</p>
 </section>
 <section id="qgis-manual-testing" class="level2" data-number="2.2">
@@ -336,8 +337,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="update-version-numbers-of-the-components" class="level2" data-number="2.3">
 <h2 data-number="2.3" class="anchored" data-anchor-id="update-version-numbers-of-the-components"><span class="header-section-number">2.3</span> Update version numbers of the components</h2>
-<p>Determine the new version number like <code>2023.1.0</code>, filling in the current year, a bumped <code>MINOR</code> number for normal releases and a bumped <code>MICRO</code> number for non-breaking, hotfix releases. This follows <code>YYYY.MINOR.MICRO</code> from <a href="https://calver.org/">calver</a>.</p>
-<p>Create a branch that starts with <code>release</code>, like <code>release-2023.1.0</code>. It needs to start with <code>release</code> to trigger extra TeamCity checks.</p>
+<p>Determine the new version like <code>2023.1.0</code>, filling in the current year, a bumped <code>MINOR</code> number for normal releases (starting at 1) and a bumped <code>MICRO</code> number for non-breaking, hotfix releases (starting at 0). This follows <code>YYYY.MINOR.MICRO</code> from <a href="https://calver.org/">calver</a>.</p>
+<p>For developmental releases, add <code>-devN</code> to the end of the version, or <code>-rcN</code> ror release candidates. Here <code>N</code> represents an integer, starting at 1, so we can have, in chronological order:</p>
+<pre><code>2023.1.0-dev1 as the first development pre-release of 2023.1.0
+2023.1.0-rc1 as the first release candidate pre-release of 2023.1.0
+2023.1.0 as the release</code></pre>
 <p>Update the version numbers in the repository to the new version number. See also the <a href="https://github.com/Deltares/Ribasim/releases/latest">latest Ribasim release</a>. Use find and replace to update all locations. Only update the lines in <code>pixi.lock</code> that refer to Ribasim packages, to avoid accidentally changing the version number of dependencies that happen to have the same version number. Don’t change the old version numbers in <code>changelog.qmd</code>.</p>
 </section>
 <section id="update-the-changelog" class="level2" data-number="2.4">
@@ -351,11 +355,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="create-a-new-release" class="level2" data-number="2.6">
 <h2 data-number="2.6" class="anchored" data-anchor-id="create-a-new-release"><span class="header-section-number">2.6</span> Create a new release</h2>
 <p>When the pull request is merged to main, checkout the commit that updates the version numbers.</p>
-<p>Create a new tag, which is the letter <code>v</code> followed by the version number, like, <code>v2023.8.0</code>.</p>
+<p>Create a new tag, which is the letter <code>v</code> followed by the version, like, <code>v2023.8.0</code>.</p>
 <p>This can be done by executing:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> tag <span class="op">&lt;</span>tagname<span class="op">&gt;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> tag <span class="op">&lt;</span>tagname<span class="op">&gt;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Then push the tags:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> push <span class="at">--tags</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> push <span class="at">--tags</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>This will trigger a workflow on TeamCity that will publish a new release on GitHub as soon as it is finished. You can follow the progress <a href="https://dpcbuild.deltares.nl/buildConfiguration/Ribasim_Ribasim_MakeGitHubRelease?mode=builds">here</a>. It also auto-generates a changelog. You need to edit that by moving the auto-generated contents, except the “Full Changelog” link, in a collapsed details block as shown below.</p>
 <pre><code>&lt;details&gt;
 &lt;summary&gt;
@@ -379,6 +383,14 @@ All changes
 <section id="announce-release" class="level2" data-number="2.8">
 <h2 data-number="2.8" class="anchored" data-anchor-id="announce-release"><span class="header-section-number">2.8</span> Announce release</h2>
 <p>Announce the release in appropriate channels. Include a link to the release notes and assets, which is whatever <a href="https://github.com/Deltares/Ribasim/releases/latest">this</a> resolves to at that time. Also include a link to the <a href="https://ribasim.org/">documentation</a>.</p>
+</section>
+<section id="create-a-release-branch" class="level2" data-number="2.9">
+<h2 data-number="2.9" class="anchored" data-anchor-id="create-a-release-branch"><span class="header-section-number">2.9</span> Create a release branch</h2>
+<p>If it is a new stable non-hotfix release (<code>MICRO</code> is equal to 0, and not a pre-release), we need to create and push a release branch. For example, if the release is <code>v2023.1.0</code>, follow these steps:</p>
+<pre><code>git checkout v2023.1.0
+git switch -c release/v2023.1
+git push</code></pre>
+<p>The release branch will be the target for (backport of) bugfixes.</p>
 
 
 </section>

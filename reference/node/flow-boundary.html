@@ -365,12 +365,6 @@ window.Quarto = {
 <section id="static" class="level2" data-number="1.1">
 <h2 data-number="1.1" class="anchored" data-anchor-id="static"><span class="header-section-number">1.1</span> Static</h2>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 25%">
-<col style="width: 13%">
-<col style="width: 40%">
-<col style="width: 21%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
@@ -387,12 +381,6 @@ window.Quarto = {
 <td></td>
 </tr>
 <tr class="even">
-<td>active</td>
-<td>Bool</td>
-<td>-</td>
-<td>(optional, default true)</td>
-</tr>
-<tr class="odd">
 <td>flow_rate</td>
 <td>Float64</td>
 <td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
@@ -403,7 +391,7 @@ window.Quarto = {
 </section>
 <section id="time" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="time"><span class="header-section-number">1.2</span> Time</h2>
-<p>This table is the transient form of the <code>FlowBoundary</code> table. The only differences are that a time column is added and the nodes are assumed to be active so this column is not present. With this the flow rates can be updated over time. In between the given times the flow rate is interpolated in a way specified in the <a href="../../reference/usage.html#interpolation-settings">interpolation settings</a> (block interpolation by default), and outside the flow rate is constant given by the nearest time value unless the node is cyclic in time. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
+<p>This table is the transient form of the <code>FlowBoundary</code> table. The only difference is that a time column is added. With this the flow rates can be updated over time. In between the given times the flow rate is interpolated in a way specified in the <a href="../../reference/usage.html#interpolation-settings">interpolation settings</a> (block interpolation by default), and outside the flow rate is constant given by the nearest time value unless the node is cyclic in time. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">

@@ -472,7 +472,7 @@ window.Quarto = {
 <span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="kw">[allocation]</span></span>
 <span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="dt">timestep</span> <span class="op">=</span> <span class="dv">86400</span>         <span class="co"># optional (required if experimental.allocation = true), default 86400</span></span>
 <span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="kw">[allocation.source_priority]</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="kw">[allocation.route_priority]</span></span>
 <span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="dt">level_boundary</span> <span class="op">=</span> <span class="dv">1000</span>       <span class="co"># optional, default 1000</span></span>
 <span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="dt">basin</span> <span class="op">=</span> <span class="dv">2000</span>                <span class="co"># optional, default 2000</span></span>
 <span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="dt">manning_resistance</span> <span class="op">=</span> <span class="dv">10</span>     <span class="co"># optional, default 10</span></span>
@@ -542,13 +542,13 @@ window.Quarto = {
 <p>There are the following allocation settings:</p>
 <ul>
 <li><code>timestep</code>: A float value in seconds which dictates the update interval for allocations;</li>
-<li><code>source_priority</code>: An integer per source type for the allocation algorithm. The prioritisable sources are: <code>basin</code>, <code>level_boundary</code>, <code>linear_resistance</code>, <code>manning_resistance</code>, <code>outlet</code> and <code>pump</code>.
+<li><code>route_priority</code>: An integer per source type for the allocation algorithm. The prioritisable sources are: <code>basin</code>, <code>level_boundary</code>, <code>linear_resistance</code>, <code>manning_resistance</code>, <code>outlet</code> and <code>pump</code>.
 <ul>
-<li>If you wish to set the source priority for specific nodes rather than a fallback per node type, these can be set in the <a href="#sec-node">Node table</a>.</li>
-<li>By default, all nodes of the same type have the same source priority. To obtain a strict source ordering, the sources are sorted by node ID for each source priority within a subnetwork.</li>
-<li>When no default source priorities are specified, default values are applied (see the TOML example above).</li>
+<li>If you wish to set the route priority for specific nodes rather than a fallback per node type, these can be set in the <a href="#sec-node">Node table</a>.</li>
+<li>By default, all nodes of the same type have the same route priority. To obtain a strict source ordering, the sources are sorted by node ID for each route priority within a subnetwork.</li>
+<li>When no default route priorities are specified, default values are applied (see the TOML example above).</li>
 </ul>
-The way the source priorities work is as follows: The priority that is assigned to a node is interpreted as the cost it takes for water to flow through that node. The flow through each node is multiplied with the priority, and we find the water distribution solution that has the lowest cost of fulfilling the desired demands.</li>
+The way the route priorities work is as follows: The priority that is assigned to a node is interpreted as the cost it takes for water to flow through that node. The flow through each node is multiplied with the priority, and we find the water distribution solution that has the lowest cost of fulfilling the desired demands.</li>
 </ul>
 </section>
 <section id="results-settings" class="level2" data-number="1.4">
@@ -793,7 +793,7 @@ Important
 <td>(optional)</td>
 </tr>
 <tr class="even">
-<td>source_priority</td>
+<td>route_priority</td>
 <td>Int32</td>
 <td>(optional, does not have to be unique)</td>
 </tr>
@@ -804,7 +804,7 @@ Important
 </tr>
 </tbody>
 </table>
-<p>If not set, the <code>source_priority</code> is fixed per node type as explained in the <a href="#sec-allocation-settings">allocation settings</a>.</p>
+<p>If not set, the <code>route_priority</code> is fixed per node type as explained in the <a href="#sec-allocation-settings">allocation settings</a>.</p>
 <p>Adding a point geometry to the node table can be helpful to examine models in <a href="https://qgis.org/en/site/">QGIS</a>, as it will show the location of the nodes on the map. The geometry is not used by Ribasim.</p>
 <section id="cyclic-time-series" class="level2" data-number="3.1">
 <h2 data-number="3.1" class="anchored" data-anchor-id="cyclic-time-series"><span class="header-section-number">3.1</span> Cyclic time series</h2>

@@ -380,12 +380,6 @@ window.Quarto = {
 <td></td>
 </tr>
 <tr class="even">
-<td>active</td>
-<td>Bool</td>
-<td>-</td>
-<td>(optional, default true)</td>
-</tr>
-<tr class="odd">
 <td>level</td>
 <td>Float64</td>
 <td><span class="math inline">\(\text{m}\)</span></td>
@@ -396,7 +390,7 @@ window.Quarto = {
 </section>
 <section id="time" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="time"><span class="header-section-number">1.2</span> Time</h2>
-<p>This table is the transient form of the <code>LevelBoundary</code> table. The only difference is that a time column is added and activity is assumed to be true. With this the levels can be updated over time. In between the given times the level is interpolated linearly, and outside the flow rate is constant given by the nearest time value. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
+<p>This table is the transient form of the <code>LevelBoundary</code> table. The only difference is that a time column is added. With this the levels can be updated over time. In between the given times the level is interpolated linearly, and outside the flow rate is constant given by the nearest time value. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">

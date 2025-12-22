@@ -368,12 +368,6 @@ window.Quarto = {
 <h2 data-number="1.1" class="anchored" data-anchor-id="static"><span class="header-section-number">1.1</span> Static</h2>
 <p>This table contains the static form of the <code>UserDemand</code> node.</p>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 27%">
-<col style="width: 12%">
-<col style="width: 40%">
-<col style="width: 20%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
@@ -390,30 +384,24 @@ window.Quarto = {
 <td></td>
 </tr>
 <tr class="even">
-<td>active</td>
-<td>Bool</td>
-<td>-</td>
-<td>(optional, default true)</td>
-</tr>
-<tr class="odd">
 <td>demand</td>
 <td>Float64</td>
 <td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
 <td>non-negative</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>return_factor</td>
 <td>Float64</td>
 <td>-</td>
 <td>between [0 - 1]</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>min_level</td>
 <td>Float64</td>
 <td><span class="math inline">\(\text{m}\)</span></td>
 <td>-</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>demand_priority</td>
 <td>Int32</td>
 <td>-</td>
@@ -424,7 +412,7 @@ window.Quarto = {
 </section>
 <section id="time" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="time"><span class="header-section-number">1.2</span> Time</h2>
-<p>This table is the transient form of the <code>UserDemand</code> table. The only difference is that a time column is added and activity is assumed to be true. With this the demand and return factor can be updated over time. In between the given times the values are block interpolated (forward fill), and outside the demand is constant given by the nearest time value. The allocation algorithm evaluates the interpolation at the start of the allocation time step. The <code>demand_priority</code> is not allowed to change over time. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
+<p>This table is the transient form of the <code>UserDemand</code> table. The only difference is that a time column is added. With this the demand and return factor can be updated over time. In between the given times the values are block interpolated (forward fill), and outside the demand is constant given by the nearest time value. The allocation algorithm evaluates the interpolation at the start of the allocation time step. The <code>demand_priority</code> is not allowed to change over time. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
