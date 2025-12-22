@@ -5,6 +5,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [v2026.1.0.dev1] - 2025-12-23
+
+This is the first pre-release running up to the stable v2026.1.0 release.
+It is a developmental release, and we recommend most users to stick with v2025.6.0 for now.
+This release sees significant performance increases for the core as well as the QGIS plugin, which especially help large models.
+Route priority in allocation was added to steer the path taken by allocated water.
+
+**Breaking changes**: In the `Node` table, `source_priority` has been renamed to `route_priority`, and the optional `active` column was removed.
+Note that Ribasim Python will migrate existing models automatically, see also the new guide on [updating Ribasim](https://ribasim.org/guide/updating-ribasim.html).
+If nodes where set to inactive, they will have to be removed manually first.
+The `ribasim` executable was moved to the `bin` subfolder, so users may need to update their PATH or RIBASIM_EXE environment variables.
+
+### Added
+- Add Windows installation script. [#2682](https://github.com/Deltares/Ribasim/pull/2682)
+- Add ResidenceTime tracer. [#2701](https://github.com/Deltares/Ribasim/pull/2701)
+- Add allocation route priorities. [#2731](https://github.com/Deltares/Ribasim/pull/2731)
+- Document control by allocation. [#2698](https://github.com/Deltares/Ribasim/pull/2698)
+- Document installing QGIS plugin from qgis.org. [#2687](https://github.com/Deltares/Ribasim/pull/2687)
+- Add diagram for physical-allocation interaction. [#2712](https://github.com/Deltares/Ribasim/pull/2712)
+- Add "getting started" section to documentation. [#2734](https://github.com/Deltares/Ribasim/pull/2734)
+- Expand saveat documentation for months and years. [#2709](https://github.com/Deltares/Ribasim/pull/2709)
+- Delwaq: Generate more modular inputs. [#2745](https://github.com/Deltares/Ribasim/pull/2745)
+- Log full configuration. [#2730](https://github.com/Deltares/Ribasim/pull/2730)
+- Add indexes to database for QGIS performance. [#2763](https://github.com/Deltares/Ribasim/pull/2763)
+- Improve database read performance of the core. [#2762](https://github.com/Deltares/Ribasim/pull/2762)
+- Let `run_ribasim` use `RIBASIM_EXE` if set. [#2783](https://github.com/Deltares/Ribasim/pull/2783)
+
+### Changed
+- Optimize Jacobian computation for large models. [#2624](https://github.com/Deltares/Ribasim/pull/2624) [#2685](https://github.com/Deltares/Ribasim/pull/2685)
+- Allow replacing/deleting links. [#2733](https://github.com/Deltares/Ribasim/pull/2733)
+- Move `ribasim` executable to `bin` directory. [#2758](https://github.com/Deltares/Ribasim/issues/2758)
+- Remove feature where nodes can be inactive. [#2764](https://github.com/Deltares/Ribasim/pull/2764)
+- Make database reproducible by fixing timestamp. [#2765](https://github.com/Deltares/Ribasim/pull/2765)
+- By default, all nodes get a subnetwork ID of 1. [#2766](https://github.com/Deltares/Ribasim/pull/2766)
+- Deprecate `run_ribasim`'s `cli_path` for `ribasim_exe`. [#2783](https://github.com/Deltares/Ribasim/pull/2783)
+- Rename `source_priority` to `route_priority`. [#2768](https://github.com/Deltares/Ribasim/pull/2768)
+
+### Fixed
+- Fix "database disk image is malformed" error. [#2763](https://github.com/Deltares/Ribasim/issues/2763)
+- Fix timing of vertical forcing in allocation. [#2739](https://github.com/Deltares/Ribasim/pull/2739)
+- Fix reading uninitialized memory during allocation. [#2691](https://github.com/Deltares/Ribasim/pull/2691)
+- Validate Delwaq substance names. [#2744](https://github.com/Deltares/Ribasim/pull/2744)
+
 ## [v2025.6.0] - 2025-10-27
 
 This release brings significant improvements to the QGIS plugin, allocation, and CLI latency.
