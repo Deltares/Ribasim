@@ -38,6 +38,8 @@ def nodeschema_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame
         assert gdf["node_id"].is_unique, "Node IDs have to be unique."
         gdf.set_index("node_id", inplace=True)
 
+    sourcepriority_migration(gdf, schema_version)
+
     return gdf
 
 
