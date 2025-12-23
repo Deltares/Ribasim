@@ -4,7 +4,7 @@
   xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
   xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
-  <Identity Name="Deltares.Ribasim" Version="2025.6.0.0"
+  <Identity Name="Deltares.Ribasim" Version="2026.1.0.1"
     Publisher="CN=Stichting Deltares, O=Stichting Deltares, L=Delft, C=NL"
     ProcessorArchitecture="x64" />
   <Properties>

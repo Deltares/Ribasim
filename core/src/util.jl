@@ -1,16 +1,3 @@
-"Get the package version of a given module"
-function pkgversion(m::Module)::VersionNumber
-    version = Base.pkgversion(Ribasim)
-    !isnothing(version) && return version
-
-    # Base.pkgversion doesn't work with compiled binaries
-    # If it returns `nothing`, we try a different way
-    rootmodule = Base.moduleroot(m)
-    pkg = Base.PkgId(rootmodule)
-    pkgorigin = Base.pkgorigins[pkg]
-    return pkgorigin.version
-end
-
 """Get the storage of a basin from its level."""
 function get_storage_from_level(basin::Basin, state_idx::Int, level::AbstractFloat)::Float64
     level_to_area = basin.level_to_area[state_idx]

@@ -1,6 +1,6 @@
 [workspace]
 name = "Ribasim"
-version = "2025.6.0"
+version = "2026.1.0-rc1"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge"]

@@ -36,12 +36,12 @@ Then follow the instructions as described in the [QGIS manual test plan](/dev/qg
 Determine the new version like `2023.1.0`, filling in the current year, a bumped `MINOR` number for normal releases (starting at 1) and a bumped `MICRO` number for non-breaking, hotfix releases (starting at 0).
 This follows `YYYY.MINOR.MICRO` from [calver](https://calver.org/).
 
-For developmental releases, add `-devN` to the end of the version, or `-rcN` ror release candidates.
+For pre-releases, add `-rcN` to the end of the version, which stands for release candidate.
 Here `N` represents an integer, starting at 1, so we can have, in chronological order:
 
 ```
-2023.1.0-dev1 as the first development pre-release of 2023.1.0
 2023.1.0-rc1 as the first release candidate pre-release of 2023.1.0
+2023.1.0-rc2 as the second release candidate pre-release of 2023.1.0
 2023.1.0 as the release
 ```
 

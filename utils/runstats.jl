@@ -72,7 +72,7 @@ end
 
 "Add the Ribasim version, commit and branch name"
 function add_git!(dict)
-    dict["git_ribasim"] = something(pkgversion(Ribasim), missing)
+    dict["git_ribasim"] = Ribasim.RIBASIM_VERSION
     git_repo = normpath(@__DIR__, "..")
     repo = GitRepo(git_repo)
     branch = LibGit2.head(repo)

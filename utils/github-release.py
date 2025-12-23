@@ -18,7 +18,7 @@ def main(proc: subprocess.CompletedProcess[str]):
 
     # Define regex patterns for valid tag names
     normal_pattern = r"^v20\d{2}\.[1-9]\.\d{1,2}$"
-    prerelease_pattern = r"^v20\d{2}\.[1-9]\.\d{1,2}-(dev|rc)[1-9]\d?$"
+    prerelease_pattern = r"^v20\d{2}\.[1-9]\.\d{1,2}-rc[1-9]\d?$"
 
     is_normal = re.match(normal_pattern, tag_name)
     is_prerelease = re.match(prerelease_pattern, tag_name)

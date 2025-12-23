@@ -1,4 +1,4 @@
-__version__ = "2025.6.0"
+__version__ = "2026.1.0-rc1"
 
 from ribasim_api.ribasim_api import RibasimApi
 

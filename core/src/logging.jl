@@ -40,7 +40,7 @@ end
 
 "Log messages before the model is initialized."
 function log_startup(config, toml_path::AbstractString)::Nothing
-    cli = (; ribasim_version = string(pkgversion(Ribasim)))
+    cli = (; ribasim_version = RIBASIM_VERSION)
     (; starttime, endtime) = config
     if config.ribasim_version != cli.ribasim_version
         @warn "The Ribasim version in the TOML config file does not match the used Ribasim CLI version." config.ribasim_version cli.ribasim_version
