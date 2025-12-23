@@ -1,12 +1,13 @@
 @testitem "configure paths" begin
-    using Ribasim: Config, Toml, Results, results_path, input_path, database_path
+    using Ribasim:
+        Config, Toml, Results, results_path, input_path, database_path, RIBASIM_VERSION
     using Dates
 
     kwargs = Dict(
         :starttime => now(),
         :endtime => now(),
         :crs => "EPSG:28992",
-        :ribasim_version => string(Ribasim.pkgversion(Ribasim)),
+        :ribasim_version => RIBASIM_VERSION,
     )
 
     # default dirs
@@ -109,6 +110,7 @@ end
 @testitem "results" begin
     import Arrow
     import Tables
+    using Ribasim: RIBASIM_VERSION
     using DataFrames: DataFrame
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
@@ -117,7 +119,6 @@ end
     model = Ribasim.run(config)
     @test success(model)
 
-    ribasim_version = string(pkgversion(Ribasim))
     path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.basin)
     bytes = read(path)
     tbl = Arrow.Table(bytes)
@@ -125,7 +126,7 @@ end
     @test eltype(tbl.convergence) == Union{Missing, Float64}
     @test all(isfinite, tbl.convergence)
     @test Arrow.getmetadata(tbl) ===
-          Base.ImmutableDict("ribasim_version" => ribasim_version)
+          Base.ImmutableDict("ribasim_version" => RIBASIM_VERSION)
 
     path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.flow)
     bytes = read(path)
@@ -134,7 +135,7 @@ end
     @test eltype(tbl.convergence) == Union{Missing, Float64}
     @test all(isfinite, skipmissing(tbl.convergence))
     @test Arrow.getmetadata(tbl) ===
-          Base.ImmutableDict("ribasim_version" => ribasim_version)
+          Base.ImmutableDict("ribasim_version" => RIBASIM_VERSION)
 
     path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.solver_stats)
     bytes = read(path)
@@ -143,7 +144,7 @@ end
     @test eltype(tbl.dt) == Float64
     @test all(>(0), tbl.dt)
     @test Arrow.getmetadata(tbl) ===
-          Base.ImmutableDict("ribasim_version" => ribasim_version)
+          Base.ImmutableDict("ribasim_version" => RIBASIM_VERSION)
 
     path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.concentration)
     bytes = read(path)
@@ -155,7 +156,7 @@ end
 @testitem "netcdf results" begin
     using NCDatasets
     using DataFrames: DataFrame
-    using Ribasim: results_path, RESULTS_FILENAME
+    using Ribasim: results_path, RIBASIM_VERSION, RESULTS_FILENAME
 
     toml_path = normpath(
         @__DIR__,
@@ -166,8 +167,6 @@ end
     model = Ribasim.run(config)
     @test success(model)
 
-    ribasim_version = string(pkgversion(Ribasim))
-
     # Test basin NetCDF output (1 Basin)
     path = results_path(config, RESULTS_FILENAME.basin)
     @test isfile(path)
@@ -177,7 +176,7 @@ end
         @test "level" in keys(ds)
         @test "storage" in keys(ds)
         @test ds.attrib["Conventions"] == "CF-1.12"
-        @test ds.attrib["ribasim_version"] == ribasim_version
+        @test ds.attrib["ribasim_version"] == RIBASIM_VERSION
         @test ndims(ds["time"]) == 1
         ntime = length(ds["time"])
         nnode = length(ds["node_id"])
@@ -229,8 +228,6 @@ end
     # config = Ribasim.Config(toml_path)
     # model = Ribasim.run(config)
     # @test success(model)
-
-    # ribasim_version = string(pkgversion(Ribasim))
 
     # # Test basin NetCDF output (multiple Basins)
     # path = results_path(config, RESULTS_FILENAME.basin)

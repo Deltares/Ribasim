@@ -190,7 +190,7 @@ NetCDF global attributes based on CF conventions.
 const CF_GLOBAL_ATTRIB = OrderedDict{String, String}(
     "Conventions" => "CF-1.12",
     "references" => "https://ribasim.org",
-    "ribasim_version" => string(pkgversion(Ribasim)),
+    "ribasim_version" => RIBASIM_VERSION,
 )
 
 """
@@ -748,7 +748,7 @@ function write_arrow(
         # https://github.com/apache/arrow-julia/issues/303
         table = merge(table, (; time = convert.(Arrow.DATETIME, table.time)))
     end
-    metadata = ["ribasim_version" => string(pkgversion(Ribasim))]
+    metadata = ["ribasim_version" => RIBASIM_VERSION]
     mkpath(dirname(path))
     try
         Arrow.write(path, table; compress, metadata)
