@@ -16,10 +16,10 @@
     {
       "SPDXID": "SPDXRef-1-ribasim",
       "name": "ribasim",
-      "versionInfo": "2026.1.0-dev1",
+      "versionInfo": "2026.1.0-rc1",
       "primaryPackagePurpose": "APPLICATION",
       "supplier": "Organization: Deltares and contributors (ribasim.info@deltares.nl)",
-      "downloadLocation": "https://pypi.org/project/ribasim/2026.1.0-dev1/#files",
+      "downloadLocation": "https://pypi.org/project/ribasim/2026.1.0-rc1/#files",
       "filesAnalyzed": false,
       "checksums": [
         {
@@ -46,12 +46,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/ribasim@2026.1.0-dev1"
+          "referenceLocator": "pkg:pypi/ribasim@2026.1.0-rc1"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:deltares_and_contributors:ribasim:2026.1.0-dev1:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:deltares_and_contributors:ribasim:2026.1.0-rc1:*:*:*:*:*:*:*"
         }
       ]
     },
