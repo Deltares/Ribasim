@@ -190,7 +190,7 @@ end
 
 Base.@ccallable function get_version(version::Cstring)::Cint
     @try_c_uninitialized begin
-        unsafe_write_to_cstring!(version, RIBASIM_VERSION)
+        unsafe_write_to_cstring!(version, Ribasim.RIBASIM_VERSION)
     end
     return 0
 end
