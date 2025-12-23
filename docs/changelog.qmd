@@ -5,10 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [v2026.1.0.dev1] - 2025-12-23
+## [v2026.1.0-rc1] - 2025-12-23
 
 This is the first pre-release running up to the stable v2026.1.0 release.
-It is a developmental release, and we recommend most users to stick with v2025.6.0 for now.
+It is a release candidate, and we recommend most users to stick with v2025.6.0 for now.
+We expect to make more breaking changes and add features before the final release.
 This release sees significant performance increases for the core as well as the QGIS plugin, which especially help large models.
 Route priority in allocation was added to steer the path taken by allocated water.
 
