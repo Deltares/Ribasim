@@ -338,9 +338,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="update-version-numbers-of-the-components" class="level2" data-number="2.3">
 <h2 data-number="2.3" class="anchored" data-anchor-id="update-version-numbers-of-the-components"><span class="header-section-number">2.3</span> Update version numbers of the components</h2>
 <p>Determine the new version like <code>2023.1.0</code>, filling in the current year, a bumped <code>MINOR</code> number for normal releases (starting at 1) and a bumped <code>MICRO</code> number for non-breaking, hotfix releases (starting at 0). This follows <code>YYYY.MINOR.MICRO</code> from <a href="https://calver.org/">calver</a>.</p>
-<p>For developmental releases, add <code>-devN</code> to the end of the version, or <code>-rcN</code> ror release candidates. Here <code>N</code> represents an integer, starting at 1, so we can have, in chronological order:</p>
-<pre><code>2023.1.0-dev1 as the first development pre-release of 2023.1.0
-2023.1.0-rc1 as the first release candidate pre-release of 2023.1.0
+<p>For pre-releases, add <code>-rcN</code> to the end of the version, which stands for release candidate. Here <code>N</code> represents an integer, starting at 1, so we can have, in chronological order:</p>
+<pre><code>2023.1.0-rc1 as the first release candidate pre-release of 2023.1.0
+2023.1.0-rc2 as the second release candidate pre-release of 2023.1.0
 2023.1.0 as the release</code></pre>
 <p>Update the version numbers in the repository to the new version number. See also the <a href="https://github.com/Deltares/Ribasim/releases/latest">latest Ribasim release</a>. Use find and replace to update all locations. Only update the lines in <code>pixi.lock</code> that refer to Ribasim packages, to avoid accidentally changing the version number of dependencies that happen to have the same version number. Don’t change the old version numbers in <code>changelog.qmd</code>.</p>
 </section>

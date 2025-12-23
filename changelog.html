@@ -187,7 +187,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#changelog" id="toc-changelog" class="nav-link active" data-scroll-target="#changelog"><span class="header-section-number">1</span> Changelog</a>
   <ul class="collapse">
   <li><a href="#unreleased" id="toc-unreleased" class="nav-link" data-scroll-target="#unreleased"><span class="header-section-number">1.1</span> [Unreleased]</a></li>
-  <li><a href="#v2026.1.0.dev1---2025-12-23" id="toc-v2026.1.0.dev1---2025-12-23" class="nav-link" data-scroll-target="#v2026.1.0.dev1---2025-12-23"><span class="header-section-number">1.2</span> [v2026.1.0.dev1] - 2025-12-23</a>
+  <li><a href="#v2026.1.0-rc1---2025-12-23" id="toc-v2026.1.0-rc1---2025-12-23" class="nav-link" data-scroll-target="#v2026.1.0-rc1---2025-12-23"><span class="header-section-number">1.2</span> [v2026.1.0-rc1] - 2025-12-23</a>
   <ul class="collapse">
   <li><a href="#added" id="toc-added" class="nav-link" data-scroll-target="#added"><span class="header-section-number">1.2.1</span> Added</a></li>
   <li><a href="#changed" id="toc-changed" class="nav-link" data-scroll-target="#changed"><span class="header-section-number">1.2.2</span> Changed</a></li>
@@ -270,9 +270,9 @@ ul.task-list li input[type="checkbox"] {
 <section id="unreleased" class="level2" data-number="1.1">
 <h2 data-number="1.1" class="anchored" data-anchor-id="unreleased"><span class="header-section-number">1.1</span> [Unreleased]</h2>
 </section>
-<section id="v2026.1.0.dev1---2025-12-23" class="level2" data-number="1.2">
-<h2 data-number="1.2" class="anchored" data-anchor-id="v2026.1.0.dev1---2025-12-23"><span class="header-section-number">1.2</span> [v2026.1.0.dev1] - 2025-12-23</h2>
-<p>This is the first pre-release running up to the stable v2026.1.0 release. It is a developmental release, and we recommend most users to stick with v2025.6.0 for now. This release sees significant performance increases for the core as well as the QGIS plugin, which especially help large models. Route priority in allocation was added to steer the path taken by allocated water.</p>
+<section id="v2026.1.0-rc1---2025-12-23" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="v2026.1.0-rc1---2025-12-23"><span class="header-section-number">1.2</span> [v2026.1.0-rc1] - 2025-12-23</h2>
+<p>This is the first pre-release running up to the stable v2026.1.0 release. It is a release candidate, and we recommend most users to stick with v2025.6.0 for now. We expect to make more breaking changes and add features before the final release. This release sees significant performance increases for the core as well as the QGIS plugin, which especially help large models. Route priority in allocation was added to steer the path taken by allocated water.</p>
 <p><strong>Breaking changes</strong>: In the <code>Node</code> table, <code>source_priority</code> has been renamed to <code>route_priority</code>, and the optional <code>active</code> column was removed. Note that Ribasim Python will migrate existing models automatically, see also the new guide on <a href="https://ribasim.org/guide/updating-ribasim.html">updating Ribasim</a>. If nodes where set to inactive, they will have to be removed manually first. The <code>ribasim</code> executable was moved to the <code>bin</code> subfolder, so users may need to update their PATH or RIBASIM_EXE environment variables.</p>
 <section id="added" class="level3" data-number="1.2.1">
 <h3 data-number="1.2.1" class="anchored" data-anchor-id="added"><span class="header-section-number">1.2.1</span> Added</h3>
