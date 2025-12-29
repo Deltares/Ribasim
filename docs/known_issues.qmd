@@ -6,7 +6,7 @@ Known issues can be found on the [GitHub issues page](https://github.com/Deltare
 Besides the issues that need to be fixed, there are also considerations that had to be made while developing the application.
 
 # Core
-- The non-default solver option `sparse = false` only works with `autodiff = false`.
+- The non-default solver option `sparse = false` doesn't currently work.
 
 # QGIS plugin
 

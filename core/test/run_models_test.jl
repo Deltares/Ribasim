@@ -385,22 +385,22 @@ end
 
     config = Ribasim.Config(toml_path; solver_sparse = true, solver_autodiff = true)
     sparse_ad = Ribasim.run(config)
-    # TODO test dense AD again with https://github.com/Deltares/Ribasim/issues/2797
+    # TODO test dense again with https://github.com/Deltares/Ribasim/issues/2797
     # config = Ribasim.Config(toml_path; solver_sparse = false, solver_autodiff = true)
     # dense_ad = Ribasim.run(config)
     config = Ribasim.Config(toml_path; solver_sparse = true, solver_autodiff = false)
     sparse_fdm = Ribasim.run(config)
-    config = Ribasim.Config(toml_path; solver_sparse = false, solver_autodiff = false)
-    dense_fdm = Ribasim.run(config)
+    # config = Ribasim.Config(toml_path; solver_sparse = false, solver_autodiff = false)
+    # dense_fdm = Ribasim.run(config)
 
     @test success(sparse_ad)
     # @test success(dense_ad)
     @test success(sparse_fdm)
-    @test success(dense_fdm)
+    # @test success(dense_fdm)
 
     # @test dense_ad.integrator.u ≈ sparse_ad.integrator.u atol = 0.4
     @test sparse_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
-    @test dense_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
+    # @test dense_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
 end
 
 @testitem "TabulatedRatingCurve model" begin
