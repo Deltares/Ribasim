@@ -21,6 +21,8 @@ using OrdinaryDiffEqTsit5: Tsit5
 using OrdinaryDiffEqSDIRK: ImplicitEuler, KenCarp4, TRBDF2
 using OrdinaryDiffEqBDF: FBDF, QNDF
 using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
+using SciMLBase: SciMLOperators
+import OrdinaryDiffEqDifferentiation
 using LinearSolve:
     KLUFactorization, SciMLLinearSolveAlgorithm, LinearSolve, SciMLLinearSolveAlgorithm
 
@@ -372,6 +374,10 @@ end
 
 LinearSolve.needs_concrete_A(::RibasimLinearSolve) = false
 
+# piracy, temp fix for https://github.com/Deltares/Ribasim/issues/2754
+# can probably be removed after https://github.com/SciML/OrdinaryDiffEq.jl/pull/2916
+SciMLOperators.has_concretization(::OrdinaryDiffEqDifferentiation.WOperator) = true
+
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     kwargs = Dict{Symbol, Any}()
@@ -380,7 +386,8 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
         kwargs[:nlsolve] = NLNewton()
         if solver.sparse
-            kwargs[:linsolve] = RibasimLinearSolve(KLUFactorization())
+            kwargs[:linsolve] =
+                RibasimLinearSolve(KLUFactorization(; check_pattern = false))
         end
     end
 
