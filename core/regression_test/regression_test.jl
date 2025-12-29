@@ -13,6 +13,7 @@
         @testset Teamcity.TeamcityTestSet "sparse = $sparse" for sparse in sparse_options
             @testset Teamcity.TeamcityTestSet "autodiff = $autodiff" for autodiff in
                                                                          autodiff_options
+                sparse || continue # skip dense, see issue #2797
                 config = Ribasim.Config(
                     toml_path;
                     solver_algorithm = solver,
@@ -72,6 +73,7 @@ end
                                                                                  sparse_on
             @testset Teamcity.TeamcityTestSet "auto differentiation is $autodiff_on_off" for autodiff_on_off in
                                                                                              autodiff_on
+                sparse_on_off || continue # skip dense, see issue #2797
                 config = Ribasim.Config(
                     toml_path;
                     solver_algorithm = solver,

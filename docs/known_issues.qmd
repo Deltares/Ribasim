@@ -5,6 +5,9 @@ title: "Known issues"
 Known issues can be found on the [GitHub issues page](https://github.com/Deltares/Ribasim/issues).
 Besides the issues that need to be fixed, there are also considerations that had to be made while developing the application.
 
+# Core
+- The non-default solver option `sparse = false` doesn't currently work.
+
 # QGIS plugin
 
 - Input tables that are in Arrow files are currently not automatically loaded in QGIS ([#318](https://github.com/Deltares/Ribasim/issues/318)).
