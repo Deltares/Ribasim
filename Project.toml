@@ -82,5 +82,8 @@ TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 [sources]
 Ribasim = {path = "core"}
 
+[compat]
+PythonCall = "=0.9.31"
+
 [preferences.Ribasim]
 precompile_workload = false
