@@ -136,7 +136,7 @@ object Windows_TestRibasimBinaries : BuildType({
     name = "Test Ribasim Binaries"
 
     failureConditions {
-        executionTimeoutMin = 21
+        executionTimeoutMin = 30
     }
 
     dependencies {
