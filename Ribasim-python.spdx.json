@@ -6,32 +6,32 @@
     "creators": [
       "Tool: sbom4python-0.12.4"
     ],
-    "created": "2025-12-03T03:28:42Z",
+    "created": "2026-01-03T03:32:26Z",
     "licenseListVersion": "3.26"
   },
   "name": "Python-ribasim",
   "dataLicense": "CC0-1.0",
-  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-835cf0c4-ef86-4646-aa5a-6136df44cac6",
+  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-347f65ac-ef0f-4105-9d4d-a6eff717a100",
   "packages": [
     {
       "SPDXID": "SPDXRef-1-ribasim",
       "name": "ribasim",
-      "versionInfo": "2026.1.0-rc1",
+      "versionInfo": "2026.1.0rc1",
       "primaryPackagePurpose": "APPLICATION",
       "supplier": "Organization: Deltares and contributors (ribasim.info@deltares.nl)",
-      "downloadLocation": "https://pypi.org/project/ribasim/2026.1.0-rc1/#files",
+      "downloadLocation": "https://pypi.org/project/ribasim/2026.1.0rc1/#files",
       "filesAnalyzed": false,
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "73bf2d1212f5f6c3b4a40d524d4b6bbaab8e6fa33b6e5d98330e92a302faa1f7"
+          "checksumValue": "38ff30a818f91583969bc59981925297314a72a86758839f73556841e2b25485"
         }
       ],
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
       "summary": "Pre- and post-process Ribasim",
-      "releaseDate": "2025-10-27T22:08:38Z",
+      "releaseDate": "2025-12-23T11:48:54Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -46,28 +46,28 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/ribasim@2026.1.0-rc1"
+          "referenceLocator": "pkg:pypi/ribasim@2026.1.0rc1"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:deltares_and_contributors:ribasim:2026.1.0-rc1:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:deltares_and_contributors:ribasim:2026.1.0rc1:*:*:*:*:*:*:*"
         }
       ]
     },
     {
       "SPDXID": "SPDXRef-2-datacompy",
       "name": "datacompy",
-      "versionInfo": "0.19.0",
+      "versionInfo": "0.19.1",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Faisal Dosani Raymond Haffar Jacob Dawang (jacob.dawang@capitalone.com)",
-      "downloadLocation": "https://pypi.org/project/datacompy/0.19.0/#files",
+      "downloadLocation": "https://pypi.org/project/datacompy/0.19.1/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/capitalone/datacompy",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "99a5f7e17f5294ae6742a1ae1b9a41f2fe12df505e03bfc1c6b9e4cdc581bc1c"
+          "checksumValue": "525114d012e129c38b7d8dfcb11091f4d2c60e175a9be748284a02abaf21ae75"
         }
       ],
       "licenseConcluded": "Apache-2.0",
@@ -75,7 +75,7 @@
       "licenseComments": "datacompy declares Apache Software License which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Dataframe comparison in Python",
-      "releaseDate": "2025-11-14T14:43:48Z",
+      "releaseDate": "2025-12-16T18:25:48Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -100,12 +100,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/datacompy@0.19.0"
+          "referenceLocator": "pkg:pypi/datacompy@0.19.1"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:faisal_dosani_raymond_haffar_jacob_dawang:datacompy:0.19.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:faisal_dosani_raymond_haffar_jacob_dawang:datacompy:0.19.1:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -217,16 +217,16 @@
     {
       "SPDXID": "SPDXRef-5-numpy",
       "name": "numpy",
-      "versionInfo": "2.3.4",
+      "versionInfo": "2.3.5",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Travis E. Oliphant et al.",
-      "downloadLocation": "https://pypi.org/project/numpy/2.3.4/#files",
+      "downloadLocation": "https://pypi.org/project/numpy/2.3.5/#files",
       "filesAnalyzed": false,
       "homepage": "https://numpy.org",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "e78aecd2800b32e8347ce49316d3eaf04aed849cd5b38e0af39f829a4e59f5eb"
+          "checksumValue": "de5672f4a7b200c15a4127042170a694d4df43c992948f5e1af57f0174beed10"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -234,7 +234,7 @@
       "licenseComments": "numpy declares Copyright (c) 2005-2025, NumPy Developers.\n All rights reserved.\n\n Redistribution and use in source and binary forms, with or without\n modification, are permitted provided that the following conditions are\n met:\n\n     * Redistributions of source code must retain the above copyright\n        notice, this list of conditions and the following disclaimer.\n\n     * Redistributions in binary form must reproduce the above\n        copyright notice, this list of conditions and the following\n        disclaimer in the documentation and/or other materials provided\n        with the distribution.\n\n     * Neither the name of the NumPy Developers nor the names of any\n        contributors may be used to endorse or promote products derived\n        from this software without specific prior written permission.\n\n THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\n LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\n A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\n OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\n SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\n LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\n DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\n THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\n OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Fundamental package for array computing in Python",
-      "releaseDate": "2025-10-15T16:15:19Z",
+      "releaseDate": "2025-11-16T22:49:19Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -264,12 +264,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/numpy@2.3.4"
+          "referenceLocator": "pkg:pypi/numpy@2.3.5"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:travis_e._oliphant_et_al.:numpy:2.3.4:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:travis_e._oliphant_et_al.:numpy:2.3.5:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -459,23 +459,23 @@
     {
       "SPDXID": "SPDXRef-11-tzdata",
       "name": "tzdata",
-      "versionInfo": "2025.2",
+      "versionInfo": "2025.3",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Python Software Foundation (datetime-sig@python.org)",
-      "downloadLocation": "https://pypi.org/project/tzdata/2025.2/#files",
+      "downloadLocation": "https://pypi.org/project/tzdata/2025.3/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/python/tzdata",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "1a403fada01ff9221ca8044d701868fa132215d84beb92242d9acd2147f667a8"
+          "checksumValue": "06a47e5700f3081aab02b2e513160914ff0694bce9947d6b76ebd6bf57cfc5d1"
         }
       ],
       "licenseConcluded": "Apache-2.0",
       "licenseDeclared": "Apache-2.0",
       "copyrightText": "NOASSERTION",
       "summary": "Provider of IANA time zone data",
-      "releaseDate": "2025-03-23T13:54:41Z",
+      "releaseDate": "2025-12-13T17:45:33Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -495,28 +495,28 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/tzdata@2025.2"
+          "referenceLocator": "pkg:pypi/tzdata@2025.3"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_software_foundation:tzdata:2025.2:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_software_foundation:tzdata:2025.3:*:*:*:*:*:*:*"
         }
       ]
     },
     {
       "SPDXID": "SPDXRef-12-polars",
       "name": "polars",
-      "versionInfo": "1.35.2",
+      "versionInfo": "1.36.1",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Ritchie Vink (ritchie46@gmail.com)",
-      "downloadLocation": "https://pypi.org/project/polars/1.35.2/#files",
+      "downloadLocation": "https://pypi.org/project/polars/1.36.1/#files",
       "filesAnalyzed": false,
       "homepage": "https://www.pola.rs/",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "5e8057c8289ac148c793478323b726faea933d9776bd6b8a554b0ab7c03db87e"
+          "checksumValue": "853c1bbb237add6a5f6d133c15094a9b727d66dd6a4eb91dbb07cdb056b2b8ef"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -524,7 +524,7 @@
       "licenseComments": "polars declares Copyright (c) 2025 Ritchie Vink\nSome portions Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Blazingly fast DataFrame library",
-      "releaseDate": "2025-11-09T13:18:51Z",
+      "releaseDate": "2025-12-10T01:13:53Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -544,28 +544,28 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/polars@1.35.2"
+          "referenceLocator": "pkg:pypi/polars@1.36.1"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:ritchie_vink:polars:1.35.2:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:ritchie_vink:polars:1.36.1:*:*:*:*:*:*:*"
         }
       ]
     },
     {
       "SPDXID": "SPDXRef-13-polars-runtime-32",
       "name": "polars-runtime-32",
-      "versionInfo": "1.35.2",
+      "versionInfo": "1.36.1",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Ritchie Vink (ritchie46@gmail.com)",
-      "downloadLocation": "https://pypi.org/project/polars-runtime-32/1.35.2/#files",
+      "downloadLocation": "https://pypi.org/project/polars-runtime-32/1.36.1/#files",
       "filesAnalyzed": false,
       "homepage": "https://www.pola.rs/",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "e465d12a29e8df06ea78947e50bd361cdf77535cd904fd562666a8a9374e7e3a"
+          "checksumValue": "327b621ca82594f277751f7e23d4b939ebd1be18d54b4cdf7a2f8406cecc18b2"
         }
       ],
       "licenseConcluded": "MIT",
@@ -573,7 +573,7 @@
       "licenseComments": "polars-runtime-32 declares MIT License which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Blazingly fast DataFrame library",
-      "releaseDate": "2025-11-09T13:18:55Z",
+      "releaseDate": "2025-12-10T01:13:56Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -593,28 +593,28 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/polars-runtime-32@1.35.2"
+          "referenceLocator": "pkg:pypi/polars-runtime-32@1.36.1"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:ritchie_vink:polars-runtime-32:1.35.2:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:ritchie_vink:polars-runtime-32:1.36.1:*:*:*:*:*:*:*"
         }
       ]
     },
     {
       "SPDXID": "SPDXRef-14-geopandas",
       "name": "geopandas",
-      "versionInfo": "1.1.1",
+      "versionInfo": "1.1.2",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Kelsey Jordahl (kjordahl@alum.mit.edu)",
-      "downloadLocation": "https://pypi.org/project/geopandas/1.1.1/#files",
+      "downloadLocation": "https://pypi.org/project/geopandas/1.1.2/#files",
       "filesAnalyzed": false,
       "homepage": "https://geopandas.org",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "589e61aaf39b19828843df16cb90234e72897e2579be236f10eee0d052ad98e8"
+          "checksumValue": "2bb0b1052cb47378addb4ba54c47f8d4642dcbda9b61375638274f49d9f0bb0d"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -622,7 +622,7 @@
       "licenseComments": "geopandas declares BSD 3-Clause which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Geographic pandas extensions",
-      "releaseDate": "2025-06-26T21:04:55Z",
+      "releaseDate": "2025-12-22T21:06:12Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -632,12 +632,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/geopandas@1.1.1"
+          "referenceLocator": "pkg:pypi/geopandas@1.1.2"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:kelsey_jordahl:geopandas:1.1.1:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:kelsey_jordahl:geopandas:1.1.2:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -736,12 +736,18 @@
       "downloadLocation": "https://pypi.org/project/matplotlib/3.10.8/#files",
       "filesAnalyzed": false,
       "homepage": "https://matplotlib.org",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "00270d217d6b20d14b584c521f810d60c5c78406dc289859776550df837dcda7"
+        }
+      ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "licenseComments": "matplotlib declares License agreement for matplotlib versions 1.3.0 and later\n =========================================================\n\n 1. This LICENSE AGREEMENT is between the Matplotlib Development Team\n (\"MDT\"), and the Individual or Organization (\"Licensee\") accessing and\n otherwise using matplotlib software in source or binary form and its\n associated documentation.\n\n 2. Subject to the terms and conditions of this License Agreement, MDT\n hereby grants Licensee a nonexclusive, royalty-free, world-wide license\n to reproduce, analyze, test, perform and/or display publicly, prepare\n derivative works, distribute, and otherwise use matplotlib\n alone or in any derivative version, provided, however, that MDT's\n License Agreement and MDT's notice of copyright, i.e., \"Copyright (c)\n 2012- Matplotlib Development Team; All Rights Reserved\" are retained in\n matplotlib  alone or in any derivative version prepared by\n Licensee.\n\n 3. In the event Licensee prepares a derivative work that is based on or\n incorporates matplotlib or any part thereof, and wants to\n make the derivative work available to others as provided herein, then\n Licensee hereby agrees to include in any such work a brief summary of\n the changes made to matplotlib .\n\n 4. MDT is making matplotlib available to Licensee on an \"AS\n IS\" basis.  MDT MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR\n IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, MDT MAKES NO AND\n DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS\n FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF MATPLOTLIB\n WILL NOT INFRINGE ANY THIRD PARTY RIGHTS.\n\n 5. MDT SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF MATPLOTLIB\n  FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR\n LOSS AS A RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING\n MATPLOTLIB , OR ANY DERIVATIVE THEREOF, EVEN IF ADVISED OF\n THE POSSIBILITY THEREOF.\n\n 6. This License Agreement will automatically terminate upon a material\n breach of its terms and conditions.\n\n 7. Nothing in this License Agreement shall be deemed to create any\n relationship of agency, partnership, or joint venture between MDT and\n Licensee.  This License Agreement does not grant permission to use MDT\n trademarks or trade name in a trademark sense to endorse or promote\n products or services of Licensee, or any third party.\n\n 8. By copying, installing or otherwise using matplotlib ,\n Licensee agrees to be bound by the terms and conditions of this License\n Agreement.\n\n License agreement for matplotlib versions prior to 1.3.0\n ========================================================\n\n 1. This LICENSE AGREEMENT is between John D. Hunter (\"JDH\"), and the\n Individual or Organization (\"Licensee\") accessing and otherwise using\n matplotlib software in source or binary form and its associated\n documentation.\n\n 2. Subject to the terms and conditions of this License Agreement, JDH\n hereby grants Licensee a nonexclusive, royalty-free, world-wide license\n to reproduce, analyze, test, perform and/or display publicly, prepare\n derivative works, distribute, and otherwise use matplotlib\n alone or in any derivative version, provided, however, that JDH's\n License Agreement and JDH's notice of copyright, i.e., \"Copyright (c)\n 2002-2011 John D. Hunter; All Rights Reserved\" are retained in\n matplotlib  alone or in any derivative version prepared by\n Licensee.\n\n 3. In the event Licensee prepares a derivative work that is based on or\n incorporates matplotlib  or any part thereof, and wants to\n make the derivative work available to others as provided herein, then\n Licensee hereby agrees to include in any such work a brief summary of\n the changes made to matplotlib.\n\n 4. JDH is making matplotlib  available to Licensee on an \"AS\n IS\" basis.  JDH MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR\n IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, JDH MAKES NO AND\n DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS\n FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF MATPLOTLIB\n WILL NOT INFRINGE ANY THIRD PARTY RIGHTS.\n\n 5. JDH SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF MATPLOTLIB\n  FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR\n LOSS AS A RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING\n MATPLOTLIB , OR ANY DERIVATIVE THEREOF, EVEN IF ADVISED OF\n THE POSSIBILITY THEREOF.\n\n 6. This License Agreement will automatically terminate upon a material\n breach of its terms and conditions.\n\n 7. Nothing in this License Agreement shall be deemed to create any\n relationship of agency, partnership, or joint venture between JDH and\n Licensee.  This License Agreement does not grant permission to use JDH\n trademarks or trade name in a trademark sense to endorse or promote\n products or services of Licensee, or any third party.\n\n 8. By copying, installing or otherwise using matplotlib,\n Licensee agrees to be bound by the terms and conditions of this License\n Agreement. which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Python plotting package",
-      "releaseDate": "2025-09-24T13:50:00Z",
+      "releaseDate": "2025-12-10T22:55:02Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -871,33 +877,33 @@
     {
       "SPDXID": "SPDXRef-20-fonttools",
       "name": "fonttools",
-      "versionInfo": "4.61.0",
+      "versionInfo": "4.61.1",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Just van Rossum (just@letterror.com)",
-      "downloadLocation": "https://pypi.org/project/fonttools/4.61.0/#files",
+      "downloadLocation": "https://pypi.org/project/fonttools/4.61.1/#files",
       "filesAnalyzed": false,
       "homepage": "http://github.com/fonttools/fonttools",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "dc25a4a9c1225653e4431a9413d0381b1c62317b0f543bdcec24e1991f612f33"
+          "checksumValue": "7c7db70d57e5e1089a274cbb2b1fd635c9a24de809a231b154965d415d6c6d24"
         }
       ],
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
       "summary": "Tools to manipulate font files",
-      "releaseDate": "2025-11-28T17:04:14Z",
+      "releaseDate": "2025-12-12T17:29:27Z",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/fonttools@4.61.0"
+          "referenceLocator": "pkg:pypi/fonttools@4.61.1"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:just_van_rossum:fonttools:4.61.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:just_van_rossum:fonttools:4.61.1:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -953,23 +959,23 @@
     {
       "SPDXID": "SPDXRef-22-pillow",
       "name": "pillow",
-      "versionInfo": "12.0.0",
+      "versionInfo": "12.1.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Jeffrey A. (aclark@aclark.net)",
-      "downloadLocation": "https://pypi.org/project/pillow/12.0.0/#files",
+      "downloadLocation": "https://pypi.org/project/pillow/12.1.0/#files",
       "filesAnalyzed": false,
       "homepage": "https://python-pillow.github.io",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "3adfb466bbc544b926d50fe8f4a4e6abd8c6bffd28a26177594e6e9b2b76572b"
+          "checksumValue": "fb125d860738a09d363a88daa0f59c4533529a90e564785e20fe875b200b6dbd"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "summary": "Python Imaging Library (fork)",
-      "releaseDate": "2025-10-15T18:21:27Z",
+      "releaseDate": "2026-01-02T09:10:24Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1004,45 +1010,45 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/pillow@12.0.0"
+          "referenceLocator": "pkg:pypi/pillow@12.1.0"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:jeffrey_a.:pillow:12.0.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:jeffrey_a.:pillow:12.1.0:*:*:*:*:*:*:*"
         }
       ]
     },
     {
       "SPDXID": "SPDXRef-23-pyparsing",
       "name": "pyparsing",
-      "versionInfo": "3.2.5",
+      "versionInfo": "3.3.1",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Paul McGuire (ptmcg.gm+pyparsing@gmail.com)",
-      "downloadLocation": "https://pypi.org/project/pyparsing/3.2.5/#files",
+      "downloadLocation": "https://pypi.org/project/pyparsing/3.3.1/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/pyparsing/pyparsing/",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "e38a4f02064cf41fe6593d328d0512495ad1f3d8a91c4f73fc401b3079a59a5e"
+          "checksumValue": "023b5e7e5520ad96642e2c6db4cb683d3970bd640cdf7115049a6e9c3682df82"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "summary": "pyparsing - Classes and methods to define and execute parsing grammars",
-      "releaseDate": "2025-09-21T04:11:04Z",
+      "releaseDate": "2025-12-23T03:14:02Z",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/pyparsing@3.2.5"
+          "referenceLocator": "pkg:pypi/pyparsing@3.3.1"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:paul_mcguire:pyparsing:3.2.5:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:paul_mcguire:pyparsing:3.3.1:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -1162,16 +1168,16 @@
     {
       "SPDXID": "SPDXRef-27-pandera",
       "name": "pandera",
-      "versionInfo": "0.27.0",
+      "versionInfo": "0.27.1",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Niels Bantilan (niels.bantilan@gmail.com)",
-      "downloadLocation": "https://pypi.org/project/pandera/0.27.0/#files",
+      "downloadLocation": "https://pypi.org/project/pandera/0.27.1/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/pandera-dev/pandera",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "e43b8062dfcde984300d798686815cc93feaae09645d3cddee3ab437f2d11ed5"
+          "checksumValue": "944838f134035bbc548410943be662379669488e00f3d290ff2c36b6df52665e"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -1179,7 +1185,7 @@
       "licenseComments": "pandera declares MIT License\n\nCopyright (c) 2018 Niels Bantilan\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "A light-weight and flexible data validation and testing tool for statistical data objects.",
-      "releaseDate": "2025-11-25T16:20:33Z",
+      "releaseDate": "2025-12-22T19:02:30Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1194,12 +1200,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/pandera@0.27.0"
+          "referenceLocator": "pkg:pypi/pandera@0.27.1"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:niels_bantilan:pandera:0.27.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:niels_bantilan:pandera:0.27.1:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -1799,23 +1805,23 @@
     {
       "SPDXID": "SPDXRef-42-xarray",
       "name": "xarray",
-      "versionInfo": "2025.11.0",
+      "versionInfo": "2025.12.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: xarray Developers (xarray@googlegroups.com)",
-      "downloadLocation": "https://pypi.org/project/xarray/2025.11.0/#files",
+      "downloadLocation": "https://pypi.org/project/xarray/2025.12.0/#files",
       "filesAnalyzed": false,
       "homepage": "https://xarray.dev/",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "986893b995de4a948429356a3897d78e634243c1cac242bd59d03832b9d72dd1"
+          "checksumValue": "9e77e820474dbbe4c6c2954d0da6342aa484e33adaa96ab916b15a786181e970"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "summary": "N-D labeled arrays and datasets in Python",
-      "releaseDate": "2025-11-17T16:12:07Z",
+      "releaseDate": "2025-12-05T21:51:20Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1840,12 +1846,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/xarray@2025.11.0"
+          "referenceLocator": "pkg:pypi/xarray@2025.12.0"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:xarray_developers:xarray:2025.11.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:xarray_developers:xarray:2025.12.0:*:*:*:*:*:*:*"
         }
       ]
     }

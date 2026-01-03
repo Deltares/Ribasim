@@ -437,8 +437,12 @@ def generate(
     # Generate area and flows
     # File format is int32, float32 based
     # Time is internal clock, not real time!
-    flows.time = (flows.time - flows.time[0]).dt.total_seconds().astype("int32")
-    basins.time = (basins.time - basins.time[0]).dt.total_seconds().astype("int32")
+    flows["time"] = (
+        (flows["time"] - flows["time"].iloc[0]).dt.total_seconds().astype("int32")
+    )
+    basins["time"] = (
+        (basins["time"] - basins["time"].iloc[0]).dt.total_seconds().astype("int32")
+    )
 
     # Invert flows for half-link of cycles so later summing is correct
     m = flows.link_id.isin(merge_links)
