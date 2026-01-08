@@ -861,8 +861,7 @@ function add_route_priority_objective!(
     p_independent::ParametersIndependent,
 )::Nothing
     (; graph, allocation) = p_independent
-    (; problem, subnetwork_id, objectives, route_priority_expression) = allocation_model
-    (; objective_expressions_all, objective_metadata) = objectives
+    (; problem, subnetwork_id, route_priority_expression) = allocation_model
     flow = problem[:flow]
 
     # Add route priorities from primary network connections
@@ -879,6 +878,9 @@ function add_route_priority_objective!(
 
     # Sort node IDs for deterministic problem generation
     for node_id in sort!(collect(graph[].node_ids[subnetwork_id]))
+        if node_id.type == NodeType.Junction
+            continue
+        end
         (; route_priority) = graph[node_id]
         if !iszero(route_priority)
             for downstream_id in outflow_ids(graph, node_id)
