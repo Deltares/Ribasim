@@ -31,6 +31,7 @@ from ribasim_testmodels.allocation import (
     small_primary_secondary_network_model,
     small_primary_secondary_network_verification_model,
     subnetwork_model,
+    switch_between_control_state_Ribasim_allocation_model,
     user_demand_model,
 )
 from ribasim_testmodels.backwater import backwater_model
@@ -163,6 +164,7 @@ __all__ = [
     "small_primary_secondary_network_verification_model",
     "storage_condition_model",
     "subnetwork_model",
+    "switch_between_control_state_Ribasim_allocation_model",
     "tabulated_rating_curve_control_model",
     "tabulated_rating_curve_model",
     "transient_condition_model",

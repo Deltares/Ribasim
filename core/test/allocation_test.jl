@@ -739,3 +739,37 @@ end
         @test all(isapprox.(data.flow_rate, flow[1:(end - 1)], atol = 1e-5))
     end
 end
+
+@testitem "Switch between control state" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/switch_between_control_state_Ribasim_allocation/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    allocation_flow = DataFrame(Ribasim.flow_data(model))
+    flow = filter(:link_id => ==(3), allocation_flow)
+    basin_data = DataFrame(Ribasim.basin_data(model))
+
+    using Plots: plot, plot!
+    plot(
+        basin_data.time,
+        basin_data.level;
+        label = "Basin level",
+        xlabel = "Time",
+        ylabel = "Level (m)",
+        legend = :topright,
+    )
+    plot(
+        flow.flow_rate;
+        label = "Allocation flow",
+        xlabel = "Time",
+        ylabel = "Flow rate (m³/s)",
+        legend = :topright,
+    )
+end
