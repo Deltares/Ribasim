@@ -237,11 +237,8 @@ function update_concentrations!(u, t, integrator)::Nothing
     end
 
     # Exact boundary flow over time step
-    for (id, flow_rate, outflow_link) in zip(
-        flow_boundary.node_id,
-        flow_boundary.flow_rate,
-        flow_boundary.outflow_link,
-    )
+    for (id, flow_rate, outflow_link) in
+        zip(flow_boundary.node_id, flow_boundary.flow_rate, flow_boundary.outflow_link)
         outflow_id = outflow_link.link[2]
         added_boundary_flow = integral(flow_rate, tprev, t)
         add_substance_mass!(
@@ -658,7 +655,9 @@ function set_new_control_state!(
     truth_state::Vector{Bool},
 )::Nothing
     (; p) = integrator
-    (; discrete_control) = p.p_independent
+    # integrator.p.p_independent.
+    (; p_independent) = p
+    (; discrete_control, pump, outlet) = p_independent
 
     # Get the control state corresponding to the new truth state,
     # if one is defined
@@ -672,6 +671,9 @@ function set_new_control_state!(
     # If there is a change, update parameters and the discrete control record
     control_state_now = discrete_control.control_state[discrete_control_id.idx]
     if control_state_now != control_state_new
+        print(
+            "New control state $control_state_now for $discrete_control_id at t = $(integrator.t): \n",
+        )
         record = discrete_control.record
 
         push!(record.time, integrator.t)
@@ -682,6 +684,20 @@ function set_new_control_state!(
         # Loop over nodes which are under control of this control node
         for target_node_id in discrete_control.controlled_nodes[discrete_control_id.idx]
             set_control_params!(p, target_node_id, control_state_new)
+
+            if control_state_new == "Ribasim.allocation"
+                if target_node_id.type == NodeType.Pump
+                    pump.allocation_controlled[target_node_id.idx] = true
+                elseif target_node_id.type == NodeType.Outlet
+                    outlet.allocation_controlled[target_node_id.idx] = true
+                end
+            else
+                if target_node_id.type == NodeType.Pump
+                    pump.allocation_controlled[target_node_id.idx] = false
+                elseif target_node_id.type == NodeType.Outlet
+                    outlet.allocation_controlled[target_node_id.idx] = false
+                end
+            end
         end
 
         discrete_control.control_state[discrete_control_id.idx] = control_state_new

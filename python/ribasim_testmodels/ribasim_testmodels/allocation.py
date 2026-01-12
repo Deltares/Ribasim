@@ -2223,7 +2223,7 @@ def switch_between_control_state_Ribasim_allocation_model() -> Model:
     evaporation[270:366] = 1e-7
 
     basin_data: list[TableModel[Any]] = [
-        basin.Profile(area=[0.01, 1000000.0, 1000000.0], level=[-10, 1.0, 2.0]),
+        basin.Profile(area=[1_000_000.0, 1_000_000.0], level=[-10, 20.0]),
         basin.Time(
             time=pd.date_range(model.starttime, model.endtime),
             drainage=0.0,
@@ -2231,7 +2231,7 @@ def switch_between_control_state_Ribasim_allocation_model() -> Model:
             infiltration=0.0,
             precipitation=precipitation,
         ),
-        basin.State(level=[0.9]),
+        basin.State(level=[1.25]),
     ]
 
     basin1 = model.basin.add(Node(1, Point(0.0, 0.0), name="Reservoir"), basin_data)
@@ -2250,7 +2250,7 @@ def switch_between_control_state_Ribasim_allocation_model() -> Model:
                 threshold_high=[1.0],
             ),
             discrete_control.Logic(
-                control_state=["Ribasim.allocation", "flooding"],
+                control_state=["Ribasim.allocation", "prescribed"],
                 truth_state=["F", "T"],
             ),
         ],
@@ -2261,8 +2261,8 @@ def switch_between_control_state_Ribasim_allocation_model() -> Model:
         [
             outlet.Static(
                 flow_rate=[0, 1],
-                max_flow_rate=[0.08, 0.1],
-                control_state=["Ribasim.allocation", "flooding"],
+                max_flow_rate=[0.08, 0.05],
+                control_state=["Ribasim.allocation", "prescribed"],
             )
         ],
     )
@@ -2271,9 +2271,9 @@ def switch_between_control_state_Ribasim_allocation_model() -> Model:
         Node(4, Point(-1.0, 0.0)),
         [
             outlet.Static(
-                flow_rate=[1.0, 0],
-                max_flow_rate=[2.0, 0],
-                control_state=["Ribasim.allocation", "flooding"],
+                flow_rate=[0, 0],
+                max_flow_rate=[1, 0],
+                control_state=["Ribasim.allocation", "prescribed"],
             )
         ],
     )

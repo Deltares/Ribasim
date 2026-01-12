@@ -767,7 +767,7 @@ end
     )
     plot(
         flow.flow_rate;
-        label = "Allocation flow",
+        label = "Flow",
         xlabel = "Time",
         ylabel = "Flow rate (m³/s)",
         legend = :topright,
