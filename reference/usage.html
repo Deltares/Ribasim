@@ -617,7 +617,7 @@ The way the route priorities work is as follows: The priority that is assigned t
 </tbody>
 </table>
 <p>If verbosity is set to debug, the used <code>Basin / profile</code> dimensions (level, area and storage) are written to a CSV file in the results folder. This can be useful if you only provide 2 of the 3 columns and want to inspect the dimensions used in the computation.</p>
-<p>The format of the CSV is: column 1 = node id, column 2 = level, column 3 = area and row 4 is storage.</p>
+<p>The format of the CSV is: column 1 = node id, column 2 = level, column 3 = area and column 4 is storage.</p>
 <p>Lets say you have 2 basins at node 1 and node 2. Dimensions node 1: level = [0, 1, 2], area = [2, 2, 4] and storage = [0, 2, 6], Dimensions node 1: level = [0, 1, 2], area = [4, 4, 8] and storage = [0, 4, 12].</p>
 <p>Then the CSV will look like:</p>
 <table class="caption-top table">
@@ -746,7 +746,7 @@ Important
 </tbody>
 </table>
 <p>This means that two columns are required, one named <code>node_id</code>, that contained elements of type <code>Int32</code>, and a column named <code>storage</code> that contains elements of type <code>Float64</code>. The order of the columns does not matter. In some cases there may be restrictions on the values. This is indicated under <code>restriction</code>.</p>
-<p>Tables are also allowed to have rows for timestamps that are not part of the simulation, these will be ignored. That makes it easy to prepare data for a larger period, and test models on a shorted period.</p>
+<p>Tables are also allowed to have rows for timestamps that are not part of the simulation, these will be ignored. That makes it easy to prepare data for a larger period, and test models on a shorter period.</p>
 <p>When preparing the model for simulation, input validation is performed in the Julia core. The validation rules are described in the <a href="../reference/validation.html">validation</a> section.</p>
 </section>
 <section id="custom-metadata" class="level2" data-number="2.2">

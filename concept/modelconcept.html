@@ -320,7 +320,7 @@ window.Quarto = {
 <p><span class="math display">\[
 \frac{\mathrm{d}S}{\mathrm{d}t} = P + ET + Q_{rest}
 \]</span></p>
-<p>We don’t use these equations directly. Rather, we use an equivalent formulation where solve for the cumulative flows instead of the Basin storages. For more details on this see <a href="../concept/equations.html">Equations</a>.</p>
+<p>We don’t use these equations directly. Rather, we use an equivalent formulation where we solve for the cumulative flows instead of the Basin storages. For more details on this see <a href="../concept/equations.html">Equations</a>.</p>
 </section>
 <section id="time" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="time"><span class="header-section-number">1.2</span> Time</h2>
@@ -400,7 +400,7 @@ Figure&nbsp;3: Hupsel: tertiary surface water.
 </div>
 </div>
 </div>
-<p>Such a system may be capable of representing discharge, but it cannot represent residence times or differences in solute concentrations: within a single basin, a drop of water is mixed instantaneously. Instead, we may the group primary (P), secondary (S), and tertiary (T) surface waters. Then T may flow into S, S into P, and P discharges to the downstream basin (B.)</p>
+<p>Such a system may be capable of representing discharge, but it cannot represent residence times or differences in solute concentrations: within a single basin, a drop of water is mixed instantaneously. Instead, we may group the primary (P), secondary (S), and tertiary (T) surface waters. Then T may flow into S, S into P, and P discharges to the downstream basin (B.)</p>
 <div class="cell" data-layout-align="default">
 <div class="cell-output-display">
 <div>
@@ -426,7 +426,7 @@ Figure&nbsp;3: Hupsel: tertiary surface water.
 <li><a href="../reference/node/linear-resistance.html">LinearResistance</a>: bi-directional flow based on head difference and linear resistance. Node type typically used for bi-directional flow situations or situations where the head difference over a structure determines its actual flow capacity.</li>
 <li><a href="../reference/node/manning-resistance.html">ManningResistance</a>: bi-directional flow based on head difference and resistance using Manning-Gauckler formula. Same usage as LinearResistance, providing a better hydrological meaning to the resistance parameterization.</li>
 <li><a href="../reference/node/pump.html">Pump</a>: one-directional structure with a set flow rate. Node type typically used in combination with control to force water over the link.</li>
-<li><a href="../reference/node/outlet.html">Outlet</a>: one-directional gravity structure with a set flow rate. Node type typically used in combination with control to force water over the link, even if their is a mismatch in actual hydraulic capacity. The node type has an automated mechanism to stop the flow when the head difference is zero.</li>
+<li><a href="../reference/node/outlet.html">Outlet</a>: one-directional gravity structure with a set flow rate. Node type typically used in combination with control to force water over the link, even if there is a mismatch in actual hydraulic capacity. The node type has an automated mechanism to stop the flow when the head difference is zero.</li>
 </ul>
 <p>The control layer can activate or deactivate nodes, set flow rates for the Pump and Outlet, or choose different parameterizations for TabulatedRatingCurve, LinearResistance or ManningResistance.</p>
 <p>Connector nodes are required within a Ribasim network to determine the flow exchange between basins.</p>
