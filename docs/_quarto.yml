@@ -96,7 +96,6 @@ website:
         - dev/addnode.qmd
         - dev/python.qmd
         - dev/allocation.qmd
-        - dev/allocation-technical-reference.qmd
         - dev/bmi.qmd
         - dev/ci.qmd
         - dev/release.qmd

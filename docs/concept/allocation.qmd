@@ -7,7 +7,7 @@ In water resources management, allocation deals with distributing limited water 
 
 :::{.callout-note}
 ## Developer Documentation
-For technical implementation details including how mathematical formulations translate to code, see the [Allocation Technical Reference](/dev/allocation-technical-reference.qmd).
+For technical implementation details including how mathematical formulations translate to code, see the [Allocation](/dev/allocation.qmd).
 :::
 
 A concise overview of the interaction between the physical and allocation layers of Ribasim is shown in the diagram below.
