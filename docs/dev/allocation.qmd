@@ -2,6 +2,12 @@
 title: "Allocation"
 ---
 # Overview of allocation implementation {#sec-allocation-overview}
+
+:::{.callout-tip}
+## Technical Reference
+For detailed information on how mathematical formulations translate to JuMP code, the two-phase approach, and implementation patterns, see the [Allocation Technical Reference](/dev/allocation-technical-reference.qmd).
+:::
+
 In this document the allocation workflow is explained. Below is an overview of it.
 ```{mermaid}
 flowchart TD
