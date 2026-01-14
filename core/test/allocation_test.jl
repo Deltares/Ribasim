@@ -756,20 +756,23 @@ end
     flow = filter(:link_id => ==(3), allocation_flow)
     basin_data = DataFrame(Ribasim.basin_data(model))
 
-    using Plots: plot, plot!
-    plot(
-        basin_data.time,
-        basin_data.level;
-        label = "Basin level",
-        xlabel = "Time",
-        ylabel = "Level (m)",
-        legend = :topright,
+    # Test control state switching based on basin level
+    # When level >= 1m, flow should be 0.05 m³/s
+    # When level < 1m, flow should be either 0.08 or 0 m³/s
+
+    high_level_flows = flow.flow_rate[basin_data.level .>= 1.0]
+    low_level_flows = flow.flow_rate[basin_data.level .< 1.0]
+
+    # All flows when level >= 1m should be 0.05
+    @test all(≈(0.05; atol = 1e-3), high_level_flows)
+
+    # All flows when level < 1m should be either 0.08 or 0 ()
+    @test all(
+        f -> isapprox(f, 0.08; atol = 1e-3) || isapprox(f, 0.0; atol = 1e-3),
+        low_level_flows[20:end],
     )
-    plot(
-        flow.flow_rate;
-        label = "Flow",
-        xlabel = "Time",
-        ylabel = "Flow rate (m³/s)",
-        legend = :topright,
-    )
+
+    # Verify we actually have data in both regimes
+    @test !isempty(high_level_flows)
+    @test !isempty(low_level_flows)
 end

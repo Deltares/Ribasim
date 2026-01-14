@@ -655,7 +655,6 @@ function set_new_control_state!(
     truth_state::Vector{Bool},
 )::Nothing
     (; p) = integrator
-    # integrator.p.p_independent.
     (; p_independent) = p
     (; discrete_control, pump, outlet) = p_independent
 

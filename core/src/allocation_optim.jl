@@ -1021,13 +1021,6 @@ function apply_control_from_allocation!(
                     flow_rate,
                 ),
             )
-
-            # (; discrete_control) = p.p_independent
-            # (; control_mappings) = discrete_control
-            # control_state_update =
-            #     control_mappings[node_id.type][(node_id, "Ribasim.allocation")]
-            # (; scalar_update) = control_state_update
-            # scalar_update[1].value = flow_rate
         end
     end
     return nothing
