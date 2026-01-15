@@ -89,7 +89,7 @@ For each subnetwork, an allocation problem is formulated, which is stored in the
 
 ## Data processing
 ### Deriving link capacities
-Link capacities are important constraints in the optimization problem. They set the limit for the flows between the nodes. Therefore, the capacities of all the flow links in the subnetworks are obtained. The capacity of an link is given by the smallest `max_flow_rate` of the nodes connected to the links if these nodes have such a value. The capacities are stored in a `SparseArray` object from `JuMP.jl` called `capacities`, indexed by a tuple of node IDs.
+Link capacities are important constraints in the optimization problem. They set the limit for the flows between the nodes. Therefore, the capacities of all the flow links in the subnetworks are obtained. The capacity of a link is given by the smallest `max_flow_rate` of the nodes connected to the links if these nodes have such a value. The capacities are stored in a `SparseArray` object from `JuMP.jl` called `capacities`, indexed by a tuple of node IDs.
 
 The function `get_capacity` obtains the capacities of the links within a subnetwork given a subnetwork ID and the Ribasim model parameters `p`, if the sources of the subnetwork are valid (checked in function `valid_sources`).
 

@@ -27,7 +27,7 @@ $$
 $$
 
 We don't use these equations directly.
-Rather, we use an equivalent formulation where solve for the cumulative flows instead of the Basin storages.
+Rather, we use an equivalent formulation where we solve for the cumulative flows instead of the Basin storages.
 For more details on this see [Equations](/concept/equations.qmd).
 
 ## Time
@@ -96,7 +96,7 @@ graph LR;
 ```
 
 Such a system may be capable of representing discharge, but it cannot represent residence times or differences in solute concentrations: within a single basin, a drop of water is mixed instantaneously.
-Instead, we may the group primary (P), secondary (S), and tertiary (T) surface waters.
+Instead, we may group the primary (P), secondary (S), and tertiary (T) surface waters.
 Then T may flow into S, S into P, and P discharges to the downstream basin (B.)
 
 ```{mermaid}
@@ -122,7 +122,7 @@ situations or situations where the head difference over a structure determines i
 providing a better hydrological meaning to the resistance parameterization.
 - [Pump](/reference/node/pump.qmd): one-directional structure with a set flow rate. Node type typically used in combination with control to force water over the link.
 - [Outlet](/reference/node/outlet.qmd): one-directional gravity structure with a set flow rate. Node type typically used in combination with control to force water over the link, even if
-their is a mismatch in actual hydraulic capacity. The node type has an automated mechanism to stop the flow when the head difference is zero.
+there is a mismatch in actual hydraulic capacity. The node type has an automated mechanism to stop the flow when the head difference is zero.
 
 The control layer can activate or deactivate nodes, set flow rates for the Pump and Outlet, or choose different parameterizations for TabulatedRatingCurve, LinearResistance or ManningResistance.
 
