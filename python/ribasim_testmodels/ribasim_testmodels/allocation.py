@@ -2087,15 +2087,15 @@ def polder_management_model() -> Model:
         [level_demand.Static(min_level=[0.9], max_level=[0.9], demand_priority=[1])],
     )
 
-    # Level demand on boezem 3 maintain 5.0 m
+    # Level demand on boezem 3 maintain 1.2 m
     level3 = model.level_demand.add(
         Node(102, Point(2.0, -1), name="boezem#3 level demand"),
-        [level_demand.Static(min_level=[5], max_level=[5], demand_priority=[1])],
+        [level_demand.Static(min_level=[1.2], max_level=[1.2], demand_priority=[1])],
     )
 
     # increase initial level of the boezem
-    model.basin.state.df.loc[model.basin.state.df.node_id == 3, "level"] = 5
-    model.basin.state.df.loc[model.basin.state.df.node_id == 9, "level"] = 5
+    model.basin.state.df.loc[model.basin.state.df.node_id == 3, "level"] = 1.2
+    model.basin.state.df.loc[model.basin.state.df.node_id == 9, "level"] = 1.2
 
     model.link.add(level4, basin4)
     model.link.add(level6, basin6)
