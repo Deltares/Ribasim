@@ -5,8 +5,6 @@ environments:
     - url: https://conda.anaconda.org/conda-forge/
     indexes:
     - https://pypi.org/simple
-    options:
-      pypi-prerelease-mode: if-necessary-or-explicit
     packages:
       linux-64:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
@@ -2127,8 +2125,6 @@ environments:
     - url: https://conda.anaconda.org/conda-forge/
     indexes:
     - https://pypi.org/simple
-    options:
-      pypi-prerelease-mode: if-necessary-or-explicit
     packages:
       linux-64:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
@@ -25194,6 +25190,7 @@ packages:
   - ribasim-testmodels ; extra == 'tests'
   - teamcity-messages ; extra == 'tests'
   requires_python: '>=3.12'
+  editable: true
 - pypi: ./python/ribasim_api
   name: ribasim-api
   version: 2026.1.0rc1
@@ -25204,6 +25201,7 @@ packages:
   - ribasim ; extra == 'tests'
   - ribasim-testmodels ; extra == 'tests'
   requires_python: '>=3.12'
+  editable: true
 - pypi: ./python/ribasim_testmodels
   name: ribasim-testmodels
   version: 2026.1.0rc1
@@ -25215,6 +25213,7 @@ packages:
   - ribasim
   - pytest ; extra == 'tests'
   requires_python: '>=3.12'
+  editable: true
 - conda: https://conda.anaconda.org/conda-forge/noarch/rich-14.2.0-pyhcf101f3_0.conda
   sha256: edfb44d0b6468a8dfced728534c755101f06f1a9870a7ad329ec51389f16b086
   md5: a247579d8a59931091b16a1e932bbed6

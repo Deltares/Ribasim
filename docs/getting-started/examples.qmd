@@ -557,270 +557,290 @@ ax.plot(times, level_demands, color="k", ls=":", label="target level")
 pass
 ```
 
-# Guidance of modeling a cascade of polder basins
+# Polder/Boezem water management with allocation
 
-**Situation description**: This example shows how to make a model for a given practical water system, which consists of a cascade of level control polder basins with inlet and outlet to the main systems. Note that alternative model layouts are feasible for the same water system, each having its positive items and drawbacks.
+**Situation description**: This example demonstrates a typical Dutch polder and boezem (storage basin) system that uses allocation to maintain target water levels under varying hydrological conditions. The model includes two polder basins at different elevations and two connected boezem basins, with controlled flows between them.
 
-<img alt="Cascading polders" src="https://github.com/Deltares/Ribasim/assets/4471859/6dba5af2-14fb-47a5-bdfe-69c2c41f761d" class="img-fluid">
+In the Netherlands, polders are low-lying areas protected by dikes, typically with water levels maintained below the surrounding area. The boezem is a higher water system that collects water from multiple polders and manages water distribution. This hierarchy requires careful water management through pumps, outlets, and controlled structures.
 
-The polder system is composed of a sequence of level controlled polder basins with weirs inbetween each basin and an inlet and outlet to main system
+**Model approach**: The model uses Ribasim's allocation feature to intelligently manage water distribution during both wet and dry seasons. The system experiences:
+
+- **Wet periods** (days 1-90 and 180-270): Precipitation exceeds evaporation, requiring water removal from polders
+- **Dry periods** (days 90-180 and 270-366): Evaporation exceeds precipitation, requiring water supply to maintain target levels
+
+Setup the model with allocation enabled:
 
 ```{python}
-model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+
+from ribasim.nodes import (
+    flow_demand
+)
+
+model = Model(
+    starttime="2020-01-01",
+    endtime="2021-01-01",
+    crs="EPSG:4326",
+    experimental=Experimental(allocation=True),
+)
 ```
 
-All the polder basins are exposed to time varying forcings (precipitation, evaporation, drainage, infiltration) to mimic situations of water excess and water shortage.
-
-In case of water excess, a pump in the most downstream polder will need to pump the surplus water to the main water system. In case of water shortage, an inlet at the most upstream polder will need to bring water into the cascase of polders. The main water system acts as a water source.
-
-**Model approach**:  All polder basins as well as the main water system are modelled with basin nodes. To let the system experience all 4 excess/shortage situation, forcing time series are made in a way that is adapting to them. Overall, assume that in one year, the system will experience precipitation (situation 1) in winter and early spring, precipitation shortage (situation 2) from late spring until early autumn. During situation 2, polder basin 4 will experience additional seepage (compoensating its shortage), and later polder basin 3 will also receive more seepage.
-
-Setting up the basins:
+Create time-varying precipitation and evaporation patterns:
 
 ```{python}
 time = pd.date_range(model.starttime, model.endtime)
 day_of_year = time.day_of_year.to_numpy()
 
 precipitation = np.zeros(day_of_year.size)
-precipitation[0:90] = 1.72e-8
-precipitation[330:366] = 1.72e-8
+precipitation[0:90] = 1e-6
+precipitation[90:180] = 0
+precipitation[180:270] = 1e-6
+precipitation[270:366] = 0
 
 evaporation = np.zeros(day_of_year.size)
-evaporation[130:270] = 2.87e-8
+evaporation[0:90] = 0
+evaporation[90:180] = 1e-6
+evaporation[180:270] = 0
+evaporation[270:366] = 1e-6
+```
 
-drainage = np.zeros(day_of_year.size)
-drainage[120:270] = 0.4 * 2.87e-8
-drainage_3 = drainage.copy()
-drainage_3[210:240] = 17 * 2.87e-8
-drainage_4 = drainage.copy()
-drainage_4[160:240] = 13 * 2.87e-8
+Setup the basins with identical profiles and forcing:
 
-infiltration = np.zeros(day_of_year.size)
-infiltration[0:90] = 5e-8
-
-polder_profile = basin.Profile(area=[100, 100], level=[0.0, 3.0])
-
-basin_time = [
+```{python}
+basin_data = [
+    basin.Profile(area=[0.01, 1000000.0, 1000000.0, 1000000.0], level=[-10, 1.0, 2.0, 10]),
     basin.Time(
-        time=pd.date_range(model.starttime, model.endtime),
-        drainage=drainage,
+        time=time,
+        drainage=0.0,
         potential_evaporation=evaporation,
         infiltration=0.0,
         precipitation=precipitation,
     ),
+    basin.State(level=[0.9]),
 ]
 
-basin_time4 = [
-    basin.Time(
-        time=pd.date_range(model.starttime, model.endtime),
-        drainage=drainage_4,
-        potential_evaporation=evaporation,
-        infiltration=0.0,
-        precipitation=precipitation,
-    ),
-]
-basin_time3 = [
-    basin.Time(
-        time=pd.date_range(model.starttime, model.endtime),
-        drainage=drainage_3,
-        potential_evaporation=evaporation,
-        infiltration=0.0,
-        precipitation=precipitation,
-    ),
-]
+basin3 = model.basin.add(Node(3, Point(2.0, 0.0), name="Boezem"), basin_data)
+basin4 = model.basin.add(Node(4, Point(2.0, 2.0), name="Polder"), basin_data)
+basin6 = model.basin.add(Node(6, Point(4.0, 2.0), name="Polder"), basin_data)
+basin9 = model.basin.add(Node(9, Point(4.0, 0.0), name="Boezem"), basin_data)
+```
 
-model.basin.add(
-    Node(1, Point(2.0, 0.0)),
+The key to this model is using `LevelDemand` nodes to specify target levels for each polder and the boezem. The allocation algorithm will automatically determine required flows:
+
+```{python}
+# Level demand on polder 4: maintain exactly 1.0 m
+level4 = model.level_demand.add(
+    Node(100, Point(2.0, 2.5), name="polder#4 level demand"),
+    [level_demand.Static(min_level=[1.0], max_level=[1.0], demand_priority=[1])],
+)
+
+# Level demand on polder 6: maintain exactly 0.9 m
+level6 = model.level_demand.add(
+    Node(101, Point(4.0, 2.5), name="polder#6 level demand"),
+    [level_demand.Static(min_level=[0.9], max_level=[0.9], demand_priority=[1])],
+)
+
+# Level demand on boezem 3: maintain 5.0 m
+level3 = model.level_demand.add(
+    Node(102, Point(2.0, -1), name="boezem#3 level demand"),
+    [level_demand.Static(min_level=[5], max_level=[5], demand_priority=[1])],
+)
+
+# Set initial boezem levels to 5m
+model.basin.state.df.loc[model.basin.state.df.node_id==3, 'level'] = 5
+model.basin.state.df.loc[model.basin.state.df.node_id==9, 'level'] = 5
+
+model.link.add(level4, basin4)
+model.link.add(level6, basin6)
+model.link.add(level3, basin3)
+```
+
+Setup level boundaries representing external water systems:
+
+```{python}
+level_boundary11 = model.level_boundary.add(
+    Node(11, Point(0, 0)), [level_boundary.Static(level=[10])]
+)
+level_boundary17 = model.level_boundary.add(
+    Node(17, Point(6, 0)), [level_boundary.Static(level=[0.9])]
+)
+```
+
+Setup outlets with allocation control. Note `control_state="Ribasim.allocation"` which tells the allocation algorithm to control these nodes:
+
+```{python}
+# Inlet from boezem to polder 4
+outlet5 = model.outlet.add(
+    Node(5, Point(2, 1), name="inlaat"),
     [
-        basin.State(level=[2.5]),
-        basin.Profile(area=[1000, 1000], level=[0.0, 3.0]),
-        basin.Time(
-            time=pd.date_range(model.starttime, model.endtime),
-            drainage=0.0,
-            potential_evaporation=0.0,
-            infiltration=0.0,
-            precipitation=0.0,
-        ),
+        outlet.Static(
+            control_state="Ribasim.allocation",
+            flow_rate=[0.0],
+            max_flow_rate=5.0,
+        )
     ],
 )
-model.basin.add(
-    Node(4, Point(0.0, -2.0)),
-    [basin.State(level=[1.5]), polder_profile, *basin_time],
+
+# Bidirectional flow between polders
+outlet13 = model.outlet.add(
+    Node(13, Point(3, 2), name="inlaat/uitlaat"),
+    [
+        outlet.Static(
+            control_state="Ribasim.allocation",
+            flow_rate=[0.0],
+            max_flow_rate=5.0
+        )
+    ],
 )
-model.basin.add(
-    Node(6, Point(0.0, -4.0)),
-    [basin.State(level=[1.0]), polder_profile, *basin_time],
+
+# Allocation-controlled outlets for water balance management
+outlet10 = model.outlet.add(
+    Node(10, Point(5.0, 0.0)),
+    [outlet.Static(
+        control_state="Ribasim.allocation",
+        flow_rate=[0.0],
+        max_flow_rate=10
+    )],
 )
-model.basin.add(
-    Node(8, Point(2.0, -4.0)),
-    [basin.State(level=[1.5]), polder_profile, *basin_time3],
-)
-model.basin.add(
-    Node(10, Point(4.0, -4.0)),
-    [basin.State(level=[1.3]), polder_profile, *basin_time4],
-)
-model.basin.add(
-    Node(12, Point(4.0, -2.0)),
-    [basin.State(level=[0.1]), polder_profile, *basin_time],
+
+outlet12 = model.outlet.add(
+    Node(12, Point(1.0, 0)),
+    [outlet.Static(
+        control_state="Ribasim.allocation",
+        flow_rate=[0.0],
+        max_flow_rate=10.0)],
 )
 ```
 
-After all the basins are defined the connecting component inbetween the basins needs to be determined. For polder basin 5 (node 12), the water level needs to be maintain at 0.0 meter. This means that either there should be no water in this basin, or the basin bottom is lower than the reference level, and the water level should be maintained at the reference level.
-
-Since the water level of the main system is at 2.5 meter above the reference level a pump is needed to remove the water from polder basin 5.
-
-Setup the pumps:
+Setup a pump controlled by allocation for removing excess water:
 
 ```{python}
-model.pump.add(
-    Node(13, Point(4.0, -1.0)),
-    [pump.Static(flow_rate=[0.5 / 3600])],
+pump7 = model.pump.add(
+    Node(7, Point(4, 1), name="drainage pumping station"),
+    [
+        pump.Static(
+            control_state="Ribasim.allocation",
+            flow_rate=[0.0],
+            max_flow_rate=20.0,
+        )
+    ],
 )
 ```
 
-According to the description of situation 1 and 2, the water in one polder basin needs to be able to flow to the downstream basin if the current basin has too much water (i.e. the water level is above the setpoint) or if the downstream basin is below setpoint and needs more water. This could be modelled with an uncontrolled TabulatedRatingCurve node with Q=0 at the setpoint level (and Q rising when the level rises above setpoint) , or with an Outlet node where the `min_upstream_level` is specified at or just below the setpoint. In this example, we've chosen for the Outlet where we specify the minimum upstream level 5 cm below the setpoint. For example: the Outlet of polder basin 1 (node 4) is specified with a minimum upstream level of 1.95 meter.
-
-Setup the outlets:
+Add a flushing demand (water quality management) during day 90-180:
 
 ```{python}
-# Set up outlet
-model.outlet.add(
-    Node(2, Point(0.0, -1.0)),
-    [outlet.Static(flow_rate=[2 * 0.5 / 3600], min_upstream_level=[0.0])],
+t = pd.date_range(model.starttime, model.endtime, freq="D")
+d = np.zeros(len(t))
+d[90:180] = 1.5
+
+pump7_alloc = model.flow_demand.add(
+    Node(70, Point(5.0, 1), name="flush=1.5m3/s"),
+    [
+        flow_demand.Time(
+            time=t,
+            demand_priority=[2] * len(t),
+            demand=d,
+        )
+    ],
 )
-model.outlet.add(
-    Node(5, Point(0.0, -3.0)),
-    [outlet.Static(flow_rate=[0.5 / 3600], min_upstream_level=[1.95])],
-)
-model.outlet.add(
-    Node(7, Point(1.0, -4.0)),
-    [outlet.Static(flow_rate=[0.5 / 3600], min_upstream_level=[1.45])],
-)
-model.outlet.add(
-    Node(9, Point(3.0, -4.0)),
-    [outlet.Static(flow_rate=[0.5 / 3600], min_upstream_level=[0.95])],
-)
-model.outlet.add(
-    Node(11, Point(4.0, -3.0)),
-    [outlet.Static(flow_rate=[0.5 / 3600], min_upstream_level=[0.45])],
-)
+model.link.add(pump7_alloc, pump7)
 ```
 
-When using Outlets as connecting nodes, the flow over the Outlet needs to be controlled to maintain the water level at the setpoint. For this purpose we introduce local PidControllers, where the targets of the PidControllers are set to the setpoints. Disadvantage of this local control approach is the delay that is introduced to transport the 'basin X has a shortage' message upstream through the cascade to the inlet. Current functionality does not offer the capability for PidControl to take multiple observations into account when controlling the inlet. Combining multiple observations in one control is feasible with DiscreteControl. This could be an alternative approach to controlling the inlet for the cascading water system.
-
-Setup the PID control:
+Setup Manning resistance to model open channel flow. The `route_priority=0` ensures this is the main water route:
 
 ```{python}
-pid_control_data = {
-    "proportional": [0.05],
-    "integral": [0.00],
-    "derivative": [0.0],
-}
-model.pid_control.add(
-    Node(3, Point(-1.0, -1.0)),
-    [pid_control.Static(listen_node_id=[4], target=[2.0], **pid_control_data)],
-)
-model.pid_control.add(
-    Node(14, Point(-1.0, -3.0)),
-    [pid_control.Static(listen_node_id=[6], target=[1.5], **pid_control_data)],
-)
-model.pid_control.add(
-    Node(15, Point(1.0, -3.0)),
-    [pid_control.Static(listen_node_id=[8], target=[1.0], **pid_control_data)],
-)
-model.pid_control.add(
-    Node(16, Point(3.0, -3.0)),
-    [pid_control.Static(listen_node_id=[10], target=[0.5], **pid_control_data)],
+manning_resistance2 = model.manning_resistance.add(
+    Node(2, Point(3, 0.0), route_priority=0),
+    [
+        manning_resistance.Static(
+            length=[900], manning_n=[0.04], profile_width=[6.0], profile_slope=[3.0]
+        )
+    ],
 )
 ```
 
-Setup the links:
+Setup the links to connect all components:
 
 ```{python}
-model.link.add(model.basin[1], model.outlet[2])
-model.link.add(model.pid_control[3], model.outlet[2])
-model.link.add(model.outlet[2], model.basin[4])
-model.link.add(model.basin[4], model.outlet[5])
-model.link.add(model.outlet[5], model.basin[6])
-model.link.add(model.basin[6], model.outlet[7])
-model.link.add(model.outlet[7], model.basin[8])
-model.link.add(model.basin[8], model.outlet[9])
-model.link.add(model.outlet[9], model.basin[10])
-model.link.add(model.basin[10], model.outlet[11])
-model.link.add(model.outlet[11], model.basin[12])
-model.link.add(model.basin[12], model.pump[13])
-model.link.add(model.pump[13], model.basin[1])
-model.link.add(model.pid_control[14], model.outlet[5])
-model.link.add(model.pid_control[15], model.outlet[7])
-model.link.add(model.pid_control[16], model.outlet[9])
+model.link.add(level_boundary11, outlet12)
+model.link.add(outlet12, basin3)
+model.link.add(basin3, outlet5)
+model.link.add(outlet5, basin4)
+model.link.add(basin4, outlet13)
+model.link.add(outlet13, basin6)
+model.link.add(basin6, pump7)
+model.link.add(pump7, basin9)
+model.link.add(basin3, manning_resistance2)
+model.link.add(manning_resistance2, basin9)
+model.link.add(basin9, outlet10)
+model.link.add(outlet10, level_boundary17)
 ```
 
-To plot the model
+All nodes need to be assigned to a subnetwork for allocation:
+
+```{python}
+for node in model._nodes():
+    if node.node.df is not None:
+        node.node.df.subnetwork_id = 1
+```
+
+Let's visualize the model structure:
 
 ```{python}
 model.plot()
 ```
 
-Write the model to a TOML file and run it in the Julia.
+Write and run the model:
 
 ```{python}
 datadir = Path("data")
-model.write(datadir / "local_pidcontrolled_cascade/ribasim.toml")
+model.write(datadir / "polder_management/ribasim.toml")
+run_ribasim(datadir / "polder_management/ribasim.toml")
 ```
 
-Now run the model.
+Analyze the results - first look at basin levels:
 
 ```{python}
-run_ribasim(datadir / "local_pidcontrolled_cascade/ribasim.toml")
+df_basin = pd.read_feather(datadir / "polder_management/results/basin.arrow")
+df_basin_wide = df_basin.pivot_table(
+    index="time", columns="node_id", values=["storage", "level"]
+)
+
+ax = df_basin_wide["level"].plot()
+ax.axhline(y=1.0, color="red", linestyle="--", label="Polder 4 target")
+ax.axhline(y=0.9, color="orange", linestyle="--", label="Polder 6 target")
+ax.set_ylabel("level [m]")
+ax.legend()
+plt.show()
 ```
 
-After running the model, read back the result to plot the flow of each polder basin.
+The plot shows how allocation maintains the polder target levels (1.0 m for basin 4, 0.9 m for basin 6) despite varying precipitation and evaporation.
+
+Examine the flow rates managed by allocation:
 
 ```{python}
-datadir_flow = datadir / "local_pidcontrolled_cascade/results/flow.arrow"
-df_flow = pd.read_feather(datadir_flow)
+df_flow = pd.read_feather(datadir / "polder_management/results/flow.arrow")
 df_flow["link"] = list(zip(df_flow.from_node_id, df_flow.to_node_id))
 df_flow["flow_m3d"] = df_flow.flow_rate * 86400
 
-df_pivot = df_flow.pivot_table(index="time", columns="link", values="flow_m3d")
+# Focus on allocation-controlled structures
+controlled_links = [(3, 5), (4, 13), (6, 7)]  # inlet, polder connection, pump
+df_controlled = df_flow[df_flow["link"].isin(controlled_links)]
+df_pivot = df_controlled.pivot_table(index="time", columns="link", values="flow_m3d")
+
+ax = df_pivot.plot()
+ax.set_ylabel("flow [m³/day]")
+ax.legend(title="Link (from → to)", labels=["Boezem→Polder4", "Polder4→Polder6", "Polder6→Boezem"])
+plt.show()
 ```
 
-Below graphs show the flow exchanged with the mainsystem (i.e. the inlet and the pump), and the flow of weirs inbetween the polder basins.
+The allocation algorithm automatically:
 
-```{python}
-df_input = df_pivot.loc[:, [(1, 2), (13, 1)]]
-ax = df_input.plot(ylim=[-1.0, 20.0])
-ax.set_ylabel("flow [m³day⁻¹]")
-df_weirs = df_pivot.loc[:, [(4, 5), (6, 7), (8, 9), (10, 11)]]
-ax = df_weirs.plot(ylim=[-1.0, 15.0])
-ax.set_ylabel("flow [m³day⁻¹]");
-```
-
- Below graph shows the vertical flux on each basin.
-
-```{python}
-datadir_basin = datadir / "local_pidcontrolled_cascade/results/basin.arrow"
-df_basin = pd.read_feather(datadir_basin)
-df_basin["vertical_flux"] = (
-    df_basin["precipitation"]
-    - df_basin["evaporation"]
-    + df_basin["drainage"]
-    + df_basin["infiltration"]
-)
-df_basin_wide = df_basin.pivot_table(
-    index="time", columns="node_id", values=["storage", "level", "vertical_flux"]
-)
-df_basin_wide["vertical_flux"] *= 86400
-ax = df_basin_wide["vertical_flux"].plot()
-ax.set_ylabel("vertical flux [m³day⁻¹]");
-```
-
-In the following graph, the water level of basins are shown. The five polder basins are given starting levels that are different from their setpoints. It can be observed that in the beginning, the water level are changing and approaching to the set points. Later when the water levels are stable, they will not be affected by the forcing.
-
-```{python}
-ax = df_basin_wide["level"].plot()
-ax.set_ylabel("level [m]");
-```
+- Supplies water during dry periods (positive flow through inlet)
+- Removes excess water during wet periods (positive flow through pump)
+- Transfers water between polders as needed
+- Respects maximum flow rate constraints
+- Prioritizes demands by priority level
 
 # Model with continuous control
 
