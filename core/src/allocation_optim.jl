@@ -1045,14 +1045,11 @@ function delete_control_constraints!(
     constraint_key::Symbol,
 )::Nothing
     (; problem) = allocation_model
-
-    try
+    if haskey(problem, constrain_key)
         constraints = problem[constraint_key]
         for constraint in constraints
             JuMP.delete(problem, constraint)
         end
-    catch err
-        err isa KeyError || rethrow(err)
     end
 
     return nothing

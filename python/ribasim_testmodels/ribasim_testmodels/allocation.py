@@ -2189,17 +2189,11 @@ def polder_management_model() -> Model:
     model.link.add(outlet12, basin3)
     model.link.add(outlet10, level_boundary17)
 
-    # Give all nodes subnetwork_id 1
-    for node in model._nodes():
-        # check if node is None
-        if node.node.df is not None:
-            node.node.df.subnetwork_id = 1
-
     return model
 
 
-def switch_between_control_state_Ribasim_allocation_model() -> Model:
-    """Create a model that has various nodes controlled by allocation."""
+def switch_allocation_control_model() -> Model:
+    """Create a model that switches allocation control on and off based on a DiscreteControl node."""
     # Basin data
     model = Model(
         starttime="2020-01-01",
@@ -2289,12 +2283,6 @@ def switch_between_control_state_Ribasim_allocation_model() -> Model:
         Node(7, Point(0.0, 1.0)),
         [level_demand.Static(min_level=[0.9], max_level=[0.9], demand_priority=1)],
     )
-
-    # Give all nodes subnetwork_id 1
-    for node in model._nodes():
-        # check if node is None
-        if node.node.df is not None:
-            node.node.df.subnetwork_id = 1
 
     model.link.add(level_boundary5, inlet4)
     model.link.add(inlet4, basin1)

@@ -745,7 +745,7 @@ end
 
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/switch_between_control_state_Ribasim_allocation/ribasim.toml",
+        "../../generated_testmodels/switch_allocation_control/ribasim.toml",
     )
     @test ispath(toml_path)
 

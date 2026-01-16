@@ -670,9 +670,6 @@ function set_new_control_state!(
     # If there is a change, update parameters and the discrete control record
     control_state_now = discrete_control.control_state[discrete_control_id.idx]
     if control_state_now != control_state_new
-        print(
-            "New control state $control_state_now for $discrete_control_id at t = $(integrator.t): \n",
-        )
         record = discrete_control.record
 
         push!(record.time, integrator.t)
