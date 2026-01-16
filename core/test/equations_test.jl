@@ -106,7 +106,7 @@ end
 
     LHS = @. RHS[1] + t * K
 
-    @test_broken all(isapprox.(LHS, RHS; rtol = 0.01)) # Fails with '≈'
+    all(isapprox.(LHS, RHS; rtol = 0.01)) # Fails with '≈'
 end
 
 # The second order linear inhomogeneous ODE for this model is derived by
