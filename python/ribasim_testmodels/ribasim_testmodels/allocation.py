@@ -337,7 +337,7 @@ def minimal_subnetwork_model() -> Model:
     model.basin.add(Node(2, Point(0, 1), subnetwork_id=2), basin_data)
     model.pump.add(
         Node(3, Point(0, 2), subnetwork_id=2),
-        [pump.Static(flow_rate=[2e-3], max_flow_rate=4e-3)],
+        [pump.Static(flow_rate=[4e-3], max_flow_rate=4e-3)],
     )
     model.basin.add(Node(4, Point(0, 3), subnetwork_id=2), basin_data)
     model.user_demand.add(
