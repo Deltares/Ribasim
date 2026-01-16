@@ -2057,7 +2057,7 @@ def polder_management_model() -> Model:
     evaporation[180:270] = 0
     evaporation[270:366] = 1e-6
 
-    basin_data = [
+    basin_data: list[TableModel[Any]] = [
         basin.Profile(
             area=[0.01, 1000000.0, 1000000.0, 1000000.0], level=[-10, 1.0, 2.0, 10]
         ),
@@ -2094,6 +2094,7 @@ def polder_management_model() -> Model:
     )
 
     # increase initial level of the boezem
+    assert model.basin.state.df is not None
     model.basin.state.df.loc[model.basin.state.df.node_id == 3, "level"] = 1.2
     model.basin.state.df.loc[model.basin.state.df.node_id == 9, "level"] = 1.2
 
