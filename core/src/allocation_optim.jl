@@ -175,6 +175,9 @@ function linearize_connector_node!(
     (; scaling, Δt_allocation) = allocation_model
     (; inflow_link, outflow_link) = connector_node
 
+    # Mathematical formulation: Taylor series linearization around current state
+    # Q^{n+1} ≈ Q^n + (∂Q/∂h_a)(h_a^{n+1} - h_a^n) + (∂Q/∂h_b)(h_b^{n+1} - h_b^n)
+    #
     # Evaluate at the end of the allocation time step because of the implicit Euler formulation of the physics.
     # For levels that come from a Basin `get_level` yields the level at the beginning of the time step,
     # which is the point at which we want to linearize.
@@ -531,6 +534,16 @@ function set_demands!(
     (; problem, objectives, scaling) = allocation_model
     is_flow_demand = (node isa FlowDemand)
 
+    # Update optimization problem with current demands from physical layer
+    # Mathematical formulation of error constraint:
+    #   d * E ≥ d - F_allocated
+    # where:
+    #   d = demand at current priority
+    #   E = error variable (relative error, forced to be ≥ (d - F)/d)
+    #   F_allocated = allocated flow for this priority
+    #
+    # Multiplication by d makes this effectively minimize absolute error
+
     # Retrieve variable and constraint collections from the JuMP problem
     average_flow_unit_error = problem[:average_flow_unit_error]
     average_flow_unit_error_constraint = problem[:average_flow_unit_error_constraint]
@@ -605,6 +618,15 @@ function set_demands!(
     storage_constraint_lower = problem[:storage_constraint_lower]
     storage_constraint_upper = problem[:storage_constraint_upper]
 
+    # Update optimization problem with current level demands
+    # Mathematical formulation:
+    #   Lower bound: E_lower ≥ s(h_min) - (s(h_init) + ΔS)
+    #   Upper bound: E_upper ≥ (s(h_init) + ΔS) - s(h_max)
+    # where:
+    #   s(h) = basin storage at level h
+    #   h_init = current basin level
+    #   ΔS = storage change variable
+    #   E_lower, E_upper = absolute storage error variables
     average_storage_unit_error = problem[:average_storage_unit_error]
     average_storage_unit_error_constraint = problem[:average_storage_unit_error_constraint]
     level_demand_fairness_error_constraint =
@@ -715,6 +737,10 @@ function optimize_multi_objective!(
 )::Nothing
     (; problem, objectives, temporary_constraints, route_priority_expression) =
         secondary_model
+
+    # Lexicographic goal programming: optimize objectives in sequence
+    # After optimizing objective i, add constraint: obj_i ≤ optimal_i + ε
+    # This ensures later objectives don't degrade earlier ones
 
     for metadata in objectives.objective_metadata
         (; expression_first, expression_second, type, demand_priority_idx) = metadata
