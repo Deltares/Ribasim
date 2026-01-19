@@ -241,8 +241,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#slow-models" id="toc-slow-models" class="nav-link active" data-scroll-target="#slow-models"><span class="header-section-number">1</span> Slow models</a></li>
-  <li><a href="#unstable-models" id="toc-unstable-models" class="nav-link" data-scroll-target="#unstable-models"><span class="header-section-number">2</span> Unstable models</a></li>
+  <li><a href="#unexpected-flow-rates" id="toc-unexpected-flow-rates" class="nav-link active" data-scroll-target="#unexpected-flow-rates"><span class="header-section-number">1</span> Unexpected flow rates</a>
+  <ul class="collapse">
+  <li><a href="#review-the-equations" id="toc-review-the-equations" class="nav-link" data-scroll-target="#review-the-equations"><span class="header-section-number">1.1</span> Review the equations</a></li>
+  <li><a href="#check-reduction-factors" id="toc-check-reduction-factors" class="nav-link" data-scroll-target="#check-reduction-factors"><span class="header-section-number">1.2</span> Check reduction factors</a></li>
+  <li><a href="#check-control-and-allocation" id="toc-check-control-and-allocation" class="nav-link" data-scroll-target="#check-control-and-allocation"><span class="header-section-number">1.3</span> Check control and allocation</a></li>
+  </ul></li>
+  <li><a href="#slow-models" id="toc-slow-models" class="nav-link" data-scroll-target="#slow-models"><span class="header-section-number">2</span> Slow models</a></li>
+  <li><a href="#unstable-models" id="toc-unstable-models" class="nav-link" data-scroll-target="#unstable-models"><span class="header-section-number">3</span> Unstable models</a></li>
   </ul>
 </nav>
     </div>
@@ -268,8 +274,34 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<section id="slow-models" class="level2" data-number="1">
-<h2 data-number="1" class="anchored" data-anchor-id="slow-models"><span class="header-section-number">1</span> Slow models</h2>
+<section id="unexpected-flow-rates" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="unexpected-flow-rates"><span class="header-section-number">1</span> Unexpected flow rates</h2>
+<p>When a connector node (e.g., <code>TabulatedRatingCurve</code>, <code>Pump</code>, <code>Outlet</code>, <code>ManningResistance</code>) produces unexpected flow rates, it’s important to understand how Ribasim calculates flows and which reduction factors may apply.</p>
+<section id="review-the-equations" class="level3" data-number="1.1">
+<h3 data-number="1.1" class="anchored" data-anchor-id="review-the-equations"><span class="header-section-number">1.1</span> Review the equations</h3>
+<p>Each connector node type has specific equations that govern its behavior. Review the equations for your node type in the <a href="../reference/node/index.qmd">reference documentation</a>. For example, see the <a href="../reference/node/tabulated-rating-curve.html#equations">TabulatedRatingCurve equations</a>.</p>
+</section>
+<section id="check-reduction-factors" class="level3" data-number="1.2">
+<h3 data-number="1.2" class="anchored" data-anchor-id="check-reduction-factors"><span class="header-section-number">1.2</span> Check reduction factors</h3>
+<p>Ribasim applies several reduction factors that can limit flows. To verify that none of them unexpectedly applies, check the following examples:</p>
+<ol type="1">
+<li><p><strong>Upstream Basin level and storage</strong>: If the upstream Basin is nearly empty, a reduction factor prevents extracting more water than available.</p></li>
+<li><p><strong>Downstream Basin level</strong>: If the downstream Basin level is higher, only Pumps can flow against gravity.</p></li>
+<li><p><strong>Connector node parameters</strong>: Review the node’s parameters in your model input to ensure they match your expectations. Parameters like <code>max_flow_rate</code> or <code>min_upstream_level</code> directly affect the computed flow.</p></li>
+</ol>
+</section>
+<section id="check-control-and-allocation" class="level3" data-number="1.3">
+<h3 data-number="1.3" class="anchored" data-anchor-id="check-control-and-allocation"><span class="header-section-number">1.3</span> Check control and allocation</h3>
+<p>If the node is subject to control or allocation:</p>
+<ul>
+<li><p><strong>Discrete Control</strong>: Check the control results to see which control state is active and when it changes. The active state determines which parameter set is used.</p></li>
+<li><p><strong>Allocation</strong>: Check the allocation results to see the allocated flow for the node.</p></li>
+</ul>
+<p>In all these cases the reduction factors still apply, and may be the reason allocated flows cannot be realized.</p>
+</section>
+</section>
+<section id="slow-models" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="slow-models"><span class="header-section-number">2</span> Slow models</h2>
 <p>When your model is slow, it’s often only a handful of nodes that are hard to solve. If the model finishes or is interrupted, convergence bottlenecks are shown like so:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>┌ Info<span class="op">:</span> Convergence bottlenecks <span class="kw">in</span> descending order of severity<span class="op">:</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>│   ManningResistance <span class="co">#251242 = 0.09023997405863035</span></span>
@@ -280,8 +312,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>It’s best to inspect these nodes, and try to adjust the parametrization, or merge smaller nodes. You can find the convergence measure per node over time in the <code>flow.arrow</code> and <code>basin.arrow</code> <a href="../reference/usage.html#sec-results">output files</a>.</p>
 <p>To gain further insight into model performance, one can inspect the <code>solver_stats.arrow</code> output file, which gives the number of computations, number of rejected and accepted solutions, and the size of each calculation timestep.</p>
 </section>
-<section id="unstable-models" class="level2" data-number="2">
-<h2 data-number="2" class="anchored" data-anchor-id="unstable-models"><span class="header-section-number">2</span> Unstable models</h2>
+<section id="unstable-models" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="unstable-models"><span class="header-section-number">3</span> Unstable models</h2>
 <p>When your model exits with a message like so:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>┌ Error<span class="op">:</span> The model exited at model time <span class="fl">2024</span><span class="op">-</span><span class="fl">01</span><span class="op">-</span><span class="fl">27</span>T14<span class="op">:</span><span class="fl">46</span><span class="op">:</span><span class="fl">17.791</span> with <span class="cf">return</span> code Unstable. See https<span class="op">://</span>docs.sciml.ai<span class="op">/</span>DiffEqDocs<span class="op">/</span>stable<span class="op">/</span>basics<span class="op">/</span>solution<span class="op">/</span><span class="co">#retcodes</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>it’s best to rerun the model with <code>saveat = 0</code> in the <a href="../reference/usage.html#sec-solver-settings">solver</a> settings. The model might then instead exit with</p>
