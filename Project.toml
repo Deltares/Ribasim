@@ -84,7 +84,6 @@ TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 
 [sources]
-JuliaC = {rev = "default_cpu_target", url = "https://github.com/visr/JuliaC.jl"}
 PackageCompiler = {rev = "bundle_less_artifacts_v1.12", url = "https://github.com/visr/PackageCompiler.jl"}
 Ribasim = {path = "core"}
 
