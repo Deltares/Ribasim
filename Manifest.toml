@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.3"
+julia_version = "1.12.4"
 manifest_format = "2.0"
 project_hash = "3098a4aeca387ef5ccc3c6f4042667b1fe46a752"
 
@@ -1544,7 +1544,7 @@ version = "0.3.7"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2025.5.20"
+version = "2025.11.4"
 
 [[deps.MuladdMacro]]
 git-tree-sha1 = "cac9cc5499c25554cba55cd3c30543cff5ca4fab"
@@ -1820,11 +1820,11 @@ version = "10.44.0+1"
 
 [[deps.PackageCompiler]]
 deps = ["Artifacts", "Glob", "LazyArtifacts", "Libdl", "Pkg", "Printf", "RelocatableFolders", "TOML", "UUIDs", "p7zip_jll"]
-git-tree-sha1 = "d01bf4dfa351e84f12c3263544011b9ba4e3d1ab"
-repo-rev = "bundle_less_artifacts"
+git-tree-sha1 = "a534e9dbb365973701971ec7e1779084d6d74622"
+repo-rev = "bundle_less_artifacts_v1.12"
 repo-url = "https://github.com/visr/PackageCompiler.jl"
 uuid = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
-version = "2.2.2"
+version = "2.2.4"
 
 [[deps.Pango_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "FriBidi_jll", "Glib_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl"]

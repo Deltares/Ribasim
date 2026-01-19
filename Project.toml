@@ -83,13 +83,13 @@ TestEnv = "1e6cf692-eddd-4d53-88a5-2d735e33781b"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 
-[compat]
-PythonCall = "=0.9.31"
-
 [sources]
 JuliaC = {rev = "default_cpu_target", url = "https://github.com/visr/JuliaC.jl"}
-PackageCompiler = {rev = "bundle_less_artifacts", url = "https://github.com/visr/PackageCompiler.jl"}
+PackageCompiler = {rev = "bundle_less_artifacts_v1.12", url = "https://github.com/visr/PackageCompiler.jl"}
 Ribasim = {path = "core"}
+
+[compat]
+PythonCall = "=0.9.31"
 
 [preferences.Ribasim]
 precompile_workload = false
