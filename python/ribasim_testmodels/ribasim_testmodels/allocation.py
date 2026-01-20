@@ -2039,7 +2039,9 @@ def polder_management_model() -> Model:
     evaporation[270:366] = 1e-6
 
     basin_data: list[TableModel[Any]] = [
-        basin.Profile(area=[0.01, 1000000.0, 1000000.0], level=[-10, 1.0, 2.0]),
+        basin.Profile(
+            area=[0.01, 1000000.0, 1000000.0, 1000000.0], level=[-10, 1.0, 2.0, 10]
+        ),
         basin.Time(
             time=pd.date_range(model.starttime, model.endtime),
             drainage=0.0,
@@ -2055,29 +2057,50 @@ def polder_management_model() -> Model:
     basin6 = model.basin.add(Node(6, Point(4.0, 2.0), name="Polder"), basin_data)
     basin9 = model.basin.add(Node(9, Point(4.0, 0.0), name="Boezem"), basin_data)
 
-    # Level demand on polder 4 exactly maintain 1 m
+    # Level demand on polder 4 around 1 m
     level4 = model.level_demand.add(
         Node(100, Point(2.0, 2.5), name="polder#4 level demand"),
-        [level_demand.Static(min_level=[1.0], max_level=1.0, demand_priority=1)],
+        [level_demand.Static(min_level=[1.0], max_level=[1.0], demand_priority=[1])],
     )
-    # Level demand on polder 6 exactly maintain 0.9 m
+    # Level demand on polder 6 around 0.9 m
     level6 = model.level_demand.add(
         Node(101, Point(4.0, 2.5), name="polder#6 level demand"),
-        [level_demand.Static(min_level=[0.9], max_level=0.9, demand_priority=1)],
+        [level_demand.Static(min_level=[0.9], max_level=[0.9], demand_priority=[1])],
     )
+
+    # Level demand on boezem 3 maintain 1.2 m
+    level3 = model.level_demand.add(
+        Node(102, Point(2.0, -1), name="boezem#3 level demand"),
+        [level_demand.Static(min_level=[1.2], max_level=[1.2], demand_priority=[1])],
+    )
+
+    # increase initial level of the boezem
+    assert model.basin.state.df is not None
+    model.basin.state.df.loc[model.basin.state.df.node_id == 3, "level"] = 1.2
+    model.basin.state.df.loc[model.basin.state.df.node_id == 9, "level"] = 1.2
 
     model.link.add(level4, basin4)
     model.link.add(level6, basin6)
+    model.link.add(level3, basin3)
+    # model.link.add(level9, basin9)
 
     ###Setup outlet:
     outlet10 = model.outlet.add(
         Node(10, Point(5.0, 0.0)),
-        [outlet.Static(flow_rate=20, min_upstream_level=[1.2])],
+        [
+            outlet.Static(
+                control_state="Ribasim.allocation", flow_rate=[0.0], max_flow_rate=10
+            )
+        ],
     )
 
     outlet12 = model.outlet.add(
         Node(12, Point(1.0, 0)),
-        [outlet.Static(flow_rate=[10])],
+        [
+            outlet.Static(
+                control_state="Ribasim.allocation", flow_rate=[0.0], max_flow_rate=10.0
+            )
+        ],
     )
 
     # --- Outlet 5 Controlled by Allocation ---
@@ -2085,7 +2108,9 @@ def polder_management_model() -> Model:
         Node(5, Point(2, 1), name="inlaat"),
         [
             outlet.Static(
-                control_state="Ribasim.allocation", flow_rate=[1.0], max_flow_rate=5.0
+                control_state="Ribasim.allocation",
+                flow_rate=[0.0],
+                max_flow_rate=5.0,
             )
         ],
     )
@@ -2095,14 +2120,14 @@ def polder_management_model() -> Model:
         Node(13, Point(3, 2), name="inlaat/uitlaat"),
         [
             outlet.Static(
-                control_state="Ribasim.allocation", flow_rate=[1.0], max_flow_rate=5.0
+                control_state="Ribasim.allocation", flow_rate=[0.0], max_flow_rate=5.0
             )
         ],
     )
 
-    ###Setup Manning resistance:
+    ###Setup Manning resistance: Route priority to 0, ensures that this is the main water route.
     manning_resistance2 = model.manning_resistance.add(
-        Node(2, Point(3, 0.0)),
+        Node(2, Point(3, 0.0), route_priority=0),
         [
             manning_resistance.Static(
                 length=[900], manning_n=[0.04], profile_width=[6.0], profile_slope=[3.0]
@@ -2112,25 +2137,26 @@ def polder_management_model() -> Model:
 
     # --- Pump 7 Controlled by Allocation ---
     pump7 = model.pump.add(
-        Node(7, Point(4, 1), name="afvoergemaal"),
+        Node(7, Point(4, 1), name="drainage pumping station"),
         [
             pump.Static(
                 control_state="Ribasim.allocation",
-                flow_rate=[1.0],
+                flow_rate=[0.0],
                 max_flow_rate=20.0,
             )
         ],
     )
 
-    # Create a daily timeseries over the entire simulation period
+    # Maak een dagreeks over de hele simulatieperiode
     t = pd.date_range(model.starttime, model.endtime, freq="D")
     d = np.zeros(len(t))
     d[0:90] = 0.0
     d[90:180] = 1.5
     d[180:270] = 0.0
-    d[270:366] = 0
+    d[270:366] = 0.0
+
     pump7_alloc = model.flow_demand.add(
-        Node(70, Point(5.0, 1.1), name="doorspoeling=1.5m3/s"),
+        Node(70, Point(5.0, 1), name="flush=1.5m3/s"),
         [
             flow_demand.Time(
                 time=t,
@@ -2143,7 +2169,7 @@ def polder_management_model() -> Model:
 
     ##Setup level boundary
     level_boundary11 = model.level_boundary.add(
-        Node(11, Point(0, 0)), [level_boundary.Static(level=[1.3])]
+        Node(11, Point(0, 0)), [level_boundary.Static(level=[10])]
     )
     level_boundary17 = model.level_boundary.add(
         Node(17, Point(6, 0)), [level_boundary.Static(level=[0.9])]

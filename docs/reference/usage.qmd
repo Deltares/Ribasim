@@ -109,7 +109,7 @@ verbosity         | String | Verbosity level: debug, info, warn, or error.
 
 If verbosity is set to debug, the used `Basin / profile` dimensions (level, area and storage) are written to a CSV file in the results folder. This can be useful if you only provide 2 of the 3 columns and want to inspect the dimensions used in the computation.
 
-The format of the CSV is: column 1 = node id, column 2 = level, column 3 = area and row 4 is storage.
+The format of the CSV is: column 1 = node id, column 2 = level, column 3 = area and column 4 is storage.
 
 Lets say you have 2 basins at node 1 and node 2.
 Dimensions node 1: level = [0, 1, 2], area = [2, 2, 4] and storage = [0, 2, 6],
@@ -188,7 +188,7 @@ is indicated under `restriction`.
 
 Tables are also allowed to have rows for timestamps that are not part of the simulation,
 these will be ignored. That makes it easy to prepare data for a larger period, and test
-models on a shorted period.
+models on a shorter period.
 
 When preparing the model for simulation, input validation is performed in the Julia core.
 The validation rules are described in the [validation](/reference/validation.qmd) section.

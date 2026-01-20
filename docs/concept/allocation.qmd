@@ -3,7 +3,14 @@ title: "Allocation"
 ---
 
 # Introduction
-In water resources management, allocation deals with distributing limited water resources among competing demands in a fair and efficient manner. This is particularly important in situations where water demands exceed available supply, requiring a systematic approach to prioritize and optimize water distribution across the entire network. In Ribasim we formulate this with linear programming using [JuMP](https://jump.dev/JuMP.jl/stable/) and solve the problem using the the [HiGHS solver](https://highs.dev/). A concise overview of the interaction between the physical and allocation layers of Ribasim is shown in the diagram below.
+In water resources management, allocation deals with distributing limited water resources among competing demands in a fair and efficient manner. This is particularly important in situations where water demands exceed available supply, requiring a systematic approach to prioritize and optimize water distribution across the entire network. In Ribasim we formulate this with linear programming using [JuMP](https://jump.dev/JuMP.jl/stable/) and solve the problem using the [HiGHS solver](https://highs.dev/).
+
+:::{.callout-note}
+## Developer Documentation
+For technical implementation details including how mathematical formulations translate to code, see the [Allocation](/dev/allocation.qmd).
+:::
+
+A concise overview of the interaction between the physical and allocation layers of Ribasim is shown in the diagram below.
 
 ```{mermaid}
 sequenceDiagram
@@ -82,7 +89,7 @@ Under the assumption that
 
 ## Linearization
 
-To use efficient linear programming algorithms, nonlinear relationships can be linearized around the current time $t^n$. For example, a nonlinear relationship between flow $Q$, an upstream  variable ($x_1$) and a downstream variable ($x_2$), can be linearized as:
+To use efficient linear programming algorithms, nonlinear relationships can be linearized around the current time $t^n$. For example, a nonlinear relationship between flow $Q$, an upstream variable ($x_1$) and a downstream variable ($x_2$), can be linearized as:
 
 $$Q(x_1,x_2) \approx Q(x_1^n,x_2^n) + \frac{\partial Q}{\partial x_1}(x_1^n,x_2^n)(x_1^{n+1}-x_1^n) + \frac{\partial Q}{\partial x_2}(x_1^n,x_2^n)(x_2^{n+1}-x_2^n)$$
 
