@@ -87,7 +87,7 @@ PackageCompiler = {rev = "bundle_less_artifacts_v1.12", url = "https://github.co
 Ribasim = {path = "core"}
 
 [compat]
+CodecZstd = "0.8.7"
 PythonCall = "=0.9.31"
-
 [preferences.Ribasim]
 precompile_workload = false

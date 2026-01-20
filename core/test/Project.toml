@@ -43,6 +43,7 @@ Ribasim = {path = "core"}
 [compat]
 Aqua = "0.8"
 CSV = "0.10"
+CodecZstd = "0.8.7"
 DataFrames = "1.4"
 Glob = "1.3"
 IOCapture = "0.2, 1"
