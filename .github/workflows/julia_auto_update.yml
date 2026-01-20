@@ -19,7 +19,6 @@ jobs:
         run: |
           pixi run install-julia
           pixi run update-manifest-julia
-          pixi update pyjuliacall
           pixi run generate-sbom-ribasim-core
         env:
           JULIA_PKG_PRECOMPILE_AUTO: "0"
