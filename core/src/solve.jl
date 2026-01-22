@@ -433,7 +433,7 @@ function linear_resistance_flow(
 
     Δh = h_a - h_b
     q_unlimited = Δh / resistance[node_id.idx]
-    q = clamp(q_unlimited, -max_flow_rate[node_id.idx], max_flow_rate[node_id.idx])
+    q = smooth_clamp(q_unlimited, -max_flow_rate[node_id.idx], max_flow_rate[node_id.idx])
     return q * low_storage_factor_resistance_node(p, q_unlimited, inflow_id, outflow_id)
 end
 
@@ -698,7 +698,7 @@ function formulate_pump_or_outlet_flow!(
                 end
             end
         end
-        q = clamp(q, lower_bound, upper_bound)
+        q = smooth_clamp(q, lower_bound, upper_bound)
 
         # Special case for outlet: check level difference
         if reduce_Δlevel
