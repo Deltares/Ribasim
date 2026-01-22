@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
-  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
-  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
   <Identity Name="Deltares.Ribasim" Version="2026.1.0.1"
     Publisher="CN=Stichting Deltares, O=Stichting Deltares, L=Delft, C=NL"
@@ -28,11 +27,11 @@
       <uap:VisualElements DisplayName="Ribasim" Description="Water resources modeling"
         BackgroundColor="transparent" Square150x150Logo="logo-150.png" Square44x44Logo="logo-44.png" />
       <Extensions>
-        <uap3:Extension Category="windows.appExecutionAlias">
-          <uap3:AppExecutionAlias>
-            <desktop:ExecutionAlias Alias="ribasim.exe" />
-          </uap3:AppExecutionAlias>
-        </uap3:Extension>
+        <uap5:Extension Category="windows.appExecutionAlias">
+          <uap5:AppExecutionAlias>
+            <uap5:ExecutionAlias Alias="ribasim.exe" />
+          </uap5:AppExecutionAlias>
+        </uap5:Extension>
       </Extensions>
     </Application>
   </Applications>
