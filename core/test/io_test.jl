@@ -16,9 +16,9 @@
     @test database_path(config) == normpath("model/input/database.gpkg")
     @test input_path(config, "path/to/file") == normpath("model/input/path/to/file")
     @test results_path(config, "path/to/file.txt") ==
-          normpath("model/results/path/to/file.txt")
+        normpath("model/results/path/to/file.txt")
     @test results_path(config, "path/to/file") ==
-          normpath("model/results/path/to/file.arrow")
+        normpath("model/results/path/to/file.arrow")
     @test results_path(config) == normpath("model/results/")
 
     # non-default dirs, and netcdf results
@@ -32,7 +32,7 @@
     @test database_path(config) == normpath("model/database.gpkg")
     @test input_path(config, "path/to/file") == normpath("model/path/to/file")
     @test results_path(config, "path/to/file.txt") ==
-          normpath("model/output/path/to/file.txt")
+        normpath("model/output/path/to/file.txt")
     @test results_path(config, "path/to/file") == normpath("model/output/path/to/file.nc")
 
     # absolute path
@@ -126,7 +126,7 @@ end
     @test eltype(tbl.convergence) == Union{Missing, Float64}
     @test all(isfinite, tbl.convergence)
     @test Arrow.getmetadata(tbl) ===
-          Base.ImmutableDict("ribasim_version" => RIBASIM_VERSION)
+        Base.ImmutableDict("ribasim_version" => RIBASIM_VERSION)
 
     path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.flow)
     bytes = read(path)
@@ -135,7 +135,7 @@ end
     @test eltype(tbl.convergence) == Union{Missing, Float64}
     @test all(isfinite, skipmissing(tbl.convergence))
     @test Arrow.getmetadata(tbl) ===
-          Base.ImmutableDict("ribasim_version" => RIBASIM_VERSION)
+        Base.ImmutableDict("ribasim_version" => RIBASIM_VERSION)
 
     path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.solver_stats)
     bytes = read(path)
@@ -144,7 +144,7 @@ end
     @test eltype(tbl.dt) == Float64
     @test all(>(0), tbl.dt)
     @test Arrow.getmetadata(tbl) ===
-          Base.ImmutableDict("ribasim_version" => RIBASIM_VERSION)
+        Base.ImmutableDict("ribasim_version" => RIBASIM_VERSION)
 
     path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.concentration)
     bytes = read(path)

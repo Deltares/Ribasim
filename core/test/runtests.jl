@@ -6,7 +6,7 @@ function test_type(item)::Bool
     dir = basename(dirname(item.filename))
     is_integration = dir == "integration_test"
     is_regression = dir == "regression_test"
-    if in("integration", ARGS)
+    return if in("integration", ARGS)
         is_integration
     elseif in("regression", ARGS)
         is_regression

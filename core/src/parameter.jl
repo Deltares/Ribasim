@@ -1,4 +1,3 @@
-
 const SolverStats = @NamedTuple{
     time::Float64,
     time_ns::UInt64,
@@ -205,8 +204,8 @@ objective_metadata: Metadata per objective. Note that there are more objective e
 end
 
 @kwdef mutable struct ScalingFactors
-    flow::Float64 = 1e3
-    storage::Float64 = 1e6
+    flow::Float64 = 1.0e3
+    storage::Float64 = 1.0e6
 end
 
 """
@@ -834,10 +833,10 @@ end
 Get one of the vectors of the StateAndTimeDependentCache based on the passed type.
 """
 function get_cache_vector(
-    state_and_time_dependent_cache::StateAndTimeDependentCache,
-    type::CacheType.T,
-)
-    if type == CacheType.flow_rate_pump
+        state_and_time_dependent_cache::StateAndTimeDependentCache,
+        type::CacheType.T,
+    )
+    return if type == CacheType.flow_rate_pump
         state_and_time_dependent_cache.current_flow_rate_pump
     elseif type == CacheType.flow_rate_outlet
         state_and_time_dependent_cache.current_flow_rate_outlet
@@ -1155,8 +1154,8 @@ end
 All cache that depend on both the state vector `u` and time `t`.
 """
 function StateAndTimeDependentCache(
-    p_independent::ParametersIndependent,
-)::StateAndTimeDependentCache
+        p_independent::ParametersIndependent,
+    )::StateAndTimeDependentCache
     n_basin = length(p_independent.basin.node_id)
     n_pump = length(p_independent.pump.node_id)
     n_outlet = length(p_independent.outlet.node_id)
@@ -1251,7 +1250,7 @@ Base.show(io::IO, ::Parameters) = print(io, "Ribasim Parameters")
 Base.show(io::IO, ::MIME"text/plain", p::Parameters) = print(io, "Ribasim Parameters")
 
 function get_value(ref::CacheRef, p::Parameters, du::CVector)
-    if ref.from_du
+    return if ref.from_du
         du[ref.idx]
     else
         get_cache_vector(p.state_and_time_dependent_cache, ref.type)[ref.idx]
@@ -1260,5 +1259,5 @@ end
 
 function set_value!(ref::CacheRef, p::Parameters, value)
     @assert !ref.from_du
-    get_cache_vector(p.state_and_time_dependent_cache, ref.type)[ref.idx] = value
+    return get_cache_vector(p.state_and_time_dependent_cache, ref.type)[ref.idx] = value
 end

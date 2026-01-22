@@ -29,7 +29,7 @@ function (@main)(_)
     # This is a lot, strip it out, sort it, and put it in a details tag at the end.
     installed_lines = String[]
     lines = readlines(path)
-    open(path, "w") do io
+    return open(path, "w") do io
         for line in lines
             m = match(IS_INSTALLED, line)
             if m === nothing

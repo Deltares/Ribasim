@@ -9,7 +9,7 @@
 build/ribasim/
 build/cli/target
 
-JuliaSysimage.dll
+Manifest-*.toml
 LocalPreferences.toml
 .ipynb_checkpoints
 # Byte-compiled / optimized / DLL files

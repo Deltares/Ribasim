@@ -12,15 +12,15 @@
     @testset Teamcity.TeamcityTestSet "$solver" for solver in solver_list
         @testset Teamcity.TeamcityTestSet "sparse = $sparse" for sparse in sparse_options
             @testset Teamcity.TeamcityTestSet "autodiff = $autodiff" for autodiff in
-                                                                         autodiff_options
+                autodiff_options
                 sparse || continue # skip dense, see issue #2797
                 config = Ribasim.Config(
                     toml_path;
                     solver_algorithm = solver,
                     solver_sparse = sparse,
                     solver_autodiff = autodiff,
-                    solver_abstol = 1e-7,
-                    solver_reltol = 1e-7,
+                    solver_abstol = 1.0e-7,
+                    solver_reltol = 1.0e-7,
                 )
                 model = Ribasim.run(config)
                 @test model isa Ribasim.Model
@@ -39,9 +39,9 @@
                     @test basin.storage[1] ≈ 1.0f0
                     @test basin.level[1] ≈ 0.044711584f0
                     @test basin.storage[end] ≈ 62.2290641115f0 atol = 0.02
-                    @test basin.level[end] ≈ 0.352778f0 atol = 1e-4
+                    @test basin.level[end] ≈ 0.352778f0 atol = 1.0e-4
                     @test flow.flow_rate[1] ≈ basin.outflow_rate[1]
-                    @test all(q -> abs(q) < 1e-7, basin.balance_error)
+                    @test all(q -> abs(q) < 1.0e-7, basin.balance_error)
                     @test all(err -> abs(err) < 0.01, basin.relative_error)
                 end
             end
@@ -70,9 +70,9 @@ end
 
     @testset Teamcity.TeamcityTestSet "$solver" for solver in solver_list
         @testset Teamcity.TeamcityTestSet "sparse density is $sparse_on_off" for sparse_on_off in
-                                                                                 sparse_on
+            sparse_on
             @testset Teamcity.TeamcityTestSet "auto differentiation is $autodiff_on_off" for autodiff_on_off in
-                                                                                             autodiff_on
+                autodiff_on
                 sparse_on_off || continue # skip dense, see issue #2797
                 config = Ribasim.Config(
                     toml_path;
@@ -113,7 +113,7 @@ end
 
                 @test all(q -> abs(q) < 1.0, basin.storage - basin_bench.storage)
                 @test all(q -> abs(q) < 0.5, basin.level - basin_bench.level)
-                @test all(q -> abs(q) < 1e-3, basin.balance_error)
+                @test all(q -> abs(q) < 1.0e-3, basin.balance_error)
                 @test all(err -> abs(err) < 2.5, basin.relative_error)
             end
         end
@@ -141,9 +141,9 @@ end
 
     @testset Teamcity.TeamcityTestSet "$solver" for solver in solver_list
         @testset Teamcity.TeamcityTestSet "sparse density is $sparse_on_off" for sparse_on_off in
-                                                                                 sparse_on
+            sparse_on
             @testset Teamcity.TeamcityTestSet "auto differentiation is $autodiff_on_off" for autodiff_on_off in
-                                                                                             autodiff_on
+                autodiff_on
                 sparse_on_off || continue # skip dense, see issue #2797
                 config = Ribasim.Config(
                     toml_path;
@@ -176,7 +176,7 @@ end
                 @test basin.node_id == basin_bench.node_id
                 @test all(q -> abs(q) < 100.0, basin.storage - basin_bench.storage)
                 @test all(q -> abs(q) < 0.5, basin.level - basin_bench.level)
-                @test all(err -> abs(err) < 1e-3, basin.balance_error)
+                @test all(err -> abs(err) < 1.0e-3, basin.balance_error)
             end
         end
     end

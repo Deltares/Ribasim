@@ -5,27 +5,31 @@ neighbortypes(::Val{:outlet}) = OrderedSet((:basin, :terminal, :level_boundary, 
 neighbortypes(::Val{:user_demand}) =
     OrderedSet((:basin, :terminal, :level_boundary, :junction))
 neighbortypes(::Val{:level_demand}) = OrderedSet((:basin,))
-neighbortypes(::Val{:basin}) = OrderedSet((
-    :linear_resistance,
-    :tabulated_rating_curve,
-    :manning_resistance,
-    :pump,
-    :outlet,
-    :user_demand,
-    :junction,
-))
+neighbortypes(::Val{:basin}) = OrderedSet(
+    (
+        :linear_resistance,
+        :tabulated_rating_curve,
+        :manning_resistance,
+        :pump,
+        :outlet,
+        :user_demand,
+        :junction,
+    )
+)
 neighbortypes(::Val{:terminal}) = OrderedSet{Symbol}()
-neighbortypes(::Val{:junction}) = OrderedSet((
-    :basin,
-    :junction,
-    :linear_resistance,
-    :tabulated_rating_curve,
-    :manning_resistance,
-    :pump,
-    :outlet,
-    :user_demand,
-    :terminal,
-))
+neighbortypes(::Val{:junction}) = OrderedSet(
+    (
+        :basin,
+        :junction,
+        :linear_resistance,
+        :tabulated_rating_curve,
+        :manning_resistance,
+        :pump,
+        :outlet,
+        :user_demand,
+        :terminal,
+    )
+)
 neighbortypes(::Val{:flow_boundary}) =
     OrderedSet((:basin, :terminal, :level_boundary, :junction))
 neighbortypes(::Val{:level_boundary}) =
@@ -33,24 +37,28 @@ neighbortypes(::Val{:level_boundary}) =
 neighbortypes(::Val{:linear_resistance}) = OrderedSet((:basin, :level_boundary, :junction))
 neighbortypes(::Val{:manning_resistance}) = OrderedSet((:basin, :junction))
 neighbortypes(::Val{:continuous_control}) = OrderedSet((:pump, :outlet))
-neighbortypes(::Val{:discrete_control}) = OrderedSet((
-    :pump,
-    :outlet,
-    :tabulated_rating_curve,
-    :linear_resistance,
-    :manning_resistance,
-    :pid_control,
-))
+neighbortypes(::Val{:discrete_control}) = OrderedSet(
+    (
+        :pump,
+        :outlet,
+        :tabulated_rating_curve,
+        :linear_resistance,
+        :manning_resistance,
+        :pid_control,
+    )
+)
 neighbortypes(::Val{:pid_control}) = OrderedSet((:pump, :outlet))
 neighbortypes(::Val{:tabulated_rating_curve}) =
     OrderedSet((:basin, :terminal, :level_boundary, :junction))
-neighbortypes(::Val{:flow_demand}) = OrderedSet((
-    :linear_resistance,
-    :manning_resistance,
-    :tabulated_rating_curve,
-    :pump,
-    :outlet,
-))
+neighbortypes(::Val{:flow_demand}) = OrderedSet(
+    (
+        :linear_resistance,
+        :manning_resistance,
+        :tabulated_rating_curve,
+        :pump,
+        :outlet,
+    )
+)
 neighbortypes(::Any) = OrderedSet{Symbol}()
 
 # Allowed number of inneighbors and outneighbors per node type
@@ -252,10 +260,10 @@ end
 Test whether static or discrete controlled flow rates are indeed non-negative.
 """
 function valid_flow_rates(
-    node_id::Vector{NodeID},
-    flow_rate::Vector{T},
-    control_mapping::OrderedDict{Tuple{NodeID, String}, <:ControlStateUpdate},
-)::Bool where {T <: Union{Float64, ScalarLinearInterpolation}}
+        node_id::Vector{NodeID},
+        flow_rate::Vector{T},
+        control_mapping::OrderedDict{Tuple{NodeID, String}, <:ControlStateUpdate},
+    )::Bool where {T <: Union{Float64, ScalarLinearInterpolation}}
     errors = false
     # Collect ids of discrete controlled nodes so that they do not give another error
     # if their initial value is also invalid.
@@ -304,10 +312,10 @@ function valid_flow_rates(
 end
 
 function valid_pid_connectivity(
-    pid_control_node_id::Vector{NodeID},
-    pid_control_listen_node_id::Vector{NodeID},
-    graph::MetaGraph,
-)::Bool
+        pid_control_node_id::Vector{NodeID},
+        pid_control_listen_node_id::Vector{NodeID},
+        graph::MetaGraph,
+    )::Bool
     errors = false
 
     for (pid_control_id, listen_id) in zip(pid_control_node_id, pid_control_listen_node_id)
@@ -336,12 +344,12 @@ end
 Validate the entries for a single subgrid element.
 """
 function valid_subgrid(
-    subgrid_id::Int32,
-    node_id::Int32,
-    node_to_basin::Dict{Int32, NodeID},
-    basin_level::Vector{Float64},
-    subgrid_level::Vector{Float64},
-)::Bool
+        subgrid_id::Int32,
+        node_id::Int32,
+        node_to_basin::Dict{Int32, NodeID},
+        basin_level::Vector{Float64},
+        subgrid_level::Vector{Float64},
+    )::Bool
     errors = false
 
     if !(node_id in keys(node_to_basin))
@@ -363,10 +371,10 @@ function valid_subgrid(
 end
 
 function valid_demand(
-    node_id::Vector{NodeID},
-    demand_interpolation::Vector{Vector{ScalarConstantInterpolation}},
-    demand_priorities::Vector{Int32},
-)::Bool
+        node_id::Vector{NodeID},
+        demand_interpolation::Vector{Vector{ScalarConstantInterpolation}},
+        demand_priorities::Vector{Int32},
+    )::Bool
     errors = false
 
     for (col, id) in zip(demand_interpolation, node_id)
@@ -384,10 +392,10 @@ end
 Validate Outlet or Pump `min_upstream_level` and fill in default values
 """
 function valid_min_upstream_level!(
-    graph::MetaGraph,
-    node::Union{Outlet, Pump},
-    basin::Basin,
-)::Bool
+        graph::MetaGraph,
+        node::Union{Outlet, Pump},
+        basin::Basin,
+    )::Bool
     errors = false
     for (id, min_upstream_level) in zip(node.node_id, node.min_upstream_level)
         id_in = inflow_id(graph, id)
@@ -405,15 +413,15 @@ function valid_min_upstream_level!(
 end
 
 function valid_tabulated_curve_level(
-    graph::MetaGraph,
-    tabulated_rating_curve::TabulatedRatingCurve,
-    basin::Basin,
-)::Bool
+        graph::MetaGraph,
+        tabulated_rating_curve::TabulatedRatingCurve,
+        basin::Basin,
+    )::Bool
     errors = false
     for (id, index_lookup) in zip(
-        tabulated_rating_curve.node_id,
-        tabulated_rating_curve.current_interpolation_index,
-    )
+            tabulated_rating_curve.node_id,
+            tabulated_rating_curve.current_interpolation_index,
+        )
         id_in = inflow_id(graph, id)
         if id_in.type == NodeType.Basin
             basin_bottom_level = basin_bottom(basin, id_in)[2]
@@ -432,9 +440,9 @@ function valid_tabulated_curve_level(
 end
 
 function incomplete_subnetwork(
-    graph::MetaGraph,
-    node_ids::Dict{Int32, OrderedSet{NodeID}},
-)::Bool
+        graph::MetaGraph,
+        node_ids::Dict{Int32, OrderedSet{NodeID}},
+    )::Bool
     errors = false
 
     # analyze the subnetwork without junctions
@@ -555,7 +563,7 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
         # The number of conditions of this DiscreteControl node
         n_conditions = sum(
             length(compound_variable.threshold_high) for
-            compound_variable in compound_variables
+                compound_variable in compound_variables
         )
 
         # The control states of this DiscreteControl node
@@ -646,18 +654,18 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
 end
 
 function valid_demand_priorities(
-    demand_priorities::Vector{Int32},
-    use_allocation::Bool,
-)::Bool
+        demand_priorities::Vector{Int32},
+        use_allocation::Bool,
+    )::Bool
     return !(use_allocation && any(iszero, demand_priorities))
 end
 
 function valid_time_interpolation(
-    times::Vector{Float64},
-    parameter::AbstractVector,
-    node_id::NodeID,
-    cyclic_time::Bool,
-)::Bool
+        times::Vector{Float64},
+        parameter::AbstractVector,
+        node_id::NodeID,
+        cyclic_time::Bool,
+    )::Bool
     errors = false
 
     if !allunique(times)
@@ -686,8 +694,8 @@ We recommend to initialise all basins in the same way, which can be level-area, 
 If basins diverge from this recommendation we log info about it for the modeler.
 """
 function validate_consistent_basin_initialization(
-    profiles::StructVector{Schema.Basin.Profile},
-)::Bool
+        profiles::StructVector{Schema.Basin.Profile},
+    )::Bool
     errors::Bool = false
 
     init_with_area = Int32[]
@@ -758,16 +766,16 @@ function validate_consistent_basin_initialization(
         end
     end
 
-    errors
+    return errors
 end
 
 function invalid_nested_interpolation_times(
-    interpolations_min::Vector{ScalarConstantInterpolation};
-    interpolations_max::Vector{ScalarConstantInterpolation} = fill(
-        trivial_constant_itp(; val = Inf),
-        length(interpolations_min),
-    ),
-)::Vector{Float64}
+        interpolations_min::Vector{ScalarConstantInterpolation};
+        interpolations_max::Vector{ScalarConstantInterpolation} = fill(
+            trivial_constant_itp(; val = Inf),
+            length(interpolations_min),
+        ),
+    )::Vector{Float64}
     n_itp = length(interpolations_min)
     n_itp_ = length(interpolations_max)
     @assert n_itp == n_itp_

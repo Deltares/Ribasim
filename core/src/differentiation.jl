@@ -69,10 +69,10 @@ end
 # Used in the default GMRES linear solve for
 # dense Jacobians
 function LinearAlgebra.mul!(
-    _u::RibasimCVectorType,
-    J::HalfLazyJacobian,
-    _v::RibasimCVectorType,
-)
+        _u::RibasimCVectorType,
+        J::HalfLazyJacobian,
+        _v::RibasimCVectorType,
+    )
     (; J_intermediate, p_independent) = J
     (; u_reduced, state_ranges) = p_independent
     # The input vectors are rewrapped because somewhere
@@ -112,10 +112,10 @@ Compute the product `J_inner = A * J_intermediate`, where `A` is implicitly defi
 by the structure of the Ribasim model.
 """
 function calc_J_inner!(
-    J_inner::AbstractMatrix,
-    J::HalfLazyJacobian;
-    threads = true,
-)::Nothing
+        J_inner::AbstractMatrix,
+        J::HalfLazyJacobian;
+        threads = true,
+    )::Nothing
     J_inner .= 0
     n_states_reduced = size(J_inner)[1]
 
@@ -132,16 +132,17 @@ function calc_J_inner!(
 end
 
 function update_J_inner!(
-    J_inner::SparseMatrixCSC,
-    J::HalfLazyJacobian,
-    col_reduced::Int,
-)::Nothing
+        J_inner::SparseMatrixCSC,
+        J::HalfLazyJacobian,
+        col_reduced::Int,
+    )::Nothing
     (; J_intermediate, p_independent) = J
     for nz_idx in nzrange(J_intermediate, col_reduced)
         row = J_intermediate.rowval[nz_idx]
         val = J_intermediate.nzval[nz_idx]
         update_J_inner!(J_inner, p_independent, row, col_reduced, val)
     end
+    return
 end
 
 function update_J_inner!(J_inner::Matrix, J::HalfLazyJacobian, col_reduced::Int)::Nothing
@@ -150,15 +151,16 @@ function update_J_inner!(J_inner::Matrix, J::HalfLazyJacobian, col_reduced::Int)
         val = J_inner[row, col_reduced]
         !iszero(val) && update_J_inner!(J_inner, p_independent, row, col_reduced, val)
     end
+    return
 end
 
 function update_J_inner!(
-    J_inner::AbstractMatrix,
-    p_independent::ParametersIndependent,
-    row::Int,
-    col_reduced::Int,
-    val::Float64,
-)
+        J_inner::AbstractMatrix,
+        p_independent::ParametersIndependent,
+        row::Int,
+        col_reduced::Int,
+        val::Float64,
+    )
     (;
         tabulated_rating_curve,
         pump,
@@ -171,7 +173,7 @@ function update_J_inner!(
     ) = p_independent
     node_id = p_independent.node_id[row]
 
-    if row in state_ranges.tabulated_rating_curve
+    return if row in state_ranges.tabulated_rating_curve
         update_J_inner!(J_inner, val, node_id, col_reduced, tabulated_rating_curve)
     elseif row in state_ranges.pump
         update_J_inner!(J_inner, val, node_id, col_reduced, pump)
@@ -202,14 +204,14 @@ function update_J_inner!(
 end
 
 function update_J_inner!(
-    J_inner::AbstractMatrix,
-    val::Float64,
-    node_id::NodeID,
-    col_reduced::Int,
-    node::AbstractParameterNode;
-    do_inflow::Bool = true,
-    do_outflow::Bool = true,
-)::Nothing
+        J_inner::AbstractMatrix,
+        val::Float64,
+        node_id::NodeID,
+        col_reduced::Int,
+        node::AbstractParameterNode;
+        do_inflow::Bool = true,
+        do_outflow::Bool = true,
+    )::Nothing
     if do_inflow
         inflow_id = node.inflow_link[node_id.idx].link[1]
         if inflow_id.type == NodeType.Basin
@@ -241,11 +243,11 @@ This cache contains `cache_inner` for the actual linear solve in the reduced sta
 from the original state space which directly interacts with `OrdinaryDiffEqNonlinearSolve.jl`.
 """
 function SciMLBase.init(
-    prob::LinearProblem,
-    alg::config.RibasimLinearSolve,
-    args...;
-    kwargs...,
-)
+        prob::LinearProblem,
+        alg::config.RibasimLinearSolve,
+        args...;
+        kwargs...,
+    )
     W = prob.A
     (; J) = W
     (; u_reduced) = J.p_independent
@@ -275,12 +277,12 @@ between the original state space and the reduced state space and the linear solv
 reduced state space.
 """
 function OrdinaryDiffEqDifferentiation.dolinsolve(
-    integrator,
-    linsolve::RibasimLinearSolveCache;
-    b = nothing,
-    linu = nothing,
-    kwargs...,
-)
+        integrator,
+        linsolve::RibasimLinearSolveCache;
+        b = nothing,
+        linu = nothing,
+        kwargs...,
+    )
     @assert !isnothing(b)
     @assert !isnothing(linu)
     (; cache_inner, W) = linsolve
@@ -450,17 +452,17 @@ water_balance!(
 
 # Method with `u` as second argument parsable by DifferentiationInterface.jl for Jacobian computation
 function water_balance!(
-    du::RibasimCVectorType,
-    u::RibasimCVectorType,
-    p_independent::ParametersIndependent,
-    state_and_time_dependent_cache::StateAndTimeDependentCache,
-    time_dependent_cache::TimeDependentCache,
-    p_mutable::ParametersMutable,
-    t::Number,
-)::Nothing
+        du::RibasimCVectorType,
+        u::RibasimCVectorType,
+        p_independent::ParametersIndependent,
+        state_and_time_dependent_cache::StateAndTimeDependentCache,
+        time_dependent_cache::TimeDependentCache,
+        p_mutable::ParametersMutable,
+        t::Number,
+    )::Nothing
     (; u_reduced) = p_independent
     reduce_state!(u_reduced, u, p_independent)
-    water_balance!(
+    return water_balance!(
         du,
         u_reduced,
         p_independent,
