@@ -295,6 +295,7 @@ shapely = ">=2.0"
 teamcity-messages = "*"
 tomli = ">=2.0"
 tomli-w = ">=1.0"
+tomlkit = ">=0.13,<0.14"  # temp until juliacall >0.9.31
 twine = "*"
 xarray = ">=2023.11"
 xmipy = ">=1.3"
