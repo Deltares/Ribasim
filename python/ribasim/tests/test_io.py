@@ -22,7 +22,7 @@ def __assert_equal(a: DataFrame, b: DataFrame) -> None:
     if a is None and b is None:
         return
     elif a is None or b is None:
-        assert False
+        raise AssertionError()
 
     a = a.reset_index(drop=True)
     b = b.reset_index(drop=True)
@@ -39,7 +39,7 @@ def test_basic(basic, tmp_path):
     model_loaded = Model.read(toml_path)
     assert model_loaded.filepath == toml_path
 
-    with open(toml_path, "rb") as f:
+    with toml_path.open("rb") as f:
         toml_dict = tomli.load(f)
 
     assert toml_dict["ribasim_version"] == ribasim.__version__
@@ -373,8 +373,8 @@ def test_roundtrip(trivial, tmp_path):
     # check if all tables are the same
     __assert_equal(model1.node_table().df, model2.node_table().df)
     __assert_equal(model1.link.df, model2.link.df)
-    for node1, node2 in zip(model1._nodes(), model2._nodes()):
-        for table1, table2 in zip(node1._tables(), node2._tables()):
+    for node1, node2 in zip(model1._nodes(), model2._nodes(), strict=True):
+        for table1, table2 in zip(node1._tables(), node2._tables(), strict=True):
             __assert_equal(table1.df, table2.df)
 
 
@@ -483,14 +483,14 @@ def test_consistent_binary_output(basic, tmp_path):
     basic.write(toml_path)
 
     db_path = toml_path.parent / basic.input_dir / "database.gpkg"
-    with open(db_path, "rb") as f:
-        res = hashlib.md5(f.read())
+    with db_path.open("rb") as f:
+        res = hashlib.md5(f.read(), usedforsecurity=False)
         original_hash = res.hexdigest()
 
     sleep(2)  # ensure timestamps change
     basic.write(toml_path)
-    with open(db_path, "rb") as f:
-        res = hashlib.md5(f.read())
+    with db_path.open("rb") as f:
+        res = hashlib.md5(f.read(), usedforsecurity=False)
         new_hash = res.hexdigest()
 
     assert original_hash == new_hash

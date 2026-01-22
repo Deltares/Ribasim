@@ -1,5 +1,5 @@
 import argparse
-from os import makedirs
+from pathlib import Path
 
 from minio import Minio
 from minio.error import S3Error
@@ -39,7 +39,7 @@ for obj in objects:
             local_dir = f"models/{args.local}" + obj.object_name.removeprefix(
                 args.remote
             )
-            makedirs(local_dir, exist_ok=True)
+            Path(local_dir).mkdir(parents=True, exist_ok=True)
         else:
             client.fget_object(
                 bucketName,

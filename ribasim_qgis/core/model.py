@@ -21,7 +21,7 @@ def get_directory_path_from_model_file(model_path: Path, *, property: str) -> Pa
     Path
         Full path to database Geopackage.
     """
-    with open(model_path, "rb") as f:
+    with model_path.open("rb") as f:
         found_property = Path(tomllib.load(f)[property])
     # The .joinpath method (/) of pathlib.Path will take care of an absolute input_dir.
     # No need to check it ourselves!
@@ -29,7 +29,7 @@ def get_directory_path_from_model_file(model_path: Path, *, property: str) -> Pa
 
 
 def get_toml_dict(model_path: Path) -> dict[str, Any]:
-    with open(model_path, "rb") as f:
+    with model_path.open("rb") as f:
         return tomllib.load(f)
 
 
