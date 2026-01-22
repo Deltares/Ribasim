@@ -90,7 +90,7 @@ Write all results to the Arrow files as specified in the model configuration.
 """
 function write_results_netcdf(model::Model)::Model
     (; config) = model
-    (; results, experimental) = model.config
+    (; experimental) = model.config
 
     # state
     data = basin_state_data(model; table = false)

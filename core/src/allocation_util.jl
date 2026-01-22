@@ -217,7 +217,7 @@ function analyze_scaling(
     (; problem, subnetwork_id) = allocation_model
 
     log_path = results_path(config, RESULTS_FILENAME.allocation_analysis_scaling)
-    @debug "Running allocation numerics analysis for $subnetwork_id, at t = $t, for full summary see $file_name."
+    @debug "Running allocation numerics analysis for $subnetwork_id, at t = $t, for full summary see $log_path."
 
     # Perform numerics analysis
     data_numerical = MathOptAnalyzer.analyze(
@@ -440,7 +440,7 @@ function has_external_demand(
         node_id::NodeID,
     )::Tuple{Bool, NodeID}
     demand_id = if node isa Basin
-        node.level_demand_id[node_id.idx]
+        level_demand_id = node.level_demand_id[node_id.idx]
         return !iszero(level_demand_id.idx), level_demand_id
     elseif hasfield(typeof(node), :flow_demand_id)
         node.flow_demand_id[node_id.idx]

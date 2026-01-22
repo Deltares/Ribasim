@@ -692,8 +692,8 @@ function set_new_control_state!(
 end
 
 """
-Get a value for a condition. Currently supports getting levels from basins and flows
-from flow boundaries.
+Get a value for a condition. Currently supports getting levels from Basins and flows
+from FlowBoundaries.
 """
 function get_value(subvariable::SubVariable, p::Parameters, du::CVector, t::Float64)
     (; flow_boundary, level_boundary, basin) = p.p_independent
@@ -708,7 +708,7 @@ function get_value(subvariable::SubVariable, p::Parameters, du::CVector, t::Floa
             level = level_boundary.level[listen_node_id.idx](t + look_ahead)
         else
             error(
-                "Level condition node '$node_id' is neither a basin nor a level boundary.",
+                "Level condition node '$listen_node_id' is neither a Basin nor a LevelBoundary.",
             )
         end
         value = level
@@ -717,7 +717,7 @@ function get_value(subvariable::SubVariable, p::Parameters, du::CVector, t::Floa
         if listen_node_id.type == NodeType.FlowBoundary
             value = flow_boundary.flow_rate[listen_node_id.idx](t + look_ahead)
         else
-            error("Flow condition node $listen_node_id is not a flow boundary.")
+            error("Flow condition node $listen_node_id is not a FlowBoundary.")
         end
 
     elseif startswith(variable, "concentration_external.")
