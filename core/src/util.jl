@@ -490,7 +490,7 @@ function get_cache_ref(
         if listen
             if node_id.type ∉ conservative_nodetypes
                 errors = true
-                @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_node_types."
+                @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_nodetypes."
                 CacheRef()
             else
                 # Index in the state vector (inflow)

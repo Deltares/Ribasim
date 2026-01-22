@@ -1461,7 +1461,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)
             push!(subgrid.interpolations_static, hh_itp)
             push!(subgrid.level, NaN)
         else
-            @error "Invalid Basin static subgrid table for $id."
+            @error "Invalid Basin static subgrid table for $node_id."
             errors = true
         end
     end
@@ -1503,7 +1503,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)
                 push!(lookup_time, seconds_since(t, config.starttime))
                 push!(subgrid.interpolations_time, hh_itp)
             else
-                @error "Invalid Basin time subgrid table for $id, time = $time_group."
+                @error "Invalid Basin time subgrid table for $node_id, time = $t."
                 errors = true
             end
         end
@@ -1512,7 +1512,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)
             itp_first = subgrid.interpolations_time[first(lookup_index)]
             itp_last = subgrid.interpolations_time[last(lookup_index)]
             if !((itp_first.t == itp_last.t) && (itp_first.u == itp_last.u))
-                @error "For $id with cyclic_time the first and last h(h) relations for subgrid_id $subgrid_id are not equal."
+                @error "For $node_id with cyclic_time the first and last h(h) relations for subgrid_id $subgrid_id are not equal."
                 errors = true
             end
             pop!(subgrid.interpolations_time)
