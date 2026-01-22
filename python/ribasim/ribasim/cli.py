@@ -132,15 +132,15 @@ def _subprocess_handling() -> SubprocessHandling:
 
         # Check the shell type
         shell = ipy.__class__.__name__
-        if shell == "ZMQInteractiveShell":
-            return SubprocessHandling.DISPLAY  # Jupyter notebook or qtconsole
-        elif shell == "SpyderShell":
-            # See: https://github.com/spyder-ide/qtconsole/issues/471#issuecomment-787856716
-            return SubprocessHandling.SPYDER  # Spyder IDE
-        elif shell == "TerminalInteractiveShell":
-            return SubprocessHandling.FORWARD  # Terminal running IPython
-        else:
-            return SubprocessHandling.FORWARD  # Other type
+        match shell:
+            case "ZMQInteractiveShell":  # Jupyter notebook or qtconsole
+                return SubprocessHandling.DISPLAY
+            case "SpyderShell":  # Spyder IDE, see https://github.com/spyder-ide/qtconsole/issues/471#issuecomment-787856716
+                return SubprocessHandling.SPYDER
+            case "TerminalInteractiveShell":  # Terminal running IPython
+                return SubprocessHandling.FORWARD
+            case _:  # Other type
+                return SubprocessHandling.FORWARD
     except (NameError, ImportError):
         return SubprocessHandling.FORWARD  # Standard Python interpreter
 
@@ -286,7 +286,7 @@ def _run_with_progress_handling(
                             )
                     else:  # SPYDER
                         if not progress_displayed:
-                            print("", end="\r")
+                            print(end="\r")
                             progress_displayed = True
                         print("\r" + " " * term_width, end="\r")  # Clear current line
                         print(line, end="\r")  # Keep progress bar on one line

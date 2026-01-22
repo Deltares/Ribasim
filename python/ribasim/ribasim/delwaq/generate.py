@@ -131,7 +131,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
                 converging = False
 
             for inneighbor_id in inneighbor_ids:
-                for outneighbor_id in out.keys():
+                for outneighbor_id in out:
                     link = (inneighbor_id, outneighbor_id)
                     if converging:
                         link_id = G.get_edge_data(inneighbor_id, node_id)["id"][0]
@@ -158,7 +158,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
             remove_nodes.append(node_id)
 
             for inneighbor_id in inneighbor_ids:
-                for outneighbor_id in out.keys():
+                for outneighbor_id in out:
                     if outneighbor_id in remove_nodes:
                         logger.debug("Not making link to removed node.")
                         continue
@@ -311,7 +311,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
 
     # Setup link mapping
     link_mapping = {}
-    for i, (a, b, d) in enumerate(G.edges(data=True)):
+    for i, (_a, _b, d) in enumerate(G.edges(data=True)):
         for link_id in d["id"]:
             link_mapping[link_id] = i
 
@@ -419,7 +419,7 @@ def generate(
 
     # Write attributes template
     template = env.get_template("delwaq.atr.j2")
-    with open(output_path / "ribasim.atr", mode="w") as f:
+    with (output_path / "ribasim.atr").open(mode="w") as f:
         f.write(
             template.render(
                 nsegments=total_segments,
@@ -465,14 +465,14 @@ def generate(
     # Map all boundary node_ids to link_ids (unique per boundary type)
     lookups: defaultdict[str, dict[int, int]] = defaultdict(dict)
     dfs = []
-    for link_id, (a, b, (node_id, boundary_type)) in enumerate(
+    for link_id, (_a, _b, (node_id, boundary_type)) in enumerate(
         G.edges(data="boundary", default=(None, None))
     ):
         if boundary_type is None:
             continue
         lookups[boundary_type][node_id] = link_id
 
-    for boundary_type in lookups.keys():
+    for boundary_type in lookups:
         df = basins[basins.node_id.isin(lookups[boundary_type].keys())][
             ["node_id", "time", boundary_type]
         ].rename(columns={boundary_type: "flow_rate"})
@@ -523,7 +523,7 @@ def generate(
 
     # Write boundary data with substances and concentrations
     template = env.get_template("B5_bounddata.inc.j2")
-    with open(output_path / "B5_bounddata.inc", mode="w") as f:
+    with (output_path / "B5_bounddata.inc").open(mode="w") as f:
         f.write(
             template.render(
                 states=[],  # no states yet
@@ -607,7 +607,7 @@ def generate(
         endtime = model.endtime
 
     template = env.get_template("delwaq.inp.j2")
-    with open(output_path / "delwaq.inp", mode="w") as f:
+    with (output_path / "delwaq.inp").open(mode="w") as f:
         f.write(
             template.render(
                 startime=model.starttime,
@@ -624,11 +624,11 @@ def generate(
     # extended by the user later
     wasteloads = output_path / "B6_wasteloads.inc"
     if not wasteloads.exists():
-        with open(wasteloads, mode="w") as f:
+        with wasteloads.open(mode="w") as f:
             f.write("0; Number of loads\n")
 
     template = env.get_template("B8_initials.inc.j2")
-    with open(output_path / "B8_initials.inc", mode="w") as f:
+    with (output_path / "B8_initials.inc").open(mode="w") as f:
         f.write(
             template.render(
                 substances=sorted(substances),

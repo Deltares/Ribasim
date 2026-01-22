@@ -199,7 +199,7 @@ def test_get_component_name(libribasim):
 
 def test_get_version(libribasim):
     toml_path = Path(__file__).parents[3] / "core" / "Project.toml"
-    with open(toml_path, mode="rb") as fp:
+    with toml_path.open(mode="rb") as fp:
         config = tomli.load(fp)
 
     assert libribasim.get_version() == config["version"]

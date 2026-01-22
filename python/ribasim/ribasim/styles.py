@@ -2,6 +2,8 @@ import logging
 from pathlib import Path
 from sqlite3 import Connection
 
+logger = logging.getLogger(__name__)
+
 STYLES_DIR = Path(__file__).parent / "styles"
 
 CREATE_TABLE_SQL = """
@@ -119,4 +121,4 @@ def _add_styles_to_geopackage(connection: Connection, layer: str):
         )
         connection.commit()
     else:
-        logging.warning(f"Style not found for layer: {layer}")
+        logger.warning(f"Style not found for layer: {layer}")
