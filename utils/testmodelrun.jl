@@ -7,7 +7,7 @@ Run all testmodels in parallel and check if they pass.
 
 A selection can be made by passing the name(s) of the individual testmodel(s) as (an) argument(s).
 """
-function main(ARGS)
+function (@main)(ARGS)::Cint
     toml_paths = get_testmodels()
     if length(ARGS) > 0
         toml_paths = filter(x -> basename(dirname(x)) in ARGS, toml_paths)
@@ -53,8 +53,8 @@ function main(ARGS)
     if n_fail > 0
         println("Failed models:")
         foreach(println, failed)
-        error("Model run failed")
+        println("Model run failed")
+        return 1
     end
+    return 0
 end
-
-main(ARGS)
