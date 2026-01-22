@@ -8,7 +8,7 @@ for the information available in log.
 """
 function is_current_module(log)::Bool
     isnothing(log._module) && return false
-    (log._module == @__MODULE__) ||
+    return (log._module == @__MODULE__) ||
         (parentmodule(log._module) == @__MODULE__) ||
         log._module == OrdinaryDiffEqCore # for the progress bar
 end
@@ -21,21 +21,21 @@ This uses internal API, but our unit tests cover it.
 logger_stream(logger)::IOStream = logger.logger.loggers[1].logger.logger.stream
 
 function setup_logger(;
-    verbosity::LogLevel,
-    stream::IOStream,
-    module_filter_function::Function = is_current_module,
-)::NTuple{3, AbstractLogger}
+        verbosity::LogLevel,
+        stream::IOStream,
+        module_filter_function::Function = is_current_module,
+    )::NTuple{3, AbstractLogger}
     file_logger = MinLevelLogger(FileLogger(stream), verbosity)
     terminal_logger = MinLevelLogger(
         TerminalLogger(),
         LogLevel(-1), # To include progress bar
     )
     return EarlyFilteredLogger(
-        module_filter_function,
-        TeeLogger(file_logger, terminal_logger),
-    ),
-    file_logger,
-    terminal_logger
+            module_filter_function,
+            TeeLogger(file_logger, terminal_logger),
+        ),
+        file_logger,
+        terminal_logger
 end
 
 "Log messages before the model is initialized."
@@ -61,7 +61,7 @@ function log_bottlenecks(model; interrupt::Bool)
     level = LoggingExtras.Warn
 
     # Indicate convergence bottlenecks if possible with the current algorithm
-    if hasproperty(cache, :nlsolver)
+    return if hasproperty(cache, :nlsolver)
         flow_error = if interrupt && p.p_independent.ncalls[1] > 0
             flow_error = p.p_independent.convergence ./ p.p_independent.ncalls[1]
         else

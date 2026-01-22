@@ -1,9 +1,9 @@
-const MAX_ABS_FLOW = 5e5 # m/s
+const MAX_ABS_FLOW = 5.0e5 # m/s
 
 is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
 
 function variable_sum(variables)
-    if isempty(variables)
+    return if isempty(variables)
         JuMP.AffExpr()
     else
         sum(variables)
@@ -11,9 +11,9 @@ function variable_sum(variables)
 end
 
 function flow_capacity_lower_bound(
-    link::Tuple{NodeID, NodeID},
-    p_independent::ParametersIndependent,
-)
+        link::Tuple{NodeID, NodeID},
+        p_independent::ParametersIndependent,
+    )
     lower_bound = -MAX_ABS_FLOW
     for id in link
         min_flow_rate_id = if id.type == NodeType.Pump
@@ -23,10 +23,10 @@ function flow_capacity_lower_bound(
         elseif id.type == NodeType.LinearResistance
             -p_independent.linear_resistance.max_flow_rate[id.idx]
         elseif id.type ∈ (
-            NodeType.UserDemand,
-            NodeType.FlowBoundary,
-            NodeType.TabulatedRatingCurve,
-        )
+                NodeType.UserDemand,
+                NodeType.FlowBoundary,
+                NodeType.TabulatedRatingCurve,
+            )
             # Flow direction constraint
             0.0
         else
@@ -40,9 +40,9 @@ function flow_capacity_lower_bound(
 end
 
 function flow_capacity_upper_bound(
-    link::Tuple{NodeID, NodeID},
-    p_independent::ParametersIndependent,
-)
+        link::Tuple{NodeID, NodeID},
+        p_independent::ParametersIndependent,
+    )
     upper_bound = MAX_ABS_FLOW
     for id in link
         max_flow_rate_id = if id.type == NodeType.Pump
@@ -62,11 +62,11 @@ function flow_capacity_upper_bound(
 end
 
 function collect_primary_network_connections!(
-    allocation::Allocation,
-    graph::MetaGraph,
-    pump::Pump,
-    outlet::Outlet,
-)::Nothing
+        allocation::Allocation,
+        graph::MetaGraph,
+        pump::Pump,
+        outlet::Outlet,
+    )::Nothing
     errors = false
 
     for subnetwork_id in allocation.subnetwork_ids
@@ -126,7 +126,7 @@ end
 
 function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     low_storage_factor = problem[:low_storage_factor]
-    if node_id.type == NodeType.Basin
+    return if node_id.type == NodeType.Basin
         low_storage_factor[node_id]
     else
         1.0
@@ -145,10 +145,10 @@ function write_problem_to_file(problem, config; info = true, path = nothing)::No
 end
 
 function analyze_infeasibility(
-    allocation_model::AllocationModel,
-    t::Float64,
-    config::Config,
-)::JuMP.TerminationStatusCode
+        allocation_model::AllocationModel,
+        t::Float64,
+        config::Config,
+    )::JuMP.TerminationStatusCode
     (; problem, subnetwork_id) = allocation_model
 
     log_path = results_path(config, RESULTS_FILENAME.allocation_analysis_infeasibility)
@@ -173,13 +173,13 @@ function analyze_infeasibility(
     # Parse irreducible infeasible constraint sets for modeller readable logging
     violated_constraints =
         constraint_ref_from_index.(
-            problem,
-            reduce(
-                vcat,
-                getfield.(data_infeasibility.iis, :constraint);
-                init = JuMP.ConstraintRef[],
-            ),
-        )
+        problem,
+        reduce(
+            vcat,
+            getfield.(data_infeasibility.iis, :constraint);
+            init = JuMP.ConstraintRef[],
+        ),
+    )
     # remove all elements in violated_constraints that are nothing
     violated_constraints = filter(!isnothing, violated_constraints)
 
@@ -187,7 +187,7 @@ function analyze_infeasibility(
     # that these get relaxed which is more informative
     constraint_to_penalty = Dict(
         violated_constraint => isempty(JuMP.name(violated_constraint)) ? 1.0 : 0.5 for
-        violated_constraint in violated_constraints
+            violated_constraint in violated_constraints
     )
     constraint_to_slack = JuMP.relax_with_penalty!(problem, constraint_to_penalty)
     JuMP.optimize!(problem)
@@ -210,10 +210,10 @@ function analyze_infeasibility(
 end
 
 function analyze_scaling(
-    allocation_model::AllocationModel,
-    t::Float64,
-    config::Config,
-)::Nothing
+        allocation_model::AllocationModel,
+        t::Float64,
+        config::Config,
+    )::Nothing
     (; problem, subnetwork_id) = allocation_model
 
     log_path = results_path(config, RESULTS_FILENAME.allocation_analysis_scaling)
@@ -256,24 +256,24 @@ function analyze_scaling(
 end
 
 function get_optimizer()
-    JuMP.optimizer_with_attributes(
+    return JuMP.optimizer_with_attributes(
         HiGHS.Optimizer,
         "log_to_console" => false,
         "time_limit" => 60.0,
         "random_seed" => 0,
-        "small_matrix_value" => 1e-12,
+        "small_matrix_value" => 1.0e-12,
     )
 end
 
 function ScalingFactors(
-    p_independent::ParametersIndependent,
-    subnetwork_id::Int32,
-    Δt_allocation::Float64,
-)
+        p_independent::ParametersIndependent,
+        subnetwork_id::Int32,
+        Δt_allocation::Float64,
+    )
     (; basin, graph) = p_independent
     max_storages = [
         basin.storage_to_level[node_id.idx].t[end] for
-        node_id in basin.node_id if graph[node_id].subnetwork_id == subnetwork_id
+            node_id in basin.node_id if graph[node_id].subnetwork_id == subnetwork_id
     ]
     mean_half_storage = sum(max_storages) / (2 * length(max_storages))
     return ScalingFactors(;
@@ -289,6 +289,7 @@ function constraint_ref_from_index(problem::JuMP.Model, constraint_index)
             return other_constraint
         end
     end
+    return
 end
 
 function variable_ref_from_index(problem::JuMP.Model, variable_index)
@@ -297,6 +298,7 @@ function variable_ref_from_index(problem::JuMP.Model, variable_index)
             return other_variable
         end
     end
+    return
 end
 
 get_Δt_allocation(allocation::Allocation) =
@@ -334,9 +336,9 @@ end
 
 # Demand priorities for secondary network
 function DemandPriorityIterator(
-    link::Tuple{NodeID, NodeID},
-    p_independent::ParametersIndependent,
-)
+        link::Tuple{NodeID, NodeID},
+        p_independent::ParametersIndependent,
+    )
     (; allocation_models, primary_network_connections, demand_priorities_all) =
         p_independent.allocation
 
@@ -349,12 +351,13 @@ function DemandPriorityIterator(
             )
         end
     end
+    return
 end
 
 function Base.iterate(
-    demand_priority_iterator::DemandPriorityIterator,
-    demand_priority_idx = 1,
-)
+        demand_priority_iterator::DemandPriorityIterator,
+        demand_priority_idx = 1,
+    )
     (; demand_priorities_all, has_demand_priority) = demand_priority_iterator
 
     while demand_priority_idx ≤ length(demand_priorities_all)
@@ -368,15 +371,15 @@ function Base.iterate(
 end
 
 function get_objective_data_of_demand_priority(
-    objectives::AllocationObjectives,
-    demand_priority::Int32,
-)
+        objectives::AllocationObjectives,
+        demand_priority::Int32,
+    )
     (; objective_metadata) = objectives
     index = findfirst(
         metadata -> metadata.demand_priority == demand_priority,
         objective_metadata,
     )
-    objective_metadata[index]
+    return objective_metadata[index]
 end
 
 # This method should only be used in initialization because it does a graph lookup
@@ -433,9 +436,9 @@ function get_bounds_hit(variable::JuMP.VariableRef)::Tuple{Bool, Bool}
 end
 
 function has_external_demand(
-    node::AbstractParameterNode,
-    node_id::NodeID,
-)::Tuple{Bool, NodeID}
+        node::AbstractParameterNode,
+        node_id::NodeID,
+    )::Tuple{Bool, NodeID}
     demand_id = if node isa Basin
         node.level_demand_id[node_id.idx]
         return !iszero(level_demand_id.idx), level_demand_id
@@ -448,12 +451,12 @@ function has_external_demand(
 end
 
 function add_to_coefficient!(
-    constraint::JuMP.ConstraintRef,
-    variable::JuMP.VariableRef,
-    addition::Float64,
-)::Nothing
+        constraint::JuMP.ConstraintRef,
+        variable::JuMP.VariableRef,
+        addition::Float64,
+    )::Nothing
     value = JuMP.normalized_coefficient(constraint, variable)
-    JuMP.set_normalized_coefficient(constraint, variable, value + addition)
+    return JuMP.set_normalized_coefficient(constraint, variable, value + addition)
 end
 
 function update_storage_prev!(p::Parameters)::Nothing
@@ -485,8 +488,8 @@ function delete_temporary_constraints!(model::AllocationModel)::Nothing
 end
 
 function get_secondary_networks(
-    allocation_models::Vector{AllocationModel},
-)::Vector{AllocationModel}
+        allocation_models::Vector{AllocationModel},
+    )::Vector{AllocationModel}
     return filter(model -> !is_primary_network(model.subnetwork_id), allocation_models)
 end
 

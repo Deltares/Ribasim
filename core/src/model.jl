@@ -20,7 +20,7 @@ struct Model
     config::Config
     saved::SavedResults
     function Model(integrator, config, saved)
-        new(integrator, config, saved)
+        return new(integrator, config, saved)
     end
 end
 
@@ -201,7 +201,7 @@ function Model(config::Config)::Model
         water_balance!;
         get_diff_eval(du0, parameters, config.solver)...,
     )
-    prob = ODEProblem{true, specialize}(RHS, u0, timespan, parameters;)
+    prob = ODEProblem{true, specialize}(RHS, u0, timespan, parameters)
     @debug "Setup ODEProblem."
 
     callback, saved = create_callbacks(p_independent, config, saveat)
@@ -258,7 +258,7 @@ function Base.show(io::IO, model::Model)
     (; config, integrator) = model
     t = datetime_since(integrator.t, config.starttime)
     nsaved = length(tsaves(model))
-    println(io, "Model(ts: $nsaved, t: $t)")
+    return println(io, "Model(ts: $nsaved, t: $t)")
 end
 
 """

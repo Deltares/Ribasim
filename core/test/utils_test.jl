@@ -58,20 +58,20 @@ end
     storage = range(0.0, 1000.0, n_interpolations)
 
     # Covers interpolation for constant and non-constant area, extrapolation for constant area
-    A = [1e-9, 100.0, 100.0]
+    A = [1.0e-9, 100.0, 100.0]
     h = [0.0, 10.0, 15.0]
     S =
         integral.(
-            Ref(
-                LinearInterpolation(
-                    A,
-                    h;
-                    extrapolation_left = Constant,
-                    extrapolation_right = Extension,
-                ),
+        Ref(
+            LinearInterpolation(
+                A,
+                h;
+                extrapolation_left = Constant,
+                extrapolation_right = Extension,
             ),
-            h,
-        )
+        ),
+        h,
+    )
     profile = (; S, A, h)
 
     # On profile points we reproduce the profile
@@ -98,20 +98,20 @@ end
     end
 
     # Covers extrapolation for non-constant area
-    A = [1e-9, 100.0]
+    A = [1.0e-9, 100.0]
     h = [0.0, 10.0]
     S =
         integral.(
-            Ref(
-                LinearInterpolation(
-                    A,
-                    h;
-                    extrapolation_left = Constant,
-                    extrapolation_right = Extension,
-                ),
+        Ref(
+            LinearInterpolation(
+                A,
+                h;
+                extrapolation_left = Constant,
+                extrapolation_right = Extension,
             ),
-            h,
-        )
+        ),
+        h,
+    )
 
     profile = (; A, h, S)
 
@@ -175,7 +175,7 @@ end
     @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-          "The initial level (-1.0) of Basin #1 is below the bottom (0.0)."
+        "The initial level (-1.0) of Basin #1 is below the bottom (0.0)."
 
     # Converting from storages to levels and back should return the same storages
     storages = range(0.0, 2 * storage_to_level.t[end], 50)
@@ -305,7 +305,7 @@ end
     @test alg.step_limiter! == Ribasim.limit_flow!
     @test alg.nlsolve == NLNewton()
     @test alg.linsolve ==
-          Ribasim.config.RibasimLinearSolve(KLUFactorization(; check_pattern = false))
+        Ribasim.config.RibasimLinearSolve(KLUFactorization(; check_pattern = false))
 end
 
 @testitem "FlatVector" begin
@@ -475,23 +475,23 @@ end
     using Ribasim: relaxed_root
 
     # Test for x = 0
-    @test relaxed_root(0.0, 1e-3) == 0.0
+    @test relaxed_root(0.0, 1.0e-3) == 0.0
 
     # Test for x > threshold
     @test relaxed_root(2.0, 1.0) ≈ sqrt(2.0)
     @test relaxed_root(-2.0, 1.0) ≈ -sqrt(2.0)
 
     # Test at threshold boundary
-    eps = 1e-3
+    eps = 1.0e-3
     x = eps
     y1 = relaxed_root(x, eps)
     y2 = sqrt(x)
-    @test y1 ≈ y2 atol = 1e-12
+    @test y1 ≈ y2 atol = 1.0e-12
 
     x = -eps
     y1 = relaxed_root(x, eps)
     y2 = -sqrt(abs(x))
-    @test y1 ≈ y2 atol = 1e-12
+    @test y1 ≈ y2 atol = 1.0e-12
 
     # Test half way threshold, relative diff is not more than 20 %
     x = eps / 2
@@ -500,6 +500,6 @@ end
     @test y1 ≈ y2 atol = 0.2
 
     # Test for very small epsilon
-    @test relaxed_root(1e-8, 1e-8) ≈ sqrt(1e-8)
-    @test relaxed_root(-1e-8, 1e-8) ≈ -sqrt(1e-8)
+    @test relaxed_root(1.0e-8, 1.0e-8) ≈ sqrt(1.0e-8)
+    @test relaxed_root(-1.0e-8, 1.0e-8) ≈ -sqrt(1.0e-8)
 end

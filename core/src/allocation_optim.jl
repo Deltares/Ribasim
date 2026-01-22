@@ -1,9 +1,9 @@
 @enumx AllocationOptimizationType collect_demands allocate
 
 function set_simulation_data!(
-    allocation_model::AllocationModel,
-    integrator::DEIntegrator,
-)::Nothing
+        allocation_model::AllocationModel,
+        integrator::DEIntegrator,
+    )::Nothing
     (; p, t) = integrator
     (;
         basin,
@@ -38,11 +38,11 @@ function set_simulation_data!(
 end
 
 function set_simulation_data!(
-    allocation_model::AllocationModel,
-    basin::Basin,
-    p::Parameters,
-    t::Float64,
-)::Bool
+        allocation_model::AllocationModel,
+        basin::Basin,
+        p::Parameters,
+        t::Float64,
+    )::Bool
     (;
         problem,
         node_ids_in_subnetwork,
@@ -83,16 +83,16 @@ function set_simulation_data!(
 
         explicit_positive_forcing_volume[basin_id] =
             (
-                A_max * vertical_flux.precipitation[idx] +
+            A_max * vertical_flux.precipitation[idx] +
                 vertical_flux.drainage[idx] +
                 vertical_flux.surface_runoff[idx]
-            ) * Δt_allocation
+        ) * Δt_allocation
 
         implicit_negative_forcing_volume[basin_id] =
             (
-                A * vertical_flux.potential_evaporation[idx] +
+            A * vertical_flux.potential_evaporation[idx] +
                 vertical_flux.infiltration[idx]
-            ) * Δt_allocation
+        ) * Δt_allocation
 
         volume_conservation_constraint = volume_conservation[basin_id]
 
@@ -127,10 +127,10 @@ function set_simulation_data!(allocation_model::AllocationModel, ::FlowBoundary)
 end
 
 function set_simulation_data!(
-    allocation_model::AllocationModel,
-    level_boundary::LevelBoundary,
-    t::Float64,
-)::Nothing
+        allocation_model::AllocationModel,
+        level_boundary::LevelBoundary,
+        t::Float64,
+    )::Nothing
     (; problem, Δt_allocation) = allocation_model
     boundary_level = problem[:boundary_level]
 
@@ -146,12 +146,12 @@ function set_simulation_data!(
 end
 
 function set_partial_derivative_wrt_level!(
-    allocation_model::AllocationModel,
-    node_id::NodeID,
-    ∂q∂h::Float64,
-    p::Parameters,
-    constraint::JuMP.ConstraintRef,
-)::Nothing
+        allocation_model::AllocationModel,
+        node_id::NodeID,
+        ∂q∂h::Float64,
+        p::Parameters,
+        constraint::JuMP.ConstraintRef,
+    )::Nothing
     (; problem, scaling) = allocation_model
     (; current_area) = p.state_and_time_dependent_cache
 
@@ -165,13 +165,13 @@ function set_partial_derivative_wrt_level!(
 end
 
 function linearize_connector_node!(
-    allocation_model::AllocationModel,
-    connector_node::AbstractParameterNode,
-    flow_constraint,
-    flow_function::Function,
-    p::Parameters,
-    t::Float64,
-)
+        allocation_model::AllocationModel,
+        connector_node::AbstractParameterNode,
+        flow_constraint,
+        flow_function::Function,
+        p::Parameters,
+        t::Float64,
+    )
     (; scaling, Δt_allocation) = allocation_model
     (; inflow_link, outflow_link) = connector_node
 
@@ -201,7 +201,7 @@ function linearize_connector_node!(
             # partial derivative with respect to upstream level
             ∂q∂h_a = forward_diff(
                 level_a ->
-                    flow_function(connector_node, node_id, level_a, h_b, p, t_after),
+                flow_function(connector_node, node_id, level_a, h_b, p, t_after),
                 h_a,
             )
             set_partial_derivative_wrt_level!(
@@ -217,7 +217,7 @@ function linearize_connector_node!(
             # partial derivative with respect to downstream level
             ∂q∂h_b = forward_diff(
                 level_b ->
-                    flow_function(connector_node, node_id, h_a, level_b, p, t_after),
+                flow_function(connector_node, node_id, h_a, level_b, p, t_after),
                 h_b,
             )
             set_partial_derivative_wrt_level!(
@@ -229,14 +229,15 @@ function linearize_connector_node!(
             )
         end
     end
+    return
 end
 
 function set_simulation_data!(
-    allocation_model::AllocationModel,
-    linear_resistance::LinearResistance,
-    p::Parameters,
-    t::Float64,
-)::Nothing
+        allocation_model::AllocationModel,
+        linear_resistance::LinearResistance,
+        p::Parameters,
+        t::Float64,
+    )::Nothing
     (; problem) = allocation_model
     linear_resistance_constraint = problem[:linear_resistance_constraint]
 
@@ -253,11 +254,11 @@ function set_simulation_data!(
 end
 
 function set_simulation_data!(
-    allocation_model::AllocationModel,
-    manning_resistance::ManningResistance,
-    p::Parameters,
-    t::Float64,
-)::Nothing
+        allocation_model::AllocationModel,
+        manning_resistance::ManningResistance,
+        p::Parameters,
+        t::Float64,
+    )::Nothing
     (; problem) = allocation_model
     manning_resistance_constraint = problem[:manning_resistance_constraint]
 
@@ -274,11 +275,11 @@ function set_simulation_data!(
 end
 
 function set_simulation_data!(
-    allocation_model::AllocationModel,
-    tabulated_rating_curve::TabulatedRatingCurve,
-    p::Parameters,
-    t::Float64,
-)::Nothing
+        allocation_model::AllocationModel,
+        tabulated_rating_curve::TabulatedRatingCurve,
+        p::Parameters,
+        t::Float64,
+    )::Nothing
     (; problem) = allocation_model
     tabulated_rating_curve_constraint = problem[:tabulated_rating_curve_constraint]
 
@@ -295,11 +296,11 @@ function set_simulation_data!(
 end
 
 function set_simulation_data!(
-    allocation_model::AllocationModel,
-    pump::Pump,
-    outlet::Outlet,
-    du::CVector,
-)::Nothing
+        allocation_model::AllocationModel,
+        pump::Pump,
+        outlet::Outlet,
+        du::CVector,
+    )::Nothing
     (; problem, scaling) = allocation_model
     pump_constraints = problem[:pump]
     outlet_constraints = problem[:outlet]
@@ -337,13 +338,14 @@ function set_simulation_data!(
             JuMP.set_normalized_rhs(constraint, q / scaling.flow)
         end
     end
+    return
 end
 
 function set_simulation_data!(
-    allocation_model::AllocationModel,
-    user_demand::UserDemand,
-    t::Float64,
-)::Nothing
+        allocation_model::AllocationModel,
+        user_demand::UserDemand,
+        t::Float64,
+    )::Nothing
     (; problem, Δt_allocation) = allocation_model
     constraints = problem[:user_demand_return_flow]
     flow = problem[:flow]
@@ -362,9 +364,9 @@ function set_simulation_data!(
 end
 
 function preprocess_demand_collection!(
-    allocation_model::AllocationModel,
-    p_independent::ParametersIndependent,
-)::Nothing
+        allocation_model::AllocationModel,
+        p_independent::ParametersIndependent,
+    )::Nothing
     (; problem, subnetwork_id, scaling) = allocation_model
     @assert !is_primary_network(subnetwork_id)
     flow = problem[:flow]
@@ -383,9 +385,9 @@ function preprocess_demand_collection!(
 end
 
 function allocate_flows_to_subnetwork(
-    allocation_models::Vector{AllocationModel},
-    primary_network_connections,
-)::Nothing
+        allocation_models::Vector{AllocationModel},
+        primary_network_connections,
+    )::Nothing
     primary_network = get_primary_network(allocation_models)
     primary_problem = primary_network.problem
 
@@ -397,7 +399,7 @@ function allocate_flows_to_subnetwork(
 
             JuMP.set_upper_bound(
                 secondary_network.problem[:flow][link],
-                allocated_flow_value;
+                allocated_flow_value
             )
             JuMP.set_lower_bound(
                 secondary_network.problem[:flow][link],
@@ -405,6 +407,7 @@ function allocate_flows_to_subnetwork(
             )
         end
     end
+    return
 end
 
 function reset_demand_coefficients(allocation_model::AllocationModel)::Nothing
@@ -436,6 +439,7 @@ function reset_demand_coefficients(allocation_model::AllocationModel)::Nothing
             end
         end
     end
+    return
 end
 
 function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrator)::Nothing
@@ -467,10 +471,10 @@ function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrato
 end
 
 function set_secondary_network_demands!(
-    primary_model::AllocationModel,
-    secondary_model::AllocationModel,
-    demand_priorities_all::Vector{Int32},
-)::Nothing
+        primary_model::AllocationModel,
+        secondary_model::AllocationModel,
+        demand_priorities_all::Vector{Int32},
+    )::Nothing
     (; problem, objectives) = primary_model
     node_allocated = problem[:secondary_network_allocated]
     node_error = problem[:secondary_network_error]
@@ -517,17 +521,18 @@ function set_secondary_network_demands!(
             )
         end
     end
+    return
 end
 
 function set_demands!(
-    allocation_model::AllocationModel,
-    node::Union{UserDemand, FlowDemand},
-    demand_node_ids_subnetwork::Vector{NodeID},
-    node_allocated::JuMP.Containers.SparseAxisArray,
-    node_error::JuMP.Containers.SparseAxisArray,
-    node_relative_error_constraint::JuMP.Containers.SparseAxisArray,
-    integrator::DEIntegrator,
-)::Nothing
+        allocation_model::AllocationModel,
+        node::Union{UserDemand, FlowDemand},
+        demand_node_ids_subnetwork::Vector{NodeID},
+        node_allocated::JuMP.Containers.SparseAxisArray,
+        node_error::JuMP.Containers.SparseAxisArray,
+        node_relative_error_constraint::JuMP.Containers.SparseAxisArray,
+        integrator::DEIntegrator,
+    )::Nothing
     (; p, t) = integrator
     (; demand_priorities_all) = p.p_independent.allocation
     (; has_demand_priority, demand, demand_interpolation) = node
@@ -601,10 +606,10 @@ function set_demands!(
 end
 
 function set_demands!(
-    allocation_model::AllocationModel,
-    level_demand::LevelDemand,
-    integrator::DEIntegrator,
-)::Nothing
+        allocation_model::AllocationModel,
+        level_demand::LevelDemand,
+        integrator::DEIntegrator,
+    )::Nothing
     (; p, t) = integrator
     (; p_independent, state_and_time_dependent_cache) = p
     (; current_level, current_area, current_storage) = state_and_time_dependent_cache
@@ -656,18 +661,18 @@ function set_demands!(
             d_in =
                 get_storage_from_level(basin, basin_id.idx, level_min) -
                 get_storage_from_level(
-                    basin,
-                    basin_id.idx,
-                    clamp(level_now, level_min_prev_priority, level_min),
-                )
+                basin,
+                basin_id.idx,
+                clamp(level_now, level_min_prev_priority, level_min),
+            )
             d_in = isnan(d_in) ? 0.0 : d_in
 
             d_out =
                 get_storage_from_level(
-                    basin,
-                    basin_id.idx,
-                    clamp(level_now, level_max, level_max_prev_priority),
-                ) - get_storage_from_level(basin, basin_id.idx, level_max)
+                basin,
+                basin_id.idx,
+                clamp(level_now, level_max, level_max_prev_priority),
+            ) - get_storage_from_level(basin, basin_id.idx, level_max)
             d_out = isnan(d_out) ? 0.0 : d_out
 
             # Set current and starting storage in error constraints
@@ -724,7 +729,7 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
         JuMP.set_start_value(
             storage_change[node_id],
             formulate_dstorage(du, p.p_independent, t, node_id) * Δt_allocation /
-            scaling.storage,
+                scaling.storage,
         )
     end
 
@@ -732,9 +737,9 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
 end
 
 function optimize_multi_objective!(
-    secondary_model::AllocationModel,
-    primary_network_connections = [],
-)::Nothing
+        secondary_model::AllocationModel,
+        primary_network_connections = [],
+    )::Nothing
     (; problem, objectives, temporary_constraints, route_priority_expression) =
         secondary_model
 
@@ -758,7 +763,7 @@ function optimize_multi_objective!(
         JuMP.optimize!(problem)
         push!(
             temporary_constraints,
-            JuMP.@constraint(problem, expression_second == JuMP.objective_value(problem),)
+            JuMP.@constraint(problem, expression_second == JuMP.objective_value(problem))
         )
 
         # Route priority
@@ -767,7 +772,7 @@ function optimize_multi_objective!(
 
         # collect secondary network demands if primary network connections are given
         if type == AllocationObjectiveType.demand_flow ||
-           type == AllocationObjectiveType.demand_storage
+                type == AllocationObjectiveType.demand_storage
             for link in primary_network_connections
                 demand_of_previous_priority = 0
                 if demand_priority_idx > 1
@@ -814,9 +819,9 @@ function optimize!(allocation_model::AllocationModel, model)::Nothing
 end
 
 function parse_allocations!(
-    integrator::DEIntegrator,
-    allocation_model::AllocationModel,
-)::Nothing
+        integrator::DEIntegrator,
+        allocation_model::AllocationModel,
+    )::Nothing
     (; user_demand, flow_demand, level_demand) = integrator.p.p_independent
     (; problem, node_ids_in_subnetwork) = allocation_model
     parse_allocations!(
@@ -838,12 +843,12 @@ function parse_allocations!(
 end
 
 function parse_allocations!(
-    integrator::DEIntegrator,
-    node::Union{UserDemand, FlowDemand},
-    node_ids_subnetwork::Vector{NodeID},
-    node_allocated,
-    allocation_model::AllocationModel,
-)::Nothing
+        integrator::DEIntegrator,
+        node::Union{UserDemand, FlowDemand},
+        node_ids_subnetwork::Vector{NodeID},
+        node_allocated,
+        allocation_model::AllocationModel,
+    )::Nothing
     (; p, t) = integrator
     (; p_independent) = p
     (; subnetwork_id, Δt_allocation, cumulative_realized_volume, scaling) = allocation_model
@@ -872,7 +877,7 @@ function parse_allocations!(
                     allocated_flow,
                     # NOTE: The realized amount lags one allocation period behind
                     cumulative_realized_volume[inflow_link[node_id.idx].link] /
-                    Δt_allocation,
+                        Δt_allocation,
                 ),
             )
             if is_user_demand
@@ -885,10 +890,10 @@ function parse_allocations!(
 end
 
 function parse_allocations!(
-    integrator::DEIntegrator,
-    level_demand::LevelDemand,
-    allocation_model::AllocationModel,
-)::Nothing
+        integrator::DEIntegrator,
+        level_demand::LevelDemand,
+        allocation_model::AllocationModel,
+    )::Nothing
     (; p, t) = integrator
     (; p_independent, state_and_time_dependent_cache) = p
     (; current_storage) = state_and_time_dependent_cache
@@ -910,10 +915,10 @@ function parse_allocations!(
             demand = storage_demand[node_id][demand_priority_idx] / Δt_allocation
             allocated_basin_volume =
                 scaling.storage * if demand > 0
-                    min(storage_change_basin, demand)
-                else
-                    max(storage_change_basin, demand)
-                end
+                min(storage_change_basin, demand)
+            else
+                max(storage_change_basin, demand)
+            end
             storage_change_basin -= allocated_basin_volume
             push!(
                 record_demand,
@@ -937,10 +942,10 @@ end
 # After all goals have been optimized for, save
 # the resulting flows for output
 function save_flows!(
-    integrator::DEIntegrator,
-    allocation_model::AllocationModel,
-    optimization_type::AllocationOptimizationType.T,
-)::Nothing
+        integrator::DEIntegrator,
+        allocation_model::AllocationModel,
+        optimization_type::AllocationOptimizationType.T,
+    )::Nothing
     (; p, t) = integrator
     (;
         problem,
@@ -1008,8 +1013,8 @@ function save_flows!(
                 Int32(node_id),
                 subnetwork_id,
                 explicit_positive_forcing_volume[node_id] -
-                implicit_negative_forcing_volume[node_id] *
-                JuMP.value(low_storage_factor_variable),
+                    implicit_negative_forcing_volume[node_id] *
+                    JuMP.value(low_storage_factor_variable),
                 string(optimization_type),
                 hit_lower_bound,
                 hit_upper_bound,
@@ -1023,10 +1028,10 @@ end
 # Set the flow rate of allocation controlled pumps and outlets to
 # their flow determined by allocation
 function apply_control_from_allocation!(
-    node::Union{Pump, Outlet},
-    allocation_model::AllocationModel,
-    integrator::DEIntegrator,
-)::Nothing
+        node::Union{Pump, Outlet},
+        allocation_model::AllocationModel,
+        integrator::DEIntegrator,
+    )::Nothing
     (; p, t) = integrator
     (; graph, allocation) = p.p_independent
     (; record_control) = allocation

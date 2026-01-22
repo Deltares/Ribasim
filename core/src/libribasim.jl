@@ -207,9 +207,9 @@ Base.@ccallable function execute(toml_path::Cstring)::Cint
 end
 
 Base.@ccallable function get_value_ptr_double(
-    name::Cstring,
-    value_ptr::Ptr{Ptr{Cvoid}},
-)::Cint
+        name::Cstring,
+        value_ptr::Ptr{Ptr{Cvoid}},
+    )::Cint
     get_value_ptr(name, value_ptr)
 end
 
