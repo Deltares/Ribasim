@@ -88,7 +88,7 @@ s3-upload = { cmd = "python utils/s3_upload.py {{ source }} {{ destination }}", 
     "source",
     "destination",
 ] }
-test-ribasim-cli = "pytest --numprocesses=1 --basetemp=build/tests/temp --junitxml=report.xml build/tests"
+test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitxml=report.xml build/tests"
 test-ribasim-core = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false)'", depends-on = [
     "generate-testmodels",
 ] }

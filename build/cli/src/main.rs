@@ -15,8 +15,8 @@ struct Cli {
     toml_path: PathBuf,
 
     /// Number of threads to use
-    #[arg(short='t', long="threads", value_name="#THREADS", help="Number of threads to use. Defaults to 1.", hide=true)]
-    threads: Option<String>,
+    #[arg(short='t', long="threads", value_name="#THREADS", help="Number of threads to use.", default_value = "1", hide=true)]
+    threads: String,
 }
 
 fn main() -> ExitCode {
@@ -31,12 +31,8 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    // Set JULIA_NUM_THREADS to user value if specified, otherwise default to 1
-    if let Some(threads) = cli.threads {
-        env::set_var("JULIA_NUM_THREADS", threads);
-    } else if env::var("JULIA_NUM_THREADS").is_err() {
-        env::set_var("JULIA_NUM_THREADS", "1");
-    }
+    // Set JULIA_NUM_THREADS to the value from CLI
+    env::set_var("JULIA_NUM_THREADS", &cli.threads);
 
     let shared_lib_path = match OS {
         "windows" => exe_dir.join("libribasim.dll"),
