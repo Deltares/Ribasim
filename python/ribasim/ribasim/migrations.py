@@ -1,5 +1,3 @@
-import warnings
-
 from geopandas import GeoDataFrame
 from pandas import DataFrame
 
@@ -11,16 +9,9 @@ def _rename_column(df, from_colname, to_colname):
     # If a column has a default value, or is nullable, they are always added.
     # Remove that column first, then rename the old column.
     if to_colname in df.columns and from_colname not in df.columns:
-        warnings.warn(
-            "Already migrated, your model (version) might be inconsistent.",
-            UserWarning,
-            stacklevel=1,
-        )
         return df
-
     if from_colname not in df.columns:
         return df
-
     df.drop(columns=to_colname, inplace=True, errors="ignore")
     df.rename(columns={from_colname: to_colname}, inplace=True, errors="raise")
     return df
@@ -39,66 +30,43 @@ def check_inactive(df: DataFrame, name: str):
 
 def nodeschema_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame:
     if schema_version == 0 and "node_id" in gdf.columns:
-        warnings.warn("Migrating outdated Node table.", UserWarning, stacklevel=1)
         assert gdf["node_id"].is_unique, "Node IDs have to be unique."
         gdf.set_index("node_id", inplace=True)
     if schema_version < 10:
-        warnings.warn("Migrating outdated Node table.", UserWarning, stacklevel=1)
         _rename_column(gdf, "source_priority", "route_priority")
-
     return gdf
 
 
 def linkschema_migration(gdf: GeoDataFrame, schema_version: int) -> GeoDataFrame:
     if schema_version == 0:
-        warnings.warn("Migrating outdated Link table.", UserWarning, stacklevel=1)
         gdf.drop(columns="from_node_type", inplace=True, errors="ignore")
     if schema_version == 0:
-        warnings.warn("Migrating outdated Link table.", UserWarning, stacklevel=1)
         gdf.drop(columns="to_node_type", inplace=True, errors="ignore")
     if "edge_id" in gdf.columns and schema_version == 0:
-        warnings.warn("Migrating outdated Link table.", UserWarning, stacklevel=1)
         assert gdf["edge_id"].is_unique, "Link IDs have to be unique."
         gdf.set_index("edge_id", inplace=True)
     if schema_version < 3 and "subnetwork_id" in gdf.columns:
-        warnings.warn("Migrating outdated Link table.", UserWarning, stacklevel=1)
         gdf.drop(columns="subnetwork_id", inplace=True, errors="ignore")
     if schema_version < 4 and gdf.index.name == "edge_id":
-        warnings.warn("Migrating outdated Link table.", UserWarning, stacklevel=1)
         gdf.index.rename("link_id", inplace=True)
     if schema_version < 4 and "edge_type" in gdf.columns:
-        warnings.warn("Migrating outdated Link table.", UserWarning, stacklevel=1)
         _rename_column(gdf, "edge_type", "link_type")
-
     return gdf
 
 
 def basinstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if schema_version == 0:
-        warnings.warn(
-            "Migrating outdated Basin / static table.", UserWarning, stacklevel=1
-        )
         df.drop(columns="urban_runoff", inplace=True, errors="ignore")
     if schema_version < 7 and "surface_runoff" not in df.columns:
-        warnings.warn(
-            "Migrating outdated Basin / static table.", UserWarning, stacklevel=1
-        )
         df["surface_runoff"] = None
     return df
 
 
 def basintimeschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if schema_version == 0:
-        warnings.warn(
-            "Migrating outdated Basin / time table.", UserWarning, stacklevel=1
-        )
         df.drop(columns="urban_runoff", inplace=True, errors="ignore")
     if schema_version < 7 and "surface_runoff" not in df.columns:
-        warnings.warn(
-            "Migrating outdated Basin / static table.", UserWarning, stacklevel=1
-        )
         df["surface_runoff"] = None
-
     return df
 
 
@@ -106,13 +74,7 @@ def continuouscontrolvariableschema_migration(
     df: DataFrame, schema_version: int
 ) -> DataFrame:
     if schema_version == 0:
-        warnings.warn(
-            "Migrating outdated ContinuousControl / variable table.",
-            UserWarning,
-            stacklevel=1,
-        )
         df.drop(columns="listen_node_type", inplace=True, errors="ignore")
-
     return df
 
 
@@ -120,26 +82,14 @@ def discretecontrolvariableschema_migration(
     df: DataFrame, schema_version: int
 ) -> DataFrame:
     if schema_version == 0:
-        warnings.warn(
-            "Migrating outdated DiscreteControl / variable table.",
-            UserWarning,
-            stacklevel=1,
-        )
         df.drop(columns="listen_node_type", inplace=True, errors="ignore")
-
     return df
 
 
 def pidcontrolstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if schema_version == 0:
-        warnings.warn(
-            "Migrating outdated PidControl / static table.", UserWarning, stacklevel=1
-        )
         df.drop(columns="listen_node_type", inplace=True, errors="ignore")
     if schema_version < 9:
-        warnings.warn(
-            "Migrating outdated PidControl / static table.", UserWarning, stacklevel=1
-        )
         check_inactive(df, name="PidControl / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
@@ -147,14 +97,8 @@ def pidcontrolstaticschema_migration(df: DataFrame, schema_version: int) -> Data
 
 def outletstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if schema_version < 2:
-        warnings.warn(
-            "Migrating outdated Outlet / static table.", UserWarning, stacklevel=1
-        )
         _rename_column(df, "min_crest_level", "min_upstream_level")
     if schema_version < 9:
-        warnings.warn(
-            "Migrating outdated Outlet / static table.", UserWarning, stacklevel=1
-        )
         check_inactive(df, name="Outlet / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
@@ -172,11 +116,6 @@ for node_type in ["UserDemand", "LevelDemand", "FlowDemand"]:
             table_type: str = table_type,
         ) -> DataFrame:
             if schema_version < 4:
-                warnings.warn(
-                    f"Migrating outdated {node_type} / {table_type} table.",
-                    UserWarning,
-                    stacklevel=1,
-                )
                 df.rename(columns={"priority": "demand_priority"}, inplace=True)
             return df
 
@@ -187,20 +126,10 @@ def discretecontrolconditionschema_migration(
     df: DataFrame, schema_version: int
 ) -> DataFrame:
     if schema_version < 5:
-        warnings.warn(
-            "Migrating outdated DiscreteControl / condition table.",
-            UserWarning,
-            stacklevel=1,
-        )
         n_rows = len(df)
         df["time"] = None
         df["condition_id"] = range(1, n_rows + 1)
     if schema_version < 8:
-        warnings.warn(
-            "Migrating outdated DiscreteControl / condition table.",
-            UserWarning,
-            stacklevel=1,
-        )
         df["threshold_low"] = None
         df.rename(columns={"greater_than": "threshold_high"}, inplace=True)
     return df
@@ -208,18 +137,12 @@ def discretecontrolconditionschema_migration(
 
 def basinprofileschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if schema_version < 6:
-        warnings.warn(
-            "Migrating outdated Basin / profile table.", UserWarning, stacklevel=1
-        )
         df["storage"] = None
     return df
 
 
 def pumpstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if schema_version < 9:
-        warnings.warn(
-            "Migrating outdated Pump / static table.", UserWarning, stacklevel=1
-        )
         check_inactive(df, name="Pump / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
@@ -229,11 +152,6 @@ def levelboundarystaticschema_migration(
     df: DataFrame, schema_version: int
 ) -> DataFrame:
     if schema_version < 9:
-        warnings.warn(
-            "Migrating outdated LevelBoundary / static table.",
-            UserWarning,
-            stacklevel=1,
-        )
         check_inactive(df, name="LevelBoundary / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
@@ -241,9 +159,6 @@ def levelboundarystaticschema_migration(
 
 def flowboundarystaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if schema_version < 9:
-        warnings.warn(
-            "Migrating outdated FlowBoundary / static table.", UserWarning, stacklevel=1
-        )
         check_inactive(df, name="FlowBoundary / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
@@ -253,11 +168,6 @@ def linearresistancestaticschema_migration(
     df: DataFrame, schema_version: int
 ) -> DataFrame:
     if schema_version < 9:
-        warnings.warn(
-            "Migrating outdated LinearResistance / static table.",
-            UserWarning,
-            stacklevel=1,
-        )
         check_inactive(df, name="LinearResistance / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
@@ -267,11 +177,6 @@ def manningresistancestaticschema_migration(
     df: DataFrame, schema_version: int
 ) -> DataFrame:
     if schema_version < 9:
-        warnings.warn(
-            "Migrating outdated ManningResistance / static table.",
-            UserWarning,
-            stacklevel=1,
-        )
         check_inactive(df, name="ManningResistance / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
@@ -281,11 +186,6 @@ def tabulatedratingcurvestaticschema_migration(
     df: DataFrame, schema_version: int
 ) -> DataFrame:
     if schema_version < 9:
-        warnings.warn(
-            "Migrating outdated TabulatedRatingCurve / static table.",
-            UserWarning,
-            stacklevel=1,
-        )
         check_inactive(df, name="TabulatedRatingCurve / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
@@ -293,18 +193,8 @@ def tabulatedratingcurvestaticschema_migration(
 
 def userdemandstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if schema_version < 4:
-        warnings.warn(
-            f"Migrating outdated {node_type} / {table_type} table.",
-            UserWarning,
-            stacklevel=1,
-        )
         df.rename(columns={"priority": "demand_priority"}, inplace=True)
     if schema_version < 9:
-        warnings.warn(
-            "Migrating outdated TabulatedRatingCurve / static table.",
-            UserWarning,
-            stacklevel=1,
-        )
         check_inactive(df, name="UserDemand / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     return df
