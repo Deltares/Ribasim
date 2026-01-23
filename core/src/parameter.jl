@@ -1247,7 +1247,7 @@ The collection of all parameters that are passed to the rhs (`water_balance!`) a
 end
 
 Base.show(io::IO, ::Parameters) = print(io, "Ribasim Parameters")
-Base.show(io::IO, ::MIME"text/plain", p::Parameters) = print(io, "Ribasim Parameters")
+Base.show(io::IO, ::MIME"text/plain", ::Parameters) = print(io, "Ribasim Parameters")
 
 function get_value(ref::CacheRef, p::Parameters, du::CVector)
     return if ref.from_du
