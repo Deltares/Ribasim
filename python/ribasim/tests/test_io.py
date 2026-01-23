@@ -71,13 +71,6 @@ def test_basic_transient(basic_transient, tmp_path):
     assert time.df.shape == (1468, 7)
 
 
-@pytest.mark.xfail(reason="Needs implementation")
-def test_pydantic():
-    pass
-    # static_data_bad = pd.DataFrame(data={"node_id": [1, 2, 3]})
-    # test that it throws on missing flow_rate
-
-
 def test_repr():
     pump_static = pump.Static(flow_rate=[1.0, -1.0, 0.0])
 
@@ -184,14 +177,15 @@ def test_node_autoincrement():
     model.basin.add(Node(20, Point(0, 0)), [basin.State(level=[1.0])])
 
     # When adding a node with an existing ID, it should replace the old one
-    model.user_demand.add(
-        Node(20, Point(1, 0.5)),
-        [
-            user_demand.Static(
-                demand=[1e-4], return_factor=0.9, min_level=0.9, demand_priority=1
-            )
-        ],
-    )
+    with pytest.warns(UserWarning, match="Replacing node #20"):
+        model.user_demand.add(
+            Node(20, Point(1, 0.5)),
+            [
+                user_demand.Static(
+                    demand=[1e-4], return_factor=0.9, min_level=0.9, demand_priority=1
+                )
+            ],
+        )
     # Node 20 should now be a user_demand, not a basin
     assert 20 in model.user_demand.node.df.index
     assert 20 in model.user_demand.static.df["node_id"].to_numpy()
@@ -223,7 +217,8 @@ def test_add_existing():
 
     # Add multiple basins
     model.basin.add(Node(10, Point(0, 0)), [basin.State(level=[1.0])])
-    model.basin.add(Node(10, Point(0, 1)), [basin.State(level=[1.1])])
+    with pytest.warns(UserWarning, match="Replacing node #10"):
+        model.basin.add(Node(10, Point(0, 1)), [basin.State(level=[1.1])])
     model.basin.add(Node(11, Point(1, 0)), [basin.State(level=[2.0])])
 
     # Check that node_id 10 has the updated Point(0, 1) and level=1.1

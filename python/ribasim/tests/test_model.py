@@ -49,20 +49,6 @@ def test_solver():
         Solver(saveat="a")
 
 
-@pytest.mark.xfail(reason="Needs refactor")
-def test_invalid_node_type(basic):
-    # Add entry with invalid node type
-    basic.node.static = basic.node.df._append(
-        {"node_type": "InvalidNodeType", "geometry": Point(0, 0)}, ignore_index=True
-    )
-
-    with pytest.raises(
-        TypeError,
-        match=re.escape("Invalid node types detected: [InvalidNodeType].") + ".+",
-    ):
-        basic.validate_model_node_types()
-
-
 def test_parent_relationship(basic):
     model = basic
     assert model.pump._parent == model
