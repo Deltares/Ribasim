@@ -15,11 +15,10 @@ function (@main)(ARGS)::Cint
     n_model = length(toml_paths)
     n_pass = 0
     n_fail = 0
-    lk = ReentrantLock()
     failed = fill("", length(toml_paths))
     skipped_allocation = fill("", length(toml_paths))
 
-    Threads.@threads for i in eachindex(toml_paths)
+    for i in eachindex(toml_paths)
         toml_path = toml_paths[i]
         modelname = basename(dirname(toml_path))
 
@@ -35,13 +34,11 @@ function (@main)(ARGS)::Cint
             ret_code = ret_code == 0 ? 1 : 0
         end
 
-        lock(lk) do
-            if ret_code != 0
-                failed[i] = modelname
-                n_fail += 1
-            else
-                n_pass += 1
-            end
+        if ret_code != 0
+            failed[i] = modelname
+            n_fail += 1
+        else
+            n_pass += 1
         end
     end
 
