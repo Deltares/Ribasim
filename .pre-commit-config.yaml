@@ -36,5 +36,3 @@ repos:
     rev: v2.0.1
     hooks:
       - id: runic
-        additional_dependencies:
-          - 'Runic@1.5.1'
