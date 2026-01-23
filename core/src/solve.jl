@@ -151,7 +151,7 @@ function set_current_basin_properties!(
 
     return if p_mutable.new_state_and_time_dependent_cache
         formulate_storages!(u_reduced, p, t)
-        @threads for i in eachindex(basin.node_id)
+        for i in eachindex(basin.node_id)
             id = basin.node_id[i]
             s = state_and_time_dependent_cache.current_storage[i]
             i = id.idx

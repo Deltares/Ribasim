@@ -711,7 +711,7 @@ function reduce_state!(u_reduced, u, p_independent)::Nothing
     state_ranges = getaxes(u)
     u_reduced .= 0
 
-    @threads for i in eachindex(basin.node_id)
+    for i in eachindex(basin.node_id)
         for inflow_id in inflow_ids[i]
             state_idx = get_state_index(state_ranges, inflow_id; inflow = false)
             isnothing(state_idx) && continue

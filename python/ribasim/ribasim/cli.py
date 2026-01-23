@@ -4,7 +4,6 @@ import os
 import shutil
 import subprocess
 import sys
-import warnings
 from enum import Enum
 from pathlib import Path
 
@@ -149,7 +148,6 @@ def run_ribasim(
     toml_path: str | Path | None = None,
     *,
     ribasim_exe: str | Path | None = None,
-    cli_path: str | Path | None = None,
     version: bool = False,
     threads: int | None = None,
 ) -> None:
@@ -163,13 +161,10 @@ def run_ribasim(
     ribasim_exe : str | Path | None, optional
         Path to the Ribasim CLI executable. If not provided, first checks the
         RIBASIM_EXE environment variable, then searches PATH.
-    cli_path : str | Path | None, optional
-        Deprecated alias for ribasim_exe. Use ribasim_exe instead.
     version : bool, default False
         Print version
     threads : int | None, optional
-        Number of threads to use. If not specified, defaults to the
-        JULIA_NUM_THREADS environment variable, and when unset, to using the physical CPU count.
+        Number of threads to use. Defaults to 1.
 
     Raises
     ------
@@ -184,24 +179,9 @@ def run_ribasim(
     Examples
     --------
     >>> run_ribasim("model.toml")
-    >>> run_ribasim("model.toml", threads=4)
     >>> run_ribasim("model.toml", ribasim_exe="/path/to/ribasim")
     >>> run_ribasim(version=True)
     """
-    # Handle deprecated cli_path parameter
-    if cli_path is not None:
-        if ribasim_exe is not None:
-            raise ValueError(
-                "Cannot specify both 'ribasim_exe' and deprecated 'cli_path'. "
-                "Use 'ribasim_exe' only."
-            )
-        warnings.warn(
-            "The 'cli_path' parameter is deprecated. Use 'ribasim_exe' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        ribasim_exe = cli_path
-
     # Build command arguments
     args: list[str | Path] = []
 

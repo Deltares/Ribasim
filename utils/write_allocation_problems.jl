@@ -20,7 +20,7 @@ function (@main)(ARGS)::Cint
 
     mkdir(results_path)
 
-    Threads.@threads for toml_path in toml_paths
+    for toml_path in toml_paths
         model_name = basename(dirname(toml_path))
 
         if !startswith(model_name, "invalid_")
