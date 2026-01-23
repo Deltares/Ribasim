@@ -71,13 +71,6 @@ def test_basic_transient(basic_transient, tmp_path):
     assert time.df.shape == (1468, 7)
 
 
-@pytest.mark.xfail(reason="Needs implementation")
-def test_pydantic():
-    pass
-    # static_data_bad = pd.DataFrame(data={"node_id": [1, 2, 3]})
-    # test that it throws on missing flow_rate
-
-
 def test_repr():
     pump_static = pump.Static(flow_rate=[1.0, -1.0, 0.0])
 
