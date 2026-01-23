@@ -61,7 +61,6 @@ function add_env!(dict)
     dict["time"] = now()
     dict["date"] = today()
     dict["julia_version"] = VERSION
-    dict["julia_nthreads"] = Threads.nthreads()
     dict["host_cpu"] = Sys.cpu_info()[1].model
     dict["host_kernel"] = Sys.KERNEL
     dict["host_machine"] = Sys.MACHINE

@@ -15,7 +15,7 @@ struct Cli {
     toml_path: PathBuf,
 
     /// Number of threads to use
-    #[arg(short='t', long="threads", value_name="#THREADS", help="Number of threads to use. Defaults to the JULIA_NUM_THREADS environment variable, and when unset, to using the physical CPU count.")]
+    #[arg(short='t', long="threads", value_name="#THREADS", help="Number of threads to use. Defaults to 1.", hide=true)]
     threads: Option<String>,
 }
 
@@ -31,13 +31,11 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    // Set JULIA_NUM_THREADS if the user explicitly set `--threads`
-    // or if the environment variable is not yet set.
+    // Set JULIA_NUM_THREADS to user value if specified, otherwise default to 1
     if let Some(threads) = cli.threads {
         env::set_var("JULIA_NUM_THREADS", threads);
     } else if env::var("JULIA_NUM_THREADS").is_err() {
-        // If no --threads specified and JULIA_NUM_THREADS not set, use physical CPU count
-        env::set_var("JULIA_NUM_THREADS", num_cpus::get_physical().to_string());
+        env::set_var("JULIA_NUM_THREADS", "1");
     }
 
     let shared_lib_path = match OS {

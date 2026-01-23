@@ -113,20 +113,13 @@ by the structure of the Ribasim model.
 """
 function calc_J_inner!(
         J_inner::AbstractMatrix,
-        J::HalfLazyJacobian;
-        threads = true,
+        J::HalfLazyJacobian
     )::Nothing
     J_inner .= 0
     n_states_reduced = size(J_inner)[1]
 
-    if threads
-        @threads for col_reduced in 1:n_states_reduced
-            update_J_inner!(J_inner, J, col_reduced)
-        end
-    else
-        for col_reduced in 1:n_states_reduced
-            update_J_inner!(J_inner, J, col_reduced)
-        end
+    for col_reduced in 1:n_states_reduced
+        update_J_inner!(J_inner, J, col_reduced)
     end
     return nothing
 end
@@ -254,9 +247,8 @@ function SciMLBase.init(
     n_states_reduced = length(u_reduced)
     J_inner = similar(J.J_intermediate, (n_states_reduced, n_states_reduced))
 
-    # In this first call memory is allocated for the non zeros in the sparse case,
-    # which doesn't work threaded
-    calc_J_inner!(J_inner, J; threads = false)
+    # In this first call memory is allocated for the non zeros in the sparse case
+    calc_J_inner!(J_inner, J)
 
     W_inner = WOperator{true}(
         ODEFunction(Returns(nothing); jac_prototype = J_inner, jac = Returns(nothing)),
