@@ -81,7 +81,7 @@ end
     logger = TestLogger()
 
     with_logger(logger) do
-        errors = Ribasim.incomplete_subnetwork(graph, node_ids)
+        errors = Ribasim.incomplete_subnetwork(graph, node_ids, true)
         @test errors == true
     end
 
