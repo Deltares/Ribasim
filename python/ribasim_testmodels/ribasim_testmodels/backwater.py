@@ -34,7 +34,7 @@ def backwater_model() -> Model:
     # Rectangular profile, width of 1.0 m.
     basin_ids = ids[node_type == "Basin"]
     basin_x = np.arange(10.0, 1000.0, 20.0)
-    for id, x in zip(basin_ids, basin_x):
+    for id, x in zip(basin_ids, basin_x, strict=True):
         model.basin.add(
             Node(id, Point(x, 0.0)),
             [

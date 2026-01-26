@@ -22,7 +22,7 @@ class RibasimDropHandler(QgsCustomDropHandler):
         if not path.lower().endswith(".toml"):
             return False
 
-        with open(path, "rb") as f:
+        with Path(path).open("rb") as f:
             data = tomllib.load(f)
             if "ribasim_version" not in data:
                 return False

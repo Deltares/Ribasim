@@ -159,7 +159,9 @@ class NodeTable(SpatialTableModel[NodeSchema]):
 
         assert self.df is not None
         geometry = self.df["geometry"]
-        for text, xy in zip(self.df.index, np.column_stack((geometry.x, geometry.y))):
+        for text, xy in zip(
+            self.df.index, np.column_stack((geometry.x, geometry.y)), strict=True
+        ):
             ax.annotate(text=text, xy=xy, xytext=(2.0, 2.0), textcoords="offset points")
 
         return ax

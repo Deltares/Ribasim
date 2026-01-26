@@ -64,7 +64,7 @@ class DatasetWidget:
         self.ribasim_widget = cast(RibasimWidget, parent)
         self.link_layer: QgsVectorLayer | None = None
         self.node_layer: QgsVectorLayer | None = None
-        self.path: Path = Path("")
+        self.path: Path = Path()
 
         # Results
         self.flow_layer: QgsVectorLayer | None = None
@@ -609,7 +609,7 @@ class DatasetWidget:
         layer.beginEditCommand("Group all undos for performance.")
 
         fids = sorted(layer.allFeatureIds())
-        if not len(fids) == len(timeslice):
+        if len(fids) != len(timeslice):
             print(f"Can't join data at {time}, shapes of Link and arrow table differ.")
             layer.endEditCommand()
             layer.commitChanges()
@@ -629,7 +629,7 @@ class DatasetWidget:
 
         data: dict[int, dict[int, float]] = {fid: {} for fid in fids}
         for column, column_id in columns.items():
-            for fid, variable in zip(fids, timeslice[column]):
+            for fid, variable in zip(fids, timeslice[column], strict=True):
                 data[fid][column_id] = variable
 
         dataprovider = layer.dataProvider()

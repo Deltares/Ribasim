@@ -31,7 +31,7 @@ def install_qgis_plugin(plugin_name: str, profile_path: str) -> None:
         )
     finally:
         # remove the qgis-manager-plugin cache, because QGIS tries to load it as a plugin
-        os.remove(plugin_path / "sources.list")
+        (plugin_path / "sources.list").unlink()
         shutil.rmtree(plugin_path / ".cache_qgis_plugin_manager")
 
 

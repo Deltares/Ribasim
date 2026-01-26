@@ -19,7 +19,7 @@
     @test p_independent.node_id == [0, 6, 6]
     @test u isa CVector
     @test filter(!isempty, getaxes(u)) ==
-          (; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
+        (; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
 
     # read all results as bytes first to avoid memory mapping
     # which can have cleanup issues due to file locking
@@ -182,13 +182,13 @@
         @test basin.storage[1] ≈ 1.0
         @test basin.level[1] ≈ 0.044711584
         @test basin.storage_rate[1] ≈
-              (basin.storage[2] - basin.storage[1]) / config.solver.saveat
+            (basin.storage[2] - basin.storage[1]) / config.solver.saveat
         @test all(==(0), basin.inflow_rate)
         @test all(>(0), basin.outflow_rate)
         @test flow.flow_rate[1] == basin.outflow_rate[1]
         @test all(==(0), basin.drainage)
         @test all(==(0), basin.infiltration)
-        @test all(q -> abs(q) < 1e-7, basin.balance_error)
+        @test all(q -> abs(q) < 1.0e-7, basin.balance_error)
         @test all(q -> abs(q) < 0.01, basin.relative_error)
 
         # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.
@@ -197,7 +197,7 @@
         @test diff(p_independent.subgrid.level) ≈ [-1.0, 2.0]
         @test subgrid.subgrid_id[1:3] == [11, 22, 33]
         @test subgrid.subgrid_level[1:3] ≈
-              [basin_level, basin_level - 1.0, basin_level + 1.0]
+            [basin_level, basin_level - 1.0, basin_level + 1.0]
         @test subgrid.subgrid_level[(end - 2):end] == p_independent.subgrid.level
     end
 end
@@ -258,7 +258,7 @@ end
     @test infl == [0.001]
     stor ≈ Float32[init_stor + 86400 * (0.003 * 1.5 - 0.001 * 0.5)]
     BMI.update_until(model, 2.5 * 86400)
-    @test prec == [0.00]
+    @test prec == [0.0]
     @test evap == [0.0]
     @test drng == [0.001]
     @test infl == [0.002]
@@ -295,7 +295,7 @@ end
     @test success(model)
     @test length(model.integrator.sol) == 2 # start and end
     @test state_and_time_dependent_cache.current_storage ≈
-          Float32[775.23576, 775.23365, 572.60102, 1130.005] skip = Sys.isapple() atol = 1.5
+        Float32[775.23576, 775.23365, 572.60102, 1130.005] skip = Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
     @test logger.logs[1].level == Debug
@@ -314,14 +314,14 @@ end
         +,
         [
             table.concentration[table.substance .== substance] for substance in [
-                "Initial",
-                "LevelBoundary",
-                "FlowBoundary",
-                "UserDemand",
-                "Drainage",
-                "Precipitation",
-                "SurfaceRunoff",
-            ]
+                    "Initial",
+                    "LevelBoundary",
+                    "FlowBoundary",
+                    "UserDemand",
+                    "Drainage",
+                    "Precipitation",
+                    "SurfaceRunoff",
+                ]
         ],
     )
     @test all(isapprox.(summed_source_concentrations, 1.0))
@@ -364,7 +364,7 @@ end
     precipitation = p_independent.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
     @test state_and_time_dependent_cache.current_storage ≈
-          Float32[691.797, 691.795, 459.022, 1136.969] atol = 2.0 skip = Sys.isapple()
+        Float32[691.797, 691.795, 459.022, 1136.969] atol = 2.0 skip = Sys.isapple()
 end
 
 @testitem "Allocation example model" begin
@@ -461,7 +461,7 @@ end
     level_basin = Ribasim.get_storages_and_levels(model).level[:]
 
     # Basin level converges to stable level boundary level
-    @test all(isapprox.(level_basin[t .>= t_maximum_level], level.u[3], atol = 5e-2))
+    @test all(isapprox.(level_basin[t .>= t_maximum_level], level.u[3], atol = 5.0e-2))
 end
 
 @testitem "UserDemand" begin
@@ -503,7 +503,7 @@ end
     @test isapprox(
         flow_out.flow_rate,
         return_factor_itp.(time_seconds) .* flow_in.flow_rate,
-        rtol = 1e-1,
+        rtol = 1.0e-1,
     )
 end
 
@@ -613,9 +613,9 @@ end
         df = DataFrame(Ribasim.flow_data(model))
         flow =
             filter(
-                [:from_node_id, :to_node_id] => (from, to) -> from == 3 && to == 2,
-                df,
-            ).flow_rate
+            [:from_node_id, :to_node_id] => (from, to) -> from == 3 && to == 2,
+            df,
+        ).flow_rate
         flow, Ribasim.tsaves(model)
     end
 
@@ -709,8 +709,8 @@ end
     Δinf = diff(inf_out)
 
     @test all(Δdrn[1:2:end] .== 0.0)
-    @test all(isapprox.(Δdrn[2:2:end], 25.0; atol = 1e-10))
-    @test all(isapprox.(Δinf[1:2:end], 25.0; atol = 1e-10))
+    @test all(isapprox.(Δdrn[2:2:end], 25.0; atol = 1.0e-10))
+    @test all(isapprox.(Δinf[1:2:end], 25.0; atol = 1.0e-10))
     @test all(Δinf[2:2:end] .== 0.0)
 end
 
@@ -790,15 +790,15 @@ end
     filter!(
         [:node_id, :time] =>
             (id, time) ->
-                (id == 2189) &&
-                    (Ribasim.seconds_since(time, model.config.starttime) > 100 * 86400),
+        (id == 2189) &&
+            (Ribasim.seconds_since(time, model.config.starttime) > 100 * 86400),
         basin_table,
     )
 
     # Check that Basin #2189 is running dry and thus the infiltration and storage rate are close to 0
     @test all(x -> abs(x) < 0.03, basin_table.storage)
-    @test all(x -> abs(x) < 1e-8, basin_table.storage_rate)
-    @test all(x -> abs(x) < 1e-8, basin_table.infiltration)
+    @test all(x -> abs(x) < 1.0e-8, basin_table.storage_rate)
+    @test all(x -> abs(x) < 1.0e-8, basin_table.infiltration)
 end
 
 @testitem "FlowBoundary interpolation type" begin
@@ -852,8 +852,8 @@ end
 
     levels = [[0.0, 1.0, 2.0, 3.0, 4.0, 5.0], [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]]
     areas = [
-        [3.142, 6.283, 9.425, 12.566, 15.708, 18.850],
-        [3.142, 6.283, 9.425, 12.566, 15.708, 18.850],
+        [3.142, 6.283, 9.425, 12.566, 15.708, 18.85],
+        [3.142, 6.283, 9.425, 12.566, 15.708, 18.85],
     ]
     storages = [
         [0.0, 4.712, 12.567, 23.562, 37.699, 54.978],

@@ -1,7 +1,7 @@
 """Get the storage of a basin from its level."""
 function get_storage_from_level(basin::Basin, state_idx::Int, level::AbstractFloat)::Float64
     level_to_area = basin.level_to_area[state_idx]
-    if level < level_to_area.t[1]
+    return if level < level_to_area.t[1]
         0.0
     else
         integral(level_to_area, level)
@@ -53,14 +53,14 @@ function get_area_from_storage(basin::Basin, state_idx::Int, storage::T)::T wher
 end
 
 function get_scalar_interpolation(
-    starttime::DateTime,
-    time::AbstractVector,
-    node_id::NodeID,
-    param::Symbol;
-    default_value::Float64 = 0.0,
-    interpolation_type::Type{<:AbstractInterpolation} = ConstantInterpolation,
-    cyclic_time::Bool = false,
-)::interpolation_type
+        starttime::DateTime,
+        time::AbstractVector,
+        node_id::NodeID,
+        param::Symbol;
+        default_value::Float64 = 0.0,
+        interpolation_type::Type{<:AbstractInterpolation} = ConstantInterpolation,
+        cyclic_time::Bool = false,
+    )::interpolation_type
     rows = searchsorted(time.node_id, node_id)
     parameter = getproperty(time, param)[rows]
     parameter = coalesce.(parameter, default_value)
@@ -81,10 +81,10 @@ Create a valid Qh ScalarLinearInterpolation.
 Takes a node_id for validation logging, and a vector of level (h) and flow_rate (Q).
 """
 function qh_interpolation(
-    node_id::NodeID,
-    level::Vector{Float64},
-    flow_rate::Vector{Float64},
-)::CubicHermiteSpline
+        node_id::NodeID,
+        level::Vector{Float64},
+        flow_rate::Vector{Float64},
+    )::CubicHermiteSpline
     errors = false
     n = length(level)
     if n < 2
@@ -152,7 +152,7 @@ du: tells ForwardDiff whether this call is for differentiation or not
 function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
     (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
 
-    if node_id.type == NodeType.Basin
+    return if node_id.type == NodeType.Basin
         state_and_time_dependent_cache.current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
         itp = p_independent.level_boundary.level[node_id.idx]
@@ -175,7 +175,7 @@ end
 function get_storage(p::Parameters, node_id::NodeID, t::Number)::Float64
     (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
 
-    state_and_time_dependent_cache.current_storage[node_id.idx]
+    return state_and_time_dependent_cache.current_storage[node_id.idx]
 end
 
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
@@ -195,9 +195,9 @@ Replace the truth states in the logic mapping which contain wildcards with
 all possible explicit truth states.
 """
 function expand_logic_mapping(
-    logic_mapping::Vector{Dict{String, String}},
-    node_ids::Vector{NodeID},
-)::Vector{OrderedDict{Vector{Bool}, String}}
+        logic_mapping::Vector{Dict{String, String}},
+        node_ids::Vector{NodeID},
+    )::Vector{OrderedDict{Vector{Bool}, String}}
     logic_mapping_expanded =
         [OrderedDict{Vector{Bool}, String}() for _ in eachindex(node_ids)]
     pattern = r"^[TF\*]+$"
@@ -283,7 +283,7 @@ end
 "Construct a FlatVector from one of the fields of SavedFlow."
 function FlatVector(saveval::Vector{SavedFlow}, sym::Symbol)
     v = isempty(saveval) ? Vector{Float64}[] : getfield.(saveval, sym)
-    FlatVector(v)
+    return FlatVector(v)
 end
 FlatVector(v::Vector{Matrix{Float64}}) = FlatVector(vec.(v))
 
@@ -304,7 +304,7 @@ end
 
 function get_low_storage_factor(p::Parameters, id::NodeID)
     (; current_low_storage_factor) = p.state_and_time_dependent_cache
-    if id.type == NodeType.Basin
+    return if id.type == NodeType.Basin
         current_low_storage_factor[id.idx]
     else
         one(eltype(current_low_storage_factor))
@@ -316,12 +316,12 @@ For resistance nodes, give a reduction factor based on the upstream node
 as defined by the flow direction.
 """
 function low_storage_factor_resistance_node(
-    p::Parameters,
-    q::Number,
-    inflow_id::NodeID,
-    outflow_id::NodeID,
-)
-    if q > 0
+        p::Parameters,
+        q::Number,
+        inflow_id::NodeID,
+        outflow_id::NodeID,
+    )
+    return if q > 0
         get_low_storage_factor(p, inflow_id)
     else
         get_low_storage_factor(p, outflow_id)
@@ -329,7 +329,7 @@ function low_storage_factor_resistance_node(
 end
 
 function has_primary_network(allocation::Allocation)::Bool
-    if !is_active(allocation)
+    return if !is_active(allocation)
         false
     else
         first(allocation.subnetwork_ids) == 1
@@ -340,7 +340,7 @@ function is_primary_network(subnetwork_id::Int32)::Bool
     return subnetwork_id == 1
 end
 
-function get_all_demand_priorities(db::DB, config::Config;)::Vector{Int32}
+function get_all_demand_priorities(db::DB, config::Config)::Vector{Int32}
     demand_priorities = OrderedSet{Int32}()
     is_valid = true
 
@@ -409,7 +409,7 @@ Get the time interval between (flow) saves
 function get_Δt(integrator)::Float64
     (; p, t, dt) = integrator
     (; saveat) = p.p_independent.graph[]
-    if iszero(saveat)
+    return if iszero(saveat)
         dt
     elseif isinf(saveat)
         t
@@ -461,7 +461,7 @@ end
 Convert a truth state in terms of a BitVector or Vector{Bool} into a string of 'T' and 'F'
 """
 function convert_truth_state(boolean_vector)::String
-    String(UInt8.(ifelse.(boolean_vector, 'T', 'F')))
+    return String(UInt8.(ifelse.(boolean_vector, 'T', 'F')))
 end
 
 function NodeID(type::Symbol, value::Integer, p_independent::ParametersIndependent)::NodeID
@@ -475,11 +475,11 @@ end
 Get the reference to a parameter
 """
 function get_cache_ref(
-    node_id::NodeID,
-    variable::String,
-    state_ranges::StateTuple{UnitRange{Int}};
-    listen::Bool = true,
-)::Tuple{CacheRef, Bool}
+        node_id::NodeID,
+        variable::String,
+        state_ranges::StateTuple{UnitRange{Int}};
+        listen::Bool = true,
+    )::Tuple{CacheRef, Bool}
     errors = false
 
     ref = if node_id.type == NodeType.Basin && variable == "level"
@@ -490,7 +490,7 @@ function get_cache_ref(
         if listen
             if node_id.type ∉ conservative_nodetypes
                 errors = true
-                @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_node_types."
+                @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_nodetypes."
                 CacheRef()
             else
                 # Index in the state vector (inflow)
@@ -552,8 +552,8 @@ end
 Set references to all variables that are controlled by discrete control
 """
 function set_discrete_controlled_variable_refs!(
-    p_independent::ParametersIndependent,
-)::Nothing
+        p_independent::ParametersIndependent,
+    )::Nothing
     for nodetype in propertynames(p_independent)
         node = getfield(p_independent, nodetype)
         if node isa AbstractParameterNode && hasfield(typeof(node), :control_mapping)
@@ -590,12 +590,12 @@ function set_discrete_controlled_variable_refs!(
 end
 
 function set_target_ref!(
-    target_ref::Vector{CacheRef},
-    node_id::Vector{NodeID},
-    controlled_variable::Vector{String},
-    state_ranges::StateTuple{UnitRange{Int}},
-    graph::MetaGraph,
-)::Nothing
+        target_ref::Vector{CacheRef},
+        node_id::Vector{NodeID},
+        controlled_variable::Vector{String},
+        state_ranges::StateTuple{UnitRange{Int}},
+        graph::MetaGraph,
+    )::Nothing
     errors = false
     for (i, (id, variable)) in enumerate(zip(node_id, controlled_variable))
         controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
@@ -625,6 +625,7 @@ function collect_control_mappings!(p_independent::ParametersIndependent)::Nothin
             control_mappings[node_type] = node.control_mapping
         end
     end
+    return
 end
 
 function basin_levels(basin::Basin, state_idx::Int)
@@ -641,7 +642,7 @@ polynomial is used so that the function is still differentiable
 but the derivative is bounded at x = 0.
 """
 function relaxed_root(x, threshold)
-    if abs(x) < threshold
+    return if abs(x) < threshold
         1 / 4 * (x / sqrt(threshold)) * (5 - (x / threshold)^2)
     else
         sign(x) * sqrt(abs(x))
@@ -656,9 +657,9 @@ get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = 
 
 "Create a NamedTuple of the node IDs per state component in the state order"
 function state_node_ids(
-    p::Union{ParametersIndependent, NamedTuple},
-)::StateTuple{Vector{NodeID}}
-    (;
+        p::Union{ParametersIndependent, NamedTuple},
+    )::StateTuple{Vector{NodeID}}
+    return (;
         tabulated_rating_curve = p.tabulated_rating_curve.node_id,
         pump = p.pump.node_id,
         outlet = p.outlet.node_id,
@@ -674,7 +675,7 @@ end
 
 "Create the axis of the state vector"
 function count_state_ranges(u_ids::StateTuple{Vector{NodeID}})::StateTuple{UnitRange{Int}}
-    StateTuple{UnitRange{Int}}(ranges(map(length, collect(u_ids))))
+    return StateTuple{UnitRange{Int}}(ranges(map(length, collect(u_ids))))
 end
 
 function build_state_vector(p_independent::ParametersIndependent)
@@ -700,7 +701,7 @@ function build_reltol_vector(u0::CVector, reltol::Float64)
             mask[range] .= false
         end
     end
-    reltolv, mask
+    return reltolv, mask
 end
 
 function reduce_state!(u_reduced, u, p_independent)::Nothing
@@ -710,7 +711,7 @@ function reduce_state!(u_reduced, u, p_independent)::Nothing
     state_ranges = getaxes(u)
     u_reduced .= 0
 
-    @threads for i in eachindex(basin.node_id)
+    for i in eachindex(basin.node_id)
         for inflow_id in inflow_ids[i]
             state_idx = get_state_index(state_ranges, inflow_id; inflow = false)
             isnothing(state_idx) && continue
@@ -737,9 +738,9 @@ in the state vector in order the metadata of the link that is associated with th
 Only for horizontal flows, which are assumed to come first in the state vector.
 """
 function get_state_flow_links(
-    graph::MetaGraph,
-    nodes::NamedTuple,
-)::Tuple{Vector{LinkMetadata}, Vector{LinkMetadata}}
+        graph::MetaGraph,
+        nodes::NamedTuple,
+    )::Tuple{Vector{LinkMetadata}, Vector{LinkMetadata}}
     (; user_demand) = nodes
     state_inflow_link = LinkMetadata[]
     state_outflow_link = LinkMetadata[]
@@ -795,10 +796,10 @@ Use the inflow Boolean argument to disambiguite for node types that have multipl
 Can return nothing for node types that do not have a state, like Terminal.
 """
 function get_state_index(
-    state_ranges::StateTuple{UnitRange{Int}},
-    id::NodeID;
-    inflow::Bool = true,
-)::Union{Int, Nothing}
+        state_ranges::StateTuple{UnitRange{Int}},
+        id::NodeID;
+        inflow::Bool = true,
+    )::Union{Int, Nothing}
     component_name = if id.type == NodeType.UserDemand
         inflow ? :user_demand_inflow : :user_demand_outflow
     else
@@ -815,11 +816,11 @@ end
 
 "Get the state index of the to-node of the link if it exists, otherwise the from-node."
 function get_state_index(
-    state_ranges::StateTuple{UnitRange{Int}},
-    link::Tuple{NodeID, NodeID},
-)::Union{Int, Nothing}
+        state_ranges::StateTuple{UnitRange{Int}},
+        link::Tuple{NodeID, NodeID},
+    )::Union{Int, Nothing}
     idx = get_state_index(state_ranges, link[2])
-    isnothing(idx) ? get_state_index(state_ranges, link[1]; inflow = false) : idx
+    return isnothing(idx) ? get_state_index(state_ranges, link[1]; inflow = false) : idx
 end
 
 """
@@ -830,12 +831,12 @@ function isoutofdomain(u, p, t)
     (; u_reduced) = p.p_independent
     reduce_state!(u_reduced, u, p.p_independent)
     formulate_storages!(u_reduced, p, t)
-    any(<(0), current_storage)
+    return any(<(0), current_storage)
 end
 
 function get_demand(user_demand, id, demand_priority_idx, t)::Float64
     (; demand_from_timeseries, demand_interpolation, demand) = user_demand
-    if demand_from_timeseries[id.idx]
+    return if demand_from_timeseries[id.idx]
         demand_interpolation[id.idx][demand_priority_idx](t)
     else
         demand[id.idx, demand_priority_idx]
@@ -849,12 +850,12 @@ it is an underestimate of the minimum, 2low_storage_threshold is subtracted from
 This is done to not be too strict in clamping the flow in the limiter
 """
 function min_low_storage_factor(
-    storage_now::AbstractVector{T},
-    storage_prev,
-    basin,
-    id,
-) where {T}
-    if id.type == NodeType.Basin
+        storage_now::AbstractVector{T},
+        storage_prev,
+        basin,
+        id,
+    ) where {T}
+    return if id.type == NodeType.Basin
         low_storage_threshold = basin.low_storage_threshold[id.idx]
         reduction_factor(
             min(storage_now[id.idx], storage_prev[id.idx]) - 2low_storage_threshold,
@@ -872,17 +873,17 @@ it is an underestimate of the minimum, 2 * level_difference_threshold is subtrac
 This is done to not be too strict in clamping the flow in the limiter
 """
 function min_low_user_demand_level_factor(
-    level_now::AbstractVector{T},
-    level_prev,
-    min_level,
-    id_user_demand,
-    id_inflow,
-    level_difference_threshold,
-) where {T}
-    if id_inflow.type == NodeType.Basin
+        level_now::AbstractVector{T},
+        level_prev,
+        min_level,
+        id_user_demand,
+        id_inflow,
+        level_difference_threshold,
+    ) where {T}
+    return if id_inflow.type == NodeType.Basin
         reduction_factor(
             min(level_now[id_inflow.idx], level_prev[id_inflow.idx]) -
-            min_level[id_user_demand.idx] - 2 * level_difference_threshold,
+                min_level[id_user_demand.idx] - 2 * level_difference_threshold,
             level_difference_threshold,
         )
     else
@@ -898,9 +899,9 @@ address to data of the requested length, and it will not prevent the input array
 being freed.
 """
 function unsafe_array(
-    A::SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true},
-)::Vector{Float64}
-    GC.@preserve A unsafe_wrap(Array, pointer(A), length(A))
+        A::SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true},
+    )::Vector{Float64}
+    return GC.@preserve A unsafe_wrap(Array, pointer(A), length(A))
 end
 
 """
@@ -917,9 +918,9 @@ function find_index(x::Symbol, s::OrderedSet{Symbol})
 end
 
 function get_timeseries_tstops(
-    p_independent::ParametersIndependent,
-    t_end::Float64,
-)::Vector{Vector{Float64}}
+        p_independent::ParametersIndependent,
+        t_end::Float64,
+    )::Vector{Vector{Float64}}
     (;
         basin,
         flow_boundary,
@@ -962,10 +963,10 @@ function get_timeseries_tstops(
 end
 
 function get_timeseries_tstops!(
-    tstops::Vector{Vector{Float64}},
-    t_end::Float64,
-    interpolations::AbstractArray{<:AbstractInterpolation},
-)::Nothing
+        tstops::Vector{Vector{Float64}},
+        t_end::Float64,
+        interpolations::AbstractArray{<:AbstractInterpolation},
+    )::Nothing
     for itp in interpolations
         push!(tstops, get_timeseries_tstops(itp, t_end))
     end
@@ -1028,10 +1029,10 @@ function ranges(lengths::Vector{<:Integer})
 end
 
 function get_interpolation_vec(
-    interpolation_type::String,
-    block_transition_period::Float64,
-    node_id::Vector{NodeID},
-)::Vector
+        interpolation_type::String,
+        block_transition_period::Float64,
+        node_id::Vector{NodeID},
+    )::Vector
     type = if interpolation_type == "linear"
         ScalarLinearInterpolation
     elseif interpolation_type == "block"
@@ -1057,32 +1058,32 @@ function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
     # Whether the time dependent cache must be renewed
     p_mutable.new_time_dependent_cache =
         !isassigned(time_dependent_cache.t_prev_call, 1) || (
-            t != time_dependent_cache.t_prev_call[1] &&
+        t != time_dependent_cache.t_prev_call[1] &&
             ForwardDiff.partials(t) ==
             ForwardDiff.partials(time_dependent_cache.t_prev_call[1])
-        )
+    )
     time_dependent_cache.t_prev_call[1] = t
 
     # Whether the state time dependent cache must be renewed
     new_t_state_and_time_dependent_cache =
         !isassigned(state_and_time_dependent_cache.t_prev_call, 1) || (
-            t != state_and_time_dependent_cache.t_prev_call[1] &&
+        t != state_and_time_dependent_cache.t_prev_call[1] &&
             ForwardDiff.partials(t) ==
             ForwardDiff.partials(state_and_time_dependent_cache.t_prev_call[1])
-        )
+    )
     new_u_state_and_time_dependent_cache =
         any(
-            i -> !isassigned(state_and_time_dependent_cache.u_reduced_prev_call, i),
-            eachindex(u_reduced),
-        ) || any(
-            i -> !(
-                u_reduced[i] == state_and_time_dependent_cache.u_reduced_prev_call[i] &&
+        i -> !isassigned(state_and_time_dependent_cache.u_reduced_prev_call, i),
+        eachindex(u_reduced),
+    ) || any(
+        i -> !(
+            u_reduced[i] == state_and_time_dependent_cache.u_reduced_prev_call[i] &&
                 ForwardDiff.partials(u_reduced[i]) == ForwardDiff.partials(
-                    state_and_time_dependent_cache.u_reduced_prev_call[i],
-                )
-            ),
-            eachindex(u_reduced),
-        )
+                state_and_time_dependent_cache.u_reduced_prev_call[i],
+            )
+        ),
+        eachindex(u_reduced),
+    )
     state_and_time_dependent_cache.u_reduced_prev_call .= u_reduced
     state_and_time_dependent_cache.t_prev_call[1] = t
     p_mutable.new_state_and_time_dependent_cache =
@@ -1091,12 +1092,12 @@ function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
 end
 
 function eval_time_interpolation(
-    itp::AbstractInterpolation,
-    cache::Vector,
-    idx::Int,
-    p::Parameters,
-    t::Number,
-)
+        itp::AbstractInterpolation,
+        cache::Vector,
+        idx::Int,
+        p::Parameters,
+        t::Number,
+    )
     (; new_time_dependent_cache) = p.p_mutable
     if new_time_dependent_cache
         @inbounds val = itp(t)
@@ -1108,14 +1109,14 @@ function eval_time_interpolation(
 end
 
 function trivial_constant_itp(; val = 0.0)
-    ConstantInterpolation([val, val], [0.0, 1.0]; extrapolation = ConstantExtrapolation)
+    return ConstantInterpolation([val, val], [0.0, 1.0]; extrapolation = ConstantExtrapolation)
 end
 
 function trivial_allocation_itp_fill(
-    demand_priorities,
-    node_id;
-    val = 0.0,
-)::Vector{Vector{ScalarConstantInterpolation}}
+        demand_priorities,
+        node_id;
+        val = 0.0,
+    )::Vector{Vector{ScalarConstantInterpolation}}
     return [fill(trivial_constant_itp(; val), length(demand_priorities)) for _ in node_id]
 end
 
@@ -1127,14 +1128,14 @@ function finitemaximum(u::AbstractVector; init = 0)
             max_val = val
         end
     end
-    max_val
+    return max_val
 end
 
 function initialize_concentration_itp(
-    n_substance,
-    substance_idx_node_type;
-    continuity_tracer = true,
-)::Vector{ScalarConstantInterpolation}
+        n_substance,
+        substance_idx_node_type;
+        continuity_tracer = true,
+    )::Vector{ScalarConstantInterpolation}
     # Default: concentration of 0
     concentration_itp = fill(zero_constant_itp, n_substance)
 
@@ -1148,11 +1149,11 @@ function initialize_concentration_itp(
 end
 
 function filtered_constant_interpolation(
-    group,
-    field::Symbol,
-    cyclic_time::Bool,
-    config::Config,
-)::ScalarConstantInterpolation
+        group,
+        field::Symbol,
+        cyclic_time::Bool,
+        config::Config,
+    )::ScalarConstantInterpolation
     values = getproperty.(group, field)
     times = getproperty.(group, :time)
     mask = map(!ismissing, values)
@@ -1168,20 +1169,20 @@ function filtered_constant_interpolation(
 end
 
 function get_concentration_itp(
-    concentration_time,
-    node_id,
-    substances,
-    substance_idx_node_type,
-    cyclic_times,
-    config;
-    continuity_tracer = true,
-)::Vector{Vector{ScalarConstantInterpolation}}
+        concentration_time,
+        node_id,
+        substances,
+        substance_idx_node_type,
+        cyclic_times,
+        config;
+        continuity_tracer = true,
+    )::Vector{Vector{ScalarConstantInterpolation}}
     concentration_itp = [
         initialize_concentration_itp(
-            length(substances),
-            substance_idx_node_type;
-            continuity_tracer,
-        ) for _ in node_id
+                length(substances),
+                substance_idx_node_type;
+                continuity_tracer,
+            ) for _ in node_id
     ]
 
     for (id, cyclic_time) in zip(node_id, cyclic_times)
@@ -1198,11 +1199,11 @@ function get_concentration_itp(
 end
 
 function add_substance_mass!(
-    mass,
-    concentration_itp,
-    cumulative_flow::Float64, # m³
-    t::Float64,
-)::Nothing
+        mass,
+        concentration_itp,
+        cumulative_flow::Float64, # m³
+        t::Float64,
+    )::Nothing
     for (substance_idx, itp) in enumerate(concentration_itp)
         mass[substance_idx] += cumulative_flow * itp(t)
     end

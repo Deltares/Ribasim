@@ -23,7 +23,7 @@
             Ribasim.Results(; compression = true, compression_level = 2),
         ) isa ZstdCompressor
         @test Ribasim.get_compressor(Ribasim.Results(; compression_level = 3)) isa
-              ZstdCompressor
+            ZstdCompressor
         @test Ribasim.get_compressor(
             Ribasim.Results(; compression = false, compression_level = 3),
         ) === nothing
@@ -47,21 +47,21 @@ end
         autodiff = true,
         saveat = 3600.0,
         dt = 0,
-        abstol = 1e-5,
-        reltol = 1e-4,
-        maxiters = 1e5,
+        abstol = 1.0e-5,
+        reltol = 1.0e-4,
+        maxiters = 1.0e5,
     )
     Solver(; algorithm = "DoesntExist")
     @test_throws InexactError Solver(autodiff = 2)
     @test_throws KeyError algorithm(Solver(; algorithm = "DoesntExist"))
     @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", autodiff = true))) ==
-          AutoForwardDiff(; chunksize = 1, tag = :Ribasim)
+        AutoForwardDiff(; chunksize = 1, tag = :Ribasim)
     @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", autodiff = false))) isa
-          AutoFiniteDiff
+        AutoFiniteDiff
     @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF"))) ==
-          AutoForwardDiff(; chunksize = 1, tag = :Ribasim)
+        AutoForwardDiff(; chunksize = 1, tag = :Ribasim)
     @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", specialize = true))) ==
-          AutoForwardDiff(; tag = :Ribasim)
+        AutoForwardDiff(; tag = :Ribasim)
     # autodiff is not a kwargs for explicit algorithms, but we use try-catch to bypass
     algorithm(Solver(; algorithm = "Euler", autodiff = true))
 

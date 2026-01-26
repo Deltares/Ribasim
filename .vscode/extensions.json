@@ -2,6 +2,7 @@
     "recommendations": [
         "charliermarsh.ruff",
         "julialang.language-julia",
+        "aviatesk.jetls-client",
         "ms-python.mypy-type-checker",
         "ms-python.python",
         "ms-toolsai.jupyter",

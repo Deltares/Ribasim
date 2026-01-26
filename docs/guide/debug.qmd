@@ -2,6 +2,39 @@
 title: "Debugging models"
 ---
 
+## Unexpected flow rates
+
+When a connector node (e.g., `TabulatedRatingCurve`, `Pump`, `Outlet`, `ManningResistance`) produces unexpected flow rates, it's important to understand how Ribasim calculates flows and which reduction factors may apply.
+
+### Review the equations
+
+Each connector node type has specific equations that govern its behavior.
+Review the equations for your node type in the [reference documentation](/reference/node/index.qmd).
+For example, see the [TabulatedRatingCurve equations](/reference/node/tabulated-rating-curve.qmd#equations).
+
+### Check reduction factors
+
+Ribasim applies several reduction factors that can limit flows.
+To verify that none of them unexpectedly applies, check the following examples:
+
+1. **Upstream Basin level and storage**: If the upstream Basin is nearly empty, a reduction factor prevents extracting more water than available.
+
+2. **Downstream Basin level**: If the downstream Basin level is higher, only Pumps can flow against gravity.
+
+3. **Connector node parameters**: Review the node's parameters in your model input to ensure they match your expectations.
+Parameters like `max_flow_rate` or `min_upstream_level` directly affect the computed flow.
+
+### Check control and allocation
+
+If the node is subject to control or allocation:
+
+- **Discrete Control**: Check the control results to see which control state is active and when it changes.
+The active state determines which parameter set is used.
+
+- **Allocation**: Check the allocation results to see the allocated flow for the node.
+
+In all these cases the reduction factors still apply, and may be the reason allocated flows cannot be realized.
+
 ## Slow models
 
 When your model is slow, it's often only a handful of nodes that are hard to solve. If the model finishes or is interrupted, convergence bottlenecks are shown like so:

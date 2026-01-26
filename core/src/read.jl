@@ -1,15 +1,17 @@
-const conservative_nodetypes = OrderedSet{NodeType.T}([
-    NodeType.Pump,
-    NodeType.Outlet,
-    NodeType.TabulatedRatingCurve,
-    NodeType.LinearResistance,
-    NodeType.ManningResistance,
-])
+const conservative_nodetypes = OrderedSet{NodeType.T}(
+    [
+        NodeType.Pump,
+        NodeType.Outlet,
+        NodeType.TabulatedRatingCurve,
+        NodeType.LinearResistance,
+        NodeType.ManningResistance,
+    ]
+)
 
 function initialize_allocation!(
-    p_independent::ParametersIndependent,
-    config::Config,
-)::Nothing
+        p_independent::ParametersIndependent,
+        config::Config,
+    )::Nothing
     (; graph, allocation, pump, outlet) = p_independent
     (; subnetwork_ids, allocation_models) = allocation
     subnetwork_ids_ = sort(collect(keys(graph[].node_ids)))
@@ -41,40 +43,41 @@ function initialize_allocation!(
 end
 
 function set_external_flow_demand_nodes!(
-    node::AbstractParameterNode,
-    graph::MetaGraph,
-)::Nothing
+        node::AbstractParameterNode,
+        graph::MetaGraph,
+    )::Nothing
     for id in node.node_id
         flow_demand_id = get_external_demand_id(graph, id)
         !isnothing(flow_demand_id) && (node.flow_demand_id[id.idx] = flow_demand_id)
     end
+    return
 end
 
 # Get a number parameter value
 function get_parameter_value(
-    data_group,
-    T::Type{<:Number},
-    parameter_name::Symbol,
-    default,
-    ::NodeID;
-    from_static = true,
-    kwargs...,
-)::Tuple{Union{Missing, T}, Bool}
+        data_group,
+        T::Type{<:Number},
+        parameter_name::Symbol,
+        default,
+        ::NodeID;
+        from_static = true,
+        kwargs...,
+    )::Tuple{Union{Missing, T}, Bool}
     val = coalesce(getfield(last(data_group), parameter_name), default)
-    val, true
+    return val, true
 end
 
 # Get a NodeID parameter value
 function get_parameter_value(
-    data_group,
-    ::Type{NodeID},
-    parameter_name,
-    args...;
-    node_ids_all,
-    kwargs...,
-)
+        data_group,
+        ::Type{NodeID},
+        parameter_name,
+        args...;
+        node_ids_all,
+        kwargs...,
+    )
     @assert !isnothing(node_ids_all) "Setting a NodeID parameter requires passing node_ids_all to parse_parameter!."
-    NodeID(getfield(last(data_group), parameter_name), node_ids_all), true
+    return NodeID(getfield(last(data_group), parameter_name), node_ids_all), true
 end
 
 # Map interpolation type -> constructor
@@ -99,17 +102,17 @@ make_itp(
 
 # Get interpolation parameter value
 function get_parameter_value(
-    data_group,
-    ::Type{T},
-    parameter_name::Symbol,
-    default,
-    node_id::NodeID;
-    from_static::Bool = true,
-    config::Union{Nothing, Config} = nothing,
-    cyclic_time::Bool = false,
-    take_first::NTuple{N, Symbol} where {N} = (),
-    kwargs...,
-)::Tuple{T, Bool} where {T <: AbstractInterpolation}
+        data_group,
+        ::Type{T},
+        parameter_name::Symbol,
+        default,
+        node_id::NodeID;
+        from_static::Bool = true,
+        config::Union{Nothing, Config} = nothing,
+        cyclic_time::Bool = false,
+        take_first::NTuple{N, Symbol} where {N} = (),
+        kwargs...,
+    )::Tuple{T, Bool} where {T <: AbstractInterpolation}
     u, t = if from_static
         val = coalesce(getfield(first(data_group), parameter_name), default)
         [val, val], [0.0, prevfloat(Inf)]
@@ -153,21 +156,21 @@ Keyword arguments:
 - node_ids_all: A vector of all node IDs in the model, need to convert Int32 node IDs to NodeID
 """
 function parse_parameter!(
-    node::Union{<:AbstractParameterNode, BasinForcing},
-    config::Config,
-    parameter_name::Symbol;
-    static::Union{StructVector, Nothing} = nothing,
-    time::Union{StructVector, Nothing} = nothing,
-    default = nothing,
-    is_complete::Bool = true,
-    is_controllable::Bool = true,
-    node_id = node.node_id,
-    cyclic_times = zeros(Bool, length(node.node_id)),
-    field_name::Symbol = parameter_name,
-    take_first::NTuple{N, Symbol} where {N} = (),
-    node_ids_all::Union{Vector{NodeID}, Nothing} = nothing,
-    is_optional::Bool = false,
-)
+        node::Union{<:AbstractParameterNode, BasinForcing},
+        config::Config,
+        parameter_name::Symbol;
+        static::Union{StructVector, Nothing} = nothing,
+        time::Union{StructVector, Nothing} = nothing,
+        default = nothing,
+        is_complete::Bool = true,
+        is_controllable::Bool = true,
+        node_id = node.node_id,
+        cyclic_times = zeros(Bool, length(node.node_id)),
+        field_name::Symbol = parameter_name,
+        take_first::NTuple{N, Symbol} where {N} = (),
+        node_ids_all::Union{Vector{NodeID}, Nothing} = nothing,
+        is_optional::Bool = false,
+    )
     param_vec = getfield(node, field_name)
     T = eltype(param_vec)
     has_default = !isnothing(default)
@@ -257,17 +260,17 @@ function parse_parameter!(
         errors |= error
     end
 
-    errors
+    return errors
 end
 
 function parse_control_states!(
-    node::AbstractParameterNode,
-    ::Type{T},
-    static_group::Vector,
-    node_id::NodeID,
-    parameter_name::Symbol,
-    field_name::Symbol = parameter_name,
-) where {T <: Union{<:Number, <:AbstractInterpolation}}
+        node::AbstractParameterNode,
+        ::Type{T},
+        static_group::Vector,
+        node_id::NodeID,
+        parameter_name::Symbol,
+        field_name::Symbol = parameter_name,
+    ) where {T <: Union{<:Number, <:AbstractInterpolation}}
     !hasproperty(first(static_group), :control_state) && return
     for group in
         IterTools.groupby(row -> coalesce(row.control_state, nothing), static_group)
@@ -294,6 +297,7 @@ function parse_control_states!(
             )
         end
     end
+    return
 end
 
 parse_control_states!(
@@ -319,20 +323,21 @@ function initialize_control_mapping!(node::AbstractParameterNode, static::Struct
                 first_row = first(control_state_group)
                 control_state = first_row.control_state
                 ismissing(control_state) && continue
-                node.control_mapping[(node_id, control_state)] = ControlStateUpdate(;)
+                node.control_mapping[(node_id, control_state)] = ControlStateUpdate()
             end
             if static_idx[1]
                 static_group, static_idx = iterate(static_groups, static_idx)
             end
         end
     end
+    return
 end
 
 function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inflow = true)
     if inflow
         map!(node_id -> inflow_link(graph, node_id), node.inflow_link, node.node_id)
     end
-    map!(node_id -> outflow_link(graph, node_id), node.outflow_link, node.node_id)
+    return map!(node_id -> outflow_link(graph, node_id), node.outflow_link, node.node_id)
 end
 
 function LinearResistance(db, config, graph)
@@ -396,9 +401,9 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
         else
             if in_static
                 for qh_group in IterTools.groupby(
-                    row -> coalesce(row.control_state, nothing),
-                    static_group,
-                )
+                        row -> coalesce(row.control_state, nothing),
+                        static_group,
+                    )
                     interpolation_index += 1
                     control_state = first(qh_group).control_state
                     qh_table = StructVector(qh_group)
@@ -408,13 +413,13 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
                         index_lookup = static_lookup(interpolation_index)
                         rating_curve.control_mapping[(id, control_state)] =
                             ControlStateUpdate(;
-                                itp_update_lookup = [
-                                    ParameterUpdate(
-                                        :current_interpolation_index,
-                                        index_lookup,
-                                    ),
-                                ],
-                            )
+                            itp_update_lookup = [
+                                ParameterUpdate(
+                                    :current_interpolation_index,
+                                    index_lookup,
+                                ),
+                            ],
+                        )
                     end
                     push!(rating_curve.interpolations, interpolation)
                 end
@@ -468,7 +473,7 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
 
     errors && error("Errors occurred when parsing TabulatedRatingCurve data.")
 
-    rating_curve
+    return rating_curve
 end
 
 function ManningResistance(db::DB, config::Config, graph::MetaGraph, basin::Basin)
@@ -498,7 +503,7 @@ function ManningResistance(db::DB, config::Config, graph::MetaGraph, basin::Basi
 
     errors && error("Errors encountered when parsing ManningResistance data.")
 
-    manning_resistance
+    return manning_resistance
 end
 
 function LevelBoundary(db::DB, config::Config)
@@ -524,7 +529,7 @@ function LevelBoundary(db::DB, config::Config)
 
     errors && error("Errors encountered when parsing LevelBoundary data.")
 
-    level_boundary
+    return level_boundary
 end
 
 function FlowBoundary(db::DB, config::Config, graph::MetaGraph)
@@ -562,16 +567,16 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)
 
     errors && error("Errors encountered when parsing FlowBoundary data.")
 
-    flow_boundary
+    return flow_boundary
 end
 
 function parse_pump_or_outlet_parameters!(
-    node::Union{Pump, Outlet},
-    config::Config,
-    static,
-    time,
-    node_id,
-)::Bool
+        node::Union{Pump, Outlet},
+        config::Config,
+        static,
+        time,
+        node_id,
+    )::Bool
     errors = false
     # flow_rate can come from either static or time, and ends up in a different cache.
     # that is why we parse it once from static and store error_static and once from time and store error_time
@@ -623,7 +628,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph)
     errors = parse_pump_or_outlet_parameters!(pump, config, static, time, node_id)
     errors && error("Errors encountered when parsing Pump data.")
 
-    pump
+    return pump
 end
 
 function Outlet(db::DB, config::Config, graph::MetaGraph)
@@ -641,7 +646,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)
     errors = parse_pump_or_outlet_parameters!(outlet, config, static, time, node_id)
     errors && error("Errors encountered when parsing Outlet data.")
 
-    outlet
+    return outlet
 end
 
 function Terminal(db::DB)::Terminal
@@ -671,11 +676,11 @@ const unit_constant_itp = ConstantInterpolation(
 )
 
 function ConcentrationData(
-    concentration_time,
-    node_id::Vector{NodeID},
-    db::DB,
-    config::Config,
-)::ConcentrationData
+        concentration_time,
+        node_id::Vector{NodeID},
+        db::DB,
+        config::Config,
+    )::ConcentrationData
     n_basin = length(node_id)
     cyclic_times = get_cyclic_time(db, "Basin")
 
@@ -831,12 +836,12 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 end
 
 function get_threshold!(
-    threshold::Vector{<:AbstractInterpolation},
-    conditions_compound_variable,
-    starttime::DateTime,
-    cyclic_time::Bool;
-    field = :threshold_high,
-)::Nothing
+        threshold::Vector{<:AbstractInterpolation},
+        conditions_compound_variable,
+        starttime::DateTime,
+        cyclic_time::Bool;
+        field = :threshold_high,
+    )::Nothing
     (; node_id) = first(conditions_compound_variable)
     errors = false
 
@@ -854,7 +859,7 @@ function get_threshold!(
             push_constant_interpolation!(
                 threshold,
                 field == :threshold_high ? condition_group.threshold_high :
-                coalesce.(condition_group.threshold_low, condition_group.threshold_high),
+                    coalesce.(condition_group.threshold_low, condition_group.threshold_high),
                 seconds_since.(condition_group.time, starttime),
                 NodeID(:UserDemand, node_id, 0);
                 cyclic_time,
@@ -862,7 +867,7 @@ function get_threshold!(
         end
     end
 
-    if errors
+    return if errors
         error("Invalid conditions encountered for $node_id.")
     end
 end
@@ -872,13 +877,13 @@ Get a CompoundVariable object given its definition in the input data.
 References to listened parameters are added later.
 """
 function CompoundVariable(
-    variables_compound_variable,
-    node_type::NodeType.T,
-    node_ids_all::Vector{NodeID};
-    conditions_compound_variable = nothing,
-    starttime = nothing,
-    cyclic_time = false,
-)::CompoundVariable
+        variables_compound_variable,
+        node_type::NodeType.T,
+        node_ids_all::Vector{NodeID};
+        conditions_compound_variable = nothing,
+        starttime = nothing,
+        cyclic_time = false,
+    )::CompoundVariable
     # The ID of the node listening to this CompoundVariable
     node_id =
         NodeID(node_type, only(unique(variables_compound_variable.node_id)), node_ids_all)
@@ -1080,7 +1085,7 @@ function continuous_control_compound_variables(db::DB, config::Config, ids)
             CompoundVariable(variable_data, NodeType.ContinuousControl, node_ids_all),
         )
     end
-    compound_variables
+    return compound_variables
 end
 
 function ContinuousControl(db::DB, config::Config)::ContinuousControl
@@ -1125,17 +1130,17 @@ function PidControl(db::DB, config::Config)
 
     errors && error("Errors encountered when parsing LinearResistance data.")
 
-    pid_control
+    return pid_control
 end
 
 function parse_demand!(
-    node::AbstractDemandNode,
-    static,
-    time,
-    cyclic_times,
-    demand_priorities,
-    config,
-)::Bool
+        node::AbstractDemandNode,
+        static,
+        time,
+        cyclic_times,
+        demand_priorities,
+        config,
+    )::Bool
     if !isempty(static)
         static_groups = IterTools.groupby(row -> row.node_id, static)
         static_group, static_idx = iterate(static_groups)
@@ -1185,12 +1190,12 @@ function parse_demand!(
 end
 
 function parse_static_demand_data!(
-    node::Union{UserDemand, FlowDemand},
-    id::NodeID,
-    static_group,
-    demand_priorities,
-    ::Config,
-)::Nothing
+        node::Union{UserDemand, FlowDemand},
+        id::NodeID,
+        static_group,
+        demand_priorities,
+        ::Config,
+    )::Nothing
     if node isa UserDemand
         node.demand_from_timeseries[id.idx] = false
     end
@@ -1206,13 +1211,13 @@ function parse_static_demand_data!(
 end
 
 function parse_time_demand_data!(
-    node::Union{UserDemand, FlowDemand},
-    id::NodeID,
-    time_group,
-    demand_priorities,
-    cyclic_time::Bool,
-    config::Config,
-)
+        node::Union{UserDemand, FlowDemand},
+        id::NodeID,
+        time_group,
+        demand_priorities,
+        cyclic_time::Bool,
+        config::Config,
+    )
     if node isa UserDemand
         node.demand_from_timeseries[id.idx] = true
     end
@@ -1272,23 +1277,23 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
 
     errors |=
         !valid_demand(
-            user_demand.node_id,
-            user_demand.demand_interpolation,
-            user_demand.demand_priorities,
-        )
+        user_demand.node_id,
+        user_demand.demand_interpolation,
+        user_demand.demand_priorities,
+    )
 
     user_demand.allocated[.!user_demand.has_demand_priority] .= 0
     errors && error("Errors encountered when parsing LevelDemand data.")
-    user_demand
+    return user_demand
 end
 
 function parse_static_demand_data!(
-    level_demand::LevelDemand,
-    id::NodeID,
-    static_group,
-    demand_priorities,
-    ::Config,
-)::Nothing
+        level_demand::LevelDemand,
+        id::NodeID,
+        static_group,
+        demand_priorities,
+        ::Config,
+    )::Nothing
     for row in static_group
         demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
         level_demand.has_demand_priority[id.idx, demand_priority_idx] = true
@@ -1301,13 +1306,13 @@ function parse_static_demand_data!(
 end
 
 function parse_time_demand_data!(
-    level_demand::LevelDemand,
-    id::NodeID,
-    time_group,
-    demand_priorities,
-    cyclic_time::Bool,
-    config::Config,
-)::Nothing
+        level_demand::LevelDemand,
+        id::NodeID,
+        time_group,
+        demand_priorities,
+        cyclic_time::Bool,
+        config::Config,
+    )::Nothing
     for time_priority_group in IterTools.groupby(row -> row.demand_priority, time_group)
         demand_priority_idx =
             findsorted(demand_priorities, first(time_priority_group).demand_priority)
@@ -1371,7 +1376,7 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
         end
     end
 
-    level_demand
+    return level_demand
 end
 
 function FlowDemand(db::DB, config::Config, graph::MetaGraph)
@@ -1392,17 +1397,17 @@ function FlowDemand(db::DB, config::Config, graph::MetaGraph)
         parse_demand!(flow_demand, static, time, cyclic_times, demand_priorities, config)
     errors && error("Errors encountered when parsing FlowDemand data.")
 
-    flow_demand
+    return flow_demand
 end
 
 "Create and push a ConstantInterpolation to the constant_interpolations."
 function push_constant_interpolation!(
-    constant_interpolations::Vector{<:ConstantInterpolation{uType, tType}},
-    output::uType,
-    input::tType,
-    node_id::NodeID;
-    cyclic_time::Bool = false,
-) where {uType, tType}
+        constant_interpolations::Vector{<:ConstantInterpolation{uType, tType}},
+        output::uType,
+        input::tType,
+        node_id::NodeID;
+        cyclic_time::Bool = false,
+    ) where {uType, tType}
     valid = valid_time_interpolation(input, output, node_id, cyclic_time)
     !valid && error("Invalid time series.")
     itp = ConstantInterpolation(
@@ -1411,7 +1416,7 @@ function push_constant_interpolation!(
         extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
         cache_parameters = true,
     )
-    push!(constant_interpolations, itp)
+    return push!(constant_interpolations, itp)
 end
 
 "Create an interpolation object that always returns `lookup_index`."
@@ -1456,7 +1461,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)
             push!(subgrid.interpolations_static, hh_itp)
             push!(subgrid.level, NaN)
         else
-            @error "Invalid Basin static subgrid table for $id."
+            @error "Invalid Basin static subgrid table for $node_id."
             errors = true
         end
     end
@@ -1498,7 +1503,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)
                 push!(lookup_time, seconds_since(t, config.starttime))
                 push!(subgrid.interpolations_time, hh_itp)
             else
-                @error "Invalid Basin time subgrid table for $id, time = $time_group."
+                @error "Invalid Basin time subgrid table for $node_id, time = $t."
                 errors = true
             end
         end
@@ -1507,7 +1512,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)
             itp_first = subgrid.interpolations_time[first(lookup_index)]
             itp_last = subgrid.interpolations_time[last(lookup_index)]
             if !((itp_first.t == itp_last.t) && (itp_first.u == itp_last.u))
-                @error "For $id with cyclic_time the first and last h(h) relations for subgrid_id $subgrid_id are not equal."
+                @error "For $node_id with cyclic_time the first and last h(h) relations for subgrid_id $subgrid_id are not equal."
                 errors = true
             end
             pop!(subgrid.interpolations_time)
@@ -1538,7 +1543,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)
 
     errors && @error("Errors encountered when parsing Basin Subgrid time data.")
 
-    subgrid
+    return subgrid
 end
 
 function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
@@ -1581,16 +1586,18 @@ function Parameters(db::DB, config::Config)::Parameters
 
     subgrid = Subgrid(db, config, basin)
 
-    u_ids = state_node_ids((;
-        nodes.tabulated_rating_curve,
-        nodes.pump,
-        nodes.outlet,
-        nodes.user_demand,
-        nodes.linear_resistance,
-        nodes.manning_resistance,
-        nodes.basin,
-        nodes.pid_control,
-    ))
+    u_ids = state_node_ids(
+        (;
+            nodes.tabulated_rating_curve,
+            nodes.pump,
+            nodes.outlet,
+            nodes.user_demand,
+            nodes.linear_resistance,
+            nodes.manning_resistance,
+            nodes.basin,
+            nodes.pid_control,
+        )
+    )
     node_id = reduce(vcat, u_ids)
     n_states = length(node_id)
     state_ranges = count_state_ranges(u_ids)
@@ -1662,8 +1669,8 @@ function get_node_ids_int32(db::DB, node_type)::Vector{Int32}
 end
 
 function get_node_ids_types(
-    db::DB,
-)::@NamedTuple{node_id::Vector{Int32}, node_type::Vector{NodeType.T}}
+        db::DB,
+    )::@NamedTuple{node_id::Vector{Int32}, node_type::Vector{NodeType.T}}
     sql = "SELECT node_id, node_type FROM Node ORDER BY node_id"
     table = execute(columntable, db, sql)
     # convert from String to NodeType
@@ -1898,10 +1905,10 @@ Load data from Arrow or NetCDF files if available, otherwise the database.
 Returns either a `NamedTuple` of Vectors or `nothing` if the data is not present.
 """
 function load_data(
-    db::DB,
-    config::Config,
-    table_type::Type{<:Table},
-)::Union{NamedTuple, Nothing}
+        db::DB,
+        config::Config,
+        table_type::Type{<:Table},
+    )::Union{NamedTuple, Nothing}
     toml = getfield(config, :toml)
     section_name = snake_case(node_type(table_type))
     section = getproperty(toml, section_name)
@@ -1910,7 +1917,7 @@ function load_data(
 
     path = hasproperty(section, kind) ? getproperty(section, kind) : nothing
 
-    if !isnothing(path)
+    return if !isnothing(path)
         # the TOML specifies a file outside the database
         path = getproperty(section, kind)
         table_path = input_path(config, path)
@@ -1927,7 +1934,7 @@ function load_data(
         end
     else
         if exists(db, sql_name)
-            table = execute(prepare(db, "select * from $(esc_id(sql_name))"), (), strict=true)
+            table = execute(prepare(db, "select * from $(esc_id(sql_name))"), (), strict = true)
             return sqlite_columntable(table, db, config, table_type)
         else
             return nothing
@@ -1937,11 +1944,11 @@ end
 
 "Faster alternative to Tables.columntable that preallocates based on the schema."
 function sqlite_columntable(
-    table::Query,
-    db::DB,
-    config::Config,
-    T::Type{<:Table},
-)::NamedTuple
+        table::Query,
+        db::DB,
+        config::Config,
+        T::Type{<:Table},
+    )::NamedTuple
     sql_name = sql_table_name(T)
     nrows = execute(db, "SELECT COUNT(*) FROM $(esc_id(sql_name))") |> first |> first
 
@@ -1955,13 +1962,13 @@ function sqlite_columntable(
             df = dateformat"yyyy-mm-dd HH:MM:SS.s"
             @. nt[name] = [
                 ismissing(val) ? DateTime(config.starttime) :
-                DateTime(replace(val, r"(\.\d{3})\d+$" => s"\1"), df) for val in column
+                    DateTime(replace(val, r"(\.\d{3})\d+$" => s"\1"), df) for val in column
             ]
         elseif name in names
             nt[name] .= column
         end
     end
-    nt
+    return nt
 end
 
 "Alternative to Tables.columntable that converts time to our own to_datetime."
@@ -1980,7 +1987,7 @@ function arrow_columntable(table::Arrow.Table, T::Type{<:Table})::NamedTuple
             nt[name] .= getproperty(table, name)
         end
     end
-    nt
+    return nt
 end
 
 # alternative to convert that doesn't have warntimestamp
@@ -2000,10 +2007,10 @@ Always returns a StructVector of the given struct type T, which is empty if the 
 not found. This function validates the schema, and enforces the required sort order.
 """
 function load_structvector(
-    db::DB,
-    config::Config,
-    ::Type{T},
-)::StructVector{T} where {T <: Table}
+        db::DB,
+        config::Config,
+        ::Type{T},
+    )::StructVector{T} where {T <: Table}
     nt = load_data(db, config, T)
 
     if nt === nothing
@@ -2025,10 +2032,10 @@ Mapping these derivatives to an n-sized vector dfdx requires choosing a value at
 As default we use dfdx = const = dfdx[0] = dfdx[1] =  (f[2] - f[1]) / (x[2] - x[1]),
 """
 function finite_difference(
-    f::Vector{Float64},
-    x::Vector{Float64},
-    dfdx₀::Float64 = (f[2] - f[1]) / (x[2] - x[1]),
-)::Vector{Float64}
+        f::Vector{Float64},
+        x::Vector{Float64},
+        dfdx₀::Float64 = (f[2] - f[1]) / (x[2] - x[1]),
+    )::Vector{Float64}
     dfdx = zeros(Float64, length(x))
     dfdx[1] = dfdx₀  # Set the first derivative value
 
@@ -2037,7 +2044,7 @@ function finite_difference(
         Δx = x[i + 1] - x[i]
         dfdx[i + 1] = 2 * Δf / Δx - dfdx[i]
     end
-    dfdx
+    return dfdx
 end
 
 """trapezoidal integration"""
@@ -2049,7 +2056,7 @@ function trapz_integrate(dfdx::Vector{Float64}, x::Vector{Float64})::Vector{Floa
         Δx = x[i + 1] - x[i]
         f[i + 1] = f[i] + 0.5 * (dfdx[i + 1] + dfdx[i]) * Δx
     end
-    f
+    return f
 end
 
 "Determine all substances present in the input over multiple tables"
@@ -2057,12 +2064,12 @@ function get_substances(db::DB, config::Config)::OrderedSet{Symbol}
     # Hardcoded tracers
     substances = OrderedSet{Symbol}(Symbol.(instances(Substance.T)))
     for table in [
-        Schema.Basin.ConcentrationState,
-        Schema.Basin.Concentration,
-        Schema.FlowBoundary.Concentration,
-        Schema.LevelBoundary.Concentration,
-        Schema.UserDemand.Concentration,
-    ]
+            Schema.Basin.ConcentrationState,
+            Schema.Basin.Concentration,
+            Schema.FlowBoundary.Concentration,
+            Schema.LevelBoundary.Concentration,
+            Schema.UserDemand.Concentration,
+        ]
         data = load_structvector(db, config, table)
         for row in data
             push!(substances, Symbol(row.substance))
@@ -2073,12 +2080,12 @@ end
 
 "Set values in wide concentration matrix from a long input table."
 function set_concentrations!(
-    concentration,
-    concentration_data,
-    substances,
-    node_ids::Vector{NodeID};
-    concentration_column = :concentration,
-)
+        concentration,
+        concentration_data,
+        substances,
+        node_ids::Vector{NodeID};
+        concentration_column = :concentration,
+    )
     for substance in unique(concentration_data.substance)
         data_sub = filter(row -> row.substance == substance, concentration_data)
         sub_idx = find_index(Symbol(substance), substances)
@@ -2090,12 +2097,13 @@ function set_concentrations!(
             concentration[node_idx, sub_idx] = value
         end
     end
+    return
 end
 
 function interpolate_basin_profile!(
-    basin::Basin,
-    profiles::StructVector{Schema.Basin.Profile},
-)
+        basin::Basin,
+        profiles::StructVector{Schema.Basin.Profile},
+    )
     areas = Vector{Vector{Float64}}()
     levels = Vector{Vector{Float64}}()
     storage = Vector{Vector{Float64}}()
@@ -2122,9 +2130,11 @@ function interpolate_basin_profile!(
 
         for j in 1:(length(dS_dh) - 1)
             if dS_dh[j + 1] < 0
-                error((
-                    "Invalid profile for $(basin.node_id[i]). The step from (h=$(group_level[j]), S=$(group_storage[j])) to (h=$(group_level[j+1]), S=$(group_storage[j+1])) implies a decreasing area compared to lower points in the profile, which is not allowed."
-                ),)
+                error(
+                    (
+                        "Invalid profile for $(basin.node_id[i]). The step from (h=$(group_level[j]), S=$(group_storage[j])) to (h=$(group_level[j + 1]), S=$(group_storage[j + 1])) implies a decreasing area compared to lower points in the profile, which is not allowed."
+                    ),
+                )
             end
         end
 

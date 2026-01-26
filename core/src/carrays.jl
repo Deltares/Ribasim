@@ -13,9 +13,9 @@ struct CArray{T, N, A <: DenseArray{T, N}, NT} <: DenseArray{T, N}
 end
 
 function CArray{T, N, A, NT}(
-    ::UndefInitializer,
-    n::Int,
-) where {T, N, A <: DenseArray{T, N}, NT}
+        ::UndefInitializer,
+        n::Int,
+    ) where {T, N, A <: DenseArray{T, N}, NT}
     data = similar(A, n)
     # We can say `axes = (;)`, but this doesn't preserve axes type, problematic for
     # https://github.com/JuliaSmoothOptimizers/Krylov.jl/blob/v0.9.10/src/krylov_solvers.jl#L2500
@@ -27,7 +27,7 @@ function CArray{T, N, A, NT}(
     n_components = length(NT.types)
     empty_axes = ntuple(Returns(1:0), n_components)
     axes = NT(empty_axes)
-    CArray(data, axes)
+    return CArray(data, axes)
 end
 
 const CVector{T, NT} = CArray{T, 1, NT}
@@ -71,7 +71,7 @@ Base.similar(x::CArray, ::Type{T}, dims::Vararg{Int}) where {T} =
 
 function Base.similar(x::CArray, ::Type{T}) where {T}
     data = similar(getdata(x), T)
-    CArray(data, getaxes(x))
+    return CArray(data, getaxes(x))
 end
 
 Base.iterate(x::CArray, state...) = iterate(getdata(x), state...)
@@ -91,7 +91,7 @@ Base.BroadcastStyle(::Type{<:CArray}) = ArrayStyle{CArray}()
 
 function Base.similar(bc::Broadcasted{ArrayStyle{CArray}}, ::Type{T}) where {T}
     x = find_cvec(bc)
-    CArray(similar(Array{T}, axes(bc)), getaxes(x))
+    return CArray(similar(Array{T}, axes(bc)), getaxes(x))
 end
 
 Base.show(io::IO, x::CArray) = summary(io, x)
@@ -105,7 +105,7 @@ function Base.getproperty(x::CArray, name::Symbol)
     data = getdata(x)
     axes = getaxes(x)
     loc = getproperty(axes, name)
-    component(data, loc)
+    return component(data, loc)
 end
 
 end  # module CArrays

@@ -19,7 +19,7 @@ test-ribasim-python-cov = "pytest --numprocesses=4 --cov=ribasim --cov-report=xm
 test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
 # Installation
 # Keep Julia version synced with julia.executablePath in .vscode/settings.json
-install-julia = "juliaup add 1.11.7 && juliaup override set 1.11.7"
+install-julia = "juliaup add 1.12.4 && juliaup override set 1.12.4"
 install-pre-commit = "pre-commit install"
 # Note that this has a Windows specific override
 install-ci = { depends-on = ["install-julia", "update-registry-julia"] }
@@ -126,7 +126,7 @@ model-integration-test = { cmd = "julia --project=core --check-bounds=yes --eval
     ] },
 ] }
 # Codegen
-codegen = { cmd = "julia --project utils/gen_python.jl --check-bounds=yes && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends-on = [
+codegen = { cmd = "julia --project --check-bounds=yes utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends-on = [
     "initialize-julia",
 ], inputs = [
     "core",
@@ -258,10 +258,6 @@ quarto-preview = { cmd = "echo 'Skipping quarto preview on ARM64 Linux (Quarto n
 quarto-check = { cmd = "echo 'Skipping quarto check on ARM64 Linux (Quarto not supported)'" }
 quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not supported)'" }
 
-[target.win.activation]
-# Workaround a conflict between conda openssl activation and julia < 1.12
-scripts = ["utils/unset-ssl-cert.bat"]
-
 [dependencies]
 datacompy = ">=0.16"
 geopandas = ">=1.0"
@@ -299,6 +295,7 @@ shapely = ">=2.0"
 teamcity-messages = "*"
 tomli = ">=2.0"
 tomli-w = ">=1.0"
+tomlkit = ">=0.13,<0.14"  # temp until juliacall >0.9.31
 twine = "*"
 xarray = ">=2023.11"
 xmipy = ">=1.3"

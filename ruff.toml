@@ -3,10 +3,32 @@ target-version = "py312"
 
 [lint]
 # See https://docs.astral.sh/ruff/rules/
-select = ["C4", "D2", "D3", "D4", "E", "F", "I", "NPY", "PD", "UP", "RUF"]
+select = [
+    "B",     # flake8-bugbear (catches likely bugs)
+    "C4",    # flake8-comprehensions
+    "D2",    # pydocstyle (D2xx)
+    "D3",    # pydocstyle (D3xx)
+    "D4",    # pydocstyle (D4xx)
+    "E",     # pycodestyle errors
+    "F",     # Pyflakes
+    "FURB",  # Refactoring suggestions
+    "I",     # isort
+    "LOG",   # Logging best practices
+    "NPY",   # NumPy-specific rules
+    "PD",    # pandas-vet
+    "PERF",  # Performance anti-patterns
+    "PTH",   # flake8-use-pathlib (prefer pathlib over os.path)
+    "RUF",   # Ruff-specific rules
+    "S",     # flake8-bandit (security issues)
+    "SIM",   # flake8-simplify (code simplification)
+    "UP",    # pyupgrade
+]
 ignore = [
-    "E501",
-    "PD002",
+    "E501",   # line-too-long
+    "PD002",  # inplace argument
+    "S101",   # assert - used extensively in tests and validation
+    "S603",   # subprocess-without-shell-equals-true - false positives with trusted input
+    "S607",   # start-process-with-partial-path - CLI paths are intentional
 ]
 fixable = ["ALL"]
 
