@@ -241,9 +241,11 @@ class Node(pydantic.BaseModel):
     def __init__(
         self,
         node_id: NonNegativeInt | None = None,
-        geometry: Point = Point(),
+        geometry: Point | None = None,
         **kwargs,
     ) -> None:
+        if geometry is None:
+            geometry = Point()
         if geometry.is_empty:
             raise (ValueError("Node geometry must be a valid Point"))
         elif geometry.has_z:

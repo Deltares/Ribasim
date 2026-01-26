@@ -207,9 +207,9 @@ Base.@ccallable function execute(toml_path::Cstring)::Cint
 end
 
 Base.@ccallable function get_value_ptr_double(
-    name::Cstring,
-    value_ptr::Ptr{Ptr{Cvoid}},
-)::Cint
+        name::Cstring,
+        value_ptr::Ptr{Ptr{Cvoid}},
+    )::Cint
     get_value_ptr(name, value_ptr)
 end
 
@@ -217,7 +217,7 @@ end
 
 c_type_name(v::AbstractVector)::String = c_type_name(eltype(v))
 c_type_name(v::Number)::String = c_type_name(typeof(v))
-c_type_name(type::Type{Float64})::String = "double"
+c_type_name(::Type{Float64})::String = "double"
 
 """
     unsafe_write_to_cstring!(dest::Cstring, src::String)::Nothing

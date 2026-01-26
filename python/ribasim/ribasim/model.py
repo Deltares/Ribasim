@@ -76,6 +76,8 @@ try:
 except ImportError:
     xugrid = MissingOptionalModule("xugrid")
 
+logger = logging.getLogger(__name__)
+
 
 class Model(FileModel):
     """A model of inland water resources systems."""
@@ -135,6 +137,7 @@ class Model(FileModel):
                     f"the Python package version ({ribasim.__version__}). "
                     f"This may cause compatibility issues.",
                     UserWarning,
+                    stacklevel=2,
                 )
         except version.InvalidVersion:
             # If version parsing fails, just issue a general warning
@@ -144,6 +147,7 @@ class Model(FileModel):
                     f"does not match the Python package version ({ribasim.__version__}). "
                     f"This may cause compatibility issues.",
                     UserWarning,
+                    stacklevel=2,
                 )
 
         return v
@@ -154,8 +158,8 @@ class Model(FileModel):
             k,
             v,
         ) in self._children().items():
-            setattr(v, "_parent", self)
-            setattr(v, "_parent_field", k)
+            v._parent = self
+            v._parent_field = k
         return self
 
     @model_validator(mode="after")
@@ -231,7 +235,7 @@ class Model(FileModel):
         )
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
-        with open(fn, "wb") as f:
+        with fn.open("wb") as f:
             tomli_w.dump(content, f)
         return fn
 
@@ -343,7 +347,7 @@ class Model(FileModel):
 
     def _nodes(self) -> Generator[MultiNodeModel, None, None]:
         """Return all non-empty MultiNodeModel instances."""
-        for key in self.__class__.model_fields.keys():
+        for key in self.__class__.model_fields:
             attr = getattr(self, key)
             if (
                 isinstance(attr, MultiNodeModel)
@@ -356,7 +360,7 @@ class Model(FileModel):
     def _children(self):
         return {
             k: getattr(self, k)
-            for k in self.__class__.model_fields.keys()
+            for k in self.__class__.model_fields
             if isinstance(getattr(self, k), ChildModel)
         }
 
@@ -461,7 +465,7 @@ class Model(FileModel):
             # from node's outneighbor
             if row["from_node_count"] < link_amount[row["from_node_type"]][2]:
                 is_valid = False
-                logging.error(
+                logger.error(
                     f"Node {row['from_node_id']} must have at least {link_amount[row['from_node_type']][2]} outneighbor(s) (got {row['from_node_count']})"
                 )
 
@@ -485,7 +489,7 @@ class Model(FileModel):
         for _, row in to_node_info.iterrows():
             if row["to_node_count"] < link_amount[row["to_node_type"]][0]:
                 is_valid = False
-                logging.error(
+                logger.error(
                     f"Node {row['to_node_id']} must have at least {link_amount[row['to_node_type']][0]} inneighbor(s) (got {row['to_node_count']})"
                 )
 
@@ -519,7 +523,7 @@ class Model(FileModel):
         context_file_loading.set({})
 
         if filepath is not None and filepath.is_file():
-            with open(filepath, "rb") as f:
+            with filepath.open("rb") as f:
                 config = tomli.load(f)
 
             directory = filepath.parent / config["input_dir"]
@@ -609,7 +613,7 @@ class Model(FileModel):
             df_listen_link = _concat([df_listen_link, to_add])
 
         # Listen links from ContinuousControl and DiscreteControl
-        for table, name in (
+        for table, _name in (
             (self.continuous_control.variable.df, "ContinuousControl"),
             (self.discrete_control.variable.df, "DiscreteControl"),
         ):
@@ -641,7 +645,7 @@ class Model(FileModel):
 
         # Plot listen links
         for i, (point_listen, point_control) in enumerate(
-            zip(listen_nodes_geometry, control_nodes_geometry)
+            zip(listen_nodes_geometry, control_nodes_geometry, strict=True)
         ):
             ax.plot(
                 [point_listen.x, point_control.x],

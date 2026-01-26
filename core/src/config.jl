@@ -51,7 +51,7 @@ table_name(table_type::Type{<:Table})::Symbol = snake_case(nameof(table_type))
 
 "Schema.Basin.State -> 'Basin / state'"
 function sql_table_name(table_type::Type{<:Table})::String
-    string(node_type(table_type), " / ", table_name(table_type))
+    return string(node_type(table_type), " / ", table_name(table_type))
 end
 
 "[:Basin, Terminal, ...]"
@@ -133,11 +133,11 @@ end
     dtmin::Float64 = 0.0
     dtmax::Union{Float64, Nothing} = nothing
     force_dtmin::Bool = false
-    abstol::Float64 = 1e-5
-    reltol::Float64 = 1e-5
-    water_balance_abstol::Float64 = 1e-3
-    water_balance_reltol::Float64 = 1e-2
-    maxiters::Int = 1e9
+    abstol::Float64 = 1.0e-5
+    reltol::Float64 = 1.0e-5
+    water_balance_abstol::Float64 = 1.0e-3
+    water_balance_reltol::Float64 = 1.0e-2
+    maxiters::Int = 1.0e9
     sparse::Bool = true
     autodiff::Bool = true
     evaporate_mass::Bool = true
@@ -190,7 +190,7 @@ end
 
 function showexperimental(exp::Experimental)
     fields = filter(x -> getfield(exp, x), fieldnames(typeof(exp)))
-    join(fields, " ")
+    return join(fields, " ")
 end
 
 @option @addnodetypes struct Toml <: TableOption
@@ -225,7 +225,7 @@ function Config(config_path::AbstractString; kwargs...)::Config
     toml = from_toml(Toml, config_path; kwargs...)
     dir = dirname(normpath(config_path))
     validate_config(toml)
-    Config(toml, dir)
+    return Config(toml, dir)
 end
 
 showexperimental(config::Config) = showexperimental(config.experimental)
@@ -307,7 +307,7 @@ Configurations.to_dict(::Type, x::LogLevel) = lowercase(string(x))
 
 function Base.show(io::IO, c::Config)
     println(io, "Ribasim Configuration:")
-    println(io, Configurations.to_toml(getfield(c, :toml); include_defaults = true))
+    return println(io, Configurations.to_toml(getfield(c, :toml); include_defaults = true))
 end
 
 """
@@ -357,7 +357,7 @@ end
 
 function get_ad_type(solver::Solver)
     chunksize = solver.specialize ? nothing : 1
-    if solver.autodiff
+    return if solver.autodiff
         AutoForwardDiff(; chunksize, tag = :Ribasim)
     else
         AutoFiniteDiff()
@@ -399,7 +399,7 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
         kwargs[:autodiff] = get_ad_type(solver)
     end
 
-    algotype(; kwargs...)
+    return algotype(; kwargs...)
 end
 
 "Convert the saveat Float64 from our Config to SciML's saveat"
@@ -442,7 +442,7 @@ function convert_dt(dt::Union{Float64, Nothing})::Tuple{Bool, Float64}
         @error "Invalid dt" dt
         error("Invalid dt")
     end
-    adaptive, dt
+    return adaptive, dt
 end
 
 end  # module

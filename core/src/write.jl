@@ -90,7 +90,7 @@ Write all results to the Arrow files as specified in the model configuration.
 """
 function write_results_netcdf(model::Model)::Model
     (; config) = model
-    (; results, experimental) = model.config
+    (; experimental) = model.config
 
     # state
     data = basin_state_data(model; table = false)
@@ -308,13 +308,13 @@ const CF = OrderedDict{String, OrderedDict{String, String}}(
 
 "Get the storage and level of all basins as matrices of nbasin × ntime"
 function get_storages_and_levels(
-    model::Model,
-)::@NamedTuple{
-    time::Vector{DateTime},
-    node_id::Vector{NodeID},
-    storage::Matrix{Float64},
-    level::Matrix{Float64},
-}
+        model::Model,
+    )::@NamedTuple{
+        time::Vector{DateTime},
+        node_id::Vector{NodeID},
+        storage::Matrix{Float64},
+        level::Matrix{Float64},
+    }
     (; config, integrator, saved) = model
     (; p_independent) = integrator.p
 
@@ -417,13 +417,13 @@ end
 
 function solver_stats_data(model::Model; table::Bool = true)
     solver_stats = StructVector(model.saved.solver_stats.saveval)
-    (;
+    return (;
         time = datetime_since.(
             solver_stats.time[1:(end - 1)],
             model.integrator.p.p_independent.starttime,
         ),
         # convert nanosecond to millisecond
-        computation_time = diff(solver_stats.time_ns) .* 1e-6,
+        computation_time = diff(solver_stats.time_ns) .* 1.0e-6,
         rhs_calls = diff(solver_stats.rhs_calls),
         linear_solves = diff(solver_stats.linear_solves),
         accepted_timesteps = diff(solver_stats.accepted_timesteps),
@@ -739,10 +739,10 @@ end
 
 "Write a result table to disk as an Arrow file"
 function write_arrow(
-    path::AbstractString,
-    table::NamedTuple,
-    compress::Union{ZstdCompressor, Nothing},
-)::Nothing
+        path::AbstractString,
+        table::NamedTuple,
+        compress::Union{ZstdCompressor, Nothing},
+    )::Nothing
     if haskey(table, :time)
         # ensure DateTime is encoded in a compatible manner
         # https://github.com/apache/arrow-julia/issues/303
@@ -761,10 +761,10 @@ end
 
 "Write a result table to disk as an Arrow file"
 function write_netcdf(
-    path::AbstractString,
-    data::NamedTuple,
-    compress::Union{ZstdCompressor, Nothing},
-)::Nothing
+        path::AbstractString,
+        data::NamedTuple,
+        compress::Union{ZstdCompressor, Nothing},
+    )::Nothing
     mkpath(dirname(path))
     # Don't write empty files
     haskey(data, :time) && isempty(data.time) && return nothing
@@ -800,12 +800,12 @@ function get_compressor(results::Results)::Union{ZstdCompressor, Nothing}
 end
 
 function output_basin_profiles(
-    all_levels::Vector{Vector{Float64}},
-    all_areas::Vector{Vector{Float64}},
-    all_storage::Vector{Vector{Float64}},
-    all_node_ids::Vector{Int32},
-    dir::AbstractString,
-)::Nothing
+        all_levels::Vector{Vector{Float64}},
+        all_areas::Vector{Vector{Float64}},
+        all_storage::Vector{Vector{Float64}},
+        all_node_ids::Vector{Int32},
+        dir::AbstractString,
+    )::Nothing
     # Flatten all data and add node_id column
     n = sum(length.(all_levels))
     level = Vector{Float64}(undef, n)

@@ -61,7 +61,7 @@ function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     (; p_independent, state_and_time_dependent_cache) = p
     (; basin, user_demand, subgrid) = p_independent
 
-    if name == "basin.storage"
+    return if name == "basin.storage"
         state_and_time_dependent_cache.current_storage
     elseif name == "basin.level"
         state_and_time_dependent_cache.current_level
@@ -93,7 +93,7 @@ BMI.get_start_time(model::Model)::Float64 = 0.0
 BMI.get_time_step(model::Model)::Float64 = get_proposed_dt(model.integrator)
 
 function BMI.get_end_time(model::Model)::Float64
-    seconds_since(model.config.endtime, model.config.starttime)
+    return seconds_since(model.config.endtime, model.config.starttime)
 end
 
 BMI.get_time_units(model::Model)::String = "s"

@@ -60,11 +60,11 @@ function create_graph(db::DB, config::Config)::MetaGraph
             subnetwork_id = 1
         else
             subnetwork_id = row.subnetwork_id
-            if !haskey(node_ids, subnetwork_id)
-                node_ids[subnetwork_id] = OrderedSet{NodeID}()
-            end
-            push!(node_ids[subnetwork_id], node_id)
         end
+        if !haskey(node_ids, subnetwork_id)
+            node_ids[subnetwork_id] = OrderedSet{NodeID}()
+        end
+        push!(node_ids[subnetwork_id], node_id)
         # Process route priority
         route_priority =
             coalesce(row.route_priority, get(default_route_priority, row.node_type, 0))
@@ -94,7 +94,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
             errors = true
             @error "Duplicate link" id_src id_dst
         elseif haskey(graph, id_dst, id_src) &&
-               (NodeType.UserDemand ∉ (id_src.type, id_dst.type))
+                (NodeType.UserDemand ∉ (id_src.type, id_dst.type))
             errors = true
             @error "Invalid link: the opposite link already exists (this is only allowed for UserDemand)." link_id id_src id_dst
         end
@@ -128,11 +128,11 @@ function create_graph(db::DB, config::Config)::MetaGraph
 end
 
 function simplify_graph!(
-    graph::MetaGraph,
-    db::DB,
-    external_flow_links::Vector{LinkMetadata},
-    new_link_id::Int,
-)
+        graph::MetaGraph,
+        db::DB,
+        external_flow_links::Vector{LinkMetadata},
+        new_link_id::Int,
+    )
     internal_flow_links = LinkMetadata[]
     for link_metadata in external_flow_links
         id_src = link_metadata.link[1]
@@ -153,7 +153,7 @@ function simplify_graph!(
     # Remove junctions by iteratively simplifying from IN--J--OUT to IN--OUT
     for junction_id in get_node_ids(db, NodeType.Junction)
         for in_neighbor in collect(inneighbor_labels(graph, junction_id)),
-            out_neighbor in collect(outneighbor_labels(graph, junction_id))
+                out_neighbor in collect(outneighbor_labels(graph, junction_id))
 
             link_id = graph[in_neighbor, junction_id].id
             external_link_ids = get(link_mapping, link_id, [link_id])
@@ -169,7 +169,7 @@ function simplify_graph!(
 
             # Create new flow link when no Junctions remain
             if in_neighbor.type != NodeType.Junction &&
-               out_neighbor.type != NodeType.Junction
+                    out_neighbor.type != NodeType.Junction
                 for external_link_id in external_link_ids
                     push!(I, external_link_id)
                     push!(J, new_link_id)
@@ -260,10 +260,10 @@ Get the inneighbor node IDs of the given node ID (label)
 over the given link type in the graph.
 """
 function inneighbor_labels_type(
-    graph::MetaGraph,
-    label::NodeID,
-    link_type::LinkType.T,
-)::InNeighbors
+        graph::MetaGraph,
+        label::NodeID,
+        link_type::LinkType.T,
+    )::InNeighbors
     return InNeighbors(graph, label, link_type)
 end
 
@@ -272,10 +272,10 @@ Get the outneighbor node IDs of the given node ID (label)
 over the given link type in the graph.
 """
 function outneighbor_labels_type(
-    graph::MetaGraph,
-    label::NodeID,
-    link_type::LinkType.T,
-)::OutNeighbors
+        graph::MetaGraph,
+        label::NodeID,
+        link_type::LinkType.T,
+    )::OutNeighbors
     return OutNeighbors(graph, label, link_type)
 end
 
@@ -284,14 +284,16 @@ Get the in- and outneighbor node IDs of the given node ID (label)
 over the given link type in the graph.
 """
 function all_neighbor_labels_type(
-    graph::MetaGraph,
-    label::NodeID,
-    link_type::LinkType.T,
-)::Iterators.Flatten
-    return Iterators.flatten((
-        outneighbor_labels_type(graph, label, link_type),
-        inneighbor_labels_type(graph, label, link_type),
-    ))
+        graph::MetaGraph,
+        label::NodeID,
+        link_type::LinkType.T,
+    )::Iterators.Flatten
+    return Iterators.flatten(
+        (
+            outneighbor_labels_type(graph, label, link_type),
+            inneighbor_labels_type(graph, label, link_type),
+        )
+    )
 end
 
 """
@@ -336,15 +338,15 @@ the state vector, given an link (inflow_id, outflow_id).
 from the parameters, but integrated/averaged FlowBoundary flows must be provided via `boundary_flow`.
 """
 function get_flow(
-    flow::CVector,
-    p_independent::ParametersIndependent,
-    t::Number,
-    link::Tuple{NodeID, NodeID};
-    boundary_flow = nothing,
-)
+        flow::CVector,
+        p_independent::ParametersIndependent,
+        t::Number,
+        link::Tuple{NodeID, NodeID};
+        boundary_flow = nothing,
+    )
     (; flow_boundary, state_ranges) = p_independent
     from_id = link[1]
-    if from_id.type == NodeType.FlowBoundary
+    return if from_id.type == NodeType.FlowBoundary
         if boundary_flow === nothing
             flow_boundary.flow_rate[from_id.idx](t)
         else
@@ -359,12 +361,12 @@ end
 Like `get_flow` and `get_state_index`, but for convergence, so without the boundary flow.
 """
 function get_convergence(
-    convergence::CVector,
-    link::Tuple{NodeID, NodeID},
-)::Union{Missing, Float64}
+        convergence::CVector,
+        link::Tuple{NodeID, NodeID},
+    )::Union{Missing, Float64}
     a = get_state_index(getaxes(convergence), link[1]; inflow = false)
     b = get_state_index(getaxes(convergence), link[2])
-    if isnothing(a) && isnothing(b)
+    return if isnothing(a) && isnothing(b)
         missing
     elseif isnothing(a)
         convergence[b]

@@ -7,7 +7,7 @@ For all test models that use allocation, write for each subnetwork the problem t
 
 A selection can be made by passing the name(s) of the individual testmodel(s) as (an) argument(s).
 """
-function main(ARGS)
+function (@main)(ARGS)::Cint
     toml_paths = get_testmodels()
     if length(ARGS) > 0
         toml_paths = filter(x -> basename(dirname(x)) in ARGS, toml_paths)
@@ -20,7 +20,7 @@ function main(ARGS)
 
     mkdir(results_path)
 
-    Threads.@threads for toml_path in toml_paths
+    for toml_path in toml_paths
         model_name = basename(dirname(toml_path))
 
         if !startswith(model_name, "invalid_")
@@ -56,6 +56,5 @@ function main(ARGS)
             end
         end
     end
+    return 0
 end
-
-main(ARGS)

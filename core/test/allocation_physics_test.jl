@@ -17,7 +17,7 @@
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
 
-    @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 1e-2
+    @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 1.0e-2
 end
 
 @testitem "Tabulated Rating Curve" begin
@@ -35,7 +35,7 @@ end
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
 
-    @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 1e-1
+    @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 1.0e-1
 end
 
 @testitem "Tabulated Rating Curve Between Basins" begin
@@ -56,7 +56,7 @@ end
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
 
-    @test all(isapprox.(allocation_flow_table.flow_rate, flow_table.flow_rate; atol = 8e-5))
+    @test all(isapprox.(allocation_flow_table.flow_rate, flow_table.flow_rate; atol = 8.0e-5))
 end
 
 @testitem "Manning Resistance" begin
@@ -80,7 +80,7 @@ end
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
 
-    @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 1e-2
+    @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 1.0e-2
 end
 
 @testitem "Outlet" begin
@@ -98,7 +98,7 @@ end
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
 
-    @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate atol = 8e-4
+    @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate atol = 8.0e-4
 end
 
 @testitem "allocation training" begin
@@ -134,7 +134,7 @@ end
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
 
-    @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 1e-2
+    @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 1.0e-2
 end
 
 @testitem "Output hit bounds" begin
@@ -188,8 +188,8 @@ end
     vlink3 = filter(:link_id => ==(3), verification_flow_table)
 
     # assert in both models is the same
-    @test all(isapprox.(link1.flow_rate, vlink1.flow_rate; atol = 1e-2))
-    @test all(isapprox.(link3.flow_rate, vlink3.flow_rate; atol = 1e-2))
+    @test all(isapprox.(link1.flow_rate, vlink1.flow_rate; atol = 1.0e-2))
+    @test all(isapprox.(link3.flow_rate, vlink3.flow_rate; atol = 1.0e-2))
 end
 
 @testitem "Primary Secondary Network Model" begin
@@ -216,7 +216,7 @@ end
             filter(:link_id => ==(link_id), flow_results_multiple_subnetwork).flow_rate
         single_sub =
             filter(:link_id => ==(link_id), flow_results_single_subnetwork).flow_rate
-        if !all(isapprox.(multiple_subs, single_sub; atol = 1e-8))
+        if !all(isapprox.(multiple_subs, single_sub; atol = 1.0e-8))
             println(
                 "The flows over link $link_id differ by ",
                 maximum(single_sub .- multiple_subs),
@@ -240,5 +240,5 @@ end
     # Test level at polder 6 approx 0.9 meter
     @test all(isapprox.(level_polder_6, 0.9; atol = 0.1e-3))
     # Test all level except first approx 1.0 meter at polder 4
-    @test all(isapprox.(level_polder_4[2:end], 1.0; atol = 1e-3))
+    @test all(isapprox.(level_polder_4[2:end], 1.0; atol = 1.0e-3))
 end

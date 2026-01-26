@@ -114,17 +114,16 @@ class LinkTable(SpatialTableModel[LinkSchema]):
                 f"Node #{to_node.node_id} of type {to_node.node_type} cannot be downstream of node #{from_node.node_id} of type {from_node.node_type}. Possible downstream node types: {node_type_connectivity[from_node.node_type]}."
             )
 
-        if self.df is not None:
-            if (
-                "UserDemand" not in [from_node.node_type, to_node.node_type]
-                and not self.df[
-                    (self.df.from_node_id == to_node.node_id)
-                    & (self.df.to_node_id == from_node.node_id)
-                ].empty
-            ):
-                raise ValueError(
-                    f"Link ({link_id=}, {from_node=}, {to_node=}) is not allowed since the opposite link already exists (this is only allowed for UserDemand)."
-                )
+        if self.df is not None and (
+            "UserDemand" not in [from_node.node_type, to_node.node_type]
+            and not self.df[
+                (self.df.from_node_id == to_node.node_id)
+                & (self.df.to_node_id == from_node.node_id)
+            ].empty
+        ):
+            raise ValueError(
+                f"Link ({link_id=}, {from_node=}, {to_node=}) is not allowed since the opposite link already exists (this is only allowed for UserDemand)."
+            )
 
         geometry_to_append = (
             [LineString([from_node.geometry, to_node.geometry])]
@@ -167,12 +166,11 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         self._used_link_ids.add(link_id)
 
     def _remove_link_id(self, link_id: NonNegativeInt):
-        if self.df is not None:
-            if link_id in self.df.index:
-                # Remove from node table
-                self.df = self.df.drop(link_id)
-                if self.df.empty:
-                    self.df = None
+        if self.df is not None and link_id in self.df.index:
+            # Remove from node table
+            self.df = self.df.drop(link_id)
+            if self.df.empty:
+                self.df = None
 
     def _remove_node_id(self, node_id: NonNegativeInt):
         if self.df is not None:
@@ -278,7 +276,7 @@ class LinkTable(SpatialTableModel[LinkSchema]):
 
         # A faster alternative may be ax.quiver(). However, getting the scaling
         # right is tedious.
-        for m_x, m_y, m_angle, c in zip(x, y, angle, color):
+        for m_x, m_y, m_angle, c in zip(x, y, angle, color, strict=True):
             ax.plot(
                 m_x,
                 m_y,

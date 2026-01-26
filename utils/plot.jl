@@ -21,7 +21,7 @@ function plot_basin_data(model::Model)
     ax2 = Axis(f[2, 1]; xlabel = "time", ylabel = "storage [m³]")
     plot_basin_data!(model, ax1, :level)
     plot_basin_data!(model, ax2, :storage)
-    f
+    return f
 end
 
 function plot_flow!(model::Model, ax::Axis, link_metadata::Ribasim.LinkMetadata)
@@ -37,11 +37,11 @@ function plot_flow(model::Model; skip_conservative_out = true)
     ax = Axis(f[1, 1]; xlabel = "time", ylabel = "flow rate [m³s⁻¹]")
     for link_metadata in values(model.integrator.p.p_independent.graph.edge_data)
         if skip_conservative_out &&
-           link_metadata.link[1].type in Ribasim.conservative_nodetypes
+                link_metadata.link[1].type in Ribasim.conservative_nodetypes
             continue
         end
         plot_flow!(model, ax, link_metadata)
     end
     axislegend(ax)
-    f
+    return f
 end

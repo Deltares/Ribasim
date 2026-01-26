@@ -5,10 +5,10 @@ are combined to a CallbackSet that goes to the integrator.
 Returns the CallbackSet and the SavedValues for flow.
 """
 function create_callbacks(
-    p_independent::ParametersIndependent,
-    config::Config,
-    saveat,
-)::Tuple{CallbackSet, SavedResults}
+        p_independent::ParametersIndependent,
+        config::Config,
+        saveat,
+    )::Tuple{CallbackSet, SavedResults}
     (; basin) = p_independent
     callbacks = SciMLBase.DECallback[]
 
@@ -96,18 +96,19 @@ function decrease_tolerance!(u, t, integrator)::Nothing
         # as used in calculate_residuals, and compare to an estimated average magnitude
         cum_magnitude = opts.internalnorm(state, t)
         iszero(cum_magnitude) && continue
-        avg_magnitude = max(opts.internalnorm(1e4, t), cum_magnitude / t)  # allow for 1e4 m3/s
+        avg_magnitude = max(opts.internalnorm(1.0e4, t), cum_magnitude / t)  # allow for 1e4 m3/s
 
         # Decrease the relative tolerance based on their difference
         diff_norm = max(0, log10(cum_magnitude / avg_magnitude))
         # Limit new tolerance to floating point precision (~-14)
-        newtol = max(10.0^(log10(integrator.p.p_independent.reltol) - diff_norm), 1e-14)
+        newtol = max(10.0^(log10(integrator.p.p_independent.reltol) - diff_norm), 1.0e-14)
 
         if opts.reltol[i] > newtol
             @debug "Relative tolerance changed at t = $t, state = $i to $(newtol)"
             opts.reltol[i] = newtol
         end
     end
+    return
 end
 
 """
@@ -238,10 +239,10 @@ function update_concentrations!(u, t, integrator)::Nothing
 
     # Exact boundary flow over time step
     for (id, flow_rate, outflow_link) in zip(
-        flow_boundary.node_id,
-        flow_boundary.flow_rate,
-        flow_boundary.outflow_link,
-    )
+            flow_boundary.node_id,
+            flow_boundary.flow_rate,
+            flow_boundary.outflow_link,
+        )
         outflow_id = outflow_link.link[2]
         added_boundary_flow = integral(flow_rate, tprev, t)
         add_substance_mass!(
@@ -333,10 +334,10 @@ function forcing_update(integrator::DEIntegrator, node_id::NodeID)::Tuple{Float6
 
     inflow_update =
         (
-            fixed_area * vertical_flux.precipitation[node_id.idx] +
+        fixed_area * vertical_flux.precipitation[node_id.idx] +
             vertical_flux.drainage[node_id.idx] +
             vertical_flux.surface_runoff[node_id.idx]
-        ) * dt
+    ) * dt
 
     outflow_update =
         (u.evaporation[node_id.idx] - uprev.evaporation[node_id.idx]) +
@@ -350,14 +351,14 @@ Given an link (from_id, to_id), compute the cumulative flow over that
 link over the latest time step.
 """
 function flow_update_on_link(
-    integrator::DEIntegrator,
-    link_src::Tuple{NodeID, NodeID},
-)::Float64
+        integrator::DEIntegrator,
+        link_src::Tuple{NodeID, NodeID},
+    )::Float64
     (; u, uprev, p, t, tprev) = integrator
     (; flow_boundary, state_ranges) = p.p_independent
 
     from_id, to_id = link_src
-    if from_id == to_id
+    return if from_id == to_id
         error(
             "Cannot get flow update when from_id = to_id. For Basin forcing use `forcing_update`.",
         )
@@ -374,7 +375,7 @@ Save the storages and levels at the latest t.
 """
 function save_basin_state(u, t, integrator)
     (; current_storage, current_level) = integrator.p.state_and_time_dependent_cache
-    SavedBasinState(; storage = copy(current_storage), level = copy(current_level), t)
+    return SavedBasinState(; storage = copy(current_storage), level = copy(current_level), t)
 end
 
 """
@@ -482,10 +483,10 @@ function save_flow(u, t, integrator)
 end
 
 function check_water_balance_error!(
-    saved_flow::SavedFlow,
-    integrator::DEIntegrator,
-    Δt::Float64,
-)::Nothing
+        saved_flow::SavedFlow,
+        integrator::DEIntegrator,
+        Δt::Float64,
+    )::Nothing
     (; u, p, t) = integrator
     (; p_independent, state_and_time_dependent_cache) = p
     (; u_reduced, state_ranges) = p_independent
@@ -503,28 +504,28 @@ function check_water_balance_error!(
     infiltration = view(saved_flow.flow, state_ranges.infiltration)
 
     for (
-        inflow_rate,
-        outflow_rate,
-        precipitation,
-        surface_runoff,
-        drainage,
-        evaporation,
-        infiltration,
-        s_now,
-        s_prev,
-        id,
-    ) in zip(
-        saved_flow.inflow,
-        saved_flow.outflow,
-        saved_flow.precipitation,
-        saved_flow.surface_runoff,
-        saved_flow.drainage,
-        evaporation,
-        infiltration,
-        current_storage,
-        basin.Δstorage_prev_saveat,
-        basin.node_id,
-    )
+            inflow_rate,
+            outflow_rate,
+            precipitation,
+            surface_runoff,
+            drainage,
+            evaporation,
+            infiltration,
+            s_now,
+            s_prev,
+            id,
+        ) in zip(
+            saved_flow.inflow,
+            saved_flow.outflow,
+            saved_flow.precipitation,
+            saved_flow.surface_runoff,
+            saved_flow.drainage,
+            evaporation,
+            infiltration,
+            current_storage,
+            basin.Δstorage_prev_saveat,
+            basin.node_id,
+        )
         storage_rate = (s_now - s_prev) / Δt
         total_in = inflow_rate + precipitation + drainage + surface_runoff
         total_out = outflow_rate + evaporation + infiltration
@@ -533,7 +534,7 @@ function check_water_balance_error!(
         relative_error = iszero(mean_flow_rate) ? 0.0 : balance_error / mean_flow_rate
 
         if abs(balance_error) > water_balance_abstol &&
-           abs(relative_error) > water_balance_reltol
+                abs(relative_error) > water_balance_reltol
             errors = true
             @error "Too large water balance error" id balance_error relative_error
         end
@@ -555,7 +556,7 @@ end
 function save_solver_stats(u, t, integrator)
     (; dt) = integrator
     (; stats) = integrator.sol
-    (;
+    return (;
         time = t,
         time_ns = time_ns(),
         rhs_calls = stats.nf,
@@ -653,10 +654,10 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 end
 
 function set_new_control_state!(
-    integrator,
-    discrete_control_id::NodeID,
-    truth_state::Vector{Bool},
-)::Nothing
+        integrator,
+        discrete_control_id::NodeID,
+        truth_state::Vector{Bool},
+    )::Nothing
     (; p) = integrator
     (; discrete_control) = p.p_independent
 
@@ -691,8 +692,8 @@ function set_new_control_state!(
 end
 
 """
-Get a value for a condition. Currently supports getting levels from basins and flows
-from flow boundaries.
+Get a value for a condition. Currently supports getting levels from Basins and flows
+from FlowBoundaries.
 """
 function get_value(subvariable::SubVariable, p::Parameters, du::CVector, t::Float64)
     (; flow_boundary, level_boundary, basin) = p.p_independent
@@ -707,7 +708,7 @@ function get_value(subvariable::SubVariable, p::Parameters, du::CVector, t::Floa
             level = level_boundary.level[listen_node_id.idx](t + look_ahead)
         else
             error(
-                "Level condition node '$node_id' is neither a basin nor a level boundary.",
+                "Level condition node '$listen_node_id' is neither a Basin nor a LevelBoundary.",
             )
         end
         value = level
@@ -716,7 +717,7 @@ function get_value(subvariable::SubVariable, p::Parameters, du::CVector, t::Floa
         if listen_node_id.type == NodeType.FlowBoundary
             value = flow_boundary.flow_rate[listen_node_id.idx](t + look_ahead)
         else
-            error("Flow condition node $listen_node_id is not a flow boundary.")
+            error("Flow condition node $listen_node_id is not a FlowBoundary.")
         end
 
     elseif startswith(variable, "concentration_external.")
@@ -771,22 +772,23 @@ function update_subgrid_level!(integrator)::Nothing
 
     # First update the all the subgrids with static h(h) relations
     for (level_index, basin_id, hh_itp) in zip(
-        subgrid.level_index_static,
-        subgrid.basin_id_static,
-        subgrid.interpolations_static,
-    )
+            subgrid.level_index_static,
+            subgrid.basin_id_static,
+            subgrid.interpolations_static,
+        )
         subgrid.level[level_index] = hh_itp(current_level[basin_id.idx])
     end
     # Then update the subgrids with dynamic h(h) relations
     for (level_index, basin_id, lookup) in zip(
-        subgrid.level_index_time,
-        subgrid.basin_id_time,
-        subgrid.current_interpolation_index,
-    )
+            subgrid.level_index_time,
+            subgrid.basin_id_time,
+            subgrid.current_interpolation_index,
+        )
         itp_index = lookup(t)
         hh_itp = subgrid.interpolations_time[itp_index]
         subgrid.level[level_index] = hh_itp(current_level[basin_id.idx])
     end
+    return
 end
 
 "Interpolate the levels and save them to SavedValues"
@@ -801,11 +803,11 @@ end
 
 "Update one current vertical flux from an interpolation at time t."
 function set_flux!(
-    fluxes::AbstractVector{Float64},
-    interpolations::Vector{ScalarConstantInterpolation},
-    i::Int,
-    t,
-)::Nothing
+        fluxes::AbstractVector{Float64},
+        interpolations::Vector{ScalarConstantInterpolation},
+        i::Int,
+        t,
+    )::Nothing
     val = interpolations[i](t)
     # keep old value if new value is NaN
     if !isnan(val)
