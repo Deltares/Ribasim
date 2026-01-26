@@ -1072,11 +1072,11 @@ function reset_cumulative!(allocation_model::AllocationModel)::Nothing
 end
 
 function delete_control_constraints!(
-    allocation_model::AllocationModel,
-    constraint_key::Symbol,
-)::Nothing
+        allocation_model::AllocationModel,
+        constraint_key::Symbol,
+    )::Nothing
     (; problem) = allocation_model
-    if haskey(problem, constrain_key)
+    if haskey(problem, constraint_key)
         constraints = problem[constraint_key]
         for constraint in constraints
             JuMP.delete(problem, constraint)
@@ -1087,9 +1087,9 @@ function delete_control_constraints!(
 end
 
 function update_control_states!(
-    allocation_model::AllocationModel,
-    p_independent::ParametersIndependent,
-)::Nothing
+        allocation_model::AllocationModel,
+        p_independent::ParametersIndependent,
+    )::Nothing
     delete_control_constraints!(allocation_model, :pump)
     delete_control_constraints!(allocation_model, :outlet)
     add_pump!(allocation_model, p_independent)
