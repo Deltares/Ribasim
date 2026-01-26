@@ -60,11 +60,11 @@ function create_graph(db::DB, config::Config)::MetaGraph
             subnetwork_id = 1
         else
             subnetwork_id = row.subnetwork_id
-            if !haskey(node_ids, subnetwork_id)
-                node_ids[subnetwork_id] = OrderedSet{NodeID}()
-            end
-            push!(node_ids[subnetwork_id], node_id)
         end
+        if !haskey(node_ids, subnetwork_id)
+            node_ids[subnetwork_id] = OrderedSet{NodeID}()
+        end
+        push!(node_ids[subnetwork_id], node_id)
         # Process route priority
         route_priority =
             coalesce(row.route_priority, get(default_route_priority, row.node_type, 0))
