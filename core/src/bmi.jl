@@ -3,7 +3,7 @@
 
 Initialize a [`Model`](@ref) from the path to the TOML configuration file.
 """
-function BMI.initialize(T::Type{Model}, config_path::AbstractString)::Model
+function BMI.initialize(::Type{Model}, config_path::AbstractString)::Model
     config = Config(config_path)
     mkpath(results_path(config))
     io = open(results_path(config, "ribasim.log"), "w")
@@ -89,11 +89,11 @@ function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
 end
 
 BMI.get_current_time(model::Model)::Float64 = model.integrator.t
-BMI.get_start_time(model::Model)::Float64 = 0.0
+BMI.get_start_time(::Model)::Float64 = 0.0
 BMI.get_time_step(model::Model)::Float64 = get_proposed_dt(model.integrator)
 
 function BMI.get_end_time(model::Model)::Float64
     return seconds_since(model.config.endtime, model.config.starttime)
 end
 
-BMI.get_time_units(model::Model)::String = "s"
+BMI.get_time_units(::Model)::String = "s"
