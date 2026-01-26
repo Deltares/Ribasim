@@ -561,7 +561,7 @@ function valid_reserved_control_states(control_states::Set{String})::Bool
             # If it does, it must be in the reserved set
             if control_state ∉ RESERVED_CONTROL_STATES
                 errors = true
-                @error "Unknown reserved control state '$control_state'. Control states starting with 'Ribasim.' must be one of: $(join(sort(RESERVED_CONTROL_STATES), ", "))"
+                @error "Unknown reserved control state '$control_state'. Control states starting with 'Ribasim.' must be one of: $(join(RESERVED_CONTROL_STATES, ", "))"
             end
         end
     end

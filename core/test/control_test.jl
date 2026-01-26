@@ -397,5 +397,5 @@ end
     )
     @test ispath(toml_path)
     # This should raise an error because "Ribasim.blabla" is not a valid reserved control state
-    @test_throws ErrorException Ribasim.run(toml_path)
+    @test_throws "Invalid discrete control state definition(s)." Ribasim.run(toml_path)
 end

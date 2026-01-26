@@ -954,7 +954,11 @@ def invalid_ribasim_control_state_model() -> Model:
 
     model.pump.add(
         Node(2, Point(1, 0)),
-        [pump.Static(control_state=["Ribasim.blabla"], flow_rate=[1e-3])],
+        [
+            pump.Static(
+                control_state=["Ribasim.blabla", "default"], flow_rate=[1e-3, 0.0]
+            )
+        ],
     )
 
     model.terminal.add(Node(3, Point(2, 0)))
