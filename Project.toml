@@ -84,6 +84,7 @@ PackageCompiler = {rev = "bundle_less_artifacts_v1.12", url = "https://github.co
 Ribasim = {path = "core"}
 
 [compat]
+JSON3 = "1.14.3"
 OpenSSL_jll = "3.5.4"
 OteraEngine = "1.1.3"
 PackageCompiler = "2.2.4"
@@ -91,6 +92,5 @@ PkgToSoftwareBOM = "0.1.17"
 Plots = "1.41.4"
 PythonCall = "=0.9.31"
 Revise = "3.13.1"
-
 [preferences.Ribasim]
 precompile_workload = false
