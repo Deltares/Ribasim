@@ -1944,7 +1944,7 @@ def allocation_off_flow_demand_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
-        experimental=Experimental(allocation=True),
+        experimental=Experimental(allocation=False),
     )
 
     bsn = model.basin.add(
