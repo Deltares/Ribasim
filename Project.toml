@@ -87,6 +87,7 @@ PackageCompiler = {rev = "bundle_less_artifacts_v1.12", url = "https://github.co
 Ribasim = {path = "core"}
 
 [compat]
+Aqua = "0.8.14"
 PkgToSoftwareBOM = "0.1.17"
 PythonCall = "=0.9.31"
 [preferences.Ribasim]
