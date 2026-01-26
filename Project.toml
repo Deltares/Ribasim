@@ -91,6 +91,6 @@ PkgToSoftwareBOM = "0.1.17"
 Plots = "1.41.4"
 PythonCall = "=0.9.31"
 Revise = "3.13.1"
-
+Statistics = "1.11.1"
 [preferences.Ribasim]
 precompile_workload = false
