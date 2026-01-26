@@ -1925,7 +1925,7 @@ def allocation_off_flow_demand_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
-        experimental=Experimental(allocation=True),
+        experimental=Experimental(allocation=False),
     )
 
     bsn = model.basin.add(
@@ -2196,10 +2196,107 @@ def polder_management_model() -> Model:
     model.link.add(outlet12, basin3)
     model.link.add(outlet10, level_boundary17)
 
-    # Give all nodes subnetwork_id 1
-    for node in model._nodes():
-        # check if node is None
-        if node.node.df is not None:
-            node.node.df.subnetwork_id = 1
+    return model
+
+
+def switch_allocation_control_model() -> Model:
+    """Create a model that switches allocation control on and off based on a DiscreteControl node."""
+    # Basin data
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:4326",
+        experimental=Experimental(allocation=True),
+    )
+
+    time = pd.date_range(model.starttime, model.endtime)
+    day_of_year = time.day_of_year.to_numpy()
+    precipitation = np.zeros(day_of_year.size)
+    precipitation[0:90] = 1e-7
+    precipitation[90:180] = 0
+    precipitation[180:270] = 1e-7
+    precipitation[270:366] = 0
+
+    evaporation = np.zeros(day_of_year.size)
+    evaporation[0:90] = 0
+    evaporation[90:180] = 1e-7
+    evaporation[180:270] = 0
+    evaporation[270:366] = 1e-7
+
+    basin_data: list[TableModel[Any]] = [
+        basin.Profile(area=[1_000_000.0, 1_000_000.0], level=[-10, 20.0]),
+        basin.Time(
+            time=pd.date_range(model.starttime, model.endtime),
+            drainage=0.0,
+            potential_evaporation=evaporation,
+            infiltration=0.0,
+            precipitation=precipitation,
+        ),
+        basin.State(level=[1.25]),
+    ]
+
+    basin1 = model.basin.add(Node(1, Point(0.0, 0.0), name="Reservoir"), basin_data)
+
+    discrete_control2 = model.discrete_control.add(
+        Node(2, Point(1.0, 1.0), name="Control Node"),
+        [
+            discrete_control.Variable(
+                compound_variable_id=[1],
+                listen_node_id=[1],
+                variable=["level"],
+            ),
+            discrete_control.Condition(
+                compound_variable_id=[1],
+                condition_id=[1],
+                threshold_high=[1.0],
+            ),
+            discrete_control.Logic(
+                control_state=["Ribasim.allocation", "prescribed"],
+                truth_state=["F", "T"],
+            ),
+        ],
+    )
+
+    outlet3 = model.outlet.add(
+        Node(3, Point(1.0, 0.0)),
+        [
+            outlet.Static(
+                flow_rate=[0, 1],
+                max_flow_rate=[0.08, 0.05],
+                control_state=["Ribasim.allocation", "prescribed"],
+            )
+        ],
+    )
+
+    inlet4 = model.outlet.add(
+        Node(4, Point(-1.0, 0.0)),
+        [
+            outlet.Static(
+                flow_rate=[0, 0],
+                max_flow_rate=[1, 0],
+                control_state=["Ribasim.allocation", "prescribed"],
+            )
+        ],
+    )
+
+    level_boundary5 = model.level_boundary.add(
+        Node(5, Point(-2.0, 0.0)),
+        [level_boundary.Static(level=[1.0])],
+    )
+
+    terminal6 = model.terminal.add(Node(6, Point(2.0, 0.0)))
+
+    level_demand7 = model.level_demand.add(
+        Node(7, Point(0.0, 1.0)),
+        [level_demand.Static(min_level=[0.9], max_level=[0.9], demand_priority=1)],
+    )
+
+    model.link.add(level_boundary5, inlet4)
+    model.link.add(inlet4, basin1)
+    model.link.add(basin1, outlet3)
+    model.link.add(discrete_control2, outlet3)
+    model.link.add(discrete_control2, inlet4)
+    model.link.add(outlet3, terminal6)
+    model.link.add(level_demand7, basin1)
 
     return model

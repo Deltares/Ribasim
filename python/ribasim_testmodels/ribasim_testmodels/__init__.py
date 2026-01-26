@@ -30,6 +30,7 @@ from ribasim_testmodels.allocation import (
     small_primary_secondary_network_model,
     small_primary_secondary_network_verification_model,
     subnetwork_model,
+    switch_allocation_control_model,
     user_demand_model,
 )
 from ribasim_testmodels.backwater import backwater_model
@@ -55,6 +56,7 @@ from ribasim_testmodels.discrete_control import (
     connector_node_flow_condition_model,
     continuous_concentration_condition_model,
     flow_condition_model,
+    invalid_ribasim_control_state_model,
     level_boundary_condition_model,
     level_range_model,
     pump_discrete_control_model,
@@ -129,6 +131,7 @@ __all__ = [
     "invalid_no_basin_model",
     "invalid_priorities_model",
     "invalid_qh_model",
+    "invalid_ribasim_control_state_model",
     "invalid_unstable_model",
     "junction_chained",
     "junction_combined",
@@ -161,6 +164,7 @@ __all__ = [
     "small_primary_secondary_network_verification_model",
     "storage_condition_model",
     "subnetwork_model",
+    "switch_allocation_control_model",
     "tabulated_rating_curve_control_model",
     "tabulated_rating_curve_model",
     "transient_condition_model",

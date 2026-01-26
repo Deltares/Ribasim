@@ -1071,6 +1071,32 @@ function reset_cumulative!(allocation_model::AllocationModel)::Nothing
     return nothing
 end
 
+function delete_control_constraints!(
+        allocation_model::AllocationModel,
+        constraint_key::Symbol,
+    )::Nothing
+    (; problem) = allocation_model
+    if haskey(problem, constraint_key)
+        constraints = problem[constraint_key]
+        for constraint in constraints
+            JuMP.delete(problem, constraint)
+        end
+    end
+
+    return nothing
+end
+
+function update_control_states!(
+        allocation_model::AllocationModel,
+        p_independent::ParametersIndependent,
+    )::Nothing
+    delete_control_constraints!(allocation_model, :pump)
+    delete_control_constraints!(allocation_model, :outlet)
+    add_pump!(allocation_model, p_independent)
+    add_outlet!(allocation_model, p_independent)
+    return nothing
+end
+
 "Solve the allocation problem for all demands and assign allocated abstractions."
 function update_allocation!(model)::Nothing
     (; integrator) = model
@@ -1085,22 +1111,24 @@ function update_allocation!(model)::Nothing
     du = get_du(integrator)
     water_balance!(du, u, p, t)
 
-    for allocation_model in get_secondary_networks(allocation_models)
+    for secondary_network in get_secondary_networks(allocation_models)
+        update_control_states!(secondary_network, p_independent)
         # Transfer data about physical processes from the simulation to the optimization
-        set_simulation_data!(allocation_model, integrator)
+        set_simulation_data!(secondary_network, integrator)
 
         # Set demands for all priorities
-        reset_demand_coefficients(allocation_model)
-        set_demands!(allocation_model, integrator)
+        reset_demand_coefficients(secondary_network)
+        set_demands!(secondary_network, integrator)
 
         # Use data from the physical layer to set the initial guess
-        warm_start!(allocation_model, integrator)
+        warm_start!(secondary_network, integrator)
     end
 
     if has_primary_network(allocation)
         # If a primary network is present, collect demands of the secondary network(s)
         primary_network = get_primary_network(allocation_models)
 
+        update_control_states!(primary_network, p_independent)
         # Transfer data about physical processes from the simulation to the optimization
         set_simulation_data!(primary_network, integrator)
 

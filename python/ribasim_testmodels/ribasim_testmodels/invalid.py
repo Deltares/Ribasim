@@ -176,7 +176,8 @@ def invalid_unstable_model() -> Model:
         )
         flow_rate = 1.0 if (i % 2 == 0) else 1e10
         model.pump.add(
-            Node(2 + id_shift * i, Point(i, 1)), [pump.Static(flow_rate=[flow_rate])]
+            Node(2 + id_shift * i, Point(i, 1)),
+            [pump.Static(flow_rate=[flow_rate])],
         )
         model.terminal.add(Node(3 + id_shift * i, Point(i, 2)))
 

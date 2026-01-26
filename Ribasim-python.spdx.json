@@ -6,12 +6,12 @@
     "creators": [
       "Tool: sbom4python-0.12.4"
     ],
-    "created": "2026-01-22T08:35:07Z",
+    "created": "2026-01-26T13:47:51Z",
     "licenseListVersion": "3.27"
   },
   "name": "Python-ribasim",
   "dataLicense": "CC0-1.0",
-  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-2b24726d-7659-4f29-9a87-92c26abeb24d",
+  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-abb45847-f228-434b-bc4e-c57d94cc6243",
   "packages": [
     {
       "SPDXID": "SPDXRef-1-ribasim",
@@ -638,23 +638,22 @@
     {
       "SPDXID": "SPDXRef-15-packaging",
       "name": "packaging",
-      "versionInfo": "25.0",
+      "versionInfo": "26.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Donald Stufft (donald@stufft.io)",
-      "downloadLocation": "https://pypi.org/project/packaging/25.0/#files",
+      "downloadLocation": "https://pypi.org/project/packaging/26.0/#files",
       "filesAnalyzed": false,
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484"
+          "checksumValue": "b36f1fef9334a5588b4166f8bcd26a14e521f2b55e6b9de3aaa80d3ff7a37529"
         }
       ],
-      "licenseConcluded": "Apache-2.0 AND BSD-3-Clause",
+      "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
-      "licenseComments": "packaging declares Apache Software License AND BSD License which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Core utilities for Python packages",
-      "releaseDate": "2025-04-19T11:48:57Z",
+      "releaseDate": "2026-01-21T20:50:37Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -669,12 +668,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/packaging@25.0"
+          "referenceLocator": "pkg:pypi/packaging@26.0"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:donald_stufft:packaging:25.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:donald_stufft:packaging:26.0:*:*:*:*:*:*:*"
         }
       ]
     },
