@@ -21,7 +21,7 @@ class NodeSchema(_GeoBaseSchema):
     name: Series[str] = pa.Field(default="")
     node_type: Series[str] = pa.Field(default="")
     subnetwork_id: Series[pd.Int32Dtype] = pa.Field(
-        default=pd.NA, nullable=True, coerce=True
+        default=pd.NA, nullable=False, coerce=True
     )
     route_priority: Series[pd.Int32Dtype] = pa.Field(
         default=pd.NA, nullable=True, coerce=True
@@ -59,7 +59,7 @@ class NodeTable(SpatialTableModel[NodeSchema]):
         assert self.df is not None
 
         for subnetwork_id, df_subnetwork in self.df.groupby("subnetwork_id"):
-            if subnetwork_id is None:
+            if subnetwork_id == 0:
                 continue
             elif subnetwork_id == 1:
                 contains_main_network = True
