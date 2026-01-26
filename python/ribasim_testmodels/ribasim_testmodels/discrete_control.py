@@ -933,3 +933,54 @@ def circular_flow_model() -> Model:
     model.link.add(control_pump, pump7)  # 11
 
     return model
+
+
+def invalid_ribasim_control_state_model() -> Model:
+    """Create a model with an invalid reserved control state 'Ribasim.blabla'.
+
+    This model should raise an error during validation because 'Ribasim.blabla'
+    is not a recognized reserved control state.
+    """
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+    )
+
+    model.level_boundary.add(
+        Node(1, Point(0, 0)),
+        [level_boundary.Static(level=[1.0])],
+    )
+
+    model.pump.add(
+        Node(2, Point(1, 0)),
+        [pump.Static(control_state=["Ribasim.blabla"], flow_rate=[1e-3])],
+    )
+
+    model.terminal.add(Node(3, Point(2, 0)))
+
+    model.discrete_control.add(
+        Node(4, Point(1, 1)),
+        [
+            discrete_control.Variable(
+                listen_node_id=[1],
+                variable="level",
+                compound_variable_id=1,
+            ),
+            discrete_control.Condition(
+                threshold_high=[0.5],
+                compound_variable_id=1,
+                condition_id=1,
+            ),
+            discrete_control.Logic(
+                truth_state=["T", "F"],
+                control_state=["Ribasim.blabla", "default"],
+            ),
+        ],
+    )
+
+    model.link.add(model.level_boundary[1], model.pump[2])
+    model.link.add(model.pump[2], model.terminal[3])
+    model.link.add(model.discrete_control[4], model.pump[2])
+
+    return model

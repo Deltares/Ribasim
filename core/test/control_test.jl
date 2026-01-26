@@ -385,3 +385,13 @@ end
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
     @test all(storage .< 7500 + 6)
 end
+
+@testitem "Invalid Ribasim control state" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/invalid_ribasim_control_state/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    # This should raise an error because "Ribasim.blabla" is not a valid reserved control state
+    @test_throws ErrorException Ribasim.run(toml_path)
+end

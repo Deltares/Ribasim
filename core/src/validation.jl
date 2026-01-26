@@ -1,3 +1,7 @@
+# Reserved control states that can be used by Control nodes
+# These are control states that start with "Ribasim." and are reserved for special behavior
+const RESERVED_CONTROL_STATES = Set(["Ribasim.allocation"])
+
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(config.snake_case(nodetype)))
 neighbortypes(::Val{:pump}) = OrderedSet((:basin, :terminal, :level_boundary, :junction))
@@ -538,6 +542,26 @@ function valid_link_types(db::DB)::Bool
 end
 
 """
+Validate that all control states starting with "Ribasim." are reserved and supported.
+"""
+function valid_reserved_control_states(control_states::Set{String})::Bool
+    errors = false
+
+    for control_state in control_states
+        # Check if control state starts with "Ribasim." prefix
+        if startswith(control_state, "Ribasim.")
+            # If it does, it must be in the reserved set
+            if control_state ∉ RESERVED_CONTROL_STATES
+                errors = true
+                @error "Unknown reserved control state '$control_state'. Control states starting with 'Ribasim.' must be one of: $(join(sort(RESERVED_CONTROL_STATES), ", "))"
+            end
+        end
+    end
+
+    return !errors
+end
+
+"""
 Check:
 - whether control states are defined for discrete controlled nodes;
 - Whether the supplied truth states have the proper length;
@@ -549,6 +573,9 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
 
     t_end = seconds_since(config.endtime, config.starttime)
     errors = false
+
+    # Collect all control states to validate reserved ones
+    all_control_states = Set{String}()
 
     for (id, compound_variables) in zip(node_id, discrete_control.compound_variables)
 
@@ -566,6 +593,7 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
 
         for (truth_state, control_state) in logic_mapping[id.idx]
             push!(control_states_discrete_control, control_state)
+            push!(all_control_states, control_state)
 
             if length(truth_state) != n_conditions
                 push!(truth_states_wrong_length, truth_state)
@@ -642,6 +670,12 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
             end
         end
     end
+
+    # Validate reserved control states
+    if !valid_reserved_control_states(all_control_states)
+        errors = true
+    end
+
     return !errors
 end
 
