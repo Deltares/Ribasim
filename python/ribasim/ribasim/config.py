@@ -232,7 +232,7 @@ class Node(pydantic.BaseModel):
     node_id: NonNegativeInt | None = None
     geometry: Point
     name: str = ""
-    subnetwork_id: int = 1
+    subnetwork_id: int | None = None
     route_priority: int | None = None
     cyclic_time: bool = False
 
