@@ -40,7 +40,7 @@ end
         area = basin.level_to_area[i](gb.level)
         pot_evap = basin.forcing.potential_evaporation[i](seconds)
         # high tolerance since the area is only approximate
-        @test gb.evaporation ≈ area .* pot_evap atol = 1e-5
+        @test gb.evaporation ≈ area .* pot_evap atol = 1.0e-5
         prec = basin.forcing.precipitation[i](seconds)
         fixed_area = Ribasim.basin_areas(basin, i)[end]
         @test gb.precipitation ≈ fixed_area .* prec
@@ -118,8 +118,8 @@ end
     model = Ribasim.run(toml_path)
     @test model.integrator.opts.reltol isa Vector{Float64}
     @test all(model.integrator.opts.reltol .<= model.integrator.p.p_independent.reltol)
-    @test model.integrator.u[1] >= 1e11
-    @test model.integrator.opts.reltol[1] <= 1e-11
+    @test model.integrator.u[1] >= 1.0e11
+    @test model.integrator.opts.reltol[1] <= 1.0e-11
 end
 
 @testitem "transient_pump_outlet" begin
@@ -133,7 +133,7 @@ end
     storage = Ribasim.get_storages_and_levels(model).storage
     # After a few days Basin #3 comes to a dynamic equilibrium when the level difference
     # reduction factor of Oulet #2 becomes 1
-    @test all(isapprox.(storage[1, 4:end], storage[1, end]; rtol = 1e-4))
+    @test all(isapprox.(storage[1, 4:end], storage[1, end]; rtol = 1.0e-4))
 
     t_end = model.integrator.t
     flow_rate_end = model.integrator.p.p_independent.pump.time_dependent_flow_rate[1].u[end]

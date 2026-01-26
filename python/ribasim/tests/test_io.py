@@ -22,7 +22,7 @@ def __assert_equal(a: DataFrame, b: DataFrame) -> None:
     if a is None and b is None:
         return
     elif a is None or b is None:
-        assert False
+        raise AssertionError()
 
     a = a.reset_index(drop=True)
     b = b.reset_index(drop=True)
@@ -39,7 +39,7 @@ def test_basic(basic, tmp_path):
     model_loaded = Model.read(toml_path)
     assert model_loaded.filepath == toml_path
 
-    with open(toml_path, "rb") as f:
+    with toml_path.open("rb") as f:
         toml_dict = tomli.load(f)
 
     assert toml_dict["ribasim_version"] == ribasim.__version__
@@ -69,13 +69,6 @@ def test_basic_transient(basic_transient, tmp_path):
     assert time.df.node_id.dtype == "int32"
     __assert_equal(model_orig.basin.time.df, time.df)
     assert time.df.shape == (1468, 7)
-
-
-@pytest.mark.xfail(reason="Needs implementation")
-def test_pydantic():
-    pass
-    # static_data_bad = pd.DataFrame(data={"node_id": [1, 2, 3]})
-    # test that it throws on missing flow_rate
 
 
 def test_repr():
@@ -184,14 +177,15 @@ def test_node_autoincrement():
     model.basin.add(Node(20, Point(0, 0)), [basin.State(level=[1.0])])
 
     # When adding a node with an existing ID, it should replace the old one
-    model.user_demand.add(
-        Node(20, Point(1, 0.5)),
-        [
-            user_demand.Static(
-                demand=[1e-4], return_factor=0.9, min_level=0.9, demand_priority=1
-            )
-        ],
-    )
+    with pytest.warns(UserWarning, match="Replacing node #20"):
+        model.user_demand.add(
+            Node(20, Point(1, 0.5)),
+            [
+                user_demand.Static(
+                    demand=[1e-4], return_factor=0.9, min_level=0.9, demand_priority=1
+                )
+            ],
+        )
     # Node 20 should now be a user_demand, not a basin
     assert 20 in model.user_demand.node.df.index
     assert 20 in model.user_demand.static.df["node_id"].to_numpy()
@@ -223,7 +217,8 @@ def test_add_existing():
 
     # Add multiple basins
     model.basin.add(Node(10, Point(0, 0)), [basin.State(level=[1.0])])
-    model.basin.add(Node(10, Point(0, 1)), [basin.State(level=[1.1])])
+    with pytest.warns(UserWarning, match="Replacing node #10"):
+        model.basin.add(Node(10, Point(0, 1)), [basin.State(level=[1.1])])
     model.basin.add(Node(11, Point(1, 0)), [basin.State(level=[2.0])])
 
     # Check that node_id 10 has the updated Point(0, 1) and level=1.1
@@ -373,8 +368,8 @@ def test_roundtrip(trivial, tmp_path):
     # check if all tables are the same
     __assert_equal(model1.node_table().df, model2.node_table().df)
     __assert_equal(model1.link.df, model2.link.df)
-    for node1, node2 in zip(model1._nodes(), model2._nodes()):
-        for table1, table2 in zip(node1._tables(), node2._tables()):
+    for node1, node2 in zip(model1._nodes(), model2._nodes(), strict=True):
+        for table1, table2 in zip(node1._tables(), node2._tables(), strict=True):
             __assert_equal(table1.df, table2.df)
 
 
@@ -483,14 +478,14 @@ def test_consistent_binary_output(basic, tmp_path):
     basic.write(toml_path)
 
     db_path = toml_path.parent / basic.input_dir / "database.gpkg"
-    with open(db_path, "rb") as f:
-        res = hashlib.md5(f.read())
+    with db_path.open("rb") as f:
+        res = hashlib.md5(f.read(), usedforsecurity=False)
         original_hash = res.hexdigest()
 
     sleep(2)  # ensure timestamps change
     basic.write(toml_path)
-    with open(db_path, "rb") as f:
-        res = hashlib.md5(f.read())
+    with db_path.open("rb") as f:
+        res = hashlib.md5(f.read(), usedforsecurity=False)
         new_hash = res.hexdigest()
 
     assert original_hash == new_hash

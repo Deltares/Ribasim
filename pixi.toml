@@ -126,7 +126,7 @@ model-integration-test = { cmd = "julia --project=core --check-bounds=yes --eval
     ] },
 ] }
 # Codegen
-codegen = { cmd = "julia --project utils/gen_python.jl --check-bounds=yes && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends-on = [
+codegen = { cmd = "julia --project --check-bounds=yes utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends-on = [
     "initialize-julia",
 ], inputs = [
     "core",
@@ -295,6 +295,7 @@ shapely = ">=2.0"
 teamcity-messages = "*"
 tomli = ">=2.0"
 tomli-w = ">=1.0"
+tomlkit = ">=0.13,<0.14"  # temp until juliacall >0.9.31
 twine = "*"
 xarray = ">=2023.11"
 xmipy = ">=1.3"

@@ -6,13 +6,13 @@
     model = BMI.initialize(Ribasim.Model, toml_path)
     @test BMI.get_time_units(model) == "s"
     dt0 = 2.8280652f-5
-    @test BMI.get_time_step(model) ≈ dt0 atol = 5e-3
+    @test BMI.get_time_step(model) ≈ dt0 atol = 5.0e-3
     @test BMI.get_start_time(model) === 0.0
     @test BMI.get_current_time(model) === 0.0
     endtime = BMI.get_end_time(model)
     @test endtime ≈ 3.16224e7
     BMI.update(model)
-    @test BMI.get_current_time(model) ≈ dt0 atol = 5e-3
+    @test BMI.get_current_time(model) ≈ dt0 atol = 5.0e-3
     BMI.update_until(model, 86400.0)
     @test BMI.get_current_time(model) == 86400.0
     # cannot go back in time
@@ -69,18 +69,18 @@ end
     model = BMI.initialize(Ribasim.Model, toml_path)
 
     for name in [
-        "basin.storage",
-        "basin.level",
-        "basin.infiltration",
-        "basin.surface_runoff",
-        "basin.drainage",
-        "basin.cumulative_infiltration",
-        "basin.cumulative_surface_runoff",
-        "basin.cumulative_drainage",
-        "basin.subgrid_level",
-        "user_demand.demand",
-        "user_demand.cumulative_inflow",
-    ]
+            "basin.storage",
+            "basin.level",
+            "basin.infiltration",
+            "basin.surface_runoff",
+            "basin.drainage",
+            "basin.cumulative_infiltration",
+            "basin.cumulative_surface_runoff",
+            "basin.cumulative_drainage",
+            "basin.subgrid_level",
+            "user_demand.demand",
+            "user_demand.cumulative_inflow",
+        ]
         value_first = BMI.get_value_ptr(model, name)
         BMI.update_until(model, 86400.0)
         value_second = BMI.get_value_ptr(model, name)
@@ -101,10 +101,10 @@ end
     inflow = BMI.get_value_ptr(model, "user_demand.cumulative_inflow")
     day = 86400.0
     BMI.update_until(model, 2day)
-    @test inflow ≈ [2e-3 * day, 3e-3 * day] atol = 1e-2
-    demand[1] = 3e-3
+    @test inflow ≈ [2.0e-3 * day, 3.0e-3 * day] atol = 1.0e-2
+    demand[1] = 3.0e-3
     BMI.update_until(model, 3day)
-    @test inflow[1] ≈ 5e-3 * day atol = 2e-3
+    @test inflow[1] ≈ 5.0e-3 * day atol = 2.0e-3
 end
 
 @testitem "vertical basin flux" begin

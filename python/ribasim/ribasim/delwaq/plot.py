@@ -6,16 +6,18 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 def plot_fraction(
     model,
     node_id,
-    tracers=[
-        "LevelBoundary",
-        "FlowBoundary",
-        "UserDemand",
-        "Initial",
-        "Drainage",
-        "Precipitation",
-        "SurfaceRunoff",
-    ],
+    tracers=None,
 ):
+    if tracers is None:
+        tracers = [
+            "LevelBoundary",
+            "FlowBoundary",
+            "UserDemand",
+            "Initial",
+            "Drainage",
+            "Precipitation",
+            "SurfaceRunoff",
+        ]
     table = model.basin.concentration_external.df
     table = table[table["node_id"] == node_id]
     table = table[table["substance"].isin(tracers)]

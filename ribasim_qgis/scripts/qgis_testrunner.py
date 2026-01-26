@@ -120,7 +120,7 @@ def __run_test():
         function_name()
         __exit_qgis(signal.SIG_DFL)
     except Exception as e:
-        logging.error(f"QGIS Test Runner Inside - [FAILED] Exception: {e}")
+        logging.error(f"QGIS Test Runner Inside - [FAILED] Exception: {e}")  # noqa: LOG015
         # Print tb
         traceback.print_exc(file=sys.stderr)
         __exit_qgis(signal.SIGTERM)

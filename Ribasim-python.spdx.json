@@ -6,12 +6,12 @@
     "creators": [
       "Tool: sbom4python-0.12.4"
     ],
-    "created": "2026-01-03T03:32:26Z",
-    "licenseListVersion": "3.26"
+    "created": "2026-01-22T08:35:07Z",
+    "licenseListVersion": "3.27"
   },
   "name": "Python-ribasim",
   "dataLicense": "CC0-1.0",
-  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-347f65ac-ef0f-4105-9d4d-a6eff717a100",
+  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-2b24726d-7659-4f29-9a87-92c26abeb24d",
   "packages": [
     {
       "SPDXID": "SPDXRef-1-ribasim",
@@ -58,24 +58,18 @@
     {
       "SPDXID": "SPDXRef-2-datacompy",
       "name": "datacompy",
-      "versionInfo": "0.19.1",
+      "versionInfo": "0.19.2",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Faisal Dosani Raymond Haffar Jacob Dawang (jacob.dawang@capitalone.com)",
-      "downloadLocation": "https://pypi.org/project/datacompy/0.19.1/#files",
+      "downloadLocation": "https://pypi.org/project/datacompy/0.19.2/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/capitalone/datacompy",
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "525114d012e129c38b7d8dfcb11091f4d2c60e175a9be748284a02abaf21ae75"
-        }
-      ],
       "licenseConcluded": "Apache-2.0",
       "licenseDeclared": "NOASSERTION",
       "licenseComments": "datacompy declares Apache Software License which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Dataframe comparison in Python",
-      "releaseDate": "2025-12-16T18:25:48Z",
+      "releaseDate": "2025-12-23T11:48:54Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -100,12 +94,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/datacompy@0.19.1"
+          "referenceLocator": "pkg:pypi/datacompy@0.19.2"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:faisal_dosani_raymond_haffar_jacob_dawang:datacompy:0.19.1:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:faisal_dosani_raymond_haffar_jacob_dawang:datacompy:0.19.2:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -1022,55 +1016,65 @@
     {
       "SPDXID": "SPDXRef-23-pyparsing",
       "name": "pyparsing",
-      "versionInfo": "3.3.1",
+      "versionInfo": "3.3.2",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Paul McGuire (ptmcg.gm+pyparsing@gmail.com)",
-      "downloadLocation": "https://pypi.org/project/pyparsing/3.3.1/#files",
+      "downloadLocation": "https://pypi.org/project/pyparsing/3.3.2/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/pyparsing/pyparsing/",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "023b5e7e5520ad96642e2c6db4cb683d3970bd640cdf7115049a6e9c3682df82"
+          "checksumValue": "850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "summary": "pyparsing - Classes and methods to define and execute parsing grammars",
-      "releaseDate": "2025-12-23T03:14:02Z",
+      "releaseDate": "2026-01-21T03:57:55Z",
       "externalRefs": [
+        {
+          "referenceCategory": "OTHER",
+          "referenceType": "documentation",
+          "referenceLocator": "https://pyparsing-docs.readthedocs.io/en/latest/"
+        },
+        {
+          "referenceCategory": "OTHER",
+          "referenceType": "vcs",
+          "referenceLocator": "https://github.com/pyparsing/pyparsing.git"
+        },
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/pyparsing@3.3.1"
+          "referenceLocator": "pkg:pypi/pyparsing@3.3.2"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:paul_mcguire:pyparsing:3.3.1:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:paul_mcguire:pyparsing:3.3.2:*:*:*:*:*:*:*"
         }
       ]
     },
     {
       "SPDXID": "SPDXRef-24-netcdf4",
       "name": "netcdf4",
-      "versionInfo": "1.7.3",
+      "versionInfo": "1.7.4",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Jeff Whitaker (whitaker.jeffrey@gmail.com)",
-      "downloadLocation": "https://pypi.org/project/netcdf4/1.7.3/#files",
+      "downloadLocation": "https://pypi.org/project/netcdf4/1.7.4/#files",
       "filesAnalyzed": false,
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "db761afd3a6b9482df018c4783e0bdf99141a41db1f14c68c89986effb182d57"
+          "checksumValue": "b1c1a7ea3678db76bf33d14f7e202385d634db38c5e70d8cf4895971023eebb9"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "summary": "Provides an object-oriented python interface to the netCDF version 4 library",
-      "releaseDate": "2025-10-13T18:37:44Z",
+      "releaseDate": "2026-01-05T02:26:54Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1085,68 +1089,67 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/netcdf4@1.7.3"
+          "referenceLocator": "pkg:pypi/netcdf4@1.7.4"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:jeff_whitaker:netcdf4:1.7.3:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:jeff_whitaker:netcdf4:1.7.4:*:*:*:*:*:*:*"
         }
       ]
     },
     {
       "SPDXID": "SPDXRef-25-cftime",
       "name": "cftime",
-      "versionInfo": "1.6.4",
+      "versionInfo": "1.6.5",
       "primaryPackagePurpose": "LIBRARY",
-      "supplier": "Person: Jeff Whitaker (jeffrey.s.whitaker@noaa.gov)",
-      "downloadLocation": "https://pypi.org/project/cftime/1.6.4/#files",
+      "supplier": "Person: Jeff Whitaker (whitaker.jeffrey@gmail.com)",
+      "downloadLocation": "https://pypi.org/project/cftime/1.6.5/#files",
       "filesAnalyzed": false,
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "ee70074df4bae0d9ee98f201cf5f11fd302791cf1cdeb73c34f685d6b632e17d"
+          "checksumValue": "8ad81e8cb0eb873b33c3d1e22c6168163fdc64daa8f7aeb4da8092f272575f4d"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
-      "licenseComments": "cftime declares License :: OSI Approved :: MIT License which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Time-handling functionality from netcdf4-python",
-      "releaseDate": "2024-06-06T20:03:32Z",
+      "releaseDate": "2025-10-13T18:55:52Z",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/cftime@1.6.4"
+          "referenceLocator": "pkg:pypi/cftime@1.6.5"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:jeff_whitaker:cftime:1.6.4:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:jeff_whitaker:cftime:1.6.5:*:*:*:*:*:*:*"
         }
       ]
     },
     {
       "SPDXID": "SPDXRef-26-certifi",
       "name": "certifi",
-      "versionInfo": "2025.11.12",
+      "versionInfo": "2026.1.4",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Kenneth Reitz (me@kennethreitz.com)",
-      "downloadLocation": "https://pypi.org/project/certifi/2025.11.12/#files",
+      "downloadLocation": "https://pypi.org/project/certifi/2026.1.4/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/certifi/python-certifi",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "97de8790030bbd5c2d96b7ec782fc2f7820ef8dba6db909ccf95449f2d062d4b"
+          "checksumValue": "9943707519e4add1115f44c2bc244f782c0249876bf51b6599fee1ffbedd685c"
         }
       ],
       "licenseConcluded": "MPL-2.0",
       "licenseDeclared": "MPL-2.0",
       "copyrightText": "NOASSERTION",
       "summary": "Python package for providing Mozilla's CA Bundle.",
-      "releaseDate": "2025-11-12T02:54:49Z",
+      "releaseDate": "2026-01-04T02:42:40Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1156,28 +1159,28 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/certifi@2025.11.12"
+          "referenceLocator": "pkg:pypi/certifi@2026.1.4"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:kenneth_reitz:certifi:2025.11.12:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:kenneth_reitz:certifi:2026.1.4:*:*:*:*:*:*:*"
         }
       ]
     },
     {
       "SPDXID": "SPDXRef-27-pandera",
       "name": "pandera",
-      "versionInfo": "0.27.1",
+      "versionInfo": "0.28.1",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Niels Bantilan (niels.bantilan@gmail.com)",
-      "downloadLocation": "https://pypi.org/project/pandera/0.27.1/#files",
+      "downloadLocation": "https://pypi.org/project/pandera/0.28.1/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/pandera-dev/pandera",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "944838f134035bbc548410943be662379669488e00f3d290ff2c36b6df52665e"
+          "checksumValue": "84da487d9348dfd01b91ae3349eb872a9802df6a6c2da589ac52bb9c080fe8f4"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -1185,7 +1188,7 @@
       "licenseComments": "pandera declares MIT License\n\nCopyright (c) 2018 Niels Bantilan\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "A light-weight and flexible data validation and testing tool for statistical data objects.",
-      "releaseDate": "2025-12-22T19:02:30Z",
+      "releaseDate": "2026-01-08T14:21:24Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1200,12 +1203,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/pandera@0.27.1"
+          "referenceLocator": "pkg:pypi/pandera@0.28.1"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:niels_bantilan:pandera:0.27.1:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:niels_bantilan:pandera:0.28.1:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -1373,11 +1376,17 @@
       "downloadLocation": "https://pypi.org/project/pydantic-core/2.41.5/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/pydantic/pydantic-core",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "77b63866ca88d804225eaa4af3e664c5faf3568cea95360d21f4725ab6e07146"
+        }
+      ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "summary": "Core functionality for Pydantic validation and serialization",
-      "releaseDate": "2025-08-25T13:49:24Z",
+      "releaseDate": "2025-11-04T13:39:04Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1767,23 +1776,23 @@
     {
       "SPDXID": "SPDXRef-41-tomli",
       "name": "tomli",
-      "versionInfo": "2.3.0",
+      "versionInfo": "2.4.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Taneli Hukkinen (hukkin@users.noreply.github.com)",
-      "downloadLocation": "https://pypi.org/project/tomli/2.3.0/#files",
+      "downloadLocation": "https://pypi.org/project/tomli/2.4.0/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/hukkin/tomli",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "88bd15eb972f3664f5ed4b57c1634a97153b4bac4479dcb6a495f41921eb7f45"
+          "checksumValue": "b5ef256a3fd497d4973c11bf142e9ed78b150d36f5773f1ca6088c230ffc5867"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "summary": "A lil' TOML parser",
-      "releaseDate": "2025-10-08T22:01:00Z",
+      "releaseDate": "2026-01-11T11:21:45Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1793,12 +1802,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/tomli@2.3.0"
+          "referenceLocator": "pkg:pypi/tomli@2.4.0"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:taneli_hukkinen:tomli:2.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:taneli_hukkinen:tomli:2.4.0:*:*:*:*:*:*:*"
         }
       ]
     },

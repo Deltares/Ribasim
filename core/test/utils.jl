@@ -88,7 +88,7 @@ using TestItemRunner: @testmodule
         ts.time_end = now()
         if ts.teamcity
             println(
-                "##teamcity[testSuiteFinished name='$(ts.description)' duration='$(value(now()-ts.time_start))']",
+                "##teamcity[testSuiteFinished name='$(ts.description)' duration='$(value(now() - ts.time_start))']",
             )
             flush(stdout)
         end
@@ -175,13 +175,15 @@ end
 macro tcstatistic(key, value)
     if haskey(ENV, "TEAMCITY_VERSION")
         return esc(
-            :(println(
-                "##teamcity[buildStatisticValue key='",
-                $key,
-                "' value='",
-                $value,
-                "']",
-            )),
+            :(
+                println(
+                    "##teamcity[buildStatisticValue key='",
+                    $key,
+                    "' value='",
+                    $value,
+                    "']",
+                )
+            ),
         )
     else
         return esc(:(println($key, '=', $value)))

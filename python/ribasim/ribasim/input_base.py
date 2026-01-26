@@ -63,10 +63,12 @@ node_names_snake_case = [
 ]
 
 context_file_loading: ContextVar[dict[str, Path]] = ContextVar(
-    "file_loading", default={}
+    "file_loading",
+    default={},  # noqa: B039
 )
 context_file_writing: ContextVar[dict[str, Path]] = ContextVar(
-    "file_writing", default={}
+    "file_writing",
+    default={},  # noqa: B039
 )
 
 TableT = TypeVar("TableT", bound=_BaseSchema)
@@ -470,7 +472,7 @@ class TableModel[TableT: _BaseSchema](FileModel):
     def _from_db(cls, path: Path, table: str) -> pd.DataFrame | None:
         with closing(connect(path)) as connection:
             if exists(connection, table):
-                query = f"select * from {esc_id(table)}"
+                query = f"select * from {esc_id(table)}"  # noqa: S608
                 df = pd.read_sql_query(
                     query,
                     connection,
@@ -486,13 +488,13 @@ class TableModel[TableT: _BaseSchema](FileModel):
 
     @classmethod
     def _from_arrow(cls, path: Path) -> pd.DataFrame:
-        directory = context_file_loading.get().get("directory", Path("."))
+        directory = context_file_loading.get().get("directory", Path())
         return pd.read_feather(directory / path)
 
     @classmethod
     def _from_netcdf(cls, path: Path) -> pd.DataFrame:
         """Read a NetCDF file and convert it back to a DataFrame."""
-        directory = context_file_loading.get().get("directory", Path("."))
+        directory = context_file_loading.get().get("directory", Path())
         full_path = directory / path
 
         with xr.open_dataset(full_path) as ds:

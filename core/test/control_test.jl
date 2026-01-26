@@ -45,7 +45,7 @@
     @test discrete_control.record.truth_state == ["TF", "F", "FF", "FT", "T"]
     @test discrete_control.record.truth_state == control.truth_state
     @test discrete_control.record.control_state ==
-          ["off", "active", "on", "off", "inactive"]
+        ["off", "active", "on", "off", "inactive"]
     @test discrete_control.record.control_state == control.control_state
 
     level = Ribasim.get_storages_and_levels(model).level
@@ -55,12 +55,12 @@
     t_1 = discrete_control.record.time[3]
     t_1_index = findfirst(>=(t_1), t)
     @test level[1, t_1_index] <=
-          discrete_control.compound_variables[1][1].threshold_high[1](0)
+        discrete_control.compound_variables[1][1].threshold_high[1](0)
 
     t_2 = discrete_control.record.time[4]
     t_2_index = findfirst(>=(t_2), t)
     @test level[2, t_2_index] >=
-          discrete_control.compound_variables[1][2].threshold_high[1](0)
+        discrete_control.compound_variables[1][2].threshold_high[1](0)
 
     du = get_du(model.integrator)
     @test all(iszero, du.linear_resistance)
@@ -138,12 +138,12 @@ end
     a = abs(Δlevel / cos(phi))
     # This bound is the exact envelope of the analytical solution
     bound = @. a * exp(alpha * t[1:idx_target_change])
-    eps = 5e-3
+    eps = 5.0e-3
     # Initial convergence to target level
     @test all(@. abs(level[1:idx_target_change] - level_demand) < bound + eps)
     # Later closeness to target level
     @test all(
-        @. abs(level[idx_target_change:end] - target_itp(t[idx_target_change:end])) < 5e-2
+        @. abs(level[idx_target_change:end] - target_itp(t[idx_target_change:end])) < 5.0e-2
     )
 end
 
@@ -195,20 +195,24 @@ end
     t = Ribasim.tsaves(model)
     level = Ribasim.get_storages_and_levels(model).level[1, :]
 
-    target_high = pid_control.control_mapping[(
-        NodeID(:PidControl, 6, p_independent),
-        "target_high",
-    )].itp_update_linear[1].value.u[1]
-    target_low = pid_control.control_mapping[(
-        NodeID(:PidControl, 6, p_independent),
-        "target_low",
-    )].itp_update_linear[1].value.u[1]
+    target_high = pid_control.control_mapping[
+        (
+            NodeID(:PidControl, 6, p_independent),
+            "target_high",
+        ),
+    ].itp_update_linear[1].value.u[1]
+    target_low = pid_control.control_mapping[
+        (
+            NodeID(:PidControl, 6, p_independent),
+            "target_low",
+        ),
+    ].itp_update_linear[1].value.u[1]
 
     t_target_jump = discrete_control.record.time[2]
     t_idx_target_jump = searchsortedlast(t, t_target_jump)
 
-    @test isapprox(level[t_idx_target_jump], target_high, atol = 1e-1)
-    @test isapprox(level[end], target_low, atol = 1e-1)
+    @test isapprox(level[t_idx_target_jump], target_high, atol = 1.0e-1)
+    @test isapprox(level[end], target_low, atol = 1.0e-1)
 end
 
 @testitem "Compound condition" begin
@@ -240,7 +244,7 @@ end
         weight = 0.5,
         look_ahead = 0.0,
     )
-    @test record.time ≈ [0.0, model.integrator.t / 2] rtol = 1e-2
+    @test record.time ≈ [0.0, model.integrator.t / 2] rtol = 1.0e-2
     @test record.truth_state == ["F", "T"]
     @test record.control_state == ["Off", "On"]
 end
@@ -263,12 +267,12 @@ end
 
     t_switch = Ribasim.datetime_since(record.time[2], starttime)
     flow_table = DataFrame(Ribasim.flow_data(model))
-    @test all(filter(:time => time -> time <= t_switch, flow_table).flow_rate .> -1e-12)
+    @test all(filter(:time => time -> time <= t_switch, flow_table).flow_rate .> -1.0e-12)
     @test all(
         isapprox.(
             filter(:time => time -> time > t_switch, flow_table).flow_rate,
             0;
-            atol = 1e-8,
+            atol = 1.0e-8,
         ),
     )
 end
@@ -294,10 +298,10 @@ end
     end
 
     inflow = get_link_flow(2, 3)
-    @test get_link_flow(3, 4) ≈ max.(0.6 .* inflow, 0) rtol = 1e-4
-    @test get_link_flow(4, 6) ≈ max.(0.6 .* inflow, 0) rtol = 1e-4
-    @test get_link_flow(3, 5) ≈ max.(0.4 .* inflow, 0) rtol = 1e-4
-    @test get_link_flow(5, 7) ≈ max.(0.4 .* inflow, 0) rtol = 1e-4
+    @test get_link_flow(3, 4) ≈ max.(0.6 .* inflow, 0) rtol = 1.0e-4
+    @test get_link_flow(4, 6) ≈ max.(0.6 .* inflow, 0) rtol = 1.0e-4
+    @test get_link_flow(3, 5) ≈ max.(0.4 .* inflow, 0) rtol = 1.0e-4
+    @test get_link_flow(5, 7) ≈ max.(0.4 .* inflow, 0) rtol = 1.0e-4
 end
 
 @testitem "Concentration discrete control" begin
@@ -317,8 +321,8 @@ end
     concentration = itp.(t)
     threshold = 0.5
     above_threshold = concentration .> threshold
-    @test all(isapprox.(flow_link_0.flow_rate[above_threshold], 1e-3, rtol = 1e-2))
-    @test all(isapprox.(flow_link_0.flow_rate[.!above_threshold], 0.0, atol = 1e-5))
+    @test all(isapprox.(flow_link_0.flow_rate[above_threshold], 1.0e-3, rtol = 1.0e-2))
+    @test all(isapprox.(flow_link_0.flow_rate[.!above_threshold], 0.0, atol = 1.0e-5))
 end
 
 @testitem "Transient discrete control condition" begin
@@ -362,7 +366,7 @@ end
     # Pump is initially off because level is below 0.9
     t0 = control.time[1]
     @test control.truth_state[1] == "F"
-    @test basin6.level[findfirst(>=(t0), basin6.time)] <= 0.9 + 1e-10
+    @test basin6.level[findfirst(>=(t0), basin6.time)] <= 0.9 + 1.0e-10
 
     # Switches on when level exceeds 0.95
     t1 = control.time[2]
@@ -372,7 +376,7 @@ end
     # And only switches off when level goes below 0.9 again
     t2 = control.time[3]
     @test control.truth_state[3] == "F"
-    @test basin6.level[findfirst(>=(t2), basin6.time)] <= 0.9 + 1e-2
+    @test basin6.level[findfirst(>=(t2), basin6.time)] <= 0.9 + 1.0e-2
 end
 
 @testitem "Storage condition" begin
