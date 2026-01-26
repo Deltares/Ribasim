@@ -11,9 +11,12 @@ function add_basin!(allocation_model::AllocationModel)::Nothing
     ) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
 
-    # Define decision variables: storage change (scaling.storage * m^3) (at the start of the allocation time step
-    # and the change over the allocation time step)
-    # Each storage variable is constrained between 0 and the largest storage value in the profile
+    # Define decision variables: storage change ΔS = S^{n+1} - S^n (scaled by scaling.storage)
+    # Represents the change in basin storage over the allocation timestep Δt
+    # Mathematical formulation: ΔS ∈ [-S^n, S_max - S^n]
+    # Lower bound prevents storage from going negative
+    # Upper bound prevents exceeding maximum basin capacity
+    # Note: placeholder values are used during initialization, actual bounds set in set_simulation_data!
     current_storage = 1000.0 # Example current_storage (m^3, to be filled in before optimizing)
     max_storage = 5000.0 # Example maximum storage (m^3, to be filled in before optimizing)
     problem[:basin_storage_change] = JuMP.@variable(
@@ -131,7 +134,10 @@ function add_conservation!(
     add_flow_conservation!(allocation_model, manning_resistance, graph)
     add_flow_conservation!(allocation_model, tabulated_rating_curve, graph)
 
-    # Define constraints: Basin storage change (water balance)
+    # Define constraints: Basin water balance (volume conservation)
+    # Mathematical formulation: dS/dt = Σ Q_in - Σ Q_out + f_pos - f_neg
+    # Discretized (backward Euler): ΔS = Δt * (Σ Q_in - α * Σ Q_out + f_pos - f_neg)
+    # where α (low_storage_factor) prevents negative storage by reducing outflows
     storage_change = problem[:basin_storage_change]
     low_storage_factor = problem[:low_storage_factor]
     flow = problem[:flow]
@@ -434,8 +440,10 @@ function add_linearized_connector_node!(
     ∂q∂h_upstream = 1.0 # Example value (scaling.flow * m^2/s, to be filled in before optimizing)
     ∂q∂h_downstream = -1.0 # Example value, to be filled in before optimizing)
 
-    # Add constraints: the flow into the connector node is equal to the linearized
-    # flow(level upstream, level_downstream) relation of the connector node
+    # Add constraints: Taylor series linearization of flow-level relationship
+    # Mathematical formulation: Q^{n+1} ≈ Q^n + (∂Q/∂h_a)(h_a^{n+1} - h_a^n) + (∂Q/∂h_b)(h_b^{n+1} - h_b^n)
+    # For basins, substitute h^{n+1} - h^n ≈ (1/A)(S^{n+1} - S^n) = (1/A)ΔS
+    # This constraint is updated with real values in set_simulation_data! via linearize_connector_node!
     problem[Symbol(constraint_name)] = JuMP.@constraint(
         problem,
         [node_id = node_ids_subnetwork],
