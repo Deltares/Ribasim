@@ -446,6 +446,7 @@ end
 function incomplete_subnetwork(
         graph::MetaGraph,
         node_ids::Dict{Int32, OrderedSet{NodeID}},
+        allocation_active::Bool,
     )::Bool
     errors = false
 
@@ -456,12 +457,15 @@ function incomplete_subnetwork(
             OrderedSet(filter(x -> x.type != NodeType.Junction, node_ids_in_subnetwork))
     end
 
-    for (subnetwork_id, node_ids_in_subnetwork) in node_ids_without_junctions
-        subnetwork, _ =
-            induced_subgraph(graph, code_for.(Ref(graph), node_ids_in_subnetwork))
-        if !is_connected(subnetwork)
-            @error "All nodes in subnetwork $subnetwork_id should be connected"
-            errors = true
+
+    if allocation_active
+        for (subnetwork_id, node_ids_in_subnetwork) in node_ids_without_junctions
+            subnetwork, _ =
+                induced_subgraph(graph, code_for.(Ref(graph), node_ids_in_subnetwork))
+            if !is_connected(subnetwork)
+                @error "All nodes in subnetwork $subnetwork_id should be connected"
+                errors = true
+            end
         end
     end
     return errors

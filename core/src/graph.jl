@@ -111,7 +111,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         error("Invalid links found")
     end
 
-    if incomplete_subnetwork(graph, node_ids)
+    if incomplete_subnetwork(graph, node_ids, config.experimental.allocation)
         error("Incomplete connectivity in subnetwork")
     end
 
