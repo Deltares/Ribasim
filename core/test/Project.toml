@@ -44,6 +44,7 @@ Ribasim = {path = "core"}
 Aqua = "0.8"
 CSV = "0.10"
 DataFrames = "1.4"
+DataInterpolations = "8.9.0"
 Glob = "1.3"
 IOCapture = "0.2, 1"
 Statistics = "1"
