@@ -659,7 +659,8 @@ function set_new_control_state!(
         truth_state::Vector{Bool},
     )::Nothing
     (; p) = integrator
-    (; discrete_control) = p.p_independent
+    (; p_independent) = p
+    (; discrete_control, pump, outlet) = p_independent
 
     # Get the control state corresponding to the new truth state,
     # if one is defined
@@ -683,6 +684,20 @@ function set_new_control_state!(
         # Loop over nodes which are under control of this control node
         for target_node_id in discrete_control.controlled_nodes[discrete_control_id.idx]
             set_control_params!(p, target_node_id, control_state_new)
+
+            if control_state_new == "Ribasim.allocation"
+                if target_node_id.type == NodeType.Pump
+                    pump.allocation_controlled[target_node_id.idx] = true
+                elseif target_node_id.type == NodeType.Outlet
+                    outlet.allocation_controlled[target_node_id.idx] = true
+                end
+            else
+                if target_node_id.type == NodeType.Pump
+                    pump.allocation_controlled[target_node_id.idx] = false
+                elseif target_node_id.type == NodeType.Outlet
+                    outlet.allocation_controlled[target_node_id.idx] = false
+                end
+            end
         end
 
         discrete_control.control_state[discrete_control_id.idx] = control_state_new
