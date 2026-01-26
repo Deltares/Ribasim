@@ -2,7 +2,7 @@
 
 julia_version = "1.12.4"
 manifest_format = "2.0"
-project_hash = "13ae9b0f46abdb1f82b8edd6f63c285b7a4fada4"
+project_hash = "e01cc8aa2ae805ba57cffba821abd6ff54872f40"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "f7304359109c768cf32dc5fa2d371565bb63b68a"
@@ -2470,12 +2470,6 @@ version = "0.1.7"
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 version = "1.11.0"
-
-[[deps.TestEnv]]
-deps = ["Pkg"]
-git-tree-sha1 = "34b210bda5289c110b7df867f6a9fc26161586e2"
-uuid = "1e6cf692-eddd-4d53-88a5-2d735e33781b"
-version = "1.103.2"
 
 [[deps.TestItemRunner]]
 deps = ["Pkg", "TOML", "Test", "TestItems", "UUIDs"]
