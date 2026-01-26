@@ -786,11 +786,11 @@ end
     low_level_flows = flow.flow_rate[basin_data.level .< 1.0]
 
     # All flows when level >= 1m should be 0.05
-    @test all(≈(0.05; atol = 1e-3), high_level_flows)
+    @test all(≈(0.05; atol = 1.0e-3), high_level_flows)
 
     # All flows when level < 1m should be either 0.08 or 0 ()
     @test all(
-        f -> isapprox(f, 0.08; atol = 1e-3) || isapprox(f, 0.0; atol = 1e-3),
+        f -> isapprox(f, 0.08; atol = 1.0e-3) || isapprox(f, 0.0; atol = 1.0e-3),
         low_level_flows[20:end],
     )
 
