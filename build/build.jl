@@ -129,5 +129,5 @@ function add_metadata(project_dir, license_file, output_dir, git_repo, readme)
     end
 
     # Override the Cargo.toml file with the git version
-    set_version("cli/Cargo.toml", tag)
+    return set_version("cli/Cargo.toml", tag)
 end

@@ -61,7 +61,6 @@ function add_env!(dict)
     dict["time"] = now()
     dict["date"] = today()
     dict["julia_version"] = VERSION
-    dict["julia_nthreads"] = Threads.nthreads()
     dict["host_cpu"] = Sys.cpu_info()[1].model
     dict["host_kernel"] = Sys.KERNEL
     dict["host_machine"] = Sys.MACHINE
@@ -102,20 +101,21 @@ function run_dict(toml_path, config, timed)
     return dict
 end
 
-toml_paths = get_testmodels()
-runs = OrderedDict{String, Any}[]
-for toml_path in toml_paths
-    config = Ribasim.Config(toml_path)
-    println(basename(dirname(toml_path)))
-    # run first to compile, if this takes too long perhaps we can shorten the duration
-    Ribasim.run(config)
-    timed = @timed Ribasim.run(config)
-    model = timed.value
-    dict = run_dict(toml_path, config, timed)
-    push!(runs, dict)
+function (@main)(_)::Cint
+    toml_paths = get_testmodels()
+    runs = OrderedDict{String, Any}[]
+    for toml_path in toml_paths
+        config = Ribasim.Config(toml_path)
+        println(basename(dirname(toml_path)))
+        # run first to compile, if this takes too long perhaps we can shorten the duration
+        Ribasim.run(config)
+        timed = @timed Ribasim.run(config)
+        model = timed.value
+        dict = run_dict(toml_path, config, timed)
+        push!(runs, dict)
+    end
+
+    tbl = Tables.columntable(runs)
+    Arrow.write("runs.arrow", tbl)
+    return 0
 end
-
-tbl = Tables.columntable(runs)
-
-# Arrow.append("runs.arrow", tbl)
-Arrow.write("runs.arrow", tbl)

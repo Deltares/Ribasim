@@ -1489,9 +1489,7 @@ def bommelerwaard_model():
     manning_n = [0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.05, 0.05]
     # fmt: on
 
-    manning_index = 0
-
-    for node_id in range(3, 28, 2):
+    for manning_index, node_id in enumerate(range(3, 28, 2)):
         model.manning_resistance.add(
             get_node(node_id),
             [
@@ -1503,7 +1501,6 @@ def bommelerwaard_model():
                 )
             ],
         )
-        manning_index += 1
 
     model.linear_resistance.add(
         get_node(29), [linear_resistance.Static(resistance=[1.0])]
@@ -1511,10 +1508,10 @@ def bommelerwaard_model():
 
     model.level_boundary.add(get_node(30), [level_boundary.Static(level=[0.5])])
 
-    pump_index = 0
-
     for node_id, flow_rate_node_id in zip(
-        [37, 36, 39, 38, 42, 41, 40], [2.75, 2.29, 4.5, 2.0, 8.33, 1.17, 2.0]
+        [37, 36, 39, 38, 42, 41, 40],
+        [2.75, 2.29, 4.5, 2.0, 8.33, 1.17, 2.0],
+        strict=True,
     ):
         model.pump.add(
             get_node(node_id),
@@ -1526,9 +1523,10 @@ def bommelerwaard_model():
                 )
             ],
         )
-        pump_index += 1
 
-    for node_id, level in zip([43, 44], [[1.85, 2.85, 2.95], [1.15, 2.15, 2.25]]):
+    for node_id, level in zip(
+        [43, 44], [[1.85, 2.85, 2.95], [1.15, 2.15, 2.25]], strict=True
+    ):
         model.tabulated_rating_curve.add(
             get_node(node_id),
             [tabulated_rating_curve.Static(level=level, flow_rate=[0.0, 0.1, 1.0])],
@@ -1546,6 +1544,7 @@ def bommelerwaard_model():
             [2.1, 2.2],
             [2.8, 2.9],
         ],
+        strict=True,
     ):
         # Skip this control node as it causes stability problems
         if node_id == 49:
@@ -1578,6 +1577,7 @@ def bommelerwaard_model():
         [0, 0, 0, 0, 0, 0, 24],
         [2, 2, 2, 2, 2, 3, 1],
         [-0.8, -0.4, 0, 1.85, 1.15, -6.0, -6.0],
+        strict=True,
     ):
         model.user_demand.add(
             get_node(node_id),
@@ -1592,7 +1592,7 @@ def bommelerwaard_model():
         )
 
     for node_id, demand_priority, min_level in zip(
-        range(59, 62), [4, 4, 5], [0.18, 0.58, 0.55]
+        range(59, 62), [4, 4, 5], [0.18, 0.58, 0.55], strict=True
     ):
         model.level_demand.add(
             get_node(node_id),
@@ -1617,7 +1617,7 @@ def bommelerwaard_model():
         return NodeData(node_id, node_type, node_geom)
 
     # Add edges
-    for from_node_id_, to_node_id_ in zip(from_node_id, to_node_id):
+    for from_node_id_, to_node_id_ in zip(from_node_id, to_node_id, strict=True):
         # Skip DiscreteControl #49 as it causes stability problems
         if 49 in [from_node_id_, to_node_id_]:
             continue

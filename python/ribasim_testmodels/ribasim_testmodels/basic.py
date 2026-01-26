@@ -60,7 +60,7 @@ def basic_model() -> Model:
         Point(3.0, 2.0),
         Point(5.0, 0.0),
     ]
-    for node_id, node_geometry in zip(node_ids, node_geometries):
+    for node_id, node_geometry in zip(node_ids, node_geometries, strict=True):
         model.basin.add(
             Node(node_id, node_geometry),
             [

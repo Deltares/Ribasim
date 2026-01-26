@@ -7,7 +7,7 @@ Run all testmodels in parallel and check if they pass.
 
 A selection can be made by passing the name(s) of the individual testmodel(s) as (an) argument(s).
 """
-function main(ARGS)
+function (@main)(ARGS)::Cint
     toml_paths = get_testmodels()
     if length(ARGS) > 0
         toml_paths = filter(x -> basename(dirname(x)) in ARGS, toml_paths)
@@ -15,11 +15,10 @@ function main(ARGS)
     n_model = length(toml_paths)
     n_pass = 0
     n_fail = 0
-    lk = ReentrantLock()
     failed = fill("", length(toml_paths))
     skipped_allocation = fill("", length(toml_paths))
 
-    Threads.@threads for i in eachindex(toml_paths)
+    for i in eachindex(toml_paths)
         toml_path = toml_paths[i]
         modelname = basename(dirname(toml_path))
 
@@ -35,13 +34,11 @@ function main(ARGS)
             ret_code = ret_code == 0 ? 1 : 0
         end
 
-        lock(lk) do
-            if ret_code != 0
-                failed[i] = modelname
-                n_fail += 1
-            else
-                n_pass += 1
-            end
+        if ret_code != 0
+            failed[i] = modelname
+            n_fail += 1
+        else
+            n_pass += 1
         end
     end
 
@@ -53,8 +50,8 @@ function main(ARGS)
     if n_fail > 0
         println("Failed models:")
         foreach(println, failed)
-        error("Model run failed")
+        println("Model run failed")
+        return 1
     end
+    return 0
 end
-
-main(ARGS)

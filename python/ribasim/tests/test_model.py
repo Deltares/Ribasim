@@ -49,20 +49,6 @@ def test_solver():
         Solver(saveat="a")
 
 
-@pytest.mark.xfail(reason="Needs refactor")
-def test_invalid_node_type(basic):
-    # Add entry with invalid node type
-    basic.node.static = basic.node.df._append(
-        {"node_type": "InvalidNodeType", "geometry": Point(0, 0)}, ignore_index=True
-    )
-
-    with pytest.raises(
-        TypeError,
-        match=re.escape("Invalid node types detected: [InvalidNodeType].") + ".+",
-    ):
-        basic.validate_model_node_types()
-
-
 def test_parent_relationship(basic):
     model = basic
     assert model.pump._parent == model
@@ -79,12 +65,12 @@ def test_exclude_unset(basic):
 
 def test_toml_path(basic):
     with pytest.raises(FileNotFoundError, match="Model must be written to disk"):
-        basic.toml_path
+        _ = basic.toml_path
 
 
 def test_results_path(basic):
     with pytest.raises(FileNotFoundError, match="Model must be written to disk"):
-        basic.results_path
+        _ = basic.results_path
 
 
 def test_invalid_node_id():
@@ -134,7 +120,7 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
 
     model_orig.write(tmp_path / "basic/ribasim.toml")
     with connect(tmp_path / "basic/input/database.gpkg") as connection:
-        query = f"select * from {esc_id('Basin / profile')}"
+        query = f"select * from {esc_id('Basin / profile')}"  # noqa: S608
         df = pd.read_sql_query(query, connection)
         assert "fid" in df.columns
 
@@ -373,14 +359,14 @@ def test_version_mismatch_warning_newer_version(basic, tmp_path):
     basic.write(toml_path)
 
     # Read the TOML file and modify the version to be newer
-    with open(toml_path, "rb") as f:
+    with toml_path.open("rb") as f:
         config = tomli.load(f)
 
     # Set a newer version
     config["ribasim_version"] = "3030.1.0"
 
     # Write the modified TOML back
-    with open(toml_path, "wb") as f:
+    with toml_path.open("wb") as f:
         tomli_w.dump(config, f)
 
     # Test that a warning is issued when reading the model
@@ -395,7 +381,7 @@ def test_version_mismatch_warning_newer_version(basic, tmp_path):
 
     # Check that the TOML file contains the correct version
     model._write_toml(toml_path)
-    with open(toml_path, "rb") as f:
+    with toml_path.open("rb") as f:
         config = tomli.load(f)
     assert config["ribasim_version"] == ribasim.__version__
 
@@ -409,14 +395,14 @@ def test_invalid_version_string_warning(basic, tmp_path):
     basic.write(toml_path)
 
     # Read the TOML file and modify the version to an invalid version string
-    with open(toml_path, "rb") as f:
+    with toml_path.open("rb") as f:
         config = tomli.load(f)
 
     # Set an invalid version string
     config["ribasim_version"] = "invalid_version_string"
 
     # Write the modified TOML back
-    with open(toml_path, "wb") as f:
+    with toml_path.open("wb") as f:
         tomli_w.dump(config, f)
 
     # Test that a warning is issued when reading the model
@@ -433,7 +419,7 @@ def test_path_serialization_uses_forward_slashes(drought, tmp_path):
     toml_path = tmp_path / "ribasim.toml"
     model.write(toml_path)
 
-    with open(toml_path, "rb") as f:
+    with toml_path.open("rb") as f:
         config = tomli.load(f)
 
     assert config["input_dir"] == "nested/input"

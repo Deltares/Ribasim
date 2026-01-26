@@ -15,8 +15,8 @@ struct Cli {
     toml_path: PathBuf,
 
     /// Number of threads to use
-    #[arg(short='t', long="threads", value_name="#THREADS", help="Number of threads to use. Defaults to the JULIA_NUM_THREADS environment variable, and when unset, to using the physical CPU count.")]
-    threads: Option<String>,
+    #[arg(short='t', long="threads", value_name="#THREADS", help="Number of threads to use.", default_value = "1", hide=true)]
+    threads: String,
 }
 
 fn main() -> ExitCode {
@@ -31,14 +31,8 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    // Set JULIA_NUM_THREADS if the user explicitly set `--threads`
-    // or if the environment variable is not yet set.
-    if let Some(threads) = cli.threads {
-        env::set_var("JULIA_NUM_THREADS", threads);
-    } else if env::var("JULIA_NUM_THREADS").is_err() {
-        // If no --threads specified and JULIA_NUM_THREADS not set, use physical CPU count
-        env::set_var("JULIA_NUM_THREADS", num_cpus::get_physical().to_string());
-    }
+    // Set JULIA_NUM_THREADS to the value from CLI
+    env::set_var("JULIA_NUM_THREADS", &cli.threads);
 
     let shared_lib_path = match OS {
         "windows" => exe_dir.join("libribasim.dll"),

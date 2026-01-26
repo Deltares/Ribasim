@@ -44,9 +44,8 @@ def write_pointer(fn: Path | str, data: pd.DataFrame) -> None:
 
     Data is a DataFrame with columns from_node_id, to_node_id.
     """
-    with open(fn, "wb") as f:
-        for a, b in data.to_numpy():
-            f.write(struct.pack("<4i", a, b, 0, 0))
+    with Path(fn).open("wb") as f:
+        f.writelines(struct.pack("<4i", a, b, 0, 0) for a, b in data.to_numpy())
 
 
 def write_lengths(fn: Path | str, data: npt.NDArray[np.float32]) -> None:
@@ -60,7 +59,7 @@ def write_lengths(fn: Path | str, data: npt.NDArray[np.float32]) -> None:
 
     Data is an array of float32.
     """
-    with open(fn, "wb") as f:
+    with Path(fn).open("wb") as f:
         f.write(struct.pack("<i", 0))
         f.write(data.astype("float32").tobytes())
 
@@ -76,7 +75,7 @@ def write_volumes(fn: Path | str, data: pd.DataFrame, timestep: timedelta) -> No
 
     Data is a DataFrame with columns time, storage
     """
-    with open(fn, "wb") as f:
+    with Path(fn).open("wb") as f:
         for time, group in data.groupby("time"):
             f.write(struct.pack("<i", time))
             f.write(group.storage.to_numpy().astype("float32").tobytes())
@@ -98,7 +97,7 @@ def write_flows(fn: Path | str, data: pd.DataFrame, timestep: timedelta) -> None
 
     Data is a DataFrame with columns time, flow
     """
-    with open(fn, "wb") as f:
+    with Path(fn).open("wb") as f:
         for time, group in data.groupby("time"):
             f.write(struct.pack("<i", time))
             f.write(group.flow_rate.to_numpy().astype("float32").tobytes())

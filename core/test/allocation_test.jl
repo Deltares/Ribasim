@@ -13,10 +13,12 @@
     allocation_model = allocation.allocation_models[1]
 
     flow_boundary_flow = 4.5
-    allocation_model.cumulative_boundary_volume[(
-        NodeID(:FlowBoundary, 1, p_independent),
-        NodeID(:Basin, 2, p_independent),
-    )] = flow_boundary_flow * model.config.allocation.timestep
+    allocation_model.cumulative_boundary_volume[
+        (
+            NodeID(:FlowBoundary, 1, p_independent),
+            NodeID(:Basin, 2, p_independent),
+        ),
+    ] = flow_boundary_flow * model.config.allocation.timestep
 
     Ribasim.update_allocation!(model)
 
@@ -25,7 +27,7 @@
     flow_value(id_1, id_2) = JuMP.value(flow[(id_1, id_2)]) * allocation_model.scaling.flow
 
     @test flow_value(NodeID(:Basin, 2, p_independent), NodeID(:Pump, 5, p_independent)) ≈
-          pump.flow_rate[1]
+        pump.flow_rate[1]
     @test flow_value(
         NodeID(:Basin, 2, p_independent),
         NodeID(:UserDemand, 10, p_independent),
@@ -39,7 +41,7 @@
         NodeID(:Basin, 8, p_independent),
     ) ≈ sum(user_demand.demand[3, :]) * user_demand.return_factor[3](t)
     @test flow_value(NodeID(:Basin, 6, p_independent), NodeID(:Outlet, 7, p_independent)) ≈
-          0.0 # Equal upstream and downstream level
+        0.0 # Equal upstream and downstream level
     @test flow_value(
         NodeID(:FlowBoundary, 1, p_independent),
         NodeID(:Basin, 2, p_independent),
@@ -81,14 +83,14 @@ end
     first_expression_terms = keys(metadata.expression_first.terms)
     @test length(first_expression_terms) == 2
     @test user_demand_error[NodeID(:UserDemand, 5, p_independent), 1, :first] ∈
-          first_expression_terms
+        first_expression_terms
     @test user_demand_error[NodeID(:UserDemand, 6, p_independent), 1, :first] ∈
-          first_expression_terms
+        first_expression_terms
     @test metadata.expression_first === objective_expressions_all[1]
     @test metadata.expression_second === objective_expressions_all[2]
     @test metadata.expression_second ==
-          user_demand_error[NodeID(:UserDemand, 5, p_independent), 1, :second] +
-          user_demand_error[NodeID(:UserDemand, 6, p_independent), 1, :second]
+        user_demand_error[NodeID(:UserDemand, 5, p_independent), 1, :second] +
+        user_demand_error[NodeID(:UserDemand, 6, p_independent), 1, :second]
 
     # Low storage factor objective
     metadata = objective_metadata[2]
@@ -127,7 +129,7 @@ end
     # primary network to secondary network connections are part of primary network
     allocation_model_main_network = allocation.allocation_models[1]
     @test [connection_subnetwork_3, connection_subnetwork_5, connection_subnetwork_7] ⊆
-          only(allocation_model_main_network.problem[:flow].axes)
+        only(allocation_model_main_network.problem[:flow].axes)
 end
 
 @testitem "Allocation with primary network optimization problem" begin
@@ -161,26 +163,34 @@ end
 
     # See the difference between these values here and in
     # "subnetworks_with_sources"
-    @test_broken subnetwork_demands[(
-        NodeID(:Basin, 2, p_independent),
-        NodeID(:Pump, 11, p_independent),
-    )] ≈ [4.0, 4.0, 0.0] atol = 1e-4
-    @test_broken subnetwork_demands[(
-        NodeID(:Basin, 6, p_independent),
-        NodeID(:Pump, 24, p_independent),
-    )] ≈ [0.001, 0.0, 0.0] atol = 1e-4
-    @test_broken subnetwork_demands[(
-        NodeID(:Basin, 10, p_independent),
-        NodeID(:Pump, 38, p_independent),
-    )][1:2] ≈ [0.001, 0.002] atol = 1e-4
+    @test_broken subnetwork_demands[
+        (
+            NodeID(:Basin, 2, p_independent),
+            NodeID(:Pump, 11, p_independent),
+        ),
+    ] ≈ [4.0, 4.0, 0.0] atol = 1.0e-4
+    @test_broken subnetwork_demands[
+        (
+            NodeID(:Basin, 6, p_independent),
+            NodeID(:Pump, 24, p_independent),
+        ),
+    ] ≈ [0.001, 0.0, 0.0] atol = 1.0e-4
+    @test_broken subnetwork_demands[
+        (
+            NodeID(:Basin, 10, p_independent),
+            NodeID(:Pump, 38, p_independent),
+        ),
+    ][1:2] ≈ [0.001, 0.002] atol = 1.0e-4
 
     # Solving for the primary network, containing subnetworks as UserDemands
     allocation_model = allocation_models[1]
     (; problem) = allocation_model
-    @test_throws Exception main_source = allocation_model.sources[(
-        NodeID(:FlowBoundary, 1, p_independent),
-        NodeID(:Basin, 2, p_independent),
-    )]
+    @test_throws Exception main_source = allocation_model.sources[
+        (
+            NodeID(:FlowBoundary, 1, p_independent),
+            NodeID(:Basin, 2, p_independent),
+        ),
+    ]
     @test_throws Exception main_source.capacity_reduced = 4.5
     @test_throws Exception Ribasim.optimize_demand_priority!(
         allocation_model,
@@ -206,24 +216,26 @@ end
 
     # Running full allocation algorithm
     (; Δt_allocation) = allocation_models[1]
-    @test_throws Exception mean_input_flows[1][(
-        NodeID(:FlowBoundary, 1, p_independent),
-        NodeID(:Basin, 2, p_independent),
-    )] = 4.5 * Δt_allocation
+    @test_throws Exception mean_input_flows[1][
+        (
+            NodeID(:FlowBoundary, 1, p_independent),
+            NodeID(:Basin, 2, p_independent),
+        ),
+    ] = 4.5 * Δt_allocation
     @test_throws Exception Ribasim.update_allocation!(model.integrator)
 
     @test_broken subnetwork_allocateds[
         NodeID(:Basin, 2, p_independent),
         NodeID(:Pump, 11, p_independent),
-    ] ≈ [4.0, 0.49775, 0.0] atol = 1e-4
+    ] ≈ [4.0, 0.49775, 0.0] atol = 1.0e-4
     @test_broken subnetwork_allocateds[
         NodeID(:Basin, 6, p_independent),
         NodeID(:Pump, 24, p_independent),
-    ] ≈ [0.001, 0.0, 0.0] rtol = 1e-3
+    ] ≈ [0.001, 0.0, 0.0] rtol = 1.0e-3
     @test_broken subnetwork_allocateds[
         NodeID(:Basin, 10, p_independent),
         NodeID(:Pump, 38, p_independent),
-    ] ≈ [0.001, 0.00024888, 0.0] rtol = 1e-3
+    ] ≈ [0.001, 0.00024888, 0.0] rtol = 1.0e-3
 
     # Test for existence of links in allocation flow record
     allocation_flow = DataFrame(record_flow)
@@ -231,17 +243,17 @@ end
         allocation_flow,
         [:from_node_type, :from_node_id, :to_node_type, :to_node_id] =>
             ByRow(
-                (a, b, c, d) -> haskey(
-                    graph,
-                    NodeID(Symbol(a), b, p_independent),
-                    NodeID(Symbol(c), d, p_independent),
-                ),
-            ) => :link_exists,
+            (a, b, c, d) -> haskey(
+                graph,
+                NodeID(Symbol(a), b, p_independent),
+                NodeID(Symbol(c), d, p_independent),
+            ),
+        ) => :link_exists,
     )
     @test all(allocation_flow.link_exists)
 
-    @test_broken user_demand.allocated[2, :] ≈ [4.0, 0.0, 0.0] atol = 1e-3
-    @test_broken user_demand.allocated[7, :] ≈ [0.0, 0.0, 0.0] atol = 1e-3
+    @test_broken user_demand.allocated[2, :] ≈ [4.0, 0.0, 0.0] atol = 1.0e-3
+    @test_broken user_demand.allocated[7, :] ≈ [0.0, 0.0, 0.0] atol = 1.0e-3
 end
 
 @testitem "Subnetworks with sources" begin
@@ -270,14 +282,18 @@ end
     t = 0.0
 
     # Set flows of sources in subnetworks
-    @test_throws Exception mean_input_flows[2][(
-        NodeID(:FlowBoundary, 58, p_independent),
-        NodeID(:Basin, 16, p_independent),
-    )] = 1.0
-    @test_throws Exception mean_input_flows[4][(
-        NodeID(:FlowBoundary, 59, p_independent),
-        NodeID(:Basin, 44, p_independent),
-    )] = 1e-3
+    @test_throws Exception mean_input_flows[2][
+        (
+            NodeID(:FlowBoundary, 58, p_independent),
+            NodeID(:Basin, 16, p_independent),
+        ),
+    ] = 1.0
+    @test_throws Exception mean_input_flows[4][
+        (
+            NodeID(:FlowBoundary, 59, p_independent),
+            NodeID(:Basin, 44, p_independent),
+        ),
+    ] = 1.0e-3
 
     # Collecting demands
     @test_throws Exception for allocation_model in allocation_models[2:end]
@@ -287,18 +303,24 @@ end
     # See the difference between these values here and in
     # "allocation with primary network optimization problem", internal sources
     # lower the subnetwork demands
-    @test_broken subnetwork_demands[(
-        NodeID(:Basin, 2, p_independent),
-        NodeID(:Pump, 11, p_independent),
-    )] ≈ [4.0, 4.0, 0.0] rtol = 1e-4
-    @test_broken subnetwork_demands[(
-        NodeID(:Basin, 6, p_independent),
-        NodeID(:Pump, 24, p_independent),
-    )] ≈ [0.001, 0.0, 0.0] rtol = 1e-4
-    @test_broken subnetwork_demands[(
-        NodeID(:Basin, 10, p_independent),
-        NodeID(:Pump, 38, p_independent),
-    )][1:2] ≈ [0.001, 0.001] rtol = 1e-4
+    @test_broken subnetwork_demands[
+        (
+            NodeID(:Basin, 2, p_independent),
+            NodeID(:Pump, 11, p_independent),
+        ),
+    ] ≈ [4.0, 4.0, 0.0] rtol = 1.0e-4
+    @test_broken subnetwork_demands[
+        (
+            NodeID(:Basin, 6, p_independent),
+            NodeID(:Pump, 24, p_independent),
+        ),
+    ] ≈ [0.001, 0.0, 0.0] rtol = 1.0e-4
+    @test_broken subnetwork_demands[
+        (
+            NodeID(:Basin, 10, p_independent),
+            NodeID(:Pump, 38, p_independent),
+        ),
+    ][1:2] ≈ [0.001, 0.001] rtol = 1.0e-4
 
     @test_throws Exception model = Ribasim.run(toml_path)
     (; u, p, t) = model.integrator
@@ -325,7 +347,7 @@ end
         5.619053,
         10419.156,
         4.057502,
-    ] rtol = 1e-3 skip = true
+    ] rtol = 1.0e-3 skip = true
 
     # The output should only contain data for the demand_priority for which
     # a node has a demand
@@ -356,17 +378,17 @@ end
     t = Ribasim.tsaves(model)
 
     d = user_demand.demand_interpolation[1][2](0)
-    ϕ = 1e-3 # precipitation
+    ϕ = 1.0e-3 # precipitation
     q = flow_boundary.flow_rate[1](0)
     A = Ribasim.basin_areas(basin, 1)[1]
     l_max = level_demand.max_level[1][1](0)
-    min_storage = 1e3
+    min_storage = 1.0e3
     Δt_allocation = allocation.allocation_models[1].Δt_allocation
 
     # In this section the Basin leaves no supply for the UserDemand
     stage_1 = t .≤ 2Δt_allocation
     u_stage_1(τ) = storage[1] + (q + ϕ) * τ
-    @test storage[stage_1] ≈ u_stage_1.(t[stage_1]) rtol = 1e-10
+    @test storage[stage_1] ≈ u_stage_1.(t[stage_1]) rtol = 1.0e-10
 
     # In this section the Basin gets exactly what it needs to get to the target min
     # level of 1 m (equivalent to 1000 m^3)
@@ -374,7 +396,7 @@ end
     u_stage_2(τ) =
         (3Δt_allocation - τ) / Δt_allocation * u_stage_1(2Δt_allocation) +
         min_storage * (τ - 2Δt_allocation) / Δt_allocation
-    @test storage[stage_2] ≈ u_stage_2.(t[stage_2]) rtol = 1e-10
+    @test storage[stage_2] ≈ u_stage_2.(t[stage_2]) rtol = 1.0e-10
 
     # In this section (and following sections) the basin has no longer a (positive) demand,
     # since precipitation provides enough water to get the basin to its target level
@@ -382,14 +404,14 @@ end
     stage_3 = 3Δt_allocation .≤ t .≤ 15Δt_allocation
     stage_3_start_idx = findfirst(stage_3)
     u_stage_3(τ) = min_storage + (ϕ + q - d) * (τ - t[stage_3_start_idx])
-    @test storage[stage_3] ≈ u_stage_3.(t[stage_3]) rtol = 1e-10
+    @test storage[stage_3] ≈ u_stage_3.(t[stage_3]) rtol = 1.0e-10
 
     # At the start of this section precipitation stops, and so the UserDemand
     # partly uses surplus water from the basin to fulfill its demand
     stage_4 = 15Δt_allocation .≤ t .≤ 27Δt_allocation
     stage_4_start_idx = findfirst(stage_4)
     u_stage_4(τ) = storage[stage_4_start_idx] + (q - d) * (τ - t[stage_4_start_idx])
-    @test storage[stage_4] ≈ u_stage_4.(t[stage_4]) rtol = 1e-10
+    @test storage[stage_4] ≈ u_stage_4.(t[stage_4]) rtol = 1.0e-10
 
     # From this point the basin is in a dynamical equilibrium,
     # since the basin has no supply so the UserDemand abstracts precisely
@@ -397,7 +419,7 @@ end
     stage_5 = 27Δt_allocation .<= t
     stage_5_start_idx = findfirst(stage_5)
     u_stage_5(τ) = min_storage
-    @test storage[stage_5] ≈ u_stage_5.(t[stage_5]) rtol = 1e-10
+    @test storage[stage_5] ≈ u_stage_5.(t[stage_5]) rtol = 1.0e-10
 
     # Isolated LevelDemand + Basin pair to test optional min_level
     (; problem) = allocation.allocation_models[2]
@@ -412,7 +434,7 @@ end
     realized_numeric =
         diff(itp_basin_2.(seconds_since.(df_basin_2.time, model.config.starttime))) /
         Δt_allocation
-    @test all(isapprox.(realized_numeric, df_basin_2.realized[1:(end - 1)], atol = 1e-10))
+    @test all(isapprox.(realized_numeric, df_basin_2.realized[1:(end - 1)], atol = 1.0e-10))
 
     # Realized user demand
     flow_table = DataFrame(Ribasim.flow_data(model))
@@ -427,12 +449,12 @@ end
     ]
     realized_numeric =
         diff(
-            integral.(
-                Ref(itp_user_3),
-                seconds_since.(df_user_3.time, model.config.starttime),
-            ),
-        ) ./ Δt_allocation
-    @test all(isapprox.(realized_numeric[3:end], df_user_3.realized[4:end], atol = 1e-3))
+        integral.(
+            Ref(itp_user_3),
+            seconds_since.(df_user_3.time, model.config.starttime),
+        ),
+    ) ./ Δt_allocation
+    @test all(isapprox.(realized_numeric[3:end], df_user_3.realized[4:end], atol = 1.0e-3))
 end
 
 @testitem "Flow demand" setup = [Teamcity] begin
@@ -624,10 +646,10 @@ end
 
     basin_table = Ribasim.basin_data(model)
     @test basin_table.level[1] == 10.0
-    @test all(h -> isapprox(h, 5.0; rtol = 1e-5), basin_table.level[7:end])
+    @test all(h -> isapprox(h, 5.0; rtol = 1.0e-5), basin_table.level[7:end])
 
     allocation_control_table = Ribasim.allocation_control_data(model)
-    @test all(q -> isapprox(q, 1e-3; rtol = 1e-5), allocation_control_table.flow_rate[1:5])
+    @test all(q -> isapprox(q, 1.0e-3; rtol = 1.0e-5), allocation_control_table.flow_rate[1:5])
 end
 
 @testitem "multi priority flow demand" begin
@@ -651,7 +673,7 @@ end
 
     flow = Ribasim.flow_data(model).flow_rate
     @test !isempty(flow)
-    @test all(q -> isapprox(q, 1e-3; rtol = 1e-4), flow[1:100])
+    @test all(q -> isapprox(q, 1.0e-3; rtol = 1.0e-4), flow[1:100])
 end
 
 @testitem "Allocation problem consistency" begin
@@ -679,7 +701,7 @@ end
 
         subnetwork_ids = [
             allocation_model.subnetwork_id for allocation_model in
-            first(models).integrator.p.p_independent.allocation.allocation_models
+                first(models).integrator.p.p_independent.allocation.allocation_models
         ]
 
         for (i, subnetwork_id) in enumerate(subnetwork_ids)
@@ -736,7 +758,7 @@ end
 
     for (link_id, flow) in zip([2, 4, 6], [flow_1, flow_2, flow_3])
         data = filter(:link_id => ==(link_id), flow_table)
-        @test all(isapprox.(data.flow_rate, flow[1:(end - 1)], atol = 1e-5))
+        @test all(isapprox.(data.flow_rate, flow[1:(end - 1)], atol = 1.0e-5))
     end
 end
 

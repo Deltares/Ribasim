@@ -115,7 +115,6 @@ Arguments:
   <TOML_PATH>  Path to the TOML file
 
 Options:
-  -t, --threads <#THREADS>  Number of threads to use. Defaults to the JULIA_NUM_THREADS environment variable, and when unset, to using all (hyper)threads.
   -h, --help                Print help
   -V, --version             Print version
 ```

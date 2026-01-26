@@ -37,8 +37,8 @@
     u_pre(t) = u0 - Q_max * t
     u_post(t) = A * L + A * R * Q_max * exp(-(t - t_shift) / (A * R))
 
-    @test all(isapprox.(storage[pre_shift], u_pre.(t[pre_shift]); rtol = 1e-4))
-    @test all(isapprox.(storage[.~pre_shift], u_post.(t[.~pre_shift]); rtol = 1e-4))
+    @test all(isapprox.(storage[pre_shift], u_pre.(t[pre_shift]); rtol = 1.0e-4))
+    @test all(isapprox.(storage[.~pre_shift], u_post.(t[.~pre_shift]); rtol = 1.0e-4))
 end
 
 # Equation: storage' = -Q(level(storage)), storage(t0) = storage0,
