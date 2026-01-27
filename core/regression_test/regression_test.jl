@@ -181,3 +181,66 @@ end
         end
     end
 end
+
+@testitem "regression_ode_solvers_allocation" setup = [Teamcity] begin
+    import Arrow
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/medium_primary_secondary_network/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    config = Ribasim.Config(toml_path)
+
+    flow_bytes_bench = read(
+        normpath(
+            @__DIR__,
+            "../../models/benchmark/medium_primary_secondary_network/flow.arrow",
+        ),
+    )
+    basin_bytes_bench = read(
+        normpath(
+            @__DIR__,
+            "../../models/benchmark/medium_primary_secondary_network/basin.arrow",
+        ),
+    )
+    flow_bench = Arrow.Table(flow_bytes_bench)
+    basin_bench = Arrow.Table(basin_bytes_bench)
+
+    solver_list = ["QNDF"]
+    # false sparse or autodiff can cause large differences in results, thus removed
+    sparse_on = true
+    autodiff_on = true
+
+    @testset Teamcity.TeamcityTestSet "$solver" for solver in solver_list
+        config = Ribasim.Config(
+            toml_path;
+            solver_algorithm = solver,
+            solver_sparse = sparse_on,
+            solver_autodiff = autodiff_on,
+        )
+        model = Ribasim.run(config)
+        @test model isa Ribasim.Model
+        @test success(model)
+        (; p) = model.integrator
+
+        # read all results as bytes first to avoid memory mapping
+        # which can have cleanup issues due to file locking
+        flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
+        basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
+
+        flow = Arrow.Table(flow_bytes)
+        basin = Arrow.Table(basin_bytes)
+
+        # Testbench for flow.arrow
+        @test flow.time == flow_bench.time
+        @test flow.link_id == flow_bench.link_id
+        @test flow.from_node_id == flow_bench.from_node_id
+        @test flow.to_node_id == flow_bench.to_node_id
+
+        println("Comparing basin results for $solver...")
+        # Testbench for basin.arrow
+        @test basin.time == basin_bench.time
+        @test basin.node_id == basin_bench.node_id
+    end
+end

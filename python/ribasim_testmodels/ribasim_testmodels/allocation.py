@@ -99,10 +99,7 @@ def user_demand_model() -> Model:
 
 
 def subnetwork_model() -> Model:
-    """Create a UserDemand testmodel representing a subnetwork.
-
-    This model is merged into primary_and_secondary_subnetworks_model.
-    """
+    """Create a UserDemand testmodel representing a subnetwork."""
     model = Model(
         starttime="2020-01-01",
         endtime="2020-04-01",
@@ -1021,25 +1018,6 @@ def primary_and_secondary_subnetworks_model() -> Model:
     model.link.add(model.basin[10], model.pump[38])
     model.link.add(model.basin[8], model.user_demand[60])
     model.link.add(model.user_demand[60], model.basin[8])
-
-    return model
-
-
-def secondary_networks_with_sources_model() -> Model:
-    """Generate a model with subnetworks which contain sources."""
-    model = primary_and_secondary_subnetworks_model()
-
-    model.flow_boundary.add(
-        Node(58, Point(3, 5), subnetwork_id=3),
-        [flow_boundary.Static(flow_rate=[0.003])],
-    )
-    model.flow_boundary.add(
-        Node(59, Point(28, 5), subnetwork_id=7),
-        [flow_boundary.Static(flow_rate=[0.003])],
-    )
-
-    model.link.add(model.flow_boundary[58], model.basin[16])
-    model.link.add(model.flow_boundary[59], model.basin[44])
 
     return model
 
