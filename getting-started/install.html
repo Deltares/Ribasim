@@ -329,17 +329,20 @@ classDef boundary fill:transparent,stroke-dasharray:5 5
 <p>The <a href="../reference/usage.html">core</a> is a command line interface (CLI) that runs Ribasim simulations. It is written in the <a href="https://julialang.org/">Julia programming language</a> and is built on top of the <a href="https://sciml.ai/">SciML: Open Source Software for Scientific Machine Learning</a> libraries, notably <a href="https://docs.sciml.ai/DiffEqDocs/stable/">DifferentialEquations.jl</a>.</p>
 <p>The <a href="../reference/python/index.html">Ribasim Python package</a> is available to build, update and analyze Ribasim models programmatically. One can also use Ribasim Python to build entire models from base data, such that your model setup is fully reproducible.</p>
 <p>Ribasim uses <a href="https://www.geopackage.org/">GeoPackage</a> files to store the model database (<code>database.gpkg</code>). <a href="https://qgis.org/">QGIS</a> works well with GeoPackage files, making it a good application to visualize Ribasim models. Deltares also provides the iMOD QGIS plugin, which can be used to view the timeseries in the Ribasim results.</p>
-<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout callout-style-default callout-important callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
 <div class="callout-title-container flex-fill">
-Note
+Important
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>The components don’t depend on each other, so you can install what you need. When using multiple components, all component versions must be the same. If you receive a model, the Ribasim version used to create it is written in the TOML file. Older releases can be found in the <a href="https://github.com/Deltares/Ribasim/releases">Release assets on GitHub</a>.</p>
+<p><strong>All Ribasim component versions must be the same!</strong></p>
+<p>If you use multiple components together, you must ensure that every component uses the same version. Running with mismatched versions will likely fail.</p>
+<p>If you receive a model, the Ribasim version used to create it is written in the TOML file. See the note below for how to install older Ribasim releases.</p>
+<p>To update a model to a new Ribasim version, see the <a href="../guide/updating-ribasim.html">migration guide</a>.</p>
 </div>
 </div>
 <div class="callout callout-style-default callout-note callout-titled">
@@ -353,7 +356,6 @@ Note
 </div>
 <div class="callout-body-container callout-body">
 <p>To update an existing installation of Ribasim, follow the same installation on this page. Change the version number in the command or download link to install a version other than the latest release, or download directly from the <a href="https://github.com/Deltares/Ribasim/releases">Release assets on GitHub</a>.</p>
-<p>For a guide on how to update existing models to new Ribasim versions, see the <a href="../guide/updating-ribasim.html">guide on updating Ribasim</a>.</p>
 </div>
 </div>
 </section>
