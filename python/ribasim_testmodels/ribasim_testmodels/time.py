@@ -59,10 +59,11 @@ def transient_pump_outlet_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     lb = model.level_boundary.add(
-        Node(1, Point(1, 0)), [level_boundary.Static(level=[1.1])]
+        Node(1, Point(1, 0)), [level_boundary.Static(level=[1.0])]
     )
 
     time = ["2020-01-01", "2021-01-01"]
