@@ -227,18 +227,21 @@
 
         # read all results as bytes first to avoid memory mapping
         # which can have cleanup issues due to file locking
-        flow_bytes = read(normpath(dirname(toml_path), "./flow.arrow"))
-        basin_bytes = read(normpath(dirname(toml_path), "./basin.arrow"))
+        println("Reading results for $solver...")
+        flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
+        basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
 
         flow = Arrow.Table(flow_bytes)
         basin = Arrow.Table(basin_bytes)
 
+        println("Comparing flow results for $solver...")
         # Testbench for flow.arrow
         @test flow.time == flow_bench.time
         @test flow.link_id == flow_bench.link_id
         @test flow.from_node_id == flow_bench.from_node_id
         @test flow.to_node_id == flow_bench.to_node_id
 
+        println("Comparing basin results for $solver...")
         # Testbench for basin.arrow
         @test basin.time == basin_bench.time
         @test basin.node_id == basin_bench.node_id
