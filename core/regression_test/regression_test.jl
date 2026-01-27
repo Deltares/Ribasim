@@ -227,8 +227,8 @@
 
         # read all results as bytes first to avoid memory mapping
         # which can have cleanup issues due to file locking
-        flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
-        basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
+        flow_bytes = read(normpath(dirname(toml_path), "./flow.arrow"))
+        basin_bytes = read(normpath(dirname(toml_path), "./basin.arrow"))
 
         flow = Arrow.Table(flow_bytes)
         basin = Arrow.Table(basin_bytes)
