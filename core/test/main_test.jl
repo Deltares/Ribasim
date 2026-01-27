@@ -23,7 +23,7 @@
         @show error
         @show backtrace
     end
-    @test occursin("version in the TOML config file does not match", output)
+    @test occursin("Version mismatch, this will likely fail.", output)
 end
 
 @testitem "main error logging" begin
