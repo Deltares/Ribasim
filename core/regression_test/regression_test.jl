@@ -219,24 +219,19 @@
             solver_sparse = sparse_on,
             solver_autodiff = autodiff_on,
         )
-        model = Ribasim.Model(config)
-        Ribasim.solve!(model)
+        model = Ribasim.run(config)
         @test model isa Ribasim.Model
         @test success(model)
         (; p) = model.integrator
 
         # read all results as bytes first to avoid memory mapping
         # which can have cleanup issues due to file locking
-        println("Reading flow results for $solver... from path $(normpath(dirname(toml_path), "results/flow.arrow")): ")
         flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
-        println("Reading basin results for $solver... from path $(normpath(dirname(toml_path), "results/basin.arrow")): ")
         basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
 
-        println("Parsing flow results for $solver...")
         flow = Arrow.Table(flow_bytes)
         basin = Arrow.Table(basin_bytes)
 
-        println("Comparing flow results for $solver...")
         # Testbench for flow.arrow
         @test flow.time == flow_bench.time
         @test flow.link_id == flow_bench.link_id
