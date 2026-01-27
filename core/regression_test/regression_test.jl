@@ -227,10 +227,12 @@
 
         # read all results as bytes first to avoid memory mapping
         # which can have cleanup issues due to file locking
-        println("Reading results for $solver...")
+        println("Reading flow results for $solver... from path $(normpath(dirname(toml_path), "results/flow.arrow")): ")
         flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
+        println("Reading basin results for $solver... from path $(normpath(dirname(toml_path), "results/basin.arrow")): ")
         basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
 
+        println("Parsing flow results for $solver...")
         flow = Arrow.Table(flow_bytes)
         basin = Arrow.Table(basin_bytes)
 
