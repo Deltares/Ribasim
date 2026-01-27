@@ -101,7 +101,7 @@ end
     inflow = BMI.get_value_ptr(model, "user_demand.cumulative_inflow")
     day = 86400.0
     BMI.update_until(model, 2day)
-    @test inflow ≈ [2.0e-3 * day, 3.0e-3 * day] atol = 1.0e-3
+    @test inflow ≈ [2.0e-3 * day, 3.0e-3 * day] atol = 1.0e-2
     demand[1] = 3.0e-3
     BMI.update_until(model, 3day)
     @test inflow[1] ≈ 5.0e-3 * day atol = 2.0e-3

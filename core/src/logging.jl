@@ -40,13 +40,15 @@ end
 
 "Log messages before the model is initialized."
 function log_startup(config, toml_path::AbstractString)::Nothing
-    cli = (; ribasim_version = RIBASIM_VERSION)
+    ribasim_version = RIBASIM_VERSION
+    threads = Threads.nthreads()
     (; starttime, endtime) = config
-    if config.ribasim_version != cli.ribasim_version
-        @warn "The Ribasim version in the TOML config file does not match the used Ribasim CLI version." config.ribasim_version cli.ribasim_version
+    model_version = config.ribasim_version
+    ribasim_version = ribasim_version
+    if model_version != ribasim_version
+        @warn "Version mismatch, this will likely fail. Ribasim only supports running simulations with the same Ribasim version it was generated with." model_version ribasim_version
     end
-    @info "Starting a Ribasim simulation at $(now())." toml_path cli.ribasim_version starttime endtime threads =
-        Threads.nthreads()
+    @info "Starting a Ribasim simulation at $(now())." toml_path ribasim_version starttime endtime threads
     if any(config.experimental)
         @warn "The following *experimental* features are enabled: $(showexperimental(config))"
     end
