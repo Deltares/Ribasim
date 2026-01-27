@@ -63,7 +63,7 @@ def transient_pump_outlet_model() -> Model:
     )
 
     lb = model.level_boundary.add(
-        Node(1, Point(1, 0)), [level_boundary.Static(level=[1.0])]
+        Node(1, Point(1, 0)), [level_boundary.Static(level=[1.1])]
     )
 
     time = ["2020-01-01", "2021-01-01"]
