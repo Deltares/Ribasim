@@ -99,10 +99,7 @@ def user_demand_model() -> Model:
 
 
 def subnetwork_model() -> Model:
-    """Create a UserDemand testmodel representing a subnetwork.
-
-    This model is merged into primary_and_secondary_subnetworks_model.
-    """
+    """Create a UserDemand testmodel representing a subnetwork."""
     model = Model(
         starttime="2020-01-01",
         endtime="2020-04-01",
