@@ -209,42 +209,38 @@ end
 
     solver_list = ["QNDF"]
     # false sparse or autodiff can cause large differences in results, thus removed
-    sparse_on = [true]
-    autodiff_on = [true]
+    sparse_on = true
+    autodiff_on = true
 
     @testset Teamcity.TeamcityTestSet "$solver" for solver in solver_list
-        @testset Teamcity.TeamcityTestSet "sparse density is $sparse_on_off" for sparse_on_off in sparse_on
-            @testset Teamcity.TeamcityTestSet "auto differentiation is $autodiff_on_off" for autodiff_on_off in autodiff_on
-                config = Ribasim.Config(
-                    toml_path;
-                    solver_algorithm = solver,
-                    solver_sparse = sparse_on_off,
-                    solver_autodiff = autodiff_on_off,
-                )
-                model = Ribasim.Model(config)
-                @test_throws Exception Ribasim.solve!(model)
-                @test model isa Ribasim.Model
-                @test success(model)
-                (; p) = model.integrator
+        config = Ribasim.Config(
+            toml_path;
+            solver_algorithm = solver,
+            solver_sparse = sparse_on,
+            solver_autodiff = autodiff_on,
+        )
+        model = Ribasim.Model(config)
+        Ribasim.solve!(model)
+        @test model isa Ribasim.Model
+        @test success(model)
+        (; p) = model.integrator
 
-                # read all results as bytes first to avoid memory mapping
-                # which can have cleanup issues due to file locking
-                flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
-                basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
+        # read all results as bytes first to avoid memory mapping
+        # which can have cleanup issues due to file locking
+        flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
+        basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
 
-                flow = Arrow.Table(flow_bytes)
-                basin = Arrow.Table(basin_bytes)
+        flow = Arrow.Table(flow_bytes)
+        basin = Arrow.Table(basin_bytes)
 
-                # Testbench for flow.arrow
-                @test flow.time == flow_bench.time
-                @test flow.link_id == flow_bench.link_id
-                @test flow.from_node_id == flow_bench.from_node_id
-                @test flow.to_node_id == flow_bench.to_node_id
+        # Testbench for flow.arrow
+        @test flow.time == flow_bench.time
+        @test flow.link_id == flow_bench.link_id
+        @test flow.from_node_id == flow_bench.from_node_id
+        @test flow.to_node_id == flow_bench.to_node_id
 
-                # Testbench for basin.arrow
-                @test basin.time == basin_bench.time
-                @test basin.node_id == basin_bench.node_id
-            end
-        end
+        # Testbench for basin.arrow
+        @test basin.time == basin_bench.time
+        @test basin.node_id == basin_bench.node_id
     end
 end
