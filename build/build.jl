@@ -37,6 +37,12 @@ function (@main)(_)::Cint
     link_products(link_recipe)
     bundle_products(bundle_recipe)
 
+    # On Windows, remove the import library from the bundle root
+    if Sys.iswindows()
+        import_lib_path = joinpath(output_dir, "libribasim.dll.a")
+        rm(import_lib_path)
+    end
+
     add_metadata(project_dir, license_file, output_dir, git_repo, readme_start)
 
     # On Windows, it is recommended to increase the size of the stack from the default 1 MB to 8MB
