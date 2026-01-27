@@ -26,7 +26,11 @@ function (@main)(_)::Cint
         add_ccallables = true,
         verbose = true,
     )
-    link_recipe = LinkRecipe(; image_recipe, outname = "build/ribasim/libribasim")
+    link_recipe = LinkRecipe(;
+        image_recipe,
+        outname = "build/ribasim/libribasim",
+        rpath = "@bundle"
+    )
     bundle_recipe = BundleRecipe(; link_recipe, output_dir)
 
     compile_products(image_recipe)
