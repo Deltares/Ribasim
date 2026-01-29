@@ -291,52 +291,52 @@ end
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
-    @test ispath(toml_path) skip = true
-    # config = Ribasim.Config(toml_path)
-    # model = Ribasim.run(config)
-    # @test success(model)
+    @test ispath(toml_path)
+    config = Ribasim.Config(toml_path)
+    model = Ribasim.run(config)
+    @test success(model)
 
-    # # Test basin NetCDF output (multiple Basins)
-    # path = results_path(config, RESULTS_FILENAME.basin)
-    # @test isfile(path)
-    # NCDatasets.Dataset(path) do ds
-    #     ntime = length(ds["time"])
-    #     nnode = length(ds["node_id"])
-    #     @test ntime > 1
-    #     @test nnode == 2
-    #     @test size(ds["node_id"]) == (nnode,)
-    #     @test size(ds["level"]) == (nnode, ntime)
-    #     @test dimnames(ds["level"]) == ("node_id", "time")
-    # end
+    # Test basin NetCDF output (multiple Basins)
+    path = results_path(config, RESULTS_FILENAME.basin)
+    @test isfile(path)
+    NCDatasets.Dataset(path) do ds
+        ntime = length(ds["time"])
+        nnode = length(ds["node_id"])
+        @test ntime > 1
+        @test nnode == 2
+        @test size(ds["node_id"]) == (nnode,)
+        @test size(ds["level"]) == (nnode, ntime)
+        @test dimnames(ds["level"]) == ("node_id", "time")
+    end
 
-    # # Test flow NetCDF output
-    # path = results_path(config, RESULTS_FILENAME.flow)
-    # @test isfile(path)
-    # NCDatasets.Dataset(path) do ds
-    #     ntime = length(ds["time"])
-    #     nlink = length(ds["link_id"])
-    #     @test ntime > 1
-    #     @test nlink == 9
-    #     @test size(ds["link_id"]) == (nlink,)
-    #     @test size(ds["flow_rate"]) == (nlink, ntime)
-    #     @test dimnames(ds["flow_rate"]) == ("link_id", "time")
-    # end
+    # Test flow NetCDF output
+    path = results_path(config, RESULTS_FILENAME.flow)
+    @test isfile(path)
+    NCDatasets.Dataset(path) do ds
+        ntime = length(ds["time"])
+        nlink = length(ds["link_id"])
+        @test ntime > 1
+        @test nlink == 9
+        @test size(ds["link_id"]) == (nlink,)
+        @test size(ds["flow_rate"]) == (nlink, ntime)
+        @test dimnames(ds["flow_rate"]) == ("link_id", "time")
+    end
 
-    # # Test allocation NetCDF output
-    # path = results_path(config, RESULTS_FILENAME.allocation)
-    # @test isfile(path)
-    # NCDatasets.Dataset(path) do ds
-    #     ntime = length(ds["time"])
-    #     nnode = length(ds["node_id"])
-    #     nprio = length(ds["demand_priority"])
-    #     @test ntime > 1
-    #     @test nnode == 2
-    #     @test nprio == 2
-    #     @test size(ds["node_id"]) == (nnode,)
-    #     @test size(ds["subnetwork_id"]) == (nnode,)
-    #     @test size(ds["demand"]) == (nnode, nprio, ntime)
-    #     @test dimnames(ds["demand"]) == ("demand_priority", "node_id", "time")
-    # end
+    # Test allocation NetCDF output
+    path = results_path(config, RESULTS_FILENAME.allocation)
+    @test isfile(path)
+    NCDatasets.Dataset(path) do ds
+        ntime = length(ds["time"])
+        nnode = length(ds["node_id"])
+        nprio = length(ds["demand_priority"])
+        @test ntime > 1
+        @test nnode == 2
+        @test nprio == 2
+        @test size(ds["node_id"]) == (nnode,)
+        @test size(ds["subnetwork_id"]) == (nnode,)
+        @test size(ds["demand"]) == (nnode, nprio, ntime)
+        @test dimnames(ds["demand"]) == ("demand_priority", "node_id", "time")
+    end
 end
 
 @testitem "netcdf input" begin
