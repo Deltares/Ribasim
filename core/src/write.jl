@@ -714,8 +714,9 @@ function allocation_flow_data(model::Model; table::Bool = true)
         # Initialize matrices
         flow_rate = fill(NaN, nlinks, ntsteps)
         optimization_type = fill("", nlinks, ntsteps)
-        lower_bound_hit = fill(false, nlinks, ntsteps)
-        upper_bound_hit = fill(false, nlinks, ntsteps)
+        # NetCDF doesn't support Bool, use Int8 (0/1)
+        lower_bound_hit = zeros(Int8, nlinks, ntsteps)
+        upper_bound_hit = zeros(Int8, nlinks, ntsteps)
 
         # Coordinate variables (static per link)
         from_node_id = zeros(Int32, nlinks)
@@ -731,8 +732,8 @@ function allocation_flow_data(model::Model; table::Bool = true)
 
             flow_rate[i, j] = row.flow_rate
             optimization_type[i, j] = row.optimization_type
-            lower_bound_hit[i, j] = row.lower_bound_hit
-            upper_bound_hit[i, j] = row.upper_bound_hit
+            lower_bound_hit[i, j] = Int8(row.lower_bound_hit)
+            upper_bound_hit[i, j] = Int8(row.upper_bound_hit)
 
             # Coordinate variables (same for all timesteps)
             from_node_id[i] = row.from_node_id
