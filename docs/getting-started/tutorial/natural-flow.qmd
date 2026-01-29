@@ -62,6 +62,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import xarray as xr
 from ribasim import Model, Node
 from ribasim.nodes import basin, flow_boundary, tabulated_rating_curve
 from shapely.geometry import Point
@@ -262,7 +263,8 @@ By default it will search for `ribasim` in the PATH, but you can supply the `rib
 Read the Arrow files and plot the simulated flows from different links and the levels and storages at our confluence point:
 
 ```{python}
-df_basin = pd.read_feather(base_dir / "Crystal-1/results/basin.arrow")
+ds_basin = xr.open_dataset(base_dir / "Crystal-1/results/basin.nc")
+df_basin = ds_basin.to_dataframe().reset_index()
 
 # Create pivot tables and plot for Basin data
 df_basin_wide = df_basin.pivot_table(

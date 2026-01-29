@@ -248,7 +248,10 @@ ribasim basic/ribasim.toml
 After running the model, read back the results:
 
 ```{python}
-df_basin = pd.read_feather(datadir / "basic/results/basin.arrow")
+import xarray as xr
+
+ds_basin = xr.open_dataset(datadir / "basic/results/basin.nc")
+df_basin = ds_basin.to_dataframe().reset_index()
 df_basin_wide = df_basin.pivot_table(
     index="time", columns="node_id", values=["storage", "level"]
 )
@@ -257,7 +260,8 @@ ax.set_ylabel("level [m]");
 ```
 
 ```{python}
-df_flow = pd.read_feather(datadir / "basic/results/flow.arrow")
+ds_flow = xr.open_dataset(datadir / "basic/results/flow.nc")
+df_flow = ds_flow.to_dataframe().reset_index()
 df_flow["link"] = list(zip(df_flow.from_node_id, df_flow.to_node_id))
 df_flow["flow_m3d"] = df_flow.flow_rate * 86400
 ax = df_flow.pivot_table(index="time", columns="link", values="flow_m3d").plot()
@@ -401,7 +405,8 @@ run_ribasim(datadir / "level_range/ribasim.toml")
 After running the model, read back the results:
 
 ```{python}
-df_basin = pd.read_feather(datadir / "level_range/results/basin.arrow")
+ds_basin = xr.open_dataset(datadir / "level_range/results/basin.nc")
+df_basin = ds_basin.to_dataframe().reset_index()
 df_basin_wide = df_basin.pivot_table(
     index="time", columns="node_id", values=["storage", "level"]
 )
@@ -794,7 +799,8 @@ run_ribasim(datadir / "polder_management/ribasim.toml")
 Analyze the results - first look at basin levels:
 
 ```{python}
-df_basin = pd.read_feather(datadir / "polder_management/results/basin.arrow")
+ds_basin = xr.open_dataset(datadir / "polder_management/results/basin.nc")
+df_basin = ds_basin.to_dataframe().reset_index()
 df_basin_wide = df_basin.pivot_table(
     index="time", columns="node_id", values=["storage", "level"]
 )
@@ -812,7 +818,8 @@ The plot shows how allocation maintains the polder target levels (1.0 m for basi
 Examine the flow rates managed by allocation:
 
 ```{python}
-df_flow = pd.read_feather(datadir / "polder_management/results/flow.arrow")
+ds_flow = xr.open_dataset(datadir / "polder_management/results/flow.nc")
+df_flow = ds_flow.to_dataframe().reset_index()
 df_flow["link"] = list(zip(df_flow.from_node_id, df_flow.to_node_id))
 df_flow["flow_m3d"] = df_flow.flow_rate
 
@@ -966,7 +973,8 @@ run_ribasim(toml_path)
 After running the model, read back the results:
 
 ```{python}
-df_flow = pd.read_feather(datadir / "outlet_continuous_control/results/flow.arrow")
+ds_flow = xr.open_dataset(datadir / "outlet_continuous_control/results/flow.nc")
+df_flow = ds_flow.to_dataframe().reset_index()
 fig, ax = plt.subplots()
 
 
