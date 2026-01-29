@@ -548,7 +548,8 @@ After running the model, read back the results:
 ```{python}
 from matplotlib.dates import date2num
 
-df_basin = pd.read_feather(datadir / "pid_control/results/basin.arrow")
+ds_basin = xr.open_dataset(datadir / "pid_control/results/basin.nc")
+df_basin = ds_basin.to_dataframe().reset_index()
 df_basin_wide = df_basin.pivot_table(
     index="time", columns="node_id", values=["storage", "level"]
 )

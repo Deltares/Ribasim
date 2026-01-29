@@ -303,7 +303,8 @@ This is because there is no net change in storage; all incoming water is balance
 ```{python}
 # Plot flow data
 # Read the flow results
-df_flow = pd.read_feather(base_dir / "Crystal-1/results/flow.arrow")
+ds_flow = xr.open_dataset(base_dir / "Crystal-1/results/flow.nc")
+df_flow = ds_flow.to_dataframe().reset_index()
 # Add the link names and then remove unnamed links
 df_flow["name"] = model.link.df["name"].loc[df_flow["link_id"]].to_numpy()
 df_flow = df_flow[df_flow["name"].astype(bool)]
