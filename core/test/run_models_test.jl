@@ -306,7 +306,7 @@ end
     # flows are recorded at the end of each period, and are undefined at the start
     @test unique(table.time) == Ribasim.datetimes(model)[1:(end - 1)]
 
-    @test isfile(joinpath(dirname(toml_path), "results/concentration.arrow"))
+    @test isfile(joinpath(dirname(toml_path), "results/concentration.nc"))
     table = Ribasim.concentration_data(model)
     @test "Continuity" in table.substance
     @test all(isapprox.(table.concentration[table.substance .== "Continuity"], 1.0))
