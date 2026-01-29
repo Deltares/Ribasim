@@ -377,11 +377,11 @@ end
     # copy state results to input
     write_results(model)
     state_path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.basin_state)
-    cp(state_path, Ribasim.input_path(config, "warm_state.arrow"))
+    cp(state_path, Ribasim.input_path(config, "warm_state.nc"))
 
     # point TOML to the warm state
     toml_dict = TOML.parsefile(toml_path)
-    toml_dict["basin"] = Dict("state" => "warm_state.arrow")
+    toml_dict["basin"] = Dict("state" => "warm_state.nc")
     open(toml_path, "w") do io
         TOML.print(io, toml_dict)
     end

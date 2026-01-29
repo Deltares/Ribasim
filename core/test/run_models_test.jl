@@ -1,8 +1,6 @@
 @testitem "trivial model" setup = [Teamcity] begin
-    using Tables: Tables
-    using Tables.DataAPI: nrow
+    using NCDatasets: NCDataset
     using Dates: DateTime
-    import Arrow
     using Ribasim: get_tstops, tsaves
     using Ribasim.CArrays: CVector, getaxes
 
@@ -21,184 +19,149 @@
     @test filter(!isempty, getaxes(u)) ==
         (; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
 
-    # read all results as bytes first to avoid memory mapping
-    # which can have cleanup issues due to file locking
-    flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
-    basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
-    subgrid_bytes = read(normpath(dirname(toml_path), "results/subgrid_level.arrow"))
-    solver_stats_bytes = read(normpath(dirname(toml_path), "results/solver_stats.arrow"))
-    control_bytes = read(normpath(dirname(toml_path), "results/control.arrow"))
-    allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
-    allocation_flow_bytes =
-        read(normpath(dirname(toml_path), "results/allocation_flow.arrow"))
-    allocation_control_bytes =
-        read(normpath(dirname(toml_path), "results/allocation_control.arrow"))
-
-    flow = Arrow.Table(flow_bytes)
-    basin = Arrow.Table(basin_bytes)
-    subgrid = Arrow.Table(subgrid_bytes)
-    solver_stats = Arrow.Table(solver_stats_bytes)
-    control = Arrow.Table(control_bytes)
-    allocation = Arrow.Table(allocation_bytes)
-    allocation_flow = Arrow.Table(allocation_flow_bytes)
-    allocation_control = Arrow.Table(allocation_control_bytes)
+    # Open NetCDF result files
+    flow_path = normpath(dirname(toml_path), "results/flow.nc")
+    basin_path = normpath(dirname(toml_path), "results/basin.nc")
+    subgrid_path = normpath(dirname(toml_path), "results/subgrid_level.nc")
+    solver_stats_path = normpath(dirname(toml_path), "results/solver_stats.nc")
+    control_path = normpath(dirname(toml_path), "results/control.nc")
+    allocation_path = normpath(dirname(toml_path), "results/allocation.nc")
+    allocation_flow_path = normpath(dirname(toml_path), "results/allocation_flow.nc")
+    allocation_control_path = normpath(dirname(toml_path), "results/allocation_control.nc")
 
     @testset Teamcity.TeamcityTestSet "Schema" begin
-        @test Tables.schema(flow) == Tables.Schema(
-            (:time, :link_id, :from_node_id, :to_node_id, :flow_rate, :convergence),
-            (
-                DateTime,
-                Union{Int32, Missing},
-                Int32,
-                Int32,
-                Float64,
-                Union{Missing, Float64},
-            ),
-        )
-        @test Tables.schema(basin) == Tables.Schema(
-            (
-                :time,
-                :node_id,
-                :level,
-                :storage,
-                :inflow_rate,
-                :outflow_rate,
-                :storage_rate,
-                :precipitation,
-                :surface_runoff,
-                :evaporation,
-                :drainage,
-                :infiltration,
-                :balance_error,
-                :relative_error,
-                :convergence,
-            ),
-            (
-                DateTime,
-                Int32,
-                Float64,
-                Float64,
-                Float64,
-                Float64,
-                Float64,
-                Float64,
-                Float64,
-                Float64,
-                Float64,
-                Float64,
-                Float64,
-                Float64,
-                Union{Missing, Float64},
-            ),
-        )
-        @test Tables.schema(subgrid) == Tables.Schema(
-            (:time, :subgrid_id, :subgrid_level),
-            (DateTime, Int32, Float64),
-        )
-        @test Tables.schema(solver_stats) == Tables.Schema(
-            (
-                :time,
-                :computation_time,
-                :rhs_calls,
-                :linear_solves,
-                :accepted_timesteps,
-                :rejected_timesteps,
-                :dt,
-            ),
-            (DateTime, Float64, Int, Int, Int, Int, Float64),
-        )
+        NCDataset(flow_path) do ds
+            @test haskey(ds, "time")
+            @test haskey(ds, "link_id")
+            @test haskey(ds, "from_node_id")
+            @test haskey(ds, "to_node_id")
+            @test haskey(ds, "flow_rate")
+            @test haskey(ds, "convergence")
+        end
+
+        NCDataset(basin_path) do ds
+            @test haskey(ds, "time")
+            @test haskey(ds, "node_id")
+            @test haskey(ds, "level")
+            @test haskey(ds, "storage")
+            @test haskey(ds, "inflow_rate")
+            @test haskey(ds, "outflow_rate")
+            @test haskey(ds, "storage_rate")
+            @test haskey(ds, "precipitation")
+            @test haskey(ds, "surface_runoff")
+            @test haskey(ds, "evaporation")
+            @test haskey(ds, "drainage")
+            @test haskey(ds, "infiltration")
+            @test haskey(ds, "balance_error")
+            @test haskey(ds, "relative_error")
+            @test haskey(ds, "convergence")
+        end
+
+        NCDataset(subgrid_path) do ds
+            @test haskey(ds, "time")
+            @test haskey(ds, "subgrid_id")
+            @test haskey(ds, "subgrid_level")
+        end
+
+        NCDataset(solver_stats_path) do ds
+            @test haskey(ds, "time")
+            @test haskey(ds, "computation_time")
+            @test haskey(ds, "rhs_calls")
+            @test haskey(ds, "linear_solves")
+            @test haskey(ds, "accepted_timesteps")
+            @test haskey(ds, "rejected_timesteps")
+            @test haskey(ds, "dt")
+        end
 
         # empty control and allocation tables should still have the right schema
-        @test nrow(control) == 0
-        @test nrow(allocation) == 0
-        @test nrow(allocation_flow) == 0
-        @test nrow(allocation_control) == 0
-        @test Tables.schema(control) == Tables.Schema(
-            (:time, :control_node_id, :truth_state, :control_state),
-            (DateTime, Int32, String, String),
-        )
-        @test Tables.schema(allocation) == Tables.Schema(
-            (
-                :time,
-                :subnetwork_id,
-                :node_type,
-                :node_id,
-                :demand_priority,
-                :demand,
-                :allocated,
-                :realized,
-            ),
-            (DateTime, Int32, String, Int32, Int32, Float64, Float64, Float64),
-        )
-        @test Tables.schema(allocation_flow) == Tables.Schema(
-            (
-                :time,
-                :link_id,
-                :from_node_type,
-                :from_node_id,
-                :to_node_type,
-                :to_node_id,
-                :subnetwork_id,
-                :flow_rate,
-                :optimization_type,
-                :lower_bound_hit,
-                :upper_bound_hit,
-            ),
-            (
-                DateTime,
-                Int32,
-                String,
-                Int32,
-                String,
-                Int32,
-                Int32,
-                Float64,
-                String,
-                Bool,
-                Bool,
-            ),
-        )
-        @test Tables.schema(allocation_control) == Tables.Schema(
-            (:time, :node_id, :node_type, :flow_rate),
-            (DateTime, Int32, String, Float64),
-        )
+        NCDataset(control_path) do ds
+            @test length(ds["time"]) == 0
+            @test haskey(ds, "control_node_id")
+            @test haskey(ds, "truth_state")
+            @test haskey(ds, "control_state")
+        end
+
+        NCDataset(allocation_path) do ds
+            @test length(ds["time"]) == 0
+            @test haskey(ds, "subnetwork_id")
+            @test haskey(ds, "node_type")
+            @test haskey(ds, "node_id")
+            @test haskey(ds, "demand_priority")
+            @test haskey(ds, "demand")
+            @test haskey(ds, "allocated")
+            @test haskey(ds, "realized")
+        end
+
+        NCDataset(allocation_flow_path) do ds
+            @test length(ds["time"]) == 0
+            @test haskey(ds, "link_id")
+            @test haskey(ds, "from_node_type")
+            @test haskey(ds, "from_node_id")
+            @test haskey(ds, "to_node_type")
+            @test haskey(ds, "to_node_id")
+            @test haskey(ds, "subnetwork_id")
+            @test haskey(ds, "flow_rate")
+            @test haskey(ds, "optimization_type")
+            @test haskey(ds, "lower_bound_hit")
+            @test haskey(ds, "upper_bound_hit")
+        end
+
+        NCDataset(allocation_control_path) do ds
+            @test length(ds["time"]) == 0
+            @test haskey(ds, "node_id")
+            @test haskey(ds, "node_type")
+            @test haskey(ds, "flow_rate")
+        end
     end
 
     @testset Teamcity.TeamcityTestSet "Results size" begin
         nsaved = length(tsaves(model))
         @test nsaved > 10
         # t0 has no flow, 2 flow links
-        @test nrow(flow) == (nsaved - 1) * 2
-        @test nrow(basin) == nsaved - 1
-        @test nrow(subgrid) == nsaved * length(p_independent.subgrid.level)
+        NCDataset(flow_path) do ds
+            @test length(ds["time"]) == (nsaved - 1) * 2
+        end
+        NCDataset(basin_path) do ds
+            @test length(ds["time"]) == nsaved - 1
+        end
+        NCDataset(subgrid_path) do ds
+            @test length(ds["time"]) == nsaved * length(p_independent.subgrid.level)
+        end
     end
 
     @testset Teamcity.TeamcityTestSet "Results values" begin
-        @test flow.time[1] == DateTime(2020)
-        @test coalesce.(flow.link_id[1:2], -1) == [100, 101]
-        @test flow.from_node_id[1:2] == [6, 0]
-        @test flow.to_node_id[1:2] == [0, 2147483647]
+        NCDataset(flow_path) do flow
+            @test flow["time"][1] == DateTime(2020)
+            @test coalesce.(flow["link_id"][1:2], -1) == [100, 101]
+            @test flow["from_node_id"][1:2] == [6, 0]
+            @test flow["to_node_id"][1:2] == [0, 2147483647]
 
-        @test basin.storage[1] ≈ 1.0
-        @test basin.level[1] ≈ 0.044711584
-        @test basin.storage_rate[1] ≈
-            (basin.storage[2] - basin.storage[1]) / config.solver.saveat
-        @test all(==(0), basin.inflow_rate)
-        @test all(>(0), basin.outflow_rate)
-        @test flow.flow_rate[1] == basin.outflow_rate[1]
-        @test all(==(0), basin.drainage)
-        @test all(==(0), basin.infiltration)
-        @test all(q -> abs(q) < 1.0e-7, basin.balance_error)
-        @test all(q -> abs(q) < 0.01, basin.relative_error)
+            NCDataset(basin_path) do basin
+                @test basin["storage"][1] ≈ 1.0
+                @test basin["level"][1] ≈ 0.044711584
+                @test basin["storage_rate"][1] ≈
+                    (basin["storage"][2] - basin["storage"][1]) / config.solver.saveat
+                @test all(==(0), basin["inflow_rate"][:])
+                @test all(>(0), basin["outflow_rate"][:])
+                @test flow["flow_rate"][1] == basin["outflow_rate"][1]
+                @test all(==(0), basin["drainage"][:])
+                @test all(==(0), basin["infiltration"][:])
+                @test all(q -> abs(q) < 1.0e-7, basin["balance_error"][:])
+                @test all(q -> abs(q) < 0.01, basin["relative_error"][:])
 
-        # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.
-        basin_level = basin.level[1]
-        @test length(p_independent.subgrid.level) == 3
-        @test diff(p_independent.subgrid.level) ≈ [-1.0, 2.0]
-        @test subgrid.subgrid_id[1:3] == [11, 22, 33]
-        @test subgrid.subgrid_level[1:3] ≈
-            [basin_level, basin_level - 1.0, basin_level + 1.0]
-        @test subgrid.subgrid_level[(end - 2):end] == p_independent.subgrid.level
+                # The exporter interpolates 1:1 for three subgrid elements, but shifted by 1.0 meter.
+                basin_level = basin["level"][1]
+                @test length(p_independent.subgrid.level) == 3
+                @test diff(p_independent.subgrid.level) ≈ [-1.0, 2.0]
+                NCDataset(subgrid_path) do subgrid
+                    @test subgrid["subgrid_id"][1:3] == [11, 22, 33]
+                    @test subgrid["subgrid_level"][1:3] ≈
+                        [basin_level, basin_level - 1.0, basin_level + 1.0]
+                    subgrid_level_end = subgrid["subgrid_level"][:]
+                    @test subgrid_level_end[(end - 2):end] == p_independent.subgrid.level
+                end
+            end
+        end
     end
 end
 
