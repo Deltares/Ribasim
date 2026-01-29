@@ -91,7 +91,7 @@ The following entries can be set in the configuration in the `[results]` section
 
 entry             | type   | description
 ----------------- | ------ | -----------
-format            | String | File format, default is "arrow" for Apache Arrow, other option is "netcdf" for NetCDF with CF conventions.
+format            | String | File format, default is "netcdf" for NetCDF with CF conventions, other option is "arrow" for Apache Arrow.
 compression       | Bool   | Whether to apply compression or not.
 compression_level | Int    | Zstandard compression level. Default is 6, higher compresses more.
 subgrid           | Bool   | Compute and output more detailed water levels.
