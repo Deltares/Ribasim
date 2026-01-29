@@ -124,6 +124,16 @@ function write_results_netcdf(model::Model)::Model
     path = results_path(config, RESULTS_FILENAME.allocation)
     write_netcdf(path, data, nothing)
 
+    # allocation flow
+    data = allocation_flow_data(model; table = false)
+    path = results_path(config, RESULTS_FILENAME.allocation_flow)
+    write_netcdf(path, data, nothing)
+
+    # allocation control
+    data = allocation_control_data(model; table = false)
+    path = results_path(config, RESULTS_FILENAME.allocation_control)
+    write_netcdf(path, data, nothing)
+
     # exported levels
     data = subgrid_level_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.subgrid_level)
@@ -177,6 +187,8 @@ function nc_dims(file_name::String, var_name::String)::Vector{String}
         ("control", _) => ["time"]
         ("allocation", _) => ["demand_priority", "node_id", "time"]
         ("allocation_flow", _) => ["link_id", "time"]
+        ("allocation_control", "node_type") => ["node_id"]
+        ("allocation_control", _) => ["node_id", "time"]
         ("subgrid_level", _) => ["subgrid_id", "time"]
         ("solver_stats", _) => ["time"]
         _ => error("Unknown dimensionality for file: $file_name, variable: $var_name")
@@ -303,6 +315,17 @@ const CF = OrderedDict{String, OrderedDict{String, String}}(
         "units" => "m",
         "standard_name" => "water_surface_height_above_reference_datum",
         "long_name" => "subgrid water level above reference datum",
+    ),
+    "optimization_type" => OrderedDict(
+        "long_name" => "allocation optimization type",
+    ),
+    "lower_bound_hit" => OrderedDict(
+        "units" => "1",
+        "long_name" => "allocation lower bound constraint active",
+    ),
+    "upper_bound_hit" => OrderedDict(
+        "units" => "1",
+        "long_name" => "allocation upper bound constraint active",
     ),
 )
 
@@ -681,7 +704,43 @@ function allocation_flow_data(model::Model; table::Bool = true)
         lower_bound_hit = record_flow.lower_bound_hit
         upper_bound_hit = record_flow.upper_bound_hit
     else
-        error("allocation_flow not implemented for NetCDF")
+        # For NetCDF, organize data by unique link_id and time
+        time = unique(datetime_since.(record_flow.time, config.starttime))
+        link_id = sort!(unique(record_flow.link_id))
+
+        nlinks = length(link_id)
+        ntsteps = length(time)
+
+        # Initialize matrices
+        flow_rate = fill(NaN, nlinks, ntsteps)
+        optimization_type = fill("", nlinks, ntsteps)
+        lower_bound_hit = fill(false, nlinks, ntsteps)
+        upper_bound_hit = fill(false, nlinks, ntsteps)
+
+        # Coordinate variables (static per link)
+        from_node_id = zeros(Int32, nlinks)
+        to_node_id = zeros(Int32, nlinks)
+        from_node_type = fill("", nlinks)
+        to_node_type = fill("", nlinks)
+        subnetwork_id = zeros(Int32, nlinks)
+
+        # Fill in the data
+        for row in record_flow
+            i = searchsortedfirst(link_id, row.link_id)
+            j = searchsortedfirst(time, datetime_since(row.time, config.starttime))
+
+            flow_rate[i, j] = row.flow_rate
+            optimization_type[i, j] = row.optimization_type
+            lower_bound_hit[i, j] = row.lower_bound_hit
+            upper_bound_hit[i, j] = row.upper_bound_hit
+
+            # Coordinate variables (same for all timesteps)
+            from_node_id[i] = row.from_node_id
+            to_node_id[i] = row.to_node_id
+            from_node_type[i] = row.from_node_type
+            to_node_type[i] = row.to_node_type
+            subnetwork_id[i] = row.subnetwork_id
+        end
     end
 
     return (;
@@ -710,7 +769,29 @@ function allocation_control_data(model::Model; table::Bool = true)
         node_type = record_control.node_type
         flow_rate = record_control.flow_rate
     else
-        error("allocation_control not implemented for NetCDF")
+        # For NetCDF, organize data by unique node_id and time
+        time = unique(datetime_since.(record_control.time, config.starttime))
+        node_id = sort!(unique(record_control.node_id))
+
+        nnodes = length(node_id)
+        ntsteps = length(time)
+
+        # Initialize matrices
+        flow_rate = fill(NaN, nnodes, ntsteps)
+
+        # Coordinate variable (static per node)
+        node_type = fill("", nnodes)
+
+        # Fill in the data
+        for row in record_control
+            i = searchsortedfirst(node_id, row.node_id)
+            j = searchsortedfirst(time, datetime_since(row.time, config.starttime))
+
+            flow_rate[i, j] = row.flow_rate
+
+            # Coordinate variable (same for all timesteps)
+            node_type[i] = row.node_type
+        end
     end
 
     return (; time, node_id, node_type, flow_rate)
