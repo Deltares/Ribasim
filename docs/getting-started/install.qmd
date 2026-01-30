@@ -185,10 +185,6 @@ pixi run python
 If you wish to check what is installed in your workspace, run `pixi list`.
 When you run into what seems like installation issues, try `pixi clean`, followed by `pixi install`.
 
-If your editor does not automatically detect the right Python environment, point it to `.pixi/envs/default/python.exe`.
-Starting your editor via Pixi will also help it find the environment since it will already be active.
-For Visual Studio Code, you can run `pixi run code .` to open your workspace.
-
 ## pip
 
 ```sh
@@ -206,6 +202,8 @@ conda install -c conda-forge ribasim=2025.6.0
 ```
 
 :::
+
+For Visual Studio Code setup, see the [VS Code guide](/guide/vscode.qmd).
 
 For Ribasim Python documentation please see the [examples](/getting-started/examples.qmd) and [API reference](/reference/python/index.qmd).
 
