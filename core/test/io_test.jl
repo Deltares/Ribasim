@@ -273,7 +273,79 @@ end
 end
 
 @testitem "netcdf input" begin
-    # TODO use NCDatasets.ncgen to create Delft-FEWS flavored NetCDF input files
+    using NCDatasets
+    using NCDatasets.NetCDF_jll: ncgen
+    using Ribasim: load_netcdf, Schema
+    using Dates: DateTime
+
+    # Generate NetCDF files from CDL files (as Delft-FEWS writes them)
+    # The CDL files are version controlled, the NC files are gitignored
+    ncdir = normpath(@__DIR__, "../../models/netcdf-fews")
+    for name in ["basin_state", "flow_boundary", "flow_demand", "user_demand"]
+        cdlpath = normpath(ncdir, "$name.cdl")
+        ncpath = normpath(ncdir, "$name.nc")
+        run(`$(ncgen()) -k nc4 -o $ncpath $cdlpath`)
+        @test isfile(ncpath)
+    end
+
+    # Test Basin / state loading
+    ncpath = normpath(ncdir, "basin_state.nc")
+    table = load_netcdf(ncpath, Schema.Basin.State)
+    @test table isa @NamedTuple{
+        node_id::Vector{Int32},
+        time::Vector{DateTime},
+        level::Vector{Union{Missing, Float32}},
+    }
+    @test length(table.node_id) == 6
+    @test allunique(table.node_id)
+    @test allequal(table.time)
+    @test !any(ismissing, table.level)
+
+    # Test FlowBoundary / time loading
+    ncpath = normpath(ncdir, "flow_boundary.nc")
+    table = load_netcdf(ncpath, Schema.FlowBoundary.Time)
+    @test table isa @NamedTuple{
+        node_id::Vector{Int32},
+        time::Vector{DateTime},
+        flow_rate::Vector{Union{Missing, Float32}},
+    }
+    n_id, n_time = 8, 10
+    @test length(table.node_id) == n_id * n_time
+    @test length(unique(table.node_id)) == n_id
+    @test length(unique(table.time)) == n_time
+    @test !any(ismissing, table.flow_rate)
+
+    # Test FlowDemand / time loading
+    ncpath = normpath(ncdir, "flow_demand.nc")
+    table = load_netcdf(ncpath, Schema.FlowDemand.Time)
+    @test table isa @NamedTuple{
+        node_id::Vector{Int32},
+        demand_priority::Vector{Int32},
+        time::Vector{DateTime},
+        demand::Vector{Union{Missing, Float32}},
+    }
+    n_id, n_time = 5, 10
+    @test length(table.node_id) == n_id * n_time
+    @test length(unique(table.node_id)) == n_id
+    @test length(unique(table.time)) == n_time
+    @test !any(ismissing, table.demand)
+
+    # Test UserDemand / time loading
+    ncpath = normpath(ncdir, "user_demand.nc")
+    table = load_netcdf(ncpath, Schema.UserDemand.Time)
+    @test table isa @NamedTuple{
+        node_id::Vector{Int32},
+        demand_priority::Vector{Int32},
+        time::Vector{DateTime},
+        demand::Vector{Union{Missing, Float32}},
+        return_factor::Vector{Union{Missing, Float32}},
+        min_level::Vector{Union{Missing, Float32}},
+    }
+    n_id, n_time = 10, 10
+    @test length(table.node_id) == n_id * n_time
+    @test length(unique(table.node_id)) == n_id
+    @test length(unique(table.time)) == n_time
+    @test !any(ismissing, table.demand)
 end
 
 @testitem "warm state" begin
