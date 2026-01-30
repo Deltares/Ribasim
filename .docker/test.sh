@@ -9,6 +9,8 @@ docker exec -t qgis sh -c "wget -q -P /usr/bin https://raw.githubusercontent.com
 docker exec -t qgis sh -c "wget -q -P /usr/bin https://raw.githubusercontent.com/qgis/QGIS/refs/tags/ltr-3_40/.docker/qgis_resources/test_runner/qgis_startup.py"
 docker exec -t qgis sh -c "wget -q -P /usr/bin https://raw.githubusercontent.com/qgis/QGIS/refs/tags/ltr-3_40/.docker/qgis_resources/test_runner/qgis_testrunner.py"
 
+docker exec -t qgis sh -c "apt install -y python3-pandas"
+
 echo "Installation of the plugin Ribasim"
 docker exec -t qgis sh -c "qgis_setup.sh ribasim_qgis"
 echo "Containers are running"
