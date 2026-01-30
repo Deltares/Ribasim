@@ -111,7 +111,7 @@ def test_run_ribasim_basic(tmp_path):
     run_ribasim(toml_path, ribasim_exe=executable)
 
     # Check that results were produced
-    results_path = tmp_path / "results" / "basin.arrow"
+    results_path = tmp_path / "results" / "basin.nc"
     assert results_path.exists()
 
 
@@ -193,7 +193,7 @@ def test_run_ribasim_with_ribasim_exe(tmp_path):
         run_ribasim(toml_path)
 
         # Check that results were produced
-        results_path = tmp_path / "results" / "basin.arrow"
+        results_path = tmp_path / "results" / "basin.nc"
         assert results_path.exists()
     finally:
         # Restore environment
@@ -260,7 +260,7 @@ def test_run_ribasim_in_notebook(tmp_path, monkeypatch):
     run_ribasim(toml_path, ribasim_exe=executable)
 
     # Check that results were produced
-    results_path = tmp_path / "results" / "basin.arrow"
+    results_path = tmp_path / "results" / "basin.nc"
     assert results_path.exists()
 
 
@@ -280,5 +280,5 @@ def test_run_ribasim_in_spyder(tmp_path, monkeypatch):
     run_ribasim(toml_path, ribasim_exe=executable)
 
     # Check that results were produced
-    results_path = tmp_path / "results" / "basin.arrow"
+    results_path = tmp_path / "results" / "basin.nc"
     assert results_path.exists()
