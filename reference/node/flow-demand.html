@@ -357,11 +357,18 @@ window.Quarto = {
 
 
 <p>A <code>FlowDemand</code> node associates a non-consuming flow demand to a connector node (e.g.&nbsp;<code>Pump</code>, <code>TabulatedRatingCurve</code>) for one or more demand priorities. FlowDemand nodes can set a flow demand only for a single connector node. FlowDemand nodes do nothing when allocation is not activated, except when they are connected to a Pump or an Outlet. In that case the flow demand flow rate is taken as the minimum flow through that Pump or Outlet.</p>
+<p>FlowDemand nodes can be used for instance to model minimum environmental flow or flushing requirements at specific locations in the network.</p>
 <section id="tables" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Tables</h1>
 <section id="static" class="level2" data-number="1.1">
 <h2 data-number="1.1" class="anchored" data-anchor-id="static"><span class="header-section-number">1.1</span> Static</h2>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 27%">
+<col style="width: 14%">
+<col style="width: 38%">
+<col style="width: 20%">
+</colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
@@ -381,7 +388,7 @@ window.Quarto = {
 <td>demand_priority</td>
 <td>Int32</td>
 <td>-</td>
-<td>positive</td>
+<td>positive (optional)</td>
 </tr>
 <tr class="odd">
 <td>demand</td>
@@ -396,6 +403,12 @@ window.Quarto = {
 <h2 data-number="1.2" class="anchored" data-anchor-id="time"><span class="header-section-number">1.2</span> Time</h2>
 <p>This table is the transient form of the <code>FlowDemand</code> table, in which a time-dependent demand can be supplied. With this the demand can be updated over time. In between the given times the demand is block interpolated (forward fill), and outside the demand is constant given by the nearest time value. The allocation algorithm evaluates the interpolation at the start of the allocation time step.</p>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 27%">
+<col style="width: 14%">
+<col style="width: 38%">
+<col style="width: 20%">
+</colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
@@ -421,7 +434,7 @@ window.Quarto = {
 <td>demand_priority</td>
 <td>Int32</td>
 <td>-</td>
-<td>positive</td>
+<td>positive (optional)</td>
 </tr>
 <tr class="even">
 <td>demand</td>

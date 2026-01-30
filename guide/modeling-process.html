@@ -31,7 +31,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
 <link href="../guide/updating-ribasim.html" rel="next">
-<link href="../guide/qgis.html" rel="prev">
+<link href="../guide/vscode.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -158,6 +158,12 @@ ul.task-list li input[type="checkbox"] {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../guide/vscode.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Visual Studio Code</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../guide/modeling-process.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Modeling process</span></a>
   </div>
@@ -207,7 +213,7 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#create-and-validate-the-network" id="toc-create-and-validate-the-network" class="nav-link active" data-scroll-target="#create-and-validate-the-network"><span class="header-section-number">1</span> Create and validate the network</a>
+  <li><a href="#create-and-validate-the-network-schematization" id="toc-create-and-validate-the-network-schematization" class="nav-link active" data-scroll-target="#create-and-validate-the-network-schematization"><span class="header-section-number">1</span> Create and validate the network schematization</a>
   <ul class="collapse">
   <li><a href="#goal" id="toc-goal" class="nav-link" data-scroll-target="#goal"><span class="header-section-number">1.1</span> Goal</a></li>
   <li><a href="#steps" id="toc-steps" class="nav-link" data-scroll-target="#steps"><span class="header-section-number">1.2</span> Steps</a></li>
@@ -283,8 +289,8 @@ ul.task-list li input[type="checkbox"] {
 <li>Validate the model against observations.</li>
 <li>Apply the model together with stakeholders for scenario analysis or in day-to-day operations.</li>
 </ol>
-<section id="create-and-validate-the-network" class="level1" data-number="1">
-<h1 data-number="1"><span class="header-section-number">1</span> Create and validate the network</h1>
+<section id="create-and-validate-the-network-schematization" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Create and validate the network schematization</h1>
 <section id="goal" class="level2" data-number="1.1">
 <h2 data-number="1.1" class="anchored" data-anchor-id="goal"><span class="header-section-number">1.1</span> Goal</h2>
 <p>Create a valid network representation of the water system that runs and can be discussed with stakeholders.</p>
@@ -295,7 +301,7 @@ ul.task-list li input[type="checkbox"] {
 <li>Discuss with stakeholders the purpose of the model and what system components and behavior they want to see reflected in the model.</li>
 <li>Decide what procedure to follow to separate Basins and position control nodes in between.</li>
 <li>Script this approach to build the network topology of nodes and links.</li>
-<li>Add user demand nodes as appropriate and link them to the supplying Basin.</li>
+<li>Add user demand nodes as appropriate and link them to the supplying Basin nodes.</li>
 <li>Parameterize Basins with default or made up profiles.</li>
 <li>Parameterize TabulatedRatingCurves with some default settings.</li>
 <li>Parameterize Pumps and outlets with sufficiently large default or made up capacities.</li>
@@ -330,7 +336,7 @@ ul.task-list li input[type="checkbox"] {
 </ul></li>
 <li>If the above is not available, at minimum map-based sketch with the layout of the water system, paying extra attention to positioning of waterways and connections. Try to assign proper coordinates.</li>
 <li>Some default (static) values (e.g.&nbsp;flow rates, river cross sections) to use that are in line with the typical parameter ranges of the system.</li>
-<li>Keep in mind that values are specified in SI units.</li>
+<li>See the <a href="../reference/usage.html">reference documentation</a> for details on units per table column.</li>
 </ul>
 </section>
 <section id="output" class="level2" data-number="1.5">
@@ -902,8 +908,8 @@ ul.task-list li input[type="checkbox"] {
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../guide/qgis.html" class="pagination-link" aria-label="QGIS plugin">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">QGIS plugin</span>
+      <a href="../guide/vscode.html" class="pagination-link" aria-label="Visual Studio Code">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Visual Studio Code</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">

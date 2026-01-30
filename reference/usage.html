@@ -533,7 +533,7 @@ window.Quarto = {
 <h2 data-number="1.2" class="anchored" data-anchor-id="interpolation-settings"><span class="header-section-number">1.2</span> Interpolation settings</h2>
 <p>There are the following interpolation settings:</p>
 <ul>
-<li><code>flow_boundary</code>: The interpolation type of flow boundary timeseries. This is <code>linear</code> by default, but can also be set to <code>block</code>.</li>
+<li><code>flow_boundary</code>: The interpolation type of flow boundary timeseries. This is <code>block</code> by default, but can also be set to <code>linear</code>.</li>
 <li><code>block_transition_period</code>: When an interpolation type is set to <code>block</code>, this parameter determines an interval in time on either side of each data point which is used to smooth the transition between data points. See also the <a href="https://docs.sciml.ai/DataInterpolations/dev/methods/#Smoothed-Constant-Interpolation">documentation</a> for this interpolation type.</li>
 </ul>
 </section>
@@ -813,13 +813,13 @@ Important
 </section>
 <section id="subnetwork-id" class="level2" data-number="3.2">
 <h2 data-number="3.2" class="anchored" data-anchor-id="subnetwork-id"><span class="header-section-number">3.2</span> Subnetwork ID</h2>
-<p>Nodes can only be controlled by allocation if the have a subnetwork_id. In the Node table, give for example subnetwork_id an integer value of 1 or 2.</p>
+<p>Nodes can only be controlled by allocation if they have a subnetwork_id. In the Node table, give for example subnetwork_id an integer value of 1 or 2.</p>
 <p>When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, besides a subnetwork_id, they must be given the special control state <code>Ribasim.allocation</code> in the static table for <a href="../reference/node/pump.html#static">Pump</a> or <a href="../reference/node/outlet.html#static">Outlet</a>.</p>
 </section>
 </section>
 <section id="sec-link" class="level1" data-number="4">
 <h1 data-number="4"><span class="header-section-number">4</span> Link</h1>
-<p>Links define connections between nodes. The only thing that defines an link is the nodes it connects, and in what direction. There are currently 2 possible link types:</p>
+<p>Links define connections between nodes. The only thing that defines a link is the nodes it connects, and in what direction. There are currently 2 possible link types:</p>
 <ol type="1">
 <li>“flow”: Flows between nodes are stored on links. The effect of the link direction depends on the node type, Node types that have a notion of an upstream and downstream side use the incoming link as the upstream side, and the outgoing link as the downstream side. This means that links should generally be drawn in the main flow direction. But for instance between two <code>LinearResistances</code> the link direction does not affect anything, other than the sign of the flow on the link. The sign of the flow follows the link direction; a positive flow flows along the link direction, a negative flow in the opposite way.</li>
 <li>“control”: The control links define which nodes are influenced by a particular control or demand node. No water flows over these links, only information. Control links should always point away from the control or demand node. The links between the control node and the nodes it <em>listens</em> to are <em>not</em> present in <code>Link</code>, these are defined as <code>listen_node_id</code> in the control node tables. The LevelDemand and FlowDemand nodes use control links to indicate which nodes it will assign demands to.</li>
@@ -882,7 +882,7 @@ Important
 <li>The <code>outflow_rate</code> consists of the sum of all modelled flows out of the basin: <code>outflow_rate</code> (horizontal flows out of the basin, independent of link direction) + <code>evaporation</code> + <code>infiltration</code>.</li>
 <li>The <code>balance_error</code> is the difference between the <code>storage_rate</code> on one side and the <code>inflow_rate</code> and <code>outflow_rate</code> on the other side: <code>storage_rate</code> - (<code>inflow_rate</code> - <code>outflow_rate</code>). It can be used to check if the numerical error when solving the water balance is sufficiently small.</li>
 <li>The <code>relative_error</code> is the fraction of the <code>balance_error</code> over the mean of the <code>total_inflow</code> and <code>total_outflow</code>.</li>
-<li>The <code>convergence</code> is the scaled residual of the solver, giving an indication of which nodes converge the worst (are hardest to solve).</li>
+<li>The <code>convergence</code> is the scaled residual of the solver, giving an indication of which nodes converge the worst (are hardest to solve). A higher value indicates a node that is harder to solve.</li>
 </ul>
 <p>For a more in-depth explanation of the water balance error see <a href="../concept/equations.html#the-water-balance-error">here</a>.</p>
 <table class="caption-top table">
@@ -1057,7 +1057,7 @@ Important
 </section>
 <section id="discretecontrol---control" class="level2" data-number="5.4">
 <h2 data-number="5.4" class="anchored" data-anchor-id="discretecontrol---control"><span class="header-section-number">5.4</span> DiscreteControl - <code>control</code></h2>
-<p>The control table contains a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.</p>
+<p>The control table contains a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state. For more information on control states and truth states, see the <a href="../reference/node/discrete-control.html">DiscreteControl</a> reference.</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -1266,7 +1266,7 @@ Note
 </section>
 <section id="allocation-scaling-analysis---allocation_analysis_scaling.log" class="level2" data-number="5.8">
 <h2 data-number="5.8" class="anchored" data-anchor-id="allocation-scaling-analysis---allocation_analysis_scaling.log"><span class="header-section-number">5.8</span> Allocation scaling analysis - <code>allocation_analysis_scaling.log</code></h2>
-<p>When an allocation optimization problem turns out to be infeasible, a scaling analysis is performed. Some user friendly data is logged in the main log, but the full report of the analysis is written to this separate file. For details on the infeasibility analysis see <a href="https://jump.dev/MathOptAnalyzer.jl/dev/">here</a>.</p>
+<p>When an allocation optimization problem turns out to be infeasible, a scaling analysis is performed in addition to the feasibility analysis described above. Some user friendly data is logged in the main log, but the full report of the analysis is written to this separate file. For details on the scaling analysis see <a href="https://jump.dev/MathOptAnalyzer.jl/dev/">here</a>.</p>
 </section>
 <section id="concentration---concentration" class="level2" data-number="5.9">
 <h2 data-number="5.9" class="anchored" data-anchor-id="concentration---concentration"><span class="header-section-number">5.9</span> Concentration - <code>concentration</code></h2>
