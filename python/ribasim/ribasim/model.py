@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import tomli
 import tomli_w
+import xarray as xr
 from matplotlib import pyplot as plt
 from packaging import version
 from pandera.typing.geopandas import GeoDataFrame
@@ -565,6 +566,18 @@ class Model(FileModel):
         return FilePath(self.filepath)
 
     @property
+    def results_extension(self) -> str:
+        """
+        Get the file extension for result files based on the configured format.
+
+        Returns
+        -------
+        str
+            The file extension ('.arrow' or '.nc').
+        """
+        return ".arrow" if self.results.format == "arrow" else ".nc"
+
+    @property
     def results_path(self) -> DirectoryPath:
         """
         Get the path to the results directory if it exists.
@@ -584,8 +597,9 @@ class Model(FileModel):
         toml_path = self.toml_path
         results_dir = DirectoryPath(toml_path.parent / self.results_dir)
         # This only checks results that are always written.
-        # Some results like allocation_flow.arrow are optional.
-        filenames = ["basin_state.arrow", "basin.arrow", "flow.arrow"]
+        # Some results like allocation_flow are optional.
+        ext = self.results_extension
+        filenames = [f"basin_state{ext}", f"basin{ext}", f"flow{ext}"]
         for filename in filenames:
             if not (results_dir / filename).is_file():
                 raise FileNotFoundError(
@@ -779,10 +793,19 @@ class Model(FileModel):
         return uds
 
     def _add_flow(self, uds, node_lookup):
-        basin_path = self.results_path / "basin.arrow"
-        flow_path = self.results_path / "flow.arrow"
-        basin_df = pd.read_feather(basin_path)
-        flow_df = pd.read_feather(flow_path)
+        ext = self.results_extension
+        basin_path = self.results_path / f"basin{ext}"
+        flow_path = self.results_path / f"flow{ext}"
+        basin_df = (
+            pd.read_feather(basin_path)
+            if ext == ".arrow"
+            else xr.open_dataset(basin_path).to_dataframe().reset_index()
+        )
+        flow_df = (
+            pd.read_feather(flow_path)
+            if ext == ".arrow"
+            else xr.open_dataset(flow_path).to_dataframe().reset_index()
+        )
 
         # add the xugrid dimension indices to the dataframes
         link_dim = uds.grid.edge_dimension
@@ -806,7 +829,8 @@ class Model(FileModel):
         return uds
 
     def _add_allocation(self, uds):
-        alloc_flow_path = self.results_path / "allocation_flow.arrow"
+        ext = self.results_extension
+        alloc_flow_path = self.results_path / f"allocation_flow{ext}"
 
         if not alloc_flow_path.is_file():
             raise FileNotFoundError(
@@ -814,16 +838,24 @@ class Model(FileModel):
                 "perhaps the model needs to be run first, or allocation is not used."
             )
 
-        alloc_flow_df = pd.read_feather(
-            alloc_flow_path,
-            columns=[
-                "time",
-                "link_id",
-                "flow_rate",
-                "optimization_type",
-                "demand_priority",
-            ],
-        )
+        if ext == ".arrow":
+            alloc_flow_df = pd.read_feather(
+                alloc_flow_path,
+                columns=[
+                    "time",
+                    "link_id",
+                    "flow_rate",
+                    "optimization_type",
+                    "demand_priority",
+                ],
+            )
+        else:
+            alloc_flow_ds = xr.open_dataset(alloc_flow_path)
+            alloc_flow_df = (
+                alloc_flow_ds[["flow_rate", "optimization_type", "demand_priority"]]
+                .to_dataframe()
+                .reset_index()
+            )
 
         # add the xugrid link dimension index to the dataframe
         link_dim = uds.grid.edge_dimension
@@ -916,12 +948,17 @@ class Model(FileModel):
         # Delft-FEWS doesn't support our UGRID from `model.to_xugrid` yet,
         # so we convert Arrow to regular CF-NetCDF4.
 
-        basin_path = self.results_path / "basin.arrow"
-        flow_path = self.results_path / "flow.arrow"
-        concentration_path = self.results_path / "concentration.arrow"
+        ext = self.results_extension
+        basin_path = self.results_path / f"basin{ext}"
+        flow_path = self.results_path / f"flow{ext}"
+        concentration_path = self.results_path / f"concentration{ext}"
 
-        basin_df = pd.read_feather(basin_path)
-        flow_df = pd.read_feather(flow_path)
+        if ext == ".arrow":
+            basin_df = pd.read_feather(basin_path)
+            flow_df = pd.read_feather(flow_path)
+        else:
+            basin_df = xr.open_dataset(basin_path).to_dataframe().reset_index()
+            flow_df = xr.open_dataset(flow_path).to_dataframe().reset_index()
 
         ds_basin = basin_df.set_index(["time", "node_id"]).to_xarray()
         _add_cf_attributes(ds_basin, timeseries_id="node_id")
@@ -952,7 +989,10 @@ class Model(FileModel):
         ds_flow.to_netcdf(results_dir / "flow.nc")
 
         if concentration_path.is_file():
-            df = pd.read_feather(concentration_path)
+            if ext == ".arrow":
+                df = pd.read_feather(concentration_path)
+            else:
+                df = xr.open_dataset(concentration_path).to_dataframe().reset_index()
             ds = df.set_index(["time", "node_id", "substance"]).to_xarray()
             _add_cf_attributes(ds, timeseries_id="node_id", realization="substance")
             ds["concentration"].attrs.update({"units": "g m-3"})

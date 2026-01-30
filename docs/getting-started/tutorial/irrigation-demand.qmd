@@ -19,6 +19,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.express as px
+import xarray as xr
 from ribasim import Model, Node
 from ribasim.nodes import (
     basin,
@@ -206,7 +207,8 @@ run_ribasim(toml_path)
 Plot the simulated levels and storages at the diverted section and at the confluence.
 
 ```{python}
-df_basin = pd.read_feather(base_dir / "Crystal-2/results/basin.arrow")
+ds_basin = xr.open_dataset(base_dir / "Crystal-2/results/basin.nc")
+df_basin = ds_basin.to_dataframe().reset_index()
 
 # Create pivot tables and plot for basin data
 df_basin_wide = df_basin.pivot_table(
@@ -280,7 +282,8 @@ This reduction is attributed to the irrigation demand upstream with no return fl
 Plot the flow results in an interactive plotting tool.
 
 ```{python}
-df_flow = pd.read_feather(base_dir / "Crystal-2/results/flow.arrow")
+ds_flow = xr.open_dataset(base_dir / "Crystal-2/results/flow.nc")
+df_flow = ds_flow.to_dataframe().reset_index()
 # Add the link names and then remove unnamed links
 df_flow["name"] = model.link.df["name"].loc[df_flow["link_id"]].to_numpy()
 df_flow = df_flow[df_flow["name"].astype(bool)]

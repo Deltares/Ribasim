@@ -1,7 +1,7 @@
 @testitem "HWS model integration test" begin
     using Dates
     using Statistics
-    using Arrow
+    using NCDatasets: NCDataset
     using TOML
     include(joinpath(@__DIR__, "../test/utils.jl"))
 
@@ -11,20 +11,22 @@
     @test model isa Ribasim.Model
     @test success(model)
 
-    basin_bytes_bench =
-        read(normpath(@__DIR__, "../../models/hws/benchmark/basin_state.arrow"))
-    basin_bench = Arrow.Table(basin_bytes_bench)
+    basin_bench_path =
+        normpath(@__DIR__, "../../models/hws/benchmark/basin_state.nc")
 
-    basin_bytes =
-        read(normpath(dirname(toml_path), model.config.results_dir, "basin_state.arrow"))
-    basin = Arrow.Table(basin_bytes)
+    basin_path =
+        normpath(dirname(toml_path), model.config.results_dir, "basin_state.nc")
 
+    local diff
     @testset "Results values" begin
-        @test basin.node_id == basin_bench.node_id
-        @test all(q -> abs(q) < 1.0, basin.level - basin_bench.level)
+        NCDataset(basin_path) do basin
+            NCDataset(basin_bench_path) do basin_bench
+                @test basin["node_id"][:] == basin_bench["node_id"][:]
+                diff = basin["level"][:] - basin_bench["level"][:]
+                @test all(q -> abs(q) < 1.0, diff)
+            end
+        end
     end
-
-    diff = basin.level - basin_bench.level
 
     timed = @timed Ribasim.run(toml_path)
     dt = Millisecond(round(Int, timed.time * 1000)) + Time(0)

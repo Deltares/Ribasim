@@ -2,8 +2,7 @@
     using Ribasim: NodeID, OrderedDict
     using OrdinaryDiffEqCore: get_du
     using Dates: DateTime
-    import Arrow
-    import Tables
+    using NCDatasets: NCDataset
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
@@ -34,19 +33,16 @@
     @test discrete_control.logic_mapping == logic_mapping
 
     # Control result
-    control_bytes = read(normpath(dirname(toml_path), "results/control.arrow"))
-    control = Arrow.Table(control_bytes)
-    @test Tables.schema(control) == Tables.Schema(
-        (:time, :control_node_id, :truth_state, :control_state),
-        (DateTime, Int32, String, String),
-    )
-    @test discrete_control.record.control_node_id == [5, 6, 5, 5, 6]
-    @test discrete_control.record.control_node_id == control.control_node_id
-    @test discrete_control.record.truth_state == ["TF", "F", "FF", "FT", "T"]
-    @test discrete_control.record.truth_state == control.truth_state
-    @test discrete_control.record.control_state ==
-        ["off", "active", "on", "off", "inactive"]
-    @test discrete_control.record.control_state == control.control_state
+    control_path = normpath(dirname(toml_path), "results/control.nc")
+    NCDataset(control_path) do control
+        @test discrete_control.record.control_node_id == [5, 6, 5, 5, 6]
+        @test discrete_control.record.control_node_id == control["control_node_id"][:]
+        @test discrete_control.record.truth_state == ["TF", "F", "FF", "FT", "T"]
+        @test discrete_control.record.truth_state == control["truth_state"][:]
+        @test discrete_control.record.control_state ==
+            ["off", "active", "on", "off", "inactive"]
+        @test discrete_control.record.control_state == control["control_state"][:]
+    end
 
     level = Ribasim.get_storages_and_levels(model).level
     t = Ribasim.tsaves(model)
@@ -350,17 +346,26 @@ end
 
 @testitem "Circular flow with hysteresis control" begin
     using DataFrames: DataFrame
-    using Arrow
+    using NCDatasets: NCDataset
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/circular_flow/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
 
-    control_bytes = read(normpath(dirname(toml_path), "results/control.arrow"))
-    control = DataFrame(Arrow.Table(control_bytes))
+    control = NCDataset(normpath(dirname(toml_path), "results/control.nc")) do ds
+        DataFrame(
+            time = ds["time"][:],
+            truth_state = ds["truth_state"][:],
+        )
+    end
 
-    basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
-    basin = DataFrame(Arrow.Table(basin_bytes))
+    basin = NCDataset(normpath(dirname(toml_path), "results/basin.nc")) do ds
+        DataFrame(
+            time = ds["time"][:],
+            node_id = ds["node_id"][:],
+            level = ds["level"][:],
+        )
+    end
     basin6 = filter(:node_id => ==(6), basin)
 
     # Pump is initially off because level is below 0.9

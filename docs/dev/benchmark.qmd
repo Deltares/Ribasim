@@ -21,7 +21,7 @@ Currently, 4 models are chosen to undergo the regression tests.
 They are `trivial`, `basic`, `pid_control` and `subnetwork_with_sources`.
 
 The benchmark reference are the output files of a run of the test models with default solver settings.
-The output files `basin.arrow` and `flow.arrow` are used for comparison.
+The output files `basin.nc` and `flow.nc` are used for comparison.
 Different margins are set for the comparison of the outputs, and the benchmark is considered passed if the output is within the margin.
 Since we are still in the process of evaluating the performance of different solvers, the margin is subject to change.
 
@@ -30,7 +30,7 @@ The regression tests are run on a weekly basis.
 # Benchmarking of the production model
 Regressive performance tests on the production models are done by running the production models with the new changes of the code and comparing the runtime performance with the reference run.
 The references are the output files of a run of the production models with the default solver settings.
-The output file `basin_state.arrow` which records the end states of the basin is used for comparison.
+The output file `basin_state.nc` which records the end states of the basin is used for comparison.
 Since the development of the model is still ongoing, the benchmark is subject to change.
 
 The regressive performance tests are currently run on a weekly basis.

@@ -152,7 +152,7 @@ end
 end
 
 @option struct Results <: TableOption
-    format::String = "arrow"
+    format::String = "netcdf"
     compression::Bool = true
     compression_level::Int = 6
     subgrid::Bool = false

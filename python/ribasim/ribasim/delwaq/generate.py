@@ -18,6 +18,7 @@ except ImportError:
 
 import numpy as np
 import pandas as pd
+import xarray as xr
 
 try:
     import jinja2
@@ -364,13 +365,22 @@ def generate(
 
     evaporate_mass = model.solver.evaporate_mass
 
-    basin_fn = model.results_path / "basin.arrow"
+    ext = model.results_extension
+    basin_fn = model.results_path / f"basin{ext}"
     assert basin_fn.exists(), f"Missing results file {basin_fn}."
-    basins = pd.read_feather(basin_fn)
+    basins = (
+        pd.read_feather(basin_fn)
+        if ext == ".arrow"
+        else xr.open_dataset(basin_fn).to_dataframe().reset_index()
+    )
 
-    flow_fn = model.results_path / "flow.arrow"
+    flow_fn = model.results_path / f"flow{ext}"
     assert flow_fn.exists(), f"Missing results file {flow_fn}."
-    flows = pd.read_feather(flow_fn)
+    flows = (
+        pd.read_feather(flow_fn)
+        if ext == ".arrow"
+        else xr.open_dataset(flow_fn).to_dataframe().reset_index()
+    )
 
     assert len(basins) > 0, "Empty basin results file."
     assert len(flows) > 0, "Empty flows results file."

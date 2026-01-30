@@ -48,9 +48,9 @@ When your model is slow, it's often only a handful of nodes that are hard to sol
 └   ManningResistance #591558 = 0.003284110004804508
 ```
 
-It's best to inspect these nodes, and try to adjust the parametrization, or merge smaller nodes. You can find the convergence measure per node over time in the `flow.arrow` and `basin.arrow` [output files](/reference/usage.qmd#sec-results).
+It's best to inspect these nodes, and try to adjust the parametrization, or merge smaller nodes. You can find the convergence measure per node over time in the `flow.nc` and `basin.nc` [output files](/reference/usage.qmd#sec-results).
 
-To gain further insight into model performance, one can inspect the `solver_stats.arrow` output file, which gives the number of computations, number of rejected and accepted solutions, and the size of each calculation timestep.
+To gain further insight into model performance, one can inspect the `solver_stats.nc` output file, which gives the number of computations, number of rejected and accepted solutions, and the size of each calculation timestep.
 
 ## Unstable models
 

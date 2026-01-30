@@ -204,9 +204,9 @@ def test_to_xugrid(model, tmp_path):
         model.to_xugrid(add_flow=True)
 
     model.write(tmp_path / "ribasim.toml")
-    with pytest.raises(FileNotFoundError, match=r"Cannot find basin_state.arrow"):
+    with pytest.raises(FileNotFoundError, match=r"Cannot find basin_state.nc"):
         model.to_xugrid(add_flow=True)
-    with pytest.raises(FileNotFoundError, match=r"Cannot find basin_state.arrow"):
+    with pytest.raises(FileNotFoundError, match=r"Cannot find basin_state.nc"):
         model.to_xugrid(add_flow=False, add_allocation=True)
     with pytest.raises(ValueError, match="Cannot add both allocation and flow results"):
         model.to_xugrid(add_flow=True, add_allocation=True)
@@ -231,7 +231,7 @@ def test_to_fews(model, tmp_path):
     assert (network_dir / "{ModelId}Nodes.shp").is_file()
 
     # Cannot test results=True without results
-    with pytest.raises(FileNotFoundError, match=r"Cannot find basin_state.arrow"):
+    with pytest.raises(FileNotFoundError, match=r"Cannot find basin_state.nc"):
         model.to_fews(region_home, add_results=True)
 
 

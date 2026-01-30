@@ -13,7 +13,7 @@ delwaq_dir = Path(__file__).parent
     not (
         ("D3D_HOME" in os.environ)
         and (
-            delwaq_dir.parents[2] / "generated_testmodels/basic/results/flow.arrow"
+            delwaq_dir.parents[2] / "generated_testmodels/basic/results/flow.nc"
         ).is_file()
     ),
     reason="Requires Delwaq to be installed and basic model results.",
@@ -58,7 +58,7 @@ def test_offline_delwaq_coupling(tmp_path):
     not (
         ("D3D_HOME" in os.environ)
         and (
-            delwaq_dir.parents[2] / "generated_testmodels/basic/results/flow.arrow"
+            delwaq_dir.parents[2] / "generated_testmodels/basic/results/flow.nc"
         ).is_file()
     ),
     reason="Requires Delwaq to be installed and basic model results.",

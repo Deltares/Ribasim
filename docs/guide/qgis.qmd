@@ -12,7 +12,7 @@ As an example of an existing model, you can use the "basic" model from `generate
 - Install the Ribasim core application as described in the [install section](/getting-started/install.qmd)
 - Open a terminal like Powershell or Cmd and navigate to the model directory.
 - Call Ribasim with the `.toml` file as input. E.g. `<path_to_ribasim>/ribasim my_model.toml`.
-- In your model directory there is now a `results/` folder with `basin.arrow` and `flow.arrow` output files.
+- In your model directory there is now a `results/` folder with `basin.nc` and `flow.nc` output files.
 
 # Inspect a (large) model {#sec-inspect}
 
@@ -49,8 +49,8 @@ The associated time series are shown in the graph.
 
 ![](https://user-images.githubusercontent.com/4471859/224939471-85a23936-6eb6-4a80-a5b7-8c9a55ddc7f7.png){fig-align="left"}
 
-Only the `basin.arrow` and `flow.arrow` can be inspected with the "iMOD Time Series Plot" panel.
-All Arrow files can be loaded as a layer by dragging the files onto QGIS.
+Only the `basin.nc` and `flow.nc` can be inspected with the "iMOD Time Series Plot" panel.
+All result files can be loaded as a layer by dragging the files onto QGIS.
 Right click the layer and select "Open Attribute Table" to view the contents.
 
 # Reloading models {#sec-reload}
