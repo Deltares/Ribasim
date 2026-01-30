@@ -16,16 +16,10 @@ function (@main)(ARGS)::Cint
     n_pass = 0
     n_fail = 0
     failed = fill("", length(toml_paths))
-    skipped_allocation = fill("", length(toml_paths))
 
     for i in eachindex(toml_paths)
         toml_path = toml_paths[i]
         modelname = basename(dirname(toml_path))
-
-        if Ribasim.Config(toml_path).experimental.allocation
-            skipped_allocation[i] = modelname
-            continue
-        end
 
         ret_code = Ribasim.main(toml_path)
 
@@ -43,10 +37,7 @@ function (@main)(ARGS)::Cint
     end
 
     println("Ran $n_model models, $n_pass passed, $n_fail failed.\n")
-    if length(skipped_allocation) > 0
-        println("Skipped the following models that use allocation:")
-        foreach(println, skipped_allocation)
-    end
+
     if n_fail > 0
         println("Failed models:")
         foreach(println, failed)
