@@ -4,14 +4,16 @@ title: "QGIS plugin"
 
 # Opening a model
 
-This guide assumes you have already installed the Ribasim core, test models and QGIS plugin as described in the [install page](/getting-started/install.qmd).
-As an example of an existing model, you can use the "basic" model from `generated_testmodels.zip`.
+This guide assumes you have already installed the Ribasim core and QGIS plugin as described in the [install page](/getting-started/install.qmd).
+
+Use any running Ribasim model to follow this guide.
+For ready-made example models download and unzip `generated_testmodels.zip` from the [release assets](https://github.com/Deltares/Ribasim/releases/latest), and use for instance the `basic` test model.
 
 # Running a model
 
 - Install the Ribasim core application as described in the [install section](/getting-started/install.qmd)
 - Open a terminal like Powershell or Cmd and navigate to the model directory.
-- Call Ribasim with the `.toml` file as input. E.g. `<path_to_ribasim>/ribasim my_model.toml`.
+- Call `ribasim` with the `.toml` file as input. E.g. `ribasim my_model.toml`.
 - In your model directory there is now a `results/` folder with `basin.arrow` and `flow.arrow` output files.
 
 # Inspect a (large) model {#sec-inspect}

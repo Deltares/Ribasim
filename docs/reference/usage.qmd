@@ -71,7 +71,7 @@ Note that these are global settings, and cannot be set for individual nodes.
 ## Interpolation settings
 There are the following interpolation settings:
 
-- `flow_boundary`: The interpolation type of flow boundary timeseries. This is `linear` by default, but can also be set to `block`.
+- `flow_boundary`: The interpolation type of flow boundary timeseries. This is `block` by default, but can also be set to `linear`.
 - `block_transition_period`: When an interpolation type is set to `block`, this parameter determines an interval in time on either side of each data point which is used to smooth the transition between data points. See also the [documentation](https://docs.sciml.ai/DataInterpolations/dev/methods/#Smoothed-Constant-Interpolation) for this interpolation type.
 
 ## Allocation settings {#sec-allocation-settings}
@@ -233,13 +233,13 @@ When `cyclic_time` is set to true for a node in the Node table, every time serie
 Note that periods like months or years are not of constant length in the calendar, so over long simulation periods the timeseries can get out of sync with these periods on the calendar.
 
 ## Subnetwork ID
-Nodes can only be controlled by allocation if the have a subnetwork_id. In the Node table, give for example subnetwork_id an integer value of 1 or 2.
+Nodes can only be controlled by allocation if they have a subnetwork_id. In the Node table, give for example subnetwork_id an integer value of 1 or 2.
 
 When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, besides a subnetwork_id, they must be given the special control state `Ribasim.allocation` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static).
 
 # Link {#sec-link}
 
-Links define connections between nodes. The only thing that defines an link is the nodes it connects, and in what direction.
+Links define connections between nodes. The only thing that defines a link is the nodes it connects, and in what direction.
 There are currently 2 possible link types:
 
 1. "flow": Flows between nodes are stored on links. The effect of
@@ -286,7 +286,7 @@ The Basin table contains:
 - The `balance_error` is the difference between the `storage_rate` on one side and the `inflow_rate` and `outflow_rate` on the other side: `storage_rate` - (`inflow_rate` - `outflow_rate`).
   It can be used to check if the numerical error when solving the water balance is sufficiently small.
 - The `relative_error` is the fraction of the `balance_error` over the mean of the `total_inflow` and `total_outflow`.
-- The `convergence` is the scaled residual of the solver, giving an indication of which nodes converge the worst (are hardest to solve).
+- The `convergence` is the scaled residual of the solver, giving an indication of which nodes converge the worst (are hardest to solve). A higher value indicates a node that is harder to solve.
 
 For a more in-depth explanation of the water balance error see [here](/concept/equations.qmd#the-water-balance-error).
 
@@ -345,6 +345,7 @@ To use this result as the initial condition of another simulation, see the [Basi
 ## DiscreteControl - `control`
 
 The control table contains a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.
+For more information on control states and truth states, see the [DiscreteControl](/reference/node/discrete-control.qmd) reference.
 
 column          | type     | unit
 --------------- | -------- | ----
@@ -352,8 +353,6 @@ time            | DateTime | -
 control_node_id | Int32    | -
 truth_state     | String   | -
 control_state   | String   | -
-
-
 
 ## Allocation - `allocation`
 
@@ -417,7 +416,7 @@ When an allocation optimization problem turns out to be infeasible, an infeasibi
 
 ## Allocation scaling analysis - `allocation_analysis_scaling.log`
 
-When an allocation optimization problem turns out to be infeasible, a scaling analysis is performed. Some user friendly data is logged in the main log, but the full report of the analysis is written to this separate file. For details on the infeasibility analysis see [here](https://jump.dev/MathOptAnalyzer.jl/dev/).
+When an allocation optimization problem turns out to be infeasible, a scaling analysis is performed in addition to the feasibility analysis described above. Some user friendly data is logged in the main log, but the full report of the analysis is written to this separate file. For details on the scaling analysis see [here](https://jump.dev/MathOptAnalyzer.jl/dev/).
 
 ## Concentration - `concentration`
 
