@@ -25,10 +25,10 @@ This table contains the static form of the `UserDemand` node.
 column          | type    | unit                  | restriction
 --------------- | ------- | ----------------------| -----------
 node_id         | Int32   | -                     |
-demand          | Float64 | $\text{m}^3/\text{s}$ | non-negative
+demand          | Float64 | $\text{m}^3/\text{s}$ | non-negative (optional)
 return_factor   | Float64 | -                     | between [0 - 1]
 min_level       | Float64 | $\text{m}$            | -
-demand_priority | Int32   | -                     | positive
+demand_priority | Int32   | -                     | positive (optional)
 
 ## Time
 
@@ -47,7 +47,7 @@ time            | DateTime | -                     |
 demand          | Float64  | $\text{m}^3/\text{s}$ | non-negative
 return_factor   | Float64  | -                     | between [0 - 1]
 min_level       | Float64  | $\text{m}$            | -
-demand_priority | Int32    | -                     | positive
+demand_priority | Int32    | -                     | positive (optional)
 
 ::: {.callout-note}
 Although it may seem that way, this table does *not* describe demands that change `demand_priority` over time. Rather, this table defines a `demand(time)` relationship for every occurring `demand_priority` in the table for a certain `node_id`.

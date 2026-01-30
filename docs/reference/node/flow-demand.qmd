@@ -6,6 +6,8 @@ A `FlowDemand` node associates a non-consuming flow demand to a connector node (
 FlowDemand nodes can set a flow demand only for a single connector node.
 FlowDemand nodes do nothing when allocation is not activated, except when they are connected to a Pump or an Outlet. In that case the flow demand flow rate is taken as the minimum flow through that Pump or Outlet.
 
+FlowDemand nodes can be used for instance to model minimum environmental flow or flushing requirements at specific locations in the network.
+
 # Tables
 
 ## Static
@@ -13,7 +15,7 @@ FlowDemand nodes do nothing when allocation is not activated, except when they a
 column          | type     | unit                  | restriction
 --------------- | -------- | --------------------- | -----------
 node_id         | Int32    | -                     |
-demand_priority | Int32    | -                     | positive
+demand_priority | Int32    | -                     | positive (optional)
 demand          | Float64  | $\text{m}^3/\text{s}$ | non-negative
 
 ## Time
@@ -27,5 +29,5 @@ column          | type     | unit                  | restriction
 --------------- | -------- | --------------------- | -----------
 node_id         | Int32    | -                     |
 time            | DateTime | -                     |
-demand_priority | Int32    | -                     | positive
+demand_priority | Int32    | -                     | positive (optional)
 demand          | Float64  | $\text{m}^3/\text{s}$ | non-negative

@@ -22,7 +22,7 @@ column          | type    | unit         | restriction
 node_id         | Int32   | -            |
 min_level       | Float64 | $\text{m}$   | (optional, default -Inf)
 max_level       | Float64 | $\text{m}$   | (optional, default Inf)
-demand_priority | Int32   | -            | positive
+demand_priority | Int32   | -            | positive (optional)
 
 ## Time
 
@@ -37,6 +37,6 @@ column          | type     | unit         | restriction
 --------------- | -------  | ------------ | -----------
 node_id         | Int32    | -            |
 time            | DateTime | -            |
-min_level       | Float64  | $\text{m}$   | -
-max_level       | Float64  | $\text{m}$   | -
-demand_priority | Int32    | -            | positive
+min_level       | Float64  | $\text{m}$   | (optional)
+max_level       | Float64  | $\text{m}$   | (optional)
+demand_priority | Int32    | -            | positive (optional)
