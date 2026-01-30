@@ -1,0 +1,130 @@
+netcdf flow_boundary_subset {
+dimensions:
+	analysis_time = 1 ;
+	time = 10 ;
+	stations = 8 ;
+	char_leng_id = 64 ;
+	char_leng_name = 255 ;
+variables:
+	double analysis_time(analysis_time) ;
+		string analysis_time:standard_name = "forecast_reference_time" ;
+		string analysis_time:long_name = "forecast_reference_time" ;
+		string analysis_time:units = "minutes since 1970-01-01 00:00:00.0 +0000" ;
+	float flow_rate(time, stations) ;
+		string flow_rate:long_name = "flow_rate" ;
+		string flow_rate:units = "m3/s" ;
+		flow_rate:_FillValue = -999.f ;
+		string flow_rate:coordinates = "lat lon x y z station_id analysis_time" ;
+	double lat(stations) ;
+		string lat:standard_name = "latitude" ;
+		string lat:long_name = "Station coordinates, latitude" ;
+		string lat:units = "degrees_north" ;
+		string lat:axis = "Y" ;
+		lat:_FillValue = 9.96921e+36 ;
+	double lon(stations) ;
+		string lon:standard_name = "longitude" ;
+		string lon:long_name = "Station coordinates, longitude" ;
+		string lon:units = "degrees_east" ;
+		string lon:axis = "X" ;
+		lon:_FillValue = 9.96921e+36 ;
+	char station_id(stations, char_leng_id) ;
+		string station_id:long_name = "station identification code" ;
+		string station_id:cf_role = "timeseries_id" ;
+	char station_names(stations, char_leng_name) ;
+		string station_names:long_name = "station name" ;
+	double time(time) ;
+		string time:standard_name = "time" ;
+		string time:long_name = "time" ;
+		string time:units = "minutes since 1970-01-01 00:00:00.0 +0000" ;
+		string time:axis = "T" ;
+	double x(stations) ;
+		string x:standard_name = "longitude" ;
+		string x:long_name = "x coordinate according to WGS 1984" ;
+		string x:units = "degrees_east" ;
+		string x:axis = "X" ;
+		x:_FillValue = 9.96921e+36 ;
+	double y(stations) ;
+		string y:standard_name = "latitude" ;
+		string y:long_name = "y coordinate according to WGS 1984" ;
+		string y:units = "degrees_north" ;
+		string y:axis = "Y" ;
+		y:_FillValue = 9.96921e+36 ;
+	double z(stations) ;
+		string z:long_name = "height above mean sea level" ;
+		string z:units = "meters" ;
+		z:_FillValue = 9.96921e+36 ;
+
+// global attributes:
+		string :Conventions = "CF-1.6" ;
+		string :title = "Data" ;
+		string :institution = "Deltares" ;
+		string :source = "Export NETCDF-CF_TIMESERIES from Delft-FEWS" ;
+		string :history = "2026-01-14 09:36:57 GMT: exported from Delft-FEWS" ;
+		string :references = "http://www.delft-fews.com" ;
+		string :Metadata_Conventions = "Unidata Dataset Discovery v1.0" ;
+		string :summary = "Data exported from Delft-FEWS" ;
+		string :date_created = "2026-01-14 09:36:57 GMT" ;
+		string :fews_implementation_version = "2025.01" ;
+		string :fews_patch_number = "509261311" ;
+		string :fews_build_number = "508210944" ;
+		string :coordinate_system = "WGS 1984" ;
+		string :featureType = "timeSeries" ;
+		string :time_coverage_start = "2022-11-01T00:00:00+0000" ;
+		string :time_coverage_end = "2025-11-05T00:00:00+0000" ;
+		string :geospatial_lon_min = "99.027741" ;
+		string :geospatial_lon_max = "99.635706" ;
+		string :geospatial_lat_min = "17.503062" ;
+		string :geospatial_lat_max = "18.990931" ;
+data:
+
+ analysis_time = 29371680 ;
+
+ flow_rate =
+  1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8,
+  2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8,
+  3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8,
+  4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8,
+  5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8,
+  6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8,
+  7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8,
+  8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8,
+  9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8,
+  10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8 ;
+
+ lat = 52.0, 52.1, 52.2, 52.3, 52.4, 52.5,
+    52.6, 52.7 ;
+
+ lon = 5.1, 5.2, 5.3, 5.4, 5.5, 5.6,
+    5.7, 5.8 ;
+
+ station_id =
+  "201",
+  "202",
+  "203",
+  "204",
+  "205",
+  "206",
+  "207",
+  "208" ;
+
+ station_names =
+  "inflow_a",
+  "inflow_b",
+  "inflow_c",
+  "inflow_d",
+  "inflow_e",
+  "inflow_f",
+  "inflow_g",
+  "inflow_h" ;
+
+ time = 27787680, 27789120, 27790560, 27792000, 27793440, 27794880, 27796320,
+    27797760, 27799200, 27800640 ;
+
+ x = 5.1, 5.2, 5.3, 5.4, 5.5, 5.6,
+    5.7, 5.8 ;
+
+ y = 52.0, 52.1, 52.2, 52.3, 52.4, 52.5,
+    52.6, 52.7 ;
+
+ z = 0, 0, 0, 0, 0, 0, 0, 0 ;
+}
