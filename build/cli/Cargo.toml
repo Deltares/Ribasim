@@ -1,13 +1,10 @@
-[dependencies]
-libloading = "0.8.3"
-rfd = "0.14.1"
-libc = "0.2.153"
-
-    [dependencies.clap]
-    features = ["derive"]
-    version = "4.5.4"
-
 [package]
-edition = "2021"
 name = "ribasim"
 version = "2026.1.0-rc1"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.5.56", features = ["derive"] }
+libc = "0.2.180"
+libloading = "0.9.0"
+rfd = "0.17.2"
