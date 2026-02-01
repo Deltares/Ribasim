@@ -36,7 +36,7 @@ fn main() -> ExitCode {
         None if no_args_provided => {
             let picked = rfd::FileDialog::new()
                 .add_filter("TOML", &["toml"])
-                .set_title("Select Ribasim model to run")
+                .set_title("Select a Ribasim model to run")
                 .pick_file();
 
             match picked {
