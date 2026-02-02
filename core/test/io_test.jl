@@ -280,7 +280,7 @@ end
 
     # Generate NetCDF files from CDL files (as Delft-FEWS writes them)
     # The CDL files are version controlled, the NC files are gitignored
-    ncdir = normpath(@__DIR__, "../../models/netcdf-fews")
+    ncdir = normpath(@__DIR__, "data/delft-fews-netcdf")
     for name in ["basin_state", "flow_boundary", "flow_demand", "user_demand"]
         cdlpath = normpath(ncdir, "$name.cdl")
         ncpath = normpath(ncdir, "$name.nc")
