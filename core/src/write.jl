@@ -187,7 +187,6 @@ function nc_dims(file_name::String, var_name::String)::Vector{String}
         ("control", _) => ["time"]
         ("allocation", _) => ["demand_priority", "node_id", "time"]
         ("allocation_flow", _) => ["link_id", "time"]
-        ("allocation_control", "node_type") => ["node_id"]
         ("allocation_control", _) => ["node_id", "time"]
         ("subgrid_level", _) => ["subgrid_id", "time"]
         ("solver_stats", _) => ["time"]
