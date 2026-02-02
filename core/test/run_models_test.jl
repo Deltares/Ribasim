@@ -142,7 +142,7 @@
                 @test basin["storage_rate"][1] ≈
                     (basin["storage"][2] - basin["storage"][1]) / config.solver.saveat
                 @test all(==(0), basin["inflow_rate"][:])
-                @test all(>(0), basin["outx§flow_rate"][:])
+                @test all(>(0), basin["outflow_rate"][:])
                 @test flow["flow_rate"][1] == basin["outflow_rate"][1]
                 @test all(==(0), basin["drainage"][:])
                 @test all(==(0), basin["infiltration"][:])
