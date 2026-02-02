@@ -460,7 +460,7 @@ end
 @testitem "Flow demand" setup = [Teamcity] begin
     using DataFrames: DataFrame
     using Tables.DataAPI: nrow
-    using NCDatasets
+    using NCDatasets: NCDataset
     import Tables
     using Dates: DateTime
 
@@ -487,7 +487,7 @@ end
         # allocation_control may not be created if there's no data
 
         # Read NetCDF files and convert to table format for schema validation
-        NCDatasets.Dataset(allocation_path) do ds
+        NCDataset(allocation_path) do ds
             @test "time" in keys(ds)
             @test "subnetwork_id" in keys(ds)
             @test "node_type" in keys(ds)
@@ -499,7 +499,7 @@ end
             @test length(ds["time"]) > 0
         end
 
-        NCDatasets.Dataset(allocation_flow_path) do ds
+        NCDataset(allocation_flow_path) do ds
             @test "time" in keys(ds)
             @test "link_id" in keys(ds)
             @test "from_node_type" in keys(ds)
@@ -516,7 +516,7 @@ end
 
         # Test allocation_control if it exists (may be empty for models without control)
         if isfile(allocation_control_path)
-            NCDatasets.Dataset(allocation_control_path) do ds
+            NCDDataset(allocation_control_path) do ds
                 @test "time" in keys(ds)
                 @test "node_id" in keys(ds)
                 @test "node_type" in keys(ds)
