@@ -280,20 +280,6 @@ end
         @test dimnames(ds["flow_rate"]) == ("node_id", "time")
         @test dimnames(ds["node_type"]) == ("node_id",)
     end
-
-    # Test allocation_control print all results
-    path = results_path(config, RESULTS_FILENAME.allocation_control)
-    NCDatasets.Dataset(path) do ds
-        println("Allocation Control Results:")
-        println("  Time dimension: ", size(ds["time"]))
-        println("  Node IDs: ", ds["node_id"][:])
-        println("  Node types: ", ds["node_type"][:])
-        println("  Flow rates shape: ", size(ds["flow_rate"]))
-        println("\nFlow rate data:")
-        for i in axes(ds["flow_rate"], 1)
-            println("  Node $(ds["node_id"][i]) ($(ds["node_type"][i])): ", ds["flow_rate"][i, :])
-        end
-    end
 end
 
 @testitem "netcdf dimensions" begin
