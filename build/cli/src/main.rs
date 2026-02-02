@@ -58,9 +58,6 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    // Set JULIA_NUM_THREADS to the value from CLI
-    env::set_var("JULIA_NUM_THREADS", &cli.threads);
-
     let shared_lib_path = match OS {
         "windows" => exe_dir.join("libribasim.dll"),
         "linux" => exe_dir.join("../lib/libribasim.so"),
@@ -68,6 +65,9 @@ fn main() -> ExitCode {
         _ => unimplemented!("Your OS is not supported yet."),
     };
     let exit_code = unsafe {
+        // Set JULIA_NUM_THREADS to the value from CLI
+        env::set_var("JULIA_NUM_THREADS", &cli.threads);
+
         // Load the library
         let lib = match Library::new(&shared_lib_path) {
             Ok(lib) => lib,

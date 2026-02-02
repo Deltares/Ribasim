@@ -7,4 +7,7 @@ edition = "2024"
 clap = { version = "4.5.56", features = ["derive"] }
 libc = "0.2.180"
 libloading = "0.9.0"
-rfd = "0.17.2"
+rfd = { version = "0.17.2", default-features = false }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rfd = { version = "0.17.2", default-features = false, features = ["gtk3"] }
