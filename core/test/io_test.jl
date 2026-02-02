@@ -242,7 +242,6 @@ end
         @test "to_node_type" in keys(ds)
         @test "subnetwork_id" in keys(ds)
         @test "flow_rate" in keys(ds)
-        @test "optimization_type" in keys(ds)
         @test "lower_bound_hit" in keys(ds)
         @test "upper_bound_hit" in keys(ds)
         @test ds["flow_rate"].attrib["units"] == "m3 s-1"
@@ -256,7 +255,6 @@ end
         @test size(ds["from_node_id"]) == (nlink,)
         @test size(ds["subnetwork_id"]) == (nlink,)
         @test size(ds["flow_rate"]) == (nlink, ntime)
-        @test size(ds["optimization_type"]) == (nlink, ntime)
         @test size(ds["lower_bound_hit"]) == (nlink, ntime)
         @test size(ds["upper_bound_hit"]) == (nlink, ntime)
         @test dimnames(ds["flow_rate"]) == ("link_id", "time")
@@ -281,6 +279,20 @@ end
         @test size(ds["flow_rate"]) == (nnode, ntime)
         @test dimnames(ds["flow_rate"]) == ("node_id", "time")
         @test dimnames(ds["node_type"]) == ("node_id",)
+    end
+
+    # Test allocation_control print all results
+    path = results_path(config, RESULTS_FILENAME.allocation_control)
+    NCDatasets.Dataset(path) do ds
+        println("Allocation Control Results:")
+        println("  Time dimension: ", size(ds["time"]))
+        println("  Node IDs: ", ds["node_id"][:])
+        println("  Node types: ", ds["node_type"][:])
+        println("  Flow rates shape: ", size(ds["flow_rate"]))
+        println("\nFlow rate data:")
+        for i in axes(ds["flow_rate"], 1)
+            println("  Node $(ds["node_id"][i]) ($(ds["node_type"][i])): ", ds["flow_rate"][i, :])
+        end
     end
 end
 

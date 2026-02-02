@@ -1,5 +1,5 @@
 @testitem "Allocation solve" begin
-    using Ribasim: NodeID, AllocationOptimizationType
+    using Ribasim: NodeID
     import SQLite
     import JuMP
 
@@ -134,7 +134,7 @@ end
 
 @testitem "Allocation with primary network optimization problem" begin
     using SQLite
-    using Ribasim: NodeID, NodeType, AllocationOptimizationType
+    using Ribasim: NodeID, NodeType
     using JuMP
     using DataFrames: DataFrame, ByRow, transform!
 
@@ -509,7 +509,6 @@ end
                 :to_node_id,
                 :subnetwork_id,
                 :flow_rate,
-                :optimization_type,
                 :lower_bound_hit,
                 :upper_bound_hit,
             ),

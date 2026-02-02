@@ -284,7 +284,6 @@ struct FlowRecordDatum
     to_node_id::Int32
     subnetwork_id::Int32
     flow_rate::Float64
-    optimization_type::String
     lower_bound_hit::Bool
     upper_bound_hit::Bool
 end

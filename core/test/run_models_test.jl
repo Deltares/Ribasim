@@ -140,7 +140,6 @@
                 :to_node_id,
                 :subnetwork_id,
                 :flow_rate,
-                :optimization_type,
                 :lower_bound_hit,
                 :upper_bound_hit,
             ),
