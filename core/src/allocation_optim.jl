@@ -1,5 +1,3 @@
-@enumx AllocationOptimizationType collect_demands allocate
-
 function set_simulation_data!(
         allocation_model::AllocationModel,
         integrator::DEIntegrator,
@@ -944,7 +942,6 @@ end
 function save_flows!(
         integrator::DEIntegrator,
         allocation_model::AllocationModel,
-        optimization_type::AllocationOptimizationType.T,
     )::Nothing
     (; p, t) = integrator
     (;
@@ -991,7 +988,6 @@ function save_flows!(
                 Int32(id_to),
                 subnetwork_id,
                 JuMP.value(flow_variable) * scaling.flow,
-                string(optimization_type),
                 hit_lower_bound,
                 hit_upper_bound,
             ),
@@ -1015,7 +1011,6 @@ function save_flows!(
                 explicit_positive_forcing_volume[node_id] -
                     implicit_negative_forcing_volume[node_id] *
                     JuMP.value(low_storage_factor_variable),
-                string(optimization_type),
                 hit_lower_bound,
                 hit_upper_bound,
             ),
@@ -1162,7 +1157,7 @@ function update_allocation!(model)::Nothing
             allocate_flows_to_subnetwork(allocation_models, primary_network_connections)
         end
 
-        save_flows!(integrator, allocation_model, AllocationOptimizationType.allocate)
+        save_flows!(integrator, allocation_model)
         apply_control_from_allocation!(pump, allocation_model, integrator)
         apply_control_from_allocation!(outlet, allocation_model, integrator)
 
