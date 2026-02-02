@@ -3,4 +3,3 @@ source = .
 omit =
     */resources.py
     */tests/*
-    */tomllib/*
