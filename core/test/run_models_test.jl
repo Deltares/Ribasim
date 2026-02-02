@@ -152,7 +152,6 @@
                 Int32,
                 Int32,
                 Float64,
-                String,
                 Bool,
                 Bool,
             ),
