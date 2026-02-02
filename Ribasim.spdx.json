@@ -3,12 +3,12 @@
     "dataLicense": "CC0-1.0",
     "SPDXID": "SPDXRef-DOCUMENT",
     "name": "Ribasim.jl",
-    "documentNamespace": "https://github.com/Deltares/Ribasim/Ribasim.spdx.json-d576052f-4b1c-4795-8e2d-e5b83105695e",
+    "documentNamespace": "https://github.com/Deltares/Ribasim/Ribasim.spdx.json-80803469-f999-448e-b433-6bd26c4d5d61",
     "creationInfo": {
         "creators": [
             "Organization:  Deltares  (software@deltares.nl)"
         ],
-        "created": "2026-01-20T19:52:49Z",
+        "created": "2026-02-02T03:51:44Z",
         "comment": "Target Platform: Platform(\"x86_64\", \"linux\"; libgfortran_version = \"5.0.0\", julia_version = \"1.12.4\", libc = \"glibc\", libstdcxx_version = \"3.4.30\", cxxstring_abi = \"cxx11\")"
     },
     "comment": "Registries used for populating Package data:\nGeneral registry: https://github.com/JuliaRegistries/General.git\nOfficial general Julia package registry where people can\nregister any package they want without too much debate about\nnaming and without enforced standards on documentation or\ntesting. We nevertheless encourage documentation, testing and\nsome amount of consideration when choosing package names.\n",
@@ -885,13 +885,13 @@
         {
             "name": "ForwardDiff",
             "SPDXID": "SPDXRef-ForwardDiff-f6369f11-7733-5829-9624-2563aa707210",
-            "versionInfo": "1.3.1",
+            "versionInfo": "1.3.2",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaDiff/ForwardDiff.jl.git@b2977f86ed76484de6f29d5b36f2fa686f085487",
+            "downloadLocation": "git+https://github.com/JuliaDiff/ForwardDiff.jl.git@eef4c86803f47dcb61e9b8790ecaa96956fdd8ae",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "f4ce06f1aaafcb0ced234d2ba043e414bf266cfc"
+                "packageVerificationCodeValue": "d1b5ff339cf498bdbb12475cb9db77237bd1dcdb"
             },
             "homepage": "https://github.com/JuliaDiff/ForwardDiff.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -906,7 +906,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/ForwardDiff@1.3.1?uuid=f6369f11-7733-5829-9624-2563aa707210"
+                    "referenceLocator": "pkg:julia/ForwardDiff@1.3.2?uuid=f6369f11-7733-5829-9624-2563aa707210"
                 }
             ]
         },
@@ -1007,27 +1007,27 @@
         },
         {
             "name": "OpenBLAS32_source",
-            "SPDXID": "SPDXRef-255750cb923f338551744983230620a9d0d04821",
+            "SPDXID": "SPDXRef-32d6c14d4a0eb04133420df0903f3b46b6a1f931",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaPackaging/Yggdrasil.git@255750cb923f338551744983230620a9d0d04821#/O/OpenBLAS/OpenBLAS32@0.3.29/",
+            "downloadLocation": "git+https://github.com/JuliaPackaging/Yggdrasil.git@32d6c14d4a0eb04133420df0903f3b46b6a1f931#/O/OpenBLAS/OpenBLAS32@0.3.30/",
             "filesAnalyzed": false,
-            "sourceInfo": "The location of this repository was extracted from the README.md file of SPDXRef-e83428c736a7117825caecd465ca39de72e835b8",
+            "sourceInfo": "The location of this repository was extracted from the README.md file of SPDXRef-ab917ed38551d64e82ad5b564678b3a62a911c7a",
             "licenseConcluded": "NOASSERTION",
             "licenseDeclared": "NOASSERTION",
             "copyrightText": "NOASSERTION",
-            "summary": "The binary artifact SPDXRef-e83428c736a7117825caecd465ca39de72e835b8 is built using the scripts and source files in this package.\nThe build system is called Yggdrasil, the Julia community build tree.",
+            "summary": "The binary artifact SPDXRef-ab917ed38551d64e82ad5b564678b3a62a911c7a is built using the scripts and source files in this package.\nThe build system is called Yggdrasil, the Julia community build tree.",
             "comment": "The SPDX ID field is derived from the Git hash in the DownloadLocation"
         },
         {
             "name": "OpenBLAS32",
-            "SPDXID": "SPDXRef-e83428c736a7117825caecd465ca39de72e835b8",
+            "SPDXID": "SPDXRef-ab917ed38551d64e82ad5b564678b3a62a911c7a",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "https://github.com/JuliaBinaryWrappers/OpenBLAS32_jll.jl/releases/download/OpenBLAS32-v0.3.29+0/OpenBLAS32.v0.3.29.x86_64-linux-gnu-libgfortran5.tar.gz",
+            "downloadLocation": "https://github.com/JuliaBinaryWrappers/OpenBLAS32_jll.jl/releases/download/OpenBLAS32-v0.3.30+0/OpenBLAS32.v0.3.30.x86_64-linux-gnu-libgfortran5.tar.gz",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "af381c13786decef09d80b87f52e3971466d04dc",
+                "packageVerificationCodeValue": "fd455f4fbea5024f2bc57671d5b20095f0fd662d",
                 "packageVerificationCodeExcludedFiles": [
                     "lib/libopenblas.so",
                     "lib/libopenblas.so.0"
@@ -1036,7 +1036,7 @@
             "checksums": [
                 {
                     "algorithm": "SHA256",
-                    "checksumValue": "d8b15f17abc5b0c6849a3020753f3ac3806bb4889e6c7b4606ee838b00602db4"
+                    "checksumValue": "dcf0e83fa67c92199966a0b1d0814ab948522672b788e9399ba7fa5092a8b809"
                 }
             ],
             "homepage": "NOASSERTION",
@@ -1054,13 +1054,13 @@
         {
             "name": "OpenBLAS32_jll",
             "SPDXID": "SPDXRef-OpenBLAS32_jll-656ef2d0-ae68-5445-9ca0-591084a874a2",
-            "versionInfo": "0.3.29+0",
+            "versionInfo": "0.3.30+0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaBinaryWrappers/OpenBLAS32_jll.jl.git@ece4587683695fe4c5f20e990da0ed7e83c351e7",
+            "downloadLocation": "git+https://github.com/JuliaBinaryWrappers/OpenBLAS32_jll.jl.git@46cce8b42186882811da4ce1f4c7208b02deb716",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "037600b3bc76f11db118a843c4a8d5f2c80665ed"
+                "packageVerificationCodeValue": "646c9841069ffaca1ed722be118a48bd26ca7e66"
             },
             "homepage": "https://github.com/JuliaBinaryWrappers/OpenBLAS32_jll.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -1075,7 +1075,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/OpenBLAS32_jll@0.3.29+0?uuid=656ef2d0-ae68-5445-9ca0-591084a874a2"
+                    "referenceLocator": "pkg:julia/OpenBLAS32_jll@0.3.30+0?uuid=656ef2d0-ae68-5445-9ca0-591084a874a2"
                 }
             ]
         },
@@ -1472,62 +1472,6 @@
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
                     "referenceLocator": "pkg:julia/Mmap@1.11.0?uuid=a63ad114-7e13-5084-954f-fe012c677804"
-                }
-            ]
-        },
-        {
-            "name": "StructTypes",
-            "SPDXID": "SPDXRef-StructTypes-856f2bd8-1eba-4b0a-8007-ebc267875bd4",
-            "versionInfo": "1.11.0",
-            "supplier": "NOASSERTION",
-            "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaData/StructTypes.jl.git@159331b30e94d7b11379037feeb9b690950cace8",
-            "filesAnalyzed": true,
-            "packageVerificationCode": {
-                "packageVerificationCodeValue": "ac2a6f54440605fd89e531b4eb76ce6f354ab2fb"
-            },
-            "homepage": "https://github.com/JuliaData/StructTypes.jl.git",
-            "licenseConcluded": "NOASSERTION",
-            "licenseInfoFromFiles": [
-                "MIT"
-            ],
-            "licenseDeclared": "MIT",
-            "copyrightText": "NOASSERTION",
-            "summary": "This is a Julia package, written in the Julia language.",
-            "comment": "The SPDX ID field is derived from the UUID that all Julia packages are assigned by their developer to uniquely identify it.",
-            "externalRefs": [
-                {
-                    "referenceCategory": "PACKAGE-MANAGER",
-                    "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/StructTypes@1.11.0?uuid=856f2bd8-1eba-4b0a-8007-ebc267875bd4"
-                }
-            ]
-        },
-        {
-            "name": "JSON3",
-            "SPDXID": "SPDXRef-JSON3-0f8b85d8-7281-11e9-16c2-39a750bddbf1",
-            "versionInfo": "1.14.3",
-            "supplier": "NOASSERTION",
-            "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/quinnj/JSON3.jl.git@411eccfe8aba0814ffa0fdf4860913ed09c34975",
-            "filesAnalyzed": true,
-            "packageVerificationCode": {
-                "packageVerificationCodeValue": "beb8803b988ab2ffe0fd1660007631d996ab4dea"
-            },
-            "homepage": "https://github.com/quinnj/JSON3.jl.git",
-            "licenseConcluded": "NOASSERTION",
-            "licenseInfoFromFiles": [
-                "MIT"
-            ],
-            "licenseDeclared": "MIT",
-            "copyrightText": "NOASSERTION",
-            "summary": "This is a Julia package, written in the Julia language.",
-            "comment": "The SPDX ID field is derived from the UUID that all Julia packages are assigned by their developer to uniquely identify it.",
-            "externalRefs": [
-                {
-                    "referenceCategory": "PACKAGE-MANAGER",
-                    "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/JSON3@1.14.3?uuid=0f8b85d8-7281-11e9-16c2-39a750bddbf1"
                 }
             ]
         },
@@ -1945,13 +1889,13 @@
         {
             "name": "MathOptInterface",
             "SPDXID": "SPDXRef-MathOptInterface-b8f27783-ece8-5eb3-8dc8-9495eed66fee",
-            "versionInfo": "1.48.0",
+            "versionInfo": "1.49.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/jump-dev/MathOptInterface.jl.git@181c2611c7aa6a362fdf937b1e2af55e6691181f",
+            "downloadLocation": "git+https://github.com/jump-dev/MathOptInterface.jl.git@7fb98657926ccb4de8f9bb96cda453700ca39a8b",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "1533b032dd66aa767e8c94d0ded7b429b43737a5"
+                "packageVerificationCodeValue": "fd419a5b04ac698e248a7c1d1198894d0fb84c49"
             },
             "homepage": "https://github.com/jump-dev/MathOptInterface.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -1966,7 +1910,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/MathOptInterface@1.48.0?uuid=b8f27783-ece8-5eb3-8dc8-9495eed66fee"
+                    "referenceLocator": "pkg:julia/MathOptInterface@1.49.0?uuid=b8f27783-ece8-5eb3-8dc8-9495eed66fee"
                 }
             ]
         },
@@ -2628,13 +2572,13 @@
         {
             "name": "EnumX",
             "SPDXID": "SPDXRef-EnumX-4e289a0a-7415-4d19-859d-a7e5c4648b56",
-            "versionInfo": "1.0.5",
+            "versionInfo": "1.0.6",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/fredrikekre/EnumX.jl.git@bddad79635af6aec424f53ed8aad5d7555dc6f00",
+            "downloadLocation": "git+https://github.com/fredrikekre/EnumX.jl.git@7bebc8aad6ee6217c78c5ddcf7ed289d65d0263e",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "aa9d11d2b21363866cd00cb87f0cfb4ee24f51a3"
+                "packageVerificationCodeValue": "8b8496a7eabb2579b29a3a28a447d7f7f0918383"
             },
             "homepage": "https://github.com/fredrikekre/EnumX.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -2649,7 +2593,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/EnumX@1.0.5?uuid=4e289a0a-7415-4d19-859d-a7e5c4648b56"
+                    "referenceLocator": "pkg:julia/EnumX@1.0.6?uuid=4e289a0a-7415-4d19-859d-a7e5c4648b56"
                 }
             ]
         },
@@ -3150,13 +3094,13 @@
         {
             "name": "Krylov",
             "SPDXID": "SPDXRef-Krylov-ba0b0d4f-ebba-5204-a429-3ac8c609bfb7",
-            "versionInfo": "0.10.4",
+            "versionInfo": "0.10.5",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaSmoothOptimizers/Krylov.jl.git@fd0812fa5d58edfa2948342adca9b0a175b17d8a",
+            "downloadLocation": "git+https://github.com/JuliaSmoothOptimizers/Krylov.jl.git@125d65fe5042faf078383312dd060adf11d90802",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "90b379e1ae98aa751aec1bf368fd642c9e485897"
+                "packageVerificationCodeValue": "4e00be2661c8f28711592dad980943f2ef49a098"
             },
             "homepage": "https://github.com/JuliaSmoothOptimizers/Krylov.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -3171,7 +3115,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/Krylov@0.10.4?uuid=ba0b0d4f-ebba-5204-a429-3ac8c609bfb7"
+                    "referenceLocator": "pkg:julia/Krylov@0.10.5?uuid=ba0b0d4f-ebba-5204-a429-3ac8c609bfb7"
                 }
             ]
         },
@@ -3290,13 +3234,13 @@
         {
             "name": "SciMLOperators",
             "SPDXID": "SPDXRef-SciMLOperators-c0aeaf25-5076-4817-a8d5-81caf7dfa961",
-            "versionInfo": "1.14.1",
+            "versionInfo": "1.15.1",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/SciMLOperators.jl.git@d1d14b15bbebf48dc80e8a7cfe640e2d835e22ea",
+            "downloadLocation": "git+https://github.com/SciML/SciMLOperators.jl.git@794c760e6aafe9f40dcd7dd30526ea33f0adc8b7",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "854de7a511ec58d76181e93dc6f144791c5a0169"
+                "packageVerificationCodeValue": "c284315fcd65a2740b2ce0cd0a7d63d260aa0f1d"
             },
             "homepage": "https://github.com/SciML/SciMLOperators.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -3311,7 +3255,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/SciMLOperators@1.14.1?uuid=c0aeaf25-5076-4817-a8d5-81caf7dfa961"
+                    "referenceLocator": "pkg:julia/SciMLOperators@1.15.1?uuid=c0aeaf25-5076-4817-a8d5-81caf7dfa961"
                 }
             ]
         },
@@ -3711,13 +3655,13 @@
         {
             "name": "RecursiveArrayTools",
             "SPDXID": "SPDXRef-RecursiveArrayTools-731186ca-8d62-57ce-b412-fbd966d074cd",
-            "versionInfo": "3.44.0",
+            "versionInfo": "3.47.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/RecursiveArrayTools.jl.git@31b3d7b7e14faad39583475b89aadbd9c3e7ef8b",
+            "downloadLocation": "git+https://github.com/SciML/RecursiveArrayTools.jl.git@81750fa442cc5cb3ab1ba89b1cdf8eda543e6905",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "2324da73ade8b28d6e2680e733c434fac1e0a7f8"
+                "packageVerificationCodeValue": "9770f62b18d7029f669c144f599eb528dbdcc908"
             },
             "homepage": "https://github.com/SciML/RecursiveArrayTools.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -3732,20 +3676,20 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/RecursiveArrayTools@3.44.0?uuid=731186ca-8d62-57ce-b412-fbd966d074cd"
+                    "referenceLocator": "pkg:julia/RecursiveArrayTools@3.47.0?uuid=731186ca-8d62-57ce-b412-fbd966d074cd"
                 }
             ]
         },
         {
             "name": "PreallocationTools",
             "SPDXID": "SPDXRef-PreallocationTools-d236fae5-4411-538c-8e31-a6e3d9e00b46",
-            "versionInfo": "0.4.34",
+            "versionInfo": "1.1.2",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/PreallocationTools.jl.git@c05b4c6325262152483a1ecb6c69846d2e01727b",
+            "downloadLocation": "git+https://github.com/SciML/PreallocationTools.jl.git@dc8d6bde5005a0eac05ae8faf1eceaaca166cfa4",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "1834dee4a9ffa8f303399cc5fe98546ac17df3fb"
+                "packageVerificationCodeValue": "5e50e4abcdcd67ffa54f98d2285cf41990dd3f08"
             },
             "homepage": "https://github.com/SciML/PreallocationTools.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -3760,7 +3704,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/PreallocationTools@0.4.34?uuid=d236fae5-4411-538c-8e31-a6e3d9e00b46"
+                    "referenceLocator": "pkg:julia/PreallocationTools@1.1.2?uuid=d236fae5-4411-538c-8e31-a6e3d9e00b46"
                 }
             ]
         },
@@ -3823,13 +3767,13 @@
         {
             "name": "SciMLBase",
             "SPDXID": "SPDXRef-SciMLBase-0bca4576-84f4-4d90-8ffe-ffa030f20462",
-            "versionInfo": "2.134.0",
+            "versionInfo": "2.136.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/SciMLBase.jl.git@9923adc7defeba6a52a99eb493ec317ac6c65942",
+            "downloadLocation": "git+https://github.com/SciML/SciMLBase.jl.git@1b007ef25d4c18da29f956c2cad0a45f1c98f0f3",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "cbc01c39452fc5d894af1aa082578809f3febaad"
+                "packageVerificationCodeValue": "a0f5585a69db3171d3d7624784a1ce5457b1ac50"
             },
             "homepage": "https://github.com/SciML/SciMLBase.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -3844,7 +3788,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/SciMLBase@2.134.0?uuid=0bca4576-84f4-4d90-8ffe-ffa030f20462"
+                    "referenceLocator": "pkg:julia/SciMLBase@2.136.0?uuid=0bca4576-84f4-4d90-8ffe-ffa030f20462"
                 }
             ]
         },
@@ -4432,13 +4376,13 @@
         {
             "name": "Graphs",
             "SPDXID": "SPDXRef-Graphs-86223c79-3864-5bf0-83f7-82e725a168b6",
-            "versionInfo": "1.13.3",
+            "versionInfo": "1.13.4",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaGraphs/Graphs.jl.git@cbf93df308fe790f9068b7e177e8baa2f46b86c9",
+            "downloadLocation": "git+https://github.com/JuliaGraphs/Graphs.jl.git@031d63d09bd3e6e319df66bb466f5c3e8d147bee",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "b5ae980929ef1340acd04e8b51fd50b0835564a2"
+                "packageVerificationCodeValue": "d98d1ebe97a4558c5f835b82914b9998737ee741"
             },
             "homepage": "https://github.com/JuliaGraphs/Graphs.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -4454,7 +4398,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/Graphs@1.13.3?uuid=86223c79-3864-5bf0-83f7-82e725a168b6"
+                    "referenceLocator": "pkg:julia/Graphs@1.13.4?uuid=86223c79-3864-5bf0-83f7-82e725a168b6"
                 }
             ]
         },
@@ -4996,13 +4940,13 @@
         {
             "name": "DifferentiationInterface",
             "SPDXID": "SPDXRef-DifferentiationInterface-a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63",
-            "versionInfo": "0.7.14",
+            "versionInfo": "0.7.16",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaDiff/DifferentiationInterface.jl.git@44d9321761ed99e1d444b5081b3166d3259adcf0#DifferentiationInterface",
+            "downloadLocation": "git+https://github.com/JuliaDiff/DifferentiationInterface.jl.git@7ae99144ea44715402c6c882bfef2adbeadbc4ce#DifferentiationInterface",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "9a78b2e476ba7fd314c267f3137f700a4c1960a3"
+                "packageVerificationCodeValue": "9cfe02e3fcdc0a49b6d44f9ce0d0511642e6fc88"
             },
             "homepage": "https://github.com/JuliaDiff/DifferentiationInterface.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -5017,7 +4961,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/DifferentiationInterface@0.7.14?uuid=a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
+                    "referenceLocator": "pkg:julia/DifferentiationInterface@0.7.16?uuid=a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
                 }
             ]
         },
@@ -5108,13 +5052,13 @@
         {
             "name": "NonlinearSolveBase",
             "SPDXID": "SPDXRef-NonlinearSolveBase-be0214bd-f91f-a760-ac4e-3421ce2b2da0",
-            "versionInfo": "2.9.2",
+            "versionInfo": "2.11.2",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/NonlinearSolve.jl.git@c003d5609ffc15d4181ba0578ecf83ee38dc4613#lib/NonlinearSolveBase",
+            "downloadLocation": "git+https://github.com/SciML/NonlinearSolve.jl.git@9323e063ce69851b28e5c96539b2e2024f9a7e4c#lib/NonlinearSolveBase",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "96360caa6142d2aeb26080eb3c532bd69ac7c976"
+                "packageVerificationCodeValue": "07fa82d6f58eb0eb46d327c857c218f6b218a176"
             },
             "homepage": "https://github.com/SciML/NonlinearSolve.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -5129,7 +5073,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/NonlinearSolveBase@2.9.2?uuid=be0214bd-f91f-a760-ac4e-3421ce2b2da0"
+                    "referenceLocator": "pkg:julia/NonlinearSolveBase@2.11.2?uuid=be0214bd-f91f-a760-ac4e-3421ce2b2da0"
                 }
             ]
         },
@@ -5192,13 +5136,13 @@
         {
             "name": "FastPower",
             "SPDXID": "SPDXRef-FastPower-a4df4552-cc26-4903-aec0-212e50a0e84b",
-            "versionInfo": "1.3.0",
+            "versionInfo": "1.3.1",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/FastPower.jl.git@1dd291358e0e3a31f77dbbb76ce7abbcca38d410",
+            "downloadLocation": "git+https://github.com/SciML/FastPower.jl.git@862831f78c7a48681a074ecc9aac09f2de563f71",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "6c7aa5b0134aa5a9b9f896592df0a471741bec2f"
+                "packageVerificationCodeValue": "3237ca8dc4004755dffa015a9ad31ea54cf1a0fc"
             },
             "homepage": "https://github.com/SciML/FastPower.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -5213,7 +5157,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/FastPower@1.3.0?uuid=a4df4552-cc26-4903-aec0-212e50a0e84b"
+                    "referenceLocator": "pkg:julia/FastPower@1.3.1?uuid=a4df4552-cc26-4903-aec0-212e50a0e84b"
                 }
             ]
         },
@@ -5242,34 +5186,6 @@
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
                     "referenceLocator": "pkg:julia/DiffEqBase@6.199.0?uuid=2b5f629d-d688-5b77-993f-72d75c75574e"
-                }
-            ]
-        },
-        {
-            "name": "SimpleUnPack",
-            "SPDXID": "SPDXRef-SimpleUnPack-ce78b400-467f-4804-87d8-8f486da07d0a",
-            "versionInfo": "1.1.0",
-            "supplier": "NOASSERTION",
-            "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/devmotion/SimpleUnPack.jl.git@58e6353e72cde29b90a69527e56df1b5c3d8c437",
-            "filesAnalyzed": true,
-            "packageVerificationCode": {
-                "packageVerificationCodeValue": "73532bef6950b474ed64f7637940cabbbb1a8a22"
-            },
-            "homepage": "https://github.com/devmotion/SimpleUnPack.jl.git",
-            "licenseConcluded": "NOASSERTION",
-            "licenseInfoFromFiles": [
-                "MIT"
-            ],
-            "licenseDeclared": "MIT",
-            "copyrightText": "NOASSERTION",
-            "summary": "This is a Julia package, written in the Julia language.",
-            "comment": "The SPDX ID field is derived from the UUID that all Julia packages are assigned by their developer to uniquely identify it.",
-            "externalRefs": [
-                {
-                    "referenceCategory": "PACKAGE-MANAGER",
-                    "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/SimpleUnPack@1.1.0?uuid=ce78b400-467f-4804-87d8-8f486da07d0a"
                 }
             ]
         },
@@ -5304,13 +5220,13 @@
         {
             "name": "OrdinaryDiffEqCore",
             "SPDXID": "SPDXRef-OrdinaryDiffEqCore-bbf590c4-e513-4bbe-9b18-05decba2e5d8",
-            "versionInfo": "1.36.0",
+            "versionInfo": "3.3.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@4b68f9ca0cfa68cb9ee544df96391d47ca0e62a9#lib/OrdinaryDiffEqCore",
+            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@07a5e3a5fbc3b17db2adc2dd67fd10b9ce83efb2#lib/OrdinaryDiffEqCore",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "8c519c8f8cb366de1222731215d48c5d0eebe12e"
+                "packageVerificationCodeValue": "2c3fa00f229dcdf26fd6f73792d6f0d0e49a98b3"
             },
             "homepage": "https://github.com/SciML/OrdinaryDiffEq.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -5325,20 +5241,20 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/OrdinaryDiffEqCore@1.36.0?uuid=bbf590c4-e513-4bbe-9b18-05decba2e5d8"
+                    "referenceLocator": "pkg:julia/OrdinaryDiffEqCore@3.3.0?uuid=bbf590c4-e513-4bbe-9b18-05decba2e5d8"
                 }
             ]
         },
         {
             "name": "OrdinaryDiffEqLowOrderRK",
             "SPDXID": "SPDXRef-OrdinaryDiffEqLowOrderRK-1344f307-1e59-4825-a18e-ace9aa3fa4c6",
-            "versionInfo": "1.6.0",
+            "versionInfo": "1.10.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@3cc4987c8e4725276b55a52e08b56ded4862917e#lib/OrdinaryDiffEqLowOrderRK",
+            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@78223e34d4988070443465cd3f2bdc38d6bd14b0#lib/OrdinaryDiffEqLowOrderRK",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "8ffe19e067a9681850ea482a9e12b43a9f51bf16"
+                "packageVerificationCodeValue": "84187b766ddb87a9c314e40525751d5f11d2952a"
             },
             "homepage": "https://github.com/SciML/OrdinaryDiffEq.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -5353,7 +5269,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/OrdinaryDiffEqLowOrderRK@1.6.0?uuid=1344f307-1e59-4825-a18e-ace9aa3fa4c6"
+                    "referenceLocator": "pkg:julia/OrdinaryDiffEqLowOrderRK@1.10.0?uuid=1344f307-1e59-4825-a18e-ace9aa3fa4c6"
                 }
             ]
         },
@@ -5545,16 +5461,15 @@
         {
             "name": "SQLite",
             "SPDXID": "SPDXRef-SQLite-0aa819cd-b072-5ff4-a722-6bc24af294d9",
-            "versionInfo": "1.6.0",
+            "versionInfo": "1.8.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/evetion/SQLite.jl.git@0d28652",
+            "downloadLocation": "git+https://github.com/JuliaDatabases/SQLite.jl.git@87b47a05946c50f44531b447b1f24968345316a4",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "65d8178169bbb53a4bb2da7876e13523640de15c"
+                "packageVerificationCodeValue": "86e8838450c5f788c12ddc3ddba26e12efe2d8d4"
             },
-            "homepage": "https://github.com/evetion/SQLite.jl.git",
-            "sourceInfo": "SQLite is directly tracking a git repository.",
+            "homepage": "https://github.com/JuliaDatabases/SQLite.jl.git",
             "licenseConcluded": "NOASSERTION",
             "licenseInfoFromFiles": [
                 "MIT"
@@ -5567,7 +5482,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/SQLite@1.6.0?uuid=0aa819cd-b072-5ff4-a722-6bc24af294d9"
+                    "referenceLocator": "pkg:julia/SQLite@1.8.0?uuid=0aa819cd-b072-5ff4-a722-6bc24af294d9"
                 }
             ]
         },
@@ -5798,13 +5713,13 @@
         {
             "name": "OrdinaryDiffEqDifferentiation",
             "SPDXID": "SPDXRef-OrdinaryDiffEqDifferentiation-4302a76b-040a-498a-8c04-15b101fed76b",
-            "versionInfo": "1.16.1",
+            "versionInfo": "1.22.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@320b5f3e4e61ca0ad863c63c803f69973ba6efce#lib/OrdinaryDiffEqDifferentiation",
+            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@c3706545346a550a2669d8bcfe6db683af04a21c#lib/OrdinaryDiffEqDifferentiation",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "f3d428f4691622bbe80864333d3e16ae1a55940b"
+                "packageVerificationCodeValue": "a22a32590fa9c12218b0825c4e06360374b18f12"
             },
             "homepage": "https://github.com/SciML/OrdinaryDiffEq.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -5819,20 +5734,20 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/OrdinaryDiffEqDifferentiation@1.16.1?uuid=4302a76b-040a-498a-8c04-15b101fed76b"
+                    "referenceLocator": "pkg:julia/OrdinaryDiffEqDifferentiation@1.22.0?uuid=4302a76b-040a-498a-8c04-15b101fed76b"
                 }
             ]
         },
         {
             "name": "OrdinaryDiffEqRosenbrock",
             "SPDXID": "SPDXRef-OrdinaryDiffEqRosenbrock-43230ef6-c299-4910-a778-202eb28ce4ce",
-            "versionInfo": "1.18.1",
+            "versionInfo": "1.22.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@f34bc2f58656843596d09a4c4de8c20724ebc2f1#lib/OrdinaryDiffEqRosenbrock",
+            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@e4605c3930703b5d38083ce1a998ee824dd67266#lib/OrdinaryDiffEqRosenbrock",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "bf3333b5d9543e44bbac0af3e0b90835c24ef0a1"
+                "packageVerificationCodeValue": "515d7b5cc913267d6831a98ba71dca9f539f9598"
             },
             "homepage": "https://github.com/SciML/OrdinaryDiffEq.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -5847,7 +5762,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/OrdinaryDiffEqRosenbrock@1.18.1?uuid=43230ef6-c299-4910-a778-202eb28ce4ce"
+                    "referenceLocator": "pkg:julia/OrdinaryDiffEqRosenbrock@1.22.0?uuid=43230ef6-c299-4910-a778-202eb28ce4ce"
                 }
             ]
         },
@@ -6050,13 +5965,13 @@
         {
             "name": "NonlinearSolveFirstOrder",
             "SPDXID": "SPDXRef-NonlinearSolveFirstOrder-5959db7a-ea39-4486-b5fe-2dd0bf03d60d",
-            "versionInfo": "1.11.0",
+            "versionInfo": "1.11.1",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/NonlinearSolve.jl.git@bd6bb56e107fe9bea276982a03b8ed13332583b4#lib/NonlinearSolveFirstOrder",
+            "downloadLocation": "git+https://github.com/SciML/NonlinearSolve.jl.git@df31d105d8e7254447256a44606f2a7e98b61aba#lib/NonlinearSolveFirstOrder",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "6ff1e614229d20806efad740ff66120c8ac83435"
+                "packageVerificationCodeValue": "31003584678926646cb2579bec651f15cd677080"
             },
             "homepage": "https://github.com/SciML/NonlinearSolve.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -6071,20 +5986,20 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/NonlinearSolveFirstOrder@1.11.0?uuid=5959db7a-ea39-4486-b5fe-2dd0bf03d60d"
+                    "referenceLocator": "pkg:julia/NonlinearSolveFirstOrder@1.11.1?uuid=5959db7a-ea39-4486-b5fe-2dd0bf03d60d"
                 }
             ]
         },
         {
             "name": "NonlinearSolve",
             "SPDXID": "SPDXRef-NonlinearSolve-8913a72c-1f9b-4ce2-8d82-65094dcecaec",
-            "versionInfo": "4.14.0",
+            "versionInfo": "4.15.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/NonlinearSolve.jl.git@5db62e7c18af752a7a5260ed7576e7429ca87be4",
+            "downloadLocation": "git+https://github.com/SciML/NonlinearSolve.jl.git@da41d5cd90c1118f5a8914392cf561263a1d09cb",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "f1b10d9fa554675659c6092adc1b578c23b56a21"
+                "packageVerificationCodeValue": "23995efa335f9e6ebddcd465206018c16bd43019"
             },
             "homepage": "https://github.com/SciML/NonlinearSolve.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -6099,20 +6014,20 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/NonlinearSolve@4.14.0?uuid=8913a72c-1f9b-4ce2-8d82-65094dcecaec"
+                    "referenceLocator": "pkg:julia/NonlinearSolve@4.15.0?uuid=8913a72c-1f9b-4ce2-8d82-65094dcecaec"
                 }
             ]
         },
         {
             "name": "OrdinaryDiffEqNonlinearSolve",
             "SPDXID": "SPDXRef-OrdinaryDiffEqNonlinearSolve-127b3ac7-2247-4354-8eb6-78cf4e7c58e8",
-            "versionInfo": "1.15.0",
+            "versionInfo": "1.19.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@f59c1c07cfa674c1d3f5dd386c4274d9bc2be221#lib/OrdinaryDiffEqNonlinearSolve",
+            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@9f0be4bd586829a28a04c8f923598497f56ac226#lib/OrdinaryDiffEqNonlinearSolve",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "78ad6820859d8b8701f422b17c578e3f8def5344"
+                "packageVerificationCodeValue": "d0bcf83582a88ae6813a458a1f9ea04a1fde1241"
             },
             "homepage": "https://github.com/SciML/OrdinaryDiffEq.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -6127,20 +6042,20 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/OrdinaryDiffEqNonlinearSolve@1.15.0?uuid=127b3ac7-2247-4354-8eb6-78cf4e7c58e8"
+                    "referenceLocator": "pkg:julia/OrdinaryDiffEqNonlinearSolve@1.19.0?uuid=127b3ac7-2247-4354-8eb6-78cf4e7c58e8"
                 }
             ]
         },
         {
             "name": "OrdinaryDiffEqSDIRK",
             "SPDXID": "SPDXRef-OrdinaryDiffEqSDIRK-2d112036-d095-4a1e-ab9a-08536f3ecdbf",
-            "versionInfo": "1.7.0",
+            "versionInfo": "1.11.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@20caa72c004414435fb5769fadb711e96ed5bcd4#lib/OrdinaryDiffEqSDIRK",
+            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@5d0a230f4e431e53af19502eaea8778f8f15edd4#lib/OrdinaryDiffEqSDIRK",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "d79a43ede4322b95db0d94b0b775456e4cb322c8"
+                "packageVerificationCodeValue": "50c69b7c9c43916c19514ed80719ce9629bbd7df"
             },
             "homepage": "https://github.com/SciML/OrdinaryDiffEq.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -6155,20 +6070,20 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/OrdinaryDiffEqSDIRK@1.7.0?uuid=2d112036-d095-4a1e-ab9a-08536f3ecdbf"
+                    "referenceLocator": "pkg:julia/OrdinaryDiffEqSDIRK@1.11.0?uuid=2d112036-d095-4a1e-ab9a-08536f3ecdbf"
                 }
             ]
         },
         {
             "name": "OrdinaryDiffEqBDF",
             "SPDXID": "SPDXRef-OrdinaryDiffEqBDF-6ad6398a-0878-4a85-9266-38940aa047c8",
-            "versionInfo": "1.10.1",
+            "versionInfo": "1.14.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@ce8db53fd1e4e41c020fd53961e7314f75e4c21c#lib/OrdinaryDiffEqBDF",
+            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@156f2623ac97e7cf340848ba606f1226998980af#lib/OrdinaryDiffEqBDF",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "a4ac03edf253e4d6efd1b5c88238591c4a45b8b8"
+                "packageVerificationCodeValue": "418c6dd35f770980b3682a2964750c3d97e8f224"
             },
             "homepage": "https://github.com/SciML/OrdinaryDiffEq.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -6183,7 +6098,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/OrdinaryDiffEqBDF@1.10.1?uuid=6ad6398a-0878-4a85-9266-38940aa047c8"
+                    "referenceLocator": "pkg:julia/OrdinaryDiffEqBDF@1.14.0?uuid=6ad6398a-0878-4a85-9266-38940aa047c8"
                 }
             ]
         },
@@ -6218,13 +6133,13 @@
         {
             "name": "OrdinaryDiffEqTsit5",
             "SPDXID": "SPDXRef-OrdinaryDiffEqTsit5-b1df2697-797e-41e3-8120-5422d3b24e4a",
-            "versionInfo": "1.5.0",
+            "versionInfo": "1.9.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@778c7d379265f17f40dbe9aaa6f6a2a08bc7fa3e#lib/OrdinaryDiffEqTsit5",
+            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@8be4cba85586cd2efa6c76d1792c548758610901#lib/OrdinaryDiffEqTsit5",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "7d4768f2a868c52d0275afee900023046752bebd"
+                "packageVerificationCodeValue": "c1e4e81dd2ed3604229dc74127e4948613bb12d6"
             },
             "homepage": "https://github.com/SciML/OrdinaryDiffEq.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -6239,7 +6154,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/OrdinaryDiffEqTsit5@1.5.0?uuid=b1df2697-797e-41e3-8120-5422d3b24e4a"
+                    "referenceLocator": "pkg:julia/OrdinaryDiffEqTsit5@1.9.0?uuid=b1df2697-797e-41e3-8120-5422d3b24e4a"
                 }
             ]
         },
@@ -6331,13 +6246,13 @@
         {
             "name": "FileIO",
             "SPDXID": "SPDXRef-FileIO-5789e2e9-d7fb-5bc7-8068-2c6fae9b9549",
-            "versionInfo": "1.17.1",
+            "versionInfo": "1.18.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaIO/FileIO.jl.git@d60eb76f37d7e5a40cc2e7c36974d864b82dc802",
+            "downloadLocation": "git+https://github.com/JuliaIO/FileIO.jl.git@6522cfb3b8fe97bec632252263057996cbd3de20",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "1d46175dfb808fdd9075004d19094bed134f9c65"
+                "packageVerificationCodeValue": "b4e2a9b734f6a6b8ede40707a58328dc40b0fbf1"
             },
             "homepage": "https://github.com/JuliaIO/FileIO.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -6352,7 +6267,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/FileIO@1.17.1?uuid=5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+                    "referenceLocator": "pkg:julia/FileIO@1.18.0?uuid=5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
                 }
             ]
         },
@@ -6557,13 +6472,13 @@
         {
             "name": "FindFirstFunctions",
             "SPDXID": "SPDXRef-FindFirstFunctions-64ca27bc-2ba2-4a57-88aa-44e436879224",
-            "versionInfo": "1.7.0",
+            "versionInfo": "1.8.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/FindFirstFunctions.jl.git@1960e97427e0c1e66b603f4d047e6367a70c5d9e",
+            "downloadLocation": "git+https://github.com/SciML/FindFirstFunctions.jl.git@27b495de668ccea58de6b06d6d13181396598ea0",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "4a6f904f8d9e6b6c509cf0b4d8c5db94996e5536"
+                "packageVerificationCodeValue": "f33552145ff6323e6a7ccbb788613a41c6ffd55b"
             },
             "homepage": "https://github.com/SciML/FindFirstFunctions.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -6578,7 +6493,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/FindFirstFunctions@1.7.0?uuid=64ca27bc-2ba2-4a57-88aa-44e436879224"
+                    "referenceLocator": "pkg:julia/FindFirstFunctions@1.8.0?uuid=64ca27bc-2ba2-4a57-88aa-44e436879224"
                 }
             ]
         },
@@ -6838,13 +6753,13 @@
         {
             "name": "DiskArrays",
             "SPDXID": "SPDXRef-DiskArrays-3c3547ce-8d99-4f5e-a174-61eb10b00ae3",
-            "versionInfo": "0.4.18",
+            "versionInfo": "0.4.19",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaIO/DiskArrays.jl.git@e8c9406f3164633756a0db93334ef23102933eef",
+            "downloadLocation": "git+https://github.com/JuliaIO/DiskArrays.jl.git@e5d9ce1b751ddf9bcd9d36b51249dce8ea73cd55",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "bfc0885d78572e5f5ce99b77f559e1c8efe30c69"
+                "packageVerificationCodeValue": "382332c1ad8b833c59e4556f387140d421b60f34"
             },
             "homepage": "https://github.com/JuliaIO/DiskArrays.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -6859,7 +6774,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/DiskArrays@0.4.18?uuid=3c3547ce-8d99-4f5e-a174-61eb10b00ae3"
+                    "referenceLocator": "pkg:julia/DiskArrays@0.4.19?uuid=3c3547ce-8d99-4f5e-a174-61eb10b00ae3"
                 }
             ]
         },
@@ -7226,27 +7141,27 @@
         },
         {
             "name": "libaec_source",
-            "SPDXID": "SPDXRef-c2b51887af39dba35a4a8d9342aaa839c18b292f",
+            "SPDXID": "SPDXRef-c275b9517a7a65463ec72ec805fa7ecc036e2242",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaPackaging/Yggdrasil.git@c2b51887af39dba35a4a8d9342aaa839c18b292f#/L/libaec/",
+            "downloadLocation": "git+https://github.com/JuliaPackaging/Yggdrasil.git@c275b9517a7a65463ec72ec805fa7ecc036e2242#/L/libaec/",
             "filesAnalyzed": false,
-            "sourceInfo": "The location of this repository was extracted from the README.md file of SPDXRef-235aa219585823fcc7f270b3d0efdaec60267f1b",
+            "sourceInfo": "The location of this repository was extracted from the README.md file of SPDXRef-dc36816ea1be1f788708256dadec7fb61891cc4e",
             "licenseConcluded": "NOASSERTION",
             "licenseDeclared": "NOASSERTION",
             "copyrightText": "NOASSERTION",
-            "summary": "The binary artifact SPDXRef-235aa219585823fcc7f270b3d0efdaec60267f1b is built using the scripts and source files in this package.\nThe build system is called Yggdrasil, the Julia community build tree.",
+            "summary": "The binary artifact SPDXRef-dc36816ea1be1f788708256dadec7fb61891cc4e is built using the scripts and source files in this package.\nThe build system is called Yggdrasil, the Julia community build tree.",
             "comment": "The SPDX ID field is derived from the Git hash in the DownloadLocation"
         },
         {
             "name": "libaec",
-            "SPDXID": "SPDXRef-235aa219585823fcc7f270b3d0efdaec60267f1b",
+            "SPDXID": "SPDXRef-dc36816ea1be1f788708256dadec7fb61891cc4e",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "https://github.com/JuliaBinaryWrappers/libaec_jll.jl/releases/download/libaec-v1.1.4+0/libaec.v1.1.4.x86_64-linux-gnu.tar.gz",
+            "downloadLocation": "https://github.com/JuliaBinaryWrappers/libaec_jll.jl/releases/download/libaec-v1.1.5+0/libaec.v1.1.5.x86_64-linux-gnu.tar.gz",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "8519130c5bfe1815cc6f7fa6449e4c61dfe12655",
+                "packageVerificationCodeValue": "e9e2670994092a7114647a81cf22d0f609d5786e",
                 "packageVerificationCodeExcludedFiles": [
                     "lib/libaec.so",
                     "lib/libaec.so.0",
@@ -7257,7 +7172,7 @@
             "checksums": [
                 {
                     "algorithm": "SHA256",
-                    "checksumValue": "f51a62e0ae80a12f60e7549e90db0ed1b463d6084b6061e040f188b3a0aa729f"
+                    "checksumValue": "04e676783ad3297e6a28f1174104e56be20232a96580b804addd922984821c78"
                 }
             ],
             "homepage": "NOASSERTION",
@@ -7274,13 +7189,13 @@
         {
             "name": "libaec_jll",
             "SPDXID": "SPDXRef-libaec_jll-477f73a3-ac25-53e9-8cc3-50b2fa2566f0",
-            "versionInfo": "1.1.4+0",
+            "versionInfo": "1.1.5+0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaBinaryWrappers/libaec_jll.jl.git@1aa23f01927b2dac46db77a56b31088feee0a491",
+            "downloadLocation": "git+https://github.com/JuliaBinaryWrappers/libaec_jll.jl.git@13b760f97c6e753b47df30cb438d4dc3b50df282",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "76f89f3cd6908b97509a1444b287bce65c867092"
+                "packageVerificationCodeValue": "815aa5eb8c8161e4268d1a4a988268d30c819a29"
             },
             "homepage": "https://github.com/JuliaBinaryWrappers/libaec_jll.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -7295,7 +7210,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/libaec_jll@1.1.4+0?uuid=477f73a3-ac25-53e9-8cc3-50b2fa2566f0"
+                    "referenceLocator": "pkg:julia/libaec_jll@1.1.5+0?uuid=477f73a3-ac25-53e9-8cc3-50b2fa2566f0"
                 }
             ]
         },
@@ -8045,13 +7960,13 @@
         {
             "name": "NCDatasets",
             "SPDXID": "SPDXRef-NCDatasets-85f8d34a-cbdd-5861-8df4-14fed0d494ab",
-            "versionInfo": "0.14.10",
+            "versionInfo": "0.14.11",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaGeo/NCDatasets.jl.git@c82c73e2e0c57a0fe13d3414d7c5a6a821d24016",
+            "downloadLocation": "git+https://github.com/JuliaGeo/NCDatasets.jl.git@0d3e499c8fd5b2549b4299eade61de601e5fe6e2",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "9bfb4de45b666439ee212107dc2cd994153bdb85"
+                "packageVerificationCodeValue": "1939548df149cf05772c7e4f7688b1a9a2a9f3c5"
             },
             "homepage": "https://github.com/JuliaGeo/NCDatasets.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -8066,7 +7981,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/NCDatasets@0.14.10?uuid=85f8d34a-cbdd-5861-8df4-14fed0d494ab"
+                    "referenceLocator": "pkg:julia/NCDatasets@0.14.11?uuid=85f8d34a-cbdd-5861-8df4-14fed0d494ab"
                 }
             ]
         }
@@ -8423,12 +8338,12 @@
             "relatedSpdxElement": "SPDXRef-OpenBLAS32_jll-656ef2d0-ae68-5445-9ca0-591084a874a2"
         },
         {
-            "spdxElementId": "SPDXRef-e83428c736a7117825caecd465ca39de72e835b8",
+            "spdxElementId": "SPDXRef-ab917ed38551d64e82ad5b564678b3a62a911c7a",
             "relationshipType": "GENERATED_FROM",
-            "relatedSpdxElement": "SPDXRef-255750cb923f338551744983230620a9d0d04821"
+            "relatedSpdxElement": "SPDXRef-32d6c14d4a0eb04133420df0903f3b46b6a1f931"
         },
         {
-            "spdxElementId": "SPDXRef-e83428c736a7117825caecd465ca39de72e835b8",
+            "spdxElementId": "SPDXRef-ab917ed38551d64e82ad5b564678b3a62a911c7a",
             "relationshipType": "RUNTIME_DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-OpenBLAS32_jll-656ef2d0-ae68-5445-9ca0-591084a874a2"
         },
@@ -8525,12 +8440,7 @@
         {
             "spdxElementId": "SPDXRef-Dates-ade2ca70-3891-5945-98fb-dc099432e06a",
             "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-JSON3-0f8b85d8-7281-11e9-16c2-39a750bddbf1"
-        },
-        {
-            "spdxElementId": "SPDXRef-PrecompileTools-aea7be01-6a6a-4083-8856-8a6e6704d82a",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-JSON3-0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+            "relatedSpdxElement": "SPDXRef-JSON-682c06a0-de6a-54ab-a142-c8b1cf79cde6"
         },
         {
             "spdxElementId": "SPDXRef-Dates-ade2ca70-3891-5945-98fb-dc099432e06a",
@@ -8556,46 +8466,6 @@
             "spdxElementId": "SPDXRef-UUIDs-cf7118a7-6976-5b1a-9a39-7adc72f591a4",
             "relationshipType": "DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-Parsers-69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-        },
-        {
-            "spdxElementId": "SPDXRef-Parsers-69de0a69-1ddd-5017-9359-2bf0b02dc9f0",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-JSON3-0f8b85d8-7281-11e9-16c2-39a750bddbf1"
-        },
-        {
-            "spdxElementId": "SPDXRef-Mmap-a63ad114-7e13-5084-954f-fe012c677804",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-JSON3-0f8b85d8-7281-11e9-16c2-39a750bddbf1"
-        },
-        {
-            "spdxElementId": "SPDXRef-Dates-ade2ca70-3891-5945-98fb-dc099432e06a",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-StructTypes-856f2bd8-1eba-4b0a-8007-ebc267875bd4"
-        },
-        {
-            "spdxElementId": "SPDXRef-UUIDs-cf7118a7-6976-5b1a-9a39-7adc72f591a4",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-StructTypes-856f2bd8-1eba-4b0a-8007-ebc267875bd4"
-        },
-        {
-            "spdxElementId": "SPDXRef-StructTypes-856f2bd8-1eba-4b0a-8007-ebc267875bd4",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-JSON3-0f8b85d8-7281-11e9-16c2-39a750bddbf1"
-        },
-        {
-            "spdxElementId": "SPDXRef-UUIDs-cf7118a7-6976-5b1a-9a39-7adc72f591a4",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-JSON3-0f8b85d8-7281-11e9-16c2-39a750bddbf1"
-        },
-        {
-            "spdxElementId": "SPDXRef-JSON3-0f8b85d8-7281-11e9-16c2-39a750bddbf1",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-MathOptInterface-b8f27783-ece8-5eb3-8dc8-9495eed66fee"
-        },
-        {
-            "spdxElementId": "SPDXRef-Dates-ade2ca70-3891-5945-98fb-dc099432e06a",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-JSON-682c06a0-de6a-54ab-a142-c8b1cf79cde6"
         },
         {
             "spdxElementId": "SPDXRef-Parsers-69de0a69-1ddd-5017-9359-2bf0b02dc9f0",
@@ -8699,6 +8569,11 @@
         },
         {
             "spdxElementId": "SPDXRef-CodecZlib-944b1d66-785c-5afd-91f1-9de20f533193",
+            "relationshipType": "DEPENDENCY_OF",
+            "relatedSpdxElement": "SPDXRef-MathOptInterface-b8f27783-ece8-5eb3-8dc8-9495eed66fee"
+        },
+        {
+            "spdxElementId": "SPDXRef-JSON-682c06a0-de6a-54ab-a142-c8b1cf79cde6",
             "relationshipType": "DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-MathOptInterface-b8f27783-ece8-5eb3-8dc8-9495eed66fee"
         },
@@ -9359,11 +9234,6 @@
         },
         {
             "spdxElementId": "SPDXRef-ArrayInterface-4fba245c-0d91-5ea0-9b3e-6abc04ee57a9",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-SciMLOperators-c0aeaf25-5076-4817-a8d5-81caf7dfa961"
-        },
-        {
-            "spdxElementId": "SPDXRef-MacroTools-1914dd2f-81c6-5fcd-8719-6d5c9610ff09",
             "relationshipType": "DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-SciMLOperators-c0aeaf25-5076-4817-a8d5-81caf7dfa961"
         },
@@ -10878,11 +10748,6 @@
             "relatedSpdxElement": "SPDXRef-OrdinaryDiffEqCore-bbf590c4-e513-4bbe-9b18-05decba2e5d8"
         },
         {
-            "spdxElementId": "SPDXRef-SimpleUnPack-ce78b400-467f-4804-87d8-8f486da07d0a",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-OrdinaryDiffEqCore-bbf590c4-e513-4bbe-9b18-05decba2e5d8"
-        },
-        {
             "spdxElementId": "SPDXRef-SciMLBase-0bca4576-84f4-4d90-8ffe-ffa030f20462",
             "relationshipType": "DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-OrdinaryDiffEqCore-bbf590c4-e513-4bbe-9b18-05decba2e5d8"
@@ -10899,6 +10764,11 @@
         },
         {
             "spdxElementId": "SPDXRef-Static-aedffcd0-7271-4cad-89d0-dc628f76c6d3",
+            "relationshipType": "DEPENDENCY_OF",
+            "relatedSpdxElement": "SPDXRef-OrdinaryDiffEqCore-bbf590c4-e513-4bbe-9b18-05decba2e5d8"
+        },
+        {
+            "spdxElementId": "SPDXRef-ConcreteStructs-2569d6c7-a4a2-43d3-a901-331e8e4be471",
             "relationshipType": "DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-OrdinaryDiffEqCore-bbf590c4-e513-4bbe-9b18-05decba2e5d8"
         },
@@ -10934,6 +10804,11 @@
         },
         {
             "spdxElementId": "SPDXRef-InteractiveUtils-b77e0a4c-d291-57a0-90e8-8db25a27a240",
+            "relationshipType": "DEPENDENCY_OF",
+            "relatedSpdxElement": "SPDXRef-OrdinaryDiffEqCore-bbf590c4-e513-4bbe-9b18-05decba2e5d8"
+        },
+        {
+            "spdxElementId": "SPDXRef-SciMLLogging-a6db7da4-7206-11f0-1eab-35f2a5dbe1d1",
             "relationshipType": "DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-OrdinaryDiffEqCore-bbf590c4-e513-4bbe-9b18-05decba2e5d8"
         },
@@ -12028,6 +11903,11 @@
             "relatedSpdxElement": "SPDXRef-OrdinaryDiffEqNonlinearSolve-127b3ac7-2247-4354-8eb6-78cf4e7c58e8"
         },
         {
+            "spdxElementId": "SPDXRef-SparseArrays-2f01184e-e22b-5df5-ae63-d93ebab69eaf",
+            "relationshipType": "DEPENDENCY_OF",
+            "relatedSpdxElement": "SPDXRef-OrdinaryDiffEqNonlinearSolve-127b3ac7-2247-4354-8eb6-78cf4e7c58e8"
+        },
+        {
             "spdxElementId": "SPDXRef-ArrayInterface-4fba245c-0d91-5ea0-9b3e-6abc04ee57a9",
             "relationshipType": "DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-OrdinaryDiffEqNonlinearSolve-127b3ac7-2247-4354-8eb6-78cf4e7c58e8"
@@ -12738,12 +12618,12 @@
             "relatedSpdxElement": "SPDXRef-libaec_jll-477f73a3-ac25-53e9-8cc3-50b2fa2566f0"
         },
         {
-            "spdxElementId": "SPDXRef-235aa219585823fcc7f270b3d0efdaec60267f1b",
+            "spdxElementId": "SPDXRef-dc36816ea1be1f788708256dadec7fb61891cc4e",
             "relationshipType": "GENERATED_FROM",
-            "relatedSpdxElement": "SPDXRef-c2b51887af39dba35a4a8d9342aaa839c18b292f"
+            "relatedSpdxElement": "SPDXRef-c275b9517a7a65463ec72ec805fa7ecc036e2242"
         },
         {
-            "spdxElementId": "SPDXRef-235aa219585823fcc7f270b3d0efdaec60267f1b",
+            "spdxElementId": "SPDXRef-dc36816ea1be1f788708256dadec7fb61891cc4e",
             "relationshipType": "RUNTIME_DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-libaec_jll-477f73a3-ac25-53e9-8cc3-50b2fa2566f0"
         },
