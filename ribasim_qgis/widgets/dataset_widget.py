@@ -6,6 +6,8 @@ It also allows enabling or disabling individual elements for a computation.
 
 from __future__ import annotations
 
+import os
+import shutil
 from collections.abc import Callable
 from contextvars import ContextVar
 from datetime import datetime
@@ -15,10 +17,14 @@ from typing import Any, cast
 
 import pandas as pd
 from osgeo import ogr
-from PyQt5.QtCore import QDateTime, QMetaType
+from PyQt5.QtCore import QDateTime, QMetaType, QProcess
 from PyQt5.QtWidgets import (
+    QDialog,
     QFileDialog,
     QMenu,
+    QPlainTextEdit,
+    QPushButton,
+    QVBoxLayout,
     QWidget,
 )
 from qgis.core import (
@@ -263,14 +269,14 @@ class DatasetWidget:
         """Connect to the layer context (right-click) menu opening."""
         ltv = self.ribasim_widget.iface.layerTreeView()
         if ltv is not None:
-            ltv.contextMenuAboutToShow.connect(self.generate_reload_action)
+            ltv.contextMenuAboutToShow.connect(self.generate_model_actions)
 
-    def generate_reload_action(self, menu: QMenu) -> None:
-        """Generate reload action in the context menu."""
-        print("Generating reload action in context menu...")
-        actiontext = "Reload Ribasim model"
+    def generate_model_actions(self, menu: QMenu) -> None:
+        """Generate run and reload actions in the context menu."""
+        actiontext_run = "Run Ribasim model"
+        actiontext_reload = "Reload Ribasim model"
         for action in menu.actions():
-            if action.text() == actiontext:
+            if action.text() == actiontext_reload:
                 return
 
         group = self.activeGroup(self.ribasim_widget.iface)
@@ -287,8 +293,10 @@ class DatasetWidget:
 
         # Always add action, as it lives only during this context menu
         menu.addSeparator()
-        action = menu.addAction(actiontext)
-        action.triggered.connect(partial(self.reload_action, path, group))
+        run_action = menu.addAction(actiontext_run)
+        run_action.triggered.connect(partial(self.run_action, path, group))
+        reload_action = menu.addAction(actiontext_reload)
+        reload_action.triggered.connect(partial(self.reload_action, path, group))
 
     def reload_action(self, path, group) -> None:
         """Remove group, and (re)load the model in the same position."""
@@ -298,6 +306,147 @@ class DatasetWidget:
         token = group_position_var.set(position)
         self._open_model(path)
         group_position_var.reset(token)
+
+    def run_action(self, path: str, group) -> None:
+        """Run Ribasim model and stream output to a dialog."""
+        message_bar = self.ribasim_widget.iface.messageBar()
+        assert message_bar is not None
+
+        # Find ribasim CLI
+        cli = self._find_ribasim_cli(message_bar)
+        if cli is None:
+            return
+
+        # Create output dialog
+        dialog = QDialog(self.ribasim_widget.iface.mainWindow())
+        dialog.setWindowTitle(f"Running Ribasim - {Path(path).name}")
+        dialog.resize(700, 400)
+        layout = QVBoxLayout(dialog)
+
+        # Text area for output
+        text_edit = QPlainTextEdit()
+        text_edit.setReadOnly(True)
+        text_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        # Use monospace font for proper progress bar display
+        font = text_edit.font()
+        font.setFamily("Consolas, Monaco, monospace")
+        text_edit.setFont(font)
+        layout.addWidget(text_edit)
+
+        # Close button (disabled while running)
+        close_button = QPushButton("Close")
+        close_button.setEnabled(False)
+        close_button.clicked.connect(dialog.accept)
+        layout.addWidget(close_button)
+
+        # Create process
+        process = QProcess(dialog)
+
+        def on_stdout():
+            data = (
+                process.readAllStandardOutput().data().decode("utf-8", errors="replace")
+            )
+            # Handle carriage returns for progress bar updates
+            for part in data.split("\r"):
+                if part:
+                    # Check if this is a progress update (starts with Simulating)
+                    if part.strip().startswith("Simulating"):
+                        # Update last line instead of appending
+                        cursor = text_edit.textCursor()
+                        cursor.movePosition(cursor.MoveOperation.End)
+                        cursor.select(cursor.SelectionType.LineUnderCursor)
+                        cursor.removeSelectedText()
+                        cursor.insertText(part.rstrip("\n"))
+                    else:
+                        text_edit.appendPlainText(part.rstrip("\n"))
+            # Auto-scroll to bottom
+            scrollbar = text_edit.verticalScrollBar()
+            assert scrollbar is not None
+            scrollbar.setValue(scrollbar.maximum())
+
+        def on_stderr():
+            data = (
+                process.readAllStandardError().data().decode("utf-8", errors="replace")
+            )
+            text_edit.appendPlainText(data)
+            scrollbar = text_edit.verticalScrollBar()
+            assert scrollbar is not None
+            scrollbar.setValue(scrollbar.maximum())
+
+        def on_finished(exit_code, exit_status):
+            close_button.setEnabled(True)
+            if exit_code == 0:
+                text_edit.appendPlainText("\n✓ Simulation completed successfully!")
+                message_bar.pushMessage(
+                    "Success",
+                    f"Simulation completed for {Path(path).name}",
+                    level=Qgis.MessageLevel.Success,
+                    duration=5,
+                )
+                # Reload results
+                self.refresh_results()
+            else:
+                text_edit.appendPlainText(
+                    f"\n✗ Simulation failed with exit code {exit_code}"
+                )
+                message_bar.pushMessage(
+                    "Error",
+                    f"Simulation failed for {Path(path).name}",
+                    level=Qgis.MessageLevel.Critical,
+                    duration=10,
+                )
+
+        process.readyReadStandardOutput.connect(on_stdout)
+        process.readyReadStandardError.connect(on_stderr)
+        process.finished.connect(on_finished)
+
+        # Start process
+        process.start(str(cli), [path])
+        dialog.show()
+
+    @staticmethod
+    def _find_ribasim_cli(message_bar) -> Path | None:
+        """Find the Ribasim CLI executable.
+
+        First checks RIBASIM_EXE environment variable, then searches PATH.
+
+        Parameters
+        ----------
+        message_bar
+            QGIS message bar to display errors.
+
+        Returns
+        -------
+        Path | None
+            Path to the Ribasim CLI executable, or None if not found.
+        """
+        # Check RIBASIM_EXE environment variable
+        if (ribasim_exe_env := os.environ.get("RIBASIM_EXE")) is not None:
+            ribasim_exe = Path(ribasim_exe_env)
+            cli = shutil.which(ribasim_exe.name, path=str(ribasim_exe.parent))
+            if cli is None:
+                message_bar.pushMessage(
+                    "Error",
+                    f"Ribasim CLI executable not found at RIBASIM_EXE='{ribasim_exe.resolve()}'. "
+                    "Please ensure the path is correct.",
+                    level=Qgis.MessageLevel.Critical,
+                )
+                return None
+            return Path(cli)
+
+        # Fall back to searching the PATH
+        cli = shutil.which("ribasim")
+        if cli is not None:
+            return Path(cli)
+
+        message_bar.pushMessage(
+            "Error",
+            "Ribasim CLI executable 'ribasim' not found. "
+            "Please ensure Ribasim is installed and available on your PATH, "
+            "or set the RIBASIM_EXE environment variable.",
+            level=Qgis.MessageLevel.Critical,
+        )
+        return None
 
     def add_topology_context(self) -> None:
         """Connect to the layer context (right-click) menu opening."""
