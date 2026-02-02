@@ -8,6 +8,7 @@ The connected nodes determine how water is exchanged with the Basin, depending o
 
 While the term "Basin" may traditionally suggest a watershed, in this context, it serves as a wide range of water bodies and control volumes,
 including those that may not conform to the typical geographical definition of a basin.
+Examples include a river or canal section, lake, or reservoir.
 
 # Modeling different water body types
 
@@ -34,11 +35,11 @@ time table, it is empty, or all timestamps of that variable are missing.
 column                | type    | unit                  | restriction
 ---------             | ------- | --------------------- | -----------
 node_id               | Int32   | -                     |
-drainage              | Float64 | $\text{m}^3/\text{s}$ | non-negative
-potential_evaporation | Float64 | $\text{m}/\text{s}$   | non-negative
-infiltration          | Float64 | $\text{m}^3/\text{s}$ | non-negative
-precipitation         | Float64 | $\text{m}/\text{s}$   | non-negative
-surface_runoff        | Float64 | $\text{m}^3/\text{s}$ | non-negative
+drainage              | Float64 | $\text{m}^3/\text{s}$ | non-negative (optional)
+potential_evaporation | Float64 | $\text{m}/\text{s}$   | non-negative (optional)
+infiltration          | Float64 | $\text{m}^3/\text{s}$ | non-negative (optional)
+precipitation         | Float64 | $\text{m}/\text{s}$   | non-negative (optional)
+surface_runoff        | Float64 | $\text{m}^3/\text{s}$ | non-negative (optional)
 
 Note that if variables are not set in the static table, default values are used when
 possible. These are generally zero, e.g. no precipitation, no inflow. If it is not possible

@@ -81,7 +81,7 @@ or download directly from the [Release assets on GitHub](https://github.com/Delt
 Ribasim is typically used as a command-line interface (CLI). It is distributed as a `.zip`
 archive, that must be downloaded and unpacked. It can be placed anywhere, however it is
 important that the contents of the zip file are kept together in a directory. The Ribasim
-executable is in the main folder.
+executable is in the bin folder.
 
 ## Windows installation script (recommended)
 
@@ -106,6 +106,9 @@ To download the Ribasim core manually, download the appropriate zip file for you
 - Ribasim executable - Linux: [ribasim_linux.zip](https://github.com/Deltares/Ribasim/releases/download/v2025.6.0/ribasim_linux.zip)
 
 Note that we currently only support and provide binaries for Windows and Linux, for the x86_64 architecture.
+
+After downloading, extract/unzip the zip file to a directory of your choice, for example `C:\bin\ribasim\`.
+Unless you add it to the Path as instructed below, we recommend avoiding spaces in the path.
 
 To check whether the installation was performed successfully, open a terminal and go to the path where the executable is for example `C:\bin\ribasim\`.
 If you are using cmd.exe type `ribasim --help`, or for PowerShell `./ribasim`.
@@ -185,10 +188,6 @@ pixi run python
 If you wish to check what is installed in your workspace, run `pixi list`.
 When you run into what seems like installation issues, try `pixi clean`, followed by `pixi install`.
 
-If your editor does not automatically detect the right Python environment, point it to `.pixi/envs/default/python.exe`.
-Starting your editor via Pixi will also help it find the environment since it will already be active.
-For Visual Studio Code, you can run `pixi run code .` to open your workspace.
-
 ## pip
 
 ```sh
@@ -207,11 +206,13 @@ conda install -c conda-forge ribasim=2025.6.0
 
 :::
 
+For Visual Studio Code setup, see the [VS Code guide](/guide/vscode.qmd).
+
 For Ribasim Python documentation please see the [examples](/getting-started/examples.qmd) and [API reference](/reference/python/index.qmd).
 
 # Install Ribasim QGIS plugin {#sec-install-qgis-plugin}
 
-The Ribasim QGIS plugin requires [QGIS](https://qgis.org/en/site/) 3.34 or higher, and the `pandas` package
+The Ribasim QGIS plugin requires [QGIS](https://qgis.org/en/site/) 3.40 or higher, and the `pandas` package
 in the QGIS Python environment (which is the case by default).
 
 ## Install from QGIS Plugin Repository (recommended)

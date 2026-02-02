@@ -1,0 +1,68 @@
+---
+title: "Visual Studio Code"
+---
+
+This guide explains how to set up [Visual Studio Code](https://code.visualstudio.com/) (VS Code) for working with Ribasim Python.
+This page is not specific to Ribasim Python but aims to help users get started.
+This guide assumes you have already installed Ribasim Python in a uv or Pixi environment as described in the [installation guide](install.qmd#sec-python).
+See also the [VS Code docs for Python](https://code.visualstudio.com/docs/languages/python).
+
+# Recommended extensions {#sec-extensions}
+
+Install the following VS Code extensions for the best experience:
+
+- [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python) - Essential Python language support
+- [Python Environments](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-python-envs) - Enhanced environment management
+
+The Python Environments extension provides out-of-the-box support for `venv` environments, which is the environment type that uv creates.
+
+# Install packages for notebooks {#sec-notebooks}
+
+VS Code requires `ipykernel` and `pip` to run Jupyter notebooks.
+Add these packages based on your package manager:
+
+::: {.panel-tabset}
+
+## uv
+```sh
+uv add ipykernel pip
+```
+
+## pixi
+```sh
+pixi add ipykernel pip
+```
+
+:::
+
+# Environment setup {#sec-environment}
+
+::: {.panel-tabset}
+
+## uv
+
+uv creates a standard `.venv` virtual environment in your project folder.
+This environment type is supported out of the box by VS Code with the Python Environments extension.
+
+VS Code should automatically detect the `.venv` environment.
+If not, select it manually:
+
+1. Open your project folder in VS Code
+2. Open the Command Palette ({{< kbd Ctrl-Shift-P >}} or {{< kbd Cmd-Shift-P >}} on macOS)
+3. Type "Python: Select Interpreter"
+4. Select the Python executable from your `.venv` folder (`.venv/Scripts/python.exe` on Windows, `.venv/bin/python` on Linux/macOS)
+
+## Pixi
+
+For Pixi environments, we recommend installing the [Pixi extension](https://marketplace.visualstudio.com/items?itemName=renan-r-santos.pixi-code).
+This helps the Python Environments extension detect Pixi environments.
+
+VS Code should automatically detect the Pixi environment with these extensions installed.
+If not, select it manually:
+
+1. Open your project folder in VS Code
+2. Open the Command Palette ({{< kbd Ctrl-Shift-P >}} or {{< kbd Cmd-Shift-P >}} on macOS)
+3. Type "Python: Select Interpreter"
+4. Select the Python executable from your Pixi environment (`.pixi/envs/default/python.exe` on Windows, `.pixi/envs/default/bin/python` on Linux/macOS)
+
+:::

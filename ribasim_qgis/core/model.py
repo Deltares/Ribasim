@@ -1,9 +1,8 @@
+import tomllib
 from pathlib import Path
 from typing import Any
 
 from qgis.core import qgsfunction
-
-import ribasim_qgis.tomllib as tomllib
 
 
 def get_directory_path_from_model_file(model_path: Path, *, property: str) -> Path:
