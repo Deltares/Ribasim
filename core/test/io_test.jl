@@ -353,45 +353,6 @@ end
     # TODO use NCDatasets.ncgen to create Delft-FEWS flavored NetCDF input files
 end
 
-@testitem "warm state" begin
-    using IOCapture: capture
-    using Ribasim: solve!, write_results
-    import TOML
-
-    model_path_src = normpath(@__DIR__, "../../generated_testmodels/basic/")
-
-    # avoid changing the original model for other tests
-    model_path = normpath(@__DIR__, "../../generated_testmodels/basic_warm/")
-    cp(model_path_src, model_path; force = true)
-    toml_path = normpath(model_path, "ribasim.toml")
-
-    config = Ribasim.Config(toml_path)
-    model = Ribasim.Model(config)
-    (; p_independent, state_and_time_dependent_cache) = model.integrator.p
-    (; current_storage) = state_and_time_dependent_cache
-    storage1_begin = copy(current_storage)
-    solve!(model)
-    storage1_end = current_storage
-    @test storage1_begin != storage1_end
-
-    # copy state results to input
-    write_results(model)
-    state_path = Ribasim.results_path(config, Ribasim.RESULTS_FILENAME.basin_state)
-    cp(state_path, Ribasim.input_path(config, "warm_state.nc"))
-
-    # point TOML to the warm state
-    toml_dict = TOML.parsefile(toml_path)
-    toml_dict["basin"] = Dict("state" => "warm_state.nc")
-    open(toml_path, "w") do io
-        TOML.print(io, toml_dict)
-    end
-
-    model = Ribasim.Model(toml_path)
-    (; p_independent, state_and_time_dependent_cache) = model.integrator.p
-    (; current_storage) = state_and_time_dependent_cache
-    storage2_begin = current_storage
-    @test storage1_end ≈ storage2_begin
-end
 
 @testitem "warm state netcdf" begin
     # This tests that we can write Basin / state results to NetCDF, and read this in again
