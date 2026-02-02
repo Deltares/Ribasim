@@ -46,7 +46,6 @@ __date__ = "May 2016"
 import importlib
 import logging
 import os
-import signal
 import sys
 import traceback
 
@@ -54,7 +53,7 @@ import traceback
 from console.console_output import writeOut
 
 # Start as soon as the initializationCompleted signal is fired
-from qgis.core import QgsApplication, QgsProject, QgsProjectBadLayerHandler
+from qgis.core import QgsProject, QgsProjectBadLayerHandler
 from qgis.PyQt.QtCore import QDir
 from qgis.utils import iface
 
@@ -103,27 +102,29 @@ writeOut.write = _write
 sys.path.append(QDir.current().path())
 
 
-def __exit_qgis(error_code: int):
-    app = QgsApplication.instance()
-    os.kill(app.applicationPid(), error_code)
+def __exit_qgis(exit_code: int):
+    """Exit QGIS application with the given exit code."""
+    sys.exit(exit_code)
 
 
 def __run_test():
-    """Run the test specified as last argument in the command line."""
+    """Run the test specified in QGIS_TEST_MODULE environment variable."""
     # Disable modal handler for bad layers
     QgsProject.instance().setBadLayerHandler(QgsProjectBadLayerDefaultHandler())
     print("QGIS Test Runner Inside - starting the tests ...")
     try:
-        test_module_name = QgsApplication.instance().arguments()[-1]
+        test_module_name = os.environ.get("QGIS_TEST_MODULE")
+        if not test_module_name:
+            raise ValueError("QGIS_TEST_MODULE environment variable not set")
         function_name = __get_test_function(test_module_name)
         print(f"QGIS Test Runner Inside - executing function {function_name}")
         function_name()
-        __exit_qgis(signal.SIG_DFL)
+        __exit_qgis(0)
     except Exception as e:
         logging.error(f"QGIS Test Runner Inside - [FAILED] Exception: {e}")  # noqa: LOG015
         # Print tb
         traceback.print_exc(file=sys.stderr)
-        __exit_qgis(signal.SIGTERM)
+        __exit_qgis(1)
 
 
 iface.initializationCompleted.connect(__run_test)

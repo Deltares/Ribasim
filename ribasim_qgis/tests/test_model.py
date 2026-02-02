@@ -9,7 +9,7 @@ from ribasim_qgis.core.model import (
 
 
 class TestModel(unittest.TestCase):
-    tests_folder_path = Path(__file__).parent.parent.resolve()
+    tests_folder_path = Path(__file__).parent.resolve()
     data_folder_path = tests_folder_path / "data"
 
     def test_get_directory_path_from_model_file(self):
@@ -38,7 +38,3 @@ class TestModel(unittest.TestCase):
             msg=f"Path '{path}' is not relative to {self.tests_folder_path}",
         )
         self.assertEqual(path, self.data_folder_path / "database.gpkg")
-
-
-if __name__ == "__main__":
-    unittest.main()

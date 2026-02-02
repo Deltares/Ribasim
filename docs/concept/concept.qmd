@@ -15,7 +15,6 @@ The model concept of Ribasim is composed of multiple layers:
 - a physical layer representing water bodies and associated infrastructure as well as abstractions,
 - a rule-based control layer to manage the infrastructure, and
 - (optionally) a priority-based allocation layer to take centralized decisions on user abstractions.
-- (optionally) a coupling layer to exchange fluxes and heads with other kernels
 
 Typically hydrological processes on land will be represented in detail by other models which can be coupled (online) to Ribasim with the help of iMOD Coupler.
 Currently, an online coupling with MODFLOW 6 (groundwater) and with Metaswap + MODFLOW 6 (unsaturated zone + groundwater) is available.

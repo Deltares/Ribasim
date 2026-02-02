@@ -86,10 +86,10 @@ node_id | level  | flow_rate
       2 | 13.0   | 8.0
       2 | 13.1   | 8.0
 
-Now this tabulated rating curve node has a flow rate of 8.0 $\text{m}^3/\text{s}$ for for all levels 13.0 or higher.
+Now this tabulated rating curve node has a flow rate of 8.0 $\text{m}^3/\text{s}$ for all levels 13.0 or higher.
 
 The flow rate is not allowed to decrease with higher levels.
-If you wish to e.g. simulate the (partial) closing of a weir when the water level exceeds a certain threshold, you can use and Outlet with a control node to set flow rates.
+If you wish to e.g. simulate the (partial) closing of a weir when the water level exceeds a certain threshold, you can use an Outlet with a control node to set flow rates.
 
 ## Time
 

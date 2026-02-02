@@ -11,7 +11,7 @@ In general, it is recommended to follow an incremental approach when building a 
 5. Validate the model against observations.
 6. Apply the model together with stakeholders for scenario analysis or in day-to-day operations.
 
-# Create and validate the network
+# Create and validate the network schematization
 
 ## Goal
 
@@ -22,7 +22,7 @@ Create a valid network representation of the water system that runs and can be d
 - Discuss with stakeholders the purpose of the model and what system components and behavior they want to see reflected in the model.
 - Decide what procedure to follow to separate Basins and position control nodes in between.
 - Script this approach to build the network topology of nodes and links.
-- Add user demand nodes as appropriate and link them to the supplying Basin.
+- Add user demand nodes as appropriate and link them to the supplying Basin nodes.
 - Parameterize Basins with default or made up profiles.
 - Parameterize TabulatedRatingCurves with some default settings.
 - Parameterize Pumps and outlets with sufficiently large default or made up capacities.
@@ -49,7 +49,7 @@ Create a valid network representation of the water system that runs and can be d
   - water demand areas (irrigation systems, domestic/industrial abstractions)
 - If the above is not available, at minimum map-based sketch with the layout of the water system, paying extra attention to positioning of waterways and connections. Try to assign proper coordinates.
 - Some default (static) values (e.g. flow rates, river cross sections) to use that are in line with the typical parameter ranges of the system.
-- Keep in mind that values are specified in SI units.
+- See the [reference documentation](/reference/usage.qmd) for details on units per table column.
 
 ## Output
 
