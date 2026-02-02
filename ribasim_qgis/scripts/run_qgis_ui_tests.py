@@ -1,3 +1,4 @@
+import os
 import subprocess
 
 qgis_process = subprocess.run(
@@ -9,11 +10,11 @@ qgis_process = subprocess.run(
         "--nologo",
         "--code",
         "ribasim_qgis/scripts/qgis_testrunner.py",
-        "ribasim_qgis.tests",
     ],
     stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT,
     text=True,
+    env={**os.environ, "QGIS_TEST_MODULE": "ribasim_qgis.tests"},
 )
 
 print(qgis_process.stdout)
