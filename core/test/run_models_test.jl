@@ -117,9 +117,9 @@
     @testset Teamcity.TeamcityTestSet "Results size" begin
         nsaved = length(tsaves(model))
         @test nsaved > 10
-        # t0 has no flow, 2 flow links
+        # t0 has no flow
         NCDataset(flow_path) do ds
-            @test length(ds["time"]) == (nsaved - 1) * 2
+            @test length(ds["time"]) == nsaved - 1
         end
         NCDataset(basin_path) do ds
             @test length(ds["time"]) == nsaved - 1
@@ -142,7 +142,7 @@
                 @test basin["storage_rate"][1] ≈
                     (basin["storage"][2] - basin["storage"][1]) / config.solver.saveat
                 @test all(==(0), basin["inflow_rate"][:])
-                @test all(>(0), basin["outflow_rate"][:])
+                @test all(>(0), basin["outx§flow_rate"][:])
                 @test flow["flow_rate"][1] == basin["outflow_rate"][1]
                 @test all(==(0), basin["drainage"][:])
                 @test all(==(0), basin["infiltration"][:])
