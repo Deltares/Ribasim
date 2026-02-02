@@ -319,11 +319,11 @@ python = "3.13.*"
 
 [target.win-64.dependencies]
 rcedit = "*"
-qgis = ">=3.34,<4"
+qgis = ">=3.40,<4"
 quarto = "*"
 
 [target.linux-64.dependencies]
-qgis = ">=3.34,<4"
+qgis = ">=3.40,<4"
 quarto = "*"
 
 [target.osx-arm64.dependencies]
