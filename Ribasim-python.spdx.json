@@ -6,12 +6,12 @@
     "creators": [
       "Tool: sbom4python-0.12.4"
     ],
-    "created": "2026-01-26T13:47:51Z",
+    "created": "2026-02-03T03:50:30Z",
     "licenseListVersion": "3.27"
   },
   "name": "Python-ribasim",
   "dataLicense": "CC0-1.0",
-  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-abb45847-f228-434b-bc4e-c57d94cc6243",
+  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-2b5f7e6e-906d-46a9-9224-4d98e2525e50",
   "packages": [
     {
       "SPDXID": "SPDXRef-1-ribasim",
@@ -1170,16 +1170,16 @@
     {
       "SPDXID": "SPDXRef-27-pandera",
       "name": "pandera",
-      "versionInfo": "0.28.1",
+      "versionInfo": "0.29.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Niels Bantilan (niels.bantilan@gmail.com)",
-      "downloadLocation": "https://pypi.org/project/pandera/0.28.1/#files",
+      "downloadLocation": "https://pypi.org/project/pandera/0.29.0/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/pandera-dev/pandera",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "84da487d9348dfd01b91ae3349eb872a9802df6a6c2da589ac52bb9c080fe8f4"
+          "checksumValue": "b3b25d6c00d7c100fbab96aff0e81e52d3dae543a880d24135cca705fa97c516"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -1187,7 +1187,7 @@
       "licenseComments": "pandera declares MIT License\n\nCopyright (c) 2018 Niels Bantilan\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "A light-weight and flexible data validation and testing tool for statistical data objects.",
-      "releaseDate": "2026-01-08T14:21:24Z",
+      "releaseDate": "2026-01-29T02:49:34Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1202,12 +1202,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/pandera@0.28.1"
+          "referenceLocator": "pkg:pypi/pandera@0.29.0"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:niels_bantilan:pandera:0.28.1:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:niels_bantilan:pandera:0.29.0:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -1653,24 +1653,23 @@
     {
       "SPDXID": "SPDXRef-38-pyarrow",
       "name": "pyarrow",
-      "versionInfo": "21.0.0",
+      "versionInfo": "23.0.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "NOASSERTION",
-      "downloadLocation": "https://pypi.org/project/pyarrow/21.0.0/#files",
+      "downloadLocation": "https://pypi.org/project/pyarrow/23.0.0/#files",
       "filesAnalyzed": false,
       "homepage": "https://arrow.apache.org/",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "e563271e2c5ff4d4a4cbeb2c83d5cf0d4938b891518e676025f7268c6fe5fe26"
+          "checksumValue": "cbdc2bf5947aa4d462adcf8453cf04aee2f7932653cb67a27acd96e5e8528a67"
         }
       ],
-      "licenseConcluded": "Apache-2.0",
+      "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
-      "licenseComments": "pyarrow declares Apache Software License which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Python library for Apache Arrow",
-      "releaseDate": "2025-07-18T00:54:34Z",
+      "releaseDate": "2026-01-18T16:13:34Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1690,7 +1689,7 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/pyarrow@21.0.0"
+          "referenceLocator": "pkg:pypi/pyarrow@23.0.0"
         }
       ]
     },
@@ -1813,23 +1812,23 @@
     {
       "SPDXID": "SPDXRef-42-xarray",
       "name": "xarray",
-      "versionInfo": "2025.12.0",
+      "versionInfo": "2026.1.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: xarray Developers (xarray@googlegroups.com)",
-      "downloadLocation": "https://pypi.org/project/xarray/2025.12.0/#files",
+      "downloadLocation": "https://pypi.org/project/xarray/2026.1.0/#files",
       "filesAnalyzed": false,
       "homepage": "https://xarray.dev/",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "9e77e820474dbbe4c6c2954d0da6342aa484e33adaa96ab916b15a786181e970"
+          "checksumValue": "5fcc03d3ed8dfb662aa254efe6cd65efc70014182bbc2126e4b90d291d970d41"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "summary": "N-D labeled arrays and datasets in Python",
-      "releaseDate": "2025-12-05T21:51:20Z",
+      "releaseDate": "2026-01-28T17:49:01Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1854,12 +1853,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/xarray@2025.12.0"
+          "referenceLocator": "pkg:pypi/xarray@2026.1.0"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:xarray_developers:xarray:2025.12.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:xarray_developers:xarray:2026.1.0:*:*:*:*:*:*:*"
         }
       ]
     }
