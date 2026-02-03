@@ -252,7 +252,6 @@ end
         @test "to_node_type" in keys(ds)
         @test "subnetwork_id" in keys(ds)
         @test "flow_rate" in keys(ds)
-        @test "optimization_type" in keys(ds)
         @test "lower_bound_hit" in keys(ds)
         @test "upper_bound_hit" in keys(ds)
         @test ds["flow_rate"].attrib["units"] == "m3 s-1"
@@ -266,7 +265,6 @@ end
         @test size(ds["from_node_id"]) == (nlink,)
         @test size(ds["subnetwork_id"]) == (nlink,)
         @test size(ds["flow_rate"]) == (nlink, ntime)
-        @test size(ds["optimization_type"]) == (nlink, ntime)
         @test size(ds["lower_bound_hit"]) == (nlink, ntime)
         @test size(ds["upper_bound_hit"]) == (nlink, ntime)
         @test dimnames(ds["flow_rate"]) == ("link_id", "time")

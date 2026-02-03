@@ -132,7 +132,6 @@ function write_results_netcdf(model::Model)::Model
     # allocation control
     data = allocation_control_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.allocation_control)
-    println("Writing allocation control data to NetCDF: $(RESULTS_FILENAME.allocation_control)")
     write_netcdf(path, data, nothing)
 
     # exported levels
@@ -701,7 +700,6 @@ function allocation_flow_data(model::Model; table::Bool = true)
         to_node_id = record_flow.to_node_id
         subnetwork_id = record_flow.subnetwork_id
         flow_rate = record_flow.flow_rate
-        optimization_type = record_flow.optimization_type
         lower_bound_hit = record_flow.lower_bound_hit
         upper_bound_hit = record_flow.upper_bound_hit
     else
@@ -715,6 +713,7 @@ function allocation_flow_data(model::Model; table::Bool = true)
         # Initialize matrices
         flow_rate = fill(NaN, nlinks, ntsteps)
         optimization_type = fill("", nlinks, ntsteps)
+
         # NetCDF doesn't support Bool, use Int8 (0/1)
         lower_bound_hit = zeros(Int8, nlinks, ntsteps)
         upper_bound_hit = zeros(Int8, nlinks, ntsteps)
@@ -754,7 +753,6 @@ function allocation_flow_data(model::Model; table::Bool = true)
         to_node_id,
         subnetwork_id,
         flow_rate,
-        optimization_type,
         lower_bound_hit,
         upper_bound_hit,
     )
