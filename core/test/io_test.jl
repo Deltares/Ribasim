@@ -120,7 +120,7 @@ end
     # Test basin NetCDF output
     path = results_path(config, RESULTS_FILENAME.basin)
     @test isfile(path)
-    NCDDataset(path) do ds
+    NCDataset(path) do ds
         @test "convergence" in keys(ds)
         @test "level" in keys(ds)
         @test "storage" in keys(ds)
@@ -132,7 +132,7 @@ end
     # Test flow NetCDF output
     path = results_path(config, RESULTS_FILENAME.flow)
     @test isfile(path)
-    NCDDataset(path) do ds
+    NCDataset(path) do ds
         @test "convergence" in keys(ds)
         @test "flow_rate" in keys(ds)
         @test ds.attrib["ribasim_version"] == RIBASIM_VERSION

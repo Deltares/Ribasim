@@ -345,43 +345,43 @@ end
 end
 
 @testitem "Circular flow with hysteresis control" begin
-    using DataFrames: DataFrame
     using NCDatasets: NCDataset
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/circular_flow/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
 
-    control = NCDataset(normpath(dirname(toml_path), "results/control.nc")) do ds
-        DataFrame(
-            time = ds["time"][:],
-            truth_state = ds["truth_state"][:],
-        )
+    control_times = NCDataset(normpath(dirname(toml_path), "results/control.nc")) do ds
+        ds["time"][:]
+    end
+    control_truth_states = NCDataset(normpath(dirname(toml_path), "results/control.nc")) do ds
+        ds["truth_state"][:]
     end
 
-    basin = NCDataset(normpath(dirname(toml_path), "results/basin.nc")) do ds
-        DataFrame(
-            time = ds["time"][:],
-            node_id = ds["node_id"][:],
-            level = ds["level"][:],
-        )
+    NCDataset(normpath(dirname(toml_path), "results/basin.nc")) do ds
+        basin_times = ds["time"][:]
+        basin_node_ids = ds["node_id"][:]
+        basin_levels = ds["level"]  # 2D array [time, node]
+
+        # Find node 6 index
+        node6_idx = findfirst(==(6), basin_node_ids)
+        level6 = basin_levels[node6_idx, :]
+
+        # Pump is initially off because level is below 0.9
+        t0 = control_time[1]
+        @test control_truth_states[1] == "F"
+        @test level6[findfirst(>=(t0), basin_times)] <= 0.9 + 1.0e-10
+
+        # Switches on when level exceeds 0.95
+        t1 = control_times[2]
+        @test control_truth_states[2] == "T"
+        @test level6[findfirst(>=(t1), basin_times)] > 0.95
+
+        # And only switches off when level goes below 0.9 again
+        t2 = control_times[3]
+        @test control_truth_states[3] == "F"
+        @test level6[findfirst(>=(t2), basin_times)] <= 0.9 + 1.0e-2
     end
-    basin6 = filter(:node_id => ==(6), basin)
-
-    # Pump is initially off because level is below 0.9
-    t0 = control.time[1]
-    @test control.truth_state[1] == "F"
-    @test basin6.level[findfirst(>=(t0), basin6.time)] <= 0.9 + 1.0e-10
-
-    # Switches on when level exceeds 0.95
-    t1 = control.time[2]
-    @test control.truth_state[2] == "T"
-    @test basin6.level[findfirst(>=(t1), basin6.time)] > 0.95
-
-    # And only switches off when level goes below 0.9 again
-    t2 = control.time[3]
-    @test control.truth_state[3] == "F"
-    @test basin6.level[findfirst(>=(t2), basin6.time)] <= 0.9 + 1.0e-2
 end
 
 @testitem "Storage condition" begin
