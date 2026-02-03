@@ -1,0 +1,176 @@
+netcdf user_demand_subset {
+dimensions:
+	analysis_time = 1 ;
+	time = 10 ;
+	realization = 1 ;
+	stations = 10 ;
+	char_leng_id = 64 ;
+	char_leng_name = 255 ;
+variables:
+	double analysis_time(analysis_time) ;
+		string analysis_time:standard_name = "forecast_reference_time" ;
+		string analysis_time:long_name = "forecast_reference_time" ;
+		string analysis_time:units = "minutes since 1970-01-01 00:00:00.0 +0000" ;
+	float demand(time, realization, stations) ;
+		string demand:long_name = "demand" ;
+		string demand:units = "Mcm/d" ;
+		demand:_FillValue = -999.f ;
+		string demand:coordinates = "lat lon x y z station_id analysis_time" ;
+		string demand:ensemble = "Priority" ;
+	double lat(stations) ;
+		string lat:standard_name = "latitude" ;
+		string lat:long_name = "Station coordinates, latitude" ;
+		string lat:units = "degrees_north" ;
+		string lat:axis = "Y" ;
+		lat:_FillValue = 9.96921e+36 ;
+	double lon(stations) ;
+		string lon:standard_name = "longitude" ;
+		string lon:long_name = "Station coordinates, longitude" ;
+		string lon:units = "degrees_east" ;
+		string lon:axis = "X" ;
+		lon:_FillValue = 9.96921e+36 ;
+	float min_level(time, stations) ;
+		string min_level:long_name = "min_level" ;
+		string min_level:units = "m" ;
+		min_level:_FillValue = -999.f ;
+		string min_level:coordinates = "lat lon x y z station_id" ;
+	int realization(realization) ;
+		string realization:standard_name = "realization" ;
+		string realization:long_name = "Index of an ensemble member within an ensemble" ;
+		string realization:units = "1" ;
+	float return_factor(time, stations) ;
+		string return_factor:long_name = "return_factor" ;
+		string return_factor:units = "-" ;
+		return_factor:_FillValue = -999.f ;
+		string return_factor:coordinates = "lat lon x y z station_id" ;
+	char station_id(stations, char_leng_id) ;
+		string station_id:long_name = "station identification code" ;
+		string station_id:cf_role = "timeseries_id" ;
+	char station_names(stations, char_leng_name) ;
+		string station_names:long_name = "station name" ;
+	double time(time) ;
+		string time:standard_name = "time" ;
+		string time:long_name = "time" ;
+		string time:units = "minutes since 1970-01-01 00:00:00.0 +0000" ;
+		string time:axis = "T" ;
+	double x(stations) ;
+		string x:standard_name = "longitude" ;
+		string x:long_name = "x coordinate according to WGS 1984" ;
+		string x:units = "degrees_east" ;
+		string x:axis = "X" ;
+		x:_FillValue = 9.96921e+36 ;
+	double y(stations) ;
+		string y:standard_name = "latitude" ;
+		string y:long_name = "y coordinate according to WGS 1984" ;
+		string y:units = "degrees_north" ;
+		string y:axis = "Y" ;
+		y:_FillValue = 9.96921e+36 ;
+	double z(stations) ;
+		string z:long_name = "height above mean sea level" ;
+		string z:units = "meters" ;
+		z:_FillValue = 9.96921e+36 ;
+
+// global attributes:
+		string :Conventions = "CF-1.6" ;
+		string :title = "Data" ;
+		string :institution = "Deltares" ;
+		string :source = "Export NETCDF-CF_TIMESERIES from Delft-FEWS" ;
+		string :history = "2026-01-14 09:36:58 GMT: exported from Delft-FEWS" ;
+		string :references = "http://www.delft-fews.com" ;
+		string :Metadata_Conventions = "Unidata Dataset Discovery v1.0" ;
+		string :summary = "Data exported from Delft-FEWS" ;
+		string :date_created = "2026-01-14 09:36:58 GMT" ;
+		string :fews_implementation_version = "2025.01" ;
+		string :fews_patch_number = "509261311" ;
+		string :fews_build_number = "508210944" ;
+		string :coordinate_system = "WGS 1984" ;
+		string :featureType = "timeSeries" ;
+		string :time_coverage_start = "2022-11-01T00:00:00+0000" ;
+		string :time_coverage_end = "2025-11-05T00:00:00+0000" ;
+		string :geospatial_lon_min = "99.091818" ;
+		string :geospatial_lon_max = "99.628585" ;
+		string :geospatial_lat_min = "17.451047" ;
+		string :geospatial_lat_max = "18.764502" ;
+data:
+
+ analysis_time = 29371680 ;
+
+ demand =
+  1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0,
+  2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0,
+  3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4.0,
+  4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 5.0,
+  5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 6.0,
+  6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9, 7.0,
+  7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9, 8.0,
+  8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8, 8.9, 9.0,
+  9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8, 9.9, 10.0,
+  10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8, 10.9, 11.0 ;
+
+ lat = 52.0, 52.1, 52.2, 52.3, 52.4, 52.5,
+    52.6, 52.7, 52.8, 52.9 ;
+
+ lon = 5.1, 5.2, 5.3, 5.4, 5.5, 5.6,
+    5.7, 5.8, 5.9, 6.0 ;
+
+ min_level =
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ;
+
+ realization = 1 ;
+
+ return_factor =
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ;
+
+ station_id =
+  "401",
+  "402",
+  "403",
+  "404",
+  "405",
+  "406",
+  "407",
+  "408",
+  "409",
+  "410" ;
+
+ station_names =
+  "userdemand_a",
+  "irrdemand_a",
+  "userdemand_b",
+  "irrdemand_b",
+  "userdemand_c",
+  "irrdemand_c",
+  "userdemand_d",
+  "irrdemand_d",
+  "irrdemand_e",
+  "irrdemand_f" ;
+
+ time = 27787680, 27789120, 27790560, 27792000, 27793440, 27794880, 27796320,
+    27797760, 27799200, 27800640 ;
+
+ x = 5.1, 5.2, 5.3, 5.4, 5.5, 5.6,
+    5.7, 5.8, 5.9, 6.0 ;
+
+ y = 52.0, 52.1, 52.2, 52.3, 52.4, 52.5,
+    52.6, 52.7, 52.8, 52.9 ;
+
+ z = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ;
+}
