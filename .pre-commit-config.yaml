@@ -13,7 +13,7 @@ repos:
         exclude: '.teamcity'
       - id: trailing-whitespace
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.13
+    rev: v0.14.14
     hooks:
       - id: ruff-check
         types_or: [python, pyi, jupyter]
@@ -29,6 +29,6 @@ repos:
     hooks:
       - id: nbstripout
   - repo: https://github.com/adhtruong/mirrors-typos
-    rev: v1.42.1
+    rev: v1.42.3
     hooks:
       - id: typos
