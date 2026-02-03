@@ -191,7 +191,6 @@ end
             @test "to_node_id" in keys(ds)
             @test "subnetwork_id" in keys(ds)
             @test "flow_rate" in keys(ds)
-            @test "optimization_type" in keys(ds)
             @test "lower_bound_hit" in keys(ds)
             @test "upper_bound_hit" in keys(ds)
             @test length(ds["time"]) > 0

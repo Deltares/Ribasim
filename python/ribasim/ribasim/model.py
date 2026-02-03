@@ -845,14 +845,13 @@ class Model(FileModel):
                     "time",
                     "link_id",
                     "flow_rate",
-                    "optimization_type",
                     "demand_priority",
                 ],
             )
         else:
             alloc_flow_ds = xr.open_dataset(alloc_flow_path)
             alloc_flow_df = (
-                alloc_flow_ds[["flow_rate", "optimization_type", "demand_priority"]]
+                alloc_flow_ds[["flow_rate", "demand_priority"]]
                 .to_dataframe()
                 .reset_index()
             )

@@ -316,9 +316,6 @@ const CF = OrderedDict{String, OrderedDict{String, String}}(
         "standard_name" => "water_surface_height_above_reference_datum",
         "long_name" => "subgrid water level above reference datum",
     ),
-    "optimization_type" => OrderedDict(
-        "long_name" => "allocation optimization type",
-    ),
     "lower_bound_hit" => OrderedDict(
         "units" => "1",
         "long_name" => "allocation lower bound constraint active",
@@ -712,7 +709,6 @@ function allocation_flow_data(model::Model; table::Bool = true)
 
         # Initialize matrices
         flow_rate = fill(NaN, nlinks, ntsteps)
-        optimization_type = fill("", nlinks, ntsteps)
 
         # NetCDF doesn't support Bool, use Int8 (0/1)
         lower_bound_hit = zeros(Int8, nlinks, ntsteps)
@@ -731,7 +727,6 @@ function allocation_flow_data(model::Model; table::Bool = true)
             j = searchsortedfirst(time, datetime_since(row.time, config.starttime))
 
             flow_rate[i, j] = row.flow_rate
-            optimization_type[i, j] = row.optimization_type
             lower_bound_hit[i, j] = Int8(row.lower_bound_hit)
             upper_bound_hit[i, j] = Int8(row.upper_bound_hit)
 
