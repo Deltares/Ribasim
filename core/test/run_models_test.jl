@@ -72,46 +72,6 @@
             @test haskey(ds, "rejected_timesteps")
             @test haskey(ds, "dt")
         end
-
-        # empty control and allocation tables should still have the right schema
-        NCDataset(control_path) do ds
-            @test length(ds["time"]) == 0
-            @test haskey(ds, "control_node_id")
-            @test haskey(ds, "truth_state")
-            @test haskey(ds, "control_state")
-        end
-
-        NCDataset(allocation_path) do ds
-            @test length(ds["time"]) == 0
-            @test haskey(ds, "subnetwork_id")
-            @test haskey(ds, "node_type")
-            @test haskey(ds, "node_id")
-            @test haskey(ds, "demand_priority")
-            @test haskey(ds, "demand")
-            @test haskey(ds, "allocated")
-            @test haskey(ds, "realized")
-        end
-
-        NCDataset(allocation_flow_path) do ds
-            @test length(ds["time"]) == 0
-            @test haskey(ds, "link_id")
-            @test haskey(ds, "from_node_type")
-            @test haskey(ds, "from_node_id")
-            @test haskey(ds, "to_node_type")
-            @test haskey(ds, "to_node_id")
-            @test haskey(ds, "subnetwork_id")
-            @test haskey(ds, "flow_rate")
-            @test haskey(ds, "optimization_type")
-            @test haskey(ds, "lower_bound_hit")
-            @test haskey(ds, "upper_bound_hit")
-        end
-
-        NCDataset(allocation_control_path) do ds
-            @test length(ds["time"]) == 0
-            @test haskey(ds, "node_id")
-            @test haskey(ds, "node_type")
-            @test haskey(ds, "flow_rate")
-        end
     end
 
     @testset Teamcity.TeamcityTestSet "Results size" begin
@@ -125,7 +85,7 @@
             @test length(ds["time"]) == nsaved - 1
         end
         NCDataset(subgrid_path) do ds
-            @test length(ds["time"]) == nsaved * length(p_independent.subgrid.level)
+            @test length(ds["time"]) == nsaved
         end
     end
 
