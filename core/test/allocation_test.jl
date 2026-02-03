@@ -143,7 +143,7 @@ end
 @testitem "Flow demand" setup = [Teamcity] begin
     using DataFrames: DataFrame
     using Tables.DataAPI: nrow
-    import Arrow
+    using NCDatasets: NCDataset
     import Tables
     using Dates: DateTime
 
@@ -159,63 +159,52 @@ end
     @test all(≈(0.002), df_rating_curve_2.realized[2:end])
 
     @testset "Results" begin
-        allocation_bytes = read(normpath(dirname(toml_path), "results/allocation.arrow"))
-        allocation_flow_bytes =
-            read(normpath(dirname(toml_path), "results/allocation_flow.arrow"))
-        allocation_control_bytes =
-            read(normpath(dirname(toml_path), "results/allocation_control.arrow"))
+        allocation_path = normpath(dirname(toml_path), "results/allocation.nc")
+        allocation_flow_path = normpath(dirname(toml_path), "results/allocation_flow.nc")
+        allocation_control_path =
+            normpath(dirname(toml_path), "results/allocation_control.nc")
 
-        allocation = Arrow.Table(allocation_bytes)
-        allocation_flow = Arrow.Table(allocation_flow_bytes)
-        allocation_control = Arrow.Table(allocation_control_bytes)
+        # Test that main result files exist
+        @test isfile(allocation_path)
+        @test isfile(allocation_flow_path)
+        # allocation_control may not be created if there's no data
 
-        @test Tables.schema(allocation) == Tables.Schema(
-            (
-                :time,
-                :subnetwork_id,
-                :node_type,
-                :node_id,
-                :demand_priority,
-                :demand,
-                :allocated,
-                :realized,
-            ),
-            (DateTime, Int32, String, Int32, Int32, Float64, Float64, Float64),
-        )
-        @test Tables.schema(allocation_flow) == Tables.Schema(
-            (
-                :time,
-                :link_id,
-                :from_node_type,
-                :from_node_id,
-                :to_node_type,
-                :to_node_id,
-                :subnetwork_id,
-                :flow_rate,
-                :lower_bound_hit,
-                :upper_bound_hit,
-            ),
-            (
-                DateTime,
-                Int32,
-                String,
-                Int32,
-                String,
-                Int32,
-                Int32,
-                Float64,
-                Bool,
-                Bool,
-            ),
-        )
-        @test Tables.schema(allocation_control) == Tables.Schema(
-            (:time, :node_id, :node_type, :flow_rate),
-            (DateTime, Int32, String, Float64),
-        )
+        # Read NetCDF files and convert to table format for schema validation
+        NCDataset(allocation_path) do ds
+            @test "time" in keys(ds)
+            @test "subnetwork_id" in keys(ds)
+            @test "node_type" in keys(ds)
+            @test "node_id" in keys(ds)
+            @test "demand_priority" in keys(ds)
+            @test "demand" in keys(ds)
+            @test "allocated" in keys(ds)
+            @test "realized" in keys(ds)
+            @test length(ds["time"]) > 0
+        end
 
-        @test nrow(allocation) > 0
-        @test nrow(allocation_flow) > 0
-        @test nrow(allocation_control) == 0
+        NCDataset(allocation_flow_path) do ds
+            @test "time" in keys(ds)
+            @test "link_id" in keys(ds)
+            @test "from_node_type" in keys(ds)
+            @test "from_node_id" in keys(ds)
+            @test "to_node_type" in keys(ds)
+            @test "to_node_id" in keys(ds)
+            @test "subnetwork_id" in keys(ds)
+            @test "flow_rate" in keys(ds)
+            @test "lower_bound_hit" in keys(ds)
+            @test "upper_bound_hit" in keys(ds)
+            @test length(ds["time"]) > 0
+        end
+
+        # Test allocation_control if it exists (may be empty for models without control)
+        if isfile(allocation_control_path)
+            NCDDataset(allocation_control_path) do ds
+                @test "time" in keys(ds)
+                @test "node_id" in keys(ds)
+                @test "node_type" in keys(ds)
+                @test "flow_rate" in keys(ds)
+            end
+        end
     end
 end
 

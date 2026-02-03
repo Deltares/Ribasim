@@ -2,8 +2,7 @@
     using Ribasim: NodeID, OrderedDict
     using OrdinaryDiffEqCore: get_du
     using Dates: DateTime
-    import Arrow
-    import Tables
+    using NCDatasets: NCDataset
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
@@ -34,19 +33,16 @@
     @test discrete_control.logic_mapping == logic_mapping
 
     # Control result
-    control_bytes = read(normpath(dirname(toml_path), "results/control.arrow"))
-    control = Arrow.Table(control_bytes)
-    @test Tables.schema(control) == Tables.Schema(
-        (:time, :control_node_id, :truth_state, :control_state),
-        (DateTime, Int32, String, String),
-    )
-    @test discrete_control.record.control_node_id == [5, 6, 5, 5, 6]
-    @test discrete_control.record.control_node_id == control.control_node_id
-    @test discrete_control.record.truth_state == ["TF", "F", "FF", "FT", "T"]
-    @test discrete_control.record.truth_state == control.truth_state
-    @test discrete_control.record.control_state ==
-        ["off", "active", "on", "off", "inactive"]
-    @test discrete_control.record.control_state == control.control_state
+    control_path = normpath(dirname(toml_path), "results/control.nc")
+    NCDataset(control_path) do control
+        @test discrete_control.record.control_node_id == [5, 6, 5, 5, 6]
+        @test discrete_control.record.control_node_id == control["control_node_id"][:]
+        @test discrete_control.record.truth_state == ["TF", "F", "FF", "FT", "T"]
+        @test discrete_control.record.truth_state == control["truth_state"][:]
+        @test discrete_control.record.control_state ==
+            ["off", "active", "on", "off", "inactive"]
+        @test discrete_control.record.control_state == control["control_state"][:]
+    end
 
     level = Ribasim.get_storages_and_levels(model).level
     t = Ribasim.tsaves(model)
@@ -349,34 +345,43 @@ end
 end
 
 @testitem "Circular flow with hysteresis control" begin
-    using DataFrames: DataFrame
-    using Arrow
+    using NCDatasets: NCDataset
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/circular_flow/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
 
-    control_bytes = read(normpath(dirname(toml_path), "results/control.arrow"))
-    control = DataFrame(Arrow.Table(control_bytes))
+    control_times = NCDataset(normpath(dirname(toml_path), "results/control.nc")) do ds
+        ds["time"][:]
+    end
+    control_truth_states = NCDataset(normpath(dirname(toml_path), "results/control.nc")) do ds
+        ds["truth_state"][:]
+    end
 
-    basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
-    basin = DataFrame(Arrow.Table(basin_bytes))
-    basin6 = filter(:node_id => ==(6), basin)
+    NCDataset(normpath(dirname(toml_path), "results/basin.nc")) do ds
+        basin_times = ds["time"][:]
+        basin_node_ids = ds["node_id"][:]
+        basin_levels = ds["level"]  # 2D array [time, node]
 
-    # Pump is initially off because level is below 0.9
-    t0 = control.time[1]
-    @test control.truth_state[1] == "F"
-    @test basin6.level[findfirst(>=(t0), basin6.time)] <= 0.9 + 1.0e-10
+        # Find node 6 index
+        node6_idx = findfirst(==(6), basin_node_ids)
+        level6 = basin_levels[node6_idx, :]
 
-    # Switches on when level exceeds 0.95
-    t1 = control.time[2]
-    @test control.truth_state[2] == "T"
-    @test basin6.level[findfirst(>=(t1), basin6.time)] > 0.95
+        # Pump is initially off because level is below 0.9
+        t0 = control_times[1]
+        @test control_truth_states[1] == "F"
+        @test level6[findfirst(>=(t0), basin_times)] <= 0.9 + 1.0e-10
 
-    # And only switches off when level goes below 0.9 again
-    t2 = control.time[3]
-    @test control.truth_state[3] == "F"
-    @test basin6.level[findfirst(>=(t2), basin6.time)] <= 0.9 + 1.0e-2
+        # Switches on when level exceeds 0.95
+        t1 = control_times[2]
+        @test control_truth_states[2] == "T"
+        @test level6[findfirst(>=(t1), basin_times)] > 0.95
+
+        # And only switches off when level goes below 0.9 again
+        t2 = control_times[3]
+        @test control_truth_states[3] == "F"
+        @test level6[findfirst(>=(t2), basin_times)] <= 0.9 + 1.0e-2
+    end
 end
 
 @testitem "Storage condition" begin

@@ -708,6 +708,7 @@ function allocation_flow_data(model::Model; table::Bool = true)
 
         # Initialize matrices
         flow_rate = fill(NaN, nlinks, ntsteps)
+
         # NetCDF doesn't support Bool, use Int8 (0/1)
         lower_bound_hit = zeros(Int8, nlinks, ntsteps)
         upper_bound_hit = zeros(Int8, nlinks, ntsteps)
