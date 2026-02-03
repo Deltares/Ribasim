@@ -108,7 +108,7 @@ end
 end
 
 @testitem "results" begin
-    using NCDatasets: NCDataset
+    using NCDatasets: NCDataset, dimnames
     using Ribasim: RIBASIM_VERSION, results_path, RESULTS_FILENAME
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
@@ -164,7 +164,7 @@ end
 end
 
 @testitem "netcdf results" begin
-    using NCDatasets: NCDataset
+    using NCDatasets: NCDataset, dimnames
     using DataFrames: DataFrame
     using Ribasim: results_path, RIBASIM_VERSION, RESULTS_FILENAME
 
@@ -228,7 +228,7 @@ end
 end
 
 @testitem "netcdf allocation results" begin
-    using NCDatasets: NCDataset
+    using NCDatasets: NCDataset, dimnames
     using Ribasim: results_path, RESULTS_FILENAME
 
     toml_path = normpath(
@@ -293,7 +293,7 @@ end
 end
 
 @testitem "netcdf dimensions" begin
-    using NCDatasets: NCDataset
+    using NCDatasets: NCDataset, dimnames
     using DataFrames: DataFrame
     using Ribasim: results_path, RESULTS_FILENAME
 

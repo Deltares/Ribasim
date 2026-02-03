@@ -368,7 +368,7 @@ end
         level6 = basin_levels[node6_idx, :]
 
         # Pump is initially off because level is below 0.9
-        t0 = control_time[1]
+        t0 = control_times[1]
         @test control_truth_states[1] == "F"
         @test level6[findfirst(>=(t0), basin_times)] <= 0.9 + 1.0e-10
 
