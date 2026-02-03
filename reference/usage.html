@@ -1174,12 +1174,7 @@ Note
 </section>
 <section id="allocation-flow---allocation_flow" class="level2" data-number="5.6">
 <h2 data-number="5.6" class="anchored" data-anchor-id="allocation-flow---allocation_flow"><span class="header-section-number">5.6</span> Allocation flow - <code>allocation_flow</code></h2>
-<p>The allocation flow table contains results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved (see also <a href="../concept/allocation.html#the-high-level-algorithm">here</a>). If in the model a primary network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork: The column <code>optimization_type</code> provides the distinction between these optimization types.</p>
-<ul>
-<li><code>internal_sources</code>: first it will try using local sources internal to the subnetwork</li>
-<li><code>collect_demands</code>: collecting its total demand (for allocating flow from the primary network to the subnetwork)</li>
-<li><code>allocate</code>: allocating flow within the subnetwork</li>
-</ul>
+<p>The allocation flow table contains results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved (see also <a href="../concept/allocation.html#the-high-level-algorithm">here</a>). If in the model a primary network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork:</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -1230,16 +1225,11 @@ Note
 <td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
 </tr>
 <tr class="odd">
-<td>optimization_type</td>
-<td>String</td>
-<td>-</td>
-</tr>
-<tr class="even">
 <td>upper_bound_hit</td>
 <td>Bool</td>
 <td>-</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>lower_bound_hit</td>
 <td>Bool</td>
 <td>-</td>
