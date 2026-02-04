@@ -151,7 +151,7 @@ The input and output tables described below all share that they are tabular file
 and Link tables always have to be in the [GeoPackage](https://www.geopackage.org/) database file, and
 results are always written to [Apache Arrow](https://arrow.apache.org/) files, sometimes also
 known as Feather files. All other tables can either be in the database or in separate
-Arrow files that are listed in the TOML as described above.
+Arrow or NetCDF files that are listed in the TOML as described above.
 
 For visualization, the Node and Link tables typically have associated geometries. GeoPackage
 was used since it provides a standardized way to store tables with (and without) geometry
@@ -170,6 +170,76 @@ apply [dictionary
 encoding](https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout) to
 those columns.
 The Ribasim version that was used to create the results is written to each file in the `ribasim_version` schema metadata.
+
+NetCDF is also supported as an alternative format for input tables. NetCDF files follow the
+[CF conventions](http://cfconventions.org/) and are particularly useful for large time series
+data or when working with tools that prefer the NetCDF format. However, note that NetCDF input
+tables are currently [not automatically loaded in QGIS](/known_issues.qmd).
+
+## Using Arrow or NetCDF for input tables {#sec-arrow-netcdf-input}
+
+By default, all tables except Node and Link are stored in the GeoPackage database.
+However, for large tables (e.g., time series data), it can be more efficient to store them
+in separate Arrow or NetCDF files. This is particularly useful for:
+
+- Large time series that would make the database file unwieldy
+- Tables that need to be easily exchanged between different models
+- Performance optimization for very large datasets
+
+### Writing tables to Arrow or NetCDF with Python
+
+When building a model with the Ribasim Python API, you can specify that a table should be
+written to an external file by setting its `filepath` attribute:
+
+```python
+from pathlib import Path
+import ribasim
+
+model = ribasim.Model(...)
+
+# Write Basin profile table to Arrow format
+model.basin.profile.filepath = Path("profile.arrow")
+
+# Write Basin time series to NetCDF format
+model.basin.time.filepath = Path("basin-time.nc")
+
+# The files will be created when you write the model
+model.write("path/to/model.toml")
+```
+
+The file format is determined automatically from the file extension:
+- `.arrow` for Apache Arrow format
+- `.nc` for NetCDF format
+
+The paths are relative to the `input_dir` specified in the model configuration.
+When the model is written, these tables will be saved to the specified files rather than
+the GeoPackage database, and the TOML configuration file will reference these external files.
+
+For example, the TOML might look like:
+```toml
+[basin]
+profile = "profile.arrow"
+time = "basin-time.nc"
+```
+
+### Using external table files in QGIS
+
+**Important limitation**: Tables stored in Arrow or NetCDF files are currently not automatically
+loaded in the QGIS plugin (see [#318](https://github.com/Deltares/Ribasim/issues/318) and
+[#2519](https://github.com/Deltares/Ribasim/issues/2519)). If you need to edit tables
+manually using QGIS, keep them in the GeoPackage database. Arrow and NetCDF formats are
+best suited for:
+
+- Large models where manual editing is not practical
+- Programmatically generated models
+- Performance-critical applications
+- Scenarios where you primarily interact with the model via Python or the CLI
+
+### Using result files as initial conditions
+
+One common use case is to use the final state of a simulation as the initial condition for
+a new simulation. See the [Basin state documentation](/reference/node/basin.qmd#sec-state) for
+details on how to copy result files to the input directory and reference them in your TOML.
 
 ## Table requirements
 

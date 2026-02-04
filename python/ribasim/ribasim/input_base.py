@@ -27,7 +27,6 @@ from pydantic import (
     field_validator,
     model_serializer,
     model_validator,
-    validate_call,
 )
 
 import ribasim
@@ -225,18 +224,28 @@ class FileModel(BaseModel, ABC):
         else:
             return value
 
-    @validate_call
-    def set_filepath(self, filepath: Path) -> None:
-        """Set the filepath of this instance.
+    def __setattr__(self, name: str, value: object) -> None:
+        """Override to automatically track filepath changes in parent models."""
+        super().__setattr__(name, value)
+        if name == "filepath" and value is not None:
+            self._notify_parent_of_filepath_change()
 
-        Args:
-            filepath (Path): The filepath to set.
+    def _notify_parent_of_filepath_change(self) -> None:
+        """Notify parent models that filepath has been set.
+
+        This ensures that when a filepath is set on a TableModel,
+        the parent NodeModel and Model are marked as modified so
+        the filepath gets written to the TOML configuration.
         """
-        # Disable assignment validation, which would
-        # otherwise trigger check_filepath() and _load() again.
-        self.model_config["validate_assignment"] = False
-        self.filepath = filepath
-        self.model_config["validate_assignment"] = True
+        if (
+            hasattr(self, "_parent")
+            and self._parent is not None
+            and hasattr(self, "_parent_field")
+            and self._parent_field is not None
+            and hasattr(self._parent, "_notify_parent_of_filepath_change")
+        ):
+            # Recursively notify grandparent
+            self._parent._notify_parent_of_filepath_change()
 
     @field_serializer("filepath")
     def _serialize_path(self, path: Path) -> str:
@@ -326,7 +335,10 @@ class TableModel[TableT: _BaseSchema](FileModel):
 
     @model_serializer
     def _set_model(self) -> "str | None":
-        return self.filepath.as_posix() if self.filepath is not None else None
+        # Only serialize filepath if the table has data
+        if self.filepath is not None and self.df is not None and len(self.df) > 0:
+            return self.filepath.as_posix()
+        return None
 
     @classmethod
     def tablename(cls) -> str:
@@ -395,6 +407,9 @@ class TableModel[TableT: _BaseSchema](FileModel):
         db_path = context_file_writing.get().get("database")
         self.sort()
         if self.filepath is not None:
+            # Only write to external file if table has data
+            if self.df is None or len(self.df) == 0:
+                return  # Skip writing filepath for empty tables
             suffix = self.filepath.suffix.lower()
             if suffix == ".nc":
                 self._write_netcdf(self.filepath, directory, input_dir)

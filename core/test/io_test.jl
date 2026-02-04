@@ -474,3 +474,25 @@ end
     storage2_begin = current_storage
     @test storage1_end ≈ storage2_begin
 end
+
+@testitem "filepath only written for non-empty tables" begin
+    # This tests that when a filepath is set on a table in Python,
+    # it is only written to the TOML if the table has data.
+    # This prevents "file not found" errors when the core tries to read non-existent files.
+
+    import TOML
+
+    # Test 1: basic_arrow has profile data WITH filepath set
+    # The filepath SHOULD appear in TOML
+    model_path = normpath(@__DIR__, "../../generated_testmodels/basic_arrow/")
+    toml_path = normpath(model_path, "ribasim.toml")
+    toml_dict = TOML.parsefile(toml_path)
+
+    # Profile table has data and filepath is set, so it appears in TOML
+    @test haskey(get(toml_dict, "basin", Dict()), "profile")
+    @test get(toml_dict, "basin", Dict())["profile"] == "profile.arrow"
+
+    # Time table is empty (no data), so even if filepath were set in Python,
+    # it should NOT appear in TOML
+    @test !haskey(get(toml_dict, "basin", Dict()), "time")
+end
