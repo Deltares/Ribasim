@@ -194,7 +194,7 @@ function Model(config::Config)::Model
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))
     tstops = sort(unique(reduce(vcat, tstops)))
-    adaptive, dt = convert_dt(config.solver.dt)
+    adaptive = is_adaptive(config.solver.dt)
 
     specialize = config.solver.specialize ? FullSpecialize : NoSpecialize
     RHS = ODEFunction{true, specialize}(
@@ -214,7 +214,7 @@ function Model(config::Config)::Model
 
     # Initialize the integrator, providing all solver options as described in
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
-    # Not all keyword arguments (e.g. `dt`) support `nothing`, in which case we follow
+    # Not all keyword arguments (e.g. `dtmax`) support `nothing`, in which case we follow
     # https://github.com/SciML/OrdinaryDiffEq.jl/blob/v6.57.0/src/solve.jl#L10
     integrator = init(
         prob,
@@ -227,7 +227,7 @@ function Model(config::Config)::Model
         tstops,
         isoutofdomain,
         adaptive,
-        dt,
+        config.solver.dt,
         config.solver.dtmin,
         dtmax = something(config.solver.dtmax, t_end),
         config.solver.force_dtmin,
