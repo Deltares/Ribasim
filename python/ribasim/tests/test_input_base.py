@@ -81,7 +81,7 @@ def test_filepath_appears_in_toml(tmp_path):
     )
 
     # Set filepath using direct assignment
-    model.basin.profile.filepath = Path("profile.nc")
+    model.basin.profile.filepath = Path("profile_123.nc")
 
     # Write the model
     toml_path = tmp_path / "test_model" / "ribasim.toml"
