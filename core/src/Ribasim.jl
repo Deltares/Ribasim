@@ -63,7 +63,7 @@ using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
-using SparseArrays: SparseMatrixCSC, sparse
+using SparseArrays: SparseMatrixCSC, sparse, nzrange
 
 # Linear algebra
 using LinearAlgebra: LinearAlgebra, mul!, UniformScaling
