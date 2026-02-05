@@ -240,6 +240,12 @@ For time series data, NetCDF is particularly well-suited:
 model.basin.time.filepath = Path("basin-time.nc")
 ```
 
+To revert a table back to being stored in the GeoPackage database instead of an external file, set the filepath to `None`:
+```python
+# Store profile data back in the GeoPackage
+model.basin.profile.filepath = None
+```
+
 ### Using result files as initial conditions
 
 One common use case is to use the final state of a simulation as the initial condition for
