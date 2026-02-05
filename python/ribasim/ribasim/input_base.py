@@ -361,8 +361,8 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
 
     @model_serializer
     def _set_model(self) -> "str | None":
-        # Only serialize filepath if the table has data
-        if self.filepath is not None and self.df is not None and len(self.df) > 0:
+        # Serialize filepath if it's set, regardless of whether table has data
+        if self.filepath is not None:
             return self.filepath.as_posix()
         return None
 

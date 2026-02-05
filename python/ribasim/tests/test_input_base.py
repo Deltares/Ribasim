@@ -92,12 +92,12 @@ def test_filepath_appears_in_toml(tmp_path):
         toml_data = tomli.load(f)
 
     assert "basin" in toml_data, "basin section should be in TOML"
-    assert toml_data["basin"]["profile"] == "profile.nc", (
+    assert toml_data["basin"]["profile"] == "profile_123.nc", (
         "profile filepath should be in TOML"
     )
 
     # Verify the NetCDF file was created
-    nc_path = tmp_path / "test_model" / "input" / "profile.nc"
+    nc_path = tmp_path / "test_model" / "input" / "profile_123.nc"
     assert nc_path.exists(), f"NetCDF file should exist at {nc_path}"
 
     # Verify the NetCDF file contains the data
