@@ -34,7 +34,8 @@ using ForwardDiff: derivative as forward_diff
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du
 using OrdinaryDiffEqDifferentiation:
-    WOperator, OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
+    OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
+using SciMLOperators: WOperator, MatrixOperator
 import ADTypes
 import ForwardDiff
 
@@ -65,7 +66,7 @@ using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 using SparseArrays: SparseMatrixCSC, spzeros, sparse, nzrange
 
 # Linear algebra
-using LinearAlgebra: LinearAlgebra, mul!
+using LinearAlgebra: LinearAlgebra, mul!, UniformScaling
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node
