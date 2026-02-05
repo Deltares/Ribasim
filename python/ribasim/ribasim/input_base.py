@@ -27,6 +27,7 @@ from pydantic import (
     field_validator,
     model_serializer,
     model_validator,
+    validate_call,
 )
 
 import ribasim
@@ -224,11 +225,19 @@ class FileModel(BaseModel, ABC):
         else:
             return value
 
-    def __setattr__(self, name: str, value: object) -> None:
-        """Override to automatically track filepath changes in parent models."""
-        super().__setattr__(name, value)
-        if name == "filepath" and value is not None:
-            self._notify_parent_of_filepath_change()
+    @validate_call
+    def set_filepath(self, filepath: Path) -> None:
+        """Set the filepath of this instance.
+
+        Args:
+            filepath (Path): The filepath to set.
+        """
+        # Disable assignment validation, which would
+        # otherwise trigger check_filepath() and _load() again
+        self.model_config["validate_assignment"] = False
+        self.filepath = filepath
+        self.model_config["validate_assignment"] = True
+        self._notify_parent_of_filepath_change()
 
     def _notify_parent_of_filepath_change(self) -> None:
         """Notify parent models that filepath has been set.
