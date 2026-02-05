@@ -194,18 +194,35 @@ written to an external file by setting its `filepath` attribute:
 ```python
 from pathlib import Path
 import ribasim
+from ribasim.nodes import basin
 
-model = ribasim.Model(...)
+# Create a model
+model = ribasim.Model(
+    starttime="2020-01-01",
+    endtime="2021-01-01",
+    crs="EPSG:28992",
+)
 
-# Write Basin profile table to Arrow format
+# Add a basin with profile data
+model.basin.add(
+    ribasim.Node(1, ribasim.geometry.Point(0, 0)),
+    [basin.Profile(level=[0.0, 1.0], area=[100.0, 1000.0])],
+)
+
+# Specify that the profile table should be written to Arrow format
 model.basin.profile.filepath = Path("profile.arrow")
 
-# Write Basin time series to NetCDF format
-model.basin.time.filepath = Path("basin-time.nc")
+# Specify the input directory (where external files will be saved)
+model.input_dir = Path("input")
 
-# The files will be created when you write the model
-model.write("path/to/model.toml")
+# Write the model - this creates the TOML, database, and Arrow file
+model.write("my_model/ribasim.toml")
 ```
+
+After running this code, you'll have:
+- `my_model/ribasim.toml` - configuration file referencing the external file
+- `my_model/input/database.gpkg` - GeoPackage with Node and Link tables
+- `my_model/input/profile.arrow` - Arrow file with Basin profile data
 
 The file format is determined automatically from the file extension:
 - `.arrow` for Apache Arrow format
@@ -215,20 +232,20 @@ The paths are relative to the `input_dir` specified in the model configuration.
 When the model is written, these tables will be saved to the specified files rather than
 the GeoPackage database, and the TOML configuration file will reference these external files.
 
-For example, the TOML might look like:
+The resulting TOML will contain:
 ```toml
 [basin]
 profile = "profile.arrow"
-time = "basin-time.nc"
 ```
 
-### Using external table files in QGIS
+You can also use this to write time series to NetCDF:
+```python
+# Add time-varying data
+model.basin.time.filepath = Path("basin-time.nc")
+```
 
-**Important limitation**: Tables stored in Arrow or NetCDF files are currently not automatically
-loaded in the QGIS plugin (see [#318](https://github.com/Deltares/Ribasim/issues/318) and
-[#2519](https://github.com/Deltares/Ribasim/issues/2519)). If you need to edit tables
-manually using QGIS, keep them in the GeoPackage database. Arrow and NetCDF formats are
-best suited for:
+**Note**: Only tables with data will have their filepath written to the TOML. If you set a
+filepath on an empty table, it will be ignored to prevent errors.
 
 - Large models where manual editing is not practical
 - Programmatically generated models
