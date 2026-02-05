@@ -77,9 +77,9 @@ The HalfLazyJacobian represents the Ribasim Jacobian in the form `J = J_intermed
 - `calc_J_inner!`, which defined the matrix-matrix product `J_inner =  A * J_intermediate`.
 """
 struct HalfLazyJacobian <: AbstractSciMLOperator{Float64}
-    J_intermediate::SparseArrays.SparseMatrixCSC{Float64, Int64}
+    J_intermediate::SparseMatrixCSC{Float64, Int64}
     p_independent::ParametersIndependent
-    du::Ribasim.CArrays.CVector
+    du::CVector
     prep::Any
     backend::Any
 end
@@ -481,4 +481,16 @@ function water_balance!(
         p_mutable,
         t,
     )
+end
+
+# Piracy: workaround for https://github.com/SciML/OrdinaryDiffEq.jl/issues/3035
+# Only QNDF and FBDF use DummyController, which delegates to default_post_newton_controller!
+# but that function only has methods for composite caches (DefaultCache, CompositeCache).
+function OrdinaryDiffEqCore.default_post_newton_controller!(
+        integrator,
+        cache::Union{QNDFCache, FBDFCache},
+        alg,
+    )
+    integrator.dt = integrator.dt / integrator.opts.failfactor
+    return nothing
 end

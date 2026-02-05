@@ -17,7 +17,6 @@ module Ribasim
 const RIBASIM_VERSION = "2026.1.0-rc1"
 
 using PrecompileTools: @setup_workload, @compile_workload
-using Preferences: @load_preference
 
 # Requirements for automatic differentiation
 using DifferentiationInterface:
@@ -33,6 +32,7 @@ using ForwardDiff: derivative as forward_diff
 
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du
+using OrdinaryDiffEqBDF: QNDFCache, FBDFCache
 using OrdinaryDiffEqDifferentiation:
     OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
 using SciMLOperators: WOperator, MatrixOperator
@@ -59,11 +59,11 @@ using SciMLBase:
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
-using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector, jacobian_sparsity
+using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
-using SparseArrays: SparseMatrixCSC, spzeros, sparse, nzrange
+using SparseArrays: SparseMatrixCSC, sparse
 
 # Linear algebra
 using LinearAlgebra: LinearAlgebra, mul!, UniformScaling
