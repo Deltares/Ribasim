@@ -178,13 +178,9 @@ The Ribasim version that was used to create the results is written to each file 
 ## Using NetCDF or Arrow for input tables {#sec-arrow-netcdf-input}
 
 By default, all tables except Node and Link are stored in the GeoPackage database.
-However, for large tables (e.g., time series data), it can be more efficient to store them
-in separate files. **NetCDF is the recommended format for external table files**. This is
-particularly useful for:
+However, you can manually configure to store and read data in external files. **NetCDF is the recommended format for external table files**. This is
+particularly when you quickly want to be able to switch between different time series on the same model.
 
-- Large time series that would make the database file unwieldy
-- Tables that need to be easily exchanged between different models
-- Performance optimization for very large datasets
 
 ### Writing tables to NetCDF or Arrow with Python
 
