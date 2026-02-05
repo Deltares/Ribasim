@@ -96,8 +96,8 @@ compression       | Bool   | Whether to apply compression or not.
 compression_level | Int    | Zstandard compression level. Default is 6, higher compresses more.
 subgrid           | Bool   | Compute and output more detailed water levels.
 
-Currently compression is only used for Apache Arrow.
-NetCDF will be the only output format later on.
+NetCDF is the default results format and recommended for new models.
+Arrow support will be removed in a future release.
 
 ## Logging settings
 
@@ -159,34 +159,34 @@ columns in a SQLite database. If, like Ribasim, you can ignore the geometries, a
 is easy to read using SQLite libraries, which are commonly available. Furthermore GeoPackage
 can be updated in place when working on a model.
 
-Arrow was chosen since it is standardized, fast, simple and flexible. It can be read and
-written by many different software packages. In Ribasim we use
-[Arrow.jl](https://arrow.apache.org/julia/dev/). Results can be written to Arrow, since for long
-runs Ribasim can produce tables with many rows. Arrow is well suited for large tabular
-datasets, and file size is kept small by using compression. The Arrow input files can be
-compressed with LZ4 or Zstd compression. Furthermore, in some of the columns, a small amount
-of different values are repeated many times. To reduce file sizes it may be a good idea to
-apply [dictionary
-encoding](https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout) to
-those columns.
-The Ribasim version that was used to create the results is written to each file in the `ribasim_version` schema metadata.
+NetCDF is the default and recommended format for results and external input tables. NetCDF
+files follow the [CF conventions](http://cfconventions.org/) and are particularly useful for
+large time series data. NetCDF is well suited for large tabular datasets with multi-dimensional
+arrays, and file size is kept small by using compression. For long runs, Ribasim can produce
+tables with many rows, making NetCDF an excellent choice for storing results. However, note
+that NetCDF input tables are currently [not automatically loaded in QGIS](/known_issues.qmd).
 
-NetCDF is also supported as an alternative format for input tables. NetCDF files follow the
-[CF conventions](http://cfconventions.org/) and are particularly useful for large time series
-data or when working with tools that prefer the NetCDF format. However, note that NetCDF input
-tables are currently [not automatically loaded in QGIS](/known_issues.qmd).
+Apache Arrow is also supported for backward compatibility, but this format will be phased out
+in future releases. Arrow files can be compressed with LZ4 or Zstd compression, and support
+[dictionary encoding](https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout)
+for columns with repeated values. If you're starting a new model, we recommend using NetCDF
+instead of Arrow.
 
-## Using Arrow or NetCDF for input tables {#sec-arrow-netcdf-input}
+The Ribasim version that was used to create the results is written to each file in the
+`ribasim_version` schema metadata.
+
+## Using NetCDF or Arrow for input tables {#sec-arrow-netcdf-input}
 
 By default, all tables except Node and Link are stored in the GeoPackage database.
 However, for large tables (e.g., time series data), it can be more efficient to store them
-in separate Arrow or NetCDF files. This is particularly useful for:
+in separate files. **NetCDF is the recommended format for external table files**. This is
+particularly useful for:
 
 - Large time series that would make the database file unwieldy
 - Tables that need to be easily exchanged between different models
 - Performance optimization for very large datasets
 
-### Writing tables to Arrow or NetCDF with Python
+### Writing tables to NetCDF or Arrow with Python
 
 When building a model with the Ribasim Python API, you can specify that a table should be
 written to an external file by setting its `filepath` attribute:
@@ -209,8 +209,8 @@ model.basin.add(
     [basin.Profile(level=[0.0, 1.0], area=[100.0, 1000.0])],
 )
 
-# Specify that the profile table should be written to Arrow format
-model.basin.profile.filepath = Path("profile.arrow")
+# Specify that the profile table should be written to NetCDF format (recommended)
+model.basin.profile.filepath = Path("profile.nc")
 
 # Specify the input directory (where external files will be saved)
 model.input_dir = Path("input")
@@ -222,11 +222,11 @@ model.write("my_model/ribasim.toml")
 After running this code, you'll have:
 - `my_model/ribasim.toml` - configuration file referencing the external file
 - `my_model/input/database.gpkg` - GeoPackage with Node and Link tables
-- `my_model/input/profile.arrow` - Arrow file with Basin profile data
+- `my_model/input/profile.nc` - NetCDF file with Basin profile data
 
 The file format is determined automatically from the file extension:
-- `.arrow` for Apache Arrow format
-- `.nc` for NetCDF format
+- `.nc` for NetCDF format (recommended)
+- `.arrow` for Apache Arrow format (legacy, will be phased out)
 
 The paths are relative to the `input_dir` specified in the model configuration.
 When the model is written, these tables will be saved to the specified files rather than
@@ -235,22 +235,14 @@ the GeoPackage database, and the TOML configuration file will reference these ex
 The resulting TOML will contain:
 ```toml
 [basin]
-profile = "profile.arrow"
+profile = "profile.nc"
 ```
 
-You can also use this to write time series to NetCDF:
+For time series data, NetCDF is particularly well-suited:
 ```python
-# Add time-varying data
+# Add time-varying data and write to NetCDF
 model.basin.time.filepath = Path("basin-time.nc")
 ```
-
-**Note**: Only tables with data will have their filepath written to the TOML. If you set a
-filepath on an empty table, it will be ignored to prevent errors.
-
-- Large models where manual editing is not practical
-- Programmatically generated models
-- Performance-critical applications
-- Scenarios where you primarily interact with the model via Python or the CLI
 
 ### Using result files as initial conditions
 
