@@ -206,7 +206,7 @@ model.basin.add(
 )
 
 # Specify that the profile table should be written to NetCDF format (recommended)
-model.basin.profile.filepath = Path("profile.nc")
+model.basin.profile.set_filepath(Path("profile.nc"))
 
 # Specify the input directory (where external files will be saved)
 model.input_dir = Path("input")
@@ -237,7 +237,7 @@ profile = "profile.nc"
 For time series data, NetCDF is particularly well-suited:
 ```python
 # Add time-varying data and write to NetCDF
-model.basin.time.filepath = Path("basin-time.nc")
+model.basin.time.set_filepath(Path("basin-time.nc"))
 ```
 
 ### Using result files as initial conditions
