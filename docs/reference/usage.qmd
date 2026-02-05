@@ -166,7 +166,7 @@ arrays, and file size is kept small by using compression. For long runs, Ribasim
 tables with many rows, making NetCDF an excellent choice for storing results. However, note
 that NetCDF input tables are currently [not automatically loaded in QGIS](/known_issues.qmd).
 
-Apache Arrow is also supported for backward compatibility, but this format will be phased out
+Apache Arrow will be phased out
 in future releases. Arrow files can be compressed with LZ4 or Zstd compression, and support
 [dictionary encoding](https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout)
 for columns with repeated values. If you're starting a new model, we recommend using NetCDF
