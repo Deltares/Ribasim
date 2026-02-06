@@ -17,30 +17,34 @@
     basin_path =
         normpath(dirname(toml_path), model.config.results_dir, "basin_state.nc")
 
-    local diff
+    # Read data from NetCDF files (avoid nested closure scoping issues)
+    basin_level, basin_node_id = NCDataset(basin_path) do ds
+        ds["level"][:], ds["node_id"][:]
+    end
+    basin_bench_level, basin_bench_node_id = NCDataset(basin_bench_path) do ds
+        ds["level"][:], ds["node_id"][:]
+    end
+
+    level_diff = basin_level - basin_bench_level
+
     @testset "Results values" begin
-        NCDataset(basin_path) do basin
-            NCDataset(basin_bench_path) do basin_bench
-                @test basin["node_id"][:] == basin_bench["node_id"][:]
-                diff = basin["level"][:] - basin_bench["level"][:]
-                @test all(q -> abs(q) < 1.0, diff)
-            end
-        end
+        @test basin_node_id == basin_bench_node_id
+        @test all(q -> abs(q) < 1.0, level_diff)
     end
 
     timed = @timed Ribasim.run(toml_path)
     dt = Millisecond(round(Int, timed.time * 1000)) + Time(0)
 
     @tcstatistic "time" timed.time
-    @tcstatistic "min_diff" minimum(diff)
-    @tcstatistic "max_diff" maximum(diff)
-    @tcstatistic "med_diff" median(diff)
+    @tcstatistic "min_diff" minimum(level_diff)
+    @tcstatistic "max_diff" maximum(level_diff)
+    @tcstatistic "med_diff" median(level_diff)
 
     data = Dict(
         "time" => timed.time,
-        "min_diff" => minimum(diff),
-        "max_diff" => maximum(diff),
-        "med_diff" => median(diff),
+        "min_diff" => minimum(level_diff),
+        "max_diff" => maximum(level_diff),
+        "med_diff" => median(level_diff),
     )
     open(joinpath(@__DIR__, "../../data/integration.toml"), "w") do io
         TOML.print(io, data)
