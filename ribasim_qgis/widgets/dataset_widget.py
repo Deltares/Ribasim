@@ -51,6 +51,8 @@ from ribasim_qgis.core.model import (
 )
 from ribasim_qgis.core.nodes import (
     STYLE_DIR,
+    get_external_input_files,
+    load_external_input_layer,
     load_nodes_from_geopackage,
 )
 
@@ -172,6 +174,9 @@ class DatasetWidget:
             self.add_item_to_qgis(node_layer)
             self.add_relationship(node_layer.layer, node.layer.id(), table_name)
 
+        # Load external input files (NetCDF or Arrow)
+        self.load_external_input_files()
+
         # Connect node and link layer to derive connectivities.
         self.node_layer = node.layer
         assert self.node_layer is not None
@@ -209,6 +214,30 @@ class DatasetWidget:
 
         self.node_layer.selectionChanged.connect(partial(filterbyrel, link_rels))
         return
+
+    def load_external_input_files(self) -> None:
+        """Load external input files (NetCDF or Arrow) specified in the TOML."""
+        external_files = get_external_input_files(self.path)
+
+        if not external_files:
+            return
+
+        for file_info in external_files:
+            try:
+                layer = load_external_input_layer(
+                    self.path,
+                    file_info["filepath"],
+                    file_info["table_name"],
+                )
+                if layer is not None:
+                    self.add_layer(layer, "Input", on_top=False, labels=None)
+            except Exception as e:
+                self.ribasim_widget.iface.messageBar().pushMessage(
+                    "Ribasim",
+                    f"Failed to load external input file {file_info['filepath']}: {e}",
+                    level=Qgis.Warning,
+                    duration=5,
+                )
 
     def open_model(self, path=None) -> None:
         """Open a Ribasim model file."""

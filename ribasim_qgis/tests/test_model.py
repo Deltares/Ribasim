@@ -6,6 +6,7 @@ from ribasim_qgis.core.model import (
     get_database_path_from_model_file,
     get_directory_path_from_model_file,
 )
+from ribasim_qgis.core.nodes import get_external_input_files
 
 
 class TestModel(unittest.TestCase):
@@ -38,3 +39,11 @@ class TestModel(unittest.TestCase):
             msg=f"Path '{path}' is not relative to {self.tests_folder_path}",
         )
         self.assertEqual(path, self.data_folder_path / "database.gpkg")
+
+    def test_get_external_input_files(self):
+        """Tests that get_external_input_files() returns empty list for model without external files."""
+        model_path = self.data_folder_path / "simple_valid.toml"
+        external_files = get_external_input_files(model_path)
+        self.assertIsInstance(external_files, list)
+        # For this simple test model, there should be no external files
+        self.assertEqual(len(external_files), 0)
