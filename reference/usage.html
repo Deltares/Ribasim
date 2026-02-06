@@ -392,8 +392,13 @@ window.Quarto = {
   </ul></li>
   <li><a href="#sec-geopackage" id="toc-sec-geopackage" class="nav-link" data-scroll-target="#sec-geopackage"><span class="header-section-number">2</span> GeoPackage database and Arrow tables</a>
   <ul class="collapse">
-  <li><a href="#table-requirements" id="toc-table-requirements" class="nav-link" data-scroll-target="#table-requirements"><span class="header-section-number">2.1</span> Table requirements</a></li>
-  <li><a href="#custom-metadata" id="toc-custom-metadata" class="nav-link" data-scroll-target="#custom-metadata"><span class="header-section-number">2.2</span> Custom metadata</a></li>
+  <li><a href="#sec-arrow-netcdf-input" id="toc-sec-arrow-netcdf-input" class="nav-link" data-scroll-target="#sec-arrow-netcdf-input"><span class="header-section-number">2.1</span> Using NetCDF or Arrow for input tables</a>
+  <ul class="collapse">
+  <li><a href="#writing-tables-to-netcdf-or-arrow-with-python" id="toc-writing-tables-to-netcdf-or-arrow-with-python" class="nav-link" data-scroll-target="#writing-tables-to-netcdf-or-arrow-with-python"><span class="header-section-number">2.1.1</span> Writing tables to NetCDF or Arrow with Python</a></li>
+  <li><a href="#using-result-files-as-initial-conditions" id="toc-using-result-files-as-initial-conditions" class="nav-link" data-scroll-target="#using-result-files-as-initial-conditions"><span class="header-section-number">2.1.2</span> Using result files as initial conditions</a></li>
+  </ul></li>
+  <li><a href="#table-requirements" id="toc-table-requirements" class="nav-link" data-scroll-target="#table-requirements"><span class="header-section-number">2.2</span> Table requirements</a></li>
+  <li><a href="#custom-metadata" id="toc-custom-metadata" class="nav-link" data-scroll-target="#custom-metadata"><span class="header-section-number">2.3</span> Custom metadata</a></li>
   </ul></li>
   <li><a href="#sec-node" id="toc-sec-node" class="nav-link" data-scroll-target="#sec-node"><span class="header-section-number">3</span> Node</a>
   <ul class="collapse">
@@ -505,7 +510,7 @@ window.Quarto = {
 <span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="dt">verbosity</span> <span class="op">=</span> <span class="st">"info"</span> <span class="co"># optional, default "info", can also be "debug", "warn" or "error"</span></span>
 <span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="kw">[results]</span></span>
-<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="dt">format</span> <span class="op">=</span> <span class="st">"arrow"</span>      <span class="co"># optional, default "arrow", can also be "netcdf"</span></span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="dt">format</span> <span class="op">=</span> <span class="st">"netcdf"</span>      <span class="co"># optional, default "netcdf", can also be "arrow"</span></span>
 <span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="dt">compression</span> <span class="op">=</span> <span class="cn">true</span>    <span class="co"># optional, default true, using zstd compression</span></span>
 <span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a><span class="dt">compression_level</span> <span class="op">=</span> <span class="dv">6</span> <span class="co"># optional, default 6</span></span>
 <span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a><span class="dt">subgrid</span> <span class="op">=</span> <span class="cn">false</span>       <span class="co"># optional, default false</span></span>
@@ -590,7 +595,7 @@ The way the route priorities work is as follows: The priority that is assigned t
 </tr>
 </tbody>
 </table>
-<p>Currently compression is only used for Apache Arrow. NetCDF will be the only output format later on.</p>
+<p>NetCDF is the default results format and recommended for new models. Arrow support will be removed in a future release.</p>
 </section>
 <section id="logging-settings" class="level2" data-number="1.5">
 <h2 data-number="1.5" class="anchored" data-anchor-id="logging-settings"><span class="header-section-number">1.5</span> Logging settings</h2>
@@ -715,11 +720,62 @@ Important
 </section>
 <section id="sec-geopackage" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> GeoPackage database and Arrow tables</h1>
-<p>The input and output tables described below all share that they are tabular files. The Node and Link tables always have to be in the <a href="https://www.geopackage.org/">GeoPackage</a> database file, and results are always written to <a href="https://arrow.apache.org/">Apache Arrow</a> files, sometimes also known as Feather files. All other tables can either be in the database or in separate Arrow files that are listed in the TOML as described above.</p>
+<p>The input and output tables described below all share that they are tabular files. The Node and Link tables always have to be in the <a href="https://www.geopackage.org/">GeoPackage</a> database file, and results are always written to <a href="https://arrow.apache.org/">Apache Arrow</a> files, sometimes also known as Feather files. All other tables can either be in the database or in separate Arrow or NetCDF files that are listed in the TOML as described above.</p>
 <p>For visualization, the Node and Link tables typically have associated geometries. GeoPackage was used since it provides a standardized way to store tables with (and without) geometry columns in a SQLite database. If, like Ribasim, you can ignore the geometries, a GeoPackage is easy to read using SQLite libraries, which are commonly available. Furthermore GeoPackage can be updated in place when working on a model.</p>
-<p>Arrow was chosen since it is standardized, fast, simple and flexible. It can be read and written by many different software packages. In Ribasim we use <a href="https://arrow.apache.org/julia/dev/">Arrow.jl</a>. Results can be written to Arrow, since for long runs Ribasim can produce tables with many rows. Arrow is well suited for large tabular datasets, and file size is kept small by using compression. The Arrow input files can be compressed with LZ4 or Zstd compression. Furthermore, in some of the columns, a small amount of different values are repeated many times. To reduce file sizes it may be a good idea to apply <a href="https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout">dictionary encoding</a> to those columns. The Ribasim version that was used to create the results is written to each file in the <code>ribasim_version</code> schema metadata.</p>
-<section id="table-requirements" class="level2" data-number="2.1">
-<h2 data-number="2.1" class="anchored" data-anchor-id="table-requirements"><span class="header-section-number">2.1</span> Table requirements</h2>
+<p>NetCDF is the default and recommended format for results and external input tables. NetCDF files follow the <a href="http://cfconventions.org/">CF conventions</a> and are particularly useful for large time series data. NetCDF is well suited for large tabular datasets with multi-dimensional arrays, and file size is kept small by using compression. For long runs, Ribasim can produce tables with many rows, making NetCDF an excellent choice for storing results. However, note that NetCDF input tables are currently <a href="../known_issues.html">not automatically loaded in QGIS</a>.</p>
+<p>Apache Arrow will be phased out in future releases. Arrow files can be compressed with LZ4 or Zstd compression, and support <a href="https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout">dictionary encoding</a> for columns with repeated values. If you’re starting a new model, we recommend using NetCDF instead of Arrow.</p>
+<p>The Ribasim version that was used to create the results is written to each file in the <code>ribasim_version</code> schema metadata.</p>
+<section id="sec-arrow-netcdf-input" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="sec-arrow-netcdf-input"><span class="header-section-number">2.1</span> Using NetCDF or Arrow for input tables</h2>
+<p>By default, all tables are stored in the GeoPackage database. However, you can manually configure to store and read data in external files. <strong>NetCDF is the recommended format for external table files</strong>. This is particularly when you quickly want to be able to switch between different time series on the same model.</p>
+<section id="writing-tables-to-netcdf-or-arrow-with-python" class="level3" data-number="2.1.1">
+<h3 data-number="2.1.1" class="anchored" data-anchor-id="writing-tables-to-netcdf-or-arrow-with-python"><span class="header-section-number">2.1.1</span> Writing tables to NetCDF or Arrow with Python</h3>
+<p>When building a model with the Ribasim Python API, you can specify that a table should be written to an external file by setting its <code>filepath</code> attribute:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> ribasim</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.nodes <span class="im">import</span> basin</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a model</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> ribasim.Model(</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    starttime<span class="op">=</span><span class="st">"2020-01-01"</span>,</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    endtime<span class="op">=</span><span class="st">"2021-01-01"</span>,</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    crs<span class="op">=</span><span class="st">"EPSG:28992"</span>,</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Add a basin with profile data</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>model.basin.add(</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    ribasim.Node(<span class="dv">1</span>, ribasim.geometry.Point(<span class="dv">0</span>, <span class="dv">0</span>)),</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    [basin.Profile(level<span class="op">=</span>[<span class="fl">0.0</span>, <span class="fl">1.0</span>], area<span class="op">=</span>[<span class="fl">100.0</span>, <span class="fl">1000.0</span>])],</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Specify that the profile table should be written to NetCDF format (recommended)</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>model.basin.profile.filepath <span class="op">=</span> Path(<span class="st">"profile.nc"</span>)</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a><span class="co"># Specify the input directory (where external files will be saved)</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>model.input_dir <span class="op">=</span> Path(<span class="st">"input"</span>)</span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a><span class="co"># Write the model - this creates the TOML, database, and Arrow file</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>model.write(<span class="st">"my_model/ribasim.toml"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>After running this code, you’ll have: - <code>my_model/ribasim.toml</code> - configuration file referencing the external file - <code>my_model/input/database.gpkg</code> - GeoPackage with Node and Link tables - <code>my_model/input/profile.nc</code> - NetCDF file with Basin profile data</p>
+<p>The file format is determined automatically from the file extension: - <code>.nc</code> for NetCDF format (recommended) - <code>.arrow</code> for Apache Arrow format (legacy, will be phased out)</p>
+<p>The paths are relative to the <code>input_dir</code> specified in the model configuration. When the model is written, these tables will be saved to the specified files rather than the GeoPackage database, and the TOML configuration file will reference these external files.</p>
+<p>The resulting TOML will contain:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode toml code-with-copy"><code class="sourceCode toml"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[basin]</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="dt">profile</span> <span class="op">=</span> <span class="st">"profile.nc"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>For time series data, NetCDF is particularly well-suited:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Add time-varying data and write to NetCDF</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>model.basin.time.filepath <span class="op">=</span> Path(<span class="st">"basin-time.nc"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To revert a table back to being stored in the GeoPackage database instead of an external file, set the filepath to <code>None</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Store profile data back in the GeoPackage</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>model.basin.profile.filepath <span class="op">=</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="using-result-files-as-initial-conditions" class="level3" data-number="2.1.2">
+<h3 data-number="2.1.2" class="anchored" data-anchor-id="using-result-files-as-initial-conditions"><span class="header-section-number">2.1.2</span> Using result files as initial conditions</h3>
+<p>One common use case is to use the final state of a simulation as the initial condition for a new simulation. See the <a href="../reference/node/basin.html#sec-state">Basin state documentation</a> for details on how to copy result files to the input directory and reference them in your TOML.</p>
+</section>
+</section>
+<section id="table-requirements" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="table-requirements"><span class="header-section-number">2.2</span> Table requirements</h2>
 <p>Below we give details per file, in which we describe the schema of the table using a syntax like this:</p>
 <table class="caption-top table">
 <thead>
@@ -749,8 +805,8 @@ Important
 <p>Tables are also allowed to have rows for timestamps that are not part of the simulation, these will be ignored. That makes it easy to prepare data for a larger period, and test models on a shorter period.</p>
 <p>When preparing the model for simulation, input validation is performed in the Julia core. The validation rules are described in the <a href="../reference/validation.html">validation</a> section.</p>
 </section>
-<section id="custom-metadata" class="level2" data-number="2.2">
-<h2 data-number="2.2" class="anchored" data-anchor-id="custom-metadata"><span class="header-section-number">2.2</span> Custom metadata</h2>
+<section id="custom-metadata" class="level2" data-number="2.3">
+<h2 data-number="2.3" class="anchored" data-anchor-id="custom-metadata"><span class="header-section-number">2.3</span> Custom metadata</h2>
 <p>It may be advantageous to add metadata to rows. For example, basin areas might have names and objects such as weirs might have specific identification codes. Additional columns can be freely added to tables. The column names should be prefixed with <code>meta_</code>. They will not be used in computations or validated by the Julia core.</p>
 </section>
 </section>
