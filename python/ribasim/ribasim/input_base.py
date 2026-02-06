@@ -1,8 +1,8 @@
 import operator
 import re
 from abc import ABC, abstractmethod
-from collections.abc import Callable
-from contextlib import closing
+from collections.abc import Callable, Generator
+from contextlib import closing, contextmanager
 from contextvars import ContextVar
 from pathlib import Path
 from sqlite3 import connect
@@ -71,6 +71,19 @@ context_file_writing: ContextVar[dict[str, Path]] = ContextVar(
     default={},  # noqa: B039
 )
 
+
+_init_context_var = ContextVar("_init_context_var", default=None)
+
+
+@contextmanager
+def init_context(value: dict[str, Any]) -> Generator[None]:
+    token = _init_context_var.set(value)
+    try:
+        yield
+    finally:
+        _init_context_var.reset(token)
+
+
 TableT = TypeVar("TableT", bound=_BaseSchema)
 
 
@@ -84,6 +97,14 @@ class BaseModel(PydanticBaseModel):
         use_enum_values=True,
         extra="forbid",
     )
+
+    # Override __init__ to always provide a context.
+    def __init__(self, /, **data: Any) -> None:
+        self.__pydantic_validator__.validate_python(
+            data,
+            self_instance=self,
+            context=_init_context_var.get(),
+        )
 
     @classmethod
     def _fields(cls) -> list[str]:
@@ -204,26 +225,49 @@ class FileModel(BaseModel, ABC):
     """
 
     filepath: Path | None = Field(default=None, exclude=True, repr=False)
+    lazy: bool = Field(default=False, exclude=True, repr=False)
+
+    @classmethod
+    def allows_lazy(cls) -> bool:
+        return True
+
+    @classmethod
+    def default_filepath(cls) -> Path:
+        if context_file_writing.get().get("directory") is not None:
+            return Path(".database.gpkg")
+        else:
+            return Path("database.gpkg")
 
     @model_validator(mode="before")
     @classmethod
-    def _check_filepath(cls, value: object) -> object:
-        # Enable initialization with a Path.
+    def _check_filepath(cls, value: Any, info: ValidationInfo) -> dict[str, Any]:
+        # Enable initialization with a Path
+        # Used to support toml files with a [basin] time = "file.nc" entry.
+        if isinstance(value, Path | str):
+            value = {"filepath": Path(value)}
+
+        # Pydantic Model init requires a dict
         if isinstance(value, dict):
-            # Pydantic Model init requires a dict
-            filepath = value.get("filepath", None)
-            if filepath is not None:
-                filepath = Path(filepath)
-            data = cls._load(filepath)
+            # We only load when the context is correct
+
+            if info.context is None:
+                return value
+            dir = info.context.get("directory")
+            lazy = info.context.get("lazy", False)
+
+            # Skip loading when lazy
+            if lazy and cls.allows_lazy():
+                value["lazy"] = lazy
+                return value
+
+            # Otherwise load data and update our values
+            # If no filepath is given, assume it is expected to be loaded from the database
+            filepath = Path(value.pop("filepath", cls.default_filepath()))
+            data = cls._load(dir / filepath)
             data.update(value)
             return data
-        elif isinstance(value, Path | str):
-            # Pydantic Model init requires a dict
-            data = cls._load(Path(value))
-            data["filepath"] = value
-            return data
         else:
-            return value
+            raise ValueError(f"Invalid type of value for FileModel: {type(value)}")
 
     @validate_call
     def set_filepath(self, filepath: Path) -> None:
@@ -260,8 +304,62 @@ class FileModel(BaseModel, ABC):
         """
         raise NotImplementedError()
 
+    @abstractmethod
+    def load(self, internal: bool = True, external: bool = True) -> "FileModel":
+        """Load all lazy data in the model.
 
-class TableModel[TableT: _BaseSchema](FileModel):
+        Returns
+        -------
+        Model
+            The model with all data loaded.
+        """
+        raise NotImplementedError()
+
+
+class ChildModel(BaseModel):
+    _parent: BaseModel | None = None
+    _parent_field: str | None = None
+
+    @model_validator(mode="after")
+    def _check_parent(self) -> "ChildModel":
+        if self._parent is not None and self._parent_field is not None:
+            self._parent.model_fields_set.update({self._parent_field})
+        return self
+
+    @property
+    def root(self) -> BaseModel | None:
+        """Return the parent model of this ChildModel."""
+        if self._parent is None:
+            return self
+
+        if isinstance(self._parent, ChildModel):
+            return self._parent.root
+        else:
+            return self._parent
+
+
+class ParentModel(BaseModel):
+    """Base class to represent models that contain ChildModels."""
+
+    def _children(self):
+        return {
+            k: getattr(self, k)
+            for k in self.__class__.model_fields
+            if isinstance(getattr(self, k), ChildModel)
+        }
+
+    @model_validator(mode="after")
+    def _set_node_parent(self) -> "ParentModel":
+        for (
+            k,
+            v,
+        ) in self._children().items():
+            v._parent = self
+            v._parent_field = k
+        return self
+
+
+class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
     _sort_keys: list[str] = PrivateAttr(default=[])
 
@@ -326,7 +424,7 @@ class TableModel[TableT: _BaseSchema](FileModel):
 
     @model_serializer
     def _set_model(self) -> "str | None":
-        return self.filepath.as_posix() if self.filepath is not None else None
+        return self.filepath.as_posix() if self.is_external else None
 
     @classmethod
     def tablename(cls) -> str:
@@ -370,45 +468,93 @@ class TableModel[TableT: _BaseSchema](FileModel):
         return node_ids
 
     @classmethod
-    def _load(cls, filepath: Path | None) -> dict[str, object]:
-        db = context_file_loading.get().get("database")
-        if filepath is not None and db is not None:
-            suffix = filepath.suffix.lower()
-            if suffix == ".nc":
-                df = cls._from_netcdf(filepath)
-                return {"df": df}
-            elif suffix == ".arrow":
-                df = cls._from_arrow(filepath)
-                return {"df": df}
-            else:
-                raise ValueError(
-                    f"Unsupported file: '{filepath}'. "
-                    "Only '.nc' and '.arrow' extensions are supported."
-                )
-        elif db is not None:
-            ddf = cls._from_db(db, cls.tablename())
-            return {"df": ddf}
+    def _load(cls, filepath: Path) -> dict[str, object]:
+        suffix = filepath.suffix.lower()
+        if suffix == ".gpkg":
+            df = cls._from_db(filepath, cls.tablename())
+            return {"df": df}
+        if suffix == ".nc":
+            df = cls._from_netcdf(filepath)
+            return {"df": df}
+        elif suffix == ".arrow":
+            df = cls._from_arrow(filepath)
+            return {"df": df}
         else:
-            return {}
+            raise ValueError(
+                f"Unsupported file: '{filepath}'. "
+                "Only '.nc' and '.arrow' extensions are supported."
+            )
 
-    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath) -> None:
-        db_path = context_file_writing.get().get("database")
+    def load(
+        self, internal: bool = True, external: bool = True
+    ) -> "TableModel[TableT]":
+        if not self.lazy:
+            Warning(f"Resetting {self.tablename()}.")
+        if self.df is not None:
+            Warning(f"Overwriting {self.tablename()}.")
+
+        # Skip loading when not of the requested type
+        if not ((internal and self.is_internal) or (external and self.is_external)):
+            return self
+
+        context_file_loading.set({})
+
+        if self.root is None or self.root.filepath is None:
+            return self
+
+        directory = self.root.filepath.parent / self.root.input_dir
+        context_file_loading.get()["directory"] = directory
+        db_path = directory / "database.gpkg"
+
+        if not db_path.is_file():
+            raise FileNotFoundError(f"Database file '{db_path}' does not exist.")
+
+        context_file_loading.get()["database"] = db_path
+
+        context_file_loading.get().update(
+            {"directory": self.filepath.parent if self.filepath else None}
+        )
+
+        filepath = self.filepath if self.filepath else self.default_filepath()
+
+        data = self._load(directory / filepath)
+        self.df = data.get("df", self.df)
+        self.lazy = False
+        context_file_loading.set({})
+
+    @property
+    def is_external(self) -> bool:
+        return self.filepath is not None
+
+    @property
+    def is_internal(self) -> bool:
+        return self.filepath is None
+
+    def _save(
+        self,
+        directory: DirectoryPath,
+    ) -> None:
+        filepath = self.default_filepath() if self.filepath is None else self.filepath
+
         self.sort()
-        if self.filepath is not None:
-            suffix = self.filepath.suffix.lower()
-            if suffix == ".nc":
-                self._write_netcdf(self.filepath, directory, input_dir)
-            elif suffix == ".arrow":
-                self._write_arrow(self.filepath, directory, input_dir)
-            else:
-                raise ValueError(
-                    f"Unsupported file: '{self.filepath}'. "
-                    "Only '.nc' and '.arrow' extensions are supported."
-                )
-        elif db_path is not None:
-            self._write_geopackage(db_path)
+        suffix = filepath.suffix.lower()
+        path = directory / filepath
+        # In case filepath had subdirs
+        path.parent.mkdir(parents=True, exist_ok=True)
 
-    def _write_geopackage(self, temp_path: Path) -> None:
+        if suffix == ".gpkg":
+            self._write_geopackage(path)
+        elif suffix == ".nc":
+            self._write_netcdf(path)
+        elif suffix == ".arrow":
+            self._write_arrow(path)
+        else:
+            raise ValueError(
+                f"Unsupported file: '{self.filepath}'. "
+                "Only '.nc' and '.arrow' extensions are supported."
+            )
+
+    def _write_geopackage(self, filepath: Path) -> None:
         """
         Write the contents of the input to a database.
 
@@ -420,7 +566,7 @@ class TableModel[TableT: _BaseSchema](FileModel):
         assert self.df is not None
         table = self.tablename()
 
-        with closing(connect(temp_path)) as connection:
+        with closing(connect(filepath)) as connection:
             self.df.to_sql(
                 table,
                 connection,
@@ -431,18 +577,16 @@ class TableModel[TableT: _BaseSchema](FileModel):
             create_index(connection, table, "node_id", unique=False)
             _set_gpkg_attribute_table(connection, table)
 
-    def _write_arrow(self, filepath: Path, directory: Path, input_dir: Path) -> None:
+    def _write_arrow(self, filepath: Path) -> None:
         """Write the contents of the input to an arrow file."""
         assert self.df is not None
-        path = directory / input_dir / filepath
-        path.parent.mkdir(parents=True, exist_ok=True)
         self.df.to_feather(
-            path,
+            filepath,
             compression="zstd",
             compression_level=6,
         )
 
-    def _write_netcdf(self, filepath: Path, directory: Path, input_dir: Path) -> None:
+    def _write_netcdf(self, filepath: Path) -> None:
         """Write the contents of the input to a NetCDF file."""
         assert self.df is not None
 
@@ -464,9 +608,7 @@ class TableModel[TableT: _BaseSchema](FileModel):
             raise err
 
         # Write to NetCDF file
-        path = directory / input_dir / filepath
-        path.parent.mkdir(parents=True, exist_ok=True)
-        ds.to_netcdf(path)
+        ds.to_netcdf(filepath)
 
     @classmethod
     def _from_db(cls, path: Path, table: str) -> pd.DataFrame | None:
@@ -488,16 +630,12 @@ class TableModel[TableT: _BaseSchema](FileModel):
 
     @classmethod
     def _from_arrow(cls, path: Path) -> pd.DataFrame:
-        directory = context_file_loading.get().get("directory", Path())
-        return pd.read_feather(directory / path)
+        return pd.read_feather(path)
 
     @classmethod
     def _from_netcdf(cls, path: Path) -> pd.DataFrame:
         """Read a NetCDF file and convert it back to a DataFrame."""
-        directory = context_file_loading.get().get("directory", Path())
-        full_path = directory / path
-
-        with xr.open_dataset(full_path) as ds:
+        with xr.open_dataset(path) as ds:
             df = ds.to_dataframe().reset_index()
 
         return df
@@ -584,6 +722,7 @@ class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
         path : Path
         """
         assert self.df is not None
+
         self.df.to_file(
             path,
             layer=self.tablename(),
@@ -601,18 +740,7 @@ class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
             _add_styles_to_geopackage(connection, self.tablename())
 
 
-class ChildModel(BaseModel):
-    _parent: BaseModel | None = None
-    _parent_field: str | None = None
-
-    @model_validator(mode="after")
-    def _check_parent(self) -> "ChildModel":
-        if self._parent is not None and self._parent_field is not None:
-            self._parent.model_fields_set.update({self._parent_field})
-        return self
-
-
-class NodeModel(ChildModel):
+class NodeModel(ChildModel, ParentModel):
     """Base class to handle combining the tables for a single node type."""
 
     @model_serializer(mode="wrap")
@@ -655,9 +783,16 @@ class NodeModel(ChildModel):
             node_ids.update(table._node_ids())
         return node_ids
 
-    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
+    def load(self, internal: bool = True, external: bool = True) -> "NodeModel":
         for table in self._tables():
-            table._save(directory, input_dir)
+            table.load(internal=internal, external=external)
+
+    def _save(
+        self, directory: DirectoryPath, internal: bool = True, external: bool = True
+    ) -> None:
+        for table in self._tables():
+            if (internal and table.is_internal) or (external and table.is_external):
+                table._save(directory)
 
     def _repr_content(self) -> str:
         """Generate a succinct overview of the content.
