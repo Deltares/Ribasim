@@ -60,7 +60,7 @@ specialize = false  # optional, default false
 verbosity = "info" # optional, default "info", can also be "debug", "warn" or "error"
 
 [results]
-format = "arrow"      # optional, default "arrow", can also be "netcdf"
+format = "netcdf"      # optional, default "netcdf", can also be "arrow"
 compression = true    # optional, default true, using zstd compression
 compression_level = 6 # optional, default 6
 subgrid = false       # optional, default false

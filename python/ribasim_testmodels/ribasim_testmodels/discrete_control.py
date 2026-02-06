@@ -258,7 +258,7 @@ def level_boundary_condition_model() -> Model:
         model.outlet[4],
     )
 
-    model.level_boundary.time.set_filepath(Path("level-boundary-time.nc"))
+    model.level_boundary.time.filepath = Path("level-boundary-time.nc")
 
     return model
 
@@ -332,7 +332,7 @@ def tabulated_rating_curve_control_model() -> Model:
     )
 
     # write the "Basin / state" to NetCDF for testing
-    model.basin.state.set_filepath(Path("basin-state.nc"))
+    model.basin.state.filepath = Path("basin-state.nc")
 
     return model
 
@@ -391,7 +391,7 @@ def compound_variable_condition_model() -> Model:
     model.link.add(model.pump[4], model.terminal[5])
     model.link.add(model.discrete_control[6], model.pump[4])
 
-    model.flow_boundary.time.set_filepath(Path("flow-boundary-time.nc"))
+    model.flow_boundary.time.filepath = Path("flow-boundary-time.nc")
 
     return model
 
