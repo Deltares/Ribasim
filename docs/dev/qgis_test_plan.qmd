@@ -42,8 +42,37 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 
 # Result inspection tests
 
-## Run a model and check the time series
-TODO
+## Run a model from the context menu
+
+- Load the HWS model at `models/hws.toml` (slow enough to observe progress).
+- Right-click the model group in the layer panel: _Context menu shows "Run Ribasim model"_.
+- Click "Run Ribasim model": _Output dialog opens with title "Ribasim simulation - hws/ribasim"_.
+- Wait for simulation: _Progress bar updates in QGIS status bar, output streams to dialog_.
+- On completion: _Model reloads with results, Results group contains Flow/Basin layers_.
+
+## Progress bar and task manager
+
+- Start a simulation as above.
+- Check QGIS status bar (bottom): _Progress indicator shows percentage_.
+- Click the progress indicator: _Task manager panel opens showing the task_.
+
+## Close dialog without terminating
+
+- Start a simulation.
+- Close the output dialog (X button) while running: _Dialog closes, simulation continues in background_.
+- Check task manager: _Task still running_.
+
+## Cancel simulation
+
+- Start a simulation on `models/hws`.
+- Open task manager and cancel the task: _Task is removed from manager_.
+- Check output dialog: _Shows "Ribasim simulation - ... was canceled."_.
+
+## Prevent duplicate simulations
+
+- Start a simulation.
+- While running, right-click the same model and click "Run Ribasim model": _Warning message "Simulation already running for hws/ribasim"_.
+- Load a different model and run it: _Second simulation starts normally_.
 
 # Tutorial tests
 

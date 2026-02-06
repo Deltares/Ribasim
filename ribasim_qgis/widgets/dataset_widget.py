@@ -6,6 +6,10 @@ It also allows enabling or disabling individual elements for a computation.
 
 from __future__ import annotations
 
+import os
+import re
+import shutil
+import subprocess
 from collections.abc import Callable
 from contextvars import ContextVar
 from datetime import datetime
@@ -15,14 +19,18 @@ from typing import Any, cast
 
 import pandas as pd
 from osgeo import ogr
-from PyQt5.QtCore import QDateTime, QMetaType
+from PyQt5.QtCore import QDateTime, QMetaType, pyqtSignal
 from PyQt5.QtWidgets import (
+    QDialog,
     QFileDialog,
     QMenu,
+    QPlainTextEdit,
+    QVBoxLayout,
     QWidget,
 )
 from qgis.core import (
     Qgis,
+    QgsApplication,
     QgsDateTimeRange,
     QgsEditorWidgetSetup,
     QgsExpressionContextUtils,
@@ -31,8 +39,10 @@ from qgis.core import (
     QgsInterval,
     QgsLayerTreeGroup,
     QgsMapLayer,
+    QgsMessageLog,
     QgsProject,
     QgsRelation,
+    QgsTask,
     QgsTemporalNavigationObject,
     QgsVectorLayer,
     QgsVectorLayerTemporalProperties,
@@ -57,6 +67,81 @@ from ribasim_qgis.core.nodes import (
 group_position_var: ContextVar[int] = ContextVar("group_position", default=0)
 
 
+class RibasimTask(QgsTask):
+    """QgsTask for running Ribasim simulations in the background.
+
+    This task runs the Ribasim CLI subprocess, parses progress from stdout,
+    and emits signals to update the UI on the main thread.
+    """
+
+    # Signals must be defined on a QObject, QgsTask inherits from QObject
+    output_received = pyqtSignal(str, bool)  # (line, is_progress)
+    task_completed = pyqtSignal(bool)  # success
+
+    def __init__(self, cli: str, toml_path: str):
+        model_path = Path(toml_path)
+        model_name = f"{model_path.parent.stem}/{model_path.stem}"
+        super().__init__(
+            f"Ribasim simulation - {model_name}",
+            QgsTask.CanCancel,  # type: ignore[attr-defined]
+        )
+        self.cli = cli
+        self.toml_path = toml_path
+        self.exit_code: int | None = None
+        self.process: subprocess.Popen[str] | None = None
+        self.was_canceled = False
+
+    def run(self) -> bool:
+        """Run the Ribasim CLI subprocess (executes in background thread)."""
+        try:
+            # Hide console window on Windows
+            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+            with subprocess.Popen(
+                [self.cli, self.toml_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                bufsize=1,
+                creationflags=creationflags,
+            ) as proc:
+                self.process = proc
+                if proc.stdout:
+                    for line in proc.stdout:
+                        if self.isCanceled():
+                            proc.terminate()
+                            self.was_canceled = True
+                            return False
+                        line = line.rstrip()
+
+                        # Parse progress percentage from lines like:
+                        # "Simulating ━━━━━━━━━━  42% 0:01:23"
+                        is_progress = line.startswith("Simulating")
+                        if is_progress:
+                            match = re.search(r"(\d+)%", line)
+                            if match:
+                                self.setProgress(int(match.group(1)))
+
+                        # Emit signal to update UI (will be received on main thread)
+                        self.output_received.emit(line, is_progress)
+
+                proc.wait()
+                self.exit_code = proc.returncode
+                return proc.returncode == 0
+
+        except Exception as e:
+            QgsMessageLog.logMessage(
+                f"Error running Ribasim: {e}", "Ribasim", Qgis.MessageLevel.Critical
+            )
+            self.exit_code = -1
+            return False
+
+    def finished(self, result: bool) -> None:
+        """Emit completion signal on the main thread."""
+        self.task_completed.emit(result)
+
+
 class DatasetWidget:
     def __init__(self, parent: QWidget):
         from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
@@ -73,6 +158,9 @@ class DatasetWidget:
         self.allocation_layer: QgsVectorLayer | None = None
         self.allocation_flow_layer: QgsVectorLayer | None = None
         self.results: dict[str, pd.DataFrame] = {}
+
+        # Track running simulations by model path
+        self.running_tasks: dict[str, RibasimTask] = {}
 
         # Remove our references to layers when they are about to be deleted
         instance = QgsProject.instance()
@@ -263,14 +351,14 @@ class DatasetWidget:
         """Connect to the layer context (right-click) menu opening."""
         ltv = self.ribasim_widget.iface.layerTreeView()
         if ltv is not None:
-            ltv.contextMenuAboutToShow.connect(self.generate_reload_action)
+            ltv.contextMenuAboutToShow.connect(self.generate_model_actions)
 
-    def generate_reload_action(self, menu: QMenu) -> None:
-        """Generate reload action in the context menu."""
-        print("Generating reload action in context menu...")
-        actiontext = "Reload Ribasim model"
+    def generate_model_actions(self, menu: QMenu) -> None:
+        """Generate run and reload actions in the context menu."""
+        actiontext_run = "Run Ribasim model"
+        actiontext_reload = "Reload Ribasim model"
         for action in menu.actions():
-            if action.text() == actiontext:
+            if action.text() == actiontext_reload:
                 return
 
         group = self.activeGroup(self.ribasim_widget.iface)
@@ -287,8 +375,10 @@ class DatasetWidget:
 
         # Always add action, as it lives only during this context menu
         menu.addSeparator()
-        action = menu.addAction(actiontext)
-        action.triggered.connect(partial(self.reload_action, path, group))
+        run_action = menu.addAction(actiontext_run)
+        run_action.triggered.connect(partial(self.run_action, path, group))
+        reload_action = menu.addAction(actiontext_reload)
+        reload_action.triggered.connect(partial(self.reload_action, path, group))
 
     def reload_action(self, path, group) -> None:
         """Remove group, and (re)load the model in the same position."""
@@ -298,6 +388,132 @@ class DatasetWidget:
         token = group_position_var.set(position)
         self._open_model(path)
         group_position_var.reset(token)
+
+    def run_action(self, path: str, group) -> None:
+        """Run Ribasim model using QgsTask with progress bar and output dialog."""
+        message_bar = self.ribasim_widget.iface.messageBar()
+        assert message_bar is not None
+
+        model_path = Path(path)
+        model_name = f"{model_path.parent.stem}/{model_path.stem}"
+
+        # Check if simulation is already running for this model
+        if path in self.running_tasks:
+            message_bar.pushMessage(
+                "Warning",
+                f"Simulation already running for {model_name}",
+                level=Qgis.MessageLevel.Warning,
+                duration=5,
+            )
+            return
+
+        # Find ribasim CLI
+        cli = self._find_ribasim_cli(message_bar)
+        if cli is None:
+            return
+
+        # Create output dialog
+        dialog = QDialog(self.ribasim_widget.iface.mainWindow())
+        dialog.setWindowTitle(f"Ribasim simulation - {model_name}")
+        dialog.resize(700, 400)
+        layout = QVBoxLayout(dialog)
+
+        # Text area for output
+        text_edit = QPlainTextEdit()
+        text_edit.setReadOnly(True)
+        text_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        # Use monospace font for proper progress bar display
+        font = text_edit.font()
+        font.setFamily("Consolas, Monaco, monospace")
+        text_edit.setFont(font)
+        layout.addWidget(text_edit)
+
+        # Create and configure the task
+        task = RibasimTask(str(cli), path)
+
+        def on_output(line: str, is_progress: bool):
+            """Handle output from the task (called on main thread via signal)."""
+            if is_progress:
+                # Update last line instead of appending for progress updates
+                cursor = text_edit.textCursor()
+                cursor.movePosition(cursor.MoveOperation.End)
+                cursor.select(cursor.SelectionType.LineUnderCursor)
+                cursor.removeSelectedText()
+                cursor.insertText(line)
+            else:
+                text_edit.appendPlainText(line)
+            # Auto-scroll to bottom
+            scrollbar = text_edit.verticalScrollBar()
+            assert scrollbar is not None
+            scrollbar.setValue(scrollbar.maximum())
+
+        def on_finished(success: bool):
+            """Handle task completion."""
+            self.running_tasks.pop(path, None)
+            if success:
+                self.refresh_results()
+            elif task.was_canceled:
+                text_edit.appendPlainText("\nThe Ribasim simulation was canceled.")
+
+        # Connect signals
+        task.output_received.connect(on_output)
+        task.task_completed.connect(on_finished)
+
+        # Track and start the task
+        self.running_tasks[path] = task
+        task_manager = QgsApplication.taskManager()
+        assert task_manager is not None
+        task_manager.addTask(task)
+        dialog.show()
+
+    @staticmethod
+    def _find_ribasim_cli(message_bar) -> Path | None:
+        """Find the Ribasim CLI executable.
+
+        First checks the RIBASIM_EXE environment variable, then searches PATH.
+        RIBASIM_EXE must be the full path to the executable file, e.g.,
+        `C:/bin/ribasim/bin/ribasim.exe` on Windows.
+
+        This is useful when QGIS does not inherit the user's PATH environment
+        variable, which happens in the default Windows installation.
+
+        Parameters
+        ----------
+        message_bar
+            QGIS message bar to display errors.
+
+        Returns
+        -------
+        Path | None
+            Path to the Ribasim CLI executable, or None if not found.
+        """
+        # Check RIBASIM_EXE environment variable
+        if (ribasim_exe_env := os.environ.get("RIBASIM_EXE")) is not None:
+            ribasim_exe = Path(ribasim_exe_env)
+            cli = shutil.which(ribasim_exe.name, path=str(ribasim_exe.parent))
+            if cli is None:
+                message_bar.pushMessage(
+                    "Error",
+                    f"Ribasim CLI executable not found at RIBASIM_EXE='{ribasim_exe.resolve()}'. "
+                    "Please ensure the path is correct.",
+                    level=Qgis.MessageLevel.Critical,
+                )
+                return None
+            return Path(cli)
+
+        # Fall back to searching the PATH
+        cli = shutil.which("ribasim")
+        if cli is not None:
+            return Path(cli)
+
+        message_bar.pushMessage(
+            "Error",
+            "Ribasim CLI executable 'ribasim' not found. "
+            "Please ensure Ribasim is installed and available on your PATH, "
+            "or set the RIBASIM_EXE environment variable.",
+            level=Qgis.MessageLevel.Critical,
+        )
+        return None
 
     def add_topology_context(self) -> None:
         """Connect to the layer context (right-click) menu opening."""
