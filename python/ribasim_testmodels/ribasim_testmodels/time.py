@@ -77,18 +77,16 @@ def transient_pump_outlet_model() -> Model:
         Node(3, Point(3, 0)),
         [basin.State(level=[1.0]), basin.Profile(level=[0.0, 2.0], area=100.0)],
     )
-    bsn2 = model.basin.add(
-        Node(5, Point(5, 0)),
-        [basin.State(level=[1.0]), basin.Profile(level=[0.0, 2.0], area=100.0)],
-    )
 
     pmp = model.pump.add(
-        Node(4, Point(4, 0)), [pump.Time(time=time, flow_rate=flow_rate)]
+        Node(4, Point(0, 0)), [pump.Time(time=time, flow_rate=flow_rate)]
     )
+
+    term = model.terminal.add(Node(5, Point(-1, 0)))
 
     model.link.add(lb, out)
     model.link.add(out, bsn1)
-    model.link.add(bsn1, pmp)
-    model.link.add(pmp, bsn2)
+    model.link.add(lb, pmp)
+    model.link.add(pmp, term)
 
     return model
