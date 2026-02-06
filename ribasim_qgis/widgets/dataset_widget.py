@@ -10,7 +10,6 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 from collections.abc import Callable
 from contextvars import ContextVar
 from datetime import datetime
@@ -96,9 +95,7 @@ class RibasimTask(QgsTask):
         """Run the Ribasim CLI subprocess (executes in background thread)."""
         try:
             # Hide console window on Windows
-            creationflags = (
-                subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-            )
+            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
             with subprocess.Popen(
                 [self.cli, self.toml_path],
