@@ -548,7 +548,7 @@ class Model(FileModel, ParentModel):
             config["filepath"] = filepath
             directory = filepath.parent / config["input_dir"]
             context_file_loading.get()["directory"] = directory
-            _init_context_var.get()["directory"] = directory
+            _init_context_var.get()["directory"] = directory  # type: ignore
 
             db_path = directory / "database.gpkg"
             if not db_path.is_file():
@@ -556,8 +556,10 @@ class Model(FileModel, ParentModel):
             context_file_loading.get()["database"] = db_path
 
             return config
+        else:
+            return {}
 
-    def load(self, internal: bool = True, external: bool = True) -> "Model":
+    def load(self, internal: bool = True, external: bool = True) -> None:
         for child in self._children().values():
             child.load(internal=internal, external=external)
 
@@ -579,6 +581,7 @@ class Model(FileModel, ParentModel):
         """
         if self.filepath:
             return self.filepath.parent / self.input_dir / "database.gpkg"
+        return None
 
     @property
     def toml_path(self) -> FilePath:

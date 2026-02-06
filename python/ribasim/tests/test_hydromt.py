@@ -59,9 +59,13 @@ def test_basic_components(basic_arrow, tmp_path):
 
 
 def test_basic_lazy_load(basic, tmp_path):
+    # Setup
+    toml_path = tmp_path / "ribasim.toml"
+    basic.write(toml_path)
+
     # Lazy model read yields only a config
     # with empty spatial (node/link tables) and no other tables
-    model = Model.read("generated_testmodels/basic/ribasim.toml", lazy=True)
+    model = Model.read(toml_path, lazy=True)
 
     assert len(model.node_table().df) == 0
     assert len(model.link.df) == 0  # Link Table is always initialized
@@ -73,14 +77,15 @@ def test_basic_lazy_load(basic, tmp_path):
     assert model.basin.time.lazy
 
     # Writing this lazy model is possible and yields the same
-    model.write(tmp_path / "ribasim.toml")
-    new_model = Model.read(tmp_path / "ribasim.toml")
+    model.write(toml_path)
+    new_model = Model.read(toml_path)
     assert new_model.basin.static.df is None
     assert len(new_model.node_table().df) == 0
     assert len(new_model.link.df) == 0
 
     # We can load individual tables from the lazy model
-    model = Model.read("generated_testmodels/basic/ribasim.toml", lazy=True)
+    basic.write(toml_path)
+    model = Model.read(toml_path, lazy=True)
     # The directory path is retrieved from the model
     assert model.basin.root == model
     assert model.basin.static.root == model

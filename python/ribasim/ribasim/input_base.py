@@ -77,7 +77,7 @@ _init_context_var = ContextVar("_init_context_var", default=None)
 
 @contextmanager
 def init_context(value: dict[str, Any]) -> Generator[None]:
-    token = _init_context_var.set(value)
+    token = _init_context_var.set(value)  # type: ignore
     try:
         yield
     finally:
@@ -288,7 +288,7 @@ class FileModel(BaseModel, ABC):
 
     @classmethod
     @abstractmethod
-    def _load(cls, filepath: Path | None) -> dict[str, object]:
+    def _load(cls, filepath: Path) -> dict[str, object]:
         """Load the data at filepath and returns it as a dictionary.
 
         If a derived FileModel does not load data from disk, this should
@@ -305,7 +305,7 @@ class FileModel(BaseModel, ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def load(self, internal: bool = True, external: bool = True) -> "FileModel":
+    def load(self, internal: bool = True, external: bool = True) -> None:
         """Load all lazy data in the model.
 
         Returns
@@ -424,7 +424,11 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
 
     @model_serializer
     def _set_model(self) -> "str | None":
-        return self.filepath.as_posix() if self.is_external else None
+        if self.is_external:
+            assert self.filepath is not None
+            return self.filepath.as_posix()
+        else:
+            return None
 
     @classmethod
     def tablename(cls) -> str:
@@ -485,9 +489,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
                 "Only '.nc' and '.arrow' extensions are supported."
             )
 
-    def load(
-        self, internal: bool = True, external: bool = True
-    ) -> "TableModel[TableT]":
+    def load(self, internal: bool = True, external: bool = True) -> None:
         if not self.lazy:
             Warning(f"Resetting {self.tablename()}.")
         if self.df is not None:
@@ -495,12 +497,17 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
 
         # Skip loading when not of the requested type
         if not ((internal and self.is_internal) or (external and self.is_external)):
-            return self
+            return
 
         context_file_loading.set({})
 
-        if self.root is None or self.root.filepath is None:
-            return self
+        if (
+            self.root is None
+            or not hasattr(self.root, "filepath")
+            or not hasattr(self.root, "input_dir")
+            or self.root.filepath is None
+        ):
+            return
 
         directory = self.root.filepath.parent / self.root.input_dir
         context_file_loading.get()["directory"] = directory
@@ -512,13 +519,13 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         context_file_loading.get()["database"] = db_path
 
         context_file_loading.get().update(
-            {"directory": self.filepath.parent if self.filepath else None}
+            {"directory": self.filepath.parent if self.filepath else None}  # type: ignore
         )
 
         filepath = self.filepath if self.filepath else self.default_filepath()
 
         data = self._load(directory / filepath)
-        self.df = data.get("df", self.df)
+        self.df = data.get("df", self.df)  # type: ignore
         self.lazy = False
         context_file_loading.set({})
 
@@ -783,7 +790,7 @@ class NodeModel(ChildModel, ParentModel):
             node_ids.update(table._node_ids())
         return node_ids
 
-    def load(self, internal: bool = True, external: bool = True) -> "NodeModel":
+    def load(self, internal: bool = True, external: bool = True) -> None:
         for table in self._tables():
             table.load(internal=internal, external=external)
 
