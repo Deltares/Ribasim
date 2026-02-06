@@ -11,9 +11,7 @@
 
     @testset Teamcity.TeamcityTestSet "$solver" for solver in solver_list
         @testset Teamcity.TeamcityTestSet "sparse = $sparse" for sparse in sparse_options
-            @testset Teamcity.TeamcityTestSet "autodiff = $autodiff" for autodiff in
-                autodiff_options
-                sparse || continue # skip dense, see issue #2797
+            @testset Teamcity.TeamcityTestSet "autodiff = $autodiff" for autodiff in autodiff_options
                 config = Ribasim.Config(
                     toml_path;
                     solver_algorithm = solver,
@@ -71,11 +69,8 @@ end
     autodiff_on = [true, false]
 
     @testset Teamcity.TeamcityTestSet "$solver" for solver in solver_list
-        @testset Teamcity.TeamcityTestSet "sparse density is $sparse_on_off" for sparse_on_off in
-            sparse_on
-            @testset Teamcity.TeamcityTestSet "auto differentiation is $autodiff_on_off" for autodiff_on_off in
-                autodiff_on
-                sparse_on_off || continue # skip dense, see issue #2797
+        @testset Teamcity.TeamcityTestSet "sparse density is $sparse_on_off" for sparse_on_off in sparse_on
+            @testset Teamcity.TeamcityTestSet "auto differentiation is $autodiff_on_off" for autodiff_on_off in autodiff_on
                 config = Ribasim.Config(
                     toml_path;
                     solver_algorithm = solver,
@@ -144,11 +139,8 @@ end
     autodiff_on = [true, false]
 
     @testset Teamcity.TeamcityTestSet "$solver" for solver in solver_list
-        @testset Teamcity.TeamcityTestSet "sparse density is $sparse_on_off" for sparse_on_off in
-            sparse_on
-            @testset Teamcity.TeamcityTestSet "auto differentiation is $autodiff_on_off" for autodiff_on_off in
-                autodiff_on
-                sparse_on_off || continue # skip dense, see issue #2797
+        @testset Teamcity.TeamcityTestSet "sparse density is $sparse_on_off" for sparse_on_off in sparse_on
+            @testset Teamcity.TeamcityTestSet "auto differentiation is $autodiff_on_off" for autodiff_on_off in autodiff_on
                 config = Ribasim.Config(
                     toml_path;
                     solver_algorithm = solver,
