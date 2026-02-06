@@ -7,7 +7,10 @@ It also allows enabling or disabling individual elements for a computation.
 from __future__ import annotations
 
 import os
+import re
 import shutil
+import subprocess
+import sys
 from collections.abc import Callable
 from contextvars import ContextVar
 from datetime import datetime
@@ -17,18 +20,18 @@ from typing import Any, cast
 
 import pandas as pd
 from osgeo import ogr
-from PyQt5.QtCore import QDateTime, QMetaType, QProcess
+from PyQt5.QtCore import QDateTime, QMetaType, pyqtSignal
 from PyQt5.QtWidgets import (
     QDialog,
     QFileDialog,
     QMenu,
     QPlainTextEdit,
-    QPushButton,
     QVBoxLayout,
     QWidget,
 )
 from qgis.core import (
     Qgis,
+    QgsApplication,
     QgsDateTimeRange,
     QgsEditorWidgetSetup,
     QgsExpressionContextUtils,
@@ -37,8 +40,10 @@ from qgis.core import (
     QgsInterval,
     QgsLayerTreeGroup,
     QgsMapLayer,
+    QgsMessageLog,
     QgsProject,
     QgsRelation,
+    QgsTask,
     QgsTemporalNavigationObject,
     QgsVectorLayer,
     QgsVectorLayerTemporalProperties,
@@ -63,6 +68,80 @@ from ribasim_qgis.core.nodes import (
 group_position_var: ContextVar[int] = ContextVar("group_position", default=0)
 
 
+class RibasimTask(QgsTask):
+    """QgsTask for running Ribasim simulations in the background.
+
+    This task runs the Ribasim CLI subprocess, parses progress from stdout,
+    and emits signals to update the UI on the main thread.
+    """
+
+    # Signals must be defined on a QObject, QgsTask inherits from QObject
+    output_received = pyqtSignal(str, bool)  # (line, is_progress)
+    task_completed = pyqtSignal(bool)  # success
+
+    def __init__(self, cli: str, toml_path: str):
+        model_path = Path(toml_path)
+        model_name = f"{model_path.parent.stem}/{model_path.stem}"
+        super().__init__(f"Ribasim simulation - {model_name}", QgsTask.CanCancel)
+        self.cli = cli
+        self.toml_path = toml_path
+        self.exit_code: int | None = None
+        self.process: subprocess.Popen | None = None
+        self.was_canceled = False
+
+    def run(self) -> bool:
+        """Run the Ribasim CLI subprocess (executes in background thread)."""
+        try:
+            # Hide console window on Windows
+            kwargs = {}
+            if sys.platform == "win32":
+                kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+
+            with subprocess.Popen(
+                [self.cli, self.toml_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                universal_newlines=True,
+                encoding="utf-8",
+                bufsize=1,
+                **kwargs,
+            ) as proc:
+                self.process = proc
+                if proc.stdout:
+                    for line in proc.stdout:
+                        if self.isCanceled():
+                            proc.terminate()
+                            self.was_canceled = True
+                            return False
+                        line = line.rstrip()
+
+                        # Parse progress percentage from lines like:
+                        # "Simulating ━━━━━━━━━━  42% 0:01:23"
+                        is_progress = line.startswith("Simulating")
+                        if is_progress:
+                            match = re.search(r"(\d+)%", line)
+                            if match:
+                                self.setProgress(int(match.group(1)))
+
+                        # Emit signal to update UI (will be received on main thread)
+                        self.output_received.emit(line, is_progress)
+
+                proc.wait()
+                self.exit_code = proc.returncode
+                return proc.returncode == 0
+
+        except Exception as e:
+            QgsMessageLog.logMessage(
+                f"Error running Ribasim: {e}", "Ribasim", Qgis.MessageLevel.Critical
+            )
+            self.exit_code = -1
+            return False
+
+    def finished(self, result: bool) -> None:
+        """Emit completion signal on the main thread."""
+        self.task_completed.emit(result)
+
+
 class DatasetWidget:
     def __init__(self, parent: QWidget):
         from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
@@ -79,6 +158,9 @@ class DatasetWidget:
         self.allocation_layer: QgsVectorLayer | None = None
         self.allocation_flow_layer: QgsVectorLayer | None = None
         self.results: dict[str, pd.DataFrame] = {}
+
+        # Track running simulations by model path
+        self.running_tasks: dict[str, RibasimTask] = {}
 
         # Remove our references to layers when they are about to be deleted
         instance = QgsProject.instance()
@@ -308,9 +390,22 @@ class DatasetWidget:
         group_position_var.reset(token)
 
     def run_action(self, path: str, group) -> None:
-        """Run Ribasim model and stream output to a dialog."""
+        """Run Ribasim model using QgsTask with progress bar and output dialog."""
         message_bar = self.ribasim_widget.iface.messageBar()
         assert message_bar is not None
+
+        model_path = Path(path)
+        model_name = f"{model_path.parent.stem}/{model_path.stem}"
+
+        # Check if simulation is already running for this model
+        if path in self.running_tasks:
+            message_bar.pushMessage(
+                "Warning",
+                f"Simulation already running for {model_name}",
+                level=Qgis.MessageLevel.Warning,
+                duration=5,
+            )
+            return
 
         # Find ribasim CLI
         cli = self._find_ribasim_cli(message_bar)
@@ -319,7 +414,7 @@ class DatasetWidget:
 
         # Create output dialog
         dialog = QDialog(self.ribasim_widget.iface.mainWindow())
-        dialog.setWindowTitle(f"Running Ribasim - {Path(path).name}")
+        dialog.setWindowTitle(f"Ribasim simulation - {model_name}")
         dialog.resize(700, 400)
         layout = QVBoxLayout(dialog)
 
@@ -333,75 +428,40 @@ class DatasetWidget:
         text_edit.setFont(font)
         layout.addWidget(text_edit)
 
-        # Close button (disabled while running)
-        close_button = QPushButton("Close")
-        close_button.setEnabled(False)
-        close_button.clicked.connect(dialog.accept)
-        layout.addWidget(close_button)
+        # Create and configure the task
+        task = RibasimTask(str(cli), path)
 
-        # Create process
-        process = QProcess(dialog)
-
-        def on_stdout():
-            data = (
-                process.readAllStandardOutput().data().decode("utf-8", errors="replace")
-            )
-            # Handle carriage returns for progress bar updates
-            for part in data.split("\r"):
-                if part:
-                    # Check if this is a progress update (starts with Simulating)
-                    if part.strip().startswith("Simulating"):
-                        # Update last line instead of appending
-                        cursor = text_edit.textCursor()
-                        cursor.movePosition(cursor.MoveOperation.End)
-                        cursor.select(cursor.SelectionType.LineUnderCursor)
-                        cursor.removeSelectedText()
-                        cursor.insertText(part.rstrip("\n"))
-                    else:
-                        text_edit.appendPlainText(part.rstrip("\n"))
+        def on_output(line: str, is_progress: bool):
+            """Handle output from the task (called on main thread via signal)."""
+            if is_progress:
+                # Update last line instead of appending for progress updates
+                cursor = text_edit.textCursor()
+                cursor.movePosition(cursor.MoveOperation.End)
+                cursor.select(cursor.SelectionType.LineUnderCursor)
+                cursor.removeSelectedText()
+                cursor.insertText(line)
+            else:
+                text_edit.appendPlainText(line)
             # Auto-scroll to bottom
             scrollbar = text_edit.verticalScrollBar()
             assert scrollbar is not None
             scrollbar.setValue(scrollbar.maximum())
 
-        def on_stderr():
-            data = (
-                process.readAllStandardError().data().decode("utf-8", errors="replace")
-            )
-            text_edit.appendPlainText(data)
-            scrollbar = text_edit.verticalScrollBar()
-            assert scrollbar is not None
-            scrollbar.setValue(scrollbar.maximum())
-
-        def on_finished(exit_code, exit_status):
-            close_button.setEnabled(True)
-            if exit_code == 0:
-                text_edit.appendPlainText("\n✓ Simulation completed successfully!")
-                message_bar.pushMessage(
-                    "Success",
-                    f"Simulation completed for {Path(path).name}",
-                    level=Qgis.MessageLevel.Success,
-                    duration=5,
-                )
-                # Reload results
+        def on_finished(success: bool):
+            """Handle task completion."""
+            self.running_tasks.pop(path, None)
+            if success:
                 self.refresh_results()
-            else:
-                text_edit.appendPlainText(
-                    f"\n✗ Simulation failed with exit code {exit_code}"
-                )
-                message_bar.pushMessage(
-                    "Error",
-                    f"Simulation failed for {Path(path).name}",
-                    level=Qgis.MessageLevel.Critical,
-                    duration=10,
-                )
+            elif task.was_canceled:
+                text_edit.appendPlainText("\nThe Ribasim simulation was canceled.")
 
-        process.readyReadStandardOutput.connect(on_stdout)
-        process.readyReadStandardError.connect(on_stderr)
-        process.finished.connect(on_finished)
+        # Connect signals
+        task.output_received.connect(on_output)
+        task.task_completed.connect(on_finished)
 
-        # Start process
-        process.start(str(cli), [path])
+        # Track and start the task
+        self.running_tasks[path] = task
+        QgsApplication.taskManager().addTask(task)
         dialog.show()
 
     @staticmethod
