@@ -82,29 +82,32 @@ class RibasimTask(QgsTask):
     def __init__(self, cli: str, toml_path: str):
         model_path = Path(toml_path)
         model_name = f"{model_path.parent.stem}/{model_path.stem}"
-        super().__init__(f"Ribasim simulation - {model_name}", QgsTask.CanCancel)
+        super().__init__(
+            f"Ribasim simulation - {model_name}",
+            QgsTask.CanCancel,  # type: ignore[attr-defined]
+        )
         self.cli = cli
         self.toml_path = toml_path
         self.exit_code: int | None = None
-        self.process: subprocess.Popen | None = None
+        self.process: subprocess.Popen[str] | None = None
         self.was_canceled = False
 
     def run(self) -> bool:
         """Run the Ribasim CLI subprocess (executes in background thread)."""
         try:
             # Hide console window on Windows
-            kwargs = {}
-            if sys.platform == "win32":
-                kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+            creationflags = (
+                subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            )
 
             with subprocess.Popen(
                 [self.cli, self.toml_path],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                universal_newlines=True,
+                text=True,
                 encoding="utf-8",
                 bufsize=1,
-                **kwargs,
+                creationflags=creationflags,
             ) as proc:
                 self.process = proc
                 if proc.stdout:
@@ -461,7 +464,9 @@ class DatasetWidget:
 
         # Track and start the task
         self.running_tasks[path] = task
-        QgsApplication.taskManager().addTask(task)
+        task_manager = QgsApplication.taskManager()
+        assert task_manager is not None
+        task_manager.addTask(task)
         dialog.show()
 
     @staticmethod
