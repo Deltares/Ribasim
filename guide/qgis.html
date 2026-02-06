@@ -252,8 +252,8 @@ ul.task-list li input[type="checkbox"] {
 <ul>
 <li>Install the Ribasim core application as described in the <a href="../getting-started/install.html">install section</a></li>
 <li>Open a terminal like Powershell or Cmd and navigate to the model directory.</li>
-<li>Call <code>ribasim</code> with the <code>.toml</code> file as input. E.g. <code>ribasim my_model.toml</code>.</li>
-<li>In your model directory there is now a <code>results/</code> folder with <code>basin.arrow</code> and <code>flow.arrow</code> output files.</li>
+<li>Call Ribasim with the <code>.toml</code> file as input. E.g. <code>ribasim my_model.toml</code>.</li>
+<li>In your model directory there is now a <code>results/</code> folder with <code>basin.nc</code> and <code>flow.nc</code> output files.</li>
 </ul>
 </section>
 <section id="sec-inspect" class="level1" data-number="3">
@@ -289,7 +289,7 @@ ul.task-list li input[type="checkbox"] {
 <p><img src="https://user-images.githubusercontent.com/4471859/224939471-85a23936-6eb6-4a80-a5b7-8c9a55ddc7f7.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
 </figure>
 </div>
-<p>Only the <code>basin.arrow</code> and <code>flow.arrow</code> can be inspected with the “iMOD Time Series Plot” panel. All Arrow files can be loaded as a layer by dragging the files onto QGIS. Right click the layer and select “Open Attribute Table” to view the contents.</p>
+<p>Only the <code>basin.nc</code> and <code>flow.nc</code> can be inspected with the “iMOD Time Series Plot” panel. All result files can be loaded as a layer by dragging the files onto QGIS. Right click the layer and select “Open Attribute Table” to view the contents.</p>
 </section>
 <section id="sec-reload" class="level1" data-number="5">
 <h1 data-number="5"><span class="header-section-number">5</span> Reloading models</h1>

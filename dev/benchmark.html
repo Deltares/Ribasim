@@ -282,13 +282,13 @@ ul.task-list li input[type="checkbox"] {
 <h2 data-number="1.1" class="anchored" data-anchor-id="benchmark-the-ode-solvers"><span class="header-section-number">1.1</span> Benchmark the ODE solvers</h2>
 <p>The benchmarking of the ODE solvers is done by running the test models with different ODE solvers and solver settings and comparing the output with the benchmark.</p>
 <p>The settings include toggling the <code>sparse</code> and <code>autodiff</code> solver settings. Currently, 4 models are chosen to undergo the regression tests. They are <code>trivial</code>, <code>basic</code>, <code>pid_control</code> and <code>subnetwork_with_sources</code>.</p>
-<p>The benchmark reference are the output files of a run of the test models with default solver settings. The output files <code>basin.arrow</code> and <code>flow.arrow</code> are used for comparison. Different margins are set for the comparison of the outputs, and the benchmark is considered passed if the output is within the margin. Since we are still in the process of evaluating the performance of different solvers, the margin is subject to change.</p>
+<p>The benchmark reference are the output files of a run of the test models with default solver settings. The output files <code>basin.nc</code> and <code>flow.nc</code> are used for comparison. Different margins are set for the comparison of the outputs, and the benchmark is considered passed if the output is within the margin. Since we are still in the process of evaluating the performance of different solvers, the margin is subject to change.</p>
 <p>The regression tests are run on a weekly basis.</p>
 </section>
 </section>
 <section id="benchmarking-of-the-production-model" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> Benchmarking of the production model</h1>
-<p>Regressive performance tests on the production models are done by running the production models with the new changes of the code and comparing the runtime performance with the reference run. The references are the output files of a run of the production models with the default solver settings. The output file <code>basin_state.arrow</code> which records the end states of the basin is used for comparison. Since the development of the model is still ongoing, the benchmark is subject to change.</p>
+<p>Regressive performance tests on the production models are done by running the production models with the new changes of the code and comparing the runtime performance with the reference run. The references are the output files of a run of the production models with the default solver settings. The output file <code>basin_state.nc</code> which records the end states of the basin is used for comparison. Since the development of the model is still ongoing, the benchmark is subject to change.</p>
 <p>The regressive performance tests are currently run on a weekly basis.</p>
 
 
