@@ -468,7 +468,12 @@ class DatasetWidget:
     def _find_ribasim_cli(message_bar) -> Path | None:
         """Find the Ribasim CLI executable.
 
-        First checks RIBASIM_EXE environment variable, then searches PATH.
+        First checks the RIBASIM_EXE environment variable, then searches PATH.
+        RIBASIM_EXE must be the full path to the executable file, e.g.,
+        `C:/bin/ribasim/bin/ribasim.exe` on Windows.
+
+        This is useful when QGIS does not inherit the user's PATH environment
+        variable, which happens in the default Windows installation.
 
         Parameters
         ----------
