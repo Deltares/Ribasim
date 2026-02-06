@@ -27,7 +27,6 @@ from pydantic import (
     field_validator,
     model_serializer,
     model_validator,
-    validate_call,
 )
 
 import ribasim
@@ -269,19 +268,6 @@ class FileModel(BaseModel, ABC):
         else:
             raise ValueError(f"Invalid type of value for FileModel: {type(value)}")
 
-    @validate_call
-    def set_filepath(self, filepath: Path) -> None:
-        """Set the filepath of this instance.
-
-        Args:
-            filepath (Path): The filepath to set.
-        """
-        # Disable assignment validation, which would
-        # otherwise trigger check_filepath() and _load() again.
-        self.model_config["validate_assignment"] = False
-        self.filepath = filepath
-        self.model_config["validate_assignment"] = True
-
     @field_serializer("filepath")
     def _serialize_path(self, path: Path) -> str:
         return path.as_posix()
@@ -321,7 +307,7 @@ class ChildModel(BaseModel):
     _parent_field: str | None = None
 
     @model_validator(mode="after")
-    def _check_parent(self) -> "ChildModel":
+    def check_parent(self) -> "ChildModel":
         if self._parent is not None and self._parent_field is not None:
             self._parent.model_fields_set.update({self._parent_field})
         return self

@@ -1,5 +1,5 @@
 @testitem "regression_ode_solvers_trivial" setup = [Teamcity] begin
-    import Arrow
+    using NCDatasets: NCDataset
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
@@ -11,9 +11,7 @@
 
     @testset Teamcity.TeamcityTestSet "$solver" for solver in solver_list
         @testset Teamcity.TeamcityTestSet "sparse = $sparse" for sparse in sparse_options
-            @testset Teamcity.TeamcityTestSet "autodiff = $autodiff" for autodiff in
-                autodiff_options
-                sparse || continue # skip dense, see issue #2797
+            @testset Teamcity.TeamcityTestSet "autodiff = $autodiff" for autodiff in autodiff_options
                 config = Ribasim.Config(
                     toml_path;
                     solver_algorithm = solver,
@@ -27,13 +25,9 @@
                 @test success(model)
                 (; p) = model.integrator
 
-                # read all results as bytes first to avoid memory mapping
-                # which can have cleanup issues due to file locking
-                flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
-                basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
-
-                flow = Arrow.Table(flow_bytes)
-                basin = Arrow.Table(basin_bytes)
+                # Read NetCDF result files
+                flow_path = normpath(dirname(toml_path), "results/flow.nc")
+                basin_path = normpath(dirname(toml_path), "results/basin.nc")
 
                 @testset "Results values" begin
                     NCDataset(basin_path) do basin
@@ -71,11 +65,8 @@ end
     autodiff_on = [true, false]
 
     @testset Teamcity.TeamcityTestSet "$solver" for solver in solver_list
-        @testset Teamcity.TeamcityTestSet "sparse density is $sparse_on_off" for sparse_on_off in
-            sparse_on
-            @testset Teamcity.TeamcityTestSet "auto differentiation is $autodiff_on_off" for autodiff_on_off in
-                autodiff_on
-                sparse_on_off || continue # skip dense, see issue #2797
+        @testset Teamcity.TeamcityTestSet "sparse density is $sparse_on_off" for sparse_on_off in sparse_on
+            @testset Teamcity.TeamcityTestSet "auto differentiation is $autodiff_on_off" for autodiff_on_off in autodiff_on
                 config = Ribasim.Config(
                     toml_path;
                     solver_algorithm = solver,
@@ -144,11 +135,8 @@ end
     autodiff_on = [true, false]
 
     @testset Teamcity.TeamcityTestSet "$solver" for solver in solver_list
-        @testset Teamcity.TeamcityTestSet "sparse density is $sparse_on_off" for sparse_on_off in
-            sparse_on
-            @testset Teamcity.TeamcityTestSet "auto differentiation is $autodiff_on_off" for autodiff_on_off in
-                autodiff_on
-                sparse_on_off || continue # skip dense, see issue #2797
+        @testset Teamcity.TeamcityTestSet "sparse density is $sparse_on_off" for sparse_on_off in sparse_on
+            @testset Teamcity.TeamcityTestSet "auto differentiation is $autodiff_on_off" for autodiff_on_off in autodiff_on
                 config = Ribasim.Config(
                     toml_path;
                     solver_algorithm = solver,
@@ -191,7 +179,7 @@ end
 end
 
 @testitem "regression_ode_solvers_allocation" setup = [Teamcity] begin
-    import Arrow
+    using NCDatasets: NCDataset
 
     toml_path = normpath(
         @__DIR__,
@@ -200,20 +188,14 @@ end
     @test ispath(toml_path)
     config = Ribasim.Config(toml_path)
 
-    flow_bytes_bench = read(
-        normpath(
-            @__DIR__,
-            "../../models/benchmark/medium_primary_secondary_network/flow.arrow",
-        ),
+    flow_bench_path = normpath(
+        @__DIR__,
+        "../../models/benchmark/medium_primary_secondary_network/flow.nc",
     )
-    basin_bytes_bench = read(
-        normpath(
-            @__DIR__,
-            "../../models/benchmark/medium_primary_secondary_network/basin.arrow",
-        ),
+    basin_bench_path = normpath(
+        @__DIR__,
+        "../../models/benchmark/medium_primary_secondary_network/basin.nc",
     )
-    flow_bench = Arrow.Table(flow_bytes_bench)
-    basin_bench = Arrow.Table(basin_bytes_bench)
 
     solver_list = ["QNDF"]
     # false sparse or autodiff can cause large differences in results, thus removed
@@ -232,23 +214,27 @@ end
         @test success(model)
         (; p) = model.integrator
 
-        # read all results as bytes first to avoid memory mapping
-        # which can have cleanup issues due to file locking
-        flow_bytes = read(normpath(dirname(toml_path), "results/flow.arrow"))
-        basin_bytes = read(normpath(dirname(toml_path), "results/basin.arrow"))
+        # Read NetCDF result files
+        flow_path = normpath(dirname(toml_path), "results/flow.nc")
+        basin_path = normpath(dirname(toml_path), "results/basin.nc")
 
-        flow = Arrow.Table(flow_bytes)
-        basin = Arrow.Table(basin_bytes)
-
-        # Testbench for flow.arrow
-        @test flow.time == flow_bench.time
-        @test flow.link_id == flow_bench.link_id
-        @test flow.from_node_id == flow_bench.from_node_id
-        @test flow.to_node_id == flow_bench.to_node_id
+        # Testbench for flow.nc
+        NCDataset(flow_path) do flow
+            NCDataset(flow_bench_path) do flow_bench
+                @test flow["time"][:] == flow_bench["time"][:]
+                @test flow["link_id"][:] == flow_bench["link_id"][:]
+                @test flow["from_node_id"][:] == flow_bench["from_node_id"][:]
+                @test flow["to_node_id"][:] == flow_bench["to_node_id"][:]
+            end
+        end
 
         println("Comparing basin results for $solver...")
-        # Testbench for basin.arrow
-        @test basin.time == basin_bench.time
-        @test basin.node_id == basin_bench.node_id
+        # Testbench for basin.nc
+        NCDataset(basin_path) do basin
+            NCDataset(basin_bench_path) do basin_bench
+                @test basin["time"][:] == basin_bench["time"][:]
+                @test basin["node_id"][:] == basin_bench["node_id"][:]
+            end
+        end
     end
 end

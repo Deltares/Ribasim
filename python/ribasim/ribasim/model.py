@@ -239,7 +239,7 @@ class Model(FileModel, ParentModel):
             The file path of the written TOML file.
         """
         content = self.model_dump(
-            exclude_unset=True, exclude_none=True, by_alias=True, context="write"
+            exclude_unset=False, exclude_none=True, by_alias=True, context="write"
         )
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
@@ -406,7 +406,7 @@ class Model(FileModel, ParentModel):
         filepath = Path(filepath)
         if not filepath.suffix == ".toml":
             raise ValueError(f"Filepath '{filepath}' is not a .toml file.")
-        self.set_filepath(filepath)
+        self.filepath = filepath
 
         context_file_writing.set({})
         directory = filepath.parent / self.input_dir

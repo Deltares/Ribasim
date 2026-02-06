@@ -131,11 +131,15 @@ end
 
     model = Ribasim.run(toml_path)
     storage = Ribasim.get_storages_and_levels(model).storage
-    # After a few days Basin #3 comes to a dynamic equilibrium when the level difference
-    # reduction factor of Oulet #2 becomes 1
-    @test all(isapprox.(storage[1, 4:end], storage[1, end]; rtol = 1.0e-4))
 
+    # after a few days Basin #3 comes to a dynamic equilibrium
+    # when the level difference reduction factor of Oulet #2 becomes 1
+    @test storage[1, 1] ≈ 100.0f0
+    @test storage[1, 4] ≈ 110.0f0
+    @test storage[1, end] ≈ 110.0f0
+
+    # the pump keeps pumping
     t_end = model.integrator.t
     flow_rate_end = model.integrator.p.p_independent.pump.time_dependent_flow_rate[1].u[end]
-    @test storage[2, end] ≈ storage[2, 1] + 0.5 * flow_rate_end * t_end
+    @test Float32(only(model.integrator.u.pump)) ≈ 100 + 0.5 * flow_rate_end * t_end
 end
