@@ -25,6 +25,8 @@ def exists(connection: Connection, name: str) -> bool:
 
 def _set_gpkg_attribute_table(connection: Connection, table: str) -> None:
     # Set geopackage attribute table
+    if not exists(connection, "gpkg_contents"):
+        return  # Not a geopackage (yet?), so skip
     with closing(connection.cursor()) as cursor:
         sql = "INSERT OR REPLACE INTO gpkg_contents (table_name, data_type, identifier, last_change) VALUES (?, ?, ?, ?)"
         cursor.execute(sql, (table, "attributes", table, fake_date))

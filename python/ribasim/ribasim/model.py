@@ -7,6 +7,7 @@ from os import PathLike
 from pathlib import Path
 from typing import Any
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 import tomli
@@ -57,9 +58,12 @@ from ribasim.geometry.node import NodeTable
 from ribasim.input_base import (
     ChildModel,
     FileModel,
+    ParentModel,
     SpatialTableModel,
+    _init_context_var,
     context_file_loading,
     context_file_writing,
+    init_context,
 )
 from ribasim.utils import (
     MissingOptionalModule,
@@ -80,7 +84,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class Model(FileModel):
+class Model(FileModel, ParentModel):
     """A model of inland water resources systems."""
 
     starttime: datetime.datetime
@@ -124,6 +128,16 @@ class Model(FileModel):
 
     _used_node_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
 
+    @classmethod
+    def allows_lazy(cls) -> bool:
+        """Return whether this FileModel allows lazy loading."""
+        return False
+
+    @classmethod
+    def default_filepath(cls) -> Path:
+        """Return the default filepath for this FileModel."""
+        return Path("ribasim.toml")
+
     @field_validator("ribasim_version")
     @classmethod
     def _validate_ribasim_version(cls, v: str) -> str:
@@ -152,16 +166,6 @@ class Model(FileModel):
                 )
 
         return v
-
-    @model_validator(mode="after")
-    def _set_node_parent(self) -> "Model":
-        for (
-            k,
-            v,
-        ) in self._children().items():
-            v._parent = self
-            v._parent_field = k
-        return self
 
     @model_validator(mode="after")
     def _ensure_link_table_is_present(self) -> "Model":
@@ -194,7 +198,10 @@ class Model(FileModel):
         # By overriding `BaseModel.model_post_init` we can set them explicitly,
         # and enforce that they are always written.
         # Since migration runs on reading, the ribasim_version should be reset.
+        self.model_config["validate_assignment"] = False
         self.ribasim_version = ribasim.__version__
+        self.model_config["validate_assignment"] = True
+
         self.model_fields_set.update({"input_dir", "results_dir"})
 
     def __repr__(self) -> str:
@@ -231,39 +238,43 @@ class Model(FileModel):
         Path
             The file path of the written TOML file.
         """
-        content = self.model_dump(
-            exclude_unset=True, exclude_none=True, by_alias=True, context="write"
-        )
+        content = self.model_dump(exclude_unset=True, exclude_none=True, by_alias=True)
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
         with fn.open("wb") as f:
             tomli_w.dump(content, f)
         return fn
 
-    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
+    def _write(
+        self,
+        directory: DirectoryPath,
+        internal: bool = True,
+        external: bool = True,
+    ) -> None:
         # We write all tables to a temporary GeoPackage with a dot prefix,
         # and at the end move this over the target file.
         # This does not throw a PermissionError if the file is open in QGIS.
-        db_path = directory / input_dir / ".database.gpkg"
 
-        # avoid adding tables to existing model
-        db_path.parent.mkdir(parents=True, exist_ok=True)
-        db_path.unlink(missing_ok=True)
-        context_file_writing.get()["database"] = db_path
+        if internal:
+            db_path = directory / ".database.gpkg"
 
-        self.link._save(directory, input_dir)
-        node = self.node_table()
+            # avoid adding tables to existing model
+            db_path.unlink(missing_ok=True)
 
-        assert node.df is not None
-        node._save(directory, input_dir)
+            self.link.write(directory)
+            node = self.node_table()
 
-        # Run after geopackage schema has been created
-        _set_db_schema_version(db_path, ribasim.__schema_version__)
+            assert node.df is not None
+            node.write(directory)
+
+            # Run after geopackage schema has been created
+            _set_db_schema_version(db_path, ribasim.__schema_version__)
 
         for sub in self._nodes():
-            sub._save(directory, input_dir)
+            sub.write(directory, internal=internal, external=external)
 
-        shutil.move(db_path, db_path.with_name("database.gpkg"))
+        if internal:
+            shutil.move(db_path, db_path.with_name("database.gpkg"))
 
     def set_crs(self, crs: str) -> None:
         """Set the coordinate reference system of the data in the model.
@@ -336,7 +347,7 @@ class Model(FileModel):
         df = (
             _concat(df_chunks)
             if df_chunks
-            else pd.DataFrame(index=pd.Index([], name="node_id"))
+            else gpd.GeoDataFrame(index=pd.Index([], name="node_id"), geometry=[])
         )
         node_table = NodeTable(df=df)
         node_table.sort()
@@ -366,7 +377,7 @@ class Model(FileModel):
         }
 
     @classmethod
-    def read(cls, filepath: str | PathLike[str]) -> "Model":
+    def read(cls, filepath: str | PathLike[str], lazy: bool = False) -> "Model":
         """Read a model from a TOML file.
 
         Parameters
@@ -376,9 +387,17 @@ class Model(FileModel):
         """
         if not Path(filepath).is_file():
             raise FileNotFoundError(f"File '{filepath}' does not exist.")
-        return cls(filepath=filepath)  # type: ignore
 
-    def write(self, filepath: str | PathLike[str]) -> Path:
+        with init_context({"lazy": lazy, "directory": Path(filepath).parent}):
+            return cls(filepath=Path(filepath).name)  # type: ignore
+
+    def write(
+        self,
+        filepath: str | PathLike[str],
+        toml: bool = True,
+        internal: bool = True,
+        external: bool = True,
+    ) -> Path:
         """Write the contents of the model to disk and save it as a TOML configuration file.
 
         If ``filepath.parent`` does not exist, it is created before writing.
@@ -392,21 +411,27 @@ class Model(FileModel):
             self._validate_model()
 
         filepath = Path(filepath)
-        self.filepath = filepath
         if not filepath.suffix == ".toml":
             raise ValueError(f"Filepath '{filepath}' is not a .toml file.")
-        context_file_writing.set({})
-        directory = filepath.parent
-        directory.mkdir(parents=True, exist_ok=True)
-        self._save(directory, self.input_dir)
-        fn = self._write_toml(filepath)
+        self.filepath = filepath
 
         context_file_writing.set({})
-        return fn
+        directory = filepath.parent / self.input_dir
+        directory.mkdir(parents=True, exist_ok=True)
+        context_file_writing.get()["directory"] = directory
+
+        self._write(directory, internal=internal, external=external)
+        if toml:
+            self._write_toml(filepath)
+
+        context_file_writing.set({})
+        return filepath
 
     def _validate_model(self):
         df_link = self.link.df
         df_chunks = [node.node.df for node in self._nodes()]
+        if len(df_chunks) == 0:
+            return
         df_node = _concat(df_chunks)
 
         df_graph = df_link
@@ -527,24 +552,43 @@ class Model(FileModel):
             with filepath.open("rb") as f:
                 config = tomli.load(f)
 
+            config["filepath"] = filepath
             directory = filepath.parent / config["input_dir"]
             context_file_loading.get()["directory"] = directory
-            db_path = directory / "database.gpkg"
+            _init_context_var.get()["directory"] = directory  # type: ignore
 
+            db_path = directory / "database.gpkg"
             if not db_path.is_file():
                 raise FileNotFoundError(f"Database file '{db_path}' does not exist.")
-
             context_file_loading.get()["database"] = db_path
 
             return config
         else:
             return {}
 
+    def load(self, internal: bool = True, external: bool = True) -> None:
+        for child in self._children().values():
+            child.load(internal=internal, external=external)
+
     @model_validator(mode="after")
     def _reset_contextvar(self) -> "Model":
         # Drop database info
         context_file_loading.set({})
         return self
+
+    @property
+    def database_path(self) -> FilePath | None:
+        """
+        Get the path to the database file.
+
+        Returns
+        -------
+        FilePath | None
+            The path to the database file.
+        """
+        if self.filepath:
+            return self.filepath.parent / self.input_dir / "database.gpkg"
+        return None
 
     @property
     def toml_path(self) -> FilePath:
