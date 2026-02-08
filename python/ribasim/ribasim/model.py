@@ -238,17 +238,18 @@ class Model(FileModel, ParentModel):
         Path
             The file path of the written TOML file.
         """
-        content = self.model_dump(
-            exclude_unset=False, exclude_none=True, by_alias=True, context="write"
-        )
+        content = self.model_dump(exclude_unset=True, exclude_none=True, by_alias=True)
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
         with fn.open("wb") as f:
             tomli_w.dump(content, f)
         return fn
 
-    def _save(
-        self, directory: DirectoryPath, internal: bool = True, external: bool = True
+    def _write(
+        self,
+        directory: DirectoryPath,
+        internal: bool = True,
+        external: bool = True,
     ) -> None:
         # We write all tables to a temporary GeoPackage with a dot prefix,
         # and at the end move this over the target file.
@@ -260,17 +261,17 @@ class Model(FileModel, ParentModel):
             # avoid adding tables to existing model
             db_path.unlink(missing_ok=True)
 
-            self.link._save(directory)
+            self.link.write(directory)
             node = self.node_table()
 
             assert node.df is not None
-            node._save(directory)
+            node.write(directory)
 
             # Run after geopackage schema has been created
             _set_db_schema_version(db_path, ribasim.__schema_version__)
 
         for sub in self._nodes():
-            sub._save(directory, internal=internal, external=external)
+            sub.write(directory, internal=internal, external=external)
 
         if internal:
             shutil.move(db_path, db_path.with_name("database.gpkg"))
@@ -390,7 +391,13 @@ class Model(FileModel, ParentModel):
         with init_context({"lazy": lazy, "directory": Path(filepath).parent}):
             return cls(filepath=Path(filepath).name)  # type: ignore
 
-    def write(self, filepath: str | PathLike[str]) -> Path:
+    def write(
+        self,
+        filepath: str | PathLike[str],
+        toml: bool = True,
+        internal: bool = True,
+        external: bool = True,
+    ) -> Path:
         """Write the contents of the model to disk and save it as a TOML configuration file.
 
         If ``filepath.parent`` does not exist, it is created before writing.
@@ -413,12 +420,12 @@ class Model(FileModel, ParentModel):
         directory.mkdir(parents=True, exist_ok=True)
         context_file_writing.get()["directory"] = directory
 
-        self._save(directory)
-        fn = self._write_toml(filepath)
+        self._write(directory, internal=internal, external=external)
+        if toml:
+            self._write_toml(filepath)
 
         context_file_writing.set({})
-        assert len(context_file_writing.get()) == 0
-        return fn
+        return filepath
 
     def _validate_model(self):
         df_link = self.link.df

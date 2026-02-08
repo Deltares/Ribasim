@@ -523,7 +523,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
     def is_internal(self) -> bool:
         return self.filepath is None
 
-    def _save(
+    def write(
         self,
         directory: DirectoryPath,
     ) -> None:
@@ -780,12 +780,12 @@ class NodeModel(ChildModel, ParentModel):
         for table in self._tables():
             table.load(internal=internal, external=external)
 
-    def _save(
+    def write(
         self, directory: DirectoryPath, internal: bool = True, external: bool = True
     ) -> None:
         for table in self._tables():
             if (internal and table.is_internal) or (external and table.is_external):
-                table._save(directory)
+                table.write(directory)
 
     def _repr_content(self) -> str:
         """Generate a succinct overview of the content.

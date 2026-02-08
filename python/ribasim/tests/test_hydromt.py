@@ -23,35 +23,35 @@ def test_basic_components(basic_arrow, tmp_path):
     assert model.basin.profile.filepath == Path(arrow_path.name)
 
     # Saves only the toml file
-    model._write_toml(toml_path)
+    model.write(toml_path, toml=True, internal=False, external=False)
     assert toml_path.exists()
     assert not db_path.exists()
     assert not arrow_path.exists()
     toml_path.unlink()
 
     # Saves only geopackage files without time time series data
-    model._save(tmp_path / model.input_dir, external=False)
+    model.write(toml_path, toml=False, external=False)
     assert db_path.exists()
     assert not toml_path.exists()
     assert not arrow_path.exists()
     db_path.unlink()
 
     # Saves only forcing files with time series data
-    model._save(tmp_path / model.input_dir, internal=False)
+    model.write(toml_path, toml=False, internal=False)
     assert not db_path.exists()
     assert not toml_path.exists()
     assert arrow_path.exists()
     arrow_path.unlink()
 
     # Saves individual forcing table (arrow, netcdf, etc.)
-    model.basin.profile._save(tmp_path / "input")
+    model.basin.profile.write(tmp_path / "input")
     assert not toml_path.exists()
     assert not db_path.exists()
     assert arrow_path.exists()
     arrow_path.unlink()
 
     # Saves individual non-forcing table (gpkg)
-    model.basin.static._save(tmp_path / "input")
+    model.basin.static.write(tmp_path / "input")
     assert not toml_path.exists()
     assert db_path.exists()
     assert not arrow_path.exists()
