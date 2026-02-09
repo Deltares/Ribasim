@@ -312,7 +312,7 @@ window.Quarto = {
 </header>
 
 
-<div id="9ae50141" class="cell" data-execution_count="1">
+<div id="7e8455c9" class="cell" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim <span class="im">import</span> run_ribasim</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <section id="introduction" class="level1" data-number="1">
@@ -355,7 +355,7 @@ Figure&nbsp;1: Crystal Basin based on natural flow
 <section id="import-packages" class="level3" data-number="2.1.1">
 <h3 data-number="2.1.1" class="anchored" data-anchor-id="import-packages"><span class="header-section-number">2.1.1</span> Import packages</h3>
 <p>Before building the model we need to import some modules. Open your favorite Python editor (Visual Studio Code, Jupyter, …) and create a new script or notebook and name it <code>Crystal_1.1</code> and save it into your model folder <code>Crystal_Basin</code>. Import the following modules in Python:</p>
-<div id="cc9b166e" class="cell" data-execution_count="3">
+<div id="a32cf16e" class="cell" data-execution_count="3">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
@@ -369,7 +369,7 @@ Figure&nbsp;1: Crystal Basin based on natural flow
 <section id="setup-paths-and-model-configuration" class="level3" data-number="2.1.2">
 <h3 data-number="2.1.2" class="anchored" data-anchor-id="setup-paths-and-model-configuration"><span class="header-section-number">2.1.2</span> Setup paths and model configuration</h3>
 <p>Reference the paths of the Ribasim installation and model directory and define the time period. The used simulation period is defined by the <code>starttime</code> and <code>endtime</code> of the model, not by the input timeseries. For now we will look into the period from 2022-01-01 until 2023-01-01 for the model simulation. The coordinate reference system (CRS) is also required, and set to <a href="https://epsg.io/4326">EPSG:4326</a>, which means all coordinates are interpreted as latitude and longitude values. The CRS is important for correctly placing Ribasim models on the map, but since this is a fictional model, it is not important.</p>
-<div id="9a5e6da8" class="cell" data-execution_count="4">
+<div id="bfd69eb7" class="cell" data-execution_count="4">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>base_dir <span class="op">=</span> Path(<span class="st">"crystal-basin"</span>)</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>starttime <span class="op">=</span> <span class="st">"2022-01-01"</span></span>
@@ -384,7 +384,7 @@ Figure&nbsp;1: Crystal Basin based on natural flow
 <section id="flowboundary-nodes" class="level3" data-number="2.1.3">
 <h3 data-number="2.1.3" class="anchored" data-anchor-id="flowboundary-nodes"><span class="header-section-number">2.1.3</span> FlowBoundary nodes</h3>
 <p>The Crystal basin consists of two inflow points, the tributary and the main Crystal river, we will call them Minor and Main respectively. This is a monthly inflow timeseries from 2014 to 2023. The used simulation period is defined by the <code>starttime</code> and <code>endtime</code> of the model, not by the input timeseries.</p>
-<div id="95115c36" class="cell" data-execution_count="5">
+<div id="46c3dc93" class="cell" data-execution_count="5">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> pd.DataFrame({</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"time"</span>: pd.date_range(start<span class="op">=</span><span class="st">"2022-01-01"</span>, end<span class="op">=</span><span class="st">"2023-01-01"</span>, freq<span class="op">=</span><span class="st">"MS"</span>),</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"main"</span>: [<span class="fl">74.7</span>, <span class="fl">57.9</span>, <span class="fl">63.2</span>, <span class="fl">183.9</span>, <span class="fl">91.8</span>, <span class="fl">47.5</span>, <span class="fl">32.6</span>, <span class="fl">27.6</span>, <span class="fl">26.5</span>, <span class="fl">25.1</span>, <span class="fl">39.3</span>, <span class="fl">37.8</span>, <span class="fl">57.9</span>],</span>
@@ -576,7 +576,7 @@ Table&nbsp;1: Profile data for the basin node
 </div>
 <p>Whilst in this case the level starts at <span class="math inline">\(0.0\)</span> and therefore happens to be the same as the depth, it should never be interpreted as a depth. All water levels in Ribasim are assumed to be with respect to a shared reference datum, like mean sea level (MSL). The first water level in the profile is the height of the Basin bottom above this reference datum.</p>
 <p>To specify the Basin profile, the following code is used:</p>
-<div id="be7a66e9" class="cell" data-execution_count="6">
+<div id="f82e6f6c" class="cell" data-execution_count="6">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>confluence <span class="op">=</span> model.basin.add(</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">3</span>, Point(<span class="op">-</span><span class="fl">1.5</span>, <span class="op">-</span><span class="dv">1</span>), name<span class="op">=</span><span class="st">"confluence"</span>),</span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    [</span>
@@ -643,7 +643,7 @@ Figure&nbsp;3: Discharge at corresponding water levels
 </figure>
 </div>
 <p>Taking this into account, add the <code>TabulatedRatingCurve</code> as follows:</p>
-<div id="83bc5b36" class="cell" data-execution_count="7">
+<div id="81fb487a" class="cell" data-execution_count="7">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>weir <span class="op">=</span> model.tabulated_rating_curve.add(</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">4</span>, Point(<span class="op">-</span><span class="fl">1.5</span>, <span class="op">-</span><span class="fl">1.5</span>), name<span class="op">=</span><span class="st">"weir"</span>),</span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    [</span>
@@ -658,14 +658,14 @@ Figure&nbsp;3: Discharge at corresponding water levels
 <section id="terminal-node" class="level3" data-number="2.1.6">
 <h3 data-number="2.1.6" class="anchored" data-anchor-id="terminal-node"><span class="header-section-number">2.1.6</span> Terminal node</h3>
 <p>Finally all the water will discharge into the sea. We schematize this with the Terminal node, as it portrays the end point of the model, that can receive but not give water. Besides the node number/name and location, no further input is needed.</p>
-<div id="08c65b97" class="cell" data-execution_count="8">
+<div id="4594b9ff" class="cell" data-execution_count="8">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>sea <span class="op">=</span> model.terminal.add(Node(<span class="dv">5</span>, Point(<span class="op">-</span><span class="fl">1.5</span>, <span class="op">-</span><span class="fl">3.0</span>), name<span class="op">=</span><span class="st">"sea"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
 <section id="defining-links" class="level3" data-number="2.1.7">
 <h3 data-number="2.1.7" class="anchored" data-anchor-id="defining-links"><span class="header-section-number">2.1.7</span> Defining links</h3>
 <p>Implement the connections (links) between the nodes.</p>
-<div id="0f9c3dca" class="cell" data-execution_count="9">
+<div id="4f58b34d" class="cell" data-execution_count="9">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>model.link.add(main, confluence, name<span class="op">=</span><span class="st">"main"</span>)</span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>model.link.add(minor, confluence, name<span class="op">=</span><span class="st">"minor"</span>)</span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>model.link.add(confluence, weir)</span>
@@ -675,7 +675,7 @@ Figure&nbsp;3: Discharge at corresponding water levels
 <section id="visualization-and-model-execution" class="level3" data-number="2.1.8">
 <h3 data-number="2.1.8" class="anchored" data-anchor-id="visualization-and-model-execution"><span class="header-section-number">2.1.8</span> Visualization and model execution</h3>
 <p>Plot the schematization.</p>
-<div id="2d54ca7a" class="cell" data-execution_count="10">
+<div id="4f0bca05" class="cell" data-execution_count="10">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>model.plot()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -686,7 +686,7 @@ Figure&nbsp;3: Discharge at corresponding water levels
 </div>
 </div>
 <p>Write the model configuration to the <code>TOML</code> file. Name the output file <code>Crystal-1/ribasim.toml</code>:</p>
-<div id="91544a3e" class="cell" data-execution_count="11">
+<div id="deb99118" class="cell" data-execution_count="11">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>toml_path <span class="op">=</span> base_dir <span class="op">/</span> <span class="st">"Crystal-1/ribasim.toml"</span></span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>model.write(toml_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="10">
@@ -701,35 +701,35 @@ Figure&nbsp;3: Discharge at corresponding water levels
 <p>Now run the model. You can open a terminal and run it from there. For example:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="ex">ribasim</span> Crystal-1/ribasim.toml</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>From Python you can run it with:</p>
-<div id="67f16dbe" class="cell" data-execution_count="12">
+<div id="ccf435c8" class="cell" data-execution_count="12">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>run_ribasim(toml_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stderr">
-<pre><code>┌ Info: Starting a Ribasim simulation at 2026-02-06T18:17:45.005.
+<pre><code>┌ Info: Starting a Ribasim simulation at 2026-02-09T10:51:04.836.
 │   toml_path = "crystal-basin/Crystal-1/ribasim.toml"
 │   ribasim_version = "2026.1.0-rc1"
 │   starttime = 2022-01-01T00:00:00
 │   endtime = 2023-01-01T00:00:00
 └   threads = 1
 Simulating   0%|                                        |  ETA: N/A
-Simulating   1%|▋                                       |  ETA: 0:57:42
-Simulating   9%|███▌                                    |  ETA: 0:08:38
-Simulating  16%|██████▌                                 |  ETA: 0:04:22
-Simulating  25%|█████████▉                              |  ETA: 0:02:35
-Simulating  26%|██████████▎                             |  ETA: 0:02:27
-Simulating  33%|█████████████▏                          |  ETA: 0:01:43
-Simulating  35%|██████████████                          |  ETA: 0:01:34
-Simulating  42%|████████████████▉                       |  ETA: 0:01:10
-Simulating  50%|███████████████████▉                    |  ETA: 0:00:51
-Simulating  53%|█████████████████████▏                  |  ETA: 0:00:45
-Simulating  59%|███████████████████████▊                |  ETA: 0:00:35
-Simulating  67%|██████████████████████████▉             |  ETA: 0:00:25
+Simulating   1%|▋                                       |  ETA: 0:55:15
+Simulating   9%|███▌                                    |  ETA: 0:08:16
+Simulating  16%|██████▌                                 |  ETA: 0:04:11
+Simulating  25%|█████████▉                              |  ETA: 0:02:28
+Simulating  26%|██████████▎                             |  ETA: 0:02:21
+Simulating  33%|█████████████▏                          |  ETA: 0:01:39
+Simulating  35%|██████████████                          |  ETA: 0:01:30
+Simulating  42%|████████████████▉                       |  ETA: 0:01:07
+Simulating  50%|███████████████████▉                    |  ETA: 0:00:49
+Simulating  53%|█████████████████████▏                  |  ETA: 0:00:43
+Simulating  59%|███████████████████████▊                |  ETA: 0:00:33
+Simulating  67%|██████████████████████████▉             |  ETA: 0:00:24
 Simulating  76%|██████████████████████████████▎         |  ETA: 0:00:16
 Simulating  84%|█████████████████████████████████▍      |  ETA: 0:00:10
 Simulating  91%|████████████████████████████████████▍   |  ETA: 0:00:05
 Simulating  95%|█████████████████████████████████████▉  |  ETA: 0:00:03
-Simulating 100%|████████████████████████████████████████| Time: 0:00:51
-[ Info: Computation time: 24 seconds, 683 milliseconds
-[ Info: The model finished successfully at 2026-02-06T18:20:13.758.</code></pre>
+Simulating 100%|████████████████████████████████████████| Time: 0:00:48
+[ Info: Computation time: 23 seconds, 708 milliseconds
+[ Info: The model finished successfully at 2026-02-09T10:53:28.080.</code></pre>
 </div>
 </div>
 <p>By default it will search for <code>ribasim</code> in the PATH, but you can supply the <code>ribasim_exe</code> keyword argument which points to the <code>ribasim</code> executable: <code>run_ribasim(toml_path, ribasim_exe="bin/ribasim/ribasim.exe")</code>. Use <code>run_ribasim(version=True)</code> to check the version.</p>
@@ -737,7 +737,7 @@ Simulating 100%|█████████████████████�
 <section id="post-processing-results" class="level3" data-number="2.1.9">
 <h3 data-number="2.1.9" class="anchored" data-anchor-id="post-processing-results"><span class="header-section-number">2.1.9</span> Post-processing results</h3>
 <p>Read the Arrow files and plot the simulated flows from different links and the levels and storages at our confluence point:</p>
-<div id="9b65972a" class="cell" data-execution_count="13">
+<div id="a4ecf637" class="cell" data-execution_count="13">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>ds_basin <span class="op">=</span> xr.open_dataset(base_dir <span class="op">/</span> <span class="st">"Crystal-1/results/basin.nc"</span>)</span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>df_basin <span class="op">=</span> ds_basin.to_dataframe().reset_index()</span>
 <span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -776,7 +776,7 @@ Simulating 100%|█████████████████████�
 </div>
 <p>The figure above shows the storage and levels in the Basin node.</p>
 <p>To accurately represent the relationship between water levels and discharge rates at this confluence, a TabulatedRatingCurve is used. This setup mimics the behavior of a gate or spillway, allowing us to model how varying water levels influence flow rates at the confluence. Since the basin node is functioning as a confluence rather than a storage reservoir, the simulated water levels and storage trends will closely follow the inflow patterns. This is because there is no net change in storage; all incoming water is balanced by outgoing flow.</p>
-<div id="fcae1c08" class="cell" data-execution_count="14">
+<div id="fedd20de" class="cell" data-execution_count="14">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot flow data</span></span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Read the flow results</span></span>
 <span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>ds_flow <span class="op">=</span> xr.open_dataset(base_dir <span class="op">/</span> <span class="st">"Crystal-1/results/flow.nc"</span>)</span>
