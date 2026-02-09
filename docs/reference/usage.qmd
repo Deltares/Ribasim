@@ -350,13 +350,16 @@ nodes in QGIS. For instance, you can draw a line connecting the two node coordin
 
 # Results {#sec-results}
 
-## Basin - `basin`
+Results are written in NetCDF format by default, which stores data as multidimensional arrays rather than flat tables.
+This section describes the structure of each NetCDF result file using CDL-like notation.
 
-The Basin table contains:
+## Basin - `basin.nc`
+
+The Basin results contain:
 
 - Results of the storage and level of each Basin, which are instantaneous values;
 - Results of the fluxes on each Basin, which are mean values over the `saveat` intervals.
-  In the time column the start of the period is indicated.
+  In the time coordinate the start of the period is indicated.
 - The initial condition is written to the file, but the final state is not.
   It will be placed in a separate output state file in the future.
 - The `inflow_rate` and `outflow_rate` are the sum of the flows from other nodes into and out of the Basin respectively.
@@ -371,85 +374,125 @@ The Basin table contains:
 
 For a more in-depth explanation of the water balance error see [here](/concept/equations.qmd#the-water-balance-error).
 
-column         | type            | unit
--------------- | --------------- | ----
-time           | DateTime        | -
-node_id        | Int32           | -
-level          | Float64         | $\text{m}$
-storage        | Float64         | $\text{m}^3$
-inflow_rate    | Float64         | $\text{m}^3/\text{s}$
-outflow_rate   | Float64         | $\text{m}^3/\text{s}$
-storage_rate   | Float64         | $\text{m}^3/\text{s}$
-precipitation  | Float64         | $\text{m}^3/\text{s}$
-surface_runoff | Float64         | $\text{m}^3/\text{s}$
-evaporation    | Float64         | $\text{m}^3/\text{s}$
-drainage       | Float64         | $\text{m}^3/\text{s}$
-infiltration   | Float64         | $\text{m}^3/\text{s}$
-balance_error  | Float64         | $\text{m}^3/\text{s}$
-relative_error | Float64         | -
-convergence    | Float64/Missing | -
+**NetCDF structure:**
 
-The table is sorted by time, and per time it is sorted by `node_id`.
+```cdl
+dimensions:
+  time   = <number of timesteps>
+  node   = <number of Basin nodes>
 
-## Flow - `flow`
+coordinates:
+  DateTime  time(time)
+  Int32     node_id(node)
 
-The flow table contains calculated mean flows over the `saveat` intervals for every flow link in the model.
-In the time column the start of the period is indicated.
+variables:
+  Float64   level(time, node)          // m
+  Float64   storage(time, node)        // m³
+  Float64   inflow_rate(time, node)    // m³/s
+  Float64   outflow_rate(time, node)   // m³/s
+  Float64   storage_rate(time, node)   // m³/s
+  Float64   precipitation(time, node)  // m³/s
+  Float64   surface_runoff(time, node) // m³/s
+  Float64   evaporation(time, node)    // m³/s
+  Float64   drainage(time, node)       // m³/s
+  Float64   infiltration(time, node)   // m³/s
+  Float64   balance_error(time, node)  // m³/s
+  Float64   relative_error(time, node) // dimensionless
+  Float64   convergence(time, node)    // dimensionless
+```
 
-column         | type                  | unit
--------------- | --------------------- | ----
-time           | DateTime              | -
-link_id        | Int32                 | -
-from_node_type | String                | -
-from_node_id   | Int32                 | -
-to_node_type   | String                | -
-to_node_id     | Int32                 | -
-flow_rate      | Float64               | $\text{m}^3/\text{s}$
-convergence    | Float64/Missing       | -
+## Flow - `flow.nc`
 
-The table is sorted by time, and per time the same `link_id` order is used, though not sorted.
+The flow results contain calculated mean flows over the `saveat` intervals for every flow link in the model.
+In the time coordinate the start of the period is indicated.
+
+**NetCDF structure:**
+
+```cdl
+dimensions:
+  time   = <number of timesteps>
+  link   = <number of flow links>
+
+coordinates:
+  DateTime  time(time)
+  Int32     link_id(link)
+
+variables:
+  String    from_node_type(link)     // Node type
+  Int32     from_node_id(link)       // Node ID
+  String    to_node_type(link)       // Node type
+  Int32     to_node_id(link)         // Node ID
+  Float64   flow_rate(time, link)    // m³/s
+  Float64   convergence(time, link)  // dimensionless
+```
+
 The `link_id` value is the same as the `fid` written to the Link table, and can be used to directly look up the Link geometry.
 Flows from the "from" to the "to" node have a positive sign, and if the flow is reversed it will be negative.
 - The `convergence` is the scaled residual of the solver, giving an indication of which nodes converge the worst (are hardest to solve).
 
-## State - `basin_state` {#sec-state}
+## State - `basin_state.nc` {#sec-state}
 
-The Basin state table contains the water levels in each Basin at the end of the simulation.
+The Basin state file contains the water levels in each Basin at the end of the simulation.
 
-column    | type    | unit
---------- | ------- | ------------
-node_id   | Int32   | -
-level     | Float64 | $\text{m}$
+**NetCDF structure:**
+
+```cdl
+dimensions:
+  node   = <number of Basin nodes>
+
+coordinates:
+  Int32     node_id(node)
+
+variables:
+  Float64   level(node)  // m
+```
 
 To use this result as the initial condition of another simulation, see the [Basin / state](/reference/node/basin.qmd#sec-state) table reference.
 
-## DiscreteControl - `control`
+## DiscreteControl - `control.nc`
 
-The control table contains a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.
+The control results contain a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.
 For more information on control states and truth states, see the [DiscreteControl](/reference/node/discrete-control.qmd) reference.
 
-column          | type     | unit
---------------- | -------- | ----
-time            | DateTime | -
-control_node_id | Int32    | -
-truth_state     | String   | -
-control_state   | String   | -
+**NetCDF structure:**
 
-## Allocation - `allocation`
+```cdl
+dimensions:
+  time   = <number of control changes>
 
-The allocation table contains a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and realized flow were.
+coordinates:
+  DateTime  time(time)
+
+variables:
+  Int32     control_node_id(time)  // Node ID
+  String    truth_state(time)      // Truth state
+  String    control_state(time)    // Control state
+```
+
+## Allocation - `allocation.nc`
+
+The allocation results contain a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and realized flow were.
 The realized values at the starting time of the simulation can be ignored.
 
-column           | type     | unit
----------------- | -------- | ---------------------
-time             | DateTime | -
-subnetwork_id    | Int32    | -
-node_type        | String   | -
-node_id          | Int32    | -
-demand_priority  | Int32    | -
-demand           | Float64  | $\text{m}^3/\text{s}$
-allocated        | Float64  | $\text{m}^3/\text{s}$
-realized         | Float64  | $\text{m}^3/\text{s}$
+**NetCDF structure:**
+
+```cdl
+dimensions:
+  time   = <number of allocation timesteps>
+  node   = <number of allocated nodes>
+
+coordinates:
+  DateTime  time(time)
+
+variables:
+  Int32     subnetwork_id(time, node)   // Subnetwork ID
+  String    node_type(time, node)       // Node type
+  Int32     node_id(time, node)         // Node ID
+  Int32     demand_priority(time, node) // Priority
+  Float64   demand(time, node)          // m³/s
+  Float64   allocated(time, node)       // m³/s
+  Float64   realized(time, node)        // m³/s
+```
 
 ::: {.callout-note}
 The LevelDemand node allocations are listed as node type Basin.
@@ -463,23 +506,32 @@ The values are negative if the Basin supplies due to a surplus of water.
 Currently the stored demand and abstraction rate are those at the allocation timepoint (and the abstraction rate is based on the previous allocation optimization). In the future these will be an average over the previous allocation timestep.
 :::
 
-## Allocation flow - `allocation_flow`
+## Allocation flow - `allocation_flow.nc`
 
-The allocation flow table contains results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved (see also [here](/concept/allocation.qmd#the-high-level-algorithm)).
-If in the model a primary network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork:
+The allocation flow results contain results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved (see also [here](/concept/allocation.qmd#the-high-level-algorithm)).
+If in the model a primary network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork.
 
-column            | type     | unit
------------------ | -------- | ----
-time              | DateTime | -
-link_id           | Int32    | -
-from_node_type    | String   | -
-from_node_id      | Int32    | -
-to_node_type      | String   | -
-to_node_id        | Int32    | -
-subnetwork_id     | Int32    | -
-flow_rate         | Float64  | $\text{m}^3/\text{s}$
-upper_bound_hit   | Bool     | -
-lower_bound_hit   | Bool     | -
+**NetCDF structure:**
+
+```cdl
+dimensions:
+  time   = <number of allocation timesteps>
+  link   = <number of allocation links>
+
+coordinates:
+  DateTime  time(time)
+  Int32     link_id(link)
+
+variables:
+  String    from_node_type(link)       // Node type
+  Int32     from_node_id(link)         // Node ID
+  String    to_node_type(link)         // Node type
+  Int32     to_node_id(link)           // Node ID
+  Int32     subnetwork_id(link)        // Subnetwork ID
+  Float64   flow_rate(time, link)      // m³/s
+  Bool      upper_bound_hit(time, link)// Boolean
+  Bool      lower_bound_hit(time, link)// Boolean
+```
 
 ::: {.callout-note}
 This file is currently not written when the results format is set to `"netcdf"`.
@@ -493,44 +545,76 @@ When an allocation optimization problem turns out to be infeasible, an infeasibi
 
 When an allocation optimization problem turns out to be infeasible, a scaling analysis is performed in addition to the feasibility analysis described above. Some user friendly data is logged in the main log, but the full report of the analysis is written to this separate file. For details on the scaling analysis see [here](https://jump.dev/MathOptAnalyzer.jl/dev/).
 
-## Concentration - `concentration`
+## Concentration - `concentration.nc`
 
 If the [experimental concentration feature](/reference/usage.qmd#experimental-features) is enabled, the results are written to file.
 This file records the Basin concentrations for each substance over time.
 The schema below is identical to the [external Basin concentration input](/reference/node/basin.qmd#concentration-external).
 
-column         | type     | unit                     | restriction
--------------- | -------- | ------------------------ | -----------
-node_id        | Int32    | -                        | Basin nodes only
-time           | DateTime | -                        |
-substance      | String   | -                        | can correspond to known Delwaq substances
-concentration  | Float64  | $\text{g}/\text{m}^3$    |
+**NetCDF structure:**
 
-## Subgrid level - `subgrid_level`
+```cdl
+dimensions:
+  time       = <number of timesteps>
+  node       = <number of Basin nodes>
+  substance  = <number of substances>
+
+coordinates:
+  DateTime  time(time)
+  Int32     node_id(node)
+  String    substance(substance)
+
+variables:
+  Float64   concentration(time, node, substance)  // g/m³
+```
+
+::: {.callout-note}
+Only Basin nodes are included in the concentration output.
+Substances can correspond to known Delwaq substances.
+:::
+
+## Subgrid level - `subgrid_level.nc`
 
 This result file is only written if the model contains a [Basin / subgrid](/reference/node/basin.qmd#subgrid) table.
 See there for more information on the meaning of this output.
 
-column         | type     | unit
----------------| -------- | ----
-time           | DateTime | -
-subgrid_id     | Int32    | -
-subgrid_level  | Float64  | $\text{m}$
+**NetCDF structure:**
 
-## Solver statistics - `solver_stats`
+```cdl
+dimensions:
+  time     = <number of timesteps>
+  subgrid  = <number of subgrid elements>
 
-This result file contains statistics about the solver, which can give an insight into how well the solver is performing over time. The data is solved by `saveat` (see [configuration file](#configuration-file)). `water_balance` refers to the right-hand-side function of the system of differential equations solved by the Ribasim core.
+coordinates:
+  DateTime  time(time)
+  Int32     subgrid_id(subgrid)
+
+variables:
+  Float64   subgrid_level(time, subgrid)  // m
+```
+
+## Solver statistics - `solver_stats.nc`
+
+This result file contains statistics about the solver, which can give an insight into how well the solver is performing over time. The data is saved by `saveat` (see [configuration file](#configuration-file)). `water_balance` refers to the right-hand-side function of the system of differential equations solved by the Ribasim core.
 
 The `computation_time` is the wall time in milliseconds spent on the given period.
 The first row tends to include compilation time as well.
 The `dt` is the size (in seconds) of the last calculation timestep (at the `saveat` timestep).
 
-column              | type     | unit
---------------------| -------- | ----
-time                | DateTime | -
-computation_time    | Float64  | $\text{ms}$
-water_balance_calls | Int      | -
-linear_solves       | Int      | -
-accepted_timesteps  | Int      | -
-rejected_timesteps  | Int      | -
-dt                  | Float64  | $\text{s}$
+**NetCDF structure:**
+
+```cdl
+dimensions:
+  time   = <number of timesteps>
+
+coordinates:
+  DateTime  time(time)
+
+variables:
+  Float64   computation_time(time)    // ms
+  Int       rhs_calls(time)           // count
+  Int       linear_solves(time)       // count
+  Int       accepted_timesteps(time)  // count
+  Int       rejected_timesteps(time)  // count
+  Float64   dt(time)                  // s
+```
