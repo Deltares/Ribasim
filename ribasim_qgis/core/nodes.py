@@ -123,7 +123,7 @@ def load_nodes_from_geopackage(path: Path) -> dict[str, Table]:
 
 
 def get_external_input_files(model_path: Path) -> dict[str, str]:
-    """Get dictionary of external input files (NetCDF or Arrow) from TOML.
+    """Get dictionary of external input files (NetCDF) from TOML.
 
     Parameters
     ----------
@@ -161,9 +161,7 @@ def get_external_input_files(model_path: Path) -> dict[str, str]:
 
         # Check each key in the node config for external files
         for table_key, value in node_config.items():
-            if isinstance(value, str) and (
-                value.endswith(".nc") or value.endswith(".arrow")
-            ):
+            if isinstance(value, str) and value.endswith(".nc"):
                 table_name = f"{node_type} / {table_key}"
                 # Only include if this table is in our known tables
                 if table_name in tables:
@@ -173,7 +171,7 @@ def get_external_input_files(model_path: Path) -> dict[str, str]:
 
 
 def load_external_input_tables(model_path: Path) -> dict[str, Table]:
-    """Load external input files (NetCDF or Arrow) as Table objects.
+    """Load external input files (NetCDF) as Table objects.
 
     Parameters
     ----------
@@ -212,30 +210,25 @@ def load_external_input_tables(model_path: Path) -> dict[str, Table]:
 
 
 class ExternalTable(Table):
-    """Represents a table stored in an external file (Arrow or NetCDF)."""
+    """Represents a table stored in an external NetCDF file."""
 
     def __init__(self, input_type: str, path: Path):
         super().__init__(input_type, path)
 
     def layer_from_geopackage(self) -> QgsVectorLayer:
-        """Load the external file as a QGIS vector layer.
+        """Load the external NetCDF file as a QGIS vector layer.
 
-        Uses QGIS/GDAL native support for Arrow and NetCDF files.
+        Uses QGIS/GDAL native support for NetCDF files.
         """
-        # QGIS can load Arrow files via OGR
         # NetCDF can be loaded via GDAL NetCDF driver
-        uri = str(self._path)
-
-        # For NetCDF, may need to specify subdataset
-        if self._path.suffix.lower() == ".nc":
-            # GDAL NetCDF driver - use the format NETCDF:"filename":variable
-            # For now, try loading the whole file
-            uri = f"NETCDF:{uri}"
+        # GDAL NetCDF driver - use the format NETCDF:"filename":variable
+        # For now, try loading the whole file
+        uri = f"NETCDF:{self._path}"
 
         self.layer = QgsVectorLayer(uri, self.input_type, "ogr")
 
         # Fallback: try without NETCDF prefix if loading failed
-        if not self.layer.isValid() and self._path.suffix.lower() == ".nc":
+        if not self.layer.isValid():
             self.layer = QgsVectorLayer(str(self._path), self.input_type, "ogr")
 
         # Mark as read-only since these are external files

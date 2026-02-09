@@ -151,7 +151,7 @@ class DatasetWidget:
         geo_path = get_database_path_from_model_file(self.path)
         nodes = load_nodes_from_geopackage(geo_path)
 
-        # Also load external input files (NetCDF or Arrow)
+        # Also load external input files (NetCDF)
         external_nodes = load_external_input_tables(self.path)
         nodes.update(external_nodes)
 
