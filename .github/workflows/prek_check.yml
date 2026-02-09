@@ -16,4 +16,4 @@ jobs:
       - name: Install prek hooks
         run: pixi run install-prek
       - name: Run prek on all files
-        run: pixi run prek
+        run: pixi run prek-run
