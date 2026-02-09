@@ -38,7 +38,7 @@ end
 
 @testitem "Solver" begin
     using OrdinaryDiffEqCore: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
-    using Ribasim: convert_saveat, convert_dt, Solver, algorithm
+    using Ribasim: convert_saveat, is_adaptive, Solver, algorithm
 
     solver = Solver()
     @test solver.algorithm == "QNDF"
@@ -46,7 +46,7 @@ end
         algorithm = "Rosenbrock23",
         autodiff = true,
         saveat = 3600.0,
-        dt = 0,
+        dt = 60.0,
         abstol = 1.0e-5,
         reltol = 1.0e-4,
         maxiters = 1.0e5,
@@ -73,9 +73,9 @@ end
     @test_throws ErrorException convert_saveat(NaN, t_end)
     @test_throws ErrorException convert_saveat(3.1415, t_end)
 
-    @test convert_dt(nothing) == (true, 0.0)
-    @test convert_dt(360.0) == (false, 360.0)
-    @test_throws ErrorException convert_dt(0.0)
+    @test is_adaptive(nothing) == true
+    @test is_adaptive(360.0) == false
+    @test_throws ErrorException is_adaptive(0.0)
 end
 
 @testitem "snake_case" begin

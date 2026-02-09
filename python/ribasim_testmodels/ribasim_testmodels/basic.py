@@ -218,7 +218,7 @@ def basic_model() -> Model:
 
 def basic_arrow_model() -> Model:
     model = basic_model()
-    model.basin.profile.set_filepath(Path("profile.arrow"))
+    model.basin.profile.filepath = Path("profile.arrow")
     model.input_dir = Path("input")
     return model
 
@@ -582,7 +582,7 @@ def drought_model() -> Model:
     model.link.add(model.basin[2189], model.manning_resistance[1237])
     model.link.add(model.basin[1558], model.manning_resistance[1238])
 
-    model.basin.time.set_filepath(Path("subdir/basin-time.nc"))
+    model.basin.time.filepath = Path("subdir/basin-time.nc")
 
     return model
 

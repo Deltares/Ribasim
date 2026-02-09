@@ -1,7 +1,7 @@
 name = "Ribasim"
 uuid = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
-authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 version = "2026.1.0-rc1"
+authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 
 [workspace]
 projects = ["test"]
@@ -48,6 +48,7 @@ Preferences = "21216c6a-2e73-6563-6e65-726566657250"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 SQLite = "0aa819cd-b072-5ff4-a722-6bc24af294d9"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+SciMLOperators = "c0aeaf25-5076-4817-a8d5-81caf7dfa961"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 SparseConnectivityTracer = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
 SparseMatrixColorings = "0a514795-09f3-496d-8182-132a7b665d35"
@@ -87,7 +88,7 @@ Moshi = "0.3.7"
 NCDatasets = "0.14.8"
 OrdinaryDiffEqBDF = "1.14"
 OrdinaryDiffEqCore = "3.2"
-OrdinaryDiffEqDifferentiation = "1.22"
+OrdinaryDiffEqDifferentiation = "2"
 OrdinaryDiffEqLowOrderRK = "1.10"
 OrdinaryDiffEqNonlinearSolve = "1.19"
 OrdinaryDiffEqRosenbrock = "1.22"
@@ -98,6 +99,7 @@ Preferences = "1.4.3"
 Printf = "1"
 SQLite = "1.5.1"
 SciMLBase = "2.36"
+SciMLOperators = "1.15.1"
 SparseArrays = "1"
 SparseConnectivityTracer = "1"
 SparseMatrixColorings = "0.4.14"

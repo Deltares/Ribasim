@@ -52,6 +52,24 @@ which is explicitly computed as a sparse matrix in `calc_J_inner`. The above com
 import SparseArrays
 
 """
+Helper to construct a WOperator from an ODEFunction, replicating the behavior
+of the removed constructor from OrdinaryDiffEqDifferentiation,
+see https://github.com/SciML/OrdinaryDiffEq.jl/pull/3017
+"""
+function make_woperator(f, u, gamma)
+    mass_matrix = f.mass_matrix
+    if !isa(mass_matrix, Union{AbstractMatrix, UniformScaling})
+        mass_matrix = convert(AbstractMatrix, mass_matrix)
+    end
+    J = deepcopy(f.jac_prototype)
+    if J isa AbstractMatrix
+        @assert SciMLBase.has_jac(f) "f needs to have an associated jacobian"
+        J = MatrixOperator(J; update_func! = f.jac)
+    end
+    return WOperator{true}(mass_matrix, gamma, J, u)
+end
+
+"""
 The HalfLazyJacobian represents the Ribasim Jacobian in the form `J = J_intermediate * A`
 (see also the theoretical background in differentiation.jl).
 `J_intermediate` is explicitly (AD) computed, and `A` is implicit in:
@@ -59,9 +77,9 @@ The HalfLazyJacobian represents the Ribasim Jacobian in the form `J = J_intermed
 - `calc_J_inner!`, which defined the matrix-matrix product `J_inner =  A * J_intermediate`.
 """
 struct HalfLazyJacobian <: AbstractSciMLOperator{Float64}
-    J_intermediate::SparseArrays.SparseMatrixCSC{Float64, Int64}
+    J_intermediate::SparseMatrixCSC{Float64, Int64}
     p_independent::ParametersIndependent
-    du::Ribasim.CArrays.CVector
+    du::CVector
     prep::Any
     backend::Any
 end
@@ -250,7 +268,7 @@ function SciMLBase.init(
     # In this first call memory is allocated for the non zeros in the sparse case
     calc_J_inner!(J_inner, J)
 
-    W_inner = WOperator{true}(
+    W_inner = make_woperator(
         ODEFunction(Returns(nothing); jac_prototype = J_inner, jac = Returns(nothing)),
         u_reduced,
         1.0,
@@ -384,7 +402,7 @@ function get_diff_eval(du::CVector, p::Parameters, solver::Solver)
         zeros(length(du), length(u_reduced))
     jac_prototype =
         HalfLazyJacobian(J_intermediate, p_independent, copy(du), jac_prep, backend_jac)
-    W_prototype = WOperator{true}(
+    W_prototype = make_woperator(
         ODEFunction(water_balance!; jac_prototype, jac = Returns(nothing)),
         copy(du),
         0.0,
@@ -463,4 +481,16 @@ function water_balance!(
         p_mutable,
         t,
     )
+end
+
+# Piracy: workaround for https://github.com/SciML/OrdinaryDiffEq.jl/issues/3035
+# Only QNDF and FBDF use DummyController, which delegates to default_post_newton_controller!
+# but that function only has methods for composite caches (DefaultCache, CompositeCache).
+function OrdinaryDiffEqCore.default_post_newton_controller!(
+        integrator,
+        cache::Union{QNDFCache, FBDFCache},
+        alg,
+    )
+    integrator.dt = integrator.dt / integrator.opts.failfactor
+    return nothing
 end
