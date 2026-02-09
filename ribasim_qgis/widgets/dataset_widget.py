@@ -172,8 +172,9 @@ class DatasetWidget:
         )
         self.add_relationship(link.layer, node.layer.id(), "LinkToNode", "to_node_id")
 
-        # Add the remaining layers (both database and external)
-        for table_name, node_layer in nodes.items():
+        # Add the remaining layers (both database and external) in alphabetical order
+        for table_name in sorted(nodes.keys()):
+            node_layer = nodes[table_name]
             self.add_item_to_qgis(node_layer)
             self.add_relationship(node_layer.layer, node.layer.id(), table_name)
 
