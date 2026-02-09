@@ -41,9 +41,9 @@ class TestModel(unittest.TestCase):
         self.assertEqual(path, self.data_folder_path / "database.gpkg")
 
     def test_get_external_input_files(self):
-        """Tests that get_external_input_files() returns empty list for model without external files."""
+        """Tests that get_external_input_files() returns empty dict for model without external files."""
         model_path = self.data_folder_path / "simple_valid.toml"
         external_files = get_external_input_files(model_path)
-        self.assertIsInstance(external_files, list)
+        self.assertIsInstance(external_files, dict)
         # For this simple test model, there should be no external files
         self.assertEqual(len(external_files), 0)
