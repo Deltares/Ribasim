@@ -13,5 +13,7 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: "latest"
+      - name: Install prek hooks
+        run: pixi run install-prek
       - name: Run prek on all files
         run: pixi run prek

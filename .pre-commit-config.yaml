@@ -1,14 +1,18 @@
 exclude: 'core/test/data/allocation_problems'
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+  - repo: builtin
     hooks:
       - id: check-added-large-files
       - id: check-case-conflict
       - id: check-yaml
       - id: check-toml
+      - id: check-json
+      - id: check-xml
+      - id: mixed-line-ending
+      - id: fix-byte-order-marker
+      - id: detect-private-key
+      - id: check-symlinks
       - id: check-merge-conflict
-      - id: check-vcs-permalinks
       - id: end-of-file-fixer
         exclude: '.teamcity'
       - id: trailing-whitespace
