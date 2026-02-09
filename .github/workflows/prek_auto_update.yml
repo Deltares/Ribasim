@@ -14,11 +14,9 @@ jobs:
         with:
           pixi-version: "latest"
       - name: Update prek hooks
-        run: |
-          pixi run prek autoupdate
+        run: pixi run prek autoupdate
       - name: Run prek on all files
-        run: |
-          pixi run prek
+        run: pixi run prek
         continue-on-error: true
       - uses: peter-evans/create-pull-request@v8
         with:
