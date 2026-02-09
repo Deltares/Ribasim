@@ -177,5 +177,12 @@ else {
     Write-Host "Ribasim is already in PATH"
 }
 
+# Set RIBASIM_EXE environment variable
+Write-Host "Setting RIBASIM_EXE to $RibasimExe"
+# For future sessions
+Write-Env -name 'RIBASIM_EXE' -val $RibasimExe
+# For current session
+$Env:RIBASIM_EXE = $RibasimExe
+
 Write-Host ""
 Write-Host "Installation complete! Run 'ribasim --help' to get started."

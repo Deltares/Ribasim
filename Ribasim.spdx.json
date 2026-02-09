@@ -3,12 +3,12 @@
     "dataLicense": "CC0-1.0",
     "SPDXID": "SPDXRef-DOCUMENT",
     "name": "Ribasim.jl",
-    "documentNamespace": "https://github.com/Deltares/Ribasim/Ribasim.spdx.json-80803469-f999-448e-b433-6bd26c4d5d61",
+    "documentNamespace": "https://github.com/Deltares/Ribasim/Ribasim.spdx.json-e44b782e-6335-4333-96d1-fdaa168be84d",
     "creationInfo": {
         "creators": [
             "Organization:  Deltares  (software@deltares.nl)"
         ],
-        "created": "2026-02-02T03:51:44Z",
+        "created": "2026-02-05T10:20:07Z",
         "comment": "Target Platform: Platform(\"x86_64\", \"linux\"; libgfortran_version = \"5.0.0\", julia_version = \"1.12.4\", libc = \"glibc\", libstdcxx_version = \"3.4.30\", cxxstring_abi = \"cxx11\")"
     },
     "comment": "Registries used for populating Package data:\nGeneral registry: https://github.com/JuliaRegistries/General.git\nOfficial general Julia package registry where people can\nregister any package they want without too much debate about\nnaming and without enforced standards on documentation or\ntesting. We nevertheless encourage documentation, testing and\nsome amount of consideration when choosing package names.\n",
@@ -937,171 +937,28 @@
             ]
         },
         {
-            "name": "METIS_source",
-            "SPDXID": "SPDXRef-4a447c1efea1545aa596c4e9b1bdea9b140a248c",
-            "supplier": "NOASSERTION",
-            "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaPackaging/Yggdrasil.git@4a447c1efea1545aa596c4e9b1bdea9b140a248c#/M/METIS/METIS@5/",
-            "filesAnalyzed": false,
-            "sourceInfo": "The location of this repository was extracted from the README.md file of SPDXRef-ca6d7039e1208e821d097fa0b6d1e57af4c165c7",
-            "licenseConcluded": "NOASSERTION",
-            "licenseDeclared": "NOASSERTION",
-            "copyrightText": "NOASSERTION",
-            "summary": "The binary artifact SPDXRef-ca6d7039e1208e821d097fa0b6d1e57af4c165c7 is built using the scripts and source files in this package.\nThe build system is called Yggdrasil, the Julia community build tree.",
-            "comment": "The SPDX ID field is derived from the Git hash in the DownloadLocation"
-        },
-        {
-            "name": "METIS",
-            "SPDXID": "SPDXRef-ca6d7039e1208e821d097fa0b6d1e57af4c165c7",
-            "supplier": "NOASSERTION",
-            "originator": "NOASSERTION",
-            "downloadLocation": "https://github.com/JuliaBinaryWrappers/METIS_jll.jl/releases/download/METIS-v5.1.3+0/METIS.v5.1.3.x86_64-linux-gnu.tar.gz",
-            "filesAnalyzed": true,
-            "packageVerificationCode": {
-                "packageVerificationCodeValue": "a2dc0fcbf86533b9a516d8cc80c395fac5a82903"
-            },
-            "checksums": [
-                {
-                    "algorithm": "SHA256",
-                    "checksumValue": "baea64cdf82c4b779b1742abe2611a80762ce611a025ba3c72c2dc073357a726"
-                }
-            ],
-            "homepage": "NOASSERTION",
-            "sourceInfo": "The artifact download URL was determined using the following platform specific parameters:\narch: x86_64\nlibc: glibc\nos: linux",
-            "licenseConcluded": "NOASSERTION",
-            "licenseInfoFromFiles": [
-                "Apache-2.0"
-            ],
-            "licenseDeclared": "Apache-2.0",
-            "copyrightText": "NOASSERTION",
-            "summary": "This is a Julia artifact. \nAn artifact is a binary runtime or other data store not written in the Julia language that is used by a Julia package.",
-            "comment": "The SPDX ID field is derived from the Git tree hash of the artifact files which is used to uniquely identify it."
-        },
-        {
-            "name": "METIS_jll",
-            "SPDXID": "SPDXRef-METIS_jll-d00139f3-1899-568f-a2f0-47f597d42d70",
-            "versionInfo": "5.1.3+0",
-            "supplier": "NOASSERTION",
-            "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaBinaryWrappers/METIS_jll.jl.git@2eefa8baa858871ae7770c98c3c2a7e46daba5b4",
-            "filesAnalyzed": true,
-            "packageVerificationCode": {
-                "packageVerificationCodeValue": "d24ac166568a8d33ec832f05150bdd235ede96f7"
-            },
-            "homepage": "https://github.com/JuliaBinaryWrappers/METIS_jll.jl.git",
-            "licenseConcluded": "NOASSERTION",
-            "licenseInfoFromFiles": [
-                "MIT"
-            ],
-            "licenseDeclared": "MIT",
-            "copyrightText": "NOASSERTION",
-            "summary": "This is a Julia package, written in the Julia language.",
-            "comment": "The SPDX ID field is derived from the UUID that all Julia packages are assigned by their developer to uniquely identify it.",
-            "externalRefs": [
-                {
-                    "referenceCategory": "PACKAGE-MANAGER",
-                    "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/METIS_jll@5.1.3+0?uuid=d00139f3-1899-568f-a2f0-47f597d42d70"
-                }
-            ]
-        },
-        {
-            "name": "OpenBLAS32_source",
-            "SPDXID": "SPDXRef-32d6c14d4a0eb04133420df0903f3b46b6a1f931",
-            "supplier": "NOASSERTION",
-            "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaPackaging/Yggdrasil.git@32d6c14d4a0eb04133420df0903f3b46b6a1f931#/O/OpenBLAS/OpenBLAS32@0.3.30/",
-            "filesAnalyzed": false,
-            "sourceInfo": "The location of this repository was extracted from the README.md file of SPDXRef-ab917ed38551d64e82ad5b564678b3a62a911c7a",
-            "licenseConcluded": "NOASSERTION",
-            "licenseDeclared": "NOASSERTION",
-            "copyrightText": "NOASSERTION",
-            "summary": "The binary artifact SPDXRef-ab917ed38551d64e82ad5b564678b3a62a911c7a is built using the scripts and source files in this package.\nThe build system is called Yggdrasil, the Julia community build tree.",
-            "comment": "The SPDX ID field is derived from the Git hash in the DownloadLocation"
-        },
-        {
-            "name": "OpenBLAS32",
-            "SPDXID": "SPDXRef-ab917ed38551d64e82ad5b564678b3a62a911c7a",
-            "supplier": "NOASSERTION",
-            "originator": "NOASSERTION",
-            "downloadLocation": "https://github.com/JuliaBinaryWrappers/OpenBLAS32_jll.jl/releases/download/OpenBLAS32-v0.3.30+0/OpenBLAS32.v0.3.30.x86_64-linux-gnu-libgfortran5.tar.gz",
-            "filesAnalyzed": true,
-            "packageVerificationCode": {
-                "packageVerificationCodeValue": "fd455f4fbea5024f2bc57671d5b20095f0fd662d",
-                "packageVerificationCodeExcludedFiles": [
-                    "lib/libopenblas.so",
-                    "lib/libopenblas.so.0"
-                ]
-            },
-            "checksums": [
-                {
-                    "algorithm": "SHA256",
-                    "checksumValue": "dcf0e83fa67c92199966a0b1d0814ab948522672b788e9399ba7fa5092a8b809"
-                }
-            ],
-            "homepage": "NOASSERTION",
-            "sourceInfo": "The artifact download URL was determined using the following platform specific parameters:\nlibgfortran_version: 5.0.0\narch: x86_64\nlibc: glibc\nos: linux",
-            "licenseConcluded": "NOASSERTION",
-            "licenseInfoFromFiles": [
-                "BSD-3-Clause",
-                "BSD-2-Clause-Views"
-            ],
-            "licenseDeclared": "BSD-3-Clause",
-            "copyrightText": "NOASSERTION",
-            "summary": "This is a Julia artifact. \nAn artifact is a binary runtime or other data store not written in the Julia language that is used by a Julia package.",
-            "comment": "The SPDX ID field is derived from the Git tree hash of the artifact files which is used to uniquely identify it."
-        },
-        {
-            "name": "OpenBLAS32_jll",
-            "SPDXID": "SPDXRef-OpenBLAS32_jll-656ef2d0-ae68-5445-9ca0-591084a874a2",
-            "versionInfo": "0.3.30+0",
-            "supplier": "NOASSERTION",
-            "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaBinaryWrappers/OpenBLAS32_jll.jl.git@46cce8b42186882811da4ce1f4c7208b02deb716",
-            "filesAnalyzed": true,
-            "packageVerificationCode": {
-                "packageVerificationCodeValue": "646c9841069ffaca1ed722be118a48bd26ca7e66"
-            },
-            "homepage": "https://github.com/JuliaBinaryWrappers/OpenBLAS32_jll.jl.git",
-            "licenseConcluded": "NOASSERTION",
-            "licenseInfoFromFiles": [
-                "MIT"
-            ],
-            "licenseDeclared": "MIT",
-            "copyrightText": "NOASSERTION",
-            "summary": "This is a Julia package, written in the Julia language.",
-            "comment": "The SPDX ID field is derived from the UUID that all Julia packages are assigned by their developer to uniquely identify it.",
-            "externalRefs": [
-                {
-                    "referenceCategory": "PACKAGE-MANAGER",
-                    "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/OpenBLAS32_jll@0.3.30+0?uuid=656ef2d0-ae68-5445-9ca0-591084a874a2"
-                }
-            ]
-        },
-        {
             "name": "HiGHS_source",
-            "SPDXID": "SPDXRef-65ce799eee07a40b9ebb74941bec7539471f594f",
+            "SPDXID": "SPDXRef-d77e320ccb920660836ed6f30e738c0e348ed85b",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaPackaging/Yggdrasil.git@65ce799eee07a40b9ebb74941bec7539471f594f#/H/HiGHS/HiGHS/",
+            "downloadLocation": "git+https://github.com/JuliaPackaging/Yggdrasil.git@d77e320ccb920660836ed6f30e738c0e348ed85b#/H/HiGHS/",
             "filesAnalyzed": false,
-            "sourceInfo": "The location of this repository was extracted from the README.md file of SPDXRef-33492bbb3ce9a984f08ca11ba891b9f59c0c00f4",
+            "sourceInfo": "The location of this repository was extracted from the README.md file of SPDXRef-634f5b203e1b48dd0c38b141e6b690f494632d7c",
             "licenseConcluded": "NOASSERTION",
             "licenseDeclared": "NOASSERTION",
             "copyrightText": "NOASSERTION",
-            "summary": "The binary artifact SPDXRef-33492bbb3ce9a984f08ca11ba891b9f59c0c00f4 is built using the scripts and source files in this package.\nThe build system is called Yggdrasil, the Julia community build tree.",
+            "summary": "The binary artifact SPDXRef-634f5b203e1b48dd0c38b141e6b690f494632d7c is built using the scripts and source files in this package.\nThe build system is called Yggdrasil, the Julia community build tree.",
             "comment": "The SPDX ID field is derived from the Git hash in the DownloadLocation"
         },
         {
             "name": "HiGHS",
-            "SPDXID": "SPDXRef-33492bbb3ce9a984f08ca11ba891b9f59c0c00f4",
+            "SPDXID": "SPDXRef-634f5b203e1b48dd0c38b141e6b690f494632d7c",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "https://github.com/JuliaBinaryWrappers/HiGHS_jll.jl/releases/download/HiGHS-v1.12.0+0/HiGHS.v1.12.0.x86_64-linux-gnu-cxx11.tar.gz",
+            "downloadLocation": "https://github.com/JuliaBinaryWrappers/HiGHS_jll.jl/releases/download/HiGHS-v1.13.0+0/HiGHS.v1.13.0.x86_64-linux-gnu-cxx11.tar.gz",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "42029603f1d2f434a47a1c57b4800b668ee1c640",
+                "packageVerificationCodeValue": "905b21607fdb0c9c8e957377f7bc85d7eed69f01",
                 "packageVerificationCodeExcludedFiles": [
                     "lib/libhighs.so",
                     "lib/libhighs.so.1"
@@ -1110,15 +967,17 @@
             "checksums": [
                 {
                     "algorithm": "SHA256",
-                    "checksumValue": "087f8a69198a58c429c6406f712c9d782e02d6b7291671f97a6ba91a09b7b587"
+                    "checksumValue": "a46f7b4703d1368458f2b2b279bff1b9477e708c18c79c4f644444dcaba59f5a"
                 }
             ],
             "homepage": "NOASSERTION",
             "sourceInfo": "The artifact download URL was determined using the following platform specific parameters:\narch: x86_64\nlibc: glibc\ncxxstring_abi: cxx11\nos: linux",
             "licenseConcluded": "NOASSERTION",
             "licenseInfoFromFiles": [
-                "Zlib",
-                "MIT"
+                "MIT",
+                "BSD-3-Clause",
+                "LGPL-2.1-or-later",
+                "Zlib"
             ],
             "licenseDeclared": "MIT",
             "copyrightText": "NOASSERTION",
@@ -1128,13 +987,13 @@
         {
             "name": "HiGHS_jll",
             "SPDXID": "SPDXRef-HiGHS_jll-8fd58aa0-07eb-5a78-9b36-339c94fd15ea",
-            "versionInfo": "1.12.0+0",
+            "versionInfo": "1.13.0+0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaBinaryWrappers/HiGHS_jll.jl.git@e0539aa3405df00e963a9a56d5e903a280f328e7",
+            "downloadLocation": "git+https://github.com/JuliaBinaryWrappers/HiGHS_jll.jl.git@f2a01e86ec9497bf468aabd0f61201731c755907",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "14a4d99aba1600c3916ec94b5138fbf083154deb"
+                "packageVerificationCodeValue": "03b85241a8fcbfb8bd961867f059b6374ab24f22"
             },
             "homepage": "https://github.com/JuliaBinaryWrappers/HiGHS_jll.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -1149,7 +1008,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/HiGHS_jll@1.12.0+0?uuid=8fd58aa0-07eb-5a78-9b36-339c94fd15ea"
+                    "referenceLocator": "pkg:julia/HiGHS_jll@1.13.0+0?uuid=8fd58aa0-07eb-5a78-9b36-339c94fd15ea"
                 }
             ]
         },
@@ -1943,15 +1802,89 @@
             ]
         },
         {
-            "name": "HiGHS",
-            "SPDXID": "SPDXRef-HiGHS-87dc4568-4c63-4d18-b0c0-bb2238e4078b",
-            "versionInfo": "1.20.1",
+            "name": "OpenBLAS32_source",
+            "SPDXID": "SPDXRef-32d6c14d4a0eb04133420df0903f3b46b6a1f931",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/jump-dev/HiGHS.jl.git@7eaca80074d6389bbf83e4dfb1eaf6b3cd78d150",
+            "downloadLocation": "git+https://github.com/JuliaPackaging/Yggdrasil.git@32d6c14d4a0eb04133420df0903f3b46b6a1f931#/O/OpenBLAS/OpenBLAS32@0.3.30/",
+            "filesAnalyzed": false,
+            "sourceInfo": "The location of this repository was extracted from the README.md file of SPDXRef-ab917ed38551d64e82ad5b564678b3a62a911c7a",
+            "licenseConcluded": "NOASSERTION",
+            "licenseDeclared": "NOASSERTION",
+            "copyrightText": "NOASSERTION",
+            "summary": "The binary artifact SPDXRef-ab917ed38551d64e82ad5b564678b3a62a911c7a is built using the scripts and source files in this package.\nThe build system is called Yggdrasil, the Julia community build tree.",
+            "comment": "The SPDX ID field is derived from the Git hash in the DownloadLocation"
+        },
+        {
+            "name": "OpenBLAS32",
+            "SPDXID": "SPDXRef-ab917ed38551d64e82ad5b564678b3a62a911c7a",
+            "supplier": "NOASSERTION",
+            "originator": "NOASSERTION",
+            "downloadLocation": "https://github.com/JuliaBinaryWrappers/OpenBLAS32_jll.jl/releases/download/OpenBLAS32-v0.3.30+0/OpenBLAS32.v0.3.30.x86_64-linux-gnu-libgfortran5.tar.gz",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "2804780a44ea413fc6fc4a7a1df9f94159c7c715"
+                "packageVerificationCodeValue": "fd455f4fbea5024f2bc57671d5b20095f0fd662d",
+                "packageVerificationCodeExcludedFiles": [
+                    "lib/libopenblas.so",
+                    "lib/libopenblas.so.0"
+                ]
+            },
+            "checksums": [
+                {
+                    "algorithm": "SHA256",
+                    "checksumValue": "dcf0e83fa67c92199966a0b1d0814ab948522672b788e9399ba7fa5092a8b809"
+                }
+            ],
+            "homepage": "NOASSERTION",
+            "sourceInfo": "The artifact download URL was determined using the following platform specific parameters:\nlibgfortran_version: 5.0.0\narch: x86_64\nlibc: glibc\nos: linux",
+            "licenseConcluded": "NOASSERTION",
+            "licenseInfoFromFiles": [
+                "BSD-3-Clause",
+                "BSD-2-Clause-Views"
+            ],
+            "licenseDeclared": "BSD-3-Clause",
+            "copyrightText": "NOASSERTION",
+            "summary": "This is a Julia artifact. \nAn artifact is a binary runtime or other data store not written in the Julia language that is used by a Julia package.",
+            "comment": "The SPDX ID field is derived from the Git tree hash of the artifact files which is used to uniquely identify it."
+        },
+        {
+            "name": "OpenBLAS32_jll",
+            "SPDXID": "SPDXRef-OpenBLAS32_jll-656ef2d0-ae68-5445-9ca0-591084a874a2",
+            "versionInfo": "0.3.30+0",
+            "supplier": "NOASSERTION",
+            "originator": "NOASSERTION",
+            "downloadLocation": "git+https://github.com/JuliaBinaryWrappers/OpenBLAS32_jll.jl.git@46cce8b42186882811da4ce1f4c7208b02deb716",
+            "filesAnalyzed": true,
+            "packageVerificationCode": {
+                "packageVerificationCodeValue": "646c9841069ffaca1ed722be118a48bd26ca7e66"
+            },
+            "homepage": "https://github.com/JuliaBinaryWrappers/OpenBLAS32_jll.jl.git",
+            "licenseConcluded": "NOASSERTION",
+            "licenseInfoFromFiles": [
+                "MIT"
+            ],
+            "licenseDeclared": "MIT",
+            "copyrightText": "NOASSERTION",
+            "summary": "This is a Julia package, written in the Julia language.",
+            "comment": "The SPDX ID field is derived from the UUID that all Julia packages are assigned by their developer to uniquely identify it.",
+            "externalRefs": [
+                {
+                    "referenceCategory": "PACKAGE-MANAGER",
+                    "referenceType": "purl",
+                    "referenceLocator": "pkg:julia/OpenBLAS32_jll@0.3.30+0?uuid=656ef2d0-ae68-5445-9ca0-591084a874a2"
+                }
+            ]
+        },
+        {
+            "name": "HiGHS",
+            "SPDXID": "SPDXRef-HiGHS-87dc4568-4c63-4d18-b0c0-bb2238e4078b",
+            "versionInfo": "1.21.0",
+            "supplier": "NOASSERTION",
+            "originator": "NOASSERTION",
+            "downloadLocation": "git+https://github.com/jump-dev/HiGHS.jl.git@e9f25ea411703f3070dc318f2f3a50defaf1d05b",
+            "filesAnalyzed": true,
+            "packageVerificationCode": {
+                "packageVerificationCodeValue": "9a8bce9cf0bdc0edfd6a5c179009e95283413ab6"
             },
             "homepage": "https://github.com/jump-dev/HiGHS.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -1966,7 +1899,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/HiGHS@1.20.1?uuid=87dc4568-4c63-4d18-b0c0-bb2238e4078b"
+                    "referenceLocator": "pkg:julia/HiGHS@1.21.0?uuid=87dc4568-4c63-4d18-b0c0-bb2238e4078b"
                 }
             ]
         },
@@ -3346,13 +3279,13 @@
         {
             "name": "RuntimeGeneratedFunctions",
             "SPDXID": "SPDXRef-RuntimeGeneratedFunctions-7e49a35a-f44a-4d26-94aa-eba1b4ca6b47",
-            "versionInfo": "0.5.16",
+            "versionInfo": "0.5.17",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/RuntimeGeneratedFunctions.jl.git@2f609ec2295c452685d3142bc4df202686e555d2",
+            "downloadLocation": "git+https://github.com/SciML/RuntimeGeneratedFunctions.jl.git@7257165d5477fd1025f7cb656019dcb6b0512c38",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "60738a8672a63021b120607c94e57909ff7df5d4"
+                "packageVerificationCodeValue": "0ab5006c8994adc3a6fb29d445292c9e33a8f5be"
             },
             "homepage": "https://github.com/SciML/RuntimeGeneratedFunctions.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -3367,7 +3300,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/RuntimeGeneratedFunctions@0.5.16?uuid=7e49a35a-f44a-4d26-94aa-eba1b4ca6b47"
+                    "referenceLocator": "pkg:julia/RuntimeGeneratedFunctions@0.5.17?uuid=7e49a35a-f44a-4d26-94aa-eba1b4ca6b47"
                 }
             ]
         },
@@ -4207,13 +4140,13 @@
         {
             "name": "LinearSolve",
             "SPDXID": "SPDXRef-LinearSolve-7ed4a6bd-45f5-4d41-b270-4a48e9bafcae",
-            "versionInfo": "3.57.0",
+            "versionInfo": "3.58.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/LinearSolve.jl.git@1fdeafa25801ec2e0caa88fbe0afd7c41d3d087a",
+            "downloadLocation": "git+https://github.com/SciML/LinearSolve.jl.git@7a1b73e0921e3278fce6a6cd80003c063ed937b4",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "01af42e61fe1f496978136cc3a0edf81ac38721a"
+                "packageVerificationCodeValue": "7a553aedfe022cacff4c774213417b7065603eb8"
             },
             "homepage": "https://github.com/SciML/LinearSolve.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -4228,7 +4161,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/LinearSolve@3.57.0?uuid=7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
+                    "referenceLocator": "pkg:julia/LinearSolve@3.58.0?uuid=7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
                 }
             ]
         },
@@ -4851,34 +4784,6 @@
             ]
         },
         {
-            "name": "EnzymeCore",
-            "SPDXID": "SPDXRef-EnzymeCore-f151be2c-9106-41f4-ab19-57ee4f262869",
-            "versionInfo": "0.8.18",
-            "supplier": "NOASSERTION",
-            "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/EnzymeAD/Enzyme.jl.git@990991b8aa76d17693a98e3a915ac7aa49f08d1a#lib/EnzymeCore",
-            "filesAnalyzed": true,
-            "packageVerificationCode": {
-                "packageVerificationCodeValue": "28ef05cf05e7dd3d6ce55dfc3bfd34e61d90d317"
-            },
-            "homepage": "https://github.com/EnzymeAD/Enzyme.jl.git",
-            "licenseConcluded": "NOASSERTION",
-            "licenseInfoFromFiles": [
-                "MIT"
-            ],
-            "licenseDeclared": "MIT",
-            "copyrightText": "NOASSERTION",
-            "summary": "This is a Julia package, written in the Julia language.",
-            "comment": "The SPDX ID field is derived from the UUID that all Julia packages are assigned by their developer to uniquely identify it.",
-            "externalRefs": [
-                {
-                    "referenceCategory": "PACKAGE-MANAGER",
-                    "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/EnzymeCore@0.8.18?uuid=f151be2c-9106-41f4-ab19-57ee4f262869"
-                }
-            ]
-        },
-        {
             "name": "MuladdMacro",
             "SPDXID": "SPDXRef-MuladdMacro-46d2c3a1-f734-5fdb-9937-b9b9aeba4221",
             "versionInfo": "0.2.4",
@@ -4906,6 +4811,34 @@
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
                     "referenceLocator": "pkg:julia/MuladdMacro@0.2.4?uuid=46d2c3a1-f734-5fdb-9937-b9b9aeba4221"
+                }
+            ]
+        },
+        {
+            "name": "EnzymeCore",
+            "SPDXID": "SPDXRef-EnzymeCore-f151be2c-9106-41f4-ab19-57ee4f262869",
+            "versionInfo": "0.8.18",
+            "supplier": "NOASSERTION",
+            "originator": "NOASSERTION",
+            "downloadLocation": "git+https://github.com/EnzymeAD/Enzyme.jl.git@990991b8aa76d17693a98e3a915ac7aa49f08d1a#lib/EnzymeCore",
+            "filesAnalyzed": true,
+            "packageVerificationCode": {
+                "packageVerificationCodeValue": "28ef05cf05e7dd3d6ce55dfc3bfd34e61d90d317"
+            },
+            "homepage": "https://github.com/EnzymeAD/Enzyme.jl.git",
+            "licenseConcluded": "NOASSERTION",
+            "licenseInfoFromFiles": [
+                "MIT"
+            ],
+            "licenseDeclared": "MIT",
+            "copyrightText": "NOASSERTION",
+            "summary": "This is a Julia package, written in the Julia language.",
+            "comment": "The SPDX ID field is derived from the UUID that all Julia packages are assigned by their developer to uniquely identify it.",
+            "externalRefs": [
+                {
+                    "referenceCategory": "PACKAGE-MANAGER",
+                    "referenceType": "purl",
+                    "referenceLocator": "pkg:julia/EnzymeCore@0.8.18?uuid=f151be2c-9106-41f4-ab19-57ee4f262869"
                 }
             ]
         },
@@ -5164,13 +5097,13 @@
         {
             "name": "DiffEqBase",
             "SPDXID": "SPDXRef-DiffEqBase-2b5f629d-d688-5b77-993f-72d75c75574e",
-            "versionInfo": "6.199.0",
+            "versionInfo": "6.200.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/DiffEqBase.jl.git@0514bf55835444420ce81f8e32c5e2369d4af456",
+            "downloadLocation": "git+https://github.com/SciML/DiffEqBase.jl.git@c4707e6374210edbad5d2e1be1bd0e38d8106203",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "f9eb618a61021f4b7ae8939674150c0983b7ff54"
+                "packageVerificationCodeValue": "1960918416a28fe24cfb6774c0634e475850b739"
             },
             "homepage": "https://github.com/SciML/DiffEqBase.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -5185,7 +5118,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/DiffEqBase@6.199.0?uuid=2b5f629d-d688-5b77-993f-72d75c75574e"
+                    "referenceLocator": "pkg:julia/DiffEqBase@6.200.0?uuid=2b5f629d-d688-5b77-993f-72d75c75574e"
                 }
             ]
         },
@@ -5220,13 +5153,13 @@
         {
             "name": "OrdinaryDiffEqCore",
             "SPDXID": "SPDXRef-OrdinaryDiffEqCore-bbf590c4-e513-4bbe-9b18-05decba2e5d8",
-            "versionInfo": "3.3.0",
+            "versionInfo": "3.4.2",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@07a5e3a5fbc3b17db2adc2dd67fd10b9ce83efb2#lib/OrdinaryDiffEqCore",
+            "downloadLocation": "git+https://github.com/SciML/OrdinaryDiffEq.jl.git@6ccf0c6b8fea7079940d1eaa1b8cb94270dba0aa#lib/OrdinaryDiffEqCore",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "2c3fa00f229dcdf26fd6f73792d6f0d0e49a98b3"
+                "packageVerificationCodeValue": "64aa6b52a9cf70366bc5e5f493cad6ad141a05bb"
             },
             "homepage": "https://github.com/SciML/OrdinaryDiffEq.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -5241,7 +5174,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/OrdinaryDiffEqCore@3.3.0?uuid=bbf590c4-e513-4bbe-9b18-05decba2e5d8"
+                    "referenceLocator": "pkg:julia/OrdinaryDiffEqCore@3.4.2?uuid=bbf590c4-e513-4bbe-9b18-05decba2e5d8"
                 }
             ]
         },
@@ -6244,213 +6177,15 @@
             ]
         },
         {
-            "name": "FileIO",
-            "SPDXID": "SPDXRef-FileIO-5789e2e9-d7fb-5bc7-8068-2c6fae9b9549",
-            "versionInfo": "1.18.0",
-            "supplier": "NOASSERTION",
-            "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaIO/FileIO.jl.git@6522cfb3b8fe97bec632252263057996cbd3de20",
-            "filesAnalyzed": true,
-            "packageVerificationCode": {
-                "packageVerificationCodeValue": "b4e2a9b734f6a6b8ede40707a58328dc40b0fbf1"
-            },
-            "homepage": "https://github.com/JuliaIO/FileIO.jl.git",
-            "licenseConcluded": "NOASSERTION",
-            "licenseInfoFromFiles": [
-                "MIT"
-            ],
-            "licenseDeclared": "MIT",
-            "copyrightText": "NOASSERTION",
-            "summary": "This is a Julia package, written in the Julia language.",
-            "comment": "The SPDX ID field is derived from the UUID that all Julia packages are assigned by their developer to uniquely identify it.",
-            "externalRefs": [
-                {
-                    "referenceCategory": "PACKAGE-MANAGER",
-                    "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/FileIO@1.18.0?uuid=5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-                }
-            ]
-        },
-        {
-            "name": "ChunkCodecCore",
-            "SPDXID": "SPDXRef-ChunkCodecCore-0b6fb165-00bc-4d37-ab8b-79f91016dbe1",
-            "versionInfo": "1.0.1",
-            "supplier": "NOASSERTION",
-            "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaIO/ChunkCodecs.jl.git@1a3ad7e16a321667698a19e77362b35a1e94c544#ChunkCodecCore",
-            "filesAnalyzed": true,
-            "packageVerificationCode": {
-                "packageVerificationCodeValue": "c320cb13b9d6feab9ae2ba0af0ebf0036a6727dd"
-            },
-            "homepage": "https://github.com/JuliaIO/ChunkCodecs.jl.git",
-            "licenseConcluded": "NOASSERTION",
-            "licenseInfoFromFiles": [
-                "MIT"
-            ],
-            "licenseDeclared": "MIT",
-            "copyrightText": "NOASSERTION",
-            "summary": "This is a Julia package, written in the Julia language.",
-            "comment": "The SPDX ID field is derived from the UUID that all Julia packages are assigned by their developer to uniquely identify it.",
-            "externalRefs": [
-                {
-                    "referenceCategory": "PACKAGE-MANAGER",
-                    "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/ChunkCodecCore@1.0.1?uuid=0b6fb165-00bc-4d37-ab8b-79f91016dbe1"
-                }
-            ]
-        },
-        {
-            "name": "ChunkCodecLibZlib",
-            "SPDXID": "SPDXRef-ChunkCodecLibZlib-4c0bbee4-addc-4d73-81a0-b6caacae83c8",
-            "versionInfo": "1.0.0",
-            "supplier": "NOASSERTION",
-            "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaIO/ChunkCodecs.jl.git@cee8104904c53d39eb94fd06cbe60cb5acde7177#LibZlib",
-            "filesAnalyzed": true,
-            "packageVerificationCode": {
-                "packageVerificationCodeValue": "3e0bdbd46f6d74f6985369d2c8c129c9193ef051"
-            },
-            "homepage": "https://github.com/JuliaIO/ChunkCodecs.jl.git",
-            "licenseConcluded": "NOASSERTION",
-            "licenseInfoFromFiles": [
-                "MIT",
-                "Zlib"
-            ],
-            "licenseDeclared": "MIT",
-            "copyrightText": "NOASSERTION",
-            "summary": "This is a Julia package, written in the Julia language.",
-            "comment": "The SPDX ID field is derived from the UUID that all Julia packages are assigned by their developer to uniquely identify it.",
-            "externalRefs": [
-                {
-                    "referenceCategory": "PACKAGE-MANAGER",
-                    "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/ChunkCodecLibZlib@1.0.0?uuid=4c0bbee4-addc-4d73-81a0-b6caacae83c8"
-                }
-            ]
-        },
-        {
-            "name": "ChunkCodecLibZstd",
-            "SPDXID": "SPDXRef-ChunkCodecLibZstd-55437552-ac27-4d47-9aa3-63184e8fd398",
-            "versionInfo": "1.0.0",
-            "supplier": "NOASSERTION",
-            "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaIO/ChunkCodecs.jl.git@34d9873079e4cb3d0c62926a225136824677073f#LibZstd",
-            "filesAnalyzed": true,
-            "packageVerificationCode": {
-                "packageVerificationCodeValue": "f95c81d47b0f7125455b0b5ec46a5a5d776f809c"
-            },
-            "homepage": "https://github.com/JuliaIO/ChunkCodecs.jl.git",
-            "licenseConcluded": "NOASSERTION",
-            "licenseInfoFromFiles": [
-                "MIT",
-                "BSD-3-Clause"
-            ],
-            "licenseDeclared": "MIT",
-            "copyrightText": "NOASSERTION",
-            "summary": "This is a Julia package, written in the Julia language.",
-            "comment": "The SPDX ID field is derived from the UUID that all Julia packages are assigned by their developer to uniquely identify it.",
-            "externalRefs": [
-                {
-                    "referenceCategory": "PACKAGE-MANAGER",
-                    "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/ChunkCodecLibZstd@1.0.0?uuid=55437552-ac27-4d47-9aa3-63184e8fd398"
-                }
-            ]
-        },
-        {
-            "name": "HashArrayMappedTries",
-            "SPDXID": "SPDXRef-HashArrayMappedTries-076d061b-32b6-4027-95e0-9a2c6f6d7e74",
-            "versionInfo": "0.2.0",
-            "supplier": "NOASSERTION",
-            "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/vchuravy/HashArrayMappedTries.jl.git@2eaa69a7cab70a52b9687c8bf950a5a93ec895ae",
-            "filesAnalyzed": true,
-            "packageVerificationCode": {
-                "packageVerificationCodeValue": "d49f57eb0e1e563a0614509053224fd0ff4c4c93"
-            },
-            "homepage": "https://github.com/vchuravy/HashArrayMappedTries.jl.git",
-            "licenseConcluded": "NOASSERTION",
-            "licenseInfoFromFiles": [
-                "MIT"
-            ],
-            "licenseDeclared": "MIT",
-            "copyrightText": "NOASSERTION",
-            "summary": "This is a Julia package, written in the Julia language.",
-            "comment": "The SPDX ID field is derived from the UUID that all Julia packages are assigned by their developer to uniquely identify it.",
-            "externalRefs": [
-                {
-                    "referenceCategory": "PACKAGE-MANAGER",
-                    "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/HashArrayMappedTries@0.2.0?uuid=076d061b-32b6-4027-95e0-9a2c6f6d7e74"
-                }
-            ]
-        },
-        {
-            "name": "ScopedValues",
-            "SPDXID": "SPDXRef-ScopedValues-7e506255-f358-4e82-b7e4-beb19740aa63",
-            "versionInfo": "1.5.0",
-            "supplier": "NOASSERTION",
-            "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaLang/ScopedValues.jl.git@c3b2323466378a2ba15bea4b2f73b081e022f473",
-            "filesAnalyzed": true,
-            "packageVerificationCode": {
-                "packageVerificationCodeValue": "913977f64e28ee17a5c3cecb74f92a4cdbb0d570"
-            },
-            "homepage": "https://github.com/JuliaLang/ScopedValues.jl.git",
-            "licenseConcluded": "NOASSERTION",
-            "licenseInfoFromFiles": [
-                "MIT"
-            ],
-            "licenseDeclared": "MIT",
-            "copyrightText": "NOASSERTION",
-            "summary": "This is a Julia package, written in the Julia language.",
-            "comment": "The SPDX ID field is derived from the UUID that all Julia packages are assigned by their developer to uniquely identify it.",
-            "externalRefs": [
-                {
-                    "referenceCategory": "PACKAGE-MANAGER",
-                    "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/ScopedValues@1.5.0?uuid=7e506255-f358-4e82-b7e4-beb19740aa63"
-                }
-            ]
-        },
-        {
-            "name": "JLD2",
-            "SPDXID": "SPDXRef-JLD2-033835bb-8acc-5ee8-8aae-3f567f8a3819",
-            "versionInfo": "0.6.3",
-            "supplier": "NOASSERTION",
-            "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaIO/JLD2.jl.git@8f8ff711442d1f4cfc0d86133e7ee03d62ec9b98",
-            "filesAnalyzed": true,
-            "packageVerificationCode": {
-                "packageVerificationCodeValue": "4ff0b1bfa1388026cd047e261a17b5b29814419b"
-            },
-            "homepage": "https://github.com/JuliaIO/JLD2.jl.git",
-            "licenseConcluded": "NOASSERTION",
-            "licenseInfoFromFiles": [
-                "MIT"
-            ],
-            "licenseDeclared": "MIT",
-            "copyrightText": "NOASSERTION",
-            "summary": "This is a Julia package, written in the Julia language.",
-            "comment": "The SPDX ID field is derived from the UUID that all Julia packages are assigned by their developer to uniquely identify it.",
-            "externalRefs": [
-                {
-                    "referenceCategory": "PACKAGE-MANAGER",
-                    "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/JLD2@0.6.3?uuid=033835bb-8acc-5ee8-8aae-3f567f8a3819"
-                }
-            ]
-        },
-        {
             "name": "MetaGraphsNext",
             "SPDXID": "SPDXRef-MetaGraphsNext-fa8bd995-216d-47f1-8a91-f3b68fbeb377",
-            "versionInfo": "0.7.5",
+            "versionInfo": "0.8.0",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/JuliaGraphs/MetaGraphsNext.jl.git@1983a06112db00c54e171f5cff8788c8efbdae85",
+            "downloadLocation": "git+https://github.com/JuliaGraphs/MetaGraphsNext.jl.git@fa3dc4a0d6569797af15f858ff012990c4afbf61",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "8c7e5866feb6570d69d2cd3a4931d7a0e3ceb6b9"
+                "packageVerificationCodeValue": "eb6045169d090cca6b2d8962cdb6b06e658ef59a"
             },
             "homepage": "https://github.com/JuliaGraphs/MetaGraphsNext.jl.git",
             "licenseConcluded": "NOASSERTION",
@@ -6465,7 +6200,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/MetaGraphsNext@0.7.5?uuid=fa8bd995-216d-47f1-8a91-f3b68fbeb377"
+                    "referenceLocator": "pkg:julia/MetaGraphsNext@0.8.0?uuid=fa8bd995-216d-47f1-8a91-f3b68fbeb377"
                 }
             ]
         },
@@ -8268,6 +8003,11 @@
             "relatedSpdxElement": "SPDXRef-HiGHS_jll-8fd58aa0-07eb-5a78-9b36-339c94fd15ea"
         },
         {
+            "spdxElementId": "SPDXRef-libblastrampoline_jll-8e850b90-86db-534c-a0d3-1478176c7d93",
+            "relationshipType": "DEPENDENCY_OF",
+            "relatedSpdxElement": "SPDXRef-HiGHS_jll-8fd58aa0-07eb-5a78-9b36-339c94fd15ea"
+        },
+        {
             "spdxElementId": "SPDXRef-CompilerSupportLibraries_jll-e66e0078-7015-5450-92f7-15fbd957f2ae",
             "relationshipType": "DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-HiGHS_jll-8fd58aa0-07eb-5a78-9b36-339c94fd15ea"
@@ -8288,82 +8028,17 @@
             "relatedSpdxElement": "SPDXRef-HiGHS_jll-8fd58aa0-07eb-5a78-9b36-339c94fd15ea"
         },
         {
-            "spdxElementId": "SPDXRef-JLLWrappers-692b3bcd-3c85-4b1f-b108-f13ce0eb3210",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-METIS_jll-d00139f3-1899-568f-a2f0-47f597d42d70"
-        },
-        {
-            "spdxElementId": "SPDXRef-Libdl-8f399da3-3557-5675-b5ff-fb832c97cbdb",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-METIS_jll-d00139f3-1899-568f-a2f0-47f597d42d70"
-        },
-        {
-            "spdxElementId": "SPDXRef-Artifacts-56f22d72-fd6d-98f1-02f0-08ddc0907c33",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-METIS_jll-d00139f3-1899-568f-a2f0-47f597d42d70"
-        },
-        {
-            "spdxElementId": "SPDXRef-ca6d7039e1208e821d097fa0b6d1e57af4c165c7",
-            "relationshipType": "GENERATED_FROM",
-            "relatedSpdxElement": "SPDXRef-4a447c1efea1545aa596c4e9b1bdea9b140a248c"
-        },
-        {
-            "spdxElementId": "SPDXRef-ca6d7039e1208e821d097fa0b6d1e57af4c165c7",
-            "relationshipType": "RUNTIME_DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-METIS_jll-d00139f3-1899-568f-a2f0-47f597d42d70"
-        },
-        {
-            "spdxElementId": "SPDXRef-METIS_jll-d00139f3-1899-568f-a2f0-47f597d42d70",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-HiGHS_jll-8fd58aa0-07eb-5a78-9b36-339c94fd15ea"
-        },
-        {
-            "spdxElementId": "SPDXRef-JLLWrappers-692b3bcd-3c85-4b1f-b108-f13ce0eb3210",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-OpenBLAS32_jll-656ef2d0-ae68-5445-9ca0-591084a874a2"
-        },
-        {
-            "spdxElementId": "SPDXRef-CompilerSupportLibraries_jll-e66e0078-7015-5450-92f7-15fbd957f2ae",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-OpenBLAS32_jll-656ef2d0-ae68-5445-9ca0-591084a874a2"
-        },
-        {
-            "spdxElementId": "SPDXRef-Libdl-8f399da3-3557-5675-b5ff-fb832c97cbdb",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-OpenBLAS32_jll-656ef2d0-ae68-5445-9ca0-591084a874a2"
-        },
-        {
-            "spdxElementId": "SPDXRef-Artifacts-56f22d72-fd6d-98f1-02f0-08ddc0907c33",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-OpenBLAS32_jll-656ef2d0-ae68-5445-9ca0-591084a874a2"
-        },
-        {
-            "spdxElementId": "SPDXRef-ab917ed38551d64e82ad5b564678b3a62a911c7a",
-            "relationshipType": "GENERATED_FROM",
-            "relatedSpdxElement": "SPDXRef-32d6c14d4a0eb04133420df0903f3b46b6a1f931"
-        },
-        {
-            "spdxElementId": "SPDXRef-ab917ed38551d64e82ad5b564678b3a62a911c7a",
-            "relationshipType": "RUNTIME_DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-OpenBLAS32_jll-656ef2d0-ae68-5445-9ca0-591084a874a2"
-        },
-        {
-            "spdxElementId": "SPDXRef-OpenBLAS32_jll-656ef2d0-ae68-5445-9ca0-591084a874a2",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-HiGHS_jll-8fd58aa0-07eb-5a78-9b36-339c94fd15ea"
-        },
-        {
             "spdxElementId": "SPDXRef-Artifacts-56f22d72-fd6d-98f1-02f0-08ddc0907c33",
             "relationshipType": "DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-HiGHS_jll-8fd58aa0-07eb-5a78-9b36-339c94fd15ea"
         },
         {
-            "spdxElementId": "SPDXRef-33492bbb3ce9a984f08ca11ba891b9f59c0c00f4",
+            "spdxElementId": "SPDXRef-634f5b203e1b48dd0c38b141e6b690f494632d7c",
             "relationshipType": "GENERATED_FROM",
-            "relatedSpdxElement": "SPDXRef-65ce799eee07a40b9ebb74941bec7539471f594f"
+            "relatedSpdxElement": "SPDXRef-d77e320ccb920660836ed6f30e738c0e348ed85b"
         },
         {
-            "spdxElementId": "SPDXRef-33492bbb3ce9a984f08ca11ba891b9f59c0c00f4",
+            "spdxElementId": "SPDXRef-634f5b203e1b48dd0c38b141e6b690f494632d7c",
             "relationshipType": "RUNTIME_DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-HiGHS_jll-8fd58aa0-07eb-5a78-9b36-339c94fd15ea"
         },
@@ -8379,6 +8054,11 @@
         },
         {
             "spdxElementId": "SPDXRef-PrecompileTools-aea7be01-6a6a-4083-8856-8a6e6704d82a",
+            "relationshipType": "DEPENDENCY_OF",
+            "relatedSpdxElement": "SPDXRef-HiGHS-87dc4568-4c63-4d18-b0c0-bb2238e4078b"
+        },
+        {
+            "spdxElementId": "SPDXRef-LinearAlgebra-37e2e46d-f89d-539d-b4ee-838fcccc9c8e",
             "relationshipType": "DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-HiGHS-87dc4568-4c63-4d18-b0c0-bb2238e4078b"
         },
@@ -8714,6 +8394,41 @@
         },
         {
             "spdxElementId": "SPDXRef-MathOptInterface-b8f27783-ece8-5eb3-8dc8-9495eed66fee",
+            "relationshipType": "DEPENDENCY_OF",
+            "relatedSpdxElement": "SPDXRef-HiGHS-87dc4568-4c63-4d18-b0c0-bb2238e4078b"
+        },
+        {
+            "spdxElementId": "SPDXRef-JLLWrappers-692b3bcd-3c85-4b1f-b108-f13ce0eb3210",
+            "relationshipType": "DEPENDENCY_OF",
+            "relatedSpdxElement": "SPDXRef-OpenBLAS32_jll-656ef2d0-ae68-5445-9ca0-591084a874a2"
+        },
+        {
+            "spdxElementId": "SPDXRef-CompilerSupportLibraries_jll-e66e0078-7015-5450-92f7-15fbd957f2ae",
+            "relationshipType": "DEPENDENCY_OF",
+            "relatedSpdxElement": "SPDXRef-OpenBLAS32_jll-656ef2d0-ae68-5445-9ca0-591084a874a2"
+        },
+        {
+            "spdxElementId": "SPDXRef-Libdl-8f399da3-3557-5675-b5ff-fb832c97cbdb",
+            "relationshipType": "DEPENDENCY_OF",
+            "relatedSpdxElement": "SPDXRef-OpenBLAS32_jll-656ef2d0-ae68-5445-9ca0-591084a874a2"
+        },
+        {
+            "spdxElementId": "SPDXRef-Artifacts-56f22d72-fd6d-98f1-02f0-08ddc0907c33",
+            "relationshipType": "DEPENDENCY_OF",
+            "relatedSpdxElement": "SPDXRef-OpenBLAS32_jll-656ef2d0-ae68-5445-9ca0-591084a874a2"
+        },
+        {
+            "spdxElementId": "SPDXRef-ab917ed38551d64e82ad5b564678b3a62a911c7a",
+            "relationshipType": "GENERATED_FROM",
+            "relatedSpdxElement": "SPDXRef-32d6c14d4a0eb04133420df0903f3b46b6a1f931"
+        },
+        {
+            "spdxElementId": "SPDXRef-ab917ed38551d64e82ad5b564678b3a62a911c7a",
+            "relationshipType": "RUNTIME_DEPENDENCY_OF",
+            "relatedSpdxElement": "SPDXRef-OpenBLAS32_jll-656ef2d0-ae68-5445-9ca0-591084a874a2"
+        },
+        {
+            "spdxElementId": "SPDXRef-OpenBLAS32_jll-656ef2d0-ae68-5445-9ca0-591084a874a2",
             "relationshipType": "DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-HiGHS-87dc4568-4c63-4d18-b0c0-bb2238e4078b"
         },
@@ -10313,11 +10028,6 @@
             "relatedSpdxElement": "SPDXRef-DiffEqBase-2b5f629d-d688-5b77-993f-72d75c75574e"
         },
         {
-            "spdxElementId": "SPDXRef-EnzymeCore-f151be2c-9106-41f4-ab19-57ee4f262869",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-DiffEqBase-2b5f629d-d688-5b77-993f-72d75c75574e"
-        },
-        {
             "spdxElementId": "SPDXRef-MuladdMacro-46d2c3a1-f734-5fdb-9937-b9b9aeba4221",
             "relationshipType": "DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-DiffEqBase-2b5f629d-d688-5b77-993f-72d75c75574e"
@@ -10714,6 +10424,11 @@
         },
         {
             "spdxElementId": "SPDXRef-StaticArrayInterface-0d7ed370-da01-4f52-bd93-41d350b8b718",
+            "relationshipType": "DEPENDENCY_OF",
+            "relatedSpdxElement": "SPDXRef-OrdinaryDiffEqCore-bbf590c4-e513-4bbe-9b18-05decba2e5d8"
+        },
+        {
+            "spdxElementId": "SPDXRef-EnzymeCore-f151be2c-9106-41f4-ab19-57ee4f262869",
             "relationshipType": "DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-OrdinaryDiffEqCore-bbf590c4-e513-4bbe-9b18-05decba2e5d8"
         },
@@ -12189,96 +11904,6 @@
         },
         {
             "spdxElementId": "SPDXRef-Graphs-86223c79-3864-5bf0-83f7-82e725a168b6",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-MetaGraphsNext-fa8bd995-216d-47f1-8a91-f3b68fbeb377"
-        },
-        {
-            "spdxElementId": "SPDXRef-Pkg-44cfe95a-1eb2-52ea-b672-e2afdf69b78f",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-FileIO-5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-        },
-        {
-            "spdxElementId": "SPDXRef-UUIDs-cf7118a7-6976-5b1a-9a39-7adc72f591a4",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-FileIO-5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-        },
-        {
-            "spdxElementId": "SPDXRef-Requires-ae029012-a4dd-5104-9daa-d747884805df",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-FileIO-5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-        },
-        {
-            "spdxElementId": "SPDXRef-FileIO-5789e2e9-d7fb-5bc7-8068-2c6fae9b9549",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-JLD2-033835bb-8acc-5ee8-8aae-3f567f8a3819"
-        },
-        {
-            "spdxElementId": "SPDXRef-Zlib_jll-83775a58-1f1d-513f-b197-d71354ab007a",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-ChunkCodecLibZlib-4c0bbee4-addc-4d73-81a0-b6caacae83c8"
-        },
-        {
-            "spdxElementId": "SPDXRef-ChunkCodecCore-0b6fb165-00bc-4d37-ab8b-79f91016dbe1",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-ChunkCodecLibZlib-4c0bbee4-addc-4d73-81a0-b6caacae83c8"
-        },
-        {
-            "spdxElementId": "SPDXRef-ChunkCodecLibZlib-4c0bbee4-addc-4d73-81a0-b6caacae83c8",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-JLD2-033835bb-8acc-5ee8-8aae-3f567f8a3819"
-        },
-        {
-            "spdxElementId": "SPDXRef-PrecompileTools-aea7be01-6a6a-4083-8856-8a6e6704d82a",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-JLD2-033835bb-8acc-5ee8-8aae-3f567f8a3819"
-        },
-        {
-            "spdxElementId": "SPDXRef-OrderedCollections-bac558e1-5e72-5ebc-8fee-abe8a469f55d",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-JLD2-033835bb-8acc-5ee8-8aae-3f567f8a3819"
-        },
-        {
-            "spdxElementId": "SPDXRef-ChunkCodecCore-0b6fb165-00bc-4d37-ab8b-79f91016dbe1",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-ChunkCodecLibZstd-55437552-ac27-4d47-9aa3-63184e8fd398"
-        },
-        {
-            "spdxElementId": "SPDXRef-Zstd_jll-3161d3a3-bdf6-5164-811a-617609db77b4",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-ChunkCodecLibZstd-55437552-ac27-4d47-9aa3-63184e8fd398"
-        },
-        {
-            "spdxElementId": "SPDXRef-ChunkCodecLibZstd-55437552-ac27-4d47-9aa3-63184e8fd398",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-JLD2-033835bb-8acc-5ee8-8aae-3f567f8a3819"
-        },
-        {
-            "spdxElementId": "SPDXRef-Mmap-a63ad114-7e13-5084-954f-fe012c677804",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-JLD2-033835bb-8acc-5ee8-8aae-3f567f8a3819"
-        },
-        {
-            "spdxElementId": "SPDXRef-HashArrayMappedTries-076d061b-32b6-4027-95e0-9a2c6f6d7e74",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-ScopedValues-7e506255-f358-4e82-b7e4-beb19740aa63"
-        },
-        {
-            "spdxElementId": "SPDXRef-Logging-56ddb016-857b-54e1-b83d-db4d58db5568",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-ScopedValues-7e506255-f358-4e82-b7e4-beb19740aa63"
-        },
-        {
-            "spdxElementId": "SPDXRef-ScopedValues-7e506255-f358-4e82-b7e4-beb19740aa63",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-JLD2-033835bb-8acc-5ee8-8aae-3f567f8a3819"
-        },
-        {
-            "spdxElementId": "SPDXRef-MacroTools-1914dd2f-81c6-5fcd-8719-6d5c9610ff09",
-            "relationshipType": "DEPENDENCY_OF",
-            "relatedSpdxElement": "SPDXRef-JLD2-033835bb-8acc-5ee8-8aae-3f567f8a3819"
-        },
-        {
-            "spdxElementId": "SPDXRef-JLD2-033835bb-8acc-5ee8-8aae-3f567f8a3819",
             "relationshipType": "DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-MetaGraphsNext-fa8bd995-216d-47f1-8a91-f3b68fbeb377"
         },

@@ -21,7 +21,6 @@ using OrdinaryDiffEqTsit5: Tsit5
 using OrdinaryDiffEqSDIRK: ImplicitEuler, KenCarp4, TRBDF2
 using OrdinaryDiffEqBDF: FBDF, QNDF
 using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
-using SciMLBase: SciMLOperators
 import OrdinaryDiffEqDifferentiation
 using LinearSolve:
     KLUFactorization, SciMLLinearSolveAlgorithm, LinearSolve, SciMLLinearSolveAlgorithm
@@ -35,7 +34,7 @@ export algorithm,
     database_path,
     results_path,
     convert_saveat,
-    convert_dt,
+    is_adaptive,
     node_types,
     node_type,
     node_kinds,
@@ -374,10 +373,6 @@ end
 
 LinearSolve.needs_concrete_A(::RibasimLinearSolve) = false
 
-# piracy, temp fix for https://github.com/Deltares/Ribasim/issues/2754
-# can probably be removed after https://github.com/SciML/OrdinaryDiffEq.jl/pull/2916
-SciMLOperators.has_concretization(::OrdinaryDiffEqDifferentiation.WOperator) = true
-
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     kwargs = Dict{Symbol, Any}()
@@ -426,23 +421,21 @@ function convert_saveat(saveat::Float64, t_end::Float64)::Union{Float64, Vector{
     return saveat
 end
 
-"Convert the dt from our Config to SciML stepsize control arguments"
-function convert_dt(dt::Union{Float64, Nothing})::Tuple{Bool, Float64}
+"Check whether the dt from our Config means adaptive timestepping"
+function is_adaptive(dt::Union{Float64, Nothing})::Bool
     # In SciML dt represents the initial timestep if adaptive is true.
-    # We don't support setting the initial timestep, so we don't need the adaptive flag.
+    # We don't support setting the initial timestep, so we need the adaptive flag.
     # The solver will give a clear error message if the algorithm is not adaptive.
     if isnothing(dt)
         # adaptive step size
-        adaptive = true
-        dt = 0.0
+        return true
     elseif 0 < dt < Inf
         # fixed step size
-        adaptive = false
+        return false
     else
         @error "Invalid dt" dt
         error("Invalid dt")
     end
-    return adaptive, dt
 end
 
 end  # module

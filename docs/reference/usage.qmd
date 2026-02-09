@@ -96,8 +96,8 @@ compression       | Bool   | Whether to apply compression or not.
 compression_level | Int    | Zstandard compression level. Default is 6, higher compresses more.
 subgrid           | Bool   | Compute and output more detailed water levels.
 
-Currently compression is only used for Apache Arrow.
-NetCDF will be the only output format later on.
+NetCDF is the default results format and recommended for new models.
+Arrow support will be removed in a future release.
 
 ## Logging settings
 
@@ -151,7 +151,7 @@ The input and output tables described below all share that they are tabular file
 and Link tables always have to be in the [GeoPackage](https://www.geopackage.org/) database file, and
 results are always written to [Apache Arrow](https://arrow.apache.org/) files, sometimes also
 known as Feather files. All other tables can either be in the database or in separate
-Arrow files that are listed in the TOML as described above.
+Arrow or NetCDF files that are listed in the TOML as described above.
 
 For visualization, the Node and Link tables typically have associated geometries. GeoPackage
 was used since it provides a standardized way to store tables with (and without) geometry
@@ -159,17 +159,98 @@ columns in a SQLite database. If, like Ribasim, you can ignore the geometries, a
 is easy to read using SQLite libraries, which are commonly available. Furthermore GeoPackage
 can be updated in place when working on a model.
 
-Arrow was chosen since it is standardized, fast, simple and flexible. It can be read and
-written by many different software packages. In Ribasim we use
-[Arrow.jl](https://arrow.apache.org/julia/dev/). Results can be written to Arrow, since for long
-runs Ribasim can produce tables with many rows. Arrow is well suited for large tabular
-datasets, and file size is kept small by using compression. The Arrow input files can be
-compressed with LZ4 or Zstd compression. Furthermore, in some of the columns, a small amount
-of different values are repeated many times. To reduce file sizes it may be a good idea to
-apply [dictionary
-encoding](https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout) to
-those columns.
-The Ribasim version that was used to create the results is written to each file in the `ribasim_version` schema metadata.
+NetCDF is the default and recommended format for results and external input tables. NetCDF
+files follow the [CF conventions](http://cfconventions.org/) and are particularly useful for
+large time series data. NetCDF is well suited for large tabular datasets with multi-dimensional
+arrays, and file size is kept small by using compression. For long runs, Ribasim can produce
+tables with many rows, making NetCDF an excellent choice for storing results. However, note
+that NetCDF input tables are currently [not automatically loaded in QGIS](/known_issues.qmd).
+
+Apache Arrow will be phased out
+in future releases. Arrow files can be compressed with LZ4 or Zstd compression, and support
+[dictionary encoding](https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout)
+for columns with repeated values. If you're starting a new model, we recommend using NetCDF
+instead of Arrow.
+
+The Ribasim version that was used to create the results is written to each file in the
+`ribasim_version` schema metadata.
+
+## Using NetCDF or Arrow for input tables {#sec-arrow-netcdf-input}
+
+By default, all tables are stored in the GeoPackage database.
+However, you can manually configure to store and read data in external files. **NetCDF is the recommended format for external table files**. This is
+particularly when you quickly want to be able to switch between different time series on the same model.
+
+
+### Writing tables to NetCDF or Arrow with Python
+
+When building a model with the Ribasim Python API, you can specify that a table should be
+written to an external file by setting its `filepath` attribute:
+
+```python
+from pathlib import Path
+import ribasim
+from ribasim.nodes import basin
+
+# Create a model
+model = ribasim.Model(
+    starttime="2020-01-01",
+    endtime="2021-01-01",
+    crs="EPSG:28992",
+)
+
+# Add a basin with profile data
+model.basin.add(
+    ribasim.Node(1, ribasim.geometry.Point(0, 0)),
+    [basin.Profile(level=[0.0, 1.0], area=[100.0, 1000.0])],
+)
+
+# Specify that the profile table should be written to NetCDF format (recommended)
+model.basin.profile.filepath = Path("profile.nc")
+
+# Specify the input directory (where external files will be saved)
+model.input_dir = Path("input")
+
+# Write the model - this creates the TOML, database, and Arrow file
+model.write("my_model/ribasim.toml")
+```
+
+After running this code, you'll have:
+- `my_model/ribasim.toml` - configuration file referencing the external file
+- `my_model/input/database.gpkg` - GeoPackage with Node and Link tables
+- `my_model/input/profile.nc` - NetCDF file with Basin profile data
+
+The file format is determined automatically from the file extension:
+- `.nc` for NetCDF format (recommended)
+- `.arrow` for Apache Arrow format (legacy, will be phased out)
+
+The paths are relative to the `input_dir` specified in the model configuration.
+When the model is written, these tables will be saved to the specified files rather than
+the GeoPackage database, and the TOML configuration file will reference these external files.
+
+The resulting TOML will contain:
+```toml
+[basin]
+profile = "profile.nc"
+```
+
+For time series data, NetCDF is particularly well-suited:
+```python
+# Add time-varying data and write to NetCDF
+model.basin.time.filepath = Path("basin-time.nc")
+```
+
+To revert a table back to being stored in the GeoPackage database instead of an external file, set the filepath to `None`:
+```python
+# Store profile data back in the GeoPackage
+model.basin.profile.filepath = None
+```
+
+### Using result files as initial conditions
+
+One common use case is to use the final state of a simulation as the initial condition for
+a new simulation. See the [Basin state documentation](/reference/node/basin.qmd#sec-state) for
+details on how to copy result files to the input directory and reference them in your TOML.
 
 ## Table requirements
 
