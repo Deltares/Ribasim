@@ -24,7 +24,7 @@ They include the following checks:
 * Julia Run Testmodels: This is to make sure all the test models can be run successfully
 * Julia Tests: Runs Julia unit tests on multiple platforms
 * Docs: Builds the documentation and executes the examples
-* Pre-commit: Checks Python code quality with linters and enforces formatting
+* Prek: Checks code quality with linters and enforces formatting
 * Python codegen: Makes sure code generation is still up to date by checking that code generation wouldn't change any files
 * Mypy: Runs mypy on our Python codebase to check types
 * Ribasim Python tests: Runs Ribasim Python tests on multiple platforms and multiple Python versions

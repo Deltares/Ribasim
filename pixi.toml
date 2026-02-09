@@ -20,13 +20,13 @@ test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=r
 # Installation
 # Keep Julia version synced with julia.executablePath in .vscode/settings.json
 install-julia = "juliaup add 1.12.4 && juliaup override set 1.12.4"
-install-pre-commit = "pre-commit install"
+install-prek = "prek install --overwrite"
 # Note that this has a Windows specific override
 install-ci = { depends-on = ["install-julia", "update-registry-julia"] }
 install = { depends-on = [
     "install-ci",
     "install-qgis-plugins",
-    "install-pre-commit",
+    "install-prek",
     "initialize-julia",
 ] }
 # Julia
@@ -65,10 +65,9 @@ docs = { depends-on = ["quarto-preview"] }
 mypy-ribasim-python = "mypy python/ribasim/ribasim"
 mypy-ribasim-testmodels = "mypy python/ribasim_testmodels/ribasim_testmodels"
 mypy-ribasim-api = "mypy python/ribasim_api/ribasim_api"
-pre-commit-autoupdate = "pre-commit autoupdate"
-pre-commit = "pre-commit run --all-files"
+prek = "prek run --all-files"
 lint = { depends-on = [
-    "pre-commit",
+    "prek",
     "mypy-ribasim-python",
     "mypy-ribasim-testmodels",
     "mypy-ribasim-api",
@@ -278,7 +277,7 @@ pandas = ">=2.2"
 pandas-stubs = "*"
 pandera = ">=0.25"
 plotly = "*"
-pre-commit = "*"
+prek = "*"
 pyarrow = ">=17.0"
 pydantic = ">=2.0"
 pydantic-settings = "*"
