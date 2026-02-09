@@ -261,17 +261,17 @@ class Model(FileModel, ParentModel):
             # avoid adding tables to existing model
             db_path.unlink(missing_ok=True)
 
-            self.link.write(directory)
+            self.link.write()
             node = self.node_table()
 
             assert node.df is not None
-            node.write(directory)
+            node.write()
 
             # Run after geopackage schema has been created
             _set_db_schema_version(db_path, ribasim.__schema_version__)
 
         for sub in self._nodes():
-            sub.write(directory, internal=internal, external=external)
+            sub.write(internal=internal, external=external)
 
         if internal:
             shutil.move(db_path, db_path.with_name("database.gpkg"))
@@ -350,6 +350,7 @@ class Model(FileModel, ParentModel):
             else gpd.GeoDataFrame(index=pd.Index([], name="node_id"), geometry=[])
         )
         node_table = NodeTable(df=df)
+        node_table._parent = self
         node_table.sort()
         assert node_table.df is not None
         assert node_table.df.index.is_unique, (
@@ -377,7 +378,9 @@ class Model(FileModel, ParentModel):
         }
 
     @classmethod
-    def read(cls, filepath: str | PathLike[str], lazy: bool = False) -> "Model":
+    def read(
+        cls, filepath: str | PathLike[str], internal: bool = True, external: bool = True
+    ) -> "Model":
         """Read a model from a TOML file.
 
         Parameters
@@ -388,7 +391,13 @@ class Model(FileModel, ParentModel):
         if not Path(filepath).is_file():
             raise FileNotFoundError(f"File '{filepath}' does not exist.")
 
-        with init_context({"lazy": lazy, "directory": Path(filepath).parent}):
+        with init_context(
+            {
+                "internal": internal,
+                "external": external,
+                "directory": Path(filepath).parent,
+            }
+        ):
             return cls(filepath=Path(filepath).name)  # type: ignore
 
     def write(
@@ -565,10 +574,6 @@ class Model(FileModel, ParentModel):
             return config
         else:
             return {}
-
-    def load(self, internal: bool = True, external: bool = True) -> None:
-        for child in self._children().values():
-            child.load(internal=internal, external=external)
 
     @model_validator(mode="after")
     def _reset_contextvar(self) -> "Model":

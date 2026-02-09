@@ -9,7 +9,7 @@ from pandera.typing import Index, Series
 from pandera.typing.geopandas import GeoSeries
 from shapely.geometry import Point
 
-from ribasim.input_base import SpatialTableModel
+from ribasim.input_base import ChildModel, SpatialTableModel
 
 from .base import _GeoBaseSchema
 
@@ -34,7 +34,7 @@ class NodeSchema(_GeoBaseSchema):
         return "node_id"
 
 
-class NodeTable(SpatialTableModel[NodeSchema]):
+class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
     """The Ribasim nodes as Point geometries."""
 
     def filter(self, nodetype: str):

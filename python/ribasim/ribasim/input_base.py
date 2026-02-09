@@ -19,7 +19,6 @@ from pandera.typing.geopandas import GeoDataFrame
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import (
     ConfigDict,
-    DirectoryPath,
     Field,
     PrivateAttr,
     ValidationInfo,
@@ -252,16 +251,21 @@ class FileModel(BaseModel, ABC):
             if info.context is None:
                 return value
             dir = info.context.get("directory")
-            lazy = info.context.get("lazy", False)
+            internal = info.context.get("internal", False)
+            external = info.context.get("external", False)
 
-            # Skip loading when lazy
-            if lazy and cls.allows_lazy():
-                value["lazy"] = lazy
-                return value
-
+            # Skip loading when lazy (internal/external is False)
             # Otherwise load data and update our values
             # If no filepath is given, assume it is expected to be loaded from the database
-            filepath = Path(value.pop("filepath", cls.default_filepath()))
+            filepath = value.pop("filepath", None)
+            if filepath is None and internal:
+                filepath = cls.default_filepath()
+            elif filepath is not None and external:
+                filepath = Path(filepath)
+            elif cls.allows_lazy():
+                value["lazy"] = True
+                return value
+
             data = cls._load(dir / filepath)
             data.update(value)
             return data
@@ -287,17 +291,6 @@ class FileModel(BaseModel, ABC):
         Returns
         -------
             dict: The data stored at filepath
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def load(self, internal: bool = True, external: bool = True) -> None:
-        """Load all lazy data in the model.
-
-        Returns
-        -------
-        Model
-            The model with all data loaded.
         """
         raise NotImplementedError()
 
@@ -475,15 +468,11 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
                 "Only '.nc' and '.arrow' extensions are supported."
             )
 
-    def load(self, internal: bool = True, external: bool = True) -> None:
+    def read(self) -> None:
         if not self.lazy:
             Warning(f"Resetting {self.tablename()}.")
         if self.df is not None:
             Warning(f"Overwriting {self.tablename()}.")
-
-        # Skip loading when not of the requested type
-        if not ((internal and self.is_internal) or (external and self.is_external)):
-            return
 
         context_file_loading.set({})
 
@@ -495,11 +484,11 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         ):
             return
 
-        directory = self.root.filepath.parent / self.root.input_dir
+        directory = self.get_inputdir()
         context_file_loading.get()["directory"] = directory
         db_path = directory / "database.gpkg"
 
-        if not db_path.is_file():
+        if self.is_internal and not db_path.is_file():
             raise FileNotFoundError(f"Database file '{db_path}' does not exist.")
 
         context_file_loading.get()["database"] = db_path
@@ -523,14 +512,22 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
     def is_internal(self) -> bool:
         return self.filepath is None
 
+    def get_inputdir(self) -> Path:
+        if not self.root:
+            raise ValueError("Table is not connected to a model.")
+        assert hasattr(self.root, "filepath") and hasattr(self.root, "input_dir")
+        if not self.root.filepath:
+            raise ValueError("Model has no filepath set.")
+        return self.root.filepath.parent / self.root.input_dir
+
     def write(
         self,
-        directory: DirectoryPath,
     ) -> None:
         filepath = self.default_filepath() if self.filepath is None else self.filepath
 
         self.sort()
         suffix = filepath.suffix.lower()
+        directory = self.get_inputdir()
         path = directory / filepath
         # In case filepath had subdirs
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -776,16 +773,24 @@ class NodeModel(ChildModel, ParentModel):
             node_ids.update(table._node_ids())
         return node_ids
 
-    def load(self, internal: bool = True, external: bool = True) -> None:
+    def read(self, internal: bool = True, external: bool = True) -> None:
         for table in self._tables():
-            table.load(internal=internal, external=external)
+            # Skip loading when not of the requested type
+            if not (
+                (internal and table.is_internal) or (external and table.is_external)
+            ):
+                return
+
+            table.read()
 
     def write(
-        self, directory: DirectoryPath, internal: bool = True, external: bool = True
+        self,
+        internal: bool = True,
+        external: bool = True,
     ) -> None:
         for table in self._tables():
             if (internal and table.is_internal) or (external and table.is_external):
-                table.write(directory)
+                table.write()
 
     def _repr_content(self) -> str:
         """Generate a succinct overview of the content.

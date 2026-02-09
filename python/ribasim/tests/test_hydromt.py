@@ -44,28 +44,28 @@ def test_basic_components(basic_arrow, tmp_path):
     arrow_path.unlink()
 
     # Saves individual forcing table (arrow, netcdf, etc.)
-    model.basin.profile.write(tmp_path / "input")
+    model.basin.profile.write()
     assert not toml_path.exists()
     assert not db_path.exists()
     assert arrow_path.exists()
     arrow_path.unlink()
 
     # Saves individual non-forcing table (gpkg)
-    model.basin.static.write(tmp_path / "input")
+    model.basin.static.write()
     assert not toml_path.exists()
     assert db_path.exists()
     assert not arrow_path.exists()
     db_path.unlink()
 
 
-def test_basic_lazy_load(basic, tmp_path):
+def test_basic_lazy_read(basic, tmp_path):
     # Setup
     toml_path = tmp_path / "ribasim.toml"
     basic.write(toml_path)
 
     # Lazy model read yields only a config
     # with empty spatial (node/link tables) and no other tables
-    model = Model.read(toml_path, lazy=True)
+    model = Model.read(toml_path, internal=False, external=False)
 
     assert len(model.node_table().df) == 0
     assert len(model.link.df) == 0  # Link Table is always initialized
@@ -83,12 +83,12 @@ def test_basic_lazy_load(basic, tmp_path):
     assert len(new_model.node_table().df) == 0
     assert len(new_model.link.df) == 0
 
-    # We can load individual tables from the lazy model
+    # We can read individual tables from the lazy model
     basic.write(toml_path)
-    model = Model.read(toml_path, lazy=True)
+    model = Model.read(toml_path, internal=False, external=False)
     # The directory path is retrieved from the model
     assert model.basin.root == model
     assert model.basin.static.root == model
-    model.basin.static.load()
+    model.basin.static.read()
     assert model.basin.static.df is not None
     assert not model.basin.static.lazy
