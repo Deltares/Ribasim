@@ -397,9 +397,9 @@ class DatasetWidget:
     def _find_ribasim_cli(message_bar) -> Path | None:
         """Find the Ribasim CLI executable.
 
-        First checks the RIBASIM_EXE environment variable, then searches PATH.
-        RIBASIM_EXE must be the full path to the executable file, e.g.,
-        `C:/bin/ribasim/bin/ribasim.exe` on Windows.
+        First checks the RIBASIM_HOME environment variable, then searches PATH.
+        RIBASIM_HOME must be the path to the Ribasim home directory, e.g.,
+        `C:/ribasim` on Windows.
 
         This is useful when QGIS does not inherit the user's PATH environment
         variable, which happens in the default Windows installation.
@@ -414,14 +414,15 @@ class DatasetWidget:
         Path | None
             Path to the Ribasim CLI executable, or None if not found.
         """
-        # Check RIBASIM_EXE environment variable
-        if (ribasim_exe_env := os.environ.get("RIBASIM_EXE")) is not None:
-            ribasim_exe = Path(ribasim_exe_env)
+        # Check RIBASIM_HOME environment variable
+        if (ribasim_home_env := os.environ.get("RIBASIM_HOME")) is not None:
+            ribasim_home = Path(ribasim_home_env)
+            ribasim_exe = ribasim_home / "bin/ribasim"
             cli = shutil.which(ribasim_exe.name, path=str(ribasim_exe.parent))
             if cli is None:
                 message_bar.pushMessage(
                     "Error",
-                    f"Ribasim CLI executable not found at RIBASIM_EXE='{ribasim_exe.resolve()}'. "
+                    f"Ribasim not found at RIBASIM_HOME='{ribasim_home.resolve()}'. "
                     "Please ensure the path is correct.",
                     level=Qgis.MessageLevel.Critical,
                 )
@@ -435,9 +436,9 @@ class DatasetWidget:
 
         message_bar.pushMessage(
             "Error",
-            "Ribasim CLI executable 'ribasim' not found. "
+            "Ribasim not found. "
             "Please ensure Ribasim is installed and available on your PATH, "
-            "or set the RIBASIM_EXE environment variable.",
+            "or set the RIBASIM_HOME environment variable.",
             level=Qgis.MessageLevel.Critical,
         )
         return None
