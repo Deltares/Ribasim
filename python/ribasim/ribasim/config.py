@@ -7,10 +7,10 @@ import numpy as np
 import pandas as pd
 import pydantic
 from geopandas import GeoDataFrame
-from pydantic import ConfigDict, Field, NonNegativeInt, model_validator
+from pydantic import ConfigDict, Field, NonNegativeInt
 from shapely.geometry import Point
 
-from ribasim.geometry import BasinAreaSchema, FlowBoundaryAreaSchema, NodeTable
+from ribasim.geometry import BasinAreaSchema, FlowBoundaryAreaSchema
 from ribasim.geometry.link import NodeData
 from ribasim.input_base import (
     ChildModel,
@@ -273,14 +273,8 @@ class Node(pydantic.BaseModel):
         return gdf
 
 
-class MultiNodeModel(NodeModel):
-    node: NodeTable = Field(default_factory=NodeTable)
+class MultiNodeModel(NodeModel, ChildModel):
     _node_type: str
-
-    @model_validator(mode="after")
-    def filter(self) -> "MultiNodeModel":
-        self.node.filter(self.__class__.__name__)
-        return self
 
     def add(
         self,
@@ -305,11 +299,11 @@ class MultiNodeModel(NodeModel):
             raise ValueError(
                 f"You can only add to a {self._node_type} MultiNodeModel when attached to a Model."
             )
+        assert hasattr(self._parent, "node"), "Parent model must have a node table"
 
-        assert hasattr(self._parent, "_used_node_ids")
         if node_id is None:
-            node_id = self._parent._used_node_ids.new_id()
-        elif node_id in self._parent._used_node_ids:
+            node_id = self._parent.node._used_node_ids.new_id()
+        elif node_id in self._parent.node._used_node_ids:
             warnings.warn(
                 f"Replacing node #{node_id}",
                 UserWarning,
@@ -336,13 +330,13 @@ class MultiNodeModel(NodeModel):
             node_type=self.__class__.__name__, node_id=node_id
         )
         node_table.set_crs(self._parent.crs, inplace=True)
-        if self.node.df is None:
-            self.node.df = node_table
+        if self._parent.node.df is None:
+            self._parent.node.df = node_table
         else:
-            df = _concat([self.node.df, node_table])
-            self.node.df = df
+            df = _concat([self._parent.node.df, node_table])
+            self._parent.node.df = df
 
-        self._parent._used_node_ids.add(node_id)
+        self._parent.node._used_node_ids.add(node_id)
         return self[node_id]
 
     def __getitem__(self, index: int) -> NodeData:
@@ -354,7 +348,7 @@ class MultiNodeModel(NodeModel):
                 f"{node_model_name} index must be an integer, not {indextype}"
             )
 
-        row = self.node.df.loc[index]
+        row = self._parent.node.df.loc[index]
         return NodeData(
             node_id=int(index), node_type=row["node_type"], geometry=row["geometry"]
         )

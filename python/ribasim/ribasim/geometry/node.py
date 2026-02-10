@@ -7,9 +7,11 @@ from matplotlib.patches import Patch
 from pandera.dtypes import Int32
 from pandera.typing import Index, Series
 from pandera.typing.geopandas import GeoSeries
+from pydantic import PrivateAttr, model_validator
 from shapely.geometry import Point
 
 from ribasim.input_base import SpatialTableModel
+from ribasim.utils import UsedIDs
 
 from .base import _GeoBaseSchema
 
@@ -36,6 +38,15 @@ class NodeSchema(_GeoBaseSchema):
 
 class NodeTable(SpatialTableModel[NodeSchema]):
     """The Ribasim nodes as Point geometries."""
+
+    _used_node_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
+
+    @model_validator(mode="after")
+    def _update_used_ids(self) -> "NodeTable":
+        if self.df is not None and len(self.df.index) > 0:
+            self._used_node_ids.node_ids.update(self.df.index)
+            self._used_node_ids.max_node_id = self.df.index.max()
+        return self
 
     def filter(self, nodetype: str):
         """Filter the node table based on the node type."""

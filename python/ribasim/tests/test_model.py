@@ -104,8 +104,8 @@ def test_plot(discrete_control_of_pid_control):
 def test_write_adds_fid_in_tables(basic, tmp_path):
     model_orig = basic
     # for node an explicit index was provided
-    nrow = len(model_orig.basin.node.df)
-    assert model_orig.basin.node.df.index.name == "node_id"
+    nrow = len(model_orig.node.df)
+    assert model_orig.node.df.index.name == "node_id"
 
     # for link an explicit index was provided
     nrow = len(model_orig.link.df)
@@ -135,13 +135,13 @@ def test_write_adds_fid_in_tables(basic, tmp_path):
 
 def test_node_table(basic):
     model = basic
-    assert model.flow_boundary.node.df.crs == CRS.from_epsg(28992)
-    node = model.node_table()
-    df = node.df
+    assert model.node.df.crs == CRS.from_epsg(28992)
+    df = model.node.df
     assert df.geometry.is_unique
     assert df.index.dtype == np.int32
     assert df.subnetwork_id.dtype == pd.Int32Dtype()
     assert df.node_type.iloc[0] == "Basin"
+    df.sort_index(inplace=True)
     assert df.node_type.iloc[-1] == "LevelBoundary"
     assert df.crs == CRS.from_epsg(28992)
 
@@ -242,8 +242,8 @@ def test_to_crs(bucket: Model):
     model.to_crs("EPSG:4326")
 
     # Assert that the bucket is still at Deltares' headquarter
-    assert model.basin.node.df["geometry"].iloc[0].x == pytest.approx(4.38, abs=0.1)
-    assert model.basin.node.df["geometry"].iloc[0].y == pytest.approx(51.98, abs=0.1)
+    assert model.node.df["geometry"].iloc[0].x == pytest.approx(4.38, abs=0.1)
+    assert model.node.df["geometry"].iloc[0].y == pytest.approx(51.98, abs=0.1)
 
 
 def test_styles(tabulated_rating_curve: Model, tmp_path):
@@ -305,7 +305,7 @@ def test_model_diff(basic):
     with pytest.raises(ValueError):
         nbasic.diff(basic.solver)
     with pytest.raises(ValueError):
-        basic.basin.static.diff(basic.basin.node)
+        basic.basin.static.diff(basic.node)
 
     # Change the solver settings and compare
     nbasic.solver.saveat = 0
@@ -346,7 +346,8 @@ def test_model_diff(basic):
     x = nbasic.diff(basic)
     assert isinstance(x, dict)
     assert "basin" in x
-    assert len(x) == 1  # only basin is different
+    assert "node" in x
+    assert len(x) == 2  # basin and node are different
     assert "static" in x["basin"]
     assert "diff" in x["basin"]["static"]
     assert isinstance(x["basin"]["static"]["diff"], Compare)
