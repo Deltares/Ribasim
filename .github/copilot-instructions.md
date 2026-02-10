@@ -52,7 +52,7 @@ See also the developer docs at `docs/dev`.
 ### Build & Development
 - **Pixi**: Primary package/environment manager, also used to run e.g. tests via tasks. (see `pixi.toml`)
 - **Julia Package Manager**: For Julia dependencies. `Project.toml` has all dev dependencies and `core/Project.toml` the Ribasim core dependencies.
-- **Pre-commit**: Code quality hooks
+- **Prek**: Code quality hooks
 - **Pytest**: Python testing
 - **Quarto**: Documentation generation
 

@@ -1,5 +1,12 @@
+[default]
+extend-ignore-re = [
+  ".*accessKeyID.*",  # Ignore lines with access key IDs
+]
+
 [default.extend-words]
 # Ignore false-positives
+certifi = "certifi"
 Missings = "Missings"
 stichting = "stichting"
+threed = "threed"
 typ = "typ"

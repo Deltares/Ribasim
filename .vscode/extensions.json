@@ -1,8 +1,8 @@
 {
     "recommendations": [
+        "aviatesk.jetls-client",
         "charliermarsh.ruff",
         "julialang.language-julia",
-        "aviatesk.jetls-client",
         "ms-python.mypy-type-checker",
         "ms-python.python",
         "ms-toolsai.jupyter",
@@ -12,6 +12,6 @@
         "samuelcolvin.jinjahtml",
         "streetsidesoftware.code-spell-checker",
         "tamasfe.even-better-toml",
-        "yy0931.vscode-sqlite3-editor",
+        "yy0931.vscode-sqlite3-editor"
     ]
 }
