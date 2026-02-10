@@ -1,34 +1,59 @@
 exclude: 'core/test/data/allocation_problems'
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+  - repo: builtin
     hooks:
       - id: check-added-large-files
       - id: check-case-conflict
       - id: check-yaml
       - id: check-toml
+      - id: check-json
+      - id: check-xml
+      - id: mixed-line-ending
+      - id: fix-byte-order-marker
+      - id: detect-private-key
+      - id: check-symlinks
       - id: check-merge-conflict
-      - id: check-vcs-permalinks
       - id: end-of-file-fixer
         exclude: '.teamcity'
       - id: trailing-whitespace
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.14
+  - repo: local
     hooks:
       - id: ruff-check
+        name: ruff check
+        description: Lint Python code and auto-fix issues
+        entry: ruff check --force-exclude
+        args: [--fix]
+        language: system
         types_or: [python, pyi, jupyter]
-        args: [--fix, --exit-non-zero-on-fix]
+        require_serial: true
       - id: ruff-format
+        name: ruff format
+        description: Format Python code
+        entry: ruff format --force-exclude
+        language: system
         types_or: [python, pyi, jupyter]
-  - repo: https://github.com/google/yamlfmt
-    rev: v0.21.0
-    hooks:
+        require_serial: true
       - id: yamlfmt
-  - repo: https://github.com/kynan/nbstripout
-    rev: 0.9.0
-    hooks:
+        name: yamlfmt
+        description: Format YAML files
+        entry: yamlfmt
+        language: system
+        types: [yaml]
       - id: nbstripout
-  - repo: https://github.com/adhtruong/mirrors-typos
-    rev: v1.42.3
-    hooks:
+        name: nbstripout
+        description: Strip Jupyter notebook outputs
+        entry: nbstripout
+        language: system
+        types: [jupyter]
       - id: typos
+        name: typos
+        description: Fix spelling mistakes
+        language: system
+        entry: typos
+        args: [--write-changes, --force-exclude]
+        types: [text]
+        stages: [pre-commit, pre-merge-commit, pre-push, manual]
+  - repo: https://github.com/fredrikekre/runic-pre-commit
+    rev: v2.0.1
+    hooks:
+      - id: runic

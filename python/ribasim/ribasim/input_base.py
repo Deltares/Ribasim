@@ -27,7 +27,6 @@ from pydantic import (
     field_validator,
     model_serializer,
     model_validator,
-    validate_call,
 )
 
 import ribasim
@@ -225,18 +224,36 @@ class FileModel(BaseModel, ABC):
         else:
             return value
 
-    @validate_call
-    def set_filepath(self, filepath: Path) -> None:
-        """Set the filepath of this instance.
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Override to handle filepath changes and notify parents."""
+        # Check if we're setting filepath and need validation
+        if name == "filepath" and hasattr(self, "model_config"):
+            # Disable validation temporarily to avoid triggering _check_filepath
+            validate_assignment = self.model_config.get("validate_assignment", True)
+            if validate_assignment and value is not None:
+                self.model_config["validate_assignment"] = False
+                super().__setattr__(name, value)
+                self.model_config["validate_assignment"] = True
+                # Notify parents after filepath is set
+                self._notify_parent_of_filepath_change()
+                return
 
-        Args:
-            filepath (Path): The filepath to set.
-        """
-        # Disable assignment validation, which would
-        # otherwise trigger check_filepath() and _load() again.
-        self.model_config["validate_assignment"] = False
-        self.filepath = filepath
-        self.model_config["validate_assignment"] = True
+        # Normal attribute assignment
+        super().__setattr__(name, value)
+
+    def _notify_parent_of_filepath_change(self) -> None:
+        """Notify parent models that filepath has been set."""
+        if (
+            hasattr(self, "_parent")
+            and self._parent is not None
+            and hasattr(self, "_parent_field")
+            and self._parent_field is not None
+        ):
+            # Mark this field as set in the parent
+            self._parent.model_fields_set.add(self._parent_field)
+            # Recursively notify grandparent
+            if hasattr(self._parent, "_notify_parent_of_filepath_change"):
+                self._parent._notify_parent_of_filepath_change()
 
     @field_serializer("filepath")
     def _serialize_path(self, path: Path) -> str:
@@ -261,7 +278,25 @@ class FileModel(BaseModel, ABC):
         raise NotImplementedError()
 
 
-class TableModel[TableT: _BaseSchema](FileModel):
+class ChildModel(BaseModel):
+    _parent: BaseModel | None = None
+    _parent_field: str | None = None
+
+    def _notify_parent_of_filepath_change(self) -> None:
+        """Notify parent that this model's fields have changed."""
+        if self._parent is not None and self._parent_field is not None:
+            self._parent.model_fields_set.add(self._parent_field)
+            if hasattr(self._parent, "_notify_parent_of_filepath_change"):
+                self._parent._notify_parent_of_filepath_change()
+
+    @model_validator(mode="after")
+    def _check_parent(self) -> "ChildModel":
+        if self._parent is not None and self._parent_field is not None:
+            self._parent.model_fields_set.update({self._parent_field})
+        return self
+
+
+class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
     _sort_keys: list[str] = PrivateAttr(default=[])
 
@@ -326,7 +361,10 @@ class TableModel[TableT: _BaseSchema](FileModel):
 
     @model_serializer
     def _set_model(self) -> "str | None":
-        return self.filepath.as_posix() if self.filepath is not None else None
+        # Serialize filepath if it's set, regardless of whether table has data
+        if self.filepath is not None:
+            return self.filepath.as_posix()
+        return None
 
     @classmethod
     def tablename(cls) -> str:
@@ -395,6 +433,9 @@ class TableModel[TableT: _BaseSchema](FileModel):
         db_path = context_file_writing.get().get("database")
         self.sort()
         if self.filepath is not None:
+            # Only write to external file if table has data
+            if self.df is None or len(self.df) == 0:
+                return  # Skip writing filepath for empty tables
             suffix = self.filepath.suffix.lower()
             if suffix == ".nc":
                 self._write_netcdf(self.filepath, directory, input_dir)
@@ -601,19 +642,18 @@ class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
             _add_styles_to_geopackage(connection, self.tablename())
 
 
-class ChildModel(BaseModel):
-    _parent: BaseModel | None = None
-    _parent_field: str | None = None
-
-    @model_validator(mode="after")
-    def _check_parent(self) -> "ChildModel":
-        if self._parent is not None and self._parent_field is not None:
-            self._parent.model_fields_set.update({self._parent_field})
-        return self
-
-
 class NodeModel(ChildModel):
     """Base class to handle combining the tables for a single node type."""
+
+    @model_validator(mode="after")
+    def _set_table_parent(self) -> "NodeModel":
+        """Set parent reference on all TableModel children."""
+        for key in self._fields():
+            attr = getattr(self, key)
+            if isinstance(attr, TableModel):
+                attr._parent = self
+                attr._parent_field = key
+        return self
 
     @model_serializer(mode="wrap")
     def set_modeld(
