@@ -40,7 +40,6 @@ from ribasim.config import (
     LinearResistance,
     Logging,
     ManningResistance,
-    MultiNodeModel,
     Outlet,
     PidControl,
     Pump,
@@ -55,6 +54,7 @@ from ribasim.geometry.link import LinkSchema, LinkTable
 from ribasim.geometry.node import NodeSchema, NodeTable
 from ribasim.input_base import (
     FileModel,
+    NodeModel,
     ParentModel,
     SpatialTableModel,
     context_file_loading,
@@ -151,7 +151,7 @@ class Model(FileModel, ParentModel):
         return v
 
     @model_validator(mode="after")
-    def _ensure_spatial_table_is_present(self) -> "Model":
+    def _ensure_topology_tables_are_present(self) -> "Model":
         if self.link.df is None:
             self.link.df = GeoDataFrame[LinkSchema](
                 index=pd.Index([], name="link_id"),
@@ -165,6 +165,11 @@ class Model(FileModel, ParentModel):
             )
         self.node.df = self.node.df.set_geometry("geometry", crs=self.crs)
         return self
+
+    def node_table(self):
+        """Return the node table of the model."""
+        warnings.warn("Use `model.node` instead", DeprecationWarning, stacklevel=2)
+        return self.node
 
     @field_serializer("input_dir", "results_dir")
     def _serialize_path(self, path: Path) -> str:
@@ -181,7 +186,7 @@ class Model(FileModel, ParentModel):
         self.model_config["validate_assignment"] = True
         self.model_fields_set.update({"input_dir", "results_dir"})
 
-        # Finally we add all MultiNodeModel children to the model_fields_set,
+        # Finally we add all NodeModel children to the model_fields_set,
         # so that they are always included in the repr and written to TOML when they have data.
         for attr, child in self._children().items():
             if isinstance(child, ParentModel):
@@ -199,7 +204,7 @@ class Model(FileModel, ParentModel):
             if isinstance(attr, LinkTable):
                 content.append(f"{INDENT}{field}=Link(...),")
             else:
-                if isinstance(attr, MultiNodeModel):
+                if isinstance(attr, NodeModel):
                     # Skip unused node types
                     continue
                 content.append(f"{INDENT}{field}={attr!r},")
@@ -315,11 +320,11 @@ class Model(FileModel, ParentModel):
         """Remove a link from the model."""
         self.link._remove_link_id(link_id)
 
-    def _nodes(self) -> Generator[MultiNodeModel, None, None]:
-        """Return all non-empty MultiNodeModel instances."""
+    def _nodes(self) -> Generator[NodeModel, None, None]:
+        """Return all non-empty NodeModel instances."""
         for key in self.model_fields_set:
             attr = getattr(self, key)
-            if isinstance(attr, MultiNodeModel):
+            if isinstance(attr, NodeModel):
                 yield attr
 
     @classmethod

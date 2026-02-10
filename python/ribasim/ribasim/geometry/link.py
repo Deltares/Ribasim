@@ -1,5 +1,4 @@
 import warnings
-from dataclasses import dataclass
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -13,10 +12,10 @@ from pandera.dtypes import Int32
 from pandera.typing import Index, Series
 from pandera.typing.geopandas import GeoDataFrame, GeoSeries
 from pydantic import NonNegativeInt, PrivateAttr, model_validator
-from shapely.geometry import LineString, MultiLineString, Point
+from shapely.geometry import LineString, MultiLineString
 
 from ribasim.db_utils import _get_db_schema_version
-from ribasim.input_base import SpatialTableModel
+from ribasim.input_base import NodeData, SpatialTableModel
 from ribasim.utils import UsedIDs, _concat
 from ribasim.validation import (
     can_connect,
@@ -36,16 +35,6 @@ SPATIALCONTROLNODETYPES = {
     "LevelDemand",
     "PidControl",
 }
-
-
-@dataclass
-class NodeData:
-    node_id: int
-    node_type: str
-    geometry: Point
-
-    def __repr__(self) -> str:
-        return f"{self.node_type} #{self.node_id}"
 
 
 class LinkSchema(_GeoBaseSchema):

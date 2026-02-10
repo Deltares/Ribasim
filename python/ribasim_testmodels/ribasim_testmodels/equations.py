@@ -1,8 +1,8 @@
 from typing import Any
 
 import numpy as np
-from ribasim.config import Experimental, Node, Solver
-from ribasim.input_base import TableModel
+from ribasim.config import Experimental, Solver
+from ribasim.input_base import Node, TableModel
 from ribasim.model import Model
 from ribasim.nodes import (
     basin,

@@ -1,5 +1,4 @@
-from ribasim import Model
-from ribasim.config import Node
+from ribasim import Model, Node
 from ribasim.nodes import (
     basin,
     level_boundary,

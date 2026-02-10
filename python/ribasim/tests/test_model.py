@@ -13,8 +13,7 @@ from pydantic import ValidationError
 from pyproj import CRS
 from ribasim import Node
 from ribasim.config import Solver
-from ribasim.geometry.link import NodeData
-from ribasim.input_base import esc_id
+from ribasim.input_base import NodeData, esc_id
 from ribasim.model import Model
 from ribasim.nodes import basin
 from ribasim_testmodels import (

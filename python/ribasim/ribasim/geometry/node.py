@@ -52,7 +52,7 @@ class NodeTable(SpatialTableModel[NodeSchema]):
         """Filter the node table based on the node type."""
         if self.df is not None:
             mask = self.df[self.df["node_type"] != nodetype].index
-            self.df.drop(mask, inplace=True)
+            return self.df.drop(mask)
 
     def plot_allocation_networks(
         self, ax=None, zorder=None

@@ -1,17 +1,8 @@
-import numbers
-import warnings
-from collections.abc import Sequence
 from enum import Enum
 
-import numpy as np
-import pandas as pd
-import pydantic
-from geopandas import GeoDataFrame
-from pydantic import ConfigDict, Field, NonNegativeInt
-from shapely.geometry import Point
+from pydantic import Field
 
 from ribasim.geometry import BasinAreaSchema, FlowBoundaryAreaSchema
-from ribasim.geometry.link import NodeData
 from ribasim.input_base import (
     ChildModel,
     NodeModel,
@@ -59,7 +50,6 @@ from ribasim.schemas import (
     UserDemandStaticSchema,
     UserDemandTimeSchema,
 )
-from ribasim.utils import _concat, _pascal_to_snake
 
 
 class RoutePriority(ChildModel):
@@ -209,158 +199,13 @@ class Experimental(ChildModel):
     allocation: bool = False
 
 
-class Node(pydantic.BaseModel):
-    """
-    Defines a node for the model.
-
-    Attributes
-    ----------
-    node_id : NonNegativeInt | None
-        Integer ID of the node. Must be unique for the model.
-    geometry : shapely.geometry.Point
-        The coordinates of the node.
-    name : str
-        An optional name of the node.
-    subnetwork_id : int
-        Optionally adds this node to a subnetwork, which is input for the allocation algorithm.
-    route_priority : int
-        Optionally overrides the route priority for this node, which is used in the allocation algorithm.
-    cyclic_time : bool
-        Optionally extrapolate forcing timeseries periodically. Defaults to False.
-    """
-
-    node_id: NonNegativeInt | None = None
-    geometry: Point
-    name: str = ""
-    subnetwork_id: int | None = None
-    route_priority: int | None = None
-    cyclic_time: bool = False
-
-    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
-
-    def __init__(
-        self,
-        node_id: NonNegativeInt | None = None,
-        geometry: Point | None = None,
-        **kwargs,
-    ) -> None:
-        if geometry is None:
-            geometry = Point()
-        if geometry.is_empty:
-            raise (ValueError("Node geometry must be a valid Point"))
-        elif geometry.has_z:
-            # Remove any Z coordinate, this will cause issues connecting 2D and 3D nodes
-            geometry = Point(geometry.x, geometry.y)
-        super().__init__(node_id=node_id, geometry=geometry, **kwargs)
-
-    def into_geodataframe(self, node_type: str, node_id: int) -> GeoDataFrame:
-        extra = self.model_extra if self.model_extra is not None else {}
-        gdf = GeoDataFrame(
-            data={
-                "node_id": pd.Series([node_id], dtype=np.int32),
-                "node_type": pd.Series([node_type], dtype=str),
-                "name": pd.Series([self.name], dtype=str),
-                "subnetwork_id": pd.Series([self.subnetwork_id], dtype=pd.Int32Dtype()),
-                "route_priority": pd.Series(
-                    [self.route_priority], dtype=pd.Int32Dtype()
-                ),
-                "cyclic_time": pd.Series([self.cyclic_time], dtype=bool),
-                **extra,
-            },
-            geometry=[self.geometry],
-        )
-        gdf.set_index("node_id", inplace=True)
-        return gdf
+class Terminal(NodeModel): ...
 
 
-class MultiNodeModel(NodeModel, ChildModel):
-    _node_type: str
-
-    def add(
-        self,
-        node: Node,
-        tables: Sequence[TableModel] | None = None,  # type: ignore[type-arg]
-    ) -> NodeData:
-        """Add a node and the associated data to the model.
-
-        If a node with the same Node ID already exists, it will be replaced (with a warning).
-
-        Parameters
-        ----------
-        node : Ribasim.Node
-        tables : Sequence[TableModel[Any]] | None
-        """
-        if tables is None:
-            tables = []
-
-        node_id = node.node_id
-
-        if self._parent is None:
-            raise ValueError(
-                f"You can only add to a {self._node_type} MultiNodeModel when attached to a Model."
-            )
-        assert hasattr(self._parent, "node"), "Parent model must have a node table"
-
-        if node_id is None:
-            node_id = self._parent.node._used_node_ids.new_id()
-        elif node_id in self._parent.node._used_node_ids:
-            warnings.warn(
-                f"Replacing node #{node_id}",
-                UserWarning,
-                stacklevel=2,
-            )
-            # Remove the existing node from all node types and their tables
-            self._parent._remove_node_id(node_id)  # type: ignore[attr-defined]
-
-        assert hasattr(self._parent, "crs")
-        for table in tables:
-            member_name = _pascal_to_snake(table.__class__.__name__)
-            existing_member = getattr(self, member_name)
-            existing_table = (
-                existing_member.df if existing_member.df is not None else pd.DataFrame()
-            )
-            assert table.df is not None
-            table_to_append = table.df.assign(node_id=node_id)
-            if isinstance(table_to_append, GeoDataFrame):
-                table_to_append.set_crs(self._parent.crs, inplace=True)
-            new_table = _concat([existing_table, table_to_append], ignore_index=True)
-            setattr(self, member_name, new_table)
-
-        node_table = node.into_geodataframe(
-            node_type=self.__class__.__name__, node_id=node_id
-        )
-        node_table.set_crs(self._parent.crs, inplace=True)
-        if self._parent.node.df is None:
-            self._parent.node.df = node_table
-        else:
-            df = _concat([self._parent.node.df, node_table])
-            self._parent.node.df = df
-
-        self._parent.node._used_node_ids.add(node_id)
-        return self[node_id]
-
-    def __getitem__(self, index: int) -> NodeData:
-        # Unlike TableModel, support only indexing single rows.
-        if not isinstance(index, numbers.Integral):
-            node_model_name = type(self).__name__
-            indextype = type(index).__name__
-            raise TypeError(
-                f"{node_model_name} index must be an integer, not {indextype}"
-            )
-
-        row = self._parent.node.df.loc[index]
-        return NodeData(
-            node_id=int(index), node_type=row["node_type"], geometry=row["geometry"]
-        )
+class Junction(NodeModel): ...
 
 
-class Terminal(MultiNodeModel): ...
-
-
-class Junction(MultiNodeModel): ...
-
-
-class PidControl(MultiNodeModel):
+class PidControl(NodeModel):
     static: TableModel[PidControlStaticSchema] = Field(
         default_factory=TableModel[PidControlStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "control_state"]},
@@ -371,7 +216,7 @@ class PidControl(MultiNodeModel):
     )
 
 
-class LevelBoundary(MultiNodeModel):
+class LevelBoundary(NodeModel):
     static: TableModel[LevelBoundaryStaticSchema] = Field(
         default_factory=TableModel[LevelBoundaryStaticSchema],
         json_schema_extra={"sort_keys": ["node_id"]},
@@ -386,7 +231,7 @@ class LevelBoundary(MultiNodeModel):
     )
 
 
-class Pump(MultiNodeModel):
+class Pump(NodeModel):
     static: TableModel[PumpStaticSchema] = Field(
         default_factory=TableModel[PumpStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "control_state"]},
@@ -397,7 +242,7 @@ class Pump(MultiNodeModel):
     )
 
 
-class TabulatedRatingCurve(MultiNodeModel):
+class TabulatedRatingCurve(NodeModel):
     static: TableModel[TabulatedRatingCurveStaticSchema] = Field(
         default_factory=TableModel[TabulatedRatingCurveStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "control_state", "level"]},
@@ -408,7 +253,7 @@ class TabulatedRatingCurve(MultiNodeModel):
     )
 
 
-class UserDemand(MultiNodeModel):
+class UserDemand(NodeModel):
     static: TableModel[UserDemandStaticSchema] = Field(
         default_factory=TableModel[UserDemandStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "demand_priority"]},
@@ -423,7 +268,7 @@ class UserDemand(MultiNodeModel):
     )
 
 
-class LevelDemand(MultiNodeModel):
+class LevelDemand(NodeModel):
     static: TableModel[LevelDemandStaticSchema] = Field(
         default_factory=TableModel[LevelDemandStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "demand_priority"]},
@@ -434,7 +279,7 @@ class LevelDemand(MultiNodeModel):
     )
 
 
-class FlowBoundary(MultiNodeModel):
+class FlowBoundary(NodeModel):
     static: TableModel[FlowBoundaryStaticSchema] = Field(
         default_factory=TableModel[FlowBoundaryStaticSchema],
         json_schema_extra={"sort_keys": ["node_id"]},
@@ -453,7 +298,7 @@ class FlowBoundary(MultiNodeModel):
     )
 
 
-class FlowDemand(MultiNodeModel):
+class FlowDemand(NodeModel):
     static: TableModel[FlowDemandStaticSchema] = Field(
         default_factory=TableModel[FlowDemandStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "demand_priority"]},
@@ -464,7 +309,7 @@ class FlowDemand(MultiNodeModel):
     )
 
 
-class Basin(MultiNodeModel):
+class Basin(NodeModel):
     profile: TableModel[BasinProfileSchema] = Field(
         default_factory=TableModel[BasinProfileSchema],
         json_schema_extra={"sort_keys": ["node_id", "level"]},
@@ -507,14 +352,14 @@ class Basin(MultiNodeModel):
     )
 
 
-class ManningResistance(MultiNodeModel):
+class ManningResistance(NodeModel):
     static: TableModel[ManningResistanceStaticSchema] = Field(
         default_factory=TableModel[ManningResistanceStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "control_state"]},
     )
 
 
-class DiscreteControl(MultiNodeModel):
+class DiscreteControl(NodeModel):
     variable: TableModel[DiscreteControlVariableSchema] = Field(
         default_factory=TableModel[DiscreteControlVariableSchema],
         json_schema_extra={
@@ -538,7 +383,7 @@ class DiscreteControl(MultiNodeModel):
     )
 
 
-class Outlet(MultiNodeModel):
+class Outlet(NodeModel):
     static: TableModel[OutletStaticSchema] = Field(
         default_factory=TableModel[OutletStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "control_state"]},
@@ -549,14 +394,14 @@ class Outlet(MultiNodeModel):
     )
 
 
-class LinearResistance(MultiNodeModel):
+class LinearResistance(NodeModel):
     static: TableModel[LinearResistanceStaticSchema] = Field(
         default_factory=TableModel[LinearResistanceStaticSchema],
         json_schema_extra={"sort_keys": ["node_id", "control_state"]},
     )
 
 
-class ContinuousControl(MultiNodeModel):
+class ContinuousControl(NodeModel):
     variable: TableModel[ContinuousControlVariableSchema] = Field(
         default_factory=TableModel[ContinuousControlVariableSchema],
         json_schema_extra={"sort_keys": ["node_id", "listen_node_id", "variable"]},
