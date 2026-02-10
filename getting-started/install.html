@@ -244,7 +244,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#windows-installation-script-recommended" id="toc-windows-installation-script-recommended" class="nav-link" data-scroll-target="#windows-installation-script-recommended"><span class="header-section-number">2.1</span> Windows installation script (recommended)</a></li>
   <li><a href="#manual-installation" id="toc-manual-installation" class="nav-link" data-scroll-target="#manual-installation"><span class="header-section-number">2.2</span> Manual installation</a></li>
   <li><a href="#adding-ribasim-to-path-on-windows" id="toc-adding-ribasim-to-path-on-windows" class="nav-link" data-scroll-target="#adding-ribasim-to-path-on-windows"><span class="header-section-number">2.3</span> Adding Ribasim to Path on Windows</a></li>
-  <li><a href="#ribasim-exe" id="toc-ribasim-exe" class="nav-link" data-scroll-target="#ribasim-exe"><span class="header-section-number">2.4</span> RIBASIM_EXE environment variable</a></li>
+  <li><a href="#ribasim-home" id="toc-ribasim-home" class="nav-link" data-scroll-target="#ribasim-home"><span class="header-section-number">2.4</span> RIBASIM_HOME environment variable</a></li>
   </ul></li>
   <li><a href="#sec-install-python" id="toc-sec-install-python" class="nav-link" data-scroll-target="#sec-install-python"><span class="header-section-number">3</span> Install Ribasim Python</a></li>
   <li><a href="#sec-install-qgis-plugin" id="toc-sec-install-qgis-plugin" class="nav-link" data-scroll-target="#sec-install-qgis-plugin"><span class="header-section-number">4</span> Install Ribasim QGIS plugin</a>
@@ -378,8 +378,8 @@ Note
 <li>Ribasim executable - Linux: <a href="https://github.com/Deltares/Ribasim/releases/download/v2025.6.0/ribasim_linux.zip">ribasim_linux.zip</a></li>
 </ul>
 <p>Note that we currently only support and provide binaries for Windows and Linux, for the x86_64 architecture.</p>
-<p>After downloading, extract/unzip the zip file to a directory of your choice, for example <code>C:\bin\ribasim\</code>. Unless you add it to the Path as instructed below, we recommend avoiding spaces in the path.</p>
-<p>To check whether the installation was performed successfully, open a terminal and go to the path where the executable is for example <code>C:\bin\ribasim\</code>. If you are using cmd.exe type <code>ribasim --help</code>, or for PowerShell <code>./ribasim</code>.</p>
+<p>After downloading, extract/unzip the zip file to a directory of your choice, for example <code>C:\ribasim\</code>. Unless you add it to the Path as instructed below, we recommend avoiding spaces in the path.</p>
+<p>To check whether the installation was performed successfully, open a terminal and go to the path where the executable is for example <code>C:\ribasim\</code>. If you are using cmd.exe type <code>ribasim --help</code>, or for PowerShell <code>./ribasim</code>.</p>
 <p>This will give the following message if it is installed correctly:</p>
 <pre><code>Usage: ribasim [OPTIONS] &lt;TOML_PATH&gt;
 
@@ -393,34 +393,33 @@ Options:
 <section id="adding-ribasim-to-path-on-windows" class="level2" data-number="2.3">
 <h2 data-number="2.3" class="anchored" data-anchor-id="adding-ribasim-to-path-on-windows"><span class="header-section-number">2.3</span> Adding Ribasim to Path on Windows</h2>
 <p>If you used the installation script, Ribasim is already on your PATH. For manual installations, you can add the Ribasim executable directory to your Windows Path environment variable.</p>
-<p>The Path environment variable tells Windows where to look for programs when you type their name in a terminal. By adding Ribasim to your Path, you can type <code>ribasim</code> from any folder instead of having to navigate to the Ribasim folder first or typing the full path like <code>C:\bin\ribasim\ribasim.exe</code>.</p>
+<p>The Path environment variable tells Windows where to look for programs when you type their name in a terminal. By adding Ribasim to your Path, you can type <code>ribasim</code> from any folder instead of having to navigate to the Ribasim folder first or typing the full path like <code>C:\ribasim\bin\ribasim.exe</code>.</p>
 <ul>
 <li>Search “Environment Variables” in the Windows search bar</li>
 <li>Click “Edit the system environment variables”</li>
 <li>Click on the “Advanced” tab</li>
 <li>Click the “Environment Variables…” button at the bottom</li>
 <li>In the top section “User variables”, scroll down and find “Path”, then click “Edit…”</li>
-<li>Click “New” and enter the full path to your Ribasim directory (e.g., <code>C:\bin\ribasim</code>, not <code>C:\bin\ribasim\ribasim.exe</code>)</li>
+<li>Click “New” and enter the full path to your Ribasim bin directory (e.g., <code>C:\ribasim\bin</code>)</li>
 <li>Click “OK” three times to close all dialogs</li>
 <li>Close any open terminals/command prompts and open a new one</li>
 </ul>
 </section>
-<section id="ribasim-exe" class="level2" data-number="2.4">
-<h2 data-number="2.4" class="anchored" data-anchor-id="ribasim-exe"><span class="header-section-number">2.4</span> RIBASIM_EXE environment variable</h2>
-<p>The QGIS plugin and the Python <code>run_ribasim</code> function look for the Ribasim executable in the following order:</p>
+<section id="ribasim-home" class="level2" data-number="2.4">
+<h2 data-number="2.4" class="anchored" data-anchor-id="ribasim-home"><span class="header-section-number">2.4</span> RIBASIM_HOME environment variable</h2>
+<p>The <a href="../reference/python/run_ribasim.html#ribasim.run_ribasim"><code>run_ribasim</code></a> function in Ribasim Python looks for the Ribasim executable in the following order:</p>
 <ol type="1">
-<li>The <code>RIBASIM_EXE</code> environment variable (if set)</li>
+<li>The <code>RIBASIM_HOME</code> environment variable (if set)</li>
 <li>The system <code>PATH</code></li>
 </ol>
-<p>If Ribasim is on your PATH but cannot be found (this can happen because QGIS may not inherit your user PATH), you can set the <code>RIBASIM_EXE</code> environment variable to point directly to the Ribasim executable.</p>
-<p>To set <code>RIBASIM_EXE</code>:</p>
+<p>To set <code>RIBASIM_HOME</code>:</p>
 <ul>
 <li>Search “Environment Variables” in the Windows search bar</li>
 <li>Click “Edit the system environment variables”</li>
 <li>Click the “Environment Variables…” button</li>
 <li>In the top section “User variables”, click “New…”</li>
-<li>Set Variable name to <code>RIBASIM_EXE</code></li>
-<li>Set Variable value to the <strong>full path to the executable</strong> (e.g., <code>C:\bin\ribasim\ribasim.exe</code>)</li>
+<li>Set Variable name to <code>RIBASIM_HOME</code></li>
+<li>Set Variable value to the <strong>path to the Ribasim home directory</strong> (e.g., <code>C:\ribasim</code>, the folder which contains a <code>bin</code> directory with <code>ribasim.exe</code>)</li>
 <li>Click “OK” three times to close all dialogs</li>
 <li>Restart QGIS for the change to take effect</li>
 </ul>

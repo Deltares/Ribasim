@@ -193,13 +193,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="ribasim.run_ribasim" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> run_ribasim</h1>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>run_ribasim(toml_path<span class="op">=</span><span class="va">None</span>, <span class="op">*</span>, ribasim_exe<span class="op">=</span><span class="va">None</span>, version<span class="op">=</span><span class="va">False</span>, threads<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>run_ribasim(toml_path<span class="op">=</span><span class="va">None</span>, <span class="op">*</span>, ribasim_home<span class="op">=</span><span class="va">None</span>, version<span class="op">=</span><span class="va">False</span>, threads<span class="op">=</span><span class="va">None</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Run the Ribasim CLI executable.</p>
 <section id="parameters" class="level2 doc-section doc-section-parameters" data-number="1.1">
 <h2 class="doc-section doc-section-parameters anchored" data-number="1.1" data-anchor-id="parameters"><span class="header-section-number">1.1</span> Parameters</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 7%">
+<col style="width: 8%">
 <col style="width: 12%">
 <col style="width: 73%">
 <col style="width: 6%">
@@ -220,9 +220,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>None</code></td>
 </tr>
 <tr class="even">
-<td>ribasim_exe</td>
+<td>ribasim_home</td>
 <td>str | Path | None</td>
-<td>Path to the Ribasim CLI executable. If not provided, first checks the RIBASIM_EXE environment variable, then searches PATH.</td>
+<td>Path to the Ribasim home directory. If not provided, first checks the RIBASIM_HOME environment variable, then searches PATH.</td>
 <td><code>None</code></td>
 </tr>
 <tr class="odd">
@@ -246,7 +246,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <colgroup>
 <col style="width: 4%">
 <col style="width: 18%">
-<col style="width: 76%">
+<col style="width: 77%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -259,7 +259,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td></td>
 <td>FileNotFoundError</td>
-<td>If the Ribasim CLI is not found via RIBASIM_EXE or on PATH (when ribasim_exe is not provided), or the toml_path does not exist.</td>
+<td>If the Ribasim CLI is not found via RIBASIM_HOME or on PATH (when ribasim_home is not provided), or the toml_path does not exist.</td>
 </tr>
 <tr class="even">
 <td></td>
@@ -277,7 +277,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="examples" class="level2 doc-section doc-section-examples" data-number="1.3">
 <h2 class="doc-section doc-section-examples anchored" data-number="1.3" data-anchor-id="examples"><span class="header-section-number">1.3</span> Examples</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> run_ribasim(<span class="st">"model.toml"</span>)</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> run_ribasim(<span class="st">"model.toml"</span>, ribasim_exe<span class="op">=</span><span class="st">"/path/to/ribasim"</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> run_ribasim(<span class="st">"model.toml"</span>, ribasim_home<span class="op">=</span><span class="st">"/path/to/ribasim"</span>)</span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> run_ribasim(version<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
