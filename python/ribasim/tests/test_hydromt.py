@@ -1,12 +1,15 @@
+"""HydroMT integration tests.
+
+HydroMT needs to be able to read and write partial Ribasim models.
+That means, only reading the toml, only reading the geopackage, or only reading
+the netcdf forcing data. The same applies for writing.
+
+File reading is done recursively through the pydantic model structure.
+"""
+
 from pathlib import Path
 
 from ribasim.model import Model
-
-# HydroMT needs to be able to read and write partial Ribasim models.
-# That means, only reading the toml, only reading the geopackage, or only reading the netcdf forcing data.
-# The same applies for writing.
-
-# File reading is done recursively through the pydantic model structure.
 
 
 def test_basic_components(basic_arrow, tmp_path):
@@ -64,11 +67,11 @@ def test_basic_lazy_read(basic, tmp_path):
     basic.write(toml_path)
 
     # Lazy model read yields only a config
-    # with empty spatial (node/link tables) and no other tables
+    # with empty spatial (node/link tables) tables and other tables None
     model = Model.read(toml_path, internal=False, external=False)
 
     assert len(model.node_table().df) == 0
-    assert len(model.link.df) == 0  # Link Table is always initialized
+    assert len(model.link.df) == 0
     assert model.basin.static.df is None
     assert model.basin.static.lazy
 

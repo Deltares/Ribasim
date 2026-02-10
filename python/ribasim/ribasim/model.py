@@ -387,6 +387,10 @@ class Model(FileModel, ParentModel):
         ----------
         filepath : str | PathLike[str]
             The path to the TOML file.
+        internal : bool, optional
+            Load data from the database. Default is True.
+        external : bool, optional
+            Load data from the NetCDF input files. Default is True.
         """
         if not Path(filepath).is_file():
             raise FileNotFoundError(f"File '{filepath}' does not exist.")
@@ -415,6 +419,12 @@ class Model(FileModel, ParentModel):
         ----------
         filepath : str | PathLike[str]
             A file path with .toml extension.
+        toml : bool, optional
+            Write the TOML configuration file. Default is True.
+        internal : bool, optional
+            Write the database. Default is True.
+        external : bool, optional
+            Write the NetCDF input files. Default is True.
         """
         if self.use_validation:
             self._validate_model()
