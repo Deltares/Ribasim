@@ -1,6 +1,7 @@
-exclude: 'core/test/data/allocation_problems'
+exclude: "core/test/data/allocation_problems"
 repos:
   - repo: builtin
+    rev: 0.0.1
     hooks:
       - id: check-added-large-files
       - id: check-case-conflict
@@ -14,7 +15,7 @@ repos:
       - id: check-symlinks
       - id: check-merge-conflict
       - id: end-of-file-fixer
-        exclude: '.teamcity'
+        exclude: ".teamcity"
       - id: trailing-whitespace
   - repo: local
     hooks:

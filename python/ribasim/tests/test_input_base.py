@@ -39,6 +39,16 @@ def test_filepath_appears_in_toml(tmp_path):
         crs="EPSG:28992",
     )
 
+    # Write the model
+    toml_path = tmp_path / "test_model" / "ribasim.toml"
+    model.write(toml_path)
+
+    # Verify TOML contains no filepath reference
+    with Path.open(toml_path, "rb") as f:
+        toml_data = tomli.load(f)
+
+    assert "basin" not in toml_data, "basin section should not be in TOML"
+
     model.basin.add(
         Node(1, Point(0, 0)),
         [basin.Profile(level=[0.0, 1.0, 2.0], area=[100.0, 500.0, 1000.0])],
@@ -48,7 +58,6 @@ def test_filepath_appears_in_toml(tmp_path):
     model.basin.profile.filepath = Path("profile_123.nc")
 
     # Write the model
-    toml_path = tmp_path / "test_model" / "ribasim.toml"
     model.write(toml_path)
 
     # Verify TOML contains the filepath reference

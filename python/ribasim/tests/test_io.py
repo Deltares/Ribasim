@@ -46,7 +46,7 @@ def test_basic(basic, tmp_path):
     assert toml_dict["ribasim_version"] == ribasim.__version__
 
     __assert_equal(model_orig.link.df, model_loaded.link.df)
-    __assert_equal(model_orig.node_table().df, model_loaded.node_table().df)
+    __assert_equal(model_orig.node.df, model_loaded.node.df)
     assert model_loaded.basin.time.df is None
 
 
@@ -125,7 +125,7 @@ def test_extra_spatial_columns():
 
     model.link.add(model.basin[1], model.user_demand[2], meta_foo=1)
     assert "meta_foo" in model.link.df.columns
-    assert "meta_id" in model.node_table().df.columns
+    assert "meta_id" in model.node.df.columns
 
     with pytest.raises(ValidationError):
         model.basin.add(
@@ -188,10 +188,9 @@ def test_node_autoincrement():
             ],
         )
     # Node 20 should now be a user_demand, not a basin
-    assert 20 in model.user_demand.node.df.index
+    assert 20 in model.node.df.index
     assert 20 in model.user_demand.static.df["node_id"].to_numpy()
     # Basin tables should be None since we replaced its only node
-    assert model.basin.node.df is None
     assert model.basin.state.df is None
 
     nbasin = model.basin.add(Node(geometry=Point(0, 0)), [basin.State(level=[1.0])])
@@ -223,7 +222,7 @@ def test_add_existing():
     model.basin.add(Node(11, Point(1, 0)), [basin.State(level=[2.0])])
 
     # Check that node_id 10 has the updated Point(0, 1) and level=1.1
-    assert model.basin.node.df.loc[10, "geometry"] == Point(0, 1)
+    assert model.node.df.loc[10, "geometry"] == Point(0, 1)
     state = model.basin.state.df
     assert state.loc[state["node_id"] == 10, "level"].iloc[0] == [1.1]
 
@@ -246,16 +245,16 @@ def test_add_existing():
     model.link.add(model.basin[10], model.user_demand[30], link_id=1)
 
     # Remove one Basin, not all
+    nnode = len(model.node.df)
     model.remove_node(11)
-    assert len(model.basin.node.df) == 1
-    assert 10 in model.basin.node.df.index
-    assert 11 not in model.basin.node.df.index
+    assert len(model.node.df) == nnode - 1
+    assert 10 in model.node.df.index
+    assert 11 not in model.node.df.index
     assert (model.basin.state.df["node_id"] == 10).any()
     assert not (model.basin.state.df["node_id"] == 11).any()
 
     # Remove the only Terminal
     model.remove_node(20)
-    assert model.terminal.node.df is None
 
     # Remove the only Link
     assert model.link.df is not None
@@ -264,7 +263,6 @@ def test_add_existing():
 
     # Remove the only UserDemand
     model._remove_node_id(30)
-    assert model.user_demand.node.df is None
     assert model.user_demand.static.df is None
 
     # Do nothing if the node doesn't exist
@@ -277,8 +275,8 @@ def test_node_autoincrement_existing_model(basic, tmp_path):
     model.write(tmp_path / "ribasim.toml")
     nmodel = Model.read(tmp_path / "ribasim.toml")
 
-    assert nmodel._used_node_ids.max_node_id == 17
-    assert nmodel._used_node_ids.node_ids == set(range(1, 18))
+    assert nmodel.node._used_node_ids.max_node_id == 17
+    assert nmodel.node._used_node_ids.node_ids == set(range(1, 18))
 
     assert nmodel.link._used_link_ids.max_node_id == 17
     assert nmodel.link._used_link_ids.node_ids == set(range(1, 18))
@@ -367,8 +365,9 @@ def test_roundtrip(trivial, tmp_path):
     assert (model2.link.df.index == [12, 15]).all()
 
     # check if all tables are the same
-    __assert_equal(model1.node_table().df, model2.node_table().df)
+    __assert_equal(model1.node.df, model2.node.df)
     __assert_equal(model1.link.df, model2.link.df)
+    assert list(model1._nodes()) == list(model2._nodes())
     for node1, node2 in zip(model1._nodes(), model2._nodes(), strict=True):
         for table1, table2 in zip(node1._tables(), node2._tables(), strict=True):
             __assert_equal(table1.df, table2.df)

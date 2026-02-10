@@ -7,7 +7,6 @@ from os import PathLike
 from pathlib import Path
 from typing import Any
 
-import geopandas as gpd
 import numpy as np
 import pandas as pd
 import tomli
@@ -20,7 +19,6 @@ from pydantic import (
     DirectoryPath,
     Field,
     FilePath,
-    PrivateAttr,
     field_serializer,
     field_validator,
     model_validator,
@@ -42,7 +40,6 @@ from ribasim.config import (
     LinearResistance,
     Logging,
     ManningResistance,
-    MultiNodeModel,
     Outlet,
     PidControl,
     Pump,
@@ -54,9 +51,8 @@ from ribasim.config import (
 )
 from ribasim.db_utils import _set_db_schema_version
 from ribasim.geometry.link import LinkSchema, LinkTable
-from ribasim.geometry.node import NodeTable
+from ribasim.geometry.node import NodeModel, NodeSchema, NodeTable
 from ribasim.input_base import (
-    ChildModel,
     FileModel,
     ParentModel,
     SpatialTableModel,
@@ -67,7 +63,6 @@ from ribasim.input_base import (
 )
 from ribasim.utils import (
     MissingOptionalModule,
-    UsedIDs,
     _add_cf_attributes,
     _concat,
     _link_lookup,
@@ -123,10 +118,9 @@ class Model(FileModel, ParentModel):
     terminal: Terminal = Field(default_factory=Terminal)
     user_demand: UserDemand = Field(default_factory=UserDemand)
 
+    node: NodeTable = Field(default_factory=NodeTable)
     link: LinkTable = Field(default_factory=LinkTable)
     use_validation: bool = Field(default=True, exclude=True)
-
-    _used_node_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
 
     @classmethod
     def allows_lazy(cls) -> bool:
@@ -168,25 +162,25 @@ class Model(FileModel, ParentModel):
         return v
 
     @model_validator(mode="after")
-    def _ensure_link_table_is_present(self) -> "Model":
+    def _ensure_topology_tables_are_present(self) -> "Model":
         if self.link.df is None:
             self.link.df = GeoDataFrame[LinkSchema](
                 index=pd.Index([], name="link_id"),
                 geometry=[],
             )
         self.link.df = self.link.df.set_geometry("geometry", crs=self.crs)
+        if self.node.df is None:
+            self.node.df = GeoDataFrame[NodeSchema](
+                index=pd.Index([], name="node_id"),
+                geometry=[],
+            )
+        self.node.df = self.node.df.set_geometry("geometry", crs=self.crs)
         return self
 
-    @model_validator(mode="after")
-    def _update_used_ids(self) -> "Model":
-        # Only update the used node IDs if we read from a database
-        if "database" in context_file_loading.get():
-            df = self.node_table().df
-            assert df is not None
-            if len(df.index) > 0:
-                self._used_node_ids.node_ids.update(df.index)
-                self._used_node_ids.max_node_id = df.index.max()
-        return self
+    def node_table(self):
+        """Return the node table of the model."""
+        warnings.warn("Use `model.node` instead", DeprecationWarning, stacklevel=2)
+        return self.node
 
     @field_serializer("input_dir", "results_dir")
     def _serialize_path(self, path: Path) -> str:
@@ -201,8 +195,13 @@ class Model(FileModel, ParentModel):
         self.model_config["validate_assignment"] = False
         self.ribasim_version = ribasim.__version__
         self.model_config["validate_assignment"] = True
-
         self.model_fields_set.update({"input_dir", "results_dir"})
+
+        # Finally we add all NodeModel children to the model_fields_set,
+        # so that they are always included in the repr and written to TOML when they have data.
+        for attr, child in self._children().items():
+            if isinstance(child, ParentModel):
+                self.model_fields_set.add(attr)
 
     def __repr__(self) -> str:
         """Generate a succinct overview of the Model content.
@@ -211,12 +210,12 @@ class Model(FileModel, ParentModel):
         """
         content = ["ribasim.Model("]
         INDENT = "    "
-        for field in self._fields():
+        for field in self.model_fields_set:
             attr = getattr(self, field)
             if isinstance(attr, LinkTable):
                 content.append(f"{INDENT}{field}=Link(...),")
             else:
-                if isinstance(attr, MultiNodeModel) and attr.node.df is None:
+                if isinstance(attr, NodeModel):
                     # Skip unused node types
                     continue
                 content.append(f"{INDENT}{field}={attr!r},")
@@ -262,8 +261,7 @@ class Model(FileModel, ParentModel):
             db_path.unlink(missing_ok=True)
 
             self.link.write()
-            node = self.node_table()
-
+            node = self.node
             assert node.df is not None
             node.write()
 
@@ -294,9 +292,8 @@ class Model(FileModel, ParentModel):
     def _apply_crs_function(self, function_name: str, crs: str) -> None:
         """Apply `function_name`, with `crs` as the first and only argument to all spatial tables."""
         getattr(self.link.df, function_name)(crs, inplace=True)
+        getattr(self.node.df, function_name)(crs, inplace=True)
         for sub in self._nodes():
-            if sub.node.df is not None:
-                getattr(sub.node.df, function_name)(crs, inplace=True)
             for table in sub._tables():
                 if isinstance(table, SpatialTableModel) and table.df is not None:
                     getattr(table.df, function_name)(crs, inplace=True)
@@ -315,22 +312,18 @@ class Model(FileModel, ParentModel):
         node_id : int
             The node ID to remove from the model
         """
+        assert self.node.df is not None
+        if node_id in self.node.df.index:
+            # Remove from node table
+            self.node.df = self.node.df.drop(node_id)
+
         for sub in self._nodes():
-            assert sub.node.df is not None
-            if node_id in sub.node.df.index:
-                # Remove from node table
-                sub.node.df = sub.node.df.drop(node_id)
-                if sub.node.df.empty:
-                    sub.node.df = None
-
-                # Remove from data tables
-                for table in sub._tables():
-                    if table.df is not None and "node_id" in table.df.columns:
-                        table.df = table.df[table.df["node_id"] != node_id]
-                        if table.df.empty:
-                            table.df = None
-
-                break
+            # Remove from data tables
+            for table in sub._tables():
+                if table.df is not None and "node_id" in table.df.columns:
+                    table.df = table.df[table.df["node_id"] != node_id]
+                    if table.df.empty:
+                        table.df = None
 
     def remove_node(self, node_id: int) -> None:
         """Remove a node from the model, including connected links."""
@@ -341,41 +334,12 @@ class Model(FileModel, ParentModel):
         """Remove a link from the model."""
         self.link._remove_link_id(link_id)
 
-    def node_table(self) -> NodeTable:
-        """Compute the full sorted NodeTable from all node types."""
-        df_chunks = [node.node.df for node in self._nodes()]
-        df = (
-            _concat(df_chunks)
-            if df_chunks
-            else gpd.GeoDataFrame(index=pd.Index([], name="node_id"), geometry=[])
-        )
-        node_table = NodeTable(df=df)
-        node_table._parent = self
-        node_table.sort()
-        assert node_table.df is not None
-        assert node_table.df.index.is_unique, (
-            f"node_id must be unique, the following ids are not {node_table.df.index[node_table.df.index.duplicated(keep=False)].unique()}"
-        )
-        return node_table
-
-    def _nodes(self) -> Generator[MultiNodeModel, None, None]:
-        """Return all non-empty MultiNodeModel instances."""
-        for key in self.__class__.model_fields:
+    def _nodes(self) -> Generator[NodeModel, None, None]:
+        """Return all non-empty NodeModel instances."""
+        for key in sorted(self.model_fields_set):
             attr = getattr(self, key)
-            if (
-                isinstance(attr, MultiNodeModel)
-                and attr.node.df is not None
-                # TODO: Model.read creates empty node tables (#1278)
-                and not attr.node.df.empty
-            ):
+            if isinstance(attr, NodeModel):
                 yield attr
-
-    def _children(self):
-        return {
-            k: getattr(self, k)
-            for k in self.__class__.model_fields
-            if isinstance(getattr(self, k), ChildModel)
-        }
 
     @classmethod
     def read(
@@ -448,10 +412,7 @@ class Model(FileModel, ParentModel):
 
     def _validate_model(self):
         df_link = self.link.df
-        df_chunks = [node.node.df for node in self._nodes()]
-        if len(df_chunks) == 0:
-            return
-        df_node = _concat(df_chunks)
+        df_node = self.node.df
 
         df_graph = df_link
         # Join df_link with df_node to get to_node_type
@@ -622,7 +583,7 @@ class Model(FileModel, ParentModel):
         """
         if self.filepath is None:
             raise FileNotFoundError("Model must be written to disk.")
-        return FilePath(self.filepath)
+        return Path(self.filepath)
 
     @property
     def results_extension(self) -> str:
@@ -701,7 +662,7 @@ class Model(FileModel, ParentModel):
             df_listen_link = _concat([df_listen_link, to_add])
 
         # Collect geometry data
-        node = self.node_table().df
+        node = self.node.df
         control_nodes_geometry = df_listen_link.merge(
             node,
             left_on=["control_node_id"],
@@ -756,7 +717,7 @@ class Model(FileModel, ParentModel):
             _, ax = plt.subplots()
             ax.axis("off")
 
-        node = self.node_table()
+        node = self.node
         self.link.plot(ax=ax, zorder=2)
         self.plot_control_listen(ax)
         node.plot(ax=ax, zorder=3)
@@ -806,7 +767,7 @@ class Model(FileModel, ParentModel):
         if add_flow and add_allocation:
             raise ValueError("Cannot add both allocation and flow results.")
 
-        node_df = self.node_table().df
+        node_df = self.node.df
         assert node_df is not None
 
         assert self.link.df is not None
@@ -961,7 +922,7 @@ class Model(FileModel, ParentModel):
     def _network_to_fews(self, region_home: DirectoryPath) -> None:
         """Write the Node and Link tables to shapefiles for use in Delft-FEWS."""
         df_link = self.link.df
-        df_node = self.node_table().df
+        df_node = self.node.df
         assert df_link is not None
         assert df_node is not None
 
