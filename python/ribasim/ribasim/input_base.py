@@ -1,12 +1,12 @@
 import operator
 import re
 from abc import ABC, abstractmethod
-from collections.abc import Callable
 from contextlib import closing
 from contextvars import ContextVar
+from dataclasses import dataclass
 from pathlib import Path
 from sqlite3 import connect
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar
 
 import geopandas as gpd
 import numpy as np
@@ -22,12 +22,12 @@ from pydantic import (
     DirectoryPath,
     Field,
     PrivateAttr,
-    ValidationInfo,
     field_serializer,
     field_validator,
     model_serializer,
     model_validator,
 )
+from shapely.geometry import Point
 
 import ribasim
 from ribasim.db_utils import (
@@ -186,6 +186,16 @@ class BaseModel(PydanticBaseModel):
             return NotImplemented
 
 
+@dataclass
+class NodeData:
+    node_id: int
+    node_type: str
+    geometry: Point
+
+    def __repr__(self) -> str:
+        return f"{self.node_type} #{self.node_id}"
+
+
 class FileModel(BaseModel, ABC):
     """Base class to represent models with a file representation.
 
@@ -224,37 +234,6 @@ class FileModel(BaseModel, ABC):
         else:
             return value
 
-    def __setattr__(self, name: str, value: Any) -> None:
-        """Override to handle filepath changes and notify parents."""
-        # Check if we're setting filepath and need validation
-        if name == "filepath" and hasattr(self, "model_config"):
-            # Disable validation temporarily to avoid triggering _check_filepath
-            validate_assignment = self.model_config.get("validate_assignment", True)
-            if validate_assignment and value is not None:
-                self.model_config["validate_assignment"] = False
-                super().__setattr__(name, value)
-                self.model_config["validate_assignment"] = True
-                # Notify parents after filepath is set
-                self._notify_parent_of_filepath_change()
-                return
-
-        # Normal attribute assignment
-        super().__setattr__(name, value)
-
-    def _notify_parent_of_filepath_change(self) -> None:
-        """Notify parent models that filepath has been set."""
-        if (
-            hasattr(self, "_parent")
-            and self._parent is not None
-            and hasattr(self, "_parent_field")
-            and self._parent_field is not None
-        ):
-            # Mark this field as set in the parent
-            self._parent.model_fields_set.add(self._parent_field)
-            # Recursively notify grandparent
-            if hasattr(self._parent, "_notify_parent_of_filepath_change"):
-                self._parent._notify_parent_of_filepath_change()
-
     @field_serializer("filepath")
     def _serialize_path(self, path: Path) -> str:
         return path.as_posix()
@@ -282,17 +261,31 @@ class ChildModel(BaseModel):
     _parent: BaseModel | None = None
     _parent_field: str | None = None
 
-    def _notify_parent_of_filepath_change(self) -> None:
-        """Notify parent that this model's fields have changed."""
-        if self._parent is not None and self._parent_field is not None:
-            self._parent.model_fields_set.add(self._parent_field)
-            if hasattr(self._parent, "_notify_parent_of_filepath_change"):
-                self._parent._notify_parent_of_filepath_change()
-
     @model_validator(mode="after")
     def _check_parent(self) -> "ChildModel":
         if self._parent is not None and self._parent_field is not None:
             self._parent.model_fields_set.update({self._parent_field})
+        return self
+
+
+class ParentModel(BaseModel):
+    """Base class to represent models that contain ChildModels."""
+
+    def _children(self):
+        return {
+            k: getattr(self, k)
+            for k in self.__class__.model_fields
+            if isinstance(getattr(self, k), ChildModel)
+        }
+
+    @model_validator(mode="after")
+    def _set_node_parent(self) -> "ParentModel":
+        for (
+            k,
+            v,
+        ) in self._children().items():
+            v._parent = self
+            v._parent_field = k
         return self
 
 
@@ -640,81 +633,3 @@ class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
                 unique=True,
             )
             _add_styles_to_geopackage(connection, self.tablename())
-
-
-class NodeModel(ChildModel):
-    """Base class to handle combining the tables for a single node type."""
-
-    @model_validator(mode="after")
-    def _set_table_parent(self) -> "NodeModel":
-        """Set parent reference on all TableModel children."""
-        for key in self._fields():
-            attr = getattr(self, key)
-            if isinstance(attr, TableModel):
-                attr._parent = self
-                attr._parent_field = key
-        return self
-
-    @model_serializer(mode="wrap")
-    def set_modeld(
-        self, serializer: Callable[["NodeModel"], dict[str, object]]
-    ) -> dict[str, object]:
-        content = serializer(self)
-        return dict(filter(lambda x: x[1], content.items()))
-
-    @field_validator("*")
-    @classmethod
-    def set_sort_keys(cls, v: object, info: ValidationInfo) -> object:
-        """Set sort keys for all TableModels if present in FieldInfo."""
-        if isinstance(v, TableModel) and info.field_name is not None:
-            field = cls.model_fields[info.field_name]
-            extra = field.json_schema_extra
-            if extra is not None and isinstance(extra, dict):
-                # We set sort_keys ourselves as list[str] in json_schema_extra
-                # but mypy doesn't know.
-                v._sort_keys = cast(list[str], extra.get("sort_keys", []))
-        return v
-
-    @classmethod
-    def get_input_type(cls):
-        return cls.__name__
-
-    @classmethod
-    def _layername(cls, field: str) -> str:
-        return f"{cls.get_input_type()}{delimiter}{field}"
-
-    def _tables(self):
-        for key in self._fields():
-            attr = getattr(self, key)
-            if isinstance(attr, TableModel) and (attr.df is not None) and key != "node":
-                yield attr
-
-    def _node_ids(self) -> set[int]:
-        node_ids: set[int] = set()
-        for table in self._tables():
-            node_ids.update(table._node_ids())
-        return node_ids
-
-    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
-        for table in self._tables():
-            table._save(directory, input_dir)
-
-    def _repr_content(self) -> str:
-        """Generate a succinct overview of the content.
-
-        Skip "empty" attributes: when the dataframe of a TableModel is None.
-        """
-        content = []
-        for field in self._fields():
-            attr = getattr(self, field)
-            if isinstance(attr, TableModel):
-                if attr.df is not None:
-                    content.append(field)
-            else:
-                content.append(field)
-        return ", ".join(content)
-
-    def __repr__(self) -> str:
-        content = self._repr_content()
-        typename = type(self).__name__
-        return f"{typename}({content})"

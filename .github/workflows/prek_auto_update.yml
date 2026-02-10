@@ -1,4 +1,4 @@
-name: Pre-commit auto update
+name: Prek auto update
 on:
   schedule:
     # At 03:00 on day 3 of the month
@@ -13,17 +13,17 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: "latest"
-      - name: Update pre-commit hooks
-        run: |
-          pixi run pre-commit-autoupdate
-      - name: Run pre-commit on all files
-        run: |
-          pixi run pre-commit
+      - name: Update prek hooks
+        run: pixi run prek autoupdate
+      - name: Install prek hooks
+        run: pixi run install-prek
+      - name: Run prek on all files
+        run: pixi run prek-run
         continue-on-error: true
       - uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.CI_PR_PAT }}
-          branch: update/pre-commit
-          title: Update pre-commit hooks
-          commit-message: "Update pre-commit hooks"
+          branch: update/prek
+          title: Update prek hooks
+          commit-message: "Update prek hooks"
           author: "GitHub <noreply@github.com>"

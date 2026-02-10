@@ -1,6 +1,7 @@
 from typing import Any
 
-from ribasim.config import Allocation, Experimental, Node, Solver
+from ribasim.config import Allocation, Experimental, Solver
+from ribasim.geometry.node import Node
 from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import (

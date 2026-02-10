@@ -137,7 +137,7 @@ class UsedIDs(BaseModel):
 
     We keep track of all IDs in the model,
     and keep track of the maximum to provide new IDs.
-    MultiNodeModels and Link will check this instance on `add`.
+    NodeModels and Link will check this instance on `add`.
     """
 
     node_ids: set[int] = set()

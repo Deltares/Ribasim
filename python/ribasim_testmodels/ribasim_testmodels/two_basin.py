@@ -1,6 +1,7 @@
 from typing import Any
 
-from ribasim.config import Experimental, Node, Results
+from ribasim.config import Experimental, Results
+from ribasim.geometry.node import Node
 from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import basin, flow_boundary, tabulated_rating_curve
