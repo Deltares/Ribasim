@@ -466,7 +466,7 @@ def medium_primary_secondary_network_verification_model() -> Model:
     model = medium_primary_secondary_network_model()
     # set all subnetwork ids to 2 for verification purposes
     assert model.node.df is not None
-    model.node.df.subnetwork_id = 2
+    model.node.df["subnetwork_id"] = 2
     return model
 
 
