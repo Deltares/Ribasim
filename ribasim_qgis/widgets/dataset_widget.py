@@ -72,14 +72,17 @@ class RibasimTask(QgsTask):
 
     This task runs the Ribasim CLI subprocess, parses progress from stdout,
     and emits signals to update the UI on the main thread.
+
+    https://docs.qgis.org/3.40/en/docs/pyqgis_developer_cookbook/tasks.html
     """
 
     # Signals must be defined on a QObject, QgsTask inherits from QObject
-    output_received = pyqtSignal(str, bool)  # (line, is_progress)
+    output_received = pyqtSignal(str, bool)  # (line, replace)
     task_completed = pyqtSignal(bool)  # success
 
     def __init__(self, cli: str, toml_path: str):
         model_path = Path(toml_path)
+        # "path/to/basic/ribasim.toml" -> "basic/ribasim"
         model_name = f"{model_path.parent.stem}/{model_path.stem}"
         super().__init__(
             f"Ribasim simulation - {model_name}",
@@ -107,6 +110,7 @@ class RibasimTask(QgsTask):
                 creationflags=creationflags,
             ) as proc:
                 self.process = proc
+                first_simulating_seen = False
                 if proc.stdout:
                     for line in proc.stdout:
                         if self.isCanceled():
@@ -117,14 +121,16 @@ class RibasimTask(QgsTask):
 
                         # Parse progress percentage from lines like:
                         # "Simulating ━━━━━━━━━━  42% 0:01:23"
-                        is_progress = line.startswith("Simulating")
-                        if is_progress:
+                        is_simulating = line.startswith("Simulating")
+                        replace = is_simulating and first_simulating_seen
+                        if is_simulating:
+                            first_simulating_seen = True
                             match = re.search(r"(\d+)%", line)
                             if match:
                                 self.setProgress(int(match.group(1)))
 
                         # Emit signal to update UI (will be received on main thread)
-                        self.output_received.emit(line, is_progress)
+                        self.output_received.emit(line, replace)
 
                 proc.wait()
                 self.exit_code = proc.returncode
@@ -395,6 +401,7 @@ class DatasetWidget:
         assert message_bar is not None
 
         model_path = Path(path)
+        # "path/to/basic/ribasim.toml" -> "basic/ribasim"
         model_name = f"{model_path.parent.stem}/{model_path.stem}"
 
         # Check if simulation is already running for this model
@@ -409,6 +416,7 @@ class DatasetWidget:
 
         # Find ribasim CLI
         cli = self._find_ribasim_cli(message_bar)
+        # If CLI is not found, an error message has already been displayed, so just return
         if cli is None:
             return
 
@@ -431,9 +439,9 @@ class DatasetWidget:
         # Create and configure the task
         task = RibasimTask(str(cli), path)
 
-        def on_output(line: str, is_progress: bool):
+        def on_output(line: str, replace: bool):
             """Handle output from the task (called on main thread via signal)."""
-            if is_progress:
+            if replace:
                 # Update last line instead of appending for progress updates
                 cursor = text_edit.textCursor()
                 cursor.movePosition(cursor.MoveOperation.End)
@@ -451,7 +459,9 @@ class DatasetWidget:
             """Handle task completion."""
             self.running_tasks.pop(path, None)
             if success:
+                text_edit.appendPlainText("\nLoading results.")
                 self.refresh_results()
+                text_edit.appendPlainText("Finished loading results.")
             elif task.was_canceled:
                 text_edit.appendPlainText("\nThe Ribasim simulation was canceled.")
 
@@ -464,6 +474,7 @@ class DatasetWidget:
         task_manager = QgsApplication.taskManager()
         assert task_manager is not None
         task_manager.addTask(task)
+        text_edit.appendPlainText("Launching Ribasim.\n")
         dialog.show()
 
     @staticmethod
