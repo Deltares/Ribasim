@@ -18,7 +18,6 @@ from pydantic import (
 )
 from pydantic import (
     ConfigDict,
-    DirectoryPath,
     NonNegativeInt,
     PrivateAttr,
     ValidationInfo,
@@ -28,11 +27,6 @@ from pydantic import (
 )
 from shapely.geometry import Point
 
-<<<<<<< HEAD
-from ribasim.input_base import ChildModel, SpatialTableModel
-||||||| 2275b287
-from ribasim.input_base import SpatialTableModel
-=======
 from ribasim.input_base import (
     ChildModel,
     NodeData,
@@ -42,7 +36,6 @@ from ribasim.input_base import (
     delimiter,
 )
 from ribasim.utils import UsedIDs, _concat, _pascal_to_snake
->>>>>>> feat/node-table-again
 
 from .base import _GeoBaseSchema
 
@@ -326,9 +319,14 @@ class NodeModel(ParentModel, ChildModel):
             node_ids.update(table._node_ids())
         return node_ids
 
-    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
+    def write(
+        self,
+        internal: bool = True,
+        external: bool = True,
+    ) -> None:
         for table in self._tables():
-            table._save(directory, input_dir)
+            if (internal and table.is_internal) or (external and table.is_external):
+                table.write()
 
     def _repr_content(self) -> str:
         """Generate a succinct overview of the content.

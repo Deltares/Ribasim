@@ -7,7 +7,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
 from sqlite3 import connect
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 import geopandas as gpd
 import numpy as np
@@ -22,6 +22,7 @@ from pydantic import (
     ConfigDict,
     Field,
     PrivateAttr,
+    ValidationInfo,
     field_serializer,
     field_validator,
     model_serializer,
@@ -318,35 +319,15 @@ class ChildModel(BaseModel):
 
     @property
     def root(self) -> BaseModel | None:
-        """Return the parent model of this ChildModel."""
+        """Return the upmost parent model of this ChildModel."""
         if self._parent is None:
             return self
 
+        # Recursively get the root of the parent until we reach the top
         if isinstance(self._parent, ChildModel):
             return self._parent.root
         else:
             return self._parent
-
-
-class ParentModel(BaseModel):
-    """Base class to represent models that contain ChildModels."""
-
-    def _children(self):
-        return {
-            k: getattr(self, k)
-            for k in self.__class__.model_fields
-            if isinstance(getattr(self, k), ChildModel)
-        }
-
-    @model_validator(mode="after")
-    def _set_node_parent(self) -> "ParentModel":
-        for (
-            k,
-            v,
-        ) in self._children().items():
-            v._parent = self
-            v._parent_field = k
-        return self
 
 
 class ParentModel(BaseModel):
