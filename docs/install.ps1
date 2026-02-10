@@ -57,11 +57,6 @@ function Get-Env {
     $EnvRegisterKey.GetValue($name, '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
 }
 
-# Check for environment variable overrides
-if ($Env:RIBASIM_HOME) {
-    $RibasimHome = $Env:RIBASIM_HOME
-}
-
 $REPO_URL = "https://github.com/Deltares/Ribasim"
 $DOWNLOAD_URL = "$REPO_URL/releases/download/$RibasimVersion/ribasim_windows.zip"
 
@@ -177,12 +172,12 @@ else {
     Write-Host "Ribasim is already in PATH"
 }
 
-# Set RIBASIM_EXE environment variable
-Write-Host "Setting RIBASIM_EXE to $RibasimExe"
+# Set RIBASIM_HOME environment variable
+Write-Host "Setting RIBASIM_HOME to $RibasimHome"
 # For future sessions
-Write-Env -name 'RIBASIM_EXE' -val $RibasimExe
+Write-Env -name 'RIBASIM_HOME' -val $RibasimHome
 # For current session
-$Env:RIBASIM_EXE = $RibasimExe
+$Env:RIBASIM_HOME = $RibasimHome
 
 Write-Host ""
 Write-Host "Installation complete! Run 'ribasim --help' to get started."

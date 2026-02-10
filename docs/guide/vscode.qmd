@@ -52,7 +52,7 @@ If not, select it manually:
 3. Type "Python: Select Interpreter"
 4. Select the Python executable from your `.venv` folder (`.venv/Scripts/python.exe` on Windows, `.venv/bin/python` on Linux/macOS)
 
-## Pixi
+## pixi
 
 For Pixi environments, we recommend installing the [Pixi extension](https://marketplace.visualstudio.com/items?itemName=renan-r-santos.pixi-code).
 This helps the Python Environments extension detect Pixi environments.
