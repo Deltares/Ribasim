@@ -140,6 +140,26 @@ The Path environment variable tells Windows where to look for programs when you 
    - Click "OK" three times to close all dialogs
    - Close any open terminals/command prompts and open a new one
 
+## RIBASIM_EXE environment variable {#ribasim-exe}
+
+The QGIS plugin and the Python `run_ribasim` function look for the Ribasim executable in the following order:
+
+1. The `RIBASIM_EXE` environment variable (if set)
+2. The system `PATH`
+
+If Ribasim is on your PATH but cannot be found (this can happen because QGIS may not inherit your user PATH), you can set the `RIBASIM_EXE` environment variable to point directly to the Ribasim executable.
+
+To set `RIBASIM_EXE`:
+
+- Search "Environment Variables" in the Windows search bar
+- Click "Edit the system environment variables"
+- Click the "Environment Variables..." button
+- In the top section "User variables", click "New..."
+- Set Variable name to `RIBASIM_EXE`
+- Set Variable value to the **full path to the executable** (e.g., `C:\bin\ribasim\ribasim.exe`)
+- Click "OK" three times to close all dialogs
+- Restart QGIS for the change to take effect
+
 # Install Ribasim Python {#sec-install-python}
 
 The Ribasim Python package (named `ribasim`) aims to make it easy to build, update and analyze Ribasim models
