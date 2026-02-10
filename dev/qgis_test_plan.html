@@ -256,7 +256,11 @@ ul.task-list li input[type="checkbox"] {
   </ul></li>
   <li><a href="#result-inspection-tests" id="toc-result-inspection-tests" class="nav-link" data-scroll-target="#result-inspection-tests"><span class="header-section-number">4</span> Result inspection tests</a>
   <ul class="collapse">
-  <li><a href="#run-a-model-and-check-the-time-series" id="toc-run-a-model-and-check-the-time-series" class="nav-link" data-scroll-target="#run-a-model-and-check-the-time-series"><span class="header-section-number">4.1</span> Run a model and check the time series</a></li>
+  <li><a href="#run-a-model-from-the-context-menu" id="toc-run-a-model-from-the-context-menu" class="nav-link" data-scroll-target="#run-a-model-from-the-context-menu"><span class="header-section-number">4.1</span> Run a model from the context menu</a></li>
+  <li><a href="#progress-bar-and-task-manager" id="toc-progress-bar-and-task-manager" class="nav-link" data-scroll-target="#progress-bar-and-task-manager"><span class="header-section-number">4.2</span> Progress bar and task manager</a></li>
+  <li><a href="#close-dialog-without-terminating" id="toc-close-dialog-without-terminating" class="nav-link" data-scroll-target="#close-dialog-without-terminating"><span class="header-section-number">4.3</span> Close dialog without terminating</a></li>
+  <li><a href="#cancel-simulation" id="toc-cancel-simulation" class="nav-link" data-scroll-target="#cancel-simulation"><span class="header-section-number">4.4</span> Cancel simulation</a></li>
+  <li><a href="#prevent-duplicate-simulations" id="toc-prevent-duplicate-simulations" class="nav-link" data-scroll-target="#prevent-duplicate-simulations"><span class="header-section-number">4.5</span> Prevent duplicate simulations</a></li>
   </ul></li>
   <li><a href="#tutorial-tests" id="toc-tutorial-tests" class="nav-link" data-scroll-target="#tutorial-tests"><span class="header-section-number">5</span> Tutorial tests</a>
   <ul class="collapse">
@@ -332,9 +336,47 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="result-inspection-tests" class="level1" data-number="4">
 <h1 data-number="4"><span class="header-section-number">4</span> Result inspection tests</h1>
-<section id="run-a-model-and-check-the-time-series" class="level2" data-number="4.1">
-<h2 data-number="4.1" class="anchored" data-anchor-id="run-a-model-and-check-the-time-series"><span class="header-section-number">4.1</span> Run a model and check the time series</h2>
-<p>TODO</p>
+<section id="run-a-model-from-the-context-menu" class="level2" data-number="4.1">
+<h2 data-number="4.1" class="anchored" data-anchor-id="run-a-model-from-the-context-menu"><span class="header-section-number">4.1</span> Run a model from the context menu</h2>
+<ul>
+<li>Load the HWS model at <code>models/hws.toml</code> (slow enough to observe progress).</li>
+<li>Right-click the model group in the layer panel: <em>Context menu shows “Run Ribasim model”</em>.</li>
+<li>Click “Run Ribasim model”: <em>Output dialog opens with title “Ribasim simulation - hws/ribasim”</em>.</li>
+<li>Wait for simulation: <em>Progress bar updates in QGIS status bar, output streams to dialog</em>.</li>
+<li>On completion: <em>Model reloads with results, Results group contains Flow/Basin layers</em>.</li>
+</ul>
+</section>
+<section id="progress-bar-and-task-manager" class="level2" data-number="4.2">
+<h2 data-number="4.2" class="anchored" data-anchor-id="progress-bar-and-task-manager"><span class="header-section-number">4.2</span> Progress bar and task manager</h2>
+<ul>
+<li>Start a simulation as above.</li>
+<li>Check QGIS status bar (bottom): <em>Progress indicator shows percentage</em>.</li>
+<li>Click the progress indicator: <em>Task manager panel opens showing the task</em>.</li>
+</ul>
+</section>
+<section id="close-dialog-without-terminating" class="level2" data-number="4.3">
+<h2 data-number="4.3" class="anchored" data-anchor-id="close-dialog-without-terminating"><span class="header-section-number">4.3</span> Close dialog without terminating</h2>
+<ul>
+<li>Start a simulation.</li>
+<li>Close the output dialog (X button) while running: <em>Dialog closes, simulation continues in background</em>.</li>
+<li>Check task manager: <em>Task still running</em>.</li>
+</ul>
+</section>
+<section id="cancel-simulation" class="level2" data-number="4.4">
+<h2 data-number="4.4" class="anchored" data-anchor-id="cancel-simulation"><span class="header-section-number">4.4</span> Cancel simulation</h2>
+<ul>
+<li>Start a simulation on <code>models/hws</code>.</li>
+<li>Open task manager and cancel the task: <em>Task is removed from manager</em>.</li>
+<li>Check output dialog: <em>Shows “Ribasim simulation - … was canceled.”</em>.</li>
+</ul>
+</section>
+<section id="prevent-duplicate-simulations" class="level2" data-number="4.5">
+<h2 data-number="4.5" class="anchored" data-anchor-id="prevent-duplicate-simulations"><span class="header-section-number">4.5</span> Prevent duplicate simulations</h2>
+<ul>
+<li>Start a simulation.</li>
+<li>While running, right-click the same model and click “Run Ribasim model”: <em>Warning message “Simulation already running for hws/ribasim”</em>.</li>
+<li>Load a different model and run it: <em>Second simulation starts normally</em>.</li>
+</ul>
 </section>
 </section>
 <section id="tutorial-tests" class="level1" data-number="5">

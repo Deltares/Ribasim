@@ -246,15 +246,29 @@ ul.task-list li input[type="checkbox"] {
 <h1 data-number="1"><span class="header-section-number">1</span> Opening a model</h1>
 <p>This guide assumes you have already installed the Ribasim core and QGIS plugin as described in the <a href="../getting-started/install.html">install page</a>.</p>
 <p>Use any running Ribasim model to follow this guide. For ready-made example models download and unzip <code>generated_testmodels.zip</code> from the <a href="https://github.com/Deltares/Ribasim/releases/latest">release assets</a>, and use for instance the <code>basic</code> test model.</p>
+<p>You can open a model by clicking on the Ribasim icon, and selecting a TOML file.</p>
+<div class="quarto-figure quarto-figure-left">
+<figure class="figure">
+<p><img src="https://user-images.githubusercontent.com/4471859/224939101-228e068a-875b-4df2-98bb-6ee6a3830ddd.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
+</figure>
+</div>
+<p>Alternatively, drag a TOML file into QGIS.</p>
 </section>
 <section id="running-a-model" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> Running a model</h1>
-<ul>
-<li>Install the Ribasim core application as described in the <a href="../getting-started/install.html">install section</a></li>
-<li>Open a terminal like Powershell or Cmd and navigate to the model directory.</li>
-<li>Call Ribasim with the <code>.toml</code> file as input. E.g. <code>ribasim my_model.toml</code>.</li>
-<li>In your model directory there is now a <code>results/</code> folder with <code>basin.nc</code> and <code>flow.nc</code> output files.</li>
-</ul>
+<p>Right-click on the model in the Layers panel and select <strong>Run Ribasim model</strong> from the context menu.</p>
+<div class="quarto-figure quarto-figure-left">
+<figure class="figure">
+<p><img src="https://s3.deltares.nl/ribasim/doc-image/qgis/run-model-context-menu.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
+</figure>
+</div>
+<p>This will run the simulation in the background, showing progress in the QGIS task manager and a live output dialog. When the simulation completes successfully, the model results are automatically reloaded.</p>
+<div class="quarto-figure quarto-figure-left">
+<figure class="figure">
+<p><img src="https://s3.deltares.nl/ribasim/doc-image/qgis/run-model-dialog.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
+</figure>
+</div>
+<p>For QGIS to find the Ribasim executable, it must be configured via <code>RIBASIM_EXE</code>. See the <a href="../getting-started/install.html#ribasim-exe">install section</a> for details.</p>
 </section>
 <section id="sec-inspect" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Inspect a (large) model</h1>
