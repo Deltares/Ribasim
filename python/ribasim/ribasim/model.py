@@ -51,10 +51,9 @@ from ribasim.config import (
 )
 from ribasim.db_utils import _set_db_schema_version
 from ribasim.geometry.link import LinkSchema, LinkTable
-from ribasim.geometry.node import NodeSchema, NodeTable
+from ribasim.geometry.node import NodeModel, NodeSchema, NodeTable
 from ribasim.input_base import (
     FileModel,
-    NodeModel,
     ParentModel,
     SpatialTableModel,
     context_file_loading,
@@ -524,7 +523,7 @@ class Model(FileModel, ParentModel):
         """
         if self.filepath is None:
             raise FileNotFoundError("Model must be written to disk.")
-        return FilePath(self.filepath)
+        return Path(self.filepath)
 
     @property
     def results_extension(self) -> str:

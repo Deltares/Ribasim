@@ -10,7 +10,8 @@ from ribasim.config import (
     Results,
     Solver,
 )
-from ribasim.input_base import Node, TableModel
+from ribasim.geometry.node import Node
+from ribasim.input_base import TableModel
 from ribasim.nodes import (
     basin,
     discrete_control,

@@ -15,7 +15,8 @@ from pydantic import NonNegativeInt, PrivateAttr, model_validator
 from shapely.geometry import LineString, MultiLineString
 
 from ribasim.db_utils import _get_db_schema_version
-from ribasim.input_base import NodeData, SpatialTableModel
+from ribasim.geometry.node import NodeData
+from ribasim.input_base import SpatialTableModel
 from ribasim.utils import UsedIDs, _concat
 from ribasim.validation import (
     can_connect,

@@ -1,7 +1,8 @@
 from typing import Any
 
 from ribasim.config import Experimental, Results
-from ribasim.input_base import Node, TableModel
+from ribasim.geometry.node import Node
+from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import basin, flow_boundary, tabulated_rating_curve
 from shapely.geometry import Point

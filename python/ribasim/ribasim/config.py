@@ -3,9 +3,9 @@ from enum import Enum
 from pydantic import Field
 
 from ribasim.geometry import BasinAreaSchema, FlowBoundaryAreaSchema
+from ribasim.geometry.node import NodeModel
 from ribasim.input_base import (
     ChildModel,
-    NodeModel,
     SpatialTableModel,
     TableModel,
 )

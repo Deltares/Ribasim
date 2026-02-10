@@ -13,7 +13,8 @@ from pydantic import ValidationError
 from pyproj import CRS
 from ribasim import Node
 from ribasim.config import Solver
-from ribasim.input_base import NodeData, esc_id
+from ribasim.geometry.node import NodeData
+from ribasim.input_base import esc_id
 from ribasim.model import Model
 from ribasim.nodes import basin
 from ribasim_testmodels import (
@@ -425,3 +426,15 @@ def test_path_serialization_uses_forward_slashes(drought, tmp_path):
     assert config["input_dir"] == "nested/input"
     assert config["results_dir"] == "nested/results"
     assert config["basin"]["time"] == "subdir/basin-time.nc"
+
+
+def test_model_compatibility(basic):
+    assert basic.basin.node is not None
+    assert len(basic.basin.node.df) < len(basic.node.df)
+    assert (basic.basin.node.df["node_type"] == "Basin").all()
+
+    assert basic.node_table() == basic.node
+    df = basic.node_table().df
+    df.iloc[0, 0] = 9999
+    # This behavior might change with Pandas 3
+    assert basic.node.df.iloc[0, 0] == 9999
