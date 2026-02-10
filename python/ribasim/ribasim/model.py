@@ -321,7 +321,7 @@ class Model(FileModel, ParentModel):
 
     def _nodes(self) -> Generator[NodeModel, None, None]:
         """Return all non-empty NodeModel instances."""
-        for key in self.model_fields_set:
+        for key in sorted(self.model_fields_set):
             attr = getattr(self, key)
             if isinstance(attr, NodeModel):
                 yield attr
