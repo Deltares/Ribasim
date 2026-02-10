@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
-from ribasim import Model, Node
+from ribasim import Model
 from ribasim.config import Experimental
+from ribasim.geometry.node import Node
 from ribasim.nodes import (
     basin,
     outlet,

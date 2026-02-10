@@ -3,10 +3,9 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from ribasim.config import Experimental, Interpolation, Node, Results
-from ribasim.input_base import (
-    TableModel,
-)
+from ribasim.config import Experimental, Interpolation, Results
+from ribasim.geometry.node import Node
+from ribasim.input_base import TableModel
 from ribasim.model import Model, Solver
 from ribasim.nodes import (
     basin,

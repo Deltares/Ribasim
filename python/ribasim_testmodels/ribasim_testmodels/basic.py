@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 import ribasim
 from ribasim import Model
-from ribasim.config import Experimental, Interpolation, Node, Solver
+from ribasim.config import Experimental, Interpolation, Solver
+from ribasim.geometry.node import Node
 from ribasim.input_base import TableModel
 from ribasim.nodes import (
     basin,
