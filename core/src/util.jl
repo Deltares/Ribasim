@@ -561,7 +561,7 @@ function set_discrete_controlled_variable_refs!(
                 node.control_mapping
 
             for ((node_id, control_state), control_state_update) in control_mapping
-                (; scalar_update, itp_update_linear, itp_update_lookup) =
+                (; scalar_update, itp_update_constant, itp_update_lookup) =
                     control_state_update
 
                 # References to scalar parameters
@@ -570,10 +570,10 @@ function set_discrete_controlled_variable_refs!(
                     scalar_update[i] = @set parameter_update.ref = Ref(field, node_id.idx)
                 end
 
-                # References to linear interpolation parameters
-                for (i, parameter_update) in enumerate(itp_update_linear)
+                # References to constant interpolation parameters
+                for (i, parameter_update) in enumerate(itp_update_constant)
                     field = getfield(node, parameter_update.name)
-                    itp_update_linear[i] =
+                    itp_update_constant[i] =
                         @set parameter_update.ref = Ref(field, node_id.idx)
                 end
 

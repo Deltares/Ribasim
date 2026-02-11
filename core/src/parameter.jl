@@ -365,8 +365,8 @@ The parameter update associated with a certain control state for discrete contro
 """
 @kwdef struct ControlStateUpdate
     scalar_update::Vector{ParameterUpdate{Float64}} = ParameterUpdate{Float64}[]
-    itp_update_linear::Vector{ParameterUpdate{ScalarLinearInterpolation}} =
-        ParameterUpdate{ScalarLinearInterpolation}[]
+    itp_update_constant::Vector{ParameterUpdate{ScalarConstantInterpolation}} =
+        ParameterUpdate{ScalarConstantInterpolation}[]
     itp_update_lookup::Vector{ParameterUpdate{IndexLookup}} = ParameterUpdate{IndexLookup}[]
 end
 
@@ -434,8 +434,8 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
     # substances in use by the model (ordered like their axis in the concentration matrices)
     substances::OrderedSet{Symbol} = OrderedSet{Symbol}()
     # Data source for external concentrations (used in control)
-    concentration_external::Vector{Dict{String, ScalarLinearInterpolation}} =
-        OrderedDict{String, ScalarLinearInterpolation}[]
+    concentration_external::Vector{Dict{String, ScalarConstantInterpolation}} =
+        OrderedDict{String, ScalarConstantInterpolation}[]
 end
 
 """
@@ -646,8 +646,8 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
 """
 @kwdef struct LevelBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}
-    level::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    level::Vector{ScalarConstantInterpolation} =
+        Vector{ScalarConstantInterpolation}(undef, length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
 end
 
@@ -689,16 +689,16 @@ flow_demand_id: connected flow demand node if applicable
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     flow_rate::Vector{Float64} = Vector{Float64}(undef, length(node_id))
-    time_dependent_flow_rate::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    min_flow_rate::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    max_flow_rate::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    min_upstream_level::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    max_downstream_level::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    time_dependent_flow_rate::Vector{ScalarConstantInterpolation} =
+        Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    min_flow_rate::Vector{ScalarConstantInterpolation} =
+        Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    max_flow_rate::Vector{ScalarConstantInterpolation} =
+        Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    min_upstream_level::Vector{ScalarConstantInterpolation} =
+        Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    max_downstream_level::Vector{ScalarConstantInterpolation} =
+        Vector{ScalarConstantInterpolation}(undef, length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
         OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
     control_type::Vector{ContinuousControlType.T} =
@@ -729,16 +729,16 @@ flow_demand_id: connected flow demand node if applicable
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     flow_rate::Vector{Float64} = Vector{Float64}(undef, length(node_id))
-    time_dependent_flow_rate::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    min_flow_rate::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    max_flow_rate::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    min_upstream_level::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    max_downstream_level::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    time_dependent_flow_rate::Vector{ScalarConstantInterpolation} =
+        Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    min_flow_rate::Vector{ScalarConstantInterpolation} =
+        Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    max_flow_rate::Vector{ScalarConstantInterpolation} =
+        Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    min_upstream_level::Vector{ScalarConstantInterpolation} =
+        Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    max_downstream_level::Vector{ScalarConstantInterpolation} =
+        Vector{ScalarConstantInterpolation}(undef, length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} = OrderedDict()
     control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
@@ -932,15 +932,15 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
 @kwdef struct PidControl <: AbstractParameterNode
     node_id::Vector{NodeID}
     listen_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
-    target::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    target::Vector{ScalarConstantInterpolation} =
+        Vector{ScalarConstantInterpolation}(undef, length(node_id))
     target_ref::Vector{CacheRef} = Vector{CacheRef}(undef, length(node_id))
-    proportional::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    integral::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
-    derivative::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    proportional::Vector{ScalarConstantInterpolation} =
+        Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    integral::Vector{ScalarConstantInterpolation} =
+        Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    derivative::Vector{ScalarConstantInterpolation} =
+        Vector{ScalarConstantInterpolation}(undef, length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
         OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
 end
