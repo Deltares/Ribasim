@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
-from ribasim.config import Experimental, Interpolation, Node
+from ribasim.config import Experimental, Interpolation
+from ribasim.geometry.node import Node
 from ribasim.model import Model
 from ribasim.nodes import basin, flow_boundary, level_boundary, outlet, pump
 from shapely.geometry import Point

@@ -393,7 +393,7 @@ def generate(
 
     # Setup flow network
     G, merge_links, node_mapping, link_mapping, basin_mapping = _setup_graph(
-        model.node_table(), model.link, evaporate_mass=evaporate_mass
+        model.node, model.link, evaporate_mass=evaporate_mass
     )
 
     # Plot
@@ -658,7 +658,7 @@ def add_tracer(
     if not is_valid_substance(tracer_name):
         raise ValueError(f"Invalid Delwaq substance name {tracer_name}")
 
-    df = model.node_table().df
+    df = model.node.df
     assert df is not None
     n = df.loc[node_id]
     node_type = n.node_type
