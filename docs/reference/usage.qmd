@@ -356,13 +356,23 @@ This section describes the structure of each NetCDF result file using CDL-like n
 ```{python}
 #| echo: false
 #| output: false
-%run ../run_ribasim.py
+# %run ../run_ribasim.py
 
 # Run models needed for the documentation examples
-run_ribasim("../../generated_testmodels/basic/ribasim.toml")
-run_ribasim("../../generated_testmodels/pump_discrete_control/ribasim.toml")
-run_ribasim("../../generated_testmodels/flow_demand/ribasim.toml")
-run_ribasim("../../generated_testmodels/two_basin/ribasim.toml")
+from pathlib import Path
+
+# Only run if results don't exist
+if not Path("../../generated_testmodels/basic/results/basin.nc").exists():
+    run_ribasim("../../generated_testmodels/basic/ribasim.toml")
+
+if not Path("../../generated_testmodels/pump_discrete_control/results/control.nc").exists():
+    run_ribasim("../../generated_testmodels/pump_discrete_control/ribasim.toml")
+
+if not Path("../../generated_testmodels/flow_demand/results/allocation.nc").exists():
+    run_ribasim("../../generated_testmodels/flow_demand/ribasim.toml")
+
+if not Path("../../generated_testmodels/two_basin/results/subgrid_level.nc").exists():
+    run_ribasim("../../generated_testmodels/two_basin/ribasim.toml")
 ```
 
 ## Basin - `basin.nc`
@@ -389,8 +399,13 @@ For a more in-depth explanation of the water balance error see [here](/concept/e
 **NetCDF structure:**
 
 ```{python}
+#| echo: false
+#| output: false
 import xarray as xr
+```
 
+```{python}
+#| code-fold: true
 ds = xr.open_dataset("../../generated_testmodels/basic/results/basin.nc")
 ds
 ```
@@ -403,8 +418,7 @@ In the time coordinate the start of the period is indicated.
 **NetCDF structure:**
 
 ```{python}
-import xarray as xr
-
+#| code-fold: true
 ds = xr.open_dataset("../../generated_testmodels/basic/results/flow.nc")
 ds
 ```
@@ -420,8 +434,7 @@ The Basin state file contains the water levels in each Basin at the end of the s
 **NetCDF structure:**
 
 ```{python}
-import xarray as xr
-
+#| code-fold: true
 ds = xr.open_dataset("../../generated_testmodels/basic/results/basin_state.nc")
 ds
 ```
@@ -436,8 +449,7 @@ For more information on control states and truth states, see the [DiscreteContro
 **NetCDF structure:**
 
 ```{python}
-import xarray as xr
-
+#| code-fold: true
 ds = xr.open_dataset("../../generated_testmodels/pump_discrete_control/results/control.nc")
 ds
 ```
@@ -450,8 +462,7 @@ The realized values at the starting time of the simulation can be ignored.
 **NetCDF structure:**
 
 ```{python}
-import xarray as xr
-
+#| code-fold: true
 ds = xr.open_dataset("../../generated_testmodels/flow_demand/results/allocation.nc")
 ds
 ```
@@ -476,8 +487,7 @@ If in the model a primary network and subnetwork(s) are specified, there are 3 d
 **NetCDF structure:**
 
 ```{python}
-import xarray as xr
-
+#| code-fold: true
 ds = xr.open_dataset("../../generated_testmodels/flow_demand/results/allocation_flow.nc")
 ds
 ```
@@ -499,8 +509,7 @@ The schema below is identical to the [external Basin concentration input](/refer
 **NetCDF structure:**
 
 ```{python}
-import xarray as xr
-
+#| code-fold: true
 ds = xr.open_dataset("../../generated_testmodels/basic/results/concentration.nc")
 ds
 ```
@@ -518,8 +527,7 @@ See there for more information on the meaning of this output.
 **NetCDF structure:**
 
 ```{python}
-import xarray as xr
-
+#| code-fold: true
 ds = xr.open_dataset("../../generated_testmodels/two_basin/results/subgrid_level.nc")
 ds
 ```
@@ -535,8 +543,7 @@ The `dt` is the size (in seconds) of the last calculation timestep (at the `save
 **NetCDF structure:**
 
 ```{python}
-import xarray as xr
-
+#| code-fold: true
 ds = xr.open_dataset("../../generated_testmodels/basic/results/solver_stats.nc")
 ds
 ```
