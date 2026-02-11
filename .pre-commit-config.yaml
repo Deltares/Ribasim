@@ -1,7 +1,6 @@
 exclude: "core/test/data/allocation_problems"
 repos:
   - repo: builtin
-    rev: 0.0.1
     hooks:
       - id: check-added-large-files
       - id: check-case-conflict
