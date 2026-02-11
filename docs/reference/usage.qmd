@@ -353,6 +353,18 @@ nodes in QGIS. For instance, you can draw a line connecting the two node coordin
 Results are written in NetCDF format by default, which stores data as multidimensional arrays rather than flat tables.
 This section describes the structure of each NetCDF result file using CDL-like notation.
 
+```{python}
+#| echo: false
+#| output: false
+%run ../run_ribasim.py
+
+# Run models needed for the documentation examples
+run_ribasim("../../generated_testmodels/basic/ribasim.toml")
+run_ribasim("../../generated_testmodels/pump_discrete_control/ribasim.toml")
+run_ribasim("../../generated_testmodels/flow_demand/ribasim.toml")
+run_ribasim("../../generated_testmodels/two_basin/ribasim.toml")
+```
+
 ## Basin - `basin.nc`
 
 The Basin results contain:
@@ -376,29 +388,11 @@ For a more in-depth explanation of the water balance error see [here](/concept/e
 
 **NetCDF structure:**
 
-```cdl
-dimensions:
-  time   = <number of timesteps>
-  node   = <number of Basin nodes>
+```{python}
+import xarray as xr
 
-coordinates:
-  DateTime  time(time)
-  Int32     node_id(node)
-
-variables:
-  Float64   level(time, node)          // m
-  Float64   storage(time, node)        // m³
-  Float64   inflow_rate(time, node)    // m³/s
-  Float64   outflow_rate(time, node)   // m³/s
-  Float64   storage_rate(time, node)   // m³/s
-  Float64   precipitation(time, node)  // m³/s
-  Float64   surface_runoff(time, node) // m³/s
-  Float64   evaporation(time, node)    // m³/s
-  Float64   drainage(time, node)       // m³/s
-  Float64   infiltration(time, node)   // m³/s
-  Float64   balance_error(time, node)  // m³/s
-  Float64   relative_error(time, node) // dimensionless
-  Float64   convergence(time, node)    // dimensionless
+ds = xr.open_dataset("../../generated_testmodels/basic/results/basin.nc")
+ds
 ```
 
 ## Flow - `flow.nc`
@@ -408,22 +402,11 @@ In the time coordinate the start of the period is indicated.
 
 **NetCDF structure:**
 
-```cdl
-dimensions:
-  time   = <number of timesteps>
-  link   = <number of flow links>
+```{python}
+import xarray as xr
 
-coordinates:
-  DateTime  time(time)
-  Int32     link_id(link)
-
-variables:
-  String    from_node_type(link)     // Node type
-  Int32     from_node_id(link)       // Node ID
-  String    to_node_type(link)       // Node type
-  Int32     to_node_id(link)         // Node ID
-  Float64   flow_rate(time, link)    // m³/s
-  Float64   convergence(time, link)  // dimensionless
+ds = xr.open_dataset("../../generated_testmodels/basic/results/flow.nc")
+ds
 ```
 
 The `link_id` value is the same as the `fid` written to the Link table, and can be used to directly look up the Link geometry.
@@ -436,15 +419,11 @@ The Basin state file contains the water levels in each Basin at the end of the s
 
 **NetCDF structure:**
 
-```cdl
-dimensions:
-  node   = <number of Basin nodes>
+```{python}
+import xarray as xr
 
-coordinates:
-  Int32     node_id(node)
-
-variables:
-  Float64   level(node)  // m
+ds = xr.open_dataset("../../generated_testmodels/basic/results/basin_state.nc")
+ds
 ```
 
 To use this result as the initial condition of another simulation, see the [Basin / state](/reference/node/basin.qmd#sec-state) table reference.
@@ -456,17 +435,11 @@ For more information on control states and truth states, see the [DiscreteContro
 
 **NetCDF structure:**
 
-```cdl
-dimensions:
-  time   = <number of control changes>
+```{python}
+import xarray as xr
 
-coordinates:
-  DateTime  time(time)
-
-variables:
-  Int32     control_node_id(time)  // Node ID
-  String    truth_state(time)      // Truth state
-  String    control_state(time)    // Control state
+ds = xr.open_dataset("../../generated_testmodels/pump_discrete_control/results/control.nc")
+ds
 ```
 
 ## Allocation - `allocation.nc`
@@ -476,22 +449,11 @@ The realized values at the starting time of the simulation can be ignored.
 
 **NetCDF structure:**
 
-```cdl
-dimensions:
-  time   = <number of allocation timesteps>
-  node   = <number of allocated nodes>
+```{python}
+import xarray as xr
 
-coordinates:
-  DateTime  time(time)
-
-variables:
-  Int32     subnetwork_id(time, node)   // Subnetwork ID
-  String    node_type(time, node)       // Node type
-  Int32     node_id(time, node)         // Node ID
-  Int32     demand_priority(time, node) // Priority
-  Float64   demand(time, node)          // m³/s
-  Float64   allocated(time, node)       // m³/s
-  Float64   realized(time, node)        // m³/s
+ds = xr.open_dataset("../../generated_testmodels/flow_demand/results/allocation.nc")
+ds
 ```
 
 ::: {.callout-note}
@@ -513,29 +475,12 @@ If in the model a primary network and subnetwork(s) are specified, there are 3 d
 
 **NetCDF structure:**
 
-```cdl
-dimensions:
-  time   = <number of allocation timesteps>
-  link   = <number of allocation links>
+```{python}
+import xarray as xr
 
-coordinates:
-  DateTime  time(time)
-  Int32     link_id(link)
-
-variables:
-  String    from_node_type(link)       // Node type
-  Int32     from_node_id(link)         // Node ID
-  String    to_node_type(link)         // Node type
-  Int32     to_node_id(link)           // Node ID
-  Int32     subnetwork_id(link)        // Subnetwork ID
-  Float64   flow_rate(time, link)      // m³/s
-  Bool      upper_bound_hit(time, link)// Boolean
-  Bool      lower_bound_hit(time, link)// Boolean
+ds = xr.open_dataset("../../generated_testmodels/flow_demand/results/allocation_flow.nc")
+ds
 ```
-
-::: {.callout-note}
-This file is currently not written when the results format is set to `"netcdf"`.
-:::
 
 ## Allocation feasibility analysis - `allocation_analysis_feasibility.log`
 
@@ -553,19 +498,11 @@ The schema below is identical to the [external Basin concentration input](/refer
 
 **NetCDF structure:**
 
-```cdl
-dimensions:
-  time       = <number of timesteps>
-  node       = <number of Basin nodes>
-  substance  = <number of substances>
+```{python}
+import xarray as xr
 
-coordinates:
-  DateTime  time(time)
-  Int32     node_id(node)
-  String    substance(substance)
-
-variables:
-  Float64   concentration(time, node, substance)  // g/m³
+ds = xr.open_dataset("../../generated_testmodels/basic/results/concentration.nc")
+ds
 ```
 
 ::: {.callout-note}
@@ -580,17 +517,11 @@ See there for more information on the meaning of this output.
 
 **NetCDF structure:**
 
-```cdl
-dimensions:
-  time     = <number of timesteps>
-  subgrid  = <number of subgrid elements>
+```{python}
+import xarray as xr
 
-coordinates:
-  DateTime  time(time)
-  Int32     subgrid_id(subgrid)
-
-variables:
-  Float64   subgrid_level(time, subgrid)  // m
+ds = xr.open_dataset("../../generated_testmodels/two_basin/results/subgrid_level.nc")
+ds
 ```
 
 ## Solver statistics - `solver_stats.nc`
@@ -603,18 +534,9 @@ The `dt` is the size (in seconds) of the last calculation timestep (at the `save
 
 **NetCDF structure:**
 
-```cdl
-dimensions:
-  time   = <number of timesteps>
+```{python}
+import xarray as xr
 
-coordinates:
-  DateTime  time(time)
-
-variables:
-  Float64   computation_time(time)    // ms
-  Int       rhs_calls(time)           // count
-  Int       linear_solves(time)       // count
-  Int       accepted_timesteps(time)  // count
-  Int       rejected_timesteps(time)  // count
-  Float64   dt(time)                  // s
+ds = xr.open_dataset("../../generated_testmodels/basic/results/solver_stats.nc")
+ds
 ```
