@@ -9,10 +9,14 @@ File reading is done recursively through the pydantic model structure.
 
 from pathlib import Path
 
+import pytest
+from ribasim import Node
 from ribasim.model import Model
+from ribasim.nodes import basin
+from shapely import Point
 
 
-def test_basic_components(basic_arrow, tmp_path):
+def test_basic_write_components(basic_arrow, tmp_path):
     """Tests for hydromt input/output functionality.
 
     Ensures that we can write individual components of a Ribasim model.
@@ -61,7 +65,7 @@ def test_basic_components(basic_arrow, tmp_path):
     db_path.unlink()
 
 
-def test_basic_lazy_read(basic, tmp_path):
+def test_basic_read_components(basic, tmp_path):
     # Setup
     toml_path = tmp_path / "ribasim.toml"
     basic.write(toml_path)
@@ -89,9 +93,25 @@ def test_basic_lazy_read(basic, tmp_path):
     # We can read individual tables from the lazy model
     basic.write(toml_path)
     model = Model.read(toml_path, internal=False, external=False)
+
     # The directory path is retrieved from the model
     assert model.basin.root == model
     assert model.basin.static.root == model
+    assert model.basin.static.df is None
     model.basin.static.read()
     assert model.basin.static.df is not None
     assert not model.basin.static.lazy
+
+    # Read all node (e.g. Basin) tables
+    assert model.basin.profile.df is None
+    model.basin.read()
+    assert model.basin.profile.df is not None
+
+    # But we can't add nodes yet
+    with pytest.raises(
+        ValueError,
+        match="You cannot add to a Basin NodeModel when the Node table has not been read yet",
+    ):
+        model.basin.add(Node(1, geometry=Point(0, 0)), [basin.State(level=[1.0])])
+    model.node.read()
+    model.basin.add(Node(1, geometry=Point(0, 0)), [basin.State(level=[1.0])])

@@ -80,7 +80,10 @@ logger = logging.getLogger(__name__)
 
 
 class Model(FileModel, ParentModel):
-    """A model of inland water resources systems."""
+    """The main class to represent a Ribasim model.
+
+    It represents the toml file almost directly (same fields).
+    """
 
     starttime: datetime.datetime
     endtime: datetime.datetime
@@ -124,7 +127,9 @@ class Model(FileModel, ParentModel):
 
     @classmethod
     def allows_lazy(cls) -> bool:
-        """Return whether this FileModel allows lazy loading."""
+        """Whether this FileModel allows lazy loading."""
+        # We can't lazily load the Model itself as it needs
+        # to read the TOML file to determine other filepaths.
         return False
 
     @classmethod
@@ -212,7 +217,7 @@ class Model(FileModel, ParentModel):
         INDENT = "    "
         for field in self.model_fields_set:
             attr = getattr(self, field)
-            if isinstance(attr, LinkTable):
+            if isinstance(attr, (LinkTable, NodeTable)):
                 content.append(f"{INDENT}{field}=Link(...),")
             else:
                 if isinstance(attr, NodeModel):

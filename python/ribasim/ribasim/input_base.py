@@ -239,6 +239,7 @@ class FileModel(BaseModel, ABC):
 
     @classmethod
     def allows_lazy(cls) -> bool:
+        """Whether this FileModel allows lazy loading."""
         return True
 
     @classmethod
@@ -308,6 +309,11 @@ class FileModel(BaseModel, ABC):
 
 
 class ChildModel(BaseModel):
+    """Base class to represent models that are contained in a ParentModel.
+
+    These include NodeModels and all Tables, but also the Config groups.
+    """
+
     _parent: BaseModel | None = None
     _parent_field: str | None = None
 
@@ -319,7 +325,10 @@ class ChildModel(BaseModel):
 
     @property
     def root(self) -> BaseModel | None:
-        """Return the upmost parent model of this ChildModel."""
+        """Return the *uppermost* parent model of this ChildModel.
+
+        Useful to get the Model directly from a Table.
+        """
         if self._parent is None:
             return self
 
@@ -331,7 +340,10 @@ class ChildModel(BaseModel):
 
 
 class ParentModel(BaseModel):
-    """Base class to represent models that contain ChildModels."""
+    """Base class to represent models that contain ChildModels.
+
+    These include NodeModels and the overall Model.
+    """
 
     def _children(self):
         return {
@@ -352,6 +364,13 @@ class ParentModel(BaseModel):
 
 
 class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
+    """Base class to represent models that contain tabular data.
+
+    These include all tables in Ribasim. TableModels contain a parameterized
+    schema, which is used for validation. TableModels are FileModels, so they
+    are represented by a filepath, and are ChildModels, as they're contained in a NodeModel.
+    """
+
     df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
     _sort_keys: list[str] = PrivateAttr(default=[])
 
@@ -482,6 +501,11 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
             )
 
     def read(self) -> None:
+        """Read the data for this Table from disk.
+
+        Required when this Table was lazily loaded, otherwise it will either
+        overwrite (reset) the existing data in the underlying DataFrame.
+        """
         if not self.lazy:
             Warning(f"Resetting {self.tablename()}.")
         if self.df is not None:
@@ -510,7 +534,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
             {"directory": self.filepath.parent if self.filepath else None}  # type: ignore
         )
 
-        filepath = self.filepath if self.filepath else self.default_filepath()
+        filepath = self.filepath or self.default_filepath()
 
         data = self._load(directory / filepath)
         self.df = data.get("df", self.df)  # type: ignore
@@ -536,6 +560,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
     def write(
         self,
     ) -> None:
+        """Write the data for this Table to disk."""
         filepath = self.default_filepath() if self.filepath is None else self.filepath
 
         self.sort()
@@ -697,6 +722,11 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
 
 
 class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
+    """Base class to represent models that contain spatial tabular data.
+
+    Overrides the reading and writing methods of a TableModel.
+    """
+
     df: GeoDataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
 
     def sort(self):
