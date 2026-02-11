@@ -102,8 +102,8 @@ end
     level_t_control = level_boundary.level[1](t_control)
     level_t_control_ahead = level_boundary.level[1](t_control + Δt)
 
-    @test !isapprox(level_t_control, threshold_high; rtol = 0.005)
-    @test isapprox(level_t_control_ahead, threshold_high, rtol = 0.005)
+    @test level_t_control < threshold_high
+    @test level_t_control_ahead >= threshold_high
 end
 
 @testitem "PID control" begin
@@ -196,13 +196,13 @@ end
             NodeID(:PidControl, 6, p_independent),
             "target_high",
         ),
-    ].itp_update_linear[1].value.u[1]
+    ].itp_update_constant[1].value.u[1]
     target_low = pid_control.control_mapping[
         (
             NodeID(:PidControl, 6, p_independent),
             "target_low",
         ),
-    ].itp_update_linear[1].value.u[1]
+    ].itp_update_constant[1].value.u[1]
 
     t_target_jump = discrete_control.record.time[2]
     t_idx_target_jump = searchsortedlast(t, t_target_jump)

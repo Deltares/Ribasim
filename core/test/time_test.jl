@@ -138,8 +138,8 @@ end
     @test storage[1, 4] ≈ 110.0f0
     @test storage[1, end] ≈ 110.0f0
 
-    # the pump keeps pumping
+    # the pump keeps pumping at a constant rate
     t_end = model.integrator.t
     flow_rate_end = model.integrator.p.p_independent.pump.time_dependent_flow_rate[1].u[end]
-    @test Float32(only(model.integrator.u.pump)) ≈ 100 + 0.5 * flow_rate_end * t_end
+    @test Float32(only(model.integrator.u.pump)) ≈ 100 + flow_rate_end * t_end
 end
