@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import Field
 
@@ -163,7 +163,7 @@ class Solver(ChildModel):
     specialize: bool = False
 
 
-class Verbosity(str, Enum):
+class Verbosity(StrEnum):
     debug = "debug"
     info = "info"
     warn = "warn"
