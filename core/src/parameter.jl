@@ -932,15 +932,15 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
 @kwdef struct PidControl <: AbstractParameterNode
     node_id::Vector{NodeID}
     listen_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
-    target::Vector{ScalarConstantInterpolation} =
-        Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    target::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
     target_ref::Vector{CacheRef} = Vector{CacheRef}(undef, length(node_id))
-    proportional::Vector{ScalarConstantInterpolation} =
-        Vector{ScalarConstantInterpolation}(undef, length(node_id))
-    integral::Vector{ScalarConstantInterpolation} =
-        Vector{ScalarConstantInterpolation}(undef, length(node_id))
-    derivative::Vector{ScalarConstantInterpolation} =
-        Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    proportional::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    integral::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    derivative::Vector{ScalarLinearInterpolation} =
+        Vector{ScalarLinearInterpolation}(undef, length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
         OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
 end
