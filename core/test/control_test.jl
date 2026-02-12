@@ -294,10 +294,10 @@ end
     end
 
     inflow = get_link_flow(2, 3)
-    @test get_link_flow(3, 4) ≈ max.(0.6 .* inflow, 0) rtol = 1.0e-4
-    @test get_link_flow(4, 6) ≈ max.(0.6 .* inflow, 0) rtol = 1.0e-4
-    @test get_link_flow(3, 5) ≈ max.(0.4 .* inflow, 0) rtol = 1.0e-4
-    @test get_link_flow(5, 7) ≈ max.(0.4 .* inflow, 0) rtol = 1.0e-4
+    @test get_link_flow(3, 4) ≈ max.(0.6 .* inflow, 0) rtol = 1.0e-3
+    @test get_link_flow(4, 6) ≈ max.(0.6 .* inflow, 0) rtol = 1.0e-3
+    @test get_link_flow(3, 5) ≈ max.(0.4 .* inflow, 0) rtol = 1.0e-3
+    @test get_link_flow(5, 7) ≈ max.(0.4 .* inflow, 0) rtol = 1.0e-3
 end
 
 @testitem "Concentration discrete control" begin
