@@ -162,6 +162,7 @@ playground/output
 ribasim_qgis/tests/data/database.gpkg
 ribasim_qgis/core/styles
 core/test/data/delft-fews-netcdf/*.nc
+utils/node_icons
 
 pyjuliapkg/
 .CondaPkg/

@@ -1,13 +1,6 @@
-"""
-Created on Wed Jan 14 14:57:02 2026.
-
-@author: monji
-"""
-
 import math
 from pathlib import Path
 
-import cairosvg
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,8 +12,11 @@ from PIL import Image
 # dir where this script is located
 script_dir = Path(__file__).resolve().parent
 
-results_dir = script_dir / "results"
+results_dir = script_dir / "node_icons"
 results_dir.mkdir(parents=True, exist_ok=True)
+
+small_icon_dir = results_dir / "small_png"
+small_icon_dir.mkdir(parents=True, exist_ok=True)
 
 
 # %% Database icons
@@ -101,7 +97,9 @@ for _, row in df.iterrows():
     shape = row["shape_code"]
     label = row.get("label", "")
 
-    fig, ax = plt.subplots(figsize=figsize)
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.set_aspect("equal", adjustable="box")
 
     if shape == "rectangle":
         # custom rectangle
@@ -204,8 +202,9 @@ for _, row in df.iterrows():
             edgecolors="black" if use_edge else None,
         )
 
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
+    # avoid too much padding
+    ax.set_xlim(0.1, 0.9)
+    ax.set_ylim(0.1, 0.9)
     ax.axis("off")
 
     # save svg
@@ -217,7 +216,15 @@ for _, row in df.iterrows():
     plt.savefig(
         png_filename, format="png", dpi=300, bbox_inches="tight", transparent=True
     )
-    plt.show()
+
+    # 36x36 png icon
+    small_png_filename = small_icon_dir / f"{node_type}.png"
+    plt.savefig(
+        small_png_filename,
+        format="png",
+        dpi=30,
+        transparent=True,
+    )
     plt.close(fig)
 
 print("saved to 'results' folder")
@@ -242,30 +249,25 @@ def create_overview(results_dir, output="overview.png", cols=4):
         img = Image.open(file_path)
         ax.imshow(img)
         ax.axis("off")
+        ax.add_patch(
+            mpatches.Rectangle(
+                (0, 0),
+                1,
+                1,
+                transform=ax.transAxes,
+                fill=False,
+                edgecolor="black",
+                linewidth=1,
+            )
+        )
         label = file_path.stem.replace("_", "\n")
         ax.set_title(label, fontsize=8)
 
     plt.tight_layout()
     out_path = results_dir / output
     plt.savefig(out_path, dpi=300)
-    plt.show()
 
 
 create_overview(results_dir)
-
-# %% 12x12 png icons from existing svgs
-
-small_icon_dir = results_dir / "small_png"
-small_icon_dir.mkdir(parents=True, exist_ok=True)
-
-for file in results_dir.iterdir():
-    if file.suffix == ".svg":
-        svg_path = file
-        png_path = small_icon_dir / f"{file.stem}.png"
-
-        # svg to 12x12 png
-        cairosvg.svg2png(
-            url=svg_path, write_to=png_path, output_width=36, output_height=36
-        )
 
 print(f" png icons saved to: {small_icon_dir}")
