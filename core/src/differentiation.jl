@@ -482,15 +482,3 @@ function water_balance!(
         t,
     )
 end
-
-# Piracy: workaround for https://github.com/SciML/OrdinaryDiffEq.jl/issues/3035
-# Only QNDF and FBDF use DummyController, which delegates to default_post_newton_controller!
-# but that function only has methods for composite caches (DefaultCache, CompositeCache).
-function OrdinaryDiffEqCore.default_post_newton_controller!(
-        integrator,
-        cache::Union{QNDFCache, FBDFCache},
-        alg,
-    )
-    integrator.dt = integrator.dt / integrator.opts.failfactor
-    return nothing
-end
