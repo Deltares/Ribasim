@@ -104,7 +104,8 @@ sys.path.append(QDir.current().path())
 
 def __exit_qgis(exit_code: int):
     """Exit QGIS application with the given exit code."""
-    QgsApplication.exitQgis(exit_code)
+    QgsApplication.exitQgis()
+    sys.exit(exit_code)
 
 
 def __run_test():
