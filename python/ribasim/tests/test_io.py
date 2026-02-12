@@ -38,6 +38,7 @@ def test_basic(basic, tmp_path):
     assert model_orig.filepath == toml_path
     model_loaded = Model.read(toml_path)
     assert model_loaded.filepath == toml_path
+    assert model_loaded.link.df is not None
 
     with toml_path.open("rb") as f:
         toml_dict = tomli.load(f)

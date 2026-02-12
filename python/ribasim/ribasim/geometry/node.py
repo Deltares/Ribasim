@@ -1,6 +1,6 @@
 import numbers
 import warnings
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Generator, Sequence
 from typing import cast
 
 import geopandas as gpd
@@ -18,7 +18,6 @@ from pydantic import (
 )
 from pydantic import (
     ConfigDict,
-    DirectoryPath,
     NonNegativeInt,
     PrivateAttr,
     ValidationInfo,
@@ -36,6 +35,7 @@ from ribasim.input_base import (
     TableModel,
     delimiter,
 )
+from ribasim.schemas import _BaseSchema
 from ribasim.utils import UsedIDs, _concat, _pascal_to_snake
 
 from .base import _GeoBaseSchema
@@ -61,7 +61,7 @@ class NodeSchema(_GeoBaseSchema):
         return "node_id"
 
 
-class NodeTable(SpatialTableModel[NodeSchema]):
+class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
     """The Ribasim nodes as Point geometries."""
 
     _used_node_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
@@ -272,8 +272,6 @@ class Node(PydanticBaseModel):
 class NodeModel(ParentModel, ChildModel):
     """Base class to handle combining the tables for a single node type."""
 
-    _node_type: str
-
     @model_serializer(mode="wrap")
     def set_modeld(
         self, serializer: Callable[["NodeModel"], dict[str, object]]
@@ -308,10 +306,14 @@ class NodeModel(ParentModel, ChildModel):
             return NodeTable(df=self._parent.node.filter(self.__class__.__name__))
         return None
 
-    def _tables(self):
+    def _tables(self, skip_empty: bool = True) -> Generator[TableModel[_BaseSchema]]:
         for key in self._fields():
             attr = getattr(self, key)
-            if isinstance(attr, TableModel) and (attr.df is not None) and key != "node":
+            if (
+                isinstance(attr, TableModel)
+                and (attr.df is not None or not skip_empty)
+                and key != "node"
+            ):
                 yield attr
 
     def _node_ids(self) -> set[int]:
@@ -320,9 +322,41 @@ class NodeModel(ParentModel, ChildModel):
             node_ids.update(table._node_ids())
         return node_ids
 
-    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
+    def read(
+        self,
+        internal: bool = True,
+        external: bool = True,
+    ) -> None:
+        """Read the contents of this NodeModel from disk.
+
+        Parameters
+        ----------
+        internal : bool, optional
+            Read the database tables. Default is True.
+        external : bool, optional
+            Read the NetCDF input files. Default is True.
+        """
+        for table in self._tables(skip_empty=False):
+            if (internal and table.is_internal) or (external and table.is_external):
+                table.read()
+
+    def write(
+        self,
+        internal: bool = True,
+        external: bool = True,
+    ) -> None:
+        """Write the contents of this NodeModel to disk.
+
+        Parameters
+        ----------
+        internal : bool, optional
+            Write the database tables. Default is True.
+        external : bool, optional
+            Write the NetCDF input files. Default is True.
+        """
         for table in self._tables():
-            table._save(directory, input_dir)
+            if (internal and table.is_internal) or (external and table.is_external):
+                table.write()
 
     def _repr_content(self) -> str:
         """Generate a succinct overview of the content.
@@ -365,9 +399,14 @@ class NodeModel(ParentModel, ChildModel):
 
         if self._parent is None:
             raise ValueError(
-                f"You can only add to a {self._node_type} NodeModel when attached to a Model."
+                f"You can only add to a {self.get_input_type()} NodeModel when attached to a Model."
             )
         assert hasattr(self._parent, "node"), "Parent model must have a node table"
+        if self._parent.node.lazy:
+            raise ValueError(
+                f"You cannot add to a {self.get_input_type()} NodeModel when the Node table has not been read yet. "
+                "Please read it first using `model.node.read()` and then try again."
+            )
 
         if node_id is None:
             node_id = self._parent.node._used_node_ids.new_id()
