@@ -6,12 +6,12 @@
     "creators": [
       "Tool: sbom4python-0.12.4"
     ],
-    "created": "2026-02-03T03:50:30Z",
+    "created": "2026-02-12T10:07:53Z",
     "licenseListVersion": "3.27"
   },
   "name": "Python-ribasim",
   "dataLicense": "CC0-1.0",
-  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-2b5f7e6e-906d-46a9-9224-4d98e2525e50",
+  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-d3508b11-39bc-44e1-b2ab-72767d2a20e9",
   "packages": [
     {
       "SPDXID": "SPDXRef-1-ribasim",
@@ -952,23 +952,23 @@
     {
       "SPDXID": "SPDXRef-22-pillow",
       "name": "pillow",
-      "versionInfo": "12.1.0",
+      "versionInfo": "12.1.1",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Jeffrey A. (aclark@aclark.net)",
-      "downloadLocation": "https://pypi.org/project/pillow/12.1.0/#files",
+      "downloadLocation": "https://pypi.org/project/pillow/12.1.1/#files",
       "filesAnalyzed": false,
       "homepage": "https://python-pillow.github.io",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "fb125d860738a09d363a88daa0f59c4533529a90e564785e20fe875b200b6dbd"
+          "checksumValue": "1f1625b72740fdda5d77b4def688eb8fd6490975d06b909fd19f13f391e077e0"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "summary": "Python Imaging Library (fork)",
-      "releaseDate": "2026-01-02T09:10:24Z",
+      "releaseDate": "2026-02-11T04:20:06Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1003,12 +1003,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/pillow@12.1.0"
+          "referenceLocator": "pkg:pypi/pillow@12.1.1"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:jeffrey_a.:pillow:12.1.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:jeffrey_a.:pillow:12.1.1:*:*:*:*:*:*:*"
         }
       ]
     },
