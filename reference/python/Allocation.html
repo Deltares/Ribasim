@@ -181,8 +181,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#attributes" id="toc-attributes" class="nav-link" data-scroll-target="#attributes"><span class="header-section-number">1.1</span> Attributes</a></li>
   <li><a href="#methods" id="toc-methods" class="nav-link" data-scroll-target="#methods"><span class="header-section-number">1.2</span> Methods</a>
   <ul class="collapse">
-  <li><a href="#ribasim.Allocation.diff" id="toc-ribasim.Allocation.diff" class="nav-link" data-scroll-target="#ribasim.Allocation.diff"><span class="header-section-number">1.2.1</span> diff</a></li>
-  <li><a href="#ribasim.Allocation.model_dump" id="toc-ribasim.Allocation.model_dump" class="nav-link" data-scroll-target="#ribasim.Allocation.model_dump"><span class="header-section-number">1.2.2</span> model_dump</a></li>
+  <li><a href="#ribasim.Allocation.check_parent" id="toc-ribasim.Allocation.check_parent" class="nav-link" data-scroll-target="#ribasim.Allocation.check_parent"><span class="header-section-number">1.2.1</span> check_parent</a></li>
+  <li><a href="#ribasim.Allocation.diff" id="toc-ribasim.Allocation.diff" class="nav-link" data-scroll-target="#ribasim.Allocation.diff"><span class="header-section-number">1.2.2</span> diff</a></li>
+  <li><a href="#ribasim.Allocation.model_dump" id="toc-ribasim.Allocation.model_dump" class="nav-link" data-scroll-target="#ribasim.Allocation.model_dump"><span class="header-section-number">1.2.3</span> model_dump</a></li>
   </ul></li>
   </ul></li>
   </ul>
@@ -196,7 +197,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="ribasim.Allocation" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Allocation</h1>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>Allocation()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>Allocation(<span class="op">**</span>data)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Defines the allocation optimization algorithm options.</p>
 <section id="attributes" class="level2 doc-section doc-section-attributes" data-number="1.1">
 <h2 class="doc-section doc-section-attributes anchored" data-number="1.1" data-anchor-id="attributes"><span class="header-section-number">1.1</span> Attributes</h2>
@@ -233,39 +234,47 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
+<td><a href="#ribasim.Allocation.check_parent">check_parent</a></td>
+<td></td>
+</tr>
+<tr class="even">
 <td><a href="#ribasim.Allocation.diff">diff</a></td>
 <td>Compare two instances of a BaseModel.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="#ribasim.Allocation.model_dump">model_dump</a></td>
 <td></td>
 </tr>
 </tbody>
 </table>
-<section id="ribasim.Allocation.diff" class="level3" data-number="1.2.1">
-<h3 data-number="1.2.1" class="anchored" data-anchor-id="ribasim.Allocation.diff"><span class="header-section-number">1.2.1</span> diff</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>Allocation.diff(other, ignore_meta<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="ribasim.Allocation.check_parent" class="level3" data-number="1.2.1">
+<h3 data-number="1.2.1" class="anchored" data-anchor-id="ribasim.Allocation.check_parent"><span class="header-section-number">1.2.1</span> check_parent</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>Allocation.check_parent()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="ribasim.Allocation.diff" class="level3" data-number="1.2.2">
+<h3 data-number="1.2.2" class="anchored" data-anchor-id="ribasim.Allocation.diff"><span class="header-section-number">1.2.2</span> diff</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>Allocation.diff(other, ignore_meta<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Compare two instances of a BaseModel.</p>
 <p>** Warning: This method is experimental and is likely to change. **</p>
 <p>If they are equal, return None. Otherwise, return a nested dictionary with the differences. When the differences are not a DataFrame (like the toml config), the dict has self and other as key. For DataFrames we return a dict with diff as key, and a datacompy Comparison object.</p>
 <p>When ignore_meta is set to True, the meta_* columns in the DataFrames are ignored. Note that in that case the key will still be returned and the value will be None.</p>
-<section id="examples" class="level4 doc-section doc-section-examples" data-number="1.2.1.1">
-<h4 class="doc-section doc-section-examples anchored" data-number="1.2.1.1" data-anchor-id="examples"><span class="header-section-number">1.2.1.1</span> Examples</h4>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> nbasic <span class="op">==</span> basic</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="va">False</span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> x <span class="op">=</span> nbasic.diff(basic)</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>{<span class="st">'basin'</span>: {<span class="st">'node'</span>: {<span class="st">'diff'</span>: <span class="op">&lt;</span>datacompy.core.Compare <span class="bu">object</span> at <span class="bn">0x16e5a45c0</span><span class="op">&gt;</span>},</span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">'static'</span>: {<span class="st">'diff'</span>: <span class="op">&lt;</span>datacompy.core.Compare <span class="bu">object</span> at <span class="bn">0x16eb90080</span><span class="op">&gt;</span>}},</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="st">'solver'</span>: {<span class="st">'saveat'</span>: {<span class="st">'other'</span>: <span class="fl">86400.0</span>, <span class="st">'self'</span>: <span class="fl">0.0</span>}}}</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> x[<span class="st">"basin"</span>][<span class="st">"static"</span>][<span class="st">"diff"</span>].report()</span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>DataComPy Comparison</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="op">--------------------</span></span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>...</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="examples" class="level4 doc-section doc-section-examples" data-number="1.2.2.1">
+<h4 class="doc-section doc-section-examples anchored" data-number="1.2.2.1" data-anchor-id="examples"><span class="header-section-number">1.2.2.1</span> Examples</h4>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> nbasic <span class="op">==</span> basic</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="va">False</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> x <span class="op">=</span> nbasic.diff(basic)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>{<span class="st">'basin'</span>: {<span class="st">'node'</span>: {<span class="st">'diff'</span>: <span class="op">&lt;</span>datacompy.core.Compare <span class="bu">object</span> at <span class="bn">0x16e5a45c0</span><span class="op">&gt;</span>},</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">'static'</span>: {<span class="st">'diff'</span>: <span class="op">&lt;</span>datacompy.core.Compare <span class="bu">object</span> at <span class="bn">0x16eb90080</span><span class="op">&gt;</span>}},</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="st">'solver'</span>: {<span class="st">'saveat'</span>: {<span class="st">'other'</span>: <span class="fl">86400.0</span>, <span class="st">'self'</span>: <span class="fl">0.0</span>}}}</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> x[<span class="st">"basin"</span>][<span class="st">"static"</span>][<span class="st">"diff"</span>].report()</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>DataComPy Comparison</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="op">--------------------</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>...</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 </section>
-<section id="ribasim.Allocation.model_dump" class="level3" data-number="1.2.2">
-<h3 data-number="1.2.2" class="anchored" data-anchor-id="ribasim.Allocation.model_dump"><span class="header-section-number">1.2.2</span> model_dump</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>Allocation.model_dump(<span class="op">**</span>kwargs)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="ribasim.Allocation.model_dump" class="level3" data-number="1.2.3">
+<h3 data-number="1.2.3" class="anchored" data-anchor-id="ribasim.Allocation.model_dump"><span class="header-section-number">1.2.3</span> model_dump</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>Allocation.model_dump(<span class="op">**</span>kwargs)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>
