@@ -67,7 +67,6 @@ def transient_pump_outlet_model() -> Model:
         Node(1, Point(1, 0)), [level_boundary.Static(level=[1.1])]
     )
 
-    # 364 days, nicely divisible by 2
     time = ["2020-01-01", "2020-07-01", "2021-01-01"]
     flow_rate = [0.0, 10.0, 10.0]
 

@@ -383,7 +383,7 @@ end
     level_basin = Ribasim.get_storages_and_levels(model).level[:]
 
     # Basin level converges to stable level boundary level
-    @test all(isapprox.(level_basin[t .>= t_maximum_level], level.u[3], atol = 5.0e-2))
+    @test all(isapprox.(level_basin[t .>= level.t[3]], level.u[3], atol = 5.0e-2))
 end
 
 @testitem "UserDemand" begin
