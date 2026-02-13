@@ -277,12 +277,25 @@ function parse_control_states!(
         control_state = first(group).control_state
         val = getfield(first(group), parameter_name)
         (ismissing(control_state) || ismissing(val)) && continue
-        if T <: AbstractInterpolation
+        if T <: ConstantInterpolation
             push!(
                 node.control_mapping[(node_id, control_state)].itp_update_constant,
                 ParameterUpdate(
                     field_name,
                     ConstantInterpolation(
+                        [val, val],
+                        [0.0, 1.0];
+                        cache_parameters = true,
+                        extrapolation = ConstantExtrapolation,
+                    ),
+                ),
+            )
+        elseif T <: LinearInterpolation
+            push!(
+                node.control_mapping[(node_id, control_state)].itp_update_linear,
+                ParameterUpdate(
+                    field_name,
+                    LinearInterpolation(
                         [val, val],
                         [0.0, 1.0];
                         cache_parameters = true,

@@ -367,6 +367,8 @@ The parameter update associated with a certain control state for discrete contro
     scalar_update::Vector{ParameterUpdate{Float64}} = ParameterUpdate{Float64}[]
     itp_update_constant::Vector{ParameterUpdate{ScalarConstantInterpolation}} =
         ParameterUpdate{ScalarConstantInterpolation}[]
+    itp_update_linear::Vector{ParameterUpdate{ScalarLinearInterpolation}} =
+        ParameterUpdate{ScalarLinearInterpolation}[]
     itp_update_lookup::Vector{ParameterUpdate{IndexLookup}} = ParameterUpdate{IndexLookup}[]
 end
 

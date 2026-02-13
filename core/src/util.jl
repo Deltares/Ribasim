@@ -561,27 +561,47 @@ function set_discrete_controlled_variable_refs!(
                 node.control_mapping
 
             for ((node_id, control_state), control_state_update) in control_mapping
-                (; scalar_update, itp_update_constant, itp_update_lookup) =
+                (; scalar_update, itp_update_constant, itp_update_linear, itp_update_lookup) =
                     control_state_update
 
                 # References to scalar parameters
                 for (i, parameter_update) in enumerate(scalar_update)
                     field = getfield(node, parameter_update.name)
-                    scalar_update[i] = @set parameter_update.ref = Ref(field, node_id.idx)
+                    scalar_update[i] = ParameterUpdate(
+                        parameter_update.name,
+                        parameter_update.value,
+                        Ref(field, node_id.idx),
+                    )
                 end
 
                 # References to constant interpolation parameters
                 for (i, parameter_update) in enumerate(itp_update_constant)
                     field = getfield(node, parameter_update.name)
-                    itp_update_constant[i] =
-                        @set parameter_update.ref = Ref(field, node_id.idx)
+                    itp_update_constant[i] = ParameterUpdate(
+                        parameter_update.name,
+                        parameter_update.value,
+                        Ref(field, node_id.idx),
+                    )
+                end
+
+                # References to linear interpolation parameters
+                for (i, parameter_update) in enumerate(itp_update_linear)
+                    field = getfield(node, parameter_update.name)
+                    itp_update_linear[i] = ParameterUpdate(
+                        parameter_update.name,
+                        parameter_update.value,
+                        Ref(field, node_id.idx),
+                    )
                 end
 
                 # References to index interpolation parameters
                 for (i, parameter_update) in enumerate(itp_update_lookup)
                     field = getfield(node, parameter_update.name)
-                    itp_update_lookup[i] =
-                        @set parameter_update.ref = Ref(field, node_id.idx)
+                    itp_update_lookup[i] = ParameterUpdate(
+                        parameter_update.name,
+                        parameter_update.value,
+                        Ref(field, node_id.idx),
+                    )
                 end
             end
         end

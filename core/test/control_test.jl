@@ -196,13 +196,13 @@ end
             NodeID(:PidControl, 6, p_independent),
             "target_high",
         ),
-    ].itp_update_constant[1].value.u[1]
+    ].itp_update_linear[1].value.u[1]
     target_low = pid_control.control_mapping[
         (
             NodeID(:PidControl, 6, p_independent),
             "target_low",
         ),
-    ].itp_update_constant[1].value.u[1]
+    ].itp_update_linear[1].value.u[1]
 
     t_target_jump = discrete_control.record.time[2]
     t_idx_target_jump = searchsortedlast(t, t_target_jump)
