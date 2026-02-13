@@ -358,21 +358,14 @@ This section describes the structure of each NetCDF result file using CDL-like n
 #| output: false
 # %run ../run_ribasim.py
 
-# Run models needed for the documentation examples
+# Run models used for results section
 from pathlib import Path
 
-# Only run if results don't exist
-if not Path("../../generated_testmodels/basic/results/basin.nc").exists():
-    run_ribasim("../../generated_testmodels/basic/ribasim.toml")
-
-if not Path("../../generated_testmodels/pump_discrete_control/results/control.nc").exists():
-    run_ribasim("../../generated_testmodels/pump_discrete_control/ribasim.toml")
-
-if not Path("../../generated_testmodels/flow_demand/results/allocation.nc").exists():
-    run_ribasim("../../generated_testmodels/flow_demand/ribasim.toml")
-
-if not Path("../../generated_testmodels/two_basin/results/subgrid_level.nc").exists():
-    run_ribasim("../../generated_testmodels/two_basin/ribasim.toml")
+models = Path("../../generated_testmodels")
+run_ribasim(models / "basic/ribasim.toml")
+run_ribasim(models / "pump_discrete_control/ribasim.toml")
+run_ribasim(models / "flow_demand/ribasim.toml")
+run_ribasim(models / "two_basin/ribasim.toml")
 ```
 
 ## Basin - `basin.nc`
