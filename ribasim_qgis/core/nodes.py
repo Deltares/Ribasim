@@ -17,12 +17,12 @@ Each node layer is (optionally) represented in multiple places:
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 from typing import Any
 
-from qgis.core import (
-    QgsVectorLayer,
-)
+from qgis.core import Qgis, QgsVectorLayer
+from qgis.utils import iface
 
 from ribasim_qgis.core import geopackage
 
@@ -40,7 +40,7 @@ class Table:
     def labels(self) -> Any:
         return None
 
-    def layer_from_geopackage(self) -> QgsVectorLayer:
+    def layer_from_file(self) -> QgsVectorLayer:
         self.layer = QgsVectorLayer(
             f"{self._path}|layername={self.input_type}", self.input_type
         )
@@ -53,7 +53,7 @@ class Table:
         return self.layer
 
     def from_geopackage(self) -> tuple[QgsVectorLayer, Any]:
-        self.layer_from_geopackage()
+        self.layer_from_file()
         return (self.layer, self.labels)
 
     def stylename(self) -> str:
@@ -122,7 +122,7 @@ def load_nodes_from_geopackage(path: Path) -> dict[str, Table]:
     return nodes
 
 
-def get_external_input_files(model_path: Path) -> dict[str, str]:
+def get_external_input_files(toml_data: dict[str, Any]) -> dict[str, str]:
     """Get dictionary of external input files (NetCDF) from TOML.
 
     Parameters
@@ -135,12 +135,7 @@ def get_external_input_files(model_path: Path) -> dict[str, str]:
     dict[str, str]
         Dictionary mapping table names (e.g., 'Basin / profile') to file paths.
     """
-    import tomllib
-
     external_files = {}
-
-    with model_path.open("rb") as f:
-        toml_data = tomllib.load(f)
 
     # Derive node types from existing tables set
     # Extract unique node types (the part before ' / ')
@@ -183,9 +178,10 @@ def load_external_input_tables(model_path: Path) -> dict[str, Table]:
     dict[str, Table]
         Dictionary mapping table names to Table objects.
     """
-    import tomllib
+    with model_path.open("rb") as f:
+        toml_data = tomllib.load(f)
 
-    external_files = get_external_input_files(model_path)
+    external_files = get_external_input_files(toml_data)
 
     if not external_files:
         return {}
@@ -215,7 +211,7 @@ class ExternalTable(Table):
     def __init__(self, input_type: str, path: Path):
         super().__init__(input_type, path)
 
-    def layer_from_geopackage(self) -> QgsVectorLayer:
+    def layer_from_file(self) -> QgsVectorLayer:
         """Load the external NetCDF file as a QGIS vector layer.
 
         Uses QGIS/GDAL native support for NetCDF files.
@@ -234,6 +230,12 @@ class ExternalTable(Table):
         # Mark as read-only since these are external files
         if self.layer.isValid():
             self.layer.setReadOnly(True)
+        else:
+            iface.messageBar().pushMessage(
+                "Ribasim",
+                f"Failed to load external NetCDF file: {self._path}",
+                level=Qgis.Warning,
+            )
 
         # Load style if available
         _, success = self.layer.loadDefaultStyle()
