@@ -231,11 +231,12 @@ class ExternalTable(Table):
         if self.layer.isValid():
             self.layer.setReadOnly(True)
         else:
-            iface.messageBar().pushMessage(
-                "Ribasim",
-                f"Failed to load external NetCDF file: {self._path}",
-                level=Qgis.Warning,
-            )
+            if iface:
+                iface.messageBar().pushMessage(
+                    "Ribasim",
+                    f"Failed to load external NetCDF file: {self._path}",
+                    level=Qgis.Warning,
+                )
 
         # Load style if available
         _, success = self.layer.loadDefaultStyle()
