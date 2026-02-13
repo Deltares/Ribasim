@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 from matplotlib.patches import PathPatch
 from matplotlib.path import Path as MplPath
-from PIL import Image
 
 # dir where this script is located
 script_dir = Path(__file__).resolve().parent
@@ -15,11 +14,11 @@ script_dir = Path(__file__).resolve().parent
 results_dir = script_dir / "node_icons"
 results_dir.mkdir(parents=True, exist_ok=True)
 
-small_icon_dir = results_dir / "small_png"
-small_icon_dir.mkdir(parents=True, exist_ok=True)
+svg_dir = results_dir / "svg"
+svg_dir.mkdir(parents=True, exist_ok=True)
 
-
-# %% Database icons
+png_dir = results_dir / "png"
+png_dir.mkdir(parents=True, exist_ok=True)
 
 # fmt: off
 data = [
@@ -30,7 +29,7 @@ data = [
     ("level_boundary",         "#FFFFFF", "o",              "Empty circle"),
     ("tabulated_rating_curve", "#CC79A7", "D",              "Diamond"),
     ("pump",                   "#999999", "H",              "Hexagon (flat top)"),
-    ("outlet",                 "#D55E00", "pointed_circle", "Pointed circle"),
+    ("outlet",                 "#D55E00", "pentagon",       "Pentagon"),
     ("user_demand",            "#E41A1C", "s",              "Square"),
     ("level_demand",           "#E69F00", "half_square_t",  "Square half-filled"),
     ("flow_demand",            "#228B22", "half_square_b",  "Square half-filled"),
@@ -47,7 +46,6 @@ df = pd.DataFrame(
 )
 
 
-# %%
 def create_star(num_points, inner_radius=0.1, outer_radius=0.25):
     verts = []
     codes = [MplPath.MOVETO]
@@ -55,200 +53,187 @@ def create_star(num_points, inner_radius=0.1, outer_radius=0.25):
 
     for i in range(num_points * 2):
         r = outer_radius if i % 2 == 0 else inner_radius
-        x = 0.5 + r * np.cos(i * angle - np.pi / 2)
-        y = 0.5 + r * np.sin(i * angle - np.pi / 2)
+        x = r * np.cos(i * angle - np.pi / 2)
+        y = r * np.sin(i * angle - np.pi / 2)
         verts.append((x, y))
         codes.append(MplPath.LINETO)
 
-    verts.append(verts[0])  # clse path
+    verts.append(verts[0])  # close path
     codes[-1] = MplPath.CLOSEPOLY
     return PathPatch(
         MplPath(verts, codes), facecolor=None, edgecolor="black", linewidth=1
     )
 
 
-# %%
+MARKER_BASE = 800
 
-figsize = (1, 1)
-marker_size = 1000
-
-# Custom shape-based marker sizes
-shape_scaling = {
-    "D": 600,
-    "^": 900,
-    "v": 900,
-    "s": 850,
-    "o": 900,
-    "H": 950,
-    "pointed_circle": 1.0,  # scale outer/inner manually
-    "star5": (0.12, 0.28),
-    "star6": (0.14, 0.3),
-    "star4": (0.15, 0.32),
-    "trapezium": 1.0,
-    "rectangle": 1.0,
-    "half_square_t": 1.0,
-    "half_square_b": 1.0,
+# Scale factor per shape, applied to:
+# - patch coordinates directly
+# - scatter marker size as MARKER_BASE * scale²
+# fmt: off
+ICON_SCALE = {
+    "rectangle":      2.4,
+    "trapezium":      1.1,
+    "pentagon":       1.5,
+    "star5":          1.8,
+    "star6":          1.8,
+    "star4":          1.8,
+    "half_square_t":  1.2,
+    "half_square_b":  1.2,
+    "D":              1.8,
+    "^":              2.1,
+    "v":              2.1,
+    "s":              2.2,
+    "o":              2.2,
+    "H":              2.4,
 }
+# fmt: on
 
 
-for _, row in df.iterrows():
-    node_type = row["node_type"]
-    color = row["color"]
-    shape = row["shape_code"]
-    label = row.get("label", "")
-
-    fig = plt.figure(figsize=figsize)
-    ax = fig.add_axes([0, 0, 1, 1])
-    ax.set_aspect("equal", adjustable="box")
+def draw_icon(ax, shape, color, node_type):
+    """Draw a node icon on the given axes, centered at (0, 0)."""
+    s = ICON_SCALE[shape]
 
     if shape == "rectangle":
-        # custom rectangle
+        w, h = 0.4 * s, 0.2 * s
         rect = mpatches.Rectangle(
-            (0.5 - 0.2, 0.5 - 0.1), 0.4, 0.2, facecolor=color, edgecolor="black"
+            (-w / 2, -h / 2), w, h, facecolor=color, edgecolor="black"
         )
         ax.add_patch(rect)
 
     elif shape == "trapezium":
-        top_width = 0.6
-        bottom_width = 0.3
-        height = 0.5
-
-        top_y = 0.5 + height / 2
-        bottom_y = 0.5 - height / 2
-
+        tw = 0.3 * s
+        bw = 0.15 * s
+        hh = 0.25 * s
         verts = [
-            (0.5 - top_width / 2, top_y),  # top-left
-            (0.5 + top_width / 2, top_y),  # top-right
-            (0.5 + bottom_width / 2, bottom_y),  # bottom-right
-            (0.5 - bottom_width / 2, bottom_y),  # bottom-left
+            (-tw, hh),
+            (tw, hh),
+            (bw, -hh),
+            (-bw, -hh),
         ]
-
         trapezium = mpatches.Polygon(
             verts, closed=True, facecolor=color, edgecolor="black", linewidth=1
         )
         ax.add_patch(trapezium)
 
-    elif shape == "pointed_circle":
-        # outlet should have outer circle + inner dot
-        outer = mpatches.Circle(
-            (0.5, 0.5), 0.25, facecolor="none", edgecolor="black", linewidth=2
+    elif shape == "pentagon":
+        r = 0.25 * s
+        verts = [
+            (
+                r * np.cos(i * 2 * np.pi / 5 - np.pi / 2),
+                r * np.sin(i * 2 * np.pi / 5 - np.pi / 2),
+            )
+            for i in range(5)
+        ]
+        pentagon = mpatches.Polygon(
+            verts, closed=True, facecolor=color, edgecolor="black", linewidth=1
         )
-        inner = mpatches.Circle((0.5, 0.5), 0.1, facecolor=color, edgecolor="none")
-        ax.add_patch(outer)
-        ax.add_patch(inner)
+        ax.add_patch(pentagon)
 
     elif shape == "star5":
-        star = create_star(num_points=5, inner_radius=0.12, outer_radius=0.25)
+        star = create_star(num_points=5, inner_radius=0.12 * s, outer_radius=0.25 * s)
         star.set_facecolor(color)
         ax.add_patch(star)
 
     elif shape == "star6":
-        star = create_star(num_points=6, inner_radius=0.12, outer_radius=0.25)
+        star = create_star(num_points=6, inner_radius=0.12 * s, outer_radius=0.25 * s)
         star.set_facecolor(color)
         ax.add_patch(star)
 
     elif shape == "star4":
-        star = create_star(num_points=4, inner_radius=0.14, outer_radius=0.25)
+        star = create_star(num_points=4, inner_radius=0.14 * s, outer_radius=0.25 * s)
         star.set_facecolor(color)
         ax.add_patch(star)
 
     elif shape == "half_square_t":
-        # outer square border
+        half = 0.25 * s
         square = mpatches.Rectangle(
-            (0.5 - 0.25, 0.5 - 0.25),
-            0.5,
-            0.5,
+            (-half, -half),
+            2 * half,
+            2 * half,
             facecolor="white",
             edgecolor="black",
             linewidth=1,
         )
-        # top half filled
         fill = mpatches.Rectangle(
-            (0.5 - 0.25, 0.5), 0.5, 0.25, facecolor=color, edgecolor="black"
+            (-half, 0), 2 * half, half, facecolor=color, edgecolor="black"
         )
         ax.add_patch(square)
         ax.add_patch(fill)
 
     elif shape == "half_square_b":
-        # outer square border
+        half = 0.25 * s
         square = mpatches.Rectangle(
-            (0.5 - 0.25, 0.5 - 0.25),
-            0.5,
-            0.5,
+            (-half, -half),
+            2 * half,
+            2 * half,
             facecolor="white",
             edgecolor="black",
             linewidth=1,
         )
-        # bottom half filled
         fill = mpatches.Rectangle(
-            (0.5 - 0.25, 0.5 - 0.25), 0.5, 0.25, facecolor=color, edgecolor="black"
+            (-half, -half), 2 * half, half, facecolor=color, edgecolor="black"
         )
         ax.add_patch(square)
         ax.add_patch(fill)
 
     else:
-        # normal scatter marker
         safe_edgecolor_shapes = {"^", "v", "s", "D", "o", "H"}
         use_edge = shape in safe_edgecolor_shapes
-        this_size = shape_scaling.get(shape, marker_size)
-
-        current_marker_size = 500 if node_type == "junction" else this_size
+        marker_size = MARKER_BASE * s * s
         ax.scatter(
-            0.5,
-            0.5,
+            0,
+            0,
             marker=shape,
             color=color,
-            s=current_marker_size,
+            s=marker_size,
             edgecolors="black" if use_edge else None,
+            clip_on=False,
         )
 
-    # avoid too much padding
-    ax.set_xlim(0.1, 0.9)
-    ax.set_ylim(0.1, 0.9)
+    ax.set_xlim(-0.5, 0.5)
+    ax.set_ylim(-0.5, 0.5)
+    ax.set_aspect("equal", adjustable="box")
     ax.axis("off")
 
+
+# Save individual icons
+for _, row in df.iterrows():
+    node_type = row["node_type"]
+    color = row["color"]
+    shape = row["shape_code"]
+
+    fig = plt.figure(figsize=(1, 1))
+    ax = fig.add_axes([0, 0, 1, 1])
+    draw_icon(ax, shape, color, node_type)
+
     # save svg
-    filename = results_dir / f"{node_type}.svg"
-    plt.savefig(filename, format="svg", bbox_inches="tight", transparent=True)
+    svg_path = svg_dir / f"{node_type}.svg"
+    plt.savefig(svg_path, format="svg", transparent=True)
 
-    # PNG needed for overview
-    png_filename = results_dir / f"{node_type}.png"
+    # 30x30 png icon
+    png_path = png_dir / f"{node_type}.png"
     plt.savefig(
-        png_filename, format="png", dpi=300, bbox_inches="tight", transparent=True
-    )
-
-    # 36x36 png icon
-    small_png_filename = small_icon_dir / f"{node_type}.png"
-    plt.savefig(
-        small_png_filename,
+        png_path,
         format="png",
         dpi=30,
         transparent=True,
     )
     plt.close(fig)
 
-print("saved to 'results' folder")
 
-
-# %% overview
-
-
-def create_overview(results_dir, output="overview.png", cols=4):
-    files = sorted(
-        f for f in results_dir.iterdir() if f.suffix == ".png" and f.name != output
-    )
-    num = len(files)
+def create_overview(df, results_dir, output="overview.png", cols=4):
+    num = len(df)
     rows = math.ceil(num / cols)
-    _, axes = plt.subplots(rows, cols, figsize=(cols * 2, rows * 2))
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * 2, rows * 2))
+    fig.patch.set_facecolor("#F0F0F0")
     axes = axes.flatten()
 
     for ax in axes[num:]:
         ax.axis("off")
 
-    for _i, (file_path, ax) in enumerate(zip(files, axes, strict=False)):
-        img = Image.open(file_path)
-        ax.imshow(img)
-        ax.axis("off")
+    for (_, row), ax in zip(df.iterrows(), axes, strict=False):
+        draw_icon(ax, row["shape_code"], row["color"], row["node_type"])
         ax.add_patch(
             mpatches.Rectangle(
                 (0, 0),
@@ -260,14 +245,13 @@ def create_overview(results_dir, output="overview.png", cols=4):
                 linewidth=1,
             )
         )
-        label = file_path.stem.replace("_", "\n")
+        label = row["node_type"].replace("_", "\n")
         ax.set_title(label, fontsize=8)
 
     plt.tight_layout()
     out_path = results_dir / output
-    plt.savefig(out_path, dpi=300)
+    plt.savefig(out_path, dpi=100)
+    plt.close(fig)
 
 
-create_overview(results_dir)
-
-print(f" png icons saved to: {small_icon_dir}")
+create_overview(df, results_dir)
