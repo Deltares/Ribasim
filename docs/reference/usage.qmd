@@ -350,13 +350,30 @@ nodes in QGIS. For instance, you can draw a line connecting the two node coordin
 
 # Results {#sec-results}
 
-## Basin - `basin`
+Results are written in NetCDF format by default, which stores data as multidimensional arrays rather than flat tables.
+This section describes the structure of each NetCDF result file using CDL-like notation.
 
-The Basin table contains:
+```{python}
+#| include: false
+%run ../run_ribasim.py
+
+# Run models used for results section
+from pathlib import Path
+
+models = Path("../../generated_testmodels")
+run_ribasim(models / "basic/ribasim.toml")
+run_ribasim(models / "pump_discrete_control/ribasim.toml")
+run_ribasim(models / "flow_demand/ribasim.toml")
+run_ribasim(models / "two_basin/ribasim.toml")
+```
+
+## Basin - `basin.nc`
+
+The Basin results contain:
 
 - Results of the storage and level of each Basin, which are instantaneous values;
 - Results of the fluxes on each Basin, which are mean values over the `saveat` intervals.
-  In the time column the start of the period is indicated.
+  In the time coordinate the start of the period is indicated.
 - The initial condition is written to the file, but the final state is not.
   It will be placed in a separate output state file in the future.
 - The `inflow_rate` and `outflow_rate` are the sum of the flows from other nodes into and out of the Basin respectively.
@@ -371,85 +388,76 @@ The Basin table contains:
 
 For a more in-depth explanation of the water balance error see [here](/concept/equations.qmd#the-water-balance-error).
 
-column         | type            | unit
--------------- | --------------- | ----
-time           | DateTime        | -
-node_id        | Int32           | -
-level          | Float64         | $\text{m}$
-storage        | Float64         | $\text{m}^3$
-inflow_rate    | Float64         | $\text{m}^3/\text{s}$
-outflow_rate   | Float64         | $\text{m}^3/\text{s}$
-storage_rate   | Float64         | $\text{m}^3/\text{s}$
-precipitation  | Float64         | $\text{m}^3/\text{s}$
-surface_runoff | Float64         | $\text{m}^3/\text{s}$
-evaporation    | Float64         | $\text{m}^3/\text{s}$
-drainage       | Float64         | $\text{m}^3/\text{s}$
-infiltration   | Float64         | $\text{m}^3/\text{s}$
-balance_error  | Float64         | $\text{m}^3/\text{s}$
-relative_error | Float64         | -
-convergence    | Float64/Missing | -
+**NetCDF structure:**
 
-The table is sorted by time, and per time it is sorted by `node_id`.
+```{python}
+#| echo: false
+#| output: false
+import xarray as xr
+```
 
-## Flow - `flow`
+```{python}
+#| code-fold: true
+ds = xr.open_dataset("../../generated_testmodels/basic/results/basin.nc")
+ds
+```
 
-The flow table contains calculated mean flows over the `saveat` intervals for every flow link in the model.
-In the time column the start of the period is indicated.
+## Flow - `flow.nc`
 
-column         | type                  | unit
--------------- | --------------------- | ----
-time           | DateTime              | -
-link_id        | Int32                 | -
-from_node_type | String                | -
-from_node_id   | Int32                 | -
-to_node_type   | String                | -
-to_node_id     | Int32                 | -
-flow_rate      | Float64               | $\text{m}^3/\text{s}$
-convergence    | Float64/Missing       | -
+The flow results contain calculated mean flows over the `saveat` intervals for every flow link in the model.
+In the time coordinate the start of the period is indicated.
 
-The table is sorted by time, and per time the same `link_id` order is used, though not sorted.
+**NetCDF structure:**
+
+```{python}
+#| code-fold: true
+ds = xr.open_dataset("../../generated_testmodels/basic/results/flow.nc")
+ds
+```
+
 The `link_id` value is the same as the `fid` written to the Link table, and can be used to directly look up the Link geometry.
 Flows from the "from" to the "to" node have a positive sign, and if the flow is reversed it will be negative.
 - The `convergence` is the scaled residual of the solver, giving an indication of which nodes converge the worst (are hardest to solve).
 
-## State - `basin_state` {#sec-state}
+## State - `basin_state.nc` {#sec-state}
 
-The Basin state table contains the water levels in each Basin at the end of the simulation.
+The Basin state file contains the water levels in each Basin at the end of the simulation.
 
-column    | type    | unit
---------- | ------- | ------------
-node_id   | Int32   | -
-level     | Float64 | $\text{m}$
+**NetCDF structure:**
+
+```{python}
+#| code-fold: true
+ds = xr.open_dataset("../../generated_testmodels/basic/results/basin_state.nc")
+ds
+```
 
 To use this result as the initial condition of another simulation, see the [Basin / state](/reference/node/basin.qmd#sec-state) table reference.
 
-## DiscreteControl - `control`
+## DiscreteControl - `control.nc`
 
-The control table contains a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.
+The control results contain a record of each change of control state: when it happened, which control node was involved, to which control state it changed and based on which truth state.
 For more information on control states and truth states, see the [DiscreteControl](/reference/node/discrete-control.qmd) reference.
 
-column          | type     | unit
---------------- | -------- | ----
-time            | DateTime | -
-control_node_id | Int32    | -
-truth_state     | String   | -
-control_state   | String   | -
+**NetCDF structure:**
 
-## Allocation - `allocation`
+```{python}
+#| code-fold: true
+ds = xr.open_dataset("../../generated_testmodels/pump_discrete_control/results/control.nc")
+ds
+```
 
-The allocation table contains a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and realized flow were.
+## Allocation - `allocation.nc`
+
+The allocation results contain a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and realized flow were.
 The realized values at the starting time of the simulation can be ignored.
 
-column           | type     | unit
----------------- | -------- | ---------------------
-time             | DateTime | -
-subnetwork_id    | Int32    | -
-node_type        | String   | -
-node_id          | Int32    | -
-demand_priority  | Int32    | -
-demand           | Float64  | $\text{m}^3/\text{s}$
-allocated        | Float64  | $\text{m}^3/\text{s}$
-realized         | Float64  | $\text{m}^3/\text{s}$
+**NetCDF structure:**
+
+```{python}
+#| code-fold: true
+ds = xr.open_dataset("../../generated_testmodels/flow_demand/results/allocation.nc")
+ds
+```
 
 ::: {.callout-note}
 The LevelDemand node allocations are listed as node type Basin.
@@ -463,27 +471,18 @@ The values are negative if the Basin supplies due to a surplus of water.
 Currently the stored demand and abstraction rate are those at the allocation timepoint (and the abstraction rate is based on the previous allocation optimization). In the future these will be an average over the previous allocation timestep.
 :::
 
-## Allocation flow - `allocation_flow`
+## Allocation flow - `allocation_flow.nc`
 
-The allocation flow table contains results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved (see also [here](/concept/allocation.qmd#the-high-level-algorithm)).
-If in the model a primary network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork:
+The allocation flow results contain results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved (see also [here](/concept/allocation.qmd#the-high-level-algorithm)).
+If in the model a primary network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork.
 
-column            | type     | unit
------------------ | -------- | ----
-time              | DateTime | -
-link_id           | Int32    | -
-from_node_type    | String   | -
-from_node_id      | Int32    | -
-to_node_type      | String   | -
-to_node_id        | Int32    | -
-subnetwork_id     | Int32    | -
-flow_rate         | Float64  | $\text{m}^3/\text{s}$
-upper_bound_hit   | Bool     | -
-lower_bound_hit   | Bool     | -
+**NetCDF structure:**
 
-::: {.callout-note}
-This file is currently not written when the results format is set to `"netcdf"`.
-:::
+```{python}
+#| code-fold: true
+ds = xr.open_dataset("../../generated_testmodels/flow_demand/results/allocation_flow.nc")
+ds
+```
 
 ## Allocation feasibility analysis - `allocation_analysis_feasibility.log`
 
@@ -493,44 +492,50 @@ When an allocation optimization problem turns out to be infeasible, an infeasibi
 
 When an allocation optimization problem turns out to be infeasible, a scaling analysis is performed in addition to the feasibility analysis described above. Some user friendly data is logged in the main log, but the full report of the analysis is written to this separate file. For details on the scaling analysis see [here](https://jump.dev/MathOptAnalyzer.jl/dev/).
 
-## Concentration - `concentration`
+## Concentration - `concentration.nc`
 
 If the [experimental concentration feature](/reference/usage.qmd#experimental-features) is enabled, the results are written to file.
 This file records the Basin concentrations for each substance over time.
 The schema below is identical to the [external Basin concentration input](/reference/node/basin.qmd#concentration-external).
 
-column         | type     | unit                     | restriction
--------------- | -------- | ------------------------ | -----------
-node_id        | Int32    | -                        | Basin nodes only
-time           | DateTime | -                        |
-substance      | String   | -                        | can correspond to known Delwaq substances
-concentration  | Float64  | $\text{g}/\text{m}^3$    |
+**NetCDF structure:**
 
-## Subgrid level - `subgrid_level`
+```{python}
+#| code-fold: true
+ds = xr.open_dataset("../../generated_testmodels/basic/results/concentration.nc")
+ds
+```
+
+::: {.callout-note}
+Only Basin nodes are included in the concentration output.
+Substances can correspond to known Delwaq substances.
+:::
+
+## Subgrid level - `subgrid_level.nc`
 
 This result file is only written if the model contains a [Basin / subgrid](/reference/node/basin.qmd#subgrid) table.
 See there for more information on the meaning of this output.
 
-column         | type     | unit
----------------| -------- | ----
-time           | DateTime | -
-subgrid_id     | Int32    | -
-subgrid_level  | Float64  | $\text{m}$
+**NetCDF structure:**
 
-## Solver statistics - `solver_stats`
+```{python}
+#| code-fold: true
+ds = xr.open_dataset("../../generated_testmodels/two_basin/results/subgrid_level.nc")
+ds
+```
 
-This result file contains statistics about the solver, which can give an insight into how well the solver is performing over time. The data is solved by `saveat` (see [configuration file](#configuration-file)). `water_balance` refers to the right-hand-side function of the system of differential equations solved by the Ribasim core.
+## Solver statistics - `solver_stats.nc`
+
+This result file contains statistics about the solver, which can give an insight into how well the solver is performing over time. The data is saved by `saveat` (see [configuration file](#configuration-file)). `water_balance` refers to the right-hand-side function of the system of differential equations solved by the Ribasim core.
 
 The `computation_time` is the wall time in milliseconds spent on the given period.
 The first row tends to include compilation time as well.
 The `dt` is the size (in seconds) of the last calculation timestep (at the `saveat` timestep).
 
-column              | type     | unit
---------------------| -------- | ----
-time                | DateTime | -
-computation_time    | Float64  | $\text{ms}$
-water_balance_calls | Int      | -
-linear_solves       | Int      | -
-accepted_timesteps  | Int      | -
-rejected_timesteps  | Int      | -
-dt                  | Float64  | $\text{s}$
+**NetCDF structure:**
+
+```{python}
+#| code-fold: true
+ds = xr.open_dataset("../../generated_testmodels/basic/results/solver_stats.nc")
+ds
+```

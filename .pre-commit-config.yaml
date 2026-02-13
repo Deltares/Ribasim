@@ -21,7 +21,7 @@ repos:
       - id: ruff-check
         name: ruff check
         description: Lint Python code and auto-fix issues
-        entry: ruff check --force-exclude
+        entry: pixi run ruff check --force-exclude
         args: [--fix]
         language: system
         types_or: [python, pyi, jupyter]
@@ -29,27 +29,27 @@ repos:
       - id: ruff-format
         name: ruff format
         description: Format Python code
-        entry: ruff format --force-exclude
+        entry: pixi run ruff format --force-exclude
         language: system
         types_or: [python, pyi, jupyter]
         require_serial: true
       - id: yamlfmt
         name: yamlfmt
         description: Format YAML files
-        entry: yamlfmt
+        entry: pixi run yamlfmt
         language: system
         types: [yaml]
       - id: nbstripout
         name: nbstripout
         description: Strip Jupyter notebook outputs
-        entry: nbstripout
+        entry: pixi run nbstripout
         language: system
         types: [jupyter]
       - id: typos
         name: typos
         description: Fix spelling mistakes
         language: system
-        entry: typos
+        entry: pixi run typos
         args: [--write-changes, --force-exclude]
         types: [text]
         stages: [pre-commit, pre-merge-commit, pre-push, manual]
