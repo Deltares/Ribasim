@@ -7,10 +7,10 @@ from ribasim.config import (
     Allocation,
     Experimental,
     Interpolation,
-    Node,
     Results,
     Solver,
 )
+from ribasim.geometry.node import Node
 from ribasim.input_base import TableModel
 from ribasim.nodes import (
     basin,
@@ -465,10 +465,8 @@ def medium_primary_secondary_network_model() -> Model:
 def medium_primary_secondary_network_verification_model() -> Model:
     model = medium_primary_secondary_network_model()
     # set all subnetwork ids to 2 for verification purposes
-    for node in model._nodes():
-        # check if node is None
-        if node.node.df is not None:
-            node.node.df.subnetwork_id = 2
+    assert model.node.df is not None
+    model.node.df["subnetwork_id"] = 2
     return model
 
 

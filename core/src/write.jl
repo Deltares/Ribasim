@@ -5,7 +5,7 @@ Write all results to the Arrow files as specified in the model configuration.
 """
 function write_results(model::Model)::Model
     (; format) = model.config.results
-    @debug "Writing results."
+    @info "Writing results."
 
     if format == "arrow"
         write_results_arrow(model)

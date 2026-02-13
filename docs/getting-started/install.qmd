@@ -95,7 +95,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://ribasim.org/install.ps1 | iex
 This will download and install the latest version of Ribasim to `%USERPROFILE%\.ribasim` and automatically add it to your PATH.
 After installation, you can run `ribasim --help` from any directory.
 
-You can set the `RIBASIM_HOME` environment variable if you wish to install it in a different directory.
+It also sets the `RIBASIM_HOME` environment variable to `%USERPROFILE%\.ribasim`.
 Use the manual installation to install older versions of Ribasim, or if you don't want to add it to your PATH.
 
 ## Manual installation
@@ -107,10 +107,10 @@ To download the Ribasim core manually, download the appropriate zip file for you
 
 Note that we currently only support and provide binaries for Windows and Linux, for the x86_64 architecture.
 
-After downloading, extract/unzip the zip file to a directory of your choice, for example `C:\bin\ribasim\`.
+After downloading, extract/unzip the zip file to a directory of your choice, for example `C:\ribasim\`.
 Unless you add it to the Path as instructed below, we recommend avoiding spaces in the path.
 
-To check whether the installation was performed successfully, open a terminal and go to the path where the executable is for example `C:\bin\ribasim\`.
+To check whether the installation was performed successfully, open a terminal and go to the path where the executable is for example `C:\ribasim\`.
 If you are using cmd.exe type `ribasim --help`, or for PowerShell `./ribasim`.
 
 This will give the following message if it is installed correctly:
@@ -129,16 +129,34 @@ Options:
 
 If you used the installation script, Ribasim is already on your PATH. For manual installations, you can add the Ribasim executable directory to your Windows Path environment variable.
 
-The Path environment variable tells Windows where to look for programs when you type their name in a terminal. By adding Ribasim to your Path, you can type `ribasim` from any folder instead of having to navigate to the Ribasim folder first or typing the full path like `C:\bin\ribasim\ribasim.exe`.
+The Path environment variable tells Windows where to look for programs when you type their name in a terminal. By adding Ribasim to your Path, you can type `ribasim` from any folder instead of having to navigate to the Ribasim folder first or typing the full path like `C:\ribasim\bin\ribasim.exe`.
 
    - Search "Environment Variables" in the Windows search bar
    - Click "Edit the system environment variables"
    - Click on the "Advanced" tab
    - Click the "Environment Variables..." button at the bottom
    - In the top section "User variables", scroll down and find "Path", then click "Edit..."
-   - Click "New" and enter the full path to your Ribasim directory (e.g., `C:\bin\ribasim`, not `C:\bin\ribasim\ribasim.exe`)
+   - Click "New" and enter the full path to your Ribasim bin directory (e.g., `C:\ribasim\bin`)
    - Click "OK" three times to close all dialogs
    - Close any open terminals/command prompts and open a new one
+
+## RIBASIM_HOME environment variable {#ribasim-home}
+
+The [`run_ribasim`](/reference/python/run_ribasim.qmd#ribasim.run_ribasim) function in Ribasim Python looks for the Ribasim executable in the following order:
+
+1. The `RIBASIM_HOME` environment variable (if set)
+2. The system `PATH`
+
+To set `RIBASIM_HOME`:
+
+- Search "Environment Variables" in the Windows search bar
+- Click "Edit the system environment variables"
+- Click the "Environment Variables..." button
+- In the top section "User variables", click "New..."
+- Set Variable name to `RIBASIM_HOME`
+- Set Variable value to the **path to the Ribasim home directory** (e.g., `C:\ribasim`, the folder which contains a `bin` directory with `ribasim.exe`)
+- Click "OK" three times to close all dialogs
+- Restart QGIS for the change to take effect
 
 # Install Ribasim Python {#sec-install-python}
 

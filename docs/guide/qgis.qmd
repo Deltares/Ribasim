@@ -9,12 +9,25 @@ This guide assumes you have already installed the Ribasim core and QGIS plugin a
 Use any running Ribasim model to follow this guide.
 For ready-made example models download and unzip `generated_testmodels.zip` from the [release assets](https://github.com/Deltares/Ribasim/releases/latest), and use for instance the `basic` test model.
 
+You can open a model by clicking on the Ribasim icon, and selecting a TOML file.
+
+![](https://user-images.githubusercontent.com/4471859/224939101-228e068a-875b-4df2-98bb-6ee6a3830ddd.png){fig-align="left"}
+
+Alternatively, drag a TOML file into QGIS.
+
 # Running a model
 
-- Install the Ribasim core application as described in the [install section](/getting-started/install.qmd)
-- Open a terminal like Powershell or Cmd and navigate to the model directory.
-- Call Ribasim with the `.toml` file as input. E.g. `ribasim my_model.toml`.
-- In your model directory there is now a `results/` folder with `basin.nc` and `flow.nc` output files.
+Right-click on the model in the Layers panel and select **Run Ribasim model** from the context menu.
+
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/run-model-context-menu.png){fig-align="left"}
+
+This will run the simulation in the background, showing progress in the QGIS task manager and a live output dialog.
+When the simulation completes successfully, the model results are automatically reloaded.
+
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/run-model-dialog.png){fig-align="left"}
+
+For QGIS to find the Ribasim executable, it must be configured via `RIBASIM_HOME`.
+See the [install section](/getting-started/install.qmd#ribasim-home) for details.
 
 # Inspect a (large) model {#sec-inspect}
 

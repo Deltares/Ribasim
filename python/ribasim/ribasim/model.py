@@ -19,7 +19,6 @@ from pydantic import (
     DirectoryPath,
     Field,
     FilePath,
-    PrivateAttr,
     field_serializer,
     field_validator,
     model_validator,
@@ -41,7 +40,6 @@ from ribasim.config import (
     LinearResistance,
     Logging,
     ManningResistance,
-    MultiNodeModel,
     Outlet,
     PidControl,
     Pump,
@@ -53,17 +51,18 @@ from ribasim.config import (
 )
 from ribasim.db_utils import _set_db_schema_version
 from ribasim.geometry.link import LinkSchema, LinkTable
-from ribasim.geometry.node import NodeTable
+from ribasim.geometry.node import NodeModel, NodeSchema, NodeTable
 from ribasim.input_base import (
-    ChildModel,
     FileModel,
+    ParentModel,
     SpatialTableModel,
+    _init_context_var,
     context_file_loading,
     context_file_writing,
+    init_context,
 )
 from ribasim.utils import (
     MissingOptionalModule,
-    UsedIDs,
     _add_cf_attributes,
     _concat,
     _link_lookup,
@@ -80,8 +79,11 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class Model(FileModel):
-    """A model of inland water resources systems."""
+class Model(FileModel, ParentModel):
+    """The main class to represent a Ribasim model.
+
+    It represents the toml file almost directly (same fields).
+    """
 
     starttime: datetime.datetime
     endtime: datetime.datetime
@@ -119,10 +121,21 @@ class Model(FileModel):
     terminal: Terminal = Field(default_factory=Terminal)
     user_demand: UserDemand = Field(default_factory=UserDemand)
 
+    node: NodeTable = Field(default_factory=NodeTable)
     link: LinkTable = Field(default_factory=LinkTable)
     use_validation: bool = Field(default=True, exclude=True)
 
-    _used_node_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
+    @classmethod
+    def allows_lazy(cls) -> bool:
+        """Whether this FileModel allows lazy loading."""
+        # We can't lazily load the Model itself as it needs
+        # to read the TOML file to determine other filepaths.
+        return False
+
+    @classmethod
+    def default_filepath(cls) -> Path:
+        """Return the default filepath for this FileModel."""
+        return Path("ribasim.toml")
 
     @field_validator("ribasim_version")
     @classmethod
@@ -154,35 +167,25 @@ class Model(FileModel):
         return v
 
     @model_validator(mode="after")
-    def _set_node_parent(self) -> "Model":
-        for (
-            k,
-            v,
-        ) in self._children().items():
-            v._parent = self
-            v._parent_field = k
-        return self
-
-    @model_validator(mode="after")
-    def _ensure_link_table_is_present(self) -> "Model":
+    def _ensure_topology_tables_are_present(self) -> "Model":
         if self.link.df is None:
             self.link.df = GeoDataFrame[LinkSchema](
                 index=pd.Index([], name="link_id"),
                 geometry=[],
             )
         self.link.df = self.link.df.set_geometry("geometry", crs=self.crs)
+        if self.node.df is None:
+            self.node.df = GeoDataFrame[NodeSchema](
+                index=pd.Index([], name="node_id"),
+                geometry=[],
+            )
+        self.node.df = self.node.df.set_geometry("geometry", crs=self.crs)
         return self
 
-    @model_validator(mode="after")
-    def _update_used_ids(self) -> "Model":
-        # Only update the used node IDs if we read from a database
-        if "database" in context_file_loading.get():
-            df = self.node_table().df
-            assert df is not None
-            if len(df.index) > 0:
-                self._used_node_ids.node_ids.update(df.index)
-                self._used_node_ids.max_node_id = df.index.max()
-        return self
+    def node_table(self):
+        """Return the node table of the model."""
+        warnings.warn("Use `model.node` instead", DeprecationWarning, stacklevel=2)
+        return self.node
 
     @field_serializer("input_dir", "results_dir")
     def _serialize_path(self, path: Path) -> str:
@@ -194,8 +197,16 @@ class Model(FileModel):
         # By overriding `BaseModel.model_post_init` we can set them explicitly,
         # and enforce that they are always written.
         # Since migration runs on reading, the ribasim_version should be reset.
+        self.model_config["validate_assignment"] = False
         self.ribasim_version = ribasim.__version__
+        self.model_config["validate_assignment"] = True
         self.model_fields_set.update({"input_dir", "results_dir"})
+
+        # Finally we add all NodeModel children to the model_fields_set,
+        # so that they are always included in the repr and written to TOML when they have data.
+        for attr, child in self._children().items():
+            if isinstance(child, ParentModel):
+                self.model_fields_set.add(attr)
 
     def __repr__(self) -> str:
         """Generate a succinct overview of the Model content.
@@ -204,12 +215,12 @@ class Model(FileModel):
         """
         content = ["ribasim.Model("]
         INDENT = "    "
-        for field in self._fields():
+        for field in self.model_fields_set:
             attr = getattr(self, field)
-            if isinstance(attr, LinkTable):
+            if isinstance(attr, (LinkTable, NodeTable)):
                 content.append(f"{INDENT}{field}=Link(...),")
             else:
-                if isinstance(attr, MultiNodeModel) and attr.node.df is None:
+                if isinstance(attr, NodeModel):
                     # Skip unused node types
                     continue
                 content.append(f"{INDENT}{field}={attr!r},")
@@ -231,39 +242,42 @@ class Model(FileModel):
         Path
             The file path of the written TOML file.
         """
-        content = self.model_dump(
-            exclude_unset=True, exclude_none=True, by_alias=True, context="write"
-        )
+        content = self.model_dump(exclude_unset=True, exclude_none=True, by_alias=True)
         # Filter empty dicts (default Nodes)
         content = dict(filter(lambda x: x[1], content.items()))
         with fn.open("wb") as f:
             tomli_w.dump(content, f)
         return fn
 
-    def _save(self, directory: DirectoryPath, input_dir: DirectoryPath):
+    def _write(
+        self,
+        directory: DirectoryPath,
+        internal: bool = True,
+        external: bool = True,
+    ) -> None:
         # We write all tables to a temporary GeoPackage with a dot prefix,
         # and at the end move this over the target file.
         # This does not throw a PermissionError if the file is open in QGIS.
-        db_path = directory / input_dir / ".database.gpkg"
 
-        # avoid adding tables to existing model
-        db_path.parent.mkdir(parents=True, exist_ok=True)
-        db_path.unlink(missing_ok=True)
-        context_file_writing.get()["database"] = db_path
+        if internal:
+            db_path = directory / ".database.gpkg"
 
-        self.link._save(directory, input_dir)
-        node = self.node_table()
+            # avoid adding tables to existing model
+            db_path.unlink(missing_ok=True)
 
-        assert node.df is not None
-        node._save(directory, input_dir)
+            self.link.write()
+            node = self.node
+            assert node.df is not None
+            node.write()
 
-        # Run after geopackage schema has been created
-        _set_db_schema_version(db_path, ribasim.__schema_version__)
+            # Run after geopackage schema has been created
+            _set_db_schema_version(db_path, ribasim.__schema_version__)
 
         for sub in self._nodes():
-            sub._save(directory, input_dir)
+            sub.write(internal=internal, external=external)
 
-        shutil.move(db_path, db_path.with_name("database.gpkg"))
+        if internal:
+            shutil.move(db_path, db_path.with_name("database.gpkg"))
 
     def set_crs(self, crs: str) -> None:
         """Set the coordinate reference system of the data in the model.
@@ -283,9 +297,8 @@ class Model(FileModel):
     def _apply_crs_function(self, function_name: str, crs: str) -> None:
         """Apply `function_name`, with `crs` as the first and only argument to all spatial tables."""
         getattr(self.link.df, function_name)(crs, inplace=True)
+        getattr(self.node.df, function_name)(crs, inplace=True)
         for sub in self._nodes():
-            if sub.node.df is not None:
-                getattr(sub.node.df, function_name)(crs, inplace=True)
             for table in sub._tables():
                 if isinstance(table, SpatialTableModel) and table.df is not None:
                     getattr(table.df, function_name)(crs, inplace=True)
@@ -304,22 +317,18 @@ class Model(FileModel):
         node_id : int
             The node ID to remove from the model
         """
+        assert self.node.df is not None
+        if node_id in self.node.df.index:
+            # Remove from node table
+            self.node.df = self.node.df.drop(node_id)
+
         for sub in self._nodes():
-            assert sub.node.df is not None
-            if node_id in sub.node.df.index:
-                # Remove from node table
-                sub.node.df = sub.node.df.drop(node_id)
-                if sub.node.df.empty:
-                    sub.node.df = None
-
-                # Remove from data tables
-                for table in sub._tables():
-                    if table.df is not None and "node_id" in table.df.columns:
-                        table.df = table.df[table.df["node_id"] != node_id]
-                        if table.df.empty:
-                            table.df = None
-
-                break
+            # Remove from data tables
+            for table in sub._tables():
+                if table.df is not None and "node_id" in table.df.columns:
+                    table.df = table.df[table.df["node_id"] != node_id]
+                    if table.df.empty:
+                        table.df = None
 
     def remove_node(self, node_id: int) -> None:
         """Remove a node from the model, including connected links."""
@@ -330,55 +339,47 @@ class Model(FileModel):
         """Remove a link from the model."""
         self.link._remove_link_id(link_id)
 
-    def node_table(self) -> NodeTable:
-        """Compute the full sorted NodeTable from all node types."""
-        df_chunks = [node.node.df for node in self._nodes()]
-        df = (
-            _concat(df_chunks)
-            if df_chunks
-            else pd.DataFrame(index=pd.Index([], name="node_id"))
-        )
-        node_table = NodeTable(df=df)
-        node_table.sort()
-        assert node_table.df is not None
-        assert node_table.df.index.is_unique, (
-            f"node_id must be unique, the following ids are not {node_table.df.index[node_table.df.index.duplicated(keep=False)].unique()}"
-        )
-        return node_table
-
-    def _nodes(self) -> Generator[MultiNodeModel, None, None]:
-        """Return all non-empty MultiNodeModel instances."""
-        for key in self.__class__.model_fields:
+    def _nodes(self) -> Generator[NodeModel, None, None]:
+        """Return all non-empty NodeModel instances."""
+        for key in sorted(self.model_fields_set):
             attr = getattr(self, key)
-            if (
-                isinstance(attr, MultiNodeModel)
-                and attr.node.df is not None
-                # TODO: Model.read creates empty node tables (#1278)
-                and not attr.node.df.empty
-            ):
+            if isinstance(attr, NodeModel):
                 yield attr
 
-    def _children(self):
-        return {
-            k: getattr(self, k)
-            for k in self.__class__.model_fields
-            if isinstance(getattr(self, k), ChildModel)
-        }
-
     @classmethod
-    def read(cls, filepath: str | PathLike[str]) -> "Model":
+    def read(
+        cls, filepath: str | PathLike[str], internal: bool = True, external: bool = True
+    ) -> "Model":
         """Read a model from a TOML file.
 
         Parameters
         ----------
         filepath : str | PathLike[str]
             The path to the TOML file.
+        internal : bool, optional
+            Load data from the database. Default is True.
+        external : bool, optional
+            Load data from the NetCDF input files. Default is True.
         """
         if not Path(filepath).is_file():
             raise FileNotFoundError(f"File '{filepath}' does not exist.")
-        return cls(filepath=filepath)  # type: ignore
 
-    def write(self, filepath: str | PathLike[str]) -> Path:
+        with init_context(
+            {
+                "internal": internal,
+                "external": external,
+                "directory": Path(filepath).parent,
+            }
+        ):
+            return cls(filepath=Path(filepath).name)  # type: ignore
+
+    def write(
+        self,
+        filepath: str | PathLike[str],
+        toml: bool = True,
+        internal: bool = True,
+        external: bool = True,
+    ) -> Path:
         """Write the contents of the model to disk and save it as a TOML configuration file.
 
         If ``filepath.parent`` does not exist, it is created before writing.
@@ -387,27 +388,36 @@ class Model(FileModel):
         ----------
         filepath : str | PathLike[str]
             A file path with .toml extension.
+        toml : bool, optional
+            Write the TOML configuration file. Default is True.
+        internal : bool, optional
+            Write the database. Default is True.
+        external : bool, optional
+            Write the NetCDF input files. Default is True.
         """
         if self.use_validation:
             self._validate_model()
 
         filepath = Path(filepath)
-        self.filepath = filepath
         if not filepath.suffix == ".toml":
             raise ValueError(f"Filepath '{filepath}' is not a .toml file.")
-        context_file_writing.set({})
-        directory = filepath.parent
-        directory.mkdir(parents=True, exist_ok=True)
-        self._save(directory, self.input_dir)
-        fn = self._write_toml(filepath)
+        self.filepath = filepath
 
         context_file_writing.set({})
-        return fn
+        directory = filepath.parent / self.input_dir
+        directory.mkdir(parents=True, exist_ok=True)
+        context_file_writing.get()["directory"] = directory
+
+        self._write(directory, internal=internal, external=external)
+        if toml:
+            self._write_toml(filepath)
+
+        context_file_writing.set({})
+        return filepath
 
     def _validate_model(self):
         df_link = self.link.df
-        df_chunks = [node.node.df for node in self._nodes()]
-        df_node = _concat(df_chunks)
+        df_node = self.node.df
 
         df_graph = df_link
         # Join df_link with df_node to get to_node_type
@@ -527,13 +537,14 @@ class Model(FileModel):
             with filepath.open("rb") as f:
                 config = tomli.load(f)
 
+            config["filepath"] = filepath
             directory = filepath.parent / config["input_dir"]
             context_file_loading.get()["directory"] = directory
-            db_path = directory / "database.gpkg"
+            _init_context_var.get()["directory"] = directory  # type: ignore
 
+            db_path = directory / "database.gpkg"
             if not db_path.is_file():
                 raise FileNotFoundError(f"Database file '{db_path}' does not exist.")
-
             context_file_loading.get()["database"] = db_path
 
             return config
@@ -545,6 +556,20 @@ class Model(FileModel):
         # Drop database info
         context_file_loading.set({})
         return self
+
+    @property
+    def database_path(self) -> FilePath | None:
+        """
+        Get the path to the database file.
+
+        Returns
+        -------
+        FilePath | None
+            The path to the database file.
+        """
+        if self.filepath:
+            return self.filepath.parent / self.input_dir / "database.gpkg"
+        return None
 
     @property
     def toml_path(self) -> FilePath:
@@ -563,7 +588,7 @@ class Model(FileModel):
         """
         if self.filepath is None:
             raise FileNotFoundError("Model must be written to disk.")
-        return FilePath(self.filepath)
+        return Path(self.filepath)
 
     @property
     def results_extension(self) -> str:
@@ -642,7 +667,7 @@ class Model(FileModel):
             df_listen_link = _concat([df_listen_link, to_add])
 
         # Collect geometry data
-        node = self.node_table().df
+        node = self.node.df
         control_nodes_geometry = df_listen_link.merge(
             node,
             left_on=["control_node_id"],
@@ -697,7 +722,7 @@ class Model(FileModel):
             _, ax = plt.subplots()
             ax.axis("off")
 
-        node = self.node_table()
+        node = self.node
         self.link.plot(ax=ax, zorder=2)
         self.plot_control_listen(ax)
         node.plot(ax=ax, zorder=3)
@@ -747,7 +772,7 @@ class Model(FileModel):
         if add_flow and add_allocation:
             raise ValueError("Cannot add both allocation and flow results.")
 
-        node_df = self.node_table().df
+        node_df = self.node.df
         assert node_df is not None
 
         assert self.link.df is not None
@@ -902,7 +927,7 @@ class Model(FileModel):
     def _network_to_fews(self, region_home: DirectoryPath) -> None:
         """Write the Node and Link tables to shapefiles for use in Delft-FEWS."""
         df_link = self.link.df
-        df_node = self.node_table().df
+        df_node = self.node.df
         assert df_link is not None
         assert df_node is not None
 

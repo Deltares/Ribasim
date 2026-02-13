@@ -63,7 +63,7 @@ def plot_spatial(model, tracer="Initial", versus=None, limit=0.001):
         raise ValueError(f"No data found for tracer {tracer}")
     table.set_index("node_id", inplace=True)
 
-    nodes = model.node_table().df
+    nodes = model.node.df
     nodes = nodes[nodes.index.isin(table.index)]
 
     if versus is None:

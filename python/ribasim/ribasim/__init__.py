@@ -4,9 +4,10 @@ __schema_version__ = 10
 from pyogrio import set_gdal_config_options
 
 from ribasim.cli import run_ribasim
-from ribasim.config import Allocation, Logging, Node, Solver
+from ribasim.config import Allocation, Logging, Solver
 from ribasim.db_utils import fake_date
 from ribasim.geometry.link import LinkTable
+from ribasim.geometry.node import Node
 from ribasim.model import Model
 
 set_gdal_config_options(
