@@ -354,9 +354,8 @@ Results are written in NetCDF format by default, which stores data as multidimen
 This section describes the structure of each NetCDF result file using CDL-like notation.
 
 ```{python}
-#| echo: false
-#| output: false
-# %run ../run_ribasim.py
+#| include: false
+%run ../run_ribasim.py
 
 # Run models used for results section
 from pathlib import Path
