@@ -17,12 +17,12 @@ Each node layer is (optionally) represented in multiple places:
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 from typing import Any
 
-from qgis.core import (
-    QgsVectorLayer,
-)
+from qgis.core import Qgis, QgsVectorLayer
+from qgis.utils import iface
 
 from ribasim_qgis.core import geopackage
 
@@ -40,7 +40,7 @@ class Table:
     def labels(self) -> Any:
         return None
 
-    def layer_from_geopackage(self) -> QgsVectorLayer:
+    def layer_from_file(self) -> QgsVectorLayer:
         self.layer = QgsVectorLayer(
             f"{self._path}|layername={self.input_type}", self.input_type
         )
@@ -53,7 +53,7 @@ class Table:
         return self.layer
 
     def from_geopackage(self) -> tuple[QgsVectorLayer, Any]:
-        self.layer_from_geopackage()
+        self.layer_from_file()
         return (self.layer, self.labels)
 
     def stylename(self) -> str:
@@ -120,3 +120,128 @@ def load_nodes_from_geopackage(path: Path) -> dict[str, Table]:
         if layername in tables:
             nodes[layername] = Table(layername, path)
     return nodes
+
+
+def get_external_input_files(toml_data: dict[str, Any]) -> dict[str, str]:
+    """Get dictionary of external input files (NetCDF) from TOML.
+
+    Parameters
+    ----------
+    model_path : Path
+        Path to the model (.toml) file.
+
+    Returns
+    -------
+    dict[str, str]
+        Dictionary mapping table names (e.g., 'Basin / profile') to file paths.
+    """
+    external_files = {}
+
+    # Derive node types from existing tables set
+    # Extract unique node types (the part before ' / ')
+    node_types = {table.split(" / ")[0] for table in tables if " / " in table}
+
+    for node_type in node_types:
+        # Convert PascalCase to snake_case for TOML lookup
+        snake_case_type = "".join(
+            ["_" + c.lower() if c.isupper() else c for c in node_type]
+        ).lstrip("_")
+
+        if snake_case_type not in toml_data:
+            continue
+
+        node_config = toml_data[snake_case_type]
+        if not isinstance(node_config, dict):
+            continue
+
+        # Check each key in the node config for external files
+        for table_key, value in node_config.items():
+            if isinstance(value, str) and value.endswith(".nc"):
+                table_name = f"{node_type} / {table_key}"
+                # Only include if this table is in our known tables
+                if table_name in tables:
+                    external_files[table_name] = value
+
+    return external_files
+
+
+def load_external_input_tables(model_path: Path) -> dict[str, Table]:
+    """Load external input files (NetCDF) as Table objects.
+
+    Parameters
+    ----------
+    model_path : Path
+        Path to the model (.toml) file.
+
+    Returns
+    -------
+    dict[str, Table]
+        Dictionary mapping table names to Table objects.
+    """
+    with model_path.open("rb") as f:
+        toml_data = tomllib.load(f)
+
+    external_files = get_external_input_files(toml_data)
+
+    if not external_files:
+        return {}
+
+    with model_path.open("rb") as f:
+        toml_data = tomllib.load(f)
+
+    input_dir = toml_data.get("input_dir", "")
+
+    external_tables = {}
+    for table_name, filepath in external_files.items():
+        full_path = (model_path.parent / input_dir / filepath).resolve()
+
+        if not full_path.exists():
+            continue
+
+        # Create a Table-like object for the external file
+        table = ExternalTable(table_name, full_path)
+        external_tables[table_name] = table
+
+    return external_tables  # type: ignore[return-value]
+
+
+class ExternalTable(Table):
+    """Represents a table stored in an external NetCDF file."""
+
+    def __init__(self, input_type: str, path: Path):
+        super().__init__(input_type, path)
+
+    def layer_from_file(self) -> QgsVectorLayer:
+        """Load the external NetCDF file as a QGIS vector layer.
+
+        Uses QGIS/GDAL native support for NetCDF files.
+        """
+        # NetCDF can be loaded via GDAL NetCDF driver
+        # GDAL NetCDF driver - use the format NETCDF:"filename":variable
+        # For now, try loading the whole file
+        uri = f"NETCDF:{self._path}"
+
+        self.layer = QgsVectorLayer(uri, self.input_type, "ogr")
+
+        # Fallback: try without NETCDF prefix if loading failed
+        if not self.layer.isValid():
+            self.layer = QgsVectorLayer(str(self._path), self.input_type, "ogr")
+
+        # Mark as read-only since these are external files
+        if self.layer.isValid():
+            self.layer.setReadOnly(True)
+        else:
+            if iface:
+                iface.messageBar().pushMessage(
+                    "Ribasim",
+                    f"Failed to load external NetCDF file: {self._path}",
+                    level=Qgis.Warning,
+                )
+
+        # Load style if available
+        _, success = self.layer.loadDefaultStyle()
+        if not success:
+            self.load_default_style()
+            # Don't save style to database for external files
+
+        return self.layer

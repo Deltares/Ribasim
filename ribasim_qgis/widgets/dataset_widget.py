@@ -57,6 +57,7 @@ from ribasim_qgis.core.model import (
 )
 from ribasim_qgis.core.nodes import (
     STYLE_DIR,
+    load_external_input_tables,
     load_nodes_from_geopackage,
 )
 from ribasim_qgis.widgets.task import RibasimTask
@@ -160,6 +161,10 @@ class DatasetWidget:
         geo_path = get_database_path_from_model_file(self.path)
         nodes = load_nodes_from_geopackage(geo_path)
 
+        # Also load external input files (NetCDF)
+        external_nodes = load_external_input_tables(self.path)
+        nodes.update(external_nodes)
+
         name = self.path.stem
         parent = self.path.parent.stem
         self.ribasim_widget.create_groups(f"{parent}/{name}")
@@ -177,8 +182,9 @@ class DatasetWidget:
         )
         self.add_relationship(link.layer, node.layer.id(), "LinkToNode", "to_node_id")
 
-        # Add the remaining layers
-        for table_name, node_layer in nodes.items():
+        # Add the remaining layers (both database and external) in alphabetical order
+        for table_name in sorted(nodes.keys()):
+            node_layer = nodes[table_name]
             self.add_item_to_qgis(node_layer)
             self.add_relationship(node_layer.layer, node.layer.id(), table_name)
 
