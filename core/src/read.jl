@@ -277,7 +277,20 @@ function parse_control_states!(
         control_state = first(group).control_state
         val = getfield(first(group), parameter_name)
         (ismissing(control_state) || ismissing(val)) && continue
-        if T <: AbstractInterpolation
+        if T <: ConstantInterpolation
+            push!(
+                node.control_mapping[(node_id, control_state)].itp_update_constant,
+                ParameterUpdate(
+                    field_name,
+                    ConstantInterpolation(
+                        [val, val],
+                        [0.0, 1.0];
+                        cache_parameters = true,
+                        extrapolation = ConstantExtrapolation,
+                    ),
+                ),
+            )
+        elseif T <: LinearInterpolation
             push!(
                 node.control_mapping[(node_id, control_state)].itp_update_linear,
                 ParameterUpdate(
@@ -723,9 +736,9 @@ function ConcentrationData(
 
     concentration_external_data =
         load_structvector(db, config, Schema.Basin.ConcentrationExternal)
-    concentration_external = Dict{String, ScalarLinearInterpolation}[]
+    concentration_external = Dict{String, ScalarConstantInterpolation}[]
     for (id, cyclic_time) in zip(node_id, cyclic_times)
-        concentration_external_id = Dict{String, ScalarLinearInterpolation}()
+        concentration_external_id = Dict{String, ScalarConstantInterpolation}()
         data_id = filter(row -> row.node_id == id.value, concentration_external_data)
         for group in IterTools.groupby(row -> row.substance, data_id)
             first_row = first(group)
@@ -736,7 +749,7 @@ function ConcentrationData(
                 NodeID(:Basin, first_row.node_id, 0),
                 :concentration;
                 cyclic_time,
-                interpolation_type = LinearInterpolation,
+                interpolation_type = ConstantInterpolation,
             )
             concentration_external_id["concentration_external.$substance"] = itp
             if any(itp.u .< 0)

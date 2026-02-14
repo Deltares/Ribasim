@@ -267,7 +267,7 @@ function valid_flow_rates(
         node_id::Vector{NodeID},
         flow_rate::Vector{T},
         control_mapping::OrderedDict{Tuple{NodeID, String}, <:ControlStateUpdate},
-    )::Bool where {T <: Union{Float64, ScalarLinearInterpolation}}
+    )::Bool where {T <: Union{Float64, ScalarConstantInterpolation}}
     errors = false
     # Collect ids of discrete controlled nodes so that they do not give another error
     # if their initial value is also invalid.
@@ -278,7 +278,7 @@ function valid_flow_rates(
         push!(ids_controlled, id_controlled)
 
         # Get the appropriate update field based on type
-        update_field = T == Float64 ? :scalar_update : :itp_update_linear
+        update_field = T == Float64 ? :scalar_update : :itp_update_constant
         flow_rate_update_idx = findfirst(
             parameter_update -> parameter_update.name == :flow_rate,
             getfield(control_state_update, update_field),

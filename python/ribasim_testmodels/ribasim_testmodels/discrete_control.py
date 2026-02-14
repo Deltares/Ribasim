@@ -204,7 +204,11 @@ def level_boundary_condition_model() -> Model:
 
     model.level_boundary.add(
         Node(1, Point(0, 0)),
-        [level_boundary.Time(time=["2020-01-01", "2022-01-01"], level=[5.0, 10.0])],
+        [
+            level_boundary.Time(
+                time=["2020-01-01", "2020-06-01", "2022-01-01"], level=[5.0, 7.0, 10.0]
+            )
+        ],
     )
     model.linear_resistance.add(
         Node(2, Point(1, 0)), [linear_resistance.Static(resistance=[5e3])]
