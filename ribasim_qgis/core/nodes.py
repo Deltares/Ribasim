@@ -29,6 +29,22 @@ from ribasim_qgis.core import geopackage
 STYLE_DIR = Path(__file__).parent / "styles"
 
 
+def pascal_to_snake_case(name: str) -> str:
+    """Convert PascalCase to snake_case.
+
+    Parameters
+    ----------
+    name : str
+        PascalCase string to convert.
+
+    Returns
+    -------
+    str
+        snake_case version of the input string.
+    """
+    return "".join(["_" + c.lower() if c.isupper() else c for c in name]).lstrip("_")
+
+
 class Table:
     """Base class for Ribasim input layers."""
 
@@ -147,14 +163,9 @@ def get_external_input_files(toml_data: dict[str, Any]) -> dict[str, str]:
 
     for node_type in node_types:
         # Convert PascalCase to snake_case for TOML lookup
-        snake_case_type = "".join(
-            ["_" + c.lower() if c.isupper() else c for c in node_type]
-        ).lstrip("_")
+        snake_case_type = pascal_to_snake_case(node_type)
 
-        if snake_case_type not in toml_data:
-            continue
-
-        node_config = toml_data[snake_case_type]
+        node_config = toml_data.get(snake_case_type, {})
         if not isinstance(node_config, dict):
             continue
 
@@ -190,12 +201,9 @@ def load_external_input_tables(model_path: Path) -> dict[str, Table]:
     if not external_files:
         return {}
 
-    with model_path.open("rb") as f:
-        toml_data = tomllib.load(f)
-
     input_dir = toml_data.get("input_dir", "")
 
-    external_tables = {}
+    external_tables: dict[str, Table] = {}
     for table_name, filepath in external_files.items():
         full_path = (model_path.parent / input_dir / filepath).resolve()
 
@@ -206,7 +214,7 @@ def load_external_input_tables(model_path: Path) -> dict[str, Table]:
         table = ExternalTable(table_name, full_path)
         external_tables[table_name] = table
 
-    return external_tables  # type: ignore[return-value]
+    return external_tables
 
 
 class ExternalTable(Table):

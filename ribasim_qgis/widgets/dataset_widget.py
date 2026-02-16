@@ -186,7 +186,18 @@ class DatasetWidget:
         for table_name in sorted(nodes.keys()):
             node_layer = nodes[table_name]
             self.add_item_to_qgis(node_layer)
-            self.add_relationship(node_layer.layer, node.layer.id(), table_name)
+
+            # External NetCDF layers can be invalid or lack the expected foreign key;
+            # only set up relationships when the layer is valid and has the "node_id" field.
+            layer = node_layer.layer
+            if layer is None or not layer.isValid():
+                continue
+
+            fk_field_name = "node_id"
+            if layer.fields().indexOf(fk_field_name) == -1:
+                continue
+
+            self.add_relationship(layer, node.layer.id(), table_name)
 
         # Connect node and link layer to derive connectivities.
         self.node_layer = node.layer

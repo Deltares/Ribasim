@@ -51,3 +51,19 @@ class TestModel(unittest.TestCase):
         self.assertIsInstance(external_files, dict)
         # For this simple test model, there should be no external files
         self.assertEqual(len(external_files), 0)
+
+    def test_get_external_input_files_with_netcdf(self):
+        """Tests that get_external_input_files() correctly identifies NetCDF files from TOML."""
+        model_path = self.data_folder_path / "with_netcdf.toml"
+        with model_path.open("rb") as f:
+            toml_data = tomllib.load(f)
+
+        external_files = get_external_input_files(toml_data)
+        self.assertIsInstance(external_files, dict)
+
+        # Check that the expected files are found
+        self.assertIn("Basin / profile", external_files)
+        self.assertEqual(external_files["Basin / profile"], "basin_profile.nc")
+
+        self.assertIn("FlowBoundary / time", external_files)
+        self.assertEqual(external_files["FlowBoundary / time"], "flow_boundary_time.nc")
