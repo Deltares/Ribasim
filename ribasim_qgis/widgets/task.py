@@ -1,7 +1,5 @@
 """QgsTask for running Ribasim simulations in the background."""
 
-from __future__ import annotations
-
 import re
 import subprocess
 from pathlib import Path

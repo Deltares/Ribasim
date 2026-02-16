@@ -15,8 +15,6 @@ Each node layer is (optionally) represented in multiple places:
 
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any
 

@@ -4,11 +4,8 @@ A widget that displays the available input layers in the GeoPackage.
 It also allows enabling or disabling individual elements for a computation.
 """
 
-from __future__ import annotations
-
 import os
 import shutil
-from collections.abc import Callable
 from contextvars import ContextVar
 from datetime import datetime
 from functools import partial
@@ -16,7 +13,6 @@ from pathlib import Path
 from typing import Any, cast
 
 import pandas as pd
-from osgeo import ogr
 from PyQt5.QtCore import QDateTime, QMetaType
 from PyQt5.QtWidgets import (
     QDialog,
@@ -44,24 +40,38 @@ from qgis.core import (
     QgsVectorLayerTemporalProperties,
 )
 
-from ribasim_qgis.core.arrow import (
-    postprocess_allocation_arrow,
-    postprocess_allocation_flow_arrow,
-    postprocess_concentration_arrow,
-    postprocess_flow_arrow,
-)
 from ribasim_qgis.core.model import (
     get_database_path_from_model_file,
     get_directory_path_from_model_file,
     get_toml_dict,
 )
+from ribasim_qgis.core.netcdf import (
+    read_basin_nc,
+    read_concentration_nc,
+    read_flow_nc,
+)
 from ribasim_qgis.core.nodes import (
     STYLE_DIR,
     load_nodes_from_geopackage,
 )
+from ribasim_qgis.widgets.plot_widget import PlotWidget
 from ribasim_qgis.widgets.task import RibasimTask
 
 group_position_var: ContextVar[int] = ContextVar("group_position", default=0)
+
+# Mapping from result file name to its id column.
+_ID_COLUMNS: dict[str, str] = {
+    "basin": "node_id",
+    "flow": "link_id",
+    "concentration": "node_id",
+}
+
+# Default variable to select per file when no previous selection exists.
+_DEFAULT_VARIABLES: dict[str, str] = {
+    "basin": "level",
+    "flow": "flow_rate",
+    "concentration": "Initial",
+}
 
 
 class DatasetWidget:
@@ -77,9 +87,11 @@ class DatasetWidget:
         self.flow_layer: QgsVectorLayer | None = None
         self.basin_layer: QgsVectorLayer | None = None
         self.concentration_layer: QgsVectorLayer | None = None
-        self.allocation_layer: QgsVectorLayer | None = None
-        self.allocation_flow_layer: QgsVectorLayer | None = None
         self.results: dict[str, pd.DataFrame] = {}
+        self.units: dict[str, dict[str, str]] = {}  # {file: {variable: unit}}
+
+        # Plot widget for timeseries
+        self.plot_widget = PlotWidget()
 
         # Track running simulations by model path
         self.running_tasks: dict[str, RibasimTask] = {}
@@ -88,8 +100,6 @@ class DatasetWidget:
         instance = QgsProject.instance()
         if instance is not None:
             instance.layersWillBeRemoved.connect(self.remove_results)
-
-        self.add_reload_context()
 
     def remove_results(self, layer_ids: list[str]) -> None:
         """Remove Python references to layers that will be deleted."""
@@ -105,8 +115,6 @@ class DatasetWidget:
             ("flow_layer", self.flow_layer),
             ("basin_layer", self.basin_layer),
             ("concentration_layer", self.concentration_layer),
-            ("allocation_layer", self.allocation_layer),
-            ("allocation_flow_layer", self.allocation_flow_layer),
         ]
 
     def add_layer(
@@ -268,39 +276,6 @@ class DatasetWidget:
         if layer_tree_layer is None:
             return False
         return layer_tree_layer.setItemVisibilityChecked(visible)
-
-    def add_reload_context(self) -> None:
-        """Connect to the layer context (right-click) menu opening."""
-        ltv = self.ribasim_widget.iface.layerTreeView()
-        if ltv is not None:
-            ltv.contextMenuAboutToShow.connect(self.generate_model_actions)
-
-    def generate_model_actions(self, menu: QMenu) -> None:
-        """Generate run and reload actions in the context menu."""
-        actiontext_run = "Run Ribasim model"
-        actiontext_reload = "Reload Ribasim model"
-        for action in menu.actions():
-            if action.text() == actiontext_reload:
-                return
-
-        group = self.activeGroup(self.ribasim_widget.iface)
-        if not group or group.name() in ("Input", "Results"):
-            return
-
-        path = None
-        for child in group.findLayers():
-            path = child.layer().customProperty("ribasim_path")
-            if path is not None:
-                break
-        if path is None:
-            return
-
-        # Always add action, as it lives only during this context menu
-        menu.addSeparator()
-        run_action = menu.addAction(actiontext_run)
-        run_action.triggered.connect(partial(self.run_action, path, group))
-        reload_action = menu.addAction(actiontext_reload)
-        reload_action.triggered.connect(partial(self.reload_action, path, group))
 
     def reload_action(self, path, group) -> None:
         """Remove group, and (re)load the model in the same position."""
@@ -490,13 +465,21 @@ class DatasetWidget:
         layer.triggerRepaint()
 
     def refresh_results(self) -> None:
+        self._load_netcdf_results()
+        self._preload_plot_variables()
         self._set_node_results()
         self._set_link_results()
         canvas = self.ribasim_widget.iface.mapCanvas()
         assert canvas is not None
         temporalController = canvas.temporalController()
         assert temporalController is not None
-        temporalController.updateTemporalRange.connect(self._update_arrow_layers)
+        temporalController.updateTemporalRange.connect(self._update_result_layers)
+
+        # Connect node/link selection to plot updates
+        if self.node_layer is not None:
+            self.node_layer.selectionChanged.connect(self._update_plot_from_selection)
+        if self.link_layer is not None:
+            self.link_layer.selectionChanged.connect(self._update_plot_from_selection)
 
     def get_current_time(self) -> datetime:
         """Retrieve the current (frame) time from the temporal controller."""
@@ -529,86 +512,64 @@ class DatasetWidget:
         )
         canvas.setTemporalController(temporalController)
 
+    def _results_dir(self) -> Path:
+        return get_directory_path_from_model_file(
+            self.ribasim_widget.path, property="results_dir"
+        )
+
+    def _load_netcdf_results(self) -> None:
+        """Load all NetCDF result files into self.results DataFrames."""
+        results_dir = self._results_dir()
+        readers = {
+            "basin": read_basin_nc,
+            "flow": read_flow_nc,
+            "concentration": read_concentration_nc,
+        }
+        for name, reader in readers.items():
+            result = reader(results_dir / f"{name}.nc")
+            if result is not None:
+                self.results[name], self.units[name] = result
+
+    def _preload_plot_variables(self) -> None:
+        """Pre-populate the plot widget dropdowns from loaded results."""
+        available: dict[str, list[str]] = {}
+        for name, df in self.results.items():
+            id_col = _ID_COLUMNS.get(name, "node_id")
+            available[name] = [c for c in df.columns if c not in (id_col, "time")]
+        self.plot_widget.preload_variables(available, self.units, _DEFAULT_VARIABLES)
+
     def _set_node_results(self) -> None:
         node_layer = self.ribasim_widget.node_layer
         assert node_layer is not None
-        path = self._set_results(node_layer, "node_id", "basin.arrow")
-        df = self._add_arrow_layer(path)
+
+        df = self.results.get("basin")
         if df is not None:
             self.basin_layer = self._duplicate_layer(
                 node_layer, "Basin", "node_id", "node_type", "Basin"
             )
             assert self.basin_layer is not None
-            self._edit_arrow_layer(df, self.basin_layer, "node_id")
+            self._edit_result_layer(df, self.basin_layer, "node_id")
 
-        # Add the concentration output
-        path = (
-            get_directory_path_from_model_file(
-                self.ribasim_widget.path, property="results_dir"
-            )
-            / "concentration.arrow"
-        )
-        df = self._add_arrow_layer(path, postprocess_concentration_arrow)
+        df = self.results.get("concentration")
         if df is not None:
             self.concentration_layer = self._duplicate_layer(
                 node_layer, "Concentration", "node_id", "node_type", "Basin"
             )
             assert self.concentration_layer is not None
-            self._edit_arrow_layer(
-                df,
-                self.concentration_layer,
-                "node_id",
-            )
-
-        # Add the allocation output
-        path = (
-            get_directory_path_from_model_file(
-                self.ribasim_widget.path, property="results_dir"
-            )
-            / "allocation.arrow"
-        )
-        df = self._add_arrow_layer(path, postprocess_allocation_arrow)
-        if df is not None:
-            self.allocation_layer = self._duplicate_layer(
-                node_layer, "Allocation", "node_id", fids=list(df["node_id"].unique())
-            )
-            assert self.allocation_layer is not None
-            self._edit_arrow_layer(df, self.allocation_layer, "node_id")
+            self._edit_result_layer(df, self.concentration_layer, "node_id")
 
     def _set_link_results(self) -> None:
         link_layer = self.ribasim_widget.link_layer
         assert link_layer is not None
-        path = self._set_results(link_layer, "link_id", "flow.arrow")
-        df = self._add_arrow_layer(path, postprocess_flow_arrow)
+
+        df = self.results.get("flow")
         if df is not None:
             self.flow_layer = self._duplicate_layer(
                 link_layer, "Flow", "link_id", "link_type", "flow"
             )
             assert self.flow_layer is not None
             self.set_layer_visible(self.flow_layer, True)
-            self._edit_arrow_layer(df, self.flow_layer, "link_id")
-
-        # Add the allocation flow output
-        path = (
-            get_directory_path_from_model_file(
-                self.ribasim_widget.path, property="results_dir"
-            )
-            / "allocation_flow.arrow"
-        )
-        df = self._add_arrow_layer(path, postprocess_allocation_flow_arrow)
-        if df is not None:
-            self.allocation_flow_layer = self._duplicate_layer(
-                link_layer,
-                "AllocationFlow",
-                "link_id",
-                fids=list(df["link_id"].unique()),
-            )
-            assert self.allocation_flow_layer is not None
-            self._edit_arrow_layer(
-                df,
-                self.allocation_flow_layer,
-                "link_id",
-            )
+            self._edit_result_layer(df, self.flow_layer, "link_id")
 
     def _duplicate_layer(
         self, layer, name, fid_column, filterkey=1, filtervalue=1, fids=None
@@ -630,7 +591,7 @@ class DatasetWidget:
 
         # The fids of a duplicated layer in memory are not the same
         # as our node/link_ids anymore, and can't be set as such.
-        # To update the layer with arrow data we need to guarantee
+        # To update the layer with result data we need to guarantee
         # both types of ids are sorted, so we can use the new fids.
         fids = []
         rids = []
@@ -660,56 +621,16 @@ class DatasetWidget:
 
         return duplicate
 
-    def _add_arrow_layer(
-        self,
-        path: Path,
-        postprocess: Callable[[pd.DataFrame], pd.DataFrame] = lambda df: df.set_index(
-            pd.DatetimeIndex(df["time"])
-        ),
-    ) -> pd.DataFrame | None:
-        """Add arrow output data to the layer and setup its update mechanism."""
-        if path.exists() is False:
-            return None
-
-        dataset = ogr.Open(path)
-        dlayer = dataset.GetLayer(0)
-        stream = dlayer.GetArrowStreamAsNumPy()
-
-        dfs = []
-        while (batch := stream.GetNextRecordBatch()) is not None:
-            df = pd.DataFrame(batch)
-            dfs.append(df)
-
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
-        else:
-            return None
-
-        # The OGR path introduces strings columns as bytes
-        for column in df.columns:
-            if df.dtypes[column] == object:  # noqa: E721
-                df[column] = df[column].str.decode("utf-8")
-
-        if "fid" in df.columns:
-            df.drop(columns=["fid"], inplace=True)
-
-        df = postprocess(df)
-        self.results[path.stem] = df
-        return df
-
-    def _edit_arrow_layer(
+    def _edit_result_layer(
         self,
         df: pd.DataFrame,
         layer: QgsVectorLayer,
         fid_column: str,
     ) -> None:
-        """Add arrow output data to the layer and setup its update mechanism."""
-        # Add the arrow fields to the layer if they doesn't exist
+        """Add result data columns to the layer and populate with initial time slice."""
         layer.startEditing()
         for column in df.columns.tolist():
-            if (
-                column == fid_column or column == "time"
-            ):  # skip the fid (link/node_id) column
+            if column == fid_column or column == "time":
                 continue
             dataprovider = layer.dataProvider()
             if dataprovider is not None and dataprovider.fieldNameIndex(column) == -1:
@@ -717,11 +638,11 @@ class DatasetWidget:
             layer.updateFields()
         layer.commitChanges()
 
-        self._update_arrow_layer(
+        self._update_result_layer(
             layer, df, fid_column, self.get_current_time(), force=True
         )
 
-    def _update_arrow_layer(
+    def _update_result_layer(
         self,
         layer: QgsVectorLayer | None,
         df: pd.DataFrame | None,
@@ -729,7 +650,7 @@ class DatasetWidget:
         time: datetime,
         force: bool = False,
     ) -> None:
-        """Update the layer with the current arrow time slice."""
+        """Update the layer with the current time slice from results."""
         if (
             layer is None
             or df is None
@@ -737,9 +658,6 @@ class DatasetWidget:
         ):
             return
 
-        # If we're out of bounds, do nothing, assuming
-        # the previous time slice is most valid, unless forced
-        # to update on initial load (without a valid datetime).
         if time not in df.index:
             if force and len(df.index) > 0:
                 time = df.index[-1]
@@ -754,7 +672,7 @@ class DatasetWidget:
 
         fids = sorted(layer.allFeatureIds())
         if len(fids) != len(timeslice):
-            print(f"Can't join data at {time}, shapes of Link and arrow table differ.")
+            print(f"Can't join data at {time}, shapes of Link and result table differ.")
             layer.endEditCommand()
             layer.commitChanges()
             return
@@ -764,9 +682,7 @@ class DatasetWidget:
 
         columns = {}
         for column in df.columns.tolist():
-            if (
-                column == fid_column or column == "time"
-            ):  # skip the fid (link/node_id) column
+            if column == fid_column or column == "time":
                 continue
             column_id = dataprovider.fieldNameIndex(column)
             columns[column] = column_id
@@ -783,54 +699,83 @@ class DatasetWidget:
         layer.endEditCommand()
         layer.commitChanges()
 
-    def _update_arrow_layers(self, timerange: QgsDateTimeRange) -> None:
-        """Update the result layers with the current arrow time slice."""
-        # Handle edge case when disabling the temporal controller
+    def _update_result_layers(self, timerange: QgsDateTimeRange) -> None:
+        """Update the result layers with the current time slice."""
         if timerange.isEmpty() or timerange.isInfinite():
             return
 
         time = timerange.begin().toPyDateTime()
-        self._update_arrow_layer(
+        self._update_result_layer(
             self.basin_layer, self.results.get("basin"), "node_id", time
         )
-        self._update_arrow_layer(
+        self._update_result_layer(
             self.flow_layer, self.results.get("flow"), "link_id", time
         )
-        self._update_arrow_layer(
+        self._update_result_layer(
             self.concentration_layer,
             self.results.get("concentration"),
             "node_id",
             time,
         )
-        self._update_arrow_layer(
-            self.allocation_layer,
-            self.results.get("allocation"),
-            "node_id",
-            time,
-        )
-        self._update_arrow_layer(
-            self.allocation_flow_layer,
-            self.results.get("allocation_flow"),
-            "link_id",
-            time,
-        )
 
-    def _set_results(
-        self,
-        layer: QgsVectorLayer,
-        column: str,
-        output_file_name: str,
-    ) -> Path:
-        """Set custom properties on the layer for iMOD-QGIS to find associated results."""
-        path = (
-            get_directory_path_from_model_file(
-                self.ribasim_widget.path, property="results_dir"
-            )
-            / output_file_name
-        )
-        if layer is not None:
-            layer.setCustomProperty("arrow_type", "timeseries")
-            layer.setCustomProperty("arrow_path", str(path))
-            layer.setCustomProperty("arrow_fid_column", column)
+    def _update_plot_from_selection(self, selected_ids: list[int]) -> None:
+        """Update the plot widget when nodes or links are selected on the map.
 
-        return path
+        Produces data grouped by result file, then by variable, then by trace.
+        Structure: {file: {variable: {trace_name: (x, y)}}}
+        """
+        plot_data: dict[str, dict[str, dict[str, tuple[list[str], list[float]]]]] = {}
+
+        node_layer = self.ribasim_widget.node_layer
+        link_layer = self.ribasim_widget.link_layer
+
+        # Gather selected node IDs
+        selected_node_ids: list[int] = []
+        if node_layer is not None:
+            for fid in node_layer.selectedFeatureIds():
+                feat = node_layer.getFeature(fid)
+                selected_node_ids.append(feat["node_id"])
+
+        # Gather selected link IDs
+        selected_link_ids: list[int] = []
+        if link_layer is not None:
+            for fid in link_layer.selectedFeatureIds():
+                feat = link_layer.getFeature(fid)
+                selected_link_ids.append(feat["link_id"])
+
+        def _build_traces(
+            df: pd.DataFrame,
+            id_column: str,
+            selected_ids: list[int],
+        ) -> dict[str, dict[str, tuple[list[str], list[float]]]]:
+            """Build {variable: {trace_name: (x, y)}} for a DataFrame."""
+            variables = [c for c in df.columns if c not in (id_column, "time")]
+            result: dict[str, dict[str, tuple[list[str], list[float]]]] = {}
+            for var in variables:
+                traces: dict[str, tuple[list[str], list[float]]] = {}
+                for fid in selected_ids:
+                    mask = df[id_column] == fid
+                    subset = df.loc[mask]
+                    times = [t.isoformat() for t in subset.index]
+                    values = subset[var].tolist()
+                    traces[f"#{fid}"] = (times, values)
+                if traces:
+                    result[var] = traces
+            return result
+
+        selected_ids_by_column = {
+            "node_id": selected_node_ids,
+            "link_id": selected_link_ids,
+        }
+        for name, df in self.results.items():
+            id_col = _ID_COLUMNS.get(name, "node_id")
+            ids = selected_ids_by_column.get(id_col, [])
+            if ids:
+                vars_data = _build_traces(df, id_col, ids)
+                if vars_data:
+                    plot_data[name] = vars_data
+
+        if plot_data:
+            self.plot_widget.set_data(plot_data, self.units)
+        else:
+            self.plot_widget.clear()
