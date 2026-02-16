@@ -295,13 +295,18 @@ function formulate_pid_control!(
         end
 
         if !iszero(K_d)
-            dlevel_demand = derivative(target[i], t)
+            if target[i] isa ScalarConstantInterpolation
+                # derivative() of ScalarConstantInterpolation returns a NaN at discontinuities
+                dtarget = 0.0
+            else
+                dtarget = derivative(target[i], t)
+            end
             dstorage_listened_basin_old =
                 formulate_dstorage(du, p_independent, t, listened_node_id)
             # The expression below is the solution to an implicit equation for
             # dstorage_listened_basin. This equation results from the fact that if the derivative
             # term in the PID controller is used, the controlled pump flow rate depends on itself.
-            flow_rate += K_d * (dlevel_demand - dstorage_listened_basin_old / area) / D
+            flow_rate += K_d * (dtarget - dstorage_listened_basin_old / area) / D
         end
 
         # Set flow_rate
