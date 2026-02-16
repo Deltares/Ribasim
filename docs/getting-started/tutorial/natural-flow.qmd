@@ -251,13 +251,13 @@ Now run the model. You can open a terminal and run it from there. For example:
 ribasim Crystal-1/ribasim.toml
 ```
 
-From Python you can run it with:
+From Python you can run it with [`run_ribasim`](/reference/python/run_ribasim.qmd#ribasim.run_ribasim).
 
 ```{python}
 run_ribasim(toml_path)
 ```
 
-By default it will search for `ribasim` in the PATH, but you can supply the `ribasim_exe` keyword argument which points to the `ribasim` executable: `run_ribasim(toml_path, ribasim_exe="bin/ribasim/ribasim.exe")`. Use `run_ribasim(version=True)` to check the version.
+By default it will search for `ribasim` in the PATH, but you can supply the `ribasim_home` keyword argument which points to the Ribasim home directory: `run_ribasim(toml_path, ribasim_home="path/to/ribasim")`. Use `run_ribasim(version=True)` to check the version.
 
 ### Post-processing results
 Read the Arrow files and plot the simulated flows from different links and the levels and storages at our confluence point:
