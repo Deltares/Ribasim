@@ -26,7 +26,7 @@ control_state         | String  | -            | (optional)
 
 This table is the transient form of the `Pump` table.
 With this all parameters can be updated over time. In between the given times the
-flow_rate is interpolated linearly, and outside the flow rate is constant given by the
+values are block interpolated (forward fill), and outside the values are constant given by the
 nearest time value.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
