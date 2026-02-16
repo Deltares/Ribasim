@@ -26,7 +26,7 @@ control_state    | String   | -               | (optional)
 This table is the transient form of the `PidControl` table.
 The difference is that a time column is added.
 With this the target level and PID coefficients can be updated over time. In between the given times
-the values are block interpolated (forward fill), and outside this range the values are kept constant at the
+constant interpolation (forward fill) is used, and outside the given time range the values are kept constant at the
 value from the nearest time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 

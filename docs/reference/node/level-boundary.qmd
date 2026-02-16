@@ -20,9 +20,9 @@ level         | Float64 | $\text{m}$          | -
 
 This table is the transient form of the `LevelBoundary` table.
 The only difference is that a time column is added.
-With this the levels can be updated over time. In between the given times the
-level is block interpolated (forward fill), and outside the level is constant given by the
-nearest time value.
+With this the levels can be updated over time. In between the given times
+constant interpolation (forward fill) is used, and outside the given time range the level is kept constant at the
+value from the nearest time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
 column    | type     | unit         | restriction

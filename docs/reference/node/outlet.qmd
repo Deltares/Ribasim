@@ -24,9 +24,9 @@ control_state         | String  | -                     | (optional)
 ## Time
 
 This table is the transient form of the `Outlet` table.
-With this all parameters can be updated over time. In between the given times the
-values are block interpolated (forward fill), and outside the values are constant given by the
-nearest time value.
+With this all parameters can be updated over time. In between the given times
+constant interpolation (forward fill) is used, and outside the given time range the values are kept constant at the
+value from the nearest time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
 column                | type    | unit                  | restriction
