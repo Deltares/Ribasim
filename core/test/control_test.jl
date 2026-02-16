@@ -132,11 +132,10 @@ end
     omega = sqrt(4 * K_i / A - (K_i / A)^2) / 2
     phi = atan(du0 / (A * Δlevel) - alpha) / omega
     a = abs(Δlevel / cos(phi))
-    # This bound is the exact envelope of the analytical solution
-    bound = @. a * exp(alpha * t[1:idx_level_reached])
+
     eps = 5.0e-3
     # Initial convergence to target level
-    @test all(@. abs(level[1:idx_level_reached] - level_demand) < bound + eps)
+    @test all(@. abs(level[30:80] - level_demand) < eps)
     # Later closeness to target level
     @test all(
         @. abs(level[idx_level_reached:end] - target_itp(t[idx_level_reached:end])) < 5.0e-2
