@@ -159,15 +159,20 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         if self.df is not None and link_id in self.df.index:
             # Remove from node table
             self.df = self.df.drop(link_id)
+            if link_id in self._used_link_ids:
+                self._used_link_ids.node_ids.remove(link_id)
+
             if self.df.empty:
                 self.df = None
 
     def _remove_node_id(self, node_id: NonNegativeInt):
         if self.df is not None:
-            self.df = self.df.loc[
-                (self.df["from_node_id"] != node_id)
-                & (self.df["to_node_id"] != node_id)
-            ]
+            mask = (self.df["from_node_id"] != node_id) & (
+                self.df["to_node_id"] != node_id
+            )
+            links_to_remove = self.df.index[~mask]
+            self.df = self.df.loc[mask]
+            self._used_link_ids.node_ids.difference_update(links_to_remove)
             if self.df.empty:
                 self.df = None
 

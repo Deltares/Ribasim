@@ -74,7 +74,7 @@ def test_basic_read_components(basic, tmp_path):
     # with empty spatial (node/link tables) tables and other tables None
     model = Model.read(toml_path, internal=False, external=False)
 
-    assert len(model.node_table().df) == 0
+    assert len(model.node.df) == 0
     assert len(model.link.df) == 0
     assert model.basin.static.df is None
     assert model.basin.static.lazy
@@ -87,7 +87,7 @@ def test_basic_read_components(basic, tmp_path):
     model.write(toml_path)
     new_model = Model.read(toml_path)
     assert new_model.basin.static.df is None
-    assert len(new_model.node_table().df) == 0
+    assert len(new_model.node.df) == 0
     assert len(new_model.link.df) == 0
 
     # We can read individual tables from the lazy model
