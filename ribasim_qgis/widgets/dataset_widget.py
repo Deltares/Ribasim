@@ -12,7 +12,6 @@ from functools import partial
 from pathlib import Path
 from typing import Any, cast
 
-import pandas as pd
 from PyQt5.QtCore import QDateTime, QMetaType
 from PyQt5.QtWidgets import (
     QDialog,
@@ -46,6 +45,7 @@ from ribasim_qgis.core.model import (
     get_toml_dict,
 )
 from ribasim_qgis.core.netcdf import (
+    NetCDFResult,
     read_basin_nc,
     read_concentration_nc,
     read_flow_nc,
@@ -54,7 +54,7 @@ from ribasim_qgis.core.nodes import (
     STYLE_DIR,
     load_nodes_from_geopackage,
 )
-from ribasim_qgis.widgets.plot_widget import PlotWidget
+from ribasim_qgis.widgets.plot_widget import PlotData, PlotWidget, VariableTraces
 from ribasim_qgis.widgets.task import RibasimTask
 
 group_position_var: ContextVar[int] = ContextVar("group_position", default=0)
@@ -87,8 +87,7 @@ class DatasetWidget:
         self.flow_layer: QgsVectorLayer | None = None
         self.basin_layer: QgsVectorLayer | None = None
         self.concentration_layer: QgsVectorLayer | None = None
-        self.results: dict[str, pd.DataFrame] = {}
-        self.units: dict[str, dict[str, str]] = {}  # {file: {variable: unit}}
+        self.results: dict[str, NetCDFResult] = {}
 
         # Plot widget for timeseries
         self.plot_widget = PlotWidget()
@@ -518,7 +517,7 @@ class DatasetWidget:
         )
 
     def _load_netcdf_results(self) -> None:
-        """Load all NetCDF result files into self.results DataFrames."""
+        """Load all NetCDF result files into self.results."""
         results_dir = self._results_dir()
         readers = {
             "basin": read_basin_nc,
@@ -528,48 +527,49 @@ class DatasetWidget:
         for name, reader in readers.items():
             result = reader(results_dir / f"{name}.nc")
             if result is not None:
-                self.results[name], self.units[name] = result
+                self.results[name] = result
 
     def _preload_plot_variables(self) -> None:
         """Pre-populate the plot widget dropdowns from loaded results."""
         available: dict[str, list[str]] = {}
-        for name, df in self.results.items():
-            id_col = _ID_COLUMNS.get(name, "node_id")
-            available[name] = [c for c in df.columns if c not in (id_col, "time")]
-        self.plot_widget.preload_variables(available, self.units, _DEFAULT_VARIABLES)
+        units: dict[str, dict[str, str]] = {}
+        for name, result in self.results.items():
+            available[name] = list(result.variables.keys())
+            units[name] = result.units
+        self.plot_widget.preload_variables(available, units, _DEFAULT_VARIABLES)
 
     def _set_node_results(self) -> None:
         node_layer = self.ribasim_widget.node_layer
         assert node_layer is not None
 
-        df = self.results.get("basin")
-        if df is not None:
+        result = self.results.get("basin")
+        if result is not None:
             self.basin_layer = self._duplicate_layer(
                 node_layer, "Basin", "node_id", "node_type", "Basin"
             )
             assert self.basin_layer is not None
-            self._edit_result_layer(df, self.basin_layer, "node_id")
+            self._edit_result_layer(result, self.basin_layer)
 
-        df = self.results.get("concentration")
-        if df is not None:
+        result = self.results.get("concentration")
+        if result is not None:
             self.concentration_layer = self._duplicate_layer(
                 node_layer, "Concentration", "node_id", "node_type", "Basin"
             )
             assert self.concentration_layer is not None
-            self._edit_result_layer(df, self.concentration_layer, "node_id")
+            self._edit_result_layer(result, self.concentration_layer)
 
     def _set_link_results(self) -> None:
         link_layer = self.ribasim_widget.link_layer
         assert link_layer is not None
 
-        df = self.results.get("flow")
-        if df is not None:
+        result = self.results.get("flow")
+        if result is not None:
             self.flow_layer = self._duplicate_layer(
                 link_layer, "Flow", "link_id", "link_type", "flow"
             )
             assert self.flow_layer is not None
             self.set_layer_visible(self.flow_layer, True)
-            self._edit_result_layer(df, self.flow_layer, "link_id")
+            self._edit_result_layer(result, self.flow_layer)
 
     def _duplicate_layer(
         self, layer, name, fid_column, filterkey=1, filtervalue=1, fids=None
@@ -623,56 +623,51 @@ class DatasetWidget:
 
     def _edit_result_layer(
         self,
-        df: pd.DataFrame,
+        result: NetCDFResult,
         layer: QgsVectorLayer,
-        fid_column: str,
     ) -> None:
         """Add result data columns to the layer and populate with initial time slice."""
         layer.startEditing()
-        for column in df.columns.tolist():
-            if column == fid_column or column == "time":
-                continue
+        for column in result.variables:
             dataprovider = layer.dataProvider()
             if dataprovider is not None and dataprovider.fieldNameIndex(column) == -1:
                 dataprovider.addAttributes([QgsField(column, QMetaType.Type.Double)])
             layer.updateFields()
         layer.commitChanges()
 
-        self._update_result_layer(
-            layer, df, fid_column, self.get_current_time(), force=True
-        )
+        self._update_result_layer(layer, result, self.get_current_time(), force=True)
 
     def _update_result_layer(
         self,
         layer: QgsVectorLayer | None,
-        df: pd.DataFrame | None,
-        fid_column: str,
+        result: NetCDFResult | None,
         time: datetime,
         force: bool = False,
     ) -> None:
         """Update the layer with the current time slice from results."""
         if (
             layer is None
-            or df is None
+            or result is None
             or (not force and not self.is_layer_visible(layer))
         ):
             return
 
-        if time not in df.index:
-            if force and len(df.index) > 0:
-                time = df.index[-1]
+        # Find nearest time index via searchsorted
+        time_idx = int(result.time.searchsorted(time))
+        if time_idx >= len(result.time):
+            if force:
+                time_idx = len(result.time) - 1
             else:
                 print(f"Skipping update, out of bounds for {time}")
                 return
-
-        timeslice = df.loc[time]
 
         layer.startEditing()
         layer.beginEditCommand("Group all undos for performance.")
 
         fids = sorted(layer.allFeatureIds())
-        if len(fids) != len(timeslice):
-            print(f"Can't join data at {time}, shapes of Link and result table differ.")
+        n_ids = len(result.ids)
+        if len(fids) != n_ids:
+            print(f"Can't join data at {time}, shapes of layer and result differ.")
             layer.endEditCommand()
             layer.commitChanges()
             return
@@ -680,20 +675,21 @@ class DatasetWidget:
         dataprovider = layer.dataProvider()
         assert dataprovider is not None
 
-        columns = {}
-        for column in df.columns.tolist():
-            if column == fid_column or column == "time":
-                continue
-            column_id = dataprovider.fieldNameIndex(column)
-            columns[column] = column_id
+        # Build column-id mapping once
+        col_ids: dict[str, int] = {}
+        for col_name in result.variables:
+            col_id = dataprovider.fieldNameIndex(col_name)
+            if col_id >= 0:
+                col_ids[col_name] = col_id
 
-        data: dict[int, dict[int, float]] = {fid: {} for fid in fids}
-        for column, column_id in columns.items():
-            for fid, variable in zip(fids, timeslice[column], strict=True):
-                data[fid][column_id] = variable
+        # Build data dict: {feature_id: {field_id: value}}
+        data: dict[int, dict[int, float]] = {}
+        for j, fid in enumerate(fids):
+            attrs: dict[int, float] = {}
+            for col_name, col_id in col_ids.items():
+                attrs[col_id] = float(result.variables[col_name][time_idx, j])
+            data[fid] = attrs
 
-        dataprovider = layer.dataProvider()
-        assert dataprovider is not None
         dataprovider.changeAttributeValues(data)
 
         layer.endEditCommand()
@@ -705,16 +701,11 @@ class DatasetWidget:
             return
 
         time = timerange.begin().toPyDateTime()
-        self._update_result_layer(
-            self.basin_layer, self.results.get("basin"), "node_id", time
-        )
-        self._update_result_layer(
-            self.flow_layer, self.results.get("flow"), "link_id", time
-        )
+        self._update_result_layer(self.basin_layer, self.results.get("basin"), time)
+        self._update_result_layer(self.flow_layer, self.results.get("flow"), time)
         self._update_result_layer(
             self.concentration_layer,
             self.results.get("concentration"),
-            "node_id",
             time,
         )
 
@@ -724,7 +715,7 @@ class DatasetWidget:
         Produces data grouped by result file, then by variable, then by trace.
         Structure: {file: {variable: {trace_name: (x, y)}}}
         """
-        plot_data: dict[str, dict[str, dict[str, tuple[list[str], list[float]]]]] = {}
+        plot_data: PlotData = {}
 
         node_layer = self.ribasim_widget.node_layer
         link_layer = self.ribasim_widget.link_layer
@@ -743,39 +734,38 @@ class DatasetWidget:
                 feat = link_layer.getFeature(fid)
                 selected_link_ids.append(feat["link_id"])
 
-        def _build_traces(
-            df: pd.DataFrame,
-            id_column: str,
-            selected_ids: list[int],
-        ) -> dict[str, dict[str, tuple[list[str], list[float]]]]:
-            """Build {variable: {trace_name: (x, y)}} for a DataFrame."""
-            variables = [c for c in df.columns if c not in (id_column, "time")]
-            result: dict[str, dict[str, tuple[list[str], list[float]]]] = {}
-            for var in variables:
-                traces: dict[str, tuple[list[str], list[float]]] = {}
-                for fid in selected_ids:
-                    mask = df[id_column] == fid
-                    subset = df.loc[mask]
-                    times = [t.isoformat() for t in subset.index]
-                    values = subset[var].tolist()
-                    traces[f"#{fid}"] = (times, values)
-                if traces:
-                    result[var] = traces
-            return result
-
         selected_ids_by_column = {
             "node_id": selected_node_ids,
             "link_id": selected_link_ids,
         }
-        for name, df in self.results.items():
+        for name, result in self.results.items():
             id_col = _ID_COLUMNS.get(name, "node_id")
             ids = selected_ids_by_column.get(id_col, [])
-            if ids:
-                vars_data = _build_traces(df, id_col, ids)
-                if vars_data:
-                    plot_data[name] = vars_data
+            if not ids:
+                continue
 
+            # Build id -> column-index mapping (O(1) lookup)
+            id_to_idx = {int(v): i for i, v in enumerate(result.ids)}
+            time_strings = result.time.strftime("%Y-%m-%dT%H:%M:%S").to_numpy()
+
+            vars_data: dict[str, VariableTraces] = {}
+            for var_name, arr in result.variables.items():
+                traces: VariableTraces = {}
+                for sel_id in ids:
+                    idx = id_to_idx.get(sel_id)
+                    if idx is not None:
+                        traces[f"#{sel_id}"] = (time_strings, arr[:, idx])
+                if traces:
+                    vars_data[var_name] = traces
+
+            if vars_data:
+                plot_data[name] = vars_data
+
+        # Collect units from results
+        units: dict[str, dict[str, str]] = {
+            name: result.units for name, result in self.results.items()
+        }
         if plot_data:
-            self.plot_widget.set_data(plot_data, self.units)
+            self.plot_widget.set_data(plot_data, units)
         else:
             self.plot_widget.clear()

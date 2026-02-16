@@ -3,6 +3,7 @@
 import tempfile
 from pathlib import Path
 
+import numpy as np
 import plotly
 import plotly.graph_objs as go
 from qgis.PyQt.QtCore import Qt, QUrl
@@ -19,6 +20,13 @@ from qgis.PyQt.QtWidgets import (
     QWidget,
     QWidgetAction,
 )
+
+# A single trace: (time values, data values).
+Trace = tuple[np.ndarray, np.ndarray]
+# All traces for one variable, keyed by trace label (e.g. "#42").
+VariableTraces = dict[str, Trace]
+# Full plot payload: file -> variable -> traces.
+PlotData = dict[str, dict[str, VariableTraces]]
 
 
 class _VariablesMenu(QMenu):
@@ -112,9 +120,7 @@ class PlotWidget(QWidget):
         self._plot_path = Path(tempfile.gettempdir()) / "ribasim_plot.html"
 
         # Data: {file_name: {variable: {trace_name: (x, y)}}}
-        self._plot_data: dict[
-            str, dict[str, dict[str, tuple[list[str], list[float]]]]
-        ] = {}
+        self._plot_data: PlotData = {}
         # Units: {file_name: {variable: unit_string}}
         self._units: dict[str, dict[str, str]] = {}
         # Available variables per file: {file_name: [var1, var2, ...]}
@@ -148,7 +154,7 @@ class PlotWidget(QWidget):
 
     def set_data(
         self,
-        plot_data: dict[str, dict[str, dict[str, tuple[list[str], list[float]]]]],
+        plot_data: PlotData,
         units: dict[str, dict[str, str]] | None = None,
     ) -> None:
         """Set plot data grouped by result file.
@@ -157,6 +163,7 @@ class PlotWidget(QWidget):
         ----------
         plot_data:
             file_name -> variable -> trace_name -> (x_values, y_values).
+            Both arrays are numpy arrays; plotly accepts them directly.
         units:
             file_name -> variable -> unit string (e.g. 'm3 s-1').
         """

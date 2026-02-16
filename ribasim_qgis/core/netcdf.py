@@ -1,16 +1,39 @@
 """
 Read Ribasim NetCDF result files using the GDAL Multidimensional Raster API.
 
-Produces pandas DataFrames with a DatetimeIndex, matching the format
-previously produced by Arrow postprocessing.
+Return lightweight ``NetCDFResult`` dataclasses that keep data in their
+natural 2-D NumPy shape (n_times x n_ids).
 """
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from osgeo import gdal
+
+
+@dataclass
+class NetCDFResult:
+    """Container for a single NetCDF result file.
+
+    Attributes
+    ----------
+    time:
+        DatetimeIndex of shape (n_times,).
+    ids:
+        1-D array of node_id or link_id values, shape (n_ids,).
+    variables:
+        Mapping from variable name to its 2-D array (n_times, n_ids).
+    units:
+        Mapping from variable name to its unit string.
+    """
+
+    time: pd.DatetimeIndex
+    ids: np.ndarray
+    variables: dict[str, np.ndarray]
+    units: dict[str, str]
 
 
 def _read_time(root_group) -> pd.DatetimeIndex:
@@ -37,7 +60,7 @@ def _read_time(root_group) -> pd.DatetimeIndex:
 
 
 def _open_netcdf(path: Path):
-    """Open a NetCDF file with GDAL multidimensional API. Returns root group or None."""
+    """Open a NetCDF file with GDAL multidimensional API. Return root group or None."""
     ds = gdal.OpenEx(str(path), gdal.OF_MULTIDIM_RASTER)
     if ds is None:
         return None
@@ -67,8 +90,8 @@ def _read_units(root_group, variable_names: list[str]) -> dict[str, str]:
     return units
 
 
-def _read_2d_nc(path: Path, id_name: str) -> tuple[pd.DataFrame, dict[str, str]] | None:
-    """Read a 2-D NetCDF result file (time x id) into a long-format DataFrame.
+def _read_2d_nc(path: Path, id_name: str) -> NetCDFResult | None:
+    """Read a 2-D NetCDF result file (time x id) into a NetCDFResult.
 
     Works for both basin.nc (id_name="node_id") and flow.nc (id_name="link_id").
     """
@@ -78,8 +101,6 @@ def _read_2d_nc(path: Path, id_name: str) -> tuple[pd.DataFrame, dict[str, str]]
 
     time_index = _read_time(root)
     ids = root.OpenMDArray(id_name).ReadAsArray()
-    n_times = len(time_index)
-    n_ids = len(ids)
 
     data_vars = [
         v
@@ -87,42 +108,35 @@ def _read_2d_nc(path: Path, id_name: str) -> tuple[pd.DataFrame, dict[str, str]]
         if v not in _SKIP_VARS and root.OpenMDArray(v).GetDimensionCount() == 2
     ]
 
-    records: dict[str, np.ndarray] = {id_name: np.tile(ids, n_times)}
+    variables: dict[str, np.ndarray] = {}
     for var in data_vars:
-        records[var] = root.OpenMDArray(var).ReadAsArray().ravel()
+        variables[var] = root.OpenMDArray(var).ReadAsArray()  # (n_times, n_ids)
 
-    repeat_time = np.repeat(np.arange(n_times), n_ids)
-    df = pd.DataFrame(records, index=time_index[repeat_time])
     units = _read_units(root, data_vars)
-    return df, units
+    return NetCDFResult(time=time_index, ids=ids, variables=variables, units=units)
 
 
-def read_basin_nc(path: Path) -> tuple[pd.DataFrame, dict[str, str]] | None:
-    """Read basin.nc → DataFrame with DatetimeIndex.
+def read_basin_nc(path: Path) -> NetCDFResult | None:
+    """Read basin.nc into a NetCDFResult.
 
-    Columns: node_id, level, storage, inflow_rate, outflow_rate, …
-    Index: DatetimeIndex (one row per time x node_id combination).
+    Shape per variable: (n_times, n_node_ids).
     """
     return _read_2d_nc(path, "node_id")
 
 
-def read_flow_nc(path: Path) -> tuple[pd.DataFrame, dict[str, str]] | None:
-    """Read flow.nc → DataFrame with DatetimeIndex.
+def read_flow_nc(path: Path) -> NetCDFResult | None:
+    """Read flow.nc into a NetCDFResult.
 
-    Columns: link_id, flow_rate, convergence
-    Index: DatetimeIndex (one row per time x link_id combination).
+    Shape per variable: (n_times, n_link_ids).
     """
     return _read_2d_nc(path, "link_id")
 
 
-def read_concentration_nc(path: Path) -> tuple[pd.DataFrame, dict[str, str]] | None:
-    """Read concentration.nc → wide-format DataFrame.
+def read_concentration_nc(path: Path) -> NetCDFResult | None:
+    """Read concentration.nc into a NetCDFResult.
 
     The raw data has shape (time, node_id, substance).
-    This pivots to wide format with substance names as columns.
-
-    Columns: node_id, <substance_1>, <substance_2>, …
-    Index: DatetimeIndex.
+    Each substance becomes a separate variable with shape (n_times, n_node_ids).
     """
     root = _open_netcdf(path)
     if root is None:
@@ -130,21 +144,17 @@ def read_concentration_nc(path: Path) -> tuple[pd.DataFrame, dict[str, str]] | N
 
     time_index = _read_time(root)
     node_ids = root.OpenMDArray("node_id").ReadAsArray()
-    n_times = len(time_index)
-    n_nodes = len(node_ids)
 
     # Read substance names (string array — use Read() instead of ReadAsArray())
-    substances = root.OpenMDArray("substance").Read()
+    substances: list[str] = root.OpenMDArray("substance").Read()
 
     # Read concentration: shape (time, node_id, substance)
     conc = root.OpenMDArray("concentration").ReadAsArray()
 
-    records: dict[str, np.ndarray] = {"node_id": np.tile(node_ids, n_times)}
+    variables: dict[str, np.ndarray] = {}
     for i, sub in enumerate(substances):
-        records[sub] = conc[:, :, i].ravel()
+        variables[sub] = conc[:, :, i]  # (n_times, n_node_ids) — no copy needed
 
-    repeat_time = np.repeat(np.arange(n_times), n_nodes)
-    df = pd.DataFrame(records, index=time_index[repeat_time])
     conc_unit = root.OpenMDArray("concentration").GetUnit()
     units = dict.fromkeys(substances, conc_unit) if conc_unit else {}
-    return df, units
+    return NetCDFResult(time=time_index, ids=node_ids, variables=variables, units=units)
