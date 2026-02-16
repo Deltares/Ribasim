@@ -20,7 +20,7 @@ flow_rate     | Float64 | $\text{m}^3/\text{s}$ | non-negative
 This table is the transient form of the `FlowBoundary` table.
 The only difference is that a time column is added.
 With this the flow rates can be updated over time. In between the given times the
-flow rate is interpolated in a way specified in the [interpolation settings](/reference/usage.qmd#interpolation-settings) (block interpolation by default), and outside the flow rate is constant given by the
+flow rate is interpolated in a way specified in the [interpolation settings](/reference/usage.qmd#interpolation-settings) (forward fill by default), and outside the flow rate is constant given by the
 nearest time value unless the node is cyclic in time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 

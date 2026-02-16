@@ -28,7 +28,7 @@ demand_priority | Int32   | -            | positive (optional)
 
 This table is the transient form of the `LevelDemand` table, in which time-dependent minimum and maximum levels can be supplied.
 With this the levels can be updated over time. In between the given times the
-levels are interpolated with forward fill (block interpolation), and outside the demand is constant given by the
+levels are forward filled (constant interpolation), and outside the demand is constant given by the
 nearest time value. The allocation algorithm evaluates the interpolation at the end of the allocation time step.
 
 This is in contrast with UserDemand and FlowDemand, as allocation will aim to reach the desired level at the end of the allocation time step.

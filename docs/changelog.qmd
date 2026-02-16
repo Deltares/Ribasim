@@ -135,7 +135,7 @@ Note that Ribasim Python will migrate existing models automatically, see also th
 - QGIS: remove editing features for simplified workflow. [#2472](https://github.com/Deltares/Ribasim/pull/2472)
 - Use smooth interpolation of ContinuousControl and TabulatedRatingCurve functions. [#2446](https://github.com/Deltares/Ribasim/pull/2446) [#2458](https://github.com/Deltares/Ribasim/pull/2458)
 - Use a Reynolds based threshold for the ManningResistance relaxed root [2544](https://github.com/Deltares/Ribasim/pull/2544)
-- Demand nodes with timeseries now use block interpolation [2568](https://github.com/Deltares/Ribasim/pull/2568)
+- Demand nodes with timeseries now use forward fill (constant interpolation) [2568](https://github.com/Deltares/Ribasim/pull/2568)
 
 ### Fixed
 - Core model initialization speedup. [#2548](https://github.com/Deltares/Ribasim/pull/2548) [#2533](https://github.com/Deltares/Ribasim/pull/2533)
@@ -169,7 +169,7 @@ Until this work is finished, allocation remains an experimental feature of Ribas
 - Mark allocation as experimental. [#2266](https://github.com/Deltares/Ribasim/pull/2266)
 - Low storage threshold based on 10 cm depth [#2357](https://github.com/Deltares/Ribasim/pull/2357)
 - Stability: decrease relative tolerance over time. [#2277](https://github.com/Deltares/Ribasim/pull/2277)
-- Use block interpolation for FlowBoundary by default [#2285](https://github.com/Deltares/Ribasim/pull/2285)
+- Use forward fill (constant interpolation) for FlowBoundary by default [#2285](https://github.com/Deltares/Ribasim/pull/2285)
 - Remove backtracking, add more caching [#2359](https://github.com/Deltares/Ribasim/pull/2359)
 - More realistic smoothing around `Δh = 0` in ManningResistance. [#2365](https://github.com/Deltares/Ribasim/pull/2365)
 
