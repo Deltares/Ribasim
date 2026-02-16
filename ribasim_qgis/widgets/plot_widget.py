@@ -21,8 +21,9 @@ from qgis.PyQt.QtWidgets import (
 )
 
 # Resolve the bundled plotly.min.js via importlib.resources.
-_PLOTLY_JS_DIR = importlib.resources.files("plotly").joinpath("package_data")
-_PLOTLY_JS_BASE_URL = QUrl.fromLocalFile(str(_PLOTLY_JS_DIR) + "/")
+_PLOTLY_JS_URL = QUrl.fromLocalFile(
+    str(importlib.resources.files("plotly").joinpath("package_data", "plotly.min.js"))
+).toString()
 
 # A single trace: (time values, data values).
 Trace = tuple[np.ndarray, np.ndarray]
@@ -115,6 +116,7 @@ class PlotWidget(QWidget):
         # --- Web view ---
         self._web_view = QWebView()
         self._web_view.setVisible(False)
+        self._web_view.setContextMenuPolicy(Qt.NoContextMenu)
         ws = self._web_view.settings()
         ws.setAttribute(QWebSettings.WebGLEnabled, True)
         ws.setAttribute(QWebSettings.Accelerated2dCanvasEnabled, True)
@@ -276,9 +278,9 @@ class PlotWidget(QWidget):
         )
         html = (
             '<html><head><meta charset="utf-8" />'
-            '<script src="plotly.min.js"></script></head>'
+            f'<script src="{_PLOTLY_JS_URL}"></script></head>'
             f'<body style="margin:0">{div}</body></html>'
         )
         self._placeholder.setVisible(False)
         self._web_view.setVisible(True)
-        self._web_view.setHtml(html, _PLOTLY_JS_BASE_URL)
+        self._web_view.setHtml(html)
