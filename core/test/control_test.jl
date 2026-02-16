@@ -116,8 +116,8 @@ end
     t = Ribasim.tsaves(model)
 
     target_itp = pid_control.target[1]
-    t_target_change = target_itp.t[2]
-    idx_target_change = searchsortedlast(t, t_target_change)
+
+    idx_level_reached = 200
 
     K_p = pid_control.proportional[2](0)
     K_i = pid_control.integral[2](0)
@@ -133,13 +133,13 @@ end
     phi = atan(du0 / (A * Δlevel) - alpha) / omega
     a = abs(Δlevel / cos(phi))
     # This bound is the exact envelope of the analytical solution
-    bound = @. a * exp(alpha * t[1:idx_target_change])
+    bound = @. a * exp(alpha * t[1:idx_level_reached])
     eps = 5.0e-3
     # Initial convergence to target level
-    @test all(@. abs(level[1:idx_target_change] - level_demand) < bound + eps)
+    @test all(@. abs(level[1:idx_level_reached] - level_demand) < bound + eps)
     # Later closeness to target level
     @test all(
-        @. abs(level[idx_target_change:end] - target_itp(t[idx_target_change:end])) < 5.0e-2
+        @. abs(level[idx_level_reached:end] - target_itp(t[idx_level_reached:end])) < 5.0e-2
     )
 end
 

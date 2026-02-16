@@ -41,15 +41,14 @@ def pid_control_model() -> Model:
             pid_control.Time(
                 time=[
                     "2020-01-01",
-                    "2020-05-01",
-                    "2020-07-01",
+                    "2020-04-01",
                     "2020-12-01",
                 ],
                 listen_node_id=2,
-                target=[5.0, 5.0, 7.5, 7.5],
-                proportional=-1e-3,
-                integral=-1e-7,
-                derivative=0.0,
+                target=[5.0, 7.5, 7.5],
+                proportional=-1e-2,
+                integral=-1e-8,
+                derivative=0,
             )
         ],
     )
