@@ -1,11 +1,10 @@
 """Plot widget using plotly to render Ribasim timeseries from NetCDF results."""
 
-import tempfile
-from pathlib import Path
+import importlib.resources
 
 import numpy as np
-import plotly
 import plotly.graph_objs as go
+import plotly.offline as po
 from qgis.PyQt.QtCore import Qt, QUrl
 from qgis.PyQt.QtWebKit import QWebSettings
 from qgis.PyQt.QtWebKitWidgets import QWebView
@@ -20,6 +19,10 @@ from qgis.PyQt.QtWidgets import (
     QWidget,
     QWidgetAction,
 )
+
+# Resolve the bundled plotly.min.js via importlib.resources.
+_PLOTLY_JS_DIR = importlib.resources.files("plotly").joinpath("package_data")
+_PLOTLY_JS_BASE_URL = QUrl.fromLocalFile(str(_PLOTLY_JS_DIR) + "/")
 
 # A single trace: (time values, data values).
 Trace = tuple[np.ndarray, np.ndarray]
@@ -116,8 +119,6 @@ class PlotWidget(QWidget):
         ws.setAttribute(QWebSettings.WebGLEnabled, True)
         ws.setAttribute(QWebSettings.Accelerated2dCanvasEnabled, True)
         layout.addWidget(self._web_view)
-
-        self._plot_path = Path(tempfile.gettempdir()) / "ribasim_plot.html"
 
         # Data: {file_name: {variable: {trace_name: (x, y)}}}
         self._plot_data: PlotData = {}
@@ -260,13 +261,24 @@ class PlotWidget(QWidget):
         )
         fig = go.Figure(data=traces, layout=fig_layout)
 
-        plotly.offline.plot(
+        config = {
+            "scrollZoom": True,
+            "editable": False,
+            "displayModeBar": True,
+            # toImage uses an <a download> click that QtWebKit silently ignores.
+            "modeBarButtonsToRemove": ["toImage"],
+        }
+        div = po.plot(
             fig,
-            filename=str(self._plot_path),
-            auto_open=False,
-            include_plotlyjs=True,
-            config={"scrollZoom": True, "editable": False, "displayModeBar": True},
+            output_type="div",
+            include_plotlyjs=False,
+            config=config,
+        )
+        html = (
+            '<html><head><meta charset="utf-8" />'
+            '<script src="plotly.min.js"></script></head>'
+            f'<body style="margin:0">{div}</body></html>'
         )
         self._placeholder.setVisible(False)
         self._web_view.setVisible(True)
-        self._web_view.load(QUrl.fromLocalFile(str(self._plot_path)))
+        self._web_view.setHtml(html, _PLOTLY_JS_BASE_URL)
