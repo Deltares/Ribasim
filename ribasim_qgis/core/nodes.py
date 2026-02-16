@@ -123,17 +123,21 @@ def load_nodes_from_geopackage(path: Path) -> dict[str, Table]:
 
 
 def get_external_input_files(toml_data: dict[str, Any]) -> dict[str, str]:
-    """Get dictionary of external input files (NetCDF) from TOML.
+    """Get dictionary of external input files (NetCDF) from TOML data.
 
     Parameters
     ----------
-    model_path : Path
-        Path to the model (.toml) file.
+    toml_data : dict[str, Any]
+        Parsed TOML configuration for the model. The top-level keys are
+        snake_case node types (e.g. ``"basin"``, ``"flow_boundary"``) that
+        map to dictionaries of table configuration, where string values ending
+        in ``".nc"`` are treated as external NetCDF file paths.
 
     Returns
     -------
     dict[str, str]
-        Dictionary mapping table names (e.g., 'Basin / profile') to file paths.
+        Dictionary mapping table names (e.g., ``"Basin / profile"``) to file
+        paths.
     """
     external_files = {}
 
