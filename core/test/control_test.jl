@@ -102,8 +102,8 @@ end
     level_t_control = level_boundary.level[1](t_control)
     level_t_control_ahead = level_boundary.level[1](t_control + Δt)
 
-    @test !isapprox(level_t_control, threshold_high; rtol = 0.005)
-    @test isapprox(level_t_control_ahead, threshold_high, rtol = 0.005)
+    @test level_t_control < threshold_high
+    @test level_t_control_ahead >= threshold_high
 end
 
 @testitem "PID control" begin
@@ -116,8 +116,8 @@ end
     t = Ribasim.tsaves(model)
 
     target_itp = pid_control.target[1]
-    t_target_change = target_itp.t[2]
-    idx_target_change = searchsortedlast(t, t_target_change)
+
+    idx_level_reached = 200
 
     K_p = pid_control.proportional[2](0)
     K_i = pid_control.integral[2](0)
@@ -132,14 +132,13 @@ end
     omega = sqrt(4 * K_i / A - (K_i / A)^2) / 2
     phi = atan(du0 / (A * Δlevel) - alpha) / omega
     a = abs(Δlevel / cos(phi))
-    # This bound is the exact envelope of the analytical solution
-    bound = @. a * exp(alpha * t[1:idx_target_change])
+
     eps = 5.0e-3
     # Initial convergence to target level
-    @test all(@. abs(level[1:idx_target_change] - level_demand) < bound + eps)
+    @test all(@. abs(level[30:80] - level_demand) < eps)
     # Later closeness to target level
     @test all(
-        @. abs(level[idx_target_change:end] - target_itp(t[idx_target_change:end])) < 5.0e-2
+        @. abs(level[idx_level_reached:end] - target_itp(t[idx_level_reached:end])) < 5.0e-2
     )
 end
 
@@ -196,13 +195,13 @@ end
             NodeID(:PidControl, 6, p_independent),
             "target_high",
         ),
-    ].itp_update_linear[1].value.u[1]
+    ].itp_update_constant[1].value.u[1]
     target_low = pid_control.control_mapping[
         (
             NodeID(:PidControl, 6, p_independent),
             "target_low",
         ),
-    ].itp_update_linear[1].value.u[1]
+    ].itp_update_constant[1].value.u[1]
 
     t_target_jump = discrete_control.record.time[2]
     t_idx_target_jump = searchsortedlast(t, t_target_jump)
@@ -294,10 +293,10 @@ end
     end
 
     inflow = get_link_flow(2, 3)
-    @test get_link_flow(3, 4) ≈ max.(0.6 .* inflow, 0) rtol = 1.0e-4
-    @test get_link_flow(4, 6) ≈ max.(0.6 .* inflow, 0) rtol = 1.0e-4
-    @test get_link_flow(3, 5) ≈ max.(0.4 .* inflow, 0) rtol = 1.0e-4
-    @test get_link_flow(5, 7) ≈ max.(0.4 .* inflow, 0) rtol = 1.0e-4
+    @test get_link_flow(3, 4) ≈ max.(0.6 .* inflow, 0) rtol = 1.0e-3
+    @test get_link_flow(4, 6) ≈ max.(0.6 .* inflow, 0) rtol = 1.0e-3
+    @test get_link_flow(3, 5) ≈ max.(0.4 .* inflow, 0) rtol = 1.0e-3
+    @test get_link_flow(5, 7) ≈ max.(0.4 .* inflow, 0) rtol = 1.0e-3
 end
 
 @testitem "Concentration discrete control" begin

@@ -21,8 +21,7 @@ test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=r
 # Keep Julia version synced with julia.executablePath in .vscode/settings.json
 install-julia = "juliaup add 1.12.5 && juliaup override set 1.12.5"
 install-prek = "prek install --overwrite"
-# Note that this has a Windows specific override
-install-ci = { depends-on = ["install-julia", "update-registry-julia"] }
+install-ci = { depends-on = ["install-julia"] }
 install = { depends-on = [
     "install-ci",
     "install-qgis-plugins",
@@ -236,7 +235,6 @@ outputs = ["Ribasim-python.spdx.json"]
 
 [target.win.tasks]
 add-ribasim-icon = { cmd = "rcedit build/ribasim/bin/ribasim.exe --set-icon docs/assets/ribasim.ico" }
-install-ci = { depends-on = ["install-julia", "update-registry-julia"] }
 
 [[target.win.tasks.generate-sbom-ribasim-python.depends-on]]
 task = "generate-sbom-ribasim-python-noarch"

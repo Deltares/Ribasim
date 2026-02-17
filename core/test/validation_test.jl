@@ -194,10 +194,10 @@ end
     using Logging
     using Ribasim:
         NodeID, NodeType, ControlStateUpdate, ParameterUpdate, valid_flow_rates, OrderedDict
-    using DataInterpolations: LinearInterpolation
+    using DataInterpolations: ConstantInterpolation
 
     logger = TestLogger()
-    flow_rate = [LinearInterpolation([-1.0, 2.0], [0.0, 1.0])]
+    flow_rate = [ConstantInterpolation([-1.0, 2.0], [0.0, 1.0])]
 
     with_logger(logger) do
         node_id = [NodeID(:Outlet, 1, 1)]
@@ -215,10 +215,10 @@ end
         node_id = [NodeID(:Pump, 1, 1)]
         control_mapping = OrderedDict(
             (NodeID(:Pump, 1, 1), "foo") => ControlStateUpdate(;
-                itp_update_linear = [
+                itp_update_constant = [
                     ParameterUpdate(
                         :flow_rate,
-                        LinearInterpolation([-1.0, -1.0], [0.0, 1.0]),
+                        ConstantInterpolation([-1.0, -1.0], [0.0, 1.0]),
                     ),
                 ],
             ),
@@ -366,7 +366,7 @@ end
 
 @testitem "Outlet upstream level validation" begin
     using Ribasim: valid_min_upstream_level!
-    using DataInterpolations: LinearInterpolation
+    using DataInterpolations: ConstantInterpolation
     using Logging
 
     toml_path = normpath(
@@ -382,7 +382,7 @@ end
     (; p_independent) = model.integrator.p
 
     (; graph, outlet, basin) = p_independent
-    outlet.min_upstream_level[1] = LinearInterpolation(fill(invalid_level, 2), zeros(2))
+    outlet.min_upstream_level[1] = ConstantInterpolation(fill(invalid_level, 2), zeros(2))
 
     logger = TestLogger()
     with_logger(logger) do
