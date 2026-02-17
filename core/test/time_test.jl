@@ -139,5 +139,5 @@ end
 
     t_end = model.integrator.t
     flow_rate_end = model.integrator.p.p_independent.pump.time_dependent_flow_rate[1].u[end]
-    @test isapprox(Float32(only(model.integrator.u.pump)), 100 + 0.5 * flow_rate_end * t_end; rtol = 0.01, atol = 0.01)
+    @test Float32(only(model.integrator.u.pump)) ≈ 100 + 0.5 * flow_rate_end * t_end rtol = 0.01 atol = 0.01
 end
