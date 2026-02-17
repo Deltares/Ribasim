@@ -129,6 +129,9 @@ function get_parameter_value(
         parameter, times
     end
     valid = valid_time_interpolation(t, u, node_id, cyclic_time)
+    if !from_static
+        log_timeseries_backfilled(t, config.starttime, node_id, cyclic_time)
+    end
     itp = make_itp(
         T,
         u,
@@ -724,11 +727,11 @@ function ConcentrationData(
             first_row = first(group)
             substance_idx = find_index(Symbol(first_row.substance), substances)
             concentration_itp_drainage[id.idx][substance_idx] =
-                filtered_constant_interpolation(group, :drainage, cyclic_time, config)
+                filtered_constant_interpolation(group, :drainage, cyclic_time, config; node_id = id)
             concentration_itp_precipitation[id.idx][substance_idx] =
-                filtered_constant_interpolation(group, :precipitation, cyclic_time, config)
+                filtered_constant_interpolation(group, :precipitation, cyclic_time, config; node_id = id)
             concentration_itp_surface_runoff[id.idx][substance_idx] =
-                filtered_constant_interpolation(group, :surface_runoff, cyclic_time, config)
+                filtered_constant_interpolation(group, :surface_runoff, cyclic_time, config; node_id = id)
         end
     end
 
