@@ -22,7 +22,7 @@ test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=r
 install-julia = "juliaup add 1.12.5 && juliaup override set 1.12.5"
 install-prek = "prek install --overwrite"
 # Note that this has a Windows specific override
-install-ci = { depends-on = ["install-julia", "update-registry-julia"] }
+install-ci = { depends-on = ["install-julia"] }
 install = { depends-on = [
     "install-ci",
     "install-qgis-plugins",
