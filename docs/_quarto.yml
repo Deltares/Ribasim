@@ -46,6 +46,7 @@ website:
         - guide/qgis.qmd
         - guide/vscode.qmd
         - guide/modeling-process.qmd
+        - guide/installing-other-versions.qmd
         - guide/updating-ribasim.qmd
         - guide/coupling.qmd
         - section: "Coupling guides"

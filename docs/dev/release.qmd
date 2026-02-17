@@ -51,6 +51,10 @@ Use find and replace to update all locations.
 Only update the lines in `pixi.lock` that refer to Ribasim packages, to avoid accidentally changing the version number of dependencies that happen to have the same version number.
 Don't change the old version numbers in `changelog.qmd`.
 
+::: {.callout-important}
+Always update the example version numbers in `docs/guide/installing-other-versions.qmd` to refer to the latest release candidate and never to a stable release.
+:::
+
 ## Update the changelog
 
 The `docs/changelog.qmd` file, hosted on [ribasim.org/changelog](https://ribasim.org/changelog), records the most important changes for users.

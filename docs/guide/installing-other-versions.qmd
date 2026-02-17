@@ -1,0 +1,93 @@
+---
+title: "Installing other versions"
+---
+
+This guide explains how to install a specific version of Ribasim, such as a pre-release (release candidate) or an older stable release.
+For installing the latest stable release, see the [Installation](/getting-started/install.qmd) page.
+
+All available versions can be found on the [Ribasim releases page on GitHub](https://github.com/Deltares/Ribasim/releases).
+
+::: {.callout-important}
+**All Ribasim component versions must be the same!**
+
+The Ribasim core, Ribasim Python package, and Ribasim QGIS plugin must all be of the same version.
+Running with mismatched versions will likely fail.
+:::
+
+# Choosing a version
+
+Ribasim uses the following versioning scheme:
+
+- **Releases** have version numbers like `2025.6.0`.
+- **Pre-releases** (release candidates) have version numbers like `2026.1.0-rc1`. These are development versions used for testing before a stable release.
+
+Browse the [GitHub releases page](https://github.com/Deltares/Ribasim/releases) to see all available versions.
+Pre-releases are marked with a "Pre-release" label.
+
+# Install a specific Ribasim core version {#sec-core}
+
+## Windows installation script
+
+The `install.ps1` script always installs the latest stable release.
+To install a specific version, use the manual installation method below.
+
+## Manual installation
+
+Download the appropriate zip file for your operating system from the [GitHub releases page](https://github.com/Deltares/Ribasim/releases).
+Navigate to the desired version and download:
+
+- `ribasim_windows.zip` for Windows
+- `ribasim_linux.zip` for Linux
+
+For example, to install version `2026.1.0-rc1`, go to the [v2026.1.0-rc1 release](https://github.com/Deltares/Ribasim/releases/tag/v2026.1.0-rc1) and download the zip file from there.
+
+Then follow the [manual installation instructions](/getting-started/install.qmd#sec-install-core) to extract and set up the binary.
+
+# Install a specific Ribasim Python version {#sec-python}
+
+Replace the version number in the install command with the desired version.
+
+::: {.panel-tabset}
+
+## uv
+
+```sh
+uv add ribasim==2026.1.0rc1
+```
+
+## pixi
+
+```sh
+pixi add ribasim==2026.1.0rc1
+```
+
+## pip
+
+```sh
+pip install ribasim==2026.1.0rc1
+```
+
+## conda
+
+```sh
+conda install -c conda-forge ribasim=2026.1.0rc1
+```
+
+:::
+
+::: {.callout-note}
+Pre-release versions use a slightly different format in Python package managers: `2026.1.0rc1` instead of `2026.1.0-rc1` (no hyphen).
+This follows the [PEP 440](https://peps.python.org/pep-0440/) versioning standard.
+:::
+
+# Install a specific Ribasim QGIS plugin version {#sec-qgis}
+
+The QGIS Plugin Repository installs the latest stable release of the Ribasim QGIS plugin.
+To install a specific version, use the ZIP file method:
+
+1. Go to the [GitHub releases page](https://github.com/Deltares/Ribasim/releases) and navigate to the desired version.
+2. Download `ribasim_qgis.zip` from the release assets.
+3. In QGIS, go to *Plugins* > *Manage and Install Plugins...* > *Install from ZIP*.
+4. Browse to the downloaded `ribasim_qgis.zip` and click *Install Plugin*.
+
+See the [QGIS plugin installation instructions](/getting-started/install.qmd#sec-install-qgis-plugin) for more details on installing from ZIP.
