@@ -46,6 +46,7 @@ Then follow the [manual installation instructions](/getting-started/install.qmd#
 # Install a specific Ribasim Python version {#sec-python}
 
 Replace the version number in the install command with the desired version.
+If you don't have a project set up yet, follow the initialization steps on the [Installation](/getting-started/install.qmd#sec-install-python) page first.
 
 ::: {.panel-tabset}
 
@@ -58,19 +59,13 @@ uv add ribasim==2026.1.0rc1
 ## pixi
 
 ```sh
-pixi add ribasim==2026.1.0rc1
+pixi add --pypi ribasim==2026.1.0rc1
 ```
 
 ## pip
 
 ```sh
-pip install ribasim==2026.1.0rc1
-```
-
-## conda
-
-```sh
-conda install -c conda-forge ribasim=2026.1.0rc1
+pip install --upgrade ribasim==2026.1.0rc1
 ```
 
 :::
@@ -78,6 +73,12 @@ conda install -c conda-forge ribasim=2026.1.0rc1
 ::: {.callout-note}
 Pre-release versions use a slightly different format in Python package managers: `2026.1.0rc1` instead of `2026.1.0-rc1` (no hyphen).
 This follows the [PEP 440](https://peps.python.org/pep-0440/) versioning standard.
+:::
+
+::: {.callout-important}
+Pre-releases are only published to [PyPI](https://pypi.org/project/ribasim/), not to conda-forge.
+Therefore `conda install` cannot be used for pre-release versions.
+For stable releases, all package managers (including conda) work as described on the [Installation](/getting-started/install.qmd#sec-install-python) page.
 :::
 
 # Install a specific Ribasim QGIS plugin version {#sec-qgis}
