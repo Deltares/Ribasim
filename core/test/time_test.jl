@@ -131,9 +131,6 @@ end
 
     model = Ribasim.run(toml_path)
     storage = Ribasim.get_storages_and_levels(model).storage
-    flow = DataFrame(Ribasim.flow_data(model))
-    flow_basin = filter(:to_node_id => ==(3), flow).flow_rate
-
     @test storage[1, 1] ≈ 100.0f0
     @test storage[1, end] ≈ 110.0f0
 
