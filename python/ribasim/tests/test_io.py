@@ -243,6 +243,7 @@ def test_add_existing():
         ],
     )
     model.link.add(model.basin[10], model.user_demand[30], link_id=1)
+    model.link.add(model.user_demand[30], model.terminal[20], link_id=2)
 
     # Remove one Basin, not all
     nnode = len(model.node.df)
@@ -255,11 +256,14 @@ def test_add_existing():
 
     # Remove the only Terminal
     model.remove_node(20)
+    assert 20 not in model.node._used_node_ids.node_ids
+    assert 2 not in model.link._used_link_ids.node_ids
 
     # Remove the only Link
     assert model.link.df is not None
     model.remove_link(1)
     assert model.link.df is None
+    assert 1 not in model.link._used_link_ids.node_ids
 
     # Remove the only UserDemand
     model._remove_node_id(30)

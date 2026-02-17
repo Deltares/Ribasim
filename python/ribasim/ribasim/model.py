@@ -322,6 +322,9 @@ class Model(FileModel, ParentModel):
             # Remove from node table
             self.node.df = self.node.df.drop(node_id)
 
+        if node_id in self.node._used_node_ids:
+            self.node._used_node_ids.node_ids.remove(node_id)
+
         for sub in self._nodes():
             # Remove from data tables
             for table in sub._tables():
