@@ -426,7 +426,7 @@ window.Quarto = {
 </section>
 <section id="time" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="time"><span class="header-section-number">1.2</span> Time</h2>
-<p>This table is the transient form of the <code>Outlet</code> table. With this all parameters can be updated over time. In between the given times the flow_rate is interpolated linearly, and outside the flow rate is constant given by the nearest time value. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
+<p>This table is the transient form of the <code>Outlet</code> table. With this all parameters can be updated over time. In between the given times the values are block interpolated (forward fill), and outside the values are constant given by the nearest time value. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 18%">

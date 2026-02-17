@@ -423,7 +423,7 @@ window.Quarto = {
 </table>
 <section id="time" class="level2" data-number="2.1">
 <h2 data-number="2.1" class="anchored" data-anchor-id="time"><span class="header-section-number">2.1</span> Time</h2>
-<p>This table is the transient form of the <code>PidControl</code> table. The difference is that a time column is added. With this the target level and PID coefficients can be updated over time. In between the given times the these values interpolated linearly, and outside these values area constant given by the nearest time value. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
+<p>This table is the transient form of the <code>PidControl</code> table. The difference is that a time column is added. With this the target level and PID coefficients can be updated over time. In between the given times the values are block interpolated (forward fill), and outside this range the values are kept constant at the value from the nearest time. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
