@@ -48,7 +48,9 @@ function log_startup(config, toml_path::AbstractString)::Nothing
     if model_version != ribasim_version
         @warn "Version mismatch, this will likely fail. Ribasim only supports running simulations with the same Ribasim version it was generated with." model_version ribasim_version
     end
-    @info "Starting a Ribasim simulation at $(now())." toml_path ribasim_version starttime endtime threads
+    ribasim_home = dirname(Sys.BINDIR)
+    @info "Starting a Ribasim simulation at $(now())." toml_path ribasim_version ribasim_home starttime endtime threads
+
     if any(config.experimental)
         @warn "The following *experimental* features are enabled: $(showexperimental(config))"
     end

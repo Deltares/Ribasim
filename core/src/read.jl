@@ -129,6 +129,9 @@ function get_parameter_value(
         parameter, times
     end
     valid = valid_time_interpolation(t, u, node_id, cyclic_time)
+    if !from_static
+        log_timeseries_backfilled(t, config.starttime, node_id, cyclic_time)
+    end
     itp = make_itp(
         T,
         u,
@@ -277,7 +280,20 @@ function parse_control_states!(
         control_state = first(group).control_state
         val = getfield(first(group), parameter_name)
         (ismissing(control_state) || ismissing(val)) && continue
-        if T <: AbstractInterpolation
+        if T <: ConstantInterpolation
+            push!(
+                node.control_mapping[(node_id, control_state)].itp_update_constant,
+                ParameterUpdate(
+                    field_name,
+                    ConstantInterpolation(
+                        [val, val],
+                        [0.0, 1.0];
+                        cache_parameters = true,
+                        extrapolation = ConstantExtrapolation,
+                    ),
+                ),
+            )
+        elseif T <: LinearInterpolation
             push!(
                 node.control_mapping[(node_id, control_state)].itp_update_linear,
                 ParameterUpdate(
@@ -711,11 +727,11 @@ function ConcentrationData(
             first_row = first(group)
             substance_idx = find_index(Symbol(first_row.substance), substances)
             concentration_itp_drainage[id.idx][substance_idx] =
-                filtered_constant_interpolation(group, :drainage, cyclic_time, config)
+                filtered_constant_interpolation(group, :drainage, cyclic_time, config; node_id = id)
             concentration_itp_precipitation[id.idx][substance_idx] =
-                filtered_constant_interpolation(group, :precipitation, cyclic_time, config)
+                filtered_constant_interpolation(group, :precipitation, cyclic_time, config; node_id = id)
             concentration_itp_surface_runoff[id.idx][substance_idx] =
-                filtered_constant_interpolation(group, :surface_runoff, cyclic_time, config)
+                filtered_constant_interpolation(group, :surface_runoff, cyclic_time, config; node_id = id)
         end
     end
 
@@ -723,9 +739,9 @@ function ConcentrationData(
 
     concentration_external_data =
         load_structvector(db, config, Schema.Basin.ConcentrationExternal)
-    concentration_external = Dict{String, ScalarLinearInterpolation}[]
+    concentration_external = Dict{String, ScalarConstantInterpolation}[]
     for (id, cyclic_time) in zip(node_id, cyclic_times)
-        concentration_external_id = Dict{String, ScalarLinearInterpolation}()
+        concentration_external_id = Dict{String, ScalarConstantInterpolation}()
         data_id = filter(row -> row.node_id == id.value, concentration_external_data)
         for group in IterTools.groupby(row -> row.substance, data_id)
             first_row = first(group)
@@ -736,7 +752,7 @@ function ConcentrationData(
                 NodeID(:Basin, first_row.node_id, 0),
                 :concentration;
                 cyclic_time,
-                interpolation_type = LinearInterpolation,
+                interpolation_type = ConstantInterpolation,
             )
             concentration_external_id["concentration_external.$substance"] = itp
             if any(itp.u .< 0)

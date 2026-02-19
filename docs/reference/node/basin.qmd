@@ -425,6 +425,7 @@ That means for each Basin all subgrid relations are either static or dynamic.
 
 ## Concentration {#sec-basin-conc}
 This table defines the concentration of substances for the inflow boundaries of a Basin node.
+In between the given times the values are block interpolated (forward fill), and outside the concentration is constant given by the nearest time value.
 
 column          | type     | unit                     | restriction
 --------------- | -------- | ------------------------ | -----------

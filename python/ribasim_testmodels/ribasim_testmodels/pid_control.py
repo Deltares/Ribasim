@@ -41,15 +41,14 @@ def pid_control_model() -> Model:
             pid_control.Time(
                 time=[
                     "2020-01-01",
-                    "2020-05-01",
-                    "2020-07-01",
+                    "2020-04-01",
                     "2020-12-01",
                 ],
                 listen_node_id=2,
-                target=[5.0, 5.0, 7.5, 7.5],
-                proportional=-1e-3,
-                integral=-1e-7,
-                derivative=0.0,
+                target=[5.0, 7.5, 7.5],
+                proportional=-1e-2,
+                integral=-1e-8,
+                derivative=0,
             )
         ],
     )
@@ -97,7 +96,11 @@ def discrete_control_of_pid_control_model() -> Model:
 
     model.level_boundary.add(
         Node(1, Point(0, 0)),
-        [level_boundary.Time(time=["2020-01-01", "2021-01-01"], level=[7.0, 3.0])],
+        [
+            level_boundary.Time(
+                time=["2020-01-01", "2020-07-01", "2021-01-01"], level=[7.0, 3.0, 3.0]
+            )
+        ],
     )
 
     # The flow_rate will be overwritten by PID controller

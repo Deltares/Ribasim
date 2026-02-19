@@ -93,7 +93,7 @@ threshold_high       | Float64  | various | -
 threshold_low        | Float64  | various | (optional), <= threshold_high
 time                 | DateTime | -       | (optional)
 
-When no (or only a single) `time` is supplied for a given `condition_id`, the `threshold_high` value of this condition is unchanging over time.
+When no (or only a single) `time` is supplied for a given `condition_id`, the `threshold_high` value of this condition is unchanging over time. When multiple times are supplied, in between the given times the `threshold_high` and `threshold_low` values are block interpolated (forward fill), and outside they are constant given by the nearest time value.
 
 ## Logic
 

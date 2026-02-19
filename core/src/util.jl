@@ -52,6 +52,23 @@ function get_area_from_storage(basin::Basin, state_idx::Int, storage::T)::T wher
     return level_to_area(level)
 end
 
+"""
+Log an info message if a time series starts after the simulation start time,
+meaning the first value is constant-extrapolated backward.
+"""
+function log_timeseries_backfilled(
+        times::Vector{Float64},
+        starttime::DateTime,
+        node_id::NodeID,
+        cyclic_time::Bool,
+    )::Nothing
+    if !cyclic_time && !isempty(times) && first(times) > 0
+        first_time = datetime_since(first(times), starttime)
+        @info "The input time series for $node_id starts at $first_time, which is after the simulation start time ($starttime). The first value is constant-extrapolated back to the start of the simulation."
+    end
+    return nothing
+end
+
 function get_scalar_interpolation(
         starttime::DateTime,
         time::AbstractVector,
@@ -68,6 +85,7 @@ function get_scalar_interpolation(
 
     valid = valid_time_interpolation(times, parameter, node_id, cyclic_time)
     !valid && error("Invalid time series.")
+    log_timeseries_backfilled(times, starttime, node_id, cyclic_time)
     return interpolation_type(
         parameter,
         times;
@@ -561,27 +579,47 @@ function set_discrete_controlled_variable_refs!(
                 node.control_mapping
 
             for ((node_id, control_state), control_state_update) in control_mapping
-                (; scalar_update, itp_update_linear, itp_update_lookup) =
+                (; scalar_update, itp_update_constant, itp_update_linear, itp_update_lookup) =
                     control_state_update
 
                 # References to scalar parameters
                 for (i, parameter_update) in enumerate(scalar_update)
                     field = getfield(node, parameter_update.name)
-                    scalar_update[i] = @set parameter_update.ref = Ref(field, node_id.idx)
+                    scalar_update[i] = ParameterUpdate(
+                        parameter_update.name,
+                        parameter_update.value,
+                        Ref(field, node_id.idx),
+                    )
+                end
+
+                # References to constant interpolation parameters
+                for (i, parameter_update) in enumerate(itp_update_constant)
+                    field = getfield(node, parameter_update.name)
+                    itp_update_constant[i] = ParameterUpdate(
+                        parameter_update.name,
+                        parameter_update.value,
+                        Ref(field, node_id.idx),
+                    )
                 end
 
                 # References to linear interpolation parameters
                 for (i, parameter_update) in enumerate(itp_update_linear)
                     field = getfield(node, parameter_update.name)
-                    itp_update_linear[i] =
-                        @set parameter_update.ref = Ref(field, node_id.idx)
+                    itp_update_linear[i] = ParameterUpdate(
+                        parameter_update.name,
+                        parameter_update.value,
+                        Ref(field, node_id.idx),
+                    )
                 end
 
                 # References to index interpolation parameters
                 for (i, parameter_update) in enumerate(itp_update_lookup)
                     field = getfield(node, parameter_update.name)
-                    itp_update_lookup[i] =
-                        @set parameter_update.ref = Ref(field, node_id.idx)
+                    itp_update_lookup[i] = ParameterUpdate(
+                        parameter_update.name,
+                        parameter_update.value,
+                        Ref(field, node_id.idx),
+                    )
                 end
             end
         end
@@ -1152,15 +1190,20 @@ function filtered_constant_interpolation(
         group,
         field::Symbol,
         cyclic_time::Bool,
-        config::Config,
+        config::Config;
+        node_id::Union{NodeID, Nothing} = nothing,
     )::ScalarConstantInterpolation
     values = getproperty.(group, field)
     times = getproperty.(group, :time)
     mask = map(!ismissing, values)
     return if any(mask)
+        t = seconds_since.(times[mask], config.starttime)
+        if !isnothing(node_id)
+            log_timeseries_backfilled(t, config.starttime, node_id, cyclic_time)
+        end
         ConstantInterpolation(
             values[mask],
-            seconds_since.(times[mask], config.starttime);
+            t;
             extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
         )
     else
@@ -1191,7 +1234,7 @@ function get_concentration_itp(
             first_row = first(group)
             substance_idx = find_index(Symbol(first_row.substance), substances)
             concentration_itp[id.idx][substance_idx] =
-                filtered_constant_interpolation(group, :concentration, cyclic_time, config)
+                filtered_constant_interpolation(group, :concentration, cyclic_time, config; node_id = id)
         end
     end
 
