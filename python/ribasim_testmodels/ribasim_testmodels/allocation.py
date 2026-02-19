@@ -1621,7 +1621,7 @@ def level_demand_with_rating_curve_model() -> Model:
     )
 
     bsn = model.basin.add(
-        Node(1, Point(0, 0), subnetwork_id=2, route_priority=1),
+        Node(1, Point(0, 0), subnetwork_id=2, route_priority=0),
         [
             basin.Profile(area=1000.0, level=[0.0, 10.0]),
             basin.State(level=[5.0]),

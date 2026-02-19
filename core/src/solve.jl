@@ -511,8 +511,6 @@ function formulate_flow!(
 
         du.tabulated_rating_curve[node_idx] = q
     end
-
-
     return nothing
 end
 
