@@ -210,11 +210,6 @@ depends-on = [
         " {{ profile_path }} ",
     ] },
     { "task" = "install-qgis-plugin", "args" = [
-        "iMOD",
-        "imodqgis",
-        " {{ profile_path }} ",
-    ] },
-    { "task" = "install-qgis-plugin", "args" = [
         "debugvs",
         "debug_vs",
         " {{ profile_path }} ",
