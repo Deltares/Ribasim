@@ -32,6 +32,14 @@ VariableTraces = dict[str, Trace]
 # Full plot payload: file -> variable -> traces.
 PlotData = dict[str, dict[str, VariableTraces]]
 
+# Placeholder hints per result file.
+_PLACEHOLDER_HINTS: dict[str, str] = {
+    "basin": "Select Basin nodes on the map to plot timeseries.",
+    "concentration": "Select Basin nodes on the map to plot timeseries.",
+    "flow": "Select links on the map to plot timeseries.",
+}
+_PLACEHOLDER_DEFAULT = "Select nodes or links on the map to plot timeseries."
+
 
 class _VariablesMenu(QMenu):
     """Dropdown menu with checkboxes for multi-variable selection."""
@@ -171,15 +179,12 @@ class PlotWidget(QWidget):
             file_name -> variable -> unit string (e.g. 'm3 s-1').
         """
         self._plot_data = plot_data
-        self._units = units or {}
-        self._update_file_combo(sorted(plot_data.keys()))
+        if units:
+            self._units = units
+        self._redraw()
 
     def clear(self) -> None:
         self._plot_data = {}
-        self._units = {}
-        self._file_combo.clear()
-        self._var_menu.clear()
-        self._var_button.setText("Variable: ")
         self._web_view.setVisible(False)
         self._web_view.setUrl(QUrl("about:blank"))
         self._placeholder.setVisible(True)
@@ -204,14 +209,14 @@ class PlotWidget(QWidget):
         self._on_file_changed(self._file_combo.currentText())
 
     def _on_file_changed(self, file_name: str) -> None:
-        # Use plot_data keys if available, otherwise fall back to preloaded available
-        variables = list(self._plot_data.get(file_name, {}).keys())
-        if not variables:
-            variables = self._available.get(file_name, [])
+        variables = self._available.get(file_name, [])
         previously_checked = set(self._var_menu.checked_variables())
         default = self._defaults.get(file_name, "")
         self._var_menu.populate(sorted(variables), previously_checked, default)
         self._update_button_text()
+        self._placeholder.setText(
+            _PLACEHOLDER_HINTS.get(file_name, _PLACEHOLDER_DEFAULT)
+        )
         self._redraw()
 
     def _on_menu_closed(self) -> None:

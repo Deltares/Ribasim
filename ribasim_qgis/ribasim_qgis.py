@@ -54,12 +54,15 @@ class RibasimPlugin:
 
         self.action_run = QAction("Run Ribasim model", self.iface.mainWindow())
         self.action_run.triggered.connect(self.run_model)
+        self.iface.addPluginToMenu("Ribasim", self.action_run)
 
         self.action_reload = QAction("Reload Ribasim model", self.iface.mainWindow())
         self.action_reload.triggered.connect(self.reload_model)
+        self.iface.addPluginToMenu("Ribasim", self.action_reload)
 
         self.action_timeseries = QAction("Timeseries results", self.iface.mainWindow())
         self.action_timeseries.triggered.connect(self.toggle_plot_dock)
+        self.iface.addPluginToMenu("Ribasim", self.action_timeseries)
 
         # Single tool button — always opens dropdown
         self.tool_button = QToolButton()
@@ -118,7 +121,7 @@ class RibasimPlugin:
 
             # Create a dockable plot panel (hidden initially)
             self.plot_dock = QDockWidget(
-                "Ribasim timeseries results", self.iface.mainWindow()
+                "Ribasim Timeseries Results", self.iface.mainWindow()
             )
             self.plot_dock.setObjectName("RibasimPlotDock")
             self.plot_dock.setWidget(self.ribasim_widget.plot_widget)
@@ -135,4 +138,7 @@ class RibasimPlugin:
         if self.toolbar:
             self.toolbar.deleteLater()
         self.iface.removePluginMenu("Ribasim", self.action_open)
+        self.iface.removePluginMenu("Ribasim", self.action_run)
+        self.iface.removePluginMenu("Ribasim", self.action_reload)
+        self.iface.removePluginMenu("Ribasim", self.action_timeseries)
         self.iface.unregisterCustomDropHandler(self.drop_handler)
