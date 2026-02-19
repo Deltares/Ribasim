@@ -195,6 +195,11 @@ class PlotWidget(QWidget):
         idx = self._file_combo.findText(current)
         if idx >= 0:
             self._file_combo.setCurrentIndex(idx)
+        else:
+            # Default to "flow" when there is no previous selection
+            didx = self._file_combo.findText("flow")
+            if didx >= 0:
+                self._file_combo.setCurrentIndex(didx)
         self._file_combo.blockSignals(False)
         self._on_file_changed(self._file_combo.currentText())
 

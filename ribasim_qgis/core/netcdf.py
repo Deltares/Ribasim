@@ -61,6 +61,8 @@ def _read_time(root_group) -> pd.DatetimeIndex:
 
 def _open_netcdf(path: Path):
     """Open a NetCDF file with GDAL multidimensional API. Return root group or None."""
+    if not path.is_file():
+        return None
     ds = gdal.OpenEx(str(path), gdal.OF_MULTIDIM_RASTER)
     if ds is None:
         return None
