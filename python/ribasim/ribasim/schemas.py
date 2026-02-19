@@ -257,7 +257,6 @@ class OutletStaticSchema(_BaseSchema):
     min_upstream_level: float = pa.Field(nullable=True)
     max_downstream_level: float = pa.Field(nullable=True)
     control_state: pd.StringDtype = pa.Field(nullable=True)
-    allocation_controlled: bool = pa.Field(nullable=True)
 
 
 class OutletTimeSchema(_BaseSchema):
@@ -302,7 +301,6 @@ class PumpStaticSchema(_BaseSchema):
     min_upstream_level: float = pa.Field(nullable=True)
     max_downstream_level: float = pa.Field(nullable=True)
     control_state: pd.StringDtype = pa.Field(nullable=True)
-    allocation_controlled: bool = pa.Field(nullable=True)
 
 
 class PumpTimeSchema(_BaseSchema):
