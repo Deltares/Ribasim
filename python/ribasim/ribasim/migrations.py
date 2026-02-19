@@ -99,7 +99,8 @@ def _migrate_allocation_controlled(df: DataFrame) -> DataFrame:
     """Migrate control_state='Ribasim.allocation' to allocation_controlled=True."""
     if "control_state" in df.columns:
         mask = df["control_state"] == "Ribasim.allocation"
-        df["allocation_controlled"] = mask.where(mask, other=None)
+        df["allocation_controlled"] = None
+        df.loc[mask, "allocation_controlled"] = True
         # For rows with Ribasim.allocation and no other control states for that node,
         # clear the control_state; for rows that had it alongside other states, rename it
         has_other_states = df.groupby("node_id")["control_state"].transform(
