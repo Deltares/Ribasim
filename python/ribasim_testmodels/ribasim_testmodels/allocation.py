@@ -1609,3 +1609,45 @@ def switch_allocation_control_model() -> Model:
     model.link.add(level_demand7, basin1)
 
     return model
+
+
+def level_demand_with_rating_curve_model() -> Model:
+    """Create a model with a Basin that has a LevelDemand and an allocation-controlled TabulatedRatingCurve draining to a Terminal."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+
+    bsn = model.basin.add(
+        Node(1, Point(0, 0), subnetwork_id=2, route_priority=1),
+        [
+            basin.Profile(area=1000.0, level=[0.0, 10.0]),
+            basin.State(level=[5.0]),
+        ],
+    )
+
+    trc = model.tabulated_rating_curve.add(
+        Node(2, Point(1, 0), subnetwork_id=2, route_priority=-2),
+        [
+            tabulated_rating_curve.Static(
+                level=[0.0, 1.0, 5.0],
+                flow_rate=[0.0, 0.0, 2e-3],
+                control_state="Ribasim.allocation",
+            )
+        ],
+    )
+
+    trm = model.terminal.add(Node(3, Point(2, 0), subnetwork_id=2, route_priority=0))
+
+    ld = model.level_demand.add(
+        Node(4, Point(0, 1), subnetwork_id=2, route_priority=0),
+        [level_demand.Static(min_level=[3.0], max_level=[4.0], demand_priority=1)],
+    )
+
+    model.link.add(bsn, trc)
+    model.link.add(trc, trm)
+    model.link.add(ld, bsn)
+
+    return model

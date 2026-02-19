@@ -457,10 +457,30 @@ function tabulated_rating_curve_flow(
     Δh = h_a - h_b
 
     factor = get_low_storage_factor(p, inflow_id)
-
     interpolation_index = current_interpolation_index[node_id.idx](t)
     qh = interpolations[interpolation_index]
     q = factor * qh(h_a)
+    q *= reduction_factor(Δh, level_difference_threshold)
+    max_downstream_level = tabulated_rating_curve.max_downstream_level[node_id.idx]
+    q *= reduction_factor(max_downstream_level - h_b, level_difference_threshold)
+    return q
+end
+
+function allocated_rating_curve_flow(
+        tabulated_rating_curve::TabulatedRatingCurve,
+        node_id::NodeID,
+        h_a::Number,
+        h_b::Number,
+        p::Parameters,
+    )::Number
+    (; level_difference_threshold) = p.p_independent
+    inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
+    inflow_id = inflow_link.link[1]
+    Δh = h_a - h_b
+
+    factor = get_low_storage_factor(p, inflow_id)
+    qh = tabulated_rating_curve.flow_rate[node_id.idx]
+    q = factor * qh
     q *= reduction_factor(Δh, level_difference_threshold)
     max_downstream_level = tabulated_rating_curve.max_downstream_level[node_id.idx]
     q *= reduction_factor(max_downstream_level - h_b, level_difference_threshold)
@@ -480,13 +500,19 @@ function formulate_flow!(
         outflow_link = tabulated_rating_curve.outflow_link[node_idx]
         inflow_id = inflow_link.link[1]
         outflow_id = outflow_link.link[2]
-
         h_a = get_level(p, inflow_id, t)
         h_b = get_level(p, outflow_id, t)
-        q = tabulated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p, t)
+
+        if tabulated_rating_curve.allocation_controlled[node_idx]
+            q = allocated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p)
+        else
+            q = tabulated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p, t)
+        end
 
         du.tabulated_rating_curve[node_idx] = q
     end
+
+
     return nothing
 end
 

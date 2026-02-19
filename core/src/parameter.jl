@@ -550,7 +550,9 @@ max_downstream_level: The downstream level above which the TabulatedRatingCurve 
 interpolations: All Q(h) relationships for the nodes over time
 current_interpolation_index: Per node 1 lookup from t to an index in `interpolations`
 control_mapping: dictionary from (node_id, control_state) to Q(h)
+control_type: one of None, ContinuousControl, PidControl, Allocation
 flow_demand_id: connected flow demand node if applicable
+allocation_controlled: whether this TabulatedRatingCurve is controlled by allocation
 """
 @kwdef struct TabulatedRatingCurve <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -561,8 +563,12 @@ flow_demand_id: connected flow demand node if applicable
     current_interpolation_index::Vector{IndexLookup} = IndexLookup[]
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
         OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
+    control_type::Vector{ContinuousControlType.T} =
+        fill(ContinuousControlType.None, length(node_id))
     flow_demand_id::Vector{NodeID} =
         fill(NodeID(NodeType.FlowDemand, 0, 0), length(node_id))
+    allocation_controlled::Vector{Bool} = fill(false, length(node_id))
+    flow_rate::Vector{Float64} = Vector{Float64}(undef, length(node_id))
 end
 
 """
