@@ -127,13 +127,13 @@ Where:
   - The upstream level is less than $0.02 \;\text{m}$ above the downstream level.
   - The downstream level is above `max_downstream_level` - $0.02 \;\text{m}$
 
-## Allocation control {#allocation-control}
+# Allocation control {#allocation-control}
 
 A TabulatedRatingCurve can be controlled by the [allocation](/concept/allocation.qmd) algorithm.
 To enable this, set `control_state = "Ribasim.allocation"` in the Static table.
 When allocation-controlled, the flow through the TabulatedRatingCurve is no longer determined solely by the $Q(h)$ relationship; instead the allocation algorithm decides the flow rate within the physical capacity of the curve.
 
-### Behavior
+## Behavior
 
 During each allocation time step the algorithm:
 
@@ -153,7 +153,7 @@ This means the flow is still smoothly reduced to zero when:
 - the level difference across the node is small, or
 - the downstream level exceeds `max_downstream_level`.
 
-### Route priority
+## Route priority
 
 In a typical setup you want the TabulatedRatingCurve to follow its $Q(h)$ relationship under normal conditions and only reduce flow when there is a water shortage (i.e. when a demand cannot be met). This is achieved by giving the TabulatedRatingCurve node a **negative route priority**.
 
