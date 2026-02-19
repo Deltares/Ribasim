@@ -370,6 +370,7 @@ The parameter update associated with a certain control state for discrete contro
     itp_update_linear::Vector{ParameterUpdate{ScalarLinearInterpolation}} =
         ParameterUpdate{ScalarLinearInterpolation}[]
     itp_update_lookup::Vector{ParameterUpdate{IndexLookup}} = ParameterUpdate{IndexLookup}[]
+    allocation_controlled::Bool = false
 end
 
 """

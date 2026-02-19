@@ -673,7 +673,7 @@ level_boundary17 = model.level_boundary.add(
 )
 ```
 
-Setup outlets with allocation control. Note `control_state="Ribasim.allocation"` which tells the allocation algorithm to control these nodes:
+Setup outlets with allocation control. Note `allocation_controlled=True` which tells the allocation algorithm to control these nodes:
 
 ```{python}
 # Inlet from boezem to polder 4
@@ -681,7 +681,7 @@ outlet5 = model.outlet.add(
     Node(5, Point(2, 1), name="inlaat"),
     [
         outlet.Static(
-            control_state="Ribasim.allocation",
+            allocation_controlled=True,
             flow_rate=[0.0],
             max_flow_rate=5.0,
         )
@@ -693,7 +693,7 @@ outlet13 = model.outlet.add(
     Node(13, Point(3, 2), name="inlaat/uitlaat"),
     [
         outlet.Static(
-            control_state="Ribasim.allocation",
+            allocation_controlled=True,
             flow_rate=[0.0],
             max_flow_rate=5.0
         )
@@ -704,7 +704,7 @@ outlet13 = model.outlet.add(
 outlet10 = model.outlet.add(
     Node(10, Point(5.0, 0.0)),
     [outlet.Static(
-        control_state="Ribasim.allocation",
+        allocation_controlled=True,
         flow_rate=[0.0],
         max_flow_rate=10
     )],
@@ -713,7 +713,7 @@ outlet10 = model.outlet.add(
 outlet12 = model.outlet.add(
     Node(12, Point(1.0, 0)),
     [outlet.Static(
-        control_state="Ribasim.allocation",
+        allocation_controlled=True,
         flow_rate=[0.0],
         max_flow_rate=10.0)],
 )
@@ -726,7 +726,7 @@ pump7 = model.pump.add(
     Node(7, Point(4, 1), name="drainage pumping station"),
     [
         pump.Static(
-            control_state="Ribasim.allocation",
+            allocation_controlled=True,
             flow_rate=[0.0],
             max_flow_rate=20.0,
         )

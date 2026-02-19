@@ -347,7 +347,7 @@ $$
 
 ### Control by allocation
 
-When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must be given the special control state `Ribasim.allocation` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static). When a Pump or Outlet has this control state, the flow through the node is only bounded by its capacity and Pump or Outlet specific constraints based on the difference between upstream and downstream level (see [Pump equations](/reference/node/pump.qmd#equations) or [Outlet equations](/reference/node/outlet.qmd#equations)). After all goals have been optimized for, the flow rate through the Pump or Outlet is communicated to the physical layer.
+When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must have `allocation_controlled` set to `true` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static). When a Pump or Outlet is allocation controlled, the flow through the node is only bounded by its capacity and Pump or Outlet specific constraints based on the difference between upstream and downstream level (see [Pump equations](/reference/node/pump.qmd#equations) or [Outlet equations](/reference/node/outlet.qmd#equations)). After all goals have been optimized for, the flow rate through the Pump or Outlet is communicated to the physical layer.
 
 ### Interaction of allocation with other control systems
 

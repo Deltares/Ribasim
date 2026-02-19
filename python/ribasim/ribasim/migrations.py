@@ -95,12 +95,35 @@ def pidcontrolstaticschema_migration(df: DataFrame, schema_version: int) -> Data
     return df
 
 
+def _migrate_allocation_controlled(df: DataFrame) -> DataFrame:
+    """Migrate control_state='Ribasim.allocation' to allocation_controlled=True."""
+    if "control_state" in df.columns:
+        mask = df["control_state"] == "Ribasim.allocation"
+        df["allocation_controlled"] = mask.where(mask, other=None)
+        # For rows with Ribasim.allocation and no other control states for that node,
+        # clear the control_state; for rows that had it alongside other states, rename it
+        has_other_states = df.groupby("node_id")["control_state"].transform(
+            lambda x: (
+                (x != "Ribasim.allocation").any() & (x == "Ribasim.allocation").any()
+            )
+        )
+        # Rename "Ribasim.allocation" to "allocation" where there are multiple control states
+        df.loc[mask & has_other_states, "control_state"] = "allocation"
+        # Clear control_state where it was the only state
+        df.loc[mask & ~has_other_states, "control_state"] = None
+    else:
+        df["allocation_controlled"] = None
+    return df
+
+
 def outletstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if schema_version < 2:
         _rename_column(df, "min_crest_level", "min_upstream_level")
     if schema_version < 9:
         check_inactive(df, name="Outlet / static")
         df.drop(columns="active", inplace=True, errors="ignore")
+    if schema_version < 11:
+        df = _migrate_allocation_controlled(df)
     return df
 
 
@@ -135,6 +158,16 @@ def discretecontrolconditionschema_migration(
     return df
 
 
+def discretecontrollogicschema_migration(
+    df: DataFrame, schema_version: int
+) -> DataFrame:
+    if schema_version < 11 and "control_state" in df.columns:
+        df["control_state"] = df["control_state"].replace(
+            "Ribasim.allocation", "allocation"
+        )
+    return df
+
+
 def basinprofileschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if schema_version < 6:
         df["storage"] = None
@@ -145,6 +178,8 @@ def pumpstaticschema_migration(df: DataFrame, schema_version: int) -> DataFrame:
     if schema_version < 9:
         check_inactive(df, name="Pump / static")
         df.drop(columns="active", inplace=True, errors="ignore")
+    if schema_version < 11:
+        df = _migrate_allocation_controlled(df)
     return df
 
 
