@@ -5,8 +5,10 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.markers import MarkerStyle
 from matplotlib.patches import PathPatch
 from matplotlib.path import Path as MplPath
+from matplotlib.transforms import Affine2D
 
 # dir where this script is located
 script_dir = Path(__file__).resolve().parent
@@ -65,16 +67,13 @@ def create_star(num_points, inner_radius=0.1, outer_radius=0.25):
     )
 
 
-MARKER_BASE = 800
-
 # Scale factor per shape, applied to:
 # - patch coordinates directly
-# - scatter marker size as MARKER_BASE * scale²
 # fmt: off
 ICON_SCALE = {
     "rectangle":      2.4,
     "trapezium":      1.1,
-    "pentagon":       1.5,
+    "pentagon":       1.2,
     "star5":          1.8,
     "star6":          1.8,
     "star4":          1.8,
@@ -83,11 +82,23 @@ ICON_SCALE = {
     "D":              1.8,
     "^":              2.1,
     "v":              2.1,
-    "s":              2.2,
+    "s":              2.35,
     "o":              2.2,
     "H":              2.4,
 }
 # fmt: on
+
+
+def create_marker_patch(marker, scale, color, edgecolor="black", linewidth=1):
+    marker_style = MarkerStyle(marker)
+    marker_path = marker_style.get_path().transformed(marker_style.get_transform())
+    transformed = marker_path.transformed(Affine2D().scale(0.25 * scale))
+    return PathPatch(
+        transformed,
+        facecolor=color,
+        edgecolor=edgecolor,
+        linewidth=linewidth,
+    )
 
 
 def draw_icon(ax, shape, color, node_type):
@@ -178,18 +189,8 @@ def draw_icon(ax, shape, color, node_type):
         ax.add_patch(fill)
 
     else:
-        safe_edgecolor_shapes = {"^", "v", "s", "D", "o", "H"}
-        use_edge = shape in safe_edgecolor_shapes
-        marker_size = MARKER_BASE * s * s
-        ax.scatter(
-            0,
-            0,
-            marker=shape,
-            color=color,
-            s=marker_size,
-            edgecolors="black" if use_edge else None,
-            clip_on=False,
-        )
+        marker_patch = create_marker_patch(shape, s, color)
+        ax.add_patch(marker_patch)
 
     ax.set_xlim(-0.5, 0.5)
     ax.set_ylim(-0.5, 0.5)
@@ -203,8 +204,8 @@ for _, row in df.iterrows():
     color = row["color"]
     shape = row["shape_code"]
 
-    fig = plt.figure(figsize=(1, 1))
-    ax = fig.add_axes([0, 0, 1, 1])
+    fig, ax = plt.subplots(figsize=(1, 1))
+    ax.set_position((0.0, 0.0, 1.0, 1.0))
     draw_icon(ax, shape, color, node_type)
 
     # save svg
