@@ -149,13 +149,7 @@ publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api",
 
 
 test-ribasim-qgis-docker = { cmd = "sh ./test.sh", cwd = ".docker" }
-test-ribasim-qgis-ui = { cmd = "python ribasim_qgis/scripts/run_qgis_ui_tests.py", depends-on = [
-    "install-ribasim-qgis",
-] }
-test-ribasim-qgis = { cmd = "pytest --numprocesses=auto ribasim_qgis/tests/core", depends-on = [
-    "install-ribasim-qgis",
-] }
-test-ribasim-qgis-cov = { cmd = "pytest --numprocesses=auto --cov=ribasim_qgis --cov-report=xml --cov-config=ribasim_qgis/.coveragerc ribasim_qgis/tests/core", depends-on = [
+test-ribasim-qgis = { cmd = "python ribasim_qgis/scripts/run_qgis_ui_tests.py", depends-on = [
     "install-ribasim-qgis",
 ] }
 mypy-ribasim-qgis = "mypy ribasim_qgis"

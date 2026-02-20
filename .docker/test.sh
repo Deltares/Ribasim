@@ -7,7 +7,7 @@ echo "Downloading QGIS setup scripts (not included in qgis/qgis:3.40 image)"
 docker exec -t qgis sh -c "wget -q -P /usr/bin https://raw.githubusercontent.com/qgis/QGIS/refs/tags/ltr-3_40/.docker/qgis_resources/test_runner/qgis_setup.sh && chmod +x /usr/bin/qgis_setup.sh"
 docker exec -t qgis sh -c "wget -q -P /usr/bin https://raw.githubusercontent.com/qgis/QGIS/refs/tags/ltr-3_40/.docker/qgis_resources/test_runner/qgis_startup.py"
 
-docker exec -t qgis sh -c "apt install -y python3-pandas python3-coverage"
+docker exec -t qgis sh -c "apt install -y python3-pandas python3-pytest python3-coverage"
 
 echo "Installation of the plugin Ribasim"
 docker exec -t qgis sh -c "qgis_setup.sh ribasim_qgis"

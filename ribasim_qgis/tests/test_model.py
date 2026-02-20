@@ -1,7 +1,7 @@
 import tomllib
 from pathlib import Path
 
-from qgis.testing import unittest
+import pytest
 
 from ribasim_qgis.core.model import (
     get_database_path_from_model_file,
@@ -9,61 +9,55 @@ from ribasim_qgis.core.model import (
 )
 from ribasim_qgis.core.nodes import get_external_input_files
 
+tests_folder_path = Path(__file__).parent.resolve()
+data_folder_path = tests_folder_path / "data"
 
-class TestModel(unittest.TestCase):
-    tests_folder_path = Path(__file__).parent.resolve()
-    data_folder_path = tests_folder_path / "data"
 
-    def test_get_directory_path_from_model_file(self):
-        """Tests that get_directory_path_from_model_file() can resolve paths from a toml file."""
-        for test_case in [("input_dir", "."), ("results_dir", "results")]:
-            with self.subTest(property=test_case[0], value=test_case[1]):
-                path = get_directory_path_from_model_file(
-                    self.data_folder_path / "simple_valid.toml",
-                    property=test_case[0],
-                )
-                self.assertTrue(path.is_absolute(), msg=f"{path} is not absolute")
-                self.assertTrue(
-                    path.is_relative_to(self.tests_folder_path),
-                    msg=f"Path '{path}' is not relative to {self.tests_folder_path}",
-                )
-                self.assertEqual(path, self.data_folder_path / test_case[1])
+@pytest.mark.parametrize(
+    ("prop", "expected"),
+    [("input_dir", "."), ("results_dir", "results")],
+)
+def test_get_directory_path_from_model_file(prop, expected):
+    """Tests that get_directory_path_from_model_file() can resolve paths from a toml file."""
+    path = get_directory_path_from_model_file(
+        data_folder_path / "simple_valid.toml",
+        property=prop,
+    )
+    assert path.is_absolute(), f"{path} is not absolute"
+    assert path.is_relative_to(tests_folder_path), (
+        f"Path '{path}' is not relative to {tests_folder_path}"
+    )
+    assert path == data_folder_path / expected
 
-    def test_get_database_path_from_model_file(self):
-        """Tests that get_database_path_from_model_file() can find the input directory and appends the database.gpkg to it."""
-        path = get_database_path_from_model_file(
-            self.data_folder_path / "simple_valid.toml"
-        )
-        self.assertTrue(path.is_absolute(), msg=f"{path} is not absolute")
-        self.assertTrue(
-            path.is_relative_to(self.tests_folder_path),
-            msg=f"Path '{path}' is not relative to {self.tests_folder_path}",
-        )
-        self.assertEqual(path, self.data_folder_path / "database.gpkg")
 
-    def test_get_external_input_files(self):
-        """Tests that get_external_input_files() returns empty dict for model without external files."""
-        model_path = self.data_folder_path / "simple_valid.toml"
-        with model_path.open("rb") as f:
-            toml_data = tomllib.load(f)
+def test_get_database_path_from_model_file():
+    """Tests that get_database_path_from_model_file() can find the input directory and appends the database.gpkg to it."""
+    path = get_database_path_from_model_file(data_folder_path / "simple_valid.toml")
+    assert path.is_absolute(), f"{path} is not absolute"
+    assert path.is_relative_to(tests_folder_path), (
+        f"Path '{path}' is not relative to {tests_folder_path}"
+    )
+    assert path == data_folder_path / "database.gpkg"
 
-        external_files = get_external_input_files(toml_data)
-        self.assertIsInstance(external_files, dict)
-        # For this simple test model, there should be no external files
-        self.assertEqual(len(external_files), 0)
 
-    def test_get_external_input_files_with_netcdf(self):
-        """Tests that get_external_input_files() correctly identifies NetCDF files from TOML."""
-        model_path = self.data_folder_path / "with_netcdf.toml"
-        with model_path.open("rb") as f:
-            toml_data = tomllib.load(f)
+def test_get_external_input_files():
+    """Tests that get_external_input_files() returns empty dict for model without external files."""
+    model_path = data_folder_path / "simple_valid.toml"
+    with model_path.open("rb") as f:
+        toml_data = tomllib.load(f)
 
-        external_files = get_external_input_files(toml_data)
-        self.assertIsInstance(external_files, dict)
+    external_files = get_external_input_files(toml_data)
+    assert isinstance(external_files, dict)
+    assert len(external_files) == 0
 
-        # Check that the expected files are found
-        self.assertIn("Basin / profile", external_files)
-        self.assertEqual(external_files["Basin / profile"], "basin_profile.nc")
 
-        self.assertIn("FlowBoundary / time", external_files)
-        self.assertEqual(external_files["FlowBoundary / time"], "flow_boundary_time.nc")
+def test_get_external_input_files_with_netcdf():
+    """Tests that get_external_input_files() correctly identifies NetCDF files from TOML."""
+    model_path = data_folder_path / "with_netcdf.toml"
+    with model_path.open("rb") as f:
+        toml_data = tomllib.load(f)
+
+    external_files = get_external_input_files(toml_data)
+    assert isinstance(external_files, dict)
+    assert external_files["Basin / profile"] == "basin_profile.nc"
+    assert external_files["FlowBoundary / time"] == "flow_boundary_time.nc"

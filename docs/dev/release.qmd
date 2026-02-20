@@ -26,7 +26,7 @@ Start with running the automated task to see if it can be correctly installed.
 ```sh
 # This test might give a fatal error on the first run, this is most likely a timing issue.
 # Try to run it again when that happens.
-pixi run test-ribasim-qgis-ui
+pixi run test-ribasim-qgis
 ```
 
 Then follow the instructions as described in the [QGIS manual test plan](/dev/qgis_test_plan.qmd).
