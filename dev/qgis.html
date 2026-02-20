@@ -42,7 +42,7 @@ ul.task-list li input[type="checkbox"] {
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-4cad563b89d51a7306807a9bca28adc0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-0b1189524dc19e09ab363e9b4d3e2f65.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -288,7 +288,7 @@ Note
 <p>Note that on macOS you currently need to manually install and point to a QGIS executable in your path. If you use pixi that could be as simple as: <code>pixi global install --environment qgis qgis pandas</code>.</p>
 </div>
 </div>
-<p>The simplest way to do this is by running <code>pixi run install-qgis-plugins</code>. It grabs the latest version of the iMOD QGIS plugin and it makes a symlink to the ribasim_qgis folder so that QGIS can find it. It also installs plugins that make it possible to reload and debug your plugin while QGIS is open.</p>
+<p>The simplest way to do this is by running <code>pixi run install-qgis-plugins</code>. It makes a symlink to the ribasim_qgis folder so that QGIS can find it. It also installs plugins that make it possible to reload and debug your plugin while QGIS is open.</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -306,7 +306,7 @@ Note
 </section>
 <section id="running-qgis" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> Running QGIS</h1>
-<p>In order to run QGIS with the plugins, simply call <code>pixi run qgis</code>. You will find the Ribasim and iMOD plugins in the tool bars.</p>
+<p>In order to run QGIS with the plugins, simply call <code>pixi run qgis</code>. You will find the Ribasim plugin in the tool bar.</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -323,8 +323,8 @@ Note
 </section>
 <section id="running-tests" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Running tests</h1>
-<p>To run the QGIS plugin tests in the application environment of QGIS, it is best to make use of the Docker environment provided in this repository. Make sure that docker is installed and available in your path.</p>
-<p>Then simply call <code>pixi run test-ribasim-qgis</code>.</p>
+<p>To run the QGIS plugin tests locally inside a QGIS process, call <code>pixi run test-ribasim-qgis</code>. This launches QGIS and runs the full test suite (including plugin and UI tests) via the test runner.</p>
+<p>For CI or headless environments, the same tests can be run in Docker with <code>pixi run test-ribasim-qgis-docker</code>. Make sure that Docker is installed and available in your path.</p>
 </section>
 <section id="debugging" class="level1" data-number="4">
 <h1 data-number="4"><span class="header-section-number">4</span> Debugging</h1>

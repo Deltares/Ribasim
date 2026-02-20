@@ -76,7 +76,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-4cad563b89d51a7306807a9bca28adc0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-0b1189524dc19e09ab363e9b4d3e2f65.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -251,7 +251,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul class="collapse">
   <li><a href="#install-from-qgis-plugin-repository-recommended" id="toc-install-from-qgis-plugin-repository-recommended" class="nav-link" data-scroll-target="#install-from-qgis-plugin-repository-recommended"><span class="header-section-number">4.1</span> Install from QGIS Plugin Repository (recommended)</a></li>
   <li><a href="#alternative-install-from-zip-file" id="toc-alternative-install-from-zip-file" class="nav-link" data-scroll-target="#alternative-install-from-zip-file"><span class="header-section-number">4.2</span> Alternative: Install from ZIP file</a></li>
-  <li><a href="#install-imod-plugin" id="toc-install-imod-plugin" class="nav-link" data-scroll-target="#install-imod-plugin"><span class="header-section-number">4.3</span> Install iMOD plugin</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -329,7 +328,7 @@ classDef boundary fill:transparent,stroke-dasharray:5 5
 <p>There are three main components of the Ribasim software package. They are the Ribasim core, the Ribasim Python package and the Ribasim QGIS plugin.</p>
 <p>The <a href="../reference/usage.html">core</a> is a command line interface (CLI) that runs Ribasim simulations. It is written in the <a href="https://julialang.org/">Julia programming language</a> and is built on top of the <a href="https://sciml.ai/">SciML: Open Source Software for Scientific Machine Learning</a> libraries, notably <a href="https://docs.sciml.ai/DiffEqDocs/stable/">DifferentialEquations.jl</a>.</p>
 <p>The <a href="../reference/python/index.html">Ribasim Python package</a> is available to build, update and analyze Ribasim models programmatically. One can also use Ribasim Python to build entire models from base data, such that your model setup is fully reproducible.</p>
-<p>Ribasim uses <a href="https://www.geopackage.org/">GeoPackage</a> files to store the model database (<code>database.gpkg</code>). <a href="https://qgis.org/">QGIS</a> works well with GeoPackage files, making it a good application to visualize Ribasim models. Deltares also provides the iMOD QGIS plugin, which can be used to view the timeseries in the Ribasim results.</p>
+<p>Ribasim uses <a href="https://www.geopackage.org/">GeoPackage</a> files to store the model database (<code>database.gpkg</code>). <a href="https://qgis.org/">QGIS</a> works well with GeoPackage files, making it a good application to visualize Ribasim models.</p>
 <div class="callout callout-style-default callout-important callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -508,12 +507,6 @@ Options:
 <p><img src="https://user-images.githubusercontent.com/4471859/224939080-7fec5db2-4417-4f7b-8e45-034d4cf4fd75.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
 </figure>
 </div>
-</section>
-<section id="install-imod-plugin" class="level2" data-number="4.3">
-<h2 data-number="4.3" class="anchored" data-anchor-id="install-imod-plugin"><span class="header-section-number">4.3</span> Install iMOD plugin</h2>
-<p>In QGIS, navigate to “Plugins &gt; Manage and Install Plugins &gt; All”. In the search bar, type: “iMOD”. Select the iMOD plugin, and click “Install”.</p>
-<p>At least version 0.5.3 of the iMOD plugin is required.</p>
-<p>The Time Series widget from the iMOD plugin is used for visualizing Ribasim results, which is described in the <a href="#sec-results">results section</a>. Documentation on the Time Series widget can be found in the <a href="https://deltares.github.io/iMOD-Documentation/qgis_user_manual.html#time-series-time-series">iMOD documentation</a>.</p>
 
 
 </section>

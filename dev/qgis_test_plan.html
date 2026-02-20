@@ -41,7 +41,7 @@ ul.task-list li input[type="checkbox"] {
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-4cad563b89d51a7306807a9bca28adc0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-0b1189524dc19e09ab363e9b4d3e2f65.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -262,9 +262,18 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#cancel-simulation" id="toc-cancel-simulation" class="nav-link" data-scroll-target="#cancel-simulation"><span class="header-section-number">4.4</span> Cancel simulation</a></li>
   <li><a href="#prevent-duplicate-simulations" id="toc-prevent-duplicate-simulations" class="nav-link" data-scroll-target="#prevent-duplicate-simulations"><span class="header-section-number">4.5</span> Prevent duplicate simulations</a></li>
   </ul></li>
-  <li><a href="#tutorial-tests" id="toc-tutorial-tests" class="nav-link" data-scroll-target="#tutorial-tests"><span class="header-section-number">5</span> Tutorial tests</a>
+  <li><a href="#plot-widget-tests" id="toc-plot-widget-tests" class="nav-link" data-scroll-target="#plot-widget-tests"><span class="header-section-number">5</span> Plot widget tests</a>
   <ul class="collapse">
-  <li><a href="#perform-tutorial-in-documentation" id="toc-perform-tutorial-in-documentation" class="nav-link" data-scroll-target="#perform-tutorial-in-documentation"><span class="header-section-number">5.1</span> Perform tutorial in documentation</a></li>
+  <li><a href="#open-the-plot-widget" id="toc-open-the-plot-widget" class="nav-link" data-scroll-target="#open-the-plot-widget"><span class="header-section-number">5.1</span> Open the plot widget</a></li>
+  <li><a href="#flow-timeseries-on-link-selection" id="toc-flow-timeseries-on-link-selection" class="nav-link" data-scroll-target="#flow-timeseries-on-link-selection"><span class="header-section-number">5.2</span> Flow timeseries on link selection</a></li>
+  <li><a href="#basin-timeseries-on-node-selection" id="toc-basin-timeseries-on-node-selection" class="nav-link" data-scroll-target="#basin-timeseries-on-node-selection"><span class="header-section-number">5.3</span> Basin timeseries on node selection</a></li>
+  <li><a href="#variable-selection" id="toc-variable-selection" class="nav-link" data-scroll-target="#variable-selection"><span class="header-section-number">5.4</span> Variable selection</a></li>
+  <li><a href="#concentration-results" id="toc-concentration-results" class="nav-link" data-scroll-target="#concentration-results"><span class="header-section-number">5.5</span> Concentration results</a></li>
+  <li><a href="#plot-clears-on-deselection" id="toc-plot-clears-on-deselection" class="nav-link" data-scroll-target="#plot-clears-on-deselection"><span class="header-section-number">5.6</span> Plot clears on deselection</a></li>
+  </ul></li>
+  <li><a href="#tutorial-tests" id="toc-tutorial-tests" class="nav-link" data-scroll-target="#tutorial-tests"><span class="header-section-number">6</span> Tutorial tests</a>
+  <ul class="collapse">
+  <li><a href="#perform-tutorial-in-documentation" id="toc-perform-tutorial-in-documentation" class="nav-link" data-scroll-target="#perform-tutorial-in-documentation"><span class="header-section-number">6.1</span> Perform tutorial in documentation</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -379,10 +388,56 @@ ul.task-list li input[type="checkbox"] {
 </ul>
 </section>
 </section>
-<section id="tutorial-tests" class="level1" data-number="5">
-<h1 data-number="5"><span class="header-section-number">5</span> Tutorial tests</h1>
-<section id="perform-tutorial-in-documentation" class="level2" data-number="5.1">
-<h2 data-number="5.1" class="anchored" data-anchor-id="perform-tutorial-in-documentation"><span class="header-section-number">5.1</span> Perform tutorial in documentation</h2>
+<section id="plot-widget-tests" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Plot widget tests</h1>
+<section id="open-the-plot-widget" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="open-the-plot-widget"><span class="header-section-number">5.1</span> Open the plot widget</h2>
+<ul>
+<li>Run <code>models/hws</code> or another model that produces results.</li>
+<li>After results load, click the Ribasim button dropdown on the toolbar and select “Timeseries results”: <em>The plot dock panel opens, showing the “Result” dropdown defaulting to “flow” and “Variable” defaulting to “flow_rate”</em>.</li>
+</ul>
+</section>
+<section id="flow-timeseries-on-link-selection" class="level2" data-number="5.2">
+<h2 data-number="5.2" class="anchored" data-anchor-id="flow-timeseries-on-link-selection"><span class="header-section-number">5.2</span> Flow timeseries on link selection</h2>
+<ul>
+<li>With the plot widget open on “flow” / “flow_rate”, select one or more links on the map: <em>Flow rate timeseries appear in the plot, one trace per selected link (e.g.&nbsp;“#10”, “#20”)</em>.</li>
+<li>Select different links: <em>Plot updates to show the new selection</em>.</li>
+</ul>
+</section>
+<section id="basin-timeseries-on-node-selection" class="level2" data-number="5.3">
+<h2 data-number="5.3" class="anchored" data-anchor-id="basin-timeseries-on-node-selection"><span class="header-section-number">5.3</span> Basin timeseries on node selection</h2>
+<ul>
+<li>Switch the “Result” dropdown to “basin”: <em>Variable changes to “level”, placeholder says “Select Basin nodes on the map to plot timeseries.”</em>.</li>
+<li>Select one or more Basin nodes on the map: <em>Level timeseries appear for the selected nodes</em>.</li>
+</ul>
+</section>
+<section id="variable-selection" class="level2" data-number="5.4">
+<h2 data-number="5.4" class="anchored" data-anchor-id="variable-selection"><span class="header-section-number">5.4</span> Variable selection</h2>
+<ul>
+<li>With Basin nodes selected and the plot showing, click the “Variable” button: <em>A dropdown menu with checkboxes appears listing variables (e.g.&nbsp;level, storage)</em>.</li>
+<li>Check multiple variables: <em>Plot updates to show all checked variables, legend shows “variable — #node_id”</em>.</li>
+<li>Uncheck all variables: <em>Plot hides, placeholder reappears</em>.</li>
+</ul>
+</section>
+<section id="concentration-results" class="level2" data-number="5.5">
+<h2 data-number="5.5" class="anchored" data-anchor-id="concentration-results"><span class="header-section-number">5.5</span> Concentration results</h2>
+<ul>
+<li>Run a model that produces <code>concentration.nc</code> results.</li>
+<li>Switch the “Result” dropdown to “concentration”: <em>Variables list shows substance names</em>.</li>
+<li>Select Basin nodes: <em>Concentration timeseries appear per substance</em>.</li>
+</ul>
+</section>
+<section id="plot-clears-on-deselection" class="level2" data-number="5.6">
+<h2 data-number="5.6" class="anchored" data-anchor-id="plot-clears-on-deselection"><span class="header-section-number">5.6</span> Plot clears on deselection</h2>
+<ul>
+<li>With a plot showing, deselect all features (click an empty area on the map): <em>Plot clears and the placeholder reappears</em>.</li>
+</ul>
+</section>
+</section>
+<section id="tutorial-tests" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> Tutorial tests</h1>
+<section id="perform-tutorial-in-documentation" class="level2" data-number="6.1">
+<h2 data-number="6.1" class="anchored" data-anchor-id="perform-tutorial-in-documentation"><span class="header-section-number">6.1</span> Perform tutorial in documentation</h2>
 <p>Go through the tutorial as described in the <a href="../guide/qgis.html">How-to guide</a>.</p>
 
 
