@@ -246,7 +246,8 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#set-up-the-developer-environment" id="toc-set-up-the-developer-environment" class="nav-link active" data-scroll-target="#set-up-the-developer-environment"><span class="header-section-number">1</span> Set up the developer environment</a></li>
   <li><a href="#running-qgis" id="toc-running-qgis" class="nav-link" data-scroll-target="#running-qgis"><span class="header-section-number">2</span> Running QGIS</a></li>
   <li><a href="#running-tests" id="toc-running-tests" class="nav-link" data-scroll-target="#running-tests"><span class="header-section-number">3</span> Running tests</a></li>
-  <li><a href="#debugging" id="toc-debugging" class="nav-link" data-scroll-target="#debugging"><span class="header-section-number">4</span> Debugging</a></li>
+  <li><a href="#qml-styles-and-node-icons" id="toc-qml-styles-and-node-icons" class="nav-link" data-scroll-target="#qml-styles-and-node-icons"><span class="header-section-number">4</span> QML styles and node icons</a></li>
+  <li><a href="#debugging" id="toc-debugging" class="nav-link" data-scroll-target="#debugging"><span class="header-section-number">5</span> Debugging</a></li>
   </ul>
 </nav>
     </div>
@@ -326,8 +327,21 @@ Note
 <p>To run the QGIS plugin tests locally inside a QGIS process, call <code>pixi run test-ribasim-qgis</code>. This launches QGIS and runs the full test suite (including plugin and UI tests) via the test runner.</p>
 <p>For CI or headless environments, the same tests can be run in Docker with <code>pixi run test-ribasim-qgis-docker</code>. Make sure that Docker is installed and available in your path.</p>
 </section>
-<section id="debugging" class="level1" data-number="4">
-<h1 data-number="4"><span class="header-section-number">4</span> Debugging</h1>
+<section id="qml-styles-and-node-icons" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> QML styles and node icons</h1>
+<p>The node style QML is stored in <code>python/ribasim/ribasim/styles/NodeStyle.qml</code>.</p>
+<p>Node icon SVGs in this QML file are generated with:</p>
+<p><code>pixi run python utils/node_icons.py</code></p>
+<p>The <code>utils/node_icons.py</code> script:</p>
+<ul>
+<li>generates overview and icon artifacts in <code>utils/node_icons/</code></li>
+<li>updates categorized <code>node_type</code> symbols in <code>NodeStyle.qml</code> with embedded SVG marker data</li>
+</ul>
+<p>When changing icons, rerun <code>utils/node_icons.py</code> and include the resulting QML and icon changes in your PR.</p>
+<p>You can also modify the QML files by making changes in QGIS. For <code>NodeStyle.qml</code> it is best to run <code>node_icons.py</code> afterwards so the formatting stays the same.</p>
+</section>
+<section id="debugging" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Debugging</h1>
 <p>After installing the plugins via <code>pixi run install-qgis-plugins</code>. Extra debugging tools are also installed in QGIS that is installed within your pixi environment.</p>
 <p>After you have started <code>pixi run qgis</code>, you can make alterations to the Python code and use the <a href="https://github.com/borysiasty/plugin_reloader">Plugin Reloader</a> to reload the plugin without restarting QGIS. The shortcut in QGIS is <code>CTRL+F5</code>.</p>
 <p>It is also possible to connect the debugger of Visual Studio Code. For this the <a href="https://github.com/lmotta/debug_vs_plugin">debugvs</a> plugin is installed in QGIS. In QGIS press the button to <em>Enable Debug for Visual Studio</em>. Then go to Visual Studio Code and start the launch task <em>Ribasim QGIS: Attach to QGIS</em>. Now you can place breakpoints.</p>
