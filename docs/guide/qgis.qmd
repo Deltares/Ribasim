@@ -9,17 +9,22 @@ This guide assumes you have already installed the Ribasim core and QGIS plugin a
 Use any running Ribasim model to follow this guide.
 For ready-made example models download and unzip `generated_testmodels.zip` from the [release assets](https://github.com/Deltares/Ribasim/releases/latest), and use for instance the `basic` test model.
 
-You can open a model by clicking on the Ribasim icon, and selecting a TOML file.
+You can open a model by clicking on the Ribasim icon on the toolbar, selecting **Open Ribasim model**, and choosing a TOML file.
 
-![](https://user-images.githubusercontent.com/4471859/224939101-228e068a-875b-4df2-98bb-6ee6a3830ddd.png){fig-align="left"}
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/toolbar-open.png){fig-align="left"}
 
 Alternatively, drag a TOML file into QGIS.
 
+If the Ribasim icon on the toolbar is hidden, click **View > Toolbars**, and enable the Ribasim toolbar.
+The same options are also available under the Plugins menu.
+
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/plugin-menu.png){fig-align="left"}
+
 # Running a model
 
-Right-click on the model in the Layers panel and select **Run Ribasim model** from the context menu.
+Click on the Ribasim icon on the toolbar, select **Run Ribasim model**.
 
-![](https://s3.deltares.nl/ribasim/doc-image/qgis/run-model-context-menu.png){fig-align="left"}
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/toolbar-run.png){fig-align="left"}
 
 This will run the simulation in the background, showing progress in the QGIS task manager and a live output dialog.
 When the simulation completes successfully, the model results are automatically reloaded.
@@ -39,7 +44,27 @@ It helps to set the attribute table of a table of interest to show selected feat
 
 # Inspecting results {#sec-results}
 
-Before inspecting the results, verify that the run was successful and the output files are there.
+Click on the Ribasim icon on the toolbar, select **Timeseries results**.
+
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/toolbar-results.png){fig-align="left"}
+
+This will open a plotting pane.
+If you have results, it will select the flow results by default.
+These are available on links.
+Select the Link layer.
+
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/select-link-layer.png){fig-align="left"}
+
+Now select the links that you want to see the timeseries of.
+Whenever the selection changes, the plot updates.
+You can use {{< kbd Shift+Click >}} to select multiple links, or {{< kbd Ctrl+Click >}} ({{< kbd Cmd+Click >}} on macOS) to toggle links on and off.
+
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/select-link-flow.png){fig-align="left"}
+
+Per result file you can select one or more variables to plot.
+Note that Basin results are only available on Basins, which means you have to select the Node layer first, and then select the Basin nodes you wish to see.
+
+:::{.callout-note title="Ribasim v2025 or older: iMOD Time Series Plot" collapse="true"}
 
 Click the "Time Series" button of the iMOD plugin.
 
@@ -68,11 +93,14 @@ Only the `basin.nc` and `flow.nc` can be inspected with the "iMOD Time Series Pl
 All result files can be loaded as a layer by dragging the files onto QGIS.
 Right click the layer and select "Open Attribute Table" to view the contents.
 
+:::
+
 # Reloading models {#sec-reload}
 
-If you made changes to your model outside of QGIS, and want to see the new version in QGIS, the quickest way is to click "Reload Ribasim model" in the model group's context menu, as shown below:
+If you made changes to your model outside of QGIS, and want to see the new version in QGIS, the quickest way is to click **Reload Ribasim model**.
+This reloads both the model and the results.
 
-![](https://s3.deltares.nl/ribasim/doc-image/qgis/reload-model.png){fig-align="left"}
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/toolbar-reload.png){fig-align="left"}
 
 This avoids the need to remove the group and open the same model again via the plugin.
 It can be convenient when iteratively building your model via Python, or running new simulations.

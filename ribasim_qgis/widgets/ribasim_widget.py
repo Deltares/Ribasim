@@ -6,8 +6,6 @@ connection to the QGIS Layers Panel, and ensures there is a group for the
 Ribasim layers there.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any, cast
 
@@ -72,6 +70,11 @@ class RibasimWidget(QWidget):
         return self.__dataset_widget.link_layer
 
     @property
+    def plot_widget(self):
+        """The PlotWidget for timeseries visualization."""
+        return self.__dataset_widget.plot_widget
+
+    @property
     def crs(self) -> QgsCoordinateReferenceSystem:
         """Returns coordinate reference system of current mapview."""
         map_canvas = self.iface.mapCanvas()
@@ -82,6 +85,20 @@ class RibasimWidget(QWidget):
 
     def open_model(self, path=None) -> None:
         self.__dataset_widget.open_model(path)
+
+    def run_model(self) -> None:
+        """Run the currently loaded Ribasim model."""
+        path = str(self.__dataset_widget.path)
+        if not path:
+            return
+        self.__dataset_widget.run_action(path, self.group)
+
+    def reload_model(self) -> None:
+        """Reload the currently loaded Ribasim model."""
+        path = str(self.__dataset_widget.path)
+        if not path or self.group is None:
+            return
+        self.__dataset_widget.reload_action(path, self.group)
 
     # QGIS layers
     # -----------
