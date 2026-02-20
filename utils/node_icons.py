@@ -1,4 +1,5 @@
 import math
+import re
 from base64 import b64encode
 from io import BytesIO
 from pathlib import Path
@@ -97,6 +98,7 @@ ICON_SCALE = {
 # fmt: on
 
 QGIS_MARKER_SIZE_MM = 6.6
+QGIS_DOCTYPE = "<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>"
 
 
 def create_marker_patch(marker, scale, color, edgecolor="black", linewidth=1):
@@ -160,8 +162,9 @@ def generate_node_style_embed(
     svg_base64_by_qgis_value: dict[str, str],
     size_mm: float,
 ):
-    tree = ET.parse(source_qml)  # noqa: S314  # nosec: trusted repository-owned QML
-    root = tree.getroot()
+    source_text = source_qml.read_text(encoding="utf-8")
+    source_text = re.sub(r"<\?xml[^>]*\?>", "", source_text, count=1).lstrip()
+    root = ET.fromstring(source_text)  # noqa: S314  # nosec: trusted repository-owned QML
     if root is None:
         raise RuntimeError(f"No XML root found in {source_qml}")
 
@@ -202,7 +205,8 @@ def generate_node_style_embed(
         symbol.remove(old_layer)
         symbol.insert(layer_index, new_layer)
 
-    tree.write(source_qml, encoding="UTF-8", xml_declaration=True)
+    xml_body = ET.tostring(root, encoding="unicode")
+    source_qml.write_text(f"{QGIS_DOCTYPE}\n{xml_body}\n", encoding="utf-8")
 
 
 def draw_icon(ax, shape, color, node_type):
