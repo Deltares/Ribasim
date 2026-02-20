@@ -41,6 +41,24 @@ This launches QGIS and runs the full test suite (including plugin and UI tests) 
 For CI or headless environments, the same tests can be run in Docker with `pixi run test-ribasim-qgis-docker`.
 Make sure that Docker is installed and available in your path.
 
+# QML styles and node icons
+
+The node style QML is stored in `python/ribasim/ribasim/styles/NodeStyle.qml`.
+
+Node icon SVGs in this QML file are generated with:
+
+`pixi run python utils/node_icons.py`
+
+The `utils/node_icons.py` script:
+
+- generates overview and icon artifacts in `utils/node_icons/`
+- updates categorized `node_type` symbols in `NodeStyle.qml` with embedded SVG marker data
+
+When changing icons, rerun `utils/node_icons.py` and include the resulting QML and icon changes in your PR.
+
+You can also modify the QML files by making changes in QGIS.
+For `NodeStyle.qml` it is best to run `node_icons.py` afterwards so the formatting stays the same.
+
 # Debugging
 
 After installing the plugins via `pixi run install-qgis-plugins`.

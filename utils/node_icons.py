@@ -28,7 +28,6 @@ png_dir = results_dir / "png"
 png_dir.mkdir(parents=True, exist_ok=True)
 
 node_style_qml_path = repo_dir / "python/ribasim/ribasim/styles/NodeStyle.qml"
-node_style_qml_plugin_path = repo_dir / "ribasim_qgis/core/styles/NodeStyle.qml"
 
 # fmt: off
 data = [
@@ -383,12 +382,3 @@ generate_node_style_embed(
     svg_base64_by_qgis_value=svg_base64_by_qgis_value,
     size_mm=QGIS_MARKER_SIZE_MM,
 )
-
-if node_style_qml_plugin_path.exists() and (
-    node_style_qml_plugin_path.resolve() != node_style_qml_path.resolve()
-):
-    generate_node_style_embed(
-        source_qml=node_style_qml_plugin_path,
-        svg_base64_by_qgis_value=svg_base64_by_qgis_value,
-        size_mm=QGIS_MARKER_SIZE_MM,
-    )
