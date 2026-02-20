@@ -1,15 +1,14 @@
 import math
-import re
 from base64 import b64encode
 from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
-from xml.etree import ElementTree as ET
 
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from lxml import etree as ET
 from matplotlib.markers import MarkerStyle
 from matplotlib.patches import PathPatch
 from matplotlib.path import Path as MplPath
@@ -162,9 +161,11 @@ def generate_node_style_embed(
     svg_base64_by_qgis_value: dict[str, str],
     size_mm: float,
 ):
-    source_text = source_qml.read_text(encoding="utf-8")
-    source_text = re.sub(r"<\?xml[^>]*\?>", "", source_text, count=1).lstrip()
-    root = ET.fromstring(source_text)  # noqa: S314  # nosec: trusted repository-owned QML
+    parser = ET.XMLParser(
+        remove_blank_text=True, resolve_entities=False, no_network=True
+    )
+    tree = ET.parse(str(source_qml), parser=parser)
+    root = tree.getroot()
     if root is None:
         raise RuntimeError(f"No XML root found in {source_qml}")
 
@@ -205,8 +206,13 @@ def generate_node_style_embed(
         symbol.remove(old_layer)
         symbol.insert(layer_index, new_layer)
 
-    xml_body = ET.tostring(root, encoding="unicode")
-    source_qml.write_text(f"{QGIS_DOCTYPE}\n{xml_body}\n", encoding="utf-8")
+    tree.write(
+        str(source_qml),
+        encoding="utf-8",
+        pretty_print=True,
+        xml_declaration=False,
+        doctype=QGIS_DOCTYPE,
+    )
 
 
 def draw_icon(ax, shape, color, node_type):
