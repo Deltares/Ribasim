@@ -687,13 +687,13 @@ function set_new_control_state!(
 
             # Update allocation_controlled based on the new control state
             if target_node_id.type == NodeType.Pump
-                csu = pump.control_mapping[(target_node_id, control_state_new)]
+                control_state_update = pump.control_mapping[(target_node_id, control_state_new)]
                 pump.allocation_controlled[target_node_id.idx] =
-                    csu.allocation_controlled
+                    control_state_update.allocation_controlled
             elseif target_node_id.type == NodeType.Outlet
-                csu = outlet.control_mapping[(target_node_id, control_state_new)]
+                control_state_update = outlet.control_mapping[(target_node_id, control_state_new)]
                 outlet.allocation_controlled[target_node_id.idx] =
-                    csu.allocation_controlled
+                    control_state_update.allocation_controlled
             end
         end
 

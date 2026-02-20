@@ -348,7 +348,8 @@ function initialize_control_mapping!(node::AbstractParameterNode, static::Struct
                     false
                 end
 
-                # Set the node's allocation_controlled flag if any row has it set
+                # Set the node's allocation_controlled flag if any row has it set,
+                # so we always start with allocation enabled for all allocation controlled nodes
                 if alloc_controlled && node_has_alloc_controlled
                     node.allocation_controlled[node_id.idx] = true
                 end
