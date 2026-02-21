@@ -1,5 +1,5 @@
 ---
-title: "LinearResistance"
+title: "![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/LinearResistance.png){width=30} LinearResistance"
 ---
 
 Bidirectional flow proportional to the level difference between the connected basins.

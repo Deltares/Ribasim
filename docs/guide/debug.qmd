@@ -9,7 +9,7 @@ When a connector node (e.g., `TabulatedRatingCurve`, `Pump`, `Outlet`, `ManningR
 ### Review the equations
 
 Each connector node type has specific equations that govern its behavior.
-Review the equations for your node type in the [reference documentation](/reference/node/index.qmd).
+Review the equations for your node type in the [reference documentation](/reference/index.qmd).
 For example, see the [TabulatedRatingCurve equations](/reference/node/tabulated-rating-curve.qmd#equations).
 
 ### Check reduction factors

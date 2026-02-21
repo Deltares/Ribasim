@@ -4,7 +4,7 @@ title: "Visual Studio Code"
 
 This guide explains how to set up [Visual Studio Code](https://code.visualstudio.com/) (VS Code) for working with Ribasim Python.
 This page is not specific to Ribasim Python but aims to help users get started.
-This guide assumes you have already installed Ribasim Python in a uv or Pixi environment as described in the [installation guide](install.qmd#sec-python).
+This guide assumes you have already installed Ribasim Python in a uv or Pixi environment as described in the [installation guide](/getting-started/install.qmd#sec-python).
 See also the [VS Code docs for Python](https://code.visualstudio.com/docs/languages/python).
 
 # Recommended extensions {#sec-extensions}

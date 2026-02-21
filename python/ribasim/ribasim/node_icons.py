@@ -85,7 +85,9 @@ _STAR_INNER_RADIUS: dict[str, float] = {
 
 
 # ── Low-level patch builders ─────────────────────────────────────
-def _stroke(linewidth: float = STROKE_WIDTH_FILE, **overrides: object) -> dict:
+def _stroke(
+    linewidth: float = STROKE_WIDTH_FILE, **overrides: object
+) -> dict[str, object]:
     """Return default stroke kwargs, with optional overrides."""
     return {"edgecolor": STROKE_COLOR, "linewidth": linewidth, **overrides}
 

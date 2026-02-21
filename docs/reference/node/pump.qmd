@@ -1,5 +1,5 @@
 ---
-title: "Pump"
+title: "![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/Pump.png){width=30} Pump"
 ---
 
 Pump water from a source node to a destination node.

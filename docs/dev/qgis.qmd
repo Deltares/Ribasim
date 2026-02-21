@@ -47,14 +47,26 @@ The node style QML is stored in `python/ribasim/ribasim/styles/NodeStyle.qml`.
 
 Node icon SVGs in this QML file are generated with:
 
-`pixi run python utils/write_node_icons.py`
+```bash
+pixi run write-node-icons
+```
 
 The `utils/write_node_icons.py` script:
 
 - generates overview and icon artifacts in `utils/node_icons/`
 - updates categorized `node_type` symbols in `NodeStyle.qml` with embedded SVG marker data
 
-When changing icons, rerun `utils/write_node_icons.py` and include the resulting QML and icon changes in your PR.
+To also upload the icons to the S3 bucket (under `doc-image/node-icons/`) for use in the documentation, run:
+
+```bash
+pixi run upload-node-icons
+```
+
+This requires MinIO credentials (`MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`) via environment variables or a `.env` file.
+The uploaded icons are publicly available at `https://s3.deltares.nl/ribasim/doc-image/node-icons/`.
+
+When changing icons, rerun `write-node-icons` and include the resulting QML and icon changes in your PR.
+Once you are happy with the changes locally, run `upload-node-icons` to update the S3 copies used in the documentation.
 
 You can also modify the QML files by making changes in QGIS.
 For `NodeStyle.qml` it is best to run `write_node_icons.py` afterwards so the formatting stays the same.

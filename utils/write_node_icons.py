@@ -1,10 +1,14 @@
 """Generate node icon artifacts and embed them into QGIS NodeStyle.qml.
 
 This utility renders node icons from the shared Matplotlib definitions in
-`ribasim.node_icons`, writes SVG/PNG files to `utils/node_icons/`, and updates
-embedded SVG marker data in the QGIS node style file.
+`ribasim.node_icons`, writes SVG/PNG files to `utils/node_icons/`, updates
+embedded SVG marker data in the QGIS node style file, and optionally uploads
+the icons to the Ribasim S3 bucket under ``doc-image/node-icons/``.
+
+Run with ``--upload`` to upload to S3 (requires MinIO credentials).
 """
 
+import argparse
 import math
 from base64 import b64encode
 from io import BytesIO
@@ -205,3 +209,42 @@ generate_node_style_embed(
     svg_base64_by_qgis_value=svg_base64_by_qgis_value,
     size_mm=QGIS_MARKER_SIZE_MM,
 )
+
+
+# ── S3 upload ─────────────────────────────────────────────────────
+S3_PREFIX = "doc-image/node-icons"
+
+
+def upload_to_s3() -> None:
+    """Upload all generated icons (SVG, PNG, overview) to S3."""
+    from s3_upload import upload_file
+
+    files_to_upload: list[tuple[Path, str]] = []
+
+    for spec in NODE_ICON_DATA:
+        name = spec.node_type
+        svg_path = svg_dir / f"{name}.svg"
+        png_path = png_dir / f"{name}.png"
+        files_to_upload.append((svg_path, f"{S3_PREFIX}/svg/{svg_path.name}"))
+        files_to_upload.append((png_path, f"{S3_PREFIX}/png/{png_path.name}"))
+
+    # Overview
+    overview_path = results_dir / "overview.png"
+    if overview_path.exists():
+        files_to_upload.append((overview_path, f"{S3_PREFIX}/overview.png"))
+
+    for local_path, remote_key in files_to_upload:
+        print(f"  {remote_key}")
+        upload_file(local_path, remote_key)
+
+    print(f"Uploaded {len(files_to_upload)} files to {S3_PREFIX}/")
+
+
+if __name__ == "__main__" or not hasattr(__builtins__, "__IPYTHON__"):
+    cli = argparse.ArgumentParser(description=__doc__)
+    cli.add_argument(
+        "--upload", action="store_true", help="Upload icons to S3 after generation"
+    )
+    args = cli.parse_args()
+    if args.upload:
+        upload_to_s3()

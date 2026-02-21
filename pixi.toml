@@ -114,6 +114,8 @@ generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
 ], outputs = [
     "generated_testmodels",
 ] }
+write-node-icons = "python utils/write_node_icons.py"
+upload-node-icons = "python utils/write_node_icons.py --upload"
 tests = { depends-on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 delwaq = { cmd = "pytest --basetemp=python/ribasim/ribasim/delwaq/model python/ribasim/tests/test_delwaq.py" }
 gen-delwaq = { cmd = "python python/ribasim/ribasim/delwaq/generate.py" }
