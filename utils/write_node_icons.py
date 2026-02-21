@@ -1,15 +1,17 @@
 """Generate node icon artifacts and embed them into QGIS NodeStyle.qml.
 
 This utility renders node icons from the shared Matplotlib definitions in
-`ribasim.node_icons`, writes SVG/PNG files to `utils/node_icons/`, updates
-embedded SVG marker data in the QGIS node style file, and optionally uploads
-the icons to the Ribasim S3 bucket under ``doc-image/node-icons/``.
+`ribasim.node_icons`, writes SVG/PNG files to `utils/node_icons/`, copies
+SVGs to `docs/assets/node-icons/` for use in the Quarto documentation,
+updates embedded SVG marker data in the QGIS node style file, and optionally
+uploads the icons to the Ribasim S3 bucket under ``doc-image/node-icons/``.
 
 Run with ``--upload`` to upload to S3 (requires MinIO credentials).
 """
 
 import argparse
 import math
+import shutil
 from base64 import b64encode
 from io import BytesIO
 from pathlib import Path
@@ -34,6 +36,7 @@ png_dir = results_dir / "png"
 png_dir.mkdir(parents=True, exist_ok=True)
 
 node_style_qml_path = repo_dir / "python/ribasim/ribasim/styles/NodeStyle.qml"
+docs_icon_dir = repo_dir / "docs/assets/node-icons"
 
 QGIS_MARKER_SIZE_MM = 6.6
 QGIS_DOCTYPE = "<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>"
@@ -209,6 +212,13 @@ generate_node_style_embed(
     svg_base64_by_qgis_value=svg_base64_by_qgis_value,
     size_mm=QGIS_MARKER_SIZE_MM,
 )
+
+# Copy SVGs to docs for Quarto
+if docs_icon_dir.exists():
+    shutil.rmtree(docs_icon_dir)
+docs_icon_dir.mkdir(parents=True)
+for spec in NODE_ICON_DATA:
+    shutil.copy2(svg_dir / f"{spec.node_type}.svg", docs_icon_dir)
 
 
 # ── S3 upload ─────────────────────────────────────────────────────

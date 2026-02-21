@@ -1,5 +1,5 @@
 ---
-title: "![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/ManningResistance.png){width=30} ManningResistance"
+title: "![](/assets/node-icons/ManningResistance.svg){height=20} ManningResistance"
 ---
 
 The ManningResistance node calculates a flow rate between two Basins based on their water levels.

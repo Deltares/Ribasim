@@ -1,5 +1,5 @@
 ---
-title: "![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/UserDemand.png){width=30} UserDemand"
+title: "![](/assets/node-icons/UserDemand.svg){height=20} UserDemand"
 ---
 
 A UserDemand takes water from the Basin that supplies it.

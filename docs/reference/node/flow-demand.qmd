@@ -1,5 +1,5 @@
 ---
-title: "![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/FlowDemand.png){width=30} FlowDemand"
+title: "![](/assets/node-icons/FlowDemand.svg){height=20} FlowDemand"
 ---
 
 A `FlowDemand` node associates a non-consuming flow demand to a connector node (e.g. `Pump`, `TabulatedRatingCurve`) for one or more demand priorities.

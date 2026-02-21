@@ -3,6 +3,9 @@ extend-ignore-re = [
   ".*accessKeyID.*",  # Ignore lines with access key IDs
 ]
 
+[files]
+extend-exclude = ["*.svg"]
+
 [default.extend-words]
 # Ignore false-positives
 certifi = "certifi"

@@ -1,5 +1,5 @@
 ---
-title: "![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/PidControl.png){width=30} PidControl"
+title: "![](/assets/node-icons/PidControl.svg){height=20} PidControl"
 ---
 
 The PidControl node controls the level in a Basin by continuously controlling the flow rate of a connected Pump or Outlet.

@@ -1,5 +1,5 @@
 ---
-title: "![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/Outlet.png){width=30} Outlet"
+title: "![](/assets/node-icons/Outlet.svg){height=20} Outlet"
 ---
 
 The Outlet lets water flow downstream with a prescribed flow rate.

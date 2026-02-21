@@ -1,5 +1,5 @@
 ---
-title: "![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/DiscreteControl.png){width=30} DiscreteControl"
+title: "![](/assets/node-icons/DiscreteControl.svg){height=20} DiscreteControl"
 engine: julia
 julia:
   exeflags: ["--check-bounds=yes"]

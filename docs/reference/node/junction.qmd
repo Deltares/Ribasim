@@ -1,5 +1,5 @@
 ---
-title: "![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/Junction.png){width=30} Junction"
+title: "![](/assets/node-icons/Junction.svg){height=20} Junction"
 ---
 
 A Junction node allows explicitly representing confluences and bifurcations in the network. It doesn't introduce new behavior but makes it easier to make the network layout recognizable.

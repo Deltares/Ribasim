@@ -6,6 +6,7 @@ helpers used by runtime plotting and QGIS icon generation scripts.
 """
 
 from dataclasses import dataclass
+from typing import Any
 
 import matplotlib.patches as mpatches
 import numpy as np
@@ -85,9 +86,7 @@ _STAR_INNER_RADIUS: dict[str, float] = {
 
 
 # ── Low-level patch builders ─────────────────────────────────────
-def _stroke(
-    linewidth: float = STROKE_WIDTH_FILE, **overrides: object
-) -> dict[str, object]:
+def _stroke(linewidth: float = STROKE_WIDTH_FILE, **overrides: Any) -> dict[str, Any]:
     """Return default stroke kwargs, with optional overrides."""
     return {"edgecolor": STROKE_COLOR, "linewidth": linewidth, **overrides}
 

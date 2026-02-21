@@ -1,5 +1,5 @@
 ---
-title: "![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/Terminal.png){width=30} Terminal"
+title: "![](/assets/node-icons/Terminal.svg){height=20} Terminal"
 ---
 
 A Terminal is a water sink without state or properties.

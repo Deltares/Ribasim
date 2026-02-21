@@ -6,38 +6,72 @@ These pages contain the test models, node descriptions and Ribasim Python API do
 
 ## Node types
 
-::: {layout-ncol=4 style="text-align: center;"}
+### Waterbody
 
-[![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/Basin.png){width=60}<br>Basin](node/basin.qmd)
+::: {layout-ncol=3 style="text-align: center;"}
 
-[![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/TabulatedRatingCurve.png){width=60}<br>TabulatedRatingCurve](node/tabulated-rating-curve.qmd)
+[![](/assets/node-icons/Basin.svg){height=80}<br>Basin](node/basin.qmd)
 
-[![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/Pump.png){width=60}<br>Pump](node/pump.qmd)
+:::
 
-[![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/Outlet.png){width=60}<br>Outlet](node/outlet.qmd)
+### Connector
 
-[![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/UserDemand.png){width=60}<br>UserDemand](node/user-demand.qmd)
+::: {layout-ncol=3 style="text-align: center;"}
 
-[![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/FlowDemand.png){width=60}<br>FlowDemand](node/flow-demand.qmd)
+[![](/assets/node-icons/TabulatedRatingCurve.svg){height=80}<br>TabulatedRatingCurve](node/tabulated-rating-curve.qmd)
 
-[![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/LevelDemand.png){width=60}<br>LevelDemand](node/level-demand.qmd)
+[![](/assets/node-icons/Outlet.svg){height=80}<br>Outlet](node/outlet.qmd)
 
-[![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/FlowBoundary.png){width=60}<br>FlowBoundary](node/flow-boundary.qmd)
+[![](/assets/node-icons/Pump.svg){height=80}<br>Pump](node/pump.qmd)
 
-[![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/LevelBoundary.png){width=60}<br>LevelBoundary](node/level-boundary.qmd)
+[![](/assets/node-icons/LinearResistance.svg){height=80}<br>LinearResistance](node/linear-resistance.qmd)
 
-[![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/LinearResistance.png){width=60}<br>LinearResistance](node/linear-resistance.qmd)
+[![](/assets/node-icons/ManningResistance.svg){height=80}<br>ManningResistance](node/manning-resistance.qmd)
 
-[![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/ManningResistance.png){width=60}<br>ManningResistance](node/manning-resistance.qmd)
+&nbsp;
 
-[![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/Terminal.png){width=60}<br>Terminal](node/terminal.qmd)
+:::
 
-[![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/Junction.png){width=60}<br>Junction](node/junction.qmd)
+### Boundary
 
-[![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/DiscreteControl.png){width=60}<br>DiscreteControl](node/discrete-control.qmd)
+::: {layout-ncol=3 style="text-align: center;"}
 
-[![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/ContinuousControl.png){width=60}<br>ContinuousControl](node/continuous-control.qmd)
+[![](/assets/node-icons/FlowBoundary.svg){height=80}<br>FlowBoundary](node/flow-boundary.qmd)
 
-[![](https://s3.deltares.nl/ribasim/doc-image/node-icons/png/PidControl.png){width=60}<br>PidControl](node/pid-control.qmd)
+[![](/assets/node-icons/LevelBoundary.svg){height=80}<br>LevelBoundary](node/level-boundary.qmd)
+
+[![](/assets/node-icons/Terminal.svg){height=80}<br>Terminal](node/terminal.qmd)
+
+:::
+
+### Demand
+
+::: {layout-ncol=3 style="text-align: center;"}
+
+[![](/assets/node-icons/UserDemand.svg){height=80}<br>UserDemand](node/user-demand.qmd)
+
+[![](/assets/node-icons/FlowDemand.svg){height=80}<br>FlowDemand](node/flow-demand.qmd)
+
+[![](/assets/node-icons/LevelDemand.svg){height=80}<br>LevelDemand](node/level-demand.qmd)
+
+:::
+
+### Control
+
+::: {layout-ncol=3 style="text-align: center;"}
+
+[![](/assets/node-icons/DiscreteControl.svg){height=80}<br>DiscreteControl](node/discrete-control.qmd)
+
+[![](/assets/node-icons/ContinuousControl.svg){height=80}<br>ContinuousControl](node/continuous-control.qmd)
+
+[![](/assets/node-icons/PidControl.svg){height=80}<br>PidControl](node/pid-control.qmd)
+
+:::
+
+### Layout
+
+::: {layout-ncol=3 style="text-align: center;"}
+
+[![](/assets/node-icons/Junction.svg){height=80}<br>Junction](node/junction.qmd)
 
 :::
