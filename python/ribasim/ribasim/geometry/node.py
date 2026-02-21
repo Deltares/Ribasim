@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import pandera as pa
 from geopandas import GeoDataFrame as GeoDataFrameType
+from matplotlib.offsetbox import AnnotationBbox
 from matplotlib.patches import Patch
 from pandera.dtypes import Int32
 from pandera.typing import Index, Series
@@ -35,6 +36,7 @@ from ribasim.input_base import (
     TableModel,
     delimiter,
 )
+from ribasim.node_icons import make_icon_box
 from ribasim.schemas import _BaseSchema
 from ribasim.utils import UsedIDs, _concat, _pascal_to_snake
 
@@ -138,60 +140,23 @@ class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
             _, ax = plt.subplots()
             ax.axis("off")
 
-        MARKERS = {
-            "Basin": "o",
-            "ContinuousControl": "*",
-            "DiscreteControl": "*",
-            "FlowBoundary": "h",
-            "FlowDemand": "h",
-            "LevelBoundary": "o",
-            "LevelDemand": "o",
-            "LinearResistance": "^",
-            "ManningResistance": "D",
-            "Outlet": "h",
-            "PidControl": "x",
-            "Pump": "h",
-            "TabulatedRatingCurve": "D",
-            "Terminal": "s",
-            "Junction": ">",
-            "UserDemand": "s",
-            "": "o",
-        }
-
-        COLORS = {
-            "Basin": "b",
-            "ContinuousControl": "0.5",
-            "DiscreteControl": "k",
-            "FlowBoundary": "m",
-            "FlowDemand": "r",
-            "LevelBoundary": "g",
-            "LevelDemand": "k",
-            "LinearResistance": "g",
-            "ManningResistance": "r",
-            "Outlet": "g",
-            "PidControl": "k",
-            "Pump": "0.5",  # grayscale level
-            "TabulatedRatingCurve": "g",
-            "Terminal": "m",
-            "Junction": "r",
-            "UserDemand": "g",
-            "": "k",
-        }
         if self.df is None:
             return ax
 
+        NODE_ICON_SIZE = 17.0  # display-points per icon
         for nodetype, df in self.df.groupby("node_type"):
             assert isinstance(nodetype, str)
-            marker = MARKERS[nodetype]
-            color = COLORS[nodetype]
-            ax.scatter(
-                df.geometry.x,
-                df.geometry.y,
-                marker=marker,
-                color=color,
-                zorder=zorder,
-                label=nodetype,
-            )
+            for x, y in zip(df.geometry.x, df.geometry.y, strict=True):
+                icon_box = make_icon_box(nodetype, size=NODE_ICON_SIZE)
+                marker_artist = AnnotationBbox(
+                    icon_box,
+                    (x, y),
+                    frameon=False,
+                    pad=0.0,
+                    box_alignment=(0.5, 0.5),
+                    zorder=zorder,
+                )
+                ax.add_artist(marker_artist)
 
         assert self.df is not None
         geometry = self.df["geometry"]
