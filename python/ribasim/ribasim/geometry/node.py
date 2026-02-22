@@ -158,11 +158,15 @@ class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
                 )
                 ax.add_artist(marker_artist)
 
+        # AnnotationBbox doesn't update axes data limits, so do it manually
+        # to prevent bbox_inches='tight' from computing absurd figure sizes.
         assert self.df is not None
         geometry = self.df["geometry"]
-        for text, xy in zip(
-            self.df.index, np.column_stack((geometry.x, geometry.y)), strict=True
-        ):
+        coords = np.column_stack((geometry.x, geometry.y))
+        ax.update_datalim(coords)
+        ax.autoscale_view()
+
+        for text, xy in zip(self.df.index, coords, strict=True):
             ax.annotate(text=text, xy=xy, xytext=(2.0, 2.0), textcoords="offset points")
 
         return ax
