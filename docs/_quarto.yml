@@ -65,6 +65,7 @@ website:
             - concept/core.qmd
             - concept/allocation.qmd
     - title: "Reference"
+      collapse-level: 3
       contents:
         - reference/index.qmd
         - reference/usage.qmd
@@ -73,22 +74,34 @@ website:
         - reference/test-models.qmd
         - section: "Nodes"
           contents:
-            - reference/node/basin.qmd
-            - reference/node/tabulated-rating-curve.qmd
-            - reference/node/pump.qmd
-            - reference/node/outlet.qmd
-            - reference/node/user-demand.qmd
-            - reference/node/flow-demand.qmd
-            - reference/node/level-demand.qmd
-            - reference/node/flow-boundary.qmd
-            - reference/node/level-boundary.qmd
-            - reference/node/linear-resistance.qmd
-            - reference/node/manning-resistance.qmd
-            - reference/node/terminal.qmd
-            - reference/node/junction.qmd
-            - reference/node/discrete-control.qmd
-            - reference/node/continuous-control.qmd
-            - reference/node/pid-control.qmd
+            - section: "Waterbody"
+              contents:
+                - reference/node/basin.qmd
+            - section: "Connector"
+              contents:
+                - reference/node/tabulated-rating-curve.qmd
+                - reference/node/outlet.qmd
+                - reference/node/pump.qmd
+                - reference/node/linear-resistance.qmd
+                - reference/node/manning-resistance.qmd
+            - section: "Boundary"
+              contents:
+                - reference/node/flow-boundary.qmd
+                - reference/node/level-boundary.qmd
+                - reference/node/terminal.qmd
+            - section: "Demand"
+              contents:
+                - reference/node/user-demand.qmd
+                - reference/node/flow-demand.qmd
+                - reference/node/level-demand.qmd
+            - section: "Control"
+              contents:
+                - reference/node/discrete-control.qmd
+                - reference/node/continuous-control.qmd
+                - reference/node/pid-control.qmd
+            - section: "Layout"
+              contents:
+                - reference/node/junction.qmd
     - title: "Contributing"
       contents:
         - dev/index.qmd

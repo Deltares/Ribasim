@@ -1,5 +1,11 @@
 /* css styles */
 
+/* Node icons: larger in the page header, keep sidebar size as-is */
+.quarto-title img[src*="node-icons"] {
+  width: 50px;
+  height: 50px;
+}
+
 /* freeze first column of a table */
 .freeze-left th:first-child,
 .freeze-left td:first-child {

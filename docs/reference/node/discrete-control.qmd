@@ -1,5 +1,5 @@
 ---
-title: "DiscreteControl"
+title: "![](/assets/node-icons/DiscreteControl.svg){height=20} DiscreteControl"
 engine: julia
 julia:
   exeflags: ["--check-bounds=yes"]

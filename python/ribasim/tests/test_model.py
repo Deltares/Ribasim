@@ -97,7 +97,8 @@ def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
     )
 
 
-def test_plot(discrete_control_of_pid_control):
+def test_plot(basic, discrete_control_of_pid_control):
+    basic.plot()
     discrete_control_of_pid_control.plot()
 
 

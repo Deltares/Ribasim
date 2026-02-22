@@ -1,5 +1,5 @@
 ---
-title: "TabulatedRatingCurve"
+title: "![](/assets/node-icons/TabulatedRatingCurve.svg){height=20} TabulatedRatingCurve"
 engine: julia
 julia:
   exeflags: ["--check-bounds=yes"]

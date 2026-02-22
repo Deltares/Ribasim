@@ -1,5 +1,5 @@
 ---
-title: "Basin"
+title: "![](/assets/node-icons/Basin.svg){height=20} Basin"
 ---
 
 The Basin node represents a flexible, generalized control volume that can be used to model various water bodies and systems.

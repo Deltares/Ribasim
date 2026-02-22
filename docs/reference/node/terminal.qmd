@@ -1,5 +1,5 @@
 ---
-title: "Terminal"
+title: "![](/assets/node-icons/Terminal.svg){height=20} Terminal"
 ---
 
 A Terminal is a water sink without state or properties.
