@@ -64,15 +64,12 @@ If you use multiple components together, you must ensure that every component us
 Running with mismatched versions will likely fail.
 
 If you receive a model, the Ribasim version used to create it is written in the TOML file.
-See the note below for how to install older Ribasim releases.
-
 To update a model to a new Ribasim version, see the [migration guide](/guide/updating-ribasim.qmd).
 :::
 
 ::: {.callout-note}
-To update an existing installation of Ribasim, follow the same installation on this page.
-Change the version number in the command or download link to install a version other than the latest release,
-or download directly from the [Release assets on GitHub](https://github.com/Deltares/Ribasim/releases).
+This page describes how to install the latest stable release of Ribasim.
+To install a pre-release (release candidate) or an older version, see [Installing other versions](/guide/installing-other-versions.qmd).
 :::
 
 # Install Ribasim core {#sec-install-core}
