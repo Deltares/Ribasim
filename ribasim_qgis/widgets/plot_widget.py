@@ -1,16 +1,17 @@
 """Plot widget using plotly to render Ribasim timeseries from NetCDF results."""
 
 import importlib.resources
+from collections import defaultdict
 
 import numpy as np
 import plotly.graph_objs as go
 import plotly.offline as po
+from plotly.subplots import make_subplots
 from qgis.PyQt.QtCore import Qt, QUrl
 from qgis.PyQt.QtWebKit import QWebSettings
 from qgis.PyQt.QtWebKitWidgets import QWebView
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QHBoxLayout,
     QLabel,
     QMenu,
@@ -32,13 +33,7 @@ VariableTraces = dict[str, Trace]
 # Full plot payload: file -> variable -> traces.
 PlotData = dict[str, dict[str, VariableTraces]]
 
-# Placeholder hints per result file.
-_PLACEHOLDER_HINTS: dict[str, str] = {
-    "basin": "Select Basin nodes on the map to plot timeseries.",
-    "concentration": "Select Basin nodes on the map to plot timeseries.",
-    "flow": "Select links on the map to plot timeseries.",
-}
-_PLACEHOLDER_DEFAULT = "Select nodes or links on the map to plot timeseries."
+_PLACEHOLDER_DEFAULT = "Select Basin nodes and/or links on the map to plot timeseries."
 
 
 class _VariablesMenu(QMenu):
@@ -82,7 +77,7 @@ class _VariablesMenu(QMenu):
 
 
 class PlotWidget(QWidget):
-    """Widget with file/variable selectors and a plotly timeseries plot."""
+    """Widget with variable selector and a plotly timeseries plot."""
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -94,12 +89,6 @@ class PlotWidget(QWidget):
         row = QHBoxLayout()
         row.setContentsMargins(4, 4, 4, 0)
         row.setSpacing(4)
-
-        row.addWidget(QLabel("Result:"))
-        self._file_combo = QComboBox()
-        self._file_combo.setMinimumWidth(120)
-        self._file_combo.currentTextChanged.connect(self._on_file_changed)
-        row.addWidget(self._file_combo)
 
         self._var_button = QToolButton()
         self._var_button.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
@@ -114,9 +103,7 @@ class PlotWidget(QWidget):
         layout.addLayout(row)
 
         # --- Placeholder label ---
-        self._placeholder = QLabel(
-            "Select nodes or links on the map to plot timeseries."
-        )
+        self._placeholder = QLabel(_PLACEHOLDER_DEFAULT)
         self._placeholder.setAlignment(Qt.AlignCenter)
         self._placeholder.setStyleSheet("color: gray; font-style: italic;")
         layout.addWidget(self._placeholder)
@@ -138,6 +125,8 @@ class PlotWidget(QWidget):
         self._available: dict[str, list[str]] = {}
         # Default variable per file: {file_name: variable}
         self._defaults: dict[str, str] = {}
+        # Variable menu mapping: "file / variable" -> (file, variable)
+        self._menu_to_key: dict[str, tuple[str, str]] = {}
 
     # --- Public API ---
 
@@ -147,7 +136,7 @@ class PlotWidget(QWidget):
         units: dict[str, dict[str, str]] | None = None,
         defaults: dict[str, str] | None = None,
     ) -> None:
-        """Pre-populate file and variable dropdowns without trace data.
+        """Pre-populate variable dropdown without trace data.
 
         Parameters
         ----------
@@ -161,7 +150,45 @@ class PlotWidget(QWidget):
         self._available = available
         self._units = units or {}
         self._defaults = defaults or {}
-        self._update_file_combo(sorted(available.keys()))
+        previously_checked_labels = set(self._var_menu.checked_variables())
+        previously_checked_keys = {
+            self._menu_to_key[label]
+            for label in previously_checked_labels
+            if label in self._menu_to_key
+        }
+
+        menu_labels: list[str] = []
+        menu_to_key: dict[str, tuple[str, str]] = {}
+        for file_name, file_variables in self._available.items():
+            for variable in sorted(file_variables):
+                label = f"{file_name} / {variable}"
+                menu_labels.append(label)
+                menu_to_key[label] = (file_name, variable)
+
+        self._menu_to_key = menu_to_key
+
+        checked_labels = {
+            label
+            for label, key in self._menu_to_key.items()
+            if key in previously_checked_keys
+        }
+
+        default_label = (
+            "flow / flow_rate" if "flow / flow_rate" in self._menu_to_key else ""
+        )
+        for file_name in sorted(self._defaults):
+            candidate = self._defaults[file_name]
+            label = f"{file_name} / {candidate}"
+            if default_label:
+                break
+            if label in self._menu_to_key:
+                default_label = label
+                break
+
+        self._var_menu.populate(sorted(menu_labels), checked_labels, default_label)
+        self._update_button_text()
+        self._placeholder.setText(_PLACEHOLDER_DEFAULT)
+        self._redraw()
 
     def set_data(
         self,
@@ -191,34 +218,6 @@ class PlotWidget(QWidget):
 
     # --- Internal slots ---
 
-    def _update_file_combo(self, file_names: list[str]) -> None:
-        """Replace file combo items, preserving the current selection if possible."""
-        current = self._file_combo.currentText()
-        self._file_combo.blockSignals(True)
-        self._file_combo.clear()
-        self._file_combo.addItems(file_names)
-        idx = self._file_combo.findText(current)
-        if idx >= 0:
-            self._file_combo.setCurrentIndex(idx)
-        else:
-            # Default to "flow" when there is no previous selection
-            didx = self._file_combo.findText("flow")
-            if didx >= 0:
-                self._file_combo.setCurrentIndex(didx)
-        self._file_combo.blockSignals(False)
-        self._on_file_changed(self._file_combo.currentText())
-
-    def _on_file_changed(self, file_name: str) -> None:
-        variables = self._available.get(file_name, [])
-        previously_checked = set(self._var_menu.checked_variables())
-        default = self._defaults.get(file_name, "")
-        self._var_menu.populate(sorted(variables), previously_checked, default)
-        self._update_button_text()
-        self._placeholder.setText(
-            _PLACEHOLDER_HINTS.get(file_name, _PLACEHOLDER_DEFAULT)
-        )
-        self._redraw()
-
     def _on_menu_closed(self) -> None:
         """Update button text and plot when the variable menu closes."""
         self._update_button_text()
@@ -233,53 +232,70 @@ class PlotWidget(QWidget):
         else:
             self._var_button.setText(f"Variable: ({len(checked)} selected)")
 
+    def _selected_keys(self) -> list[tuple[str, str]]:
+        return [
+            self._menu_to_key[label]
+            for label in self._var_menu.checked_variables()
+            if label in self._menu_to_key
+        ]
+
     def _redraw(self) -> None:
-        file_name = self._file_combo.currentText()
-        file_data = self._plot_data.get(file_name, {})
-        selected = self._var_menu.checked_variables()
+        selected_keys = self._selected_keys()
 
-        if not selected or not file_data:
+        if not selected_keys or not self._plot_data:
             self._web_view.setVisible(False)
             self._placeholder.setVisible(True)
             return
 
-        traces = []
-        for var in selected:
-            var_traces = file_data.get(var, {})
-            for trace_name, (x, y) in var_traces.items():
-                legend_name = (
-                    f"{var} — {trace_name}" if len(selected) > 1 else trace_name
-                )
-                traces.append(go.Scatter(x=x, y=y, mode="lines", name=legend_name))
-
-        if not traces:
-            self._web_view.setVisible(False)
-            self._placeholder.setVisible(True)
-            return
-
-        # Build y-axis title with units
-        if len(selected) == 1:
-            var_name = selected[0]
+        traces_by_unit: dict[str, list[go.Scatter]] = defaultdict(list)
+        for file_name, var in selected_keys:
+            file_data = self._plot_data.get(file_name, {})
             file_units = self._units.get(file_name, {})
-            unit = file_units.get(var_name, "")
-            y_title = f"{var_name} [{unit}]" if unit else var_name
-        else:
-            y_title = ""
-        fig_layout = go.Layout(
-            xaxis={"title": None},
-            yaxis={"title": y_title},
-            legend={"x": 1, "y": 0, "xanchor": "right", "yanchor": "bottom"},
-            margin={"l": 40, "r": 10, "t": 10, "b": 10, "pad": 0},
-        )
-        fig = go.Figure(data=traces, layout=fig_layout)
+            var_traces = file_data.get(var, {})
+            if not var_traces:
+                continue
+            unit = file_units.get(var, "")
+            unit_key = unit or "(no unit)"
+            for trace_name, (x, y) in var_traces.items():
+                legend_name = f"{file_name} / {var} {trace_name}"
+                traces_by_unit[unit_key].append(
+                    go.Scatter(x=x, y=y, mode="lines", name=legend_name)
+                )
+
+        if not traces_by_unit:
+            self._web_view.setVisible(False)
+            self._placeholder.setVisible(True)
+            return
 
         config = {
             "scrollZoom": True,
             "editable": False,
             "displayModeBar": True,
+            "responsive": True,
             # toImage uses an <a download> click that QtWebKit silently ignores.
             "modeBarButtonsToRemove": ["toImage"],
         }
+
+        units = sorted(traces_by_unit)
+        fig = make_subplots(
+            rows=len(units),
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.04,
+        )
+
+        for row, unit in enumerate(units, start=1):
+            for trace in traces_by_unit[unit]:
+                fig.add_trace(trace, row=row, col=1)
+            fig.update_yaxes(title_text=unit, row=row, col=1)
+            fig.update_xaxes(showticklabels=row == len(units), row=row, col=1)
+
+        fig.update_layout(
+            showlegend=True,
+            legend={"x": 1.01, "y": 0.01, "xanchor": "left", "yanchor": "bottom"},
+            margin={"l": 40, "r": 190, "t": 10, "b": 20, "pad": 0},
+        )
+
         div = po.plot(
             fig,
             output_type="div",
@@ -289,7 +305,7 @@ class PlotWidget(QWidget):
         html = (
             '<html><head><meta charset="utf-8" />'
             f'<script src="{_PLOTLY_JS_URL}"></script></head>'
-            f'<body style="margin:0">{div}</body></html>'
+            f'<body style="margin:0;overflow:hidden">{div}</body></html>'
         )
         self._placeholder.setVisible(False)
         self._web_view.setVisible(True)
