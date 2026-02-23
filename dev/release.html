@@ -343,6 +343,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 2023.1.0-rc2 as the second release candidate pre-release of 2023.1.0
 2023.1.0 as the release</code></pre>
 <p>Update the version numbers in the repository to the new version number. See also the <a href="https://github.com/Deltares/Ribasim/releases/latest">latest Ribasim release</a>. Use find and replace to update all locations. Only update the lines in <code>pixi.lock</code> that refer to Ribasim packages, to avoid accidentally changing the version number of dependencies that happen to have the same version number. Don’t change the old version numbers in <code>changelog.qmd</code>.</p>
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Important
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Always update the example version numbers in <code>docs/guide/installing-other-versions.qmd</code> to refer to the latest release candidate and never to a stable release.</p>
+</div>
+</div>
 </section>
 <section id="update-the-changelog" class="level2" data-number="2.4">
 <h2 data-number="2.4" class="anchored" data-anchor-id="update-the-changelog"><span class="header-section-number">2.4</span> Update the changelog</h2>

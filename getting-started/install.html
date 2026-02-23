@@ -341,8 +341,7 @@ Important
 <div class="callout-body-container callout-body">
 <p><strong>All Ribasim component versions must be the same!</strong></p>
 <p>If you use multiple components together, you must ensure that every component uses the same version. Running with mismatched versions will likely fail.</p>
-<p>If you receive a model, the Ribasim version used to create it is written in the TOML file. See the note below for how to install older Ribasim releases.</p>
-<p>To update a model to a new Ribasim version, see the <a href="../guide/updating-ribasim.html">migration guide</a>.</p>
+<p>If you receive a model, the Ribasim version used to create it is written in the TOML file. To update a model to a new Ribasim version, see the <a href="../guide/updating-ribasim.html">migration guide</a>.</p>
 </div>
 </div>
 <div class="callout callout-style-default callout-note callout-titled">
@@ -355,7 +354,7 @@ Note
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>To update an existing installation of Ribasim, follow the same installation on this page. Change the version number in the command or download link to install a version other than the latest release, or download directly from the <a href="https://github.com/Deltares/Ribasim/releases">Release assets on GitHub</a>.</p>
+<p>This page describes how to install the latest stable release of Ribasim. To install a pre-release (release candidate) or an older version, see <a href="../guide/installing-other-versions.html">Installing other versions</a>.</p>
 </div>
 </div>
 </section>
@@ -411,6 +410,13 @@ Options:
 <li>The <code>RIBASIM_HOME</code> environment variable (if set)</li>
 <li>The system <code>PATH</code></li>
 </ol>
+<p>The Ribasim QGIS plugin uses the following order:</p>
+<ol type="1">
+<li><strong>Set Ribasim home</strong> (Plugins → Ribasim → Set Ribasim home)</li>
+<li>The <code>RIBASIM_HOME</code> environment variable (if set)</li>
+<li>The system <code>PATH</code></li>
+<li><code>%LOCALAPPDATA%\Microsoft\WindowsApps</code> (Windows)</li>
+</ol>
 <p>To set <code>RIBASIM_HOME</code>:</p>
 <ul>
 <li>Search “Environment Variables” in the Windows search bar</li>
@@ -422,6 +428,7 @@ Options:
 <li>Click “OK” three times to close all dialogs</li>
 <li>Restart QGIS for the change to take effect</li>
 </ul>
+<p>You can also set Ribasim home directly in QGIS via Plugins → Ribasim → Set Ribasim home.</p>
 </section>
 </section>
 <section id="sec-install-python" class="level1" data-number="3">

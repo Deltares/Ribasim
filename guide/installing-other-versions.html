@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Updating Ribasim – Ribasim</title>
+<title>Installing other versions – Ribasim</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -65,8 +65,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../guide/coupling.html" rel="next">
-<link href="../guide/installing-other-versions.html" rel="prev">
+<link href="../guide/updating-ribasim.html" rel="next">
+<link href="../guide/modeling-process.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -173,7 +173,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../guide/updating-ribasim.html">Updating Ribasim</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../guide/installing-other-versions.html">Installing other versions</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -205,13 +205,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../guide/installing-other-versions.html" class="sidebar-item-text sidebar-link">
+  <a href="../guide/installing-other-versions.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Installing other versions</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../guide/updating-ribasim.html" class="sidebar-item-text sidebar-link active">
+  <a href="../guide/updating-ribasim.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Updating Ribasim</span></a>
   </div>
 </li>
@@ -254,8 +254,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#version-numbers-and-breaking-changes" id="toc-version-numbers-and-breaking-changes" class="nav-link active" data-scroll-target="#version-numbers-and-breaking-changes"><span class="header-section-number">1</span> Version numbers and breaking changes</a></li>
-  <li><a href="#automatic-model-migration" id="toc-automatic-model-migration" class="nav-link" data-scroll-target="#automatic-model-migration"><span class="header-section-number">2</span> Automatic model migration</a></li>
+  <li><a href="#choosing-a-version" id="toc-choosing-a-version" class="nav-link active" data-scroll-target="#choosing-a-version"><span class="header-section-number">1</span> Choosing a version</a></li>
+  <li><a href="#sec-core" id="toc-sec-core" class="nav-link" data-scroll-target="#sec-core"><span class="header-section-number">2</span> Install a specific Ribasim core version</a></li>
+  <li><a href="#sec-python" id="toc-sec-python" class="nav-link" data-scroll-target="#sec-python"><span class="header-section-number">3</span> Install a specific Ribasim Python version</a></li>
+  <li><a href="#sec-qgis" id="toc-sec-qgis" class="nav-link" data-scroll-target="#sec-qgis"><span class="header-section-number">4</span> Install a specific Ribasim QGIS plugin version</a></li>
   </ul>
 </nav>
     </div>
@@ -264,7 +266,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Updating Ribasim</h1>
+<h1 class="title">Installing other versions</h1>
 </div>
 
 
@@ -281,25 +283,111 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>This guide explains how to update Ribasim models from older versions to newer versions. To update the Ribasim installation itself, follow the <a href="../getting-started/install.html">installation steps</a>, ensuring that all installed components are the same. To see the most important changes in Ribasim, consult the <a href="../changelog.html">changelog</a>.</p>
-<section id="version-numbers-and-breaking-changes" class="level1" data-number="1">
-<h1 data-number="1"><span class="header-section-number">1</span> Version numbers and breaking changes</h1>
-<p>Ribasim uses version numbers like <code>2023.1.0</code>, following <code>YYYY.MINOR.MICRO</code> from <a href="https://calver.org/">calver</a>. It starts with the year the release was made, followed by the minor version number for normal releases, and a micro number for non-breaking, hotfix releases. This means that whenever the year or minor version changes, there is a possibility that the user has to make changes to the model for it to keep working. If this is the case, it will be highlighted in the <a href="../changelog.html">changelog</a>. When possible, we automate this process using model migration in Ribasim Python, see the section below.</p>
+<p>This guide explains how to install a specific version of Ribasim, such as a pre-release (release candidate) or an older stable release. For installing the latest stable release, see the <a href="../getting-started/install.html">Installation</a> page.</p>
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Important
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>All Ribasim component versions must be the same!</strong></p>
+<p>The Ribasim core, Ribasim Python package, and Ribasim QGIS plugin must all be of the same version. Running with mismatched versions will likely fail.</p>
+</div>
+</div>
+<section id="choosing-a-version" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Choosing a version</h1>
+<p>Ribasim uses the following versioning scheme:</p>
+<ul>
+<li><strong>Releases</strong> have version numbers like <code>2025.6.0</code>.</li>
+<li><strong>Pre-releases</strong> (release candidates) have version numbers like <code>2026.1.0-rc1</code>. These are development versions used for testing before a stable release.</li>
+</ul>
+<p>Note that <code>X-rcY</code> is an earlier version than <code>X</code> — the <code>-rcY</code> suffix indicates it is a release candidate that preceded the final release.</p>
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Warning
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Pre-releases are not officially supported. Use them at your own risk and prefer a stable release for production use.</p>
+</div>
+</div>
+<p>Browse the <a href="https://github.com/Deltares/Ribasim/releases">GitHub releases page</a> to see all available versions. Pre-releases are marked with a “Pre-release” label.</p>
 </section>
-<section id="automatic-model-migration" class="level1" data-number="2">
-<h1 data-number="2"><span class="header-section-number">2</span> Automatic model migration</h1>
-<p>Models are automatically migrated when read from file using Ribasim Python, and this is the recommended way to update your models.</p>
-<p>The Ribasim Python package contains a set of migration functions that are applied automatically when you read a model file from an older version. When Ribasim developers make changes to the model structure (for example, adding new required columns to tables), these changes would normally break compatibility with existing models. To prevent this, migration functions automatically update your model data to match the current version’s requirements.</p>
-<p>The core always expects models to be written by the same Ribasim Python version as itself, which is why it gives a warning whenever the <code>ribasim_version</code> in the TOML does not match <code>ribasim --version</code>.</p>
-<p>When you read an older model, Ribasim Python will automatically apply all necessary migrations and update the model version accordingly. To migrate an existing model to the latest version, simply use the following script:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> ribasim</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Read the old model (migration happens automatically)</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> ribasim.Model.read(<span class="st">"path/to/your/old_model.toml"</span>)</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Write the migrated model</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>model.write(<span class="st">"path/to/your/migrated_model.toml"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>If you have a script that builds your model from scratch, simply re-running that script with the new Ribasim Python version will produce a model with the updated version, making the above migration step unnecessary.</p>
+<section id="sec-core" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Install a specific Ribasim core version</h1>
+<p>Download the appropriate zip file for your operating system from the <a href="https://github.com/Deltares/Ribasim/releases">GitHub releases page</a>. Navigate to the desired version and download:</p>
+<ul>
+<li><code>ribasim_windows.zip</code> for Windows</li>
+<li><code>ribasim_linux.zip</code> for Linux</li>
+</ul>
+<p>For example, to install version <code>2026.1.0-rc1</code>, go to the <a href="https://github.com/Deltares/Ribasim/releases/tag/v2026.1.0-rc1">v2026.1.0-rc1 release</a> and download the zip file from there.</p>
+<p>Then follow the <a href="../getting-started/install.html#sec-install-core">manual installation instructions</a> to extract and set up the binary.</p>
+</section>
+<section id="sec-python" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Install a specific Ribasim Python version</h1>
+<p>Replace the version number in the install command with the desired version. If you don’t have a project set up yet, follow the initialization steps on the <a href="../getting-started/install.html#sec-install-python">Installation</a> page first.</p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">uv</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">pixi</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-3" role="tab" aria-controls="tabset-1-3" aria-selected="false" href="">pip</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-4-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-4" role="tab" aria-controls="tabset-1-4" aria-selected="false" href="">conda</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> add ribasim==2026.1.0-rc1</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> add <span class="at">--pypi</span> ribasim==2026.1.0-rc1</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Pre-releases are only published to <a href="https://pypi.org/project/ribasim/">PyPI</a>, so you must use the <code>--pypi</code> flag when installing a pre-release with pixi.</p>
+</div>
+</div>
+</div>
+<div id="tabset-1-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-3-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install <span class="at">--upgrade</span> ribasim==2026.1.0-rc1</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tabset-1-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-4-tab">
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Important
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Pre-releases are only published to <a href="https://pypi.org/project/ribasim/">PyPI</a>, not to conda-forge. For pre-release versions, use <code>uv</code>, <code>pixi</code>, or <code>pip</code> instead.</p>
+<p>For stable releases, see the <a href="../getting-started/install.html#conda">standard conda installation instructions</a>.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="sec-qgis" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Install a specific Ribasim QGIS plugin version</h1>
+<p>The QGIS Plugin Repository installs the latest stable release of the Ribasim QGIS plugin. To install a specific version, use the ZIP file method:</p>
+<ol type="1">
+<li>Go to the <a href="https://github.com/Deltares/Ribasim/releases">GitHub releases page</a> and navigate to the desired version.</li>
+<li>Download <code>ribasim_qgis.zip</code> from the release assets.</li>
+<li>In QGIS, go to <em>Plugins</em> &gt; <em>Manage and Install Plugins…</em> &gt; <em>Install from ZIP</em>.</li>
+<li>Browse to the downloaded <code>ribasim_qgis.zip</code> and click <em>Install Plugin</em>.</li>
+</ol>
+<p>See the <a href="../getting-started/install.html#sec-install-qgis-plugin">QGIS plugin installation instructions</a> for more details on installing from ZIP.</p>
 
 
 </section>
@@ -707,13 +795,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../guide/installing-other-versions.html" class="pagination-link" aria-label="Installing other versions">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Installing other versions</span>
+      <a href="../guide/modeling-process.html" class="pagination-link" aria-label="Modeling process">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Modeling process</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../guide/coupling.html" class="pagination-link" aria-label="Coupling">
-        <span class="nav-page-text">Coupling</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../guide/updating-ribasim.html" class="pagination-link" aria-label="Updating Ribasim">
+        <span class="nav-page-text">Updating Ribasim</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

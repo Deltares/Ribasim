@@ -171,6 +171,12 @@ ul.task-list li input[type="checkbox"] {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../guide/installing-other-versions.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Installing other versions</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../guide/updating-ribasim.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Updating Ribasim</span></a>
   </div>
@@ -276,7 +282,14 @@ ul.task-list li input[type="checkbox"] {
 <p><img src="https://s3.deltares.nl/ribasim/doc-image/qgis/run-model-dialog.png" class="img-fluid quarto-figure quarto-figure-left figure-img"></p>
 </figure>
 </div>
-<p>For QGIS to find the Ribasim executable, it must be configured via <code>RIBASIM_HOME</code>. See the <a href="../getting-started/install.html#ribasim-home">install section</a> for details.</p>
+<p>QGIS resolves the Ribasim executable in this order:</p>
+<ol type="1">
+<li><strong>Set Ribasim home</strong> (Plugins → Ribasim → Set Ribasim home)</li>
+<li><code>RIBASIM_HOME</code></li>
+<li><code>PATH</code></li>
+<li><code>%LOCALAPPDATA%\Microsoft\WindowsApps</code> (Windows)</li>
+</ol>
+<p>See the <a href="../getting-started/install.html#ribasim-home">install section</a> for details.</p>
 </section>
 <section id="sec-inspect" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Inspect a (large) model</h1>
