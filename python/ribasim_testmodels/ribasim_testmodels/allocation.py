@@ -1632,8 +1632,8 @@ def level_demand_with_rating_curve_model() -> Model:
         Node(2, Point(1, 0), subnetwork_id=2, route_priority=-2),
         [
             tabulated_rating_curve.Static(
-                level=[0.0, 1.0, 5.0],
-                flow_rate=[0.0, 0.0, 2e-3],
+                level=[1.0, 5.0],
+                flow_rate=[0.0, 2e-3],
                 control_state="Ribasim.allocation",
             )
         ],
