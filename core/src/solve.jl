@@ -503,10 +503,10 @@ function formulate_flow!(
         h_a = get_level(p, inflow_id, t)
         h_b = get_level(p, outflow_id, t)
 
-        if tabulated_rating_curve.allocation_controlled[node_idx]
-            q = allocated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p)
+        q = if tabulated_rating_curve.allocation_controlled[node_idx]
+            allocated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p)
         else
-            q = tabulated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p, t)
+            tabulated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p, t)
         end
 
         du.tabulated_rating_curve[node_idx] = q
