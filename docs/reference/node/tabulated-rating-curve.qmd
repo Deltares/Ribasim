@@ -157,6 +157,6 @@ This means the flow is still smoothly reduced to zero when:
 
 In a typical setup you want the TabulatedRatingCurve to follow its $Q(h)$ relationship under normal conditions and only reduce flow when there is a water shortage (i.e. when a demand cannot be met). This is achieved by giving the TabulatedRatingCurve node a **negative route priority**.
 
-[Route priority](/concept/allocation.qmd#route-priority) acts as a cost in the allocation optimization: higher values make feeding water through a node more expensive. A negative route priority makes it *cheap* — the optimizer will prefer to send water through this node. As a result, the flow will track the physical $Q(h)$ curve as long as there is enough water. When water is scarce and demands compete, allocation will reduce the TabulatedRatingCurve flow to satisfy higher-priority demands first.
+[Route priority](/concept/allocation.qmd#route-priority) acts as a cost in the allocation optimization: higher values make feeding water through a node more expensive. A negative route priority makes it prefer to send water through this node. As a result, the flow will track the physical $Q(h)$ curve as long as there is enough water. When water is scarce and demands compete, allocation will reduce the TabulatedRatingCurve flow to satisfy higher-priority demands first.
 
 For a full worked example, see [Allocation-controlled TabulatedRatingCurve](/getting-started/examples.qmd#allocation-controlled-tabulatedratingcurve) on the examples page.
