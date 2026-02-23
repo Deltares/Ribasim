@@ -146,6 +146,13 @@ The [`run_ribasim`](/reference/python/run_ribasim.qmd#ribasim.run_ribasim) funct
 1. The `RIBASIM_HOME` environment variable (if set)
 2. The system `PATH`
 
+The Ribasim QGIS plugin uses the following order:
+
+1. **Set Ribasim home** (Plugins → Ribasim → Set Ribasim home)
+2. The `RIBASIM_HOME` environment variable (if set)
+3. The system `PATH`
+4. `%LOCALAPPDATA%\Microsoft\WindowsApps` (Windows)
+
 To set `RIBASIM_HOME`:
 
 - Search "Environment Variables" in the Windows search bar
@@ -156,6 +163,8 @@ To set `RIBASIM_HOME`:
 - Set Variable value to the **path to the Ribasim home directory** (e.g., `C:\ribasim`, the folder which contains a `bin` directory with `ribasim.exe`)
 - Click "OK" three times to close all dialogs
 - Restart QGIS for the change to take effect
+
+You can also set Ribasim home directly in QGIS via Plugins → Ribasim → Set Ribasim home.
 
 # Install Ribasim Python {#sec-install-python}
 

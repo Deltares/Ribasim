@@ -18,6 +18,12 @@ Before starting with data, perform the following tests to see if the plugin does
 
 # Model tab button interaction tests
 
+## Set Ribasim home window
+
+- Click the Ribasim toolbar button and select "Set Ribasim home": _Dialog opens and shows the current Ribasim home value and action buttons (Change..., Unset, Cancel)_.
+- Click "Change...", select a valid Ribasim home directory, and confirm: _Success message appears and the configured value is updated_.
+- Open "Set Ribasim home" again and click "Unset": _Success message appears and the configured Ribasim home is cleared_.
+
 ## Open model twice
 
 - Open QGIS and ensure that the Ribasim plugin is installed and enabled.
