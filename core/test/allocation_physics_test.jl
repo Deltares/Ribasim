@@ -262,7 +262,7 @@ end
     # find index of first level close to min_level demand of 3 m
     idx = findfirst(e -> abs(e - min_level) <= 1.0e-1, level_basin_1)
 
-    tbr_flow(h_a, h_b) = Ribasim.tabulated_rating_curve_flow(tbr, tbr.node_id[1], h_a, h_b, p, 0)
+    tbr_flow(h_a, h_b) = tabulated_rating_curve_flow(tbr, tbr.node_id[1], h_a, h_b, p, 0)
 
     # the flow up to that level should behave as an uncontrolled TBR:
     @test tbr_flow.(level_basin_1[1:idx], zero(idx)) ≈ flow_link_1[1:idx] atol = 1.0e-6
