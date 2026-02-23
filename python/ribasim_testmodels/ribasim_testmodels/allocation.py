@@ -1633,7 +1633,7 @@ def level_demand_with_rating_curve_model() -> Model:
         [
             tabulated_rating_curve.Static(
                 level=[1.0, 5.0],
-                flow_rate=[0.0, 2e-3],
+                flow_rate=[0.0, 2e-4],
                 control_state="Ribasim.allocation",
             )
         ],
