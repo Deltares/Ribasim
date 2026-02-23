@@ -6,12 +6,12 @@
     "creators": [
       "Tool: sbom4python-0.12.4"
     ],
-    "created": "2026-02-12T10:07:53Z",
+    "created": "2026-02-23T14:22:14Z",
     "licenseListVersion": "3.27"
   },
   "name": "Python-ribasim",
   "dataLicense": "CC0-1.0",
-  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-d3508b11-39bc-44e1-b2ab-72767d2a20e9",
+  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-2bca8097-fe81-4059-b51d-3c98450ffe69",
   "packages": [
     {
       "SPDXID": "SPDXRef-1-ribasim",
@@ -64,12 +64,18 @@
       "downloadLocation": "https://pypi.org/project/datacompy/0.19.2/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/capitalone/datacompy",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3797460d303e14cea6cc9992bcc6874dfb0a32b883a101fc3326899ed8707ef4"
+        }
+      ],
       "licenseConcluded": "Apache-2.0",
       "licenseDeclared": "NOASSERTION",
       "licenseComments": "datacompy declares Apache Software License which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Dataframe comparison in Python",
-      "releaseDate": "2025-12-23T11:48:54Z",
+      "releaseDate": "2026-01-09T17:34:40Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -636,44 +642,22 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-15-packaging",
-      "name": "packaging",
-      "versionInfo": "26.0",
+      "SPDXID": "SPDXRef-15-",
+      "name": "",
+      "versionInfo": "",
       "primaryPackagePurpose": "LIBRARY",
-      "supplier": "Person: Donald Stufft (donald@stufft.io)",
-      "downloadLocation": "https://pypi.org/project/packaging/26.0/#files",
+      "supplier": "NOASSERTION",
+      "downloadLocation": "https://pypi.org/project///#files",
       "filesAnalyzed": false,
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "b36f1fef9334a5588b4166f8bcd26a14e521f2b55e6b9de3aaa80d3ff7a37529"
-        }
-      ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
-      "summary": "Core utilities for Python packages",
-      "releaseDate": "2026-01-21T20:50:37Z",
+      "releaseDate": "2025-12-22T21:06:12Z",
       "externalRefs": [
-        {
-          "referenceCategory": "OTHER",
-          "referenceType": "documentation",
-          "referenceLocator": "https://packaging.pypa.io/"
-        },
-        {
-          "referenceCategory": "OTHER",
-          "referenceType": "vcs",
-          "referenceLocator": "https://github.com/pypa/packaging"
-        },
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/packaging@26.0"
-        },
-        {
-          "referenceCategory": "SECURITY",
-          "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:donald_stufft:packaging:26.0:*:*:*:*:*:*:*"
+          "referenceLocator": "pkg:pypi/@"
         }
       ]
     },
@@ -1460,22 +1444,22 @@
     {
       "SPDXID": "SPDXRef-33-typeguard",
       "name": "typeguard",
-      "versionInfo": "4.4.4",
+      "versionInfo": "4.5.1",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Alex Gronholm (alex.gronholm@nextday.fi)",
-      "downloadLocation": "https://pypi.org/project/typeguard/4.4.4/#files",
+      "downloadLocation": "https://pypi.org/project/typeguard/4.5.1/#files",
       "filesAnalyzed": false,
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "b5f562281b6bfa1f5492470464730ef001646128b180769880468bd84b68b09e"
+          "checksumValue": "44d2bf329d49a244110a090b55f5f91aa82d9a9834ebfd30bcc73651e4a8cc40"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "summary": "Run-time type checker for Python",
-      "releaseDate": "2025-06-18T09:56:05Z",
+      "releaseDate": "2026-02-19T16:09:01Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1500,12 +1484,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/typeguard@4.4.4"
+          "referenceLocator": "pkg:pypi/typeguard@4.5.1"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:alex_gronholm:typeguard:4.4.4:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:alex_gronholm:typeguard:4.5.1:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -1812,23 +1796,23 @@
     {
       "SPDXID": "SPDXRef-42-xarray",
       "name": "xarray",
-      "versionInfo": "2026.1.0",
+      "versionInfo": "2026.2.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: xarray Developers (xarray@googlegroups.com)",
-      "downloadLocation": "https://pypi.org/project/xarray/2026.1.0/#files",
+      "downloadLocation": "https://pypi.org/project/xarray/2026.2.0/#files",
       "filesAnalyzed": false,
       "homepage": "https://xarray.dev/",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "5fcc03d3ed8dfb662aa254efe6cd65efc70014182bbc2126e4b90d291d970d41"
+          "checksumValue": "e927d7d716ea71dea78a13417970850a640447d8dd2ceeb65c5687f6373837c9"
         }
       ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "summary": "N-D labeled arrays and datasets in Python",
-      "releaseDate": "2026-01-28T17:49:01Z",
+      "releaseDate": "2026-02-13T22:20:47Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1853,12 +1837,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/xarray@2026.1.0"
+          "referenceLocator": "pkg:pypi/xarray@2026.2.0"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:xarray_developers:xarray:2026.1.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:xarray_developers:xarray:2026.2.0:*:*:*:*:*:*:*"
         }
       ]
     }
@@ -1946,7 +1930,7 @@
     },
     {
       "spdxElementId": "SPDXRef-14-geopandas",
-      "relatedSpdxElement": "SPDXRef-15-packaging",
+      "relatedSpdxElement": "SPDXRef-15-",
       "relationshipType": "DEPENDS_ON"
     },
     {
@@ -2001,7 +1985,7 @@
     },
     {
       "spdxElementId": "SPDXRef-17-matplotlib",
-      "relatedSpdxElement": "SPDXRef-15-packaging",
+      "relatedSpdxElement": "SPDXRef-15-",
       "relationshipType": "DEPENDS_ON"
     },
     {
@@ -2051,7 +2035,7 @@
     },
     {
       "spdxElementId": "SPDXRef-1-ribasim",
-      "relatedSpdxElement": "SPDXRef-15-packaging",
+      "relatedSpdxElement": "SPDXRef-15-",
       "relationshipType": "DEPENDS_ON"
     },
     {
@@ -2066,7 +2050,7 @@
     },
     {
       "spdxElementId": "SPDXRef-27-pandera",
-      "relatedSpdxElement": "SPDXRef-15-packaging",
+      "relatedSpdxElement": "SPDXRef-15-",
       "relationshipType": "DEPENDS_ON"
     },
     {
@@ -2161,7 +2145,7 @@
     },
     {
       "spdxElementId": "SPDXRef-39-pyogrio",
-      "relatedSpdxElement": "SPDXRef-15-packaging",
+      "relatedSpdxElement": "SPDXRef-15-",
       "relationshipType": "DEPENDS_ON"
     },
     {
@@ -2191,7 +2175,7 @@
     },
     {
       "spdxElementId": "SPDXRef-42-xarray",
-      "relatedSpdxElement": "SPDXRef-15-packaging",
+      "relatedSpdxElement": "SPDXRef-15-",
       "relationshipType": "DEPENDS_ON"
     },
     {
