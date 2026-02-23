@@ -5,8 +5,6 @@ title: "Installing other versions"
 This guide explains how to install a specific version of Ribasim, such as a pre-release (release candidate) or an older stable release.
 For installing the latest stable release, see the [Installation](/getting-started/install.qmd) page.
 
-All available versions can be found on the [Ribasim releases page on GitHub](https://github.com/Deltares/Ribasim/releases).
-
 ::: {.callout-important}
 **All Ribasim component versions must be the same!**
 
