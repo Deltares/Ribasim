@@ -124,7 +124,7 @@ def outletstaticschema_migration(df: DataFrame, schema_version: int) -> DataFram
         check_inactive(df, name="Outlet / static")
         df.drop(columns="active", inplace=True, errors="ignore")
     if schema_version < 11:
-        df = _migrate_allocation_controlled(df)
+        _migrate_allocation_controlled(df)
     return df
 
 
