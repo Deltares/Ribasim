@@ -479,8 +479,8 @@ function allocated_rating_curve_flow(
     Δh = h_a - h_b
 
     factor = get_low_storage_factor(p, inflow_id)
-    qh = tabulated_rating_curve.flow_rate[node_id.idx]
-    q = factor * qh
+    q = tabulated_rating_curve.flow_rate[node_id.idx]
+    q *= factor
     q *= reduction_factor(Δh, level_difference_threshold)
     max_downstream_level = tabulated_rating_curve.max_downstream_level[node_id.idx]
     q *= reduction_factor(max_downstream_level - h_b, level_difference_threshold)
@@ -503,10 +503,14 @@ function formulate_flow!(
         h_a = get_level(p, inflow_id, t)
         h_b = get_level(p, outflow_id, t)
 
+        q_h = tabulated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p, t)
         q = if tabulated_rating_curve.allocation_controlled[node_idx]
-            allocated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p)
+            # Ensure q is always >= to the Q(h) relationship, since errors in the linear approximations in allocation could lead to
+            # a higher q at the current h than the user defined q(h) would allow
+            q_alloc = allocated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p)
+            min(q_alloc, q_h)
         else
-            tabulated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p, t)
+            q_h
         end
 
         du.tabulated_rating_curve[node_idx] = q

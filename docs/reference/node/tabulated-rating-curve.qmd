@@ -141,10 +141,10 @@ During each allocation time step the algorithm:
 2. **Optimizes** the flow through the TabulatedRatingCurve together with all other flows in the subnetwork, subject to demand priorities and constraints.
 3. **Communicates** the resulting allocated flow rate back to the physical layer, where it is used as a fixed flow rate for the next allocation period.
 
-In the physical layer the allocated flow rate replaces the $Q(h)$ lookup, but the same reduction factor $\phi$ is still applied:
+In the physical layer the flow is set to the minimum of the allocated flow rate and the physics-based $Q(h)$ flow rate. This ensures that the flow never exceeds what is physically possible, even if the allocation algorithm assigned a higher value (e.g. because levels changed since the last allocation step). The same reduction factor $\phi$ is still applied:
 
 $$
-Q = \phi \cdot Q_\text{allocated}
+Q = \phi \cdot \min(Q_\text{allocated},\; Q(h))
 $$
 
 This means the flow is still smoothly reduced to zero when:
