@@ -6,12 +6,12 @@
     "creators": [
       "Tool: sbom4python-0.12.4"
     ],
-    "created": "2026-02-23T11:55:53Z",
+    "created": "2026-02-23T14:22:14Z",
     "licenseListVersion": "3.27"
   },
   "name": "Python-ribasim",
   "dataLicense": "CC0-1.0",
-  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-6d6b947f-2561-4765-b1ab-081545014eaa",
+  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-2bca8097-fe81-4059-b51d-3c98450ffe69",
   "packages": [
     {
       "SPDXID": "SPDXRef-1-ribasim",
@@ -642,44 +642,22 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-15-packaging",
-      "name": "packaging",
-      "versionInfo": "26.0",
+      "SPDXID": "SPDXRef-15-",
+      "name": "",
+      "versionInfo": "",
       "primaryPackagePurpose": "LIBRARY",
-      "supplier": "Person: Donald Stufft (donald@stufft.io)",
-      "downloadLocation": "https://pypi.org/project/packaging/26.0/#files",
+      "supplier": "NOASSERTION",
+      "downloadLocation": "https://pypi.org/project///#files",
       "filesAnalyzed": false,
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "b36f1fef9334a5588b4166f8bcd26a14e521f2b55e6b9de3aaa80d3ff7a37529"
-        }
-      ],
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
-      "summary": "Core utilities for Python packages",
-      "releaseDate": "2026-01-21T20:50:37Z",
+      "releaseDate": "2025-12-22T21:06:12Z",
       "externalRefs": [
-        {
-          "referenceCategory": "OTHER",
-          "referenceType": "documentation",
-          "referenceLocator": "https://packaging.pypa.io/"
-        },
-        {
-          "referenceCategory": "OTHER",
-          "referenceType": "vcs",
-          "referenceLocator": "https://github.com/pypa/packaging"
-        },
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/packaging@26.0"
-        },
-        {
-          "referenceCategory": "SECURITY",
-          "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:donald_stufft:packaging:26.0:*:*:*:*:*:*:*"
+          "referenceLocator": "pkg:pypi/@"
         }
       ]
     },
@@ -1952,7 +1930,7 @@
     },
     {
       "spdxElementId": "SPDXRef-14-geopandas",
-      "relatedSpdxElement": "SPDXRef-15-packaging",
+      "relatedSpdxElement": "SPDXRef-15-",
       "relationshipType": "DEPENDS_ON"
     },
     {
@@ -2007,7 +1985,7 @@
     },
     {
       "spdxElementId": "SPDXRef-17-matplotlib",
-      "relatedSpdxElement": "SPDXRef-15-packaging",
+      "relatedSpdxElement": "SPDXRef-15-",
       "relationshipType": "DEPENDS_ON"
     },
     {
@@ -2057,7 +2035,7 @@
     },
     {
       "spdxElementId": "SPDXRef-1-ribasim",
-      "relatedSpdxElement": "SPDXRef-15-packaging",
+      "relatedSpdxElement": "SPDXRef-15-",
       "relationshipType": "DEPENDS_ON"
     },
     {
@@ -2072,7 +2050,7 @@
     },
     {
       "spdxElementId": "SPDXRef-27-pandera",
-      "relatedSpdxElement": "SPDXRef-15-packaging",
+      "relatedSpdxElement": "SPDXRef-15-",
       "relationshipType": "DEPENDS_ON"
     },
     {
@@ -2167,7 +2145,7 @@
     },
     {
       "spdxElementId": "SPDXRef-39-pyogrio",
-      "relatedSpdxElement": "SPDXRef-15-packaging",
+      "relatedSpdxElement": "SPDXRef-15-",
       "relationshipType": "DEPENDS_ON"
     },
     {
@@ -2197,7 +2175,7 @@
     },
     {
       "spdxElementId": "SPDXRef-42-xarray",
-      "relatedSpdxElement": "SPDXRef-15-packaging",
+      "relatedSpdxElement": "SPDXRef-15-",
       "relationshipType": "DEPENDS_ON"
     },
     {

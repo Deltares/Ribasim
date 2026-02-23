@@ -251,6 +251,7 @@ quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not
 datacompy = ">=0.16"
 geopandas = ">=1.0"
 gh = "*"
+griffe = ">=1,<2"
 hatch = "*"
 hatchling = "*"
 jinja2 = "*"
