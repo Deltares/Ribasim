@@ -31,7 +31,13 @@ When the simulation completes successfully, the model results are automatically 
 
 ![](https://s3.deltares.nl/ribasim/doc-image/qgis/run-model-dialog.png){fig-align="left"}
 
-For QGIS to find the Ribasim executable, it must be configured via `RIBASIM_HOME`.
+QGIS resolves the Ribasim executable in this order:
+
+1. **Set Ribasim home** (Plugins → Ribasim → Set Ribasim home)
+2. `RIBASIM_HOME`
+3. `PATH`
+4. `%LOCALAPPDATA%\Microsoft\WindowsApps` (Windows)
+
 See the [install section](/getting-started/install.qmd#ribasim-home) for details.
 
 # Inspect a (large) model {#sec-inspect}

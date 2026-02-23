@@ -1,3 +1,4 @@
+from qgis.PyQt.QtWidgets import QToolButton
 from qgis.utils import iface, plugins
 
 
@@ -13,5 +14,14 @@ def test_plugin():
 
     toolbars = [c for c in iface.mainWindow().children() if c.objectName() == "Ribasim"]
     assert len(toolbars) == 2, "No Ribasim toolbar and menu"
-    actions = toolbars[0].actions()
+    toolbar = toolbars[0]
+    actions = toolbar.actions()
     assert len(actions) == 1, "No (single) Ribasim action button in toolbar"
+
+    tool_button = toolbar.widgetForAction(actions[0])
+    assert isinstance(tool_button, QToolButton)
+
+    menu = tool_button.menu()
+    assert menu is not None
+    menu_actions = [action.text() for action in menu.actions() if action.text()]
+    assert "Set Ribasim home" in menu_actions

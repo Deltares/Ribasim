@@ -8,7 +8,16 @@ from qgis.core import Qgis
 from qgis.gui import QgsCustomDropHandler
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QDockWidget, QMenu, QToolButton
+from qgis.PyQt.QtWidgets import (
+    QAction,
+    QDockWidget,
+    QFileDialog,
+    QMenu,
+    QMessageBox,
+    QToolButton,
+)
+
+from ribasim_qgis.widgets.dataset_widget import DatasetWidget
 
 icondir = Path(__file__).parent
 
@@ -60,6 +69,10 @@ class RibasimPlugin:
         self.action_reload.triggered.connect(self.reload_model)
         self.iface.addPluginToMenu("Ribasim", self.action_reload)
 
+        self.action_set_home = QAction("Set Ribasim home", self.iface.mainWindow())
+        self.action_set_home.triggered.connect(self.set_ribasim_home)
+        self.iface.addPluginToMenu("Ribasim", self.action_set_home)
+
         self.action_timeseries = QAction("Timeseries results", self.iface.mainWindow())
         self.action_timeseries.triggered.connect(self.toggle_plot_dock)
         self.iface.addPluginToMenu("Ribasim", self.action_timeseries)
@@ -74,6 +87,7 @@ class RibasimPlugin:
         menu.addSeparator()
         menu.addAction(self.action_run)
         menu.addAction(self.action_reload)
+        menu.addAction(self.action_set_home)
         menu.addSeparator()
         menu.addAction(self.action_timeseries)
         self.tool_button.setMenu(menu)
@@ -100,6 +114,67 @@ class RibasimPlugin:
         """Run the currently loaded Ribasim model."""
         if self.ribasim_widget is not None:
             self.ribasim_widget.run_model()
+
+    def set_ribasim_home(self):
+        """Persist Ribasim home directory in QGIS settings."""
+        current_home = DatasetWidget.get_ribasim_home_setting()
+
+        current_home_text = str(current_home) if current_home is not None else "Not set"
+        dialog = QMessageBox(self.iface.mainWindow())
+        dialog.setWindowTitle("Set Ribasim home")
+        dialog.setText(
+            "This setting controls which Ribasim version is used to run the model.\n\n"
+            f"Current Ribasim home:\n{current_home_text}\n\n"
+            "Choose an action."
+        )
+        change_button = dialog.addButton("Change...", QMessageBox.ButtonRole.AcceptRole)
+        unset_button = dialog.addButton("Unset", QMessageBox.ButtonRole.DestructiveRole)
+        cancel_button = dialog.addButton(QMessageBox.StandardButton.Cancel)
+        dialog.exec()
+
+        clicked = dialog.clickedButton()
+        if clicked == cancel_button:
+            return
+
+        if clicked == unset_button:
+            DatasetWidget.clear_ribasim_home_setting()
+            self.iface.messageBar().pushMessage(
+                "Success",
+                "Cleared configured Ribasim home.",
+                level=Qgis.MessageLevel.Success,
+                duration=5,
+            )
+            return
+
+        if clicked != change_button:
+            return
+
+        start_dir = str(current_home) if current_home is not None else str(Path.home())
+        selected = QFileDialog.getExistingDirectory(
+            self.iface.mainWindow(),
+            "Select Ribasim home",
+            start_dir,
+        )
+        if not selected:
+            return
+
+        cli = DatasetWidget.get_ribasim_cli_from_home(Path(selected))
+        if cli is None:
+            self.iface.messageBar().pushMessage(
+                "Error",
+                "Ribasim executable not found in selected directory. "
+                "Expected a bin directory containing ribasim.",
+                level=Qgis.MessageLevel.Critical,
+            )
+            return
+        DatasetWidget.set_ribasim_home_setting(Path(selected))
+
+        self.iface.messageBar().pushMessage(
+            "Success",
+            f"Configured Ribasim home: {selected}",
+            level=Qgis.MessageLevel.Success,
+            duration=5,
+        )
 
     def reload_model(self):
         """Reload the currently loaded Ribasim model."""
@@ -140,5 +215,6 @@ class RibasimPlugin:
         self.iface.removePluginMenu("Ribasim", self.action_open)
         self.iface.removePluginMenu("Ribasim", self.action_run)
         self.iface.removePluginMenu("Ribasim", self.action_reload)
+        self.iface.removePluginMenu("Ribasim", self.action_set_home)
         self.iface.removePluginMenu("Ribasim", self.action_timeseries)
         self.iface.unregisterCustomDropHandler(self.drop_handler)

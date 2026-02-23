@@ -34,6 +34,7 @@ from qgis.core import (
     QgsMapLayer,
     QgsProject,
     QgsRelation,
+    QgsSettings,
     QgsTemporalNavigationObject,
     QgsVectorLayer,
     QgsVectorLayerTemporalProperties,
@@ -73,6 +74,8 @@ _DEFAULT_VARIABLES: dict[str, str] = {
     "flow": "flow_rate",
     "concentration": "Initial",
 }
+
+RIBASIM_HOME_SETTING = "ribasim/home"
 
 
 class DatasetWidget:
@@ -385,12 +388,52 @@ class DatasetWidget:
         dialog.show()
 
     @staticmethod
-    def _find_ribasim_cli(message_bar) -> Path | None:
+    def get_ribasim_home_setting() -> Path | None:
+        settings = QgsSettings()
+        value = settings.value(RIBASIM_HOME_SETTING)
+        if not isinstance(value, str) or not value:
+            return None
+        return Path(value)
+
+    @staticmethod
+    def set_ribasim_home_setting(path: Path) -> None:
+        settings = QgsSettings()
+        settings.setValue(RIBASIM_HOME_SETTING, str(path))
+
+    @staticmethod
+    def clear_ribasim_home_setting() -> None:
+        settings = QgsSettings()
+        settings.remove(RIBASIM_HOME_SETTING)
+
+    @staticmethod
+    def get_ribasim_cli_from_home(ribasim_home: Path) -> Path | None:
+        ribasim_exe = ribasim_home / "bin" / "ribasim"
+        cli = shutil.which(ribasim_exe.name, path=str(ribasim_exe.parent))
+        if cli is None:
+            return None
+        return Path(cli)
+
+    @staticmethod
+    def get_windows_apps_cli() -> Path | None:
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        if local_app_data is None:
+            return None
+        windows_apps = Path(local_app_data) / "Microsoft" / "WindowsApps"
+        cli = shutil.which("ribasim", path=str(windows_apps))
+        if cli is None:
+            return None
+        return Path(cli)
+
+    @classmethod
+    def _find_ribasim_cli(cls, message_bar) -> Path | None:
         """Find the Ribasim CLI executable.
 
-        First checks the RIBASIM_HOME environment variable, then searches PATH.
-        RIBASIM_HOME must be the path to the Ribasim home directory, e.g.,
-        `C:/ribasim` on Windows.
+        Checks the following locations in order:
+
+        1. The Ribasim home directory configured in QGIS settings.
+        2. The RIBASIM_HOME environment variable.
+        3. The system PATH.
+        4. `%LOCALAPPDATA%/Microsoft/WindowsApps` on Windows.
 
         This is useful when QGIS does not inherit the user's PATH environment
         variable, which happens in the default Windows installation.
@@ -405,11 +448,23 @@ class DatasetWidget:
         Path | None
             Path to the Ribasim CLI executable, or None if not found.
         """
+        # Check plugin setting first
+        if (ribasim_home_setting := cls.get_ribasim_home_setting()) is not None:
+            cli = cls.get_ribasim_cli_from_home(ribasim_home_setting)
+            if cli is None:
+                message_bar.pushMessage(
+                    "Error",
+                    "Ribasim not found at configured Ribasim home. "
+                    "Please update it via Plugins > Ribasim > Set Ribasim home.",
+                    level=Qgis.MessageLevel.Critical,
+                )
+                return None
+            return cli
+
         # Check RIBASIM_HOME environment variable
         if (ribasim_home_env := os.environ.get("RIBASIM_HOME")) is not None:
             ribasim_home = Path(ribasim_home_env)
-            ribasim_exe = ribasim_home / "bin/ribasim"
-            cli = shutil.which(ribasim_exe.name, path=str(ribasim_exe.parent))
+            cli = cls.get_ribasim_cli_from_home(ribasim_home)
             if cli is None:
                 message_bar.pushMessage(
                     "Error",
@@ -418,17 +473,22 @@ class DatasetWidget:
                     level=Qgis.MessageLevel.Critical,
                 )
                 return None
-            return Path(cli)
+            return cli
 
         # Fall back to searching the PATH
-        cli = shutil.which("ribasim")
-        if cli is not None:
-            return Path(cli)
+        cli_str = shutil.which("ribasim")
+        if cli_str is not None:
+            return Path(cli_str)
+
+        # Additional fallback for Windows MSIX installs
+        if (windows_apps_cli := cls.get_windows_apps_cli()) is not None:
+            return windows_apps_cli
 
         message_bar.pushMessage(
             "Error",
             "Ribasim not found. "
             "Please ensure Ribasim is installed and available on your PATH, "
+            "configure Ribasim home in the plugin, "
             "or set the RIBASIM_HOME environment variable.",
             level=Qgis.MessageLevel.Critical,
         )
