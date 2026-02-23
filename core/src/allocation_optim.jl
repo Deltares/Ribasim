@@ -290,6 +290,25 @@ function set_simulation_data!(
         t,
     )
 
+    # update the upper limit of the allocation controlled tbr's based on the current Q(h)
+    flow = problem[:flow]
+    for node_id in tabulated_rating_curve.node_id
+        tabulated_rating_curve.allocation_controlled[node_id.idx] || continue
+        inflow_link = tabulated_rating_curve.inflow_link[node_id.idx].link
+        outflow_link = tabulated_rating_curve.outflow_link[node_id.idx].link
+        inflow_id = inflow_link[1]
+        outflow_id = outflow_link[2]
+
+        h_a = get_level(p, inflow_id, t + allocation_model.Δt_allocation)
+        h_b = get_level(p, outflow_id, t + allocation_model.Δt_allocation)
+        q_max = tabulated_rating_curve_flow(
+            tabulated_rating_curve, node_id, h_a, h_b, p, t + allocation_model.Δt_allocation,
+        )
+        upper_bound = max(0.0, q_max / allocation_model.scaling.flow)
+        JuMP.set_upper_bound(flow[inflow_link], upper_bound)
+        JuMP.set_upper_bound(flow[outflow_link], upper_bound)
+    end
+
     return nothing
 end
 
@@ -1023,7 +1042,7 @@ end
 # Set the flow rate of allocation controlled pumps and outlets to
 # their flow determined by allocation
 function apply_control_from_allocation!(
-        node::Union{Pump, Outlet},
+        node::Union{Pump, Outlet, TabulatedRatingCurve},
         allocation_model::AllocationModel,
         integrator::DEIntegrator,
     )::Nothing
@@ -1097,7 +1116,7 @@ function update_allocation!(model)::Nothing
     (; integrator) = model
     (; u, p, t) = integrator
     (; p_independent) = p
-    (; allocation, pump, outlet) = p_independent
+    (; allocation, pump, outlet, tabulated_rating_curve) = p_independent
     (; allocation_models, primary_network_connections, demand_priorities_all) = allocation
 
     # Don't run the allocation algorithm if allocation is not active
@@ -1160,6 +1179,7 @@ function update_allocation!(model)::Nothing
         save_flows!(integrator, allocation_model)
         apply_control_from_allocation!(pump, allocation_model, integrator)
         apply_control_from_allocation!(outlet, allocation_model, integrator)
+        apply_control_from_allocation!(tabulated_rating_curve, allocation_model, integrator)
 
         # Reset cumulative data
         reset_cumulative!(allocation_model)

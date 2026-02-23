@@ -1,5 +1,5 @@
 ---
-title: "UserDemand"
+title: "![](/assets/node-icons/UserDemand.svg){height=20} UserDemand"
 ---
 
 A UserDemand takes water from the Basin that supplies it.

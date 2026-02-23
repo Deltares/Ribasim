@@ -172,3 +172,5 @@ debug/*
 
 .DS_Store
 lock.pid
+
+CLAUDE.md

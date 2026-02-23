@@ -1,5 +1,5 @@
 ---
-title: "LevelBoundary"
+title: "![](/assets/node-icons/LevelBoundary.svg){height=20} LevelBoundary"
 ---
 
 LevelBoundary is a node whose water level is determined by the input.

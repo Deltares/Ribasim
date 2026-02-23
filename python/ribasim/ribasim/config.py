@@ -59,7 +59,7 @@ class RoutePriority(ChildModel):
     basin: int = 2000
     manning_resistance: int = 10
     linear_resistance: int = 20
-    tabulated_rating_curve: int = 30
+    tabulated_rating_curve: int = -5000
     outlet: int = 40
     pump: int = 50
 

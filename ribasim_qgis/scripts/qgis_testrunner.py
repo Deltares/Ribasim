@@ -53,7 +53,7 @@ import traceback
 from console.console_output import writeOut
 
 # Start as soon as the initializationCompleted signal is fired
-from qgis.core import QgsApplication, QgsProject, QgsProjectBadLayerHandler
+from qgis.core import QgsProject, QgsProjectBadLayerHandler
 from qgis.PyQt.QtCore import QDir
 from qgis.utils import iface
 
@@ -103,8 +103,7 @@ sys.path.append(QDir.current().path())
 
 
 def __exit_qgis(exit_code: int):
-    """Exit QGIS application with the given exit code."""
-    QgsApplication.exitQgis()
+    """Exit the QGIS application with the given exit code."""
     sys.exit(exit_code)
 
 

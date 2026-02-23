@@ -52,6 +52,7 @@ function flow_capacity_upper_bound(
         elseif id.type == NodeType.LinearResistance
             p_independent.linear_resistance.max_flow_rate[id.idx]
         else
+            # For tabulated rating curve, max flow will be updated based on Q(h)
             MAX_ABS_FLOW
         end
 

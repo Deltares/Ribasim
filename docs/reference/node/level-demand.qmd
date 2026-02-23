@@ -1,5 +1,5 @@
 ---
-title: "LevelDemand"
+title: "![](/assets/node-icons/LevelDemand.svg){height=20} LevelDemand"
 ---
 
 A `LevelDemand` node associates a minimum and a maximum level (possibly multiple over different priorities) with connected Basins to be used by the allocation algorithm.

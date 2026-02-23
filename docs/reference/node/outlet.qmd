@@ -1,5 +1,5 @@
 ---
-title: "Outlet"
+title: "![](/assets/node-icons/Outlet.svg){height=20} Outlet"
 ---
 
 The Outlet lets water flow downstream with a prescribed flow rate.

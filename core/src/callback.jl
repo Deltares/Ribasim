@@ -660,7 +660,7 @@ function set_new_control_state!(
     )::Nothing
     (; p) = integrator
     (; p_independent) = p
-    (; discrete_control, pump, outlet) = p_independent
+    (; discrete_control, pump, outlet, tabulated_rating_curve) = p_independent
 
     # Get the control state corresponding to the new truth state,
     # if one is defined
@@ -693,6 +693,10 @@ function set_new_control_state!(
             elseif target_node_id.type == NodeType.Outlet
                 control_state_update = outlet.control_mapping[(target_node_id, control_state_new)]
                 outlet.allocation_controlled[target_node_id.idx] =
+                    control_state_update.allocation_controlled
+            elseif target_node_id.type == NodeType.TabulatedRatingCurve
+                control_state_update = tabulated_rating_curve.control_mapping[(target_node_id, control_state_new)]
+                tabulated_rating_curve.allocation_controlled[target_node_id.idx] =
                     control_state_update.allocation_controlled
             end
         end

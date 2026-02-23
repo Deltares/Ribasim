@@ -51,6 +51,7 @@ quarto-preview = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto prev
     "generate-testmodels",
     "initialize-julia",
 ], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "yes", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
+quarto-preview-fast = { cmd = "quarto preview docs --no-execute", depends-on = ["quartodoc-build"] }
 quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
 quarto-render = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto render docs", depends-on = [
     "quartodoc-build",
@@ -114,6 +115,8 @@ generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
 ], outputs = [
     "generated_testmodels",
 ] }
+write-node-icons = "python utils/write_node_icons.py"
+upload-node-icons = "python utils/write_node_icons.py --upload"
 tests = { depends-on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 delwaq = { cmd = "pytest --basetemp=python/ribasim/ribasim/delwaq/model python/ribasim/tests/test_delwaq.py" }
 gen-delwaq = { cmd = "python python/ribasim/ribasim/delwaq/generate.py" }
@@ -149,13 +152,7 @@ publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api",
 
 
 test-ribasim-qgis-docker = { cmd = "sh ./test.sh", cwd = ".docker" }
-test-ribasim-qgis-ui = { cmd = "python ribasim_qgis/scripts/run_qgis_ui_tests.py", depends-on = [
-    "install-ribasim-qgis",
-] }
-test-ribasim-qgis = { cmd = "pytest --numprocesses=auto ribasim_qgis/tests/core", depends-on = [
-    "install-ribasim-qgis",
-] }
-test-ribasim-qgis-cov = { cmd = "pytest --numprocesses=auto --cov=ribasim_qgis --cov-report=xml --cov-config=ribasim_qgis/.coveragerc ribasim_qgis/tests/core", depends-on = [
+test-ribasim-qgis = { cmd = "python ribasim_qgis/scripts/run_qgis_ui_tests.py", depends-on = [
     "install-ribasim-qgis",
 ] }
 mypy-ribasim-qgis = "mypy ribasim_qgis"
@@ -209,11 +206,6 @@ depends-on = [
         " {{ profile_path }} ",
     ] },
     { "task" = "install-qgis-plugin", "args" = [
-        "iMOD",
-        "imodqgis",
-        " {{ profile_path }} ",
-    ] },
-    { "task" = "install-qgis-plugin", "args" = [
         "debugvs",
         "debug_vs",
         " {{ profile_path }} ",
@@ -264,6 +256,7 @@ hatchling = "*"
 jinja2 = "*"
 juliaup = "*"
 jupyter = "*"
+lxml = "*"
 matplotlib = ">=3.9"
 minio = "*"
 mypy = "*"

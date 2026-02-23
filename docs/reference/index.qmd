@@ -3,3 +3,75 @@ title: "Reference"
 ---
 
 These pages contain the test models, node descriptions and Ribasim Python API documentation.
+
+## Node types
+
+### Waterbody
+
+::: {layout-ncol=3 style="text-align: center;"}
+
+[![](/assets/node-icons/Basin.svg){height=80}<br>Basin](node/basin.qmd)
+
+:::
+
+### Connector
+
+::: {layout-ncol=3 style="text-align: center;"}
+
+[![](/assets/node-icons/TabulatedRatingCurve.svg){height=80}<br>TabulatedRatingCurve](node/tabulated-rating-curve.qmd)
+
+[![](/assets/node-icons/Outlet.svg){height=80}<br>Outlet](node/outlet.qmd)
+
+[![](/assets/node-icons/Pump.svg){height=80}<br>Pump](node/pump.qmd)
+
+[![](/assets/node-icons/LinearResistance.svg){height=80}<br>LinearResistance](node/linear-resistance.qmd)
+
+[![](/assets/node-icons/ManningResistance.svg){height=80}<br>ManningResistance](node/manning-resistance.qmd)
+
+&nbsp;
+
+:::
+
+### Boundary
+
+::: {layout-ncol=3 style="text-align: center;"}
+
+[![](/assets/node-icons/FlowBoundary.svg){height=80}<br>FlowBoundary](node/flow-boundary.qmd)
+
+[![](/assets/node-icons/LevelBoundary.svg){height=80}<br>LevelBoundary](node/level-boundary.qmd)
+
+[![](/assets/node-icons/Terminal.svg){height=80}<br>Terminal](node/terminal.qmd)
+
+:::
+
+### Demand
+
+::: {layout-ncol=3 style="text-align: center;"}
+
+[![](/assets/node-icons/UserDemand.svg){height=80}<br>UserDemand](node/user-demand.qmd)
+
+[![](/assets/node-icons/FlowDemand.svg){height=80}<br>FlowDemand](node/flow-demand.qmd)
+
+[![](/assets/node-icons/LevelDemand.svg){height=80}<br>LevelDemand](node/level-demand.qmd)
+
+:::
+
+### Control
+
+::: {layout-ncol=3 style="text-align: center;"}
+
+[![](/assets/node-icons/DiscreteControl.svg){height=80}<br>DiscreteControl](node/discrete-control.qmd)
+
+[![](/assets/node-icons/ContinuousControl.svg){height=80}<br>ContinuousControl](node/continuous-control.qmd)
+
+[![](/assets/node-icons/PidControl.svg){height=80}<br>PidControl](node/pid-control.qmd)
+
+:::
+
+### Layout
+
+::: {layout-ncol=3 style="text-align: center;"}
+
+[![](/assets/node-icons/Junction.svg){height=80}<br>Junction](node/junction.qmd)
+
+:::

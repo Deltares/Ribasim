@@ -1,5 +1,5 @@
 ---
-title: "ContinuousControl"
+title: "![](/assets/node-icons/ContinuousControl.svg){height=20} ContinuousControl"
 ---
 
 The `ContinuousControl` node allows for fine control of a controllable property of a connector node, which is updated at each time step. This control can be set up as follows:

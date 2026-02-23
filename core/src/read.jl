@@ -399,6 +399,7 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
 
     rating_curve = TabulatedRatingCurve(; node_id)
 
+    initialize_control_mapping!(rating_curve, static)
     set_inoutflow_links!(rating_curve, graph)
     set_external_flow_demand_nodes!(rating_curve, graph)
     errors = parse_parameter!(
@@ -503,6 +504,8 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
             time_group, time_idx = iterate(time_groups, time_idx)
         end
     end
+
+    set_control_type!(rating_curve, graph)
 
     errors && error("Errors occurred when parsing TabulatedRatingCurve data.")
 

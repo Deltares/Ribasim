@@ -26,7 +26,7 @@ Start with running the automated task to see if it can be correctly installed.
 ```sh
 # This test might give a fatal error on the first run, this is most likely a timing issue.
 # Try to run it again when that happens.
-pixi run test-ribasim-qgis-ui
+pixi run test-ribasim-qgis
 ```
 
 Then follow the instructions as described in the [QGIS manual test plan](/dev/qgis_test_plan.qmd).
@@ -50,6 +50,10 @@ See also the [latest Ribasim release](https://github.com/Deltares/Ribasim/releas
 Use find and replace to update all locations.
 Only update the lines in `pixi.lock` that refer to Ribasim packages, to avoid accidentally changing the version number of dependencies that happen to have the same version number.
 Don't change the old version numbers in `changelog.qmd`.
+
+::: {.callout-important}
+Always update the example version numbers in `docs/guide/installing-other-versions.qmd` to refer to the latest release candidate and never to a stable release.
+:::
 
 ## Update the changelog
 

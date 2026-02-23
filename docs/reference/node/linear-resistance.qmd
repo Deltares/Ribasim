@@ -1,5 +1,5 @@
 ---
-title: "LinearResistance"
+title: "![](/assets/node-icons/LinearResistance.svg){height=20} LinearResistance"
 ---
 
 Bidirectional flow proportional to the level difference between the connected basins.

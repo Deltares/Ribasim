@@ -12,7 +12,7 @@ If you use pixi that could be as simple as: `pixi global install --environment q
 :::
 
 The simplest way to do this is by running `pixi run install-qgis-plugins`.
-It grabs the latest version of the iMOD QGIS plugin and it makes a symlink to the ribasim_qgis folder so that QGIS can find it.
+It makes a symlink to the ribasim_qgis folder so that QGIS can find it.
 It also installs plugins that make it possible to reload and debug your plugin while QGIS is open.
 
 :::{.callout-note}
@@ -26,7 +26,7 @@ We wanted to implement this via `pip install --editable`, but QGIS doesn't find 
 # Running QGIS
 
 In order to run QGIS with the plugins, simply call `pixi run qgis`.
-You will find the Ribasim and iMOD plugins in the tool bars.
+You will find the Ribasim plugin in the tool bar.
 
 :::{.callout-note}
 On Windows, running QGIS from the start menu will disable Python, and thus the plugins.
@@ -35,10 +35,41 @@ QGIS needs some more paths during the startup and the Pixi environment provides 
 
 # Running tests
 
-To run the QGIS plugin tests in the application environment of QGIS, it is best to make use of the Docker environment provided in this repository.
-Make sure that docker is installed and available in your path.
+To run the QGIS plugin tests locally inside a QGIS process, call `pixi run test-ribasim-qgis`.
+This launches QGIS and runs the full test suite (including plugin and UI tests) via the test runner.
 
-Then simply call `pixi run test-ribasim-qgis`.
+For CI or headless environments, the same tests can be run in Docker with `pixi run test-ribasim-qgis-docker`.
+Make sure that Docker is installed and available in your path.
+
+# QML styles and node icons
+
+The node style QML is stored in `python/ribasim/ribasim/styles/NodeStyle.qml`.
+
+Node icon SVGs in this QML file are generated with:
+
+```bash
+pixi run write-node-icons
+```
+
+The `utils/write_node_icons.py` script:
+
+- generates overview and icon artifacts in `utils/node_icons/`
+- updates categorized `node_type` symbols in `NodeStyle.qml` with embedded SVG marker data
+
+To also upload the icons to the S3 bucket (under `doc-image/node-icons/`) for use in the documentation, run:
+
+```bash
+pixi run upload-node-icons
+```
+
+This requires MinIO credentials (`MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`) via environment variables or a `.env` file.
+The uploaded icons are publicly available at `https://s3.deltares.nl/ribasim/doc-image/node-icons/`.
+
+When changing icons, rerun `write-node-icons` and include the resulting QML and icon changes in your PR.
+Once you are happy with the changes locally, run `upload-node-icons` to update the S3 copies used in the documentation.
+
+You can also modify the QML files by making changes in QGIS.
+For `NodeStyle.qml` it is best to run `write_node_icons.py` afterwards so the formatting stays the same.
 
 # Debugging
 

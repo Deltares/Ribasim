@@ -1,5 +1,5 @@
 ---
-title: "FlowBoundary"
+title: "![](/assets/node-icons/FlowBoundary.svg){height=20} FlowBoundary"
 ---
 
 A FlowBoundary adds water to the model at a specified flow rate.

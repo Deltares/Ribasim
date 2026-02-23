@@ -1,5 +1,5 @@
 ---
-title: "ManningResistance"
+title: "![](/assets/node-icons/ManningResistance.svg){height=20} ManningResistance"
 ---
 
 The ManningResistance node calculates a flow rate between two Basins based on their water levels.

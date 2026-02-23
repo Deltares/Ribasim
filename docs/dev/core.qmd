@@ -88,6 +88,12 @@ make changes.
 pixi run quarto-preview
 ```
 
+To preview without executing code cells (much faster for checking layout):
+
+```bash
+pixi run quarto-preview-fast
+```
+
 The documentation also includes [Jupyter notebooks](https://jupyter.org/).
 Note that they are stored in the repository without any output, and this should stay
 this way to keep the repository small. The documentation rendering process adds the output

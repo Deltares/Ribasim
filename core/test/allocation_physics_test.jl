@@ -242,3 +242,31 @@ end
     # Test all level except first approx 1.0 meter at polder 4
     @test all(isapprox.(level_polder_4[2:end], 1.0; atol = 1.0e-3))
 end
+
+@testitem "Allocation controlled rating curve" begin
+    using Ribasim: tabulated_rating_curve_flow
+    using DataFrames: DataFrame
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand_with_rating_curve/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+
+    p = model.integrator.p
+    tbr = model.integrator.p.p_independent.tabulated_rating_curve
+
+    flow_results = DataFrame(Ribasim.flow_data(model))
+    flow_link_1 = filter(:link_id => ==(1), flow_results).flow_rate
+    basin_results = DataFrame(Ribasim.basin_data(model))
+    level_basin_1 = filter(:node_id => ==(1), basin_results).level
+    min_level = 3.0
+    # find index of first level close to min_level demand of 3 m
+    idx = findfirst(e -> abs(e - min_level) <= 1.0e-1, level_basin_1)
+
+    tbr_flow(h_a, h_b) = tabulated_rating_curve_flow(tbr, tbr.node_id[1], h_a, h_b, p, 0)
+
+    # the flow up to that level should behave as an uncontrolled TBR:
+    @test tbr_flow.(level_basin_1[1:idx], zero(idx)) ≈ flow_link_1[1:idx] atol = 1.0e-5
+
+    # the flow near min_level should be close to 0
+    @test all(≈(0.0; atol = 1.0e-4), flow_link_1[(idx + 1):end])
+end

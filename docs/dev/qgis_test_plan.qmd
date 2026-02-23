@@ -74,6 +74,39 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 - While running, right-click the same model and click "Run Ribasim model": _Warning message "Simulation already running for hws/ribasim"_.
 - Load a different model and run it: _Second simulation starts normally_.
 
+# Plot widget tests
+
+## Open the plot widget
+
+- Run `models/hws` or another model that produces results.
+- After results load, click the Ribasim button dropdown on the toolbar and select "Timeseries results": _The plot dock panel opens, showing the "Result" dropdown defaulting to "flow" and "Variable" defaulting to "flow\_rate"_.
+
+## Flow timeseries on link selection
+
+- With the plot widget open on "flow" / "flow\_rate", select one or more links on the map: _Flow rate timeseries appear in the plot, one trace per selected link (e.g. "#10", "#20")_.
+- Select different links: _Plot updates to show the new selection_.
+
+## Basin timeseries on node selection
+
+- Switch the "Result" dropdown to "basin": _Variable changes to "level", placeholder says "Select Basin nodes on the map to plot timeseries."_.
+- Select one or more Basin nodes on the map: _Level timeseries appear for the selected nodes_.
+
+## Variable selection
+
+- With Basin nodes selected and the plot showing, click the "Variable" button: _A dropdown menu with checkboxes appears listing variables (e.g. level, storage)_.
+- Check multiple variables: _Plot updates to show all checked variables, legend shows "variable — #node\_id"_.
+- Uncheck all variables: _Plot hides, placeholder reappears_.
+
+## Concentration results
+
+- Run a model that produces `concentration.nc` results.
+- Switch the "Result" dropdown to "concentration": _Variables list shows substance names_.
+- Select Basin nodes: _Concentration timeseries appear per substance_.
+
+## Plot clears on deselection
+
+- With a plot showing, deselect all features (click an empty area on the map): _Plot clears and the placeholder reappears_.
+
 # Tutorial tests
 
 ## Perform tutorial in documentation

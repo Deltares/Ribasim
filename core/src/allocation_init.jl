@@ -480,10 +480,15 @@ function add_tabulated_rating_curve!(
     )::Nothing
     (; node_ids_in_subnetwork) = allocation_model
     (; tabulated_rating_curve) = p_independent
+    (; tabulated_rating_curve_ids_subnetwork) = node_ids_in_subnetwork
+
+    # Get the IDs of nodes in the subnetwork which are not controlled by allocation
+    node_ids_not_allocation_controlled =
+        filter(id -> !tabulated_rating_curve.allocation_controlled[id.idx], tabulated_rating_curve_ids_subnetwork)
     add_linearized_connector_node!(
         allocation_model,
         tabulated_rating_curve,
-        node_ids_in_subnetwork.tabulated_rating_curve_ids_subnetwork,
+        node_ids_not_allocation_controlled,
     )
     return nothing
 end
@@ -516,7 +521,7 @@ function add_manning_resistance!(
     return nothing
 end
 
-function add_node_with_flow_control!(
+function add_pump_or_outlet!(
         allocation_model::AllocationModel,
         node_type::NodeType.T,
         node_data::Union{Pump, Outlet},
@@ -526,14 +531,14 @@ function add_node_with_flow_control!(
     flow = problem[:flow]
 
     # Get the IDs of nodes in the subnetwork which are not controlled by allocation
-    node_ids_non_alloc_controlled =
+    node_ids_not_allocation_controlled =
         filter(id -> !node_data.allocation_controlled[id.idx], node_id)
 
     q = 1.0 # Example value (scaling.flow * m^3/s, to be filled in before optimizing)
     constraint_name = Symbol(lowercase(string(node_type)))
     problem[constraint_name] = JuMP.@constraint(
         problem,
-        [node_id = node_ids_non_alloc_controlled],
+        [node_id = node_ids_not_allocation_controlled],
         flow[node_data.inflow_link[node_id.idx].link] ==
             q * get_low_storage_factor(problem, node_data.inflow_link[node_id.idx].link[1]),
         base_name = "$(constraint_name)_constraint"
@@ -545,7 +550,7 @@ function add_pump!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
     )::Nothing
-    add_node_with_flow_control!(
+    add_pump_or_outlet!(
         allocation_model,
         NodeType.Pump,
         p_independent.pump,
@@ -558,7 +563,7 @@ function add_outlet!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
     )::Nothing
-    add_node_with_flow_control!(
+    add_pump_or_outlet!(
         allocation_model,
         NodeType.Outlet,
         p_independent.outlet,

@@ -166,7 +166,7 @@ end
     basin::Int32 = 2000
     manning_resistance::Int32 = 10
     linear_resistance::Int32 = 20
-    tabulated_rating_curve::Int32 = 30
+    tabulated_rating_curve::Int32 = -5000
     outlet::Int32 = 40
     pump::Int32 = 50
 end

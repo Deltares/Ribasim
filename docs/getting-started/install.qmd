@@ -56,7 +56,6 @@ One can also use Ribasim Python to build entire models from base data, such that
 
 Ribasim uses [GeoPackage](https://www.geopackage.org/) files to store the model database (`database.gpkg`).
 [QGIS](https://qgis.org/) works well with GeoPackage files, making it a good application to visualize Ribasim models.
-Deltares also provides the iMOD QGIS plugin, which can be used to view the timeseries in the Ribasim results.
 
 ::: {.callout-important}
 **All Ribasim component versions must be the same!**
@@ -65,15 +64,12 @@ If you use multiple components together, you must ensure that every component us
 Running with mismatched versions will likely fail.
 
 If you receive a model, the Ribasim version used to create it is written in the TOML file.
-See the note below for how to install older Ribasim releases.
-
 To update a model to a new Ribasim version, see the [migration guide](/guide/updating-ribasim.qmd).
 :::
 
 ::: {.callout-note}
-To update an existing installation of Ribasim, follow the same installation on this page.
-Change the version number in the command or download link to install a version other than the latest release,
-or download directly from the [Release assets on GitHub](https://github.com/Deltares/Ribasim/releases).
+This page describes how to install the latest stable release of Ribasim.
+To install a pre-release (release candidate) or an older version, see [Installing other versions](/guide/installing-other-versions.qmd).
 :::
 
 # Install Ribasim core {#sec-install-core}
@@ -271,13 +267,3 @@ Select "Install from ZIP":
 - Click "Install Plugin"
 
 ![](https://user-images.githubusercontent.com/4471859/224939080-7fec5db2-4417-4f7b-8e45-034d4cf4fd75.png){fig-align="left"}
-
-## Install iMOD plugin
-
-In QGIS, navigate to "Plugins > Manage and Install Plugins > All".
-In the search bar, type: "iMOD". Select the iMOD plugin, and click "Install".
-
-At least version 0.5.3 of the iMOD plugin is required.
-
-The Time Series widget from the iMOD plugin is used for visualizing Ribasim results, which is described in the [results section](#sec-results).
-Documentation on the Time Series widget can be found in the [iMOD documentation](https://deltares.github.io/iMOD-Documentation/qgis_user_manual.html#time-series-time-series).
