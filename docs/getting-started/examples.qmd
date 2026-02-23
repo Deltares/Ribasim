@@ -999,3 +999,94 @@ plot_link_flow("Basin", 1, "Outlet", 1)
 plot_link_flow("Basin", 1, "Outlet", 2)
 ax.set_ylabel("flow [m³s⁻¹]");
 ```
+
+# Allocation-controlled TabulatedRatingCurve {#allocation-controlled-tabulatedratingcurve}
+
+This example demonstrates how a [TabulatedRatingCurve](/reference/node/tabulated-rating-curve.qmd) can be controlled by [allocation](/concept/allocation.qmd).
+A Basin drains through a TabulatedRatingCurve into a Terminal.
+A LevelDemand on the Basin tells the allocation algorithm to maintain the Basin level between 3 and 4 m.
+The TabulatedRatingCurve has `control_state="Ribasim.allocation"` and a negative `route_priority`, so under normal conditions it follows the physical $Q(h)$ curve, but allocation reduces the flow when the Basin level drops toward the minimum level demand.
+
+```{python}
+model = Model(
+    starttime="2020-01-01",
+    endtime="2021-01-01",
+    crs="EPSG:28992",
+    experimental=Experimental(allocation=True),
+)
+
+bsn = model.basin.add(
+    Node(1, Point(0, 0), subnetwork_id=2, route_priority=0),
+    [
+        basin.Profile(area=1000.0, level=[0.0, 10.0]),
+        basin.State(level=[5.0]),
+    ],
+)
+
+trc = model.tabulated_rating_curve.add(
+    Node(2, Point(1, 0), subnetwork_id=2, route_priority=-2),
+    [
+        tabulated_rating_curve.Static(
+            level=[0.0, 1.0, 5.0],
+            flow_rate=[0.0, 0.0, 2e-3],
+            control_state="Ribasim.allocation",
+        )
+    ],
+)
+
+trm = model.terminal.add(Node(3, Point(2, 0), subnetwork_id=2, route_priority=0))
+
+ld = model.level_demand.add(
+    Node(4, Point(0, 1), subnetwork_id=2, route_priority=0),
+    [level_demand.Static(min_level=[3.0], max_level=[4.0], demand_priority=1)],
+)
+
+model.link.add(bsn, trc)
+model.link.add(trc, trm)
+model.link.add(ld, bsn)
+
+model.plot();
+```
+
+Write the model to a temporary directory and run it:
+
+```{python}
+datadir = Path("data/level_demand_with_rating_curve")
+model.write(datadir / "ribasim.toml")
+result = run_ribasim(datadir / "ribasim.toml")
+```
+
+Read back and plot the Basin level over time, including the minimum level demand:
+
+```{python}
+import pandas as pd
+import matplotlib.pyplot as plt
+
+ds_basin = xr.open_dataset(datadir / "results/basin.nc")
+df_basin = ds_basin.to_dataframe().reset_index()
+df_basin_1 = df_basin[df_basin["node_id"] == 1]
+
+fig, ax = plt.subplots()
+df_basin_1.plot(x="time", y="level", ax=ax, label="Basin #1 level")
+ax.axhline(y=3.0, color="red", linestyle="--", label="min_level = 3.0 m")
+ax.set_ylabel("level [m]")
+ax.legend();
+```
+
+Plot the flow through the TabulatedRatingCurve:
+
+```{python}
+ds_flow = xr.open_dataset(datadir / "results/flow.nc")
+df_flow = ds_flow.to_dataframe().reset_index()
+df_flow_trc = df_flow[
+    (df_flow["from_node_id"] == 1) & (df_flow["to_node_id"] == 2)
+]
+
+fig, ax = plt.subplots()
+df_flow_trc.plot(x="time", y="flow_rate", ax=ax, label="Basin #1 → TRC #2")
+ax.set_ylabel("flow [m³s⁻¹]")
+ax.legend();
+```
+
+The plot shows that the TabulatedRatingCurve initially follows its $Q(h)$ relationship.
+As the Basin level drops toward the 3.0 m minimum level demand, allocation reduces the outflow to zero, maintaining the target level.

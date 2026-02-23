@@ -347,7 +347,11 @@ $$
 
 ### Control by allocation
 
-When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must be given the special control state `Ribasim.allocation` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static). When a Pump or Outlet has this control state, the flow through the node is only bounded by its capacity and Pump or Outlet specific constraints based on the difference between upstream and downstream level (see [Pump equations](/reference/node/pump.qmd#equations) or [Outlet equations](/reference/node/outlet.qmd#equations)). After all goals have been optimized for, the flow rate through the Pump or Outlet is communicated to the physical layer.
+When Pumps, Outlets, and TabulatedRatingCurves are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must be given the special control state `Ribasim.allocation` in the static table for [Pump](/reference/node/pump.qmd#static), [Outlet](/reference/node/outlet.qmd#static), or [TabulatedRatingCurve](/reference/node/tabulated-rating-curve.qmd#static). After all goals have been optimized for, the flow rate through the node is communicated to the physical layer.
+
+For **Pumps and Outlets**, the flow through the node is only bounded by its capacity and node-specific constraints based on the difference between upstream and downstream level (see [Pump equations](/reference/node/pump.qmd#equations) or [Outlet equations](/reference/node/outlet.qmd#equations)).
+
+For **TabulatedRatingCurves**, the allocation-determined flow is bounded by the maximum flow the rating curve can physically deliver at the current upstream level, i.e. $Q(h)$ evaluated at the expected level at the end of the allocation time step. In the physical layer, the allocated flow rate replaces the usual $Q(h)$ lookup while still applying the same reduction factors for low storage, level difference, and maximum downstream level (see [TabulatedRatingCurve equations](/reference/node/tabulated-rating-curve.qmd#equations)).
 
 ### Interaction of allocation with other control systems
 
@@ -442,7 +446,7 @@ There are also capacities for special links:
 
 ## Route priority
 
-Nodes can be assigned priorities that influence how water is preferentially routed. These priorities are given as weights $w_i \geq 0$ for node $i$ with an outflow link $Q_i$.
+Nodes can be assigned priorities that influence how water is preferentially routed. These priorities are given as weights $w_i$ for node $i$ with an outflow link $Q_i$.
 
 The route priority weights act as a cost per flow rate. For a given demand priority $p$, the objective is to minimize the cost of the water allocation:
 
@@ -455,6 +459,7 @@ This term is added to the optimization problem after the demand objectives have 
 1. Demands are met first according to their priority
 2. Among solutions that satisfy demands equally well, water is preferentially allocated via routes with the lowest cost
 
+Both positive and negative route priorities are supported. A negative route priority turns the minimization to a maximization of flow through that node.
 ### Example
 
 In @fig-subnetwork-example the water can take multiple routes from the flow boundary to user demands 14 and 17. We have set all route priorities (cost) to 0 except for outlets 3 and 8, which have a higher cost (lower priority). This results in the flow routing preferentially through the pumps, since flowing through the outlets incurs a higher penalty in the objective function due to their non-zero route priority. The results are shown in @fig-subnetwork-results.

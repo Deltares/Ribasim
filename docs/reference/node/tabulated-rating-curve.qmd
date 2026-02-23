@@ -126,3 +126,37 @@ Where:
   - The upstream volume is below the equivalent of a water depth of $10 \;\text{cm}$ (change with solver setting `depth_threshold`, the others below with `level_difference_threshold`).
   - The upstream level is less than $0.02 \;\text{m}$ above the downstream level.
   - The downstream level is above `max_downstream_level` - $0.02 \;\text{m}$
+
+# Allocation control {#allocation-control}
+
+A TabulatedRatingCurve can be controlled by the [allocation](/concept/allocation.qmd) algorithm.
+To enable this, set `control_state = "Ribasim.allocation"` in the Static table.
+When allocation-controlled, the flow through the TabulatedRatingCurve is no longer determined solely by the $Q(h)$ relationship; instead the allocation algorithm decides the flow rate within the physical capacity of the curve.
+
+## Behavior
+
+During each allocation time step the algorithm:
+
+1. **Computes an upper bound** on the TabulatedRatingCurve flow by evaluating the original $Q(h)$ at the expected upstream and downstream levels at the end of the allocation time step. This ensures allocation never assigns more flow than what is physically possible.
+2. **Optimizes** the flow through the TabulatedRatingCurve together with all other flows in the subnetwork, subject to demand priorities and constraints.
+3. **Communicates** the resulting allocated flow rate back to the physical layer, where it is used as a fixed flow rate for the next allocation period.
+
+In the physical layer the flow is set to the minimum of the allocated flow rate and the physics-based $Q(h)$ flow rate. This ensures that the flow never exceeds what is physically possible, even if the allocation algorithm assigned a higher value (e.g. because levels changed since the last allocation step). The same reduction factor $\phi$ is still applied:
+
+$$
+Q = \phi \cdot \min(Q_\text{allocated},\; Q(h))
+$$
+
+This means the flow is still smoothly reduced to zero when:
+
+- the upstream basin storage is low,
+- the level difference across the node is small, or
+- the downstream level exceeds `max_downstream_level`.
+
+## Route priority
+
+In a typical setup you want the TabulatedRatingCurve to follow its $Q(h)$ relationship under normal conditions and only reduce flow when there is a water shortage (i.e. when a demand cannot be met). This is achieved by giving the TabulatedRatingCurve node a **negative route priority**.
+
+[Route priority](/concept/allocation.qmd#route-priority) acts as a cost in the allocation optimization: higher values make feeding water through a node more expensive. A negative route priority makes it prefer to send water through this node. As a result, the flow will track the physical $Q(h)$ curve as long as there is enough water. When water is scarce and demands compete, allocation will reduce the TabulatedRatingCurve flow to satisfy higher-priority demands first.
+
+For a full worked example, see [Allocation-controlled TabulatedRatingCurve](/getting-started/examples.qmd#allocation-controlled-tabulatedratingcurve) on the examples page.
