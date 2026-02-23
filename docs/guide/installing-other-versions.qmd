@@ -19,17 +19,16 @@ Ribasim uses the following versioning scheme:
 - **Releases** have version numbers like `2025.6.0`.
 - **Pre-releases** (release candidates) have version numbers like `2026.1.0-rc1`. These are development versions used for testing before a stable release.
 
+Note that `X-rcY` is an earlier version than `X` — the `-rcY` suffix indicates it is a release candidate that preceded the final release.
+
+::: {.callout-warning}
+Pre-releases are not officially supported. Use them at your own risk and prefer a stable release for production use.
+:::
+
 Browse the [GitHub releases page](https://github.com/Deltares/Ribasim/releases) to see all available versions.
 Pre-releases are marked with a "Pre-release" label.
 
 # Install a specific Ribasim core version {#sec-core}
-
-## Windows installation script
-
-The `install.ps1` script always installs the latest stable release.
-To install a specific version, use the manual installation method below.
-
-## Manual installation
 
 Download the appropriate zip file for your operating system from the [GitHub releases page](https://github.com/Deltares/Ribasim/releases).
 Navigate to the desired version and download:
@@ -51,33 +50,35 @@ If you don't have a project set up yet, follow the initialization steps on the [
 ## uv
 
 ```sh
-uv add ribasim==2026.1.0rc1
+uv add ribasim==2026.1.0-rc1
 ```
 
 ## pixi
 
 ```sh
-pixi add --pypi ribasim==2026.1.0rc1
+pixi add --pypi ribasim==2026.1.0-rc1
 ```
+
+::: {.callout-note}
+Pre-releases are only published to [PyPI](https://pypi.org/project/ribasim/), so you must use the `--pypi` flag when installing a pre-release with pixi.
+:::
 
 ## pip
 
 ```sh
-pip install --upgrade ribasim==2026.1.0rc1
+pip install --upgrade ribasim==2026.1.0-rc1
 ```
 
-:::
-
-::: {.callout-note}
-Pre-release versions use a slightly different format in Python package managers: `2026.1.0rc1` instead of `2026.1.0-rc1` (no hyphen).
-This follows the [PEP 440](https://peps.python.org/pep-0440/) versioning standard.
-:::
+## conda
 
 ::: {.callout-important}
-Pre-releases are only published to [PyPI](https://pypi.org/project/ribasim/), not to conda-forge.
-Therefore `conda install` cannot be used for pre-release versions.
-For stable releases, all package managers (including conda) work as described on the [Installation](/getting-started/install.qmd#sec-install-python) page.
+Pre-releases are only published to [PyPI](https://pypi.org/project/ribasim/), not to conda-forge. For pre-release versions, use `uv`, `pixi`, or `pip` instead.
+
+For stable releases, see the [standard conda installation instructions](/getting-started/install.qmd#conda).
 :::
+
+:::
+
 
 # Install a specific Ribasim QGIS plugin version {#sec-qgis}
 
