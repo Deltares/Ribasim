@@ -4,23 +4,13 @@ jupyter: python3
 ---
 
 ```{python}
-#| eval: false
-from ribasim import run_ribasim
-```
-
-```{python}
-#| include: false
-%run ../../run_ribasim.py
-```
-
-```{python}
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.express as px
 import xarray as xr
-from ribasim import Model, Node
+from ribasim import Model, Node, run_ribasim
 from ribasim.nodes import (
     basin,
     flow_boundary,
@@ -28,6 +18,11 @@ from ribasim.nodes import (
     user_demand,
 )
 from shapely.geometry import Point
+```
+
+```{python}
+#| include: false
+%run ../../run_ribasim.py
 ```
 
 ```{python}

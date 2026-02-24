@@ -5,16 +5,6 @@ jupyter: python3
 
 This is an overview of example codes to set-up and run models.
 
-```{python}
-#| eval: false
-from ribasim import run_ribasim
-```
-
-```{python}
-#| include: false
-%run ../run_ribasim.py
-```
-
 # Basic model with static forcing
 
 ```{python}
@@ -31,7 +21,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from ribasim import Allocation, Model, Node, Solver
+from ribasim import Allocation, Model, Node, Solver, run_ribasim
 from ribasim.config import Experimental
 from ribasim.nodes import (
     basin,
@@ -49,6 +39,11 @@ from ribasim.nodes import (
     user_demand,
 )
 from shapely.geometry import Point
+```
+
+```{python}
+#| include: false
+%run ../run_ribasim.py
 ```
 
 ```{python}
