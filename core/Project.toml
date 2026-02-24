@@ -44,7 +44,6 @@ OrdinaryDiffEqRosenbrock = "43230ef6-c299-4910-a778-202eb28ce4ce"
 OrdinaryDiffEqSDIRK = "2d112036-d095-4a1e-ab9a-08536f3ecdbf"
 OrdinaryDiffEqTsit5 = "b1df2697-797e-41e3-8120-5422d3b24e4a"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
-Preferences = "21216c6a-2e73-6563-6e65-726566657250"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 SQLite = "0aa819cd-b072-5ff4-a722-6bc24af294d9"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
@@ -95,7 +94,6 @@ OrdinaryDiffEqRosenbrock = "1.22"
 OrdinaryDiffEqSDIRK = "1.11"
 OrdinaryDiffEqTsit5 = "1.9"
 PrecompileTools = "1.2.1"
-Preferences = "1.4.3"
 Printf = "1"
 SQLite = "1.5.1"
 SciMLBase = "2.36"
@@ -111,6 +109,3 @@ julia = "1.12"
 
 [preferences.LinearSolve]
 LoadMKL_JLL = false
-
-[preferences.Ribasim]
-precompile_workload = false
