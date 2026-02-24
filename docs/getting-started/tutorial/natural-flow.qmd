@@ -3,16 +3,6 @@ title: Natural flow
 jupyter: python3
 ---
 
-```{python}
-#| eval: false
-from ribasim import run_ribasim
-```
-
-```{python}
-#| include: false
-%run ../../run_ribasim.py
-```
-
 # Introduction
 Welcome to Ribasim!
 This tutorial will help you get started with the basics of using Ribasim for river basin simulation.
@@ -63,9 +53,14 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 import xarray as xr
-from ribasim import Model, Node
+from ribasim import Model, Node, run_ribasim
 from ribasim.nodes import basin, flow_boundary, tabulated_rating_curve
 from shapely.geometry import Point
+```
+
+```{python}
+#| include: false
+%run ../../run_ribasim.py
 ```
 
 ### Setup paths and model configuration
