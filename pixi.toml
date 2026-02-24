@@ -29,14 +29,14 @@ install = { depends-on = [
     "initialize-julia",
 ] }
 # Julia
-update-registry-julia = { cmd = "julia --check-bounds=yes --eval='using Pkg; Registry.update()'" }
-update-manifest-julia = { cmd = "julia --check-bounds=yes --project utils/update-manifest.jl" }
-instantiate-julia = { cmd = "julia --project --check-bounds=yes --eval='using Pkg; Pkg.instantiate()'" }
+update-registry-julia = { cmd = "julia --eval='using Pkg; Registry.update()'" }
+update-manifest-julia = { cmd = "julia --project utils/update-manifest.jl" }
+instantiate-julia = { cmd = "julia --project --eval='using Pkg; Pkg.instantiate()'" }
 initialize-julia = { depends-on = [
     "update-registry-julia",
     "instantiate-julia",
 ] }
-initialize-julia-test = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"skip\"])'", depends-on = [
+initialize-julia-test = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"skip\"])'", depends-on = [
     "initialize-julia",
 ] }
 # Docs
@@ -74,7 +74,7 @@ lint = { depends-on = [
     "mypy-ribasim-qgis",
 ] }
 # Build
-build = { "cmd" = "julia --project --check-bounds=yes build/build.jl", depends-on = [
+build = { "cmd" = "julia --project build/build.jl", depends-on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
@@ -88,7 +88,7 @@ s3-upload = { cmd = "python utils/s3_upload.py {{ source }} {{ destination }}", 
     "destination",
 ] }
 test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitxml=report.xml build/tests"
-test-ribasim-core = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false)'", depends-on = [
+test-ribasim-core = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(allow_reresolve=false)'", depends-on = [
     "generate-testmodels",
 ] }
 test-ribasim-migration = { cmd = "pytest --numprocesses=4 -m regression python/ribasim/tests", depends-on = [
@@ -97,10 +97,10 @@ test-ribasim-migration = { cmd = "pytest --numprocesses=4 -m regression python/r
         "hws_migration_test/",
     ] },
 ] }
-test-ribasim-core-cov = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, coverage=true)'", depends-on = [
+test-ribasim-core-cov = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(allow_reresolve=false, coverage=true)'", depends-on = [
     "generate-testmodels",
 ] }
-test-ribasim-regression = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"regression\"])'", depends-on = [
+test-ribasim-regression = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"regression\"])'", depends-on = [
     "generate-testmodels",
     "test-ribasim-migration",
     { task = "s3-download", args = [
@@ -120,14 +120,14 @@ upload-node-icons = "python utils/write_node_icons.py --upload"
 tests = { depends-on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 delwaq = { cmd = "pytest --basetemp=python/ribasim/ribasim/delwaq/model python/ribasim/tests/test_delwaq.py" }
 gen-delwaq = { cmd = "python python/ribasim/ribasim/delwaq/generate.py" }
-model-integration-test = { cmd = "julia --project=core --check-bounds=yes --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"integration\"])'", depends-on = [
+model-integration-test = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"integration\"])'", depends-on = [
     { task = "s3-download", args = [
         "hws_2025_4_0/",
         "hws/",
     ] },
 ] }
 # Codegen
-codegen = { cmd = "julia --project --check-bounds=yes utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends-on = [
+codegen = { cmd = "julia --project utils/gen_python.jl && ruff format python/ribasim/ribasim/schemas.py python/ribasim/ribasim/validation.py", depends-on = [
     "initialize-julia",
 ], inputs = [
     "core",
@@ -157,14 +157,14 @@ test-ribasim-qgis = { cmd = "python ribasim_qgis/scripts/run_qgis_ui_tests.py", 
 ] }
 mypy-ribasim-qgis = "mypy ribasim_qgis"
 # Run
-ribasim-core = { cmd = "julia --project=core --check-bounds=yes -e 'using Ribasim; Ribasim.main(ARGS)'", depends-on = [
+ribasim-core = { cmd = "julia --project=core -e 'using Ribasim; Ribasim.main(ARGS)'", depends-on = [
     "initialize-julia",
 ] }
-ribasim-core-testmodels = { cmd = "julia --project --check-bounds=yes utils/testmodelrun.jl", depends-on = [
+ribasim-core-testmodels = { cmd = "julia --project utils/testmodelrun.jl", depends-on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
-write-allocation-problems = { cmd = "julia --project --check-bounds=yes utils/write_allocation_problems.jl", depends-on = [
+write-allocation-problems = { cmd = "julia --project utils/write_allocation_problems.jl", depends-on = [
     "generate-testmodels",
     "initialize-julia",
 ] }
@@ -213,7 +213,7 @@ depends-on = [
 ]
 
 [tasks.generate-sbom-ribasim-core]
-cmd = "julia --project --check-bounds=yes -- utils/generate-sbom.jl"
+cmd = "julia --project -- utils/generate-sbom.jl"
 depends-on = ["initialize-julia"]
 inputs = ["core/Project.toml"]
 outputs = ["Ribasim.spdx.json"]
