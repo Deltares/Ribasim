@@ -1,8 +1,6 @@
 using TOML
 using LibGit2
 using JuliaC
-using Preferences: set_preferences!, delete_preferences!
-using UUIDs: UUID
 import Pkg
 
 function (@main)(_)::Cint
@@ -10,12 +8,6 @@ function (@main)(_)::Cint
     license_file = "LICENSE"
     output_dir = "build/ribasim"
     git_repo = "."
-
-    # Set release options in core/LocalPreferences.toml
-    uuid = UUID("aac5e3d9-0b8f-4d4f-8241-b1a7a9632635")  # Ribasim
-    Pkg.activate("core")
-    set_preferences!(uuid, "precompile_workload" => true; force = true)
-    Pkg.activate(".")
 
     rm(output_dir; force = true, recursive = true)
 
@@ -57,11 +49,6 @@ function (@main)(_)::Cint
     ribasim = Sys.iswindows() ? "ribasim.exe" : "ribasim"
     mkpath("build/ribasim/bin")
     cp("build/cli/target/release/$ribasim", "build/ribasim/bin/$ribasim"; force = true)
-
-    # Restore development options in core/LocalPreferences.toml
-    Pkg.activate("core")
-    delete_preferences!(uuid, "precompile_workload"; force = true)
-    Pkg.activate(".")
 
     return 0
 end
