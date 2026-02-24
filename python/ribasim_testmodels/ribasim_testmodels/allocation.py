@@ -1624,7 +1624,8 @@ def level_demand_with_rating_curve_model() -> Model:
             tabulated_rating_curve.Static(
                 level=[1.0, 5.0],
                 flow_rate=[0.0, 2e-4],
-                control_state="Ribasim.allocation",
+                control_state=["allocation", "allocation"],
+                allocation_controlled=[True, True],
             )
         ],
     )
@@ -1639,5 +1640,89 @@ def level_demand_with_rating_curve_model() -> Model:
     model.link.add(bsn, trc)
     model.link.add(trc, trm)
     model.link.add(ld, bsn)
+
+    return model
+
+
+def outlet_allocation_discrete_control_model() -> Model:
+    """LevelBoundary supplies water via an allocation-controlled Outlet to a Basin with a LevelDemand.
+
+    DiscreteControl switches at basin level 0.5:
+    - Below 0.5: allocation-controlled (allocation decides flow)
+    - Above 0.5: prescribed flow
+
+    Topology:
+        level_boundary --> outlet --> basin <-- level_demand
+                             ^          |
+                             |          v
+                        discrete_control
+    """
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(allocation=True),
+    )
+
+    # Constant upstream water level as supply source
+    lb1 = model.level_boundary.add(
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [level_boundary.Static(level=[1.0])],
+    )
+
+    # DiscreteControl: switch at basin level 0.5
+    dc2 = model.discrete_control.add(
+        Node(2, Point(1, 1), subnetwork_id=2),
+        [
+            discrete_control.Variable(
+                compound_variable_id=[1],
+                listen_node_id=[4],
+                variable=["level"],
+            ),
+            discrete_control.Condition(
+                compound_variable_id=[1],
+                condition_id=[1],
+                threshold_high=[0.5],
+            ),
+            discrete_control.Logic(
+                control_state=["allocation high", "allocation low"],
+                truth_state=["F", "T"],
+            ),
+        ],
+    )
+
+    # Outlet with two control states
+    outlet3 = model.outlet.add(
+        Node(3, Point(1, 0), subnetwork_id=2),
+        [
+            outlet.Static(
+                flow_rate=[0.0, 1e-4],
+                max_flow_rate=[4e-4, 2e-4],
+                control_state=["allocation high", "allocation low"],
+                allocation_controlled=[True, True],
+            )
+        ],
+    )
+
+    # Basin: starts nearly empty, should be filled by allocation
+    basin4 = model.basin.add(
+        Node(4, Point(2, 0), subnetwork_id=2),
+        [
+            basin.Profile(area=1000.0, level=[0.0, 2.0]),
+            basin.State(level=[0.1]),
+        ],
+    )
+
+    # LevelDemand: Basin should be completely filled (level=1.0)
+    ld5 = model.level_demand.add(
+        Node(5, Point(2, 1), subnetwork_id=2),
+        [level_demand.Static(min_level=[1.0], max_level=[1.0], demand_priority=1)],
+    )
+
+    model.link.add(lb1, outlet3)
+    model.link.add(outlet3, basin4)
+    model.link.add(dc2, outlet3)
+    model.link.add(ld5, basin4)
 
     return model

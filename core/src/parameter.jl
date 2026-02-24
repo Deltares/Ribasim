@@ -259,6 +259,7 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     sources::OrderedDict{Int32, NodeID} = OrderedDict()
     secondary_network_demand::OrderedDict{Tuple{NodeID, NodeID}, Vector{Float64}} =
         OrderedDict()
+    flow_links_subnetwork::Vector{Tuple{NodeID, NodeID}} = Vector{Tuple{NodeID, NodeID}}()
     scaling::ScalingFactors = ScalingFactors()
     temporary_constraints::Vector{JuMP.ConstraintRef} = JuMP.ConstraintRef[]
     route_priority_expression::JuMP.AffExpr = JuMP.AffExpr()

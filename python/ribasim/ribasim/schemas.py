@@ -323,6 +323,7 @@ class TabulatedRatingCurveStaticSchema(_BaseSchema):
     flow_rate: float = pa.Field(nullable=False)
     max_downstream_level: float = pa.Field(nullable=True)
     control_state: pd.StringDtype = pa.Field(nullable=True)
+    allocation_controlled: pd.BooleanDtype = pa.Field(nullable=True)
 
 
 class TabulatedRatingCurveTimeSchema(_BaseSchema):

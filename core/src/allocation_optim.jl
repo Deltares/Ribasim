@@ -1039,7 +1039,7 @@ function save_flows!(
     return nothing
 end
 
-# Set the flow rate of allocation controlled pumps and outlets to
+# Set the flow rate of allocation controlled pumps, outlets and rating curves to
 # their flow determined by allocation
 function apply_control_from_allocation!(
         node::Union{Pump, Outlet, TabulatedRatingCurve},
@@ -1100,14 +1100,37 @@ function delete_control_constraints!(
     return nothing
 end
 
+function update_flow_variable_bounds!(
+        allocation_model::AllocationModel,
+        p_independent::ParametersIndependent,
+    )::Nothing
+    (; problem, scaling, flow_links_subnetwork) = allocation_model
+    flow = problem[:flow]
+    for flow_link in flow_links_subnetwork
+        flow_var = flow[flow_link]
+        JuMP.set_lower_bound(
+            flow_var,
+            flow_capacity_lower_bound(flow_link, p_independent) / scaling.flow,
+        )
+        JuMP.set_upper_bound(
+            flow_var,
+            flow_capacity_upper_bound(flow_link, p_independent) / scaling.flow,
+        )
+    end
+    return nothing
+end
+
 function update_control_states!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
     )::Nothing
     delete_control_constraints!(allocation_model, :pump)
     delete_control_constraints!(allocation_model, :outlet)
+    delete_control_constraints!(allocation_model, :tabulated_rating_curve_constraint)
     add_pump!(allocation_model, p_independent)
     add_outlet!(allocation_model, p_independent)
+    add_tabulated_rating_curve!(allocation_model, p_independent)
+    update_flow_variable_bounds!(allocation_model, p_independent)
     return nothing
 end
 

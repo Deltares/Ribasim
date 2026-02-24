@@ -224,6 +224,8 @@ def tabulatedratingcurvestaticschema_migration(
     if schema_version < 9:
         check_inactive(df, name="TabulatedRatingCurve / static")
         df.drop(columns="active", inplace=True, errors="ignore")
+    if schema_version < 11:
+        df = _migrate_allocation_controlled(df)
     return df
 
 

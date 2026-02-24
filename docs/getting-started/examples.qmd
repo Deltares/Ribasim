@@ -1005,7 +1005,7 @@ ax.set_ylabel("flow [m³s⁻¹]");
 This example demonstrates how a [TabulatedRatingCurve](/reference/node/tabulated-rating-curve.qmd) can be controlled by [allocation](/concept/allocation.qmd).
 A Basin drains through a TabulatedRatingCurve into a Terminal.
 A LevelDemand on the Basin tells the allocation algorithm to maintain the Basin level between 3 and 4 m.
-The TabulatedRatingCurve has `control_state="Ribasim.allocation"` and a negative `route_priority`, so under normal conditions it follows the physical $Q(h)$ curve, but allocation reduces the flow when the Basin level drops toward the minimum level demand.
+The TabulatedRatingCurve is allocation controlled and has a negative `route_priority`, so under normal conditions it follows the physical $Q(h)$ curve, but allocation reduces the flow when the Basin level drops toward the minimum level demand.
 
 ```{python}
 model = Model(
@@ -1029,7 +1029,8 @@ trc = model.tabulated_rating_curve.add(
         tabulated_rating_curve.Static(
             level=[0.0, 1.0, 5.0],
             flow_rate=[0.0, 0.0, 2e-3],
-            control_state="Ribasim.allocation",
+            control_state="allocation",
+            allocation_controlled = True
         )
     ],
 )
