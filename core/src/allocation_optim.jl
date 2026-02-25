@@ -1108,6 +1108,7 @@ function update_flow_variable_bounds!(
     flow = problem[:flow]
     for flow_link in flow_links_subnetwork
         flow_var = flow[flow_link]
+        JuMP.is_fixed(flow_var) && continue
         JuMP.set_lower_bound(
             flow_var,
             flow_capacity_lower_bound(flow_link, p_independent) / scaling.flow,
