@@ -3,7 +3,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from ribasim.config import Experimental, Interpolation, Results
+from ribasim.config import Experimental, Interpolation
 from ribasim.geometry.node import Node
 from ribasim.input_base import TableModel
 from ribasim.model import Model, Solver
@@ -277,7 +277,6 @@ def tabulated_rating_curve_control_model() -> Model:
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
-        results=Results(format="netcdf"),
         input_dir=Path("input"),
         experimental=Experimental(concentration=True),
     )

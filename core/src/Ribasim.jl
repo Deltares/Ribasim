@@ -101,10 +101,6 @@ using Moshi.Match: @match
 # see the docs: https://ribasim.org/dev/bmi.html
 import BasicModelInterface as BMI
 
-# Reading and writing optionally compressed Arrow tables
-import Arrow
-import TranscodingStreams
-using CodecZstd: ZstdCompressor
 using DelimitedFiles: writedlm
 
 # Reading GeoPackage files, which are SQLite databases with spatial data
@@ -150,7 +146,7 @@ using Accessors: @set, @reset
 # Iteration utilities, used to partition and group tables.
 import IterTools
 
-# Tables interface that works with either SQLite or Arrow tables.
+# Tables interface that works with SQLite tables.
 using Tables: Tables, AbstractRow, columntable
 
 # Wrapper around a vector of structs to easily retrieve the same field from all elements.

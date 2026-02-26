@@ -32,7 +32,6 @@ from ribasim_testmodels.allocation import (
 )
 from ribasim_testmodels.backwater import backwater_model
 from ribasim_testmodels.basic import (
-    basic_arrow_model,
     basic_basin_both_area_and_storage_model,
     basic_basin_only_area_model,
     basic_basin_only_storage_model,
@@ -99,7 +98,6 @@ __all__ = [
     "allocation_off_flow_demand_model",
     "allocation_training_model",
     "backwater_model",
-    "basic_arrow_model",
     "basic_basin_both_area_and_storage_model",
     "basic_basin_only_area_model",
     "basic_basin_only_storage_model",

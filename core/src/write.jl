@@ -1,148 +1,63 @@
 """
     write_results(model::Model)::Model
 
-Write all results to the Arrow files as specified in the model configuration.
+Write all results to NetCDF files as specified in the model configuration.
 """
 function write_results(model::Model)::Model
-    (; format) = model.config.results
-    @info "Writing results."
-
-    if format == "arrow"
-        write_results_arrow(model)
-    else
-        write_results_netcdf(model)
-    end
-
-    @debug "Wrote results."
-    return model
-end
-
-"""
-    write_results_arrow(model::Model)::Model
-
-Write all results to the Arrow files as specified in the model configuration.
-"""
-function write_results_arrow(model::Model)::Model
-    (; config) = model
-    (; results, experimental) = model.config
-
-    compress = get_compressor(results)
-
-    # state
-    table = basin_state_data(model)
-    path = results_path(config, RESULTS_FILENAME.basin_state)
-    write_arrow(path, table, compress)
-
-    # basin
-    table = basin_data(model)
-    path = results_path(config, RESULTS_FILENAME.basin)
-    write_arrow(path, table, compress)
-
-    # flow
-    table = flow_data(model)
-    path = results_path(config, RESULTS_FILENAME.flow)
-    write_arrow(path, table, compress)
-
-    # concentrations
-    if experimental.concentration
-        table = concentration_data(model)
-        path = results_path(config, RESULTS_FILENAME.concentration)
-        write_arrow(path, table, compress)
-    end
-
-    # discrete control
-    table = discrete_control_data(model)
-    path = results_path(config, RESULTS_FILENAME.control)
-    write_arrow(path, table, compress)
-
-    # allocation
-    table = allocation_data(model)
-    path = results_path(config, RESULTS_FILENAME.allocation)
-    write_arrow(path, table, compress)
-
-    # allocation flow
-    table = allocation_flow_data(model)
-    path = results_path(config, RESULTS_FILENAME.allocation_flow)
-    write_arrow(path, table, compress)
-
-    # allocation control
-    table = allocation_control_data(model)
-    path = results_path(config, RESULTS_FILENAME.allocation_control)
-    write_arrow(path, table, compress)
-
-    # exported levels
-    table = subgrid_level_data(model)
-    path = results_path(config, RESULTS_FILENAME.subgrid_level)
-    write_arrow(path, table, compress)
-
-    # solver stats
-    table = solver_stats_data(model)
-    path = results_path(config, RESULTS_FILENAME.solver_stats)
-    write_arrow(path, table, compress)
-
-    return model
-end
-
-"""
-    write_results_netcdf(model::Model)::Model
-
-Write all results to the Arrow files as specified in the model configuration.
-"""
-function write_results_netcdf(model::Model)::Model
     (; config) = model
     (; experimental) = model.config
 
     # state
     data = basin_state_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.basin_state)
-    write_netcdf(path, data, nothing)
+    write_netcdf(path, data)
 
     # basin
     data = basin_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.basin)
-    write_netcdf(path, data, nothing)
+    write_netcdf(path, data)
 
     # flow
     data = flow_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.flow)
-    write_netcdf(path, data, nothing)
+    write_netcdf(path, data)
 
     # concentrations
     if experimental.concentration
         data = concentration_data(model; table = false)
         path = results_path(config, RESULTS_FILENAME.concentration)
-        write_netcdf(path, data, nothing)
+        write_netcdf(path, data)
     end
 
     # discrete control
     data = discrete_control_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.control)
-    write_netcdf(path, data, nothing)
+    write_netcdf(path, data)
 
     # allocation
     data = allocation_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.allocation)
-    write_netcdf(path, data, nothing)
+    write_netcdf(path, data)
 
     # allocation flow
     data = allocation_flow_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.allocation_flow)
-    write_netcdf(path, data, nothing)
+    write_netcdf(path, data)
 
     # allocation control
     data = allocation_control_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.allocation_control)
-    write_netcdf(path, data, nothing)
+    write_netcdf(path, data)
 
     # exported levels
     data = subgrid_level_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.subgrid_level)
-    write_netcdf(path, data, nothing)
+    write_netcdf(path, data)
 
     # solver stats
     data = solver_stats_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.solver_stats)
-    write_netcdf(path, data, nothing)
+    write_netcdf(path, data)
 
     return model
 end
@@ -812,33 +727,10 @@ function subgrid_level_data(model::Model; table::Bool = true)
     return (; time, subgrid_id, subgrid_level)
 end
 
-"Write a result table to disk as an Arrow file"
-function write_arrow(
-        path::AbstractString,
-        table::NamedTuple,
-        compress::Union{ZstdCompressor, Nothing},
-    )::Nothing
-    if haskey(table, :time)
-        # ensure DateTime is encoded in a compatible manner
-        # https://github.com/apache/arrow-julia/issues/303
-        table = merge(table, (; time = convert.(Arrow.DATETIME, table.time)))
-    end
-    metadata = ["ribasim_version" => RIBASIM_VERSION]
-    mkpath(dirname(path))
-    try
-        Arrow.write(path, table; compress, metadata)
-    catch e
-        @error "Failed to write results, file may be locked." path
-        rethrow(e)
-    end
-    return nothing
-end
-
-"Write a result table to disk as an Arrow file"
+"Write a result table to disk as a NetCDF file"
 function write_netcdf(
         path::AbstractString,
         data::NamedTuple,
-        compress::Union{ZstdCompressor, Nothing},
     )::Nothing
     mkpath(dirname(path))
     # Don't write empty files
@@ -861,18 +753,6 @@ function write_netcdf(
     return nothing
 end
 
-"Get the compressor based on the Results section"
-function get_compressor(results::Results)::Union{ZstdCompressor, Nothing}
-    compressor = results.compression
-    level = results.compression_level
-    if compressor
-        c = ZstdCompressor(; level)
-        TranscodingStreams.initialize(c)
-    else
-        c = nothing
-    end
-    return c
-end
 
 function output_basin_profiles(
         all_levels::Vector{Vector{Float64}},

@@ -217,13 +217,6 @@ def basic_model() -> Model:
     return model
 
 
-def basic_arrow_model() -> Model:
-    model = basic_model()
-    model.basin.profile.filepath = Path("profile.arrow")
-    model.input_dir = Path("input")
-    return model
-
-
 def basic_transient_model() -> Model:
     """Update the basic model with transient forcing."""
     model = basic_model()
