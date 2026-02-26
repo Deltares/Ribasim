@@ -668,7 +668,7 @@ level_boundary17 = model.level_boundary.add(
 )
 ```
 
-Setup outlets with allocation control. Note `control_state="Ribasim.allocation"` which tells the allocation algorithm to control these nodes:
+Setup outlets with allocation control. Note `allocation_controlled=True` which tells the allocation algorithm to control these nodes:
 
 ```{python}
 # Inlet from boezem to polder 4
@@ -676,7 +676,7 @@ outlet5 = model.outlet.add(
     Node(5, Point(2, 1), name="inlaat"),
     [
         outlet.Static(
-            control_state="Ribasim.allocation",
+            allocation_controlled=True,
             flow_rate=[0.0],
             max_flow_rate=5.0,
         )
@@ -688,7 +688,7 @@ outlet13 = model.outlet.add(
     Node(13, Point(3, 2), name="inlaat/uitlaat"),
     [
         outlet.Static(
-            control_state="Ribasim.allocation",
+            allocation_controlled=True,
             flow_rate=[0.0],
             max_flow_rate=5.0
         )
@@ -699,7 +699,7 @@ outlet13 = model.outlet.add(
 outlet10 = model.outlet.add(
     Node(10, Point(5.0, 0.0)),
     [outlet.Static(
-        control_state="Ribasim.allocation",
+        allocation_controlled=True,
         flow_rate=[0.0],
         max_flow_rate=10
     )],
@@ -708,7 +708,7 @@ outlet10 = model.outlet.add(
 outlet12 = model.outlet.add(
     Node(12, Point(1.0, 0)),
     [outlet.Static(
-        control_state="Ribasim.allocation",
+        allocation_controlled=True,
         flow_rate=[0.0],
         max_flow_rate=10.0)],
 )
@@ -721,7 +721,7 @@ pump7 = model.pump.add(
     Node(7, Point(4, 1), name="drainage pumping station"),
     [
         pump.Static(
-            control_state="Ribasim.allocation",
+            allocation_controlled=True,
             flow_rate=[0.0],
             max_flow_rate=20.0,
         )
@@ -1000,7 +1000,7 @@ ax.set_ylabel("flow [m³s⁻¹]");
 This example demonstrates how a [TabulatedRatingCurve](/reference/node/tabulated-rating-curve.qmd) can be controlled by [allocation](/concept/allocation.qmd).
 A Basin drains through a TabulatedRatingCurve into a Terminal.
 A LevelDemand on the Basin tells the allocation algorithm to maintain the Basin level between 3 and 4 m.
-The TabulatedRatingCurve has `control_state="Ribasim.allocation"` and a negative `route_priority`, so under normal conditions it follows the physical $Q(h)$ curve, but allocation reduces the flow when the Basin level drops toward the minimum level demand.
+The TabulatedRatingCurve is allocation controlled and has a negative `route_priority`, so under normal conditions it follows the physical $Q(h)$ curve, but allocation reduces the flow when the Basin level drops toward the minimum level demand.
 
 ```{python}
 model = Model(
@@ -1024,7 +1024,8 @@ trc = model.tabulated_rating_curve.add(
         tabulated_rating_curve.Static(
             level=[0.0, 1.0, 5.0],
             flow_rate=[0.0, 0.0, 2e-3],
-            control_state="Ribasim.allocation",
+            control_state="allocation",
+            allocation_controlled = True
         )
     ],
 )

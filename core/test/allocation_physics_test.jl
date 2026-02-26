@@ -98,6 +98,7 @@ end
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
 
+
     @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate atol = 8.0e-4
 end
 
@@ -259,6 +260,7 @@ end
     basin_results = DataFrame(Ribasim.basin_data(model))
     level_basin_1 = filter(:node_id => ==(1), basin_results).level
     min_level = 3.0
+
     # find index of first level close to min_level demand of 3 m
     idx = findfirst(e -> abs(e - min_level) <= 1.0e-1, level_basin_1)
 
@@ -269,4 +271,32 @@ end
 
     # the flow near min_level should be close to 0
     @test all(≈(0.0; atol = 1.0e-4), flow_link_1[(idx + 1):end])
+end
+
+
+@testitem "switch allocation controlled states" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/outlet_allocation_discrete_control/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    flow_results = DataFrame(Ribasim.allocation_flow_data(model))
+    basin_results = DataFrame(Ribasim.basin_data(model))
+
+    outlet_flow = filter(:link_id => ==(2), flow_results).flow_rate
+    basin_level = filter(:node_id => ==(4), basin_results).level
+
+    # Below level 0.5: "allocation high" state with max_flow_rate = 4e-4
+    below = basin_level .< 0.5
+    @test all(isapprox.(outlet_flow[below], 4.0e-4; atol = 1.0e-5))
+
+    # Above level 0.5: "allocation low" state with max_flow_rate = 2e-4
+    above = basin_level .>= 0.5
+    @test all(outlet_flow[above] .≤ 2.0e-4 + 1.0e-5)
 end

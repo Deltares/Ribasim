@@ -257,6 +257,7 @@ class OutletStaticSchema(_BaseSchema):
     min_upstream_level: float = pa.Field(nullable=True)
     max_downstream_level: float = pa.Field(nullable=True)
     control_state: pd.StringDtype = pa.Field(nullable=True)
+    allocation_controlled: pd.BooleanDtype = pa.Field(nullable=True)
 
 
 class OutletTimeSchema(_BaseSchema):
@@ -301,6 +302,7 @@ class PumpStaticSchema(_BaseSchema):
     min_upstream_level: float = pa.Field(nullable=True)
     max_downstream_level: float = pa.Field(nullable=True)
     control_state: pd.StringDtype = pa.Field(nullable=True)
+    allocation_controlled: pd.BooleanDtype = pa.Field(nullable=True)
 
 
 class PumpTimeSchema(_BaseSchema):
@@ -321,6 +323,7 @@ class TabulatedRatingCurveStaticSchema(_BaseSchema):
     flow_rate: float = pa.Field(nullable=False)
     max_downstream_level: float = pa.Field(nullable=True)
     control_state: pd.StringDtype = pa.Field(nullable=True)
+    allocation_controlled: pd.BooleanDtype = pa.Field(nullable=True)
 
 
 class TabulatedRatingCurveTimeSchema(_BaseSchema):
