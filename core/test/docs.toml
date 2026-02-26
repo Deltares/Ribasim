@@ -29,10 +29,10 @@ timestep = 86400         # optional (required if experimental.allocation = true)
 
 [allocation.route_priority]
 level_boundary = 1000       # optional, default 1000
-basin = 2000                # optional, default 2000
+basin = 0                   # optional, default 0
 manning_resistance = 10     # optional, default 10
 linear_resistance = 20      # optional, default 20
-tabulated_rating_curve = -5000 # optional, default -5000
+tabulated_rating_curve = -10   # optional, default -10
 outlet = 40                 # optional, default 40
 pump = 50                   # optional, default 50
 
