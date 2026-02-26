@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 import ribasim
 import tomli
+import xarray as xr
 from pandas import DataFrame
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
@@ -387,7 +388,17 @@ def test_roundtrip_netcdf(tabulated_rating_curve_control, tmp_path):
     model2 = Model.read(model1dir / "ribasim.toml")
 
     assert (model1dir / "input/database.gpkg").is_file()
-    assert (model1dir / "input/basin-state.nc").is_file()
+    basin_state_path = model1dir / "input/basin-state.nc"
+    assert basin_state_path.is_file()
+
+    # check CF attributes in the NetCDF file
+    with xr.open_dataset(basin_state_path) as ds:
+        assert ds.attrs["Conventions"] == "CF-1.12"
+        assert ds.attrs["title"] == "Ribasim model input"
+        assert ds.attrs["references"] == "https://ribasim.org"
+        node_attrs = ds["node_id"].attrs
+        assert node_attrs["cf_role"] == "timeseries_id"
+        assert node_attrs["long_name"] == "station identification code"
 
     df1 = model1.basin.state.df
     df2 = model2.basin.state.df
