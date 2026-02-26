@@ -28,7 +28,7 @@ def test_tablename():
     assert cls.tablename() == "Link"
 
 
-def test_filepath_appears_in_toml(tmp_path):
+def test_filepath_appears_in_toml(tmp_path, basic_arrow):
     """Integration test: verify filepath is written to TOML and data to external file."""
     import tomli
 
@@ -81,3 +81,9 @@ def test_filepath_appears_in_toml(tmp_path):
         assert "level" in ds.variables, "level should be in the dataset"
         assert "area" in ds.variables, "area should be in the dataset"
         assert len(ds["level"]) == 3, "Should have 3 profile points"
+
+    # Make sure external files show up in the TOML after reading
+    assert basic_arrow.basin.profile.filepath == Path("profile.arrow")
+    basic_arrow.write(tmp_path / "test_model_arrow" / "ribasim.toml")
+    arrow_model = Model.read(tmp_path / "test_model_arrow" / "ribasim.toml")
+    assert arrow_model.basin.profile.filepath == Path("profile.arrow")
