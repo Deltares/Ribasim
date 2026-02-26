@@ -457,6 +457,9 @@ This term is added to the optimization problem after the demand objectives have 
 2. Among solutions that satisfy demands equally well, water is preferentially allocated via routes with the lowest cost
 
 Both positive and negative route priorities are supported. A negative route priority turns the minimization to a maximization of flow through that node.
+
+For how route priorities are configured in model settings, see [Usage: Allocation settings](/reference/usage.qmd#sec-allocation-settings).
+
 ### Example
 
 In @fig-subnetwork-example the water can take multiple routes from the flow boundary to user demands 14 and 17. We have set all route priorities (cost) to 0 except for outlets 3 and 8, which have a higher cost (lower priority). This results in the flow routing preferentially through the pumps, since flowing through the outlets incurs a higher penalty in the objective function due to their non-zero route priority. The results are shown in @fig-subnetwork-results.
