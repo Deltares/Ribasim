@@ -183,7 +183,7 @@ function nc_dims(file_name::String, var_name::String)::Vector{String}
         ("basin", _) => ["node_id", "time"]
         ("flow", _) => ["link_id", "time"]
         ("basin_state", _) => ["node_id"]
-        ("concentration", _) => ["substance", "node_id", "time"]
+        ("concentration", _) => ["node_id", "substance", "time"]
         ("control", _) => ["time"]
         ("allocation", _) => ["demand_priority", "node_id", "time"]
         ("allocation_flow", _) => ["link_id", "time"]
@@ -555,7 +555,7 @@ function concentration_data(model::Model; table::Bool = true)
         substance = repeat(substance; inner = nbasin, outer = ntsteps)
         node_id = repeat(node_id; outer = ntsteps * nsubstance)
     else
-        concentration = reshape(concentration, nsubstance, nbasin, ntsteps)
+        concentration = reshape(concentration, nbasin, nsubstance, ntsteps)
     end
 
     return (; time, node_id, substance, concentration)
