@@ -9,7 +9,6 @@
 build/ribasim/
 build/cli/target
 
-Manifest-*.toml
 LocalPreferences.toml
 .ipynb_checkpoints
 # Byte-compiled / optimized / DLL files

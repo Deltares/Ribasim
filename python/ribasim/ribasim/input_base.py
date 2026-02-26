@@ -615,10 +615,24 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
             raise err
         elif "time" in cols:
             ds = self.df.set_index(["time", "node_id"]).to_xarray()
+            ds["time"].attrs.update(
+                {"standard_name": "time", "axis": "T", "long_name": "time"}
+            )
         elif "node_id" in cols:
             ds = self.df.set_index(["node_id"]).to_xarray()
+            ds["node_id"].attrs.update(
+                {"cf_role": "timeseries_id", "long_name": "station identification code"}
+            )
         else:
             raise err
+
+        ds.attrs.update(
+            {
+                "Conventions": "CF-1.12",
+                "title": "Ribasim model input",
+                "references": "https://ribasim.org",
+            }
+        )
 
         # Write to NetCDF file
         ds.to_netcdf(filepath)
