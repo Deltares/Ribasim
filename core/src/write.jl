@@ -5,60 +5,64 @@ Write all results to NetCDF files as specified in the model configuration.
 """
 function write_results(model::Model)::Model
     (; config) = model
-    (; experimental) = model.config
+    (; results, experimental) = model.config
+    deflatelevel = results.compression ? results.compression_level : 0
+
+    @info "Writing results."
 
     # state
     data = basin_state_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.basin_state)
-    write_netcdf(path, data)
+    write_netcdf(path, data; deflatelevel)
 
     # basin
     data = basin_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.basin)
-    write_netcdf(path, data)
+    write_netcdf(path, data; deflatelevel)
 
     # flow
     data = flow_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.flow)
-    write_netcdf(path, data)
+    write_netcdf(path, data; deflatelevel)
 
     # concentrations
     if experimental.concentration
         data = concentration_data(model; table = false)
         path = results_path(config, RESULTS_FILENAME.concentration)
-        write_netcdf(path, data)
+        write_netcdf(path, data; deflatelevel)
     end
 
     # discrete control
     data = discrete_control_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.control)
-    write_netcdf(path, data)
+    write_netcdf(path, data; deflatelevel)
 
     # allocation
     data = allocation_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.allocation)
-    write_netcdf(path, data)
+    write_netcdf(path, data; deflatelevel)
 
     # allocation flow
     data = allocation_flow_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.allocation_flow)
-    write_netcdf(path, data)
+    write_netcdf(path, data; deflatelevel)
 
     # allocation control
     data = allocation_control_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.allocation_control)
-    write_netcdf(path, data)
+    write_netcdf(path, data; deflatelevel)
 
     # exported levels
     data = subgrid_level_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.subgrid_level)
-    write_netcdf(path, data)
+    write_netcdf(path, data; deflatelevel)
 
     # solver stats
     data = solver_stats_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.solver_stats)
-    write_netcdf(path, data)
+    write_netcdf(path, data; deflatelevel)
 
+    @debug "Wrote results."
     return model
 end
 
@@ -730,7 +734,8 @@ end
 "Write a result table to disk as a NetCDF file"
 function write_netcdf(
         path::AbstractString,
-        data::NamedTuple,
+        data::NamedTuple;
+        deflatelevel::Int = 0,
     )::Nothing
     mkpath(dirname(path))
     # Don't write empty files
@@ -747,7 +752,7 @@ function write_netcdf(
                 var_data = stack(var_data.v)
             end
             attrib = CF[var_name]
-            defVar(ds, var_name, var_data, var_dims; attrib)
+            defVar(ds, var_name, var_data, var_dims; attrib, deflatelevel)
         end
     end
     return nothing

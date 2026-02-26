@@ -151,8 +151,8 @@ end
 end
 
 @option struct Results <: TableOption
-    compression::Bool = true
-    compression_level::Int = 6
+    compression::Bool = false
+    compression_level::Int = 1
     subgrid::Bool = false
 end
 

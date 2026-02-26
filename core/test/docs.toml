@@ -60,8 +60,8 @@ specialize = false  # optional, default false
 verbosity = "info" # optional, default "info", can also be "debug", "warn" or "error"
 
 [results]
-compression = true    # optional, default true, using zstd compression
-compression_level = 6 # optional, default 6
+compression = true    # optional, default true, using deflate compression
+compression_level = 1 # optional, default 1 (0-9)
 subgrid = false       # optional, default false
 
 [experimental]

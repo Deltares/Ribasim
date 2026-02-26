@@ -91,8 +91,8 @@ The following entries can be set in the configuration in the `[results]` section
 
 entry             | type   | description
 ----------------- | ------ | -----------
-compression       | Bool   | Whether to apply compression or not.
-compression_level | Int    | Zstandard compression level. Default is 6, higher compresses more.
+compression       | Bool   | Whether to apply deflate compression or not.
+compression_level | Int    | Deflate compression level (0-9). Default is 1, higher compresses more.
 subgrid           | Bool   | Compute and output more detailed water levels.
 
 Results are written in NetCDF format with CF conventions.
