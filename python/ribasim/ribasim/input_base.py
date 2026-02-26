@@ -270,7 +270,7 @@ class FileModel(BaseModel, ABC):
             # Skip loading when lazy (internal/external is False)
             # Otherwise load data and update our values
             # If no filepath is given, assume it is expected to be loaded from the database
-            filepath = value.pop("filepath", None)
+            filepath = value.get("filepath")
             if filepath is None and internal:
                 filepath = cls.default_filepath()
             elif filepath is not None and external:
@@ -280,8 +280,8 @@ class FileModel(BaseModel, ABC):
                 return value
 
             data = cls._load(dir / filepath)
-            data.update(value)
-            return data
+            value.update(data)
+            return value
         else:
             raise ValueError(f"Invalid type of value for FileModel: {type(value)}")
 
