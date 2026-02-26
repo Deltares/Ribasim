@@ -287,7 +287,10 @@ window.Quarto = {
   <ul class="collapse">
   <li><a href="#capacities" id="toc-capacities" class="nav-link" data-scroll-target="#capacities"><span class="header-section-number">3.4.1</span> Capacities</a></li>
   </ul></li>
-  <li><a href="#route-priority" id="toc-route-priority" class="nav-link" data-scroll-target="#route-priority"><span class="header-section-number">3.5</span> Route priority</a></li>
+  <li><a href="#route-priority" id="toc-route-priority" class="nav-link" data-scroll-target="#route-priority"><span class="header-section-number">3.5</span> Route priority</a>
+  <ul class="collapse">
+  <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example"><span class="header-section-number">3.5.1</span> Example</a></li>
+  </ul></li>
   </ul></li>
   </ul>
 </nav>
@@ -732,7 +735,10 @@ Note
 <li>Demands are met first according to their priority</li>
 <li>Among solutions that satisfy demands equally well, water is preferentially allocated via routes with the lowest cost</li>
 </ol>
-<p>Both positive and negative route priorities are supported. A negative route priority turns the minimization to a maximization of flow through that node. ### Example</p>
+<p>Both positive and negative route priorities are supported. A negative route priority turns the minimization to a maximization of flow through that node.</p>
+<p>For how route priorities are configured in model settings, see <a href="../reference/usage.html#sec-allocation-settings">Usage: Allocation settings</a>.</p>
+<section id="example" class="level3" data-number="3.5.1">
+<h3 data-number="3.5.1" class="anchored" data-anchor-id="example"><span class="header-section-number">3.5.1</span> Example</h3>
 <p>In <a href="#fig-subnetwork-example" class="quarto-xref">Figure&nbsp;1</a> the water can take multiple routes from the flow boundary to user demands 14 and 17. We have set all route priorities (cost) to 0 except for outlets 3 and 8, which have a higher cost (lower priority). This results in the flow routing preferentially through the pumps, since flowing through the outlets incurs a higher penalty in the objective function due to their non-zero route priority. The results are shown in <a href="#fig-subnetwork-results" class="quarto-xref">Figure&nbsp;2</a>.</p>
 <div id="fig-subnetwork-results" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
@@ -746,6 +752,7 @@ Figure&nbsp;2: Flow rate results with a preferential routes via the pumps
 </div>
 
 
+</section>
 </section>
 </section>
 

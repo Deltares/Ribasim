@@ -575,7 +575,7 @@ window.Quarto = {
 <div class="cell-output cell-output-stdout">
 <div class="ansi-escaped-output">
 <pre><span class="ansi-green-fg ansi-bold">Precompiling</span> packages...
-   2742.5 ms<span class="ansi-green-fg">  ✓ </span>QuartoNotebookWorkerPlotsExt<span class="ansi-bright-black-fg"> (serial)</span>
+   2447.3 ms<span class="ansi-green-fg">  ✓ </span>QuartoNotebookWorkerPlotsExt<span class="ansi-bright-black-fg"> (serial)</span>
   1 dependency successfully precompiled in 3 seconds
 </pre>
 </div>
@@ -715,8 +715,9 @@ Q = \phi \cdot \min(Q_\text{allocated},\; Q(h))
 </section>
 <section id="route-priority" class="level2" data-number="3.2">
 <h2 data-number="3.2" class="anchored" data-anchor-id="route-priority"><span class="header-section-number">3.2</span> Route priority</h2>
-<p>In a typical setup you want the TabulatedRatingCurve to follow its <span class="math inline">\(Q(h)\)</span> relationship under normal conditions and only reduce flow when there is a water shortage (i.e.&nbsp;when a demand cannot be met). This is achieved by giving the TabulatedRatingCurve node a <strong>negative route priority</strong>.</p>
-<p><a href="../../concept/allocation.html#route-priority">Route priority</a> acts as a cost in the allocation optimization: higher values make feeding water through a node more expensive. A negative route priority makes it prefer to send water through this node. As a result, the flow will track the physical <span class="math inline">\(Q(h)\)</span> curve as long as there is enough water. When water is scarce and demands compete, allocation will reduce the TabulatedRatingCurve flow to satisfy higher-priority demands first.</p>
+<p>In a typical setup you want the TabulatedRatingCurve to follow its <span class="math inline">\(Q(h)\)</span> relationship under normal conditions and only reduce flow when there is a water shortage (i.e.&nbsp;when a demand cannot be met). This is achieved by giving the TabulatedRatingCurve node a <strong>negative route priority</strong> by default.</p>
+<p><a href="../../concept/allocation.html#route-priority">Route priority</a> acts as a cost in the allocation optimization: higher values make feeding water through a node more expensive. A negative route priority makes it prefer to send water through this node. As a result, the flow will track the physical <span class="math inline">\(Q(h)\)</span> curve as long as there is enough water. When water is scarce and demands compete, allocation will reduce the TabulatedRatingCurve flow to satisfy higher-priority demands first. For how route priorities are configured in the model settings, see <a href="../../reference/usage.html#sec-allocation-settings">Usage: Allocation settings</a>.</p>
+<p>If your TabulatedRatingCurve represents a diversion, you can set a positive route priority, to make sure only the needed water is diverted.</p>
 <p>For a full worked example, see <a href="../../getting-started/examples.html#allocation-controlled-tabulatedratingcurve">Allocation-controlled TabulatedRatingCurve</a> on the examples page.</p>
 
 
