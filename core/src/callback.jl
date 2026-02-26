@@ -685,22 +685,19 @@ function set_new_control_state!(
         for target_node_id in discrete_control.controlled_nodes[discrete_control_id.idx]
             set_control_params!(p, target_node_id, control_state_new)
 
-            if control_state_new == "Ribasim.allocation"
-                if target_node_id.type == NodeType.Pump
-                    pump.allocation_controlled[target_node_id.idx] = true
-                elseif target_node_id.type == NodeType.Outlet
-                    outlet.allocation_controlled[target_node_id.idx] = true
-                elseif target_node_id.type == NodeType.TabulatedRatingCurve
-                    tabulated_rating_curve.allocation_controlled[target_node_id.idx] = true
-                end
-            else
-                if target_node_id.type == NodeType.Pump
-                    pump.allocation_controlled[target_node_id.idx] = false
-                elseif target_node_id.type == NodeType.Outlet
-                    outlet.allocation_controlled[target_node_id.idx] = false
-                elseif target_node_id.type == NodeType.TabulatedRatingCurve
-                    tabulated_rating_curve.allocation_controlled[target_node_id.idx] = false
-                end
+            # Update allocation_controlled based on the new control state
+            if target_node_id.type == NodeType.Pump
+                control_state_update = pump.control_mapping[(target_node_id, control_state_new)]
+                pump.allocation_controlled[target_node_id.idx] =
+                    control_state_update.allocation_controlled
+            elseif target_node_id.type == NodeType.Outlet
+                control_state_update = outlet.control_mapping[(target_node_id, control_state_new)]
+                outlet.allocation_controlled[target_node_id.idx] =
+                    control_state_update.allocation_controlled
+            elseif target_node_id.type == NodeType.TabulatedRatingCurve
+                control_state_update = tabulated_rating_curve.control_mapping[(target_node_id, control_state_new)]
+                tabulated_rating_curve.allocation_controlled[target_node_id.idx] =
+                    control_state_update.allocation_controlled
             end
         end
 

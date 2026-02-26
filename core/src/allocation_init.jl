@@ -47,20 +47,8 @@ function add_flow!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
     )::Nothing
-    (; problem, subnetwork_id, scaling) = allocation_model
+    (; problem, subnetwork_id, scaling, flow_links_subnetwork) = allocation_model
     (; graph) = p_independent
-
-    node_ids_subnetwork = graph[].node_ids[subnetwork_id]
-    flow_links_subnetwork = Vector{Tuple{NodeID, NodeID}}()
-
-    # Sort link metadata for deterministic problem generation
-    for link_metadata in sort!(collect(values(graph.edge_data)))
-        (; type, link) = link_metadata
-        if (type == LinkType.flow) &&
-                ((link[1] ∈ node_ids_subnetwork) || (link[2] ∈ node_ids_subnetwork))
-            push!(flow_links_subnetwork, link)
-        end
-    end
 
     # Define decision variables: flow over flow links (scaling.flow * m^3/s)
     problem[:flow] = JuMP.@variable(
@@ -72,6 +60,7 @@ function add_flow!(
 
     return nothing
 end
+
 
 """
 Add flow conservation constraints for conservative nodes.
@@ -1004,6 +993,20 @@ function AllocationModel(
         end
     end
 
+    (; graph) = p_independent
+
+    node_ids_subnetwork = graph[].node_ids[subnetwork_id]
+    flow_links_subnetwork = Vector{Tuple{NodeID, NodeID}}()
+
+    # Sort link metadata for deterministic problem generation
+    for link_metadata in sort!(collect(values(graph.edge_data)))
+        (; type, link) = link_metadata
+        if (type == LinkType.flow) &&
+                ((link[1] ∈ node_ids_subnetwork) || (link[2] ∈ node_ids_subnetwork))
+            push!(flow_links_subnetwork, link)
+        end
+    end
+
     allocation_model = AllocationModel(;
         subnetwork_id,
         node_ids_in_subnetwork,
@@ -1012,6 +1015,7 @@ function AllocationModel(
         scaling,
         has_demand_priority,
         secondary_network_demand,
+        flow_links_subnetwork,
     )
 
     # Volume and flow

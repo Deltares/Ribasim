@@ -300,7 +300,7 @@ Note that periods like months or years are not of constant length in the calenda
 ## Subnetwork ID
 Nodes can only be controlled by allocation if they have a subnetwork_id. In the Node table, give for example subnetwork_id an integer value of 1 or 2.
 
-When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, besides a subnetwork_id, they must be given the special control state `Ribasim.allocation` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static).
+When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, besides a subnetwork_id, they must have `allocation_controlled` set to `true` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static).
 
 # Link {#sec-link}
 

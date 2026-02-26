@@ -329,6 +329,8 @@ parse_control_states!(::BasinForcing, args...) = nothing
 
 function initialize_control_mapping!(node::AbstractParameterNode, static::StructVector)
     isempty(static) && return
+    has_alloc_controlled = hasproperty(first(static), :allocation_controlled)
+    node_has_alloc_controlled = hasfield(typeof(node), :allocation_controlled)
     static_groups = IterTools.groupby(row -> row.node_id, static)
     static_group, static_idx = iterate(static_groups)
     for node_id in node.node_id
@@ -338,8 +340,23 @@ function initialize_control_mapping!(node::AbstractParameterNode, static::Struct
                 IterTools.groupby(row -> coalesce(row.control_state, nothing), static_group)
                 first_row = first(control_state_group)
                 control_state = first_row.control_state
+
+                # Read allocation_controlled from static data if available
+                alloc_controlled = if has_alloc_controlled
+                    coalesce(first_row.allocation_controlled, false)
+                else
+                    false
+                end
+
+                # Set the node's allocation_controlled flag if any row has it set,
+                # so we always start with allocation enabled for all allocation controlled nodes
+                if alloc_controlled && node_has_alloc_controlled
+                    node.allocation_controlled[node_id.idx] = true
+                end
+
                 ismissing(control_state) && continue
-                node.control_mapping[(node_id, control_state)] = ControlStateUpdate()
+                node.control_mapping[(node_id, control_state)] =
+                    ControlStateUpdate(; allocation_controlled = alloc_controlled)
             end
             if static_idx[1]
                 static_group, static_idx = iterate(static_groups, static_idx)
