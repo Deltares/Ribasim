@@ -77,7 +77,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-0b1189524dc19e09ab363e9b4d3e2f65.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-4cad563b89d51a7306807a9bca28adc0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -575,8 +575,8 @@ window.Quarto = {
 <div class="cell-output cell-output-stdout">
 <div class="ansi-escaped-output">
 <pre><span class="ansi-green-fg ansi-bold">Precompiling</span> packages...
-   2289.9 ms<span class="ansi-green-fg">  ✓ </span>QuartoNotebookWorkerPlotsExt<span class="ansi-bright-black-fg"> (serial)</span>
-  1 dependency successfully precompiled in 2 seconds
+   2539.0 ms<span class="ansi-green-fg">  ✓ </span>QuartoNotebookWorkerPlotsExt<span class="ansi-bright-black-fg"> (serial)</span>
+  1 dependency successfully precompiled in 3 seconds
 </pre>
 </div>
 </div>
@@ -693,7 +693,7 @@ Q = \phi f(h)
 </section>
 <section id="allocation-control" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Allocation control</h1>
-<p>A TabulatedRatingCurve can be controlled by the <a href="../../concept/allocation.html">allocation</a> algorithm. To enable this, set <code>control_state = "Ribasim.allocation"</code> in the Static table. When allocation-controlled, the flow through the TabulatedRatingCurve is no longer determined solely by the <span class="math inline">\(Q(h)\)</span> relationship; instead the allocation algorithm decides the flow rate within the physical capacity of the curve.</p>
+<p>A TabulatedRatingCurve can be controlled by the <a href="../../concept/allocation.html">allocation</a> algorithm. To enable this, set <code>allocation_controlled = True</code> in the Static table. When allocation-controlled, the flow through the TabulatedRatingCurve is no longer determined solely by the <span class="math inline">\(Q(h)\)</span> relationship; instead the allocation algorithm decides the flow rate within the physical capacity of the curve.</p>
 <section id="behavior" class="level2" data-number="3.1">
 <h2 data-number="3.1" class="anchored" data-anchor-id="behavior"><span class="header-section-number">3.1</span> Behavior</h2>
 <p>During each allocation time step the algorithm:</p>
