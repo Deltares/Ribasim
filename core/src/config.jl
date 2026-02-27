@@ -162,10 +162,10 @@ end
 
 @option struct RoutePriority <: TableOption
     level_boundary::Int32 = 1000
-    basin::Int32 = 2000
+    basin::Int32 = 0
     manning_resistance::Int32 = 10
     linear_resistance::Int32 = 20
-    tabulated_rating_curve::Int32 = -5000
+    tabulated_rating_curve::Int32 = -10
     outlet::Int32 = 40
     pump::Int32 = 50
 end

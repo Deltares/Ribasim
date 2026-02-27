@@ -539,7 +539,7 @@ class Model(FileModel, ParentModel):
             with filepath.open("rb") as f:
                 config = tomli.load(f)
 
-            config["filepath"] = filepath
+            config["filepath"] = filepath  # make sure we store the whole filepath
             directory = filepath.parent / config["input_dir"]
             context_file_loading.get()["directory"] = directory
             _init_context_var.get()["directory"] = directory  # type: ignore

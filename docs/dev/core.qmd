@@ -18,7 +18,7 @@ A more detailed sequence diagram of the simulation loop is available at the [cor
 
 ## Set the number of threads Julia will use
 
-Set the `JULIA_NUM_THREADS` variable in your environment to `auto` (linux, macos) or the number of physical cores of your machine (windows).
+Set the `JULIA_NUM_THREADS` variable in your environment to `auto` (Linux, MacOS) or the number of physical cores of your machine (Windows).
 Multiple threads are used to speed up individual models, as well as running testmodels in parallel.
 
 ## Install optional Julia libraries
@@ -36,6 +36,17 @@ pkg> add Revise
 
 Revise.jl is a library that allows you to modify code and use the changes without restarting Julia.
 You can let it start automatically by following these [instructions](https://timholy.github.io/Revise.jl/stable/config/#Using-Revise-by-default-1).
+
+
+## Add `.julia/bin` to your Path
+
+We use the [Runic](https://github.com/fredrikekre/Runic.jl) formatter and [JETLS](https://github.com/aviatesk/JETLS.jl/) language server as [Pkg apps](https://pkgdocs.julialang.org/v1/apps/). which we expect to be available on the Path.
+The JETLS VSCode extension will prompt for you to install JETLS, and `pixi run install` will install Runic.
+
+Repeating the note from the Pkg docs:
+
+- You need to manually make `~/.julia/bin` available on the PATH environment.
+- The path to the julia executable used is the same as the one used to install the app. If this julia installation gets removed, you might need to reinstall the app.
 
 ## Install Visual Studio Code (optional)
 
