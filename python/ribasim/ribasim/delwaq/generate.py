@@ -365,22 +365,13 @@ def generate(
 
     evaporate_mass = model.solver.evaporate_mass
 
-    ext = model.results_extension
-    basin_fn = model.results_path / f"basin{ext}"
+    basin_fn = model.results_path / "basin.nc"
     assert basin_fn.exists(), f"Missing results file {basin_fn}."
-    basins = (
-        pd.read_feather(basin_fn)
-        if ext == ".arrow"
-        else xr.open_dataset(basin_fn).to_dataframe().reset_index()
-    )
+    basins = xr.open_dataset(basin_fn).to_dataframe().reset_index()
 
-    flow_fn = model.results_path / f"flow{ext}"
+    flow_fn = model.results_path / "flow.nc"
     assert flow_fn.exists(), f"Missing results file {flow_fn}."
-    flows = (
-        pd.read_feather(flow_fn)
-        if ext == ".arrow"
-        else xr.open_dataset(flow_fn).to_dataframe().reset_index()
-    )
+    flows = xr.open_dataset(flow_fn).to_dataframe().reset_index()
 
     assert len(basins) > 0, "Empty basin results file."
     assert len(flows) > 0, "Empty flows results file."

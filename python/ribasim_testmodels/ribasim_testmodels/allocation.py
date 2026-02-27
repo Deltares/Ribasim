@@ -7,7 +7,6 @@ from ribasim.config import (
     Allocation,
     Experimental,
     Interpolation,
-    Results,
     Solver,
 )
 from ribasim.geometry.node import Node
@@ -162,7 +161,6 @@ def allocation_example_model() -> Model:
         crs="EPSG:28992",
         allocation=Allocation(timestep=86400),
         experimental=Experimental(concentration=True, allocation=True),
-        results=Results(format="netcdf"),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -282,7 +280,6 @@ def medium_primary_secondary_network_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-01-20",
         crs="EPSG:28992",
-        results=Results(format="netcdf"),
         allocation=Allocation(timestep=86400),
         experimental=Experimental(allocation=True),
     )
@@ -477,7 +474,6 @@ def small_primary_secondary_network_verification_model() -> Model:
         crs="EPSG:28992",
         allocation=Allocation(timestep=86400),
         experimental=Experimental(concentration=True, allocation=True),
-        results=Results(format="netcdf"),
     )
 
     basin_data: list[TableModel[Any]] = [

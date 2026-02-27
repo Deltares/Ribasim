@@ -491,13 +491,9 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         if suffix == ".nc":
             df = cls._from_netcdf(filepath)
             return {"df": df}
-        elif suffix == ".arrow":
-            df = cls._from_arrow(filepath)
-            return {"df": df}
         else:
             raise ValueError(
-                f"Unsupported file: '{filepath}'. "
-                "Only '.nc' and '.arrow' extensions are supported."
+                f"Unsupported file: '{filepath}'. Only '.nc' extension is supported."
             )
 
     def read(self) -> None:
@@ -574,12 +570,10 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
             self._write_geopackage(path)
         elif suffix == ".nc":
             self._write_netcdf(path)
-        elif suffix == ".arrow":
-            self._write_arrow(path)
         else:
             raise ValueError(
                 f"Unsupported file: '{self.filepath}'. "
-                "Only '.nc' and '.arrow' extensions are supported."
+                "Only '.nc' extension is supported."
             )
 
     def _write_geopackage(self, filepath: Path) -> None:
@@ -604,15 +598,6 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
             )
             create_index(connection, table, "node_id", unique=False)
             _set_gpkg_attribute_table(connection, table)
-
-    def _write_arrow(self, filepath: Path) -> None:
-        """Write the contents of the input to an arrow file."""
-        assert self.df is not None
-        self.df.to_feather(
-            filepath,
-            compression="zstd",
-            compression_level=6,
-        )
 
     def _write_netcdf(self, filepath: Path) -> None:
         """Write the contents of the input to a NetCDF file."""
@@ -669,10 +654,6 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
                 df = None
 
             return df
-
-    @classmethod
-    def _from_arrow(cls, path: Path) -> pd.DataFrame:
-        return pd.read_feather(path)
 
     @classmethod
     def _from_netcdf(cls, path: Path) -> pd.DataFrame:

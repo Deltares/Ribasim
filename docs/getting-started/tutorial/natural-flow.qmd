@@ -255,7 +255,7 @@ run_ribasim(toml_path)
 By default it will search for `ribasim` in the PATH, but you can supply the `ribasim_home` keyword argument which points to the Ribasim home directory: `run_ribasim(toml_path, ribasim_home="path/to/ribasim")`. Use `run_ribasim(version=True)` to check the version.
 
 ### Post-processing results
-Read the Arrow files and plot the simulated flows from different links and the levels and storages at our confluence point:
+Read the result files and plot the simulated flows from different links and the levels and storages at our confluence point:
 
 ```{python}
 ds_basin = xr.open_dataset(base_dir / "Crystal-1/results/basin.nc")

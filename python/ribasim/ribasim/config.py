@@ -98,9 +98,8 @@ class Allocation(ChildModel):
 
 
 class Results(ChildModel):
-    format: str = "netcdf"
-    compression: bool = True
-    compression_level: int = 6
+    compression: bool = False
+    compression_level: int = 1
     subgrid: bool = False
 
 

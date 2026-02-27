@@ -25,7 +25,7 @@ model = parse(toml_path, graph, substances)
 ```
 
 The resulting Ribasim model will have an updated `model.basin.concentration_external` table with the Delwaq output.
-We also store the same table in the `basin_concentration_external.arrow` file in the results folder, which can be
+We also store the same table in the `basin_concentration_external.nc` file in the results folder, which can be
 referred to using the Ribasim config file.
 
 ## Running Delwaq

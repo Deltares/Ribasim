@@ -1,5 +1,4 @@
 @testitem "config" setup = [Teamcity] begin
-    using CodecZstd: ZstdCompressor
     using Configurations: UndefKeywordError
     using Dates
 
@@ -8,25 +7,16 @@
         @test config isa Ribasim.Config
         @test config.endtime > config.starttime
         @test config.solver == Ribasim.Solver(; saveat = 3600.0)
-        @test config.results.compression
-        @test config.results.compression_level == 6
+        @test !config.results.compression
+        @test config.results.compression_level == 1
     end
 
     @testset Teamcity.TeamcityTestSet "results" begin
         o = Ribasim.Results()
         @test o isa Ribasim.Results
-        @test o.compression
-        @test o.compression_level === 6
+        @test !o.compression
+        @test o.compression_level === 1
         @test_throws MethodError Ribasim.Results(compression = "zstd")
-
-        @test Ribasim.get_compressor(
-            Ribasim.Results(; compression = true, compression_level = 2),
-        ) isa ZstdCompressor
-        @test Ribasim.get_compressor(Ribasim.Results(; compression_level = 3)) isa
-            ZstdCompressor
-        @test Ribasim.get_compressor(
-            Ribasim.Results(; compression = false, compression_level = 3),
-        ) === nothing
     end
 
     @testset Teamcity.TeamcityTestSet "docs" begin
