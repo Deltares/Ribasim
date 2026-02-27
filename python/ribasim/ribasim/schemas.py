@@ -19,7 +19,7 @@ class _BaseSchema(pa.DataFrameModel):
 
     @classmethod
     def _index_name(cls) -> str:
-        return "fid."
+        return "fid"
 
     @pa.dataframe_parser
     @classmethod
