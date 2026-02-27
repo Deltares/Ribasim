@@ -528,7 +528,8 @@ function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
     # return !errors
     for node_id in labels(graph)
         node_id.type == node_type || continue
-        for link_type in (LinkType.flow, LinkType.control, LinkType.listen)
+        # listen links are not part of the graph, only validated in python
+        for link_type in (LinkType.flow, LinkType.control)
             bounds = n_neighbor_bounds(node_name, link_type)
             n_inneighbors =
                 count(x -> true, inneighbor_labels_type(graph, node_id, link_type))
