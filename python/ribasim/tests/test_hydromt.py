@@ -16,52 +16,54 @@ from ribasim.nodes import basin
 from shapely import Point
 
 
-def test_basic_write_components(basic_arrow, tmp_path):
+def test_basic_write_components(basic, tmp_path):
     """Tests for hydromt input/output functionality.
 
     Ensures that we can write individual components of a Ribasim model.
     """
-    # A model with the profile table as external arrow file
-    model = basic_arrow
+    # A model with the profile table as external NetCDF file
+    model = basic
+    model.basin.profile.filepath = Path("profile.nc")
+    model.input_dir = Path("input")
 
     toml_path = tmp_path / "ribasim.toml"
     db_path = tmp_path / "input" / "database.gpkg"
-    arrow_path = tmp_path / "input" / "profile.arrow"
-    assert model.basin.profile.filepath == Path(arrow_path.name)
+    nc_path = tmp_path / "input" / "profile.nc"
+    assert model.basin.profile.filepath == Path(nc_path.name)
 
     # Saves only the toml file
     model.write(toml_path, toml=True, internal=False, external=False)
     assert toml_path.exists()
     assert not db_path.exists()
-    assert not arrow_path.exists()
+    assert not nc_path.exists()
     toml_path.unlink()
 
     # Saves only geopackage files without time time series data
     model.write(toml_path, toml=False, external=False)
     assert db_path.exists()
     assert not toml_path.exists()
-    assert not arrow_path.exists()
+    assert not nc_path.exists()
     db_path.unlink()
 
     # Saves only forcing files with time series data
     model.write(toml_path, toml=False, internal=False)
     assert not db_path.exists()
     assert not toml_path.exists()
-    assert arrow_path.exists()
-    arrow_path.unlink()
+    assert nc_path.exists()
+    nc_path.unlink()
 
-    # Saves individual forcing table (arrow, netcdf, etc.)
+    # Saves individual forcing table (NetCDF)
     model.basin.profile.write()
     assert not toml_path.exists()
     assert not db_path.exists()
-    assert arrow_path.exists()
-    arrow_path.unlink()
+    assert nc_path.exists()
+    nc_path.unlink()
 
     # Saves individual non-forcing table (gpkg)
     model.basin.static.write()
     assert not toml_path.exists()
     assert db_path.exists()
-    assert not arrow_path.exists()
+    assert not nc_path.exists()
     db_path.unlink()
 
 

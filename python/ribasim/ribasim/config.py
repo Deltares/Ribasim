@@ -56,10 +56,10 @@ class RoutePriority(ChildModel):
     """Specify per node type what its default route priority is."""
 
     level_boundary: int = 1000
-    basin: int = 2000
+    basin: int = 0
     manning_resistance: int = 10
     linear_resistance: int = 20
-    tabulated_rating_curve: int = -5000
+    tabulated_rating_curve: int = -10
     outlet: int = 40
     pump: int = 50
 
@@ -98,9 +98,8 @@ class Allocation(ChildModel):
 
 
 class Results(ChildModel):
-    format: str = "netcdf"
-    compression: bool = True
-    compression_level: int = 6
+    compression: bool = False
+    compression_level: int = 1
     subgrid: bool = False
 
 

@@ -7,7 +7,6 @@ from ribasim.config import (
     Allocation,
     Experimental,
     Interpolation,
-    Results,
     Solver,
 )
 from ribasim.geometry.node import Node
@@ -162,7 +161,6 @@ def allocation_example_model() -> Model:
         crs="EPSG:28992",
         allocation=Allocation(timestep=86400),
         experimental=Experimental(concentration=True, allocation=True),
-        results=Results(format="netcdf"),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -242,7 +240,7 @@ def small_primary_secondary_network_model() -> Model:
         ],
     )
     outlet_data = outlet.Static(
-        flow_rate=[3e-3], max_flow_rate=3.0, control_state="Ribasim.allocation"
+        flow_rate=[3e-3], max_flow_rate=3.0, allocation_controlled=True
     )
 
     model.outlet.add(
@@ -282,7 +280,6 @@ def medium_primary_secondary_network_model() -> Model:
         starttime="2020-01-01",
         endtime="2020-01-20",
         crs="EPSG:28992",
-        results=Results(format="netcdf"),
         allocation=Allocation(timestep=86400),
         experimental=Experimental(allocation=True),
     )
@@ -292,15 +289,15 @@ def medium_primary_secondary_network_model() -> Model:
         basin.State(level=[0.5]),
     ]
     outlet_data = outlet.Static(
-        flow_rate=[0.0], max_flow_rate=1.0, control_state="Ribasim.allocation"
+        flow_rate=[0.0], max_flow_rate=1.0, allocation_controlled=True
     )
 
     outlet_data_2 = outlet.Static(
-        flow_rate=[0.0], max_flow_rate=1e-3, control_state="Ribasim.allocation"
+        flow_rate=[0.0], max_flow_rate=1e-3, allocation_controlled=True
     )
 
     pump_data = pump.Static(
-        flow_rate=[0.0], max_flow_rate=1.0, control_state="Ribasim.allocation"
+        flow_rate=[0.0], max_flow_rate=1.0, allocation_controlled=True
     )
 
     model.level_demand.add(
@@ -477,7 +474,6 @@ def small_primary_secondary_network_verification_model() -> Model:
         crs="EPSG:28992",
         allocation=Allocation(timestep=86400),
         experimental=Experimental(concentration=True, allocation=True),
-        results=Results(format="netcdf"),
     )
 
     basin_data: list[TableModel[Any]] = [
@@ -495,7 +491,7 @@ def small_primary_secondary_network_verification_model() -> Model:
         ],
     )
     outlet_data = outlet.Static(
-        flow_rate=[3e-3], max_flow_rate=1.0, control_state="Ribasim.allocation"
+        flow_rate=[3e-3], max_flow_rate=1.0, allocation_controlled=True
     )
 
     model.outlet.add(
@@ -941,7 +937,7 @@ def cyclic_demand_model():
 
     pmp = model.pump.add(
         Node(3, Point(2, 0), subnetwork_id=2),
-        [pump.Static(flow_rate=[1.0], control_state="Ribasim.allocation")],
+        [pump.Static(flow_rate=[1.0], allocation_controlled=True)],
     )
 
     bsn2 = model.basin.add(
@@ -1012,7 +1008,7 @@ def allocation_control_model() -> Model:
         Node(2, Point(1, 0), subnetwork_id=1),
         [
             outlet.Static(
-                flow_rate=[0.0], control_state="Ribasim.allocation", max_flow_rate=[9.0]
+                flow_rate=[0.0], allocation_controlled=True, max_flow_rate=[9.0]
             )
         ],
     )
@@ -1154,7 +1150,7 @@ def drain_surplus_model() -> Model:
             outlet.Static(
                 flow_rate=[0.0],
                 max_flow_rate=[1e-3],
-                control_state="Ribasim.allocation",
+                allocation_controlled=True,
             )
         ],
     )
@@ -1185,7 +1181,7 @@ def multi_priority_flow_demand_model() -> Model:
 
     pmp = model.pump.add(
         Node(2, Point(3, 2), subnetwork_id=2),
-        [pump.Static(flow_rate=[1.0], control_state="Ribasim.allocation")],
+        [pump.Static(flow_rate=[1.0], allocation_controlled=True)],
     )
 
     tmn = model.terminal.add(Node(3, Point(3, 1), subnetwork_id=2))
@@ -1298,11 +1294,7 @@ def multiple_route_priorities_model() -> Model:
     for x in range(9, 12):
         pmp = model.pump.add(
             Node(x - 5, Point(x, 8), subnetwork_id=1),
-            [
-                pump.Static(
-                    flow_rate=0, max_flow_rate=[1.0], control_state="Ribasim.allocation"
-                )
-            ],
+            [pump.Static(flow_rate=0, max_flow_rate=[1.0], allocation_controlled=True)],
         )
 
         lb = model.level_boundary.add(
@@ -1396,18 +1388,14 @@ def polder_management_model() -> Model:
     ###Setup outlet:
     outlet10 = model.outlet.add(
         Node(10, Point(5.0, 0.0)),
-        [
-            outlet.Static(
-                control_state="Ribasim.allocation", flow_rate=[0.0], max_flow_rate=10
-            )
-        ],
+        [outlet.Static(allocation_controlled=True, flow_rate=[0.0], max_flow_rate=10)],
     )
 
     outlet12 = model.outlet.add(
         Node(12, Point(1.0, 0)),
         [
             outlet.Static(
-                control_state="Ribasim.allocation", flow_rate=[0.0], max_flow_rate=10.0
+                allocation_controlled=True, flow_rate=[0.0], max_flow_rate=10.0
             )
         ],
     )
@@ -1417,7 +1405,7 @@ def polder_management_model() -> Model:
         Node(5, Point(2, 1), name="inlaat"),
         [
             outlet.Static(
-                control_state="Ribasim.allocation",
+                allocation_controlled=True,
                 flow_rate=[0.0],
                 max_flow_rate=5.0,
             )
@@ -1427,11 +1415,7 @@ def polder_management_model() -> Model:
     # --- Outlet 13 Controlled by Allocation ---
     outlet13 = model.outlet.add(
         Node(13, Point(3, 2), name="inlaat/uitlaat"),
-        [
-            outlet.Static(
-                control_state="Ribasim.allocation", flow_rate=[0.0], max_flow_rate=5.0
-            )
-        ],
+        [outlet.Static(allocation_controlled=True, flow_rate=[0.0], max_flow_rate=5.0)],
     )
 
     ###Setup Manning resistance: Route priority to 0, ensures that this is the main water route.
@@ -1449,7 +1433,7 @@ def polder_management_model() -> Model:
         Node(7, Point(4, 1), name="drainage pumping station"),
         [
             pump.Static(
-                control_state="Ribasim.allocation",
+                allocation_controlled=True,
                 flow_rate=[0.0],
                 max_flow_rate=20.0,
             )
@@ -1560,7 +1544,7 @@ def switch_allocation_control_model() -> Model:
                 threshold_high=[1.0],
             ),
             discrete_control.Logic(
-                control_state=["Ribasim.allocation", "prescribed"],
+                control_state=["allocation", "prescribed"],
                 truth_state=["F", "T"],
             ),
         ],
@@ -1572,7 +1556,8 @@ def switch_allocation_control_model() -> Model:
             outlet.Static(
                 flow_rate=[0, 1],
                 max_flow_rate=[0.08, 0.05],
-                control_state=["Ribasim.allocation", "prescribed"],
+                control_state=["allocation", "prescribed"],
+                allocation_controlled=[True, False],
             )
         ],
     )
@@ -1583,7 +1568,8 @@ def switch_allocation_control_model() -> Model:
             outlet.Static(
                 flow_rate=[0, 0],
                 max_flow_rate=[1, 0],
-                control_state=["Ribasim.allocation", "prescribed"],
+                control_state=["allocation", "prescribed"],
+                allocation_controlled=[True, False],
             )
         ],
     )
@@ -1634,7 +1620,8 @@ def level_demand_with_rating_curve_model() -> Model:
             tabulated_rating_curve.Static(
                 level=[1.0, 5.0],
                 flow_rate=[0.0, 2e-4],
-                control_state="Ribasim.allocation",
+                control_state=["allocation", "allocation"],
+                allocation_controlled=[True, True],
             )
         ],
     )
@@ -1649,5 +1636,89 @@ def level_demand_with_rating_curve_model() -> Model:
     model.link.add(bsn, trc)
     model.link.add(trc, trm)
     model.link.add(ld, bsn)
+
+    return model
+
+
+def outlet_allocation_discrete_control_model() -> Model:
+    """LevelBoundary supplies water via an allocation-controlled Outlet to a Basin with a LevelDemand.
+
+    DiscreteControl switches at basin level 0.5:
+    - Below 0.5: allocation-controlled (allocation decides flow)
+    - Above 0.5: prescribed flow
+
+    Topology:
+        level_boundary --> outlet --> basin <-- level_demand
+                             ^          |
+                             |          v
+                        discrete_control
+    """
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(allocation=True),
+    )
+
+    # Constant upstream water level as supply source
+    lb1 = model.level_boundary.add(
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [level_boundary.Static(level=[1.0])],
+    )
+
+    # DiscreteControl: switch at basin level 0.5
+    dc2 = model.discrete_control.add(
+        Node(2, Point(1, 1), subnetwork_id=2),
+        [
+            discrete_control.Variable(
+                compound_variable_id=[1],
+                listen_node_id=[4],
+                variable=["level"],
+            ),
+            discrete_control.Condition(
+                compound_variable_id=[1],
+                condition_id=[1],
+                threshold_high=[0.5],
+            ),
+            discrete_control.Logic(
+                control_state=["allocation high", "allocation low"],
+                truth_state=["F", "T"],
+            ),
+        ],
+    )
+
+    # Outlet with two control states
+    outlet3 = model.outlet.add(
+        Node(3, Point(1, 0), subnetwork_id=2),
+        [
+            outlet.Static(
+                flow_rate=[0.0, 1e-4],
+                max_flow_rate=[4e-4, 2e-4],
+                control_state=["allocation high", "allocation low"],
+                allocation_controlled=[True, True],
+            )
+        ],
+    )
+
+    # Basin: starts nearly empty, should be filled by allocation
+    basin4 = model.basin.add(
+        Node(4, Point(2, 0), subnetwork_id=2),
+        [
+            basin.Profile(area=1000.0, level=[0.0, 2.0]),
+            basin.State(level=[0.1]),
+        ],
+    )
+
+    # LevelDemand: Basin should be completely filled (level=1.0)
+    ld5 = model.level_demand.add(
+        Node(5, Point(2, 1), subnetwork_id=2),
+        [level_demand.Static(min_level=[1.0], max_level=[1.0], demand_priority=1)],
+    )
+
+    model.link.add(lb1, outlet3)
+    model.link.add(outlet3, basin4)
+    model.link.add(dc2, outlet3)
+    model.link.add(ld5, basin4)
 
     return model

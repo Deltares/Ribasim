@@ -8,7 +8,7 @@ filters:
 
 Ribasim has a single configuration file, which is written in the [TOML](https://toml.io/)
 format. It contains settings, as well as paths to other input and output files.
-Ribasim expects the GeoPackage database [database.gpkg](/reference/usage.qmd#sec-geopackage) as well as optional Arrow input files to be available in the input_dir.
+Ribasim expects the GeoPackage database [database.gpkg](/reference/usage.qmd#sec-geopackage) as well as optional NetCDF input files to be available in the input_dir.
 
 ```{.toml include="../../core/test/docs.toml"}
 ```
@@ -91,13 +91,11 @@ The following entries can be set in the configuration in the `[results]` section
 
 entry             | type   | description
 ----------------- | ------ | -----------
-format            | String | File format, default is "netcdf" for NetCDF with CF conventions, other option is "arrow" for Apache Arrow.
-compression       | Bool   | Whether to apply compression or not.
-compression_level | Int    | Zstandard compression level. Default is 6, higher compresses more.
+compression       | Bool   | Whether to apply deflate compression or not.
+compression_level | Int    | Deflate compression level (0-9). Default is 1, higher compresses more.
 subgrid           | Bool   | Compute and output more detailed water levels.
 
-NetCDF is the default results format and recommended for new models.
-Arrow support will be removed in a future release.
+Results are written in NetCDF format with CF conventions.
 
 ## Logging settings
 
@@ -145,13 +143,12 @@ allocation        | Bool   | Whether to activate the activation layer. Replaced 
 
 
 
-# GeoPackage database and Arrow tables {#sec-geopackage}
+# GeoPackage database and NetCDF tables {#sec-geopackage}
 
 The input and output tables described below all share that they are tabular files. The Node
 and Link tables always have to be in the [GeoPackage](https://www.geopackage.org/) database file, and
-results are always written to [Apache Arrow](https://arrow.apache.org/) files, sometimes also
-known as Feather files. All other tables can either be in the database or in separate
-Arrow or NetCDF files that are listed in the TOML as described above.
+results are always written to NetCDF files. All other tables can either be in the database or in separate
+NetCDF files that are listed in the TOML as described above.
 
 For visualization, the Node and Link tables typically have associated geometries. GeoPackage
 was used since it provides a standardized way to store tables with (and without) geometry
@@ -159,30 +156,21 @@ columns in a SQLite database. If, like Ribasim, you can ignore the geometries, a
 is easy to read using SQLite libraries, which are commonly available. Furthermore GeoPackage
 can be updated in place when working on a model.
 
-NetCDF is the default and recommended format for results and external input tables. NetCDF
+NetCDF is the format used for results and external input tables. NetCDF
 files follow the [CF conventions](http://cfconventions.org/) and are particularly useful for
 large time series data. NetCDF is well suited for large tabular datasets with multi-dimensional
 arrays, and file size is kept small by using compression. For long runs, Ribasim can produce
 tables with many rows, making NetCDF an excellent choice for storing results. However, note
 that NetCDF input tables are currently [not automatically loaded in QGIS](/known_issues.qmd).
 
-Apache Arrow will be phased out
-in future releases. Arrow files can be compressed with LZ4 or Zstd compression, and support
-[dictionary encoding](https://arrow.apache.org/docs/format/Columnar.html#dictionary-encoded-layout)
-for columns with repeated values. If you're starting a new model, we recommend using NetCDF
-instead of Arrow.
-
-The Ribasim version that was used to create the results is written to each file in the
-`ribasim_version` schema metadata.
-
-## Using NetCDF or Arrow for input tables {#sec-arrow-netcdf-input}
+## Using NetCDF for input tables {#sec-netcdf-input}
 
 By default, all tables are stored in the GeoPackage database.
-However, you can manually configure to store and read data in external files. **NetCDF is the recommended format for external table files**. This is
-particularly when you quickly want to be able to switch between different time series on the same model.
+However, you can manually configure to store and read data in external files.
+This is particularly useful when you quickly want to be able to switch between different time series on the same model.
 
 
-### Writing tables to NetCDF or Arrow with Python
+### Writing tables to NetCDF with Python
 
 When building a model with the Ribasim Python API, you can specify that a table should be
 written to an external file by setting its `filepath` attribute:
@@ -211,7 +199,7 @@ model.basin.profile.filepath = Path("profile.nc")
 # Specify the input directory (where external files will be saved)
 model.input_dir = Path("input")
 
-# Write the model - this creates the TOML, database, and Arrow file
+# Write the model - this creates the TOML, database, and NetCDF file
 model.write("my_model/ribasim.toml")
 ```
 
@@ -219,10 +207,6 @@ After running this code, you'll have:
 - `my_model/ribasim.toml` - configuration file referencing the external file
 - `my_model/input/database.gpkg` - GeoPackage with Node and Link tables
 - `my_model/input/profile.nc` - NetCDF file with Basin profile data
-
-The file format is determined automatically from the file extension:
-- `.nc` for NetCDF format (recommended)
-- `.arrow` for Apache Arrow format (legacy, will be phased out)
 
 The paths are relative to the `input_dir` specified in the model configuration.
 When the model is written, these tables will be saved to the specified files rather than
@@ -316,7 +300,7 @@ Note that periods like months or years are not of constant length in the calenda
 ## Subnetwork ID
 Nodes can only be controlled by allocation if they have a subnetwork_id. In the Node table, give for example subnetwork_id an integer value of 1 or 2.
 
-When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, besides a subnetwork_id, they must be given the special control state `Ribasim.allocation` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static).
+When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, besides a subnetwork_id, they must have `allocation_controlled` set to `true` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static).
 
 # Link {#sec-link}
 

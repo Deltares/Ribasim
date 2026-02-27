@@ -89,6 +89,7 @@ module Schema
             min_upstream_level::Union{Missing, Float64}
             max_downstream_level::Union{Missing, Float64}
             control_state::Union{Missing, String}
+            allocation_controlled::Union{Missing, Bool}
         end
 
         struct Time <: Table
@@ -115,6 +116,7 @@ module Schema
             min_upstream_level::Union{Missing, Float64}
             max_downstream_level::Union{Missing, Float64}
             control_state::Union{Missing, String}
+            allocation_controlled::Union{Missing, Bool}
         end
 
         struct Time <: Table
@@ -215,6 +217,7 @@ module Schema
             flow_rate::Float64
             max_downstream_level::Union{Missing, Float64}
             control_state::Union{Missing, String}
+            allocation_controlled::Union{Missing, Bool}
         end
 
         struct Time <: Table

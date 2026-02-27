@@ -329,6 +329,8 @@ parse_control_states!(::BasinForcing, args...) = nothing
 
 function initialize_control_mapping!(node::AbstractParameterNode, static::StructVector)
     isempty(static) && return
+    has_alloc_controlled = hasproperty(first(static), :allocation_controlled)
+    node_has_alloc_controlled = hasfield(typeof(node), :allocation_controlled)
     static_groups = IterTools.groupby(row -> row.node_id, static)
     static_group, static_idx = iterate(static_groups)
     for node_id in node.node_id
@@ -338,8 +340,23 @@ function initialize_control_mapping!(node::AbstractParameterNode, static::Struct
                 IterTools.groupby(row -> coalesce(row.control_state, nothing), static_group)
                 first_row = first(control_state_group)
                 control_state = first_row.control_state
+
+                # Read allocation_controlled from static data if available
+                alloc_controlled = if has_alloc_controlled
+                    coalesce(first_row.allocation_controlled, false)
+                else
+                    false
+                end
+
+                # Set the node's allocation_controlled flag if any row has it set,
+                # so we always start with allocation enabled for all allocation controlled nodes
+                if alloc_controlled && node_has_alloc_controlled
+                    node.allocation_controlled[node_id.idx] = true
+                end
+
                 ismissing(control_state) && continue
-                node.control_mapping[(node_id, control_state)] = ControlStateUpdate()
+                node.control_mapping[(node_id, control_state)] =
+                    ControlStateUpdate(; allocation_controlled = alloc_controlled)
             end
             if static_idx[1]
                 static_group, static_idx = iterate(static_groups, static_idx)
@@ -1940,16 +1957,12 @@ function load_data(
         # the TOML specifies a file outside the database
         path = getproperty(section, kind)
         table_path = input_path(config, path)
-        # check suffix and read with Arrow or NCDatasets
+        # check suffix and read with NCDatasets
         ext = lowercase(splitext(table_path)[2])
         if ext == ".nc"
             return load_netcdf(table_path, table_type)
-        elseif ext == ".arrow"
-            bytes = read(table_path)
-            arrow_table = Arrow.Table(bytes; convert = false)
-            return arrow_columntable(arrow_table, table_type)
         else
-            error("Unsupported file format: $table_path")
+            error("Unsupported file format: $table_path. Only '.nc' is supported.")
         end
     else
         if exists(db, sql_name)
@@ -1990,38 +2003,10 @@ function sqlite_columntable(
     return nt
 end
 
-"Alternative to Tables.columntable that converts time to our own to_datetime."
-function arrow_columntable(table::Arrow.Table, T::Type{<:Table})::NamedTuple
-    nrows = length(first(table))
-    names = fieldnames(T)
-    types = fieldtypes(T)
-    vals = ntuple(i -> Vector{types[i]}(undef, nrows), length(names))
-    nt = NamedTuple{names}(vals)
-
-    for name in names
-        if name == :time
-            time_col = getproperty(table, name)
-            nt[name] .= [to_datetime(t) for t in time_col]
-        else
-            nt[name] .= getproperty(table, name)
-        end
-    end
-    return nt
-end
-
-# alternative to convert that doesn't have warntimestamp
-# https://github.com/apache/arrow-julia/issues/559
-function to_datetime(x::Arrow.Timestamp{U, nothing})::DateTime where {U}
-    x_since_epoch = Arrow.periodtype(U)(x.x)
-    ms_since_epoch = Dates.toms(x_since_epoch)
-    ut_instant = Dates.UTM(ms_since_epoch + Arrow.UNIX_EPOCH_DATETIME)
-    return DateTime(ut_instant)
-end
-
 """
     load_structvector(db::DB, config::Config, ::Type{T})::StructVector{T}
 
-Load data from Arrow or NetCDF files if available, otherwise the database.
+Load data from NetCDF files if available, otherwise the database.
 Always returns a StructVector of the given struct type T, which is empty if the table is
 not found. This function validates the schema, and enforces the required sort order.
 """

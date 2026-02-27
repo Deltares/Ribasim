@@ -24,6 +24,7 @@ from ribasim_testmodels.allocation import (
     multi_level_demand_model,
     multi_priority_flow_demand_model,
     multiple_route_priorities_model,
+    outlet_allocation_discrete_control_model,
     polder_management_model,
     small_primary_secondary_network_model,
     small_primary_secondary_network_verification_model,
@@ -32,7 +33,6 @@ from ribasim_testmodels.allocation import (
 )
 from ribasim_testmodels.backwater import backwater_model
 from ribasim_testmodels.basic import (
-    basic_arrow_model,
     basic_basin_both_area_and_storage_model,
     basic_basin_only_area_model,
     basic_basin_only_storage_model,
@@ -53,7 +53,6 @@ from ribasim_testmodels.discrete_control import (
     connector_node_flow_condition_model,
     continuous_concentration_condition_model,
     flow_condition_model,
-    invalid_ribasim_control_state_model,
     level_boundary_condition_model,
     level_range_model,
     pump_discrete_control_model,
@@ -99,7 +98,6 @@ __all__ = [
     "allocation_off_flow_demand_model",
     "allocation_training_model",
     "backwater_model",
-    "basic_arrow_model",
     "basic_basin_both_area_and_storage_model",
     "basic_basin_only_area_model",
     "basic_basin_only_storage_model",
@@ -127,7 +125,6 @@ __all__ = [
     "invalid_no_basin_model",
     "invalid_priorities_model",
     "invalid_qh_model",
-    "invalid_ribasim_control_state_model",
     "invalid_unstable_model",
     "junction_chained",
     "junction_combined",
@@ -147,6 +144,7 @@ __all__ = [
     "multi_level_demand_model",
     "multi_priority_flow_demand_model",
     "multiple_route_priorities_model",
+    "outlet_allocation_discrete_control_model",
     "outlet_continuous_control_model",
     "outlet_model",
     "pid_control_equation_model",

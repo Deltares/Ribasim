@@ -63,7 +63,6 @@ from ribasim.input_base import (
 )
 from ribasim.utils import (
     MissingOptionalModule,
-    _add_cf_attributes,
     _concat,
     _link_lookup,
     _node_lookup,
@@ -540,7 +539,7 @@ class Model(FileModel, ParentModel):
             with filepath.open("rb") as f:
                 config = tomli.load(f)
 
-            config["filepath"] = filepath
+            config["filepath"] = filepath  # make sure we store the whole filepath
             directory = filepath.parent / config["input_dir"]
             context_file_loading.get()["directory"] = directory
             _init_context_var.get()["directory"] = directory  # type: ignore
@@ -594,18 +593,6 @@ class Model(FileModel, ParentModel):
         return Path(self.filepath)
 
     @property
-    def results_extension(self) -> str:
-        """
-        Get the file extension for result files based on the configured format.
-
-        Returns
-        -------
-        str
-            The file extension ('.arrow' or '.nc').
-        """
-        return ".arrow" if self.results.format == "arrow" else ".nc"
-
-    @property
     def results_path(self) -> DirectoryPath:
         """
         Get the path to the results directory if it exists.
@@ -626,8 +613,7 @@ class Model(FileModel, ParentModel):
         results_dir = DirectoryPath(toml_path.parent / self.results_dir)
         # This only checks results that are always written.
         # Some results like allocation_flow are optional.
-        ext = self.results_extension
-        filenames = [f"basin_state{ext}", f"basin{ext}", f"flow{ext}"]
+        filenames = ["basin_state.nc", "basin.nc", "flow.nc"]
         for filename in filenames:
             if not (results_dir / filename).is_file():
                 raise FileNotFoundError(
@@ -821,19 +807,10 @@ class Model(FileModel, ParentModel):
         return uds
 
     def _add_flow(self, uds, node_lookup):
-        ext = self.results_extension
-        basin_path = self.results_path / f"basin{ext}"
-        flow_path = self.results_path / f"flow{ext}"
-        basin_df = (
-            pd.read_feather(basin_path)
-            if ext == ".arrow"
-            else xr.open_dataset(basin_path).to_dataframe().reset_index()
-        )
-        flow_df = (
-            pd.read_feather(flow_path)
-            if ext == ".arrow"
-            else xr.open_dataset(flow_path).to_dataframe().reset_index()
-        )
+        basin_path = self.results_path / "basin.nc"
+        flow_path = self.results_path / "flow.nc"
+        basin_df = xr.open_dataset(basin_path).to_dataframe().reset_index()
+        flow_df = xr.open_dataset(flow_path).to_dataframe().reset_index()
 
         # add the xugrid dimension indices to the dataframes
         link_dim = uds.grid.edge_dimension
@@ -857,8 +834,7 @@ class Model(FileModel, ParentModel):
         return uds
 
     def _add_allocation(self, uds):
-        ext = self.results_extension
-        alloc_flow_path = self.results_path / f"allocation_flow{ext}"
+        alloc_flow_path = self.results_path / "allocation_flow.nc"
 
         if not alloc_flow_path.is_file():
             raise FileNotFoundError(
@@ -866,23 +842,10 @@ class Model(FileModel, ParentModel):
                 "perhaps the model needs to be run first, or allocation is not used."
             )
 
-        if ext == ".arrow":
-            alloc_flow_df = pd.read_feather(
-                alloc_flow_path,
-                columns=[
-                    "time",
-                    "link_id",
-                    "flow_rate",
-                    "demand_priority",
-                ],
-            )
-        else:
-            alloc_flow_ds = xr.open_dataset(alloc_flow_path)
-            alloc_flow_df = (
-                alloc_flow_ds[["flow_rate", "demand_priority"]]
-                .to_dataframe()
-                .reset_index()
-            )
+        alloc_flow_ds = xr.open_dataset(alloc_flow_path)
+        alloc_flow_df = (
+            alloc_flow_ds[["flow_rate", "demand_priority"]].to_dataframe().reset_index()
+        )
 
         # add the xugrid link dimension index to the dataframe
         link_dim = uds.grid.edge_dimension
@@ -895,120 +858,3 @@ class Model(FileModel, ParentModel):
         )
 
         return uds
-
-    def to_fews(
-        self,
-        region_home: str | PathLike[str],
-        add_network: bool = True,
-        add_results: bool = True,
-    ) -> None:
-        """
-        Write the model network and results into files used by Delft-FEWS.
-
-        ** Warning: This method is experimental and is likely to change. **
-
-        To run this method, the model needs to be written to disk, and have results.
-        The Node, Link and Basin / area tables are written to shapefiles in the REGION_HOME/Config directory.
-        The results are written to NetCDF files in the REGION_HOME/Modules directory.
-        The netCDF files are NetCDF4 with CF-conventions.
-
-        Parameters
-        ----------
-        region_home: str | PathLike[str]
-            Path to the Delft-FEWS REGION_HOME directory.
-        add_network: bool, optional
-            Write shapefiles representing the network, enabled by default.
-        add_results: bool, optional
-            Write the results to NetCDF files, enabled by default.
-        """
-        region_home = DirectoryPath(region_home)
-        if add_network:
-            self._network_to_fews(region_home)
-        if add_results:
-            self._results_to_fews(region_home)
-
-    def _network_to_fews(self, region_home: DirectoryPath) -> None:
-        """Write the Node and Link tables to shapefiles for use in Delft-FEWS."""
-        df_link = self.link.df
-        df_node = self.node.df
-        assert df_link is not None
-        assert df_node is not None
-
-        df_basin_area = self.basin.area.df
-        if df_basin_area is None:
-            # Fall back to the Basin points if the area polygons are not set
-            df_basin_area = df_node[df_node["node_type"] == "Basin"]
-
-        network_dir = region_home / "Config/MapLayerFiles/{ModelId}"
-        network_dir.mkdir(parents=True, exist_ok=True)
-        link_path = network_dir / "{ModelId}Links.shp"
-        node_path = network_dir / "{ModelId}Nodes.shp"
-        basin_area_path = network_dir / "{ModelId}Areas.shp"
-
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore", "Normalized/laundered field name", RuntimeWarning
-            )
-            warnings.filterwarnings(
-                "ignore",
-                "Column names longer than 10 characters will be truncated when saved to ESRI Shapefile.",
-                UserWarning,
-            )
-            df_link.to_file(link_path)
-            df_node.to_file(node_path)
-            df_basin_area.to_file(basin_area_path)
-
-    def _results_to_fews(self, region_home: DirectoryPath) -> None:
-        """Convert the model results to NetCDF with CF-conventions for importing into Delft-FEWS."""
-        # Delft-FEWS doesn't support our UGRID from `model.to_xugrid` yet,
-        # so we convert Arrow to regular CF-NetCDF4.
-
-        ext = self.results_extension
-        basin_path = self.results_path / f"basin{ext}"
-        flow_path = self.results_path / f"flow{ext}"
-        concentration_path = self.results_path / f"concentration{ext}"
-
-        if ext == ".arrow":
-            basin_df = pd.read_feather(basin_path)
-            flow_df = pd.read_feather(flow_path)
-        else:
-            basin_df = xr.open_dataset(basin_path).to_dataframe().reset_index()
-            flow_df = xr.open_dataset(flow_path).to_dataframe().reset_index()
-
-        ds_basin = basin_df.set_index(["time", "node_id"]).to_xarray()
-        _add_cf_attributes(ds_basin, timeseries_id="node_id")
-        ds_basin["level"].attrs.update({"units": "m"})
-        ds_basin["storage"].attrs.update({"units": "m3"})
-        ds_basin["relative_error"].attrs.update({"units": "1"})
-
-        flow_rate_variables = [
-            "inflow_rate",
-            "outflow_rate",
-            "storage_rate",
-            "precipitation",
-            "evaporation",
-            "drainage",
-            "infiltration",
-            "balance_error",
-        ]
-        for var in flow_rate_variables:
-            ds_basin[var].attrs.update({"units": "m3 s-1"})
-
-        ds_flow = flow_df.set_index(["time", "link_id"]).to_xarray()
-        _add_cf_attributes(ds_flow, timeseries_id="link_id")
-        ds_flow["flow_rate"].attrs.update({"units": "m3 s-1"})
-
-        results_dir = region_home / "Modules/ribasim/{ModelId}/work/results"
-        results_dir.mkdir(parents=True, exist_ok=True)
-        ds_basin.to_netcdf(results_dir / "basin.nc")
-        ds_flow.to_netcdf(results_dir / "flow.nc")
-
-        if concentration_path.is_file():
-            if ext == ".arrow":
-                df = pd.read_feather(concentration_path)
-            else:
-                df = xr.open_dataset(concentration_path).to_dataframe().reset_index()
-            ds = df.set_index(["time", "node_id", "substance"]).to_xarray()
-            _add_cf_attributes(ds, timeseries_id="node_id", realization="substance")
-            ds["concentration"].attrs.update({"units": "g m-3"})
-            ds.to_netcdf(results_dir / "concentration.nc")

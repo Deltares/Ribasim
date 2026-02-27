@@ -259,6 +259,7 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     sources::OrderedDict{Int32, NodeID} = OrderedDict()
     secondary_network_demand::OrderedDict{Tuple{NodeID, NodeID}, Vector{Float64}} =
         OrderedDict()
+    flow_links_subnetwork::Vector{Tuple{NodeID, NodeID}} = Vector{Tuple{NodeID, NodeID}}()
     scaling::ScalingFactors = ScalingFactors()
     temporary_constraints::Vector{JuMP.ConstraintRef} = JuMP.ConstraintRef[]
     route_priority_expression::JuMP.AffExpr = JuMP.AffExpr()
@@ -370,6 +371,7 @@ The parameter update associated with a certain control state for discrete contro
     itp_update_linear::Vector{ParameterUpdate{ScalarLinearInterpolation}} =
         ParameterUpdate{ScalarLinearInterpolation}[]
     itp_update_lookup::Vector{ParameterUpdate{IndexLookup}} = ParameterUpdate{IndexLookup}[]
+    allocation_controlled::Bool = false
 end
 
 """

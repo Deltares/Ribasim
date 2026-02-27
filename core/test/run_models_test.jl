@@ -265,14 +265,6 @@ end
     @test all(table.concentration[table.substance .== "ResidenceTime"] .> 0)
 end
 
-@testitem "basic arrow model" begin
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic_arrow/ribasim.toml")
-    @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
-    @test model isa Ribasim.Model
-    @test success(model)
-end
-
 @testitem "basic transient model" begin
     using OrdinaryDiffEqCore: get_du
 

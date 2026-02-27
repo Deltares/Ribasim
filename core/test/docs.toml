@@ -14,11 +14,11 @@ results_dir = "results" # required
 
 ribasim_version = "2025.6.0" # required
 
-# Specific tables can also go into Arrow files rather than the database.
+# Specific tables can also go into NetCDF files rather than the database.
 # For large tables this can benefit from better compressed file sizes.
 # This is optional, tables are retrieved from the database if not specified in the TOML.
 [basin]
-time = "basin/time.arrow"
+time = "basin/time.nc"
 
 [interpolation]
 flow_boundary = "block"   # optional, default "block", can otherwise be "linear"
@@ -29,10 +29,10 @@ timestep = 86400         # optional (required if experimental.allocation = true)
 
 [allocation.route_priority]
 level_boundary = 1000       # optional, default 1000
-basin = 2000                # optional, default 2000
+basin = 0                   # optional, default 0
 manning_resistance = 10     # optional, default 10
 linear_resistance = 20      # optional, default 20
-tabulated_rating_curve = -5000 # optional, default -5000
+tabulated_rating_curve = -10   # optional, default -10
 outlet = 40                 # optional, default 40
 pump = 50                   # optional, default 50
 
@@ -60,9 +60,8 @@ specialize = false  # optional, default false
 verbosity = "info" # optional, default "info", can also be "debug", "warn" or "error"
 
 [results]
-format = "netcdf"      # optional, default "netcdf", can also be "arrow"
-compression = true    # optional, default true, using zstd compression
-compression_level = 6 # optional, default 6
+compression = true    # optional, default true, using deflate compression
+compression_level = 1 # optional, default 1 (0-9)
 subgrid = false       # optional, default false
 
 [experimental]

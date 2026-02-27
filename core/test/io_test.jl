@@ -17,15 +17,12 @@
     @test input_path(config, "path/to/file") == normpath("model/input/path/to/file")
     @test results_path(config, "path/to/file.txt") ==
         normpath("model/results/path/to/file.txt")
-    @test results_path(config, "path/to/file") ==
-        normpath("model/results/path/to/file.nc")
     @test results_path(config) == normpath("model/results/")
 
     # non-default dirs, and netcdf results
     toml = Toml(;
         input_dir = ".",
         results_dir = "output",
-        results = Results(; format = "netcdf"),
         kwargs...,
     )
     config = Config(toml, "model")
@@ -33,7 +30,6 @@
     @test input_path(config, "path/to/file") == normpath("model/path/to/file")
     @test results_path(config, "path/to/file.txt") ==
         normpath("model/output/path/to/file.txt")
-    @test results_path(config, "path/to/file") == normpath("model/output/path/to/file.nc")
 
     # absolute path
     toml = Toml(; input_dir = "input", results_dir = "results", kwargs...)
@@ -55,7 +51,6 @@ end
 end
 
 @testitem "table sort" begin
-    import Arrow
     using StructArrays: StructVector
     import SQLite
     using Tables: columntable
@@ -82,29 +77,6 @@ end
     @test !issorted(reversed_table; by)
     sorted_table!(reversed_table)
     @test issorted(reversed_table; by)
-
-    # Basin / profile is in Arrow format
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic_arrow/ribasim.toml")
-    config = Ribasim.Config(toml_path)
-    db_path = Ribasim.database_path(config)
-    db = SQLite.DB(db_path)
-    table = Ribasim.load_structvector(db, config, Schema.Basin.Profile)
-    @test table isa StructVector{Schema.Basin.Profile}
-    @test table.node_id isa Vector{Int32}
-    @test table.level isa Vector{Float64}
-end
-
-@testitem "to_datetime" begin
-    using Arrow: Flatbuf, Timestamp
-    using Ribasim: to_datetime
-    using Dates: DateTime
-    # no sub-ms precision
-    ns = 1764288000000000000
-    ts = Timestamp{Flatbuf.TimeUnit.NANOSECOND, nothing}(ns)
-    @test to_datetime(ts) == DateTime("2025-11-28")
-    # add one ns, truncated off
-    ts = Timestamp{Flatbuf.TimeUnit.NANOSECOND, nothing}(ns + 1)
-    @test to_datetime(ts) == DateTime("2025-11-28")
 end
 
 @testitem "results" begin
@@ -442,7 +414,6 @@ end
 
     # Configure model to use NetCDF format
     toml_dict = TOML.parsefile(toml_path)
-    toml_dict["results"] = Dict("format" => "netcdf")
     open(toml_path, "w") do io
         TOML.print(io, toml_dict)
     end

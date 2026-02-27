@@ -411,9 +411,6 @@ function set_control_type!(node::AbstractParameterNode, graph::MetaGraph)::Nothi
         else
             ContinuousControlType.None
         end
-
-        node.allocation_controlled[node_id.idx] =
-            (node_id, "Ribasim.allocation") in keys(control_mapping)
     end
 
     errors && error("Errors encountered when parsing control type of $(typeof(node)).")

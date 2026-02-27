@@ -6,7 +6,7 @@ results_dir = "results"
 ribasim_version = "2026.1.0-rc1"
 
 [basin]
-time = "basin/time.arrow"
+time = "basin/time.nc"
 
 [solver]
 saveat = 3600

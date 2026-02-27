@@ -151,9 +151,8 @@ end
 end
 
 @option struct Results <: TableOption
-    format::String = "netcdf"
-    compression::Bool = true
-    compression_level::Int = 6
+    compression::Bool = false
+    compression_level::Int = 1
     subgrid::Bool = false
 end
 
@@ -163,10 +162,10 @@ end
 
 @option struct RoutePriority <: TableOption
     level_boundary::Int32 = 1000
-    basin::Int32 = 2000
+    basin::Int32 = 0
     manning_resistance::Int32 = 10
     linear_resistance::Int32 = 20
-    tabulated_rating_curve::Int32 = -5000
+    tabulated_rating_curve::Int32 = -10
     outlet::Int32 = 40
     pump::Int32 = 50
 end
@@ -246,14 +245,6 @@ function validate_config(toml::Toml)::Nothing
         is_valid = false
     end
 
-    supported_formats = ("arrow", "netcdf")
-    if !(toml.results.format in supported_formats)
-        @error(
-            "Unsupported results format: $(toml.results.format). Supported formats: $(supported_formats).",
-        )
-        is_valid = false
-    end
-
     is_valid || error("Invalid TOML config.")
 
     return nothing
@@ -280,14 +271,6 @@ end
 
 "Construct a path relative to both the TOML directory and the optional `results_dir`"
 function results_path(config::Config, path::String = "")
-    # If the path is empty, we return the results directory.
-    if !isempty(path)
-        name, ext = splitext(path)
-        if ext == ""
-            ext = config.results.format == "arrow" ? ".arrow" : ".nc"
-            path = string(name, ext)
-        end
-    end
     return normpath(config.dir, config.results_dir, path)
 end
 

@@ -9,7 +9,6 @@
 build/ribasim/
 build/cli/target
 
-Manifest-*.toml
 LocalPreferences.toml
 .ipynb_checkpoints
 # Byte-compiled / optimized / DLL files
@@ -172,3 +171,5 @@ debug/*
 
 .DS_Store
 lock.pid
+
+CLAUDE.md

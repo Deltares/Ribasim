@@ -270,7 +270,7 @@ class FileModel(BaseModel, ABC):
             # Skip loading when lazy (internal/external is False)
             # Otherwise load data and update our values
             # If no filepath is given, assume it is expected to be loaded from the database
-            filepath = value.pop("filepath", None)
+            filepath = value.get("filepath")
             if filepath is None and internal:
                 filepath = cls.default_filepath()
             elif filepath is not None and external:
@@ -280,8 +280,8 @@ class FileModel(BaseModel, ABC):
                 return value
 
             data = cls._load(dir / filepath)
-            data.update(value)
-            return data
+            value.update(data)
+            return value
         else:
             raise ValueError(f"Invalid type of value for FileModel: {type(value)}")
 
@@ -491,13 +491,9 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         if suffix == ".nc":
             df = cls._from_netcdf(filepath)
             return {"df": df}
-        elif suffix == ".arrow":
-            df = cls._from_arrow(filepath)
-            return {"df": df}
         else:
             raise ValueError(
-                f"Unsupported file: '{filepath}'. "
-                "Only '.nc' and '.arrow' extensions are supported."
+                f"Unsupported file: '{filepath}'. Only '.nc' extension is supported."
             )
 
     def read(self) -> None:
@@ -574,12 +570,10 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
             self._write_geopackage(path)
         elif suffix == ".nc":
             self._write_netcdf(path)
-        elif suffix == ".arrow":
-            self._write_arrow(path)
         else:
             raise ValueError(
                 f"Unsupported file: '{self.filepath}'. "
-                "Only '.nc' and '.arrow' extensions are supported."
+                "Only '.nc' extension is supported."
             )
 
     def _write_geopackage(self, filepath: Path) -> None:
@@ -605,15 +599,6 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
             create_index(connection, table, "node_id", unique=False)
             _set_gpkg_attribute_table(connection, table)
 
-    def _write_arrow(self, filepath: Path) -> None:
-        """Write the contents of the input to an arrow file."""
-        assert self.df is not None
-        self.df.to_feather(
-            filepath,
-            compression="zstd",
-            compression_level=6,
-        )
-
     def _write_netcdf(self, filepath: Path) -> None:
         """Write the contents of the input to a NetCDF file."""
         assert self.df is not None
@@ -630,10 +615,24 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
             raise err
         elif "time" in cols:
             ds = self.df.set_index(["time", "node_id"]).to_xarray()
+            ds["time"].attrs.update(
+                {"standard_name": "time", "axis": "T", "long_name": "time"}
+            )
         elif "node_id" in cols:
             ds = self.df.set_index(["node_id"]).to_xarray()
+            ds["node_id"].attrs.update(
+                {"cf_role": "timeseries_id", "long_name": "station identification code"}
+            )
         else:
             raise err
+
+        ds.attrs.update(
+            {
+                "Conventions": "CF-1.12",
+                "title": "Ribasim model input",
+                "references": "https://ribasim.org",
+            }
+        )
 
         # Write to NetCDF file
         ds.to_netcdf(filepath)
@@ -655,10 +654,6 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
                 df = None
 
             return df
-
-    @classmethod
-    def _from_arrow(cls, path: Path) -> pd.DataFrame:
-        return pd.read_feather(path)
 
     @classmethod
     def _from_netcdf(cls, path: Path) -> pd.DataFrame:
