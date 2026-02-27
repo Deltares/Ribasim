@@ -78,6 +78,8 @@ def test_listen_link_type_inference(discrete_control_of_pid_control):
         ("Basin", "PidControl", "listen"),
         ("Basin", "DiscreteControl", "listen"),
         ("LinearResistance", "ContinuousControl", "listen"),
+        ("Observation", "Basin", "observation"),
+        ("Observation", "Pump", "observation"),
     ],
 )
 def test_infer_link_type(from_type: str, to_type: str, expected: str):

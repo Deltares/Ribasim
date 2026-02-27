@@ -67,6 +67,7 @@ function get_connectivity()
         ("flow", Ribasim.n_neighbor_bounds_flow),
         ("control", Ribasim.n_neighbor_bounds_control),
         ("listen", Ribasim.n_neighbor_bounds_listen),
+        ("observation", Ribasim.n_neighbor_bounds_observation),
     ]
 
     link_types = [

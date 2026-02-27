@@ -32,7 +32,7 @@ const RibasimReducedCVectorType{T} = Ribasim.CArrays.CArray{
 }
 
 # LinkType.flow and NodeType.FlowBoundary
-@enumx LinkType flow control listen none
+@enumx LinkType flow control listen observation none
 @eval @enumx NodeType $(node_types...)
 @enumx ContinuousControlType None Continuous PID
 @enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =
@@ -56,6 +56,7 @@ const node_type_map::Dict{NodeType.T, Symbol} = Dict(
     NodeType.DiscreteControl => :discrete_control,
     NodeType.ContinuousControl => :continuous_control,
     NodeType.PidControl => :pid_control,
+    NodeType.Observation => :observation,
 )
 
 function config.snake_case(nt::NodeType.T)::Symbol

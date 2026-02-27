@@ -112,6 +112,7 @@ tables = {
     "LevelDemand / time",
     "LinearResistance / static",
     "ManningResistance / static",
+    "Observation / time",
     "Outlet / static",
     "Outlet / time",
     "PidControl / static",

@@ -41,6 +41,7 @@ from ribasim.config import (
     LinearResistance,
     Logging,
     ManningResistance,
+    Observation,
     Outlet,
     PidControl,
     Pump,
@@ -112,6 +113,7 @@ class Model(FileModel, ParentModel):
     level_demand: LevelDemand = Field(default_factory=LevelDemand)
     linear_resistance: LinearResistance = Field(default_factory=LinearResistance)
     manning_resistance: ManningResistance = Field(default_factory=ManningResistance)
+    observation: Observation = Field(default_factory=Observation)
     outlet: Outlet = Field(default_factory=Outlet)
     pid_control: PidControl = Field(default_factory=PidControl)
     pump: Pump = Field(default_factory=Pump)
