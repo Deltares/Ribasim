@@ -210,7 +210,8 @@ function Model(config::Config)::Model
     # Run water_balance! before initializing the integrator. This is because
     # at this initialization the discrete control callback is called for the first
     # time which depends on the flows formulated in water_balance!
-    water_balance!(du0, u0, parameters, t0)
+    # We use p_independent.du so callbacks can access it during init().
+    water_balance!(p_independent.du, u0, parameters, t0)
 
     # Initialize the integrator, providing all solver options as described in
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/

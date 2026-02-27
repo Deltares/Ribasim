@@ -570,8 +570,7 @@ end
 function check_negative_storage(u, t, integrator)::Nothing
     (; p) = integrator
     (; p_independent, state_and_time_dependent_cache) = p
-    (; basin) = p_independent
-    du = get_du(integrator)
+    (; basin, du) = p_independent
     water_balance!(du, u, p, t)
 
     errors = false
@@ -603,9 +602,8 @@ Apply the discrete control logic. There's somewhat of a complex structure:
 """
 function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
-    (; discrete_control) = p.p_independent
+    (; discrete_control, du) = p.p_independent
     (; node_id, truth_state, compound_variables) = discrete_control
-    du = get_du(integrator)
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes

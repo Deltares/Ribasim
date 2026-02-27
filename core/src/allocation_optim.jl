@@ -13,8 +13,8 @@ function set_simulation_data!(
         outlet,
         user_demand,
         tabulated_rating_curve,
+        du,
     ) = p.p_independent
-    du = get_du(integrator)
 
     errors = false
 
@@ -731,7 +731,7 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
     flow = problem[:flow]
     storage_change = problem[:basin_storage_change]
-    du = get_du(integrator)
+    du = p.p_independent.du
 
     # Extrapolate the current instantaneous flow rates from the physical layer
     for link in only(flow.axes)
@@ -1140,13 +1140,12 @@ function update_allocation!(model)::Nothing
     (; integrator) = model
     (; u, p, t) = integrator
     (; p_independent) = p
-    (; allocation, pump, outlet, tabulated_rating_curve) = p_independent
+    (; allocation, pump, outlet, tabulated_rating_curve, du) = p_independent
     (; allocation_models, primary_network_connections, demand_priorities_all) = allocation
 
     # Don't run the allocation algorithm if allocation is not active
     !is_active(allocation) && return nothing
 
-    du = get_du(integrator)
     water_balance!(du, u, p, t)
 
     for secondary_network in get_secondary_networks(allocation_models)
