@@ -534,6 +534,8 @@ class Model(FileModel, ParentModel):
         """Validate that all nodes satisfy their neighbor-count bounds for every link type."""
         df_link = self.link.df
         df_node = self.node.df
+        assert df_link is not None
+        assert df_node is not None
 
         df_graph = df_link
         # Join df_link with df_node to get to_node_type
