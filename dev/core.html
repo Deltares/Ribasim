@@ -284,7 +284,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#set-the-number-of-threads-julia-will-use" id="toc-set-the-number-of-threads-julia-will-use" class="nav-link" data-scroll-target="#set-the-number-of-threads-julia-will-use"><span class="header-section-number">2.1</span> Set the number of threads Julia will use</a></li>
   <li><a href="#install-optional-julia-libraries" id="toc-install-optional-julia-libraries" class="nav-link" data-scroll-target="#install-optional-julia-libraries"><span class="header-section-number">2.2</span> Install optional Julia libraries</a></li>
   <li><a href="#setup-revise.jl" id="toc-setup-revise.jl" class="nav-link" data-scroll-target="#setup-revise.jl"><span class="header-section-number">2.3</span> Setup Revise.jl</a></li>
-  <li><a href="#install-visual-studio-code-optional" id="toc-install-visual-studio-code-optional" class="nav-link" data-scroll-target="#install-visual-studio-code-optional"><span class="header-section-number">2.4</span> Install Visual Studio Code (optional)</a></li>
+  <li><a href="#add-.juliabin-to-your-path" id="toc-add-.juliabin-to-your-path" class="nav-link" data-scroll-target="#add-.juliabin-to-your-path"><span class="header-section-number">2.4</span> Add <code>.julia/bin</code> to your Path</a></li>
+  <li><a href="#install-visual-studio-code-optional" id="toc-install-visual-studio-code-optional" class="nav-link" data-scroll-target="#install-visual-studio-code-optional"><span class="header-section-number">2.5</span> Install Visual Studio Code (optional)</a></li>
   </ul></li>
   <li><a href="#developing-on-ribasim" id="toc-developing-on-ribasim" class="nav-link" data-scroll-target="#developing-on-ribasim"><span class="header-section-number">3</span> Developing on Ribasim</a>
   <ul class="collapse">
@@ -333,7 +334,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h1 data-number="2"><span class="header-section-number">2</span> Set up the developer environment</h1>
 <section id="set-the-number-of-threads-julia-will-use" class="level2" data-number="2.1">
 <h2 data-number="2.1" class="anchored" data-anchor-id="set-the-number-of-threads-julia-will-use"><span class="header-section-number">2.1</span> Set the number of threads Julia will use</h2>
-<p>Set the <code>JULIA_NUM_THREADS</code> variable in your environment to <code>auto</code> (linux, macos) or the number of physical cores of your machine (windows). Multiple threads are used to speed up individual models, as well as running testmodels in parallel.</p>
+<p>Set the <code>JULIA_NUM_THREADS</code> variable in your environment to <code>auto</code> (Linux, MacOS) or the number of physical cores of your machine (Windows). Multiple threads are used to speed up individual models, as well as running testmodels in parallel.</p>
 </section>
 <section id="install-optional-julia-libraries" class="level2" data-number="2.2">
 <h2 data-number="2.2" class="anchored" data-anchor-id="install-optional-julia-libraries"><span class="header-section-number">2.2</span> Install optional Julia libraries</h2>
@@ -344,8 +345,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 data-number="2.3" class="anchored" data-anchor-id="setup-revise.jl"><span class="header-section-number">2.3</span> Setup Revise.jl</h2>
 <p>Revise.jl is a library that allows you to modify code and use the changes without restarting Julia. You can let it start automatically by following these <a href="https://timholy.github.io/Revise.jl/stable/config/#Using-Revise-by-default-1">instructions</a>.</p>
 </section>
-<section id="install-visual-studio-code-optional" class="level2" data-number="2.4">
-<h2 data-number="2.4" class="anchored" data-anchor-id="install-visual-studio-code-optional"><span class="header-section-number">2.4</span> Install Visual Studio Code (optional)</h2>
+<section id="add-.juliabin-to-your-path" class="level2" data-number="2.4">
+<h2 data-number="2.4" class="anchored" data-anchor-id="add-.juliabin-to-your-path"><span class="header-section-number">2.4</span> Add <code>.julia/bin</code> to your Path</h2>
+<p>We use the <a href="https://github.com/fredrikekre/Runic.jl">Runic</a> formatter and <a href="https://github.com/aviatesk/JETLS.jl/">JETLS</a> language server as <a href="https://pkgdocs.julialang.org/v1/apps/">Pkg apps</a>. which we expect to be available on the Path. The JETLS VSCode extension will prompt for you to install JETLS, and <code>pixi run install</code> will install Runic.</p>
+<p>Repeating the note from the Pkg docs:</p>
+<ul>
+<li>You need to manually make <code>~/.julia/bin</code> available on the PATH environment.</li>
+<li>The path to the julia executable used is the same as the one used to install the app. If this julia installation gets removed, you might need to reinstall the app.</li>
+</ul>
+</section>
+<section id="install-visual-studio-code-optional" class="level2" data-number="2.5">
+<h2 data-number="2.5" class="anchored" data-anchor-id="install-visual-studio-code-optional"><span class="header-section-number">2.5</span> Install Visual Studio Code (optional)</h2>
 <p>There is a section on editors and IDEs for Julia on <a href="https://julialang.org/" class="uri">https://julialang.org/</a>, scroll down to see it. We use and recommend Microsoft’s free editor <a href="https://code.visualstudio.com/">Visual Studio Code</a>. When combined with the <a href="https://www.julia-vscode.org/">Julia extension</a> it provides a powerful and interactive development experience.</p>
 </section>
 </section>
