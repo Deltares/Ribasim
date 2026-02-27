@@ -90,6 +90,10 @@ function create_graph(db::DB, config::Config)::MetaGraph
         if link_type == LinkType.flow
             push!(external_flow_links, link_metadata)
         end
+        if link_type == LinkType.listen
+            max_link_id = max(link_id, max_link_id)
+            continue
+        end
         if haskey(graph, id_src, id_dst)
             errors = true
             @error "Duplicate link" id_src id_dst

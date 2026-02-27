@@ -23,6 +23,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from shapely.geometry import LineString
 
 import ribasim
 from ribasim.config import (
@@ -68,7 +69,7 @@ from ribasim.utils import (
     _node_lookup,
     _node_lookup_numpy,
 )
-from ribasim.validation import control_link_neighbor_amount, flow_link_neighbor_amount
+from ribasim.validation import link_neighbor_amount
 
 try:
     import xugrid
@@ -397,6 +398,8 @@ class Model(FileModel, ParentModel):
         external : bool, optional
             Write the NetCDF input files. Default is True.
         """
+        self._ensure_listen_links()
+
         if self.use_validation:
             self._validate_model()
 
@@ -417,7 +420,118 @@ class Model(FileModel, ParentModel):
         context_file_writing.set({})
         return filepath
 
-    def _validate_model(self):
+    def _collect_listen_link_pairs(self) -> pd.DataFrame:
+        """Collect all (from_node_id, to_node_id) pairs that require listen links.
+
+        Scans PidControl static/time tables and ContinuousControl/DiscreteControl
+        variable tables for ``listen_node_id`` references and returns a deduplicated
+        DataFrame with columns ``from_node_id`` (the listened-to node) and
+        ``to_node_id`` (the control node).
+        """
+        tables = (
+            self.pid_control.static.df,
+            self.pid_control.time.df,
+            self.continuous_control.variable.df,
+            self.discrete_control.variable.df,
+        )
+
+        parts: list[pd.DataFrame] = []
+        for table in tables:
+            if table is None:
+                continue
+            pairs = table[["node_id", "listen_node_id"]].drop_duplicates()
+            pairs.columns = pd.Index(["to_node_id", "from_node_id"])
+            parts.append(pairs)
+
+        if not parts:
+            return pd.DataFrame(
+                data={
+                    "from_node_id": pd.Series([], dtype=np.int32),
+                    "to_node_id": pd.Series([], dtype=np.int32),
+                }
+            )
+
+        return _concat(parts).drop_duplicates()
+
+    def _ensure_listen_links(self) -> None:
+        """Add any missing listen links inferred from control-node tables.
+
+        Compares the pairs from :meth:`_collect_listen_link_pairs` against links
+        already present in the link table and appends missing listen links with
+        straight-line geometries.
+        """
+        listen_pairs = self._collect_listen_link_pairs()
+        if listen_pairs.empty:
+            return
+
+        df_link = self.link.df
+        node = self.node.df
+        assert df_link is not None
+        assert node is not None
+
+        existing_listen_pairs = (
+            df_link.loc[
+                df_link["link_type"] == "listen",
+                ["from_node_id", "to_node_id"],
+            ]
+            .drop_duplicates()
+            .reset_index(drop=True)
+        )
+
+        missing_pairs = listen_pairs.merge(
+            existing_listen_pairs,
+            on=["from_node_id", "to_node_id"],
+            how="left",
+            indicator=True,
+        )
+        missing_pairs = missing_pairs[missing_pairs["_merge"] == "left_only"]
+        if missing_pairs.empty:
+            return
+        missing_pairs = missing_pairs[["from_node_id", "to_node_id"]].reset_index(
+            drop=True
+        )
+
+        node_geometry = node["geometry"]
+        geometry = []
+        for row in missing_pairs.itertuples(index=False):
+            if row.from_node_id not in node_geometry.index:
+                raise ValueError(
+                    f"Listen source node_id {row.from_node_id} does not exist in Node table."
+                )
+            if row.to_node_id not in node_geometry.index:
+                raise ValueError(
+                    f"Listen control node_id {row.to_node_id} does not exist in Node table."
+                )
+            geometry.append(
+                LineString(
+                    [
+                        node_geometry.loc[row.from_node_id],
+                        node_geometry.loc[row.to_node_id],
+                    ]
+                )
+            )
+
+        new_link_ids: list[int] = []
+        for _ in range(len(geometry)):
+            new_link_id = self.link._used_link_ids.new_id()
+            self.link._used_link_ids.add(new_link_id)
+            new_link_ids.append(new_link_id)
+        table_to_append = GeoDataFrame[LinkSchema](
+            data={
+                "from_node_id": missing_pairs["from_node_id"].to_numpy(np.int32),
+                "to_node_id": missing_pairs["to_node_id"].to_numpy(np.int32),
+                "link_type": ["listen"] * len(geometry),
+                "name": [""] * len(geometry),
+            },
+            geometry=geometry,
+            crs=df_link.crs,
+            index=pd.Index(new_link_ids, name="link_id"),
+        )
+
+        self.link.df = GeoDataFrame[LinkSchema](_concat([df_link, table_to_append]))
+
+    def _validate_model(self) -> None:
+        """Validate that all nodes satisfy their neighbor-count bounds for every link type."""
         df_link = self.link.df
         df_node = self.node.df
 
@@ -433,21 +547,20 @@ class Model(FileModel, ParentModel):
         )
         df_graph = df_graph.rename(columns={"node_type": "to_node_type"})
 
-        if not self._has_valid_neighbor_amount(
-            df_graph, flow_link_neighbor_amount, "flow", df_node["node_type"]
-        ):
-            raise ValueError("Minimum flow inneighbor or outneighbor unsatisfied")
-        if not self._has_valid_neighbor_amount(
-            df_graph, control_link_neighbor_amount, "control", df_node["node_type"]
-        ):
-            raise ValueError("Minimum control inneighbor or outneighbor unsatisfied")
+        for link_type, bounds in link_neighbor_amount.items():
+            if not self._has_valid_neighbor_amount(
+                df_graph, bounds, link_type, df_node["node_type"]
+            ):
+                raise ValueError(
+                    f"Minimum {link_type} inneighbor or outneighbor unsatisfied"
+                )
 
     def _has_valid_neighbor_amount(
         self,
         df_graph: pd.DataFrame,
         link_amount: dict[str, list[int]],
         link_type: str,
-        nodes,
+        nodes: pd.Series,
     ) -> bool:
         """Check if the neighbor amount of the two nodes connected by the given link meet the minimum requirements."""
         is_valid = True
@@ -622,68 +735,6 @@ class Model(FileModel, ParentModel):
                 )
         return results_dir
 
-    def plot_control_listen(self, ax):
-        """Plot the implicit listen links of the model."""
-        df_listen_link = pd.DataFrame(
-            data={
-                "control_node_id": pd.Series([], dtype=np.int32),
-                "listen_node_id": pd.Series([], dtype=np.int32),
-            }
-        )
-
-        # Listen links from PidControl
-        for table in (self.pid_control.static.df, self.pid_control.time.df):
-            if table is None:
-                continue
-
-            to_add = table[["node_id", "listen_node_id"]].drop_duplicates()
-            to_add.columns = ["control_node_id", "listen_node_id"]
-            df_listen_link = _concat([df_listen_link, to_add])
-
-        # Listen links from ContinuousControl and DiscreteControl
-        for table, _name in (
-            (self.continuous_control.variable.df, "ContinuousControl"),
-            (self.discrete_control.variable.df, "DiscreteControl"),
-        ):
-            if table is None:
-                continue
-
-            to_add = table[["node_id", "listen_node_id"]].drop_duplicates()
-            to_add.columns = [
-                "control_node_id",
-                "listen_node_id",
-            ]
-            df_listen_link = _concat([df_listen_link, to_add])
-
-        # Collect geometry data
-        node = self.node.df
-        control_nodes_geometry = df_listen_link.merge(
-            node,
-            left_on=["control_node_id"],
-            right_on=["node_id"],
-            how="left",
-        )["geometry"]
-
-        listen_nodes_geometry = df_listen_link.merge(
-            node,
-            left_on=["listen_node_id"],
-            right_on=["node_id"],
-            how="left",
-        )["geometry"]
-
-        # Plot listen links
-        for i, (point_listen, point_control) in enumerate(
-            zip(listen_nodes_geometry, control_nodes_geometry, strict=True)
-        ):
-            ax.plot(
-                [point_listen.x, point_control.x],
-                [point_listen.y, point_control.y],
-                color="gray",
-                ls="--",
-                label="Listen link" if i == 0 else None,
-            )
-        return
-
     def plot(
         self,
         ax=None,
@@ -711,9 +762,9 @@ class Model(FileModel, ParentModel):
             _, ax = plt.subplots()
             ax.axis("off")
 
+        self._ensure_listen_links()
         node = self.node
         self.link.plot(ax=ax, zorder=2)
-        self.plot_control_listen(ax)
         node.plot(ax=ax, zorder=3)
 
         handles, labels = ax.get_legend_handles_labels()

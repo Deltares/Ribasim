@@ -32,7 +32,7 @@ const RibasimReducedCVectorType{T} = Ribasim.CArrays.CArray{
 }
 
 # LinkType.flow and NodeType.FlowBoundary
-@enumx LinkType flow control none
+@enumx LinkType flow control listen none
 @eval @enumx NodeType $(node_types...)
 @enumx ContinuousControlType None Continuous PID
 @enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =

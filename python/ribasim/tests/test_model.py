@@ -102,6 +102,49 @@ def test_plot(basic, discrete_control_of_pid_control):
     discrete_control_of_pid_control.plot()
 
 
+def test_write_adds_missing_listen_links(discrete_control_of_pid_control, tmp_path):
+    model = discrete_control_of_pid_control
+
+    assert model.link.df is not None
+    assert model.link.df.loc[model.link.df["link_type"] == "listen"].empty
+
+    model.write(tmp_path / "model_with_listen_links/ribasim.toml")
+
+    with connect(
+        tmp_path / "model_with_listen_links/input/database.gpkg"
+    ) as connection:
+        query = "select from_node_id, to_node_id from Link where link_type = 'listen'"
+        df = pd.read_sql_query(query, connection)
+
+    assert not df.empty
+
+
+def test_collect_listen_link_pairs_with_control(discrete_control_of_pid_control):
+    """Model with PidControl / DiscreteControl should yield non-empty listen pairs."""
+    pairs = discrete_control_of_pid_control._collect_listen_link_pairs()
+    assert not pairs.empty
+    assert set(pairs.columns) == {"from_node_id", "to_node_id"}
+
+
+def test_collect_listen_link_pairs_without_control(basic):
+    """A basic model without control nodes should yield an empty DataFrame."""
+    pairs = basic._collect_listen_link_pairs()
+    assert pairs.empty
+    assert list(pairs.columns) == ["from_node_id", "to_node_id"]
+
+
+def test_ensure_listen_links_idempotent(discrete_control_of_pid_control):
+    """Calling _ensure_listen_links twice should not duplicate links."""
+    model = discrete_control_of_pid_control
+    model._ensure_listen_links()
+    assert model.link.df is not None
+    count_after_first = len(model.link.df)
+
+    model._ensure_listen_links()
+    count_after_second = len(model.link.df)
+    assert count_after_first == count_after_second
+
+
 def test_write_adds_fid_in_tables(basic, tmp_path):
     model_orig = basic
     # for node an explicit index was provided

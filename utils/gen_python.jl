@@ -52,16 +52,31 @@ function get_connectivity()
     """
     Set up a vector containing all possible downstream node types per node type.
     """
-    return [
+    node_names = collect(keys(Ribasim.node_kinds))
+
+    nodes = [
         (
                 name = T,
                 connectivity = OrderedSet(
                     Ribasim.camel_case(x) for x in Ribasim.neighbortypes(T)
                 ),
-                flow_neighbor_bound = Ribasim.n_neighbor_bounds_flow(T),
-                control_neighbor_bound = Ribasim.n_neighbor_bounds_control(T),
-            ) for T in keys(Ribasim.node_kinds)
+            ) for T in node_names
     ]
+
+    bound_fns = [
+        ("flow", Ribasim.n_neighbor_bounds_flow),
+        ("control", Ribasim.n_neighbor_bounds_control),
+        ("listen", Ribasim.n_neighbor_bounds_listen),
+    ]
+
+    link_types = [
+        (
+                name = lt,
+                bounds = [(name = T, bound = fn(T)) for T in node_names],
+            ) for (lt, fn) in bound_fns
+    ]
+
+    return Dict(:nodes => nodes, :link_types => link_types)
 end
 
 # Don't automatically escape expression blocks
@@ -79,7 +94,7 @@ function (@main)(_)::Cint
 
     # Write validation.py
     open(normpath(@__DIR__, "../python/ribasim/ribasim/validation.py"), "w") do io
-        init = Dict(:nodes => get_connectivity())
+        init = get_connectivity()
         println(io, CONNECTION_TEMPLATE(; init = init))
     end
     return 0
