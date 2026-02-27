@@ -68,16 +68,16 @@ end
 
 const RESULTS_FILENAME = (
     # configurable format, without extension
-    basin_state = "basin_state",
-    basin = "basin",
-    flow = "flow",
-    concentration = "concentration",
-    control = "control",
-    allocation = "allocation",
-    allocation_flow = "allocation_flow",
-    allocation_control = "allocation_control",
-    subgrid_level = "subgrid_level",
-    solver_stats = "solver_stats",
+    basin_state = "basin_state.nc",
+    basin = "basin.nc",
+    flow = "flow.nc",
+    concentration = "concentration.nc",
+    control = "control.nc",
+    allocation = "allocation.nc",
+    allocation_flow = "allocation_flow.nc",
+    allocation_control = "allocation_control.nc",
+    subgrid_level = "subgrid_level.nc",
+    solver_stats = "solver_stats.nc",
     # fixed format, with extension
     allocation_analysis_infeasibility = "allocation_analysis_infeasibility.log",
     allocation_analysis_scaling = "allocation_analysis_scaling.log",
