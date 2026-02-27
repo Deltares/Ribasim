@@ -96,7 +96,7 @@ def pidcontrolstaticschema_migration(df: DataFrame, schema_version: int) -> Data
 
 
 def _migrate_allocation_controlled(df: DataFrame) -> DataFrame:
-    """Migrate control_state='Ribasim.allocation' to allocation_controlled=True."""
+    """Migrate control_state='Ribasim.allocation' to allocation_controlled=True now."""
     if "control_state" in df.columns:
         mask = df["control_state"] == "Ribasim.allocation"
         df["allocation_controlled"] = None
