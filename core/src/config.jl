@@ -271,13 +271,6 @@ end
 
 "Construct a path relative to both the TOML directory and the optional `results_dir`"
 function results_path(config::Config, path::String = "")
-    # If the path is empty, we return the results directory.
-    if !isempty(path)
-        name, ext = splitext(path)
-        if ext == ""
-            path = string(name, ".nc")
-        end
-    end
     return normpath(config.dir, config.results_dir, path)
 end
 
