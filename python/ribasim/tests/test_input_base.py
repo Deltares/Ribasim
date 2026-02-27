@@ -29,7 +29,7 @@ def test_tablename():
 
 
 def test_filepath_appears_in_toml(tmp_path):
-    """Integration test: verify filepath is written to TOML and data to external file."""
+    """Integration test: verify filepath is written to TOML and data to external files."""
     import tomli
 
     # Create a model with basin profile data
