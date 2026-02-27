@@ -17,8 +17,6 @@
     @test input_path(config, "path/to/file") == normpath("model/input/path/to/file")
     @test results_path(config, "path/to/file.txt") ==
         normpath("model/results/path/to/file.txt")
-    @test results_path(config, "path/to/file") ==
-        normpath("model/results/path/to/file.nc")
     @test results_path(config) == normpath("model/results/")
 
     # non-default dirs, and netcdf results
@@ -32,7 +30,6 @@
     @test input_path(config, "path/to/file") == normpath("model/path/to/file")
     @test results_path(config, "path/to/file.txt") ==
         normpath("model/output/path/to/file.txt")
-    @test results_path(config, "path/to/file") == normpath("model/output/path/to/file.nc")
 
     # absolute path
     toml = Toml(; input_dir = "input", results_dir = "results", kwargs...)

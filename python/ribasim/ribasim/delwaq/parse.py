@@ -56,7 +56,7 @@ def parse(
     df.sort_values(["time", "node_id"], inplace=True)
 
     model.basin.concentration_external = df
-    ds = df.set_index(["time", "node_id", "substance"]).to_xarray()
-    ds.to_netcdf(model.results_path / "basin_concentration_external.nc")
+    ds = df.set_index(["time", "substance", "node_id"]).to_xarray()
+    ds.to_netcdf(model.results_path / "concentration.nc")
 
     return model

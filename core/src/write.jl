@@ -67,7 +67,6 @@ function write_results(model::Model)::Model
 end
 
 const RESULTS_FILENAME = (
-    # configurable format, without extension
     basin_state = "basin_state.nc",
     basin = "basin.nc",
     flow = "flow.nc",
@@ -78,7 +77,6 @@ const RESULTS_FILENAME = (
     allocation_control = "allocation_control.nc",
     subgrid_level = "subgrid_level.nc",
     solver_stats = "solver_stats.nc",
-    # fixed format, with extension
     allocation_analysis_infeasibility = "allocation_analysis_infeasibility.log",
     allocation_analysis_scaling = "allocation_analysis_scaling.log",
     allocation_infeasible_problem = "allocation_infeasible_problem.lp",
