@@ -131,12 +131,12 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     (; p_independent, state_and_time_dependent_cache) = model.integrator.p
-    (; basin, du) = p_independent
+    (; basin, du_buff) = p_independent
     @test state_and_time_dependent_cache.current_storage ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
-    @test du.evaporation == [0.0]
-    @test du.infiltration == [0.0]
+    @test du_buff.evaporation == [0.0]
+    @test du_buff.infiltration == [0.0]
     @test success(model)
 end
 
@@ -154,14 +154,14 @@ end
     (; integrator) = model
     (; u, p, t) = integrator
     (; p_independent, state_and_time_dependent_cache) = p
-    (; basin, du) = p_independent
+    (; basin, du_buff) = p_independent
 
-    Ribasim.water_balance!(du, u, p, t)
+    Ribasim.water_balance!(du_buff, u, p, t)
     stor = state_and_time_dependent_cache.current_storage
     prec = basin.vertical_flux.precipitation
-    evap = du.evaporation
+    evap = du_buff.evaporation
     drng = basin.vertical_flux.drainage
-    infl = du.infiltration
+    infl = du_buff.infiltration
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
     @test evap == [0.0]
@@ -478,7 +478,7 @@ end
 
     (; p, t) = model.integrator
     (; p_independent, state_and_time_dependent_cache) = p
-    du = p_independent.du
+    du = p_independent.du_buff
     (; current_level) = state_and_time_dependent_cache
     h_actual = current_level[1:50]
     x = collect(10.0:20.0:990.0)
