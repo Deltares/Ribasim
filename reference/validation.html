@@ -372,7 +372,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true">
- <span class="menu-text">Layout</span></a>
+ <span class="menu-text">Other</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -382,6 +382,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <div class="sidebar-item-container"> 
   <a href="../reference/node/junction.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><img src="../assets/node-icons/Junction.svg" height="20"> Junction</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/node/observation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><img src="../assets/node-icons/Observation.svg" height="20"> Observation / time</span></a>
   </div>
 </li>
       </ul>
@@ -399,7 +405,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#connectivity" id="toc-connectivity" class="nav-link active" data-scroll-target="#connectivity"><span class="header-section-number">1</span> Connectivity</a></li>
-  <li><a href="#neighbor-amounts" id="toc-neighbor-amounts" class="nav-link" data-scroll-target="#neighbor-amounts"><span class="header-section-number">2</span> Neighbor amounts</a></li>
+  <li><a href="#neighbor-amounts" id="toc-neighbor-amounts" class="nav-link" data-scroll-target="#neighbor-amounts"><span class="header-section-number">2</span> Neighbor amounts</a>
+  <ul class="collapse">
+  <li><a href="#flow-links" id="toc-flow-links" class="nav-link" data-scroll-target="#flow-links"><span class="header-section-number">2.1</span> Flow links</a></li>
+  <li><a href="#control-links" id="toc-control-links" class="nav-link" data-scroll-target="#control-links"><span class="header-section-number">2.2</span> Control links</a></li>
+  <li><a href="#listen-links" id="toc-listen-links" class="nav-link" data-scroll-target="#listen-links"><span class="header-section-number">2.3</span> Listen links</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -816,75 +827,46 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="neighbor-amounts" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> Neighbor amounts</h1>
-<p>The table below shows for each node type between which bounds the amount of in- and outneighbors must be, for both flow and control links.</p>
-<div id="4" class="cell freeze-left" data-execution_count="1">
+<p>The tables below show for each node type between which bounds the amount of in- and outneighbors must be, per link type.</p>
+<div id="4" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>flow_in_min <span class="op">=</span> <span class="fu">Vector</span><span class="dt">{String}</span>()</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>flow_in_max <span class="op">=</span> <span class="fu">Vector</span><span class="dt">{String}</span>()</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>flow_out_min <span class="op">=</span> <span class="fu">Vector</span><span class="dt">{String}</span>()</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>flow_out_max <span class="op">=</span> <span class="fu">Vector</span><span class="dt">{String}</span>()</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>control_in_min <span class="op">=</span> <span class="fu">Vector</span><span class="dt">{String}</span>()</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>control_in_max <span class="op">=</span> <span class="fu">Vector</span><span class="dt">{String}</span>()</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>control_out_min <span class="op">=</span> <span class="fu">Vector</span><span class="dt">{String}</span>()</span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>control_out_max <span class="op">=</span> <span class="fu">Vector</span><span class="dt">{String}</span>()</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">unbounded</span>(i<span class="op">::</span><span class="dt">Int</span>)<span class="op">::</span><span class="dt">String</span></span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> i <span class="op">==</span> <span class="fu">typemax</span>(<span class="dt">Int</span>) ? <span class="st">"∞"</span> <span class="op">:</span> <span class="fu">string</span>(i)</span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> node_name <span class="kw">in</span> node_names_camel_case</span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    bounds_flow <span class="op">=</span> Ribasim.<span class="fu">n_neighbor_bounds_flow</span>(node_name)</span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">push!</span>(flow_in_min, <span class="fu">string</span>(bounds_flow.in_min))</span>
-<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">push!</span>(flow_in_max, <span class="fu">unbounded</span>(bounds_flow.in_max))</span>
-<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">push!</span>(flow_out_min, <span class="fu">string</span>(bounds_flow.out_min))</span>
-<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="fu">push!</span>(flow_out_max, <span class="fu">unbounded</span>(bounds_flow.out_max))</span>
-<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    bounds_control <span class="op">=</span> Ribasim.<span class="fu">n_neighbor_bounds_control</span>(node_name)</span>
-<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">push!</span>(control_in_min, <span class="fu">string</span>(bounds_control.in_min))</span>
-<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="fu">push!</span>(control_in_max, <span class="fu">unbounded</span>(bounds_control.in_max))</span>
-<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>    <span class="fu">push!</span>(control_out_min, <span class="fu">string</span>(bounds_control.out_min))</span>
-<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    <span class="fu">push!</span>(control_out_max, <span class="fu">unbounded</span>(bounds_control.out_max))</span>
-<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
-<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> <span class="fu">DataFrame</span>(;</span>
-<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    node_type <span class="op">=</span> node_names_snake_case,</span>
-<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    flow_in_min,</span>
-<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    flow_in_max,</span>
-<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>    flow_out_min,</span>
-<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>    flow_out_max,</span>
-<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>    control_in_min,</span>
-<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>    control_in_max,</span>
-<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>    control_out_min,</span>
-<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>    control_out_max,</span>
-<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a><span class="fu">markdown_table</span>(df)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">unbounded</span>(i<span class="op">::</span><span class="dt">Int</span>)<span class="op">::</span><span class="dt">String</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> i <span class="op">==</span> <span class="fu">typemax</span>(<span class="dt">Int</span>) ? <span class="st">"∞"</span> <span class="op">:</span> <span class="fu">string</span>(i)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">neighbor_bounds_table</span>(node_names_snake_case, node_names_camel_case, bounds_fn)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    in_min <span class="op">=</span> <span class="dt">String</span>[]</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    in_max <span class="op">=</span> <span class="dt">String</span>[]</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    out_min <span class="op">=</span> <span class="dt">String</span>[]</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    out_max <span class="op">=</span> <span class="dt">String</span>[]</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> node_name <span class="kw">in</span> node_names_camel_case</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>        bounds <span class="op">=</span> <span class="fu">bounds_fn</span>(node_name)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        <span class="fu">push!</span>(in_min, <span class="fu">string</span>(bounds.in_min))</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        <span class="fu">push!</span>(in_max, <span class="fu">unbounded</span>(bounds.in_max))</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>        <span class="fu">push!</span>(out_min, <span class="fu">string</span>(bounds.out_min))</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>        <span class="fu">push!</span>(out_max, <span class="fu">unbounded</span>(bounds.out_max))</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="fu">DataFrame</span>(; node_type <span class="op">=</span> node_names_snake_case, in_min, in_max, out_min, out_max)</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<section id="flow-links" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="flow-links"><span class="header-section-number">2.1</span> Flow links</h2>
+<div id="6" class="cell freeze-left" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">markdown_table</span>(<span class="fu">neighbor_bounds_table</span>(node_names_snake_case, node_names_camel_case, Ribasim.n_neighbor_bounds_flow))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
 <table class="caption-top table table-sm table-striped small">
-<colgroup>
-<col style="width: 17%">
-<col style="width: 8%">
-<col style="width: 8%">
-<col style="width: 9%">
-<col style="width: 9%">
-<col style="width: 10%">
-<col style="width: 10%">
-<col style="width: 11%">
-<col style="width: 11%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>node_type</th>
-<th>flow_in_min</th>
-<th>flow_in_max</th>
-<th>flow_out_min</th>
-<th>flow_out_max</th>
-<th>control_in_min</th>
-<th>control_in_max</th>
-<th>control_out_min</th>
-<th>control_out_max</th>
+<th>in_min</th>
+<th>in_max</th>
+<th>out_min</th>
+<th>out_max</th>
 </tr>
 </thead>
 <tbody>
@@ -894,10 +876,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>∞</td>
 <td>0</td>
 <td>∞</td>
-<td>0</td>
-<td>1</td>
-<td>0</td>
-<td>0</td>
 </tr>
 <tr class="even">
 <td><code>linear_resistance</code></td>
@@ -905,10 +883,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>1</td>
 <td>1</td>
 <td>1</td>
-<td>0</td>
-<td>1</td>
-<td>0</td>
-<td>0</td>
 </tr>
 <tr class="odd">
 <td><code>manning_resistance</code></td>
@@ -916,10 +890,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>1</td>
 <td>1</td>
 <td>1</td>
-<td>0</td>
-<td>1</td>
-<td>0</td>
-<td>0</td>
 </tr>
 <tr class="even">
 <td><code>tabulated_rating_curve</code></td>
@@ -927,10 +897,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>1</td>
 <td>1</td>
 <td>1</td>
-<td>0</td>
-<td>1</td>
-<td>0</td>
-<td>0</td>
 </tr>
 <tr class="odd">
 <td><code>level_boundary</code></td>
@@ -938,10 +904,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>∞</td>
 <td>0</td>
 <td>∞</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
 </tr>
 <tr class="even">
 <td><code>flow_boundary</code></td>
@@ -949,10 +911,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>0</td>
 <td>1</td>
 <td>1</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
 </tr>
 <tr class="odd">
 <td><code>pump</code></td>
@@ -960,10 +918,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>1</td>
 <td>1</td>
 <td>1</td>
-<td>0</td>
-<td>2</td>
-<td>0</td>
-<td>0</td>
 </tr>
 <tr class="even">
 <td><code>outlet</code></td>
@@ -971,19 +925,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>1</td>
 <td>1</td>
 <td>1</td>
-<td>0</td>
-<td>2</td>
-<td>0</td>
-<td>0</td>
 </tr>
 <tr class="odd">
 <td><code>terminal</code></td>
 <td>1</td>
 <td>∞</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
 <td>0</td>
 <td>0</td>
 </tr>
@@ -993,6 +939,138 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>∞</td>
 <td>1</td>
 <td>∞</td>
+</tr>
+<tr class="odd">
+<td><code>discrete_control</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td><code>continuous_control</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="odd">
+<td><code>pid_control</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td><code>user_demand</code></td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+<td>1</td>
+</tr>
+<tr class="odd">
+<td><code>level_demand</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td><code>flow_demand</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="control-links" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="control-links"><span class="header-section-number">2.2</span> Control links</h2>
+<div id="8" class="cell freeze-left" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">markdown_table</span>(<span class="fu">neighbor_bounds_table</span>(node_names_snake_case, node_names_camel_case, Ribasim.n_neighbor_bounds_control))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th>node_type</th>
+<th>in_min</th>
+<th>in_max</th>
+<th>out_min</th>
+<th>out_max</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>basin</code></td>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td><code>linear_resistance</code></td>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="odd">
+<td><code>manning_resistance</code></td>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td><code>tabulated_rating_curve</code></td>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="odd">
+<td><code>level_boundary</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td><code>flow_boundary</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="odd">
+<td><code>pump</code></td>
+<td>0</td>
+<td>2</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td><code>outlet</code></td>
+<td>0</td>
+<td>2</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="odd">
+<td><code>terminal</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td><code>junction</code></td>
 <td>0</td>
 <td>0</td>
 <td>0</td>
@@ -1002,19 +1080,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>discrete_control</code></td>
 <td>0</td>
 <td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
 <td>1</td>
 <td>∞</td>
 </tr>
 <tr class="even">
 <td><code>continuous_control</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
 <td>0</td>
 <td>0</td>
 <td>1</td>
@@ -1023,20 +1093,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td><code>pid_control</code></td>
 <td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
 <td>1</td>
 <td>1</td>
 <td>1</td>
 </tr>
 <tr class="even">
 <td><code>user_demand</code></td>
-<td>1</td>
-<td>1</td>
-<td>1</td>
-<td>1</td>
 <td>0</td>
 <td>0</td>
 <td>0</td>
@@ -1046,10 +1108,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>level_demand</code></td>
 <td>0</td>
 <td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
 <td>1</td>
 <td>∞</td>
 </tr>
@@ -1057,12 +1115,144 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>flow_demand</code></td>
 <td>0</td>
 <td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
 <td>1</td>
 <td>1</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="listen-links" class="level2" data-number="2.3">
+<h2 data-number="2.3" class="anchored" data-anchor-id="listen-links"><span class="header-section-number">2.3</span> Listen links</h2>
+<div id="10" class="cell freeze-left" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">markdown_table</span>(<span class="fu">neighbor_bounds_table</span>(node_names_snake_case, node_names_camel_case, Ribasim.n_neighbor_bounds_listen))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th>node_type</th>
+<th>in_min</th>
+<th>in_max</th>
+<th>out_min</th>
+<th>out_max</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>basin</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>∞</td>
+</tr>
+<tr class="even">
+<td><code>linear_resistance</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>∞</td>
+</tr>
+<tr class="odd">
+<td><code>manning_resistance</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>∞</td>
+</tr>
+<tr class="even">
+<td><code>tabulated_rating_curve</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>∞</td>
+</tr>
+<tr class="odd">
+<td><code>level_boundary</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>∞</td>
+</tr>
+<tr class="even">
+<td><code>flow_boundary</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>∞</td>
+</tr>
+<tr class="odd">
+<td><code>pump</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>∞</td>
+</tr>
+<tr class="even">
+<td><code>outlet</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>∞</td>
+</tr>
+<tr class="odd">
+<td><code>terminal</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>∞</td>
+</tr>
+<tr class="even">
+<td><code>junction</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>∞</td>
+</tr>
+<tr class="odd">
+<td><code>discrete_control</code></td>
+<td>1</td>
+<td>∞</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td><code>continuous_control</code></td>
+<td>1</td>
+<td>∞</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="odd">
+<td><code>pid_control</code></td>
+<td>1</td>
+<td>∞</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td><code>user_demand</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>∞</td>
+</tr>
+<tr class="odd">
+<td><code>level_demand</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>∞</td>
+</tr>
+<tr class="even">
+<td><code>flow_demand</code></td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>∞</td>
 </tr>
 </tbody>
 </table>
@@ -1083,6 +1273,7 @@ Note
 </div>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->

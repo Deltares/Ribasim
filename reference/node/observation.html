@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title> FlowDemand – Ribasim</title>
+<title> Observation / time – Ribasim</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -30,8 +30,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="../../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../../">
-<link href="../../reference/node/level-demand.html" rel="next">
-<link href="../../reference/node/user-demand.html" rel="prev">
+<link href="../../reference/node/junction.html" rel="prev">
 <script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -71,35 +70,6 @@ ul.task-list li input[type="checkbox"] {
   }
 }</script>
 
-  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
-
-<script type="text/javascript">
-const typesetMath = (el) => {
-  if (window.MathJax) {
-    // MathJax Typeset
-    window.MathJax.typeset([el]);
-  } else if (window.katex) {
-    // KaTeX Render
-    var mathElements = el.getElementsByClassName("math");
-    var macros = [];
-    for (var i = 0; i < mathElements.length; i++) {
-      var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
-        window.katex.render(texText.data, mathElements[i], {
-          displayMode: mathElements[i].classList.contains('display'),
-          throwOnError: false,
-          macros: macros,
-          fleqn: false
-        });
-      }
-    }
-  }
-}
-window.Quarto = {
-  typesetMath
-};
-</script>
 
 <link rel="stylesheet" href="../../assets/styles.css">
 </head>
@@ -167,7 +137,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Nodes</li><li class="breadcrumb-item"><a href="../../reference/node/user-demand.html">Demand</a></li><li class="breadcrumb-item"><a href="../../reference/node/flow-demand.html"><img src="../../assets/node-icons/FlowDemand.svg" height="20"> FlowDemand</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Nodes</li><li class="breadcrumb-item"><a href="../../reference/node/junction.html">Other</a></li><li class="breadcrumb-item"><a href="../../reference/node/observation.html"><img src="../../assets/node-icons/Observation.svg" height="20"> Observation / time</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -322,7 +292,7 @@ window.Quarto = {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../reference/node/flow-demand.html" class="sidebar-item-text sidebar-link active">
+  <a href="../../reference/node/flow-demand.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><img src="../../assets/node-icons/FlowDemand.svg" height="20"> FlowDemand</span></a>
   </div>
 </li>
@@ -380,7 +350,7 @@ window.Quarto = {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../reference/node/observation.html" class="sidebar-item-text sidebar-link">
+  <a href="../../reference/node/observation.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text"><img src="../../assets/node-icons/Observation.svg" height="20"> Observation / time</span></a>
   </div>
 </li>
@@ -400,18 +370,19 @@ window.Quarto = {
   <ul>
   <li><a href="#tables" id="toc-tables" class="nav-link active" data-scroll-target="#tables"><span class="header-section-number">1</span> Tables</a>
   <ul class="collapse">
-  <li><a href="#static" id="toc-static" class="nav-link" data-scroll-target="#static"><span class="header-section-number">1.1</span> Static</a></li>
-  <li><a href="#time" id="toc-time" class="nav-link" data-scroll-target="#time"><span class="header-section-number">1.2</span> Time</a></li>
+  <li><a href="#time" id="toc-time" class="nav-link" data-scroll-target="#time"><span class="header-section-number">1.1</span> Time</a></li>
   </ul></li>
+  <li><a href="#examples" id="toc-examples" class="nav-link" data-scroll-target="#examples"><span class="header-section-number">2</span> Examples</a></li>
+  <li><a href="#notes" id="toc-notes" class="nav-link" data-scroll-target="#notes"><span class="header-section-number">3</span> Notes</a></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Nodes</li><li class="breadcrumb-item"><a href="../../reference/node/user-demand.html">Demand</a></li><li class="breadcrumb-item"><a href="../../reference/node/flow-demand.html"><img src="../../assets/node-icons/FlowDemand.svg" height="20"> FlowDemand</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Nodes</li><li class="breadcrumb-item"><a href="../../reference/node/junction.html">Other</a></li><li class="breadcrumb-item"><a href="../../reference/node/observation.html"><img src="../../assets/node-icons/Observation.svg" height="20"> Observation / time</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><img src="../../assets/node-icons/FlowDemand.svg" height="20"> FlowDemand</h1>
+<h1 class="title"><img src="../../assets/node-icons/Observation.svg" height="20"> Observation / time</h1>
 </div>
 
 
@@ -428,18 +399,18 @@ window.Quarto = {
 </header>
 
 
-<p>A <code>FlowDemand</code> node associates a non-consuming flow demand to a connector node (e.g.&nbsp;<code>Pump</code>, <code>TabulatedRatingCurve</code>) for one or more demand priorities. FlowDemand nodes can set a flow demand only for a single connector node. FlowDemand nodes do nothing when allocation is not activated, except when they are connected to a Pump or an Outlet. In that case the flow demand flow rate is taken as the minimum flow through that Pump or Outlet.</p>
-<p>FlowDemand nodes can be used for instance to model minimum environmental flow or flushing requirements at specific locations in the network.</p>
+<p>An Observation node is used to attach time series of observed or reference data to a node in the network. These are not used in the simulation core, but are available for visualization, validation, or post-processing.</p>
+<p>Observation nodes can be linked to Basin and connector nodes with an observation link. The link direction is always from the Observation node to the observed node. An Observation node can connect to 0 or 1 nodes, but can hold multiple observed variables for a single node.</p>
 <section id="tables" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Tables</h1>
-<section id="static" class="level2" data-number="1.1">
-<h2 data-number="1.1" class="anchored" data-anchor-id="static"><span class="header-section-number">1.1</span> Static</h2>
+<section id="time" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="time"><span class="header-section-number">1.1</span> Time</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 27%">
-<col style="width: 14%">
-<col style="width: 38%">
-<col style="width: 20%">
+<col style="width: 24%">
+<col style="width: 24%">
+<col style="width: 18%">
+<col style="width: 33%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -457,68 +428,87 @@ window.Quarto = {
 <td></td>
 </tr>
 <tr class="even">
-<td>demand_priority</td>
-<td>Int32</td>
+<td>variable</td>
+<td>String</td>
 <td>-</td>
-<td>positive (optional)</td>
+<td>Name of the observed variable (e.g.&nbsp;“level”, “flow_rate”)</td>
 </tr>
 <tr class="odd">
-<td>demand</td>
-<td>Float64</td>
-<td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
-<td>non-negative</td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="time" class="level2" data-number="1.2">
-<h2 data-number="1.2" class="anchored" data-anchor-id="time"><span class="header-section-number">1.2</span> Time</h2>
-<p>This table is the transient form of the <code>FlowDemand</code> table, in which a time-dependent demand can be supplied. With this the demand can be updated over time. In between the given times the demand is block interpolated (forward fill), and outside the demand is constant given by the nearest time value. The allocation algorithm evaluates the interpolation at the start of the allocation time step.</p>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 27%">
-<col style="width: 14%">
-<col style="width: 38%">
-<col style="width: 20%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>column</th>
-<th>type</th>
-<th>unit</th>
-<th>restriction</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>node_id</td>
-<td>Int32</td>
-<td>-</td>
-<td></td>
-</tr>
-<tr class="even">
 <td>time</td>
 <td>DateTime</td>
 <td>-</td>
-<td></td>
-</tr>
-<tr class="odd">
-<td>demand_priority</td>
-<td>Int32</td>
-<td>-</td>
-<td>positive (optional)</td>
+<td>Timestamp of the observation</td>
 </tr>
 <tr class="even">
-<td>demand</td>
+<td>value</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
-<td>non-negative</td>
+<td>-</td>
+<td>Value of the observation</td>
 </tr>
 </tbody>
 </table>
-
-
 </section>
+</section>
+<section id="examples" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Examples</h1>
+<p>This example shows two Observation nodes observing a Basin and a TabulatedRatingCurve. The table below shows the time series for both nodes:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>node_id</th>
+<th>variable</th>
+<th>time</th>
+<th>value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>level</td>
+<td>2020-01-01 00:00:00</td>
+<td>0.5</td>
+</tr>
+<tr class="even">
+<td>1</td>
+<td>level</td>
+<td>2020-02-01 00:00:00</td>
+<td>0.3</td>
+</tr>
+<tr class="odd">
+<td>1</td>
+<td>level</td>
+<td>2020-03-01 00:00:00</td>
+<td>0.4</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>flow_rate</td>
+<td>2020-01-01 00:00:00</td>
+<td>0.0</td>
+</tr>
+<tr class="odd">
+<td>2</td>
+<td>flow_rate</td>
+<td>2020-02-01 00:00:00</td>
+<td>0.05</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>flow_rate</td>
+<td>2020-03-01 00:00:00</td>
+<td>0.1</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="notes" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Notes</h1>
+<ul>
+<li>Observation nodes are not included in the simulation graph and do not affect results.</li>
+<li>They are intended for reference, validation, or visualization purposes only.</li>
+</ul>
+
+
 </section>
 
 </main> <!-- /main -->
@@ -924,14 +914,11 @@ window.Quarto = {
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../../reference/node/user-demand.html" class="pagination-link" aria-label="![](/assets/node-icons/UserDemand.svg){height=20} UserDemand">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><img src="../../assets/node-icons/UserDemand.svg" height="20"> UserDemand</span>
+      <a href="../../reference/node/junction.html" class="pagination-link" aria-label="![](/assets/node-icons/Junction.svg){height=20} Junction">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><img src="../../assets/node-icons/Junction.svg" height="20"> Junction</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../../reference/node/level-demand.html" class="pagination-link" aria-label="![](/assets/node-icons/LevelDemand.svg){height=20} LevelDemand">
-        <span class="nav-page-text"><img src="../../assets/node-icons/LevelDemand.svg" height="20"> LevelDemand</span> <i class="bi bi-arrow-right-short"></i>
-      </a>
   </div>
 </nav>
 </div> <!-- /content -->

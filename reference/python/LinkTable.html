@@ -263,7 +263,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tbody>
 <tr class="odd">
 <td><a href="#ribasim.LinkTable.add">add</a></td>
-<td>Add an link between nodes.</td>
+<td>Add a link between nodes.</td>
 </tr>
 <tr class="even">
 <td><a href="#ribasim.LinkTable.allows_lazy">allows_lazy</a></td>
@@ -329,8 +329,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    link_id<span class="op">=</span><span class="va">None</span>,</span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">**</span>kwargs,</span>
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Add an link between nodes.</p>
-<p>The type of the link (flow or control) is automatically inferred from the type of the <code>from_node</code>.</p>
+<p>Add a link between nodes.</p>
+<p>The type of the link is automatically inferred from the node types.</p>
 <section id="parameters" class="level4 doc-section doc-section-parameters" data-number="1.2.1.1">
 <h4 class="doc-section doc-section-parameters anchored" data-number="1.2.1.1" data-anchor-id="parameters"><span class="header-section-number">1.2.1.1</span> Parameters</h4>
 <table class="caption-top table">
@@ -427,10 +427,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h4 class="doc-section doc-section-parameters anchored" data-number="1.2.9.1" data-anchor-id="parameters-1"><span class="header-section-number">1.2.9.1</span> Parameters</h4>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 12%">
-<col style="width: 10%">
-<col style="width: 62%">
-<col style="width: 14%">
+<col style="width: 8%">
+<col style="width: 7%">
+<col style="width: 74%">
+<col style="width: 9%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -444,7 +444,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td>**kwargs</td>
 <td>Dict</td>
-<td>Supported: ‘ax’, ‘color_flow’, ‘color_control’</td>
+<td>Supported: ‘ax’, ‘color_flow’, ‘color_control’, ‘color_listen’, ‘color_observation’</td>
 <td><code>{}</code></td>
 </tr>
 </tbody>
