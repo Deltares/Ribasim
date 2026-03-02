@@ -13,7 +13,7 @@ function set_simulation_data!(
         outlet,
         user_demand,
         tabulated_rating_curve,
-        du,
+        du_buff,
     ) = p.p_independent
 
     errors = false
@@ -24,7 +24,7 @@ function set_simulation_data!(
     set_simulation_data!(allocation_model, linear_resistance, p, t)
     set_simulation_data!(allocation_model, manning_resistance, p, t)
     set_simulation_data!(allocation_model, tabulated_rating_curve, p, t)
-    set_simulation_data!(allocation_model, pump, outlet, du)
+    set_simulation_data!(allocation_model, pump, outlet, du_buff)
     set_simulation_data!(allocation_model, user_demand, t)
 
     if errors
@@ -729,15 +729,15 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     (; p, t) = integrator
     (; problem, scaling, node_ids_in_subnetwork, Δt_allocation) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
+    (; du_buff) = p.p_independent
     flow = problem[:flow]
     storage_change = problem[:basin_storage_change]
-    du = get_du(integrator)
 
     # Extrapolate the current instantaneous flow rates from the physical layer
     for link in only(flow.axes)
-        state_index = get_state_index(getaxes(du), link)
+        state_index = get_state_index(getaxes(du_buff), link)
         if !isnothing(state_index)
-            JuMP.set_start_value(flow[link], du[state_index] / scaling.flow)
+            JuMP.set_start_value(flow[link], du_buff[state_index] / scaling.flow)
         end
     end
 
@@ -745,7 +745,7 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     for node_id in basin_ids_subnetwork
         JuMP.set_start_value(
             storage_change[node_id],
-            formulate_dstorage(du, p.p_independent, t, node_id) * Δt_allocation /
+            formulate_dstorage(du_buff, p.p_independent, t, node_id) * Δt_allocation /
                 scaling.storage,
         )
     end
@@ -1140,13 +1140,12 @@ function update_allocation!(model)::Nothing
     (; integrator) = model
     (; u, p, t) = integrator
     (; p_independent) = p
-    (; allocation, pump, outlet, tabulated_rating_curve) = p_independent
+    (; allocation, pump, outlet, tabulated_rating_curve, du_buff) = p_independent
     (; allocation_models, primary_network_connections, demand_priorities_all) = allocation
 
     # Don't run the allocation algorithm if allocation is not active
     !is_active(allocation) && return nothing
-    du = get_du(integrator)
-    water_balance!(du, u, p, t)
+    water_balance!(du_buff, u, p, t)
 
     for secondary_network in get_secondary_networks(allocation_models)
         update_control_states!(secondary_network, p_independent)
