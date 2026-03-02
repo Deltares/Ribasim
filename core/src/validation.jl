@@ -59,6 +59,7 @@ neighbortypes(::Val{:flow_demand}) = OrderedSet(
         :outlet,
     )
 )
+neighbortypes(::Val{:observation}) = OrderedSet{Symbol}()
 neighbortypes(::Any) = OrderedSet{Symbol}()
 
 # Allowed number of inneighbors and outneighbors per node type
@@ -89,6 +90,7 @@ n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:UserDemand}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:FlowDemand}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_flow(::Val{:Observation}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(nodetype) =
     error("'n_neighbor_bounds_flow' not defined for $nodetype.")
 
@@ -109,6 +111,7 @@ n_neighbor_bounds_control(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 1, 
 n_neighbor_bounds_control(::Val{:UserDemand}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 1, M)
 n_neighbor_bounds_control(::Val{:FlowDemand}) = n_neighbor_bounds(0, 0, 1, 1)
+n_neighbor_bounds_control(::Val{:Observation}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
@@ -129,8 +132,30 @@ n_neighbor_bounds_listen(::Val{:DiscreteControl}) = n_neighbor_bounds(1, M, 0, 0
 n_neighbor_bounds_listen(::Val{:UserDemand}) = n_neighbor_bounds(0, 0, 0, M)
 n_neighbor_bounds_listen(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 0, M)
 n_neighbor_bounds_listen(::Val{:FlowDemand}) = n_neighbor_bounds(0, 0, 0, M)
+n_neighbor_bounds_listen(::Val{:Observation}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_listen(nodetype) =
     error("'n_neighbor_bounds_listen' not defined for $nodetype.")
+
+n_neighbor_bounds_observation(nodetype::Symbol) = n_neighbor_bounds_observation(Val(nodetype))
+n_neighbor_bounds_observation(::Val{:Basin}) = n_neighbor_bounds(0, M, 0, 0)
+n_neighbor_bounds_observation(::Val{:LinearResistance}) = n_neighbor_bounds(0, M, 0, 0)
+n_neighbor_bounds_observation(::Val{:ManningResistance}) = n_neighbor_bounds(0, M, 0, 0)
+n_neighbor_bounds_observation(::Val{:TabulatedRatingCurve}) = n_neighbor_bounds(0, M, 0, 0)
+n_neighbor_bounds_observation(::Val{:LevelBoundary}) = n_neighbor_bounds(0, M, 0, 0)
+n_neighbor_bounds_observation(::Val{:FlowBoundary}) = n_neighbor_bounds(0, M, 0, 0)
+n_neighbor_bounds_observation(::Val{:Pump}) = n_neighbor_bounds(0, M, 0, 0)
+n_neighbor_bounds_observation(::Val{:Outlet}) = n_neighbor_bounds(0, M, 0, 0)
+n_neighbor_bounds_observation(::Val{:Terminal}) = n_neighbor_bounds(0, M, 0, 0)
+n_neighbor_bounds_observation(::Val{:Junction}) = n_neighbor_bounds(0, M, 0, 0)
+n_neighbor_bounds_observation(::Val{:PidControl}) = n_neighbor_bounds(0, M, 0, 0)
+n_neighbor_bounds_observation(::Val{:ContinuousControl}) = n_neighbor_bounds(0, M, 0, 0)
+n_neighbor_bounds_observation(::Val{:DiscreteControl}) = n_neighbor_bounds(0, M, 0, 0)
+n_neighbor_bounds_observation(::Val{:UserDemand}) = n_neighbor_bounds(0, M, 0, 0)
+n_neighbor_bounds_observation(::Val{:LevelDemand}) = n_neighbor_bounds(0, M, 0, 0)
+n_neighbor_bounds_observation(::Val{:FlowDemand}) = n_neighbor_bounds(0, M, 0, 0)
+n_neighbor_bounds_observation(::Val{:Observation}) = n_neighbor_bounds(0, 0, 0, 1)
+n_neighbor_bounds_observation(nodetype) =
+    error("'n_neighbor_bounds_observation' not defined for $nodetype.")
 
 n_neighbor_bounds(nodetype::Symbol, link_type::LinkType.T) =
     n_neighbor_bounds(nodetype, Val(link_type))
@@ -139,6 +164,8 @@ n_neighbor_bounds(nodetype::Symbol, ::Val{LinkType.control}) =
     n_neighbor_bounds_control(nodetype)
 n_neighbor_bounds(nodetype::Symbol, ::Val{LinkType.listen}) =
     n_neighbor_bounds_listen(nodetype)
+n_neighbor_bounds(nodetype::Symbol, ::Val{LinkType.observation}) =
+    n_neighbor_bounds_observation(nodetype)
 n_neighbor_bounds(nodetype::Symbol, ::Val{LinkType.none}) =
     error("'n_neighbor_bounds' not defined for link type $(LinkType.none).")
 
@@ -219,6 +246,8 @@ sort_by(::StructVector{Schema.UserDemand.Concentration}) =
 sort_by(::StructVector{Schema.UserDemand.Static}) = x -> (x.node_id, x.demand_priority)
 sort_by(::StructVector{Schema.UserDemand.Time}) =
     x -> (x.node_id, x.demand_priority, x.time)
+
+sort_by(::StructVector{Schema.Observation.Time}) = x -> (x.node_id, x.variable, x.time)
 
 """
 Sort a table in place in the required order.
@@ -569,7 +598,7 @@ function valid_link_types(db::DB)::Bool
     errors = false
 
     for (; link_id, from_node_id, to_node_id, link_type) in link_rows
-        if link_type ∉ ["flow", "control", "listen"]
+        if link_type ∉ ["flow", "control", "listen", "observation"]
             errors = true
             @error "Invalid link type '$link_type' for link #$link_id from node #$from_node_id to node #$to_node_id."
         end

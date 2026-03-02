@@ -55,6 +55,8 @@ function create_graph(db::DB, config::Config)::MetaGraph
 
     for row in node_rows
         node_id = NodeID(row.node_type, row.node_id, node_table)
+        # Observation nodes are not part of the simulation graph
+        node_id.type == NodeType.Observation && continue
         # Process allocation network ID
         if ismissing(row.subnetwork_id)
             subnetwork_id = 1
@@ -91,6 +93,10 @@ function create_graph(db::DB, config::Config)::MetaGraph
             push!(external_flow_links, link_metadata)
         end
         if link_type == LinkType.listen
+            max_link_id = max(link_id, max_link_id)
+            continue
+        end
+        if link_type == LinkType.observation
             max_link_id = max(link_id, max_link_id)
             continue
         end

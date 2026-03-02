@@ -46,10 +46,13 @@ LISTENCONTROLNODETYPES = {
 def _infer_link_type(from_node_type: str, to_node_type: str) -> str:
     """Infer the link type from the node types of its endpoints.
 
-    Returns ``"listen"`` when the target is a listen-capable control node and
+    Returns ``"observation"`` when the source is an Observation node,
+    ``"listen"`` when the target is a listen-capable control node and
     the source is *not* a spatial-control node, ``"control"`` when the source
     is a spatial-control node, and ``"flow"`` otherwise.
     """
+    if from_node_type == "Observation":
+        return "observation"
     if (
         to_node_type in LISTENCONTROLNODETYPES
         and from_node_type not in SPATIALCONTROLNODETYPES
@@ -251,7 +254,7 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         Parameters
         ----------
         **kwargs : Dict
-            Supported: 'ax', 'color_flow', 'color_control', 'color_listen'
+            Supported: 'ax', 'color_flow', 'color_control', 'color_listen', 'color_observation'
         """
         assert self.df is not None
         kwargs = kwargs.copy()  # Avoid side-effects
@@ -259,6 +262,7 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         color_flow = kwargs.pop("color_flow", None)
         color_control = kwargs.pop("color_control", None)
         color_listen = kwargs.pop("color_listen", None)
+        color_observation = kwargs.pop("color_observation", None)
 
         if ax is None:
             _, ax = plt.subplots()
@@ -268,6 +272,7 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         kwargs_flow = kwargs.copy()
         kwargs_control = kwargs.copy()
         kwargs_listen = kwargs.copy()
+        kwargs_observation = kwargs.copy()
 
         if color_flow is None:
             color_flow = "#3690c0"  # lightblue
@@ -282,10 +287,16 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             kwargs_listen["color"] = color_listen
             kwargs_listen["label"] = "Listen link"
             kwargs_listen["linestyle"] = "--"
+        if color_observation is None:
+            color_observation = "black"
+        kwargs_observation["color"] = color_observation
+        kwargs_observation["label"] = "Observation link"
+        kwargs_observation["linestyle"] = "--"
 
         where_flow = self._get_where_link_type("flow")
         where_control = self._get_where_link_type("control")
         where_listen = self._get_where_link_type("listen")
+        where_observation = self._get_where_link_type("observation")
 
         if not self.df[where_flow].empty:
             self.df[where_flow].plot(**kwargs_flow)
@@ -296,6 +307,9 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         if where_listen.any():
             self.df[where_listen].plot(**kwargs_listen)
 
+        if where_observation.any():
+            self.df[where_observation].plot(**kwargs_observation)
+
         # Determine the angle for every caret marker and where to place it.
         coords, index = shapely.get_coordinates(self.df.geometry, return_index=True)
         keep = np.diff(index) == 0
@@ -305,11 +319,12 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         angle = np.degrees(np.arctan2(dy, dx)) - 90
 
         # Set the color of the marker to match the line.
-        # Black is default, set color_flow otherwise; then set color_control.
+        # Black is default, set color_flow otherwise; then set color_control, color_listen, color_observation.
         color_index = index[1:][keep]
         color = np.where(where_flow[color_index], color_flow, "k")
         color = np.where(where_control[color_index], color_control, color)
         color = np.where(where_listen[color_index], color_listen, color)
+        color = np.where(where_observation[color_index], color_observation, color)
 
         # A faster alternative may be ax.quiver(). However, getting the scaling
         # right is tedious.

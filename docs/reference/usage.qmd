@@ -305,7 +305,7 @@ When Pumps and Outlets are part of a subnetwork, they can be controlled by alloc
 # Link {#sec-link}
 
 Links define connections between nodes. The only thing that defines a link is the nodes it connects, and in what direction.
-There are currently 3 possible link types:
+There are currently 4 possible link types:
 
 1. "flow": Flows between nodes are stored on links. The effect of
   the link direction depends on the node type, Node types that have a notion of an upstream
@@ -322,12 +322,13 @@ There are currently 3 possible link types:
 3. "listen": The listen links define which nodes are listened to by control nodes.
   They point from the listened node to the control node.
   The control node tables define listening behavior (`listen_node_id`, variable, weight, look-ahead), and the Python API automatically adds missing `listen` links when writing a model.
+4. "observation": Observation links point from an Observation node to the node being observed. These links are not used in the simulation core, but allow attaching time series data for reference, validation, or visualization.
 
 column        | type                          | restriction
 --------------| ----------------------------- | -----------
 from_node_id  | Int32                         | -
 to_node_id    | Int32                         | -
-link_type     | String                        | must be "flow", "control" or "listen"
+link_type     | String                        | must be "flow", "control", "listen", or "observation"
 geom          | LineString or MultiLineString | (optional)
 name          | String                        | (optional, does not have to be unique)
 

@@ -11,6 +11,7 @@ Run with ``--upload`` to upload to S3 (requires MinIO credentials).
 
 import argparse
 import math
+import re
 import shutil
 from base64 import b64encode
 from io import BytesIO
@@ -18,9 +19,13 @@ from pathlib import Path
 from uuid import uuid4
 
 import lxml.etree as ET
+import matplotlib
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 from ribasim.node_icons import NODE_ICON_DATA, draw_icon
+
+# Reproducibility: fixed hash salt gives deterministic clipPath IDs across runs.
+matplotlib.rcParams["svg.hashsalt"] = "ribasim-node-icons"
 
 # dir where this script is located
 script_dir = Path(__file__).resolve().parent
@@ -40,6 +45,21 @@ docs_icon_dir = repo_dir / "docs/assets/node-icons"
 
 QGIS_MARKER_SIZE_MM = 6.6
 QGIS_DOCTYPE = "<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>"
+
+
+def _clean_svg(svg_bytes: bytes) -> bytes:
+    """Remove non-reproducible content from Matplotlib SVG output.
+
+    Strips the ``<metadata>`` block (contains a timestamp) and removes
+    trailing whitespace from each line so that minor Matplotlib formatting
+    differences don't cause diffs.
+    """
+    text = svg_bytes.decode("utf-8")
+    # Remove the entire <metadata>...</metadata> block (including surrounding whitespace)
+    text = re.sub(r"\s*<metadata>.*?</metadata>\s*", "\n", text, flags=re.DOTALL)
+    # Strip trailing whitespace per line
+    text = "\n".join(line.rstrip() for line in text.splitlines()) + "\n"
+    return text.encode("utf-8")
 
 
 def create_svg_marker_layer(layer_id: str, svg_base64: str, size_mm: float):
@@ -155,7 +175,7 @@ for spec in NODE_ICON_DATA:
     # save svg
     svg_bytes_buffer = BytesIO()
     fig.savefig(svg_bytes_buffer, format="svg", transparent=True)
-    svg_bytes = svg_bytes_buffer.getvalue()
+    svg_bytes = _clean_svg(svg_bytes_buffer.getvalue())
 
     svg_path = svg_dir / f"{node_type}.svg"
     svg_path.write_bytes(svg_bytes)

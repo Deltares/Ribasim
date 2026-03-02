@@ -248,6 +248,14 @@ class ManningResistanceStaticSchema(_BaseSchema):
     control_state: pd.StringDtype = pa.Field(nullable=True)
 
 
+class ObservationTimeSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
+    node_id: np.int32 = pa.Field(nullable=False, default=0)
+    variable: pd.StringDtype = pa.Field(nullable=False)
+    time: pd.Timestamp = pa.Field(nullable=False)
+    value: float = pa.Field(nullable=False)
+
+
 class OutletStaticSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)

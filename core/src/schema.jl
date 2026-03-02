@@ -377,6 +377,19 @@ module Schema
 
     end
 
+    module Observation
+
+        using ...Ribasim: DateTime, Table
+
+        struct Time <: Table
+            node_id::Int32
+            variable::String
+            time::DateTime
+            value::Float64
+        end
+
+    end
+
     # these node types have no tables
     module Junction end
     module Terminal end

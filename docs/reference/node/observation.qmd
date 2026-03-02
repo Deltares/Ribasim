@@ -1,0 +1,38 @@
+---
+title: "![](/assets/node-icons/Observation.svg){height=20} Observation / time"
+---
+
+An Observation node is used to attach time series of observed or reference data to a node in the network. These are not used in the simulation core, but are available for visualization, validation, or post-processing.
+
+Observation nodes can be linked to Basin and connector nodes with an observation link.
+The link direction is always from the Observation node to the observed node.
+An Observation node can connect to 0 or 1 nodes, but can hold multiple observed variables for a single node.
+
+# Tables
+
+## Time
+
+column   | type     | unit   | restriction
+-------- | -------- | ------ | -----------
+node_id  | Int32    | -      |
+variable | String   | -      | Name of the observed variable (e.g. "level", "flow_rate")
+time     | DateTime | -      | Timestamp of the observation
+value    | Float64  | -      | Value of the observation
+
+# Examples
+
+This example shows two Observation nodes observing a Basin and a TabulatedRatingCurve. The table below shows the time series for both nodes:
+
+| node_id | variable   | time                | value |
+| ------- | ---------- | ------------------- | ----- |
+| 1       | level      | 2020-01-01 00:00:00 | 0.5   |
+| 1       | level      | 2020-02-01 00:00:00 | 0.3   |
+| 1       | level      | 2020-03-01 00:00:00 | 0.4   |
+| 2       | flow_rate  | 2020-01-01 00:00:00 | 0.0   |
+| 2       | flow_rate  | 2020-02-01 00:00:00 | 0.05  |
+| 2       | flow_rate  | 2020-03-01 00:00:00 | 0.1   |
+
+# Notes
+
+- Observation nodes are not included in the simulation graph and do not affect results.
+- They are intended for reference, validation, or visualization purposes only.

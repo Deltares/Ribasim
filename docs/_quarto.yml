@@ -100,9 +100,10 @@ website:
                 - reference/node/discrete-control.qmd
                 - reference/node/continuous-control.qmd
                 - reference/node/pid-control.qmd
-            - section: "Layout"
+            - section: "Other"
               contents:
                 - reference/node/junction.qmd
+                - reference/node/observation.qmd
     - title: "Contributing"
       contents:
         - dev/index.qmd
