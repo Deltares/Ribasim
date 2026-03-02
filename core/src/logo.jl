@@ -7,7 +7,7 @@ function print_logo(io::IO = stderr)::Nothing
 
     v = RIBASIM_VERSION
 
-    # runic: off
+    #! format: off
     logo = """
     ⠀⠀⠀⠀⠀⠀⠀⠀⢀⣶⣶⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
     ⠀⠀⠀⠀⠀⠀⠀⠀⠈⠿⠿⠟⣠⣶⣄⡀⠀⠀⠀⠀⢀⣀⡀⠀⠀⠀⠀
@@ -62,7 +62,7 @@ function print_logo(io::IO = stderr)::Nothing
     ⠀⠀⠀⢿⣿⠇⠿⠟⢿⣾⣿⠿⠿⠿⠃⠀⠀⠀⠀⠀
     ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠁⣿⣿⠆⠀⠀⠀⠀⠀⠀
     """
-    # runic: on
+    #! format: on
     println(io, logo)
     return nothing
 end
