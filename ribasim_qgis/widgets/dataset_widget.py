@@ -73,7 +73,6 @@ _ID_COLUMNS: dict[str, str] = {
 _DEFAULT_VARIABLES: dict[str, str] = {
     "basin": "level",
     "flow": "flow_rate",
-    "concentration": "Initial",
 }
 
 RIBASIM_HOME_SETTING = "ribasim/home"

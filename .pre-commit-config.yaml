@@ -3,6 +3,7 @@ repos:
   - repo: builtin
     hooks:
       - id: check-added-large-files
+        exclude: "ribasim_qgis/widgets/plotly-.*\\.min\\.js"
       - id: check-case-conflict
       - id: check-yaml
       - id: check-toml

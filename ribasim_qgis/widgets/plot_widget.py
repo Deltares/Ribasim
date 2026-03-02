@@ -1,7 +1,7 @@
 """Plot widget using plotly to render Ribasim timeseries from NetCDF results."""
 
-import importlib.resources
 from collections import defaultdict
+from pathlib import Path
 
 import numpy as np
 import plotly.graph_objs as go
@@ -21,10 +21,17 @@ from qgis.PyQt.QtWidgets import (
     QWidgetAction,
 )
 
-# Resolve the bundled plotly.min.js via importlib.resources.
+# Bundled plotly.js 2.30.0 — compatible with QWebView (QtWebKit) in QGIS.
+# Many plotly.js 2.x versions don't work well with QtWebKit; 2.30.0 is known
+# to work (same version that plotly Python 5.20 shipped).
+# Once QGIS bundles QtWebEngine by default (https://github.com/qgis/QGIS/issues/54965)
+# we can switch from QWebView to QWebEngineView (Chromium-based) and use the
+# QGIS-bundled plotly.js without these workarounds.
+_PLOTLY_JS_DIR = Path(__file__).resolve().parent
 _PLOTLY_JS_URL = QUrl.fromLocalFile(
-    str(importlib.resources.files("plotly").joinpath("package_data", "plotly.min.js"))
+    str(_PLOTLY_JS_DIR / "plotly-2.30.0.min.js")
 ).toString()
+_PLOTLY_BASE_URL = QUrl.fromLocalFile(str(_PLOTLY_JS_DIR) + "/")
 
 # A single trace: (time values, data values).
 Trace = tuple[np.ndarray, np.ndarray]
@@ -115,6 +122,7 @@ class PlotWidget(QWidget):
         ws = self._web_view.settings()
         ws.setAttribute(QWebSettings.WebGLEnabled, True)
         ws.setAttribute(QWebSettings.Accelerated2dCanvasEnabled, True)
+
         layout.addWidget(self._web_view)
 
         # Data: {file_name: {variable: {trace_name: (x, y)}}}
@@ -173,19 +181,15 @@ class PlotWidget(QWidget):
             if key in previously_checked_keys
         }
 
-        default_label = (
-            "flow / flow_rate" if "flow / flow_rate" in self._menu_to_key else ""
-        )
-        for file_name in sorted(self._defaults):
-            candidate = self._defaults[file_name]
-            label = f"{file_name} / {candidate}"
-            if default_label:
-                break
-            if label in self._menu_to_key:
-                default_label = label
-                break
+        # When nothing was previously checked, check all default variables
+        if not checked_labels:
+            checked_labels = {
+                f"{file_name} / {variable}"
+                for file_name, variable in self._defaults.items()
+                if f"{file_name} / {variable}" in self._menu_to_key
+            }
 
-        self._var_menu.populate(sorted(menu_labels), checked_labels, default_label)
+        self._var_menu.populate(sorted(menu_labels), checked_labels)
         self._update_button_text()
         self._placeholder.setText(_PLACEHOLDER_DEFAULT)
         self._redraw()
@@ -309,4 +313,4 @@ class PlotWidget(QWidget):
         )
         self._placeholder.setVisible(False)
         self._web_view.setVisible(True)
-        self._web_view.setHtml(html)
+        self._web_view.setHtml(html, _PLOTLY_BASE_URL)

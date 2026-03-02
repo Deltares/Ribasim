@@ -137,7 +137,7 @@ def read_flow_nc(path: Path) -> NetCDFResult | None:
 def read_concentration_nc(path: Path) -> NetCDFResult | None:
     """Read concentration.nc into a NetCDFResult.
 
-    The raw data has shape (time, node_id, substance).
+    The raw data has shape (time, substance, node_id).
     Each substance becomes a separate variable with shape (n_times, n_node_ids).
     """
     root = _open_netcdf(path)
@@ -150,12 +150,12 @@ def read_concentration_nc(path: Path) -> NetCDFResult | None:
     # Read substance names (string array — use Read() instead of ReadAsArray())
     substances: list[str] = root.OpenMDArray("substance").Read()
 
-    # Read concentration: shape (time, node_id, substance)
+    # Read concentration: shape (time, substance, node_id)
     conc = root.OpenMDArray("concentration").ReadAsArray()
 
     variables: dict[str, np.ndarray] = {}
     for i, sub in enumerate(substances):
-        variables[sub] = conc[:, :, i]  # (n_times, n_node_ids) — no copy needed
+        variables[sub] = conc[:, i, :]  # (n_times, n_node_ids)
 
     conc_unit = root.OpenMDArray("concentration").GetUnit()
     units = dict.fromkeys(substances, conc_unit) if conc_unit else {}
