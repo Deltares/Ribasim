@@ -106,18 +106,18 @@ After downloading, extract/unzip the zip file to a directory of your choice, for
 Unless you add it to the Path as instructed below, we recommend avoiding spaces in the path.
 
 To check whether the installation was performed successfully, open a terminal and go to the path where the executable is for example `C:\ribasim\`.
-If you are using cmd.exe type `ribasim --help`, or for PowerShell `./ribasim`.
+If you are using cmd.exe type `ribasim --help`, or for PowerShell `./ribasim --help`.
 
 This will give the following message if it is installed correctly:
 ```
-Usage: ribasim [OPTIONS] <TOML_PATH>
+Usage: ribasim.exe <TOML_PATH>
 
 Arguments:
   <TOML_PATH>  Path to the TOML file
 
 Options:
-  -h, --help                Print help
-  -V, --version             Print version
+  -h, --help     Print help
+  -V, --version  Print version
 ```
 
 ## Adding Ribasim to Path on Windows

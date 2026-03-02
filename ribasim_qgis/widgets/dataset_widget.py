@@ -5,6 +5,7 @@ It also allows enabling or disabling individual elements for a computation.
 """
 
 import os
+import re
 import shutil
 from contextvars import ContextVar
 from datetime import datetime
@@ -76,6 +77,18 @@ _DEFAULT_VARIABLES: dict[str, str] = {
 }
 
 RIBASIM_HOME_SETTING = "ribasim/home"
+
+_ANSI_ESCAPE_RE = re.compile(r"\x1B(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1B\\))")
+
+
+def _strip_ansi_escape_codes(text: str) -> str:
+    """Remove ANSI terminal escape codes from CLI output for plaintext display.
+
+    Ribasim writes terminal styling sequences (colors, bold, etc.).
+    Because ``QPlainTextEdit`` only supports plain text, we strip these
+    sequences to avoid showing raw control characters in the output dialog.
+    """
+    return _ANSI_ESCAPE_RE.sub("", text)
 
 
 class DatasetWidget:
@@ -351,6 +364,7 @@ class DatasetWidget:
 
         def on_output(line: str, replace: bool):
             """Handle output from the task (called on main thread via signal)."""
+            line = _strip_ansi_escape_codes(line)
             if replace:
                 # Update last line instead of appending for progress updates
                 cursor = text_edit.textCursor()

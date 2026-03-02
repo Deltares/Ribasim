@@ -173,6 +173,7 @@ using .config
 include("parameter.jl")
 include("validation.jl")
 include("solve.jl")
+include("logo.jl")
 include("logging.jl")
 include("allocation_util.jl")
 include("allocation_init.jl")
