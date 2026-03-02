@@ -154,8 +154,8 @@ end
     (; integrator) = model
     (; u, p, t) = integrator
     (; p_independent, state_and_time_dependent_cache) = p
-    (; basin) = p_independent
-    du = get_du(integrator)
+    (; basin, du) = p_independent
+
     Ribasim.water_balance!(du, u, p, t)
     stor = state_and_time_dependent_cache.current_storage
     prec = basin.vertical_flux.precipitation

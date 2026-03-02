@@ -450,10 +450,9 @@ as input. Therefore we set the instantaneous flows as the mean flows as allocati
 function set_initial_allocation_cumulative_volume!(integrator)::Nothing
     (; u, p, t) = integrator
     (; p_independent) = p
-    (; allocation, flow_boundary) = p_independent
+    (; allocation, flow_boundary, du) = p_independent
     (; allocation_models) = allocation
     (; Δt_allocation) = allocation_models[1]
-    du = get_du(integrator)
     water_balance!(du, u, p, t)
 
     for allocation_model in allocation_models
