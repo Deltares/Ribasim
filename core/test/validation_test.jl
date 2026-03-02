@@ -93,6 +93,9 @@ end
     @test_throws "'n_neighbor_bounds_control' not defined for Val{:bar}()." Ribasim.n_neighbor_bounds_control(
         :bar,
     )
+    @test_throws "'n_neighbor_bounds_listen' not defined for Val{:baz}()." Ribasim.n_neighbor_bounds_listen(
+        :baz,
+    )
 end
 
 @testitem "PidControl connectivity validation" begin

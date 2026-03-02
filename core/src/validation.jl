@@ -69,19 +69,20 @@ struct n_neighbor_bounds
     out_max::Int
 end
 
+# Mucho
+const M = typemax(Int)
+
 n_neighbor_bounds_flow(nodetype::Symbol) = n_neighbor_bounds_flow(Val(nodetype))
-n_neighbor_bounds_flow(::Val{:Basin}) = n_neighbor_bounds(0, typemax(Int), 0, typemax(Int))
+n_neighbor_bounds_flow(::Val{:Basin}) = n_neighbor_bounds(0, M, 0, M)
 n_neighbor_bounds_flow(::Val{:LinearResistance}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:ManningResistance}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:TabulatedRatingCurve}) = n_neighbor_bounds(1, 1, 1, 1)
-n_neighbor_bounds_flow(::Val{:LevelBoundary}) =
-    n_neighbor_bounds(0, typemax(Int), 0, typemax(Int))
+n_neighbor_bounds_flow(::Val{:LevelBoundary}) = n_neighbor_bounds(0, M, 0, M)
 n_neighbor_bounds_flow(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, 1)
 n_neighbor_bounds_flow(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, 1)
-n_neighbor_bounds_flow(::Val{:Terminal}) = n_neighbor_bounds(1, typemax(Int), 0, 0)
-n_neighbor_bounds_flow(::Val{:Junction}) =
-    n_neighbor_bounds(1, typemax(Int), 1, typemax(Int))
+n_neighbor_bounds_flow(::Val{:Terminal}) = n_neighbor_bounds(1, M, 0, 0)
+n_neighbor_bounds_flow(::Val{:Junction}) = n_neighbor_bounds(1, M, 1, M)
 n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:ContinuousControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
@@ -103,15 +104,43 @@ n_neighbor_bounds_control(::Val{:Outlet}) = n_neighbor_bounds(0, 2, 0, 0)
 n_neighbor_bounds_control(::Val{:Terminal}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:Junction}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:PidControl}) = n_neighbor_bounds(0, 1, 1, 1)
-n_neighbor_bounds_control(::Val{:ContinuousControl}) =
-    n_neighbor_bounds(0, 0, 1, typemax(Int))
-n_neighbor_bounds_control(::Val{:DiscreteControl}) =
-    n_neighbor_bounds(0, 0, 1, typemax(Int))
+n_neighbor_bounds_control(::Val{:ContinuousControl}) = n_neighbor_bounds(0, 0, 1, M)
+n_neighbor_bounds_control(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 1, M)
 n_neighbor_bounds_control(::Val{:UserDemand}) = n_neighbor_bounds(0, 0, 0, 0)
-n_neighbor_bounds_control(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 1, typemax(Int))
+n_neighbor_bounds_control(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 1, M)
 n_neighbor_bounds_control(::Val{:FlowDemand}) = n_neighbor_bounds(0, 0, 1, 1)
 n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
+
+n_neighbor_bounds_listen(nodetype::Symbol) = n_neighbor_bounds_listen(Val(nodetype))
+n_neighbor_bounds_listen(::Val{:Basin}) = n_neighbor_bounds(0, 0, 0, M)
+n_neighbor_bounds_listen(::Val{:LinearResistance}) = n_neighbor_bounds(0, 0, 0, M)
+n_neighbor_bounds_listen(::Val{:ManningResistance}) = n_neighbor_bounds(0, 0, 0, M)
+n_neighbor_bounds_listen(::Val{:TabulatedRatingCurve}) = n_neighbor_bounds(0, 0, 0, M)
+n_neighbor_bounds_listen(::Val{:LevelBoundary}) = n_neighbor_bounds(0, 0, 0, M)
+n_neighbor_bounds_listen(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 0, M)
+n_neighbor_bounds_listen(::Val{:Pump}) = n_neighbor_bounds(0, 0, 0, M)
+n_neighbor_bounds_listen(::Val{:Outlet}) = n_neighbor_bounds(0, 0, 0, M)
+n_neighbor_bounds_listen(::Val{:Terminal}) = n_neighbor_bounds(0, 0, 0, M)
+n_neighbor_bounds_listen(::Val{:Junction}) = n_neighbor_bounds(0, 0, 0, M)
+n_neighbor_bounds_listen(::Val{:PidControl}) = n_neighbor_bounds(1, M, 0, 0)
+n_neighbor_bounds_listen(::Val{:ContinuousControl}) = n_neighbor_bounds(1, M, 0, 0)
+n_neighbor_bounds_listen(::Val{:DiscreteControl}) = n_neighbor_bounds(1, M, 0, 0)
+n_neighbor_bounds_listen(::Val{:UserDemand}) = n_neighbor_bounds(0, 0, 0, M)
+n_neighbor_bounds_listen(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 0, M)
+n_neighbor_bounds_listen(::Val{:FlowDemand}) = n_neighbor_bounds(0, 0, 0, M)
+n_neighbor_bounds_listen(nodetype) =
+    error("'n_neighbor_bounds_listen' not defined for $nodetype.")
+
+n_neighbor_bounds(nodetype::Symbol, link_type::LinkType.T) =
+    n_neighbor_bounds(nodetype, Val(link_type))
+n_neighbor_bounds(nodetype::Symbol, ::Val{LinkType.flow}) = n_neighbor_bounds_flow(nodetype)
+n_neighbor_bounds(nodetype::Symbol, ::Val{LinkType.control}) =
+    n_neighbor_bounds_control(nodetype)
+n_neighbor_bounds(nodetype::Symbol, ::Val{LinkType.listen}) =
+    n_neighbor_bounds_listen(nodetype)
+n_neighbor_bounds(nodetype::Symbol, ::Val{LinkType.none}) =
+    error("'n_neighbor_bounds' not defined for link type $(LinkType.none).")
 
 controllablefields(nodetype::Symbol) = controllablefields(Val(nodetype))
 controllablefields(::Val{:LinearResistance}) = OrderedSet((:resistance,))
@@ -494,15 +523,14 @@ end
 
 function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
     node_type = NodeType.T(node_name)
-    bounds_flow = n_neighbor_bounds_flow(node_name)
-    bounds_control = n_neighbor_bounds_control(node_name)
 
     errors = false
     # return !errors
     for node_id in labels(graph)
         node_id.type == node_type || continue
-        for (bounds, link_type) in
-            zip((bounds_flow, bounds_control), (LinkType.flow, LinkType.control))
+        # listen links are not part of the graph, only validated in python
+        for link_type in (LinkType.flow, LinkType.control)
+            bounds = n_neighbor_bounds(node_name, link_type)
             n_inneighbors =
                 count(x -> true, inneighbor_labels_type(graph, node_id, link_type))
             n_outneighbors =
@@ -541,7 +569,7 @@ function valid_link_types(db::DB)::Bool
     errors = false
 
     for (; link_id, from_node_id, to_node_id, link_type) in link_rows
-        if link_type ∉ ["flow", "control"]
+        if link_type ∉ ["flow", "control", "listen"]
             errors = true
             @error "Invalid link type '$link_type' for link #$link_id from node #$from_node_id to node #$to_node_id."
         end
