@@ -841,7 +841,6 @@ class Model(FileModel, ParentModel):
                 )
             ),
             name="ribasim",
-            projected=node_df.crs.is_projected,
             crs=node_df.crs,
         )
 
