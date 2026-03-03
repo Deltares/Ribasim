@@ -2,14 +2,11 @@
 
 import importlib.resources
 from collections import defaultdict
+from enum import Enum, auto
+from pathlib import Path
 
 import numpy as np
-import plotly.graph_objs as go
-import plotly.offline as po
-from plotly.subplots import make_subplots
-from qgis.PyQt.QtCore import Qt, QUrl
-from qgis.PyQt.QtWebKit import QWebSettings
-from qgis.PyQt.QtWebKitWidgets import QWebView
+from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
@@ -21,10 +18,102 @@ from qgis.PyQt.QtWidgets import (
     QWidgetAction,
 )
 
-# Resolve the bundled plotly.min.js via importlib.resources.
-_PLOTLY_JS_URL = QUrl.fromLocalFile(
-    str(importlib.resources.files("plotly").joinpath("package_data", "plotly.min.js"))
-).toString()
+try:
+    import plotly.graph_objs as go
+    import plotly.offline as po
+    from plotly.subplots import make_subplots
+
+    HAS_PLOTLY = True
+except (ImportError, ModuleNotFoundError):
+    HAS_PLOTLY = False
+
+# ---------------------------------------------------------------------------
+# Web-view backend detection
+# ---------------------------------------------------------------------------
+# Preferred: QtWebEngine (Chromium-based, available in QGIS 4 / Qt6).
+# Uses the latest plotly.min.js bundled with the plotly Python package —
+# no version workarounds needed.
+#
+# Fallback: QtWebKit (QGIS 3 / Qt5).  Uses a vendored plotly-2.4.2.min.js
+# because many later plotly.js 2.x versions break in QtWebKit.  We also
+# call .tolist() on numpy arrays since plotly.js <2.28 cannot decode bdata.
+#
+# The HTML is always written to a temp file and loaded via setUrl() to
+# side-step QtWebKit's ~2 MB setHtml() limit (plotly.js alone is ~3.5 MB)
+# and intermittent baseUrl failures.
+# ---------------------------------------------------------------------------
+
+
+class _WebViewBackend(Enum):
+    """Available web-view backends for the plot widget."""
+
+    WEBENGINE = auto()  # QtWebEngine (Chromium) — QGIS 4 / Qt6
+    WEBKIT = auto()  # QtWebKit — QGIS 3 / Qt5
+    NONE = auto()  # No web view found
+
+
+def _detect_backend() -> _WebViewBackend:
+    """Probe for an available web-view backend at import time."""
+    try:
+        from qgis.PyQt.QtWebEngineWidgets import QWebEngineView  # noqa: F401
+
+        return _WebViewBackend.WEBENGINE
+    except (ImportError, ModuleNotFoundError):
+        pass
+    try:
+        from qgis.PyQt.QtWebKit import QWebSettings  # noqa: F401
+        from qgis.PyQt.QtWebKitWidgets import QWebView  # noqa: F401
+
+        return _WebViewBackend.WEBKIT
+    except (ImportError, ModuleNotFoundError):
+        pass
+    return _WebViewBackend.NONE
+
+
+_BACKEND: _WebViewBackend = _detect_backend()
+
+
+def _log_backend() -> None:
+    """Log the detected web-view backend to the QGIS message log."""
+    from qgis.core import Qgis, QgsMessageLog
+
+    QgsMessageLog.logMessage(
+        f"Ribasim plot widget backend: {_BACKEND.name}",
+        tag="Ribasim",
+        level=Qgis.MessageLevel.Info,
+    )
+
+
+_log_backend()
+
+# QUrl is needed by both backends; import it once the backend is known.
+if _BACKEND is not _WebViewBackend.NONE:
+    from qgis.PyQt.QtCore import QUrl
+
+# Import the backend-specific widget classes at module scope so PlotWidget
+# can reference them by name.
+if _BACKEND is _WebViewBackend.WEBENGINE:
+    from qgis.PyQt.QtWebEngineWidgets import QWebEngineView
+elif _BACKEND is _WebViewBackend.WEBKIT:
+    from qgis.PyQt.QtWebKit import QWebSettings
+    from qgis.PyQt.QtWebKitWidgets import QWebView
+
+# Resolve the plotly.js script path for the active backend.
+if _BACKEND is _WebViewBackend.WEBENGINE:
+    # Use the latest plotly.min.js shipped with the plotly Python package.
+    _PLOTLY_JS_URL = QUrl.fromLocalFile(
+        str(
+            importlib.resources.files("plotly").joinpath(
+                "package_data", "plotly.min.js"
+            )
+        )
+    )
+    _PLOT_HTML_FILE = Path(__file__).resolve().parent / "_plot.html"
+elif _BACKEND is _WebViewBackend.WEBKIT:
+    # Vendored plotly.js 2.4.2 — the latest confirmed to work in QtWebKit.
+    _PLOTLY_JS_DIR = Path(__file__).resolve().parent
+    _PLOTLY_JS_FILE = "plotly-2.4.2.min.js"
+    _PLOT_HTML_FILE = _PLOTLY_JS_DIR / "_plot.html"
 
 # A single trace: (time values, data values).
 Trace = tuple[np.ndarray, np.ndarray]
@@ -77,7 +166,17 @@ class _VariablesMenu(QMenu):
 
 
 class PlotWidget(QWidget):
-    """Widget with variable selector and a plotly timeseries plot."""
+    """Widget with variable selector and a plotly timeseries plot.
+
+    Supports two web-view backends:
+
+    * **QtWebEngine** (preferred, QGIS 4) - uses the latest ``plotly.min.js``
+      bundled with the ``plotly`` Python package.
+    * **QtWebKit** (fallback, QGIS 3) - uses a vendored ``plotly-2.4.2.min.js``
+      with numpy-array workarounds.
+
+    If neither backend is available the widget shows a static notice.
+    """
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -85,14 +184,19 @@ class PlotWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
 
+        if _BACKEND is _WebViewBackend.NONE or not HAS_PLOTLY:
+            # No usable backend — the dock cannot be opened (toggle_plot_dock
+            # blocks it), so just bail out of __init__.
+            return
+
         # --- Selectors: single horizontal row ---
         row = QHBoxLayout()
         row.setContentsMargins(4, 4, 4, 0)
         row.setSpacing(4)
 
         self._var_button = QToolButton()
-        self._var_button.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self._var_button.setPopupMode(QToolButton.InstantPopup)
+        self._var_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self._var_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self._var_menu = _VariablesMenu(self._var_button)
         self._var_menu.aboutToHide.connect(self._on_menu_closed)
         self._var_button.setMenu(self._var_menu)
@@ -104,17 +208,21 @@ class PlotWidget(QWidget):
 
         # --- Placeholder label ---
         self._placeholder = QLabel(_PLACEHOLDER_DEFAULT)
-        self._placeholder.setAlignment(Qt.AlignCenter)
+        self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._placeholder.setStyleSheet("color: gray; font-style: italic;")
         layout.addWidget(self._placeholder)
 
-        # --- Web view ---
-        self._web_view = QWebView()
+        # --- Web view (backend-specific) ---
+        if _BACKEND is _WebViewBackend.WEBENGINE:
+            self._web_view = QWebEngineView()
+        else:
+            self._web_view = QWebView()  # type: ignore[assignment]
+            ws = self._web_view.settings()
+            ws.setAttribute(QWebSettings.WebGLEnabled, True)  # type: ignore[arg-type]
+            ws.setAttribute(QWebSettings.Accelerated2dCanvasEnabled, True)  # type: ignore[arg-type]
+
         self._web_view.setVisible(False)
-        self._web_view.setContextMenuPolicy(Qt.NoContextMenu)
-        ws = self._web_view.settings()
-        ws.setAttribute(QWebSettings.WebGLEnabled, True)
-        ws.setAttribute(QWebSettings.Accelerated2dCanvasEnabled, True)
+        self._web_view.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         layout.addWidget(self._web_view)
 
         # Data: {file_name: {variable: {trace_name: (x, y)}}}
@@ -129,6 +237,11 @@ class PlotWidget(QWidget):
         self._menu_to_key: dict[str, tuple[str, str]] = {}
 
     # --- Public API ---
+
+    @property
+    def plotting_supported(self) -> bool:
+        """Whether the interactive plot backend is available."""
+        return _BACKEND is not _WebViewBackend.NONE and HAS_PLOTLY
 
     def preload_variables(
         self,
@@ -147,6 +260,8 @@ class PlotWidget(QWidget):
         defaults:
             file_name -> default variable to check.
         """
+        if not self.plotting_supported:
+            return
         self._available = available
         self._units = units or {}
         self._defaults = defaults or {}
@@ -173,19 +288,15 @@ class PlotWidget(QWidget):
             if key in previously_checked_keys
         }
 
-        default_label = (
-            "flow / flow_rate" if "flow / flow_rate" in self._menu_to_key else ""
-        )
-        for file_name in sorted(self._defaults):
-            candidate = self._defaults[file_name]
-            label = f"{file_name} / {candidate}"
-            if default_label:
-                break
-            if label in self._menu_to_key:
-                default_label = label
-                break
+        # When nothing was previously checked, check all default variables
+        if not checked_labels:
+            checked_labels = {
+                f"{file_name} / {variable}"
+                for file_name, variable in self._defaults.items()
+                if f"{file_name} / {variable}" in self._menu_to_key
+            }
 
-        self._var_menu.populate(sorted(menu_labels), checked_labels, default_label)
+        self._var_menu.populate(sorted(menu_labels), checked_labels)
         self._update_button_text()
         self._placeholder.setText(_PLACEHOLDER_DEFAULT)
         self._redraw()
@@ -205,12 +316,16 @@ class PlotWidget(QWidget):
         units:
             file_name -> variable -> unit string (e.g. 'm3 s-1').
         """
+        if not self.plotting_supported:
+            return
         self._plot_data = plot_data
         if units:
             self._units = units
         self._redraw()
 
     def clear(self) -> None:
+        if not self.plotting_supported:
+            return
         self._plot_data = {}
         self._web_view.setVisible(False)
         self._web_view.setUrl(QUrl("about:blank"))
@@ -258,8 +373,23 @@ class PlotWidget(QWidget):
             unit_key = unit or "(no unit)"
             for trace_name, (x, y) in var_traces.items():
                 legend_name = f"{file_name} / {var} {trace_name}"
+                # QtWebKit uses an old plotly.js (2.4.2) without bdata
+                # support, so we must convert numpy arrays to plain lists.
+                # QtWebEngine uses the latest plotly.js which handles
+                # numpy arrays natively.
+                if _BACKEND is _WebViewBackend.WEBKIT:
+                    x_data = x.tolist()
+                    y_data = y.tolist()
+                else:
+                    x_data = x
+                    y_data = y
                 traces_by_unit[unit_key].append(
-                    go.Scatter(x=x, y=y, mode="lines", name=legend_name)
+                    go.Scatter(
+                        x=x_data,
+                        y=y_data,
+                        mode="lines",
+                        name=legend_name,
+                    )
                 )
 
         if not traces_by_unit:
@@ -267,14 +397,15 @@ class PlotWidget(QWidget):
             self._placeholder.setVisible(True)
             return
 
-        config = {
+        config: dict[str, bool | list[str]] = {
             "scrollZoom": True,
             "editable": False,
             "displayModeBar": True,
             "responsive": True,
-            # toImage uses an <a download> click that QtWebKit silently ignores.
-            "modeBarButtonsToRemove": ["toImage"],
         }
+        # toImage uses an <a download> click that QtWebKit silently ignores.
+        if _BACKEND is _WebViewBackend.WEBKIT:
+            config["modeBarButtonsToRemove"] = ["toImage"]
 
         units = sorted(traces_by_unit)
         fig = make_subplots(
@@ -302,11 +433,18 @@ class PlotWidget(QWidget):
             include_plotlyjs=False,
             config=config,
         )
+
+        if _BACKEND is _WebViewBackend.WEBENGINE:
+            js_src = _PLOTLY_JS_URL.toString()
+        else:
+            js_src = _PLOTLY_JS_FILE
+
         html = (
             '<html><head><meta charset="utf-8" />'
-            f'<script src="{_PLOTLY_JS_URL}"></script></head>'
+            f'<script src="{js_src}"></script></head>'
             f'<body style="margin:0;overflow:hidden">{div}</body></html>'
         )
+        _PLOT_HTML_FILE.write_text(html, encoding="utf-8")
         self._placeholder.setVisible(False)
         self._web_view.setVisible(True)
-        self._web_view.setHtml(html)
+        self._web_view.setUrl(QUrl.fromLocalFile(str(_PLOT_HTML_FILE)))

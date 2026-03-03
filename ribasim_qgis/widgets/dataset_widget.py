@@ -5,6 +5,7 @@ It also allows enabling or disabling individual elements for a computation.
 """
 
 import os
+import re
 import shutil
 from contextvars import ContextVar
 from datetime import datetime
@@ -12,15 +13,6 @@ from functools import partial
 from pathlib import Path
 from typing import Any, cast
 
-from PyQt5.QtCore import QDateTime, QMetaType
-from PyQt5.QtWidgets import (
-    QDialog,
-    QFileDialog,
-    QMenu,
-    QPlainTextEdit,
-    QVBoxLayout,
-    QWidget,
-)
 from qgis.core import (
     Qgis,
     QgsApplication,
@@ -38,6 +30,15 @@ from qgis.core import (
     QgsTemporalNavigationObject,
     QgsVectorLayer,
     QgsVectorLayerTemporalProperties,
+)
+from qgis.PyQt.QtCore import QDateTime, QMetaType
+from qgis.PyQt.QtWidgets import (
+    QDialog,
+    QFileDialog,
+    QMenu,
+    QPlainTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
 from ribasim_qgis.core.model import (
@@ -72,10 +73,21 @@ _ID_COLUMNS: dict[str, str] = {
 _DEFAULT_VARIABLES: dict[str, str] = {
     "basin": "level",
     "flow": "flow_rate",
-    "concentration": "Initial",
 }
 
 RIBASIM_HOME_SETTING = "ribasim/home"
+
+_ANSI_ESCAPE_RE = re.compile(r"\x1B(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1B\\))")
+
+
+def _strip_ansi_escape_codes(text: str) -> str:
+    """Remove ANSI terminal escape codes from CLI output for plaintext display.
+
+    Ribasim writes terminal styling sequences (colors, bold, etc.).
+    Because ``QPlainTextEdit`` only supports plain text, we strip these
+    sequences to avoid showing raw control characters in the output dialog.
+    """
+    return _ANSI_ESCAPE_RE.sub("", text)
 
 
 class DatasetWidget:
@@ -351,6 +363,7 @@ class DatasetWidget:
 
         def on_output(line: str, replace: bool):
             """Handle output from the task (called on main thread via signal)."""
+            line = _strip_ansi_escape_codes(line)
             if replace:
                 # Update last line instead of appending for progress updates
                 cursor = text_edit.textCursor()
@@ -679,7 +692,7 @@ class DatasetWidget:
             self.ribasim_widget.iface.messageBar().pushMessage(
                 "Ribasim",
                 "Cannot duplicate layer, fids are not sorted",
-                level=Qgis.Critical,
+                level=Qgis.MessageLevel.Critical,
                 duration=3,
             )
             return
@@ -692,7 +705,9 @@ class DatasetWidget:
             QDateTime(toml["starttime"]), QDateTime(toml["endtime"])
         )
         tprop = maplayer.temporalProperties()
-        tprop.setMode(QgsVectorLayerTemporalProperties.ModeFixedTemporalRange)
+        tprop.setMode(
+            QgsVectorLayerTemporalProperties.TemporalMode.ModeFixedTemporalRange
+        )
         tprop.setFixedTemporalRange(trange)
         tprop.setIsActive(True)
 

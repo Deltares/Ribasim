@@ -6,6 +6,7 @@
 [general]
 name=Ribasim
 qgisMinimumVersion=3.40
+qgisMaximumVersion=4.99
 description=QGIS plugin to inspect Ribasim models
 version=2026.1.0-rc1
 author=Deltares
@@ -44,3 +45,5 @@ Category of the plugin: Raster, Vector, Database or Web
 
 # If the plugin can run on QGIS Server.
 server=False
+
+supportsQt6=True

@@ -359,6 +359,7 @@ end
         :LevelDemand,
         :LinearResistance,
         :ManningResistance,
+        :Observation,
         :Outlet,
         :PidControl,
         :Pump,
@@ -366,10 +367,13 @@ end
         :Terminal,
         :UserDemand,
     ]
-    # Junction and Terminal have no tables
-    @test unique(node_type.(table_types)) == filter(!in((:Terminal, :Junction)), node_types)
+    # Junction, Terminal have no tables
+    no_tables = (:Terminal, :Junction)
+    @test unique(node_type.(table_types)) == filter(!in(no_tables), node_types)
     @test collect(keys(node_kinds)) == node_types
     for node_type in node_types
+        # Observation is not in Parameters
+        node_type == :Observation && continue
         NodeType.T(node_type)
         # It has a struct which is added to Parameters
         T = getproperty(Ribasim, node_type)

@@ -68,10 +68,12 @@ These pages contain the test models, node descriptions and Ribasim Python API do
 
 :::
 
-### Layout
+### Other
 
 ::: {layout-ncol=3 style="text-align: center;"}
 
 [![](/assets/node-icons/Junction.svg){height=80}<br>Junction](node/junction.qmd)
+
+[![](/assets/node-icons/Observation.svg){height=80}<br>Observation](node/observation.qmd)
 
 :::

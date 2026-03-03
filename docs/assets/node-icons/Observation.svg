@@ -17,20 +17,36 @@ z
   </g>
   <g id="axes_1">
    <g id="patch_2">
-    <path d="M 14.4 57.6
-L 57.6 57.6
-L 57.6 14.4
-L 14.4 14.4
+    <path d="M 28.08 64.8
+L 43.92 64.8
+L 43.92 7.2
+L 28.08 7.2
 z
 " clip-path="url(#pe217483c96)" style="fill: #ffffff; stroke: #000000; stroke-width: 1.5; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
-    <path d="M 14.4 36
-L 57.6 36
-L 57.6 14.4
-L 14.4 14.4
+    <path d="M 28.08 64.8
+L 43.92 64.8
+L 43.92 53.28
+L 28.08 53.28
 z
-" clip-path="url(#pe217483c96)" style="fill: #e69f00; stroke: #000000; stroke-linejoin: miter"/>
+" clip-path="url(#pe217483c96)" style="stroke: #000000; stroke-width: 0.75; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 28.08 41.76
+L 43.92 41.76
+L 43.92 30.24
+L 28.08 30.24
+z
+" clip-path="url(#pe217483c96)" style="stroke: #000000; stroke-width: 0.75; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 28.08 18.72
+L 43.92 18.72
+L 43.92 7.2
+L 28.08 7.2
+z
+" clip-path="url(#pe217483c96)" style="stroke: #000000; stroke-width: 0.75; stroke-linejoin: miter"/>
    </g>
   </g>
  </g>

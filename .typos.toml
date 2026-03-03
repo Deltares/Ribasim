@@ -4,7 +4,7 @@ extend-ignore-re = [
 ]
 
 [files]
-extend-exclude = ["*.svg"]
+extend-exclude = ["*.svg", "ribasim_qgis/widgets/plotly-*.min.js"]
 
 [default.extend-words]
 # Ignore false-positives

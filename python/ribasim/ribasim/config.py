@@ -38,6 +38,7 @@ from ribasim.schemas import (
     LevelDemandTimeSchema,
     LinearResistanceStaticSchema,
     ManningResistanceStaticSchema,
+    ObservationTimeSchema,
     OutletStaticSchema,
     OutletTimeSchema,
     PidControlStaticSchema,
@@ -202,6 +203,13 @@ class Terminal(NodeModel): ...
 
 
 class Junction(NodeModel): ...
+
+
+class Observation(NodeModel):
+    time: TableModel[ObservationTimeSchema] = Field(
+        default_factory=TableModel[ObservationTimeSchema],
+        json_schema_extra={"sort_keys": ["node_id", "variable", "time"]},
+    )
 
 
 class PidControl(NodeModel):

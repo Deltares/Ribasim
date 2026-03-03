@@ -50,6 +50,7 @@ NODE_ICON_DATA: tuple[NodeIconSpec, ...] = (
     NodeIconSpec("ContinuousControl", "#999999", "star4", "4-point star"),
     NodeIconSpec("Terminal", "#000000", "rectangle", "Horizontal rectangle"),
     NodeIconSpec("Junction", "#000000", "o", "Filled circle"),
+    NodeIconSpec("Observation", "#000000", "staff_gauge", "Staff gauge"),
 )
 
 
@@ -74,6 +75,7 @@ ICON_SCALE = {
     "s":              2.35,
     "o":              2.2,
     "H":              2.4,
+    "staff_gauge":    1.0,
 }
 # fmt: on
 
@@ -181,6 +183,39 @@ def _create_icon_patches(
             (-half, y0), 2 * half, half, facecolor=color, edgecolor=STROKE_COLOR
         )
         return [bg, fg]
+
+    if shape == "staff_gauge":
+        # Water level staff gauge: vertical post with alternating black/white bands
+        w = 0.22  # width of the gauge
+        h = 0.80  # total height
+        n_bands = 5
+        band_h = h / n_bands
+        y_bottom = -h / 2
+        patches: list[mpatches.Patch] = []
+        # Outer border
+        patches.append(
+            mpatches.Rectangle(
+                (-w / 2, y_bottom),
+                w,
+                h,
+                facecolor="white",
+                **sk,
+            )
+        )
+        # Alternating black bands (odd bands are black)
+        patches.extend(
+            mpatches.Rectangle(
+                (-w / 2, y_bottom + i * band_h),
+                w,
+                band_h,
+                facecolor="black",
+                edgecolor=STROKE_COLOR,
+                linewidth=linewidth * 0.5,
+            )
+            for i in range(n_bands)
+            if i % 2 == 0
+        )
+        return patches
 
     # Fallback: standard Matplotlib marker (o, s, D, ^, v, H, ...)
     return [_create_marker_patch(shape, s, color, linewidth=linewidth)]

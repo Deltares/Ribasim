@@ -81,6 +81,7 @@ from ribasim_testmodels.junction import (
     junction_chained,
     junction_combined,
 )
+from ribasim_testmodels.observation import observation_model
 from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
     pid_control_model,
@@ -144,6 +145,7 @@ __all__ = [
     "multi_level_demand_model",
     "multi_priority_flow_demand_model",
     "multiple_route_priorities_model",
+    "observation_model",
     "outlet_allocation_discrete_control_model",
     "outlet_continuous_control_model",
     "outlet_model",

@@ -112,6 +112,7 @@ tables = {
     "LevelDemand / time",
     "LinearResistance / static",
     "ManningResistance / static",
+    "Observation / time",
     "Outlet / static",
     "Outlet / time",
     "PidControl / static",
@@ -245,7 +246,7 @@ class ExternalTable(Table):
                 iface.messageBar().pushMessage(
                     "Ribasim",
                     f"Failed to load external NetCDF file: {self._path}",
-                    level=Qgis.Warning,
+                    level=Qgis.MessageLevel.Warning,
                 )
 
         # Load style if available

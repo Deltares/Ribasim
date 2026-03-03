@@ -655,6 +655,7 @@ function collect_control_mappings!(p_independent::ParametersIndependent)::Nothin
 
     for node_type in instances(NodeType.T)
         node_type == NodeType.Terminal && continue
+        node_type == NodeType.Observation && continue
         node = getfield(p_independent, snake_case(node_type))
         if hasfield(typeof(node), :control_mapping)
             control_mappings[node_type] = node.control_mapping
