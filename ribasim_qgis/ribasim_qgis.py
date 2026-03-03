@@ -81,7 +81,7 @@ class RibasimPlugin:
         self.tool_button = QToolButton()
         self.tool_button.setIcon(icon)
         self.tool_button.setToolTip("Ribasim")
-        self.tool_button.setPopupMode(QToolButton.InstantPopup)
+        self.tool_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         menu = QMenu(self.tool_button)
         menu.addAction(self.action_open)
         menu.addSeparator()
@@ -99,15 +99,30 @@ class RibasimPlugin:
         """Show/hide the timeseries dock."""
         if self.plot_dock is None:
             return
-        if (
-            not self.plot_dock.isVisible()
-            and importlib.util.find_spec("plotly") is None
-        ):
-            self.iface.messageBar().pushMessage(
-                "Error: The Ribasim plugin requires the `plotly` package.",
-                level=Qgis.MessageLevel.Critical,
+        if not self.plot_dock.isVisible():
+            # Check that the plotting backend is actually usable
+            from ribasim_qgis.widgets.plot_widget import (
+                _BACKEND,
+                _WebViewBackend,
             )
-            return
+
+            if _BACKEND is _WebViewBackend.NONE:
+                self.iface.messageBar().pushMessage(
+                    "Ribasim",
+                    "Plotting is not available because neither QtWebEngine "
+                    "nor QtWebKit was found in this QGIS installation.",
+                    level=Qgis.MessageLevel.Warning,
+                    duration=10,
+                )
+                return
+            if importlib.util.find_spec("plotly") is None:
+                self.iface.messageBar().pushMessage(
+                    "Ribasim",
+                    "Plotting requires the `plotly` package.",
+                    level=Qgis.MessageLevel.Warning,
+                    duration=10,
+                )
+                return
         self.plot_dock.setVisible(not self.plot_dock.isVisible())
 
     def run_model(self):
@@ -200,7 +215,9 @@ class RibasimPlugin:
             )
             self.plot_dock.setObjectName("RibasimPlotDock")
             self.plot_dock.setWidget(self.ribasim_widget.plot_widget)
-            self.iface.addDockWidget(Qt.BottomDockWidgetArea, self.plot_dock)
+            self.iface.addDockWidget(
+                Qt.DockWidgetArea.BottomDockWidgetArea, self.plot_dock
+            )
             self.plot_dock.setVisible(False)
 
         self.ribasim_widget.open_model(path)
