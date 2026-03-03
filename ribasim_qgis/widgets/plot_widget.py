@@ -21,17 +21,22 @@ from qgis.PyQt.QtWidgets import (
     QWidgetAction,
 )
 
-# Bundled plotly.js 2.30.0 — compatible with QWebView (QtWebKit) in QGIS.
-# Many plotly.js 2.x versions don't work well with QtWebKit; 2.30.0 is known
-# to work (same version that plotly Python 5.20 shipped).
+# Bundled plotly.js 2.4.2 — compatible with QWebView (QtWebKit) in QGIS.
+# Many plotly.js 2.x versions break in QtWebKit (2.5+ has hover/rendering bugs);
+# 2.4.2 is the latest version confirmed to work.
+# plotly Python 6.x serialises numpy arrays as binary typed-arrays (bdata),
+# which plotly.js < 2.28 cannot decode, so we call .tolist() on arrays.
 # Once QGIS bundles QtWebEngine by default (https://github.com/qgis/QGIS/issues/54965)
 # we can switch from QWebView to QWebEngineView (Chromium-based) and use the
-# QGIS-bundled plotly.js without these workarounds.
+# latest plotly.js without these workarounds.
+#
+# The HTML is written to a temp file next to the JS and loaded via setUrl().
+# This avoids two QtWebKit pitfalls:
+#   1. setHtml() has a ~2 MB content limit (plotly.js alone is ~3.5 MB).
+#   2. setHtml() + baseUrl can intermittently fail to load external resources.
 _PLOTLY_JS_DIR = Path(__file__).resolve().parent
-_PLOTLY_JS_URL = QUrl.fromLocalFile(
-    str(_PLOTLY_JS_DIR / "plotly-2.30.0.min.js")
-).toString()
-_PLOTLY_BASE_URL = QUrl.fromLocalFile(str(_PLOTLY_JS_DIR) + "/")
+_PLOTLY_JS_FILE = "plotly-2.4.2.min.js"
+_PLOT_HTML_FILE = _PLOTLY_JS_DIR / "_plot.html"
 
 # A single trace: (time values, data values).
 Trace = tuple[np.ndarray, np.ndarray]
@@ -262,8 +267,15 @@ class PlotWidget(QWidget):
             unit_key = unit or "(no unit)"
             for trace_name, (x, y) in var_traces.items():
                 legend_name = f"{file_name} / {var} {trace_name}"
+                # .tolist() converts numpy arrays to plain Python lists so
+                # plotly.js 2.4.2 (no bdata support) can read them.
                 traces_by_unit[unit_key].append(
-                    go.Scatter(x=x, y=y, mode="lines", name=legend_name)
+                    go.Scatter(
+                        x=x.tolist(),
+                        y=y.tolist(),
+                        mode="lines",
+                        name=legend_name,
+                    )
                 )
 
         if not traces_by_unit:
@@ -308,9 +320,10 @@ class PlotWidget(QWidget):
         )
         html = (
             '<html><head><meta charset="utf-8" />'
-            f'<script src="{_PLOTLY_JS_URL}"></script></head>'
+            f'<script src="{_PLOTLY_JS_FILE}"></script></head>'
             f'<body style="margin:0;overflow:hidden">{div}</body></html>'
         )
+        _PLOT_HTML_FILE.write_text(html, encoding="utf-8")
         self._placeholder.setVisible(False)
         self._web_view.setVisible(True)
-        self._web_view.setHtml(html, _PLOTLY_BASE_URL)
+        self._web_view.setUrl(QUrl.fromLocalFile(str(_PLOT_HTML_FILE)))

@@ -160,6 +160,7 @@ playground/output
 # https://github.com/Deltares/Ribasim/issues/1652
 ribasim_qgis/tests/data/database.gpkg
 ribasim_qgis/core/styles
+ribasim_qgis/widgets/_plot.html
 core/test/data/delft-fews-netcdf/*.nc
 utils/node_icons
 
