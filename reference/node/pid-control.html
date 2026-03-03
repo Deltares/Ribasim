@@ -564,7 +564,7 @@ e(t) = \text{SP}(t) - y(t).
     Q_\text{PID}(t) = K_p e(t) + K_i\int_{t_0}^t e(\tau)\text{d}\tau + K_d \frac{\text{d}e}{\text{d}t},
 \tag{2}\]</span></span></p>
 <p>for given constant parameters <span class="math inline">\(K_p,K_i,K_d\)</span>.</p>
-<p>The <span class="math inline">\(Q_\text{PID}(t)\)</span> is not directly realized, but subject to the equations of the Pump and Outlet, acting as <span class="math inline">\(Q_\text{set}\)</span>.</p>
+<p>The <span class="math inline">\(Q_\text{PID}(t)\)</span> is not directly applied; it is passed through the Pump/Outlet equations, acting as <span class="math inline">\(Q_\text{set}\)</span>.</p>
 <p>For the integral term we denote <span class="math display">\[
 I(t) = \int_{t_0}^t e(\tau)\text{d}\tau,
 \]</span></p>

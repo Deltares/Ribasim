@@ -1091,7 +1091,7 @@ window.Quarto = {
 <span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>    Δt_allocation<span class="op">::</span><span class="dt">Float64</span></span>
 <span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Cumulative tracking for output</span></span>
-<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>    cumulative_realized_volume<span class="op">::</span><span class="dt">Dict{Tuple{NodeID, NodeID}, Float64}</span></span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>    cumulative_supplied_volume<span class="op">::</span><span class="dt">Dict{Tuple{NodeID, NodeID}, Float64}</span></span>
 <span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>    cumulative_boundary_volume<span class="op">::</span><span class="dt">Dict{Tuple{NodeID, NodeID}, Float64}</span></span>
 <span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Forcing volumes (precipitation, evaporation)</span></span>
@@ -1243,7 +1243,7 @@ window.Quarto = {
 <span id="cb34-19"><a href="#cb34-19" aria-hidden="true" tabindex="-1"></a>            record_demand[subnetwork_id][demand_priority][node_id] <span class="op">=</span> (</span>
 <span id="cb34-20"><a href="#cb34-20" aria-hidden="true" tabindex="-1"></a>                demand <span class="op">=</span> current_demand,</span>
 <span id="cb34-21"><a href="#cb34-21" aria-hidden="true" tabindex="-1"></a>                allocated <span class="op">=</span> allocated_unscaled,</span>
-<span id="cb34-22"><a href="#cb34-22" aria-hidden="true" tabindex="-1"></a>                realized <span class="op">=</span> <span class="fl">0.0</span>  <span class="co"># To be filled in after physical layer runs</span></span>
+<span id="cb34-22"><a href="#cb34-22" aria-hidden="true" tabindex="-1"></a>                supplied <span class="op">=</span> <span class="fl">0.0</span>  <span class="co"># To be filled in after physical layer runs</span></span>
 <span id="cb34-23"><a href="#cb34-23" aria-hidden="true" tabindex="-1"></a>            )</span>
 <span id="cb34-24"><a href="#cb34-24" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
 <span id="cb34-25"><a href="#cb34-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
