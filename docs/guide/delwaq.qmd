@@ -144,7 +144,7 @@ assert concentration_nc.is_file()
 concentration_nc
 ```
 
-By default (`to_input=False`), the parsed model writes the Delwaq tracer results to `results/concentration.nc`, using the same structure as the experimental Ribasim concentration output (dimensions: `node_id`, `substance`, `time`), and does not populate the `Basin / concentration_external` table.
+By default (`to_input=False`), the parsed model writes the Delwaq tracer results to `results/concentration.nc` and does not populate the `Basin / concentration_external` table.
 
 To use the Delwaq results as inputs for plotting (or a follow-up Ribasim run), set `to_input=True` so that the `Basin / concentration_external` table is populated in addition to writing the NetCDF file.
 

@@ -60,11 +60,7 @@ def parse(
     df = _concat(dfs).reset_index(drop=True)
     df.sort_values(["time", "node_id"], inplace=True)
 
-    ds = (
-        df.set_index(["node_id", "substance", "time"])
-        .to_xarray()
-        .transpose("node_id", "substance", "time")
-    )
+    ds = df.set_index(["node_id", "substance", "time"]).to_xarray()
     ds.to_netcdf(model.results_path / "concentration.nc")
 
     if to_input:

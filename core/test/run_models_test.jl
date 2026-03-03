@@ -1,5 +1,5 @@
 @testitem "trivial model" setup = [Teamcity] begin
-    using NCDatasets: NCDataset
+    using NCDatasets: NCDataset, dimnames
     using Dates: DateTime
     using Ribasim: get_tstops, tsaves
     using Ribasim.CArrays: CVector, getaxes
@@ -229,7 +229,12 @@ end
     # flows are recorded at the end of each period, and are undefined at the start
     @test unique(table.time) == Ribasim.datetimes(model)[1:(end - 1)]
 
-    @test isfile(joinpath(dirname(toml_path), "results/concentration.nc"))
+    concentration_path = joinpath(dirname(toml_path), "results/concentration.nc")
+    @test isfile(concentration_path)
+    NCDataset(concentration_path) do ds
+        @test dimnames(ds["concentration"]) == ("node_id", "substance", "time")
+    end
+
     table = Ribasim.concentration_data(model)
     @test "Continuity" in table.substance
     @test all(isapprox.(table.concentration[table.substance .== "Continuity"], 1.0))
