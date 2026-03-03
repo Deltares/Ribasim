@@ -85,6 +85,76 @@ const RESULTS_FILENAME = (
 const nc_dim_names =
     ("time", "node_id", "link_id", "subgrid_id", "substance", "demand_priority")
 
+"Return existing result NetCDF files that cannot be opened for read/write access."
+function locked_result_netcdf_files(config::Config)::Vector{String}
+    locked = String[]
+    for filename in values(RESULTS_FILENAME)
+        endswith(filename, ".nc") || continue
+        path = results_path(config, filename)
+        isfile(path) || continue
+        if !can_open_netcdf_result_for_overwrite(path)
+            push!(locked, path)
+        end
+    end
+    return locked
+end
+
+"Check if a NetCDF result file can be opened for overwrite semantics."
+function can_open_netcdf_result_for_overwrite(path::AbstractString)::Bool
+    if Sys.iswindows()
+        GENERIC_WRITE = UInt32(0x40000000)
+        DELETE_ACCESS = UInt32(0x00010000)
+        FILE_SHARE_READ = UInt32(0x00000001)
+        FILE_SHARE_WRITE = UInt32(0x00000002)
+        FILE_SHARE_DELETE = UInt32(0x00000004)
+        OPEN_EXISTING = UInt32(3)
+        FILE_ATTRIBUTE_NORMAL = UInt32(0x00000080)
+        INVALID_HANDLE_VALUE = Ptr{Cvoid}(-1)
+
+        handle = ccall(
+            (:CreateFileW, "kernel32"),
+            Ptr{Cvoid},
+            (Cwstring, UInt32, UInt32, Ptr{Cvoid}, UInt32, UInt32, Ptr{Cvoid}),
+            path,
+            GENERIC_WRITE | DELETE_ACCESS,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            C_NULL,
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            C_NULL,
+        )
+
+        if handle == INVALID_HANDLE_VALUE
+            return false
+        end
+
+        ccall((:CloseHandle, "kernel32"), Int32, (Ptr{Cvoid},), handle)
+        return true
+    end
+
+    try
+        io = open(path, "r+")
+        close(io)
+        return true
+    catch e
+        if e isa SystemError
+            return false
+        end
+        rethrow()
+    end
+end
+
+"Error early if any existing result NetCDF file is locked by another application."
+function check_result_netcdf_files_writable!(config::Config)::Nothing
+    locked = locked_result_netcdf_files(config)
+    isempty(locked) && return nothing
+    details = join("- " .* locked, "\n")
+    error(
+        "Cannot start simulation because one or more result NetCDF files are open in another application:\n" *
+            details * "\nClose the files and retry.",
+    )
+end
+
 #! format: off
 "Get a list of dimension names given a file and variable name."
 function nc_dims(file_name::String, var_name::String)::Vector{String}

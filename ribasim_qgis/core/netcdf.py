@@ -102,7 +102,16 @@ def _read_2d_nc(path: Path, id_name: str) -> NetCDFResult | None:
         return None
 
     time_index = _read_time(root)
-    ids = root.OpenMDArray(id_name).ReadAsArray()
+    id_array = root.OpenMDArray(id_name)
+    if id_array is None:
+        return None
+
+    # Skip empty dimensions (e.g. flow.nc without links) to avoid GDAL Read errors.
+    dim_sizes = [d.GetSize() for d in id_array.GetDimensions()]
+    if any(size == 0 for size in dim_sizes):
+        return None
+
+    ids = id_array.ReadAsArray()
 
     data_vars = [
         v
