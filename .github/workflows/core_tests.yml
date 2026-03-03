@@ -45,7 +45,7 @@ jobs:
           JULIA_NUM_THREADS: 2
       - name: Upload allocation debug files
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: allocation-debug-${{ matrix.os }}-${{ matrix.arch }}-${{ github.run_id }}
           path: |
