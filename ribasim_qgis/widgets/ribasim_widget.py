@@ -9,7 +9,6 @@ Ribasim layers there.
 from pathlib import Path
 from typing import Any, cast
 
-from PyQt5.QtWidgets import QWidget
 from qgis.core import (
     QgsAbstractVectorLayerLabeling,
     QgsCoordinateReferenceSystem,
@@ -20,6 +19,7 @@ from qgis.core import (
     QgsVectorLayer,
 )
 from qgis.gui import QgisInterface
+from qgis.PyQt.QtWidgets import QWidget
 
 from ribasim_qgis.widgets.dataset_widget import DatasetWidget, group_position_var
 
