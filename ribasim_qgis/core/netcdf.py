@@ -5,7 +5,6 @@ Return lightweight ``NetCDFResult`` dataclasses that keep data in their
 natural 2-D NumPy shape (n_times x n_ids).
 """
 
-import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -112,13 +111,7 @@ def _read_2d_nc(path: Path, id_name: str) -> NetCDFResult | None:
     if any(size == 0 for size in dim_sizes):
         return None
 
-    try:
-        ids = id_array.ReadAsArray()
-    except RuntimeError:
-        logging.getLogger(__name__).warning(
-            "Skipping %s: failed to read %s array", path.name, id_name
-        )
-        return None
+    ids = id_array.ReadAsArray()
 
     data_vars = [
         v

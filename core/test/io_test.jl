@@ -319,6 +319,47 @@ end
     end
 end
 
+@testitem "detect locked netcdf result files" begin
+    using NCDatasets: NCDataset
+    using Ribasim:
+        Config,
+        run,
+        success,
+        results_path,
+        RESULTS_FILENAME,
+        locked_result_netcdf_files,
+        check_result_netcdf_files_writable!
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    @test ispath(toml_path)
+
+    config = Config(toml_path)
+    model = run(config)
+    @test success(model)
+
+    path = results_path(config, RESULTS_FILENAME.basin)
+    @test isfile(path)
+
+    if Sys.iswindows()
+        ds = NCDataset(path, "a")
+        try
+            locked = locked_result_netcdf_files(config)
+            @test path in locked
+
+            err = try
+                check_result_netcdf_files_writable!(config)
+                nothing
+            catch e
+                e
+            end
+            @test err isa ErrorException
+            @test occursin("open in another application", sprint(showerror, err))
+        finally
+            close(ds)
+        end
+    end
+end
+
 @testitem "netcdf input" begin
     using NCDatasets
     using NCDatasets.NetCDF_jll: ncgen
