@@ -14,7 +14,7 @@ def results_dir(tmp_path: Path) -> Path:
     Files created:
     - basin.nc   (time x node_id)   with variables: level, storage
     - flow.nc    (time x link_id)   with variable: flow_rate
-    - concentration.nc  (time x node_id x substance) with substances: Cl, tracer
+    - concentration.nc  (time x substance x node_id) with substances: Cl, tracer
     """
     _create_basin_nc(tmp_path / "basin.nc")
     _create_flow_nc(tmp_path / "flow.nc")
@@ -91,9 +91,9 @@ def _create_concentration_nc(path: Path) -> None:
             sub[i] = name
 
         conc = ds.createVariable(
-            "concentration", "f8", ("time", "node_id", "substance")
+            "concentration", "f8", ("time", "substance", "node_id")
         )
         conc[:] = np.arange(
             _N_TIMES * len(_NODE_IDS) * len(substances), dtype=np.float64
-        ).reshape(_N_TIMES, len(_NODE_IDS), len(substances))
+        ).reshape(_N_TIMES, len(substances), len(_NODE_IDS))
         conc.units = "mg L-1"

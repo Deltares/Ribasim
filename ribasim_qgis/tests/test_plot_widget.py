@@ -67,6 +67,21 @@ def test_plot_widget_preload_variables():
     }
 
 
+def test_plot_widget_preload_multiple_defaults():
+    """All defaults are checked so both node and link selections produce plots."""
+    widget = PlotWidget()
+    available = {
+        "basin": ["level", "storage"],
+        "flow": ["flow_rate"],
+    }
+    defaults = {"basin": "level", "flow": "flow_rate"}
+    widget.preload_variables(available, defaults=defaults)
+    assert set(widget._var_menu.checked_variables()) == {
+        "basin / level",
+        "flow / flow_rate",
+    }
+
+
 def test_plot_widget_set_data_and_redraw():
     """Test that set_data populates _plot_data and triggers a redraw."""
     widget = PlotWidget()
@@ -192,6 +207,7 @@ def test_plot_widget_groups_unitless_into_no_unit_subplot(monkeypatch):
         }
     )
 
-    assert len(captured_figures) == 2
-    y_titles = {fig.layout.yaxis.title.text for fig in captured_figures}
+    assert len(captured_figures) == 1
+    fig = captured_figures[0]
+    y_titles = {fig.layout.yaxis.title.text, fig.layout.yaxis2.title.text}
     assert y_titles == {"m", "(no unit)"}

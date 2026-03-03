@@ -1,7 +1,7 @@
 """Plot widget using plotly to render Ribasim timeseries from NetCDF results."""
 
-import importlib.resources
 from collections import defaultdict
+from pathlib import Path
 
 import numpy as np
 import plotly.graph_objs as go
@@ -21,10 +21,22 @@ from qgis.PyQt.QtWidgets import (
     QWidgetAction,
 )
 
-# Resolve the bundled plotly.min.js via importlib.resources.
-_PLOTLY_JS_URL = QUrl.fromLocalFile(
-    str(importlib.resources.files("plotly").joinpath("package_data", "plotly.min.js"))
-).toString()
+# Bundled plotly.js 2.4.2 — compatible with QWebView (QtWebKit) in QGIS.
+# Many plotly.js 2.x versions break in QtWebKit (2.5+ has hover/rendering bugs);
+# 2.4.2 is the latest version confirmed to work.
+# plotly Python 6.x serialises numpy arrays as binary typed-arrays (bdata),
+# which plotly.js < 2.28 cannot decode, so we call .tolist() on arrays.
+# Once QGIS bundles QtWebEngine by default (https://github.com/qgis/QGIS/issues/54965)
+# we can switch from QWebView to QWebEngineView (Chromium-based) and use the
+# latest plotly.js without these workarounds.
+#
+# The HTML is written to a temp file next to the JS and loaded via setUrl().
+# This avoids two QtWebKit pitfalls:
+#   1. setHtml() has a ~2 MB content limit (plotly.js alone is ~3.5 MB).
+#   2. setHtml() + baseUrl can intermittently fail to load external resources.
+_PLOTLY_JS_DIR = Path(__file__).resolve().parent
+_PLOTLY_JS_FILE = "plotly-2.4.2.min.js"
+_PLOT_HTML_FILE = _PLOTLY_JS_DIR / "_plot.html"
 
 # A single trace: (time values, data values).
 Trace = tuple[np.ndarray, np.ndarray]
@@ -115,6 +127,7 @@ class PlotWidget(QWidget):
         ws = self._web_view.settings()
         ws.setAttribute(QWebSettings.WebGLEnabled, True)
         ws.setAttribute(QWebSettings.Accelerated2dCanvasEnabled, True)
+
         layout.addWidget(self._web_view)
 
         # Data: {file_name: {variable: {trace_name: (x, y)}}}
@@ -173,19 +186,15 @@ class PlotWidget(QWidget):
             if key in previously_checked_keys
         }
 
-        default_label = (
-            "flow / flow_rate" if "flow / flow_rate" in self._menu_to_key else ""
-        )
-        for file_name in sorted(self._defaults):
-            candidate = self._defaults[file_name]
-            label = f"{file_name} / {candidate}"
-            if default_label:
-                break
-            if label in self._menu_to_key:
-                default_label = label
-                break
+        # When nothing was previously checked, check all default variables
+        if not checked_labels:
+            checked_labels = {
+                f"{file_name} / {variable}"
+                for file_name, variable in self._defaults.items()
+                if f"{file_name} / {variable}" in self._menu_to_key
+            }
 
-        self._var_menu.populate(sorted(menu_labels), checked_labels, default_label)
+        self._var_menu.populate(sorted(menu_labels), checked_labels)
         self._update_button_text()
         self._placeholder.setText(_PLACEHOLDER_DEFAULT)
         self._redraw()
@@ -258,8 +267,15 @@ class PlotWidget(QWidget):
             unit_key = unit or "(no unit)"
             for trace_name, (x, y) in var_traces.items():
                 legend_name = f"{file_name} / {var} {trace_name}"
+                # .tolist() converts numpy arrays to plain Python lists so
+                # plotly.js 2.4.2 (no bdata support) can read them.
                 traces_by_unit[unit_key].append(
-                    go.Scatter(x=x, y=y, mode="lines", name=legend_name)
+                    go.Scatter(
+                        x=x.tolist(),
+                        y=y.tolist(),
+                        mode="lines",
+                        name=legend_name,
+                    )
                 )
 
         if not traces_by_unit:
@@ -304,9 +320,10 @@ class PlotWidget(QWidget):
         )
         html = (
             '<html><head><meta charset="utf-8" />'
-            f'<script src="{_PLOTLY_JS_URL}"></script></head>'
+            f'<script src="{_PLOTLY_JS_FILE}"></script></head>'
             f'<body style="margin:0;overflow:hidden">{div}</body></html>'
         )
+        _PLOT_HTML_FILE.write_text(html, encoding="utf-8")
         self._placeholder.setVisible(False)
         self._web_view.setVisible(True)
-        self._web_view.setHtml(html)
+        self._web_view.setUrl(QUrl.fromLocalFile(str(_PLOT_HTML_FILE)))
