@@ -136,17 +136,29 @@ urllib.request.urlretrieve(
 ```{python}
 from ribasim.delwaq import parse
 
-nmodel = parse(model, graph, substances)
+# Default parse: write concentration.nc without  modifying the model inputs
+nmodel_nc = parse(model, graph, substances, to_input=False)
+
+concentration_nc = toml_path.parent / "results" / "concentration.nc"
+assert concentration_nc.is_file()
+concentration_nc
 ```
 
 By default (`to_input=False`), the parsed model writes the Delwaq tracer results to `results/concentration.nc`, using the same structure as the experimental Ribasim concentration output (dimensions: `node_id`, `substance`, `time`), and does not populate the `Basin / concentration_external` table.
-If you also want to inject the concentrations as model input, call `parse(..., to_input=True)` to populate the `Basin / concentration_external` table in addition to writing the NetCDF file.
+
+To use the Delwaq results as inputs for plotting (or a follow-up Ribasim run), set `to_input=True` so that the `Basin / concentration_external` table is populated in addition to writing the NetCDF file.
+
+```{python}
+# Parse Delwaq results and also populate Basin / concentration_external for plotting
+nmodel = parse(model, graph, substances, to_input=True)
+```
 
 ```{python}
 display(nmodel.basin.concentration_external)
 print(substances)
 t = nmodel.basin.concentration_external.df
-t[t.time == t.time.unique()[2]]
+# Show the first available timestep (only one may be present in the example data)
+t[t.time == t.time.unique()[0]]
 ```
 
 We can use this table to plot the results of the Delwaq model, both spatially as over time.
@@ -154,6 +166,7 @@ We can use this table to plot the results of the Delwaq model, both spatially as
 ```{python}
 from ribasim.delwaq import plot_fraction
 
+# Plot default tracers (sum to 1), plus custom tracers on node 9
 plot_fraction(nmodel, 1)  # default tracers, should add up to 1
 plot_fraction(nmodel, 9, ["Foo", "Bar"])  # custom tracers
 plot_fraction(nmodel, 9, ["Continuity"])  # mass balance check
