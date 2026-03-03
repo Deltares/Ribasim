@@ -868,7 +868,8 @@ function parse_allocations!(
     )::Nothing
     (; p, t) = integrator
     (; p_independent) = p
-    (; subnetwork_id, Δt_allocation, cumulative_realized_volume, scaling) = allocation_model
+    (; subnetwork_id, Δt_allocation, cumulative_supplied_volume, scaling) =
+        allocation_model
     (; allocation) = p_independent
     (; record_demand, demand_priorities_all) = allocation
     (; demand, has_demand_priority, inflow_link) = node
@@ -892,8 +893,8 @@ function parse_allocations!(
                     demand_priority,
                     demand[demand_id.idx, demand_priority_idx],
                     allocated_flow,
-                    # NOTE: The realized amount lags one allocation period behind
-                    cumulative_realized_volume[inflow_link[node_id.idx].link] /
+                    # NOTE: The supplied amount lags one allocation period behind
+                    cumulative_supplied_volume[inflow_link[node_id.idx].link] /
                         Δt_allocation,
                 ),
             )
@@ -923,7 +924,7 @@ function parse_allocations!(
     storage_change = problem[:basin_storage_change]
 
     for node_id in basin_ids_subnetwork_with_level_demand
-        realized_basin_volume = current_storage[node_id.idx] - storage_prev[node_id]
+        supplied_basin_volume = current_storage[node_id.idx] - storage_prev[node_id]
         storage_change_basin = JuMP.value(storage_change[node_id]) * scaling.storage
 
         for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
@@ -947,8 +948,8 @@ function parse_allocations!(
                     demand_priority,
                     demand,
                     allocated_basin_volume / Δt_allocation,
-                    # NOTE: The realized amount lags one allocation period behind
-                    realized_basin_volume / Δt_allocation,
+                    # NOTE: The supplied amount lags one allocation period behind
+                    supplied_basin_volume / Δt_allocation,
                 ),
             )
         end
@@ -1072,10 +1073,10 @@ function apply_control_from_allocation!(
 end
 
 function reset_cumulative!(allocation_model::AllocationModel)::Nothing
-    (; cumulative_boundary_volume, cumulative_realized_volume) = allocation_model
+    (; cumulative_boundary_volume, cumulative_supplied_volume) = allocation_model
 
-    for link in keys(cumulative_realized_volume)
-        cumulative_realized_volume[link] = 0
+    for link in keys(cumulative_supplied_volume)
+        cumulative_supplied_volume[link] = 0
     end
 
     for link in keys(cumulative_boundary_volume)

@@ -57,7 +57,7 @@ $$ {#eq-PIDflow}
 
 for given constant parameters $K_p,K_i,K_d$.
 
-The $Q_\text{PID}(t)$ is not directly realized, but subject to the equations of the Pump and Outlet, acting as $Q_\text{set}$.
+The $Q_\text{PID}(t)$ is not directly applied; it is passed through the Pump/Outlet equations, acting as $Q_\text{set}$.
 
 For the integral term we denote
 $$

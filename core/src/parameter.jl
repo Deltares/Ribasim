@@ -241,7 +241,7 @@ has_demand_priority: Per demand priority in the whole model whether a demand of 
 objectives: The objectives (goals) in the order in which they will be optimized for
 cumulative_boundary_volume: The net volume of boundary flow into the model for each FlowBoundary in the subnetwork
     over the last Δt_allocation
-cumulative_realized_volume: The net volume of flow realized by a demand node over the last Δt_allocation
+cumulative_supplied_volume: The net volume of flow supplied to a demand node over the last Δt_allocation
 sources: The nodes in the subnetwork which can act as sources, sorted by route priority
 secondary_network_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
 scaling: The flow and storage scaling factors to make the optimization problem more numerically stable
@@ -256,7 +256,7 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     explicit_positive_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
     implicit_negative_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
     cumulative_boundary_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict()
-    cumulative_realized_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict()
+    cumulative_supplied_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict()
     sources::OrderedDict{Int32, NodeID} = OrderedDict()
     secondary_network_demand::OrderedDict{Tuple{NodeID, NodeID}, Vector{Float64}} =
         OrderedDict()
@@ -274,7 +274,7 @@ struct DemandRecordDatum
     demand_priority::Int32
     demand::Float64
     allocated::Float64
-    realized::Float64
+    supplied::Float64
 end
 
 struct FlowRecordDatum
