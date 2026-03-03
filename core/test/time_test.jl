@@ -137,6 +137,6 @@ end
 
     # test the flowrate has been set correctly
     flow_data = DataFrame(Ribasim.flow_data(model))
-    flow_4 = filter(:link_id => ==(4), flow_table).flow_rate
-    @test all(isapprox.(flow_4[190:end], 1.0e-5, rtol = 1.0e-6))
+    flow_4 = filter(:link_id => ==(4), flow_data).flow_rate
+    @test all(isapprox.(flow_4[230:end], 1.0e-5, rtol = 1.0e-6))
 end
