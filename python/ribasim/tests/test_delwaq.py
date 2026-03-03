@@ -29,7 +29,7 @@ def test_offline_delwaq_coupling(tmp_path):
     model.solver.evaporate_mass = False
     graph, substances = generate(model, model_dir)
     run_delwaq(model_dir)
-    model = parse(model, graph, substances, model_dir)
+    model = parse(model, graph, substances, model_dir, to_input=True)
 
     df = model.basin.concentration_external.df
     assert df is not None
@@ -78,7 +78,7 @@ def test_offline_delwaq_coupling_evaporate_mass(tmp_path):
 
     graph, substances = generate(model, model_dir)
     run_delwaq(model_dir)
-    model = parse(model, graph, substances, model_dir)
+    model = parse(model, graph, substances, model_dir, to_input=True)
 
     df = model.basin.concentration_external.df
     assert df is not None

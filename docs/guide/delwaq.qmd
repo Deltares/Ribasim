@@ -139,7 +139,8 @@ from ribasim.delwaq import parse
 nmodel = parse(model, graph, substances)
 ```
 
-The parsed model is identical to the Ribasim model, with the exception of the added concentration_external table that contains all tracer results from Delwaq.
+By default (`to_input=False`), the parsed model writes the Delwaq tracer results to `results/concentration.nc`, using the same structure as the experimental Ribasim concentration output (dimensions: `node_id`, `substance`, `time`), and does not populate the `Basin / concentration_external` table.
+If you also want to inject the concentrations as model input, call `parse(..., to_input=True)` to populate the `Basin / concentration_external` table in addition to writing the NetCDF file.
 
 ```{python}
 display(nmodel.basin.concentration_external)
