@@ -131,10 +131,12 @@ end
 
     model = Ribasim.run(toml_path)
     storage = Ribasim.get_storages_and_levels(model).storage
+    flowrate = Ribasim.get_flow
     @test storage[1, 1] ≈ 100.0f0
     @test storage[1, end] ≈ 110.0f0
 
-    t_end = model.integrator.t
-    flow_rate_end = model.integrator.p.p_independent.pump.time_dependent_flow_rate[1].u[end]
-    @test Float32(only(model.integrator.u.pump)) ≈ 100 + 0.5 * flow_rate_end * t_end rtol = 0.01 atol = 0.01
+    # test the flowrate has been set correctly
+    flow_data = DataFrame(Ribasim.flow_data(model))
+    flow_4 = filter(:link_id => ==(4), flow_table).flow_rate
+    @test all(isapprox.(flow_4[190:end], 1.0e-5, rtol = 1.0e-6))
 end

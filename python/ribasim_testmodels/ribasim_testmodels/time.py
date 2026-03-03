@@ -68,7 +68,7 @@ def transient_pump_outlet_model() -> Model:
     )
 
     time = ["2020-01-01", "2020-07-01", "2021-01-01"]
-    flow_rate = [0.0, 10.0, 10.0]
+    flow_rate = [0.0, 1e-5, 1e-5]
 
     out = model.outlet.add(
         Node(2, Point(2, 0)), [outlet.Time(time=time, flow_rate=flow_rate)]
