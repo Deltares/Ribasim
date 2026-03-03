@@ -165,17 +165,6 @@ def read_concentration_nc(path: Path) -> NetCDFResult | None:
     # Read concentration: shape (time, node_id, substance)
     conc = root.OpenMDArray("concentration").ReadAsArray()
 
-    # GDAL returns the dimensions in file order; some models store
-    # (time, node_id, substance) while others end up as
-    # (time, substance, node_id). Normalize to (time, node_id, substance)
-    # so downstream code can always slice axis 2 for substance.
-    expected = (len(time_index), len(node_ids), len(substances))
-    alt = (len(time_index), len(substances), len(node_ids))
-    if conc.shape == alt:
-        conc = conc.transpose(0, 2, 1)
-    elif conc.shape != expected:
-        return None
-
     variables: dict[str, np.ndarray] = {}
     for i, sub in enumerate(substances):
         variables[sub] = conc[:, :, i]  # (n_times, n_node_ids) — no copy needed
