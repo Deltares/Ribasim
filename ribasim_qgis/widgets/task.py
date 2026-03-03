@@ -27,7 +27,7 @@ class RibasimTask(QgsTask):
         model_name = f"{model_path.parent.stem}/{model_path.stem}"
         super().__init__(
             f"Ribasim simulation - {model_name}",
-            QgsTask.Flag.CanCancel,  # type: ignore[attr-defined]
+            QgsTask.Flag.CanCancel,
         )
         self.cli = cli
         self.toml_path = toml_path

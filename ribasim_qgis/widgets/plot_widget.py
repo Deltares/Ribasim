@@ -216,10 +216,10 @@ class PlotWidget(QWidget):
         if _BACKEND is _WebViewBackend.WEBENGINE:
             self._web_view = QWebEngineView()
         else:
-            self._web_view = QWebView()
+            self._web_view = QWebView()  # type: ignore[assignment]
             ws = self._web_view.settings()
-            ws.setAttribute(QWebSettings.WebGLEnabled, True)
-            ws.setAttribute(QWebSettings.Accelerated2dCanvasEnabled, True)
+            ws.setAttribute(QWebSettings.WebGLEnabled, True)  # type: ignore[arg-type]
+            ws.setAttribute(QWebSettings.Accelerated2dCanvasEnabled, True)  # type: ignore[arg-type]
 
         self._web_view.setVisible(False)
         self._web_view.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
@@ -397,7 +397,7 @@ class PlotWidget(QWidget):
             self._placeholder.setVisible(True)
             return
 
-        config = {
+        config: dict[str, bool | list[str]] = {
             "scrollZoom": True,
             "editable": False,
             "displayModeBar": True,
