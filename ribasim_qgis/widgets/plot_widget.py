@@ -103,8 +103,8 @@ class PlotWidget(QWidget):
         row.setSpacing(4)
 
         self._var_button = QToolButton()
-        self._var_button.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self._var_button.setPopupMode(QToolButton.InstantPopup)
+        self._var_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self._var_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self._var_menu = _VariablesMenu(self._var_button)
         self._var_menu.aboutToHide.connect(self._on_menu_closed)
         self._var_button.setMenu(self._var_menu)
@@ -116,14 +116,14 @@ class PlotWidget(QWidget):
 
         # --- Placeholder label ---
         self._placeholder = QLabel(_PLACEHOLDER_DEFAULT)
-        self._placeholder.setAlignment(Qt.AlignCenter)
+        self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._placeholder.setStyleSheet("color: gray; font-style: italic;")
         layout.addWidget(self._placeholder)
 
         # --- Web view ---
         self._web_view = QWebView()
         self._web_view.setVisible(False)
-        self._web_view.setContextMenuPolicy(Qt.NoContextMenu)
+        self._web_view.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         ws = self._web_view.settings()
         ws.setAttribute(QWebSettings.WebGLEnabled, True)
         ws.setAttribute(QWebSettings.Accelerated2dCanvasEnabled, True)

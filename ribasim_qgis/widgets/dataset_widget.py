@@ -13,15 +13,6 @@ from functools import partial
 from pathlib import Path
 from typing import Any, cast
 
-from PyQt5.QtCore import QDateTime, QMetaType
-from PyQt5.QtWidgets import (
-    QDialog,
-    QFileDialog,
-    QMenu,
-    QPlainTextEdit,
-    QVBoxLayout,
-    QWidget,
-)
 from qgis.core import (
     Qgis,
     QgsApplication,
@@ -39,6 +30,15 @@ from qgis.core import (
     QgsTemporalNavigationObject,
     QgsVectorLayer,
     QgsVectorLayerTemporalProperties,
+)
+from qgis.PyQt.QtCore import QDateTime, QMetaType
+from qgis.PyQt.QtWidgets import (
+    QDialog,
+    QFileDialog,
+    QMenu,
+    QPlainTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
 from ribasim_qgis.core.model import (
@@ -692,7 +692,7 @@ class DatasetWidget:
             self.ribasim_widget.iface.messageBar().pushMessage(
                 "Ribasim",
                 "Cannot duplicate layer, fids are not sorted",
-                level=Qgis.Critical,
+                level=Qgis.MessageLevel.Critical,
                 duration=3,
             )
             return
@@ -705,7 +705,9 @@ class DatasetWidget:
             QDateTime(toml["starttime"]), QDateTime(toml["endtime"])
         )
         tprop = maplayer.temporalProperties()
-        tprop.setMode(QgsVectorLayerTemporalProperties.ModeFixedTemporalRange)
+        tprop.setMode(
+            QgsVectorLayerTemporalProperties.TemporalMode.ModeFixedTemporalRange
+        )
         tprop.setFixedTemporalRange(trange)
         tprop.setIsActive(True)
 
