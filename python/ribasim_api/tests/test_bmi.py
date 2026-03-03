@@ -164,10 +164,10 @@ def test_get_value_ptr_allocation(libribasim, user_demand, tmp_path):
     expected_demand = np.array([1e-4, 0.0, 0.0])
     assert_array_almost_equal(actual_demand, expected_demand)
 
-    # Run model for a while to build up realized
+    # Run model for a while to build up supplied inflow
     libribasim.update_until(60.0)
 
-    # Realized inflow
+    # Supplied inflow
     actual_inflow = libribasim.get_value_ptr("user_demand.cumulative_inflow")
     expected_inflow = np.array([1e-4 * 60.0, 0.0, 0.0])
     assert_array_almost_equal(actual_inflow, expected_inflow)

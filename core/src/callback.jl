@@ -115,7 +115,7 @@ end
 Update with the latest timestep:
 - Cumulative flows/forcings which are integrated exactly
 - Cumulative flows/forcings which are input for the allocation algorithm
-- Cumulative flows/forcings which are realized demands in the allocation context
+- Cumulative flows/forcings which are supplied demands in the allocation context
 
 During these cumulative flow updates, we can also update the mass balance of the system,
 as each flow carries mass, based on the concentrations of the flow source.
@@ -169,17 +169,17 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     @. flow_boundary.cumulative_flow =
         time_dependent_cache.flow_boundary.current_cumulative_boundary_flow
 
-    # Update realized flows for allocation input and output
+    # Update supplied flows for allocation input and output
     for allocation_model in allocation.allocation_models
-        (; cumulative_boundary_volume, cumulative_realized_volume) = allocation_model
+        (; cumulative_boundary_volume, cumulative_supplied_volume) = allocation_model
         # Flow boundary input
         for link in keys(cumulative_boundary_volume)
             cumulative_boundary_volume[link] += flow_update_on_link(integrator, link)
         end
 
-        # Update realized flows for allocation output
-        for link in keys(cumulative_realized_volume)
-            cumulative_realized_volume[link] += flow_update_on_link(integrator, link)
+        # Update supplied flows for allocation output
+        for link in keys(cumulative_supplied_volume)
+            cumulative_supplied_volume[link] += flow_update_on_link(integrator, link)
         end
     end
     return nothing

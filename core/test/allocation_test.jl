@@ -109,17 +109,17 @@ end
     basin_id = NodeID(:Basin, 7, p_independent)
     @test iszero(JuMP.value(only(problem[:basin_storage_change][basin_id])))
 
-    # Realized level demand
+    # Supplied level demand
     allocation_table = Ribasim.allocation_data(model) |> DataFrame
     filter!(:demand_priority => ==(1), allocation_table)
     df_basin_2 = allocation_table[allocation_table.node_id .== 2, :]
     itp_basin_2 = LinearInterpolation(storage, t)
-    realized_numeric =
+    supplied_numeric =
         diff(itp_basin_2.(seconds_since.(df_basin_2.time, model.config.starttime))) /
         Δt_allocation
-    @test all(isapprox.(realized_numeric, df_basin_2.realized[1:(end - 1)], atol = 1.0e-10))
+    @test all(isapprox.(supplied_numeric, df_basin_2.supplied[1:(end - 1)], atol = 1.0e-10))
 
-    # Realized user demand
+    # Supplied user demand
     flow_table = DataFrame(Ribasim.flow_data(model))
     flow_table_user_3 = flow_table[flow_table.link_id .== 2, :]
     itp_user_3 = LinearInterpolation(
@@ -130,14 +130,14 @@ end
         (allocation_table.node_id .== 3) .&& (allocation_table.demand_priority .== 2),
         :,
     ]
-    realized_numeric =
+    supplied_numeric =
         diff(
         integral.(
             Ref(itp_user_3),
             seconds_since.(df_user_3.time, model.config.starttime),
         ),
     ) ./ Δt_allocation
-    @test all(isapprox.(realized_numeric[3:end], df_user_3.realized[4:end], atol = 1.0e-3))
+    @test all(isapprox.(supplied_numeric[3:end], df_user_3.supplied[4:end], atol = 1.0e-3))
 end
 
 @testitem "Flow demand" setup = [Teamcity] begin
@@ -156,7 +156,7 @@ end
         allocation_table,
     )
     @test all(≈(0.002), df_rating_curve_2.demand)
-    @test all(≈(0.002), df_rating_curve_2.realized[2:end])
+    @test all(≈(0.002), df_rating_curve_2.supplied[2:end])
 
     @testset "Results" begin
         allocation_path = normpath(dirname(toml_path), "results/allocation.nc")
@@ -178,7 +178,7 @@ end
             @test "demand_priority" in keys(ds)
             @test "demand" in keys(ds)
             @test "allocated" in keys(ds)
-            @test "realized" in keys(ds)
+            @test "supplied" in keys(ds)
             @test length(ds["time"]) > 0
         end
 

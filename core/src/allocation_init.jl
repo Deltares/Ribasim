@@ -167,7 +167,7 @@ function add_user_demand!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
     )::Nothing
-    (; problem, cumulative_realized_volume, node_ids_in_subnetwork) = allocation_model
+    (; problem, cumulative_supplied_volume, node_ids_in_subnetwork) = allocation_model
     (; user_demand_ids_subnetwork) = node_ids_in_subnetwork
     (; user_demand) = p_independent
     (; inflow_link, outflow_link) = user_demand
@@ -234,9 +234,9 @@ function add_user_demand!(
         base_name = "user_demand_return_flow"
     )
 
-    # Add the links for which the realized volume is required for output
+    # Add the links for which the supplied volume is required for output
     for node_id in user_demand_ids_subnetwork
-        cumulative_realized_volume[inflow_link[node_id.idx].link] = 0.0
+        cumulative_supplied_volume[inflow_link[node_id.idx].link] = 0.0
     end
 
     return nothing
@@ -249,7 +249,7 @@ function add_flow_demand!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
     )::Nothing
-    (; problem, cumulative_realized_volume, scaling, node_ids_in_subnetwork) =
+    (; problem, cumulative_supplied_volume, scaling, node_ids_in_subnetwork) =
         allocation_model
     (; node_ids_subnetwork_with_flow_demand, flow_demand_ids_subnetwork) =
         node_ids_in_subnetwork
@@ -324,9 +324,9 @@ function add_flow_demand!(
         base_name = "flow_demand_relative_error_constraint"
     )
 
-    # Add the links for which the realized volume is required for output
+    # Add the links for which the supplied volume is required for output
     for node_id in flow_demand_ids_subnetwork
-        cumulative_realized_volume[flow_demand.inflow_link[node_id.idx].link] = 0.0
+        cumulative_supplied_volume[flow_demand.inflow_link[node_id.idx].link] = 0.0
     end
     return nothing
 end

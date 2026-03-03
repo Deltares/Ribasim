@@ -292,8 +292,8 @@ const CF = OrderedDict{String, OrderedDict{String, String}}(
     ),
     "demand" => OrderedDict("units" => "m3 s-1", "long_name" => "water demand"),
     "allocated" => OrderedDict("units" => "m3 s-1", "long_name" => "allocated water"),
-    "realized" =>
-        OrderedDict("units" => "m3 s-1", "long_name" => "realized water allocation"),
+    "supplied" =>
+        OrderedDict("units" => "m3 s-1", "long_name" => "supplied water allocation"),
     "from_node_type" => OrderedDict("long_name" => "source node type"),
     "to_node_type" => OrderedDict("long_name" => "destination node type"),
     "subgrid_id" => OrderedDict("long_name" => "subgrid element identifier"),
@@ -581,7 +581,7 @@ function allocation_data(model::Model; table::Bool = true)
     # here we need to create the 2x2 matrix ourselves and fill in this case half
     demand = fill(NaN, nprio, nnodes, ntsteps)
     allocated = fill(NaN, nprio, nnodes, ntsteps)
-    realized = fill(NaN, nprio, nnodes, ntsteps)
+    supplied = fill(NaN, nprio, nnodes, ntsteps)
 
     # coordinate variables are similarly filled in
     subnetwork_id = zeros(Int32, nnodes)
@@ -602,18 +602,18 @@ function allocation_data(model::Model; table::Bool = true)
         allocated[i, j, k] = row.allocated
 
         if k > 1
-            realized[i, j, k - 1] = row.realized
+            supplied[i, j, k - 1] = row.supplied
         end
         subnetwork_id[j] = row.subnetwork_id
         node_type[j] = row.node_type
         has_priority[i, j] = true
     end
 
-    # Handle realized flows in last allocation timestep
+    # Handle supplied flows in last allocation timestep
     if !isempty(record_demand)
         Δt = integrator.t - last(record_demand).time
         for allocation_model in allocation_models
-            (; cumulative_realized_volume, node_ids_in_subnetwork) = allocation_model
+            (; cumulative_supplied_volume, node_ids_in_subnetwork) = allocation_model
             (;
                 user_demand_ids_subnetwork,
                 node_ids_subnetwork_with_flow_demand,
@@ -623,23 +623,23 @@ function allocation_data(model::Model; table::Bool = true)
             # UserDemand
             for id in user_demand_ids_subnetwork
                 j = searchsortedfirst(node_id, id)
-                realized[view(has_priority, :, j), j, end] .=
-                    cumulative_realized_volume[user_demand.inflow_link[id.idx].link] / Δt
+                supplied[view(has_priority, :, j), j, end] .=
+                    cumulative_supplied_volume[user_demand.inflow_link[id.idx].link] / Δt
             end
 
             # FlowDemand
             for id in node_ids_subnetwork_with_flow_demand
                 j = searchsortedfirst(node_id, id)
                 flow_demand_id = only(inneighbor_labels_type(graph, id, LinkType.control))
-                realized[view(has_priority, :, j), j, end] .=
-                    cumulative_realized_volume[flow_demand.inflow_link[flow_demand_id.idx].link] /
+                supplied[view(has_priority, :, j), j, end] .=
+                    cumulative_supplied_volume[flow_demand.inflow_link[flow_demand_id.idx].link] /
                     Δt
             end
 
             # LevelDemand
             for id in basin_ids_subnetwork_with_level_demand
                 j = searchsortedfirst(node_id, id)
-                realized[view(has_priority, :, j), j, end] .=
+                supplied[view(has_priority, :, j), j, end] .=
                     (current_storage[id.idx] - level_demand.storage_prev[id]) / Δt
             end
         end
@@ -654,7 +654,7 @@ function allocation_data(model::Model; table::Bool = true)
             demand_priority = repeat(demand_priorities_all; outer = nnodes * ntsteps),
             demand = vec(demand),
             allocated = vec(allocated),
-            realized = vec(realized),
+            supplied = vec(supplied),
         )
     else
         (;
@@ -665,7 +665,7 @@ function allocation_data(model::Model; table::Bool = true)
             demand_priority = demand_priorities_all,
             demand,
             allocated,
-            realized,
+            supplied,
         )
     end
 end
