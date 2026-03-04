@@ -123,10 +123,12 @@ def test_delwaq_parse_concentration_dim_order(monkeypatch, tmp_path, basic):
     for required in ("basin_state.nc", "basin.nc", "flow.nc"):
         (results_dir / required).touch()
 
+    # Minimal graph with two nodes so the parser can attach concentrations
     graph = nx.Graph()
     graph.add_node(1, id=101)
     graph.add_node(2, id=102)
 
+    # Fake DELWAQ dataset with two substances (Foo and Continuity)
     times = np.array([0.0, 1.0], dtype=np.float32)
     nodes = np.array([0, 1], dtype=np.int32)
     coords = {
@@ -149,6 +151,7 @@ def test_delwaq_parse_concentration_dim_order(monkeypatch, tmp_path, basic):
     )
     ds = xr.Dataset({"ribasim_Foo": data, "ribasim_Continuity": continuity})
 
+    # Monkeypatch the xarray loader so parse() reads our in-memory dataset
     def fake_open_dataset(_):
         return nullcontext(ds)
 
@@ -161,6 +164,7 @@ def test_delwaq_parse_concentration_dim_order(monkeypatch, tmp_path, basic):
 
     parse_mod.parse(basic, graph, {"Foo"}, output_folder=output_folder)
 
+    # Ensure concentration.nc uses the expected dimension order
     with xr.open_dataset(results_dir / "concentration.nc") as uds:
         assert uds["concentration"].dims == ("node_id", "substance", "time")
 
