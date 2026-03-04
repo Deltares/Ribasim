@@ -191,6 +191,7 @@ end
 
 @testitem "basic model" begin
     using Logging: Debug, with_logger
+    using NCDatasets: NCDataset, dimnames
     using LoggingExtras
     import Tables
     using Dates
@@ -266,6 +267,8 @@ end
         "Precipitation",
         "SurfaceRunoff",
         "ResidenceTime",
+        "Bar",
+        "Foo",
     ]
     @test all(table.concentration[table.substance .== "ResidenceTime"] .> 0)
 end
