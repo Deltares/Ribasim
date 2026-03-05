@@ -106,7 +106,11 @@ class DatasetWidget:
         self.results: dict[str, NetCDFResult] = {}
 
         # Plot widget for timeseries
-        self.plot_widget = PlotWidget()
+        self.plot_widget = PlotWidget(
+            iface=self.ribasim_widget.iface,
+            node_layer_getter=lambda: self.node_layer,
+            link_layer_getter=lambda: self.link_layer,
+        )
 
         # Track running simulations by model path
         self.running_tasks: dict[str, RibasimTask] = {}

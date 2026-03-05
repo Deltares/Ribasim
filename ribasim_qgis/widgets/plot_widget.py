@@ -2,11 +2,13 @@
 
 import importlib.resources
 from collections import defaultdict
+from collections.abc import Callable
 from enum import Enum, auto
 from pathlib import Path
+from typing import Any
 
 import numpy as np
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import Qt, pyqtSignal
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
@@ -123,10 +125,39 @@ VariableTraces = dict[str, Trace]
 PlotData = dict[str, dict[str, VariableTraces]]
 
 _PLACEHOLDER_DEFAULT = "Select Basin nodes and/or links on the map to plot timeseries."
+_PLACEHOLDER_WATER_BALANCE = (
+    "Basin water balance preset requires exactly one Basin node selection."
+)
+
+_BASIN_WATER_BALANCE_TERMS: tuple[tuple[str, int], ...] = (
+    ("storage_rate", -1),
+    ("inflow_rate", 1),
+    ("outflow_rate", -1),
+    ("precipitation", 1),
+    ("evaporation", -1),
+    ("drainage", 1),
+    ("infiltration", -1),
+    ("surface_runoff", 1),
+    ("balance_error", 1),
+)
+
+_ROOT_VARIABLES: tuple[str, ...] = (
+    "basin / level",
+    "basin / storage",
+    "flow / flow_rate",
+)
+
+_PLOT_LAYOUT = {
+    "showlegend": True,
+    "legend": {"x": 1.01, "y": 0.01, "xanchor": "left", "yanchor": "bottom"},
+    "margin": {"l": 40, "r": 190, "t": 10, "b": 20, "pad": 0},
+}
 
 
-class _VariablesMenu(QMenu):
-    """Dropdown menu with checkboxes for multi-variable selection."""
+class _PlotMenu(QMenu):
+    """Combined menu for plot preset and variable selections."""
+
+    waterBalanceChanged = pyqtSignal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -135,32 +166,84 @@ class _VariablesMenu(QMenu):
         self._variables: list[str] = []
 
     def populate(
-        self, variables: list[str], previously_checked: set[str], default: str = ""
+        self,
+        available: dict[str, list[str]],
+        previously_checked: set[str],
+        defaults: dict[str, str] | None = None,
+        water_balance_enabled: bool = False,
     ) -> None:
+        self.clear()
         self._checkboxes = []
         self._variables = []
-        self.clear()
-        for variable in variables:
+
+        mode_cb = QCheckBox("water balance")
+        mode_cb.setChecked(water_balance_enabled)
+        mode_cb.stateChanged.connect(
+            lambda state: self.waterBalanceChanged.emit(
+                state == int(Qt.CheckState.Checked)
+            )
+        )
+        mode_action = QWidgetAction(self)
+        mode_action.setDefaultWidget(mode_cb)
+        self.addAction(mode_action)
+
+        self.addSeparator()
+
+        defaults = defaults or {}
+        root_variables: set[str] = set()
+        for label in _ROOT_VARIABLES:
+            file_name, variable = label.split(" / ", 1)
+            if file_name in available and variable in available[file_name]:
+                root_variables.add(label)
+        for label in sorted(root_variables):
+            _, variable = label.split(" / ", 1)
             cb = QCheckBox(variable)
-            if variable in previously_checked:
+            if label in previously_checked:
                 cb.setChecked(True)
             self._checkboxes.append(cb)
-            self._variables.append(variable)
+            self._variables.append(label)
             action = QWidgetAction(self)
             action.setDefaultWidget(cb)
             self.addAction(action)
-        # If nothing ended up checked, check the default or the first
+
+        if root_variables:
+            self.addSeparator()
+
+        for file_name in sorted(available):
+            variables_for_submenu = [
+                variable
+                for variable in sorted(available[file_name])
+                if f"{file_name} / {variable}" not in root_variables
+            ]
+            if not variables_for_submenu:
+                continue
+            submenu = self.addMenu(file_name)
+            for variable in variables_for_submenu:
+                label = f"{file_name} / {variable}"
+                cb = QCheckBox(variable)
+                if label in previously_checked:
+                    cb.setChecked(True)
+                self._checkboxes.append(cb)
+                self._variables.append(label)
+                action = QWidgetAction(submenu)
+                action.setDefaultWidget(cb)
+                submenu.addAction(action)
+
         if not any(cb.isChecked() for cb in self._checkboxes) and self._checkboxes:
-            for i, v in enumerate(self._variables):
-                if v == default:
+            default_labels = {
+                f"{file_name} / {default_var}"
+                for file_name, default_var in defaults.items()
+            }
+            for i, label in enumerate(self._variables):
+                if label in default_labels:
                     self._checkboxes[i].setChecked(True)
-                    return
-            self._checkboxes[0].setChecked(True)
+            if not any(cb.isChecked() for cb in self._checkboxes):
+                self._checkboxes[0].setChecked(True)
 
     def checked_variables(self) -> list[str]:
         return [
-            v
-            for v, cb in zip(self._variables, self._checkboxes, strict=True)
+            label
+            for label, cb in zip(self._variables, self._checkboxes, strict=True)
             if cb.isChecked()
         ]
 
@@ -178,7 +261,13 @@ class PlotWidget(QWidget):
     If neither backend is available the widget shows a static notice.
     """
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        iface: Any | None = None,
+        node_layer_getter: Callable[[], Any | None] | None = None,
+        link_layer_getter: Callable[[], Any | None] | None = None,
+    ):
         super().__init__(parent)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -194,14 +283,37 @@ class PlotWidget(QWidget):
         row.setContentsMargins(4, 4, 4, 0)
         row.setSpacing(4)
 
-        self._var_button = QToolButton()
-        self._var_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self._var_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        self._var_menu = _VariablesMenu(self._var_button)
+        self._iface = iface
+        self._node_layer_getter = node_layer_getter
+        self._link_layer_getter = link_layer_getter
+
+        row.addWidget(QLabel("Select"))
+
+        self._water_balance_enabled = False
+        self._plot_button = QToolButton()
+        self._plot_button.setToolButtonStyle(
+            Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+        )
+        self._plot_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self._var_menu = _PlotMenu(self._plot_button)
+        self._var_menu.waterBalanceChanged.connect(self._on_water_balance_changed)
         self._var_menu.aboutToHide.connect(self._on_menu_closed)
-        self._var_button.setMenu(self._var_menu)
-        self._var_button.setText("Variable: ")
-        row.addWidget(self._var_button)
+        self._plot_button.setMenu(self._var_menu)
+        self._plot_button.setText("variable")
+        row.addWidget(self._plot_button)
+
+        row.addSpacing(10)
+        row.addWidget(QLabel("Select on map"))
+
+        self._node_button = QToolButton()
+        self._node_button.setText("node")
+        self._node_button.clicked.connect(self._activate_node_selection)
+        row.addWidget(self._node_button)
+
+        self._link_button = QToolButton()
+        self._link_button.setText("link")
+        self._link_button.clicked.connect(self._activate_link_selection)
+        row.addWidget(self._link_button)
 
         row.addStretch()
         layout.addLayout(row)
@@ -272,12 +384,10 @@ class PlotWidget(QWidget):
             if label in self._menu_to_key
         }
 
-        menu_labels: list[str] = []
         menu_to_key: dict[str, tuple[str, str]] = {}
         for file_name, file_variables in self._available.items():
             for variable in sorted(file_variables):
                 label = f"{file_name} / {variable}"
-                menu_labels.append(label)
                 menu_to_key[label] = (file_name, variable)
 
         self._menu_to_key = menu_to_key
@@ -288,17 +398,12 @@ class PlotWidget(QWidget):
             if key in previously_checked_keys
         }
 
-        # When nothing was previously checked, check all default variables
-        if not checked_labels:
-            checked_labels = {
-                f"{file_name} / {variable}"
-                for file_name, variable in self._defaults.items()
-                if f"{file_name} / {variable}" in self._menu_to_key
-            }
-
-        self._var_menu.populate(sorted(menu_labels), checked_labels)
-        self._update_button_text()
-        self._placeholder.setText(_PLACEHOLDER_DEFAULT)
+        self._var_menu.populate(
+            self._available,
+            checked_labels,
+            self._defaults,
+            self._water_balance_enabled,
+        )
         self._redraw()
 
     def set_data(
@@ -334,18 +439,36 @@ class PlotWidget(QWidget):
     # --- Internal slots ---
 
     def _on_menu_closed(self) -> None:
-        """Update button text and plot when the variable menu closes."""
-        self._update_button_text()
+        """Redraw the plot when the variable menu closes."""
         self._redraw()
 
-    def _update_button_text(self) -> None:
-        checked = self._var_menu.checked_variables()
-        if not checked:
-            self._var_button.setText("Variable: ")
-        elif len(checked) == 1:
-            self._var_button.setText(f"Variable: {checked[0]}")
-        else:
-            self._var_button.setText(f"Variable: ({len(checked)} selected)")
+    def _on_water_balance_changed(self, enabled: bool) -> None:
+        self._water_balance_enabled = enabled
+        self._redraw()
+
+    def _activate_node_selection(self) -> None:
+        self._activate_selection_target(self._node_layer_getter)
+
+    def _activate_link_selection(self) -> None:
+        self._activate_selection_target(self._link_layer_getter)
+
+    def _activate_selection_target(
+        self, layer_getter: Callable[[], Any | None] | None
+    ) -> None:
+        if self._iface is None or layer_getter is None:
+            return
+        layer = layer_getter()
+        if layer is None:
+            return
+        self._iface.setActiveLayer(layer)
+        self._activate_qgis_select_tool()
+
+    def _activate_qgis_select_tool(self) -> None:
+        if self._iface is None:
+            return
+        action = self._iface.actionSelect()
+        if action is not None:
+            action.trigger()
 
     def _selected_keys(self) -> list[tuple[str, str]]:
         return [
@@ -354,16 +477,23 @@ class PlotWidget(QWidget):
             if label in self._menu_to_key
         ]
 
-    def _redraw(self) -> None:
-        selected_keys = self._selected_keys()
+    def _to_plotly_xy(
+        self, x: np.ndarray, y: np.ndarray
+    ) -> tuple[np.ndarray | list[str], np.ndarray | list[float]]:
+        if _BACKEND is _WebViewBackend.WEBKIT:
+            return x.tolist(), y.tolist()
+        return x, y
 
-        if not selected_keys or not self._plot_data:
-            self._web_view.setVisible(False)
-            self._placeholder.setVisible(True)
-            return
-
+    def _collect_standard_traces(
+        self,
+        selected_keys: list[tuple[str, str]],
+        excluded_variables: set[str] | None = None,
+    ) -> dict[str, list[go.Scatter]]:
         traces_by_unit: dict[str, list[go.Scatter]] = defaultdict(list)
+        excluded_variables = excluded_variables or set()
         for file_name, var in selected_keys:
+            if var in excluded_variables:
+                continue
             file_data = self._plot_data.get(file_name, {})
             file_units = self._units.get(file_name, {})
             var_traces = file_data.get(var, {})
@@ -372,61 +502,25 @@ class PlotWidget(QWidget):
             unit = file_units.get(var, "")
             unit_key = unit or "(no unit)"
             for trace_name, (x, y) in var_traces.items():
+                x_data, y_data = self._to_plotly_xy(x, y)
                 legend_name = f"{file_name} / {var} {trace_name}"
-                # QtWebKit uses an old plotly.js (2.4.2) without bdata
-                # support, so we must convert numpy arrays to plain lists.
-                # QtWebEngine uses the latest plotly.js which handles
-                # numpy arrays natively.
-                if _BACKEND is _WebViewBackend.WEBKIT:
-                    x_data = x.tolist()
-                    y_data = y.tolist()
-                else:
-                    x_data = x
-                    y_data = y
                 traces_by_unit[unit_key].append(
-                    go.Scatter(
-                        x=x_data,
-                        y=y_data,
-                        mode="lines",
-                        name=legend_name,
-                    )
+                    go.Scatter(x=x_data, y=y_data, mode="lines", name=legend_name)
                 )
+        return traces_by_unit
 
-        if not traces_by_unit:
-            self._web_view.setVisible(False)
-            self._placeholder.setVisible(True)
-            return
+    def _placeholder_for_current_preset(self) -> str:
+        if self._water_balance_enabled:
+            return _PLACEHOLDER_WATER_BALANCE
+        return _PLACEHOLDER_DEFAULT
 
-        config: dict[str, bool | list[str]] = {
-            "scrollZoom": True,
-            "editable": False,
-            "displayModeBar": True,
-            "responsive": True,
-        }
-        # toImage uses an <a download> click that QtWebKit silently ignores.
-        if _BACKEND is _WebViewBackend.WEBKIT:
-            config["modeBarButtonsToRemove"] = ["toImage"]
+    def _show_placeholder(self, text: str | None = None) -> None:
+        if text is not None:
+            self._placeholder.setText(text)
+        self._web_view.setVisible(False)
+        self._placeholder.setVisible(True)
 
-        units = sorted(traces_by_unit)
-        fig = make_subplots(
-            rows=len(units),
-            cols=1,
-            shared_xaxes=True,
-            vertical_spacing=0.04,
-        )
-
-        for row, unit in enumerate(units, start=1):
-            for trace in traces_by_unit[unit]:
-                fig.add_trace(trace, row=row, col=1)
-            fig.update_yaxes(title_text=unit, row=row, col=1)
-            fig.update_xaxes(showticklabels=row == len(units), row=row, col=1)
-
-        fig.update_layout(
-            showlegend=True,
-            legend={"x": 1.01, "y": 0.01, "xanchor": "left", "yanchor": "bottom"},
-            margin={"l": 40, "r": 190, "t": 10, "b": 20, "pad": 0},
-        )
-
+    def _render_figure(self, fig, config: dict[str, bool | list[str]]) -> None:
         div = po.plot(
             fig,
             output_type="div",
@@ -448,3 +542,149 @@ class PlotWidget(QWidget):
         self._placeholder.setVisible(False)
         self._web_view.setVisible(True)
         self._web_view.setUrl(QUrl.fromLocalFile(str(_PLOT_HTML_FILE)))
+
+    def _redraw_standard(
+        self, selected_keys: list[tuple[str, str]], config: dict[str, bool | list[str]]
+    ) -> None:
+        if not selected_keys or not self._plot_data:
+            self._show_placeholder(self._placeholder_for_current_preset())
+            return
+
+        traces_by_unit = self._collect_standard_traces(selected_keys)
+
+        if not traces_by_unit:
+            self._show_placeholder(self._placeholder_for_current_preset())
+            return
+
+        units = sorted(traces_by_unit)
+        fig = make_subplots(
+            rows=len(units),
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.04,
+        )
+
+        for row, unit in enumerate(units, start=1):
+            for trace in traces_by_unit[unit]:
+                fig.add_trace(trace, row=row, col=1)
+            fig.update_yaxes(title_text=unit, row=row, col=1)
+            fig.update_xaxes(showticklabels=row == len(units), row=row, col=1)
+
+        fig.update_layout(**_PLOT_LAYOUT)
+        self._render_figure(fig, config)
+
+    def _redraw_basin_water_balance(
+        self, selected_keys: list[tuple[str, str]], config: dict[str, bool | list[str]]
+    ) -> None:
+        if not self._plot_data:
+            self._show_placeholder(self._placeholder_for_current_preset())
+            return
+
+        water_balance_terms = {term for term, _ in _BASIN_WATER_BALANCE_TERMS}
+        selected_files = {
+            file_name
+            for file_name, variable in selected_keys
+            if variable in water_balance_terms
+        }
+        candidate_files = selected_files or {
+            file_name
+            for file_name, file_data in self._plot_data.items()
+            if any(term in file_data for term in water_balance_terms)
+        }
+        if len(candidate_files) != 1:
+            self._show_placeholder(_PLACEHOLDER_WATER_BALANCE)
+            return
+
+        file_name = next(iter(candidate_files))
+        file_data = self._plot_data.get(file_name, {})
+        file_units = self._units.get(file_name, {})
+
+        trace_names: set[str] = set()
+        for term, _ in _BASIN_WATER_BALANCE_TERMS:
+            trace_names.update(file_data.get(term, {}))
+
+        if len(trace_names) != 1:
+            self._show_placeholder(_PLACEHOLDER_WATER_BALANCE)
+            return
+
+        selected_trace = next(iter(trace_names))
+
+        # Keep selected non-water-balance variables visible as extra rows.
+        traces_by_unit = self._collect_standard_traces(
+            selected_keys,
+            excluded_variables=water_balance_terms,
+        )
+
+        units = sorted(traces_by_unit)
+        fig = make_subplots(
+            rows=1 + len(units),
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.04,
+        )
+        used_terms = 0
+
+        for term, sign in reversed(_BASIN_WATER_BALANCE_TERMS):
+            traces = file_data.get(term, {})
+            if selected_trace not in traces:
+                continue
+            x, y = traces[selected_trace]
+            signed_y = sign * y
+            x_data, y_data = self._to_plotly_xy(x, signed_y)
+            stackgroup = "inflow" if sign > 0 else "outflow"
+            legend_prefix = "+" if sign > 0 else "-"
+            fig.add_trace(
+                go.Scatter(
+                    x=x_data,
+                    y=y_data,
+                    mode="lines",
+                    stackgroup=stackgroup,
+                    hoveron="points+fills",
+                    line={"width": 0},
+                    name=f"{legend_prefix} {term}",
+                ),
+                row=1,
+                col=1,
+            )
+            used_terms += 1
+
+        if used_terms == 0:
+            self._show_placeholder(_PLACEHOLDER_WATER_BALANCE)
+            return
+
+        unit_values = {
+            file_units.get(term, "")
+            for term, _ in _BASIN_WATER_BALANCE_TERMS
+            if file_units.get(term, "")
+        }
+        yaxis_title = unit_values.pop() if len(unit_values) == 1 else "(no unit)"
+        fig.update_yaxes(title_text=yaxis_title, row=1, col=1)
+
+        for row, unit in enumerate(units, start=2):
+            for trace in traces_by_unit[unit]:
+                fig.add_trace(trace, row=row, col=1)
+            fig.update_yaxes(title_text=unit, row=row, col=1)
+
+        last_row = 1 + len(units)
+        for row in range(1, last_row + 1):
+            fig.update_xaxes(showticklabels=row == last_row, row=row, col=1)
+
+        fig.update_layout(**_PLOT_LAYOUT, hovermode="x unified")
+        self._render_figure(fig, config)
+
+    def _redraw(self) -> None:
+        selected_keys = self._selected_keys()
+        config: dict[str, bool | list[str]] = {
+            "scrollZoom": True,
+            "editable": False,
+            "displayModeBar": True,
+            "responsive": True,
+        }
+        # toImage uses an <a download> click that QtWebKit silently ignores.
+        if _BACKEND is _WebViewBackend.WEBKIT:
+            config["modeBarButtonsToRemove"] = ["toImage"]
+
+        if self._water_balance_enabled:
+            self._redraw_basin_water_balance(selected_keys, config)
+            return
+        self._redraw_standard(selected_keys, config)
