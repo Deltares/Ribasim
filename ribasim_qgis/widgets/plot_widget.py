@@ -128,16 +128,37 @@ _PLACEHOLDER_DEFAULT = "Select Basin nodes and/or links on the map to plot times
 _PLACEHOLDER_WATER_BALANCE = (
     "Basin water balance preset requires exactly one Basin node selection."
 )
-_PLACEHOLDER_FRACTIONS = "Fractions preset requires exactly one Basin node selection."
+_PLACEHOLDER_FRACTIONAL_STORAGE = (
+    "Fractional storage preset requires exactly one Basin node selection."
+)
+_PLACEHOLDER_FRACTIONAL_FLOW = (
+    "Fractional flow preset requires exactly one link selection."
+)
+_PLACEHOLDER_FRACTIONAL_FLOW_JUNCTION = (
+    "Fractional flow over Junction nodes is not yet implemented."
+)
+_PLACEHOLDER_FRACTIONAL_FLOW_NO_BASIN = (
+    "Fractional flow: could not find a Basin connected to the selected link."
+)
+
+_CONNECTOR_NODE_TYPES: frozenset[str] = frozenset(
+    {
+        "TabulatedRatingCurve",
+        "Outlet",
+        "Pump",
+        "LinearResistance",
+        "ManningResistance",
+    }
+)
 
 _DEFAULT_TRACERS: tuple[str, ...] = (
     "LevelBoundary",
     "FlowBoundary",
     "UserDemand",
-    "Initial",
     "Drainage",
     "Precipitation",
     "SurfaceRunoff",
+    "Initial",
 )
 
 _BASIN_WATER_BALANCE_TERMS: tuple[tuple[str, int], ...] = (
@@ -169,7 +190,8 @@ class _PlotMenu(QMenu):
     """Combined menu for plot preset and variable selections."""
 
     waterBalanceChanged = pyqtSignal(bool)
-    fractionsChanged = pyqtSignal(bool)
+    fractionalStorageChanged = pyqtSignal(bool)
+    fractionalFlowChanged = pyqtSignal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -183,7 +205,8 @@ class _PlotMenu(QMenu):
         previously_checked: set[str],
         defaults: dict[str, str] | None = None,
         water_balance_enabled: bool = False,
-        fractions_enabled: bool = False,
+        fractional_storage_enabled: bool = False,
+        fractional_flow_enabled: bool = False,
     ) -> None:
         self.clear()
         self._checkboxes = []
@@ -200,16 +223,27 @@ class _PlotMenu(QMenu):
         wb_action.setDefaultWidget(wb_cb)
         self.addAction(wb_action)
 
-        frac_cb = QCheckBox("fractions")
-        frac_cb.setChecked(fractions_enabled)
-        frac_cb.stateChanged.connect(
-            lambda state: self.fractionsChanged.emit(
+        fs_cb = QCheckBox("fractional storage")
+        fs_cb.setChecked(fractional_storage_enabled)
+        fs_cb.stateChanged.connect(
+            lambda state: self.fractionalStorageChanged.emit(
                 state == int(Qt.CheckState.Checked)
             )
         )
-        frac_action = QWidgetAction(self)
-        frac_action.setDefaultWidget(frac_cb)
-        self.addAction(frac_action)
+        fs_action = QWidgetAction(self)
+        fs_action.setDefaultWidget(fs_cb)
+        self.addAction(fs_action)
+
+        ff_cb = QCheckBox("fractional flow")
+        ff_cb.setChecked(fractional_flow_enabled)
+        ff_cb.stateChanged.connect(
+            lambda state: self.fractionalFlowChanged.emit(
+                state == int(Qt.CheckState.Checked)
+            )
+        )
+        ff_action = QWidgetAction(self)
+        ff_action.setDefaultWidget(ff_cb)
+        self.addAction(ff_action)
 
         self.addSeparator()
 
@@ -291,6 +325,8 @@ class PlotWidget(QWidget):
         iface: Any | None = None,
         node_layer_getter: Callable[[], Any | None] | None = None,
         link_layer_getter: Callable[[], Any | None] | None = None,
+        concentration_for_node_getter: Callable[[int], dict[str, Trace] | None]
+        | None = None,
     ):
         super().__init__(parent)
         layout = QVBoxLayout(self)
@@ -314,7 +350,9 @@ class PlotWidget(QWidget):
         row.addWidget(QLabel("Select"))
 
         self._water_balance_enabled = False
-        self._fractions_enabled = False
+        self._fractional_storage_enabled = False
+        self._fractional_flow_enabled = False
+        self._concentration_for_node_getter = concentration_for_node_getter
         self._plot_button = QToolButton()
         self._plot_button.setToolButtonStyle(
             Qt.ToolButtonStyle.ToolButtonTextBesideIcon
@@ -322,7 +360,10 @@ class PlotWidget(QWidget):
         self._plot_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self._var_menu = _PlotMenu(self._plot_button)
         self._var_menu.waterBalanceChanged.connect(self._on_water_balance_changed)
-        self._var_menu.fractionsChanged.connect(self._on_fractions_changed)
+        self._var_menu.fractionalStorageChanged.connect(
+            self._on_fractional_storage_changed
+        )
+        self._var_menu.fractionalFlowChanged.connect(self._on_fractional_flow_changed)
         self._var_menu.aboutToHide.connect(self._on_menu_closed)
         self._plot_button.setMenu(self._var_menu)
         self._plot_button.setText("variable")
@@ -429,7 +470,8 @@ class PlotWidget(QWidget):
             checked_labels,
             self._defaults,
             self._water_balance_enabled,
-            self._fractions_enabled,
+            self._fractional_storage_enabled,
+            self._fractional_flow_enabled,
         )
         self._redraw()
 
@@ -473,8 +515,12 @@ class PlotWidget(QWidget):
         self._water_balance_enabled = enabled
         self._redraw()
 
-    def _on_fractions_changed(self, enabled: bool) -> None:
-        self._fractions_enabled = enabled
+    def _on_fractional_storage_changed(self, enabled: bool) -> None:
+        self._fractional_storage_enabled = enabled
+        self._redraw()
+
+    def _on_fractional_flow_changed(self, enabled: bool) -> None:
+        self._fractional_flow_enabled = enabled
         self._redraw()
 
     def _activate_node_selection(self) -> None:
@@ -519,10 +565,14 @@ class PlotWidget(QWidget):
         self,
         selected_keys: list[tuple[str, str]],
         excluded_variables: set[str] | None = None,
+        excluded_files: set[str] | None = None,
     ) -> dict[str, list[go.Scatter]]:
         traces_by_unit: dict[str, list[go.Scatter]] = defaultdict(list)
         excluded_variables = excluded_variables or set()
+        excluded_files = excluded_files or set()
         for file_name, var in selected_keys:
+            if file_name in excluded_files:
+                continue
             if var in excluded_variables:
                 continue
             file_data = self._plot_data.get(file_name, {})
@@ -543,8 +593,10 @@ class PlotWidget(QWidget):
     def _placeholder_for_current_preset(self) -> str:
         if self._water_balance_enabled:
             return _PLACEHOLDER_WATER_BALANCE
-        if self._fractions_enabled:
-            return _PLACEHOLDER_FRACTIONS
+        if self._fractional_storage_enabled:
+            return _PLACEHOLDER_FRACTIONAL_STORAGE
+        if self._fractional_flow_enabled:
+            return _PLACEHOLDER_FRACTIONAL_FLOW
         return _PLACEHOLDER_DEFAULT
 
     def _show_placeholder(self, text: str | None = None) -> None:
@@ -705,17 +757,37 @@ class PlotWidget(QWidget):
         fig.update_layout(**_PLOT_LAYOUT, hovermode="x unified")
         self._render_figure(fig, config)
 
-    def _redraw_fractions(
+    def _selected_tracers(
+        self,
+        selected_keys: list[tuple[str, str]],
+        available_substances: set[str],
+    ) -> list[str]:
+        """Return the tracer names to use for a fractional preset.
+
+        Uses checked concentration variables when present, otherwise falls
+        back to the default tracers, then to all available substances.
+        """
+        selected = [
+            var
+            for file_name, var in selected_keys
+            if file_name == "concentration" and var in available_substances
+        ]
+        if not selected:
+            selected = [t for t in _DEFAULT_TRACERS if t in available_substances]
+        if not selected:
+            selected = sorted(available_substances)
+        return selected
+
+    def _redraw_fractional_storage(
         self, selected_keys: list[tuple[str, str]], config: dict[str, bool | list[str]]
     ) -> None:
         if not self._plot_data:
             self._show_placeholder(self._placeholder_for_current_preset())
             return
 
-        # Determine which concentration file to use.
         concentration_data = self._plot_data.get("concentration", {})
         if not concentration_data:
-            self._show_placeholder(_PLACEHOLDER_FRACTIONS)
+            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_STORAGE)
             return
 
         # Collect trace names (node ids) across all substances.
@@ -724,29 +796,18 @@ class PlotWidget(QWidget):
             trace_names.update(var_traces)
 
         if len(trace_names) != 1:
-            self._show_placeholder(_PLACEHOLDER_FRACTIONS)
+            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_STORAGE)
             return
 
         selected_trace = next(iter(trace_names))
-
-        # Use checked concentration variables, or fall back to default tracers.
-        selected_substances = [
-            var
-            for file_name, var in selected_keys
-            if file_name == "concentration" and var in concentration_data
-        ]
-        if not selected_substances:
-            selected_substances = [
-                t for t in _DEFAULT_TRACERS if t in concentration_data
-            ]
-        if not selected_substances:
-            selected_substances = sorted(concentration_data)
+        selected_substances = self._selected_tracers(
+            selected_keys, set(concentration_data)
+        )
 
         # Keep selected non-concentration variables visible as extra rows.
-        concentration_vars = set(concentration_data)
         traces_by_unit = self._collect_standard_traces(
             selected_keys,
-            excluded_variables=concentration_vars,
+            excluded_files={"concentration"},
         )
 
         units = sorted(traces_by_unit)
@@ -780,7 +841,7 @@ class PlotWidget(QWidget):
             used += 1
 
         if used == 0:
-            self._show_placeholder(_PLACEHOLDER_FRACTIONS)
+            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_STORAGE)
             return
 
         file_units = self._units.get("concentration", {})
@@ -790,6 +851,236 @@ class PlotWidget(QWidget):
             if file_units.get(sub, "")
         }
         yaxis_title = unit_values.pop() if len(unit_values) == 1 else "fraction"
+        fig.update_yaxes(title_text=yaxis_title, row=1, col=1)
+
+        for row, unit in enumerate(units, start=2):
+            for trace in traces_by_unit[unit]:
+                fig.add_trace(trace, row=row, col=1)
+            fig.update_yaxes(title_text=unit, row=row, col=1)
+
+        last_row = 1 + len(units)
+        for row in range(1, last_row + 1):
+            fig.update_xaxes(showticklabels=row == last_row, row=row, col=1)
+
+        fig.update_layout(**_PLOT_LAYOUT, hovermode="x unified")
+        self._render_figure(fig, config)
+
+    # --- Fractional flow helpers ---
+
+    def _get_link_endpoints(self, link_id: int) -> tuple[int, int] | None:
+        """Return (from_node_id, to_node_id) for *link_id* via the QGIS link layer."""
+        if self._link_layer_getter is None:
+            return None
+        layer = self._link_layer_getter()
+        if layer is None:
+            return None
+        from qgis.core import QgsFeatureRequest
+
+        request = QgsFeatureRequest().setFilterExpression(f'"link_id" = {int(link_id)}')
+        for feat in layer.getFeatures(request):
+            return int(feat["from_node_id"]), int(feat["to_node_id"])
+        return None
+
+    def _get_node_type(self, node_id: int) -> str | None:
+        """Look up node_type for *node_id* via the QGIS node layer."""
+        if self._node_layer_getter is None:
+            return None
+        layer = self._node_layer_getter()
+        if layer is None:
+            return None
+        from qgis.core import QgsFeatureRequest
+
+        request = QgsFeatureRequest().setFilterExpression(f'"node_id" = {int(node_id)}')
+        for feat in layer.getFeatures(request):
+            return str(feat["node_type"])
+        return None
+
+    def _find_basin_through_connector(
+        self, connector_node_id: int, current_link_id: int
+    ) -> int | None:
+        """Traverse a connector node to find the Basin on the other side.
+
+        Given a connector node and the link we arrived on, find the *other*
+        link connected to this connector and return the node on its far side
+        if that node is a Basin.
+        """
+        if self._link_layer_getter is None:
+            return None
+        layer = self._link_layer_getter()
+        if layer is None:
+            return None
+        from qgis.core import QgsFeatureRequest
+
+        expr = (
+            f'"from_node_id" = {int(connector_node_id)} '
+            f'OR "to_node_id" = {int(connector_node_id)}'
+        )
+        request = QgsFeatureRequest().setFilterExpression(expr)
+        for feat in layer.getFeatures(request):
+            if int(feat["link_id"]) == current_link_id:
+                continue
+            from_id = int(feat["from_node_id"])
+            to_id = int(feat["to_node_id"])
+            far_node = to_id if from_id == connector_node_id else from_id
+            if self._get_node_type(far_node) == "Basin":
+                return far_node
+        return None
+
+    def _resolve_basin(
+        self, node_id: int, link_id: int
+    ) -> tuple[int | None, str | None]:
+        """Return (basin_id, error_placeholder) for a link endpoint.
+
+        If the node is a Basin, return it directly.  If it is a connector
+        node, traverse it.  If it is a Junction, return the junction
+        placeholder.  Otherwise return a generic error placeholder.
+        """
+        node_type = self._get_node_type(node_id)
+        if node_type == "Basin":
+            return node_id, None
+        if node_type == "Junction":
+            return None, _PLACEHOLDER_FRACTIONAL_FLOW_JUNCTION
+        if node_type in _CONNECTOR_NODE_TYPES:
+            basin = self._find_basin_through_connector(node_id, link_id)
+            if basin is not None:
+                return basin, None
+            return None, _PLACEHOLDER_FRACTIONAL_FLOW_NO_BASIN
+        return None, _PLACEHOLDER_FRACTIONAL_FLOW_NO_BASIN
+
+    def _redraw_fractional_flow(
+        self, selected_keys: list[tuple[str, str]], config: dict[str, bool | list[str]]
+    ) -> None:
+        if not self._plot_data:
+            self._show_placeholder(self._placeholder_for_current_preset())
+            return
+
+        # Need exactly one link in flow data.
+        flow_data = self._plot_data.get("flow", {})
+        flow_rate_traces = flow_data.get("flow_rate", {})
+        if len(flow_rate_traces) != 1:
+            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW)
+            return
+
+        trace_name = next(iter(flow_rate_traces))
+        link_id = int(trace_name.lstrip("#"))
+        flow_time, flow_values = flow_rate_traces[trace_name]
+
+        # Resolve both endpoints to Basins (traversing connectors).
+        endpoints = self._get_link_endpoints(link_id)
+        if endpoints is None:
+            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW)
+            return
+
+        from_node_id, to_node_id = endpoints
+        from_basin, from_err = self._resolve_basin(from_node_id, link_id)
+        to_basin, to_err = self._resolve_basin(to_node_id, link_id)
+
+        # We need both endpoints to resolve to Basins.
+        if from_basin is None or to_basin is None:
+            err = from_err or to_err or _PLACEHOLDER_FRACTIONAL_FLOW_NO_BASIN
+            self._show_placeholder(err)
+            return
+
+        if self._concentration_for_node_getter is None:
+            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW)
+            return
+
+        from_conc = (
+            self._concentration_for_node_getter(from_basin)
+            if from_basin is not None
+            else None
+        )
+        to_conc = (
+            self._concentration_for_node_getter(to_basin)
+            if to_basin is not None
+            else None
+        )
+        if not from_conc and not to_conc:
+            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW)
+            return
+
+        available_substances: set[str] = set()
+        if from_conc:
+            available_substances.update(from_conc)
+        if to_conc:
+            available_substances.update(to_conc)
+
+        selected_substances = self._selected_tracers(
+            selected_keys, available_substances
+        )
+
+        # Build a boolean mask: True where flow is positive (from→to).
+        positive_mask = flow_values >= 0
+
+        # Extra traces — exclude concentration and flow files.
+        traces_by_unit = self._collect_standard_traces(
+            selected_keys,
+            excluded_files={"concentration", "flow"},
+        )
+
+        units = sorted(traces_by_unit)
+        fig = make_subplots(
+            rows=1 + len(units),
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.04,
+        )
+        used = 0
+
+        for substance in reversed(selected_substances):
+            # Build per-timestep concentration from the appropriate basin.
+            from_vals = from_conc.get(substance) if from_conc else None
+            to_vals = to_conc.get(substance) if to_conc else None
+            if from_vals is None and to_vals is None:
+                continue
+
+            conc = np.zeros_like(flow_values)
+            if from_vals is not None:
+                _ft, fv = from_vals
+                if len(fv) == len(flow_values):
+                    conc = np.where(positive_mask, fv, conc)
+            if to_vals is not None:
+                _tt, tv = to_vals
+                if len(tv) == len(flow_values):
+                    conc = np.where(~positive_mask, tv, conc)
+
+            fractional_values = conc * flow_values
+            x_data, y_data = self._to_plotly_xy(flow_time, fractional_values)
+            fig.add_trace(
+                go.Scatter(
+                    x=x_data,
+                    y=y_data,
+                    mode="lines",
+                    stackgroup="fractions",
+                    hoveron="points+fills",
+                    line={"width": 0},
+                    name=substance,
+                ),
+                row=1,
+                col=1,
+            )
+            used += 1
+
+        if used == 0:
+            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW)
+            return
+
+        # Total flow_rate as a black line on top.
+        x_flow, y_flow = self._to_plotly_xy(flow_time, flow_values)
+        fig.add_trace(
+            go.Scatter(
+                x=x_flow,
+                y=y_flow,
+                mode="lines",
+                line={"color": "black", "width": 1.5},
+                name="flow_rate",
+            ),
+            row=1,
+            col=1,
+        )
+
+        flow_units = self._units.get("flow", {})
+        yaxis_title = flow_units.get("flow_rate", "m3 s-1")
         fig.update_yaxes(title_text=yaxis_title, row=1, col=1)
 
         for row, unit in enumerate(units, start=2):
@@ -819,7 +1110,10 @@ class PlotWidget(QWidget):
         if self._water_balance_enabled:
             self._redraw_basin_water_balance(selected_keys, config)
             return
-        if self._fractions_enabled:
-            self._redraw_fractions(selected_keys, config)
+        if self._fractional_storage_enabled:
+            self._redraw_fractional_storage(selected_keys, config)
+            return
+        if self._fractional_flow_enabled:
+            self._redraw_fractional_flow(selected_keys, config)
             return
         self._redraw_standard(selected_keys, config)

@@ -57,7 +57,7 @@ from ribasim_qgis.core.nodes import (
     load_external_input_tables,
     load_nodes_from_geopackage,
 )
-from ribasim_qgis.widgets.plot_widget import PlotData, PlotWidget, VariableTraces
+from ribasim_qgis.widgets.plot_widget import PlotData, PlotWidget, Trace, VariableTraces
 from ribasim_qgis.widgets.task import RibasimTask
 
 group_position_var: ContextVar[int] = ContextVar("group_position", default=0)
@@ -110,6 +110,7 @@ class DatasetWidget:
             iface=self.ribasim_widget.iface,
             node_layer_getter=lambda: self.node_layer,
             link_layer_getter=lambda: self.link_layer,
+            concentration_for_node_getter=self._get_concentration_for_node,
         )
 
         # Track running simulations by model path
@@ -631,6 +632,20 @@ class DatasetWidget:
             available[name] = list(result.variables.keys())
             units[name] = result.units
         self.plot_widget.preload_variables(available, units, _DEFAULT_VARIABLES)
+
+    def _get_concentration_for_node(self, node_id: int) -> dict[str, Trace] | None:
+        """Return concentration traces for a single *node_id*."""
+        result = self.results.get("concentration")
+        if result is None:
+            return None
+        id_to_idx = {int(v): i for i, v in enumerate(result.ids)}
+        idx = id_to_idx.get(node_id)
+        if idx is None:
+            return None
+        time_strings = result.time.strftime("%Y-%m-%dT%H:%M:%S").to_numpy()
+        return {
+            sub: (time_strings, arr[:, idx]) for sub, arr in result.variables.items()
+        }
 
     def _set_node_results(self) -> None:
         node_layer = self.ribasim_widget.node_layer
