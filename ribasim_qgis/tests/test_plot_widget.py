@@ -337,6 +337,7 @@ def test_plot_widget_combined_menu_has_presets_and_file_submenus():
         and isinstance(action.defaultWidget(), QCheckBox)
     }
     assert "water balance" in root_checkbox_texts
+    assert "fractions" in root_checkbox_texts
     assert any(
         isinstance(action.defaultWidget(), QCheckBox)
         and action.defaultWidget().text() == "level"
@@ -386,3 +387,103 @@ def test_plot_widget_combined_menu_has_presets_and_file_submenus():
         and isinstance(action.defaultWidget(), QCheckBox)
     }
     assert flow_labels == {"q"}
+
+
+def test_plot_widget_fractions_preset_plots_default_tracers(monkeypatch):
+    captured_figures = []
+
+    def _capture_plot(fig, **kwargs):
+        captured_figures.append(fig)
+        return "<div></div>"
+
+    monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
+
+    widget = PlotWidget()
+    widget._fractions_enabled = True
+
+    time = np.array(["2020-01-01", "2020-01-02"])
+    plot_data = {
+        "concentration": {
+            "LevelBoundary": {"#1": (time, np.array([0.1, 0.2]))},
+            "FlowBoundary": {"#1": (time, np.array([0.3, 0.4]))},
+            "Initial": {"#1": (time, np.array([0.5, 0.3]))},
+            "Drainage": {"#1": (time, np.array([0.05, 0.05]))},
+            "Precipitation": {"#1": (time, np.array([0.05, 0.05]))},
+        }
+    }
+
+    widget.set_data(plot_data)
+
+    assert len(captured_figures) == 1
+    fig = captured_figures[0]
+    names = {trace.name for trace in fig.data}
+    assert names == {
+        "LevelBoundary",
+        "FlowBoundary",
+        "Initial",
+        "Drainage",
+        "Precipitation",
+    }
+    assert all(trace.stackgroup == "fractions" for trace in fig.data)
+    assert fig.layout.hovermode == "x unified"
+
+
+def test_plot_widget_fractions_preset_requires_single_node():
+    widget = PlotWidget()
+    widget._fractions_enabled = True
+
+    time = np.array(["2020-01-01", "2020-01-02"])
+    widget.set_data(
+        {
+            "concentration": {
+                "LevelBoundary": {
+                    "#1": (time, np.array([0.5, 0.5])),
+                    "#2": (time, np.array([0.5, 0.5])),
+                }
+            }
+        }
+    )
+
+    assert widget._placeholder.isVisibleTo(widget)
+    assert not widget._web_view.isVisibleTo(widget)
+
+
+def test_plot_widget_fractions_preset_uses_selected_substances(monkeypatch):
+    captured_figures = []
+
+    def _capture_plot(fig, **kwargs):
+        captured_figures.append(fig)
+        return "<div></div>"
+
+    monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
+
+    widget = PlotWidget()
+    widget._fractions_enabled = True
+
+    widget.preload_variables(
+        {"concentration": ["LevelBoundary", "FlowBoundary", "Initial"]},
+    )
+    # Check only LevelBoundary in the concentration submenu.
+    widget._var_menu.populate(
+        widget._available,
+        {"concentration / LevelBoundary"},
+        widget._defaults,
+        widget._water_balance_enabled,
+        widget._fractions_enabled,
+    )
+
+    time = np.array(["2020-01-01", "2020-01-02"])
+    widget.set_data(
+        {
+            "concentration": {
+                "LevelBoundary": {"#1": (time, np.array([0.5, 0.6]))},
+                "FlowBoundary": {"#1": (time, np.array([0.3, 0.2]))},
+                "Initial": {"#1": (time, np.array([0.2, 0.2]))},
+            }
+        },
+    )
+
+    assert len(captured_figures) == 1
+    fig = captured_figures[0]
+    names = [trace.name for trace in fig.data]
+    assert names == ["LevelBoundary"]

@@ -128,6 +128,17 @@ _PLACEHOLDER_DEFAULT = "Select Basin nodes and/or links on the map to plot times
 _PLACEHOLDER_WATER_BALANCE = (
     "Basin water balance preset requires exactly one Basin node selection."
 )
+_PLACEHOLDER_FRACTIONS = "Fractions preset requires exactly one Basin node selection."
+
+_DEFAULT_TRACERS: tuple[str, ...] = (
+    "LevelBoundary",
+    "FlowBoundary",
+    "UserDemand",
+    "Initial",
+    "Drainage",
+    "Precipitation",
+    "SurfaceRunoff",
+)
 
 _BASIN_WATER_BALANCE_TERMS: tuple[tuple[str, int], ...] = (
     ("storage_rate", -1),
@@ -158,6 +169,7 @@ class _PlotMenu(QMenu):
     """Combined menu for plot preset and variable selections."""
 
     waterBalanceChanged = pyqtSignal(bool)
+    fractionsChanged = pyqtSignal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -171,21 +183,33 @@ class _PlotMenu(QMenu):
         previously_checked: set[str],
         defaults: dict[str, str] | None = None,
         water_balance_enabled: bool = False,
+        fractions_enabled: bool = False,
     ) -> None:
         self.clear()
         self._checkboxes = []
         self._variables = []
 
-        mode_cb = QCheckBox("water balance")
-        mode_cb.setChecked(water_balance_enabled)
-        mode_cb.stateChanged.connect(
+        wb_cb = QCheckBox("water balance")
+        wb_cb.setChecked(water_balance_enabled)
+        wb_cb.stateChanged.connect(
             lambda state: self.waterBalanceChanged.emit(
                 state == int(Qt.CheckState.Checked)
             )
         )
-        mode_action = QWidgetAction(self)
-        mode_action.setDefaultWidget(mode_cb)
-        self.addAction(mode_action)
+        wb_action = QWidgetAction(self)
+        wb_action.setDefaultWidget(wb_cb)
+        self.addAction(wb_action)
+
+        frac_cb = QCheckBox("fractions")
+        frac_cb.setChecked(fractions_enabled)
+        frac_cb.stateChanged.connect(
+            lambda state: self.fractionsChanged.emit(
+                state == int(Qt.CheckState.Checked)
+            )
+        )
+        frac_action = QWidgetAction(self)
+        frac_action.setDefaultWidget(frac_cb)
+        self.addAction(frac_action)
 
         self.addSeparator()
 
@@ -290,6 +314,7 @@ class PlotWidget(QWidget):
         row.addWidget(QLabel("Select"))
 
         self._water_balance_enabled = False
+        self._fractions_enabled = False
         self._plot_button = QToolButton()
         self._plot_button.setToolButtonStyle(
             Qt.ToolButtonStyle.ToolButtonTextBesideIcon
@@ -297,6 +322,7 @@ class PlotWidget(QWidget):
         self._plot_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self._var_menu = _PlotMenu(self._plot_button)
         self._var_menu.waterBalanceChanged.connect(self._on_water_balance_changed)
+        self._var_menu.fractionsChanged.connect(self._on_fractions_changed)
         self._var_menu.aboutToHide.connect(self._on_menu_closed)
         self._plot_button.setMenu(self._var_menu)
         self._plot_button.setText("variable")
@@ -403,6 +429,7 @@ class PlotWidget(QWidget):
             checked_labels,
             self._defaults,
             self._water_balance_enabled,
+            self._fractions_enabled,
         )
         self._redraw()
 
@@ -444,6 +471,10 @@ class PlotWidget(QWidget):
 
     def _on_water_balance_changed(self, enabled: bool) -> None:
         self._water_balance_enabled = enabled
+        self._redraw()
+
+    def _on_fractions_changed(self, enabled: bool) -> None:
+        self._fractions_enabled = enabled
         self._redraw()
 
     def _activate_node_selection(self) -> None:
@@ -512,6 +543,8 @@ class PlotWidget(QWidget):
     def _placeholder_for_current_preset(self) -> str:
         if self._water_balance_enabled:
             return _PLACEHOLDER_WATER_BALANCE
+        if self._fractions_enabled:
+            return _PLACEHOLDER_FRACTIONS
         return _PLACEHOLDER_DEFAULT
 
     def _show_placeholder(self, text: str | None = None) -> None:
@@ -672,6 +705,105 @@ class PlotWidget(QWidget):
         fig.update_layout(**_PLOT_LAYOUT, hovermode="x unified")
         self._render_figure(fig, config)
 
+    def _redraw_fractions(
+        self, selected_keys: list[tuple[str, str]], config: dict[str, bool | list[str]]
+    ) -> None:
+        if not self._plot_data:
+            self._show_placeholder(self._placeholder_for_current_preset())
+            return
+
+        # Determine which concentration file to use.
+        concentration_data = self._plot_data.get("concentration", {})
+        if not concentration_data:
+            self._show_placeholder(_PLACEHOLDER_FRACTIONS)
+            return
+
+        # Collect trace names (node ids) across all substances.
+        trace_names: set[str] = set()
+        for var_traces in concentration_data.values():
+            trace_names.update(var_traces)
+
+        if len(trace_names) != 1:
+            self._show_placeholder(_PLACEHOLDER_FRACTIONS)
+            return
+
+        selected_trace = next(iter(trace_names))
+
+        # Use checked concentration variables, or fall back to default tracers.
+        selected_substances = [
+            var
+            for file_name, var in selected_keys
+            if file_name == "concentration" and var in concentration_data
+        ]
+        if not selected_substances:
+            selected_substances = [
+                t for t in _DEFAULT_TRACERS if t in concentration_data
+            ]
+        if not selected_substances:
+            selected_substances = sorted(concentration_data)
+
+        # Keep selected non-concentration variables visible as extra rows.
+        concentration_vars = set(concentration_data)
+        traces_by_unit = self._collect_standard_traces(
+            selected_keys,
+            excluded_variables=concentration_vars,
+        )
+
+        units = sorted(traces_by_unit)
+        fig = make_subplots(
+            rows=1 + len(units),
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.04,
+        )
+        used = 0
+
+        for substance in reversed(selected_substances):
+            traces = concentration_data.get(substance, {})
+            if selected_trace not in traces:
+                continue
+            x, y = traces[selected_trace]
+            x_data, y_data = self._to_plotly_xy(x, y)
+            fig.add_trace(
+                go.Scatter(
+                    x=x_data,
+                    y=y_data,
+                    mode="lines",
+                    stackgroup="fractions",
+                    hoveron="points+fills",
+                    line={"width": 0},
+                    name=substance,
+                ),
+                row=1,
+                col=1,
+            )
+            used += 1
+
+        if used == 0:
+            self._show_placeholder(_PLACEHOLDER_FRACTIONS)
+            return
+
+        file_units = self._units.get("concentration", {})
+        unit_values = {
+            file_units.get(sub, "")
+            for sub in selected_substances
+            if file_units.get(sub, "")
+        }
+        yaxis_title = unit_values.pop() if len(unit_values) == 1 else "fraction"
+        fig.update_yaxes(title_text=yaxis_title, row=1, col=1)
+
+        for row, unit in enumerate(units, start=2):
+            for trace in traces_by_unit[unit]:
+                fig.add_trace(trace, row=row, col=1)
+            fig.update_yaxes(title_text=unit, row=row, col=1)
+
+        last_row = 1 + len(units)
+        for row in range(1, last_row + 1):
+            fig.update_xaxes(showticklabels=row == last_row, row=row, col=1)
+
+        fig.update_layout(**_PLOT_LAYOUT, hovermode="x unified")
+        self._render_figure(fig, config)
+
     def _redraw(self) -> None:
         selected_keys = self._selected_keys()
         config: dict[str, bool | list[str]] = {
@@ -686,5 +818,8 @@ class PlotWidget(QWidget):
 
         if self._water_balance_enabled:
             self._redraw_basin_water_balance(selected_keys, config)
+            return
+        if self._fractions_enabled:
+            self._redraw_fractions(selected_keys, config)
             return
         self._redraw_standard(selected_keys, config)
