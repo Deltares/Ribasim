@@ -134,15 +134,63 @@ def test_collect_listen_link_pairs_without_control(basic):
 
 
 def test_ensure_listen_links_idempotent(discrete_control_of_pid_control):
-    """Calling _ensure_listen_links twice should not duplicate links."""
+    """Calling ensure_listen_links twice should not duplicate links."""
     model = discrete_control_of_pid_control
-    model._ensure_listen_links()
+    model.ensure_listen_links()
     assert model.link.df is not None
     count_after_first = len(model.link.df)
 
-    model._ensure_listen_links()
+    model.ensure_listen_links()
     count_after_second = len(model.link.df)
     assert count_after_first == count_after_second
+
+
+def test_manually_add_listen_link(discrete_control_of_pid_control):
+    """Listen links can be added explicitly via link.add().
+
+    When a link is added from a listenable node (e.g. Basin) to a control
+    node (e.g. PidControl), the link type is automatically inferred as
+    "listen" and the link is present in the link DataFrame.
+    Calling ensure_listen_links afterwards does not duplicate it.
+    """
+    model = discrete_control_of_pid_control
+    assert model.link.df is not None
+
+    # Ensure no listen links exist by removing any that were auto-added
+    if model.link.df is not None:
+        listen_links = model.link.df.loc[model.link.df["link_type"] == "listen"]
+        for _, link in listen_links.iterrows():
+            model.link.remove((link["from_node_id"], link["to_node_id"]))
+
+    assert model.link.df.loc[model.link.df["link_type"] == "listen"].empty
+
+    n_links_before = len(model.link.df)
+
+    # Explicitly add a listen link from Basin(3) -> PidControl(6)
+    model.link.add(model.basin[3], model.pid_control[6])
+
+    # The link is now present
+    listen_links = model.link.df.loc[model.link.df["link_type"] == "listen"]
+    assert len(listen_links) == 1
+    assert listen_links.iloc[0]["from_node_id"] == 3
+    assert listen_links.iloc[0]["to_node_id"] == 6
+    assert len(model.link.df) == n_links_before + 1
+
+    # ensure_listen_links does not duplicate the manually added listen link
+    model.ensure_listen_links()
+    listen_links_after = model.link.df.loc[model.link.df["link_type"] == "listen"]
+    # There should be 2 listen links total: Basin(3)->PidControl(6) added above,
+    # and LevelBoundary(1)->DiscreteControl(7) inferred by ensure_listen_links
+    assert len(listen_links_after) == 2
+    expected_pairs = {(3, 6), (1, 7)}
+    actual_pairs = set(
+        zip(
+            listen_links_after["from_node_id"],
+            listen_links_after["to_node_id"],
+            strict=False,
+        )
+    )
+    assert actual_pairs == expected_pairs
 
 
 def test_write_adds_fid_in_tables(basic, tmp_path):
