@@ -15,8 +15,11 @@ def test_ribasim_home_setting_roundtrip(monkeypatch):
     store: dict[str, str] = {}
 
     class FakeQgsSettings:
-        def value(self, key):
-            return store.get(key)
+        def value(self, key, default=None, type=None):
+            value = store.get(key, default)
+            if type is not None and value is not None:
+                return type(value)
+            return value
 
         def setValue(self, key, value):
             store[key] = value
@@ -38,6 +41,78 @@ def test_ribasim_home_setting_roundtrip(monkeypatch):
     DatasetWidget.clear_ribasim_home_setting()
 
     assert DatasetWidget.get_ribasim_home_setting() is None
+
+
+def test_last_model_dir_setting_roundtrip(monkeypatch):
+    store: dict[str, str] = {}
+
+    class FakeQgsSettings:
+        def value(self, key, default=None, type=None):
+            value = store.get(key, default)
+            if type is not None and value is not None:
+                return type(value)
+            return value
+
+        def setValue(self, key, value):
+            store[key] = value
+
+    monkeypatch.setattr(
+        "ribasim_qgis.widgets.dataset_widget.QgsSettings", FakeQgsSettings
+    )
+
+    assert DatasetWidget.get_last_model_dir_setting() is None
+
+    expected = Path("C:/models/basic")
+    DatasetWidget.set_last_model_dir_setting(expected)
+
+    assert DatasetWidget.get_last_model_dir_setting() == expected
+
+
+def test_open_model_uses_last_model_dir_for_dialog(monkeypatch):
+    widget = DatasetWidget.__new__(DatasetWidget)
+    widget.ribasim_widget = object()
+
+    monkeypatch.setattr(
+        DatasetWidget,
+        "get_last_model_dir_setting",
+        staticmethod(lambda: Path("C:/models/basic")),
+    )
+
+    captured: dict[str, str] = {}
+
+    def fake_get_open_file_name(parent, caption, directory, file_filter):
+        captured["directory"] = directory
+        return ("", "")
+
+    monkeypatch.setattr(
+        "ribasim_qgis.widgets.dataset_widget.QFileDialog.getOpenFileName",
+        fake_get_open_file_name,
+    )
+    monkeypatch.setattr(DatasetWidget, "_open_model", lambda self, path: None)
+
+    widget.open_model()
+
+    assert Path(captured["directory"]) == Path("C:/models/basic")
+
+
+def test_open_model_stores_parent_directory(monkeypatch):
+    widget = DatasetWidget.__new__(DatasetWidget)
+
+    captured: dict[str, Path] = {}
+    monkeypatch.setattr(
+        DatasetWidget,
+        "set_last_model_dir_setting",
+        staticmethod(lambda path: captured.__setitem__("path", path)),
+    )
+    monkeypatch.setattr(DatasetWidget, "set_current_time_extent", lambda self: None)
+    monkeypatch.setattr(DatasetWidget, "load_geopackage", lambda self: None)
+    monkeypatch.setattr(DatasetWidget, "add_topology_context", lambda self: None)
+    monkeypatch.setattr(DatasetWidget, "refresh_results", lambda self: None)
+
+    widget._open_model("C:/models/basic/ribasim.toml")
+
+    assert widget.path == Path("C:/models/basic/ribasim.toml")
+    assert captured["path"] == Path("C:/models/basic")
 
 
 def test_find_ribasim_cli_uses_setting_first(monkeypatch):

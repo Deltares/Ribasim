@@ -7,6 +7,7 @@ def plot_fraction(
     model,
     node_id,
     tracers=None,
+    ax=None,
 ):
     if tracers is None:
         tracers = [
@@ -27,7 +28,8 @@ def plot_fraction(
     groups = table.groupby("substance")
     stack = {k: v["concentration"].to_numpy() for (k, v) in groups}
 
-    fig, ax = plt.subplots()
+    if ax is None:
+        _, ax = plt.subplots()
     key = next(iter(groups.groups))
     time = groups.get_group(key)["time"]
     ax.stackplot(
@@ -46,10 +48,10 @@ def plot_fraction(
     ax.set_xlabel("Time")
     ax.set_ylabel("Fraction")
 
-    plt.show(fig)
+    return ax
 
 
-def plot_spatial(model, tracer="Initial", versus=None, limit=0.001):
+def plot_spatial(model, tracer="Initial", versus=None, limit=0.001, ax=None):
     table = model.basin.concentration_external.df
     table = table[table["time"] == table["time"].max()]
 
@@ -76,7 +78,8 @@ def plot_spatial(model, tracer="Initial", versus=None, limit=0.001):
         c = table["concentration"][nodes.index] / total_concentration
         alpha = total_concentration / 2
 
-    fig, ax = plt.subplots()
+    if ax is None:
+        _, ax = plt.subplots()
     s = ax.scatter(
         nodes.geometry.x,
         nodes.geometry.y,
@@ -93,7 +96,7 @@ def plot_spatial(model, tracer="Initial", versus=None, limit=0.001):
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
 
-    fig.colorbar(s, cax=cax, orientation="vertical")
+    ax.get_figure().colorbar(s, cax=cax, orientation="vertical")
     if versus is not None:
         cax.set_ylabel(f"{tracer} fraction vs {versus} fraction")
     else:
@@ -101,4 +104,4 @@ def plot_spatial(model, tracer="Initial", versus=None, limit=0.001):
     ax.set_xlabel("x")
     ax.set_ylabel("y")
 
-    plt.show(fig)
+    return ax
