@@ -76,6 +76,7 @@ _DEFAULT_VARIABLES: dict[str, str] = {
 }
 
 RIBASIM_HOME_SETTING = "ribasim/home"
+RIBASIM_LAST_MODEL_DIR_SETTING = "ribasim/last_model_dir"
 
 _ANSI_ESCAPE_RE = re.compile(r"\x1B(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1B\\))")
 
@@ -267,14 +268,19 @@ class DatasetWidget:
     def open_model(self, path=None) -> None:
         """Open a Ribasim model file."""
         if not path:
+            start_dir = self.get_last_model_dir_setting()
             path, _ = QFileDialog.getOpenFileName(
-                self.ribasim_widget, "Select file", "", "*.toml"
+                self.ribasim_widget,
+                "Select file",
+                str(start_dir) if start_dir is not None else "",
+                "*.toml",
             )
         self._open_model(path)
 
     def _open_model(self, path: str) -> None:
         if path != "":  # Empty string in case of cancel button press
             self.path = Path(path)
+            self.set_last_model_dir_setting(self.path.parent)
             self.set_current_time_extent()
             self.load_geopackage()
             self.add_topology_context()
@@ -408,10 +414,8 @@ class DatasetWidget:
     @staticmethod
     def get_ribasim_home_setting() -> Path | None:
         settings = QgsSettings()
-        value = settings.value(RIBASIM_HOME_SETTING)
-        if not isinstance(value, str) or not value:
-            return None
-        return Path(value)
+        value = settings.value(RIBASIM_HOME_SETTING, "", type=str)
+        return Path(value) if value else None
 
     @staticmethod
     def set_ribasim_home_setting(path: Path) -> None:
@@ -422,6 +426,17 @@ class DatasetWidget:
     def clear_ribasim_home_setting() -> None:
         settings = QgsSettings()
         settings.remove(RIBASIM_HOME_SETTING)
+
+    @staticmethod
+    def get_last_model_dir_setting() -> Path | None:
+        settings = QgsSettings()
+        value = settings.value(RIBASIM_LAST_MODEL_DIR_SETTING, "", type=str)
+        return Path(value) if value else None
+
+    @staticmethod
+    def set_last_model_dir_setting(path: Path) -> None:
+        settings = QgsSettings()
+        settings.setValue(RIBASIM_LAST_MODEL_DIR_SETTING, str(path))
 
     @staticmethod
     def get_ribasim_cli_from_home(ribasim_home: Path) -> Path | None:
