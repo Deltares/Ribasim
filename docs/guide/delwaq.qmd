@@ -13,8 +13,6 @@ All testmodels can be [downloaded from here](/getting-started/install.qmd).
 from pathlib import Path
 
 toml_path = Path("../../generated_testmodels/basic/ribasim.toml")
-
-assert toml_path.is_file()
 ```
 
 This Ribasim model already has substance concentrations for `Cl` and `Tracer` in the input tables, and we will use these to generate the Delwaq input files.
@@ -136,17 +134,14 @@ urllib.request.urlretrieve(
 ```{python}
 from ribasim.delwaq import parse
 
-# Default parse: write concentration.nc without  modifying the model inputs
 nmodel_nc = parse(model, graph, substances, to_input=False)
 
 concentration_nc = toml_path.parent / "results" / "concentration.nc"
-assert concentration_nc.is_file()
 concentration_nc
 ```
 
 By default (`to_input=False`), the parsed model writes the Delwaq tracer results to `results/concentration.nc` and does not populate the `Basin / concentration_external` table.
 
-To use the Delwaq results as inputs for plotting (or a follow-up Ribasim run), set `to_input=True` so that the `Basin / concentration_external` table is populated in addition to writing the NetCDF file.
 
 ```{python}
 # Parse Delwaq results and also populate Basin / concentration_external for plotting
