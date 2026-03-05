@@ -152,7 +152,7 @@ nmodel = parse(model, graph, substances, to_input=True)
 display(nmodel.basin.concentration_external)
 print(substances)
 t = nmodel.basin.concentration_external.df
-# Show the first available timestep (only one may be present in the example data)
+# Show the first available timestep
 t[t.time == t.time.unique()[0]]
 ```
 
