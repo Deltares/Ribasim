@@ -5,6 +5,6 @@
         ambiguities = false,
         persistent_tasks = false,
         piracies = true,
-        stale_deps = (ignore = [:Arrow, :CodecZstd],),
+        stale_deps = true,
     )
 end
