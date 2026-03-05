@@ -12,7 +12,12 @@ except ImportError:
 
 
 def parse(
-    model: Path | ribasim.Model, graph, substances, output_folder=None
+    model: Path | ribasim.Model,
+    graph,
+    substances,
+    output_folder=None,
+    *,
+    to_input: bool = False,
 ) -> ribasim.Model:
     if not isinstance(model, ribasim.Model):
         model = ribasim.Model.read(model)
@@ -55,8 +60,11 @@ def parse(
     df = _concat(dfs).reset_index(drop=True)
     df.sort_values(["time", "node_id"], inplace=True)
 
-    model.basin.concentration_external = df
-    ds = df.set_index(["time", "substance", "node_id"]).to_xarray()
+    ds = df.set_index(["node_id", "substance", "time"]).to_xarray()
     ds.to_netcdf(model.results_path / "concentration.nc")
+
+    if to_input:
+        # Optionally make the parsed results available as model input
+        model.basin.concentration_external = df
 
     return model

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import xarray as xr
 from ribasim import Model
 from ribasim.delwaq import add_tracer, generate, parse, run_delwaq
 
@@ -22,6 +23,7 @@ def test_offline_delwaq_coupling(tmp_path):
     repo_dir = delwaq_dir.parents[2]
     toml_path = repo_dir / "generated_testmodels/basic/ribasim.toml"
     model_dir = tmp_path / "delwaq"
+    results_dir = toml_path.parent / "results"
 
     model = Model.read(toml_path)
 
@@ -29,7 +31,7 @@ def test_offline_delwaq_coupling(tmp_path):
     model.solver.evaporate_mass = False
     graph, substances = generate(model, model_dir)
     run_delwaq(model_dir)
-    model = parse(model, graph, substances, model_dir)
+    model = parse(model, graph, substances, model_dir, to_input=True)
 
     df = model.basin.concentration_external.df
     assert df is not None
@@ -52,6 +54,10 @@ def test_offline_delwaq_coupling(tmp_path):
     assert all(np.isclose(df[df.substance == "UserDemand"].concentration, 0.0))
 
     model.write(tmp_path / "basic/ribasim.toml")
+
+    # Ensure concentration.nc uses the expected dimension order
+    with xr.open_dataset(results_dir / "concentration.nc") as uds:
+        assert uds["concentration"].dims == ("node_id", "substance", "time")
 
 
 @pytest.mark.skipif(
@@ -78,7 +84,7 @@ def test_offline_delwaq_coupling_evaporate_mass(tmp_path):
 
     graph, substances = generate(model, model_dir)
     run_delwaq(model_dir)
-    model = parse(model, graph, substances, model_dir)
+    model = parse(model, graph, substances, model_dir, to_input=True)
 
     df = model.basin.concentration_external.df
     assert df is not None
