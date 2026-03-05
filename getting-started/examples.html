@@ -301,7 +301,7 @@ window.Quarto = {
 <p>This is an overview of example codes to set-up and run models.</p>
 <section id="basic-model-with-static-forcing" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Basic model with static forcing</h1>
-<div id="6a72f9ae" class="cell" data-execution_count="2">
+<div id="241ae12c" class="cell" data-execution_count="2">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> shutil</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -327,15 +327,15 @@ window.Quarto = {
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> shapely.geometry <span class="im">import</span> Point</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div id="f31aa00b" class="cell" data-execution_count="4">
+<div id="72672742" class="cell" data-execution_count="4">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>datadir <span class="op">=</span> Path(<span class="st">"data"</span>)</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>shutil.rmtree(datadir, ignore_errors<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div id="0c625a37" class="cell" data-execution_count="5">
+<div id="f3eecf53" class="cell" data-execution_count="5">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> Model(starttime<span class="op">=</span><span class="st">"2020-01-01"</span>, endtime<span class="op">=</span><span class="st">"2021-01-01"</span>, crs<span class="op">=</span><span class="st">"EPSG:4326"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Setup the basins:</p>
-<div id="55073de0" class="cell" data-execution_count="6">
+<div id="4074aacc" class="cell" data-execution_count="6">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>time <span class="op">=</span> pd.date_range(model.starttime, model.endtime)</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>day_of_year <span class="op">=</span> time.day_of_year.to_numpy()</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>seconds_per_day <span class="op">=</span> <span class="dv">24</span> <span class="op">*</span> <span class="dv">60</span> <span class="op">*</span> <span class="dv">60</span></span>
@@ -368,7 +368,7 @@ window.Quarto = {
 <span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>basin9 <span class="op">=</span> model.basin.add(Node(<span class="dv">9</span>, Point(<span class="fl">5.0</span>, <span class="fl">0.0</span>)), basin_data)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Setup linear resistance:</p>
-<div id="de9d41c2" class="cell" data-execution_count="7">
+<div id="b2d7a862" class="cell" data-execution_count="7">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>linear_resistance10 <span class="op">=</span> model.linear_resistance.add(</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">10</span>, Point(<span class="fl">6.0</span>, <span class="fl">0.0</span>)),</span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    [linear_resistance.Static(resistance<span class="op">=</span>[<span class="fl">5e3</span>])],</span>
@@ -379,7 +379,7 @@ window.Quarto = {
 <span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Setup Manning resistance:</p>
-<div id="a48d430c" class="cell" data-execution_count="8">
+<div id="9d1c7194" class="cell" data-execution_count="8">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>manning_resistance2 <span class="op">=</span> model.manning_resistance.add(</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">2</span>, Point(<span class="fl">1.0</span>, <span class="fl">0.0</span>)),</span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    [</span>
@@ -390,7 +390,7 @@ window.Quarto = {
 <span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Set up rating curve nodes:</p>
-<div id="544b2da7" class="cell" data-execution_count="9">
+<div id="236fb27c" class="cell" data-execution_count="9">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>q <span class="op">=</span> <span class="dv">10</span> <span class="op">/</span> <span class="dv">86400</span>  <span class="co"># 10 m³/day</span></span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>tabulated_rating_curve4 <span class="op">=</span> model.tabulated_rating_curve.add(</span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">8</span>, Point(<span class="fl">3.0</span>, <span class="op">-</span><span class="fl">1.0</span>)),</span>
@@ -421,11 +421,11 @@ window.Quarto = {
 <span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Setup pump:</p>
-<div id="db8f4c63" class="cell" data-execution_count="10">
+<div id="e1f964a8" class="cell" data-execution_count="10">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>pump7 <span class="op">=</span> model.pump.add(Node(<span class="dv">7</span>, Point(<span class="fl">4.0</span>, <span class="fl">1.0</span>)), [pump.Static(flow_rate<span class="op">=</span>[<span class="fl">0.5</span> <span class="op">/</span> <span class="dv">3600</span>])])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Setup level boundary:</p>
-<div id="6846cfd7" class="cell" data-execution_count="11">
+<div id="4b283c99" class="cell" data-execution_count="11">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>level_boundary11 <span class="op">=</span> model.level_boundary.add(</span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">11</span>, Point(<span class="fl">2.0</span>, <span class="fl">2.0</span>)), [level_boundary.Static(level<span class="op">=</span>[<span class="fl">0.5</span>])]</span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>)</span>
@@ -434,7 +434,7 @@ window.Quarto = {
 <span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Setup flow boundary:</p>
-<div id="02734ab5" class="cell" data-execution_count="12">
+<div id="35e24bb1" class="cell" data-execution_count="12">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>flow_boundary15 <span class="op">=</span> model.flow_boundary.add(</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">15</span>, Point(<span class="fl">3.0</span>, <span class="fl">3.0</span>)), [flow_boundary.Static(flow_rate<span class="op">=</span>[<span class="fl">1e-4</span>])]</span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>)</span>
@@ -443,11 +443,11 @@ window.Quarto = {
 <span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Setup terminal:</p>
-<div id="00bde30d" class="cell" data-execution_count="13">
+<div id="737947f2" class="cell" data-execution_count="13">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>terminal14 <span class="op">=</span> model.terminal.add(Node(<span class="dv">14</span>, Point(<span class="fl">3.0</span>, <span class="op">-</span><span class="fl">2.0</span>)))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Setup the links:</p>
-<div id="bc6344d2" class="cell" data-execution_count="14">
+<div id="0d89bb60" class="cell" data-execution_count="14">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>model.link.add(basin1, manning_resistance2)</span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>model.link.add(manning_resistance2, basin3)</span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>model.link.add(</span>
@@ -478,7 +478,7 @@ window.Quarto = {
 <span id="cb12-28"><a href="#cb12-28" aria-hidden="true" tabindex="-1"></a>model.link.add(linear_resistance10, level_boundary17)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Let’s take a look at the model:</p>
-<div id="01e1986a" class="cell" data-execution_count="15">
+<div id="f0871c28" class="cell" data-execution_count="15">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>model.plot()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -489,7 +489,7 @@ window.Quarto = {
 </div>
 </div>
 <p>Write the model to a TOML and GeoPackage:</p>
-<div id="d4f5b4af" class="cell" data-execution_count="16">
+<div id="c64bef39" class="cell" data-execution_count="16">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>toml_path <span class="op">=</span> datadir <span class="op">/</span> <span class="st">"basic/ribasim.toml"</span></span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>model.write(toml_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="16">
@@ -499,7 +499,7 @@ window.Quarto = {
 <section id="running-a-model" class="level2" data-number="1.1">
 <h2 data-number="1.1" class="anchored" data-anchor-id="running-a-model"><span class="header-section-number">1.1</span> Running a model</h2>
 <p>Now run the model:</p>
-<div id="5ecf39b4" class="cell" data-execution_count="17">
+<div id="ab03d665" class="cell" data-execution_count="17">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>run_ribasim(toml_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stderr">
 <div class="ansi-escaped-output">
@@ -523,7 +523,7 @@ window.Quarto = {
 
 
 
-┌ Info: Starting a Ribasim simulation at 2026-03-03T17:19:33.565.
+┌ Info: Starting a Ribasim simulation at 2026-03-05T11:06:30.259.
 
 │   toml_path = "data/basic/ribasim.toml"
 
@@ -539,45 +539,45 @@ window.Quarto = {
 
 Simulating   0%|                                        |  ETA: N/A
 
-Simulating   2%|▉                                       |  ETA: 0:09:33
+Simulating   2%|▉                                       |  ETA: 0:09:08
 
-Simulating   4%|█▌                                      |  ETA: 0:05:01
+Simulating   4%|█▌                                      |  ETA: 0:04:48
 
-Simulating   6%|██▍                                     |  ETA: 0:03:15
+Simulating   6%|██▍                                     |  ETA: 0:03:07
 
-Simulating   8%|███▍                                    |  ETA: 0:02:10
+Simulating   8%|███▍                                    |  ETA: 0:02:04
 
-Simulating  11%|████▌                                   |  ETA: 0:01:35
+Simulating  11%|████▌                                   |  ETA: 0:01:31
 
-Simulating  14%|█████▋                                  |  ETA: 0:01:13
+Simulating  14%|█████▋                                  |  ETA: 0:01:10
 
-Simulating  18%|███████                                 |  ETA: 0:00:57
+Simulating  18%|███████                                 |  ETA: 0:00:54
 
-Simulating  21%|████████▌                               |  ETA: 0:00:44
+Simulating  21%|████████▌                               |  ETA: 0:00:42
 
-Simulating  25%|██████████▏                             |  ETA: 0:00:35
+Simulating  25%|██████████▏                             |  ETA: 0:00:34
 
-Simulating  30%|████████████                            |  ETA: 0:00:28
+Simulating  30%|████████████                            |  ETA: 0:00:27
 
-Simulating  36%|██████████████▌                         |  ETA: 0:00:21
+Simulating  36%|██████████████▌                         |  ETA: 0:00:20
 
-Simulating  47%|██████████████████▊                     |  ETA: 0:00:14
+Simulating  47%|██████████████████▊                     |  ETA: 0:00:13
 
-Simulating  53%|█████████████████████▎                  |  ETA: 0:00:11
+Simulating  53%|█████████████████████▎                  |  ETA: 0:00:10
 
-Simulating  64%|█████████████████████████▋              |  ETA: 0:00:07
+Simulating  64%|█████████████████████████▋              |  ETA: 0:00:06
 
 Simulating  77%|██████████████████████████████▋         |  ETA: 0:00:04
 
 Simulating  92%|████████████████████████████████████▊   |  ETA: 0:00:01
 
-Simulating 100%|████████████████████████████████████████| Time: 0:00:12
+Simulating 100%|████████████████████████████████████████| Time: 0:00:11
 
-[ Info: Computation time: 6 seconds, 973 milliseconds
+[ Info: Computation time: 8 seconds, 655 milliseconds
 
 [ Info: Writing results.
 
-[ Info: The model finished successfully at 2026-03-03T17:20:24.214.
+[ Info: The model finished successfully at 2026-03-05T11:07:23.606.
 </pre>
 </div>
 </div>
@@ -585,7 +585,7 @@ Simulating 100%|█████████████████████�
 <p>You can also open a terminal and run it from there. For example, to run the basic model, input:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="ex">ribasim</span> basic/ribasim.toml</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>After running the model, read back the results:</p>
-<div id="1d4c5363" class="cell" data-execution_count="18">
+<div id="9d159351" class="cell" data-execution_count="18">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> xarray <span class="im">as</span> xr</span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>ds_basin <span class="op">=</span> xr.open_dataset(datadir <span class="op">/</span> <span class="st">"basic/results/basin.nc"</span>)</span>
@@ -603,7 +603,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 </div>
-<div id="720211c8" class="cell" data-execution_count="19">
+<div id="888c623b" class="cell" data-execution_count="19">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>ds_flow <span class="op">=</span> xr.open_dataset(datadir <span class="op">/</span> <span class="st">"basic/results/flow.nc"</span>)</span>
 <span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>df_flow <span class="op">=</span> ds_flow.to_dataframe().reset_index()</span>
 <span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>df_flow[<span class="st">"link"</span>] <span class="op">=</span> <span class="bu">list</span>(<span class="bu">zip</span>(df_flow.from_node_id, df_flow.to_node_id))</span>
@@ -625,7 +625,7 @@ Simulating 100%|█████████████████████�
 <h1 data-number="2"><span class="header-section-number">2</span> Model with discrete control</h1>
 <p>The model constructed below consists of a single basin which slowly drains through a <code>TabulatedRatingCurve</code>, but is held within a range by two connected pumps. These two pumps together behave like a reversible pump. When pumping can be done in only one direction, and the other direction is only possible under gravity, use an Outlet for that direction.</p>
 <p>Setup the basins:</p>
-<div id="6b561d6f" class="cell" data-execution_count="20">
+<div id="0d2b6a86" class="cell" data-execution_count="20">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> Model(</span>
 <span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>    starttime<span class="op">=</span><span class="st">"2020-01-01"</span>,</span>
 <span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>    endtime<span class="op">=</span><span class="st">"2021-01-01"</span>,</span>
@@ -633,7 +633,7 @@ Simulating 100%|█████████████████████�
 <span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>    solver<span class="op">=</span>Solver(abstol<span class="op">=</span><span class="fl">1e-6</span>, reltol<span class="op">=</span><span class="fl">1e-5</span>),</span>
 <span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div id="64e734de" class="cell" data-execution_count="21">
+<div id="ba4210c0" class="cell" data-execution_count="21">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>model.basin.add(</span>
 <span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">1</span>, Point(<span class="fl">0.0</span>, <span class="fl">0.0</span>)),</span>
 <span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>    [</span>
@@ -647,7 +647,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>Setup the discrete control:</p>
-<div id="58729f83" class="cell" data-execution_count="22">
+<div id="5384eaaa" class="cell" data-execution_count="22">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>model.discrete_control.add(</span>
 <span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">7</span>, Point(<span class="fl">1.0</span>, <span class="fl">0.0</span>)),</span>
 <span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    [</span>
@@ -679,7 +679,7 @@ Simulating 100%|█████████████████████�
 <li>Otherwise activate the control state “none”.</li>
 </ul>
 <p>Setup the pump:</p>
-<div id="7e935caf" class="cell" data-execution_count="23">
+<div id="b70f7506" class="cell" data-execution_count="23">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>model.pump.add(</span>
 <span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">2</span>, Point(<span class="fl">1.0</span>, <span class="fl">1.0</span>)),</span>
 <span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>    [pump.Static(control_state<span class="op">=</span>[<span class="st">"none"</span>, <span class="st">"in"</span>, <span class="st">"out"</span>], flow_rate<span class="op">=</span>[<span class="fl">0.0</span>, <span class="fl">2e-3</span>, <span class="fl">0.0</span>])],</span>
@@ -720,7 +720,7 @@ Simulating 100%|█████████████████████�
 </tbody>
 </table>
 <p>Setup the level boundary:</p>
-<div id="effcb0be" class="cell" data-execution_count="24">
+<div id="f5528c9e" class="cell" data-execution_count="24">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>model.level_boundary.add(</span>
 <span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">4</span>, Point(<span class="fl">2.0</span>, <span class="fl">0.0</span>)), [level_boundary.Static(level<span class="op">=</span>[<span class="fl">10.0</span>])]</span>
 <span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -729,7 +729,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>Setup the rating curve:</p>
-<div id="abe288e4" class="cell" data-execution_count="25">
+<div id="f1328a20" class="cell" data-execution_count="25">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>model.tabulated_rating_curve.add(</span>
 <span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">5</span>, Point(<span class="op">-</span><span class="fl">1.0</span>, <span class="fl">0.0</span>)),</span>
 <span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>    [tabulated_rating_curve.Static(level<span class="op">=</span>[<span class="fl">2.0</span>, <span class="fl">15.0</span>], flow_rate<span class="op">=</span>[<span class="fl">0.0</span>, <span class="fl">2e-3</span>])],</span>
@@ -739,14 +739,14 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>Setup the terminal:</p>
-<div id="dcb61a5d" class="cell" data-execution_count="26">
+<div id="bc467329" class="cell" data-execution_count="26">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>model.terminal.add(Node(<span class="dv">6</span>, Point(<span class="op">-</span><span class="fl">2.0</span>, <span class="fl">0.0</span>)))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="26">
 <pre><code>Terminal #6</code></pre>
 </div>
 </div>
 <p>Setup links:</p>
-<div id="f6757c63" class="cell" data-execution_count="27">
+<div id="8007d493" class="cell" data-execution_count="27">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>model.link.add(model.basin[<span class="dv">1</span>], model.pump[<span class="dv">3</span>])</span>
 <span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>model.link.add(model.pump[<span class="dv">3</span>], model.level_boundary[<span class="dv">4</span>])</span>
 <span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>model.link.add(model.level_boundary[<span class="dv">4</span>], model.pump[<span class="dv">2</span>])</span>
@@ -757,7 +757,7 @@ Simulating 100%|█████████████████████�
 <span id="cb33-8"><a href="#cb33-8" aria-hidden="true" tabindex="-1"></a>model.link.add(model.discrete_control[<span class="dv">7</span>], model.pump[<span class="dv">3</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Let’s take a look at the model:</p>
-<div id="a0118e5c" class="cell" data-execution_count="28">
+<div id="74be570e" class="cell" data-execution_count="28">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>model.plot()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -768,7 +768,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>Listen links are plotted with a dashed line since they are not present in the “Link / static” schema but only in the “Control / condition” schema.</p>
-<div id="1db6ab33" class="cell" data-execution_count="29">
+<div id="44229c66" class="cell" data-execution_count="29">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>datadir <span class="op">=</span> Path(<span class="st">"data"</span>)</span>
 <span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>model.write(datadir <span class="op">/</span> <span class="st">"level_range/ribasim.toml"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="29">
@@ -776,7 +776,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>Now run the model.</p>
-<div id="a0ed94fe" class="cell" data-execution_count="30">
+<div id="55ad6027" class="cell" data-execution_count="30">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb37"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>run_ribasim(datadir <span class="op">/</span> <span class="st">"level_range/ribasim.toml"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stderr">
 <div class="ansi-escaped-output">
@@ -800,7 +800,7 @@ Simulating 100%|█████████████████████�
 
 
 
-┌ Info: Starting a Ribasim simulation at 2026-03-03T17:20:26.572.
+┌ Info: Starting a Ribasim simulation at 2026-03-05T11:07:26.078.
 
 │   toml_path = "data/level_range/ribasim.toml"
 
@@ -882,19 +882,11 @@ Simulating  67%|█████████████████████�
 
 Simulating  67%|██████████████████████████▉             |  ETA: 0:00:00
 
-Simulating  67%|██████████████████████████▉             |  ETA: 0:00:00
-
 Simulating  67%|███████████████████████████             |  ETA: 0:00:00
 
 Simulating  67%|███████████████████████████             |  ETA: 0:00:00
 
 Simulating  67%|███████████████████████████             |  ETA: 0:00:00
-
-Simulating  67%|███████████████████████████             |  ETA: 0:00:00
-
-Simulating  67%|███████████████████████████             |  ETA: 0:00:01
-
-Simulating  67%|███████████████████████████             |  ETA: 0:00:01
 
 Simulating  67%|███████████████████████████             |  ETA: 0:00:01
 
@@ -906,10 +898,6 @@ Simulating  68%|█████████████████████�
 
 Simulating  68%|███████████████████████████             |  ETA: 0:00:01
 
-Simulating  68%|███████████████████████████             |  ETA: 0:00:01
-
-Simulating  68%|███████████████████████████             |  ETA: 0:00:01
-
 Simulating  68%|███████████████████████████▏            |  ETA: 0:00:01
 
 Simulating  68%|███████████████████████████▏            |  ETA: 0:00:01
@@ -929,6 +917,20 @@ Simulating  68%|█████████████████████�
 Simulating  68%|███████████████████████████▏            |  ETA: 0:00:01
 
 Simulating  68%|███████████████████████████▏            |  ETA: 0:00:01
+
+Simulating  68%|███████████████████████████▏            |  ETA: 0:00:01
+
+Simulating  68%|███████████████████████████▏            |  ETA: 0:00:01
+
+Simulating  68%|███████████████████████████▎            |  ETA: 0:00:01
+
+Simulating  68%|███████████████████████████▎            |  ETA: 0:00:01
+
+Simulating  68%|███████████████████████████▎            |  ETA: 0:00:01
+
+Simulating  68%|███████████████████████████▎            |  ETA: 0:00:01
+
+Simulating  68%|███████████████████████████▎            |  ETA: 0:00:01
 
 Simulating  68%|███████████████████████████▎            |  ETA: 0:00:01
 
@@ -960,7 +962,7 @@ Simulating  69%|█████████████████████�
 
 Simulating  69%|███████████████████████████▍            |  ETA: 0:00:01
 
-Simulating  69%|███████████████████████████▌            |  ETA: 0:00:01
+Simulating  69%|███████████████████████████▍            |  ETA: 0:00:01
 
 Simulating  69%|███████████████████████████▌            |  ETA: 0:00:01
 
@@ -974,11 +976,13 @@ Simulating  69%|█████████████████████�
 
 Simulating  69%|███████████████████████████▌            |  ETA: 0:00:01
 
-Simulating  69%|███████████████████████████▋            |  ETA: 0:00:01
+Simulating  69%|███████████████████████████▌            |  ETA: 0:00:01
 
-Simulating  69%|███████████████████████████▋            |  ETA: 0:00:01
+Simulating  69%|███████████████████████████▌            |  ETA: 0:00:01
 
-Simulating  69%|███████████████████████████▋            |  ETA: 0:00:01
+Simulating  69%|███████████████████████████▌            |  ETA: 0:00:01
+
+Simulating  69%|███████████████████████████▌            |  ETA: 0:00:01
 
 Simulating  69%|███████████████████████████▋            |  ETA: 0:00:01
 
@@ -996,9 +1000,9 @@ Simulating  69%|█████████████████████�
 
 Simulating  69%|███████████████████████████▊            |  ETA: 0:00:01
 
-Simulating  69%|███████████████████████████▊            |  ETA: 0:00:01
+Simulating  70%|███████████████████████████▊            |  ETA: 0:00:01
 
-Simulating  69%|███████████████████████████▊            |  ETA: 0:00:01
+Simulating  70%|███████████████████████████▉            |  ETA: 0:00:01
 
 Simulating  70%|███████████████████████████▉            |  ETA: 0:00:01
 
@@ -1026,7 +1030,9 @@ Simulating  70%|█████████████████████�
 
 Simulating  70%|████████████████████████████            |  ETA: 0:00:01
 
-Simulating  70%|████████████████████████████▏           |  ETA: 0:00:01
+Simulating  70%|████████████████████████████            |  ETA: 0:00:01
+
+Simulating  70%|████████████████████████████            |  ETA: 0:00:01
 
 Simulating  70%|████████████████████████████▏           |  ETA: 0:00:01
 
@@ -1038,7 +1044,9 @@ Simulating  70%|█████████████████████�
 
 Simulating  70%|████████████████████████████▏           |  ETA: 0:00:01
 
-Simulating  70%|████████████████████████████▎           |  ETA: 0:00:01
+Simulating  70%|████████████████████████████▏           |  ETA: 0:00:01
+
+Simulating  70%|████████████████████████████▏           |  ETA: 0:00:01
 
 Simulating  71%|████████████████████████████▎           |  ETA: 0:00:01
 
@@ -1050,7 +1058,7 @@ Simulating  71%|█████████████████████�
 
 Simulating  71%|████████████████████████████▎           |  ETA: 0:00:01
 
-Simulating  71%|████████████████████████████▍           |  ETA: 0:00:01
+Simulating  71%|████████████████████████████▎           |  ETA: 0:00:01
 
 Simulating  71%|████████████████████████████▍           |  ETA: 0:00:01
 
@@ -1065,10 +1073,6 @@ Simulating  71%|█████████████████████�
 Simulating  71%|████████████████████████████▍           |  ETA: 0:00:01
 
 Simulating  71%|████████████████████████████▍           |  ETA: 0:00:01
-
-Simulating  71%|████████████████████████████▍           |  ETA: 0:00:01
-
-Simulating  71%|████████████████████████████▌           |  ETA: 0:00:01
 
 Simulating  71%|████████████████████████████▌           |  ETA: 0:00:01
 
@@ -1104,18 +1108,6 @@ Simulating  72%|█████████████████████�
 
 Simulating  72%|████████████████████████████▊           |  ETA: 0:00:01
 
-Simulating  72%|████████████████████████████▊           |  ETA: 0:00:01
-
-Simulating  72%|████████████████████████████▊           |  ETA: 0:00:01
-
-Simulating  72%|████████████████████████████▉           |  ETA: 0:00:01
-
-Simulating  72%|████████████████████████████▉           |  ETA: 0:00:01
-
-Simulating  72%|████████████████████████████▉           |  ETA: 0:00:01
-
-Simulating  72%|████████████████████████████▉           |  ETA: 0:00:01
-
 Simulating  72%|████████████████████████████▉           |  ETA: 0:00:01
 
 Simulating  72%|████████████████████████████▉           |  ETA: 0:00:01
@@ -1148,7 +1140,11 @@ Simulating  73%|█████████████████████�
 
 Simulating  73%|█████████████████████████████▏          |  ETA: 0:00:01
 
-Simulating  73%|█████████████████████████████▎          |  ETA: 0:00:01
+Simulating  73%|█████████████████████████████▏          |  ETA: 0:00:01
+
+Simulating  73%|█████████████████████████████▏          |  ETA: 0:00:01
+
+Simulating  73%|█████████████████████████████▏          |  ETA: 0:00:01
 
 Simulating  73%|█████████████████████████████▎          |  ETA: 0:00:01
 
@@ -1159,12 +1155,6 @@ Simulating  73%|█████████████████████�
 Simulating  73%|█████████████████████████████▎          |  ETA: 0:00:01
 
 Simulating  73%|█████████████████████████████▎          |  ETA: 0:00:01
-
-Simulating  73%|█████████████████████████████▍          |  ETA: 0:00:01
-
-Simulating  73%|█████████████████████████████▍          |  ETA: 0:00:01
-
-Simulating  73%|█████████████████████████████▍          |  ETA: 0:00:01
 
 Simulating  73%|█████████████████████████████▍          |  ETA: 0:00:01
 
@@ -1184,6 +1174,12 @@ Simulating  74%|█████████████████████�
 
 Simulating  74%|█████████████████████████████▌          |  ETA: 0:00:01
 
+Simulating  74%|█████████████████████████████▌          |  ETA: 0:00:01
+
+Simulating  74%|█████████████████████████████▌          |  ETA: 0:00:01
+
+Simulating  74%|█████████████████████████████▋          |  ETA: 0:00:01
+
 Simulating  74%|█████████████████████████████▋          |  ETA: 0:00:01
 
 Simulating  74%|█████████████████████████████▋          |  ETA: 0:00:01
@@ -1204,9 +1200,7 @@ Simulating  74%|█████████████████████�
 
 Simulating  74%|█████████████████████████████▊          |  ETA: 0:00:01
 
-Simulating  75%|█████████████████████████████▉          |  ETA: 0:00:01
-
-Simulating  75%|█████████████████████████████▉          |  ETA: 0:00:01
+Simulating  74%|█████████████████████████████▊          |  ETA: 0:00:01
 
 Simulating  75%|█████████████████████████████▉          |  ETA: 0:00:01
 
@@ -1238,7 +1232,7 @@ Simulating  75%|█████████████████████�
 
 Simulating  75%|██████████████████████████████▏         |  ETA: 0:00:01
 
-Simulating  75%|██████████████████████████████▎         |  ETA: 0:00:01
+Simulating  75%|██████████████████████████████▏         |  ETA: 0:00:01
 
 Simulating  76%|██████████████████████████████▎         |  ETA: 0:00:01
 
@@ -1255,6 +1249,10 @@ Simulating  76%|█████████████████████�
 Simulating  76%|██████████████████████████████▍         |  ETA: 0:00:01
 
 Simulating  76%|██████████████████████████████▍         |  ETA: 0:00:01
+
+Simulating  76%|██████████████████████████████▍         |  ETA: 0:00:01
+
+Simulating  76%|██████████████████████████████▌         |  ETA: 0:00:01
 
 Simulating  76%|██████████████████████████████▌         |  ETA: 0:00:01
 
@@ -1294,11 +1292,13 @@ Simulating  77%|█████████████████████�
 
 Simulating  77%|███████████████████████████████         |  ETA: 0:00:01
 
-Simulating  78%|███████████████████████████████         |  ETA: 0:00:01
+Simulating  77%|███████████████████████████████         |  ETA: 0:00:01
+
+Simulating  77%|███████████████████████████████         |  ETA: 0:00:01
 
 Simulating  78%|███████████████████████████████         |  ETA: 0:00:01
 
-Simulating  78%|███████████████████████████████▏        |  ETA: 0:00:01
+Simulating  78%|███████████████████████████████         |  ETA: 0:00:01
 
 Simulating  78%|███████████████████████████████▏        |  ETA: 0:00:01
 
@@ -1307,6 +1307,8 @@ Simulating  78%|█████████████████████�
 Simulating  78%|███████████████████████████████▏        |  ETA: 0:00:01
 
 Simulating  78%|███████████████████████████████▏        |  ETA: 0:00:01
+
+Simulating  78%|███████████████████████████████▎        |  ETA: 0:00:01
 
 Simulating  78%|███████████████████████████████▎        |  ETA: 0:00:01
 
@@ -1324,8 +1326,6 @@ Simulating  78%|█████████████████████�
 
 Simulating  79%|███████████████████████████████▍        |  ETA: 0:00:01
 
-Simulating  79%|███████████████████████████████▍        |  ETA: 0:00:01
-
 Simulating  79%|███████████████████████████████▌        |  ETA: 0:00:01
 
 Simulating  79%|███████████████████████████████▌        |  ETA: 0:00:01
@@ -1333,6 +1333,14 @@ Simulating  79%|█████████████████████�
 Simulating  79%|███████████████████████████████▌        |  ETA: 0:00:01
 
 Simulating  79%|███████████████████████████████▌        |  ETA: 0:00:01
+
+Simulating  79%|███████████████████████████████▌        |  ETA: 0:00:01
+
+Simulating  79%|███████████████████████████████▌        |  ETA: 0:00:01
+
+Simulating  79%|███████████████████████████████▋        |  ETA: 0:00:01
+
+Simulating  79%|███████████████████████████████▋        |  ETA: 0:00:01
 
 Simulating  79%|███████████████████████████████▋        |  ETA: 0:00:01
 
@@ -1348,7 +1356,9 @@ Simulating  79%|█████████████████████�
 
 Simulating  79%|███████████████████████████████▊        |  ETA: 0:00:01
 
-Simulating  80%|███████████████████████████████▊        |  ETA: 0:00:01
+Simulating  79%|███████████████████████████████▊        |  ETA: 0:00:01
+
+Simulating  80%|███████████████████████████████▉        |  ETA: 0:00:01
 
 Simulating  80%|███████████████████████████████▉        |  ETA: 0:00:01
 
@@ -1392,27 +1402,23 @@ Simulating  81%|█████████████████████�
 
 Simulating  81%|████████████████████████████████▌       |  ETA: 0:00:01
 
-Simulating  81%|████████████████████████████████▋       |  ETA: 0:00:01
-
 Simulating  82%|████████████████████████████████▋       |  ETA: 0:00:01
 
 Simulating  82%|████████████████████████████████▋       |  ETA: 0:00:01
 
-Simulating  82%|████████████████████████████████▊       |  ETA: 0:00:01
+Simulating  82%|████████████████████████████████▋       |  ETA: 0:00:01
 
 Simulating  82%|████████████████████████████████▊       |  ETA: 0:00:01
 
 Simulating  82%|████████████████████████████████▊       |  ETA: 0:00:01
 
-Simulating  82%|████████████████████████████████▉       |  ETA: 0:00:01
+Simulating  82%|████████████████████████████████▊       |  ETA: 0:00:01
 
 Simulating  82%|████████████████████████████████▉       |  ETA: 0:00:01
 
 Simulating  82%|████████████████████████████████▉       |  ETA: 0:00:01
 
 Simulating  82%|████████████████████████████████▉       |  ETA: 0:00:01
-
-Simulating  82%|█████████████████████████████████       |  ETA: 0:00:01
 
 Simulating  82%|█████████████████████████████████       |  ETA: 0:00:01
 
@@ -1426,45 +1432,33 @@ Simulating  83%|█████████████████████�
 
 Simulating  83%|█████████████████████████████████▏      |  ETA: 0:00:01
 
-Simulating  83%|█████████████████████████████████▏      |  ETA: 0:00:01
+Simulating  83%|█████████████████████████████████▎      |  ETA: 0:00:01
 
-Simulating  83%|█████████████████████████████████▎      |  ETA: 0:00:00
+Simulating  83%|█████████████████████████████████▎      |  ETA: 0:00:01
 
-Simulating  83%|█████████████████████████████████▎      |  ETA: 0:00:00
+Simulating  83%|█████████████████████████████████▎      |  ETA: 0:00:01
 
-Simulating  83%|█████████████████████████████████▎      |  ETA: 0:00:00
+Simulating  83%|█████████████████████████████████▍      |  ETA: 0:00:01
 
-Simulating  83%|█████████████████████████████████▎      |  ETA: 0:00:00
+Simulating  83%|█████████████████████████████████▍      |  ETA: 0:00:01
 
-Simulating  83%|█████████████████████████████████▎      |  ETA: 0:00:00
+Simulating  84%|█████████████████████████████████▍      |  ETA: 0:00:01
 
-Simulating  83%|█████████████████████████████████▍      |  ETA: 0:00:00
+Simulating  84%|█████████████████████████████████▌      |  ETA: 0:00:01
 
-Simulating  83%|█████████████████████████████████▍      |  ETA: 0:00:00
+Simulating  84%|█████████████████████████████████▌      |  ETA: 0:00:01
 
-Simulating  83%|█████████████████████████████████▍      |  ETA: 0:00:00
+Simulating  84%|█████████████████████████████████▌      |  ETA: 0:00:01
 
-Simulating  84%|█████████████████████████████████▍      |  ETA: 0:00:00
+Simulating  84%|█████████████████████████████████▌      |  ETA: 0:00:01
 
-Simulating  84%|█████████████████████████████████▍      |  ETA: 0:00:00
+Simulating  84%|█████████████████████████████████▌      |  ETA: 0:00:01
 
-Simulating  84%|█████████████████████████████████▌      |  ETA: 0:00:00
-
-Simulating  84%|█████████████████████████████████▌      |  ETA: 0:00:00
-
-Simulating  84%|█████████████████████████████████▌      |  ETA: 0:00:00
-
-Simulating  84%|█████████████████████████████████▌      |  ETA: 0:00:00
+Simulating  84%|█████████████████████████████████▋      |  ETA: 0:00:01
 
 Simulating  84%|█████████████████████████████████▋      |  ETA: 0:00:00
 
 Simulating  84%|█████████████████████████████████▋      |  ETA: 0:00:00
-
-Simulating  84%|█████████████████████████████████▋      |  ETA: 0:00:00
-
-Simulating  84%|█████████████████████████████████▋      |  ETA: 0:00:00
-
-Simulating  84%|█████████████████████████████████▊      |  ETA: 0:00:00
 
 Simulating  84%|█████████████████████████████████▊      |  ETA: 0:00:00
 
@@ -1478,10 +1472,6 @@ Simulating  85%|█████████████████████�
 
 Simulating  85%|█████████████████████████████████▉      |  ETA: 0:00:00
 
-Simulating  85%|█████████████████████████████████▉      |  ETA: 0:00:00
-
-Simulating  85%|██████████████████████████████████      |  ETA: 0:00:00
-
 Simulating  85%|██████████████████████████████████      |  ETA: 0:00:00
 
 Simulating  85%|██████████████████████████████████      |  ETA: 0:00:00
@@ -1492,9 +1482,9 @@ Simulating  85%|█████████████████████�
 
 Simulating  85%|██████████████████████████████████▏     |  ETA: 0:00:00
 
-Simulating  85%|██████████████████████████████████▏     |  ETA: 0:00:00
+Simulating  85%|██████████████████████████████████▎     |  ETA: 0:00:00
 
-Simulating  85%|██████████████████████████████████▏     |  ETA: 0:00:00
+Simulating  86%|██████████████████████████████████▎     |  ETA: 0:00:00
 
 Simulating  86%|██████████████████████████████████▎     |  ETA: 0:00:00
 
@@ -1508,11 +1498,17 @@ Simulating  86%|█████████████████████�
 
 Simulating  86%|██████████████████████████████████▍     |  ETA: 0:00:00
 
+Simulating  86%|██████████████████████████████████▍     |  ETA: 0:00:00
+
+Simulating  86%|██████████████████████████████████▌     |  ETA: 0:00:00
+
 Simulating  86%|██████████████████████████████████▌     |  ETA: 0:00:00
 
 Simulating  86%|██████████████████████████████████▌     |  ETA: 0:00:00
 
 Simulating  86%|██████████████████████████████████▌     |  ETA: 0:00:00
+
+Simulating  86%|██████████████████████████████████▋     |  ETA: 0:00:00
 
 Simulating  87%|██████████████████████████████████▋     |  ETA: 0:00:00
 
@@ -1523,6 +1519,10 @@ Simulating  87%|█████████████████████�
 Simulating  87%|██████████████████████████████████▊     |  ETA: 0:00:00
 
 Simulating  87%|██████████████████████████████████▊     |  ETA: 0:00:00
+
+Simulating  87%|██████████████████████████████████▊     |  ETA: 0:00:00
+
+Simulating  87%|██████████████████████████████████▉     |  ETA: 0:00:00
 
 Simulating  87%|██████████████████████████████████▉     |  ETA: 0:00:00
 
@@ -1532,7 +1532,7 @@ Simulating  87%|█████████████████████�
 
 Simulating  87%|███████████████████████████████████     |  ETA: 0:00:00
 
-Simulating  88%|███████████████████████████████████     |  ETA: 0:00:00
+Simulating  87%|███████████████████████████████████     |  ETA: 0:00:00
 
 Simulating  88%|███████████████████████████████████     |  ETA: 0:00:00
 
@@ -1556,21 +1556,17 @@ Simulating  89%|█████████████████████�
 
 Simulating  89%|███████████████████████████████████▌    |  ETA: 0:00:00
 
-Simulating  89%|███████████████████████████████████▌    |  ETA: 0:00:00
-
 Simulating  89%|███████████████████████████████████▋    |  ETA: 0:00:00
 
 Simulating  89%|███████████████████████████████████▋    |  ETA: 0:00:00
 
-Simulating  89%|███████████████████████████████████▊    |  ETA: 0:00:00
+Simulating  89%|███████████████████████████████████▋    |  ETA: 0:00:00
 
 Simulating  89%|███████████████████████████████████▊    |  ETA: 0:00:00
 
 Simulating  89%|███████████████████████████████████▊    |  ETA: 0:00:00
 
-Simulating  90%|███████████████████████████████████▉    |  ETA: 0:00:00
-
-Simulating  90%|███████████████████████████████████▉    |  ETA: 0:00:00
+Simulating  90%|███████████████████████████████████▊    |  ETA: 0:00:00
 
 Simulating  90%|███████████████████████████████████▉    |  ETA: 0:00:00
 
@@ -1580,7 +1576,7 @@ Simulating  90%|█████████████████████�
 
 Simulating  90%|████████████████████████████████████    |  ETA: 0:00:00
 
-Simulating  90%|████████████████████████████████████    |  ETA: 0:00:00
+Simulating  90%|████████████████████████████████████▏   |  ETA: 0:00:00
 
 Simulating  90%|████████████████████████████████████▏   |  ETA: 0:00:00
 
@@ -1595,6 +1591,8 @@ Simulating  91%|█████████████████████�
 Simulating  91%|████████████████████████████████████▍   |  ETA: 0:00:00
 
 Simulating  91%|████████████████████████████████████▍   |  ETA: 0:00:00
+
+Simulating  91%|████████████████████████████████████▌   |  ETA: 0:00:00
 
 Simulating  91%|████████████████████████████████████▌   |  ETA: 0:00:00
 
@@ -1604,7 +1602,7 @@ Simulating  91%|█████████████████████�
 
 Simulating  92%|████████████████████████████████████▋   |  ETA: 0:00:00
 
-Simulating  92%|████████████████████████████████████▊   |  ETA: 0:00:00
+Simulating  92%|████████████████████████████████████▋   |  ETA: 0:00:00
 
 Simulating  92%|████████████████████████████████████▊   |  ETA: 0:00:00
 
@@ -1615,6 +1613,10 @@ Simulating  92%|█████████████████████�
 Simulating  92%|████████████████████████████████████▉   |  ETA: 0:00:00
 
 Simulating  92%|█████████████████████████████████████   |  ETA: 0:00:00
+
+Simulating  92%|█████████████████████████████████████   |  ETA: 0:00:00
+
+Simulating  93%|█████████████████████████████████████   |  ETA: 0:00:00
 
 Simulating  93%|█████████████████████████████████████   |  ETA: 0:00:00
 
@@ -1628,9 +1630,11 @@ Simulating  93%|█████████████████████�
 
 Simulating  93%|█████████████████████████████████████▎  |  ETA: 0:00:00
 
-Simulating  93%|█████████████████████████████████████▍  |  ETA: 0:00:00
+Simulating  93%|█████████████████████████████████████▎  |  ETA: 0:00:00
 
 Simulating  93%|█████████████████████████████████████▍  |  ETA: 0:00:00
+
+Simulating  94%|█████████████████████████████████████▍  |  ETA: 0:00:00
 
 Simulating  94%|█████████████████████████████████████▌  |  ETA: 0:00:00
 
@@ -1642,13 +1646,11 @@ Simulating  94%|█████████████████████�
 
 Simulating  94%|█████████████████████████████████████▋  |  ETA: 0:00:00
 
-Simulating  94%|█████████████████████████████████████▊  |  ETA: 0:00:00
+Simulating  94%|█████████████████████████████████████▋  |  ETA: 0:00:00
 
 Simulating  94%|█████████████████████████████████████▊  |  ETA: 0:00:00
 
 Simulating  94%|█████████████████████████████████████▊  |  ETA: 0:00:00
-
-Simulating  95%|█████████████████████████████████████▉  |  ETA: 0:00:00
 
 Simulating  95%|█████████████████████████████████████▉  |  ETA: 0:00:00
 
@@ -1664,6 +1666,8 @@ Simulating  95%|█████████████████████�
 
 Simulating  95%|██████████████████████████████████████▏ |  ETA: 0:00:00
 
+Simulating  95%|██████████████████████████████████████▎ |  ETA: 0:00:00
+
 Simulating  96%|██████████████████████████████████████▎ |  ETA: 0:00:00
 
 Simulating  96%|██████████████████████████████████████▎ |  ETA: 0:00:00
@@ -1676,17 +1680,11 @@ Simulating  96%|█████████████████████�
 
 Simulating  96%|██████████████████████████████████████▌ |  ETA: 0:00:00
 
-Simulating  96%|██████████████████████████████████████▌ |  ETA: 0:00:00
+Simulating  96%|██████████████████████████████████████▋ |  ETA: 0:00:00
 
 Simulating  97%|██████████████████████████████████████▋ |  ETA: 0:00:00
 
 Simulating  97%|██████████████████████████████████████▋ |  ETA: 0:00:00
-
-Simulating  97%|██████████████████████████████████████▋ |  ETA: 0:00:00
-
-Simulating  97%|██████████████████████████████████████▊ |  ETA: 0:00:00
-
-Simulating  97%|██████████████████████████████████████▊ |  ETA: 0:00:00
 
 Simulating  97%|██████████████████████████████████████▊ |  ETA: 0:00:00
 
@@ -1695,6 +1693,10 @@ Simulating  97%|█████████████████████�
 Simulating  97%|██████████████████████████████████████▉ |  ETA: 0:00:00
 
 Simulating  97%|██████████████████████████████████████▉ |  ETA: 0:00:00
+
+Simulating  97%|██████████████████████████████████████▉ |  ETA: 0:00:00
+
+Simulating  97%|███████████████████████████████████████ |  ETA: 0:00:00
 
 Simulating  97%|███████████████████████████████████████ |  ETA: 0:00:00
 
@@ -1704,6 +1706,10 @@ Simulating  98%|█████████████████████�
 
 Simulating  98%|███████████████████████████████████████▏|  ETA: 0:00:00
 
+Simulating  98%|███████████████████████████████████████▏|  ETA: 0:00:00
+
+Simulating  98%|███████████████████████████████████████▏|  ETA: 0:00:00
+
 Simulating  98%|███████████████████████████████████████▎|  ETA: 0:00:00
 
 Simulating  98%|███████████████████████████████████████▎|  ETA: 0:00:00
@@ -1711,6 +1717,8 @@ Simulating  98%|█████████████████████�
 Simulating  98%|███████████████████████████████████████▍|  ETA: 0:00:00
 
 Simulating  98%|███████████████████████████████████████▍|  ETA: 0:00:00
+
+Simulating  99%|███████████████████████████████████████▍|  ETA: 0:00:00
 
 Simulating  99%|███████████████████████████████████████▌|  ETA: 0:00:00
 
@@ -1722,31 +1730,33 @@ Simulating  99%|█████████████████████�
 
 Simulating  99%|███████████████████████████████████████▋|  ETA: 0:00:00
 
+Simulating  99%|███████████████████████████████████████▋|  ETA: 0:00:00
+
 Simulating  99%|███████████████████████████████████████▊|  ETA: 0:00:00
 
 Simulating  99%|███████████████████████████████████████▊|  ETA: 0:00:00
+
+Simulating 100%|███████████████████████████████████████▊|  ETA: 0:00:00
 
 Simulating 100%|███████████████████████████████████████▉|  ETA: 0:00:00
 
 Simulating 100%|███████████████████████████████████████▉|  ETA: 0:00:00
-
-Simulating 100%|████████████████████████████████████████|  ETA: 0:00:00
 
 Simulating 100%|████████████████████████████████████████|  ETA: 0:00:00
 
 Simulating 100%|████████████████████████████████████████| Time: 0:00:03
 
-[ Info: Computation time: 3 seconds, 236 milliseconds
+[ Info: Computation time: 3 seconds, 435 milliseconds
 
 [ Info: Writing results.
 
-[ Info: The model finished successfully at 2026-03-03T17:20:36.027.
+[ Info: The model finished successfully at 2026-03-05T11:07:36.078.
 </pre>
 </div>
 </div>
 </div>
 <p>After running the model, read back the results:</p>
-<div id="f02a554a" class="cell" data-execution_count="31">
+<div id="e59a92b1" class="cell" data-execution_count="31">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb38"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>ds_basin <span class="op">=</span> xr.open_dataset(datadir <span class="op">/</span> <span class="st">"level_range/results/basin.nc"</span>)</span>
 <span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>df_basin <span class="op">=</span> ds_basin.to_dataframe().reset_index()</span>
 <span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>df_basin_wide <span class="op">=</span> df_basin.pivot_table(</span>
@@ -1782,11 +1792,11 @@ Simulating 100%|█████████████████████�
 <section id="model-with-pid-control" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Model with PID control</h1>
 <p>Set up the model:</p>
-<div id="26250e15" class="cell" data-execution_count="32">
+<div id="dbefe1d1" class="cell" data-execution_count="32">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb39"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> Model(starttime<span class="op">=</span><span class="st">"2020-01-01"</span>, endtime<span class="op">=</span><span class="st">"2020-12-01"</span>, crs<span class="op">=</span><span class="st">"EPSG:4326"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Setup the basins:</p>
-<div id="34283424" class="cell" data-execution_count="33">
+<div id="869fb8de" class="cell" data-execution_count="33">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb40"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>model.basin.add(</span>
 <span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">2</span>, Point(<span class="fl">1.0</span>, <span class="fl">0.0</span>)),</span>
 <span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>    [basin.Profile(area<span class="op">=</span>[<span class="fl">1000.0</span>, <span class="fl">1000.0</span>], level<span class="op">=</span>[<span class="fl">0.0</span>, <span class="fl">1.0</span>]), basin.State(level<span class="op">=</span>[<span class="fl">6.0</span>])],</span>
@@ -1796,7 +1806,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>Setup the pump:</p>
-<div id="befd3ea6" class="cell" data-execution_count="34">
+<div id="f3747cd8" class="cell" data-execution_count="34">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb42"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>model.pump.add(</span>
 <span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">3</span>, Point(<span class="fl">2.0</span>, <span class="fl">0.5</span>)),</span>
 <span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>    [pump.Static(flow_rate<span class="op">=</span>[<span class="fl">0.0</span>])],  <span class="co"># Will be overwritten by PID controller</span></span>
@@ -1806,7 +1816,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>Setup the outlet:</p>
-<div id="11aa4a6b" class="cell" data-execution_count="35">
+<div id="d9419f6c" class="cell" data-execution_count="35">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb44"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>model.outlet.add(</span>
 <span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">6</span>, Point(<span class="fl">2.0</span>, <span class="op">-</span><span class="fl">0.5</span>)),</span>
 <span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a>    [outlet.Static(flow_rate<span class="op">=</span>[<span class="fl">0.0</span>])],  <span class="co"># Will be overwritten by PID controller</span></span>
@@ -1816,7 +1826,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>Setup flow boundary:</p>
-<div id="a1ff46ca" class="cell" data-execution_count="36">
+<div id="cd59ac9e" class="cell" data-execution_count="36">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb46"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a>model.flow_boundary.add(</span>
 <span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">1</span>, Point(<span class="fl">0.0</span>, <span class="fl">0.0</span>)),</span>
 <span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a>    [flow_boundary.Static(flow_rate<span class="op">=</span>[<span class="fl">1e-3</span>])],</span>
@@ -1826,7 +1836,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>Setup level boundary:</p>
-<div id="dd79aa7e" class="cell" data-execution_count="37">
+<div id="759a33b9" class="cell" data-execution_count="37">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb48"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a>model.level_boundary.add(</span>
 <span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">4</span>, Point(<span class="fl">3.0</span>, <span class="fl">0.0</span>)),</span>
 <span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>    [level_boundary.Static(level<span class="op">=</span>[<span class="fl">5.0</span>])],</span>
@@ -1836,7 +1846,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>Setup PID control:</p>
-<div id="112c7274" class="cell" data-execution_count="38">
+<div id="00155d15" class="cell" data-execution_count="38">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb50"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> node, proportional, integral <span class="kw">in</span> [</span>
 <span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a>    (Node(<span class="dv">5</span>, Point(<span class="fl">1.5</span>, <span class="fl">1.0</span>)), <span class="op">-</span><span class="fl">1e-3</span>, <span class="op">-</span><span class="fl">1e-7</span>),</span>
 <span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a>    (Node(<span class="dv">7</span>, Point(<span class="fl">1.5</span>, <span class="op">-</span><span class="fl">1.0</span>)), <span class="fl">1e-3</span>, <span class="fl">1e-7</span>),</span>
@@ -1860,7 +1870,7 @@ Simulating 100%|█████████████████████�
 </div>
 <p>Note that the coefficients for the pump and the outlet are equal in magnitude but opposite in sign. This way the pump and the outlet equally work towards the same goal, while having opposite effects on the controlled basin due to their connectivity to this basin.</p>
 <p>Setup the links:</p>
-<div id="82675ab2" class="cell" data-execution_count="39">
+<div id="a296a385" class="cell" data-execution_count="39">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb51"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a>model.link.add(model.flow_boundary[<span class="dv">1</span>], model.basin[<span class="dv">2</span>])</span>
 <span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a>model.link.add(model.basin[<span class="dv">2</span>], model.pump[<span class="dv">3</span>])</span>
 <span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a>model.link.add(model.pump[<span class="dv">3</span>], model.level_boundary[<span class="dv">4</span>])</span>
@@ -1870,7 +1880,7 @@ Simulating 100%|█████████████████████�
 <span id="cb51-7"><a href="#cb51-7" aria-hidden="true" tabindex="-1"></a>model.link.add(model.pid_control[<span class="dv">7</span>], model.outlet[<span class="dv">6</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Let’s take a look at the model:</p>
-<div id="dba67f40" class="cell" data-execution_count="40">
+<div id="c0f69374" class="cell" data-execution_count="40">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb52"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a>model.plot()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -1881,7 +1891,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>Write the model to a TOML and GeoPackage:</p>
-<div id="06dd8375" class="cell" data-execution_count="41">
+<div id="4c07e646" class="cell" data-execution_count="41">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb53"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a>datadir <span class="op">=</span> Path(<span class="st">"data"</span>)</span>
 <span id="cb53-2"><a href="#cb53-2" aria-hidden="true" tabindex="-1"></a>model.write(datadir <span class="op">/</span> <span class="st">"pid_control/ribasim.toml"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="41">
@@ -1889,7 +1899,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>Now run the model.</p>
-<div id="745887dd" class="cell" data-execution_count="42">
+<div id="d437bda5" class="cell" data-execution_count="42">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb55"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a>run_ribasim(datadir <span class="op">/</span> <span class="st">"pid_control/ribasim.toml"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stderr">
 <div class="ansi-escaped-output">
@@ -1913,7 +1923,7 @@ Simulating 100%|█████████████████████�
 
 
 
-┌ Info: Starting a Ribasim simulation at 2026-03-03T17:20:37.067.
+┌ Info: Starting a Ribasim simulation at 2026-03-05T11:07:37.152.
 
 │   toml_path = "data/pid_control/ribasim.toml"
 
@@ -1935,43 +1945,45 @@ Simulating   4%|█▌                                      |  ETA: 0:00:00
 
 Simulating   6%|██▍                                     |  ETA: 0:00:00
 
-Simulating   8%|███▍                                    |  ETA: 0:00:00
+Simulating   8%|███▎                                    |  ETA: 0:00:00
 
 Simulating  11%|████▌                                   |  ETA: 0:00:00
 
 Simulating  16%|██████▎                                 |  ETA: 0:00:00
 
-Simulating  20%|████████▏                               |  ETA: 0:00:00
+Simulating  21%|████████▍                               |  ETA: 0:00:00
 
-Simulating  25%|██████████▏                             |  ETA: 0:00:00
+Simulating  26%|██████████▋                             |  ETA: 0:00:00
 
-Simulating  31%|████████████▌                           |  ETA: 0:00:00
+Simulating  32%|████████████▉                           |  ETA: 0:00:00
 
-Simulating  39%|███████████████▍                        |  ETA: 0:00:00
+Simulating  38%|███████████████                         |  ETA: 0:00:00
 
-Simulating  47%|██████████████████▊                     |  ETA: 0:00:00
+Simulating  45%|█████████████████▉                      |  ETA: 0:00:00
+
+Simulating  54%|█████████████████████▋                  |  ETA: 0:00:00
 
 Simulating  54%|█████████████████████▊                  |  ETA: 0:00:00
 
-Simulating  72%|████████████████████████████▋           |  ETA: 0:00:00
+Simulating  61%|████████████████████████▎               |  ETA: 0:00:00
 
-Simulating  85%|█████████████████████████████████▉      |  ETA: 0:00:00
+Simulating  73%|█████████████████████████████▏          |  ETA: 0:00:00
 
-Simulating  95%|██████████████████████████████████████  |  ETA: 0:00:00
+Simulating  88%|███████████████████████████████████▎    |  ETA: 0:00:00
 
 Simulating 100%|████████████████████████████████████████| Time: 0:00:00
 
-[ Info: Computation time: 124 milliseconds
+[ Info: Computation time: 119 milliseconds
 
 [ Info: Writing results.
 
-[ Info: The model finished successfully at 2026-03-03T17:20:39.618.
+[ Info: The model finished successfully at 2026-03-05T11:07:39.814.
 </pre>
 </div>
 </div>
 </div>
 <p>After running the model, read back the results:</p>
-<div id="19f759aa" class="cell" data-execution_count="43">
+<div id="fb8fd55c" class="cell" data-execution_count="43">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb56"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> matplotlib.dates <span class="im">import</span> date2num</span>
 <span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb56-3"><a href="#cb56-3" aria-hidden="true" tabindex="-1"></a>ds_basin <span class="op">=</span> xr.open_dataset(datadir <span class="op">/</span> <span class="st">"pid_control/results/basin.nc"</span>)</span>
@@ -2006,7 +2018,7 @@ Simulating 100%|█████████████████████�
 <li><strong>Dry periods</strong> (days 90-180 and 270-366): Evaporation exceeds precipitation, requiring water supply to maintain target levels</li>
 </ul>
 <p>Setup the model with allocation enabled:</p>
-<div id="b1c692c3" class="cell" data-execution_count="44">
+<div id="c31e3129" class="cell" data-execution_count="44">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb57"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.nodes <span class="im">import</span> (</span>
 <span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a>    flow_demand</span>
 <span id="cb57-3"><a href="#cb57-3" aria-hidden="true" tabindex="-1"></a>)</span>
@@ -2019,7 +2031,7 @@ Simulating 100%|█████████████████████�
 <span id="cb57-10"><a href="#cb57-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Create time-varying precipitation and evaporation patterns:</p>
-<div id="1f30ac3a" class="cell" data-execution_count="45">
+<div id="138576a7" class="cell" data-execution_count="45">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb58"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a>time <span class="op">=</span> pd.date_range(model.starttime, model.endtime)</span>
 <span id="cb58-2"><a href="#cb58-2" aria-hidden="true" tabindex="-1"></a>day_of_year <span class="op">=</span> time.day_of_year.to_numpy()</span>
 <span id="cb58-3"><a href="#cb58-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -2036,7 +2048,7 @@ Simulating 100%|█████████████████████�
 <span id="cb58-14"><a href="#cb58-14" aria-hidden="true" tabindex="-1"></a>evaporation[<span class="dv">270</span>:<span class="dv">366</span>] <span class="op">=</span> <span class="fl">1e-6</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Setup the basins with identical profiles and forcing:</p>
-<div id="1e777bb5" class="cell" data-execution_count="46">
+<div id="0932e7d5" class="cell" data-execution_count="46">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb59"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a>basin_data <span class="op">=</span> [</span>
 <span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a>    basin.Profile(area<span class="op">=</span>[<span class="fl">0.01</span>, <span class="fl">1000000.0</span>], level<span class="op">=</span>[<span class="op">-</span><span class="dv">10</span>, <span class="fl">2.0</span>]),</span>
 <span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a>    basin.Time(</span>
@@ -2055,7 +2067,7 @@ Simulating 100%|█████████████████████�
 <span id="cb59-16"><a href="#cb59-16" aria-hidden="true" tabindex="-1"></a>basin9 <span class="op">=</span> model.basin.add(Node(<span class="dv">9</span>, Point(<span class="fl">4.0</span>, <span class="fl">0.0</span>), name<span class="op">=</span><span class="st">"Boezem"</span>), basin_data)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>The key to this model is using <code>LevelDemand</code> nodes to specify target levels for each polder and the boezem. The allocation algorithm will automatically determine required flows:</p>
-<div id="d9fe0965" class="cell" data-execution_count="47">
+<div id="5290c183" class="cell" data-execution_count="47">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb60"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Level demand on polder 4: maintain exactly 1.0 m</span></span>
 <span id="cb60-2"><a href="#cb60-2" aria-hidden="true" tabindex="-1"></a>level4 <span class="op">=</span> model.level_demand.add(</span>
 <span id="cb60-3"><a href="#cb60-3" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">100</span>, Point(<span class="fl">2.0</span>, <span class="fl">2.5</span>), name<span class="op">=</span><span class="st">"polder#4 level demand"</span>),</span>
@@ -2083,7 +2095,7 @@ Simulating 100%|█████████████████████�
 <span id="cb60-25"><a href="#cb60-25" aria-hidden="true" tabindex="-1"></a>model.link.add(level3, basin3)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Setup level boundaries representing external water systems:</p>
-<div id="8bc6bcf9" class="cell" data-execution_count="48">
+<div id="133d9ca6" class="cell" data-execution_count="48">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb61"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb61-1"><a href="#cb61-1" aria-hidden="true" tabindex="-1"></a>level_boundary11 <span class="op">=</span> model.level_boundary.add(</span>
 <span id="cb61-2"><a href="#cb61-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">11</span>, Point(<span class="dv">0</span>, <span class="dv">0</span>)), [level_boundary.Static(level<span class="op">=</span>[<span class="dv">10</span>])]</span>
 <span id="cb61-3"><a href="#cb61-3" aria-hidden="true" tabindex="-1"></a>)</span>
@@ -2092,7 +2104,7 @@ Simulating 100%|█████████████████████�
 <span id="cb61-6"><a href="#cb61-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Setup outlets with allocation control. Note <code>allocation_controlled=True</code> which tells the allocation algorithm to control these nodes:</p>
-<div id="bbd96f72" class="cell" data-execution_count="49">
+<div id="04121240" class="cell" data-execution_count="49">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb62"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Inlet from boezem to polder 4</span></span>
 <span id="cb62-2"><a href="#cb62-2" aria-hidden="true" tabindex="-1"></a>outlet5 <span class="op">=</span> model.outlet.add(</span>
 <span id="cb62-3"><a href="#cb62-3" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">5</span>, Point(<span class="dv">2</span>, <span class="dv">1</span>), name<span class="op">=</span><span class="st">"inlaat"</span>),</span>
@@ -2136,7 +2148,7 @@ Simulating 100%|█████████████████████�
 <span id="cb62-41"><a href="#cb62-41" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Setup a pump controlled by allocation for removing excess water:</p>
-<div id="1b378eb6" class="cell" data-execution_count="50">
+<div id="3096cdff" class="cell" data-execution_count="50">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb63"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb63-1"><a href="#cb63-1" aria-hidden="true" tabindex="-1"></a>pump7 <span class="op">=</span> model.pump.add(</span>
 <span id="cb63-2"><a href="#cb63-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">7</span>, Point(<span class="dv">4</span>, <span class="dv">1</span>), name<span class="op">=</span><span class="st">"drainage pumping station"</span>),</span>
 <span id="cb63-3"><a href="#cb63-3" aria-hidden="true" tabindex="-1"></a>    [</span>
@@ -2149,7 +2161,7 @@ Simulating 100%|█████████████████████�
 <span id="cb63-10"><a href="#cb63-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Add a flushing demand (water quality management) during day 90-180:</p>
-<div id="3e4dd78e" class="cell" data-execution_count="51">
+<div id="4428cef1" class="cell" data-execution_count="51">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb64"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a>t <span class="op">=</span> pd.date_range(model.starttime, model.endtime, freq<span class="op">=</span><span class="st">"D"</span>)</span>
 <span id="cb64-2"><a href="#cb64-2" aria-hidden="true" tabindex="-1"></a>d <span class="op">=</span> np.zeros(<span class="bu">len</span>(t))</span>
 <span id="cb64-3"><a href="#cb64-3" aria-hidden="true" tabindex="-1"></a>d[<span class="dv">90</span>:<span class="dv">180</span>] <span class="op">=</span> <span class="fl">1.5</span></span>
@@ -2167,7 +2179,7 @@ Simulating 100%|█████████████████████�
 <span id="cb64-15"><a href="#cb64-15" aria-hidden="true" tabindex="-1"></a>model.link.add(pump7_alloc, pump7)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Setup Manning resistance to model open channel flow. The <code>route_priority=0</code> ensures this is the main water route:</p>
-<div id="6f7041f8" class="cell" data-execution_count="52">
+<div id="28e0f4ea" class="cell" data-execution_count="52">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb65"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a>manning_resistance2 <span class="op">=</span> model.manning_resistance.add(</span>
 <span id="cb65-2"><a href="#cb65-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">2</span>, Point(<span class="dv">3</span>, <span class="fl">0.0</span>), route_priority<span class="op">=</span><span class="dv">0</span>),</span>
 <span id="cb65-3"><a href="#cb65-3" aria-hidden="true" tabindex="-1"></a>    [</span>
@@ -2178,7 +2190,7 @@ Simulating 100%|█████████████████████�
 <span id="cb65-8"><a href="#cb65-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Setup the links to connect all components:</p>
-<div id="5f0eddb3" class="cell" data-execution_count="53">
+<div id="dde7e3b9" class="cell" data-execution_count="53">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb66"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb66-1"><a href="#cb66-1" aria-hidden="true" tabindex="-1"></a>model.link.add(level_boundary11, outlet12)</span>
 <span id="cb66-2"><a href="#cb66-2" aria-hidden="true" tabindex="-1"></a>model.link.add(outlet12, basin3)</span>
 <span id="cb66-3"><a href="#cb66-3" aria-hidden="true" tabindex="-1"></a>model.link.add(basin3, outlet5)</span>
@@ -2193,7 +2205,7 @@ Simulating 100%|█████████████████████�
 <span id="cb66-12"><a href="#cb66-12" aria-hidden="true" tabindex="-1"></a>model.link.add(outlet10, level_boundary17)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Let’s visualize the model structure:</p>
-<div id="f411abe5" class="cell" data-execution_count="54">
+<div id="e6622eef" class="cell" data-execution_count="54">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb67"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true" tabindex="-1"></a>model.plot()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -2204,7 +2216,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>Write and run the model:</p>
-<div id="8c02a741" class="cell" data-execution_count="55">
+<div id="c5c446a8" class="cell" data-execution_count="55">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb68"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb68-1"><a href="#cb68-1" aria-hidden="true" tabindex="-1"></a>datadir <span class="op">=</span> Path(<span class="st">"data"</span>)</span>
 <span id="cb68-2"><a href="#cb68-2" aria-hidden="true" tabindex="-1"></a>model.write(datadir <span class="op">/</span> <span class="st">"polder_management/ribasim.toml"</span>)</span>
 <span id="cb68-3"><a href="#cb68-3" aria-hidden="true" tabindex="-1"></a>run_ribasim(datadir <span class="op">/</span> <span class="st">"polder_management/ribasim.toml"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -2230,7 +2242,7 @@ Simulating 100%|█████████████████████�
 
 
 
-┌ Info: Starting a Ribasim simulation at 2026-03-03T17:20:41.231.
+┌ Info: Starting a Ribasim simulation at 2026-03-05T11:07:41.540.
 
 │   toml_path = "data/polder_management/ribasim.toml"
 
@@ -2250,27 +2262,27 @@ Simulating 100%|█████████████████████�
 
 Simulating   0%|                                        |  ETA: N/A
 
-Simulating   4%|█▊                                      |  ETA: 0:04:03
+Simulating   4%|█▊                                      |  ETA: 0:04:07
 
 Simulating  25%|█████████▉                              |  ETA: 0:00:35
 
 Simulating  47%|██████████████████▉                     |  ETA: 0:00:13
 
-Simulating  64%|█████████████████████████▋              |  ETA: 0:00:06
+Simulating  64%|█████████████████████████▋              |  ETA: 0:00:07
 
 Simulating  85%|█████████████████████████████████▉      |  ETA: 0:00:02
 
-[ Info: Computation time: 11 seconds, 503 milliseconds
+[ Info: Computation time: 11 seconds, 727 milliseconds
 
 [ Info: Writing results.
 
-[ Info: The model finished successfully at 2026-03-03T17:21:39.780.
+[ Info: The model finished successfully at 2026-03-05T11:08:42.507.
 </pre>
 </div>
 </div>
 </div>
 <p>Analyze the results - first look at basin levels:</p>
-<div id="4f10957e" class="cell" data-execution_count="56">
+<div id="2b167359" class="cell" data-execution_count="56">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb69"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a>ds_basin <span class="op">=</span> xr.open_dataset(datadir <span class="op">/</span> <span class="st">"polder_management/results/basin.nc"</span>)</span>
 <span id="cb69-2"><a href="#cb69-2" aria-hidden="true" tabindex="-1"></a>df_basin <span class="op">=</span> ds_basin.to_dataframe().reset_index()</span>
 <span id="cb69-3"><a href="#cb69-3" aria-hidden="true" tabindex="-1"></a>df_basin_wide <span class="op">=</span> df_basin.pivot_table(</span>
@@ -2293,7 +2305,7 @@ Simulating  85%|█████████████████████�
 </div>
 <p>The plot shows how allocation maintains the polder target levels (1.0 m for basin 4, 0.9 m for basin 6) despite varying precipitation and evaporation.</p>
 <p>Examine the flow rates managed by allocation:</p>
-<div id="cfcb8987" class="cell" data-execution_count="57">
+<div id="e48a397d" class="cell" data-execution_count="57">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb70"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a>ds_flow <span class="op">=</span> xr.open_dataset(datadir <span class="op">/</span> <span class="st">"polder_management/results/flow.nc"</span>)</span>
 <span id="cb70-2"><a href="#cb70-2" aria-hidden="true" tabindex="-1"></a>df_flow <span class="op">=</span> ds_flow.to_dataframe().reset_index()</span>
 <span id="cb70-3"><a href="#cb70-3" aria-hidden="true" tabindex="-1"></a>df_flow[<span class="st">"link"</span>] <span class="op">=</span> <span class="bu">list</span>(<span class="bu">zip</span>(df_flow.from_node_id, df_flow.to_node_id))</span>
@@ -2327,11 +2339,11 @@ Simulating  85%|█████████████████████�
 </section>
 <section id="model-with-continuous-control" class="level1" data-number="5">
 <h1 data-number="5"><span class="header-section-number">5</span> Model with continuous control</h1>
-<div id="f3f5ccd7" class="cell" data-execution_count="58">
+<div id="7d6d85b4" class="cell" data-execution_count="58">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb71"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb71-1"><a href="#cb71-1" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> Model(starttime<span class="op">=</span><span class="st">"2020-01-01"</span>, endtime<span class="op">=</span><span class="st">"2021-01-01"</span>, crs<span class="op">=</span><span class="st">"EPSG:28992"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Set up the transient level boundary:</p>
-<div id="5b6b8dfe" class="cell" data-execution_count="59">
+<div id="9ee6064a" class="cell" data-execution_count="59">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb72"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a>model.level_boundary.add(</span>
 <span id="cb72-2"><a href="#cb72-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">1</span>, Point(<span class="dv">0</span>, <span class="dv">0</span>)),</span>
 <span id="cb72-3"><a href="#cb72-3" aria-hidden="true" tabindex="-1"></a>    [</span>
@@ -2348,7 +2360,7 @@ Simulating  85%|█████████████████████�
 </div>
 </div>
 <p>Set up the linear resistance:</p>
-<div id="999e870b" class="cell" data-execution_count="60">
+<div id="cc1f1055" class="cell" data-execution_count="60">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb74"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb74-1"><a href="#cb74-1" aria-hidden="true" tabindex="-1"></a>model.linear_resistance.add(</span>
 <span id="cb74-2"><a href="#cb74-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">2</span>, Point(<span class="dv">1</span>, <span class="dv">0</span>)), [linear_resistance.Static(resistance<span class="op">=</span>[<span class="fl">10.0</span>])]</span>
 <span id="cb74-3"><a href="#cb74-3" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -2357,7 +2369,7 @@ Simulating  85%|█████████████████████�
 </div>
 </div>
 <p>Set up the basin:</p>
-<div id="dedf3e9d" class="cell" data-execution_count="61">
+<div id="bee83263" class="cell" data-execution_count="61">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb76"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb76-1"><a href="#cb76-1" aria-hidden="true" tabindex="-1"></a>model.basin.add(</span>
 <span id="cb76-2"><a href="#cb76-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">3</span>, Point(<span class="dv">2</span>, <span class="dv">0</span>)),</span>
 <span id="cb76-3"><a href="#cb76-3" aria-hidden="true" tabindex="-1"></a>    [</span>
@@ -2370,7 +2382,7 @@ Simulating  85%|█████████████████████�
 </div>
 </div>
 <p>Set up the outlets:</p>
-<div id="3db3b231" class="cell" data-execution_count="62">
+<div id="8ce10f7c" class="cell" data-execution_count="62">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb78"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb78-1"><a href="#cb78-1" aria-hidden="true" tabindex="-1"></a>model.outlet.add(Node(<span class="dv">4</span>, Point(<span class="dv">3</span>, <span class="dv">1</span>)), [outlet.Static(flow_rate<span class="op">=</span>[<span class="fl">1.0</span>])])</span>
 <span id="cb78-2"><a href="#cb78-2" aria-hidden="true" tabindex="-1"></a>model.outlet.add(Node(<span class="dv">5</span>, Point(<span class="dv">3</span>, <span class="op">-</span><span class="dv">1</span>)), [outlet.Static(flow_rate<span class="op">=</span>[<span class="fl">1.0</span>])])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="62">
@@ -2378,7 +2390,7 @@ Simulating  85%|█████████████████████�
 </div>
 </div>
 <p>Set up the terminals:</p>
-<div id="17845afc" class="cell" data-execution_count="63">
+<div id="dcba8746" class="cell" data-execution_count="63">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb80"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb80-1"><a href="#cb80-1" aria-hidden="true" tabindex="-1"></a>model.terminal.add(Node(<span class="dv">6</span>, Point(<span class="dv">4</span>, <span class="dv">1</span>)))</span>
 <span id="cb80-2"><a href="#cb80-2" aria-hidden="true" tabindex="-1"></a>model.terminal.add(Node(<span class="dv">7</span>, Point(<span class="dv">4</span>, <span class="op">-</span><span class="dv">1</span>)))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="63">
@@ -2386,7 +2398,7 @@ Simulating  85%|█████████████████████�
 </div>
 </div>
 <p>Set up the continuous control:</p>
-<div id="f356d29a" class="cell" data-execution_count="64">
+<div id="80a6733a" class="cell" data-execution_count="64">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb82"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb82-1"><a href="#cb82-1" aria-hidden="true" tabindex="-1"></a>model.continuous_control.add(</span>
 <span id="cb82-2"><a href="#cb82-2" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">8</span>, Point(<span class="dv">2</span>, <span class="dv">1</span>)),</span>
 <span id="cb82-3"><a href="#cb82-3" aria-hidden="true" tabindex="-1"></a>    [</span>
@@ -2424,7 +2436,7 @@ Simulating  85%|█████████████████████�
 <li>A <code>ContinuousControl</code> node with ID 1, which listens to the flow rate of the <code>LinearResistance</code> node with ID 1, puts that through the function <span class="math inline">\(f(x) = \max(0, 0.6x)\)</span>, and assigns the result to the flow rate of the node this <code>ContinuousControl</code> node is controlling, which is defined by a (control) link;</li>
 <li>A <code>ContinuousControl</code> node with ID 2, which listens to the flow rate of the <code>LinearResistance</code> node with ID 1, puts that through the function <span class="math inline">\(f(x) = \max(0, 0.4x)\)</span>, and assigns the result to the flow rate of the node this <code>ContinuousControl</code> node is controlling, which is defined by a (control) link.</li>
 </ul>
-<div id="f7eef9bd" class="cell" data-execution_count="65">
+<div id="b205325e" class="cell" data-execution_count="65">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb84"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb84-1"><a href="#cb84-1" aria-hidden="true" tabindex="-1"></a>model.link.add(model.level_boundary[<span class="dv">1</span>], model.linear_resistance[<span class="dv">2</span>])</span>
 <span id="cb84-2"><a href="#cb84-2" aria-hidden="true" tabindex="-1"></a>model.link.add(model.linear_resistance[<span class="dv">2</span>], model.basin[<span class="dv">3</span>])</span>
 <span id="cb84-3"><a href="#cb84-3" aria-hidden="true" tabindex="-1"></a>model.link.add(model.basin[<span class="dv">3</span>], model.outlet[<span class="dv">4</span>])</span>
@@ -2437,7 +2449,7 @@ Simulating  85%|█████████████████████�
 <span id="cb84-10"><a href="#cb84-10" aria-hidden="true" tabindex="-1"></a>model.link.add(model.continuous_control[<span class="dv">9</span>], model.outlet[<span class="dv">5</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Let’s take a look at the model:</p>
-<div id="a1a4a936" class="cell" data-execution_count="66">
+<div id="0c4dc137" class="cell" data-execution_count="66">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb85"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb85-1"><a href="#cb85-1" aria-hidden="true" tabindex="-1"></a>model.plot()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -2449,7 +2461,7 @@ Simulating  85%|█████████████████████�
 </div>
 <p>With this setup we want to split the flow coming into the basin into a 60% - 40% ratio.</p>
 <p>Write the model to a TOML and GeoPackage:</p>
-<div id="b83eaba2" class="cell" data-execution_count="67">
+<div id="0e381850" class="cell" data-execution_count="67">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb86"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb86-1"><a href="#cb86-1" aria-hidden="true" tabindex="-1"></a>toml_path <span class="op">=</span> datadir <span class="op">/</span> <span class="st">"outlet_continuous_control/ribasim.toml"</span></span>
 <span id="cb86-2"><a href="#cb86-2" aria-hidden="true" tabindex="-1"></a>model.write(toml_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="67">
@@ -2457,7 +2469,7 @@ Simulating  85%|█████████████████████�
 </div>
 </div>
 <p>Now run the model.</p>
-<div id="2e9c340d" class="cell" data-execution_count="68">
+<div id="1289f953" class="cell" data-execution_count="68">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb88"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb88-1"><a href="#cb88-1" aria-hidden="true" tabindex="-1"></a>run_ribasim(toml_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stderr">
 <div class="ansi-escaped-output">
@@ -2481,7 +2493,7 @@ Simulating  85%|█████████████████████�
 
 
 
-┌ Info: Starting a Ribasim simulation at 2026-03-03T17:21:41.175.
+┌ Info: Starting a Ribasim simulation at 2026-03-05T11:08:43.906.
 
 │   toml_path = "data/outlet_continuous_control/ribasim.toml"
 
@@ -2527,63 +2539,63 @@ Simulating  17%|██████▉                                 |  ETA: 0:
 
 Simulating  19%|███████▋                                |  ETA: 0:00:00
 
-Simulating  22%|████████▉                               |  ETA: 0:00:00
+Simulating  22%|████████▊                               |  ETA: 0:00:00
 
-Simulating  25%|██████████▎                             |  ETA: 0:00:00
+Simulating  24%|█████████▊                              |  ETA: 0:00:00
 
 Simulating  27%|██████████▉                             |  ETA: 0:00:00
 
-Simulating  29%|███████████▊                            |  ETA: 0:00:02
+Simulating  28%|███████████▎                            |  ETA: 0:00:00
 
-Simulating  30%|████████████▏                           |  ETA: 0:00:02
+Simulating  30%|████████████                            |  ETA: 0:00:00
 
-Simulating  31%|████████████▌                           |  ETA: 0:00:02
+Simulating  30%|████████████▎                           |  ETA: 0:00:00
 
-Simulating  32%|████████████▉                           |  ETA: 0:00:02
+Simulating  32%|████████████▉                           |  ETA: 0:00:00
 
-Simulating  33%|█████████████▍                          |  ETA: 0:00:02
+Simulating  33%|█████████████▎                          |  ETA: 0:00:00
 
-Simulating  34%|█████████████▊                          |  ETA: 0:00:01
+Simulating  34%|█████████████▊                          |  ETA: 0:00:00
 
-Simulating  35%|██████████████▏                         |  ETA: 0:00:01
+Simulating  35%|██████████████▏                         |  ETA: 0:00:00
 
-Simulating  37%|██████████████▉                         |  ETA: 0:00:01
+Simulating  36%|██████████████▌                         |  ETA: 0:00:00
 
-Simulating  38%|███████████████▍                        |  ETA: 0:00:01
+Simulating  37%|███████████████                         |  ETA: 0:00:00
 
-Simulating  40%|████████████████▏                       |  ETA: 0:00:01
+Simulating  39%|███████████████▊                        |  ETA: 0:00:00
 
-Simulating  41%|████████████████▋                       |  ETA: 0:00:01
+Simulating  41%|████████████████▌                       |  ETA: 0:00:00
 
-Simulating  44%|█████████████████▊                      |  ETA: 0:00:01
+Simulating  43%|█████████████████▍                      |  ETA: 0:00:00
 
-Simulating  46%|██████████████████▋                     |  ETA: 0:00:01
+Simulating  45%|██████████████████▏                     |  ETA: 0:00:00
 
-Simulating  47%|███████████████████                     |  ETA: 0:00:01
+Simulating  47%|███████████████████                     |  ETA: 0:00:00
 
-Simulating  48%|███████████████████▍                    |  ETA: 0:00:01
+Simulating  48%|███████████████████▍                    |  ETA: 0:00:00
 
-Simulating  50%|████████████████████▏                   |  ETA: 0:00:01
+Simulating  49%|███████████████████▊                    |  ETA: 0:00:00
 
-Simulating  51%|████████████████████▌                   |  ETA: 0:00:01
+Simulating  51%|████████████████████▎                   |  ETA: 0:00:00
 
-Simulating  52%|█████████████████████                   |  ETA: 0:00:01
+Simulating  52%|████████████████████▋                   |  ETA: 0:00:00
 
-Simulating  53%|█████████████████████▍                  |  ETA: 0:00:01
+Simulating  53%|█████████████████████▎                  |  ETA: 0:00:00
 
-Simulating  55%|█████████████████████▊                  |  ETA: 0:00:01
+Simulating  54%|█████████████████████▌                  |  ETA: 0:00:00
 
-Simulating  56%|██████████████████████▎                 |  ETA: 0:00:01
+Simulating  55%|██████████████████████▎                 |  ETA: 0:00:00
 
-Simulating  58%|███████████████████████                 |  ETA: 0:00:01
+Simulating  57%|███████████████████████                 |  ETA: 0:00:00
 
-Simulating  60%|███████████████████████▉                |  ETA: 0:00:01
+Simulating  59%|███████████████████████▌                |  ETA: 0:00:00
 
-Simulating  62%|████████████████████████▋               |  ETA: 0:00:01
+Simulating  61%|████████████████████████▎               |  ETA: 0:00:00
 
-Simulating  63%|█████████████████████████               |  ETA: 0:00:01
+Simulating  63%|█████████████████████████               |  ETA: 0:00:00
 
-Simulating  64%|█████████████████████████▌              |  ETA: 0:00:00
+Simulating  64%|█████████████████████████▍              |  ETA: 0:00:00
 
 Simulating  65%|█████████████████████████▉              |  ETA: 0:00:00
 
@@ -2599,57 +2611,59 @@ Simulating  71%|█████████████████████�
 
 Simulating  72%|████████████████████████████▋           |  ETA: 0:00:00
 
-Simulating  74%|█████████████████████████████▍          |  ETA: 0:00:00
+Simulating  73%|█████████████████████████████▏          |  ETA: 0:00:00
 
 Simulating  75%|█████████████████████████████▉          |  ETA: 0:00:00
 
-Simulating  77%|██████████████████████████████▊         |  ETA: 0:00:00
+Simulating  77%|██████████████████████████████▋         |  ETA: 0:00:00
 
-Simulating  79%|███████████████████████████████▌        |  ETA: 0:00:00
+Simulating  78%|███████████████████████████████▏        |  ETA: 0:00:00
 
-Simulating  81%|████████████████████████████████▎       |  ETA: 0:00:00
+Simulating  80%|███████████████████████████████▉        |  ETA: 0:00:00
 
-Simulating  82%|████████████████████████████████▊       |  ETA: 0:00:00
+Simulating  81%|████████████████████████████████▍       |  ETA: 0:00:00
 
 Simulating  83%|█████████████████████████████████▏      |  ETA: 0:00:00
 
 Simulating  84%|█████████████████████████████████▌      |  ETA: 0:00:00
 
-Simulating  86%|██████████████████████████████████▍     |  ETA: 0:00:00
+Simulating  85%|█████████████████████████████████▉      |  ETA: 0:00:00
 
-Simulating  87%|██████████████████████████████████▊     |  ETA: 0:00:00
+Simulating  87%|██████████████████████████████████▋     |  ETA: 0:00:00
 
 Simulating  88%|███████████████████████████████████▏    |  ETA: 0:00:00
 
-Simulating  89%|███████████████████████████████████▋    |  ETA: 0:00:00
+Simulating  89%|███████████████████████████████████▌    |  ETA: 0:00:00
 
-Simulating  92%|████████████████████████████████████▊   |  ETA: 0:00:00
+Simulating  91%|████████████████████████████████████▍   |  ETA: 0:00:00
 
-Simulating  94%|█████████████████████████████████████▋  |  ETA: 0:00:00
+Simulating  94%|█████████████████████████████████████▌  |  ETA: 0:00:00
 
 Simulating  95%|██████████████████████████████████████  |  ETA: 0:00:00
 
+Simulating  96%|██████████████████████████████████████▍ |  ETA: 0:00:00
+
 Simulating  97%|██████████████████████████████████████▊ |  ETA: 0:00:00
 
-Simulating  98%|███████████████████████████████████████▏|  ETA: 0:00:00
+Simulating  98%|███████████████████████████████████████▎|  ETA: 0:00:00
 
-Simulating  99%|███████████████████████████████████████▋|  ETA: 0:00:00
+Simulating  99%|███████████████████████████████████████▊|  ETA: 0:00:00
 
-Simulating 100%|████████████████████████████████████████|  ETA: 0:00:00
+Simulating 100%|████████████████████████████████████████|  ETA: N/A
 
-Simulating 100%|████████████████████████████████████████| Time: 0:00:01
+Simulating 100%|████████████████████████████████████████| Time: 0:00:00
 
-[ Info: Computation time: 1 second, 8 milliseconds
+[ Info: Computation time: 427 milliseconds
 
 [ Info: Writing results.
 
-[ Info: The model finished successfully at 2026-03-03T17:21:45.331.
+[ Info: The model finished successfully at 2026-03-05T11:08:47.582.
 </pre>
 </div>
 </div>
 </div>
 <p>After running the model, read back the results:</p>
-<div id="424ee7e5" class="cell" data-execution_count="69">
+<div id="00993d66" class="cell" data-execution_count="69">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb89"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb89-1"><a href="#cb89-1" aria-hidden="true" tabindex="-1"></a>ds_flow <span class="op">=</span> xr.open_dataset(datadir <span class="op">/</span> <span class="st">"outlet_continuous_control/results/flow.nc"</span>)</span>
 <span id="cb89-2"><a href="#cb89-2" aria-hidden="true" tabindex="-1"></a>df_flow <span class="op">=</span> ds_flow.to_dataframe().reset_index()</span>
 <span id="cb89-3"><a href="#cb89-3" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots()</span>
@@ -2684,7 +2698,7 @@ Simulating 100%|█████████████████████�
 <section id="allocation-controlled-tabulatedratingcurve" class="level1" data-number="6">
 <h1 data-number="6"><span class="header-section-number">6</span> Allocation-controlled TabulatedRatingCurve</h1>
 <p>This example demonstrates how a <a href="../reference/node/tabulated-rating-curve.html">TabulatedRatingCurve</a> can be controlled by <a href="../concept/allocation.html">allocation</a>. A Basin drains through a TabulatedRatingCurve into a Terminal. A LevelDemand on the Basin tells the allocation algorithm to maintain the Basin level between 3 and 4 m. The TabulatedRatingCurve is allocation controlled and has a negative <code>route_priority</code>, so under normal conditions it follows the physical <span class="math inline">\(Q(h)\)</span> curve, but allocation reduces the flow when the Basin level drops toward the minimum level demand.</p>
-<div id="55cc85de" class="cell" data-execution_count="70">
+<div id="33e62877" class="cell" data-execution_count="70">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb90"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb90-1"><a href="#cb90-1" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> Model(</span>
 <span id="cb90-2"><a href="#cb90-2" aria-hidden="true" tabindex="-1"></a>    starttime<span class="op">=</span><span class="st">"2020-01-01"</span>,</span>
 <span id="cb90-3"><a href="#cb90-3" aria-hidden="true" tabindex="-1"></a>    endtime<span class="op">=</span><span class="st">"2021-01-01"</span>,</span>
@@ -2733,7 +2747,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>Write the model to a temporary directory and run it:</p>
-<div id="f791c316" class="cell" data-execution_count="71">
+<div id="b1659fe4" class="cell" data-execution_count="71">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb91"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb91-1"><a href="#cb91-1" aria-hidden="true" tabindex="-1"></a>datadir <span class="op">=</span> Path(<span class="st">"data/level_demand_with_rating_curve"</span>)</span>
 <span id="cb91-2"><a href="#cb91-2" aria-hidden="true" tabindex="-1"></a>model.write(datadir <span class="op">/</span> <span class="st">"ribasim.toml"</span>)</span>
 <span id="cb91-3"><a href="#cb91-3" aria-hidden="true" tabindex="-1"></a>result <span class="op">=</span> run_ribasim(datadir <span class="op">/</span> <span class="st">"ribasim.toml"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -2759,7 +2773,7 @@ Simulating 100%|█████████████████████�
 
 
 
-┌ Info: Starting a Ribasim simulation at 2026-03-03T17:21:45.999.
+┌ Info: Starting a Ribasim simulation at 2026-03-05T11:08:48.245.
 
 │   toml_path = "data/level_demand_with_rating_curve/ribasim.toml"
 
@@ -2787,17 +2801,17 @@ Simulating  71%|█████████████████████�
 
 Simulating  98%|███████████████████████████████████████▍|  ETA: 0:00:00
 
-[ Info: Computation time: 719 milliseconds
+[ Info: Computation time: 695 milliseconds
 
 [ Info: Writing results.
 
-[ Info: The model finished successfully at 2026-03-03T17:21:47.643.
+[ Info: The model finished successfully at 2026-03-05T11:08:49.876.
 </pre>
 </div>
 </div>
 </div>
 <p>Read back and plot the Basin level over time, including the minimum level demand:</p>
-<div id="92906889" class="cell" data-execution_count="72">
+<div id="f6b3c661" class="cell" data-execution_count="72">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb92"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb92-1"><a href="#cb92-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
 <span id="cb92-2"><a href="#cb92-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
 <span id="cb92-3"><a href="#cb92-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -2819,7 +2833,7 @@ Simulating  98%|█████████████████████�
 </div>
 </div>
 <p>Plot the flow through the TabulatedRatingCurve:</p>
-<div id="5206bec3" class="cell" data-execution_count="73">
+<div id="65c546af" class="cell" data-execution_count="73">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb93"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb93-1"><a href="#cb93-1" aria-hidden="true" tabindex="-1"></a>ds_flow <span class="op">=</span> xr.open_dataset(datadir <span class="op">/</span> <span class="st">"results/flow.nc"</span>)</span>
 <span id="cb93-2"><a href="#cb93-2" aria-hidden="true" tabindex="-1"></a>df_flow <span class="op">=</span> ds_flow.to_dataframe().reset_index()</span>
 <span id="cb93-3"><a href="#cb93-3" aria-hidden="true" tabindex="-1"></a>df_flow_trc <span class="op">=</span> df_flow[</span>
