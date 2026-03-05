@@ -4,3 +4,7 @@ title: "Known issues"
 
 Known issues can be found on the [GitHub issues page](https://github.com/Deltares/Ribasim/issues).
 Besides the issues that need to be fixed, there are also considerations that had to be made while developing the application.
+
+## Ribasim QGIS plugin
+
+Fractional flow plots are not supported for flow coming from boundary or Junction nodes.

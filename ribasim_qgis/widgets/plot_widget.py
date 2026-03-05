@@ -126,28 +126,30 @@ PlotData = dict[str, dict[str, VariableTraces]]
 
 _PLACEHOLDER_DEFAULT = "Select Basin nodes and/or links on the map to plot timeseries."
 _PLACEHOLDER_WATER_BALANCE = (
-    "Basin water balance preset requires exactly one Basin node selection."
+    "Basin water balance requires exactly one Basin node selection."
 )
 _PLACEHOLDER_FRACTIONAL_STORAGE = (
-    "Fractional storage preset requires exactly one Basin node selection."
+    "Fractional storage requires exactly one Basin node selection."
 )
-_PLACEHOLDER_FRACTIONAL_FLOW = (
-    "Fractional flow preset requires exactly one link selection."
-)
+_PLACEHOLDER_FRACTIONAL_FLOW = "Fractional flow requires exactly one link selection."
 _PLACEHOLDER_FRACTIONAL_FLOW_JUNCTION = (
     "Fractional flow over Junction nodes is not yet implemented."
 )
 _PLACEHOLDER_FRACTIONAL_FLOW_NO_BASIN = (
-    "Fractional flow: could not find a Basin connected to the selected link."
+    "Fractional flow: could not find a Basin on either side of the selected link."
+)
+_PLACEHOLDER_FRACTIONAL_FLOW_NO_CONCENTRATION = (
+    "Fractional flow: no concentration data found for the resolved Basin side(s)."
 )
 
-_CONNECTOR_NODE_TYPES: frozenset[str] = frozenset(
+_TRAVERSABLE_NODE_TYPES: frozenset[str] = frozenset(
     {
         "TabulatedRatingCurve",
         "Outlet",
         "Pump",
         "LinearResistance",
         "ManningResistance",
+        "UserDemand",
     }
 )
 
@@ -940,7 +942,7 @@ class PlotWidget(QWidget):
             return node_id, None
         if node_type == "Junction":
             return None, _PLACEHOLDER_FRACTIONAL_FLOW_JUNCTION
-        if node_type in _CONNECTOR_NODE_TYPES:
+        if node_type in _TRAVERSABLE_NODE_TYPES:
             basin = self._find_basin_through_connector(node_id, link_id)
             if basin is not None:
                 return basin, None
@@ -975,8 +977,10 @@ class PlotWidget(QWidget):
         from_basin, from_err = self._resolve_basin(from_node_id, link_id)
         to_basin, to_err = self._resolve_basin(to_node_id, link_id)
 
-        # We need both endpoints to resolve to Basins.
-        if from_basin is None or to_basin is None:
+        # At least one endpoint must resolve to a Basin. A single-sided Basin
+        # is valid: concentration is then only available for the matching flow
+        # direction where that side is the source.
+        if from_basin is None and to_basin is None:
             err = from_err or to_err or _PLACEHOLDER_FRACTIONAL_FLOW_NO_BASIN
             self._show_placeholder(err)
             return
@@ -996,7 +1000,7 @@ class PlotWidget(QWidget):
             else None
         )
         if not from_conc and not to_conc:
-            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW)
+            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW_NO_CONCENTRATION)
             return
 
         available_substances: set[str] = set()
