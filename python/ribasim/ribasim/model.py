@@ -400,7 +400,7 @@ class Model(FileModel, ParentModel):
         external : bool, optional
             Write the NetCDF input files. Default is True.
         """
-        self._ensure_listen_links()
+        self.ensure_listen_links()
 
         if self.use_validation:
             self._validate_model()
@@ -455,7 +455,7 @@ class Model(FileModel, ParentModel):
 
         return _concat(parts).drop_duplicates()
 
-    def _ensure_listen_links(self) -> None:
+    def ensure_listen_links(self) -> None:
         """Add any missing listen links inferred from control-node tables.
 
         Compares the pairs from :meth:`_collect_listen_link_pairs` against links
@@ -766,7 +766,7 @@ class Model(FileModel, ParentModel):
             _, ax = plt.subplots()
             ax.axis("off")
 
-        self._ensure_listen_links()
+        self.ensure_listen_links()
         node = self.node
         self.link.plot(ax=ax, zorder=2)
         node.plot(ax=ax, zorder=3)

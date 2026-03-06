@@ -57,13 +57,16 @@ def test_node_data():
 
 
 def test_listen_link_type_inference(discrete_control_of_pid_control):
+    """Listen links are auto-added when a control link is created."""
     model = discrete_control_of_pid_control
-    model.link.add(model.basin[3], model.pid_control[6])
     assert model.link.df is not None
-    added_link = model.link.df.iloc[-1]
-    assert added_link["from_node_id"] == 3
-    assert added_link["to_node_id"] == 6
-    assert added_link["link_type"] == "listen"
+    listen_links = model.link.df.loc[model.link.df["link_type"] == "listen"]
+    # Basin(3)->PidControl(6) was auto-added when PidControl(6)->Outlet(2) control link was created
+    basin_to_pid = listen_links.loc[
+        (listen_links["from_node_id"] == 3) & (listen_links["to_node_id"] == 6)
+    ]
+    assert len(basin_to_pid) == 1
+    assert basin_to_pid.iloc[0]["link_type"] == "listen"
 
 
 @pytest.mark.parametrize(
@@ -95,12 +98,11 @@ def test_validate_link_rejects_excess_inneighbors(basic):
 
 
 def test_listen_link_allows_reverse_control(discrete_control_of_pid_control):
-    """A listen link should be allowed even when a control link exists in the opposite direction."""
+    """A listen link is auto-added even when a control link exists in the opposite direction."""
     model = discrete_control_of_pid_control
-    # pid_control[6] already has a control link *to* its controlled node;
-    # adding a listen link from basin to pid_control should not trigger the
-    # "opposite link already exists" error.
-    model.link.add(model.basin[3], model.pid_control[6])
+    # pid_control #6 has a control link *to* outlet #2;
+    # the listen link from basin #3 to pid_control #6 was auto-added
+    # without triggering the "opposite link already exists" error.
     assert model.link.df is not None
     listen_links = model.link.df.loc[model.link.df["link_type"] == "listen"]
     assert not listen_links.empty
