@@ -100,8 +100,8 @@ def test_validate_link_rejects_excess_inneighbors(basic):
 def test_listen_link_allows_reverse_control(discrete_control_of_pid_control):
     """A listen link is auto-added even when a control link exists in the opposite direction."""
     model = discrete_control_of_pid_control
-    # pid_control[6] has a control link *to* outlet[2];
-    # the listen link from basin[3] to pid_control[6] was auto-added
+    # pid_control #6 has a control link *to* outlet #2;
+    # the listen link from basin #3 to pid_control #6 was auto-added
     # without triggering the "opposite link already exists" error.
     assert model.link.df is not None
     listen_links = model.link.df.loc[model.link.df["link_type"] == "listen"]
