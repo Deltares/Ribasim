@@ -1,5 +1,6 @@
 import warnings
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,6 +26,9 @@ from ribasim.validation import (
 )
 
 from .base import _GeoBaseSchema
+
+if TYPE_CHECKING:
+    from ribasim.model import Model
 
 __all__ = ("LinkTable",)
 
@@ -207,7 +211,7 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         node type.  Returns an empty set when the parent model is unavailable
         or the tables are empty.
         """
-        model = self._parent
+        model = cast("Model | None", self._parent)
         if model is None:
             return set()
 
@@ -234,7 +238,7 @@ class LinkTable(SpatialTableModel[LinkSchema]):
 
         Skips any listen links that already exist in the link table.
         """
-        model = self._parent
+        model = cast("Model | None", self._parent)
         if model is None:
             return
 

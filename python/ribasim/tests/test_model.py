@@ -202,7 +202,6 @@ def test_manually_add_listen_link(trivial):
     This is useful when listen links are needed *before* the control link
     is added, or for nodes not referenced by ``listen_node_id``.
     """
-
     model = trivial
 
     # Add a PidControl node that listens to Basin(6)
