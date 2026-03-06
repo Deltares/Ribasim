@@ -193,7 +193,7 @@ def test_ensure_listen_links_idempotent(discrete_control_of_pid_control):
     assert len(model.link.df) == count_before
 
 
-def test_manually_add_listen_link():
+def test_manually_add_listen_link(trivial):
     """Listen links can be added explicitly via link.add().
 
     When ``link.add`` is called with a listenable node (e.g. Basin) pointing
@@ -202,9 +202,8 @@ def test_manually_add_listen_link():
     This is useful when listen links are needed *before* the control link
     is added, or for nodes not referenced by ``listen_node_id``.
     """
-    from ribasim_testmodels import trivial_model
 
-    model = trivial_model()
+    model = trivial
 
     # Add a PidControl node that listens to Basin(6)
     model.pid_control.add(
