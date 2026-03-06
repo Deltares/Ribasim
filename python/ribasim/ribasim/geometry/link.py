@@ -195,6 +195,72 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             )
         self._used_link_ids.add(link_id)
 
+        # When a control link is added from a listen-capable control node,
+        # automatically add listen links based on listen_node_id in its tables.
+        if link_type == "control" and from_node.node_type in LISTENCONTROLNODETYPES:
+            self._add_listen_links_for_control_node(from_node)
+
+    def _collect_listen_node_ids(self, control_node: NodeData) -> set[int]:
+        """Return the set of ``listen_node_id`` values for *control_node*.
+
+        Reads the relevant tables from the parent model based on the control
+        node type.  Returns an empty set when the parent model is unavailable
+        or the tables are empty.
+        """
+        model = self._parent
+        if model is None:
+            return set()
+
+        tables: list[pd.DataFrame | None] = []
+        if control_node.node_type == "PidControl":
+            tables = [model.pid_control.static.df, model.pid_control.time.df]
+        elif control_node.node_type == "DiscreteControl":
+            tables = [model.discrete_control.variable.df]
+        elif control_node.node_type == "ContinuousControl":
+            tables = [model.continuous_control.variable.df]
+
+        listen_node_ids: set[int] = set()
+        for table in tables:
+            if table is None:
+                continue
+            mask = table["node_id"] == control_node.node_id
+            listen_node_ids.update(
+                int(x) for x in table.loc[mask, "listen_node_id"].unique()
+            )
+        return listen_node_ids
+
+    def _add_listen_links_for_control_node(self, control_node: NodeData) -> None:
+        """Add listen links for *control_node* based on its ``listen_node_id`` columns.
+
+        Skips any listen links that already exist in the link table.
+        """
+        model = self._parent
+        if model is None:
+            return
+
+        listen_node_ids = self._collect_listen_node_ids(control_node)
+        if not listen_node_ids:
+            return
+
+        assert self.df is not None
+        assert model.node.df is not None
+        for listen_node_id in sorted(listen_node_ids):
+            already_exists = (
+                (self.df["from_node_id"] == listen_node_id)
+                & (self.df["to_node_id"] == control_node.node_id)
+                & (self.df["link_type"] == "listen")
+            ).any()
+            if already_exists:
+                continue
+
+            row = model.node.df.loc[listen_node_id]
+            listened_node = NodeData(
+                node_id=listen_node_id,
+                node_type=row["node_type"],
+                geometry=row["geometry"],
+            )
+            self.add(listened_node, control_node)
+
     def _remove_link_id(self, link_id: NonNegativeInt):
         if self.df is not None and link_id in self.df.index:
             # Remove from node table

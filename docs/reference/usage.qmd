@@ -321,7 +321,8 @@ There are currently 4 possible link types:
   The LevelDemand and FlowDemand nodes use control links to indicate which nodes it will assign demands to.
 3. "listen": The listen links define which nodes are listened to by control nodes.
   They point from the listened node to the control node.
-  The control node tables define listening behavior (`listen_node_id`, variable, weight, look-ahead), and the Python API automatically adds missing `listen` links when writing a model.
+  The control node tables define listening behavior (`listen_node_id`, variable, weight, look-ahead).
+  Listen links are **automatically created** when a control link is added via `model.link.add`: the Python API reads the `listen_node_id` columns from the control node's tables and adds any missing listen links immediately.
   Listen links can also be added manually with `model.link.add(from_node, to_node)`, where `from_node` is a listenable node (e.g. a Basin) and `to_node` is a control node (e.g. DiscreteControl or PidControl). The link type is automatically inferred as `"listen"` from the node types.
 4. "observation": Observation links point from an Observation node to the node being observed. These links are not used in the simulation core, but allow attaching time series data for reference, validation, or visualization.
 
