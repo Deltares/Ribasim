@@ -5,6 +5,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [v2026.1.0-rc2] - 2026-03-06
+
+This second pre-release for v2026.1.0 adds a QGIS plotting pane with water balance and fractional flow plots, a new Observation node, and allocation control for the TabulatedRatingCurve.
+We fully switched from Arrow to NetCDF-based I/O, and have a new set of icons for our nodes.
+
+**Breaking changes**: Arrow support was removed and NetCDF is now the only format for results.
+`model.to_fews` was removed. The Ribasim QGIS plugin now requires QGIS 3.40 or newer.
+
+### Added
+- Add Observation node. [#2950](https://github.com/Deltares/Ribasim/pull/2950)
+- Add implicit listen edges to Link table on write. [#2949](https://github.com/Deltares/Ribasim/pull/2949) [#2969](https://github.com/Deltares/Ribasim/pull/2969)
+- Add a Boolean for allocation-controlled behavior. [#2912](https://github.com/Deltares/Ribasim/pull/2912)
+- Add allocation-controlled TabulatedRatingCurve. [#2907](https://github.com/Deltares/Ribasim/pull/2907)
+- Add guide for installing other Ribasim versions. [#2906](https://github.com/Deltares/Ribasim/pull/2906)
+- Add VS Code guide. [#2857](https://github.com/Deltares/Ribasim/pull/2857)
+- Add allocation technical reference documentation. [#2809](https://github.com/Deltares/Ribasim/pull/2809)
+- Add section on debugging unexpected flow rates. [#2814](https://github.com/Deltares/Ribasim/pull/2814)
+- QGIS: Add experimental QGIS 4 support. [#2960](https://github.com/Deltares/Ribasim/pull/2960)
+- QGIS: Add configurable `RIBASIM_HOME`. [#2919](https://github.com/Deltares/Ribasim/pull/2919)
+- QGIS: Support running Ribasim models. [#2881](https://github.com/Deltares/Ribasim/pull/2881)
+- QGIS: Load external NetCDF input. [#2880](https://github.com/Deltares/Ribasim/pull/2880)
+- QGIS: Add Plotly widget and NetCDF results support. [#2903](https://github.com/Deltares/Ribasim/pull/2903)
+- QGIS: Add water balance plot. [#2939](https://github.com/Deltares/Ribasim/issues/2939)
+- QGIS: Add fraction plotting. [#2968](https://github.com/Deltares/Ribasim/pull/2968)
+
+### Changed
+- Default to NetCDF for results storage. [#2855](https://github.com/Deltares/Ribasim/pull/2855)
+- Complete writing remaining results to NetCDF. [#2856](https://github.com/Deltares/Ribasim/pull/2856)
+- Remove Arrow support. [#2937](https://github.com/Deltares/Ribasim/pull/2937)
+- Remove `model.to_fews`; add CF attributes to NetCDF input. [#2938](https://github.com/Deltares/Ribasim/pull/2938)
+- Introduce Node table at Model level again. [#2886](https://github.com/Deltares/Ribasim/pull/2886)
+- Use `RIBASIM_HOME` consistently in tooling and scripts. [#2891](https://github.com/Deltares/Ribasim/pull/2891)
+- Set default interpolation behavior to block/constant. [#2909](https://github.com/Deltares/Ribasim/pull/2909) [#2896](https://github.com/Deltares/Ribasim/pull/2896)
+- Set default basin route priority to `0`. [#2942](https://github.com/Deltares/Ribasim/pull/2942)
+- Rename allocation output terminology from realized to supplied. [#2962](https://github.com/Deltares/Ribasim/pull/2962)
+- Switch between control state and `ribasim.allocation`. [#2808](https://github.com/Deltares/Ribasim/pull/2808)
+- Require QGIS 3.40 (LTR) or newer. [#2862](https://github.com/Deltares/Ribasim/pull/2862)
+- Use new icons for `model.plot()` and docs. [#2917](https://github.com/Deltares/Ribasim/pull/2917) [#2916](https://github.com/Deltares/Ribasim/pull/2916)
+- Keep external file paths in Python model handling. [#2943](https://github.com/Deltares/Ribasim/pull/2943)
+- Add lazy reading and writing in Python. [#2878](https://github.com/Deltares/Ribasim/pull/2878)
+- Remove migration warnings on model load. [#2826](https://github.com/Deltares/Ribasim/pull/2826)
+
+### Fixed
+- Handle allocation case with zero links. [#2959](https://github.com/Deltares/Ribasim/pull/2959)
+- Fix default subnetwork ID to `1` in Julia core. [#2835](https://github.com/Deltares/Ribasim/pull/2835)
+- Skip Junction in route-priority allocation problem building. [#2801](https://github.com/Deltares/Ribasim/pull/2801)
+
 ## [v2026.1.0-rc1] - 2025-12-23
 
 This is the first pre-release running up to the stable v2026.1.0 release.

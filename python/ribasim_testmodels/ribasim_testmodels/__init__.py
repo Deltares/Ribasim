@@ -1,4 +1,4 @@
-__version__ = "2026.1.0-rc1"
+__version__ = "2026.1.0-rc2"
 
 from collections.abc import Callable
 

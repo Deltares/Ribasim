@@ -27,10 +27,10 @@ Before starting with data, perform the following tests to see if the plugin does
 ## Open model twice
 
 - Open QGIS and ensure that the Ribasim plugin is installed and enabled.
-- Click the Ribasim button on the QGIS toolbar: _file navigation window pops up_.
+- Click the Ribasim button on the QGIS toolbar, select "Open Ribasim model": _file navigation window pops up_.
 - Choose an existing model from the `generated_testmodels` folder.
 - Press OK: _The model layers appear in the layer panel and on the map_.
-- Click the Ribasim button on the QGIS toolbar: _file navigation window pops up_.
+- Click the Ribasim button on the QGIS toolbar, select "Open Ribasim model": _file navigation window pops up in the same directory_.
 - Open the same model again: _A new layer group is added to the layers panel_.
 
 Intended behavior: The same model is loaded twice, but there is only a connection on the last loaded model when interacting with the plugin.
@@ -51,8 +51,7 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 ## Run a model from the context menu
 
 - Load the HWS model at `models/hws.toml` (slow enough to observe progress).
-- Right-click the model group in the layer panel: _Context menu shows "Run Ribasim model"_.
-- Click "Run Ribasim model": _Output dialog opens with title "Ribasim simulation - hws/ribasim"_.
+- From the Ribasim button click "Run Ribasim model": _Output dialog opens with title "Ribasim simulation - hws/hws"_.
 - Wait for simulation: _Progress bar updates in QGIS status bar, output streams to dialog_.
 - On completion: _Model reloads with results, Results group contains Flow/Basin layers_.
 
@@ -72,7 +71,7 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 
 - Start a simulation on `models/hws`.
 - Open task manager and cancel the task: _Task is removed from manager_.
-- Check output dialog: _Shows "Ribasim simulation - ... was canceled."_.
+- Check output dialog: _Shows "The Ribasim simulation was canceled."_.
 
 ## Prevent duplicate simulations
 
@@ -85,7 +84,7 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 ## Open the plot widget
 
 - Run `models/hws` or another model that produces results.
-- After results load, click the Ribasim button dropdown on the toolbar and select "Timeseries results": _The plot dock panel opens, showing the "Result" dropdown defaulting to "flow" and "Variable" defaulting to "flow\_rate"_.
+- After results load, click the Ribasim button dropdown on the toolbar and select "Timeseries results": _The plot dock panel opens, showing the "variable" dropdown defaulting to "flow\_rate" and "level"_.
 
 ## Flow timeseries on link selection
 
@@ -94,24 +93,32 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 
 ## Basin timeseries on node selection
 
-- Switch the "Result" dropdown to "basin": _Variable changes to "level", placeholder says "Select Basin nodes on the map to plot timeseries."_.
+- Change the variable to "level": _Variable changes to "level", placeholder says "Select Basin nodes and/or links on the map to plot timeseries."_.
 - Select one or more Basin nodes on the map: _Level timeseries appear for the selected nodes_.
 
 ## Variable selection
 
-- With Basin nodes selected and the plot showing, click the "Variable" button: _A dropdown menu with checkboxes appears listing variables (e.g. level, storage)_.
-- Check multiple variables: _Plot updates to show all checked variables, legend shows "variable — #node\_id"_.
+- With Basin nodes selected and the plot showing, click the "variable" button: _A dropdown menu with checkboxes appears listing variables (e.g. level, storage)_.
+- Check multiple variables: _Plot updates to show all checked variables, grouped by unit, legend shows "variable — #node\_id"_.
 - Uncheck all variables: _Plot hides, placeholder reappears_.
 
 ## Concentration results
 
-- Run a model that produces `concentration.nc` results.
-- Switch the "Result" dropdown to "concentration": _Variables list shows substance names_.
+- Open a model with concentration results and open the plotting pane.
+- Switch the "variable" dropdown to "concentration": _Variables list shows substance names_.
+- Select substances "Continuity" and "Initial": _Concentration timeseries appear per substance_.
 - Select Basin nodes: _Concentration timeseries appear per substance_.
+
+## Plot presets
+
+- Open a model with concentration results and open the plotting pane.
+- Switch the "variable" dropdown to "water balance" and select one Basin: _Stacked area water balance plot shows._.
+- Switch the "variable" dropdown to "fractional storage": _Stacked area fractional storage plot shows, summing to 1._.
+- Switch the "variable" dropdown to "fractional flow" and select one link: _Stacked area fractional flow plot shows, with "flow\_rate" in black._.
 
 ## Plot clears on deselection
 
-- With a plot showing, deselect all features (click an empty area on the map): _Plot clears and the placeholder reappears_.
+- With a plot showing, deselect all features from all layers: _Plot clears and the placeholder reappears_.
 
 # Tutorial tests
 

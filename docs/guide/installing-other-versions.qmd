@@ -17,7 +17,7 @@ Running with mismatched versions will likely fail.
 Ribasim uses the following versioning scheme:
 
 - **Releases** have version numbers like `2025.6.0`.
-- **Pre-releases** (release candidates) have version numbers like `2026.1.0-rc1`. These are development versions used for testing before a stable release.
+- **Pre-releases** (release candidates) have version numbers like `2026.1.0-rc2`. These are development versions used for testing before a stable release.
 
 Note that `X-rcY` is an earlier version than `X` — the `-rcY` suffix indicates it is a release candidate that preceded the final release.
 
@@ -36,7 +36,7 @@ Navigate to the desired version and download:
 - `ribasim_windows.zip` for Windows
 - `ribasim_linux.zip` for Linux
 
-For example, to install version `2026.1.0-rc1`, go to the [v2026.1.0-rc1 release](https://github.com/Deltares/Ribasim/releases/tag/v2026.1.0-rc1) and download the zip file from there.
+For example, to install version `2026.1.0-rc2`, go to the [v2026.1.0-rc2 release](https://github.com/Deltares/Ribasim/releases/tag/v2026.1.0-rc2) and download the zip file from there.
 
 Then follow the [manual installation instructions](/getting-started/install.qmd#sec-install-core) to extract and set up the binary.
 
@@ -50,13 +50,13 @@ If you don't have a project set up yet, follow the initialization steps on the [
 ## uv
 
 ```sh
-uv add ribasim==2026.1.0-rc1
+uv add ribasim==2026.1.0-rc2
 ```
 
 ## pixi
 
 ```sh
-pixi add --pypi ribasim==2026.1.0-rc1
+pixi add --pypi ribasim==2026.1.0-rc2
 ```
 
 ::: {.callout-note}
@@ -66,7 +66,7 @@ Pre-releases are only published to [PyPI](https://pypi.org/project/ribasim/), so
 ## pip
 
 ```sh
-pip install --upgrade ribasim==2026.1.0-rc1
+pip install --upgrade ribasim==2026.1.0-rc2
 ```
 
 ## conda
