@@ -270,7 +270,8 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#basin-timeseries-on-node-selection" id="toc-basin-timeseries-on-node-selection" class="nav-link" data-scroll-target="#basin-timeseries-on-node-selection"><span class="header-section-number">5.3</span> Basin timeseries on node selection</a></li>
   <li><a href="#variable-selection" id="toc-variable-selection" class="nav-link" data-scroll-target="#variable-selection"><span class="header-section-number">5.4</span> Variable selection</a></li>
   <li><a href="#concentration-results" id="toc-concentration-results" class="nav-link" data-scroll-target="#concentration-results"><span class="header-section-number">5.5</span> Concentration results</a></li>
-  <li><a href="#plot-clears-on-deselection" id="toc-plot-clears-on-deselection" class="nav-link" data-scroll-target="#plot-clears-on-deselection"><span class="header-section-number">5.6</span> Plot clears on deselection</a></li>
+  <li><a href="#plot-presets" id="toc-plot-presets" class="nav-link" data-scroll-target="#plot-presets"><span class="header-section-number">5.6</span> Plot presets</a></li>
+  <li><a href="#plot-clears-on-deselection" id="toc-plot-clears-on-deselection" class="nav-link" data-scroll-target="#plot-clears-on-deselection"><span class="header-section-number">5.7</span> Plot clears on deselection</a></li>
   </ul></li>
   <li><a href="#tutorial-tests" id="toc-tutorial-tests" class="nav-link" data-scroll-target="#tutorial-tests"><span class="header-section-number">6</span> Tutorial tests</a>
   <ul class="collapse">
@@ -329,10 +330,10 @@ ul.task-list li input[type="checkbox"] {
 <h2 data-number="2.2" class="anchored" data-anchor-id="open-model-twice"><span class="header-section-number">2.2</span> Open model twice</h2>
 <ul>
 <li>Open QGIS and ensure that the Ribasim plugin is installed and enabled.</li>
-<li>Click the Ribasim button on the QGIS toolbar: <em>file navigation window pops up</em>.</li>
+<li>Click the Ribasim button on the QGIS toolbar, select “Open Ribasim model”: <em>file navigation window pops up</em>.</li>
 <li>Choose an existing model from the <code>generated_testmodels</code> folder.</li>
 <li>Press OK: <em>The model layers appear in the layer panel and on the map</em>.</li>
-<li>Click the Ribasim button on the QGIS toolbar: <em>file navigation window pops up</em>.</li>
+<li>Click the Ribasim button on the QGIS toolbar, select “Open Ribasim model”: <em>file navigation window pops up in the same directory</em>.</li>
 <li>Open the same model again: <em>A new layer group is added to the layers panel</em>.</li>
 </ul>
 <p>Intended behavior: The same model is loaded twice, but there is only a connection on the last loaded model when interacting with the plugin.</p>
@@ -358,8 +359,7 @@ ul.task-list li input[type="checkbox"] {
 <h2 data-number="4.1" class="anchored" data-anchor-id="run-a-model-from-the-context-menu"><span class="header-section-number">4.1</span> Run a model from the context menu</h2>
 <ul>
 <li>Load the HWS model at <code>models/hws.toml</code> (slow enough to observe progress).</li>
-<li>Right-click the model group in the layer panel: <em>Context menu shows “Run Ribasim model”</em>.</li>
-<li>Click “Run Ribasim model”: <em>Output dialog opens with title “Ribasim simulation - hws/ribasim”</em>.</li>
+<li>From the Ribasim button click “Run Ribasim model”: <em>Output dialog opens with title “Ribasim simulation - hws/hws”</em>.</li>
 <li>Wait for simulation: <em>Progress bar updates in QGIS status bar, output streams to dialog</em>.</li>
 <li>On completion: <em>Model reloads with results, Results group contains Flow/Basin layers</em>.</li>
 </ul>
@@ -385,7 +385,7 @@ ul.task-list li input[type="checkbox"] {
 <ul>
 <li>Start a simulation on <code>models/hws</code>.</li>
 <li>Open task manager and cancel the task: <em>Task is removed from manager</em>.</li>
-<li>Check output dialog: <em>Shows “Ribasim simulation - … was canceled.”</em>.</li>
+<li>Check output dialog: <em>Shows “The Ribasim simulation was canceled.”</em>.</li>
 </ul>
 </section>
 <section id="prevent-duplicate-simulations" class="level2" data-number="4.5">
@@ -403,7 +403,7 @@ ul.task-list li input[type="checkbox"] {
 <h2 data-number="5.1" class="anchored" data-anchor-id="open-the-plot-widget"><span class="header-section-number">5.1</span> Open the plot widget</h2>
 <ul>
 <li>Run <code>models/hws</code> or another model that produces results.</li>
-<li>After results load, click the Ribasim button dropdown on the toolbar and select “Timeseries results”: <em>The plot dock panel opens, showing the “Result” dropdown defaulting to “flow” and “Variable” defaulting to “flow_rate”</em>.</li>
+<li>After results load, click the Ribasim button dropdown on the toolbar and select “Timeseries results”: <em>The plot dock panel opens, showing the “variable” dropdown defaulting to “flow_rate” and “level”</em>.</li>
 </ul>
 </section>
 <section id="flow-timeseries-on-link-selection" class="level2" data-number="5.2">
@@ -416,30 +416,40 @@ ul.task-list li input[type="checkbox"] {
 <section id="basin-timeseries-on-node-selection" class="level2" data-number="5.3">
 <h2 data-number="5.3" class="anchored" data-anchor-id="basin-timeseries-on-node-selection"><span class="header-section-number">5.3</span> Basin timeseries on node selection</h2>
 <ul>
-<li>Switch the “Result” dropdown to “basin”: <em>Variable changes to “level”, placeholder says “Select Basin nodes on the map to plot timeseries.”</em>.</li>
+<li>Change the variable to “level”: <em>Variable changes to “level”, placeholder says “Select Basin nodes and/or links on the map to plot timeseries.”</em>.</li>
 <li>Select one or more Basin nodes on the map: <em>Level timeseries appear for the selected nodes</em>.</li>
 </ul>
 </section>
 <section id="variable-selection" class="level2" data-number="5.4">
 <h2 data-number="5.4" class="anchored" data-anchor-id="variable-selection"><span class="header-section-number">5.4</span> Variable selection</h2>
 <ul>
-<li>With Basin nodes selected and the plot showing, click the “Variable” button: <em>A dropdown menu with checkboxes appears listing variables (e.g.&nbsp;level, storage)</em>.</li>
-<li>Check multiple variables: <em>Plot updates to show all checked variables, legend shows “variable — #node_id”</em>.</li>
+<li>With Basin nodes selected and the plot showing, click the “variable” button: <em>A dropdown menu with checkboxes appears listing variables (e.g.&nbsp;level, storage)</em>.</li>
+<li>Check multiple variables: <em>Plot updates to show all checked variables, grouped by unit, legend shows “variable — #node_id”</em>.</li>
 <li>Uncheck all variables: <em>Plot hides, placeholder reappears</em>.</li>
 </ul>
 </section>
 <section id="concentration-results" class="level2" data-number="5.5">
 <h2 data-number="5.5" class="anchored" data-anchor-id="concentration-results"><span class="header-section-number">5.5</span> Concentration results</h2>
 <ul>
-<li>Run a model that produces <code>concentration.nc</code> results.</li>
-<li>Switch the “Result” dropdown to “concentration”: <em>Variables list shows substance names</em>.</li>
+<li>Open a model with concentration results and open the plotting pane.</li>
+<li>Switch the “variable” dropdown to “concentration”: <em>Variables list shows substance names</em>.</li>
+<li>Select substances “Continuity” and “Initial”: <em>Concentration timeseries appear per substance</em>.</li>
 <li>Select Basin nodes: <em>Concentration timeseries appear per substance</em>.</li>
 </ul>
 </section>
-<section id="plot-clears-on-deselection" class="level2" data-number="5.6">
-<h2 data-number="5.6" class="anchored" data-anchor-id="plot-clears-on-deselection"><span class="header-section-number">5.6</span> Plot clears on deselection</h2>
+<section id="plot-presets" class="level2" data-number="5.6">
+<h2 data-number="5.6" class="anchored" data-anchor-id="plot-presets"><span class="header-section-number">5.6</span> Plot presets</h2>
 <ul>
-<li>With a plot showing, deselect all features (click an empty area on the map): <em>Plot clears and the placeholder reappears</em>.</li>
+<li>Open a model with concentration results and open the plotting pane.</li>
+<li>Switch the “variable” dropdown to “water balance” and select one Basin: <em>Stacked area water balance plot shows.</em>.</li>
+<li>Switch the “variable” dropdown to “fractional storage”: <em>Stacked area fractional storage plot shows, summing to 1.</em>.</li>
+<li>Switch the “variable” dropdown to “fractional flow” and select one link: <em>Stacked area fractional flow plot shows, with “flow_rate” in black.</em>.</li>
+</ul>
+</section>
+<section id="plot-clears-on-deselection" class="level2" data-number="5.7">
+<h2 data-number="5.7" class="anchored" data-anchor-id="plot-clears-on-deselection"><span class="header-section-number">5.7</span> Plot clears on deselection</h2>
+<ul>
+<li>With a plot showing, deselect all features from all layers: <em>Plot clears and the placeholder reappears</em>.</li>
 </ul>
 </section>
 </section>
