@@ -76,12 +76,13 @@
         "notebook.source.organizeImports": "explicit"
     },
     "notebook.formatOnSave.enabled": true,
+    "python.defaultInterpreterPath": "${workspaceFolder}/.pixi/envs/default/bin/python",
     "python.testing.pytestArgs": [
-        "."
+        "python/ribasim/tests",
+        "build/tests"
     ],
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
     "python-envs.defaultEnvManager": "renan-r-santos.pixi-code:pixi",
-    "python-envs.defaultPackageManager": "renan-r-santos.pixi-code:pixi",
-    "python-envs.pythonProjects": []
+    "python-envs.defaultPackageManager": "renan-r-santos.pixi-code:pixi"
 }
