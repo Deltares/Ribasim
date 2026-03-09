@@ -5,6 +5,7 @@ It also allows enabling or disabling individual elements for a computation.
 """
 
 import os
+import re
 import shutil
 from contextvars import ContextVar
 from datetime import datetime
@@ -12,15 +13,6 @@ from functools import partial
 from pathlib import Path
 from typing import Any, cast
 
-from PyQt5.QtCore import QDateTime, QMetaType
-from PyQt5.QtWidgets import (
-    QDialog,
-    QFileDialog,
-    QMenu,
-    QPlainTextEdit,
-    QVBoxLayout,
-    QWidget,
-)
 from qgis.core import (
     Qgis,
     QgsApplication,
@@ -39,6 +31,15 @@ from qgis.core import (
     QgsVectorLayer,
     QgsVectorLayerTemporalProperties,
 )
+from qgis.PyQt.QtCore import QDateTime, QMetaType
+from qgis.PyQt.QtWidgets import (
+    QDialog,
+    QFileDialog,
+    QMenu,
+    QPlainTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ribasim_qgis.core.model import (
     get_database_path_from_model_file,
@@ -56,7 +57,7 @@ from ribasim_qgis.core.nodes import (
     load_external_input_tables,
     load_nodes_from_geopackage,
 )
-from ribasim_qgis.widgets.plot_widget import PlotData, PlotWidget, VariableTraces
+from ribasim_qgis.widgets.plot_widget import PlotData, PlotWidget, Trace, VariableTraces
 from ribasim_qgis.widgets.task import RibasimTask
 
 group_position_var: ContextVar[int] = ContextVar("group_position", default=0)
@@ -72,10 +73,22 @@ _ID_COLUMNS: dict[str, str] = {
 _DEFAULT_VARIABLES: dict[str, str] = {
     "basin": "level",
     "flow": "flow_rate",
-    "concentration": "Initial",
 }
 
 RIBASIM_HOME_SETTING = "ribasim/home"
+RIBASIM_LAST_MODEL_DIR_SETTING = "ribasim/last_model_dir"
+
+_ANSI_ESCAPE_RE = re.compile(r"\x1B(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1B\\))")
+
+
+def _strip_ansi_escape_codes(text: str) -> str:
+    """Remove ANSI terminal escape codes from CLI output for plaintext display.
+
+    Ribasim writes terminal styling sequences (colors, bold, etc.).
+    Because ``QPlainTextEdit`` only supports plain text, we strip these
+    sequences to avoid showing raw control characters in the output dialog.
+    """
+    return _ANSI_ESCAPE_RE.sub("", text)
 
 
 class DatasetWidget:
@@ -94,7 +107,12 @@ class DatasetWidget:
         self.results: dict[str, NetCDFResult] = {}
 
         # Plot widget for timeseries
-        self.plot_widget = PlotWidget()
+        self.plot_widget = PlotWidget(
+            iface=self.ribasim_widget.iface,
+            node_layer_getter=lambda: self.node_layer,
+            link_layer_getter=lambda: self.link_layer,
+            concentration_for_node_getter=self._get_concentration_for_node,
+        )
 
         # Track running simulations by model path
         self.running_tasks: dict[str, RibasimTask] = {}
@@ -250,14 +268,19 @@ class DatasetWidget:
     def open_model(self, path=None) -> None:
         """Open a Ribasim model file."""
         if not path:
+            start_dir = self.get_last_model_dir_setting()
             path, _ = QFileDialog.getOpenFileName(
-                self.ribasim_widget, "Select file", "", "*.toml"
+                self.ribasim_widget,
+                "Select file",
+                str(start_dir) if start_dir is not None else "",
+                "*.toml",
             )
         self._open_model(path)
 
     def _open_model(self, path: str) -> None:
         if path != "":  # Empty string in case of cancel button press
             self.path = Path(path)
+            self.set_last_model_dir_setting(self.path.parent)
             self.set_current_time_extent()
             self.load_geopackage()
             self.add_topology_context()
@@ -351,6 +374,7 @@ class DatasetWidget:
 
         def on_output(line: str, replace: bool):
             """Handle output from the task (called on main thread via signal)."""
+            line = _strip_ansi_escape_codes(line)
             if replace:
                 # Update last line instead of appending for progress updates
                 cursor = text_edit.textCursor()
@@ -390,10 +414,8 @@ class DatasetWidget:
     @staticmethod
     def get_ribasim_home_setting() -> Path | None:
         settings = QgsSettings()
-        value = settings.value(RIBASIM_HOME_SETTING)
-        if not isinstance(value, str) or not value:
-            return None
-        return Path(value)
+        value = settings.value(RIBASIM_HOME_SETTING, "", type=str)
+        return Path(value) if value else None
 
     @staticmethod
     def set_ribasim_home_setting(path: Path) -> None:
@@ -404,6 +426,17 @@ class DatasetWidget:
     def clear_ribasim_home_setting() -> None:
         settings = QgsSettings()
         settings.remove(RIBASIM_HOME_SETTING)
+
+    @staticmethod
+    def get_last_model_dir_setting() -> Path | None:
+        settings = QgsSettings()
+        value = settings.value(RIBASIM_LAST_MODEL_DIR_SETTING, "", type=str)
+        return Path(value) if value else None
+
+    @staticmethod
+    def set_last_model_dir_setting(path: Path) -> None:
+        settings = QgsSettings()
+        settings.setValue(RIBASIM_LAST_MODEL_DIR_SETTING, str(path))
 
     @staticmethod
     def get_ribasim_cli_from_home(ribasim_home: Path) -> Path | None:
@@ -615,6 +648,20 @@ class DatasetWidget:
             units[name] = result.units
         self.plot_widget.preload_variables(available, units, _DEFAULT_VARIABLES)
 
+    def _get_concentration_for_node(self, node_id: int) -> dict[str, Trace] | None:
+        """Return concentration traces for a single *node_id*."""
+        result = self.results.get("concentration")
+        if result is None:
+            return None
+        id_to_idx = {int(v): i for i, v in enumerate(result.ids)}
+        idx = id_to_idx.get(node_id)
+        if idx is None:
+            return None
+        time_strings = result.time.strftime("%Y-%m-%dT%H:%M:%S").to_numpy()
+        return {
+            sub: (time_strings, arr[:, idx]) for sub, arr in result.variables.items()
+        }
+
     def _set_node_results(self) -> None:
         node_layer = self.ribasim_widget.node_layer
         assert node_layer is not None
@@ -679,7 +726,7 @@ class DatasetWidget:
             self.ribasim_widget.iface.messageBar().pushMessage(
                 "Ribasim",
                 "Cannot duplicate layer, fids are not sorted",
-                level=Qgis.Critical,
+                level=Qgis.MessageLevel.Critical,
                 duration=3,
             )
             return
@@ -692,7 +739,9 @@ class DatasetWidget:
             QDateTime(toml["starttime"]), QDateTime(toml["endtime"])
         )
         tprop = maplayer.temporalProperties()
-        tprop.setMode(QgsVectorLayerTemporalProperties.ModeFixedTemporalRange)
+        tprop.setMode(
+            QgsVectorLayerTemporalProperties.TemporalMode.ModeFixedTemporalRange
+        )
         tprop.setFixedTemporalRange(trange)
         tprop.setIsActive(True)
 

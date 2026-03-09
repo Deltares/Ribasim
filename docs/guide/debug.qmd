@@ -33,7 +33,7 @@ The active state determines which parameter set is used.
 
 - **Allocation**: Check the allocation results to see the allocated flow for the node.
 
-In all these cases the reduction factors still apply, and may be the reason allocated flows cannot be realized.
+In all these cases the reduction factors still apply, and may be the reason allocated flows cannot be supplied.
 
 ## Slow models
 

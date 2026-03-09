@@ -305,7 +305,7 @@ When Pumps and Outlets are part of a subnetwork, they can be controlled by alloc
 # Link {#sec-link}
 
 Links define connections between nodes. The only thing that defines a link is the nodes it connects, and in what direction.
-There are currently 2 possible link types:
+There are currently 4 possible link types:
 
 1. "flow": Flows between nodes are stored on links. The effect of
   the link direction depends on the node type, Node types that have a notion of an upstream
@@ -318,14 +318,19 @@ There are currently 2 possible link types:
 2. "control": The control links define which nodes are influenced by a particular control or demand node.
   No water flows over these links, only information.
   Control links should always point away from the control or demand node.
-  The links between the control node and the nodes it *listens* to are *not* present in `Link`, these are defined as `listen_node_id` in the control node tables.
   The LevelDemand and FlowDemand nodes use control links to indicate which nodes it will assign demands to.
+3. "listen": The listen links define which nodes are listened to by control nodes.
+  They point from the listened node to the control node.
+  The control node tables define listening behavior (`listen_node_id`, variable, weight, look-ahead).
+  Listen links are **automatically created** when a control link is added via `model.link.add`: the Python API reads the `listen_node_id` columns from the control node's tables and adds any missing listen links immediately.
+  If you want custom geometries, listen links can also be added manually with `model.link.add`, where `from_node` is a listenable node (e.g. a Basin) and `to_node` is a control node (e.g. DiscreteControl or PidControl). The link type is automatically inferred as `"listen"` from the node types.
+4. "observation": Observation links point from an Observation node to the node being observed. These links are not used in the simulation core, but allow attaching time series data for reference, validation, or visualization.
 
 column        | type                          | restriction
 --------------| ----------------------------- | -----------
 from_node_id  | Int32                         | -
 to_node_id    | Int32                         | -
-link_type     | String                        | must be "flow" or "control"
+link_type     | String                        | must be "flow", "control", "listen", or "observation"
 geom          | LineString or MultiLineString | (optional)
 name          | String                        | (optional, does not have to be unique)
 
@@ -363,9 +368,9 @@ The Basin results contain:
 - The `inflow_rate` and `outflow_rate` are the sum of the flows from other nodes into and out of the Basin respectively.
   The actual flows determine in which term they are counted, not the link direction.
 - The `storage_rate` is the net mean flow that is needed to achieve the storage change between timesteps.
-- The `inflow_rate` consists of the sum of all modelled flows into the basin: `inflow_rate` (horizontal flows into the basin, independent of link direction) + `precipitation` + `drainage`.
-- The `outflow_rate` consists of the sum of all modelled flows out of the basin: `outflow_rate` (horizontal flows out of the basin, independent of link direction) + `evaporation` + `infiltration`.
-- The `balance_error` is the difference between the `storage_rate` on one side and the `inflow_rate` and `outflow_rate` on the other side: `storage_rate` - (`inflow_rate` - `outflow_rate`).
+- The total inflow is `inflow_rate` (horizontal) + `precipitation` + `surface_runoff` + `drainage`.
+- The total outflow is `outflow_rate` (horizontal) + `evaporation` + `infiltration`.
+- The `balance_error` is the difference between the `storage_rate` on one side and the total inflow and outflow on the other side: `storage_rate` - (total inflow - total outflow).
   It can be used to check if the numerical error when solving the water balance is sufficiently small.
 - The `relative_error` is the fraction of the `balance_error` over the mean of the `total_inflow` and `total_outflow`.
 - The `convergence` is the scaled residual of the solver, giving an indication of which nodes converge the worst (are hardest to solve). A higher value indicates a node that is harder to solve.
@@ -432,8 +437,8 @@ ds
 
 ## Allocation - `allocation.nc`
 
-The allocation results contain a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and realized flow were.
-The realized values at the starting time of the simulation can be ignored.
+The allocation results contain a record of allocation results: when it happened, for which node, in which allocation network, and what the demand, allocated flow and supplied flow were.
+The supplied values at the starting time of the simulation can be ignored.
 
 **NetCDF structure:**
 
@@ -448,7 +453,7 @@ The LevelDemand node allocations are listed as node type Basin.
 This is because one LevelDemand node can link to multiple Basins, and doesn't receive flow by itself.
 :::
 
-For Basins the values `demand`, `allocated` and `realized` are positive if the Basin level is below the minimum level given by a `LevelDemand` node.
+For Basins the values `demand`, `allocated` and `supplied` are positive if the Basin level is below the minimum level given by a `LevelDemand` node.
 The values are negative if the Basin supplies due to a surplus of water.
 
 ::: {.callout-note}

@@ -1,5 +1,5 @@
 @testitem "trivial model" setup = [Teamcity] begin
-    using NCDatasets: NCDataset
+    using NCDatasets: NCDataset, dimnames
     using Dates: DateTime
     using Ribasim: get_tstops, tsaves
     using Ribasim.CArrays: CVector, getaxes
@@ -126,25 +126,21 @@
 end
 
 @testitem "bucket model" begin
-    using OrdinaryDiffEqCore: get_du
-
     toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     (; p_independent, state_and_time_dependent_cache) = model.integrator.p
-    (; basin) = p_independent
+    (; basin, du_buff) = p_independent
     @test state_and_time_dependent_cache.current_storage ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
-    du = get_du(model.integrator)
-    @test du.evaporation == [0.0]
-    @test du.infiltration == [0.0]
+    @test du_buff.evaporation == [0.0]
+    @test du_buff.infiltration == [0.0]
     @test success(model)
 end
 
 @testitem "leaky bucket model" begin
-    using OrdinaryDiffEqCore: get_du
     import BasicModelInterface as BMI
     using Ribasim: results_path
 
@@ -156,17 +152,16 @@ end
     @test isdir(results_path(model.config))
 
     (; integrator) = model
-    du = get_du(integrator)
     (; u, p, t) = integrator
     (; p_independent, state_and_time_dependent_cache) = p
-    (; basin) = p_independent
+    (; basin, du_buff) = p_independent
 
-    Ribasim.water_balance!(du, u, p, t)
+    Ribasim.water_balance!(du_buff, u, p, t)
     stor = state_and_time_dependent_cache.current_storage
     prec = basin.vertical_flux.precipitation
-    evap = du.evaporation
+    evap = du_buff.evaporation
     drng = basin.vertical_flux.drainage
-    infl = du.infiltration
+    infl = du_buff.infiltration
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
     @test evap == [0.0]
@@ -191,6 +186,7 @@ end
 
 @testitem "basic model" begin
     using Logging: Debug, with_logger
+    using NCDatasets: NCDataset, dimnames
     using LoggingExtras
     import Tables
     using Dates
@@ -229,7 +225,12 @@ end
     # flows are recorded at the end of each period, and are undefined at the start
     @test unique(table.time) == Ribasim.datetimes(model)[1:(end - 1)]
 
-    @test isfile(joinpath(dirname(toml_path), "results/concentration.nc"))
+    concentration_path = joinpath(dirname(toml_path), "results/concentration.nc")
+    @test isfile(concentration_path)
+    NCDataset(concentration_path) do ds
+        @test dimnames(ds["concentration"]) == ("node_id", "substance", "time")
+    end
+
     table = Ribasim.concentration_data(model)
     @test "Continuity" in table.substance
     @test all(isapprox.(table.concentration[table.substance .== "Continuity"], 1.0))
@@ -261,13 +262,13 @@ end
         "Precipitation",
         "SurfaceRunoff",
         "ResidenceTime",
+        "Bar",
+        "Foo",
     ]
     @test all(table.concentration[table.substance .== "ResidenceTime"] .> 0)
 end
 
 @testitem "basic transient model" begin
-    using OrdinaryDiffEqCore: get_du
-
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
     @test ispath(toml_path)
@@ -422,7 +423,6 @@ end
 end
 
 @testitem "ManningResistance" begin
-    using OrdinaryDiffEqCore: get_du
     using Ribasim: NodeID
 
     """
@@ -484,9 +484,9 @@ end
     model = Ribasim.run(toml_path)
     @test success(model)
 
-    du = get_du(model.integrator)
     (; p, t) = model.integrator
     (; p_independent, state_and_time_dependent_cache) = p
+    du = p_independent.du_buff
     (; current_level) = state_and_time_dependent_cache
     h_actual = current_level[1:50]
     x = collect(10.0:20.0:990.0)

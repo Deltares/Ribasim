@@ -1,5 +1,6 @@
 import warnings
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,12 +21,14 @@ from ribasim.input_base import SpatialTableModel
 from ribasim.utils import UsedIDs, _concat
 from ribasim.validation import (
     can_connect,
-    control_link_neighbor_amount,
-    flow_link_neighbor_amount,
+    link_neighbor_amount,
     node_type_connectivity,
 )
 
 from .base import _GeoBaseSchema
+
+if TYPE_CHECKING:
+    from ribasim.model import Model
 
 __all__ = ("LinkTable",)
 
@@ -36,6 +39,32 @@ SPATIALCONTROLNODETYPES = {
     "LevelDemand",
     "PidControl",
 }
+
+LISTENCONTROLNODETYPES = {
+    "ContinuousControl",
+    "DiscreteControl",
+    "PidControl",
+}
+
+
+def _infer_link_type(from_node_type: str, to_node_type: str) -> str:
+    """Infer the link type from the node types of its endpoints.
+
+    Returns ``"observation"`` when the source is an Observation node,
+    ``"listen"`` when the target is a listen-capable control node and
+    the source is *not* a spatial-control node, ``"control"`` when the source
+    is a spatial-control node, and ``"flow"`` otherwise.
+    """
+    if from_node_type == "Observation":
+        return "observation"
+    if (
+        to_node_type in LISTENCONTROLNODETYPES
+        and from_node_type not in SPATIALCONTROLNODETYPES
+    ):
+        return "listen"
+    if from_node_type in SPATIALCONTROLNODETYPES:
+        return "control"
+    return "flow"
 
 
 class LinkSchema(_GeoBaseSchema):
@@ -81,9 +110,9 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         **kwargs,
     ):
         """
-        Add an link between nodes.
+        Add a link between nodes.
 
-        The type of the link (flow or control) is automatically inferred from the type of the `from_node`.
+        The type of the link is automatically inferred from the node types.
 
         Parameters
         ----------
@@ -99,17 +128,35 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             An optional non-negative link ID. If not supplied, it will be automatically generated.
         **kwargs : Dict
         """
-        if not can_connect(from_node.node_type, to_node.node_type):
+        link_type = _infer_link_type(from_node.node_type, to_node.node_type)
+
+        if link_type in {"flow", "control"} and not can_connect(
+            from_node.node_type, to_node.node_type
+        ):
             raise ValueError(
                 f"Node #{to_node.node_id} of type {to_node.node_type} cannot be downstream of node #{from_node.node_id} of type {from_node.node_type}. Possible downstream node types: {node_type_connectivity[from_node.node_type]}."
             )
+        if link_type == "listen" and to_node.node_type not in LISTENCONTROLNODETYPES:
+            raise ValueError(
+                f"Listen links must point to a control node, got to_node type '{to_node.node_type}'."
+            )
 
-        if self.df is not None and (
-            "UserDemand" not in [from_node.node_type, to_node.node_type]
-            and not self.df[
-                (self.df.from_node_id == to_node.node_id)
-                & (self.df.to_node_id == from_node.node_id)
-            ].empty
+        reverse_link_types = set()
+        if self.df is not None:
+            reverse_link_types = set(
+                self.df.loc[
+                    (self.df.from_node_id == to_node.node_id)
+                    & (self.df.to_node_id == from_node.node_id),
+                    "link_type",
+                ]
+            )
+
+        if (
+            self.df is not None
+            and "UserDemand" not in [from_node.node_type, to_node.node_type]
+            and reverse_link_types
+            and "listen" not in reverse_link_types
+            and link_type != "listen"
         ):
             raise ValueError(
                 f"Link ({link_id=}, {from_node=}, {to_node=}) is not allowed since the opposite link already exists (this is only allowed for UserDemand)."
@@ -119,9 +166,6 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             [LineString([from_node.geometry, to_node.geometry])]
             if geometry is None
             else [geometry]
-        )
-        link_type = (
-            "control" if from_node.node_type in SPATIALCONTROLNODETYPES else "flow"
         )
         self._validate_link(to_node, from_node, link_type)
         assert self.df is not None
@@ -155,6 +199,72 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             )
         self._used_link_ids.add(link_id)
 
+        # When a control link is added from a listen-capable control node,
+        # automatically add listen links based on listen_node_id in its tables.
+        if link_type == "control" and from_node.node_type in LISTENCONTROLNODETYPES:
+            self._add_listen_links_for_control_node(from_node)
+
+    def _collect_listen_node_ids(self, control_node: NodeData) -> set[int]:
+        """Return the set of ``listen_node_id`` values for *control_node*.
+
+        Reads the relevant tables from the parent model based on the control
+        node type.  Returns an empty set when the parent model is unavailable
+        or the tables are empty.
+        """
+        model = cast("Model | None", self._parent)
+        if model is None:
+            return set()
+
+        tables: list[pd.DataFrame | None] = []
+        if control_node.node_type == "PidControl":
+            tables = [model.pid_control.static.df, model.pid_control.time.df]
+        elif control_node.node_type == "DiscreteControl":
+            tables = [model.discrete_control.variable.df]
+        elif control_node.node_type == "ContinuousControl":
+            tables = [model.continuous_control.variable.df]
+
+        listen_node_ids: set[int] = set()
+        for table in tables:
+            if table is None:
+                continue
+            mask = table["node_id"] == control_node.node_id
+            listen_node_ids.update(
+                int(x) for x in table.loc[mask, "listen_node_id"].unique()
+            )
+        return listen_node_ids
+
+    def _add_listen_links_for_control_node(self, control_node: NodeData) -> None:
+        """Add listen links for *control_node* based on its ``listen_node_id`` columns.
+
+        Skips any listen links that already exist in the link table.
+        """
+        model = cast("Model | None", self._parent)
+        if model is None:
+            return
+
+        listen_node_ids = self._collect_listen_node_ids(control_node)
+        if not listen_node_ids:
+            return
+
+        assert self.df is not None
+        assert model.node.df is not None
+        for listen_node_id in sorted(listen_node_ids):
+            already_exists = (
+                (self.df["from_node_id"] == listen_node_id)
+                & (self.df["to_node_id"] == control_node.node_id)
+                & (self.df["link_type"] == "listen")
+            ).any()
+            if already_exists:
+                continue
+
+            row = model.node.df.loc[listen_node_id]
+            listened_node = NodeData(
+                node_id=listen_node_id,
+                node_type=row["node_type"],
+                geometry=row["geometry"],
+            )
+            self.add(listened_node, control_node)
+
     def _remove_link_id(self, link_id: NonNegativeInt):
         if self.df is not None and link_id in self.df.index:
             # Remove from node table
@@ -176,7 +286,10 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             if self.df.empty:
                 self.df = None
 
-    def _validate_link(self, to_node: NodeData, from_node: NodeData, link_type: str):
+    def _validate_link(
+        self, to_node: NodeData, from_node: NodeData, link_type: str
+    ) -> None:
+        """Raise ``ValueError`` if adding this link would exceed the neighbor bounds."""
         assert self.df is not None
         in_neighbor: int = self.df.loc[
             (self.df["to_node_id"] == to_node.node_id)
@@ -187,31 +300,21 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             (self.df["from_node_id"] == from_node.node_id)
             & (self.df["link_type"] == link_type)
         ].shape[0]
-        # validation on neighbor amount
-        max_in_flow: int = flow_link_neighbor_amount[to_node.node_type][1]
-        max_out_flow: int = flow_link_neighbor_amount[from_node.node_type][3]
-        max_in_control: int = control_link_neighbor_amount[to_node.node_type][1]
-        max_out_control: int = control_link_neighbor_amount[from_node.node_type][3]
-        if link_type == "flow":
-            if in_neighbor >= max_in_flow:
-                raise ValueError(
-                    f"Node {to_node.node_id} can have at most {max_in_flow} flow link inneighbor(s)"
-                )
-            if out_neighbor >= max_out_flow:
-                raise ValueError(
-                    f"Node {from_node.node_id} can have at most {max_out_flow} flow link outneighbor(s)"
-                )
-        elif link_type == "control":
-            if in_neighbor >= max_in_control:
-                raise ValueError(
-                    f"Node {to_node.node_id} can have at most {max_in_control} control link inneighbor(s)"
-                )
-            if out_neighbor >= max_out_control:
-                raise ValueError(
-                    f"Node {from_node.node_id} can have at most {max_out_control} control link outneighbor(s)"
-                )
+        neighbor_bounds = link_neighbor_amount[link_type]
+
+        max_in: int = neighbor_bounds[to_node.node_type][1]
+        max_out: int = neighbor_bounds[from_node.node_type][3]
+        if in_neighbor >= max_in:
+            raise ValueError(
+                f"Node {to_node.node_id} can have at most {max_in} {link_type} link inneighbor(s)"
+            )
+        if out_neighbor >= max_out:
+            raise ValueError(
+                f"Node {from_node.node_id} can have at most {max_out} {link_type} link outneighbor(s)"
+            )
 
     def _get_where_link_type(self, link_type: str) -> NDArray[np.bool_]:
+        """Return a boolean mask selecting rows with the given *link_type*."""
         assert self.df is not None
         return (self.df.link_type == link_type).to_numpy()
 
@@ -221,13 +324,15 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         Parameters
         ----------
         **kwargs : Dict
-            Supported: 'ax', 'color_flow', 'color_control'
+            Supported: 'ax', 'color_flow', 'color_control', 'color_listen', 'color_observation'
         """
         assert self.df is not None
         kwargs = kwargs.copy()  # Avoid side-effects
         ax = kwargs.get("ax", None)
         color_flow = kwargs.pop("color_flow", None)
         color_control = kwargs.pop("color_control", None)
+        color_listen = kwargs.pop("color_listen", None)
+        color_observation = kwargs.pop("color_observation", None)
 
         if ax is None:
             _, ax = plt.subplots()
@@ -236,6 +341,8 @@ class LinkTable(SpatialTableModel[LinkSchema]):
 
         kwargs_flow = kwargs.copy()
         kwargs_control = kwargs.copy()
+        kwargs_listen = kwargs.copy()
+        kwargs_observation = kwargs.copy()
 
         if color_flow is None:
             color_flow = "#3690c0"  # lightblue
@@ -245,15 +352,33 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             color_control = "grey"
             kwargs_control["color"] = color_control
             kwargs_control["label"] = "Control link"
+        if color_listen is None:
+            color_listen = "grey"
+            kwargs_listen["color"] = color_listen
+            kwargs_listen["label"] = "Listen link"
+            kwargs_listen["linestyle"] = "--"
+        if color_observation is None:
+            color_observation = "black"
+        kwargs_observation["color"] = color_observation
+        kwargs_observation["label"] = "Observation link"
+        kwargs_observation["linestyle"] = "--"
 
         where_flow = self._get_where_link_type("flow")
         where_control = self._get_where_link_type("control")
+        where_listen = self._get_where_link_type("listen")
+        where_observation = self._get_where_link_type("observation")
 
         if not self.df[where_flow].empty:
             self.df[where_flow].plot(**kwargs_flow)
 
         if where_control.any():
             self.df[where_control].plot(**kwargs_control)
+
+        if where_listen.any():
+            self.df[where_listen].plot(**kwargs_listen)
+
+        if where_observation.any():
+            self.df[where_observation].plot(**kwargs_observation)
 
         # Determine the angle for every caret marker and where to place it.
         coords, index = shapely.get_coordinates(self.df.geometry, return_index=True)
@@ -264,10 +389,12 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         angle = np.degrees(np.arctan2(dy, dx)) - 90
 
         # Set the color of the marker to match the line.
-        # Black is default, set color_flow otherwise; then set color_control.
+        # Black is default, set color_flow otherwise; then set color_control, color_listen, color_observation.
         color_index = index[1:][keep]
         color = np.where(where_flow[color_index], color_flow, "k")
         color = np.where(where_control[color_index], color_control, color)
+        color = np.where(where_listen[color_index], color_listen, color)
+        color = np.where(where_observation[color_index], color_observation, color)
 
         # A faster alternative may be ax.quiver(). However, getting the scaling
         # right is tedious.

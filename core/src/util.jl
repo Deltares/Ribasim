@@ -450,15 +450,10 @@ as input. Therefore we set the instantaneous flows as the mean flows as allocati
 function set_initial_allocation_cumulative_volume!(integrator)::Nothing
     (; u, p, t) = integrator
     (; p_independent) = p
-    (; allocation, flow_boundary) = p_independent
+    (; allocation, flow_boundary, du_buff) = p_independent
     (; allocation_models) = allocation
     (; Δt_allocation) = allocation_models[1]
-
-    # At the time of writing water_balance! already
-    # gets called once at the problem initialization, this
-    # one is just to make sure.
-    du = get_du(integrator)
-    water_balance!(du, u, p, t)
+    water_balance!(du_buff, u, p, t)
 
     for allocation_model in allocation_models
         (; cumulative_boundary_volume) = allocation_model
@@ -655,6 +650,7 @@ function collect_control_mappings!(p_independent::ParametersIndependent)::Nothin
 
     for node_type in instances(NodeType.T)
         node_type == NodeType.Terminal && continue
+        node_type == NodeType.Observation && continue
         node = getfield(p_independent, snake_case(node_type))
         if hasfield(typeof(node), :control_mapping)
             control_mappings[node_type] = node.control_mapping

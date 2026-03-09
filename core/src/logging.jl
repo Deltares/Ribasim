@@ -40,6 +40,7 @@ end
 
 "Log messages before the model is initialized."
 function log_startup(config, toml_path::AbstractString)::Nothing
+    print_logo()
     ribasim_version = RIBASIM_VERSION
     threads = Threads.nthreads()
     (; starttime, endtime) = config

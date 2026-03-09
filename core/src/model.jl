@@ -111,6 +111,7 @@ end
 
 function Model(config::Config)::Model
     mkpath(results_path(config))
+    check_result_netcdf_files_writable!(config)
     db_path = database_path(config)
     if !isfile(db_path)
         @error "Database file not found" db_path
@@ -210,7 +211,8 @@ function Model(config::Config)::Model
     # Run water_balance! before initializing the integrator. This is because
     # at this initialization the discrete control callback is called for the first
     # time which depends on the flows formulated in water_balance!
-    water_balance!(du0, u0, parameters, t0)
+    # We use p_independent.du so callbacks can access it during init().
+    water_balance!(p_independent.du_buff, u0, parameters, t0)
 
     # Initialize the integrator, providing all solver options as described in
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
@@ -240,7 +242,6 @@ function Model(config::Config)::Model
     if config.experimental.allocation && is_active(p_independent.allocation)
         set_initial_allocation_cumulative_volume!(integrator)
     end
-
     model = Model(integrator, config, saved)
     return model
 end

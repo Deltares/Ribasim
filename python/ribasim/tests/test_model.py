@@ -16,7 +16,7 @@ from ribasim.config import Solver
 from ribasim.geometry.node import NodeData
 from ribasim.input_base import esc_id
 from ribasim.model import Model
-from ribasim.nodes import basin
+from ribasim.nodes import basin, pid_control
 from ribasim_testmodels import (
     basic_model,
     outlet_model,
@@ -100,6 +100,139 @@ def test_tabulated_rating_curve_model(tabulated_rating_curve, tmp_path):
 def test_plot(basic, discrete_control_of_pid_control):
     basic.plot()
     discrete_control_of_pid_control.plot()
+
+
+def test_control_link_adds_listen_links(discrete_control_of_pid_control):
+    """Adding a control link automatically creates listen links.
+
+    When ``link.add`` creates a control link from a listen-capable control
+    node, it reads the ``listen_node_id`` columns from the control node's
+    tables and adds the corresponding listen links right away.
+    """
+    model = discrete_control_of_pid_control
+
+    assert model.link.df is not None
+    listen_mask = model.link.df["link_type"] == "listen"
+    control_mask = model.link.df["link_type"] == "control"
+
+    # Remove all listen and control links
+    for link_id in model.link.df.index[listen_mask | control_mask].tolist():
+        model.link._remove_link_id(link_id)
+
+    assert model.link.df.loc[model.link.df["link_type"] == "listen"].empty
+    assert model.link.df.loc[model.link.df["link_type"] == "control"].empty
+
+    # Manually add control links back
+    model.link.add(model.pid_control[6], model.outlet[2])
+    model.link.add(model.discrete_control[7], model.pid_control[6])
+
+    # Assert that listen links are now present (auto-added when control links are added)
+    listen_links = model.link.df.loc[model.link.df["link_type"] == "listen"]
+    assert len(listen_links) == 2
+    assert set(
+        zip(listen_links["from_node_id"], listen_links["to_node_id"], strict=False)
+    ) == {
+        (3, 6),
+        (1, 7),
+    }
+
+
+def test_write_adds_missing_listen_links(discrete_control_of_pid_control, tmp_path):
+    """Removing auto-added listen links and writing restores them."""
+    model = discrete_control_of_pid_control
+
+    assert model.link.df is not None
+    listen_mask = model.link.df["link_type"] == "listen"
+    assert listen_mask.sum() == 2  # auto-added by link.add
+
+    # Remove the auto-added listen links
+    for link_id in model.link.df.index[listen_mask].tolist():
+        model.link._remove_link_id(link_id)
+
+    assert model.link.df.loc[model.link.df["link_type"] == "listen"].empty
+
+    # write() calls ensure_listen_links(), which re-adds them
+    model.write(tmp_path / "restored_listen_links/ribasim.toml")
+
+    with connect(tmp_path / "restored_listen_links/input/database.gpkg") as connection:
+        query = "select from_node_id, to_node_id from Link where link_type = 'listen'"
+        df = pd.read_sql_query(query, connection)
+
+    assert len(df) == 2
+    written_pairs = set(zip(df["from_node_id"], df["to_node_id"], strict=False))
+    assert written_pairs == {(3, 6), (1, 7)}
+
+
+def test_collect_listen_link_pairs_with_control(discrete_control_of_pid_control):
+    """Model with PidControl / DiscreteControl should yield non-empty listen pairs."""
+    pairs = discrete_control_of_pid_control._collect_listen_link_pairs()
+    assert not pairs.empty
+    assert set(pairs.columns) == {"from_node_id", "to_node_id"}
+
+
+def test_collect_listen_link_pairs_without_control(basic):
+    """A basic model without control nodes should yield an empty DataFrame."""
+    pairs = basic._collect_listen_link_pairs()
+    assert pairs.empty
+    assert list(pairs.columns) == ["from_node_id", "to_node_id"]
+
+
+def test_ensure_listen_links_idempotent(discrete_control_of_pid_control):
+    """Calling ensure_listen_links on a model whose listen links are already present.
+
+    (auto-added by link.add) should not duplicate links.
+    """
+    model = discrete_control_of_pid_control
+    assert model.link.df is not None
+    count_before = len(model.link.df)
+
+    model.ensure_listen_links()
+    assert len(model.link.df) == count_before
+
+    model.ensure_listen_links()
+    assert len(model.link.df) == count_before
+
+
+def test_manually_add_listen_link(trivial):
+    """Listen links can be added explicitly via link.add().
+
+    When ``link.add`` is called with a listenable node (e.g. Basin) pointing
+    to a control node (e.g. PidControl), the link type is automatically
+    inferred as ``"listen"`` and the link appears in the link DataFrame.
+    This is useful when listen links are needed *before* the control link
+    is added, or for nodes not referenced by ``listen_node_id``.
+    """
+    model = trivial
+
+    # Add a PidControl node that listens to Basin(6)
+    model.pid_control.add(
+        Node(100, Point(400, 300)),
+        [
+            pid_control.Static(
+                listen_node_id=6,
+                target=[0.5],
+                proportional=1e-2,
+                integral=1e-8,
+                derivative=-1e-1,
+            )
+        ],
+    )
+
+    assert model.link.df is not None
+    n_links_before = len(model.link.df)
+
+    # Explicitly add a listen link from Basin(6) -> PidControl(100)
+    model.link.add(model.basin[6], model.pid_control[100])
+
+    listen_links = model.link.df.loc[model.link.df["link_type"] == "listen"]
+    assert len(listen_links) == 1
+    assert listen_links.iloc[0]["from_node_id"] == 6
+    assert listen_links.iloc[0]["to_node_id"] == 100
+    assert len(model.link.df) == n_links_before + 1
+
+    # ensure_listen_links does not duplicate the manually added listen link
+    model.ensure_listen_links()
+    assert len(model.link.df.loc[model.link.df["link_type"] == "listen"]) == 1
 
 
 def test_write_adds_fid_in_tables(basic, tmp_path):

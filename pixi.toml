@@ -1,6 +1,6 @@
 [workspace]
 name = "Ribasim"
-version = "2026.1.0-rc1"
+version = "2026.1.0-rc2"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge"]
@@ -268,7 +268,7 @@ netcdf4 = ">=1.7.1"
 networkx = ">=3.3"
 numpy = ">=2.0"
 packaging = ">=23.0"
-pandas = ">=2.2"
+pandas = ">=2.2,<3"
 pandas-stubs = "*"
 pandera = ">=0.25"
 plotly = "*"

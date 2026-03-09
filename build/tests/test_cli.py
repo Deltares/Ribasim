@@ -34,7 +34,12 @@ def test_models(model_constructor, tmp_path):
 
 def test_version():
     result = subprocess.run(
-        [executable, "--version"], check=True, capture_output=True, text=True
+        [executable, "--version"],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
 
     # ribasim --version is based on the git tag so can be different from
@@ -81,6 +86,8 @@ def test_threads_cli_argument(tmp_path):
         [executable, "--threads", "2", tmp_path / "ribasim.toml"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert result.returncode == 0
     assert "threads = 2" in result.stderr
@@ -96,7 +103,12 @@ def test_threads_env_var(tmp_path):
     env["JULIA_NUM_THREADS"] = "3"
 
     result = subprocess.run(
-        [executable, tmp_path / "ribasim.toml"], env=env, capture_output=True, text=True
+        [executable, tmp_path / "ribasim.toml"],
+        env=env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert result.returncode == 0
     assert "threads = 1" in result.stderr

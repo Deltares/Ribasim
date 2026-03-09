@@ -115,7 +115,7 @@ end
 Update with the latest timestep:
 - Cumulative flows/forcings which are integrated exactly
 - Cumulative flows/forcings which are input for the allocation algorithm
-- Cumulative flows/forcings which are realized demands in the allocation context
+- Cumulative flows/forcings which are supplied demands in the allocation context
 
 During these cumulative flow updates, we can also update the mass balance of the system,
 as each flow carries mass, based on the concentrations of the flow source.
@@ -169,17 +169,17 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     @. flow_boundary.cumulative_flow =
         time_dependent_cache.flow_boundary.current_cumulative_boundary_flow
 
-    # Update realized flows for allocation input and output
+    # Update supplied flows for allocation input and output
     for allocation_model in allocation.allocation_models
-        (; cumulative_boundary_volume, cumulative_realized_volume) = allocation_model
+        (; cumulative_boundary_volume, cumulative_supplied_volume) = allocation_model
         # Flow boundary input
         for link in keys(cumulative_boundary_volume)
             cumulative_boundary_volume[link] += flow_update_on_link(integrator, link)
         end
 
-        # Update realized flows for allocation output
-        for link in keys(cumulative_realized_volume)
-            cumulative_realized_volume[link] += flow_update_on_link(integrator, link)
+        # Update supplied flows for allocation output
+        for link in keys(cumulative_supplied_volume)
+            cumulative_supplied_volume[link] += flow_update_on_link(integrator, link)
         end
     end
     return nothing
@@ -570,9 +570,8 @@ end
 function check_negative_storage(u, t, integrator)::Nothing
     (; p) = integrator
     (; p_independent, state_and_time_dependent_cache) = p
-    (; basin) = p_independent
-    du = get_du(integrator)
-    water_balance!(du, u, p, t)
+    (; basin, du_buff) = p_independent
+    water_balance!(du_buff, u, p, t)
 
     errors = false
     for id in basin.node_id
@@ -603,9 +602,8 @@ Apply the discrete control logic. There's somewhat of a complex structure:
 """
 function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
-    (; discrete_control) = p.p_independent
+    (; discrete_control, du_buff) = p.p_independent
     (; node_id, truth_state, compound_variables) = discrete_control
-    du = get_du(integrator)
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes
@@ -621,7 +619,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 
         # Loop over the compound variables listened to by this discrete control node
         for compound_variable in compound_variables_node
-            value = compound_variable_value(compound_variable, p, du, t)
+            value = compound_variable_value(compound_variable, p, du_buff, t)
 
             # Loop over the threshold interpolations associated with the current compound variable
             for (threshold_low, threshold_high) in

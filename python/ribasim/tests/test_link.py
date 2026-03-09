@@ -2,7 +2,7 @@ import geopandas as gpd
 import pytest
 import shapely.geometry as sg
 from pydantic import ValidationError
-from ribasim.geometry.link import LinkTable, NodeData
+from ribasim.geometry.link import LinkTable, NodeData, _infer_link_type
 
 
 @pytest.fixture(scope="session")
@@ -54,3 +54,55 @@ def test_invalid_retour_link(basic):
 def test_node_data():
     node = NodeData(node_id=5, node_type="Pump", geometry=sg.Point(0, 0))
     assert repr(node) == "Pump #5"
+
+
+def test_listen_link_type_inference(discrete_control_of_pid_control):
+    """Listen links are auto-added when a control link is created."""
+    model = discrete_control_of_pid_control
+    assert model.link.df is not None
+    listen_links = model.link.df.loc[model.link.df["link_type"] == "listen"]
+    # Basin(3)->PidControl(6) was auto-added when PidControl(6)->Outlet(2) control link was created
+    basin_to_pid = listen_links.loc[
+        (listen_links["from_node_id"] == 3) & (listen_links["to_node_id"] == 6)
+    ]
+    assert len(basin_to_pid) == 1
+    assert basin_to_pid.iloc[0]["link_type"] == "listen"
+
+
+@pytest.mark.parametrize(
+    ("from_type", "to_type", "expected"),
+    [
+        ("Basin", "LinearResistance", "flow"),
+        ("Pump", "Basin", "flow"),
+        ("DiscreteControl", "Pump", "control"),
+        ("PidControl", "Outlet", "control"),
+        ("FlowDemand", "Pump", "control"),
+        ("LevelDemand", "Basin", "control"),
+        ("Basin", "PidControl", "listen"),
+        ("Basin", "DiscreteControl", "listen"),
+        ("LinearResistance", "ContinuousControl", "listen"),
+        ("Observation", "Basin", "observation"),
+        ("Observation", "Pump", "observation"),
+    ],
+)
+def test_infer_link_type(from_type: str, to_type: str, expected: str):
+    assert _infer_link_type(from_type, to_type) == expected
+
+
+def test_validate_link_rejects_excess_inneighbors(basic):
+    """Adding a second flow inneighbor to a node with max 1 should raise."""
+    model = basic
+    with pytest.raises(ValueError, match="at most 1 flow link inneighbor"):
+        # LinearResistance allows at most 1 flow inneighbor; it already has one
+        model.link.add(model.basin[1], model.linear_resistance[10])
+
+
+def test_listen_link_allows_reverse_control(discrete_control_of_pid_control):
+    """A listen link is auto-added even when a control link exists in the opposite direction."""
+    model = discrete_control_of_pid_control
+    # pid_control #6 has a control link *to* outlet #2;
+    # the listen link from basin #3 to pid_control #6 was auto-added
+    # without triggering the "opposite link already exists" error.
+    assert model.link.df is not None
+    listen_links = model.link.df.loc[model.link.df["link_type"] == "listen"]
+    assert not listen_links.empty

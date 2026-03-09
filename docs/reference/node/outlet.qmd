@@ -47,7 +47,7 @@ $$
 Q = \mathrm{clamp}(\phi Q_\text{set}, Q_{\min}, Q_{\max})
 $$
 
-- $Q$ is the realized Outlet flow rate.
+- $Q$ is the actual Outlet flow rate.
 - $Q_\text{set}$ is the Outlet's target `flow_rate`.
 - $Q_{\min}$ and $Q_{\max}$ are the Outlet `min_flow_rate` and `max_flow_rate`.
 - $\phi$ is the reduction factor, which smoothly reduces flow based on all of these criteria:

@@ -32,7 +32,7 @@ const RibasimReducedCVectorType{T} = Ribasim.CArrays.CArray{
 }
 
 # LinkType.flow and NodeType.FlowBoundary
-@enumx LinkType flow control none
+@enumx LinkType flow control listen observation none
 @eval @enumx NodeType $(node_types...)
 @enumx ContinuousControlType None Continuous PID
 @enumx Substance Continuity = 1 Initial = 2 LevelBoundary = 3 FlowBoundary = 4 UserDemand =
@@ -56,6 +56,7 @@ const node_type_map::Dict{NodeType.T, Symbol} = Dict(
     NodeType.DiscreteControl => :discrete_control,
     NodeType.ContinuousControl => :continuous_control,
     NodeType.PidControl => :pid_control,
+    NodeType.Observation => :observation,
 )
 
 function config.snake_case(nt::NodeType.T)::Symbol
@@ -240,7 +241,7 @@ has_demand_priority: Per demand priority in the whole model whether a demand of 
 objectives: The objectives (goals) in the order in which they will be optimized for
 cumulative_boundary_volume: The net volume of boundary flow into the model for each FlowBoundary in the subnetwork
     over the last Δt_allocation
-cumulative_realized_volume: The net volume of flow realized by a demand node over the last Δt_allocation
+cumulative_supplied_volume: The net volume of flow supplied to a demand node over the last Δt_allocation
 sources: The nodes in the subnetwork which can act as sources, sorted by route priority
 secondary_network_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
 scaling: The flow and storage scaling factors to make the optimization problem more numerically stable
@@ -255,7 +256,7 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     explicit_positive_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
     implicit_negative_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
     cumulative_boundary_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict()
-    cumulative_realized_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict()
+    cumulative_supplied_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict()
     sources::OrderedDict{Int32, NodeID} = OrderedDict()
     secondary_network_demand::OrderedDict{Tuple{NodeID, NodeID}, Vector{Float64}} =
         OrderedDict()
@@ -273,7 +274,7 @@ struct DemandRecordDatum
     demand_priority::Int32
     demand::Float64
     allocated::Float64
-    realized::Float64
+    supplied::Float64
 end
 
 struct FlowRecordDatum
@@ -1152,6 +1153,8 @@ the object itself is not.
     temp_convergence::RibasimCVectorType{Float64}
     convergence::RibasimCVectorType{Float64}
     ncalls::Vector{Int} = [0]
+    # Pre-allocated buffer for computing du via water_balance!
+    du_buff::RibasimCVectorType{Float64}
     # Reduced state where the cumulative flows are combined into Basin
     # storages (without non-state cumulative_flows)
     u_reduced::RibasimReducedCVectorType{Float64}

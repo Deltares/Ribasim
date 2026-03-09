@@ -55,6 +55,7 @@ node_names_snake_case = [
     "level_demand",
     "linear_resistance",
     "manning_resistance",
+    "observation",
     "outlet",
     "pid_control",
     "pump",

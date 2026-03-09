@@ -66,7 +66,7 @@ concentration  | Float64  | $\text{g}/\text{m}^3$ |
 # Equations
 
 UserDemand receive an allocated flow rate $F^p$ per demand priority $p=1,2,\ldots, p_{\max}$, which is either determined by [allocation optimization](/concept/allocation.qmd) or simply equal to the demand at time $t$; $F^p = d^p(t)$.
-The realized abstraction rate of a UserDemand is given by
+The actual (supplied) abstraction rate of a UserDemand is given by
 $$
     Q_\text{in} = \phi(u, S_{wd0.1})\phi(h-l_{\min}, 0.02)\sum_{p=1}^{p_{\max}} \min\left(F^p, d^p(t)\right).
 $$
