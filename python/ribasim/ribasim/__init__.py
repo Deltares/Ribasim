@@ -12,7 +12,7 @@ from ribasim.model import Model
 
 set_gdal_config_options(
     {
-        "OGR_CURRENT_DATE": fake_date,  # %Y-%m-%dT%H:%M:%fZ
+        "OGR_CURRENT_DATE": fake_date,  # %Y-%m-%dT%H:%M:%S.%fZ
     }
 )
 
