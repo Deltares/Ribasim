@@ -346,6 +346,16 @@ end
 function get_jacobian!(J::HalfLazyJacobian, du, u, p, t, prep, backend)
     (; J_intermediate) = J
     (; u_reduced) = p.p_independent
+
+    # time_dependent_cache is shared (Constant) during the Jacobian evaluation, so
+    # water_balance! calls inside jacobian! will set t_prev_call[1] = t. This prevents
+    # the next (non-AD) water_balance! call from detecting a time change and refreshing
+    # values that are cached in state_and_time_dependent_cache (which IS a copy during
+    # Jacobian evaluation, so its updates don't reach the original). By saving and
+    # restoring t_prev_call, the subsequent RHS call will correctly see the new time and
+    # re-evaluate all time-dependent interpolations into the original caches.
+    t_prev_saved = p.time_dependent_cache.t_prev_call[1]
+
     reduce_state!(u_reduced, u, p.p_independent)
     jacobian!(
         water_balance!,
@@ -360,6 +370,8 @@ function get_jacobian!(J::HalfLazyJacobian, du, u, p, t, prep, backend)
         Constant(p.p_mutable),
         Constant(t),
     )
+
+    p.time_dependent_cache.t_prev_call[1] = t_prev_saved
     return J
 end
 
