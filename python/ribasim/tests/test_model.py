@@ -163,6 +163,37 @@ def test_write_adds_missing_listen_links(discrete_control_of_pid_control, tmp_pa
     assert written_pairs == {(3, 6), (1, 7)}
 
 
+def test_remove_control_node_removes_listen_links(discrete_control_of_pid_control):
+    """Removing a control node removes all links connected to it, including listen links."""
+    model = discrete_control_of_pid_control
+    assert model.link.df is not None
+
+    listen_pairs_before = set(
+        zip(
+            model.link.df.loc[model.link.df["link_type"] == "listen", "from_node_id"],
+            model.link.df.loc[model.link.df["link_type"] == "listen", "to_node_id"],
+            strict=False,
+        )
+    )
+    assert (3, 6) in listen_pairs_before
+
+    model.remove_node(6)
+
+    assert model.link.df is not None
+    assert (model.link.df["from_node_id"] == 6).sum() == 0
+    assert (model.link.df["to_node_id"] == 6).sum() == 0
+
+    listen_pairs_after = set(
+        zip(
+            model.link.df.loc[model.link.df["link_type"] == "listen", "from_node_id"],
+            model.link.df.loc[model.link.df["link_type"] == "listen", "to_node_id"],
+            strict=False,
+        )
+    )
+    assert (3, 6) not in listen_pairs_after
+    assert (1, 7) in listen_pairs_after
+
+
 def test_collect_listen_link_pairs_with_control(discrete_control_of_pid_control):
     """Model with PidControl / DiscreteControl should yield non-empty listen pairs."""
     pairs = discrete_control_of_pid_control._collect_listen_link_pairs()
