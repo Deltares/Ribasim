@@ -233,6 +233,7 @@ model.write(toml_path)
 Now run the model:
 
 ```{python}
+#| output: false
 run_ribasim(toml_path)
 ```
 
@@ -396,6 +397,7 @@ model.write(datadir / "level_range/ribasim.toml")
 Now run the model.
 
 ```{python}
+#| output: false
 run_ribasim(datadir / "level_range/ribasim.toml")
 ```
 
@@ -537,6 +539,7 @@ model.write(datadir / "pid_control/ribasim.toml")
 Now run the model.
 
 ```{python}
+#| output: false
 run_ribasim(datadir / "pid_control/ribasim.toml")
 ```
 
@@ -789,6 +792,7 @@ model.plot()
 Write and run the model:
 
 ```{python}
+#| output: false
 datadir = Path("data")
 model.write(datadir / "polder_management/ribasim.toml")
 run_ribasim(datadir / "polder_management/ribasim.toml")
@@ -965,6 +969,7 @@ model.write(toml_path)
 Now run the model.
 
 ```{python}
+#| output: false
 run_ribasim(toml_path)
 ```
 
@@ -1047,6 +1052,7 @@ model.plot();
 Write the model to a temporary directory and run it:
 
 ```{python}
+#| output: false
 datadir = Path("data/level_demand_with_rating_curve")
 model.write(datadir / "ribasim.toml")
 result = run_ribasim(datadir / "ribasim.toml")

@@ -195,6 +195,7 @@ model.plot();
 ```
 
 ```{python}
+#| output: false
 run_ribasim(toml_path)
 ```
 
