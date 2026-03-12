@@ -52,7 +52,6 @@ model.write(toml_path)
 ```
 
 ```{python}
-#| output: false
 run_ribasim(toml_path)
 ```
 

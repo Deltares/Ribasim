@@ -249,7 +249,6 @@ ribasim Crystal-1/ribasim.toml
 From Python you can run it with [`run_ribasim`](/reference/python/run_ribasim.qmd#ribasim.run_ribasim).
 
 ```{python}
-#| output: false
 run_ribasim(toml_path)
 ```
 
