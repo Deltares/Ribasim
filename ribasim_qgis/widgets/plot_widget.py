@@ -676,7 +676,7 @@ class PlotWidget(QWidget):
         for row, unit in enumerate(units, start=1):
             for trace in traces_by_unit[unit]:
                 fig.add_trace(trace, row=row, col=1)
-            self._update_yaxis_format(fig, row, unit)
+            self._update_yaxis_format(fig, row=row, title_text=unit)
             fig.update_xaxes(showticklabels=row == len(units), row=row, col=1)
 
         fig.update_layout(**_PLOT_LAYOUT)
@@ -826,12 +826,12 @@ class PlotWidget(QWidget):
             if file_units.get(term, "")
         }
         yaxis_title = unit_values.pop() if len(unit_values) == 1 else "(no unit)"
-        self._update_yaxis_format(fig, 1, yaxis_title)
+        self._update_yaxis_format(fig, row=1, title_text=yaxis_title)
 
         for row, unit in enumerate(units, start=2):
             for trace in traces_by_unit[unit]:
                 fig.add_trace(trace, row=row, col=1)
-            self._update_yaxis_format(fig, row, unit)
+            self._update_yaxis_format(fig, row=row, title_text=unit)
 
         last_row = 1 + len(units)
         for row in range(1, last_row + 1):
@@ -946,12 +946,12 @@ class PlotWidget(QWidget):
             if file_units.get(sub, "")
         }
         yaxis_title = unit_values.pop() if len(unit_values) == 1 else "fraction"
-        self._update_yaxis_format(fig, 1, yaxis_title)
+        self._update_yaxis_format(fig, row=1, title_text=yaxis_title)
 
         for row, unit in enumerate(units, start=2):
             for trace in traces_by_unit[unit]:
                 fig.add_trace(trace, row=row, col=1)
-            self._update_yaxis_format(fig, row, unit)
+            self._update_yaxis_format(fig, row=row, title_text=unit)
 
         last_row = 1 + len(units)
         for row in range(1, last_row + 1):
@@ -1180,12 +1180,12 @@ class PlotWidget(QWidget):
 
         flow_units = self._units.get("flow", {})
         yaxis_title = flow_units.get("flow_rate", "m3 s-1")
-        self._update_yaxis_format(fig, 1, yaxis_title)
+        self._update_yaxis_format(fig, row=1, title_text=yaxis_title)
 
         for row, unit in enumerate(units, start=2):
             for trace in traces_by_unit[unit]:
                 fig.add_trace(trace, row=row, col=1)
-            self._update_yaxis_format(fig, row, unit)
+            self._update_yaxis_format(fig, row=row, title_text=unit)
 
         last_row = 1 + len(units)
         for row in range(1, last_row + 1):
