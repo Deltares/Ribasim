@@ -1128,7 +1128,7 @@ function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
     )
     time_dependent_cache.t_prev_call[1] = t
 
-    # Whether the state time dependent cache must be renewed
+    # Whether the state and time dependent cache must be renewed
     new_t_state_and_time_dependent_cache =
         !isassigned(state_and_time_dependent_cache.t_prev_call, 1) || (
         t != state_and_time_dependent_cache.t_prev_call[1] &&

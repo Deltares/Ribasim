@@ -682,14 +682,13 @@ function formulate_pump_or_outlet_flow!(
         flow_rate = if control_type != ContinuousControlType.None
             current_flow_rate[id.idx]
         elseif isassigned(node.time_dependent_flow_rate, node_idx)
-            # get the time dependent flow rate from interpolation or cached value
-            eval_time_interpolation(
-                node.time_dependent_flow_rate[node_idx],
-                current_flow_rate,
-                id.idx,
-                p,
-                t,
-            )
+            # Always evaluate the interpolation directly from p_independent to avoid
+            # reading stale Dual values from the AD-allocated state_and_time_dependent_cache
+            # copy during Jacobian evaluation (the Cache wrapper re-initializes the vector
+            # with near-zero Duals instead of the correct Float64 flow rate).
+            @inbounds val = node.time_dependent_flow_rate[node_idx](t)
+            current_flow_rate[id.idx] = val
+            val
         else
             # get the scalar flow rate from  (for DiscreteControl, Control by allocation or flows from the Static table)
             node.flow_rate[id.idx]
