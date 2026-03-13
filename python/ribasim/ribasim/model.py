@@ -340,9 +340,47 @@ class Model(FileModel, ParentModel):
         self._remove_node_id(node_id)
         self.link._remove_node_id(node_id)
 
+    def _remove_dangling_listen_links(self, control_node_id: int) -> None:
+        """Check if this control node still has control links. If not, remove all listen links.
+
+        Args:
+            control_node_id (int): The ID of the control node to check for dangling listen links.
+        """
+        if self.link.df is None or self.node.df is None:
+            return
+
+        has_remaining_control_links = (
+            (self.link.df["link_type"] == "control")
+            & (self.link.df["from_node_id"] == control_node_id)
+        ).any()
+
+        # If there are remaining control links, we keep the listen links.
+        if has_remaining_control_links:
+            return
+
+        # There are no remaining control links, so we collect all listen links pointing to this control node
+        listen_link_ids = self.link.df.index[
+            (self.link.df["link_type"] == "listen")
+            & (self.link.df["to_node_id"] == control_node_id)
+        ].tolist()
+
+        #  And remove them
+        for listen_link_id in listen_link_ids:
+            self.link._remove_link_id(listen_link_id)
+
     def remove_link(self, link_id: int) -> None:
         """Remove a link from the model."""
+        if self.link.df is None or link_id not in self.link.df.index:
+            return
+
+        removed_link = self.link.df.loc[link_id]
         self.link._remove_link_id(link_id)
+
+        if removed_link["link_type"] != "control":
+            return
+
+        control_node_id = int(removed_link["from_node_id"])
+        self._remove_dangling_listen_links(control_node_id)
 
     def _nodes(self) -> Generator[NodeModel, None, None]:
         """Return all non-empty NodeModel instances."""
