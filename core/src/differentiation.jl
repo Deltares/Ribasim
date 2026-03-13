@@ -346,6 +346,7 @@ end
 function get_jacobian!(J::HalfLazyJacobian, du, u, p, t, prep, backend)
     (; J_intermediate) = J
     (; u_reduced) = p.p_independent
+
     reduce_state!(u_reduced, u, p.p_independent)
     jacobian!(
         water_balance!,
@@ -360,6 +361,7 @@ function get_jacobian!(J::HalfLazyJacobian, du, u, p, t, prep, backend)
         Constant(p.p_mutable),
         Constant(t),
     )
+
     return J
 end
 

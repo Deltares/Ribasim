@@ -959,6 +959,8 @@ function get_timeseries_tstops(
         level_boundary,
         level_demand,
         pid_control,
+        pump,
+        outlet,
         tabulated_rating_curve,
         user_demand,
         discrete_control,
@@ -990,6 +992,19 @@ function get_timeseries_tstops(
         end
     end
 
+    # Pump and Outlet transient flow rate and bounds
+    # time_dependent_flow_rate may have undef elements (nodes with static flow rates)
+    get_timeseries_tstops_assigned!(tstops, t_end, pump.time_dependent_flow_rate)
+    get_timeseries_tstops_assigned!(tstops, t_end, outlet.time_dependent_flow_rate)
+    get_timeseries_tstops!(tstops, t_end, pump.min_flow_rate)
+    get_timeseries_tstops!(tstops, t_end, pump.max_flow_rate)
+    get_timeseries_tstops!(tstops, t_end, pump.min_upstream_level)
+    get_timeseries_tstops!(tstops, t_end, pump.max_downstream_level)
+    get_timeseries_tstops!(tstops, t_end, outlet.min_flow_rate)
+    get_timeseries_tstops!(tstops, t_end, outlet.max_flow_rate)
+    get_timeseries_tstops!(tstops, t_end, outlet.min_upstream_level)
+    get_timeseries_tstops!(tstops, t_end, outlet.max_downstream_level)
+
     return tstops
 end
 
@@ -1000,6 +1015,24 @@ function get_timeseries_tstops!(
     )::Nothing
     for itp in interpolations
         push!(tstops, get_timeseries_tstops(itp, t_end))
+    end
+    return nothing
+end
+
+"""
+Like `get_timeseries_tstops!`, but skips unassigned elements in the vector.
+This is needed for vectors initialized with `undef` where only some elements are set
+(e.g. `Pump.time_dependent_flow_rate` which is only assigned for nodes with transient data).
+"""
+function get_timeseries_tstops_assigned!(
+        tstops::Vector{Vector{Float64}},
+        t_end::Float64,
+        interpolations::AbstractArray{<:AbstractInterpolation},
+    )::Nothing
+    for i in eachindex(interpolations)
+        if isassigned(interpolations, i)
+            push!(tstops, get_timeseries_tstops(interpolations[i], t_end))
+        end
     end
     return nothing
 end
@@ -1095,7 +1128,7 @@ function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
     )
     time_dependent_cache.t_prev_call[1] = t
 
-    # Whether the state time dependent cache must be renewed
+    # Whether the state and time dependent cache must be renewed
     new_t_state_and_time_dependent_cache =
         !isassigned(state_and_time_dependent_cache.t_prev_call, 1) || (
         t != state_and_time_dependent_cache.t_prev_call[1] &&
