@@ -55,6 +55,14 @@ Don't change the old version numbers in `changelog.qmd`.
 Always update the example version numbers in `docs/guide/installing-other-versions.qmd` to refer to the latest release candidate and never to a stable release.
 :::
 
+::: {.callout-important}
+The `Identity Version` in `build/AppxManifest.xml` consists of four numbers.
+The fourth number should be reset to 1 when the 3-part version number changes.
+When the 3-part version number does not change, increase it by one.
+That means for the example of the two pre-releases of `2023.1.0` and its release, these should get 1, 2 and 3 respectively.
+If the fourth number does not increase, users cannot update existing installations, but have to uninstall first.
+:::
+
 ## Update the changelog
 
 The `docs/changelog.qmd` file, hosted on [ribasim.org/changelog](https://ribasim.org/changelog), records the most important changes for users.
