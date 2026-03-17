@@ -326,5 +326,5 @@ def test_node_id_equal_mismatch():
     # Remove one basin from state so it doesn't match all basin node_ids
     model.basin.state.df = model.basin.state.df[model.basin.state.df["node_id"] != 5]
 
-    with pytest.raises(ValueError, match="Basin/state.*missing node_ids"):
+    with pytest.raises(ValueError, match=r"Basin/state.*missing node_ids"):
         model._validate_model()
