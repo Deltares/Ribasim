@@ -1,5 +1,6 @@
 import re
 
+import pandas as pd
 import pytest
 from ribasim import Node
 from ribasim.config import Solver
@@ -198,3 +199,132 @@ def test_geometry_validation():
     assert threed.has_z.iloc[0]
     basinarea = basin.Area(geometry=threed)
     assert not basinarea.df.geometry.has_z.iloc[0]
+
+
+def test_node_id_validation_valid(basic):
+    """A valid model should pass node_id validation without errors."""
+    model = basic
+    model._validate_model()
+
+
+def test_node_id_partition_overlap():
+    """Node_ids appearing in both static and time tables should raise."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        solver=Solver(),
+    )
+
+    model.basin.add(
+        Node(1, Point(0.0, 0.0)),
+        [
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+            basin.State(level=[0.0]),
+            basin.Static(precipitation=[0.001 / 86400]),
+        ],
+    )
+    model.pump.add(
+        Node(2, Point(1.0, 0.0)),
+        [pump.Static(flow_rate=[1e-3])],
+    )
+    model.terminal.add(Node(3, Point(2.0, 0.0)))
+
+    model.link.add(model.basin[1], model.pump[2])
+    model.link.add(model.pump[2], model.terminal[3])
+
+    # Manually inject conflicting data: add node_id=2 into pump.time as well
+    model.pump.time.df = pd.DataFrame(
+        data={
+            "node_id": [2],
+            "time": pd.Timestamp("2020-01-01"),
+            "flow_rate": [2e-3],
+            "min_flow_rate": [float("nan")],
+            "max_flow_rate": [float("nan")],
+            "min_upstream_level": [float("nan")],
+            "max_downstream_level": [float("nan")],
+        }
+    )
+
+    with pytest.raises(ValueError, match="found in both static and time"):
+        model._validate_model()
+
+
+def test_node_id_partition_missing():
+    """Partition tables whose union doesn't cover all node_ids should raise."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        solver=Solver(),
+    )
+
+    model.basin.add(
+        Node(1, Point(0.0, 0.0)),
+        [
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+            basin.State(level=[0.0]),
+            basin.Static(precipitation=[0.001 / 86400]),
+        ],
+    )
+    model.pump.add(
+        Node(2, Point(1.0, 0.0)),
+        [pump.Static(flow_rate=[1e-3])],
+    )
+    model.pump.add(
+        Node(4, Point(1.0, 1.0)),
+        [pump.Static(flow_rate=[1e-3])],
+    )
+    model.terminal.add(Node(3, Point(2.0, 0.0)))
+
+    model.link.add(model.basin[1], model.pump[2])
+    model.link.add(model.pump[2], model.terminal[3])
+    model.link.add(model.basin[1], model.pump[4])
+    model.link.add(model.pump[4], model.terminal[3])
+
+    # Remove pump node_id=4 from static so partition is incomplete
+    model.pump.static.df = model.pump.static.df[model.pump.static.df["node_id"] != 4]
+
+    with pytest.raises(ValueError, match="missing node_ids"):
+        model._validate_model()
+
+
+def test_node_id_equal_mismatch():
+    """A table with 'equal' relation missing a node_id should raise."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+        solver=Solver(),
+    )
+
+    model.basin.add(
+        Node(1, Point(0.0, 0.0)),
+        [
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+            basin.State(level=[0.0]),
+            basin.Static(precipitation=[0.001 / 86400]),
+        ],
+    )
+    model.basin.add(
+        Node(5, Point(3.0, 0.0)),
+        [
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+            basin.State(level=[0.0]),
+            basin.Static(precipitation=[0.001 / 86400]),
+        ],
+    )
+    from ribasim.nodes import linear_resistance
+
+    model.linear_resistance.add(
+        Node(2, Point(1.0, 0.0)),
+        [linear_resistance.Static(resistance=[5e3])],
+    )
+    model.link.add(model.basin[1], model.linear_resistance[2])
+    model.link.add(model.linear_resistance[2], model.basin[5])
+
+    # Remove one basin from state so it doesn't match all basin node_ids
+    model.basin.state.df = model.basin.state.df[model.basin.state.df["node_id"] != 5]
+
+    with pytest.raises(ValueError, match="Basin/state.*missing node_ids"):
+        model._validate_model()

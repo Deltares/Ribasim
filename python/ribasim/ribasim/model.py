@@ -571,7 +571,9 @@ class Model(FileModel, ParentModel):
         self.link.df = GeoDataFrame[LinkSchema](_concat([df_link, table_to_append]))
 
     def _validate_model(self) -> None:
-        """Validate that all nodes satisfy their neighbor-count bounds for every link type."""
+        """Validate that all nodes satisfy their neighbor-count bounds for every link type,
+        and that node_ids in data tables are consistent with the Node table.
+        """
         df_link = self.link.df
         df_node = self.node.df
         assert df_link is not None
@@ -596,6 +598,9 @@ class Model(FileModel, ParentModel):
                 raise ValueError(
                     f"Minimum {link_type} inneighbor or outneighbor unsatisfied"
                 )
+
+        for node_model in self._nodes():
+            node_model._validate_node_ids()
 
     def _has_valid_neighbor_amount(
         self,
