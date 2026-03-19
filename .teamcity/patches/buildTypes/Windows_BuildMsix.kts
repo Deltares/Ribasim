@@ -13,4 +13,9 @@ changeBuildType(RelativeId("Windows_BuildMsix")) {
         "Unexpected paused: '$paused'"
     }
     paused = false
+
+    check(artifactRules == """ribasim\build\ribasim_windows.msix""") {
+        "Unexpected option value: artifactRules = $artifactRules"
+    }
+    artifactRules = "ribasim/build/ribasim_windows.msix => ."
 }
