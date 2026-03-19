@@ -17,5 +17,5 @@ changeBuildType(RelativeId("Windows_BuildMsix")) {
     check(artifactRules == """ribasim\build\ribasim_windows.msix""") {
         "Unexpected option value: artifactRules = $artifactRules"
     }
-    artifactRules = "ribasim/windows/ribasim_windows.msix => ."
+    artifactRules = "ribasim/build/ribasim_windows.msix => ."
 }
