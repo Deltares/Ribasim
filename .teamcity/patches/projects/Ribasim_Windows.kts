@@ -14,8 +14,8 @@ changeProject(RelativeId("Ribasim_Windows")) {
     features {
         add {
             activeStorage {
-                id = "PROJECT_EXT_353"
-                activeStorageID = "PROJECT_EXT_171"
+                id = "PROJECT_EXT_354"
+                activeStorageID = "DefaultStorage"
             }
         }
     }
