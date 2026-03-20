@@ -2155,11 +2155,17 @@ function interpolate_basin_profile!(
 
         # Left linear extrapolation for usable gradients by the nonlinear solver for negative storages
         # Right linear extrapolation corresponds with constant extrapolation of area
-        basin.storage_to_level[i] = invert_integral(
-            level_to_area;
-            extrapolation_left = ExtrapolationType.Linear,
-            extrapolation_right = ExtrapolationType.Linear,
-        )
+        try
+            basin.storage_to_level[i] = invert_integral(
+                level_to_area;
+                extrapolation_left = ExtrapolationType.Linear,
+                extrapolation_right = ExtrapolationType.Linear,
+            )
+        catch e
+            error(
+                "Failed to construct a storage to level interpolation for $(basin.node_id[i]): $(sprint(showerror, e))",
+            )
+        end
 
         if !all(ismissing, group_area)
             # if all data is present for area, we use it
