@@ -87,6 +87,7 @@ tables = {
     "Basin / concentration",
     "Basin / concentration_external",
     "Basin / concentration_state",
+    "Basin / loads",
     "Basin / area",
     "Basin / profile",
     "Basin / state",
