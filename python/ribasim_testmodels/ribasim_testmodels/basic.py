@@ -54,7 +54,9 @@ def basic_model() -> Model:
             time="2020-01-01 00:00:00", substance=["Cl"], concentration=[0.0]
         ),
         basin.Loads(
-            time="2020-01-01 00:00:00", substance=["Cl", "Tracer"], load=[1.0, 2.0]
+            time="2020-01-01 00:00:00",
+            substance=["Basic", "Tracer"],
+            load=[0.001, 0.002],
         ),
     ]
     node_ids = [1, 3, 6, 9]

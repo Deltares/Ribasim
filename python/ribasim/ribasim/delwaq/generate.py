@@ -505,7 +505,7 @@ def generate(
     write_flows(output_path / "ribasim.flo", nflows, timestep)
     write_flows(
         output_path / "ribasim.are", nflows, timestep
-    )  # same as flow, so area becomes 1
+    )  # same as flow, so velocity becomes 1
 
     # Write volumes to Delwaq format
     volumes = basins.loc[:, ["time", "node_id", "storage"]]
@@ -517,9 +517,9 @@ def generate(
     # volumes.to_csv(output_path / "volumes.csv", index=False)  # not needed
     volumes.drop(columns=["node_id", "riba_node_id"], inplace=True)
     write_volumes(output_path / "ribasim.vol", volumes, timestep)
-    write_volumes(
-        output_path / "ribasim.vel", volumes, timestep
-    )  # same as volume, so vel becomes 1
+    # write_volumes(
+    # output_path / "ribasim.vel", volumes, timestep
+    # )  # same as volume, so vel becomes 1
 
     # Length file
     lengths = nflows.copy()

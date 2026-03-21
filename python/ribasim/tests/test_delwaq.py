@@ -38,6 +38,7 @@ def test_offline_delwaq_coupling(tmp_path):
     assert df.shape[0] > 0
     assert df.node_id.nunique() == 4
     assert sorted(df.substance.unique()) == [
+        "Basic",
         "Cl",
         "Continuity",
         "Drainage",
@@ -52,6 +53,7 @@ def test_offline_delwaq_coupling(tmp_path):
 
     assert all(df[df.substance == "Continuity"].concentration >= 1.0 - 1e-6)
     assert all(np.isclose(df[df.substance == "UserDemand"].concentration, 0.0))
+    assert any(df[df.substance == "Basic"].concentration > 0)  # Loads should increase
 
     model.write(tmp_path / "basic/ribasim.toml")
 
@@ -92,6 +94,7 @@ def test_offline_delwaq_coupling_evaporate_mass(tmp_path):
     assert df.node_id.nunique() == 4
     assert sorted(df.substance.unique()) == [
         "Bar",
+        "Basic",
         "Cl",
         "Continuity",
         "Drainage",
