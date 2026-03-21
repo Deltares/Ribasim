@@ -2,12 +2,12 @@
 {{ loads | length }} ; Number of loads
 
 {% for load in loads -%}
-{{ load.node_id }} '{{ load.name}}' '{{ load.name}}' ''
+{{ load.node_id }} MASS '{{ load.name}}' '{{ load.name}}' ''
 {% endfor -%}
 
 {% for load in loads %}
-ITEM MASS '{{ load.name }}'
-CONCENTRATIONS {{ load.substances | join(" ") | safe }}
+ITEM '{{ load.name }}'
+CONCENTRATION {{ load.substances | join(" ") | safe }}
 ABSOLUTE TIME
 DATA {{ load.substances | join(" ") | safe }}
 {{ load.df | safe }}

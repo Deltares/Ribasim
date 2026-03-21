@@ -321,7 +321,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
     return G, merge_links, node_mapping, link_mapping, basin_mapping
 
 
-def _setup_boundaries(model):
+def _setup_boundaries(model, node_mapping):
     concentrations = []
     loads = []
     substances = set()
@@ -355,7 +355,7 @@ def _setup_boundaries(model):
     if model.basin.loads.df is not None:
         for node_id, rows in model.basin.loads.df.groupby(["node_id"]):
             boundary, substance = _make_boundary(rows, "Basin", "load")
-            boundary["node_id"] = node_id[0]
+            boundary["node_id"] = node_mapping[node_id[0]]
             loads.append(boundary)
             substances.update(substance)
 
@@ -528,7 +528,7 @@ def generate(
     write_flows(output_path / "ribasim.len", lengths, timestep)
 
     # Find all boundary substances and concentrations
-    boundaries, substances, loads = _setup_boundaries(model)
+    boundaries, substances, loads = _setup_boundaries(model, node_mapping)
     # Write boundary data with substances and concentrations
     template = env.get_template("B5_bounddata.inc.j2")
     with (output_path / "B5_bounddata.inc").open(mode="w") as f:
