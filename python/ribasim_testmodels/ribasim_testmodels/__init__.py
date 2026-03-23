@@ -88,6 +88,7 @@ from ribasim_testmodels.pid_control import (
 )
 from ribasim_testmodels.time import (
     flow_boundary_time_model,
+    transient_outlet_model,
     transient_pump_outlet_model,
 )
 from ribasim_testmodels.trivial import trivial_model
@@ -162,6 +163,7 @@ __all__ = [
     "tabulated_rating_curve_control_model",
     "tabulated_rating_curve_model",
     "transient_condition_model",
+    "transient_outlet_model",
     "transient_pump_outlet_model",
     "trivial_model",
     "two_basin_model",

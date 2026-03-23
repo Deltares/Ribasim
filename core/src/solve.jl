@@ -682,14 +682,20 @@ function formulate_pump_or_outlet_flow!(
         flow_rate = if control_type != ContinuousControlType.None
             current_flow_rate[id.idx]
         elseif isassigned(node.time_dependent_flow_rate, node_idx)
-            # Always evaluate the interpolation directly from p_independent
-            @inbounds val = node.time_dependent_flow_rate[node_idx](t)
-            current_flow_rate[id.idx] = val
-            val
+            # get the time dependent flow rate from interpolation or cached value
+            eval_time_interpolation(
+                node.time_dependent_flow_rate[node_idx],
+                current_flow_rate,
+                id.idx,
+                p,
+                t,
+            )
         else
             # get the scalar flow rate from  (for DiscreteControl, Control by allocation or flows from the Static table)
             node.flow_rate[id.idx]
         end
+
+        println("flow_rate = ", flow_rate)
 
         inflow_id = inflow_link.link[1]
         outflow_id = outflow_link.link[2]
@@ -753,6 +759,7 @@ function formulate_pump_or_outlet_flow!(
         )
         q *= reduction_factor(max_downstream_level_ - dst_level, level_difference_threshold)
 
+        println("du_component = ", q)
         du_component[node_idx] = q
     end
     return nothing
