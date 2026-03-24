@@ -44,6 +44,90 @@ from .base import _GeoBaseSchema
 
 __all__ = ("NodeTable",)
 
+_READ_ONLY_MSG = (
+    "This DataFrame is a read-only filtered copy obtained via "
+    "`model.<node_type>.node`. Modify `model.node.df` directly instead."
+)
+
+
+class _ReadOnlyIndexer:
+    """Wraps a pandas indexer (.loc/.iloc/.at/.iat) to block write access."""
+
+    __slots__ = ("_indexer",)
+
+    def __init__(self, indexer: object) -> None:
+        object.__setattr__(self, "_indexer", indexer)
+
+    def __getitem__(self, key: object) -> object:
+        return self._indexer[key]  # type: ignore[index]
+
+    def __setitem__(self, key: object, value: object) -> None:
+        raise AttributeError(_READ_ONLY_MSG)
+
+
+class _ReadOnlyDataFrameProxy:
+    """Lightweight proxy around a GeoDataFrame that blocks mutation.
+
+    Temporary developer guard — see ``NodeModel.node``.
+    Read access is fully delegated; writes raise ``AttributeError``.
+    """
+
+    __slots__ = ("_df",)
+
+    def __init__(self, df: gpd.GeoDataFrame) -> None:
+        object.__setattr__(self, "_df", df)
+
+    # --- read delegation ---
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._df, name)
+
+    def __getitem__(self, key: object) -> object:
+        return self._df[key]
+
+    def __len__(self) -> int:
+        return len(self._df)
+
+    def __iter__(self):  # type: ignore[override]
+        return iter(self._df)
+
+    def __contains__(self, item: object) -> bool:
+        return item in self._df
+
+    def __repr__(self) -> str:
+        return repr(self._df)
+
+    def __str__(self) -> str:
+        return str(self._df)
+
+    def _repr_html_(self) -> str | None:
+        return self._df._repr_html_()
+
+    # --- write blocking ---
+    def __setattr__(self, name: str, value: object) -> None:
+        raise AttributeError(_READ_ONLY_MSG)
+
+    def __setitem__(self, key: object, value: object) -> None:
+        raise AttributeError(_READ_ONLY_MSG)
+
+    def __delitem__(self, key: object) -> None:
+        raise AttributeError(_READ_ONLY_MSG)
+
+    @property
+    def loc(self) -> _ReadOnlyIndexer:
+        return _ReadOnlyIndexer(self._df.loc)
+
+    @property
+    def iloc(self) -> _ReadOnlyIndexer:
+        return _ReadOnlyIndexer(self._df.iloc)
+
+    @property
+    def at(self) -> _ReadOnlyIndexer:
+        return _ReadOnlyIndexer(self._df.at)
+
+    @property
+    def iat(self) -> _ReadOnlyIndexer:
+        return _ReadOnlyIndexer(self._df.iat)
+
 
 class NodeSchema(_GeoBaseSchema):
     node_id: Index[Int32] = pa.Field(default=0, ge=0, check_name=True)
@@ -67,6 +151,26 @@ class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
     """The Ribasim nodes as Point geometries."""
 
     _used_node_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
+    _read_only: bool = PrivateAttr(default=False)
+
+    def __getattribute__(self, name: str) -> object:
+        if name == "df":
+            try:
+                private = object.__getattribute__(self, "__pydantic_private__")
+                read_only = private.get("_read_only", False) if private else False
+            except AttributeError:
+                read_only = False
+            if read_only:
+                df = super().__getattribute__(name)
+                if df is not None:
+                    return _ReadOnlyDataFrameProxy(df)
+                return df
+        return super().__getattribute__(name)
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if name == "df" and getattr(self, "_read_only", False):
+            raise AttributeError(_READ_ONLY_MSG)
+        super().__setattr__(name, value)
 
     @model_validator(mode="after")
     def _update_used_ids(self) -> "NodeTable":
@@ -272,7 +376,9 @@ class NodeModel(ParentModel, ChildModel):
     @property
     def node(self) -> NodeTable | None:
         if self._parent is not None and hasattr(self._parent, "node"):
-            return NodeTable(df=self._parent.node.filter(self.__class__.__name__))
+            node_table = NodeTable(df=self._parent.node.filter(self.__class__.__name__))
+            node_table._read_only = True
+            return node_table
         return None
 
     def _tables(self, skip_empty: bool = True) -> Generator[TableModel[_BaseSchema]]:
