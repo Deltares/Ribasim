@@ -695,8 +695,6 @@ function formulate_pump_or_outlet_flow!(
             node.flow_rate[id.idx]
         end
 
-        println("flow_rate = ", flow_rate)
-
         inflow_id = inflow_link.link[1]
         outflow_id = outflow_link.link[2]
         src_level = get_level(p, inflow_id, t)
@@ -759,7 +757,6 @@ function formulate_pump_or_outlet_flow!(
         )
         q *= reduction_factor(max_downstream_level_ - dst_level, level_difference_threshold)
 
-        println("du_component = ", q)
         du_component[node_idx] = q
     end
     return nothing
