@@ -347,6 +347,16 @@ function get_jacobian!(J::HalfLazyJacobian, du, u, p, t, prep, backend)
     (; J_intermediate) = J
     (; u_reduced) = p.p_independent
     reduce_state!(u_reduced, u, p.p_independent)
+
+    # Save shared mutable state that AD calls will corrupt through Constant() wrappers
+    saved_td_t_prev = p.time_dependent_cache.t_prev_call[1]
+    saved_new_td = p.p_mutable.new_time_dependent_cache
+    saved_new_satd = p.p_mutable.new_state_and_time_dependent_cache
+
+    # Invalidate t_prev_call so the first AD call's check_new_input! sees t != -1,
+    # forcing new_time_dependent_cache = true and properly populating the AD cache copy
+    p.time_dependent_cache.t_prev_call[1] = -1
+
     jacobian!(
         water_balance!,
         du,
@@ -360,6 +370,12 @@ function get_jacobian!(J::HalfLazyJacobian, du, u, p, t, prep, backend)
         Constant(p.p_mutable),
         Constant(t),
     )
+
+    # Restore shared state so next real RHS call works correctly
+    p.time_dependent_cache.t_prev_call[1] = saved_td_t_prev
+    p.p_mutable.new_time_dependent_cache = saved_new_td
+    p.p_mutable.new_state_and_time_dependent_cache = saved_new_satd
+
     return J
 end
 
