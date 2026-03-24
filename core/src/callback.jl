@@ -198,6 +198,7 @@ function update_concentrations!(u, t, integrator)::Nothing
         concentration_itp_drainage,
         concentration_itp_precipitation,
         concentration_itp_surface_runoff,
+        loads_itp,
         mass,
     ) = concentration_data
 
@@ -233,6 +234,13 @@ function update_concentrations!(u, t, integrator)::Nothing
             mass_node,
             concentration_itp_surface_runoff[node_id.idx],
             vertical_flux.surface_runoff[node_id.idx] * dt,
+            t,
+        )
+
+        add_substance_mass!(
+            mass_node,
+            loads_itp[node_id.idx],
+            dt,  # loads are per second, not volume, so the flow is just the time step
             t,
         )
     end

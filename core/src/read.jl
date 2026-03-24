@@ -713,6 +713,7 @@ const unit_constant_itp = ConstantInterpolation(
 
 function ConcentrationData(
         concentration_time,
+        loads_time,
         node_id::Vector{NodeID},
         db::DB,
         config::Config,
@@ -740,6 +741,9 @@ function ConcentrationData(
     concentration_itp_surface_runoff = [
         initialize_concentration_itp(n_substance, Substance.SurfaceRunoff) for _ in node_id
     ]
+    loads_itp = [
+        fill(zero_constant_itp, n_substance) for _ in node_id
+    ]
 
     for (id, cyclic_time) in zip(node_id, cyclic_times)
         data_id = filter(row -> row.node_id == id.value, concentration_time)
@@ -752,6 +756,15 @@ function ConcentrationData(
                 filtered_constant_interpolation(group, :precipitation, cyclic_time, config; node_id = id)
             concentration_itp_surface_runoff[id.idx][substance_idx] =
                 filtered_constant_interpolation(group, :surface_runoff, cyclic_time, config; node_id = id)
+        end
+    end
+    for (id, cyclic_time) in zip(node_id, cyclic_times)
+        data_id = filter(row -> row.node_id == id.value, loads_time)
+        for group in IterTools.groupby(row -> row.substance, data_id)
+            first_row = first(group)
+            substance_idx = find_index(Symbol(first_row.substance), substances)
+            loads_itp[id.idx][substance_idx] =
+                filtered_constant_interpolation(group, :load, cyclic_time, config; node_id = id)
         end
     end
 
@@ -796,6 +809,7 @@ function ConcentrationData(
         concentration_itp_drainage,
         concentration_itp_precipitation,
         concentration_itp_surface_runoff,
+        loads_itp,
         mass,
         concentration_external,
         substances,
@@ -808,9 +822,10 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     time = load_structvector(db, config, Schema.Basin.Time)
     state = load_structvector(db, config, Schema.Basin.State)
     concentration_time = load_structvector(db, config, Schema.Basin.Concentration)
+    loads_time = load_structvector(db, config, Schema.Basin.Loads)
     node_id = get_node_ids(db, NodeType.Basin)
     cyclic_times = get_cyclic_time(db, "Basin")
-    concentration_data = ConcentrationData(concentration_time, node_id, db, config)
+    concentration_data = ConcentrationData(concentration_time, loads_time, node_id, db, config)
 
     basin = Basin(; node_id, concentration_data)
 
@@ -2071,6 +2086,7 @@ function get_substances(db::DB, config::Config)::OrderedSet{Symbol}
     for table in [
             Schema.Basin.ConcentrationState,
             Schema.Basin.Concentration,
+            Schema.Basin.Loads,
             Schema.FlowBoundary.Concentration,
             Schema.LevelBoundary.Concentration,
             Schema.UserDemand.Concentration,

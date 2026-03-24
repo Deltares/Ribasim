@@ -110,12 +110,14 @@ test-ribasim-regression = { cmd = "julia --project=core --eval 'using Pkg; Pkg.t
         "benchmark/",
     ] },
 ] }
-generate-testmodels = { cmd = "python utils/generate-testmodels.py", inputs = [
+generate-testmodels = { cmd = "python utils/generate-testmodels.py {{name}}", inputs = [
     "python/ribasim/ribasim",
     "python/ribasim_testmodels",
     "utils/generate-testmodels.py",
+], args = [
+    { "arg" = "name", "default" = "" },
 ], outputs = [
-    "generated_testmodels",
+    "generated_testmodels/{{name}}",
 ] }
 write-node-icons = "python utils/write_node_icons.py"
 upload-node-icons = "python utils/write_node_icons.py --upload"
@@ -162,8 +164,12 @@ mypy-ribasim-qgis = "mypy ribasim_qgis"
 ribasim-core = { cmd = "julia --project=core -e 'using Ribasim; Ribasim.main(ARGS)'", depends-on = [
     "initialize-julia",
 ] }
-ribasim-core-testmodels = { cmd = "julia --project utils/testmodelrun.jl", depends-on = [
-    "generate-testmodels",
+ribasim-core-testmodels = { cmd = "julia --project utils/testmodelrun.jl {{name}}", args = [
+    { "arg" = "name", "default" = "" },
+], depends-on = [
+    { task = "generate-testmodels", args = [
+        "{{name}}",
+    ] },
     "initialize-julia",
 ] }
 write-allocation-problems = { cmd = "julia --project utils/write_allocation_problems.jl", depends-on = [

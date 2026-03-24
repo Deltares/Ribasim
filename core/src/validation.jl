@@ -187,6 +187,7 @@ sort_by(::StructVector{Schema.Basin.Concentration}) = x -> (x.node_id, x.substan
 sort_by(::StructVector{Schema.Basin.ConcentrationExternal}) =
     x -> (x.node_id, x.substance, x.time)
 sort_by(::StructVector{Schema.Basin.ConcentrationState}) = x -> (x.node_id, x.substance)
+sort_by(::StructVector{Schema.Basin.Loads}) = x -> (x.node_id, x.substance, x.time)
 sort_by(::StructVector{Schema.Basin.Profile}) = x -> (x.node_id, x.level)
 sort_by(::StructVector{Schema.Basin.State}) = x -> (x.node_id)
 sort_by(::StructVector{Schema.Basin.Static}) = x -> (x.node_id)
