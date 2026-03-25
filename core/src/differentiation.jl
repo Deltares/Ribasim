@@ -349,7 +349,9 @@ function get_jacobian!(J::HalfLazyJacobian, du, u, p, t, prep, backend)
     reduce_state!(u_reduced, u, p.p_independent)
 
     saved_td_t_prev = p.time_dependent_cache.t_prev_call[1]
-    # Invalidate t_prev_call so the first AD call's check_new_input! sees t != -1,
+    # Invalidate t_prev_call so the first AD call's check_new_input! always sees t != -1,
+    # Otherwise, it would read garbage values from p.state_and_time_dependent_cache,
+    # since it is marked as Cache(), which means it starts as uninitialised dual number arrays.
     p.time_dependent_cache.t_prev_call[1] = -1
 
     jacobian!(
