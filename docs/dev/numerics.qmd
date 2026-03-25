@@ -154,14 +154,16 @@ The split between `Cache()` and `Constant()` arguments creates a potential coher
 2. If `t` hasn't changed, it sets `new_time_dependent_cache = false` — "reuse cached values"
 3. `eval_time_interpolation` checks this flag: if `true`, evaluate and store in cache; if `false`, return cached value
 
-The problem: `t_prev_call` and the control flags live in `Constant()` arguments (shared), but the cached flow rates live in `Cache()` arguments (copied, uninitialized). When the solver evaluates the Jacobian at the same `t` as the previous RHS call:
+The problem: `t_prev_call` and the control flags live in `Constant()` arguments (shared). AD calls can read *and write* these shared values. When the solver evaluates the Jacobian at the same `t` as the previous RHS call:
 
 1. AD calls `water_balance!` with dual-perturbed inputs
-2. `check_new_input!` sees `t == t_prev_call` (both real, shared) and sets `new_time_dependent_cache = false`
-3. `eval_time_interpolation` returns `cache[idx]` — but this is the **uninitialized AD copy**
-4. After the Jacobian returns, the flag remains `false` on the shared `p_mutable`, corrupting subsequent real RHS calls
+2. `check_new_input!` sees `t == t_prev_call` (both shared) and sets `new_time_dependent_cache = false`
+3. AD calls update `t_prev_call` and the flags on the shared objects
+4. After `jacobian!` returns, the shared flags and timestamps reflect the AD calls rather than the real solver state, potentially corrupting caching decisions in subsequent real RHS calls
 
-The fix in `get_jacobian!` saves the shared mutable state, sets `t_prev_call = NaN` (since `NaN != anything`, forcing recomputation), runs `jacobian!`, then restores the saved state.
+Note that `eval_time_interpolation` reads from `time_dependent_cache`, which is shared and contains valid values — there is no uninitialized AD copy involved in the time-dependent cache path. The problem is purely about shared mutable state (flags and timestamps) being corrupted by the AD calls.
+
+The fix in `get_jacobian!` saves the shared mutable state, sets `t_prev_call = NaN` (since `NaN != anything`, forcing proper evaluation in the first AD call), runs `jacobian!`, then restores the saved state.
 
 # Custom linear solver
 
