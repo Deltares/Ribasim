@@ -146,22 +146,11 @@ result = J_intermediate * u_reduced  # sparse matvec
 
 When the solver needs to update the Jacobian (via `update_coefficients!`), it calls `get_jacobian!` which invokes `DifferentiationInterface.jacobian!` to fill `J_intermediate`.
 
-## AD cache coherence {#sec-ad-cache}
+## Forced cache invalidation before Jacobian evaluation {#sec-ad-cache}
 
-The split between `Cache()` and `Constant()` arguments creates a potential coherence problem with the time interpolation caching mechanism (`check_new_input!` / `eval_time_interpolation` in `core/src/util.jl`).
+Some `eval_time_interpolation` calls write their results into vectors that live in `state_and_time_dependent_cache` (e.g. `current_flow_rate_outlet`). Since this argument is tagged `Cache()`, the AD calls work on a fresh copy with uninitialized dual-number arrays. The time interpolation caching mechanism (`check_new_input!` / `eval_time_interpolation` in `core/src/util.jl`) must therefore be forced to recompute — rather than reuse cached values — so that the results are written into this fresh copy before anything reads from it.
 
-**How the caching works:** At the start of each `water_balance!` call, `check_new_input!` compares the current `t` with `t_prev_call`. If `t` hasn't changed, it sets `new_time_dependent_cache = false`. Then `eval_time_interpolation` checks this flag: if `true`, evaluate the interpolation and store in the cache vector; if `false`, return the cached value from the cache vector.
-
-**The problem:** Some `eval_time_interpolation` calls receive their cache vector from `state_and_time_dependent_cache` (e.g. `current_flow_rate_outlet`). Since this is tagged `Cache()`, AD gets an **uninitialized** copy with dual-number garbage. Meanwhile, `t_prev_call` and the control flags live in `Constant()` arguments — shared with the real solver. When the Jacobian is evaluated at the same `t` as the previous RHS call:
-
-1. AD calls `water_balance!` with dual-perturbed inputs
-2. `check_new_input!` sees `t == t_prev_call` (shared) and sets `new_time_dependent_cache = false`
-3. `eval_time_interpolation` sees `false` and reads from the cache vector — but this is the AD copy of `state_and_time_dependent_cache`, which has **uninitialized dual-number garbage**
-4. Garbage propagates through the Jacobian computation
-
-**Why this is rare:** QNDF evaluates the Jacobian at the **current** time $t_n$ (using `uprev`), while the RHS calls during Newton iterations happen at the **next** time $t_n + \Delta t$. So `t_prev_call` (set by the RHS at $t_n + \Delta t$) typically differs from the Jacobian evaluation time ($t_n$). The same-`t` case requires a coincidence such as a step rejection or specific step-size pattern. In practice, the bug triggers roughly once every 30 runs on models with step-function transitions in forcing data.
-
-**The fix:** Before `jacobian!`, save `t_prev_call` and set it to `-1`. Since simulation time is always $\geq 0$, this forces `check_new_input!` to see "new time" and properly evaluate interpolations into the AD copy. After `jacobian!`, restore `t_prev_call`. The flags in `p_mutable` don't need saving/restoring since `check_new_input!` unconditionally resets them at the start of each `water_balance!` call. This has limited performance cost, especially for larger models.
+This is achieved in `get_jacobian!` by temporarily setting `t_prev_call = -1` before `jacobian!`. Since simulation time is always $\geq 0$, the first AD call's `check_new_input!` sees `t \neq t_\text{prev}` and evaluates all time interpolations, populating the AD copy. After `jacobian!`, `t_prev_call` is restored so subsequent real RHS calls make their own caching decisions. This has limited performance cost, especially for larger models.
 
 # Custom linear solver
 
