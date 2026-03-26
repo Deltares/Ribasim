@@ -236,7 +236,6 @@ def test_plot_widget_basin_water_balance_preset_applies_signs(monkeypatch):
     assert len(captured_figures) == 1
     fig = captured_figures[0]
     assert [trace.name for trace in fig.data] == [
-        "+ balance_error",
         "+ surface_runoff",
         "- infiltration",
         "+ drainage",
@@ -244,14 +243,16 @@ def test_plot_widget_basin_water_balance_preset_applies_signs(monkeypatch):
         "+ precipitation",
         "- outflow_rate",
         "+ inflow_rate",
-        "- storage_rate",
+        "storage_increase",
+        "balance_error",
     ]
-    assert np.allclose(fig.data[0].y, np.array([15.0, 16.0]))
-    assert np.allclose(fig.data[6].y, np.array([-7.0, -8.0]))
-    assert np.allclose(fig.data[8].y, np.array([-9.0, -10.0]))
+    assert np.allclose(fig.data[0].y, np.array([3.0, 4.0]))
+    assert np.allclose(fig.data[5].y, np.array([-7.0, -8.0]))
+    assert np.allclose(fig.data[7].y, np.array([-9.0, -10.0]))
+    assert np.allclose(fig.data[8].y, np.array([15.0, 16.0]))
     assert fig.layout.yaxis.title.text == "m3 s-1"
     assert all(trace.mode == "lines" for trace in fig.data)
-    assert fig.data[0].hovertemplate is None
+    assert ".3e" in str(fig.data[0].hovertemplate)
     assert fig.layout.hovermode == "x unified"
 
 

@@ -130,7 +130,7 @@ def test_control_link_adds_listen_links(discrete_control_of_pid_control):
     listen_links = model.link.df.loc[model.link.df["link_type"] == "listen"]
     assert len(listen_links) == 2
     assert set(
-        zip(listen_links["from_node_id"], listen_links["to_node_id"], strict=False)
+        zip(listen_links["from_node_id"], listen_links["to_node_id"], strict=True)
     ) == {
         (3, 6),
         (1, 7),
@@ -159,8 +159,54 @@ def test_write_adds_missing_listen_links(discrete_control_of_pid_control, tmp_pa
         df = pd.read_sql_query(query, connection)
 
     assert len(df) == 2
-    written_pairs = set(zip(df["from_node_id"], df["to_node_id"], strict=False))
+    written_pairs = set(zip(df["from_node_id"], df["to_node_id"], strict=True))
     assert written_pairs == {(3, 6), (1, 7)}
+
+
+def test_remove_control_link_removes_listen_links(discrete_control_of_pid_control):
+    """Removing a control link removes listen links attached to that control node."""
+    model = discrete_control_of_pid_control
+    assert model.link.df is not None
+
+    listen_pairs_before = set(
+        zip(
+            model.link.df.loc[model.link.df["link_type"] == "listen", "from_node_id"],
+            model.link.df.loc[model.link.df["link_type"] == "listen", "to_node_id"],
+            strict=True,
+        )
+    )
+    assert (3, 6) in listen_pairs_before
+    assert (1, 7) in listen_pairs_before
+
+    control_link_mask = (
+        (model.link.df["link_type"] == "control")
+        & (model.link.df["from_node_id"] == 6)
+        & (model.link.df["to_node_id"] == 2)
+    )
+    control_link_ids = model.link.df.index[control_link_mask].tolist()
+    assert len(control_link_ids) == 1
+    model.remove_link(control_link_ids[0])
+
+    assert model.link.df is not None
+    remaining_control_pairs = set(
+        zip(
+            model.link.df.loc[model.link.df["link_type"] == "control", "from_node_id"],
+            model.link.df.loc[model.link.df["link_type"] == "control", "to_node_id"],
+            strict=True,
+        )
+    )
+    assert (6, 2) not in remaining_control_pairs
+    assert (7, 6) in remaining_control_pairs
+
+    listen_pairs_after = set(
+        zip(
+            model.link.df.loc[model.link.df["link_type"] == "listen", "from_node_id"],
+            model.link.df.loc[model.link.df["link_type"] == "listen", "to_node_id"],
+            strict=True,
+        )
+    )
+    assert (3, 6) not in listen_pairs_after
+    assert (1, 7) in listen_pairs_after
 
 
 def test_collect_listen_link_pairs_with_control(discrete_control_of_pid_control):

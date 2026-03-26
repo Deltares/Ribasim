@@ -4,7 +4,7 @@ from sqlite3 import Connection, connect
 
 # A fixed date for `last_change` fields in the metadata tables in a geopackage
 # so the hash of the geopackage doesn't change when regenerated.
-fake_date = "2022-02-22T20:22:02Z"  # %Y-%m-%dT%H:%M:%fZ
+fake_date = "2022-02-22T20:22:02.000Z"  # %Y-%m-%dT%H:%M:%S.%fZ
 
 
 def esc_id(identifier: str) -> str:

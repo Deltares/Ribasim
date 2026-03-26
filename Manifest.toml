@@ -1476,9 +1476,9 @@ version = "1.6.7"
 
 [[deps.NCDatasets]]
 deps = ["CFTime", "CommonDataModel", "DataStructures", "Dates", "DiskArrays", "NetCDF_jll", "NetworkOptions", "Printf"]
-git-tree-sha1 = "43e840d07d643a71171ade0f6109d911186bbe10"
+git-tree-sha1 = "e697235598309272a053444dac7154b40a88b4a9"
 uuid = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
-version = "0.14.12"
+version = "0.14.13"
 
     [deps.NCDatasets.extensions]
     NCDatasetsMPIExt = "MPI"

@@ -172,8 +172,8 @@ _BASIN_WATER_BALANCE_TERMS: tuple[tuple[str, int], ...] = (
     ("drainage", 1),
     ("infiltration", -1),
     ("surface_runoff", 1),
-    ("balance_error", 1),
 )
+_BASIN_WATER_BALANCE_ERROR_TERM = "balance_error"
 
 _ROOT_VARIABLES: tuple[str, ...] = (
     "basin / level",
@@ -563,6 +563,22 @@ class PlotWidget(QWidget):
             return x.tolist(), y.tolist()
         return x, y
 
+    def _update_yaxis_format(
+        self,
+        fig,
+        row: int,
+        title_text: str,
+    ) -> None:
+        fig.update_yaxes(
+            title_text=title_text,
+            exponentformat="e",
+            row=row,
+            col=1,
+        )
+
+    def _hover_template(self, label: str) -> str:
+        return f"{label}: %{{y:.3e}}<extra></extra>"
+
     def _collect_standard_traces(
         self,
         selected_keys: list[tuple[str, str]],
@@ -588,7 +604,13 @@ class PlotWidget(QWidget):
                 x_data, y_data = self._to_plotly_xy(x, y)
                 legend_name = f"{file_name} / {var} {trace_name}"
                 traces_by_unit[unit_key].append(
-                    go.Scatter(x=x_data, y=y_data, mode="lines", name=legend_name)
+                    go.Scatter(
+                        x=x_data,
+                        y=y_data,
+                        mode="lines",
+                        name=legend_name,
+                        hovertemplate=self._hover_template(legend_name),
+                    )
                 )
         return traces_by_unit
 
@@ -654,7 +676,7 @@ class PlotWidget(QWidget):
         for row, unit in enumerate(units, start=1):
             for trace in traces_by_unit[unit]:
                 fig.add_trace(trace, row=row, col=1)
-            fig.update_yaxes(title_text=unit, row=row, col=1)
+            self._update_yaxis_format(fig, row=row, title_text=unit)
             fig.update_xaxes(showticklabels=row == len(units), row=row, col=1)
 
         fig.update_layout(**_PLOT_LAYOUT)
@@ -667,7 +689,11 @@ class PlotWidget(QWidget):
             self._show_placeholder(self._placeholder_for_current_preset())
             return
 
-        water_balance_terms = {term for term, _ in _BASIN_WATER_BALANCE_TERMS}
+        water_balance_component_terms = {term for term, _ in _BASIN_WATER_BALANCE_TERMS}
+        water_balance_terms = {
+            *water_balance_component_terms,
+            _BASIN_WATER_BALANCE_ERROR_TERM,
+        }
         selected_files = {
             file_name
             for file_name, variable in selected_keys
@@ -716,24 +742,79 @@ class PlotWidget(QWidget):
             if selected_trace not in traces:
                 continue
             x, y = traces[selected_trace]
-            signed_y = sign * y
-            x_data, y_data = self._to_plotly_xy(x, signed_y)
-            stackgroup = "inflow" if sign > 0 else "outflow"
-            legend_prefix = "+" if sign > 0 else "-"
+            signed_y = sign * y.astype(float, copy=False)
+
+            term_pos = np.clip(signed_y, 0.0, None)
+            term_neg = np.clip(signed_y, None, 0.0)
+            abs_component = np.abs(signed_y)
+            if _BACKEND is _WebViewBackend.WEBKIT:
+                abs_component_data: np.ndarray | list[float] = abs_component.tolist()
+            else:
+                abs_component_data = abs_component
+
+            # Positive contribution stack (from zero upward).
+            if bool((term_pos != 0.0).any()):
+                x_pos, y_pos = self._to_plotly_xy(x, term_pos)
+                pos_name = "storage_decrease" if term == "storage_rate" else f"+ {term}"
+                fig.add_trace(
+                    go.Scatter(
+                        x=x_pos,
+                        y=y_pos,
+                        mode="lines",
+                        stackgroup="water_balance_positive",
+                        hoveron="points+fills",
+                        line={"width": 0},
+                        name=pos_name,
+                        customdata=abs_component_data,
+                        hovertemplate=(pos_name + ": %{customdata:.3e}<extra></extra>"),
+                        legendgroup=term,
+                    ),
+                    row=1,
+                    col=1,
+                )
+
+            # Negative contribution stack (from zero downward).
+            if bool((term_neg != 0.0).any()):
+                x_neg, y_neg = self._to_plotly_xy(x, term_neg)
+                neg_name = "storage_increase" if term == "storage_rate" else f"- {term}"
+                fig.add_trace(
+                    go.Scatter(
+                        x=x_neg,
+                        y=y_neg,
+                        mode="lines",
+                        stackgroup="water_balance_negative",
+                        hoveron="points+fills",
+                        line={"width": 0},
+                        name=neg_name,
+                        customdata=abs_component_data,
+                        hovertemplate=(neg_name + ": %{customdata:.3e}<extra></extra>"),
+                        legendgroup=term,
+                    ),
+                    row=1,
+                    col=1,
+                )
+
+            used_terms += 1
+
+        balance_error = file_data.get(_BASIN_WATER_BALANCE_ERROR_TERM, {}).get(
+            selected_trace
+        )
+        if balance_error is not None:
+            x_balance_error, y_balance_error = self._to_plotly_xy(
+                balance_error[0], balance_error[1].astype(float, copy=False)
+            )
             fig.add_trace(
                 go.Scatter(
-                    x=x_data,
-                    y=y_data,
+                    x=x_balance_error,
+                    y=y_balance_error,
                     mode="lines",
-                    stackgroup=stackgroup,
-                    hoveron="points+fills",
-                    line={"width": 0},
-                    name=f"{legend_prefix} {term}",
+                    line={"color": "black", "width": 1.0},
+                    name="balance_error",
+                    hovertemplate=self._hover_template("balance_error"),
                 ),
                 row=1,
                 col=1,
             )
-            used_terms += 1
 
         if used_terms == 0:
             self._show_placeholder(_PLACEHOLDER_WATER_BALANCE)
@@ -745,18 +826,29 @@ class PlotWidget(QWidget):
             if file_units.get(term, "")
         }
         yaxis_title = unit_values.pop() if len(unit_values) == 1 else "(no unit)"
-        fig.update_yaxes(title_text=yaxis_title, row=1, col=1)
+        self._update_yaxis_format(fig, row=1, title_text=yaxis_title)
 
         for row, unit in enumerate(units, start=2):
             for trace in traces_by_unit[unit]:
                 fig.add_trace(trace, row=row, col=1)
-            fig.update_yaxes(title_text=unit, row=row, col=1)
+            self._update_yaxis_format(fig, row=row, title_text=unit)
 
         last_row = 1 + len(units)
         for row in range(1, last_row + 1):
             fig.update_xaxes(showticklabels=row == last_row, row=row, col=1)
 
-        fig.update_layout(**_PLOT_LAYOUT, hovermode="x unified")
+        fig.update_layout(
+            showlegend=True,
+            legend=go.layout.Legend(
+                x=1.01,
+                y=0.01,
+                xanchor="left",
+                yanchor="bottom",
+                groupclick="togglegroup",
+            ),
+            margin=go.layout.Margin(l=40, r=190, t=10, b=20, pad=0),
+            hovermode="x unified",
+        )
         self._render_figure(fig, config)
 
     def _selected_tracers(
@@ -836,6 +928,7 @@ class PlotWidget(QWidget):
                     hoveron="points+fills",
                     line={"width": 0},
                     name=substance,
+                    hovertemplate=self._hover_template(substance),
                 ),
                 row=1,
                 col=1,
@@ -853,12 +946,12 @@ class PlotWidget(QWidget):
             if file_units.get(sub, "")
         }
         yaxis_title = unit_values.pop() if len(unit_values) == 1 else "fraction"
-        fig.update_yaxes(title_text=yaxis_title, row=1, col=1)
+        self._update_yaxis_format(fig, row=1, title_text=yaxis_title)
 
         for row, unit in enumerate(units, start=2):
             for trace in traces_by_unit[unit]:
                 fig.add_trace(trace, row=row, col=1)
-            fig.update_yaxes(title_text=unit, row=row, col=1)
+            self._update_yaxis_format(fig, row=row, title_text=unit)
 
         last_row = 1 + len(units)
         for row in range(1, last_row + 1):
@@ -1059,6 +1152,7 @@ class PlotWidget(QWidget):
                     hoveron="points+fills",
                     line={"width": 0},
                     name=substance,
+                    hovertemplate=self._hover_template(substance),
                 ),
                 row=1,
                 col=1,
@@ -1078,6 +1172,7 @@ class PlotWidget(QWidget):
                 mode="lines",
                 line={"color": "black", "width": 1.5},
                 name="flow_rate",
+                hovertemplate=self._hover_template("flow_rate"),
             ),
             row=1,
             col=1,
@@ -1085,12 +1180,12 @@ class PlotWidget(QWidget):
 
         flow_units = self._units.get("flow", {})
         yaxis_title = flow_units.get("flow_rate", "m3 s-1")
-        fig.update_yaxes(title_text=yaxis_title, row=1, col=1)
+        self._update_yaxis_format(fig, row=1, title_text=yaxis_title)
 
         for row, unit in enumerate(units, start=2):
             for trace in traces_by_unit[unit]:
                 fig.add_trace(trace, row=row, col=1)
-            fig.update_yaxes(title_text=unit, row=row, col=1)
+            self._update_yaxis_format(fig, row=row, title_text=unit)
 
         last_row = 1 + len(units)
         for row in range(1, last_row + 1):
