@@ -500,8 +500,8 @@ def generate(
     )  # same as flow, so area becomes 1
 
     # Write volumes to Delwaq format
-    volumes = basins[["time", "node_id", "storage"]]
-    volumes["riba_node_id"] = volumes.loc[:, "node_id"]
+    volumes = basins[["time", "node_id", "storage"]].copy()
+    volumes["riba_node_id"] = volumes["node_id"]
     volumes.loc[:, "node_id"] = (
         volumes["node_id"].map(basin_mapping).astype(pd.Int32Dtype())
     )
