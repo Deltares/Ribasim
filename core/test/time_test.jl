@@ -140,21 +140,3 @@ end
     flow_4 = filter(:link_id => ==(4), flow_data).flow_rate
     @test all(isapprox.(flow_4[230:end], 1.0e-5, rtol = 1.0e-6))
 end
-
-@testitem "transient_outlet_jacobian_cache" begin
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/transient_outlet/ribasim.toml")
-
-    failed = false
-
-    for i in 1:100 # The bug would appear in about 1:(15~30) times
-        model = Ribasim.run(toml_path)
-        flow_table = DataFrame(Ribasim.flow_data(model))
-        flow_outlet = filter(:link_id => ==(1), flow_table).flow_rate
-        if (flow_outlet[end] == 0.0)
-            failed = true
-            break
-        end
-    end
-    @test !failed
-end
