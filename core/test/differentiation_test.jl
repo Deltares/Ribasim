@@ -2,7 +2,7 @@
     using SparseArrays: nonzeros
 
     toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/transient_outlet/ribasim.toml")
+        normpath(@__DIR__, "../../generated_testmodels/transient_pump_outlet/ribasim.toml")
     config = Ribasim.Config(toml_path)
     model = Ribasim.Model(config)
 
