@@ -288,13 +288,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>All testmodels can be <a href="../getting-started/install.html">downloaded from here</a>.</p>
 <section id="generating-delwaq-input" class="level2" data-number="1">
 <h2 data-number="1" class="anchored" data-anchor-id="generating-delwaq-input"><span class="header-section-number">1</span> Generating Delwaq input</h2>
-<div id="817423b6" class="cell" data-execution_count="1">
+<div id="5c9eb0bf" class="cell" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>toml_path <span class="op">=</span> Path(<span class="st">"../../generated_testmodels/basic/ribasim.toml"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>This Ribasim model already has substance concentrations for <code>Cl</code> and <code>Tracer</code> in the input tables, and we will use these to generate the Delwaq input files.</p>
-<div id="070aad44" class="cell" data-execution_count="2">
+<div id="2b50ca95" class="cell" data-execution_count="2">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim <span class="im">import</span> Model, run_ribasim</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> Model.read(toml_path)</span>
@@ -596,7 +596,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
-<div id="5970fd51" class="cell" data-execution_count="4">
+<div id="fef9a805" class="cell" data-execution_count="4">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>model.basin.profile</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="4">
 <div>Basin / profile</div><div>
@@ -683,7 +683,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>Let’s add another tracer to the model, to setup a fraction calculation.</p>
-<div id="131c3c22" class="cell" data-execution_count="5">
+<div id="0b35f3f0" class="cell" data-execution_count="5">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> add_tracer</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>add_tracer(model, <span class="dv">11</span>, <span class="st">"Foo"</span>)</span>
@@ -806,7 +806,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <pre><code>PosixPath('../../generated_testmodels/basic/ribasim.toml')</code></pre>
 </div>
 </div>
-<div id="29877963" class="cell" data-execution_count="6">
+<div id="0580fe12" class="cell" data-execution_count="6">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>run_ribasim(toml_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stderr">
 <div class="ansi-escaped-output">
@@ -830,7 +830,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-┌ Info: Starting a Ribasim simulation at 2026-03-17T09:27:52.209.
+┌ Info: Starting a Ribasim simulation at 2026-03-26T10:34:03.947.
 
 │   toml_path = "../../generated_testmodels/basic/ribasim.toml"
 
@@ -850,9 +850,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 Simulating   0%|                                        |  ETA: N/A
 
-Simulating   6%|██▎                                     |  ETA: 0:03:01
+Simulating   6%|██▎                                     |  ETA: 0:03:05
 
-Simulating  33%|█████████████▎                          |  ETA: 0:00:22
+Simulating  33%|█████████████▎                          |  ETA: 0:00:23
 
 Simulating  60%|████████████████████████▏               |  ETA: 0:00:07
 
@@ -860,35 +860,27 @@ Simulating  88%|█████████████████████�
 
 Simulating 100%|████████████████████████████████████████| Time: 0:00:11
 
-[ Info: Computation time: 8 seconds, 182 milliseconds
+[ Info: Computation time: 8 seconds, 525 milliseconds
 
 [ Info: Writing results.
 
-[ Info: The model finished successfully at 2026-03-17T09:28:44.284.
+[ Info: The model finished successfully at 2026-03-26T10:34:55.051.
 </pre>
 </div>
 </div>
 </div>
 <p>Given the path to a completed Ribasim simulation, we can call <code>ribasim.delwaq.generate</code> for generating the required input files for Delwaq from scratch. <code>ribasim.delwaq.generate</code> either takes a <code>Model</code> instance, or the path to a toml file, as well as an output_path keyword, where the input for Delwaq will be written. By default it is set to the delwaq folder next to the toml.</p>
-<div id="5db895ad" class="cell" data-execution_count="7">
+<div id="176372da" class="cell" data-execution_count="7">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> generate</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co"># The default path is the delwaq folder next to the toml</span></span>
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>output_path <span class="op">=</span> Path(<span class="st">"../../generated_testmodels/basic/delwaq"</span>)</span>
 <span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>graph, substances <span class="op">=</span> generate(model, output_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>/home/runner/work/Ribasim/Ribasim/python/ribasim/ribasim/delwaq/generate.py:504: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  volumes["riba_node_id"] = volumes.loc[:, "node_id"]</code></pre>
-</div>
 </div>
 <p>This call produces a handful of files in the user defined folder. Let’s take a look at them:</p>
-<div id="88ab0959" class="cell" data-execution_count="8">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="bu">list</span>(output_path.iterdir())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="c419d058" class="cell" data-execution_count="8">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="bu">list</span>(output_path.iterdir())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="8">
 <pre><code>[PosixPath('../../generated_testmodels/basic/delwaq/B8_initials.inc'),
  PosixPath('../../generated_testmodels/basic/delwaq/B6_wasteloads.inc'),
@@ -910,8 +902,8 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 <p>These files form a complete Delwaq simulation, and can be run by either pointing DIMR to the <code>dimr_config.xml</code> file or pointing Delwaq to the <code>delwaq.inp</code> file.</p>
 <p>Note that the call to <code>generate</code> produces two output variables; <code>graph</code> and <code>substances</code> that are required for parsing the results of the Delwaq model later on. Nonetheless, we can also inspect them here, and inspect the created Delwaq network.</p>
-<div id="5a50c30b" class="cell" data-execution_count="9">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>substances  <span class="co"># list of substances, as will be present in the Delwaq netcdf output</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="8c01d555" class="cell" data-execution_count="9">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>substances  <span class="co"># list of substances, as will be present in the Delwaq netcdf output</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="9">
 <pre><code>{'Bar',
  'Cl',
@@ -928,29 +920,29 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 </div>
 <p>As you can see, the complete substances list is a combination of user input (<code>Cl</code> and <code>Tracer</code> in the input tables), a <code>Continuity</code> tracer, and tracers for all nodetypes in the Ribasim model. The latter tracers allow for deeper inspection of the Ribasim model, such as debugging the mass balance by plotting fraction graphs. Let’s inspect the <code>graph</code> next, which is the Delwaq network that was created from the Ribasim model:</p>
-<div id="54ed9799" class="cell" data-execution_count="10">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> networkx <span class="im">as</span> nx</span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Let's draw the graph</span></span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">5</span>))</span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>nx.draw(</span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    graph,</span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    pos<span class="op">=</span>{k: v[<span class="st">"pos"</span>] <span class="cf">for</span> k, v <span class="kw">in</span> graph.nodes(data<span class="op">=</span><span class="va">True</span>)},</span>
-<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>    with_labels<span class="op">=</span><span class="va">True</span>,</span>
-<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>    labels<span class="op">=</span>{k: k <span class="cf">for</span> k, v <span class="kw">in</span> graph.nodes(data<span class="op">=</span><span class="va">True</span>)},</span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>    ax<span class="op">=</span>ax[<span class="dv">0</span>],</span>
-<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">0</span>].set_title(<span class="st">"Delwaq node IDs"</span>)</span>
-<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>nx.draw(</span>
-<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>    graph,</span>
-<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>    pos<span class="op">=</span>{k: v[<span class="st">"pos"</span>] <span class="cf">for</span> k, v <span class="kw">in</span> graph.nodes(data<span class="op">=</span><span class="va">True</span>)},</span>
-<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>    with_labels<span class="op">=</span><span class="va">True</span>,</span>
-<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>    labels<span class="op">=</span>{k: v[<span class="st">"id"</span>] <span class="cf">for</span> k, v <span class="kw">in</span> graph.nodes(data<span class="op">=</span><span class="va">True</span>)},</span>
-<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>    ax<span class="op">=</span>ax[<span class="dv">1</span>],</span>
-<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">1</span>].set_title(<span class="st">"Ribasim node IDs"</span>)</span>
-<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a>fig.suptitle(<span class="st">"Delwaq network"</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="5ef28daf" class="cell" data-execution_count="10">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> networkx <span class="im">as</span> nx</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Let's draw the graph</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">5</span>))</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>nx.draw(</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    graph,</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    pos<span class="op">=</span>{k: v[<span class="st">"pos"</span>] <span class="cf">for</span> k, v <span class="kw">in</span> graph.nodes(data<span class="op">=</span><span class="va">True</span>)},</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    with_labels<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>    labels<span class="op">=</span>{k: k <span class="cf">for</span> k, v <span class="kw">in</span> graph.nodes(data<span class="op">=</span><span class="va">True</span>)},</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>    ax<span class="op">=</span>ax[<span class="dv">0</span>],</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">0</span>].set_title(<span class="st">"Delwaq node IDs"</span>)</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>nx.draw(</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>    graph,</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>    pos<span class="op">=</span>{k: v[<span class="st">"pos"</span>] <span class="cf">for</span> k, v <span class="kw">in</span> graph.nodes(data<span class="op">=</span><span class="va">True</span>)},</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>    with_labels<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>    labels<span class="op">=</span>{k: v[<span class="st">"id"</span>] <span class="cf">for</span> k, v <span class="kw">in</span> graph.nodes(data<span class="op">=</span><span class="va">True</span>)},</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>    ax<span class="op">=</span>ax[<span class="dv">1</span>],</span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>ax[<span class="dv">1</span>].set_title(<span class="st">"Ribasim node IDs"</span>)</span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>fig.suptitle(<span class="st">"Delwaq network"</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
@@ -969,28 +961,28 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <section id="parsing-the-results" class="level2" data-number="2">
 <h2 data-number="2" class="anchored" data-anchor-id="parsing-the-results"><span class="header-section-number">2</span> Parsing the results</h2>
 <p>With Delwaq having run, we can now parse the results using <code>ribasim.delwaq.parse</code>. This function requires either a path to a toml file, or a Model instance, as well as the <code>graph</code> and <code>substances</code> variables that were output by <code>ribasim.delwaq.generate</code>. You can optionally set the path to the results folder of the Delwaq simulation, if you overrode the default during <code>ribasim.delwaq.generate</code>.</p>
-<div id="6431feed" class="cell" data-execution_count="12">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> parse</span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>nmodel_nc <span class="op">=</span> parse(model, graph, substances, to_input<span class="op">=</span><span class="va">False</span>)</span>
-<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>concentration_nc <span class="op">=</span> toml_path.parent <span class="op">/</span> <span class="st">"results"</span> <span class="op">/</span> <span class="st">"concentration.nc"</span></span>
-<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>concentration_nc</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="9a8dbfb5" class="cell" data-execution_count="12">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> parse</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>nmodel_nc <span class="op">=</span> parse(model, graph, substances, to_input<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>concentration_nc <span class="op">=</span> toml_path.parent <span class="op">/</span> <span class="st">"results"</span> <span class="op">/</span> <span class="st">"concentration.nc"</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>concentration_nc</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="12">
 <pre><code>PosixPath('../../generated_testmodels/basic/results/concentration.nc')</code></pre>
 </div>
 </div>
 <p>By default (<code>to_input=False</code>), the parsed model writes the Delwaq tracer results to <code>results/concentration.nc</code> and does not populate the <code>Basin / concentration_external</code> table.</p>
-<div id="4e1e8e62" class="cell" data-execution_count="13">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Parse Delwaq results and also populate Basin / concentration_external for plotting</span></span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>nmodel <span class="op">=</span> parse(model, graph, substances, to_input<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="ac3926d4" class="cell" data-execution_count="13">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Parse Delwaq results and also populate Basin / concentration_external for plotting</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>nmodel <span class="op">=</span> parse(model, graph, substances, to_input<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div id="e1de681d" class="cell" data-execution_count="14">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>display(nmodel.basin.concentration_external)</span>
-<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(substances)</span>
-<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>t <span class="op">=</span> nmodel.basin.concentration_external.df</span>
-<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Show the first available timestep</span></span>
-<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>t[t.time <span class="op">==</span> t.time.unique()[<span class="dv">0</span>]]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="ba12fca4" class="cell" data-execution_count="14">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>display(nmodel.basin.concentration_external)</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(substances)</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>t <span class="op">=</span> nmodel.basin.concentration_external.df</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Show the first available timestep</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>t[t.time <span class="op">==</span> t.time.unique()[<span class="dv">0</span>]]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>Basin / concentration_external</div><div>
 
@@ -1018,35 +1010,35 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.000000</td>
-<td>UserDemand</td>
+<td>Tracer</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1464</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.000000</td>
-<td>SurfaceRunoff</td>
+<td>Bar</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2928</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.000000</td>
-<td>Tracer</td>
+<td>UserDemand</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">4392</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>0.000000</td>
-<td>FlowBoundary</td>
+<td>1.000000</td>
+<td>Continuity</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">5856</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.000000</td>
-<td>Cl</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">...</th>
@@ -1059,36 +1051,36 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <th data-quarto-table-cell-role="th">11711</th>
 <td>2020-12-31</td>
 <td>9</td>
-<td>0.009059</td>
-<td>Foo</td>
+<td>0.167443</td>
+<td>Precipitation</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">13175</th>
 <td>2020-12-31</td>
 <td>9</td>
-<td>0.019346</td>
-<td>LevelBoundary</td>
+<td>0.000000</td>
+<td>Drainage</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">14639</th>
 <td>2020-12-31</td>
 <td>9</td>
-<td>0.499193</td>
-<td>Bar</td>
+<td>0.645681</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">16103</th>
 <td>2020-12-31</td>
 <td>9</td>
-<td>0.999999</td>
-<td>Continuity</td>
+<td>0.167443</td>
+<td>SurfaceRunoff</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">17567</th>
 <td>2020-12-31</td>
 <td>9</td>
-<td>0.000088</td>
-<td>Initial</td>
+<td>0.019346</td>
+<td>LevelBoundary</td>
 </tr>
 </tbody>
 </table>
@@ -1097,7 +1089,7 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 </div>
 <div class="cell-output cell-output-stdout">
-<pre><code>{'UserDemand', 'SurfaceRunoff', 'Tracer', 'FlowBoundary', 'Cl', 'Drainage', 'Precipitation', 'Foo', 'LevelBoundary', 'Bar', 'Continuity', 'Initial'}</code></pre>
+<pre><code>{'Tracer', 'Bar', 'UserDemand', 'Continuity', 'Foo', 'Cl', 'Initial', 'Precipitation', 'Drainage', 'FlowBoundary', 'SurfaceRunoff', 'LevelBoundary'}</code></pre>
 </div>
 <div class="cell-output cell-output-display" data-execution_count="14">
 <div>
@@ -1126,336 +1118,336 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>UserDemand</td>
+<td>Tracer</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1464</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>SurfaceRunoff</td>
+<td>Bar</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2928</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>Tracer</td>
+<td>UserDemand</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">4392</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>0.0</td>
-<td>FlowBoundary</td>
+<td>1.0</td>
+<td>Continuity</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">5856</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>Cl</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">7320</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>Drainage</td>
+<td>Cl</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">8784</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>0.0</td>
-<td>Precipitation</td>
+<td>1.0</td>
+<td>Initial</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">10248</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>Foo</td>
+<td>Precipitation</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">11712</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>LevelBoundary</td>
+<td>Drainage</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">13176</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>Bar</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">14640</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>1.0</td>
-<td>Continuity</td>
+<td>0.0</td>
+<td>SurfaceRunoff</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">16104</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>1.0</td>
-<td>Initial</td>
+<td>0.0</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">1</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>UserDemand</td>
+<td>Tracer</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1465</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>SurfaceRunoff</td>
+<td>Bar</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2929</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>Tracer</td>
+<td>UserDemand</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">4393</th>
 <td>2020-01-01</td>
 <td>3</td>
-<td>0.0</td>
-<td>FlowBoundary</td>
+<td>1.0</td>
+<td>Continuity</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">5857</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>Cl</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">7321</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>Drainage</td>
+<td>Cl</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">8785</th>
 <td>2020-01-01</td>
 <td>3</td>
-<td>0.0</td>
-<td>Precipitation</td>
+<td>1.0</td>
+<td>Initial</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">10249</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>Foo</td>
+<td>Precipitation</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">11713</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>LevelBoundary</td>
+<td>Drainage</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">13177</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>Bar</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">14641</th>
 <td>2020-01-01</td>
 <td>3</td>
-<td>1.0</td>
-<td>Continuity</td>
+<td>0.0</td>
+<td>SurfaceRunoff</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">16105</th>
 <td>2020-01-01</td>
 <td>3</td>
-<td>1.0</td>
-<td>Initial</td>
+<td>0.0</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>UserDemand</td>
+<td>Tracer</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1466</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>SurfaceRunoff</td>
+<td>Bar</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2930</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>Tracer</td>
+<td>UserDemand</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">4394</th>
 <td>2020-01-01</td>
 <td>6</td>
-<td>0.0</td>
-<td>FlowBoundary</td>
+<td>1.0</td>
+<td>Continuity</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">5858</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>Cl</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">7322</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>Drainage</td>
+<td>Cl</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">8786</th>
 <td>2020-01-01</td>
 <td>6</td>
-<td>0.0</td>
-<td>Precipitation</td>
+<td>1.0</td>
+<td>Initial</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">10250</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>Foo</td>
+<td>Precipitation</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">11714</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>LevelBoundary</td>
+<td>Drainage</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">13178</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>Bar</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">14642</th>
 <td>2020-01-01</td>
 <td>6</td>
-<td>1.0</td>
-<td>Continuity</td>
+<td>0.0</td>
+<td>SurfaceRunoff</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">16106</th>
 <td>2020-01-01</td>
 <td>6</td>
-<td>1.0</td>
-<td>Initial</td>
+<td>0.0</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">3</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>UserDemand</td>
+<td>Tracer</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1467</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>SurfaceRunoff</td>
+<td>Bar</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2931</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>Tracer</td>
+<td>UserDemand</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">4395</th>
 <td>2020-01-01</td>
 <td>9</td>
-<td>0.0</td>
-<td>FlowBoundary</td>
+<td>1.0</td>
+<td>Continuity</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">5859</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>Cl</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">7323</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>Drainage</td>
+<td>Cl</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">8787</th>
 <td>2020-01-01</td>
 <td>9</td>
-<td>0.0</td>
-<td>Precipitation</td>
+<td>1.0</td>
+<td>Initial</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">10251</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>Foo</td>
+<td>Precipitation</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">11715</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>LevelBoundary</td>
+<td>Drainage</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">13179</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>Bar</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">14643</th>
 <td>2020-01-01</td>
 <td>9</td>
-<td>1.0</td>
-<td>Continuity</td>
+<td>0.0</td>
+<td>SurfaceRunoff</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">16107</th>
 <td>2020-01-01</td>
 <td>9</td>
-<td>1.0</td>
-<td>Initial</td>
+<td>0.0</td>
+<td>LevelBoundary</td>
 </tr>
 </tbody>
 </table>
@@ -1464,13 +1456,13 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 </div>
 <p>We can use this table to plot the results of the Delwaq model, both spatially as over time.</p>
-<div id="cf5c6086" class="cell" data-execution_count="15">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> plot_fraction</span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot default tracers (sum to 1), plus custom tracers on node 9</span></span>
-<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>plot_fraction(nmodel, <span class="dv">1</span>)  <span class="co"># default tracers, should add up to 1</span></span>
-<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>plot_fraction(nmodel, <span class="dv">9</span>, [<span class="st">"Foo"</span>, <span class="st">"Bar"</span>])  <span class="co"># custom tracers</span></span>
-<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>plot_fraction(nmodel, <span class="dv">9</span>, [<span class="st">"Continuity"</span>])  <span class="co"># mass balance check</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="4828d6ef" class="cell" data-execution_count="15">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> plot_fraction</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot default tracers (sum to 1), plus custom tracers on node 9</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>plot_fraction(nmodel, <span class="dv">1</span>)  <span class="co"># default tracers, should add up to 1</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>plot_fraction(nmodel, <span class="dv">9</span>, [<span class="st">"Foo"</span>, <span class="st">"Bar"</span>])  <span class="co"># custom tracers</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>plot_fraction(nmodel, <span class="dv">9</span>, [<span class="st">"Continuity"</span>])  <span class="co"># mass balance check</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
@@ -1493,11 +1485,11 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
 </div>
 </div>
 </div>
-<div id="bf1ae111" class="cell" data-execution_count="16">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> plot_spatial</span>
-<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>plot_spatial(nmodel, <span class="st">"Bar"</span>)</span>
-<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>plot_spatial(nmodel, <span class="st">"Foo"</span>, versus<span class="op">=</span><span class="st">"Bar"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="5e4a9417" class="cell" data-execution_count="16">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> plot_spatial</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>plot_spatial(nmodel, <span class="st">"Bar"</span>)</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>plot_spatial(nmodel, <span class="st">"Foo"</span>, versus<span class="op">=</span><span class="st">"Bar"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
