@@ -163,7 +163,7 @@ The problem: `t_prev_call` and the control flags live in `Constant()` arguments 
 
 Note that `eval_time_interpolation` reads from `time_dependent_cache`, which is shared and contains valid values — there is no uninitialized AD copy involved in the time-dependent cache path. The problem is purely about shared mutable state (flags and timestamps) being corrupted by the AD calls.
 
-The fix in `get_jacobian!` saves the shared mutable state, sets `t_prev_call = NaN` (since `NaN != anything`, forcing proper evaluation in the first AD call), runs `jacobian!`, then restores the saved state.
+The fix in `get_jacobian!` saves `t_prev_call`, sets it to `-1` (since simulation time is always $\geq 0$, this forces `check_new_input!` to see "new time" and properly evaluate all interpolations), runs `jacobian!`, then restores `t_prev_call`. The flags in `p_mutable` don't need saving/restoring since `check_new_input!` unconditionally resets them at the start of each `water_balance!` call.
 
 # Custom linear solver
 
