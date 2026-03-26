@@ -455,8 +455,8 @@ time           | DateTime | -                        |
 substance      | String   | -                        | can correspond to known Delwaq substances
 concentration  | Float64  | $\text{g}/\text{m}^3$    |
 
-## Loads
-This table is used for (waste) loads, currently only used as Delwaq input.
+## Mass load
+This table is used for dry (waste) loads, i.e. mass injection into a basin.
 
 column         | type     | unit                     | restriction
 -------------- | -------- | ------------------------ | -----------

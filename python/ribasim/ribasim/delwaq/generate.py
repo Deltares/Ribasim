@@ -323,7 +323,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
 
 def _setup_boundaries(model, node_mapping):
     concentrations = []
-    loads = []
+    mass_load = []
     substances = set()
 
     if model.level_boundary.concentration.df is not None:
@@ -352,14 +352,14 @@ def _setup_boundaries(model, node_mapping):
                 concentrations.append(boundary)
                 substances.update(substance)
 
-    if model.basin.loads.df is not None:
-        for node_id, rows in model.basin.loads.df.groupby(["node_id"]):
+    if model.basin.mass_load.df is not None:
+        for node_id, rows in model.basin.mass_load.df.groupby(["node_id"]):
             boundary, substance = _make_boundary(rows, "Basin", "load")
             boundary["node_id"] = node_mapping[node_id[0]]
-            loads.append(boundary)
+            mass_load.append(boundary)
             substances.update(substance)
 
-    return concentrations, substances, loads
+    return concentrations, substances, mass_load
 
 
 def generate(
@@ -517,9 +517,6 @@ def generate(
     # volumes.to_csv(output_path / "volumes.csv", index=False)  # not needed
     volumes.drop(columns=["node_id", "riba_node_id"], inplace=True)
     write_volumes(output_path / "ribasim.vol", volumes, timestep)
-    # write_volumes(
-    # output_path / "ribasim.vel", volumes, timestep
-    # )  # same as volume, so vel becomes 1
 
     # Length file
     lengths = nflows.copy()

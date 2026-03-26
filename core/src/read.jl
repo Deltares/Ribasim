@@ -822,7 +822,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     time = load_structvector(db, config, Schema.Basin.Time)
     state = load_structvector(db, config, Schema.Basin.State)
     concentration_time = load_structvector(db, config, Schema.Basin.Concentration)
-    loads_time = load_structvector(db, config, Schema.Basin.Loads)
+    loads_time = load_structvector(db, config, Schema.Basin.MassLoad)
     node_id = get_node_ids(db, NodeType.Basin)
     cyclic_times = get_cyclic_time(db, "Basin")
     concentration_data = ConcentrationData(concentration_time, loads_time, node_id, db, config)
@@ -2086,7 +2086,7 @@ function get_substances(db::DB, config::Config)::OrderedSet{Symbol}
     for table in [
             Schema.Basin.ConcentrationState,
             Schema.Basin.Concentration,
-            Schema.Basin.Loads,
+            Schema.Basin.MassLoad,
             Schema.FlowBoundary.Concentration,
             Schema.LevelBoundary.Concentration,
             Schema.UserDemand.Concentration,

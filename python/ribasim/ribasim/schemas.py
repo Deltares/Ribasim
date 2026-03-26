@@ -60,7 +60,7 @@ class BasinConcentrationStateSchema(_BaseSchema):
     concentration: float = pa.Field(nullable=False)
 
 
-class BasinLoadsSchema(_BaseSchema):
+class BasinMassLoadSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)

@@ -42,7 +42,7 @@ module Schema
             concentration::Float64
         end
 
-        struct Loads <: Table
+        struct MassLoad <: Table
             node_id::Int32
             time::DateTime
             substance::String

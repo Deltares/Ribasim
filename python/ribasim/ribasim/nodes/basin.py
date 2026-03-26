@@ -4,7 +4,7 @@ from ribasim.schemas import (
     BasinConcentrationExternalSchema,
     BasinConcentrationSchema,
     BasinConcentrationStateSchema,
-    BasinLoadsSchema,
+    BasinMassLoadSchema,
     BasinProfileSchema,
     BasinStateSchema,
     BasinStaticSchema,
@@ -65,5 +65,5 @@ class ConcentrationState(TableModel[BasinConcentrationStateSchema]):
     pass
 
 
-class Loads(TableModel[BasinLoadsSchema]):
+class MassLoad(TableModel[BasinMassLoadSchema]):
     pass

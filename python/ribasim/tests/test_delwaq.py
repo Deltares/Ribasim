@@ -53,7 +53,12 @@ def test_offline_delwaq_coupling(tmp_path):
 
     assert all(df[df.substance == "Continuity"].concentration >= 1.0 - 1e-6)
     assert all(np.isclose(df[df.substance == "UserDemand"].concentration, 0.0))
-    assert any(df[df.substance == "Basic"].concentration > 0)  # Loads should increase
+    assert any(
+        df[df.substance == "Basic"].concentration > 0
+    )  # MassLoad should be positive
+    assert all(
+        df[df.substance == "Basic"].concentration.diff()[1:] > 0
+    )  # MassLoad should be increasing over time
 
     model.write(tmp_path / "basic/ribasim.toml")
 

@@ -53,7 +53,7 @@ def basic_model() -> Model:
         basin.ConcentrationExternal(
             time="2020-01-01 00:00:00", substance=["Cl"], concentration=[0.0]
         ),
-        basin.Loads(
+        basin.MassLoad(
             time="2020-01-01 00:00:00",
             substance=["Basic", "Tracer"],
             load=[0.001, 0.002],

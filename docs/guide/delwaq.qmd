@@ -24,9 +24,10 @@ model = Model.read(toml_path)
 
 display(model.basin.concentration_state)  # basin initial state
 display(model.basin.concentration)  # basin boundaries
+display(model.basin.massload)  # basin mass loads
 display(model.flow_boundary.concentration)  # flow boundaries
 display(model.level_boundary.concentration)  # level boundaries
-model.plot();  # for later comparison
+model.plot()  # for later comparison
 ```
 
 ```{python}
