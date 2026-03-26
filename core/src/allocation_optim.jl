@@ -20,7 +20,7 @@ function set_simulation_data!(
 
     errors |= set_simulation_data!(allocation_model, basin, p, t)
     set_simulation_data!(allocation_model, level_boundary, t)
-    set_simulation_data!(allocation_model, flow_boundary)
+    set_simulation_data!(allocation_model, flow_boundary, p, t)
     set_simulation_data!(allocation_model, linear_resistance, p, t)
     set_simulation_data!(allocation_model, manning_resistance, p, t)
     set_simulation_data!(allocation_model, tabulated_rating_curve, p, t)
@@ -110,14 +110,22 @@ function set_simulation_data!(
     return errors
 end
 
-function set_simulation_data!(allocation_model::AllocationModel, ::FlowBoundary)::Nothing
+function set_simulation_data!(
+        allocation_model::AllocationModel,
+        ::FlowBoundary,
+        p::Parameters,
+        t::Float64
+    )::Nothing
     (; problem, cumulative_boundary_volume, Δt_allocation, scaling) = allocation_model
+    (; p_independent) = p
+    (; flow_boundary) = p_independent
+
     flow = problem[:flow]
 
     for link in keys(cumulative_boundary_volume)
         JuMP.fix(
             flow[link],
-            cumulative_boundary_volume[link] / (Δt_allocation * scaling.flow);
+            flow_boundary.flow_rate[link[1].idx](t) / scaling.flow;
             force = true,
         )
     end
