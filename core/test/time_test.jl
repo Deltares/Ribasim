@@ -148,7 +148,7 @@ end
     failed = false
 
     for i in 1:100 # The bug would appear in about 1:(15~30) times
-        mode = Ribasim.run(toml_path)
+        model = Ribasim.run(toml_path)
         flow_table = DataFrame(Ribasim.flow_data(model))
         flow_outlet = filter(:link_id => ==(1), flow_table).flow_rate
         if (flow_outlet[end] == 0.0)
