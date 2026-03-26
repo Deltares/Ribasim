@@ -116,19 +116,22 @@ function set_simulation_data!(
         p::Parameters,
         t::Float64
     )::Nothing
-    (; problem, cumulative_boundary_volume, Δt_allocation, scaling) = allocation_model
+    (; problem, scaling) = allocation_model
     (; p_independent) = p
     (; flow_boundary) = p_independent
-
+    (; node_ids_in_subnetwork) = allocation_model
+    (; flow_boundary_ids_subnetwork) = node_ids_in_subnetwork
     flow = problem[:flow]
 
-    for link in keys(cumulative_boundary_volume)
+    for node_id in flow_boundary_ids_subnetwork
+        link = flow_boundary.outflow_link[node_id.idx].link
         JuMP.fix(
             flow[link],
             flow_boundary.flow_rate[link[1].idx](t) / scaling.flow;
             force = true,
         )
     end
+
     return nothing
 end
 
@@ -1081,14 +1084,10 @@ function apply_control_from_allocation!(
 end
 
 function reset_cumulative!(allocation_model::AllocationModel)::Nothing
-    (; cumulative_boundary_volume, cumulative_supplied_volume) = allocation_model
+    (; cumulative_supplied_volume) = allocation_model
 
     for link in keys(cumulative_supplied_volume)
         cumulative_supplied_volume[link] = 0
-    end
-
-    for link in keys(cumulative_boundary_volume)
-        cumulative_boundary_volume[link] = 0
     end
 
     return nothing
