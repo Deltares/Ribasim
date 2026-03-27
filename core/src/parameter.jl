@@ -425,7 +425,7 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
     evaporate_mass::Bool = true
     # Cumulative inflow for each Basin at a given time
     cumulative_in::Vector{Float64} = zeros(Float64, 0)
-    # matrix with concentrations for each Basin and substance
+    # Matrix with concentrations for each Basin and substance
     concentration_state::Matrix{Float64} = zeros(Float64, 0, 0)  # Basin, substance
     # Vectors with concentration timeseries interpolations for each incoming forcing per Basin per substance
     concentration_itp_drainage::Vector{Vector{ScalarConstantInterpolation}} =
@@ -434,6 +434,7 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
         Vector{ScalarBlockInterpolation}[]
     concentration_itp_surface_runoff::Vector{Vector{ScalarConstantInterpolation}} =
         Vector{ScalarBlockInterpolation}[]
+    loads_itp::Vector{Vector{ScalarConstantInterpolation}} = Vector{ScalarBlockInterpolation}[]
     # matrix with mass for each Basin and substance
     mass::Vector{Vector{Float64}} = Vector{Float64}[]
     # substances in use by the model (ordered like their axis in the concentration matrices)

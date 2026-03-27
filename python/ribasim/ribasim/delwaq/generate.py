@@ -52,7 +52,7 @@ def _quote(value):
     return f'"{value}"'
 
 
-def _make_boundary(data, boundary_type):
+def _make_boundary(data, boundary_type, values="concentration"):
     """
     Create a Delwaq boundary definition with the given data and boundary type.
 
@@ -71,7 +71,7 @@ def _make_boundary(data, boundary_type):
     """
     bid = _boundary_name(data.node_id.iloc[0], boundary_type)
     piv = (
-        data.pivot_table(index="time", columns="substance", values="concentration")
+        data.pivot_table(index="time", columns="substance", values=values)
         .reset_index()
         .reset_index(drop=True)
     )
@@ -321,26 +321,27 @@ def _setup_graph(nodes, link, evaporate_mass=True):
     return G, merge_links, node_mapping, link_mapping, basin_mapping
 
 
-def _setup_boundaries(model):
-    boundaries = []
+def _setup_boundaries(model, node_mapping):
+    concentrations = []
+    mass_load = []
     substances = set()
 
     if model.level_boundary.concentration.df is not None:
         for _, rows in model.level_boundary.concentration.df.groupby(["node_id"]):
             boundary, substance = _make_boundary(rows, "LevelBoundary")
-            boundaries.append(boundary)
+            concentrations.append(boundary)
             substances.update(substance)
 
     if model.flow_boundary.concentration.df is not None:
         for _, rows in model.flow_boundary.concentration.df.groupby("node_id"):
             boundary, substance = _make_boundary(rows, "FlowBoundary")
-            boundaries.append(boundary)
+            concentrations.append(boundary)
             substances.update(substance)
 
     if model.user_demand.concentration.df is not None:
         for _, rows in model.flow_boundary.concentration.df.groupby("node_id"):
             boundary, substance = _make_boundary(rows, "UserDemand")
-            boundaries.append(boundary)
+            concentrations.append(boundary)
             substances.update(substance)
 
     if model.basin.concentration.df is not None:
@@ -348,10 +349,17 @@ def _setup_boundaries(model):
             for boundary_type in ("Drainage", "Precipitation", "Surface_Runoff"):
                 nrows = rows.rename(columns={boundary_type.lower(): "concentration"})
                 boundary, substance = _make_boundary(nrows, boundary_type)
-                boundaries.append(boundary)
+                concentrations.append(boundary)
                 substances.update(substance)
 
-    return boundaries, substances
+    if model.basin.mass_load.df is not None:
+        for node_id, rows in model.basin.mass_load.df.groupby(["node_id"]):
+            boundary, substance = _make_boundary(rows, "Basin", "load")
+            boundary["node_id"] = node_mapping[node_id[0]]
+            mass_load.append(boundary)
+            substances.update(substance)
+
+    return concentrations, substances, mass_load
 
 
 def generate(
@@ -497,7 +505,7 @@ def generate(
     write_flows(output_path / "ribasim.flo", nflows, timestep)
     write_flows(
         output_path / "ribasim.are", nflows, timestep
-    )  # same as flow, so area becomes 1
+    )  # same as flow, so velocity becomes 1
 
     # Write volumes to Delwaq format
     volumes = basins[["time", "node_id", "storage"]].copy()
@@ -509,9 +517,6 @@ def generate(
     # volumes.to_csv(output_path / "volumes.csv", index=False)  # not needed
     volumes.drop(columns=["node_id", "riba_node_id"], inplace=True)
     write_volumes(output_path / "ribasim.vol", volumes, timestep)
-    write_volumes(
-        output_path / "ribasim.vel", volumes, timestep
-    )  # same as volume, so vel becomes 1
 
     # Length file
     lengths = nflows.copy()
@@ -520,15 +525,22 @@ def generate(
     write_flows(output_path / "ribasim.len", lengths, timestep)
 
     # Find all boundary substances and concentrations
-    boundaries, substances = _setup_boundaries(model)
-
+    boundaries, substances, loads = _setup_boundaries(model, node_mapping)
     # Write boundary data with substances and concentrations
     template = env.get_template("B5_bounddata.inc.j2")
     with (output_path / "B5_bounddata.inc").open(mode="w") as f:
         f.write(
             template.render(
-                states=[],  # no states yet
                 boundaries=boundaries,
+            )
+        )
+
+    # Write load data with substances and masses
+    template = env.get_template("B6_wasteloads.inc.j2")
+    with (output_path / "B6_wasteloads.inc").open(mode="w") as f:
+        f.write(
+            template.render(
+                loads=loads,
             )
         )
 
@@ -620,13 +632,6 @@ def generate(
                 ribasim_version=ribasim.__version__,
             )
         )
-
-    # Create wasteloads file with zero loads that can be
-    # extended by the user later
-    wasteloads = output_path / "B6_wasteloads.inc"
-    if not wasteloads.exists():
-        with wasteloads.open(mode="w") as f:
-            f.write("0; Number of loads\n")
 
     template = env.get_template("B8_initials.inc.j2")
     with (output_path / "B8_initials.inc").open(mode="w") as f:

@@ -251,6 +251,7 @@ end
     @test all(isapprox.(summed_source_concentrations, 1.0))
 
     @test unique(table.substance) ⊆ [
+        "Basic",
         "Tracer",
         "Cl",
         "Continuity",
