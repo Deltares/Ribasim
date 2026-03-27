@@ -10,7 +10,7 @@ Ribasim builds on several packages from the [SciML](https://sciml.ai/) ecosystem
 
 | Package | Role |
 |---------|------|
-| [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl) | Time integration (default solver: QNDF) |
+| [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl) subpackages | Time integration (default solver: QNDF) |
 | [DifferentiationInterface.jl](https://github.com/gdalle/DifferentiationInterface.jl) | Unified API for Jacobian computation |
 | [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl) | Forward-mode automatic differentiation via dual numbers |
 | [SparseConnectivityTracer.jl](https://github.com/adrhill/SparseConnectivityTracer.jl) | Sparsity pattern detection |
