@@ -916,7 +916,6 @@ struct AllocationModel
 
     # Cumulative tracking for output
     cumulative_supplied_volume::Dict{Tuple{NodeID, NodeID}, Float64}
-    cumulative_boundary_volume::Dict{Tuple{NodeID, NodeID}, Float64}
 
     # Forcing volumes (precipitation, evaporation)
     explicit_positive_forcing_volume::Dict{NodeID, Float64}
