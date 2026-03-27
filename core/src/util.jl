@@ -443,29 +443,6 @@ end
 inflow_link(graph, node_id)::LinkMetadata = graph[inflow_id(graph, node_id), node_id]
 outflow_link(graph, node_id)::LinkMetadata = graph[node_id, outflow_id(graph, node_id)]
 
-"""
-We want to perform allocation at t = 0 but there are no cumulative volumes available yet
-as input. Therefore we set the instantaneous flows as the mean flows as allocation input.
-"""
-function set_initial_allocation_cumulative_volume!(integrator)::Nothing
-    (; u, p, t) = integrator
-    (; p_independent) = p
-    (; allocation, flow_boundary, du_buff) = p_independent
-    (; allocation_models) = allocation
-    (; Δt_allocation) = allocation_models[1]
-    water_balance!(du_buff, u, p, t)
-
-    for allocation_model in allocation_models
-        (; cumulative_boundary_volume) = allocation_model
-
-        # Boundary flow
-        for link in keys(cumulative_boundary_volume)
-            cumulative_boundary_volume[link] =
-                flow_boundary.flow_rate[link[1].idx](0.0) * Δt_allocation
-        end
-    end
-    return nothing
-end
 
 """
 Convert a truth state in terms of a BitVector or Vector{Bool} into a string of 'T' and 'F'
