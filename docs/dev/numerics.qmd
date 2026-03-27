@@ -2,7 +2,7 @@
 title: "Numerical implementation"
 ---
 
-This page describes how Ribasim's Julia core implements the numerical methods discussed in [numerical considerations](/concept/numerics.qmd) and solves the equations defined in [equations](/concept/equations.qmd). It focuses on the SciML ecosystem integration, automatic differentiation pipeline, and the key implementation patterns in `core/src/`.
+This page describes how Ribasim's Julia core implements the numerical methods discussed in [numerical considerations](/concept/numerics.qmd) and solves the equations defined in [equations](/concept/equations.qmd). It focuses on the SciML ecosystem integration, the automatic differentiation pipeline, and the key implementation patterns in `core/src/`.
 
 # SciML ecosystem overview
 
