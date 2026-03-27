@@ -17,6 +17,8 @@ from ribasim.nodes import basin, flow_boundary, flow_demand, pump, user_demand
 from ribasim.utils import UsedIDs
 from shapely.geometry import Point
 
+PANDAS3 = int(pd.__version__.split(".")[0]) >= 3
+
 
 def __assert_equal(a: DataFrame, b: DataFrame) -> None:
     """Lenient version of pandas.testing.assert_frame_equal."""
@@ -446,7 +448,11 @@ def test_pandas_dtype():
     assert df["time"].diff().iloc[1] == pd.Timedelta("333ms")
     assert str(df["time"].dtype) == "datetime64[ns]"
     assert df["flow_rate"].dtype == np.float64
-    assert df["meta_obj"].dtype == object
+    if PANDAS3:
+        # Pandas 3 infers string columns as the new str dtype
+        assert df["meta_obj"].dtype == "str"
+    else:
+        assert df["meta_obj"].dtype == object
     assert df["meta_str_python"].dtype == "string[python]"
     assert df["meta_str_python"].isna().iloc[1]
     assert df["meta_str_pyarrow"].dtype == "string[pyarrow]"
@@ -458,7 +464,10 @@ def test_pandas_dtype():
         control_state=["foo", pd.NA],
     ).df
 
-    assert df["control_state"].dtype == "string[python]"
+    if PANDAS3:
+        assert df["control_state"].dtype == "str"
+    else:
+        assert df["control_state"].dtype == "string[python]"
 
     # Optional integer column
     df = flow_demand.Static(

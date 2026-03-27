@@ -594,6 +594,5 @@ def test_model_compatibility(basic):
 
     assert basic.node == basic.node
     df = basic.node.df
-    df.iloc[0, 0] = 9999
-    # This behavior might change with Pandas 3
-    assert basic.node.df.iloc[0, 0] == 9999
+    df.iloc[0, 0] = "9999"
+    assert basic.node.df.iloc[0, 0] == "9999"
