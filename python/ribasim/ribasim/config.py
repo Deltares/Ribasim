@@ -15,6 +15,7 @@ from ribasim.schemas import (
     BasinConcentrationExternalSchema,
     BasinConcentrationSchema,
     BasinConcentrationStateSchema,
+    BasinMassLoadSchema,
     BasinProfileSchema,
     BasinStateSchema,
     BasinStaticSchema,
@@ -356,6 +357,10 @@ class Basin(NodeModel):
     concentration_state: TableModel[BasinConcentrationStateSchema] = Field(
         default_factory=TableModel[BasinConcentrationStateSchema],
         json_schema_extra={"sort_keys": ["node_id", "substance"]},
+    )
+    mass_load: TableModel[BasinMassLoadSchema] = Field(
+        default_factory=TableModel[BasinMassLoadSchema],
+        json_schema_extra={"sort_keys": ["node_id", "substance", "time"]},
     )
 
 

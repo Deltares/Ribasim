@@ -39,7 +39,14 @@ module Schema
             node_id::Int32
             time::DateTime
             substance::String
-            concentration::Union{Missing, Float64}
+            concentration::Float64
+        end
+
+        struct MassLoad <: Table
+            node_id::Int32
+            time::DateTime
+            substance::String
+            load::Float64
         end
 
         struct Profile <: Table
@@ -57,7 +64,7 @@ module Schema
         struct ConcentrationState <: Table
             node_id::Int32
             substance::String
-            concentration::Union{Missing, Float64}
+            concentration::Float64
         end
 
         struct Subgrid <: Table

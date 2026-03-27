@@ -385,18 +385,6 @@ function add_level_demand!(
     return nothing
 end
 
-function add_flow_boundary!(
-        allocation_model::AllocationModel,
-        p_independent::ParametersIndependent,
-    )::Nothing
-    (; cumulative_boundary_volume, node_ids_in_subnetwork) = allocation_model
-    (; flow_boundary_ids_subnetwork) = node_ids_in_subnetwork
-    (; flow_boundary) = p_independent
-    for node_id in flow_boundary_ids_subnetwork
-        cumulative_boundary_volume[flow_boundary.outflow_link[node_id.idx].link] = 0.0
-    end
-    return nothing
-end
 
 function add_level_boundary!(allocation_model::AllocationModel)::Nothing
     (; problem, node_ids_in_subnetwork) = allocation_model
@@ -1024,7 +1012,6 @@ function AllocationModel(
     add_conservation!(allocation_model, p_independent)
 
     # Boundary nodes
-    add_flow_boundary!(allocation_model, p_independent)
     add_level_boundary!(allocation_model)
 
     # Connector nodes

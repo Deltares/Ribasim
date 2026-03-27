@@ -239,9 +239,6 @@ function Model(config::Config)::Model
     )
     @debug "Setup integrator."
 
-    if config.experimental.allocation && is_active(p_independent.allocation)
-        set_initial_allocation_cumulative_volume!(integrator)
-    end
     model = Model(integrator, config, saved)
     return model
 end
