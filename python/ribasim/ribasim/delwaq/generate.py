@@ -128,7 +128,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
             n_out = len(set(out.keys()) - set(remove_nodes))
             if n_in > 1 and n_out > 1:
                 raise ValueError(
-                    f"Cannot simplify network for Junction {node_id} that has multiple inflow ({list(inneighbor_ids.keys())}) and outflow ({list(out.keys())}) links."
+                    f"Cannot simplify network for Junction #{node_id} that has multiple inflow ({list(inneighbor_ids.keys())}) and outflow ({list(out.keys())}) links."
                 )
             elif n_in == 1 and n_out >= 1:
                 converging = False
