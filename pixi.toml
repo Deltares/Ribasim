@@ -256,7 +256,6 @@ quarto-check = { cmd = "echo 'Skipping quarto check on ARM64 Linux (Quarto not s
 quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not supported)'" }
 
 [dependencies]
-datacompy = ">=0.16"
 geopandas = ">=1.0"
 gh = "*"
 griffe = ">=1,<2"
@@ -274,7 +273,7 @@ netcdf4 = ">=1.7.1"
 networkx = ">=3.3"
 numpy = ">=2.0"
 packaging = ">=23.0"
-pandas = ">=2.2,<3"
+pandas = ">=2.2"
 pandas-stubs = "*"
 pandera = ">=0.25"
 plotly = "*"
@@ -319,6 +318,12 @@ python = "3.12.*"
 [feature.py313.dependencies]
 python = "3.13.*"
 
+[feature.pandas2.dependencies]
+# datacompy can go back in the default env once v1 is released
+# and also remove importorskip for datacompy
+pandas = ">=2.2,<3"
+datacompy = ">=0.16"
+
 [target.win-64.dependencies]
 rcedit = "*"
 qgis = ">=3.40,<4"
@@ -334,6 +339,7 @@ quarto = "*"
 [environments]
 default = ["py313"]
 py312 = ["py312"]
+pandas2 = ["py313", "pandas2"]
 
 [system-requirements]
 linux = "3.10.0"
