@@ -73,6 +73,18 @@ The `Parameters` struct (defined in `core/src/parameter.jl`) is split into four 
 
 This split is driven by AD requirements — see [Jacobian computation](#jacobian-computation) below.
 
+# Implicit time integration
+
+Water systems can be **stiff** — some processes change on timescales of seconds (a pump switching on), while others evolve over days (a reservoir slowly filling). Explicit methods like forward Euler would need extremely small timesteps to remain stable, making them impractical. Implicit methods avoid this by solving an equation at each step that accounts for the system's coupled dynamics, allowing much larger steps.
+
+The default solver is **QNDF** (quasi-Newton backward differentiation formula), an implicit multi-step method from `OrdinaryDiffEq.jl` well-suited for stiff problems. The trade-off is that each implicit step requires solving a nonlinear system, which in turn requires the **Jacobian** — a matrix of partial derivatives of the RHS.
+
+## The Jacobian
+
+The Jacobian $J$ is an $N \times N$ matrix where entry $J_{i,j}$ describes how a small change in state component $j$ affects the rate of change of component $i$. The solver uses this sensitivity information to take stable, accurate steps through stiff regions.
+
+In practice, most entries of $J$ are zero — a pump in one part of the network does not affect a weir in a distant part. This **sparsity** is the key to making implicit solves affordable, as both the Jacobian computation and the linear solves can exploit it.
+
 # State reduction {#sec-state-reduction}
 
 Not every component of the state vector $\mathbf{u}$ influences every flow independently. Many flow states depend on basin levels, which in turn depend on basin storages. Ribasim exploits this by working with a **reduced state** $\mathbf{u}_\text{reduced}$ that contains only the basin storages and PID integral terms.
@@ -92,6 +104,30 @@ where $g$ is `water_balance!` as a function of $\mathbf{u}_\text{reduced}$. AD o
 # Jacobian computation
 
 The Jacobian computation pipeline lives in `core/src/differentiation.jl`.
+
+## Forward-mode automatic differentiation
+
+There are three common ways to obtain a Jacobian: finite differences (simple but slow and imprecise), hand-coded derivatives (exact but hard to maintain), and automatic differentiation (AD). Ribasim uses **forward-mode AD** via `ForwardDiff.jl`.
+
+The idea is to replace regular floating-point numbers with **dual numbers** that carry both a value and a derivative component:
+
+$$
+\tilde{x} = x + \epsilon \dot{x}
+$$
+
+where $\epsilon$ is a formal infinitesimal satisfying $\epsilon^2 = 0$. Arithmetic on dual numbers propagates derivatives automatically — for example, multiplication gives:
+
+$$
+(x + \epsilon\dot{x})(y + \epsilon\dot{y}) = xy + \epsilon(x\dot{y} + y\dot{x})
+$$
+
+which is exactly the product rule. By running `water_balance!` with dual-number inputs seeded with a unit perturbation in one state direction, the derivative part of the output gives one column of the Jacobian. Repeating for each direction yields the full matrix.
+
+## Exploiting sparsity: graph coloring
+
+Computing each Jacobian column requires a full evaluation of `water_balance!` with dual numbers. With $N$ states, that would mean $N$ evaluations — prohibitively expensive for large models.
+
+However, since the Jacobian is sparse, many columns have no overlapping nonzero rows. If columns $i$ and $j$ never have a nonzero in the same row, their perturbations can be seeded simultaneously in a single evaluation without interfering. This observation leads to **graph coloring**: columns are partitioned into groups (colors) such that all columns within a group are structurally independent. One evaluation per color suffices, reducing the cost from $N$ evaluations to the number of colors — typically a small constant for network-structured problems.
 
 ## Preparation phase
 
@@ -181,22 +217,3 @@ Ribasim uses SciML's [callback mechanism](https://docs.sciml.ai/DiffEqDocs/stabl
 | Subgrid interpolation | `SavingCallback` | Interpolates subgrid levels for output |
 
 `PresetTimeCallback` fires at specific times (e.g. when forcing data changes). `FunctionCallingCallback` fires at every accepted solver step. `SavingCallback` fires at the `saveat` interval and stores results for later output.
-
-# Solver configuration
-
-The solver is configured through the TOML configuration file, mapped to the `Solver` struct in `core/src/config.jl`:
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `algorithm` | `"QNDF"` | ODE solver algorithm |
-| `abstol` | `1e-5` | Absolute error tolerance |
-| `reltol` | `1e-5` | Relative error tolerance |
-| `sparse` | `true` | Use sparse Jacobian with coloring |
-| `autodiff` | `true` | Use ForwardDiff (else finite differences) |
-| `saveat` | `86400.0` | Output save interval in seconds |
-| `dt` | `nothing` | Fixed step size (`nothing` = adaptive) |
-| `dtmin` / `dtmax` | `0.0` / `nothing` | Step size bounds |
-
-The default `QNDF` algorithm is a quasi-Newton backward differentiation formula method, well-suited for stiff systems. It uses `NLNewton` as the nonlinear solver, which in turn uses the [custom linear solver](#custom-linear-solver) with KLU factorization when `sparse = true`.
-
-When `autodiff = true`, the AD backend is `AutoForwardDiff` with the `:Ribasim` tag (to avoid tag conflicts with other ForwardDiff users). When `false`, it falls back to `AutoFiniteDiff`.
