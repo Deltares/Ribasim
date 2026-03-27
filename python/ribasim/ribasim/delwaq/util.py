@@ -108,7 +108,7 @@ def write_flows(fn: Path | str, data: pd.DataFrame, timestep: timedelta) -> None
         f.write(group.flow_rate.to_numpy().astype("float32").tobytes())
 
 
-def ugrid(G) -> xugrid.UgridDataset:
+def ugrid(G, crs=None) -> xugrid.UgridDataset:
     # TODO Deduplicate with ribasim.Model.to_xugrid
     link_df = pd.DataFrame(G.edges(), columns=["from_node_id", "to_node_id"])
     node_df = pd.DataFrame(G.nodes(), columns=["node_id"])
@@ -145,6 +145,7 @@ def ugrid(G) -> xugrid.UgridDataset:
             )
         ),
         name="ribasim",
+        crs=crs,
     )
 
     link_dim = grid.edge_dimension

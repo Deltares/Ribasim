@@ -438,7 +438,7 @@ def generate(
         )
 
     # Generate mesh and write to NetCDF, adding attributes to avoid Delwaq warnings
-    uds = ugrid(G)
+    uds = ugrid(G, crs=model.crs)
     grid = uds.ugrid.grid
     dataset = uds.ugrid.to_dataset(optional_attributes=True)
     dataset[grid.name].attrs["node_id"] = grid.node_dimension
