@@ -23,7 +23,7 @@ import xarray as xr
 try:
     import jinja2
 except ImportError:
-    jinja2 = MissingOptionalModule("jinja2", "delwaq")  # type: ignore
+    jinja2 = MissingOptionalModule("jinja2", "delwaq")  # type: ignore[assignment]
 
 import ribasim
 from ribasim.delwaq.util import (

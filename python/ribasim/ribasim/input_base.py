@@ -43,7 +43,7 @@ from ribasim.utils import MissingOptionalModule
 try:
     from datacompy.core import Compare
 except ImportError:
-    Compare = MissingOptionalModule("datacompy", "diff")  # type: ignore[assignment]
+    Compare = MissingOptionalModule("datacompy", "diff")
 
 from .styles import _add_styles_to_geopackage
 

@@ -49,8 +49,8 @@ def parse(
             df.drop(columns=["ribasim_node_x", "ribasim_node_y"], inplace=True)
             # Map the node_id (logical index) to the original node_id
             # TODO Check if this is correct
-            df.node_id += 1
-            df.node_id = df.node_id.map(mapping)
+            df["node_id"] += 1
+            df["node_id"] = df["node_id"].map(mapping)
 
             dfs.append(df)
 
