@@ -522,7 +522,7 @@ def generate(
 
     # Length file
     lengths = nflows
-    lengths.flow_rate = 1
+    lengths.flow_rate = 1.0
     lengths.iloc[np.repeat(np.arange(len(lengths)), 2)]
     write_flows(output_path / "ribasim.len", lengths, timestep)
 
