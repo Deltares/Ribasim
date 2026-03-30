@@ -35,6 +35,7 @@ class _BaseSchema(pa.DataFrameModel):
 
 {% for m in models %}
 class {{m[:name]}}Schema(_BaseSchema):
+    _node_id_relation: str = "{{m[:node_id_relation]}}"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
   {% for f in m[:fields] %}
     {% if (f[1] == :node_id) %}

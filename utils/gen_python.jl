@@ -44,6 +44,7 @@ function get_models()
                     map(python_type, fieldtypes(T)),
                     map(is_nullable, fieldtypes(T)),
                 ),
+                node_id_relation = string(Ribasim.node_id_relation(T)),
             ) for T in subtypes(Ribasim.Table)
     ]
 end

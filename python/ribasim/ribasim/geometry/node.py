@@ -291,6 +291,87 @@ class NodeModel(ParentModel, ChildModel):
             node_ids.update(table._node_ids())
         return node_ids
 
+    def _validate_node_ids(self) -> None:
+        """Validate that node_ids in data tables are consistent with the Node table.
+
+        Each table's schema defines a ``_node_id_relation`` that describes the
+        expected relationship between its node_ids and the full set of node_ids
+        for this node type:
+
+        - ``"equal"``: table node_ids must exactly match the node table.
+        - ``"partition"``: all partition tables must be pairwise disjoint and
+          their union must equal the node table.
+        - ``"subset"``: table node_ids must be a subset of the node table.
+        """
+        node_table = self.node
+        if node_table is None or node_table.df is None or node_table.df.empty:
+            return
+
+        expected_ids: set[int] = set(node_table.df.index)
+        node_type = self.__class__.__name__
+
+        partition_tables: list[tuple[str, set[int]]] = []
+        errors: list[str] = []
+
+        for key in self._fields():
+            attr = getattr(self, key)
+            if not isinstance(attr, TableModel) or attr.df is None or key == "node":
+                continue
+
+            table_ids = attr._node_ids()
+            if not table_ids:
+                continue
+
+            relation = getattr(attr.tableschema(), "_node_id_relation", "equal")
+
+            if relation == "equal":
+                if table_ids != expected_ids:
+                    missing = expected_ids - table_ids
+                    extra = table_ids - expected_ids
+                    parts = []
+                    if missing:
+                        parts.append(f"missing node_ids {missing}")
+                    if extra:
+                        parts.append(f"unexpected node_ids {extra}")
+                    errors.append(f"{node_type} / {key}: {'; '.join(parts)}")
+            elif relation == "subset":
+                extra = table_ids - expected_ids
+                if extra:
+                    errors.append(f"{node_type} / {key}: unexpected node_ids {extra}")
+            elif relation == "partition":
+                partition_tables.append((key, table_ids))
+
+        if partition_tables:
+            # Check pairwise disjointness
+            for i, (name_a, ids_a) in enumerate(partition_tables):
+                for name_b, ids_b in partition_tables[i + 1 :]:
+                    overlap = ids_a & ids_b
+                    if overlap:
+                        errors.append(
+                            f"{node_type}: node_ids {overlap} found in both "
+                            f"{name_a} and {name_b}"
+                        )
+
+            # Check union equals expected
+            union_ids: set[int] = set()
+            for _, ids in partition_tables:
+                union_ids |= ids
+            if union_ids != expected_ids:
+                missing = expected_ids - union_ids
+                extra = union_ids - expected_ids
+                table_names = ", ".join(name for name, _ in partition_tables)
+                parts = []
+                if missing:
+                    parts.append(f"missing node_ids {missing}")
+                if extra:
+                    parts.append(f"unexpected node_ids {extra}")
+                errors.append(
+                    f"{node_type} partition ({table_names}): {'; '.join(parts)}"
+                )
+
+        if errors:
+            raise ValueError("Node ID validation failed:\n" + "\n".join(errors))
+
     def read(
         self,
         internal: bool = True,
@@ -323,6 +404,7 @@ class NodeModel(ParentModel, ChildModel):
         external : bool, optional
             Write the NetCDF input files. Default is True.
         """
+        # here
         for table in self._tables():
             if (internal and table.is_internal) or (external and table.is_external):
                 table.write()
