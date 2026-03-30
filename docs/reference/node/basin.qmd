@@ -455,6 +455,16 @@ time           | DateTime | -                        |
 substance      | String   | -                        | can correspond to known Delwaq substances
 concentration  | Float64  | $\text{g}/\text{m}^3$    |
 
+## Mass load
+This table is used for dry (waste) loads, i.e. mass injection into a basin.
+
+column         | type     | unit                     | restriction
+-------------- | -------- | ------------------------ | -----------
+node_id        | Int32    | -                        |
+time           | DateTime | -                        |
+substance      | String   | -                        | can correspond to known Delwaq substances
+load           | Float64  | $\text{g}/\text{s}$      |
+
 # Equations
 
 ## The reduction factor {#sec-reduction-factor}

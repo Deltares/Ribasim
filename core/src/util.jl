@@ -443,29 +443,6 @@ end
 inflow_link(graph, node_id)::LinkMetadata = graph[inflow_id(graph, node_id), node_id]
 outflow_link(graph, node_id)::LinkMetadata = graph[node_id, outflow_id(graph, node_id)]
 
-"""
-We want to perform allocation at t = 0 but there are no cumulative volumes available yet
-as input. Therefore we set the instantaneous flows as the mean flows as allocation input.
-"""
-function set_initial_allocation_cumulative_volume!(integrator)::Nothing
-    (; u, p, t) = integrator
-    (; p_independent) = p
-    (; allocation, flow_boundary, du_buff) = p_independent
-    (; allocation_models) = allocation
-    (; Δt_allocation) = allocation_models[1]
-    water_balance!(du_buff, u, p, t)
-
-    for allocation_model in allocation_models
-        (; cumulative_boundary_volume) = allocation_model
-
-        # Boundary flow
-        for link in keys(cumulative_boundary_volume)
-            cumulative_boundary_volume[link] =
-                flow_boundary.flow_rate[link[1].idx](0.0) * Δt_allocation
-        end
-    end
-    return nothing
-end
 
 """
 Convert a truth state in terms of a BitVector or Vector{Bool} into a string of 'T' and 'F'
@@ -959,6 +936,8 @@ function get_timeseries_tstops(
         level_boundary,
         level_demand,
         pid_control,
+        pump,
+        outlet,
         tabulated_rating_curve,
         user_demand,
         discrete_control,
@@ -990,6 +969,19 @@ function get_timeseries_tstops(
         end
     end
 
+    # Pump and Outlet transient flow rate and bounds
+    # time_dependent_flow_rate may have undef elements (nodes with static flow rates)
+    get_timeseries_tstops_assigned!(tstops, t_end, pump.time_dependent_flow_rate)
+    get_timeseries_tstops_assigned!(tstops, t_end, outlet.time_dependent_flow_rate)
+    get_timeseries_tstops!(tstops, t_end, pump.min_flow_rate)
+    get_timeseries_tstops!(tstops, t_end, pump.max_flow_rate)
+    get_timeseries_tstops!(tstops, t_end, pump.min_upstream_level)
+    get_timeseries_tstops!(tstops, t_end, pump.max_downstream_level)
+    get_timeseries_tstops!(tstops, t_end, outlet.min_flow_rate)
+    get_timeseries_tstops!(tstops, t_end, outlet.max_flow_rate)
+    get_timeseries_tstops!(tstops, t_end, outlet.min_upstream_level)
+    get_timeseries_tstops!(tstops, t_end, outlet.max_downstream_level)
+
     return tstops
 end
 
@@ -1000,6 +992,24 @@ function get_timeseries_tstops!(
     )::Nothing
     for itp in interpolations
         push!(tstops, get_timeseries_tstops(itp, t_end))
+    end
+    return nothing
+end
+
+"""
+Like `get_timeseries_tstops!`, but skips unassigned elements in the vector.
+This is needed for vectors initialized with `undef` where only some elements are set
+(e.g. `Pump.time_dependent_flow_rate` which is only assigned for nodes with transient data).
+"""
+function get_timeseries_tstops_assigned!(
+        tstops::Vector{Vector{Float64}},
+        t_end::Float64,
+        interpolations::AbstractArray{<:AbstractInterpolation},
+    )::Nothing
+    for i in eachindex(interpolations)
+        if isassigned(interpolations, i)
+            push!(tstops, get_timeseries_tstops(interpolations[i], t_end))
+        end
     end
     return nothing
 end
@@ -1095,7 +1105,7 @@ function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
     )
     time_dependent_cache.t_prev_call[1] = t
 
-    # Whether the state time dependent cache must be renewed
+    # Whether the state and time dependent cache must be renewed
     new_t_state_and_time_dependent_cache =
         !isassigned(state_and_time_dependent_cache.t_prev_call, 1) || (
         t != state_and_time_dependent_cache.t_prev_call[1] &&

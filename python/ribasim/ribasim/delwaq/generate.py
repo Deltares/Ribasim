@@ -23,7 +23,7 @@ import xarray as xr
 try:
     import jinja2
 except ImportError:
-    jinja2 = MissingOptionalModule("jinja2", "delwaq")  # type: ignore
+    jinja2 = MissingOptionalModule("jinja2", "delwaq")  # type: ignore[assignment]
 
 import ribasim
 from ribasim.delwaq.util import (
@@ -52,7 +52,7 @@ def _quote(value):
     return f'"{value}"'
 
 
-def _make_boundary(data, boundary_type):
+def _make_boundary(data, boundary_type, values="concentration"):
     """
     Create a Delwaq boundary definition with the given data and boundary type.
 
@@ -71,7 +71,7 @@ def _make_boundary(data, boundary_type):
     """
     bid = _boundary_name(data.node_id.iloc[0], boundary_type)
     piv = (
-        data.pivot_table(index="time", columns="substance", values="concentration")
+        data.pivot_table(index="time", columns="substance", values=values)
         .reset_index()
         .reset_index(drop=True)
     )
@@ -124,11 +124,13 @@ def _setup_graph(nodes, link, evaporate_mass=True):
             remove_nodes.append(node_id)
 
             converging = True
-            if len(inneighbor_ids) > 1 and len(out) > 1:
+            n_in = len(set(inneighbor_ids.keys()) - set(remove_nodes))
+            n_out = len(set(out.keys()) - set(remove_nodes))
+            if n_in > 1 and n_out > 1:
                 raise ValueError(
-                    "Cannot simplify network with junctions that have multiple inflow and outflow links."
+                    f"Cannot simplify network for Junction #{node_id} that has multiple inflow ({list(inneighbor_ids.keys())}) and outflow ({list(out.keys())}) links."
                 )
-            elif len(inneighbor_ids) == 1 and len(out) >= 1:
+            elif n_in == 1 and n_out >= 1:
                 converging = False
 
             for inneighbor_id in inneighbor_ids:
@@ -321,26 +323,27 @@ def _setup_graph(nodes, link, evaporate_mass=True):
     return G, merge_links, node_mapping, link_mapping, basin_mapping
 
 
-def _setup_boundaries(model):
-    boundaries = []
+def _setup_boundaries(model, node_mapping):
+    concentrations = []
+    mass_load = []
     substances = set()
 
     if model.level_boundary.concentration.df is not None:
         for _, rows in model.level_boundary.concentration.df.groupby(["node_id"]):
             boundary, substance = _make_boundary(rows, "LevelBoundary")
-            boundaries.append(boundary)
+            concentrations.append(boundary)
             substances.update(substance)
 
     if model.flow_boundary.concentration.df is not None:
         for _, rows in model.flow_boundary.concentration.df.groupby("node_id"):
             boundary, substance = _make_boundary(rows, "FlowBoundary")
-            boundaries.append(boundary)
+            concentrations.append(boundary)
             substances.update(substance)
 
     if model.user_demand.concentration.df is not None:
         for _, rows in model.flow_boundary.concentration.df.groupby("node_id"):
             boundary, substance = _make_boundary(rows, "UserDemand")
-            boundaries.append(boundary)
+            concentrations.append(boundary)
             substances.update(substance)
 
     if model.basin.concentration.df is not None:
@@ -348,10 +351,17 @@ def _setup_boundaries(model):
             for boundary_type in ("Drainage", "Precipitation", "Surface_Runoff"):
                 nrows = rows.rename(columns={boundary_type.lower(): "concentration"})
                 boundary, substance = _make_boundary(nrows, boundary_type)
-                boundaries.append(boundary)
+                concentrations.append(boundary)
                 substances.update(substance)
 
-    return boundaries, substances
+    if model.basin.mass_load.df is not None:
+        for node_id, rows in model.basin.mass_load.df.groupby(["node_id"]):
+            boundary, substance = _make_boundary(rows, "Basin", "load")
+            boundary["node_id"] = node_mapping[node_id[0]]
+            mass_load.append(boundary)
+            substances.update(substance)
+
+    return concentrations, substances, mass_load
 
 
 def generate(
@@ -428,7 +438,7 @@ def generate(
         )
 
     # Generate mesh and write to NetCDF, adding attributes to avoid Delwaq warnings
-    uds = ugrid(G)
+    uds = ugrid(G, crs=model.crs)
     grid = uds.ugrid.grid
     dataset = uds.ugrid.to_dataset(optional_attributes=True)
     dataset[grid.name].attrs["node_id"] = grid.node_dimension
@@ -454,7 +464,6 @@ def generate(
     flows["link_id"] = flows["link_id"].map(link_mapping)
     flows.dropna(subset=["link_id"], inplace=True)
     flows["link_id"] = flows["link_id"].astype("int32")
-    nflows = flows.copy()
     nflows = flows.groupby(["time", "link_id"]).sum().reset_index()
     nflows.drop(
         columns=["from_node_id", "to_node_id", "convergence"],
@@ -497,11 +506,12 @@ def generate(
     write_flows(output_path / "ribasim.flo", nflows, timestep)
     write_flows(
         output_path / "ribasim.are", nflows, timestep
-    )  # same as flow, so area becomes 1
+    )  # same as flow, so velocity becomes 1
 
     # Write volumes to Delwaq format
-    volumes = basins[["time", "node_id", "storage"]]
-    volumes["riba_node_id"] = volumes.loc[:, "node_id"]
+    # copy is to avoid false positive SettingWithCopyWarning on pandas 2
+    volumes = basins[["time", "node_id", "storage"]].copy()
+    volumes["riba_node_id"] = volumes["node_id"]
     volumes.loc[:, "node_id"] = (
         volumes["node_id"].map(basin_mapping).astype(pd.Int32Dtype())
     )
@@ -509,26 +519,30 @@ def generate(
     # volumes.to_csv(output_path / "volumes.csv", index=False)  # not needed
     volumes.drop(columns=["node_id", "riba_node_id"], inplace=True)
     write_volumes(output_path / "ribasim.vol", volumes, timestep)
-    write_volumes(
-        output_path / "ribasim.vel", volumes, timestep
-    )  # same as volume, so vel becomes 1
 
     # Length file
-    lengths = nflows.copy()
-    lengths.flow_rate = 1
+    lengths = nflows
+    lengths["flow_rate"] = 1.0
     lengths.iloc[np.repeat(np.arange(len(lengths)), 2)]
     write_flows(output_path / "ribasim.len", lengths, timestep)
 
     # Find all boundary substances and concentrations
-    boundaries, substances = _setup_boundaries(model)
-
+    boundaries, substances, loads = _setup_boundaries(model, node_mapping)
     # Write boundary data with substances and concentrations
     template = env.get_template("B5_bounddata.inc.j2")
     with (output_path / "B5_bounddata.inc").open(mode="w") as f:
         f.write(
             template.render(
-                states=[],  # no states yet
                 boundaries=boundaries,
+            )
+        )
+
+    # Write load data with substances and masses
+    template = env.get_template("B6_wasteloads.inc.j2")
+    with (output_path / "B6_wasteloads.inc").open(mode="w") as f:
+        f.write(
+            template.render(
+                loads=loads,
             )
         )
 
@@ -573,9 +587,10 @@ def generate(
 
     # Write boundary list, ordered by bid to map the unique boundary names
     # to the links described in the pointer file.
-    bnd = pointer.copy()
+    bnd = pointer
     bnd["bid"] = np.minimum(bnd["from_node_id"], bnd["to_node_id"])
-    bnd = bnd[bnd["bid"] < 0]
+    # copy is to avoid false positive SettingWithCopyWarning on pandas 2
+    bnd = bnd[bnd["bid"] < 0].copy()
     bnd.sort_values(by="bid", ascending=False, inplace=True)
     bnd["node_type"] = [G.nodes(data="type")[bid] for bid in bnd["bid"]]
     bnd["node_id"] = [G.nodes(data="id")[bid] for bid in bnd["bid"]]
@@ -620,13 +635,6 @@ def generate(
                 ribasim_version=ribasim.__version__,
             )
         )
-
-    # Create wasteloads file with zero loads that can be
-    # extended by the user later
-    wasteloads = output_path / "B6_wasteloads.inc"
-    if not wasteloads.exists():
-        with wasteloads.open(mode="w") as f:
-            f.write("0; Number of loads\n")
 
     template = env.get_template("B8_initials.inc.j2")
     with (output_path / "B8_initials.inc").open(mode="w") as f:

@@ -16,13 +16,12 @@ classifiers = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "datacompy >=0.16",
     "geopandas >=1.0",
     "matplotlib >=3.9",
     "netCDF4 >=1.7.1",
     "numpy >=2.0",
     "packaging >=23.0",
-    "pandas >=2.2,<3",
+    "pandas >=2.2",
     "pandera >=0.25",
     "pyarrow >=17.0",
     "pydantic >=2.0",
@@ -42,9 +41,10 @@ tests = [
     "ribasim_testmodels",
     "teamcity-messages",
 ]
+diff = ["datacompy >=0.16"]
 netcdf = ["xugrid"]
 delwaq = ["jinja2", "networkx", "ribasim[netcdf]"]
-all = ["ribasim[tests]", "ribasim[netcdf]", "ribasim[delwaq]"]
+all = ["ribasim[tests]", "ribasim[netcdf]", "ribasim[delwaq]", "ribasim[diff]"]
 
 [project.urls]
 Documentation = "https://ribasim.org/"

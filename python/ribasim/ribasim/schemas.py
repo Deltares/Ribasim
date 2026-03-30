@@ -52,7 +52,7 @@ class BasinConcentrationExternalSchema(_BaseSchema):
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
     substance: pd.StringDtype = pa.Field(nullable=False)
-    concentration: float = pa.Field(nullable=True)
+    concentration: float = pa.Field(nullable=False)
 
 
 class BasinConcentrationStateSchema(_BaseSchema):
@@ -60,7 +60,15 @@ class BasinConcentrationStateSchema(_BaseSchema):
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     substance: pd.StringDtype = pa.Field(nullable=False)
-    concentration: float = pa.Field(nullable=True)
+    concentration: float = pa.Field(nullable=False)
+
+
+class BasinMassLoadSchema(_BaseSchema):
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
+    node_id: np.int32 = pa.Field(nullable=False, default=0)
+    time: pd.Timestamp = pa.Field(nullable=False)
+    substance: pd.StringDtype = pa.Field(nullable=False)
+    load: float = pa.Field(nullable=False)
 
 
 class BasinProfileSchema(_BaseSchema):

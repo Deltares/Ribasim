@@ -50,7 +50,7 @@ def filter_time_tables(model: Model) -> Model:
                 mask = (
                     (time_col >= starttime) & (time_col <= endtime)
                 ) | time_col.isna()
-                filtered_df = table.df[mask].copy()
+                filtered_df = table.df[mask]
 
                 rows_removed = original_count - len(filtered_df)
                 if rows_removed > 0:
