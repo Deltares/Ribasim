@@ -182,12 +182,6 @@ result = J_intermediate * u_reduced  # sparse matvec
 
 When the solver needs to update the Jacobian (via `update_coefficients!`), it calls `get_jacobian!` which invokes `DifferentiationInterface.jacobian!` to fill `J_intermediate`.
 
-## Forced cache invalidation before Jacobian evaluation {#sec-ad-cache}
-
-Some `eval_time_interpolation` calls write their results into vectors that live in `state_and_time_dependent_cache` (e.g. `current_flow_rate_outlet`). Since this argument is tagged `Cache()`, the AD calls work on a fresh copy with uninitialized dual-number arrays. The time interpolation caching mechanism (`check_new_input!` / `eval_time_interpolation` in `core/src/util.jl`) must therefore be forced to recompute — rather than reuse cached values — so that the results are written into this fresh copy before anything reads from it.
-
-This is achieved in `get_jacobian!` by temporarily setting `t_prev_call = -1` before `jacobian!`. Since simulation time is always $\geq 0$, the first AD call's `check_new_input!` sees `t \neq t_\text{prev}` and evaluates all time interpolations, populating the AD copy. After `jacobian!`, `t_prev_call` is restored so subsequent real RHS calls make their own caching decisions. This has limited performance cost, especially for larger models.
-
 # Custom linear solver
 
 At each Newton iteration the solver must solve a linear system involving the Jacobian. Ribasim provides a custom `RibasimLinearSolve` wrapper (in `core/src/differentiation.jl`) that exploits the state reduction structure.
