@@ -152,7 +152,6 @@ _TRAVERSABLE_NODE_TYPES: frozenset[str] = frozenset(
 _DEFAULT_TRACERS: tuple[str, ...] = (
     "LevelBoundary",
     "FlowBoundary",
-    "UserDemand",
     "Drainage",
     "Precipitation",
     "SurfaceRunoff",
@@ -1239,7 +1238,7 @@ class PlotWidget(QWidget):
             available_substances.update(to_conc)
 
         selected_substances = self._selected_tracers(
-            selected_keys, available_substances, exclude={"UserDemand"}
+            selected_keys, available_substances
         )
 
         # Build a boolean mask: True where flow is positive (from→to).
