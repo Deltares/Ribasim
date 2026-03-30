@@ -111,6 +111,7 @@ class DatasetWidget:
             node_layer_getter=lambda: self.node_layer,
             link_layer_getter=lambda: self.link_layer,
             concentration_for_node_getter=self._get_concentration_for_node,
+            flow_for_link_getter=self._get_flow_for_link,
         )
 
         # Track running simulations by model path
@@ -644,6 +645,21 @@ class DatasetWidget:
         return {
             sub: (time_strings, arr[:, idx]) for sub, arr in result.variables.items()
         }
+
+    def _get_flow_for_link(self, link_id: int) -> Trace | None:
+        """Return the flow_rate trace for a single *link_id*."""
+        result = self.results.get("flow")
+        if result is None:
+            return None
+        flow_arr = result.variables.get("flow_rate")
+        if flow_arr is None:
+            return None
+        id_to_idx = {int(v): i for i, v in enumerate(result.ids)}
+        idx = id_to_idx.get(link_id)
+        if idx is None:
+            return None
+        time_strings = result.time.strftime("%Y-%m-%dT%H:%M:%S").to_numpy()
+        return (time_strings, flow_arr[:, idx])
 
     def _set_node_results(self) -> None:
         node_layer = self.ribasim_widget.node_layer
