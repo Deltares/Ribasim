@@ -14,7 +14,6 @@ import numpy as np
 import pandas as pd
 import pydantic
 import xarray as xr
-from datacompy.core import Compare
 from pandera.typing import DataFrame
 from pandera.typing.geopandas import GeoDataFrame
 from pydantic import BaseModel as PydanticBaseModel
@@ -39,6 +38,12 @@ from ribasim.db_utils import (
     exists,
 )
 from ribasim.schemas import _BaseSchema
+from ribasim.utils import MissingOptionalModule
+
+try:
+    from datacompy.core import Compare
+except ImportError:
+    Compare = MissingOptionalModule("datacompy", "diff")
 
 from .styles import _add_styles_to_geopackage
 

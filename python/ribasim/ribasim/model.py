@@ -858,9 +858,8 @@ class Model(FileModel, ParentModel):
         assert node_df is not None
 
         assert self.link.df is not None
-        link_df = self.link.df.copy()
         # We assume only the flow network is of interest.
-        link_df = link_df[link_df.link_type == "flow"]
+        link_df = self.link.df[self.link.df.link_type == "flow"]
 
         node_id = node_df.index.to_numpy()
         link_id = link_df.index.to_numpy()
