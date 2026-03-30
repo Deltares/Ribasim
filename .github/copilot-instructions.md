@@ -71,7 +71,7 @@ pixi run test-ribasim-python     # Python tests
 pixi run test-ribasim-core       # Julia tests
 
 # Documentation
-pixi run quarto-preview          # Preview docs locally
+pixi run docs                    # Preview docs locally
 
 # Model Generation
 pixi run generate-testmodels     # Generate test models

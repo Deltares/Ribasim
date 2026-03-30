@@ -96,13 +96,19 @@ Afterwards, a browser tab will open with the rendered documentation, updating it
 make changes.
 
 ```bash
-pixi run quarto-preview
+pixi run docs
 ```
 
 To preview without executing code cells (much faster for checking layout):
 
 ```bash
-pixi run quarto-preview-fast
+pixi run docs -- --no-execute
+```
+
+To preview a single file:
+
+```bash
+pixi run docs guide/delwaq.qmd
 ```
 
 The documentation also includes [Jupyter notebooks](https://jupyter.org/).
