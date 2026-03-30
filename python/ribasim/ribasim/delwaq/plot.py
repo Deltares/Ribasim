@@ -11,13 +11,12 @@ def plot_fraction(
 ):
     if tracers is None:
         tracers = [
-            "LevelBoundary",
-            "FlowBoundary",
-            "UserDemand",
             "Initial",
             "Drainage",
-            "Precipitation",
             "SurfaceRunoff",
+            "FlowBoundary",
+            "LevelBoundary",
+            "Precipitation",
         ]
     table = model.basin.concentration_external.df
     table = table[table["node_id"] == node_id]
@@ -26,11 +25,15 @@ def plot_fraction(
         raise ValueError(f"No data found for node {node_id} with tracers {tracers}")
 
     groups = table.groupby("substance")
-    stack = {k: v["concentration"].to_numpy() for (k, v) in groups}
+    stack = {
+        k: groups.get_group(k)["concentration"].to_numpy()
+        for k in tracers
+        if k in groups.groups
+    }
 
     if ax is None:
         _, ax = plt.subplots()
-    key = next(iter(groups.groups))
+    key = next(iter(stack))
     time = groups.get_group(key)["time"]
     ax.stackplot(
         time,

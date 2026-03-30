@@ -150,11 +150,11 @@ _TRAVERSABLE_NODE_TYPES: frozenset[str] = frozenset(
 )
 
 _DEFAULT_TRACERS: tuple[str, ...] = (
+    "Precipitation",
     "LevelBoundary",
     "FlowBoundary",
-    "Drainage",
-    "Precipitation",
     "SurfaceRunoff",
+    "Drainage",
     "Initial",
 )
 
@@ -876,6 +876,9 @@ class PlotWidget(QWidget):
                 available_substances - exclude if exclude else available_substances
             )
             selected = sorted(defaults)
+        # Enforce _DEFAULT_TRACERS ordering; unknown substances go last (sorted).
+        order = {name: i for i, name in enumerate(_DEFAULT_TRACERS)}
+        selected.sort(key=lambda s: (order.get(s, len(_DEFAULT_TRACERS)), s))
         return selected
 
     def _redraw_fractional_storage(
