@@ -93,6 +93,13 @@ node_id_relation(::Type{Schema.Basin.Time}) = :subset
 node_id_relation(::Type{Schema.Basin.Subgrid}) = :subset
 node_id_relation(::Type{Schema.Basin.SubgridTime}) = :subset
 node_id_relation(::Type{Schema.Observation.Time}) = :subset
+node_id_relation(::Type{Schema.Basin.MassLoad}) = :subset
+node_id_relation(::Type{Schema.Basin.Concentration}) = :subset
+node_id_relation(::Type{Schema.Basin.ConcentrationExternal}) = :subset
+node_id_relation(::Type{Schema.Basin.ConcentrationState}) = :subset
+node_id_relation(::Type{Schema.FlowBoundary.Concentration}) = :subset
+node_id_relation(::Type{Schema.LevelBoundary.Concentration}) = :subset
+node_id_relation(::Type{Schema.UserDemand.Concentration}) = :subset
 
 "[:Basin, Terminal, ...]"
 const node_types::Vector{Symbol} = filter(

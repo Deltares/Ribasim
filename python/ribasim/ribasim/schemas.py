@@ -36,7 +36,7 @@ class _BaseSchema(pa.DataFrameModel):
 
 
 class BasinConcentrationSchema(_BaseSchema):
-    _node_id_relation: str = "equal"
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -47,7 +47,7 @@ class BasinConcentrationSchema(_BaseSchema):
 
 
 class BasinConcentrationExternalSchema(_BaseSchema):
-    _node_id_relation: str = "equal"
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -56,7 +56,7 @@ class BasinConcentrationExternalSchema(_BaseSchema):
 
 
 class BasinConcentrationStateSchema(_BaseSchema):
-    _node_id_relation: str = "equal"
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     substance: pd.StringDtype = pa.Field(nullable=False)
@@ -64,6 +64,7 @@ class BasinConcentrationStateSchema(_BaseSchema):
 
 
 class BasinMassLoadSchema(_BaseSchema):
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -179,7 +180,7 @@ class DiscreteControlVariableSchema(_BaseSchema):
 
 
 class FlowBoundaryConcentrationSchema(_BaseSchema):
-    _node_id_relation: str = "equal"
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -220,7 +221,7 @@ class FlowDemandTimeSchema(_BaseSchema):
 
 
 class LevelBoundaryConcentrationSchema(_BaseSchema):
-    _node_id_relation: str = "equal"
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -387,7 +388,7 @@ class TabulatedRatingCurveTimeSchema(_BaseSchema):
 
 
 class UserDemandConcentrationSchema(_BaseSchema):
-    _node_id_relation: str = "equal"
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)

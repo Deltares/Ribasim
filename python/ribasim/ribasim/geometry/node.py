@@ -333,11 +333,11 @@ class NodeModel(ParentModel, ChildModel):
                         parts.append(f"missing node_ids {missing}")
                     if extra:
                         parts.append(f"unexpected node_ids {extra}")
-                    errors.append(f"{node_type}/{key}: {'; '.join(parts)}")
+                    errors.append(f"{node_type} / {key}: {'; '.join(parts)}")
             elif relation == "subset":
                 extra = table_ids - expected_ids
                 if extra:
-                    errors.append(f"{node_type}/{key}: unexpected node_ids {extra}")
+                    errors.append(f"{node_type} / {key}: unexpected node_ids {extra}")
             elif relation == "partition":
                 partition_tables.append((key, table_ids))
 
