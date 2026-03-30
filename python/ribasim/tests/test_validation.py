@@ -213,7 +213,6 @@ def test_node_id_partition_overlap():
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
-        solver=Solver(),
     )
 
     model.basin.add(
@@ -238,11 +237,7 @@ def test_node_id_partition_overlap():
         data={
             "node_id": [2],
             "time": pd.Timestamp("2020-01-01"),
-            "flow_rate": [2e-3],
-            "min_flow_rate": [float("nan")],
-            "max_flow_rate": [float("nan")],
-            "min_upstream_level": [float("nan")],
-            "max_downstream_level": [float("nan")],
+            "flow_rate": 2e-3,
         }
     )
 
@@ -256,7 +251,6 @@ def test_node_id_partition_missing():
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
-        solver=Solver(),
     )
 
     model.basin.add(
@@ -295,7 +289,6 @@ def test_node_id_equal_mismatch():
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
-        solver=Solver(),
     )
 
     model.basin.add(
