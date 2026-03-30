@@ -1,4 +1,5 @@
 from ribasim import Model
+from ribasim.config import Experimental
 from ribasim.geometry.node import Node
 from ribasim.nodes import (
     basin,
@@ -9,18 +10,24 @@ from shapely.geometry import Point
 
 
 def junction_combined() -> Model:
-    """Testmodel combining confluence and bifurcation junctions."""
+    """Testmodel combining confluence and bifurcation junctions.
+
+    The middle Basins get drainage and surface runoff, which infiltrates at the Basins on the sides.
+    That way we can check the fractional flow after the junctions.
+    """
     model = Model(
         starttime="2020-01-01",
         endtime="2021-01-01",
         crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
     )
 
     model.basin.add(
         Node(1, Point(0.0, 0.0)),
         [
-            basin.Profile(area=[10.0, 10.0], level=[0.0, 1.0]),
-            basin.State(level=[0.0]),
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+            basin.Static(infiltration=[2.5]),
+            basin.State(level=[1.0]),
         ],
     )
 
@@ -28,35 +35,37 @@ def junction_combined() -> Model:
 
     model.linear_resistance.add(
         Node(3, Point(2.0, 0.0), subnetwork_id=2),
-        [linear_resistance.Static(resistance=[200.0])],
+        [linear_resistance.Static(resistance=[1.0])],
     )
     model.linear_resistance.add(
         Node(4, Point(2.0, 1.0), subnetwork_id=2),
-        [linear_resistance.Static(resistance=[200.0])],
+        [linear_resistance.Static(resistance=[1.0])],
     )
 
     model.basin.add(
         Node(5, Point(3.0, 0.0), subnetwork_id=2),
         [
-            basin.Profile(area=[10.0, 10.0], level=[0.0, 1.0]),
-            basin.State(level=[0.0]),
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+            basin.Static(surface_runoff=[1.0]),
+            basin.State(level=[1.0]),
         ],
     )
     model.basin.add(
         Node(6, Point(3.0, 1.0), subnetwork_id=2),
         [
-            basin.Profile(area=[10.0, 10.0], level=[0.0, 1.0]),
-            basin.State(level=[0.0]),
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+            basin.Static(drainage=[4.0]),
+            basin.State(level=[1.0]),
         ],
     )
 
     model.linear_resistance.add(
         Node(7, Point(4.0, 0.0), subnetwork_id=2),
-        [linear_resistance.Static(resistance=[200.0])],
+        [linear_resistance.Static(resistance=[1.0])],
     )
     model.linear_resistance.add(
         Node(8, Point(4.0, 1.0), subnetwork_id=2),
-        [linear_resistance.Static(resistance=[200.0])],
+        [linear_resistance.Static(resistance=[1.0])],
     )
 
     model.junction.add(Node(9, Point(5.0, 0.0), subnetwork_id=2))
@@ -64,8 +73,9 @@ def junction_combined() -> Model:
     model.basin.add(
         Node(10, Point(6.0, 0.0), subnetwork_id=2),
         [
-            basin.Profile(area=[10.0, 10.0], level=[0.0, 1.0]),
-            basin.State(level=[0.0]),
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+            basin.Static(infiltration=[2.5]),
+            basin.State(level=[1.0]),
         ],
     )
 
