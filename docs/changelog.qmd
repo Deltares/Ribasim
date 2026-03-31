@@ -20,7 +20,7 @@ See the rc1 and rc2 changelog entries below for all changes since v2025.6.0.
 ### Changed
 - Support Pandas 3. [#3002](https://github.com/Deltares/Ribasim/pull/3002)
 - Delwaq: don't plot from `concentration_external`. [#3007](https://github.com/Deltares/Ribasim/pull/3007)
-- Replace, don't add to UserDemand tracer in UserDemand return flow. [#3008](https://github.com/Deltares/Ribasim/pull/3008)
+- Replace, don't add to UserDemand tracer in UserDemand return flow. [#3009](https://github.com/Deltares/Ribasim/pull/3009)
 - Provide `node_id` in Basin profile interpolation errors. [#2988](https://github.com/Deltares/Ribasim/pull/2988)
 
 ### Fixed
