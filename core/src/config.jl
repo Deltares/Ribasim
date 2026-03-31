@@ -37,6 +37,7 @@ export algorithm,
     is_adaptive,
     node_types,
     node_type,
+    node_id_relation,
     node_kinds,
     table_name,
     sql_table_name,
@@ -52,6 +53,53 @@ table_name(table_type::Type{<:Table})::Symbol = snake_case(nameof(table_type))
 function sql_table_name(table_type::Type{<:Table})::String
     return string(node_type(table_type), " / ", table_name(table_type))
 end
+
+"""
+    node_id_relation(::Type{<:Table}) -> Symbol
+
+Return the expected relationship between the node_ids in a table and the node_ids
+in the Node table for its node type.
+
+- `:equal`     – table node_ids must exactly match the Node table (default)
+- `:partition` – tables in the same partition group must be pairwise disjoint
+                 and their union must equal the Node table
+- `:subset`    – table node_ids must be a subset of the Node table
+"""
+node_id_relation(::Type{<:Table}) = :equal
+
+# Static/Time pairs form a partition of all node_ids
+node_id_relation(::Type{Schema.Pump.Static}) = :partition
+node_id_relation(::Type{Schema.Pump.Time}) = :partition
+node_id_relation(::Type{Schema.Outlet.Static}) = :partition
+node_id_relation(::Type{Schema.Outlet.Time}) = :partition
+node_id_relation(::Type{Schema.LevelBoundary.Static}) = :partition
+node_id_relation(::Type{Schema.LevelBoundary.Time}) = :partition
+node_id_relation(::Type{Schema.FlowBoundary.Static}) = :partition
+node_id_relation(::Type{Schema.FlowBoundary.Time}) = :partition
+node_id_relation(::Type{Schema.TabulatedRatingCurve.Static}) = :partition
+node_id_relation(::Type{Schema.TabulatedRatingCurve.Time}) = :partition
+node_id_relation(::Type{Schema.PidControl.Static}) = :partition
+node_id_relation(::Type{Schema.PidControl.Time}) = :partition
+node_id_relation(::Type{Schema.UserDemand.Static}) = :partition
+node_id_relation(::Type{Schema.UserDemand.Time}) = :partition
+node_id_relation(::Type{Schema.LevelDemand.Static}) = :partition
+node_id_relation(::Type{Schema.LevelDemand.Time}) = :partition
+node_id_relation(::Type{Schema.FlowDemand.Static}) = :partition
+node_id_relation(::Type{Schema.FlowDemand.Time}) = :partition
+
+# Subset tables: node_ids are allowed to be a subset
+node_id_relation(::Type{Schema.Basin.Static}) = :subset
+node_id_relation(::Type{Schema.Basin.Time}) = :subset
+node_id_relation(::Type{Schema.Basin.Subgrid}) = :subset
+node_id_relation(::Type{Schema.Basin.SubgridTime}) = :subset
+node_id_relation(::Type{Schema.Observation.Time}) = :subset
+node_id_relation(::Type{Schema.Basin.MassLoad}) = :subset
+node_id_relation(::Type{Schema.Basin.Concentration}) = :subset
+node_id_relation(::Type{Schema.Basin.ConcentrationExternal}) = :subset
+node_id_relation(::Type{Schema.Basin.ConcentrationState}) = :subset
+node_id_relation(::Type{Schema.FlowBoundary.Concentration}) = :subset
+node_id_relation(::Type{Schema.LevelBoundary.Concentration}) = :subset
+node_id_relation(::Type{Schema.UserDemand.Concentration}) = :subset
 
 "[:Basin, Terminal, ...]"
 const node_types::Vector{Symbol} = filter(

@@ -132,9 +132,6 @@ _PLACEHOLDER_FRACTIONAL_STORAGE = (
     "Fractional storage requires exactly one Basin node selection."
 )
 _PLACEHOLDER_FRACTIONAL_FLOW = "Fractional flow requires exactly one link selection."
-_PLACEHOLDER_FRACTIONAL_FLOW_JUNCTION = (
-    "Fractional flow over Junction nodes is not yet implemented."
-)
 _PLACEHOLDER_FRACTIONAL_FLOW_NO_BASIN = (
     "Fractional flow: could not find a Basin on either side of the selected link."
 )
@@ -149,14 +146,12 @@ _TRAVERSABLE_NODE_TYPES: frozenset[str] = frozenset(
         "Pump",
         "LinearResistance",
         "ManningResistance",
-        "UserDemand",
     }
 )
 
 _DEFAULT_TRACERS: tuple[str, ...] = (
     "LevelBoundary",
     "FlowBoundary",
-    "UserDemand",
     "Drainage",
     "Precipitation",
     "SurfaceRunoff",
@@ -172,8 +167,8 @@ _BASIN_WATER_BALANCE_TERMS: tuple[tuple[str, int], ...] = (
     ("drainage", 1),
     ("infiltration", -1),
     ("surface_runoff", 1),
-    ("balance_error", 1),
 )
+_BASIN_WATER_BALANCE_ERROR_TERM = "balance_error"
 
 _ROOT_VARIABLES: tuple[str, ...] = (
     "basin / level",
@@ -329,6 +324,7 @@ class PlotWidget(QWidget):
         link_layer_getter: Callable[[], Any | None] | None = None,
         concentration_for_node_getter: Callable[[int], dict[str, Trace] | None]
         | None = None,
+        flow_for_link_getter: Callable[[int], Trace | None] | None = None,
     ):
         super().__init__(parent)
         layout = QVBoxLayout(self)
@@ -355,6 +351,7 @@ class PlotWidget(QWidget):
         self._fractional_storage_enabled = False
         self._fractional_flow_enabled = False
         self._concentration_for_node_getter = concentration_for_node_getter
+        self._flow_for_link_getter = flow_for_link_getter
         self._plot_button = QToolButton()
         self._plot_button.setToolButtonStyle(
             Qt.ToolButtonStyle.ToolButtonTextBesideIcon
@@ -563,6 +560,22 @@ class PlotWidget(QWidget):
             return x.tolist(), y.tolist()
         return x, y
 
+    def _update_yaxis_format(
+        self,
+        fig,
+        row: int,
+        title_text: str,
+    ) -> None:
+        fig.update_yaxes(
+            title_text=title_text,
+            exponentformat="e",
+            row=row,
+            col=1,
+        )
+
+    def _hover_template(self, label: str) -> str:
+        return f"{label}: %{{y:.3e}}<extra></extra>"
+
     def _collect_standard_traces(
         self,
         selected_keys: list[tuple[str, str]],
@@ -588,7 +601,13 @@ class PlotWidget(QWidget):
                 x_data, y_data = self._to_plotly_xy(x, y)
                 legend_name = f"{file_name} / {var} {trace_name}"
                 traces_by_unit[unit_key].append(
-                    go.Scatter(x=x_data, y=y_data, mode="lines", name=legend_name)
+                    go.Scatter(
+                        x=x_data,
+                        y=y_data,
+                        mode="lines",
+                        name=legend_name,
+                        hovertemplate=self._hover_template(legend_name),
+                    )
                 )
         return traces_by_unit
 
@@ -654,7 +673,7 @@ class PlotWidget(QWidget):
         for row, unit in enumerate(units, start=1):
             for trace in traces_by_unit[unit]:
                 fig.add_trace(trace, row=row, col=1)
-            fig.update_yaxes(title_text=unit, row=row, col=1)
+            self._update_yaxis_format(fig, row=row, title_text=unit)
             fig.update_xaxes(showticklabels=row == len(units), row=row, col=1)
 
         fig.update_layout(**_PLOT_LAYOUT)
@@ -667,7 +686,11 @@ class PlotWidget(QWidget):
             self._show_placeholder(self._placeholder_for_current_preset())
             return
 
-        water_balance_terms = {term for term, _ in _BASIN_WATER_BALANCE_TERMS}
+        water_balance_component_terms = {term for term, _ in _BASIN_WATER_BALANCE_TERMS}
+        water_balance_terms = {
+            *water_balance_component_terms,
+            _BASIN_WATER_BALANCE_ERROR_TERM,
+        }
         selected_files = {
             file_name
             for file_name, variable in selected_keys
@@ -716,24 +739,79 @@ class PlotWidget(QWidget):
             if selected_trace not in traces:
                 continue
             x, y = traces[selected_trace]
-            signed_y = sign * y
-            x_data, y_data = self._to_plotly_xy(x, signed_y)
-            stackgroup = "inflow" if sign > 0 else "outflow"
-            legend_prefix = "+" if sign > 0 else "-"
+            signed_y = sign * y.astype(float, copy=False)
+
+            term_pos = np.clip(signed_y, 0.0, None)
+            term_neg = np.clip(signed_y, None, 0.0)
+            abs_component = np.abs(signed_y)
+            if _BACKEND is _WebViewBackend.WEBKIT:
+                abs_component_data: np.ndarray | list[float] = abs_component.tolist()
+            else:
+                abs_component_data = abs_component
+
+            # Positive contribution stack (from zero upward).
+            if bool((term_pos != 0.0).any()):
+                x_pos, y_pos = self._to_plotly_xy(x, term_pos)
+                pos_name = "storage_decrease" if term == "storage_rate" else f"+ {term}"
+                fig.add_trace(
+                    go.Scatter(
+                        x=x_pos,
+                        y=y_pos,
+                        mode="lines",
+                        stackgroup="water_balance_positive",
+                        hoveron="points+fills",
+                        line={"width": 0},
+                        name=pos_name,
+                        customdata=abs_component_data,
+                        hovertemplate=(pos_name + ": %{customdata:.3e}<extra></extra>"),
+                        legendgroup=term,
+                    ),
+                    row=1,
+                    col=1,
+                )
+
+            # Negative contribution stack (from zero downward).
+            if bool((term_neg != 0.0).any()):
+                x_neg, y_neg = self._to_plotly_xy(x, term_neg)
+                neg_name = "storage_increase" if term == "storage_rate" else f"- {term}"
+                fig.add_trace(
+                    go.Scatter(
+                        x=x_neg,
+                        y=y_neg,
+                        mode="lines",
+                        stackgroup="water_balance_negative",
+                        hoveron="points+fills",
+                        line={"width": 0},
+                        name=neg_name,
+                        customdata=abs_component_data,
+                        hovertemplate=(neg_name + ": %{customdata:.3e}<extra></extra>"),
+                        legendgroup=term,
+                    ),
+                    row=1,
+                    col=1,
+                )
+
+            used_terms += 1
+
+        balance_error = file_data.get(_BASIN_WATER_BALANCE_ERROR_TERM, {}).get(
+            selected_trace
+        )
+        if balance_error is not None:
+            x_balance_error, y_balance_error = self._to_plotly_xy(
+                balance_error[0], balance_error[1].astype(float, copy=False)
+            )
             fig.add_trace(
                 go.Scatter(
-                    x=x_data,
-                    y=y_data,
+                    x=x_balance_error,
+                    y=y_balance_error,
                     mode="lines",
-                    stackgroup=stackgroup,
-                    hoveron="points+fills",
-                    line={"width": 0},
-                    name=f"{legend_prefix} {term}",
+                    line={"color": "black", "width": 1.0},
+                    name="balance_error",
+                    hovertemplate=self._hover_template("balance_error"),
                 ),
                 row=1,
                 col=1,
             )
-            used_terms += 1
 
         if used_terms == 0:
             self._show_placeholder(_PLACEHOLDER_WATER_BALANCE)
@@ -745,29 +823,43 @@ class PlotWidget(QWidget):
             if file_units.get(term, "")
         }
         yaxis_title = unit_values.pop() if len(unit_values) == 1 else "(no unit)"
-        fig.update_yaxes(title_text=yaxis_title, row=1, col=1)
+        self._update_yaxis_format(fig, row=1, title_text=yaxis_title)
 
         for row, unit in enumerate(units, start=2):
             for trace in traces_by_unit[unit]:
                 fig.add_trace(trace, row=row, col=1)
-            fig.update_yaxes(title_text=unit, row=row, col=1)
+            self._update_yaxis_format(fig, row=row, title_text=unit)
 
         last_row = 1 + len(units)
         for row in range(1, last_row + 1):
             fig.update_xaxes(showticklabels=row == last_row, row=row, col=1)
 
-        fig.update_layout(**_PLOT_LAYOUT, hovermode="x unified")
+        fig.update_layout(
+            showlegend=True,
+            legend=go.layout.Legend(
+                x=1.01,
+                y=0.01,
+                xanchor="left",
+                yanchor="bottom",
+                groupclick="togglegroup",
+            ),
+            margin=go.layout.Margin(l=40, r=190, t=10, b=20, pad=0),
+            hovermode="x unified",
+        )
         self._render_figure(fig, config)
 
     def _selected_tracers(
         self,
         selected_keys: list[tuple[str, str]],
         available_substances: set[str],
+        exclude: set[str] | None = None,
     ) -> list[str]:
         """Return the tracer names to use for a fractional preset.
 
         Uses checked concentration variables when present, otherwise falls
         back to the default tracers, then to all available substances.
+        *exclude* is only applied to the default/fallback selection; explicit
+        user choices are always honoured.
         """
         selected = [
             var
@@ -775,9 +867,15 @@ class PlotWidget(QWidget):
             if file_name == "concentration" and var in available_substances
         ]
         if not selected:
-            selected = [t for t in _DEFAULT_TRACERS if t in available_substances]
+            defaults = (
+                available_substances - exclude if exclude else available_substances
+            )
+            selected = [t for t in _DEFAULT_TRACERS if t in defaults]
         if not selected:
-            selected = sorted(available_substances)
+            defaults = (
+                available_substances - exclude if exclude else available_substances
+            )
+            selected = sorted(defaults)
         return selected
 
     def _redraw_fractional_storage(
@@ -836,6 +934,7 @@ class PlotWidget(QWidget):
                     hoveron="points+fills",
                     line={"width": 0},
                     name=substance,
+                    hovertemplate=self._hover_template(substance),
                 ),
                 row=1,
                 col=1,
@@ -853,12 +952,12 @@ class PlotWidget(QWidget):
             if file_units.get(sub, "")
         }
         yaxis_title = unit_values.pop() if len(unit_values) == 1 else "fraction"
-        fig.update_yaxes(title_text=yaxis_title, row=1, col=1)
+        self._update_yaxis_format(fig, row=1, title_text=yaxis_title)
 
         for row, unit in enumerate(units, start=2):
             for trace in traces_by_unit[unit]:
                 fig.add_trace(trace, row=row, col=1)
-            fig.update_yaxes(title_text=unit, row=row, col=1)
+            self._update_yaxis_format(fig, row=row, title_text=unit)
 
         last_row = 1 + len(units)
         for row in range(1, last_row + 1):
@@ -897,14 +996,13 @@ class PlotWidget(QWidget):
             return str(feat["node_type"])
         return None
 
-    def _find_basin_through_connector(
+    def _traverse_connector(
         self, connector_node_id: int, current_link_id: int
-    ) -> int | None:
-        """Traverse a connector node to find the Basin on the other side.
+    ) -> tuple[int, int] | None:
+        """Traverse a connector node and return ``(far_node_id, link_id)``.
 
-        Given a connector node and the link we arrived on, find the *other*
-        link connected to this connector and return the node on its far side
-        if that node is a Basin.
+        Returns the node on the other side of the connector together with the
+        link that connects them, or ``None`` when the layer is unavailable.
         """
         if self._link_layer_getter is None:
             return None
@@ -919,35 +1017,181 @@ class PlotWidget(QWidget):
         )
         request = QgsFeatureRequest().setFilterExpression(expr)
         for feat in layer.getFeatures(request):
-            if int(feat["link_id"]) == current_link_id:
+            lid = int(feat["link_id"])
+            if lid == current_link_id:
                 continue
             from_id = int(feat["from_node_id"])
             to_id = int(feat["to_node_id"])
             far_node = to_id if from_id == connector_node_id else from_id
-            if self._get_node_type(far_node) == "Basin":
-                return far_node
+            return far_node, lid
         return None
 
-    def _resolve_basin(
-        self, node_id: int, link_id: int
-    ) -> tuple[int | None, str | None]:
-        """Return (basin_id, error_placeholder) for a link endpoint.
+    def _resolve_junction_sources(
+        self, junction_id: int, arrival_link_id: int
+    ) -> list[tuple[int, int, int]]:
+        """Find Basin sources feeding a Junction node.
 
-        If the node is a Basin, return it directly.  If it is a connector
-        node, traverse it.  If it is a Junction, return the junction
-        placeholder.  Otherwise return a generic error placeholder.
+        Returns a list of ``(basin_id, link_id, inflow_sign)`` tuples where
+        *inflow_sign* is ``+1`` when positive flow on *link_id* means flow
+        towards *junction_id*, and ``-1`` otherwise.
+
+        Traverses connectors and chained Junctions recursively.
         """
-        node_type = self._get_node_type(node_id)
-        if node_type == "Basin":
-            return node_id, None
-        if node_type == "Junction":
-            return None, _PLACEHOLDER_FRACTIONAL_FLOW_JUNCTION
-        if node_type in _TRAVERSABLE_NODE_TYPES:
-            basin = self._find_basin_through_connector(node_id, link_id)
-            if basin is not None:
-                return basin, None
-            return None, _PLACEHOLDER_FRACTIONAL_FLOW_NO_BASIN
-        return None, _PLACEHOLDER_FRACTIONAL_FLOW_NO_BASIN
+        if self._link_layer_getter is None:
+            return []
+        layer = self._link_layer_getter()
+        if layer is None:
+            return []
+        return self._collect_junction_sources(
+            junction_id, arrival_link_id, layer, set()
+        )
+
+    def _collect_junction_sources(
+        self,
+        junction_id: int,
+        arrival_link_id: int,
+        link_layer: Any,
+        visited: set[int],
+    ) -> list[tuple[int, int, int]]:
+        """Recursive helper for :meth:`_resolve_junction_sources`."""
+        from qgis.core import QgsFeatureRequest
+
+        visited = visited | {junction_id}
+        expr = (
+            f'"from_node_id" = {int(junction_id)} OR "to_node_id" = {int(junction_id)}'
+        )
+        request = QgsFeatureRequest().setFilterExpression(expr)
+        # Materialise the iterator so nested getFeatures calls on the same
+        # layer don't interfere with the outer iteration.
+        neighbours: list[tuple[int, int, int]] = []
+        for feat in link_layer.getFeatures(request):
+            lid = int(feat["link_id"])
+            if lid == arrival_link_id:
+                continue
+            from_id = int(feat["from_node_id"])
+            to_id = int(feat["to_node_id"])
+            if from_id == junction_id:
+                neighbours.append((to_id, lid, -1))
+            else:
+                neighbours.append((from_id, lid, 1))
+
+        sources: list[tuple[int, int, int]] = []
+        for far_node, lid, inflow_sign in neighbours:
+            # Traverse through connectors to reach the actual source node.
+            resolved_node, resolved_lid = far_node, lid
+            resolved_type = self._get_node_type(far_node)
+            while resolved_type in _TRAVERSABLE_NODE_TYPES:
+                step = self._traverse_connector(resolved_node, resolved_lid)
+                if step is None:
+                    break
+                resolved_node, resolved_lid = step
+                resolved_type = self._get_node_type(resolved_node)
+
+            if resolved_type == "Basin":
+                sources.append((resolved_node, lid, inflow_sign))
+            elif resolved_type == "Junction" and resolved_node not in visited:
+                sources.extend(
+                    self._collect_junction_sources(
+                        resolved_node,
+                        resolved_lid,
+                        link_layer,
+                        visited,
+                    )
+                )
+        return sources
+
+    def _build_junction_concentration(
+        self,
+        sources: list[tuple[int, int, int]],
+        n_timesteps: int,
+        flow_time: np.ndarray,
+    ) -> dict[str, Trace] | None:
+        """Build synthetic concentration for a Junction from its source links.
+
+        For each substance, the effective concentration is the flow-weighted
+        average of concentrations from the source Basins (using only inflow,
+        i.e. flow directed towards the Junction).
+        """
+        if (
+            not sources
+            or self._concentration_for_node_getter is None
+            or self._flow_for_link_getter is None
+        ):
+            return None
+
+        # Gather (conc_dict, inflow_array) per source.
+        source_data: list[tuple[dict[str, Trace], np.ndarray]] = []
+        for basin_id, link_id, inflow_sign in sources:
+            conc = self._concentration_for_node_getter(basin_id)
+            flow_trace = self._flow_for_link_getter(link_id)
+            if conc is None or flow_trace is None:
+                continue
+            _, flow_arr = flow_trace
+            if len(flow_arr) != n_timesteps:
+                continue
+            inflow = flow_arr * inflow_sign  # positive = towards junction
+            source_data.append((conc, inflow))
+
+        if not source_data:
+            return None
+
+        all_substances: set[str] = set()
+        for conc, _ in source_data:
+            all_substances.update(conc.keys())
+
+        # Total positive inflow at each timestep.
+        total_inflow = np.zeros(n_timesteps)
+        for _, inflow in source_data:
+            total_inflow += np.maximum(inflow, 0)
+
+        safe_total = np.where(total_inflow > 0, total_inflow, 1.0)
+
+        result: dict[str, Trace] = {}
+        for substance in all_substances:
+            weighted = np.zeros(n_timesteps)
+            for conc_dict, inflow in source_data:
+                if substance in conc_dict:
+                    _, conc_arr = conc_dict[substance]
+                    if len(conc_arr) == n_timesteps:
+                        weighted += conc_arr * np.maximum(inflow, 0)
+            effective = np.where(total_inflow > 0, weighted / safe_total, 0.0)
+            result[substance] = (flow_time, effective)
+
+        return result or None
+
+    def _endpoint_concentration(
+        self,
+        node_id: int,
+        link_id: int,
+        n_timesteps: int,
+        flow_time: np.ndarray,
+    ) -> dict[str, Trace] | None:
+        """Resolve a link endpoint to concentration data.
+
+        Handles Basin (direct lookup), traversable connectors, and Junction
+        nodes (flow-weighted average of source Basin concentrations).
+        Connectors are traversed iteratively so that chains like
+        ``Basin → Junction → ManningResistance → ...`` are supported.
+        """
+        cur_node, cur_link = node_id, link_id
+        while True:
+            node_type = self._get_node_type(cur_node)
+            if node_type == "Basin":
+                if self._concentration_for_node_getter is None:
+                    return None
+                return self._concentration_for_node_getter(cur_node)
+            if node_type == "Junction":
+                sources = self._resolve_junction_sources(cur_node, cur_link)
+                return self._build_junction_concentration(
+                    sources, n_timesteps, flow_time
+                )
+            if node_type in _TRAVERSABLE_NODE_TYPES:
+                far = self._traverse_connector(cur_node, cur_link)
+                if far is None:
+                    return None
+                cur_node, cur_link = far
+                continue
+            return None
 
     def _redraw_fractional_flow(
         self, selected_keys: list[tuple[str, str]], config: dict[str, bool | list[str]]
@@ -974,33 +1218,17 @@ class PlotWidget(QWidget):
             return
 
         from_node_id, to_node_id = endpoints
-        from_basin, from_err = self._resolve_basin(from_node_id, link_id)
-        to_basin, to_err = self._resolve_basin(to_node_id, link_id)
+        n_timesteps = len(flow_values)
 
-        # At least one endpoint must resolve to a Basin. A single-sided Basin
-        # is valid: concentration is then only available for the matching flow
-        # direction where that side is the source.
-        if from_basin is None and to_basin is None:
-            err = from_err or to_err or _PLACEHOLDER_FRACTIONAL_FLOW_NO_BASIN
-            self._show_placeholder(err)
-            return
-
-        if self._concentration_for_node_getter is None:
-            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW)
-            return
-
-        from_conc = (
-            self._concentration_for_node_getter(from_basin)
-            if from_basin is not None
-            else None
+        from_conc = self._endpoint_concentration(
+            from_node_id, link_id, n_timesteps, flow_time
         )
-        to_conc = (
-            self._concentration_for_node_getter(to_basin)
-            if to_basin is not None
-            else None
+        to_conc = self._endpoint_concentration(
+            to_node_id, link_id, n_timesteps, flow_time
         )
+
         if not from_conc and not to_conc:
-            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW_NO_CONCENTRATION)
+            self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW_NO_BASIN)
             return
 
         available_substances: set[str] = set()
@@ -1059,6 +1287,7 @@ class PlotWidget(QWidget):
                     hoveron="points+fills",
                     line={"width": 0},
                     name=substance,
+                    hovertemplate=self._hover_template(substance),
                 ),
                 row=1,
                 col=1,
@@ -1078,6 +1307,7 @@ class PlotWidget(QWidget):
                 mode="lines",
                 line={"color": "black", "width": 1.5},
                 name="flow_rate",
+                hovertemplate=self._hover_template("flow_rate"),
             ),
             row=1,
             col=1,
@@ -1085,12 +1315,12 @@ class PlotWidget(QWidget):
 
         flow_units = self._units.get("flow", {})
         yaxis_title = flow_units.get("flow_rate", "m3 s-1")
-        fig.update_yaxes(title_text=yaxis_title, row=1, col=1)
+        self._update_yaxis_format(fig, row=1, title_text=yaxis_title)
 
         for row, unit in enumerate(units, start=2):
             for trace in traces_by_unit[unit]:
                 fig.add_trace(trace, row=row, col=1)
-            fig.update_yaxes(title_text=unit, row=row, col=1)
+            self._update_yaxis_format(fig, row=row, title_text=unit)
 
         last_row = 1 + len(units)
         for row in range(1, last_row + 1):

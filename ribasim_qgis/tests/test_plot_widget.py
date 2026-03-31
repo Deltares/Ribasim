@@ -236,7 +236,6 @@ def test_plot_widget_basin_water_balance_preset_applies_signs(monkeypatch):
     assert len(captured_figures) == 1
     fig = captured_figures[0]
     assert [trace.name for trace in fig.data] == [
-        "+ balance_error",
         "+ surface_runoff",
         "- infiltration",
         "+ drainage",
@@ -244,14 +243,16 @@ def test_plot_widget_basin_water_balance_preset_applies_signs(monkeypatch):
         "+ precipitation",
         "- outflow_rate",
         "+ inflow_rate",
-        "- storage_rate",
+        "storage_increase",
+        "balance_error",
     ]
-    assert np.allclose(fig.data[0].y, np.array([15.0, 16.0]))
-    assert np.allclose(fig.data[6].y, np.array([-7.0, -8.0]))
-    assert np.allclose(fig.data[8].y, np.array([-9.0, -10.0]))
+    assert np.allclose(fig.data[0].y, np.array([3.0, 4.0]))
+    assert np.allclose(fig.data[5].y, np.array([-7.0, -8.0]))
+    assert np.allclose(fig.data[7].y, np.array([-9.0, -10.0]))
+    assert np.allclose(fig.data[8].y, np.array([15.0, 16.0]))
     assert fig.layout.yaxis.title.text == "m3 s-1"
     assert all(trace.mode == "lines" for trace in fig.data)
-    assert fig.data[0].hovertemplate is None
+    assert ".3e" in str(fig.data[0].hovertemplate)
     assert fig.layout.hovermode == "x unified"
 
 
@@ -583,7 +584,9 @@ def test_plot_widget_fractional_flow_plots_multiplied_values(monkeypatch):
     # Patch layer lookups: link 42 goes from Basin 5 → Basin 6.
     monkeypatch.setattr(PlotWidget, "_get_link_endpoints", lambda self, lid: (5, 6))
     monkeypatch.setattr(
-        PlotWidget, "_resolve_basin", lambda self, nid, lid: (nid, None)
+        PlotWidget,
+        "_endpoint_concentration",
+        lambda self, nid, lid, n, ft: _conc_getter(nid),
     )
 
     widget.set_data(
@@ -636,39 +639,88 @@ def test_plot_widget_fractional_flow_requires_single_link():
     assert not widget._web_view.isVisibleTo(widget)
 
 
-def test_plot_widget_fractional_flow_junction_shows_placeholder(monkeypatch):
-    widget = PlotWidget(concentration_for_node_getter=lambda nid: None)
-    widget._fractional_flow_enabled = True
+def test_plot_widget_fractional_flow_junction(monkeypatch):
+    """Fractional flow through a Junction aggregates source basin concentrations."""
+    captured_figures = []
 
-    monkeypatch.setattr(PlotWidget, "_get_link_endpoints", lambda self, lid: (99, 100))
+    def _capture_plot(fig, **kwargs):
+        captured_figures.append(fig)
+        return "<div></div>"
 
-    from ribasim_qgis.widgets.plot_widget import (
-        _PLACEHOLDER_FRACTIONAL_FLOW_JUNCTION,
-        _PLACEHOLDER_FRACTIONAL_FLOW_NO_BASIN,
-    )
-
-    def _resolve(self, nid, lid):
-        if nid == 99:
-            return None, _PLACEHOLDER_FRACTIONAL_FLOW_JUNCTION
-        return None, _PLACEHOLDER_FRACTIONAL_FLOW_NO_BASIN
-
-    monkeypatch.setattr(
-        PlotWidget,
-        "_resolve_basin",
-        _resolve,
-    )
+    monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
 
     time = np.array(["2020-01-01", "2020-01-02"])
+
+    # Network: Basin(10) --link20--> Junction(50) --link1--> Basin(60)
+    #          Basin(11) --link21-->
+    # Selected link: link 1 (from Junction 50 to Basin 60).
+    # Basin 10 has LevelBoundary=0.6, Basin 11 has LevelBoundary=0.4.
+    # Flow on link 20: [6.0, 12.0], flow on link 21: [4.0, 8.0].
+    # Total inflow to junction: [10.0, 20.0] (matches selected link flow).
+    # Effective concentration at junction:
+    #   (0.6*6 + 0.4*4) / (6+4) = 5.2/10 = 0.52  at t=0
+    #   (0.6*12 + 0.4*8) / (12+8) = 10.4/20 = 0.52  at t=1
+    # Fractional values = effective_conc * selected_flow = [0.52*10, 0.52*20] = [5.2, 10.4]
+
+    def _conc_getter(node_id):
+        if node_id == 10:
+            return {"LevelBoundary": (time, np.array([0.6, 0.6]))}
+        if node_id == 11:
+            return {"LevelBoundary": (time, np.array([0.4, 0.4]))}
+        if node_id == 60:
+            return {"LevelBoundary": (time, np.array([1.0, 1.0]))}
+        return None
+
+    def _flow_getter(link_id):
+        if link_id == 20:
+            return (time, np.array([6.0, 12.0]))
+        if link_id == 21:
+            return (time, np.array([4.0, 8.0]))
+        return None
+
+    widget = PlotWidget(
+        concentration_for_node_getter=_conc_getter,
+        flow_for_link_getter=_flow_getter,
+    )
+    widget._fractional_flow_enabled = True
+
+    monkeypatch.setattr(PlotWidget, "_get_link_endpoints", lambda self, lid: (50, 60))
+    monkeypatch.setattr(
+        PlotWidget,
+        "_get_node_type",
+        lambda self, nid: {
+            50: "Junction",
+            60: "Basin",
+            10: "Basin",
+            11: "Basin",
+        }.get(nid),
+    )
+    monkeypatch.setattr(
+        PlotWidget,
+        "_resolve_junction_sources",
+        lambda self, jid, lid: [(10, 20, 1), (11, 21, 1)],
+    )
+
     widget.set_data(
         {
             "flow": {
-                "flow_rate": {"#1": (time, np.array([5.0, 6.0]))},
+                "flow_rate": {"#1": (time, np.array([10.0, 20.0]))},
             },
         },
+        units={"flow": {"flow_rate": "m3 s-1"}},
     )
 
-    assert widget._placeholder.isVisibleTo(widget)
-    assert "Junction" in widget._placeholder.text()
+    assert len(captured_figures) == 1
+    fig = captured_figures[0]
+    names = {trace.name for trace in fig.data}
+    assert "LevelBoundary" in names
+    assert "flow_rate" in names
+
+    for trace in fig.data:
+        if trace.name == "LevelBoundary":
+            assert np.allclose(trace.y, np.array([5.2, 10.4]))
+        elif trace.name == "flow_rate":
+            assert np.allclose(trace.y, np.array([10.0, 20.0]))
 
 
 def test_plot_widget_fractional_flow_traverses_connector(monkeypatch):
@@ -694,16 +746,16 @@ def test_plot_widget_fractional_flow_traverses_connector(monkeypatch):
     widget._fractional_flow_enabled = True
 
     # Link 1: from ManningResistance(2) → Basin(3).
-    # _resolve_basin traverses connector 2 to find Basin 10.
-    def _resolve(self, nid, lid):
+    # _endpoint_concentration traverses connector 2 to find Basin 10.
+    def _endpoint_conc(self, nid, lid, n, ft):
         if nid == 2:
-            return 10, None  # traversed connector to Basin 10
+            return _conc_getter(10)
         if nid == 3:
-            return 3, None
-        return None, "unexpected"
+            return _conc_getter(3)  # None — no concentration for Basin 3
+        return None
 
     monkeypatch.setattr(PlotWidget, "_get_link_endpoints", lambda self, lid: (2, 3))
-    monkeypatch.setattr(PlotWidget, "_resolve_basin", _resolve)
+    monkeypatch.setattr(PlotWidget, "_endpoint_concentration", _endpoint_conc)
 
     widget.set_data(
         {
@@ -745,7 +797,9 @@ def test_plot_widget_fractional_flow_sign_flip(monkeypatch):
 
     monkeypatch.setattr(PlotWidget, "_get_link_endpoints", lambda self, lid: (5, 6))
     monkeypatch.setattr(
-        PlotWidget, "_resolve_basin", lambda self, nid, lid: (nid, None)
+        PlotWidget,
+        "_endpoint_concentration",
+        lambda self, nid, lid, n, ft: _conc_getter(nid),
     )
 
     # flow_rate: +10 at t0 (source=from=5), -10 at t1 (source=to=6)
@@ -763,3 +817,85 @@ def test_plot_widget_fractional_flow_sign_flip(monkeypatch):
         if trace.name == "LevelBoundary":
             # t0: 0.4 * 10 = 4.0,  t1: 0.8 * -10 = -8.0
             assert np.allclose(trace.y, np.array([4.0, -8.0]))
+
+
+def test_plot_widget_fractional_flow_connector_to_junction(monkeypatch):
+    """Fractional flow through ManningResistance → Junction resolves sources."""
+    captured_figures = []
+
+    def _capture_plot(fig, **kwargs):
+        captured_figures.append(fig)
+        return "<div></div>"
+
+    monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
+
+    time = np.array(["2020-01-01", "2020-01-02"])
+
+    # Network:
+    #   Basin(10) --link20--> Junction(50) --link30--> Manning(60) --link1--> Basin(70)
+    #   Basin(11) --link21-->
+    # Selected link: link 1 (Manning 60 → Basin 70).
+    # _endpoint_concentration for Manning(60) traverses to Junction(50),
+    # then resolves junction sources.
+
+    def _conc_getter(node_id):
+        if node_id == 10:
+            return {"Tracer": (time, np.array([0.8, 0.8]))}
+        if node_id == 11:
+            return {"Tracer": (time, np.array([0.2, 0.2]))}
+        if node_id == 70:
+            return {"Tracer": (time, np.array([1.0, 1.0]))}
+        return None
+
+    def _flow_getter(link_id):
+        if link_id == 20:
+            return (time, np.array([8.0, 16.0]))
+        if link_id == 21:
+            return (time, np.array([2.0, 4.0]))
+        return None
+
+    widget = PlotWidget(
+        concentration_for_node_getter=_conc_getter,
+        flow_for_link_getter=_flow_getter,
+    )
+    widget._fractional_flow_enabled = True
+
+    monkeypatch.setattr(PlotWidget, "_get_link_endpoints", lambda self, lid: (60, 70))
+
+    node_types = {
+        60: "ManningResistance",
+        70: "Basin",
+        50: "Junction",
+        10: "Basin",
+        11: "Basin",
+    }
+    monkeypatch.setattr(
+        PlotWidget, "_get_node_type", lambda self, nid: node_types.get(nid)
+    )
+    # Manning(60) traversal: arrived on link 1, other link is link 30 to Junction(50).
+    monkeypatch.setattr(
+        PlotWidget, "_traverse_connector", lambda self, nid, lid: (50, 30)
+    )
+    monkeypatch.setattr(
+        PlotWidget,
+        "_resolve_junction_sources",
+        lambda self, jid, lid: [(10, 20, 1), (11, 21, 1)],
+    )
+
+    widget.set_data(
+        {
+            "flow": {
+                "flow_rate": {"#1": (time, np.array([10.0, 20.0]))},
+            },
+        },
+        units={"flow": {"flow_rate": "m3 s-1"}},
+    )
+
+    assert len(captured_figures) == 1
+    fig = captured_figures[0]
+
+    # Junction effective conc: (0.8*8 + 0.2*2)/(8+2) = 6.8/10 = 0.68
+    # Fractional values: 0.68 * [10, 20] = [6.8, 13.6]
+    for trace in fig.data:
+        if trace.name == "Tracer":
+            assert np.allclose(trace.y, np.array([6.8, 13.6]))

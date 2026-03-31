@@ -54,7 +54,6 @@ from ribasim_qgis.core.netcdf import (
 )
 from ribasim_qgis.core.nodes import (
     STYLE_DIR,
-    load_external_input_tables,
     load_nodes_from_geopackage,
 )
 from ribasim_qgis.widgets.plot_widget import PlotData, PlotWidget, Trace, VariableTraces
@@ -112,6 +111,7 @@ class DatasetWidget:
             node_layer_getter=lambda: self.node_layer,
             link_layer_getter=lambda: self.link_layer,
             concentration_for_node_getter=self._get_concentration_for_node,
+            flow_for_link_getter=self._get_flow_for_link,
         )
 
         # Track running simulations by model path
@@ -189,10 +189,6 @@ class DatasetWidget:
         geo_path = get_database_path_from_model_file(self.path)
         nodes = load_nodes_from_geopackage(geo_path)
 
-        # Also load external input files (NetCDF)
-        external_nodes = load_external_input_tables(self.path)
-        nodes.update(external_nodes)
-
         name = self.path.stem
         parent = self.path.parent.stem
         self.ribasim_widget.create_groups(f"{parent}/{name}")
@@ -210,22 +206,10 @@ class DatasetWidget:
         )
         self.add_relationship(link.layer, node.layer.id(), "LinkToNode", "to_node_id")
 
-        # Add the remaining layers (both database and external) in alphabetical order
-        for table_name in sorted(nodes.keys()):
-            node_layer = nodes[table_name]
+        # Add the remaining layers
+        for table_name, node_layer in nodes.items():
             self.add_item_to_qgis(node_layer)
-
-            # External NetCDF layers can be invalid or lack the expected foreign key;
-            # only set up relationships when the layer is valid and has the "node_id" field.
-            layer = node_layer.layer
-            if layer is None or not layer.isValid():
-                continue
-
-            fk_field_name = "node_id"
-            if layer.fields().indexOf(fk_field_name) == -1:
-                continue
-
-            self.add_relationship(layer, node.layer.id(), table_name)
+            self.add_relationship(node_layer.layer, node.layer.id(), table_name)
 
         # Connect node and link layer to derive connectivities.
         self.node_layer = node.layer
@@ -661,6 +645,21 @@ class DatasetWidget:
         return {
             sub: (time_strings, arr[:, idx]) for sub, arr in result.variables.items()
         }
+
+    def _get_flow_for_link(self, link_id: int) -> Trace | None:
+        """Return the flow_rate trace for a single *link_id*."""
+        result = self.results.get("flow")
+        if result is None:
+            return None
+        flow_arr = result.variables.get("flow_rate")
+        if flow_arr is None:
+            return None
+        id_to_idx = {int(v): i for i, v in enumerate(result.ids)}
+        idx = id_to_idx.get(link_id)
+        if idx is None:
+            return None
+        time_strings = result.time.strftime("%Y-%m-%dT%H:%M:%S").to_numpy()
+        return (time_strings, flow_arr[:, idx])
 
     def _set_node_results(self) -> None:
         node_layer = self.ribasim_widget.node_layer

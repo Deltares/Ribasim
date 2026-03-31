@@ -171,11 +171,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
 
     # Update supplied flows for allocation input and output
     for allocation_model in allocation.allocation_models
-        (; cumulative_boundary_volume, cumulative_supplied_volume) = allocation_model
-        # Flow boundary input
-        for link in keys(cumulative_boundary_volume)
-            cumulative_boundary_volume[link] += flow_update_on_link(integrator, link)
-        end
+        (; cumulative_supplied_volume) = allocation_model
 
         # Update supplied flows for allocation output
         for link in keys(cumulative_supplied_volume)
@@ -198,6 +194,7 @@ function update_concentrations!(u, t, integrator)::Nothing
         concentration_itp_drainage,
         concentration_itp_precipitation,
         concentration_itp_surface_runoff,
+        loads_itp,
         mass,
     ) = concentration_data
 
@@ -233,6 +230,13 @@ function update_concentrations!(u, t, integrator)::Nothing
             mass_node,
             concentration_itp_surface_runoff[node_id.idx],
             vertical_flux.surface_runoff[node_id.idx] * dt,
+            t,
+        )
+
+        add_substance_mass!(
+            mass_node,
+            loads_itp[node_id.idx],
+            dt,  # loads are per second, not volume, so the flow is just the time step
             t,
         )
     end
