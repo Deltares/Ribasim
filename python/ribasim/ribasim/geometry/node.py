@@ -143,7 +143,7 @@ class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
         if self.df is None:
             return ax
 
-        NODE_ICON_SIZE = 25.0  # display-points per icon
+        NODE_ICON_SIZE = 17.0  # display-points per icon
         for nodetype, df in self.df.groupby("node_type"):
             assert isinstance(nodetype, str)
             for x, y in zip(df.geometry.x, df.geometry.y, strict=True):
