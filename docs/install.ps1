@@ -10,6 +10,11 @@
 
 Set-StrictMode -Version Latest
 
+Write-Warning @"
+This install script is deprecated and may be removed.
+For alternatives see: https://ribasim.org/getting-started/install
+"@
+
 $RibasimVersion = 'v2026.1.0'
 $RibasimHome = "$Env:USERPROFILE\.ribasim"
 
