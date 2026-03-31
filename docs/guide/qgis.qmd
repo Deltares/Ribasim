@@ -70,37 +70,6 @@ You can use {{< kbd Shift+Click >}} to select multiple links, or {{< kbd Ctrl+Cl
 Per result file you can select one or more variables to plot.
 Note that Basin results are only available on Basins, which means you have to select the Node layer first, and then select the Basin nodes you wish to see.
 
-:::{.callout-note title="Ribasim v2025 or older: iMOD Time Series Plot" collapse="true"}
-
-Click the "Time Series" button of the iMOD plugin.
-
-![](https://user-images.githubusercontent.com/4471859/224939424-ec4c77ff-3d6b-4635-b407-ef18376587e9.png){fig-align="left"}
-
-Select the layer that you wish to plot.
-From the "Node" layer you can plot level or storage on Basin nodes.
-From the "Link" layer you can plot flow over flow links.
-Note that before switching between these, you typically have to click "Clear" to clear the selection.
-If you run a simulation with the model open in QGIS, you have to close and re-open the "iMOD Time Series Plot" panel for the new results to be loaded.
-
-Select the variables that you want to plot.
-
-![](https://user-images.githubusercontent.com/4471859/224939436-a9643b68-dff0-49c3-899d-6ba13d9a6d52.png){fig-align="left"}
-
-Click "Select points" and select a node by dragging a rectangle around it on the map.
-Hold the Ctrl key to select multiple nodes.
-
-![](https://user-images.githubusercontent.com/4471859/224939450-e369791d-3229-4621-87b0-7e1d34d0514d.png){fig-align="left"}
-
-The associated time series are shown in the graph.
-
-![](https://user-images.githubusercontent.com/4471859/224939471-85a23936-6eb6-4a80-a5b7-8c9a55ddc7f7.png){fig-align="left"}
-
-Only the `basin.nc` and `flow.nc` can be inspected with the "iMOD Time Series Plot" panel.
-All result files can be loaded as a layer by dragging the files onto QGIS.
-Right click the layer and select "Open Attribute Table" to view the contents.
-
-:::
-
 # Reloading models {#sec-reload}
 
 If you made changes to your model outside of QGIS, and want to see the new version in QGIS, the quickest way is to click **Reload Ribasim model**.
