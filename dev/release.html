@@ -287,9 +287,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#update-the-changelog" id="toc-update-the-changelog" class="nav-link" data-scroll-target="#update-the-changelog"><span class="header-section-number">2.4</span> Update the changelog</a></li>
   <li><a href="#submit-a-pull-request" id="toc-submit-a-pull-request" class="nav-link" data-scroll-target="#submit-a-pull-request"><span class="header-section-number">2.5</span> Submit a pull request</a></li>
   <li><a href="#create-a-new-release" id="toc-create-a-new-release" class="nav-link" data-scroll-target="#create-a-new-release"><span class="header-section-number">2.6</span> Create a new release</a></li>
-  <li><a href="#release-the-ribasim-python-packages-to-pypi" id="toc-release-the-ribasim-python-packages-to-pypi" class="nav-link" data-scroll-target="#release-the-ribasim-python-packages-to-pypi"><span class="header-section-number">2.7</span> Release the Ribasim Python packages to PyPI</a></li>
-  <li><a href="#announce-release" id="toc-announce-release" class="nav-link" data-scroll-target="#announce-release"><span class="header-section-number">2.8</span> Announce release</a></li>
-  <li><a href="#create-a-release-branch" id="toc-create-a-release-branch" class="nav-link" data-scroll-target="#create-a-release-branch"><span class="header-section-number">2.9</span> Create a release branch</a></li>
+  <li><a href="#publish-the-ribasim-python-packages-to-pypi" id="toc-publish-the-ribasim-python-packages-to-pypi" class="nav-link" data-scroll-target="#publish-the-ribasim-python-packages-to-pypi"><span class="header-section-number">2.7</span> Publish the Ribasim Python packages to PyPI</a></li>
+  <li><a href="#publish-the-qgis-plugin-to-the-qgis-plugin-repository" id="toc-publish-the-qgis-plugin-to-the-qgis-plugin-repository" class="nav-link" data-scroll-target="#publish-the-qgis-plugin-to-the-qgis-plugin-repository"><span class="header-section-number">2.8</span> Publish the QGIS plugin to the QGIS plugin repository</a></li>
+  <li><a href="#announce-release" id="toc-announce-release" class="nav-link" data-scroll-target="#announce-release"><span class="header-section-number">2.9</span> Announce release</a></li>
+  <li><a href="#create-a-release-branch" id="toc-create-a-release-branch" class="nav-link" data-scroll-target="#create-a-release-branch"><span class="header-section-number">2.10</span> Create a release branch</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -398,20 +399,29 @@ All changes
 </code></pre>
 <p>Now copy the manually edited changelog entry from changelog.qmd above the details, such that the edited changelog can be seen both from our documentation as well as GitHub releases.</p>
 </section>
-<section id="release-the-ribasim-python-packages-to-pypi" class="level2" data-number="2.7">
-<h2 data-number="2.7" class="anchored" data-anchor-id="release-the-ribasim-python-packages-to-pypi"><span class="header-section-number">2.7</span> Release the Ribasim Python packages to PyPI</h2>
+<section id="publish-the-ribasim-python-packages-to-pypi" class="level2" data-number="2.7">
+<h2 data-number="2.7" class="anchored" data-anchor-id="publish-the-ribasim-python-packages-to-pypi"><span class="header-section-number">2.7</span> Publish the Ribasim Python packages to PyPI</h2>
 <p>To be able to install packages with <code>pip</code>, they need to be released on the Python Package Index (PyPI). In order to publish Ribasim Python or Ribasim API follow the following steps:</p>
 <ol type="1">
 <li><p>Open a terminal and run <code>pixi run publish-ribasim-python</code></p></li>
 <li><p>Open a terminal and run <code>pixi run publish-ribasim-api</code></p></li>
 </ol>
 </section>
-<section id="announce-release" class="level2" data-number="2.8">
-<h2 data-number="2.8" class="anchored" data-anchor-id="announce-release"><span class="header-section-number">2.8</span> Announce release</h2>
+<section id="publish-the-qgis-plugin-to-the-qgis-plugin-repository" class="level2" data-number="2.8">
+<h2 data-number="2.8" class="anchored" data-anchor-id="publish-the-qgis-plugin-to-the-qgis-plugin-repository"><span class="header-section-number">2.8</span> Publish the QGIS plugin to the QGIS plugin repository</h2>
+<ol type="1">
+<li>Download the <code>ribasim_qgis.zip</code> from the <a href="https://github.com/Deltares/Ribasim/releases/latest">latest GitHub release assets</a>.</li>
+<li>Log in to the <a href="https://plugins.qgis.org/">QGIS plugin repository</a>.</li>
+<li>Go to <a href="https://plugins.qgis.org/plugins/upload/">Upload a plugin</a> and upload the zip file.</li>
+<li>The plugin will be available after manual approval from a QGIS plugin repository maintainer.</li>
+</ol>
+</section>
+<section id="announce-release" class="level2" data-number="2.9">
+<h2 data-number="2.9" class="anchored" data-anchor-id="announce-release"><span class="header-section-number">2.9</span> Announce release</h2>
 <p>Announce the release in appropriate channels. Include a link to the release notes and assets, which is whatever <a href="https://github.com/Deltares/Ribasim/releases/latest">this</a> resolves to at that time. Also include a link to the <a href="https://ribasim.org/">documentation</a>.</p>
 </section>
-<section id="create-a-release-branch" class="level2" data-number="2.9">
-<h2 data-number="2.9" class="anchored" data-anchor-id="create-a-release-branch"><span class="header-section-number">2.9</span> Create a release branch</h2>
+<section id="create-a-release-branch" class="level2" data-number="2.10">
+<h2 data-number="2.10" class="anchored" data-anchor-id="create-a-release-branch"><span class="header-section-number">2.10</span> Create a release branch</h2>
 <p>If it is a new stable non-hotfix release (<code>MICRO</code> is equal to 0, and not a pre-release), we need to create and push a release branch. For example, if the release is <code>v2023.1.0</code>, follow these steps:</p>
 <pre><code>git checkout v2023.1.0
 git switch -c release/v2023.1
