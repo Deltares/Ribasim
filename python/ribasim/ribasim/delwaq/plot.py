@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import xarray as xr
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
@@ -18,7 +19,8 @@ def plot_fraction(
             "LevelBoundary",
             "Precipitation",
         ]
-    table = model.basin.concentration_external.df
+    ds_basin = xr.open_dataset(model.results_path / "concentration.nc")
+    table = ds_basin.to_dataframe().reset_index()
     table = table[table["node_id"] == node_id]
     table = table[table["substance"].isin(tracers)]
     if len(table) == 0:
@@ -55,7 +57,8 @@ def plot_fraction(
 
 
 def plot_spatial(model, tracer="Initial", versus=None, limit=0.001, ax=None):
-    table = model.basin.concentration_external.df
+    ds_basin = xr.open_dataset(model.results_path / "concentration.nc")
+    table = ds_basin.to_dataframe().reset_index()
     table = table[table["time"] == table["time"].max()]
 
     if versus is not None:
