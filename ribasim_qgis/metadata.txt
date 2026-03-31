@@ -8,7 +8,7 @@ name=Ribasim
 qgisMinimumVersion=3.40
 qgisMaximumVersion=4.99
 description=QGIS plugin to inspect Ribasim models
-version=2026.1.0-rc2
+version=2026.1.0
 author=Deltares
 email=ribasim.info@deltares.nl
 

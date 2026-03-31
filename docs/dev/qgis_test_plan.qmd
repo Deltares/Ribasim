@@ -48,7 +48,7 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 
 # Result inspection tests
 
-## Run a model from the context menu
+## Run a model
 
 - Load the HWS model at `models/hws.toml` (slow enough to observe progress).
 - From the Ribasim button click "Run Ribasim model": _Output dialog opens with title "Ribasim simulation - hws/hws"_.
@@ -76,7 +76,7 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 ## Prevent duplicate simulations
 
 - Start a simulation.
-- While running, right-click the same model and click "Run Ribasim model": _Warning message "Simulation already running for hws/ribasim"_.
+- While running, right-click the same model and click "Run Ribasim model": _Warning message "Simulation already running for hws/hws"_.
 - Load a different model and run it: _Second simulation starts normally_.
 
 # Plot widget tests
