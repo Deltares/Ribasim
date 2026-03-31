@@ -10,7 +10,7 @@
 
 Set-StrictMode -Version Latest
 
-$RibasimVersion = 'v2025.6.0'
+$RibasimVersion = 'v2026.1.0'
 $RibasimHome = "$Env:USERPROFILE\.ribasim"
 
 function Publish-Env {
