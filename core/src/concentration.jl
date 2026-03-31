@@ -18,8 +18,12 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
         if to_node.type == NodeType.Basin
             # Substance added from upstream
             # Note that when outflow < inflow UserDemand consumes the difference including the substances
+            ud_mass = mass[to_node.idx][Substance.UserDemand]
             mass[to_node.idx] .+=
                 concentration_state[from_node.idx, :] .* cumulative_user_demand_outflow
+
+            # Don't carry old UserDemand tracer forward; add_substance_mass! sets the fresh value
+            mass[to_node.idx][Substance.UserDemand] = ud_mass
 
             # Substance added by UserDemand
             add_substance_mass!(

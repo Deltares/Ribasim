@@ -146,6 +146,7 @@ _TRAVERSABLE_NODE_TYPES: frozenset[str] = frozenset(
         "Pump",
         "LinearResistance",
         "ManningResistance",
+        "UserDemand",
     }
 )
 
