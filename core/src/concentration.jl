@@ -15,7 +15,6 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator, substep = 1, m
 
         if to_node.type == NodeType.Basin && (substep % stepsize[to_node.idx]) == 0
 
-        if to_node.type == NodeType.Basin
             # Pass through all upstream substance concentrations.
             # Note that when outflow < inflow UserDemand consumes the
             # difference including the substances.
