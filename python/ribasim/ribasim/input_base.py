@@ -93,6 +93,14 @@ def init_context(value: dict[str, Any]) -> Generator[None]:
 TableT = TypeVar("TableT", bound=_BaseSchema)
 
 
+def _bypass_setattr(self: Any, name: str, value: Any) -> None:
+    """Write directly to __dict__, bypassing pydantic/pandera validation."""
+    self.__dict__[name] = value
+    # Keep pydantic's field-set tracking in sync.
+    if name in type(self).model_fields:
+        self.__pydantic_fields_set__.add(name)
+
+
 class BaseModel(PydanticBaseModel):
     """Overrides Pydantic BaseModel to set our own config."""
 
@@ -103,6 +111,23 @@ class BaseModel(PydanticBaseModel):
         use_enum_values=True,
         extra="forbid",
     )
+
+    @contextmanager
+    def _no_validate(self) -> Generator[None, None, None]:
+        """Temporarily bypass pydantic/pandera validation on field assignments.
+
+        Replaces ``__setattr__`` on this model's class so that assignments
+        within the block write directly to ``__dict__``, skipping pydantic
+        and pandera validation.  Useful for hot paths like ``add()`` where
+        input data has already been validated at construction time.
+        """
+        cls = type(self)
+        original = cls.__setattr__
+        cls.__setattr__ = _bypass_setattr
+        try:
+            yield
+        finally:
+            cls.__setattr__ = original
 
     # Override __init__ to always provide a context.
     def __init__(self, /, **data: Any) -> None:

@@ -2,6 +2,7 @@ import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
+import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -11,7 +12,7 @@ from matplotlib.axes import Axes
 from numpy.typing import NDArray
 from pandera.dtypes import Int32
 from pandera.typing import Index, Series
-from pandera.typing.geopandas import GeoDataFrame, GeoSeries
+from pandera.typing.geopandas import GeoSeries
 from pydantic import NonNegativeInt, PrivateAttr, model_validator
 from shapely.geometry import LineString, MultiLineString
 
@@ -179,10 +180,10 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             )
             self._remove_link_id(link_id)
 
-        table_to_append = GeoDataFrame[LinkSchema](
+        table_to_append = gpd.GeoDataFrame(
             data={
-                "from_node_id": [from_node.node_id],
-                "to_node_id": [to_node.node_id],
+                "from_node_id": np.array([from_node.node_id], dtype=np.int32),
+                "to_node_id": np.array([to_node.node_id], dtype=np.int32),
                 "link_type": [link_type],
                 "name": [name],
                 **kwargs,
@@ -192,7 +193,12 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             index=pd.Index([link_id], name="link_id"),
         )
 
-        self.df = GeoDataFrame[LinkSchema](_concat([self.df, table_to_append]))
+        if kwargs:
+            # User-provided extra columns go through validation (checks meta_ prefix).
+            self.df = _concat([self.df, table_to_append])
+        else:
+            with self._no_validate():
+                self.df = _concat([self.df, table_to_append])
         if self.df.duplicated(subset=["from_node_id", "to_node_id"]).any():
             raise ValueError(
                 f"Links have to be unique, but link with from_node_id {from_node.node_id} to_node_id {to_node.node_id} already exists."

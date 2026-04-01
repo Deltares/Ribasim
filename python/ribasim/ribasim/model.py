@@ -7,6 +7,7 @@ from os import PathLike
 from pathlib import Path
 from typing import Any
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 import tomli
@@ -14,7 +15,6 @@ import tomli_w
 import xarray as xr
 from matplotlib import pyplot as plt
 from packaging import version
-from pandera.typing.geopandas import GeoDataFrame
 from pydantic import (
     DirectoryPath,
     Field,
@@ -52,8 +52,8 @@ from ribasim.config import (
     UserDemand,
 )
 from ribasim.db_utils import _set_db_schema_version
-from ribasim.geometry.link import LinkSchema, LinkTable
-from ribasim.geometry.node import NodeModel, NodeSchema, NodeTable
+from ribasim.geometry.link import LinkTable
+from ribasim.geometry.node import NodeModel, NodeTable
 from ribasim.input_base import (
     FileModel,
     ParentModel,
@@ -171,13 +171,13 @@ class Model(FileModel, ParentModel):
     @model_validator(mode="after")
     def _ensure_topology_tables_are_present(self) -> "Model":
         if self.link.df is None:
-            self.link.df = GeoDataFrame[LinkSchema](
+            self.link.df = gpd.GeoDataFrame(
                 index=pd.Index([], name="link_id"),
                 geometry=[],
             )
         self.link.df = self.link.df.set_geometry("geometry", crs=self.crs)
         if self.node.df is None:
-            self.node.df = GeoDataFrame[NodeSchema](
+            self.node.df = gpd.GeoDataFrame(
                 index=pd.Index([], name="node_id"),
                 geometry=[],
             )
@@ -199,9 +199,8 @@ class Model(FileModel, ParentModel):
         # By overriding `BaseModel.model_post_init` we can set them explicitly,
         # and enforce that they are always written.
         # Since migration runs on reading, the ribasim_version should be reset.
-        self.model_config["validate_assignment"] = False
-        self.ribasim_version = ribasim.__version__
-        self.model_config["validate_assignment"] = True
+        with self._no_validate():
+            self.ribasim_version = ribasim.__version__
         self.model_fields_set.update({"input_dir", "results_dir"})
 
         # Finally we add all NodeModel children to the model_fields_set,
@@ -556,7 +555,7 @@ class Model(FileModel, ParentModel):
             new_link_id = self.link._used_link_ids.new_id()
             self.link._used_link_ids.add(new_link_id)
             new_link_ids.append(new_link_id)
-        table_to_append = GeoDataFrame[LinkSchema](
+        table_to_append = gpd.GeoDataFrame(
             data={
                 "from_node_id": missing_pairs["from_node_id"].to_numpy(np.int32),
                 "to_node_id": missing_pairs["to_node_id"].to_numpy(np.int32),
@@ -568,7 +567,8 @@ class Model(FileModel, ParentModel):
             index=pd.Index(new_link_ids, name="link_id"),
         )
 
-        self.link.df = GeoDataFrame[LinkSchema](_concat([df_link, table_to_append]))
+        with self.link._no_validate():
+            self.link.df = _concat([df_link, table_to_append])
 
     def _validate_model(self) -> None:
         """Validate that all nodes satisfy their neighbor-count bounds for every link type.

@@ -13,7 +13,7 @@ from matplotlib.offsetbox import AnnotationBbox
 from matplotlib.patches import Patch
 from pandera.dtypes import Int32
 from pandera.typing import Index, Series
-from pandera.typing.geopandas import GeoDataFrame, GeoSeries
+from pandera.typing.geopandas import GeoSeries
 from pydantic import (
     BaseModel as PydanticBaseModel,
 )
@@ -216,11 +216,9 @@ class Node(PydanticBaseModel):
             geometry = Point(geometry.x, geometry.y)
         super().__init__(node_id=node_id, geometry=geometry, **kwargs)
 
-    def into_geodataframe(
-        self, node_type: str, node_id: int
-    ) -> GeoDataFrame[NodeSchema]:
+    def into_geodataframe(self, node_type: str, node_id: int) -> gpd.GeoDataFrame:
         extra = self.model_extra if self.model_extra is not None else {}
-        gdf = GeoDataFrame[NodeSchema](
+        gdf = gpd.GeoDataFrame(
             data={
                 "node_id": pd.Series([node_id], dtype=np.int32),
                 "node_type": pd.Series([node_type], dtype=str),
@@ -482,17 +480,27 @@ class NodeModel(ParentModel, ChildModel):
             if isinstance(table_to_append, GeoDataFrameType):
                 table_to_append.set_crs(self._parent.crs, inplace=True)
             new_table = _concat([existing_table, table_to_append], ignore_index=True)
-            setattr(self, member_name, new_table)
+            # Restore index name lost by ignore_index=True (normally set by pandera).
+            new_table.index.name = type(existing_member).tableschema()._index_name()
+            with existing_member._no_validate():
+                existing_member.df = new_table
 
         node_table = node.into_geodataframe(
             node_type=self.__class__.__name__, node_id=node_id
         )
         node_table.set_crs(self._parent.crs, inplace=True)
         if self._parent.node.df is None:
-            self._parent.node.df = node_table
+            df = node_table
         else:
             df = _concat([self._parent.node.df, node_table])
+
+        has_extra_cols = node.model_extra is not None and len(node.model_extra) > 0
+        if has_extra_cols:
+            # User-provided extra columns go through validation (checks meta_ prefix).
             self._parent.node.df = df
+        else:
+            with self._parent.node._no_validate():
+                self._parent.node.df = df
 
         self._parent.node._used_node_ids.add(node_id)
         return self[node_id]
