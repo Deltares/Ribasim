@@ -434,7 +434,7 @@ this point until the start of July water is pumped into the basin in short burst
 Set up the model:
 
 ```{python}
-model = Model(starttime="2020-01-01", endtime="2020-12-01", crs="EPSG:4326")
+model = Model(starttime="2020-01-01", endtime="2021-12-01", crs="EPSG:4326")
 ```
 
 Setup the basins:
@@ -442,7 +442,7 @@ Setup the basins:
 ```{python}
 model.basin.add(
     Node(2, Point(1.0, 0.0)),
-    [basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]), basin.State(level=[6.0])],
+    [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[6.0])],
 )
 ```
 
@@ -450,17 +450,8 @@ Setup the pump:
 
 ```{python}
 model.pump.add(
-    Node(3, Point(2.0, 0.5)),
+    Node(3, Point(2.0, 0.0)),
     [pump.Static(flow_rate=[0.0])],  # Will be overwritten by PID controller
-)
-```
-
-Setup the outlet:
-
-```{python}
-model.outlet.add(
-    Node(6, Point(2.0, -0.5)),
-    [outlet.Static(flow_rate=[0.0])],  # Will be overwritten by PID controller
 )
 ```
 
@@ -478,7 +469,7 @@ Setup level boundary:
 ```{python}
 model.level_boundary.add(
     Node(4, Point(3.0, 0.0)),
-    [level_boundary.Static(level=[5.0])],
+    [level_boundary.Static(level=[5.5])],
 )
 ```
 
@@ -486,44 +477,23 @@ Setup PID control:
 
 ```{python}
 model.pid_control.add(
-    Node(5, Point(1.5, 1.0)),
+    Node(5, Point(1.0, 1.0)),
     [
         pid_control.Time(
             time=[
                 "2020-01-01",
-                "2020-04-01",
                 "2020-12-01",
+                "2021-12-01",
             ],
             listen_node_id=2,
-            target=[5.0, 7.5, 7.5],
-            proportional=-1e-2,
-            integral=-1e-11,
-            derivative=0.0,
-        )
-    ],
-)
-
-model.pid_control.add(
-    Node(7, Point(1.5, -1.0)),
-    [
-        pid_control.Time(
-            time=[
-                "2020-01-01",
-                "2020-05-01",
-                "2020-07-01",
-                "2020-12-01",
-            ],
-            listen_node_id=2,
-            target=[5.0, 5.0, 7.5, 7.5],
-            proportional=1e-3,
-            integral=1e-7,
-            derivative=0.0,
+            target=[5.5, 6.5, 6.5],
+            proportional=-5e-3,
+            integral=-7e-10,
+            derivative=-8e3,
         )
     ],
 )
 ```
-
-Note that the PID controllers for the pump and the outlet work towards the same goal, while having opposite effects on the controlled basin due to their connectivity to this basin.
 
 Setup the links:
 
@@ -531,10 +501,7 @@ Setup the links:
 model.link.add(model.flow_boundary[1], model.basin[2])
 model.link.add(model.basin[2], model.pump[3])
 model.link.add(model.pump[3], model.level_boundary[4])
-model.link.add(model.level_boundary[4], model.outlet[6])
-model.link.add(model.outlet[6], model.basin[2])
 model.link.add(model.pid_control[5], model.pump[3])
-model.link.add(model.pid_control[7], model.outlet[6])
 ```
 
 Let's take a look at the model:
@@ -563,16 +530,17 @@ from matplotlib.dates import date2num
 
 ds_basin = xr.open_dataset(datadir / "pid_control/results/basin.nc")
 df_basin = ds_basin.to_dataframe().reset_index()
-df_basin_wide = df_basin.pivot_table(
-    index="time", columns="node_id", values=["storage", "level"]
-)
-ax = df_basin_wide["level"].plot()
+
+fig, ax = plt.subplots()
+ax.plot(df_basin.time, df_basin.level, label="level")
 ax.set_ylabel("level [m]")
 
-# Plot target level
-level_demands = model.pid_control.time.df.target.to_numpy()[:4]
-times = date2num(model.pid_control.time.df.time)[:4]
-ax.plot(times, level_demands, color="k", ls=":", label="target level")
+# Plot target level of the pump PID controller
+pid_pump = model.pid_control.time.df[model.pid_control.time.df.node_id == 5]
+level_demands = pid_pump.target.to_numpy()
+times = date2num(pid_pump.time)
+ax.step(times, level_demands, where="post", color="k", ls=":", label="target")
+ax.legend()
 pass
 ```
 
