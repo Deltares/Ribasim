@@ -47,7 +47,7 @@ def pid_control_model() -> Model:
                 listen_node_id=2,
                 target=[5.0, 7.5, 7.5],
                 proportional=-1e-2,
-                integral=-1e-8,
+                integral=-1e-11,
                 derivative=0,
             )
         ],

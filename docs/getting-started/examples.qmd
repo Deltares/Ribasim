@@ -485,11 +485,27 @@ model.level_boundary.add(
 Setup PID control:
 
 ```{python}
-for node, proportional, integral in [
-    (Node(5, Point(1.5, 1.0)), -1e-3, -1e-7),
-    (Node(7, Point(1.5, -1.0)), 1e-3, 1e-7),
-]:
-    pid_control_data = [
+model.pid_control.add(
+    Node(5, Point(1.5, 1.0)),
+    [
+        pid_control.Time(
+            time=[
+                "2020-01-01",
+                "2020-04-01",
+                "2020-12-01",
+            ],
+            listen_node_id=2,
+            target=[5.0, 7.5, 7.5],
+            proportional=-1e-2,
+            integral=-1e-11,
+            derivative=0.0,
+        )
+    ],
+)
+
+model.pid_control.add(
+    Node(7, Point(1.5, -1.0)),
+    [
         pid_control.Time(
             time=[
                 "2020-01-01",
@@ -499,15 +515,15 @@ for node, proportional, integral in [
             ],
             listen_node_id=2,
             target=[5.0, 5.0, 7.5, 7.5],
-            proportional=proportional,
-            integral=integral,
+            proportional=1e-3,
+            integral=1e-7,
             derivative=0.0,
         )
-    ]
-    model.pid_control.add(node, pid_control_data)
+    ],
+)
 ```
 
-Note that the coefficients for the pump and the outlet are equal in magnitude but opposite in sign. This way the pump and the outlet equally work towards the same goal, while having opposite effects on the controlled basin due to their connectivity to this basin.
+Note that the PID controllers for the pump and the outlet work towards the same goal, while having opposite effects on the controlled basin due to their connectivity to this basin.
 
 Setup the links:
 
