@@ -438,15 +438,16 @@ end
     J_inner = cache.linsolve.cache_inner.A.J.A
     A = get_concrete_A(model)
     #! format: off
-    rows_expected = [1, 1, 1, 1, 2, 3]
-    cols_expected = [1, 2, 3, 4, 5, 6]
-    vals_expected = [-1.0, 1.0, -1.0, -1.0, 1.0, 1.0]
+    rows_expected = [1, 1, 1, 2]
+    cols_expected = [1, 2, 3, 4]
+    vals_expected = [-1.0, -1.0, -1.0, 1.0]
     #! format: on
     A_expected = sparse(rows_expected, cols_expected, vals_expected)
     @test A == A_expected
 
     #! format: off
-    J_intermediate.nzval .= [0.449381314574683, 0.4542317082538514, 0.599934409205972, 0.30717602583409154, 0.9795352040440034, 0.7127522193125262, 0.5170645177542447, 0.9487984760519759]
+    # These values are arbitrary :')
+    J_intermediate.nzval .= [0.449381314574683, 0.4542317082538514, 0.599934409205972, 0.30717602583409154, 0.9795352040440034]
     #! format: on
     J_inner_expected = A * J_intermediate
     calc_J_inner!(J_inner, cache.J)
