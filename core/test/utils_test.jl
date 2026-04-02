@@ -284,8 +284,8 @@ end
         Bool.(Ribasim.get_diff_eval(du0, p, config.solver).jac_prototype.J_intermediate)
 
     #! format: off
-    rows_expected = [1, 2, 3, 4, 5, 6, 1, 2]
-    cols_expected = [1, 1, 1, 1, 1, 1, 2, 3]
+    rows_expected = [1, 2, 3, 4, 1]
+    cols_expected = [1, 1, 1, 1, 2]
     #! format: on
     jac_prototype_expected =
         sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
