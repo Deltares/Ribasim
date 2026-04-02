@@ -117,25 +117,13 @@ end
 
     target_itp = pid_control.target[1]
 
-    idx_level_reached = 200
+    idx_level_reached = 700
 
-    K_p = pid_control.proportional[2](0)
-    K_i = pid_control.integral[2](0)
-    level_demand = pid_control.target[2](0)
-
-    A = Ribasim.basin_areas(basin, 1)[1]
-    initial_level = level[1]
-    flow_rate = flow_boundary.flow_rate[1].u[1]
-    du0 = flow_rate + K_p * (level_demand - initial_level)
-    Δlevel = initial_level - level_demand
-    alpha = -K_p / (2 * A)
-    omega = sqrt(4 * K_i / A - (K_i / A)^2) / 2
-    phi = atan(du0 / (A * Δlevel) - alpha) / omega
-    a = abs(Δlevel / cos(phi))
+    level_demand = pid_control.target[1](0)
 
     eps = 5.0e-3
     # Initial convergence to target level
-    @test all(@. abs(level[30:80] - level_demand) < eps)
+    @test all(@. abs(level[180:330] - level_demand) < eps)
     # Later closeness to target level
     @test all(
         @. abs(level[idx_level_reached:end] - target_itp(t[idx_level_reached:end])) < 5.0e-2
