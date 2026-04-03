@@ -207,10 +207,8 @@ def _setup_graph(nodes, link, evaporate_mass=True):
             ):
                 logger.debug("Found cycle that is not a UserDemand.")
             else:
-                link_ids = G.edges[loop]["id"]  # pyrefly: ignore[bad-argument-type]
-                G.edges[reversed(loop)]["id"].extend(
-                    link_ids
-                )  # pyrefly: ignore[bad-argument-type]
+                link_ids = G.edges[loop]["id"]
+                G.edges[reversed(loop)]["id"].extend(link_ids)
                 merge_links.extend(link_ids)
                 G.remove_edge(*loop)
 
@@ -495,7 +493,7 @@ def generate(
     ):
         if boundary_type is None:
             continue
-        lookups[boundary_type][node_id] = link_id  # pyrefly: ignore[bad-argument-type]
+        lookups[boundary_type][node_id] = link_id
 
     for boundary_type in lookups:
         df = basins[basins.node_id.isin(lookups[boundary_type].keys())][

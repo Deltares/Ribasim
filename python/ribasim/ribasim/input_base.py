@@ -521,7 +521,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
             self.root is None
             or not hasattr(self.root, "filepath")
             or not hasattr(self.root, "input_dir")
-            or self.root.filepath is None  # pyrefly: ignore[missing-attribute]
+            or self.root.filepath is None
         ):
             return
 
@@ -556,11 +556,9 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         if not self.root:
             raise ValueError("Table is not connected to a model.")
         assert hasattr(self.root, "filepath") and hasattr(self.root, "input_dir")
-        if not self.root.filepath:  # pyrefly: ignore[missing-attribute]
+        if not self.root.filepath:
             raise ValueError("Model has no filepath set.")
-        return (
-            self.root.filepath.parent / self.root.input_dir
-        )  # pyrefly: ignore[missing-attribute]
+        return self.root.filepath.parent / self.root.input_dir
 
     def write(
         self,
@@ -717,9 +715,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
 
         # Allow for indexing with multiple values.
         np_index = np.atleast_1d(index)
-        missing = np.setdiff1d(
-            np_index, self.df["node_id"].unique()
-        )  # pyrefly: ignore[bad-argument-type]
+        missing = np.setdiff1d(np_index, self.df["node_id"].unique())
         if missing.size > 0:
             raise IndexError(f"{tablename} does not contain node_id: {missing}")
 
@@ -754,9 +750,7 @@ class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
 
             return df
 
-    def _write_geopackage(
-        self, filepath: Path
-    ) -> None:  # pyrefly: ignore[bad-override]
+    def _write_geopackage(self, filepath: Path) -> None:
         """
         Write the contents of the input to the GeoPackage.
 

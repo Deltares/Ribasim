@@ -13,5 +13,6 @@ search-path = [
 python-version = "3.12"
 
 [errors]
-missing-source = "ignore"
-untyped-import = "ignore"
+missing-source = "error"
+untyped-import = "error"
+unused-ignore = "error"

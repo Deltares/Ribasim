@@ -893,19 +893,11 @@ class Model(FileModel, ParentModel):
         link_dim = grid.edge_dimension
         node_dim = grid.node_dimension
 
-        uds = xugrid.UgridDataset(None, grid)  # pyrefly: ignore[bad-argument-type]
-        uds = uds.assign_coords(
-            node_id=(node_dim, node_id)
-        )  # pyrefly: ignore[bad-argument-type, not-callable]
-        uds = uds.assign_coords(
-            link_id=(link_dim, link_id)
-        )  # pyrefly: ignore[bad-argument-type, not-callable]
-        uds = uds.assign_coords(
-            from_node_id=(link_dim, from_node_id)
-        )  # pyrefly: ignore[bad-argument-type, not-callable]
-        uds = uds.assign_coords(
-            to_node_id=(link_dim, to_node_id)
-        )  # pyrefly: ignore[bad-argument-type, not-callable]
+        uds = xugrid.UgridDataset(None, grid)
+        uds = uds.assign_coords(node_id=(node_dim, node_id))
+        uds = uds.assign_coords(link_id=(link_dim, link_id))
+        uds = uds.assign_coords(from_node_id=(link_dim, from_node_id))
+        uds = uds.assign_coords(to_node_id=(link_dim, to_node_id))
 
         if add_flow:
             uds = self._add_flow(uds, node_lookup)
