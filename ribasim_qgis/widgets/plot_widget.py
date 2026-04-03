@@ -409,10 +409,18 @@ class PlotWidget(QWidget):
         if _BACKEND is _WebViewBackend.WEBENGINE:
             self._web_view = QWebEngineView()
         else:
-            self._web_view = QWebView()  # type: ignore[assignment]
+            self._web_view = QWebView()
             ws = self._web_view.settings()
-            ws.setAttribute(QWebSettings.WebGLEnabled, True)  # type: ignore[arg-type]
-            ws.setAttribute(QWebSettings.Accelerated2dCanvasEnabled, True)  # type: ignore[arg-type]
+            ws.setAttribute(
+                # pyrefly: ignore[bad-argument-type]
+                QWebSettings.WebGLEnabled,
+                True,
+            )
+            ws.setAttribute(
+                # pyrefly: ignore[bad-argument-type]
+                QWebSettings.Accelerated2dCanvasEnabled,
+                True,
+            )
 
         self._web_view.setVisible(False)
         self._web_view.setContextMenuPolicy(

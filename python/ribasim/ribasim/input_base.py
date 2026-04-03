@@ -43,7 +43,7 @@ from ribasim.utils import MissingOptionalModule
 from .styles import _add_styles_to_geopackage
 
 try:
-    from datacompy.core import Compare as _Compare  # type: ignore
+    from datacompy.core import Compare as _Compare  # pyrefly: ignore[missing-import]
 except ImportError:
     _Compare = MissingOptionalModule("datacompy", "diff")
 
@@ -84,7 +84,7 @@ _init_context_var = ContextVar("_init_context_var", default=None)
 
 @contextmanager
 def init_context(value: dict[str, Any]) -> Generator[None]:
-    token = _init_context_var.set(value)  # type: ignore
+    token = _init_context_var.set(value)  # pyrefly: ignore[bad-argument-type]
     try:
         yield
     finally:
@@ -202,13 +202,13 @@ class BaseModel(PydanticBaseModel):
             getter = (
                 operator.itemgetter(*model_fields)
                 if model_fields
-                else lambda _: pydantic._utils._SENTINEL  # type: ignore
+                else lambda _: pydantic._utils._SENTINEL  # pyrefly: ignore[missing-attribute]
             )
             try:
                 return getter(self.__dict__) == getter(other.__dict__)
             except KeyError:
-                self_fields_proxy = pydantic._utils.SafeGetItemProxy(self.__dict__)  # type: ignore
-                other_fields_proxy = pydantic._utils.SafeGetItemProxy(other.__dict__)  # type: ignore
+                self_fields_proxy = pydantic._utils.SafeGetItemProxy(self.__dict__)  # pyrefly: ignore[missing-attribute]
+                other_fields_proxy = pydantic._utils.SafeGetItemProxy(other.__dict__)  # pyrefly: ignore[missing-attribute]
                 return getter(self_fields_proxy) == getter(other_fields_proxy)
 
         else:
@@ -540,7 +540,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         filepath = self.filepath or self.default_filepath()
 
         data = self._load(directory / filepath)
-        self.df = data.get("df", self.df)  # type: ignore
+        self.df = data.get("df", self.df)  # pyrefly: ignore[bad-assignment]
         self.lazy = False
         context_file_loading.set({})
 
@@ -687,7 +687,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         The type of the field `df` is known to always be an DataFrame[TableT]]] | None
         """
         optionalfieldtype = cls.model_fields["df"].annotation
-        fieldtype = optionalfieldtype.__args__[0]  # type: ignore
+        fieldtype = optionalfieldtype.__args__[0]  # pyrefly: ignore[missing-attribute]
         T: TableT = fieldtype.__args__[0]
         return T
 

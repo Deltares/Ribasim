@@ -267,8 +267,8 @@ def basic_transient_model() -> Model:
         }
     )
     model.basin.static.df = None  # A node cannot have both static and dynamic forcing
-    model.basin.time = forcing  # type: ignore # TODO: Fix implicit typing from pydantic. See TableModel.check_dataframe
-    model.basin.state = state  # type: ignore # TODO: Fix implicit typing from pydantic. See TableModel.check_dataframe
+    model.basin.time = forcing  # pyrefly: ignore[bad-assignment]
+    model.basin.state = state  # pyrefly: ignore[bad-assignment]
 
     return model
 

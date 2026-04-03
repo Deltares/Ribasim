@@ -436,7 +436,7 @@ class NodeModel(ParentModel, ChildModel):
     def add(
         self,
         node: Node,
-        tables: Sequence[TableModel] | None = None,  # type: ignore[type-arg]
+        tables: Sequence[TableModel] | None = None,
     ) -> NodeData:
         """Add a node and the associated data to the model.
 

@@ -164,7 +164,10 @@ class DatasetWidget:
         rel.setReferencingLayer(from_layer.id())
         rel.setReferencedLayer(to_layer_id)
         rel.setName(name)
-        rel.setStrength(rel.RelationStrength.Composition)  # type: ignore
+        rel.setStrength(
+            # pyrefly: ignore[missing-attribute]
+            rel.RelationStrength.Composition
+        )
         rel.addFieldPair(fk, "node_id")
         rel.generateId()
         instance = QgsProject.instance()

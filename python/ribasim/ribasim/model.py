@@ -415,7 +415,8 @@ class Model(FileModel, ParentModel):
                 "directory": Path(filepath).parent,
             }
         ):
-            return cls(filepath=Path(filepath).name)  # type: ignore
+            # pyrefly: ignore[missing-argument]
+            return cls(filepath=Path(filepath).name)
 
     def write(
         self,
@@ -704,7 +705,8 @@ class Model(FileModel, ParentModel):
             config["filepath"] = filepath  # make sure we store the whole filepath
             directory = filepath.parent / config["input_dir"]
             context_file_loading.get()["directory"] = directory
-            _init_context_var.get()["directory"] = directory  # type: ignore
+            # pyrefly: ignore[unsupported-operation]
+            _init_context_var.get()["directory"] = directory
 
             db_path = directory / "database.gpkg"
             if not db_path.is_file():
