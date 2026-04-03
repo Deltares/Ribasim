@@ -5,7 +5,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from qgis.PyQt.QtCore import Qt, pyqtSignal
@@ -19,6 +19,21 @@ from qgis.PyQt.QtWidgets import (
     QWidget,
     QWidgetAction,
 )
+
+# Keep optional imports always bound for static typing.
+go: Any = None
+po: Any = None
+make_subplots: Any = None
+
+QUrl: Any = None
+QWebEngineView: Any = None
+QWebSettings: Any = None
+QWebView: Any = None
+
+if TYPE_CHECKING:
+    from plotly.graph_objs import Scatter as PlotlyScatter
+else:
+    PlotlyScatter = Any
 
 try:
     import plotly.graph_objs as go
@@ -581,8 +596,8 @@ class PlotWidget(QWidget):
         selected_keys: list[tuple[str, str]],
         excluded_variables: set[str] | None = None,
         excluded_files: set[str] | None = None,
-    ) -> dict[str, list[go.Scatter]]:
-        traces_by_unit: dict[str, list[go.Scatter]] = defaultdict(list)
+    ) -> dict[str, list[PlotlyScatter]]:
+        traces_by_unit: dict[str, list[PlotlyScatter]] = defaultdict(list)
         excluded_variables = excluded_variables or set()
         excluded_files = excluded_files or set()
         for file_name, var in selected_keys:

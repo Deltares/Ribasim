@@ -219,14 +219,17 @@ class DatasetWidget:
         def filterbyrel(relationships, feature_ids):
             """Filter all related tables by the selected features in the node table."""
             ids = []
+            rel_for_selection = None
             selection = QgsFeatureRequest().setFilterFids(feature_ids)
             for rel in relationships:
                 if rel.isValid() and rel.referencedLayer():
                     for feature in rel.referencedLayer().getFeatures(selection):
                         ids.extend(f.id() for f in rel.getRelatedFeatures(feature))
+                if rel.isValid() and rel.referencingLayer() is not None:
+                    rel_for_selection = rel
 
-            if rel.isValid() and rel.referencingLayer():
-                rel.referencingLayer().selectByIds(ids)
+            if rel_for_selection is not None and rel_for_selection.referencingLayer():
+                rel_for_selection.referencingLayer().selectByIds(ids)
 
         # When the Node selection changes, filter all related tables
         link_rels = []
@@ -695,7 +698,13 @@ class DatasetWidget:
             self._edit_result_layer(result, self.flow_layer)
 
     def _duplicate_layer(
-        self, layer, name, fid_column, filterkey=1, filtervalue=1, fids=None
+        self,
+        layer,
+        name,
+        fid_column,
+        filterkey: str | int = 1,
+        filtervalue: str | int = 1,
+        fids=None,
     ):
         """Duplicate a layer for use with output data."""
         if fids is None:
@@ -722,24 +731,28 @@ class DatasetWidget:
             fids.append(feature.id())
             rids.append(feature[fid_column])
         if sorted(fids) != fids or sorted(rids) != rids:
-            self.ribasim_widget.iface.messageBar().pushMessage(
-                "Ribasim",
-                "Cannot duplicate layer, fids are not sorted",
-                level=Qgis.MessageLevel.Critical,
-                duration=3,
-            )
+            message_bar = self.ribasim_widget.iface.messageBar()
+            if message_bar is not None:
+                message_bar.pushMessage(
+                    "Ribasim",
+                    "Cannot duplicate layer, fids are not sorted",
+                    level=Qgis.MessageLevel.Critical,
+                    duration=3,
+                )
             return
 
         maplayer = self.add_layer(duplicate, "Results", False, labels=None)
+        if maplayer is None:
+            return
         self.set_layer_visible(duplicate, False)
 
         toml = get_toml_dict(self.path)
         trange = QgsDateTimeRange(
             QDateTime(toml["starttime"]), QDateTime(toml["endtime"])
         )
-        tprop = maplayer.temporalProperties()
+        tprop = cast(QgsVectorLayerTemporalProperties, maplayer.temporalProperties())
         tprop.setMode(
-            QgsVectorLayerTemporalProperties.TemporalMode.ModeFixedTemporalRange
+            QgsVectorLayerTemporalProperties.TemporalMode.ModeFixedTemporalRange  # pyright: ignore[reportAttributeAccessIssue]
         )
         tprop.setFixedTemporalRange(trange)
         tprop.setIsActive(True)

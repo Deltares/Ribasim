@@ -20,6 +20,8 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+from ribasim.geometry.link import SPATIALCONTROLNODETYPES
+
 try:
     import jinja2
 except ImportError:
@@ -95,7 +97,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
 
     assert nodes.df is not None
     for row in nodes.df.itertuples():
-        if row.node_type not in ribasim.geometry.link.SPATIALCONTROLNODETYPES:
+        if row.node_type not in SPATIALCONTROLNODETYPES:
             G.add_node(
                 row.Index,
                 type=row.node_type,
@@ -195,8 +197,8 @@ def _setup_graph(nodes, link, evaporate_mass=True):
             ):
                 logger.debug("Found cycle that is not a UserDemand.")
             else:
-                link_ids = G.edges[loop]["id"]
-                G.edges[reversed(loop)]["id"].extend(link_ids)
+                link_ids = G.edges[loop]["id"]  # pyright: ignore[reportArgumentType]
+                G.edges[reversed(loop)]["id"].extend(link_ids)  # pyright: ignore[reportArgumentType]
                 merge_links.extend(link_ids)
                 G.remove_edge(*loop)
 
@@ -365,13 +367,13 @@ def _setup_boundaries(model, node_mapping):
 
 
 def generate(
-    model: Path | ribasim.Model,
+    model: Path | Model,
     output_path: Path | None = None,
-) -> tuple[nx.DiGraph, set[str]]:
+) -> tuple[nx.DiGraph, set[str]]:  # pyright: ignore[reportInvalidTypeForm]
     """Generate a Delwaq model from a Ribasim model and results."""
     # Read in model and results
-    if not isinstance(model, ribasim.Model):
-        model = ribasim.Model.read(model)
+    if not isinstance(model, Model):
+        model = Model.read(model)
 
     evaporate_mass = model.solver.evaporate_mass
 
@@ -480,7 +482,7 @@ def generate(
     ):
         if boundary_type is None:
             continue
-        lookups[boundary_type][node_id] = link_id
+        lookups[boundary_type][node_id] = link_id  # pyright: ignore[reportArgumentType]
 
     for boundary_type in lookups:
         df = basins[basins.node_id.isin(lookups[boundary_type].keys())][
@@ -576,6 +578,7 @@ def generate(
 
     # Override default concentrations with the user defined values
     if model.basin.concentration_state.df is not None:
+        initial = model.basin.concentration_state.df
         for _, row in initial.iterrows():
             icdf.loc[basin_mapping[row.node_id], row.substance] = row.concentration
 

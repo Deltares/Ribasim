@@ -1,3 +1,5 @@
+from typing import Any
+
 from ribasim.input_base import TableModel
 from ribasim.schemas import (
     ContinuousControlFunctionSchema,
@@ -8,8 +10,10 @@ __all__ = ["Function", "Variable"]
 
 
 class Variable(TableModel[ContinuousControlVariableSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class Function(TableModel[ContinuousControlFunctionSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)

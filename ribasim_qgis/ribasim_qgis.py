@@ -1,8 +1,9 @@
 """Setup a dockwidget to hold the ribasim plugin widgets."""
 
-import importlib
+import importlib.util
 import tomllib
 from pathlib import Path
+from typing import Any
 
 from qgis.core import Qgis
 from qgis.gui import QgsCustomDropHandler
@@ -23,26 +24,28 @@ icondir = Path(__file__).parent
 
 
 class RibasimDropHandler(QgsCustomDropHandler):
-    def __init__(self, plugin):
+    def __init__(self, plugin: "RibasimPlugin"):
         super().__init__()
-        self.parent = plugin
+        self.plugin = plugin
 
-    def handleFileDrop(self, path):
-        if not path.lower().endswith(".toml"):
+    def handleFileDrop(self, file: str | None) -> bool:
+        if file is None:
+            return False
+        if not file.lower().endswith(".toml"):
             return False
 
-        with Path(path).open("rb") as f:
+        with Path(file).open("rb") as f:
             data = tomllib.load(f)
             if "ribasim_version" not in data:
                 return False
 
-        self.parent.open_model(path)
+        self.plugin.open_model(file)
 
         return True
 
 
 class RibasimPlugin:
-    def __init__(self, iface):
+    def __init__(self, iface: Any):
         # Save reference to the QGIS interface
         self.iface = iface
         self.ribasim_widget = None

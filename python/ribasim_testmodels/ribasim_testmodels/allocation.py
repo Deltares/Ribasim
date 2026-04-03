@@ -1,4 +1,4 @@
-from typing import Any
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -10,7 +10,6 @@ from ribasim.config import (
     Solver,
 )
 from ribasim.geometry.node import Node
-from ribasim.input_base import TableModel
 from ribasim.nodes import (
     basin,
     discrete_control,
@@ -31,8 +30,8 @@ from shapely.geometry import Point
 def user_demand_model() -> Model:
     """Create a UserDemand test model with static and dynamic UserDemand on the same basin."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         solver=Solver(algorithm="Tsit5"),
         experimental=Experimental(concentration=True),
@@ -99,14 +98,14 @@ def user_demand_model() -> Model:
 def minimal_subnetwork_model() -> Model:
     """Create a subnetwork that is minimal with non-trivial allocation."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         allocation=Allocation(timestep=86400),
         experimental=Experimental(concentration=True, allocation=True),
     )
 
-    basin_data: list[TableModel[Any]] = [
+    basin_data = [
         basin.Profile(area=1000.0, level=[0.0, 1000.0]),
         basin.State(level=[1.0]),
     ]
@@ -156,14 +155,14 @@ def minimal_subnetwork_model() -> Model:
 def allocation_example_model() -> Model:
     """Generate a model that is used as an example of allocation in the docs."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2020-01-20",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 20),
         crs="EPSG:28992",
         allocation=Allocation(timestep=86400),
         experimental=Experimental(concentration=True, allocation=True),
     )
 
-    basin_data: list[TableModel[Any]] = [
+    basin_data = [
         basin.Profile(area=300_000.0, level=[0.0, 1.0]),
         basin.State(level=[1.0]),
     ]
@@ -218,14 +217,14 @@ def allocation_example_model() -> Model:
 
 def small_primary_secondary_network_model() -> Model:
     model = Model(
-        starttime="2020-01-01",
-        endtime="2020-01-20",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 20),
         crs="EPSG:28992",
         allocation=Allocation(timestep=86400),
         experimental=Experimental(concentration=True, allocation=True),
     )
 
-    basin_data: list[TableModel[Any]] = [
+    basin_data = [
         basin.Profile(area=300_000.0, level=[0.0, 1.0]),
         basin.State(level=[0.9]),
     ]
@@ -277,14 +276,14 @@ def small_primary_secondary_network_model() -> Model:
 
 def medium_primary_secondary_network_model() -> Model:
     model = Model(
-        starttime="2020-01-01",
-        endtime="2020-01-20",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 20),
         crs="EPSG:28992",
         allocation=Allocation(timestep=86400),
         experimental=Experimental(allocation=True),
     )
 
-    basin_data: list[TableModel[Any]] = [
+    basin_data = [
         basin.Profile(area=100_000.0, level=[0.0, 1.0]),
         basin.State(level=[0.5]),
     ]
@@ -469,14 +468,14 @@ def medium_primary_secondary_network_verification_model() -> Model:
 
 def small_primary_secondary_network_verification_model() -> Model:
     model = Model(
-        starttime="2020-01-01",
-        endtime="2020-01-20",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 20),
         crs="EPSG:28992",
         allocation=Allocation(timestep=86400),
         experimental=Experimental(concentration=True, allocation=True),
     )
 
-    basin_data: list[TableModel[Any]] = [
+    basin_data = [
         basin.Profile(area=300_000.0, level=[0.0, 1.0]),
         basin.State(level=[0.9]),
     ]
@@ -528,8 +527,8 @@ def small_primary_secondary_network_verification_model() -> Model:
 def level_demand_model() -> Model:
     """Small model with LevelDemand nodes."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2020-02-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 2, 1),
         crs="EPSG:28992",
         allocation=Allocation(timestep=86400),
         experimental=Experimental(concentration=True, allocation=True),
@@ -589,8 +588,8 @@ def level_demand_model() -> Model:
 def flow_demand_model() -> Model:
     """Small model with a FlowDemand."""
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         allocation=Allocation(timestep=1e5),
         experimental=Experimental(concentration=True, allocation=True),
@@ -664,8 +663,8 @@ def flow_demand_model() -> Model:
 def linear_resistance_demand_model():
     """Small model with a FlowDemand for a node with a max flow rate."""
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True, allocation=True),
     )
@@ -699,8 +698,8 @@ def linear_resistance_demand_model():
 def fair_distribution_model():
     """See the behavior of allocation with few restrictions within the graph."""
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2020-01-02 00:00:00",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 2),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True, allocation=True),
     )
@@ -737,8 +736,8 @@ def fair_distribution_model():
 
 def allocation_training_model() -> Model:
     model = Model(
-        starttime="2022-01-01",
-        endtime="2023-01-01",
+        starttime=datetime(2022, 1, 1),
+        endtime=datetime(2023, 1, 1),
         crs="EPSG:4326",
         experimental=Experimental(allocation=True),
         interpolation=Interpolation(flow_boundary="linear"),
@@ -917,8 +916,8 @@ def allocation_training_model() -> Model:
 def cyclic_demand_model():
     """Create a model that has cyclic User- Flow- and LevelDemand."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(allocation=True),
     )
@@ -994,8 +993,8 @@ def cyclic_demand_model():
 def allocation_control_model() -> Model:
     """Create a model that has a pump controlled by allocation."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2023-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2023, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(allocation=True),
     )
@@ -1045,8 +1044,8 @@ def allocation_control_model() -> Model:
 def multi_level_demand_model() -> Model:
     """Create a model that has a level demand with multiple priorities."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(allocation=True),
     )
@@ -1095,8 +1094,8 @@ def multi_level_demand_model() -> Model:
 def invalid_infeasible_model() -> Model:
     """Set up a minimal model which uses a linear_resistance node."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2020-02-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 2, 1),
         crs="EPSG:28992",
         experimental=Experimental(allocation=True),
     )
@@ -1128,8 +1127,8 @@ def invalid_infeasible_model() -> Model:
 def drain_surplus_model() -> Model:
     """Set up a model which activates an outlet to drain surplus water out of a Basin."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2020-02-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 2, 1),
         crs="EPSG:28992",
         experimental=Experimental(allocation=True),
     )
@@ -1167,8 +1166,8 @@ def drain_surplus_model() -> Model:
 def multi_priority_flow_demand_model() -> Model:
     """Set up a model which contains a FlowDemand node with multiple demand priorities."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2020-01-21",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 21),
         crs="EPSG:28992",
         solver=Solver(saveat=3600),
         experimental=Experimental(allocation=True),
@@ -1227,8 +1226,8 @@ def multi_priority_flow_demand_model() -> Model:
 def allocation_off_flow_demand_model() -> Model:
     """Set up a model with a Pump with a FlowDemand but allocation turned off."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(allocation=False),
     )
@@ -1256,8 +1255,8 @@ def allocation_off_flow_demand_model() -> Model:
 def multiple_route_priorities_model() -> Model:
     """Set up a model to test route prioritization."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(allocation=True),
     )
@@ -1319,8 +1318,8 @@ def polder_management_model() -> Model:
     Flushing is included as well: 1.5 m³/s during day 90 to 180.
     """
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:4326",
         experimental=Experimental(allocation=True),
     )
@@ -1339,7 +1338,7 @@ def polder_management_model() -> Model:
     evaporation[180:270] = 0
     evaporation[270:366] = 1e-6
 
-    basin_data: list[TableModel[Any]] = [
+    basin_data = [
         basin.Profile(
             area=[0.01, 1000000.0, 1000000.0, 1000000.0], level=[-10, 1.0, 2.0, 10]
         ),
@@ -1496,8 +1495,8 @@ def switch_allocation_control_model() -> Model:
     """Create a model that switches allocation control on and off based on a DiscreteControl node."""
     # Basin data
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:4326",
         experimental=Experimental(allocation=True),
     )
@@ -1516,7 +1515,7 @@ def switch_allocation_control_model() -> Model:
     evaporation[180:270] = 0
     evaporation[270:366] = 1e-7
 
-    basin_data: list[TableModel[Any]] = [
+    basin_data = [
         basin.Profile(area=[1_000_000.0, 1_000_000.0], level=[-10, 20.0]),
         basin.Time(
             time=pd.date_range(model.starttime, model.endtime),
@@ -1600,8 +1599,8 @@ def switch_allocation_control_model() -> Model:
 def level_demand_with_rating_curve_model() -> Model:
     """Create a model with a Basin that has a LevelDemand and an allocation-controlled TabulatedRatingCurve draining to a Terminal."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(allocation=True),
     )
@@ -1654,8 +1653,8 @@ def outlet_allocation_discrete_control_model() -> Model:
                         discrete_control
     """
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         allocation=Allocation(timestep=86400),
         experimental=Experimental(allocation=True),

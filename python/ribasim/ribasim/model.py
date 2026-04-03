@@ -5,7 +5,7 @@ import warnings
 from collections.abc import Generator
 from os import PathLike
 from pathlib import Path
-from typing import Any
+from typing import Any, Self, cast
 
 import numpy as np
 import pandas as pd
@@ -169,7 +169,7 @@ class Model(FileModel, ParentModel):
         return v
 
     @model_validator(mode="after")
-    def _ensure_topology_tables_are_present(self) -> "Model":
+    def _ensure_topology_tables_are_present(self) -> Self:
         if self.link.df is None:
             self.link.df = GeoDataFrame[LinkSchema](
                 index=pd.Index([], name="link_id"),
@@ -261,9 +261,9 @@ class Model(FileModel, ParentModel):
         # and at the end move this over the target file.
         # This does not throw a PermissionError if the file is open in QGIS.
 
-        if internal:
-            db_path = directory / ".database.gpkg"
+        db_path = directory / ".database.gpkg"
 
+        if internal:
             # avoid adding tables to existing model
             db_path.unlink(missing_ok=True)
 
@@ -376,10 +376,10 @@ class Model(FileModel, ParentModel):
         removed_link = self.link.df.loc[link_id]
         self.link._remove_link_id(link_id)
 
-        if removed_link["link_type"] != "control":
+        if str(removed_link["link_type"]) != "control":
             return
 
-        control_node_id = int(removed_link["from_node_id"])
+        control_node_id = cast(int, removed_link["from_node_id"])
         self._remove_dangling_listen_links(control_node_id)
 
     def _nodes(self) -> Generator[NodeModel, None, None]:
@@ -392,7 +392,7 @@ class Model(FileModel, ParentModel):
     @classmethod
     def read(
         cls, filepath: str | PathLike[str], internal: bool = True, external: bool = True
-    ) -> "Model":
+    ) -> Self:
         """Read a model from a TOML file.
 
         Parameters
@@ -715,7 +715,7 @@ class Model(FileModel, ParentModel):
             return {}
 
     @model_validator(mode="after")
-    def _reset_contextvar(self) -> "Model":
+    def _reset_contextvar(self) -> Self:
         # Drop database info
         context_file_loading.set({})
         return self
@@ -771,7 +771,7 @@ class Model(FileModel, ParentModel):
             The path to the results directory.
         """
         toml_path = self.toml_path
-        results_dir = DirectoryPath(toml_path.parent / self.results_dir)
+        results_dir = DirectoryPath(toml_path.parent / self.results_dir)  # pyright: ignore[reportCallIssue]
         # This only checks results that are always written.
         # Some results like allocation_flow are optional.
         filenames = ["basin_state.nc", "basin.nc", "flow.nc"]
@@ -874,8 +874,8 @@ class Model(FileModel, ParentModel):
         node_lookup = _node_lookup_numpy(node_id)
 
         grid = xugrid.Ugrid1d(
-            node_x=node_df.geometry.x,
-            node_y=node_df.geometry.y,
+            node_x=node_df.geometry.x.to_numpy(),
+            node_y=node_df.geometry.y.to_numpy(),
             fill_value=-1,
             edge_node_connectivity=np.column_stack(
                 (
@@ -890,11 +890,11 @@ class Model(FileModel, ParentModel):
         link_dim = grid.edge_dimension
         node_dim = grid.node_dimension
 
-        uds = xugrid.UgridDataset(None, grid)
-        uds = uds.assign_coords(node_id=(node_dim, node_id))
-        uds = uds.assign_coords(link_id=(link_dim, link_id))
-        uds = uds.assign_coords(from_node_id=(link_dim, from_node_id))
-        uds = uds.assign_coords(to_node_id=(link_dim, to_node_id))
+        uds = xugrid.UgridDataset(None, grid)  # pyright: ignore[reportArgumentType]
+        uds = uds.assign_coords(node_id=(node_dim, node_id))  # pyright: ignore[reportCallIssue, reportOptionalCall]
+        uds = uds.assign_coords(link_id=(link_dim, link_id))  # pyright: ignore[reportCallIssue, reportOptionalCall]
+        uds = uds.assign_coords(from_node_id=(link_dim, from_node_id))  # pyright: ignore[reportCallIssue, reportOptionalCall]
+        uds = uds.assign_coords(to_node_id=(link_dim, to_node_id))  # pyright: ignore[reportCallIssue, reportOptionalCall]
 
         if add_flow:
             uds = self._add_flow(uds, node_lookup)

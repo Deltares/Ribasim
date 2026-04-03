@@ -113,7 +113,7 @@ def _subprocess_handling() -> SubprocessHandling:
     """
     # Check for Marimo first
     try:
-        import marimo
+        import marimo  # pyright: ignore[reportMissingImports]
 
         if marimo.running_in_notebook():
             return SubprocessHandling.DISPLAY
@@ -227,9 +227,6 @@ def _run_with_progress_handling(
     handling : SubprocessHandling
         The output handling method (DISPLAY or SPYDER).
     """
-    if handling == SubprocessHandling.DISPLAY:
-        from IPython.display import HTML, display, update_display
-
     progress_display_id = "ribasim_progress"
     progress_displayed = False
 
@@ -253,6 +250,8 @@ def _run_with_progress_handling(
                 if line.startswith("Simulating"):
                     # This is a progress bar line - update in place
                     if handling == SubprocessHandling.DISPLAY:
+                        from IPython.display import HTML, display, update_display
+
                         if not progress_displayed:
                             display(
                                 HTML(f"<pre>{line}</pre>"),

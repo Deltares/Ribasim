@@ -81,9 +81,9 @@ def write_volumes(fn: Path | str, data: pd.DataFrame, timestep: timedelta) -> No
             f.write(group.storage.to_numpy().astype("float32").tobytes())
 
         # Delwaq needs an extra timestep after the end
-        ntime = time + int(timestep.total_seconds())  # type: ignore
+        ntime = time + int(timestep.total_seconds())  # pyright: ignore[reportPossiblyUnboundVariable, reportOperatorIssue]
         f.write(struct.pack("<i", ntime))
-        f.write(group.storage.to_numpy().astype("float32").tobytes())
+        f.write(group.storage.to_numpy().astype("float32").tobytes())  # pyright: ignore[reportPossiblyUnboundVariable]
 
 
 def write_flows(fn: Path | str, data: pd.DataFrame, timestep: timedelta) -> None:
@@ -103,12 +103,12 @@ def write_flows(fn: Path | str, data: pd.DataFrame, timestep: timedelta) -> None
             f.write(group.flow_rate.to_numpy().astype("float32").tobytes())
 
         # Delwaq needs an extra timestep after the end
-        ntime = time + int(timestep.total_seconds())  # type: ignore
+        ntime = time + int(timestep.total_seconds())  # pyright: ignore[reportPossiblyUnboundVariable, reportOperatorIssue]
         f.write(struct.pack("<i", ntime))
-        f.write(group.flow_rate.to_numpy().astype("float32").tobytes())
+        f.write(group.flow_rate.to_numpy().astype("float32").tobytes())  # pyright: ignore[reportPossiblyUnboundVariable]
 
 
-def ugrid(G, crs=None) -> xugrid.UgridDataset:
+def ugrid(G, crs=None) -> xugrid.UgridDataset:  # pyright: ignore[reportInvalidTypeForm]
     # TODO Deduplicate with ribasim.Model.to_xugrid
     link_df = pd.DataFrame(G.edges(), columns=["from_node_id", "to_node_id"])
     node_df = pd.DataFrame(G.nodes(), columns=["node_id"])
@@ -135,8 +135,8 @@ def ugrid(G, crs=None) -> xugrid.UgridDataset:
     )
 
     grid = xugrid.Ugrid1d(
-        node_x=node_df.x,
-        node_y=node_df.y,
+        node_x=node_df.x,  # pyright: ignore[reportArgumentType]
+        node_y=node_df.y,  # pyright: ignore[reportArgumentType]
         fill_value=-1,
         edge_node_connectivity=np.column_stack(
             (
@@ -151,11 +151,11 @@ def ugrid(G, crs=None) -> xugrid.UgridDataset:
     link_dim = grid.edge_dimension
     node_dim = grid.node_dimension
 
-    uds = xugrid.UgridDataset(None, grid)
-    uds = uds.assign_coords(node_id=(node_dim, node_id))
-    uds = uds.assign_coords(link_id=(link_dim, link_id))
-    uds = uds.assign_coords(from_node_id=(link_dim, from_node_id))
-    uds = uds.assign_coords(to_node_id=(link_dim, to_node_id))
+    uds = xugrid.UgridDataset(None, grid)  # pyright: ignore[reportArgumentType]
+    uds = uds.assign_coords(node_id=(node_dim, node_id))  # pyright: ignore[reportCallIssue, reportOptionalCall]
+    uds = uds.assign_coords(link_id=(link_dim, link_id))  # pyright: ignore[reportCallIssue, reportOptionalCall]
+    uds = uds.assign_coords(from_node_id=(link_dim, from_node_id))  # pyright: ignore[reportCallIssue, reportOptionalCall]
+    uds = uds.assign_coords(to_node_id=(link_dim, to_node_id))  # pyright: ignore[reportCallIssue, reportOptionalCall]
 
     return uds
 

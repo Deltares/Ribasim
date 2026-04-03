@@ -7,7 +7,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
 from sqlite3 import connect
-from typing import Any, TypeVar, cast
+from typing import Any, Self, TypeVar, cast
 
 import geopandas as gpd
 import numpy as np
@@ -41,7 +41,7 @@ from ribasim.schemas import _BaseSchema
 from ribasim.utils import MissingOptionalModule
 
 try:
-    from datacompy.core import Compare
+    from datacompy.core import Compare  # pyright: ignore[reportMissingImports]
 except ImportError:
     Compare = MissingOptionalModule("datacompy", "diff")
 
@@ -324,7 +324,7 @@ class ChildModel(BaseModel):
     _parent_field: str | None = None
 
     @model_validator(mode="after")
-    def check_parent(self) -> "ChildModel":
+    def check_parent(self) -> Self:
         if self._parent is not None and self._parent_field is not None:
             self._parent.model_fields_set.update({self._parent_field})
         return self
@@ -359,7 +359,7 @@ class ParentModel(BaseModel):
         }
 
     @model_validator(mode="after")
-    def _set_node_parent(self) -> "ParentModel":
+    def _set_node_parent(self) -> Self:
         for (
             k,
             v,
@@ -415,7 +415,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
                 a = self.df
                 b = other.df
 
-            comp = Compare(a, b, on_index=True, df1_name="self", df2_name="other")
+            comp = Compare(a, b, on_index=True, df1_name="self", df2_name="other")  # pyright: ignore[reportCallIssue]
             return {"diff": comp}
         # One of the instances is None
         else:
@@ -519,7 +519,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
             self.root is None
             or not hasattr(self.root, "filepath")
             or not hasattr(self.root, "input_dir")
-            or self.root.filepath is None
+            or self.root.filepath is None  # pyright: ignore[reportAttributeAccessIssue]
         ):
             return
 
@@ -555,9 +555,9 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         if not self.root:
             raise ValueError("Table is not connected to a model.")
         assert hasattr(self.root, "filepath") and hasattr(self.root, "input_dir")
-        if not self.root.filepath:
+        if not self.root.filepath:  # pyright: ignore[reportAttributeAccessIssue]
             raise ValueError("Model has no filepath set.")
-        return self.root.filepath.parent / self.root.input_dir
+        return self.root.filepath.parent / self.root.input_dir  # pyright: ignore[reportAttributeAccessIssue]
 
     def write(
         self,
@@ -705,7 +705,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         if self.df is None:
             return self.__repr__()
         else:
-            return f"<div>{self.tablename()}</div>" + self.df._repr_html_()
+            return f"<div>{self.tablename()}</div>" + self.df._repr_html_()  # pyright: ignore[reportCallIssue]
 
     def __getitem__(self, index) -> pd.DataFrame | gpd.GeoDataFrame:
         tablename = self.tablename()
@@ -714,7 +714,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
 
         # Allow for indexing with multiple values.
         np_index = np.atleast_1d(index)
-        missing = np.setdiff1d(np_index, self.df["node_id"].unique())
+        missing = np.setdiff1d(np_index, self.df["node_id"].unique())  # pyright: ignore[reportCallIssue]
         if missing.size > 0:
             raise IndexError(f"{tablename} does not contain node_id: {missing}")
 
@@ -728,13 +728,13 @@ class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
     Overrides the reading and writing methods of a TableModel.
     """
 
-    df: GeoDataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
+    df: GeoDataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)  # pyright: ignore[reportIncompatibleVariableOverride]
 
     def sort(self):
         # Only sort the index (node_id / link_id) since this needs to be sorted in a GeoPackage.
         # Under most circumstances, this retains the input order,
         # making the link_id as stable as possible; useful for post-processing.
-        self.df.sort_index(inplace=True)
+        self.df.sort_index(inplace=True)  # pyright: ignore[reportOptionalMemberAccess]
 
     @classmethod
     def _from_db(cls, path: Path, table: str):
@@ -747,7 +747,7 @@ class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
 
             return df
 
-    def _write_geopackage(self, path: Path) -> None:
+    def _write_geopackage(self, path: Path) -> None:  # pyright: ignore[reportIncompatibleMethodOverride]
         """
         Write the contents of the input to the GeoPackage.
 

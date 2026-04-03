@@ -1,3 +1,5 @@
+from typing import Any
+
 from ribasim.input_base import TableModel
 from ribasim.schemas import (
     DiscreteControlConditionSchema,
@@ -9,12 +11,15 @@ __all__ = ["Condition", "Logic", "Variable"]
 
 
 class Variable(TableModel[DiscreteControlVariableSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class Condition(TableModel[DiscreteControlConditionSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class Logic(TableModel[DiscreteControlLogicSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)

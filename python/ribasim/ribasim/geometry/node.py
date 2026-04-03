@@ -1,7 +1,7 @@
 import numbers
 import warnings
 from collections.abc import Callable, Generator, Sequence
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import pandera as pa
 from geopandas import GeoDataFrame as GeoDataFrameType
+from matplotlib.axes import Axes
 from matplotlib.offsetbox import AnnotationBbox
 from matplotlib.patches import Patch
 from pandera.dtypes import Int32
@@ -42,6 +43,9 @@ from ribasim.utils import UsedIDs, _concat, _pascal_to_snake
 
 from .base import _GeoBaseSchema
 
+if TYPE_CHECKING:
+    from ribasim.model import Model
+
 __all__ = ("NodeTable",)
 
 
@@ -59,7 +63,7 @@ class NodeSchema(_GeoBaseSchema):
     geometry: GeoSeries[Point] = pa.Field(default=None, nullable=True)
 
     @classmethod
-    def _index_name(self) -> str:
+    def _index_name(cls) -> str:
         return "node_id"
 
 
@@ -123,7 +127,7 @@ class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
 
         return handles, labels
 
-    def plot(self, ax=None, zorder=None) -> plt.Axes:
+    def plot(self, ax=None, zorder=None) -> Axes:
         """
         Plot the nodes. Each node type is given a separate marker.
 
@@ -271,8 +275,9 @@ class NodeModel(ParentModel, ChildModel):
 
     @property
     def node(self) -> NodeTable | None:
-        if self._parent is not None and hasattr(self._parent, "node"):
-            return NodeTable(df=self._parent.node.filter(self.__class__.__name__))
+        if self._parent is not None:
+            model = cast("Model", self._parent)
+            return NodeTable(df=model.node.filter(self.__class__.__name__))
         return None
 
     def _tables(self, skip_empty: bool = True) -> Generator[TableModel[_BaseSchema]]:
@@ -452,25 +457,25 @@ class NodeModel(ParentModel, ChildModel):
             raise ValueError(
                 f"You can only add to a {self.get_input_type()} NodeModel when attached to a Model."
             )
-        assert hasattr(self._parent, "node"), "Parent model must have a node table"
-        if self._parent.node.lazy:
+
+        model = cast("Model", self._parent)
+        if model.node.lazy:
             raise ValueError(
                 f"You cannot add to a {self.get_input_type()} NodeModel when the Node table has not been read yet. "
                 "Please read it first using `model.node.read()` and then try again."
             )
 
         if node_id is None:
-            node_id = self._parent.node._used_node_ids.new_id()
-        elif node_id in self._parent.node._used_node_ids:
+            node_id = model.node._used_node_ids.new_id()
+        elif node_id in model.node._used_node_ids:
             warnings.warn(
                 f"Replacing node #{node_id}",
                 UserWarning,
                 stacklevel=2,
             )
             # Remove the existing node from all node types and their tables
-            self._parent._remove_node_id(node_id)  # type: ignore[attr-defined]
+            model._remove_node_id(node_id)
 
-        assert hasattr(self._parent, "crs")
         for table in tables:
             member_name = _pascal_to_snake(table.__class__.__name__)
             existing_member = getattr(self, member_name)
@@ -480,21 +485,21 @@ class NodeModel(ParentModel, ChildModel):
             assert table.df is not None
             table_to_append = table.df.assign(node_id=node_id)
             if isinstance(table_to_append, GeoDataFrameType):
-                table_to_append.set_crs(self._parent.crs, inplace=True)
+                table_to_append.set_crs(model.crs, inplace=True)
             new_table = _concat([existing_table, table_to_append], ignore_index=True)
             setattr(self, member_name, new_table)
 
         node_table = node.into_geodataframe(
             node_type=self.__class__.__name__, node_id=node_id
         )
-        node_table.set_crs(self._parent.crs, inplace=True)
-        if self._parent.node.df is None:
-            self._parent.node.df = node_table
+        node_table.set_crs(model.crs, inplace=True)
+        if model.node.df is None:
+            model.node.df = node_table
         else:
-            df = _concat([self._parent.node.df, node_table])
-            self._parent.node.df = df
+            df = _concat([model.node.df, node_table])
+            model.node.df = df
 
-        self._parent.node._used_node_ids.add(node_id)
+        model.node._used_node_ids.add(node_id)
         return self[node_id]
 
     def __getitem__(self, index: int) -> NodeData:
@@ -506,7 +511,13 @@ class NodeModel(ParentModel, ChildModel):
                 f"{node_model_name} index must be an integer, not {indextype}"
             )
 
-        row = self._parent.node.df.loc[index]
+        assert self._parent is not None
+        model = cast("Model", self._parent)
+        assert model.node.df is not None
+
+        row = model.node.df.loc[index]
         return NodeData(
-            node_id=int(index), node_type=row["node_type"], geometry=row["geometry"]
+            node_id=int(index),
+            node_type=cast(str, row["node_type"]),
+            geometry=cast(Point, row["geometry"]),
         )

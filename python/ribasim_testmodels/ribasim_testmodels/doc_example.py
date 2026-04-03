@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
 from ribasim import Model
@@ -15,8 +17,8 @@ from shapely.geometry import Point
 def local_pidcontrolled_cascade_model():
     """Demonstrating model for the cascade polder project from our partner."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )

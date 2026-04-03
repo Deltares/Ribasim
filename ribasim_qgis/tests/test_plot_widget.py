@@ -1,7 +1,9 @@
 """Tests for ribasim_qgis.widgets.plot_widget — PlotWidget."""
 
+from typing import Any
+
 import numpy as np
-from qgis.PyQt.QtWidgets import QCheckBox
+from qgis.PyQt.QtWidgets import QCheckBox, QWidgetAction
 
 from ribasim_qgis.widgets.plot_widget import (
     PlotData,
@@ -9,6 +11,15 @@ from ribasim_qgis.widgets.plot_widget import (
 )
 
 # --- PlotWidget ---
+
+
+def _checkbox_text(action: Any) -> str | None:
+    if not isinstance(action, QWidgetAction):
+        return None
+    widget = action.defaultWidget()
+    if isinstance(widget, QCheckBox):
+        return widget.text()
+    return None
 
 
 def test_plot_widget_creates():
@@ -332,31 +343,21 @@ def test_plot_widget_combined_menu_has_presets_and_file_submenus():
     )
 
     root_checkbox_texts = {
-        action.defaultWidget().text()
+        text
         for action in widget._var_menu.actions()
-        if hasattr(action, "defaultWidget")
-        and isinstance(action.defaultWidget(), QCheckBox)
+        if (text := _checkbox_text(action)) is not None
     }
     assert "water balance" in root_checkbox_texts
     assert "fractional storage" in root_checkbox_texts
     assert "fractional flow" in root_checkbox_texts
     assert any(
-        isinstance(action.defaultWidget(), QCheckBox)
-        and action.defaultWidget().text() == "level"
-        for action in widget._var_menu.actions()
-        if hasattr(action, "defaultWidget")
+        _checkbox_text(action) == "level" for action in widget._var_menu.actions()
     )
     assert any(
-        isinstance(action.defaultWidget(), QCheckBox)
-        and action.defaultWidget().text() == "storage"
-        for action in widget._var_menu.actions()
-        if hasattr(action, "defaultWidget")
+        _checkbox_text(action) == "storage" for action in widget._var_menu.actions()
     )
     assert any(
-        isinstance(action.defaultWidget(), QCheckBox)
-        and action.defaultWidget().text() == "flow_rate"
-        for action in widget._var_menu.actions()
-        if hasattr(action, "defaultWidget")
+        _checkbox_text(action) == "flow_rate" for action in widget._var_menu.actions()
     )
 
     submenu_texts = [
@@ -370,10 +371,9 @@ def test_plot_widget_combined_menu_has_presets_and_file_submenus():
         if action.menu() and action.menu().title() == "basin"
     )
     basin_labels = {
-        action.defaultWidget().text()
+        text
         for action in basin_menu.actions()
-        if hasattr(action, "defaultWidget")
-        and isinstance(action.defaultWidget(), QCheckBox)
+        if (text := _checkbox_text(action)) is not None
     }
     assert basin_labels == {"state"}
 
@@ -383,10 +383,9 @@ def test_plot_widget_combined_menu_has_presets_and_file_submenus():
         if action.menu() and action.menu().title() == "flow"
     )
     flow_labels = {
-        action.defaultWidget().text()
+        text
         for action in flow_menu.actions()
-        if hasattr(action, "defaultWidget")
-        and isinstance(action.defaultWidget(), QCheckBox)
+        if (text := _checkbox_text(action)) is not None
     }
     assert flow_labels == {"q"}
 

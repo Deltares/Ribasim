@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
 from ribasim.config import Experimental
@@ -16,8 +18,8 @@ from shapely.geometry import Point
 def outlet_continuous_control_model() -> Model:
     """Set up a small model that distributes flow over 2 branches."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )

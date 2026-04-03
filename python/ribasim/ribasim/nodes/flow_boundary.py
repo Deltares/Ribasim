@@ -1,3 +1,5 @@
+from typing import Any
+
 from ribasim.geometry import FlowBoundaryAreaSchema
 from ribasim.input_base import SpatialTableModel, TableModel
 from ribasim.schemas import (
@@ -10,16 +12,20 @@ __all__ = ["Concentration", "Static", "Time"]
 
 
 class Static(TableModel[FlowBoundaryStaticSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class Time(TableModel[FlowBoundaryTimeSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class Concentration(TableModel[FlowBoundaryConcentrationSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class Area(SpatialTableModel[FlowBoundaryAreaSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)

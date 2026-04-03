@@ -1,3 +1,5 @@
+from typing import Any
+
 from ribasim.geometry import BasinAreaSchema
 from ribasim.input_base import SpatialTableModel, TableModel
 from ribasim.schemas import (
@@ -26,44 +28,55 @@ __all__ = [
 
 
 class Static(TableModel[BasinStaticSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class Time(TableModel[BasinTimeSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class State(TableModel[BasinStateSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class Profile(TableModel[BasinProfileSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class Subgrid(TableModel[BasinSubgridSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class SubgridTime(TableModel[BasinSubgridTimeSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class Area(SpatialTableModel[BasinAreaSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class Concentration(TableModel[BasinConcentrationSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class ConcentrationExternal(TableModel[BasinConcentrationExternalSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class ConcentrationState(TableModel[BasinConcentrationStateSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
 
 class MassLoad(TableModel[BasinMassLoadSchema]):
-    pass
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)

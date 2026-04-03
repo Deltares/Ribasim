@@ -12,7 +12,7 @@ class _GeoBaseSchema(_BaseSchema):
     @pa.check("geometry")
     def is_correct_geometry_type(cls, geoseries: GeoSeries[object]) -> Series[bool]:
         T = get_type_hints(cls)["geometry"].__args__[0]
-        return geoseries.map(lambda geom: isinstance(geom, T))
+        return geoseries.map(lambda geom: isinstance(geom, T))  # pyright: ignore[reportReturnType]
 
     @pa.parser("geometry")
     def force_2d(cls, geometry: GeoSeries[object]) -> GeoSeries[object]:

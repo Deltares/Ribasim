@@ -39,7 +39,7 @@ def plot_fraction(
     time = groups.get_group(key)["time"]
     ax.stackplot(
         time,
-        stack.values(),
+        *stack.values(),  # pyright: ignore[reportArgumentType]
         labels=stack.keys(),
     )
     ax.plot(
@@ -79,7 +79,7 @@ def plot_spatial(model, tracer="Initial", versus=None, limit=0.001, ax=None):
         alpha = c > limit
     else:
         total_concentration = (
-            table["concentration"][nodes.index] + vtable["concentration"][nodes.index]
+            table["concentration"][nodes.index] + vtable["concentration"][nodes.index]  # pyright: ignore[reportPossiblyUnboundVariable]
         )
         c = table["concentration"][nodes.index] / total_concentration
         alpha = total_concentration / 2
@@ -102,7 +102,7 @@ def plot_spatial(model, tracer="Initial", versus=None, limit=0.001, ax=None):
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
 
-    ax.get_figure().colorbar(s, cax=cax, orientation="vertical")
+    ax.get_figure().colorbar(s, cax=cax, orientation="vertical")  # pyright: ignore[reportOptionalMemberAccess]
     if versus is not None:
         cax.set_ylabel(f"{tracer} fraction vs {versus} fraction")
     else:
