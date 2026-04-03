@@ -1,5 +1,3 @@
-from typing import Any
-
 from ribasim.input_base import TableModel
 from ribasim.schemas import (
     UserDemandConcentrationSchema,
@@ -11,15 +9,12 @@ __all__ = ["Static", "Time"]
 
 
 class Static(TableModel[UserDemandStaticSchema]):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
+    pass
 
 
 class Time(TableModel[UserDemandTimeSchema]):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
+    pass
 
 
 class Concentration(TableModel[UserDemandConcentrationSchema]):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
+    pass
