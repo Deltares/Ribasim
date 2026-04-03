@@ -39,7 +39,7 @@ def plot_fraction(
     time = groups.get_group(key)["time"]
     ax.stackplot(
         time,
-        *stack.values(),
+        stack.values(),  # pyrefly: ignore[bad-argument-type]
         labels=stack.keys(),
     )
     ax.plot(
@@ -79,7 +79,8 @@ def plot_spatial(model, tracer="Initial", versus=None, limit=0.001, ax=None):
         alpha = c > limit
     else:
         total_concentration = (
-            table["concentration"][nodes.index] + vtable["concentration"][nodes.index]  # pyrefly: ignore[unbound-name]
+            # pyrefly: ignore[unbound-name]
+            table["concentration"][nodes.index] + vtable["concentration"][nodes.index]
         )
         c = table["concentration"][nodes.index] / total_concentration
         alpha = total_concentration / 2
