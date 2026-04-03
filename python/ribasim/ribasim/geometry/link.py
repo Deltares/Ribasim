@@ -98,7 +98,7 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         # The table name was changed from "Edge" to "Link" in schema_version 4.
         if schema_version < 4:
             table = "Edge"
-            return cast(GeoDataFrame | None, super()._from_db(path, table))
+        return cast(GeoDataFrame | None, super()._from_db(path, table))
 
     def add(
         self,
