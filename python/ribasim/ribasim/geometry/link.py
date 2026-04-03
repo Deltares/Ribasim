@@ -93,12 +93,12 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         return self
 
     @classmethod
-    def _from_db(cls, path: Path, table: str) -> pd.DataFrame | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def _from_db(cls, path: Path, table: str) -> GeoDataFrame | None:
         schema_version = _get_db_schema_version(path)
         # The table name was changed from "Edge" to "Link" in schema_version 4.
         if schema_version < 4:
             table = "Edge"
-        return super()._from_db(path, table)
+            return cast(GeoDataFrame | None, super()._from_db(path, table))
 
     def add(
         self,
@@ -410,5 +410,5 @@ class LinkTable(SpatialTableModel[LinkSchema]):
 
         return ax
 
-    def __getitem__(self, _):
+    def __getitem__(self, index):
         raise NotImplementedError

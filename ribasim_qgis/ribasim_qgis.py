@@ -3,7 +3,7 @@
 import importlib.util
 import tomllib
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from qgis.core import Qgis
 from qgis.gui import QgsCustomDropHandler
@@ -84,7 +84,12 @@ class RibasimPlugin:
         self.tool_button = QToolButton()
         self.tool_button.setIcon(icon)
         self.tool_button.setToolTip("Ribasim")
-        self.tool_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.tool_button.setPopupMode(
+            cast(
+                QToolButton.ToolButtonPopupMode,
+                QToolButton.ToolButtonPopupMode.InstantPopup,
+            )
+        )
         menu = QMenu(self.tool_button)
         menu.addAction(self.action_open)
         menu.addSeparator()
@@ -145,9 +150,17 @@ class RibasimPlugin:
             f"Current Ribasim home:\n{current_home_text}\n\n"
             "Choose an action."
         )
-        change_button = dialog.addButton("Change...", QMessageBox.ButtonRole.AcceptRole)
-        unset_button = dialog.addButton("Unset", QMessageBox.ButtonRole.DestructiveRole)
-        cancel_button = dialog.addButton(QMessageBox.StandardButton.Cancel)
+        change_button = dialog.addButton(
+            "Change...",
+            cast(QMessageBox.ButtonRole, QMessageBox.ButtonRole.AcceptRole),
+        )
+        unset_button = dialog.addButton(
+            "Unset",
+            cast(QMessageBox.ButtonRole, QMessageBox.ButtonRole.DestructiveRole),
+        )
+        cancel_button = dialog.addButton(
+            cast(QMessageBox.StandardButton, QMessageBox.StandardButton.Cancel)
+        )
         dialog.exec()
 
         clicked = dialog.clickedButton()

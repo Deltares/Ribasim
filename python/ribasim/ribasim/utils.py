@@ -1,5 +1,5 @@
 import re
-from typing import cast
+from typing import Any, cast
 from warnings import catch_warnings, filterwarnings
 
 import numpy as np
@@ -18,14 +18,11 @@ def _pascal_to_snake(pascal_str):
 class MissingOptionalModule:
     """Presents a clear error for optional modules."""
 
-    def __init__(self, name, suggestion="all"):
+    def __init__(self, name: str, suggestion: str = "all"):
         self.name = name
         self.suggestion = suggestion
 
-    def __getattr__(
-        self,
-        _,
-    ):
+    def __getattr__(self, _: str) -> Any:
         raise ImportError(
             f"{self.name} is required for this functionality. You can get it using `pip install ribasim[{self.suggestion}]`."
         )

@@ -40,12 +40,13 @@ from ribasim.db_utils import (
 from ribasim.schemas import _BaseSchema
 from ribasim.utils import MissingOptionalModule
 
-try:
-    from datacompy.core import Compare  # pyright: ignore[reportMissingImports]
-except ImportError:
-    Compare = MissingOptionalModule("datacompy", "diff")
-
 from .styles import _add_styles_to_geopackage
+
+try:
+    from datacompy.core import Compare as _Compare  # type: ignore
+except ImportError:
+    _Compare = MissingOptionalModule("datacompy", "diff")
+
 
 __all__ = ("TableModel",)
 
@@ -415,7 +416,8 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
                 a = self.df
                 b = other.df
 
-            comp = Compare(a, b, on_index=True, df1_name="self", df2_name="other")  # pyright: ignore[reportCallIssue]
+            compare = cast(Any, _Compare)
+            comp = compare(a, b, on_index=True, df1_name="self", df2_name="other")
             return {"diff": comp}
         # One of the instances is None
         else:
@@ -519,7 +521,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
             self.root is None
             or not hasattr(self.root, "filepath")
             or not hasattr(self.root, "input_dir")
-            or self.root.filepath is None  # pyright: ignore[reportAttributeAccessIssue]
+            or self.root.filepath is None  # pyrefly: ignore[missing-attribute]
         ):
             return
 
@@ -532,9 +534,8 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
 
         context_file_loading.get()["database"] = db_path
 
-        context_file_loading.get().update(
-            {"directory": self.filepath.parent if self.filepath else None}  # type: ignore
-        )
+        if self.filepath:
+            context_file_loading.get()["directory"] = self.filepath.parent
 
         filepath = self.filepath or self.default_filepath()
 
@@ -555,9 +556,11 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         if not self.root:
             raise ValueError("Table is not connected to a model.")
         assert hasattr(self.root, "filepath") and hasattr(self.root, "input_dir")
-        if not self.root.filepath:  # pyright: ignore[reportAttributeAccessIssue]
+        if not self.root.filepath:  # pyrefly: ignore[missing-attribute]
             raise ValueError("Model has no filepath set.")
-        return self.root.filepath.parent / self.root.input_dir  # pyright: ignore[reportAttributeAccessIssue]
+        return (
+            self.root.filepath.parent / self.root.input_dir
+        )  # pyrefly: ignore[missing-attribute]
 
     def write(
         self,
@@ -705,7 +708,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         if self.df is None:
             return self.__repr__()
         else:
-            return f"<div>{self.tablename()}</div>" + self.df._repr_html_()  # pyright: ignore[reportCallIssue]
+            return f"<div>{self.tablename()}</div>" + self.df.to_html()
 
     def __getitem__(self, index) -> pd.DataFrame | gpd.GeoDataFrame:
         tablename = self.tablename()
@@ -714,7 +717,9 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
 
         # Allow for indexing with multiple values.
         np_index = np.atleast_1d(index)
-        missing = np.setdiff1d(np_index, self.df["node_id"].unique())  # pyright: ignore[reportCallIssue]
+        missing = np.setdiff1d(
+            np_index, self.df["node_id"].unique()
+        )  # pyrefly: ignore[bad-argument-type]
         if missing.size > 0:
             raise IndexError(f"{tablename} does not contain node_id: {missing}")
 
@@ -728,13 +733,15 @@ class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
     Overrides the reading and writing methods of a TableModel.
     """
 
-    df: GeoDataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)  # pyright: ignore[reportIncompatibleVariableOverride]
+    df: GeoDataFrame[TableT] | None = Field(  # pyrefly: ignore[bad-override]
+        default=None, exclude=True, repr=False
+    )
 
     def sort(self):
         # Only sort the index (node_id / link_id) since this needs to be sorted in a GeoPackage.
         # Under most circumstances, this retains the input order,
         # making the link_id as stable as possible; useful for post-processing.
-        self.df.sort_index(inplace=True)  # pyright: ignore[reportOptionalMemberAccess]
+        self.df.sort_index(inplace=True)  # pyrefly: ignore[missing-attribute]
 
     @classmethod
     def _from_db(cls, path: Path, table: str):
@@ -747,24 +754,26 @@ class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
 
             return df
 
-    def _write_geopackage(self, path: Path) -> None:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def _write_geopackage(
+        self, filepath: Path
+    ) -> None:  # pyrefly: ignore[bad-override]
         """
         Write the contents of the input to the GeoPackage.
 
         Parameters
         ----------
-        path : Path
+        filepath : Path
         """
         assert self.df is not None
 
         self.df.to_file(
-            path,
+            filepath,
             layer=self.tablename(),
             driver="GPKG",
             index=True,
             fid=self.df.index.name,
         )
-        with closing(connect(path)) as connection:
+        with closing(connect(filepath)) as connection:
             create_index(
                 connection,
                 self.tablename(),
@@ -792,8 +801,7 @@ class NodeModel(ChildModel, ParentModel):
             field = cls.model_fields[info.field_name]
             extra = field.json_schema_extra
             if extra is not None and isinstance(extra, dict):
-                # We set sort_keys ourselves as list[str] in json_schema_extra
-                # but mypy doesn't know.
+                # We set sort_keys ourselves as list[str] in json_schema_extra but the type checker doesn't know.
                 v._sort_keys = cast(list[str], extra.get("sort_keys", []))
         return v
 

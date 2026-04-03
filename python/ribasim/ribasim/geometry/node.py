@@ -260,8 +260,7 @@ class NodeModel(ParentModel, ChildModel):
             field = cls.model_fields[info.field_name]
             extra = field.json_schema_extra
             if extra is not None and isinstance(extra, dict):
-                # We set sort_keys ourselves as list[str] in json_schema_extra
-                # but mypy doesn't know.
+                # We set sort_keys ourselves as list[str] in json_schema_extra but the type checker doesn't know.
                 v._sort_keys = cast(list[str], extra.get("sort_keys", []))
         return v
 

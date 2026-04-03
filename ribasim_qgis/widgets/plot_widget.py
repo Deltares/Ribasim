@@ -5,7 +5,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from enum import Enum, auto
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 from qgis.PyQt.QtCore import Qt, pyqtSignal
@@ -97,7 +97,7 @@ def _log_backend() -> None:
     QgsMessageLog.logMessage(
         f"Ribasim plot widget backend: {_BACKEND.name}",
         tag="Ribasim",
-        level=Qgis.MessageLevel.Info,
+        level=cast(Qgis.MessageLevel, Qgis.MessageLevel.Info),
     )
 
 
@@ -223,13 +223,12 @@ class _PlotMenu(QMenu):
         self.clear()
         self._checkboxes = []
         self._variables = []
+        checked_state = cast(int, Qt.CheckState.Checked)
 
         wb_cb = QCheckBox("water balance")
         wb_cb.setChecked(water_balance_enabled)
         wb_cb.stateChanged.connect(
-            lambda state: self.waterBalanceChanged.emit(
-                state == int(Qt.CheckState.Checked)
-            )
+            lambda state: self.waterBalanceChanged.emit(state == checked_state)
         )
         wb_action = QWidgetAction(self)
         wb_action.setDefaultWidget(wb_cb)
@@ -238,9 +237,7 @@ class _PlotMenu(QMenu):
         fs_cb = QCheckBox("fractional storage")
         fs_cb.setChecked(fractional_storage_enabled)
         fs_cb.stateChanged.connect(
-            lambda state: self.fractionalStorageChanged.emit(
-                state == int(Qt.CheckState.Checked)
-            )
+            lambda state: self.fractionalStorageChanged.emit(state == checked_state)
         )
         fs_action = QWidgetAction(self)
         fs_action.setDefaultWidget(fs_cb)
@@ -249,9 +246,7 @@ class _PlotMenu(QMenu):
         ff_cb = QCheckBox("fractional flow")
         ff_cb.setChecked(fractional_flow_enabled)
         ff_cb.stateChanged.connect(
-            lambda state: self.fractionalFlowChanged.emit(
-                state == int(Qt.CheckState.Checked)
-            )
+            lambda state: self.fractionalFlowChanged.emit(state == checked_state)
         )
         ff_action = QWidgetAction(self)
         ff_action.setDefaultWidget(ff_cb)
@@ -369,9 +364,14 @@ class PlotWidget(QWidget):
         self._flow_for_link_getter = flow_for_link_getter
         self._plot_button = QToolButton()
         self._plot_button.setToolButtonStyle(
-            Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+            cast(Qt.ToolButtonStyle, Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         )
-        self._plot_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self._plot_button.setPopupMode(
+            cast(
+                QToolButton.ToolButtonPopupMode,
+                QToolButton.ToolButtonPopupMode.InstantPopup,
+            )
+        )
         self._var_menu = _PlotMenu(self._plot_button)
         self._var_menu.waterBalanceChanged.connect(self._on_water_balance_changed)
         self._var_menu.fractionalStorageChanged.connect(
@@ -401,7 +401,7 @@ class PlotWidget(QWidget):
 
         # --- Placeholder label ---
         self._placeholder = QLabel(_PLACEHOLDER_DEFAULT)
-        self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._placeholder.setAlignment(cast(Any, Qt.AlignmentFlag.AlignCenter))
         self._placeholder.setStyleSheet("color: gray; font-style: italic;")
         layout.addWidget(self._placeholder)
 
@@ -415,7 +415,9 @@ class PlotWidget(QWidget):
             ws.setAttribute(QWebSettings.Accelerated2dCanvasEnabled, True)  # type: ignore[arg-type]
 
         self._web_view.setVisible(False)
-        self._web_view.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self._web_view.setContextMenuPolicy(
+            cast(Any, Qt.ContextMenuPolicy.NoContextMenu)
+        )
         layout.addWidget(self._web_view)
 
         # Data: {file_name: {variable: {trace_name: (x, y)}}}

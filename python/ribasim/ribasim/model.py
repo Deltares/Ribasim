@@ -73,9 +73,10 @@ from ribasim.utils import (
 from ribasim.validation import link_neighbor_amount
 
 try:
-    import xugrid
+    import xugrid as _xugrid
 except ImportError:
-    xugrid = MissingOptionalModule("xugrid")
+    _xugrid = MissingOptionalModule("xugrid")
+
 
 logger = logging.getLogger(__name__)
 
@@ -771,7 +772,7 @@ class Model(FileModel, ParentModel):
             The path to the results directory.
         """
         toml_path = self.toml_path
-        results_dir = DirectoryPath(toml_path.parent / self.results_dir)  # pyright: ignore[reportCallIssue]
+        results_dir = toml_path.parent / self.results_dir
         # This only checks results that are always written.
         # Some results like allocation_flow are optional.
         filenames = ["basin_state.nc", "basin.nc", "flow.nc"]
@@ -860,6 +861,8 @@ class Model(FileModel, ParentModel):
         if add_flow and add_allocation:
             raise ValueError("Cannot add both allocation and flow results.")
 
+        xugrid = cast(Any, _xugrid)
+
         node_df = self.node.df
         assert node_df is not None
 
@@ -890,11 +893,19 @@ class Model(FileModel, ParentModel):
         link_dim = grid.edge_dimension
         node_dim = grid.node_dimension
 
-        uds = xugrid.UgridDataset(None, grid)  # pyright: ignore[reportArgumentType]
-        uds = uds.assign_coords(node_id=(node_dim, node_id))  # pyright: ignore[reportCallIssue, reportOptionalCall]
-        uds = uds.assign_coords(link_id=(link_dim, link_id))  # pyright: ignore[reportCallIssue, reportOptionalCall]
-        uds = uds.assign_coords(from_node_id=(link_dim, from_node_id))  # pyright: ignore[reportCallIssue, reportOptionalCall]
-        uds = uds.assign_coords(to_node_id=(link_dim, to_node_id))  # pyright: ignore[reportCallIssue, reportOptionalCall]
+        uds = xugrid.UgridDataset(None, grid)  # pyrefly: ignore[bad-argument-type]
+        uds = uds.assign_coords(
+            node_id=(node_dim, node_id)
+        )  # pyrefly: ignore[bad-argument-type, not-callable]
+        uds = uds.assign_coords(
+            link_id=(link_dim, link_id)
+        )  # pyrefly: ignore[bad-argument-type, not-callable]
+        uds = uds.assign_coords(
+            from_node_id=(link_dim, from_node_id)
+        )  # pyrefly: ignore[bad-argument-type, not-callable]
+        uds = uds.assign_coords(
+            to_node_id=(link_dim, to_node_id)
+        )  # pyrefly: ignore[bad-argument-type, not-callable]
 
         if add_flow:
             uds = self._add_flow(uds, node_lookup)

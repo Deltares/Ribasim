@@ -329,7 +329,7 @@ class DatasetWidget:
             message_bar.pushMessage(
                 "Warning",
                 f"Simulation already running for {model_name}",
-                level=Qgis.MessageLevel.Warning,
+                level=cast(Qgis.MessageLevel, Qgis.MessageLevel.Warning),
                 duration=5,
             )
             return
@@ -349,7 +349,9 @@ class DatasetWidget:
         # Text area for output
         text_edit = QPlainTextEdit()
         text_edit.setReadOnly(True)
-        text_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        text_edit.setLineWrapMode(
+            cast(QPlainTextEdit.LineWrapMode, QPlainTextEdit.LineWrapMode.NoWrap)
+        )
         # Use monospace font for proper progress bar display
         font = text_edit.font()
         font.setFamily("Consolas, Monaco, monospace")
@@ -365,8 +367,12 @@ class DatasetWidget:
             if replace:
                 # Update last line instead of appending for progress updates
                 cursor = text_edit.textCursor()
-                cursor.movePosition(cursor.MoveOperation.End)
-                cursor.select(cursor.SelectionType.LineUnderCursor)
+                cursor.movePosition(
+                    cast(cursor.MoveOperation, cursor.MoveOperation.End)
+                )
+                cursor.select(
+                    cast(cursor.SelectionType, cursor.SelectionType.LineUnderCursor)
+                )
                 cursor.removeSelectedText()
                 cursor.insertText(line)
             else:
@@ -736,7 +742,7 @@ class DatasetWidget:
                 message_bar.pushMessage(
                     "Ribasim",
                     "Cannot duplicate layer, fids are not sorted",
-                    level=Qgis.MessageLevel.Critical,
+                    level=cast(Qgis.MessageLevel, Qgis.MessageLevel.Critical),
                     duration=3,
                 )
             return
@@ -752,7 +758,7 @@ class DatasetWidget:
         )
         tprop = cast(QgsVectorLayerTemporalProperties, maplayer.temporalProperties())
         tprop.setMode(
-            QgsVectorLayerTemporalProperties.TemporalMode.ModeFixedTemporalRange  # pyright: ignore[reportAttributeAccessIssue]
+            QgsVectorLayerTemporalProperties.TemporalMode.ModeFixedTemporalRange  # pyrefly: ignore[missing-attribute]
         )
         tprop.setFixedTemporalRange(trange)
         tprop.setIsActive(True)
@@ -769,7 +775,9 @@ class DatasetWidget:
         for column in result.variables:
             dataprovider = layer.dataProvider()
             if dataprovider is not None and dataprovider.fieldNameIndex(column) == -1:
-                dataprovider.addAttributes([QgsField(column, QMetaType.Type.Double)])
+                dataprovider.addAttributes(
+                    [QgsField(column, cast(QMetaType.Type, QMetaType.Type.Double))]
+                )
             layer.updateFields()
         layer.commitChanges()
 
