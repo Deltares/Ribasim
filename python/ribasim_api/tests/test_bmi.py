@@ -185,9 +185,7 @@ def test_err_unknown_var(libribasim, basic, tmp_path):
 
     variable_name = "unknown_node.unknown_variable"
     error_message = re.escape(
-        f"BMI exception in get_var_type (for variable {variable_name}):"
-        " Message from Ribasim "
-        f"'Unknown variable {variable_name}'"
+        f"Message from Ribasim 'Unknown variable {variable_name}'"
     )
     with pytest.raises(XMIError, match=error_message):
         libribasim.get_var_type(variable_name)
