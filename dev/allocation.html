@@ -1333,10 +1333,7 @@ window.Quarto = {
 <section id="common-infeasibility-causes" class="level2" data-number="11.2">
 <h2 data-number="11.2" class="anchored" data-anchor-id="common-infeasibility-causes"><span class="header-section-number">11.2</span> Common Infeasibility Causes</h2>
 <ol type="1">
-<li><strong>Insufficient water supply</strong>: Total demand exceeds total available water</li>
-<li><strong>Conflicting level demands</strong>: Min/max levels cannot be satisfied simultaneously</li>
-<li><strong>Capacity constraints</strong>: Network capacity insufficient to meet demands</li>
-<li><strong>Storage constraints</strong>: Basin storage limits prevent meeting level demands</li>
+<li><strong>Basin overflows</strong>: In allocation all variables must have upper bounds. The upper bound of the basin level is defined by the user’s input. If more water flows into the basin than is possible based on the user defined basin dimensions, the model is infeasible.</li>
 </ol>
 </section>
 </section>
