@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import xarray as xr
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
@@ -11,26 +12,30 @@ def plot_fraction(
 ):
     if tracers is None:
         tracers = [
-            "LevelBoundary",
-            "FlowBoundary",
-            "UserDemand",
             "Initial",
             "Drainage",
-            "Precipitation",
             "SurfaceRunoff",
+            "FlowBoundary",
+            "LevelBoundary",
+            "Precipitation",
         ]
-    table = model.basin.concentration_external.df
+    ds_basin = xr.open_dataset(model.results_path / "concentration.nc")
+    table = ds_basin.to_dataframe().reset_index()
     table = table[table["node_id"] == node_id]
     table = table[table["substance"].isin(tracers)]
     if len(table) == 0:
         raise ValueError(f"No data found for node {node_id} with tracers {tracers}")
 
     groups = table.groupby("substance")
-    stack = {k: v["concentration"].to_numpy() for (k, v) in groups}
+    stack = {
+        k: groups.get_group(k)["concentration"].to_numpy()
+        for k in tracers
+        if k in groups.groups
+    }
 
     if ax is None:
         _, ax = plt.subplots()
-    key = next(iter(groups.groups))
+    key = next(iter(stack))
     time = groups.get_group(key)["time"]
     ax.stackplot(
         time,
@@ -52,7 +57,8 @@ def plot_fraction(
 
 
 def plot_spatial(model, tracer="Initial", versus=None, limit=0.001, ax=None):
-    table = model.basin.concentration_external.df
+    ds_basin = xr.open_dataset(model.results_path / "concentration.nc")
+    table = ds_basin.to_dataframe().reset_index()
     table = table[table["time"] == table["time"].max()]
 
     if versus is not None:

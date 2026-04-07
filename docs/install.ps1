@@ -10,7 +10,12 @@
 
 Set-StrictMode -Version Latest
 
-$RibasimVersion = 'v2025.6.0'
+Write-Warning @"
+This install script is deprecated and may be removed.
+For alternatives see: https://ribasim.org/getting-started/install
+"@
+
+$RibasimVersion = 'v2026.1.0'
 $RibasimHome = "$Env:USERPROFILE\.ribasim"
 
 function Publish-Env {
@@ -135,7 +140,7 @@ try {
     Remove-Item -Path $TempExtract -Recurse -Force -ErrorAction SilentlyContinue
 
     # Verify ribasim.exe exists
-    $RibasimExe = Join-Path $RibasimHome "ribasim.exe"
+    $RibasimExe = Join-Path $RibasimHome "bin\ribasim.exe"
     if (!(Test-Path -Path $RibasimExe)) {
         throw "Error: ribasim.exe not found in the extracted archive"
     }
@@ -158,18 +163,19 @@ finally {
 }
 
 # Add Ribasim to PATH if the folder is not already in the PATH variable
+$RibasimBin = Join-Path $RibasimHome "bin"
 $PATH = Get-Env 'PATH'
-if ($PATH -notlike "*$RibasimHome*") {
-    Write-Host "Adding $RibasimHome to PATH"
+if ($PATH -notlike "*$RibasimBin*") {
+    Write-Host "Adding $RibasimBin to PATH"
     # For future sessions
-    Write-Env -name 'PATH' -val "$PATH;$RibasimHome"
+    Write-Env -name 'PATH' -val "$PATH;$RibasimBin"
     # For current session
-    $Env:PATH = "$PATH;$RibasimHome"
+    $Env:PATH = "$PATH;$RibasimBin"
     Write-Host ""
     Write-Host "Ribasim has been added to your PATH."
 }
 else {
-    Write-Host "Ribasim is already in PATH"
+    Write-Host "Ribasim bin directory is already in PATH"
 }
 
 # Set RIBASIM_HOME environment variable

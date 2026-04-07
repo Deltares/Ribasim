@@ -1,6 +1,6 @@
 [workspace]
 name = "Ribasim"
-version = "2026.1.0-rc2"
+version = "2026.1.0"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge"]
@@ -48,21 +48,23 @@ quartodoc-build = { cmd = "quartodoc build && rm objects.json", cwd = "docs", in
 ], outputs = [
     "docs/reference/python",
 ] }
-quarto-preview = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto preview docs", depends-on = [
-    "quartodoc-build",
-    "generate-testmodels",
-    "initialize-julia",
-], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "yes", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
-quarto-preview-fast = { cmd = "quarto preview docs --no-execute", depends-on = ["quartodoc-build"] }
 quarto-check = { cmd = "quarto check all", depends-on = ["quartodoc-build"] }
-quarto-render = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto render docs", depends-on = [
+quarto-render = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto render docs/{{path}}", args = [
+    { "arg" = "path", "default" = "" },
+], depends-on = [
     "quartodoc-build",
     "generate-testmodels",
     "initialize-julia",
 ], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "yes", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
 # Publish pre-rendered docs to ribasim.org; should normally only run on CI on main
 quarto-publish = { cmd = "quarto publish gh-pages --no-render --no-prompt --no-browser", cwd = "docs", env = { "PRE_COMMIT_ALLOW_NO_CONFIG" = "1" } }
-docs = { depends-on = ["quarto-preview"] }
+docs = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto preview docs/{{path}}", args = [
+    { "arg" = "path", "default" = "" },
+], depends-on = [
+    "quartodoc-build",
+    "generate-testmodels",
+    "initialize-julia",
+], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "yes", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
 # Lint
 mypy-ribasim-python = "mypy python/ribasim/ribasim"
 mypy-ribasim-testmodels = "mypy python/ribasim_testmodels/ribasim_testmodels"
@@ -251,12 +253,10 @@ args = [":"]
 [target.linux-aarch64.tasks]
 # Override docs task to be a no-op on ARM64 Linux where Quarto doesn't work
 docs = { cmd = "echo 'Skipping docs build on ARM64 Linux (Quarto not supported)'" }
-quarto-preview = { cmd = "echo 'Skipping quarto preview on ARM64 Linux (Quarto not supported)'" }
 quarto-check = { cmd = "echo 'Skipping quarto check on ARM64 Linux (Quarto not supported)'" }
 quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not supported)'" }
 
 [dependencies]
-datacompy = ">=0.16"
 geopandas = ">=1.0"
 gh = "*"
 griffe = ">=1,<2"
@@ -274,7 +274,7 @@ netcdf4 = ">=1.7.1"
 networkx = ">=3.3"
 numpy = ">=2.0"
 packaging = ">=23.0"
-pandas = ">=2.2,<3"
+pandas = ">=2.2"
 pandas-stubs = "*"
 pandera = ">=0.25"
 plotly = "*"
@@ -319,6 +319,12 @@ python = "3.12.*"
 [feature.py313.dependencies]
 python = "3.13.*"
 
+[feature.pandas2.dependencies]
+# datacompy can go back in the default env once v1 is released
+# and also remove importorskip for datacompy
+pandas = ">=2.2,<3"
+datacompy = ">=0.16"
+
 [target.win-64.dependencies]
 rcedit = "*"
 qgis = ">=3.40,<4"
@@ -334,6 +340,7 @@ quarto = "*"
 [environments]
 default = ["py313"]
 py312 = ["py312"]
+pandas2 = ["py313", "pandas2"]
 
 [system-requirements]
 linux = "3.10.0"

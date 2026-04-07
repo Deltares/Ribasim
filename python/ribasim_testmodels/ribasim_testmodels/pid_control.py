@@ -18,7 +18,7 @@ def pid_control_model() -> Model:
     """Set up a basic model with a PID controlled pump controlling a basin with abundant inflow."""
     model = Model(
         starttime="2020-01-01",
-        endtime="2020-12-01",
+        endtime="2021-12-01",
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )
@@ -33,7 +33,7 @@ def pid_control_model() -> Model:
     # Flow rate will be overwritten by PID controller
     model.pump.add(Node(3, Point(2, 0.5)), [pump.Static(flow_rate=[0.0])])
 
-    model.level_boundary.add(Node(4, Point(3, 0)), [level_boundary.Static(level=[5.0])])
+    model.level_boundary.add(Node(4, Point(3, 0)), [level_boundary.Static(level=[5.5])])
 
     model.pid_control.add(
         Node(5, Point(1.5, 1)),
@@ -41,35 +41,14 @@ def pid_control_model() -> Model:
             pid_control.Time(
                 time=[
                     "2020-01-01",
-                    "2020-04-01",
                     "2020-12-01",
+                    "2021-12-01",
                 ],
                 listen_node_id=2,
-                target=[5.0, 7.5, 7.5],
-                proportional=-1e-2,
-                integral=-1e-8,
-                derivative=0,
-            )
-        ],
-    )
-
-    # Flow rate will be overwritten by PID controller
-    model.outlet.add(Node(6, Point(2, -0.5)), [outlet.Static(flow_rate=[0.0])])
-    model.pid_control.add(
-        Node(7, Point(1.5, -1)),
-        [
-            pid_control.Time(
-                time=[
-                    "2020-01-01",
-                    "2020-05-01",
-                    "2020-07-01",
-                    "2020-12-01",
-                ],
-                listen_node_id=2,
-                target=[5.0, 5.0, 7.5, 7.5],
-                proportional=1e-3,
-                integral=1e-7,
-                derivative=0.0,
+                target=[5.5, 6.5, 6.5],
+                proportional=-5e-3,
+                integral=-7e-10,
+                derivative=-8e3,
             )
         ],
     )
@@ -77,10 +56,7 @@ def pid_control_model() -> Model:
     model.link.add(model.flow_boundary[1], model.basin[2])
     model.link.add(model.basin[2], model.pump[3])
     model.link.add(model.pump[3], model.level_boundary[4])
-    model.link.add(model.level_boundary[4], model.outlet[6])
     model.link.add(model.pid_control[5], model.pump[3])
-    model.link.add(model.outlet[6], model.basin[2])
-    model.link.add(model.pid_control[7], model.outlet[6])
 
     return model
 

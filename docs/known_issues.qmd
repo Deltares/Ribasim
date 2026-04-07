@@ -7,4 +7,6 @@ Besides the issues that need to be fixed, there are also considerations that had
 
 ## Ribasim QGIS plugin
 
-Fractional flow plots are not supported for flow coming from boundary or Junction nodes.
+Fractional flow plots are not supported for flow coming from boundary nodes.
+
+Fractional flow from a user demand can't be read from the outgoing edge.

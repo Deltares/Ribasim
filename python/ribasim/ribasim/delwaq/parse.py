@@ -2,13 +2,10 @@
 
 from pathlib import Path
 
-import ribasim
-from ribasim.utils import MissingOptionalModule, _concat
+import xarray as xr
 
-try:
-    import xugrid as xu
-except ImportError:
-    xu = MissingOptionalModule("xugrid", "delwaq")
+import ribasim
+from ribasim.utils import _concat
 
 
 def parse(
@@ -28,7 +25,7 @@ def parse(
     if output_folder is None:
         assert model.filepath is not None
         output_folder = model.filepath.parent / "delwaq"
-    with xu.open_dataset(output_folder / "delwaq_map.nc") as ug:
+    with xr.open_dataset(output_folder / "delwaq_map.nc") as ds:
         mapping = dict(graph.nodes(data="id"))
         # Continuity is a (default) tracer representing the mass balance
         substances.add("Continuity")
@@ -36,7 +33,7 @@ def parse(
         dfs = []
         for substance in substances:
             df = (
-                ug[f"ribasim_{substance.replace(' ', '_')}"]
+                ds[f"ribasim_{substance.replace(' ', '_')}"]
                 .to_dataframe()
                 .reset_index()
             )
@@ -52,8 +49,8 @@ def parse(
             df.drop(columns=["ribasim_node_x", "ribasim_node_y"], inplace=True)
             # Map the node_id (logical index) to the original node_id
             # TODO Check if this is correct
-            df.node_id += 1
-            df.node_id = df.node_id.map(mapping)
+            df["node_id"] += 1
+            df["node_id"] = df["node_id"].map(mapping)
 
             dfs.append(df)
 

@@ -571,7 +571,10 @@ class Model(FileModel, ParentModel):
         self.link.df = GeoDataFrame[LinkSchema](_concat([df_link, table_to_append]))
 
     def _validate_model(self) -> None:
-        """Validate that all nodes satisfy their neighbor-count bounds for every link type."""
+        """Validate that all nodes satisfy their neighbor-count bounds for every link type.
+
+        Also validates that node_ids in data tables are consistent with the Node table.
+        """
         df_link = self.link.df
         df_node = self.node.df
         assert df_link is not None
@@ -596,6 +599,9 @@ class Model(FileModel, ParentModel):
                 raise ValueError(
                     f"Minimum {link_type} inneighbor or outneighbor unsatisfied"
                 )
+
+        for node_model in self._nodes():
+            node_model._validate_node_ids()
 
     def _has_valid_neighbor_amount(
         self,
@@ -858,9 +864,8 @@ class Model(FileModel, ParentModel):
         assert node_df is not None
 
         assert self.link.df is not None
-        link_df = self.link.df.copy()
         # We assume only the flow network is of interest.
-        link_df = link_df[link_df.link_type == "flow"]
+        link_df = self.link.df[self.link.df.link_type == "flow"]
 
         node_id = node_df.index.to_numpy()
         link_id = link_df.index.to_numpy()

@@ -23,7 +23,7 @@ import xarray as xr
 try:
     import jinja2
 except ImportError:
-    jinja2 = MissingOptionalModule("jinja2", "delwaq")  # type: ignore
+    jinja2 = MissingOptionalModule("jinja2", "delwaq")  # type: ignore[assignment]
 
 import ribasim
 from ribasim.delwaq.util import (
@@ -438,7 +438,7 @@ def generate(
         )
 
     # Generate mesh and write to NetCDF, adding attributes to avoid Delwaq warnings
-    uds = ugrid(G)
+    uds = ugrid(G, crs=model.crs)
     grid = uds.ugrid.grid
     dataset = uds.ugrid.to_dataset(optional_attributes=True)
     dataset[grid.name].attrs["node_id"] = grid.node_dimension
@@ -464,7 +464,6 @@ def generate(
     flows["link_id"] = flows["link_id"].map(link_mapping)
     flows.dropna(subset=["link_id"], inplace=True)
     flows["link_id"] = flows["link_id"].astype("int32")
-    nflows = flows.copy()
     nflows = flows.groupby(["time", "link_id"]).sum().reset_index()
     nflows.drop(
         columns=["from_node_id", "to_node_id", "convergence"],
@@ -510,6 +509,7 @@ def generate(
     )  # same as flow, so velocity becomes 1
 
     # Write volumes to Delwaq format
+    # copy is to avoid false positive SettingWithCopyWarning on pandas 2
     volumes = basins[["time", "node_id", "storage"]].copy()
     volumes["riba_node_id"] = volumes["node_id"]
     volumes.loc[:, "node_id"] = (
@@ -521,8 +521,8 @@ def generate(
     write_volumes(output_path / "ribasim.vol", volumes, timestep)
 
     # Length file
-    lengths = nflows.copy()
-    lengths.flow_rate = 1
+    lengths = nflows
+    lengths["flow_rate"] = 1.0
     lengths.iloc[np.repeat(np.arange(len(lengths)), 2)]
     write_flows(output_path / "ribasim.len", lengths, timestep)
 
@@ -587,9 +587,10 @@ def generate(
 
     # Write boundary list, ordered by bid to map the unique boundary names
     # to the links described in the pointer file.
-    bnd = pointer.copy()
+    bnd = pointer
     bnd["bid"] = np.minimum(bnd["from_node_id"], bnd["to_node_id"])
-    bnd = bnd[bnd["bid"] < 0]
+    # copy is to avoid false positive SettingWithCopyWarning on pandas 2
+    bnd = bnd[bnd["bid"] < 0].copy()
     bnd.sort_values(by="bid", ascending=False, inplace=True)
     bnd["node_type"] = [G.nodes(data="type")[bid] for bid in bnd["bid"]]
     bnd["node_id"] = [G.nodes(data="id")[bid] for bid in bnd["bid"]]

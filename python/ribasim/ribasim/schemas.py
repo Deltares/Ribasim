@@ -36,6 +36,7 @@ class _BaseSchema(pa.DataFrameModel):
 
 
 class BasinConcentrationSchema(_BaseSchema):
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -46,6 +47,7 @@ class BasinConcentrationSchema(_BaseSchema):
 
 
 class BasinConcentrationExternalSchema(_BaseSchema):
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -54,6 +56,7 @@ class BasinConcentrationExternalSchema(_BaseSchema):
 
 
 class BasinConcentrationStateSchema(_BaseSchema):
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     substance: pd.StringDtype = pa.Field(nullable=False)
@@ -61,6 +64,7 @@ class BasinConcentrationStateSchema(_BaseSchema):
 
 
 class BasinMassLoadSchema(_BaseSchema):
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -69,6 +73,7 @@ class BasinMassLoadSchema(_BaseSchema):
 
 
 class BasinProfileSchema(_BaseSchema):
+    _node_id_relation: str = "equal"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     area: float = pa.Field(nullable=True)
@@ -77,12 +82,14 @@ class BasinProfileSchema(_BaseSchema):
 
 
 class BasinStateSchema(_BaseSchema):
+    _node_id_relation: str = "equal"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     level: float = pa.Field(nullable=False)
 
 
 class BasinStaticSchema(_BaseSchema):
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     drainage: float = pa.Field(nullable=True)
@@ -93,6 +100,7 @@ class BasinStaticSchema(_BaseSchema):
 
 
 class BasinSubgridSchema(_BaseSchema):
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     subgrid_id: np.int32 = pa.Field(nullable=False)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
@@ -101,6 +109,7 @@ class BasinSubgridSchema(_BaseSchema):
 
 
 class BasinSubgridTimeSchema(_BaseSchema):
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     subgrid_id: np.int32 = pa.Field(nullable=False)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
@@ -110,6 +119,7 @@ class BasinSubgridTimeSchema(_BaseSchema):
 
 
 class BasinTimeSchema(_BaseSchema):
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -121,6 +131,7 @@ class BasinTimeSchema(_BaseSchema):
 
 
 class ContinuousControlFunctionSchema(_BaseSchema):
+    _node_id_relation: str = "equal"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     input: float = pa.Field(nullable=False)
@@ -129,6 +140,7 @@ class ContinuousControlFunctionSchema(_BaseSchema):
 
 
 class ContinuousControlVariableSchema(_BaseSchema):
+    _node_id_relation: str = "equal"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     listen_node_id: np.int32 = pa.Field(nullable=False)
@@ -138,6 +150,7 @@ class ContinuousControlVariableSchema(_BaseSchema):
 
 
 class DiscreteControlConditionSchema(_BaseSchema):
+    _node_id_relation: str = "equal"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     compound_variable_id: np.int32 = pa.Field(nullable=False)
@@ -148,6 +161,7 @@ class DiscreteControlConditionSchema(_BaseSchema):
 
 
 class DiscreteControlLogicSchema(_BaseSchema):
+    _node_id_relation: str = "equal"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     truth_state: pd.StringDtype = pa.Field(nullable=False)
@@ -155,6 +169,7 @@ class DiscreteControlLogicSchema(_BaseSchema):
 
 
 class DiscreteControlVariableSchema(_BaseSchema):
+    _node_id_relation: str = "equal"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     compound_variable_id: np.int32 = pa.Field(nullable=False)
@@ -165,6 +180,7 @@ class DiscreteControlVariableSchema(_BaseSchema):
 
 
 class FlowBoundaryConcentrationSchema(_BaseSchema):
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -173,12 +189,14 @@ class FlowBoundaryConcentrationSchema(_BaseSchema):
 
 
 class FlowBoundaryStaticSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     flow_rate: float = pa.Field(nullable=False)
 
 
 class FlowBoundaryTimeSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -186,6 +204,7 @@ class FlowBoundaryTimeSchema(_BaseSchema):
 
 
 class FlowDemandStaticSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     demand: float = pa.Field(nullable=False)
@@ -193,6 +212,7 @@ class FlowDemandStaticSchema(_BaseSchema):
 
 
 class FlowDemandTimeSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -201,6 +221,7 @@ class FlowDemandTimeSchema(_BaseSchema):
 
 
 class LevelBoundaryConcentrationSchema(_BaseSchema):
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -209,12 +230,14 @@ class LevelBoundaryConcentrationSchema(_BaseSchema):
 
 
 class LevelBoundaryStaticSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     level: float = pa.Field(nullable=False)
 
 
 class LevelBoundaryTimeSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -222,6 +245,7 @@ class LevelBoundaryTimeSchema(_BaseSchema):
 
 
 class LevelDemandStaticSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     min_level: float = pa.Field(nullable=True)
@@ -230,6 +254,7 @@ class LevelDemandStaticSchema(_BaseSchema):
 
 
 class LevelDemandTimeSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -239,6 +264,7 @@ class LevelDemandTimeSchema(_BaseSchema):
 
 
 class LinearResistanceStaticSchema(_BaseSchema):
+    _node_id_relation: str = "equal"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     resistance: float = pa.Field(nullable=False)
@@ -247,6 +273,7 @@ class LinearResistanceStaticSchema(_BaseSchema):
 
 
 class ManningResistanceStaticSchema(_BaseSchema):
+    _node_id_relation: str = "equal"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     length: float = pa.Field(nullable=False)
@@ -257,6 +284,7 @@ class ManningResistanceStaticSchema(_BaseSchema):
 
 
 class ObservationTimeSchema(_BaseSchema):
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     variable: pd.StringDtype = pa.Field(nullable=False)
@@ -265,6 +293,7 @@ class ObservationTimeSchema(_BaseSchema):
 
 
 class OutletStaticSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     flow_rate: float = pa.Field(nullable=False)
@@ -277,6 +306,7 @@ class OutletStaticSchema(_BaseSchema):
 
 
 class OutletTimeSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -288,6 +318,7 @@ class OutletTimeSchema(_BaseSchema):
 
 
 class PidControlStaticSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     listen_node_id: np.int32 = pa.Field(nullable=False)
@@ -299,6 +330,7 @@ class PidControlStaticSchema(_BaseSchema):
 
 
 class PidControlTimeSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     listen_node_id: np.int32 = pa.Field(nullable=False)
@@ -310,6 +342,7 @@ class PidControlTimeSchema(_BaseSchema):
 
 
 class PumpStaticSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     flow_rate: float = pa.Field(nullable=False)
@@ -322,6 +355,7 @@ class PumpStaticSchema(_BaseSchema):
 
 
 class PumpTimeSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -333,6 +367,7 @@ class PumpTimeSchema(_BaseSchema):
 
 
 class TabulatedRatingCurveStaticSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     level: float = pa.Field(nullable=False)
@@ -343,6 +378,7 @@ class TabulatedRatingCurveStaticSchema(_BaseSchema):
 
 
 class TabulatedRatingCurveTimeSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -352,6 +388,7 @@ class TabulatedRatingCurveTimeSchema(_BaseSchema):
 
 
 class UserDemandConcentrationSchema(_BaseSchema):
+    _node_id_relation: str = "subset"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
@@ -360,6 +397,7 @@ class UserDemandConcentrationSchema(_BaseSchema):
 
 
 class UserDemandStaticSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     demand: float = pa.Field(nullable=True)
@@ -369,6 +407,7 @@ class UserDemandStaticSchema(_BaseSchema):
 
 
 class UserDemandTimeSchema(_BaseSchema):
+    _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)

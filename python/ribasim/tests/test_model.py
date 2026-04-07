@@ -8,7 +8,6 @@ import ribasim
 import tomli
 import tomli_w
 import xugrid
-from datacompy.core import Compare
 from pydantic import ValidationError
 from pyproj import CRS
 from ribasim import Node
@@ -453,6 +452,9 @@ def test_model_equals(basic):
 
 
 def test_model_diff(basic):
+    Compare = pytest.importorskip(
+        "datacompy", reason="datacompy not installed"
+    ).core.Compare
     # Create a copy of the model to compare with
     nbasic = basic.model_copy(deep=True)
     x = nbasic.diff(basic)
@@ -592,6 +594,5 @@ def test_model_compatibility(basic):
 
     assert basic.node == basic.node
     df = basic.node.df
-    df.iloc[0, 0] = 9999
-    # This behavior might change with Pandas 3
-    assert basic.node.df.iloc[0, 0] == 9999
+    df.iloc[0, 0] = "9999"
+    assert basic.node.df.iloc[0, 0] == "9999"

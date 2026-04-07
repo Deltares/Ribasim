@@ -7,12 +7,12 @@
 name=Ribasim
 qgisMinimumVersion=3.40
 qgisMaximumVersion=4.99
-description=QGIS plugin to inspect Ribasim models
-version=2026.1.0-rc2
+description=QGIS plugin to inspect Ribasim water resources models
+version=2026.1.0
 author=Deltares
 email=ribasim.info@deltares.nl
 
-about=QGIS plugin to inspect Ribasim models. Requires `pandas` to be installed in the QGIS Python environment.
+about=QGIS plugin to inspect Ribasim water resources models.
 
 tracker=https://github.com/Deltares/Ribasim/issues
 repository=https://github.com/Deltares/Ribasim
@@ -45,5 +45,3 @@ Category of the plugin: Raster, Vector, Database or Web
 
 # If the plugin can run on QGIS Server.
 server=False
-
-supportsQt6=True

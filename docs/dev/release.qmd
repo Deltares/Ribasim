@@ -107,7 +107,7 @@ All changes
 
 Now copy the manually edited changelog entry from changelog.qmd above the details, such that the edited changelog can be seen both from our documentation as well as GitHub releases.
 
-## Release the Ribasim Python packages to PyPI
+## Publish the Ribasim Python packages to PyPI
 
 To be able to install packages with `pip`, they need to be released on the Python Package Index (PyPI).
 In order to publish Ribasim Python or Ribasim API follow the following steps:
@@ -115,6 +115,13 @@ In order to publish Ribasim Python or Ribasim API follow the following steps:
 1) Open a terminal and run `pixi run publish-ribasim-python`
 
 2) Open a terminal and run `pixi run publish-ribasim-api`
+
+## Publish the QGIS plugin to the QGIS plugin repository
+
+1) Download the `ribasim_qgis.zip` from the [latest GitHub release assets](https://github.com/Deltares/Ribasim/releases/latest).
+2) Log in to the [QGIS plugin repository](https://plugins.qgis.org/).
+3) Go to [Upload a plugin](https://plugins.qgis.org/plugins/upload/) and upload the zip file.
+4) The plugin will be available after manual approval from a QGIS plugin repository maintainer.
 
 ## Announce release
 

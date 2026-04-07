@@ -5,6 +5,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [v2026.1.0] - 2026-03-31
+
+This stable release fixes several issues found during testing of rc2.
+We do extra validation on node IDs in Python, and added support for mass loads.
+There are no breaking changes since rc2.
+See the rc1 and rc2 changelog entries below for all changes since v2025.6.0.
+
+### Added
+- Add `Basin / MassLoad` table. [#2990](https://github.com/Deltares/Ribasim/pull/2990)
+- Add more `node_id` validation. [#2983](https://github.com/Deltares/Ribasim/pull/2983)
+- QGIS: Support Junctions in fractional flow plot. [#3004](https://github.com/Deltares/Ribasim/pull/3004)
+
+### Changed
+- Support Pandas 3. [#3002](https://github.com/Deltares/Ribasim/pull/3002)
+- Delwaq: don't plot from `concentration_external`. [#3007](https://github.com/Deltares/Ribasim/pull/3007)
+- Replace, don't add to UserDemand tracer in UserDemand return flow. [#3009](https://github.com/Deltares/Ribasim/pull/3009)
+- Provide `node_id` in Basin profile interpolation errors. [#2988](https://github.com/Deltares/Ribasim/pull/2988)
+
+### Fixed
+- Delwaq: Don't count removed Junctions in network generation. [#3001](https://github.com/Deltares/Ribasim/pull/3001)
+- Don't load external NetCDF input in QGIS. [#2999](https://github.com/Deltares/Ribasim/pull/2999)
+- Fix Jacobian state and time dependent cache bug. [#2972](https://github.com/Deltares/Ribasim/pull/2972)
+- Allocation: Use  flow at `t` instead of cumulative flow divided by time. [#3000](https://github.com/Deltares/Ribasim/pull/3000)
+- Remove dangling listen links. [#2978](https://github.com/Deltares/Ribasim/pull/2978)
+- QGIS: Fix water balance plot storage. [#2975](https://github.com/Deltares/Ribasim/pull/2975)
+- QGIS: Fix column order display. [#3005](https://github.com/Deltares/Ribasim/pull/3005)
+- Add millisecond precision to fake `last_change`. [#2974](https://github.com/Deltares/Ribasim/pull/2974)
+- Exclude UserDemand from default tracer set. [#3007](https://github.com/Deltares/Ribasim/pull/3007)
+
 ## [v2026.1.0-rc2] - 2026-03-06
 
 This second pre-release for v2026.1.0 adds a QGIS plotting pane with water balance and fractional flow plots, a new Observation node, and allocation control for the TabulatedRatingCurve.
