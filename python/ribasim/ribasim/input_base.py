@@ -706,7 +706,8 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         if self.df is None:
             return self.__repr__()
         else:
-            return f"<div>{self.tablename()}</div>" + self.df.to_html()
+            table_html = self.df._repr_html_()  # pyrefly: ignore[not-callable]
+            return f"<div>{self.tablename()}</div>" + table_html
 
     def __getitem__(self, index) -> pd.DataFrame | gpd.GeoDataFrame:
         tablename = self.tablename()
