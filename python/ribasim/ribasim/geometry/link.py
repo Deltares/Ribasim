@@ -13,7 +13,7 @@ from pandera.dtypes import Int32
 from pandera.typing import Index, Series
 from pandera.typing.geopandas import GeoDataFrame, GeoSeries
 from pydantic import NonNegativeInt, PrivateAttr, model_validator
-from shapely.geometry import LineString, MultiLineString
+from shapely.geometry import LineString, MultiLineString, Point
 
 from ribasim.db_utils import _get_db_schema_version
 from ribasim.geometry.node import NodeData
@@ -76,7 +76,7 @@ class LinkSchema(_GeoBaseSchema):
     geometry: GeoSeries[LineString] = pa.Field(default=None, nullable=True)
 
     @classmethod
-    def _index_name(self) -> str:
+    def _index_name(cls) -> str:
         return "link_id"
 
 
@@ -93,12 +93,12 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         return self
 
     @classmethod
-    def _from_db(cls, path: Path, table: str) -> pd.DataFrame | None:
+    def _from_db(cls, path: Path, table: str) -> GeoDataFrame | None:
         schema_version = _get_db_schema_version(path)
         # The table name was changed from "Edge" to "Link" in schema_version 4.
         if schema_version < 4:
             table = "Edge"
-        return super()._from_db(path, table)
+        return cast(GeoDataFrame | None, super()._from_db(path, table))
 
     def add(
         self,
@@ -260,8 +260,8 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             row = model.node.df.loc[listen_node_id]
             listened_node = NodeData(
                 node_id=listen_node_id,
-                node_type=row["node_type"],
-                geometry=row["geometry"],
+                node_type=str(row["node_type"]),
+                geometry=cast(Point, row["geometry"]),
             )
             self.add(listened_node, control_node)
 
@@ -410,5 +410,5 @@ class LinkTable(SpatialTableModel[LinkSchema]):
 
         return ax
 
-    def __getitem__(self, _):
+    def __getitem__(self, index):
         raise NotImplementedError

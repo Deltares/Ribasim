@@ -26,7 +26,7 @@ They include the following checks:
 * Docs: Builds the documentation and executes the examples
 * Prek: Checks code quality with linters and enforces formatting
 * Python codegen: Makes sure code generation is still up to date by checking that code generation wouldn't change any files
-* Mypy: Runs mypy on our Python codebase to check types
+* Type Check: Runs Pyrefly on our Python codebase to check types
 * Ribasim Python tests: Runs Ribasim Python tests on multiple platforms and multiple Python versions
 * QGIS Tests: Runs QGIS unit tests
 

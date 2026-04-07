@@ -7,6 +7,7 @@ import struct
 import subprocess
 from datetime import timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -15,9 +16,12 @@ import pandas as pd
 from ribasim.utils import MissingOptionalModule
 
 try:
-    import xugrid
+    import xugrid as _xugrid
 except ImportError:
-    xugrid = MissingOptionalModule("xugrid")
+    _xugrid = MissingOptionalModule("xugrid")
+
+if TYPE_CHECKING:
+    import xugrid as xugrid_types
 
 
 delwaq_dir = Path(__file__).parent
@@ -76,14 +80,22 @@ def write_volumes(fn: Path | str, data: pd.DataFrame, timestep: timedelta) -> No
     Data is a DataFrame with columns time, storage
     """
     with Path(fn).open("wb") as f:
+        last_time: int | None = None
+        last_group: pd.DataFrame | None = None
         for time, group in data.groupby("time"):
-            f.write(struct.pack("<i", time))
+            itime = int(cast(Any, time))
+            f.write(struct.pack("<i", itime))
             f.write(group.storage.to_numpy().astype("float32").tobytes())
+            last_time = itime
+            last_group = group
+
+        if last_time is None or last_group is None:
+            raise ValueError("Cannot write volumes for empty data")
 
         # Delwaq needs an extra timestep after the end
-        ntime = time + int(timestep.total_seconds())  # type: ignore
+        ntime = last_time + int(timestep.total_seconds())
         f.write(struct.pack("<i", ntime))
-        f.write(group.storage.to_numpy().astype("float32").tobytes())
+        f.write(last_group.storage.to_numpy().astype("float32").tobytes())
 
 
 def write_flows(fn: Path | str, data: pd.DataFrame, timestep: timedelta) -> None:
@@ -98,18 +110,28 @@ def write_flows(fn: Path | str, data: pd.DataFrame, timestep: timedelta) -> None
     Data is a DataFrame with columns time, flow
     """
     with Path(fn).open("wb") as f:
+        last_time: int | None = None
+        last_group: pd.DataFrame | None = None
         for time, group in data.groupby("time"):
-            f.write(struct.pack("<i", time))
+            itime = int(cast(Any, time))
+            f.write(struct.pack("<i", itime))
             f.write(group.flow_rate.to_numpy().astype("float32").tobytes())
+            last_time = itime
+            last_group = group
+
+        if last_time is None or last_group is None:
+            raise ValueError("Cannot write flows for empty data")
 
         # Delwaq needs an extra timestep after the end
-        ntime = time + int(timestep.total_seconds())  # type: ignore
+        ntime = last_time + int(timestep.total_seconds())
         f.write(struct.pack("<i", ntime))
-        f.write(group.flow_rate.to_numpy().astype("float32").tobytes())
+        f.write(last_group.flow_rate.to_numpy().astype("float32").tobytes())
 
 
-def ugrid(G, crs=None) -> xugrid.UgridDataset:
+def ugrid(G, crs=None) -> "xugrid_types.UgridDataset":
     # TODO Deduplicate with ribasim.Model.to_xugrid
+    xugrid = cast(Any, _xugrid)
+
     link_df = pd.DataFrame(G.edges(), columns=["from_node_id", "to_node_id"])
     node_df = pd.DataFrame(G.nodes(), columns=["node_id"])
     node_df["x"] = [i[1] for i in G.nodes(data="x")]

@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any, cast
 
 from ribasim_qgis.widgets.dataset_widget import DatasetWidget
 
@@ -70,7 +71,7 @@ def test_last_model_dir_setting_roundtrip(monkeypatch):
 
 def test_open_model_uses_last_model_dir_for_dialog(monkeypatch):
     widget = DatasetWidget.__new__(DatasetWidget)
-    widget.ribasim_widget = object()
+    widget.ribasim_widget = cast(Any, object())
 
     monkeypatch.setattr(
         DatasetWidget,

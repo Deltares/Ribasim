@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -6,7 +7,7 @@ import numpy as np
 import pandas as pd
 import ribasim
 from ribasim import Model
-from ribasim.config import Experimental, Interpolation, Solver
+from ribasim.config import Experimental, Interpolation, Solver, Verbosity
 from ribasim.geometry.node import Node
 from ribasim.input_base import TableModel
 from ribasim.nodes import (
@@ -25,16 +26,16 @@ from shapely.geometry import MultiPolygon, Point
 def basic_model() -> Model:
     # Setup model
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )
-    model.logging = ribasim.Logging(verbosity="debug")
+    model.logging = ribasim.Logging(verbosity=Verbosity.debug)
 
     # Setup basins
     level = [0.0, 1.0]
-    node_data: list[TableModel[Any]] = [
+    node_data = [
         basin.Profile(area=[0.01, 1000.0], level=level),
         basin.Static(
             potential_evaporation=[0.001 / 86400],
@@ -266,8 +267,8 @@ def basic_transient_model() -> Model:
         }
     )
     model.basin.static.df = None  # A node cannot have both static and dynamic forcing
-    model.basin.time = forcing  # type: ignore # TODO: Fix implicit typing from pydantic. See TableModel.check_dataframe
-    model.basin.state = state  # type: ignore # TODO: Fix implicit typing from pydantic. See TableModel.check_dataframe
+    model.basin.time = forcing  # pyrefly: ignore[bad-assignment]
+    model.basin.state = state  # pyrefly: ignore[bad-assignment]
 
     return model
 
@@ -282,8 +283,8 @@ def tabulated_rating_curve_model() -> Model:
     """
     # Setup a model:
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )
@@ -319,7 +320,7 @@ def tabulated_rating_curve_model() -> Model:
     )
 
     # Setup the basins
-    node_data: list[TableModel[Any]] = [
+    node_data = [
         basin.Profile(area=[0.01, 1000.0], level=[0.0, 1.0]),
         basin.State(level=[0.04471158417652035]),
     ]
@@ -363,8 +364,8 @@ def tabulated_rating_curve_model() -> Model:
 def outlet_model() -> Model:
     """Set up a basic model with an outlet that encounters various physical constraints."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )
@@ -408,8 +409,8 @@ def outlet_model() -> Model:
 
 def cyclic_time_model() -> Model:
     model = Model(
-        starttime="2020-01-01",
-        endtime="2121-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2121, 1, 1),
         crs="EPSG:28992",
         solver=Solver(saveat=7 * 24 * 60 * 60),
         interpolation=Interpolation(flow_boundary="linear"),
@@ -473,8 +474,8 @@ def drought_model() -> Model:
     # Use nested paths for testing
 
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         input_dir=Path("nested/input"),
         results_dir=Path("nested/results"),
@@ -588,8 +589,8 @@ def drought_model() -> Model:
 
 def flow_boundary_interpolation_model() -> Model:
     model = Model(
-        starttime="2020-01-01",
-        endtime="2020-01-09",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 9),
         crs="EPSG:28992",
         interpolation=Interpolation(flow_boundary="block", block_transition_period=0),
     )
@@ -681,8 +682,8 @@ def build_model_with_basin(model, basin_definition) -> Model:
 
 
 def basic_basin_only_area_model() -> Model:
-    starttime = "2022-01-01"
-    endtime = "2023-01-01"
+    starttime = datetime(2022, 1, 1)
+    endtime = datetime(2023, 1, 1)
 
     model = Model(
         starttime=starttime,
@@ -706,8 +707,8 @@ def basic_basin_only_area_model() -> Model:
 
 
 def basic_basin_only_storage_model() -> Model:
-    starttime = "2022-01-01"
-    endtime = "2023-01-01"
+    starttime = datetime(2022, 1, 1)
+    endtime = datetime(2023, 1, 1)
 
     model = Model(
         starttime=starttime,
@@ -730,15 +731,15 @@ def basic_basin_only_storage_model() -> Model:
 
 
 def basic_basin_both_area_and_storage_model() -> Model:
-    starttime = "2022-01-01"
-    endtime = "2023-01-01"
+    starttime = datetime(2022, 1, 1)
+    endtime = datetime(2023, 1, 1)
 
     model = Model(
         starttime=starttime,
         endtime=endtime,
         crs="EPSG:4326",
     )
-    model.logging = ribasim.Logging(verbosity="debug")
+    model.logging = ribasim.Logging(verbosity=Verbosity.debug)
 
     # a parabolic shaped (x^2 - 1) basin with a circular cross section
     levels = [0, 1, 2, 3, 4, 5]

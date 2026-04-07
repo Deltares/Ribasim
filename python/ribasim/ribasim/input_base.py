@@ -7,7 +7,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
 from sqlite3 import connect
-from typing import Any, TypeVar, cast
+from typing import Any, Self, TypeVar, cast
 
 import geopandas as gpd
 import numpy as np
@@ -40,12 +40,13 @@ from ribasim.db_utils import (
 from ribasim.schemas import _BaseSchema
 from ribasim.utils import MissingOptionalModule
 
-try:
-    from datacompy.core import Compare
-except ImportError:
-    Compare = MissingOptionalModule("datacompy", "diff")
-
 from .styles import _add_styles_to_geopackage
+
+try:
+    from datacompy.core import Compare as _Compare  # pyrefly: ignore[missing-import]
+except ImportError:
+    _Compare = MissingOptionalModule("datacompy", "diff")
+
 
 __all__ = ("TableModel",)
 
@@ -83,7 +84,7 @@ _init_context_var = ContextVar("_init_context_var", default=None)
 
 @contextmanager
 def init_context(value: dict[str, Any]) -> Generator[None]:
-    token = _init_context_var.set(value)  # type: ignore
+    token = _init_context_var.set(value)  # pyrefly: ignore[bad-argument-type]
     try:
         yield
     finally:
@@ -201,13 +202,13 @@ class BaseModel(PydanticBaseModel):
             getter = (
                 operator.itemgetter(*model_fields)
                 if model_fields
-                else lambda _: pydantic._utils._SENTINEL  # type: ignore
+                else lambda _: pydantic._utils._SENTINEL  # pyrefly: ignore[missing-attribute]
             )
             try:
                 return getter(self.__dict__) == getter(other.__dict__)
             except KeyError:
-                self_fields_proxy = pydantic._utils.SafeGetItemProxy(self.__dict__)  # type: ignore
-                other_fields_proxy = pydantic._utils.SafeGetItemProxy(other.__dict__)  # type: ignore
+                self_fields_proxy = pydantic._utils.SafeGetItemProxy(self.__dict__)  # pyrefly: ignore[missing-attribute]
+                other_fields_proxy = pydantic._utils.SafeGetItemProxy(other.__dict__)  # pyrefly: ignore[missing-attribute]
                 return getter(self_fields_proxy) == getter(other_fields_proxy)
 
         else:
@@ -324,7 +325,7 @@ class ChildModel(BaseModel):
     _parent_field: str | None = None
 
     @model_validator(mode="after")
-    def check_parent(self) -> "ChildModel":
+    def check_parent(self) -> Self:
         if self._parent is not None and self._parent_field is not None:
             self._parent.model_fields_set.update({self._parent_field})
         return self
@@ -359,7 +360,7 @@ class ParentModel(BaseModel):
         }
 
     @model_validator(mode="after")
-    def _set_node_parent(self) -> "ParentModel":
+    def _set_node_parent(self) -> Self:
         for (
             k,
             v,
@@ -415,7 +416,8 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
                 a = self.df
                 b = other.df
 
-            comp = Compare(a, b, on_index=True, df1_name="self", df2_name="other")
+            compare = cast(Any, _Compare)
+            comp = compare(a, b, on_index=True, df1_name="self", df2_name="other")
             return {"diff": comp}
         # One of the instances is None
         else:
@@ -532,14 +534,13 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
 
         context_file_loading.get()["database"] = db_path
 
-        context_file_loading.get().update(
-            {"directory": self.filepath.parent if self.filepath else None}  # type: ignore
-        )
+        if self.filepath:
+            context_file_loading.get()["directory"] = self.filepath.parent
 
         filepath = self.filepath or self.default_filepath()
 
         data = self._load(directory / filepath)
-        self.df = data.get("df", self.df)  # type: ignore
+        self.df = data.get("df", self.df)  # pyrefly: ignore[bad-assignment]
         self.lazy = False
         context_file_loading.set({})
 
@@ -686,7 +687,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         The type of the field `df` is known to always be an DataFrame[TableT]]] | None
         """
         optionalfieldtype = cls.model_fields["df"].annotation
-        fieldtype = optionalfieldtype.__args__[0]  # type: ignore
+        fieldtype = optionalfieldtype.__args__[0]  # pyrefly: ignore[missing-attribute]
         T: TableT = fieldtype.__args__[0]
         return T
 
@@ -705,7 +706,8 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         if self.df is None:
             return self.__repr__()
         else:
-            return f"<div>{self.tablename()}</div>" + self.df._repr_html_()
+            table_html = self.df._repr_html_()  # pyrefly: ignore[not-callable]
+            return f"<div>{self.tablename()}</div>" + table_html
 
     def __getitem__(self, index) -> pd.DataFrame | gpd.GeoDataFrame:
         tablename = self.tablename()
@@ -728,13 +730,15 @@ class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
     Overrides the reading and writing methods of a TableModel.
     """
 
-    df: GeoDataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
+    df: GeoDataFrame[TableT] | None = Field(  # pyrefly: ignore[bad-override]
+        default=None, exclude=True, repr=False
+    )
 
     def sort(self):
         # Only sort the index (node_id / link_id) since this needs to be sorted in a GeoPackage.
         # Under most circumstances, this retains the input order,
         # making the link_id as stable as possible; useful for post-processing.
-        self.df.sort_index(inplace=True)
+        self.df.sort_index(inplace=True)  # pyrefly: ignore[missing-attribute]
 
     @classmethod
     def _from_db(cls, path: Path, table: str):
@@ -747,24 +751,24 @@ class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
 
             return df
 
-    def _write_geopackage(self, path: Path) -> None:
+    def _write_geopackage(self, filepath: Path) -> None:
         """
         Write the contents of the input to the GeoPackage.
 
         Parameters
         ----------
-        path : Path
+        filepath : Path
         """
         assert self.df is not None
 
         self.df.to_file(
-            path,
+            filepath,
             layer=self.tablename(),
             driver="GPKG",
             index=True,
             fid=self.df.index.name,
         )
-        with closing(connect(path)) as connection:
+        with closing(connect(filepath)) as connection:
             create_index(
                 connection,
                 self.tablename(),
@@ -792,8 +796,7 @@ class NodeModel(ChildModel, ParentModel):
             field = cls.model_fields[info.field_name]
             extra = field.json_schema_extra
             if extra is not None and isinstance(extra, dict):
-                # We set sort_keys ourselves as list[str] in json_schema_extra
-                # but mypy doesn't know.
+                # We set sort_keys ourselves as list[str] in json_schema_extra but the type checker doesn't know.
                 v._sort_keys = cast(list[str], extra.get("sort_keys", []))
         return v
 

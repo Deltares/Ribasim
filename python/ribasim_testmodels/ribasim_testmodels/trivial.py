@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from ribasim.config import Experimental, Results
 from ribasim.geometry.node import Node
 from ribasim.model import Model
@@ -8,8 +10,8 @@ from shapely.geometry import Point
 def trivial_model() -> Model:
     """Trivial model with just a basin, tabulated rating curve and terminal node."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         results=Results(subgrid=True, compression=False),
         use_validation=True,

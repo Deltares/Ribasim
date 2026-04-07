@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import numpy as np
 import ribasim
 from ribasim.config import Experimental
@@ -21,8 +23,8 @@ def backwater_model() -> Model:
     ids = np.arange(1, node_type.size + 1, dtype=np.int32)
 
     model = ribasim.Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         solver=ribasim.Solver(autodiff=True, specialize=True),
         experimental=Experimental(concentration=True),
@@ -37,14 +39,14 @@ def backwater_model() -> Model:
     basin_x = np.arange(10.0, 1000.0, 20.0)
     for id, x in zip(basin_ids, basin_x, strict=True):
         model.basin.add(
-            Node(id, Point(x, 0.0)),
+            Node(id, Point(float(x), 0.0)),
             [
                 basin.Profile(area=[20.0, 20.0], level=[0.0, 1.0]),
                 basin.State(level=[0.05]),
             ],
         )
         model.manning_resistance.add(
-            Node(id + 1, Point(x + 10.0, 0.0)),
+            Node(id + 1, Point(float(x) + 10.0, 0.0)),
             [
                 manning_resistance.Static(
                     length=[20.0],

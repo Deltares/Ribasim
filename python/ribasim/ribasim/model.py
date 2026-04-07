@@ -5,7 +5,7 @@ import warnings
 from collections.abc import Generator
 from os import PathLike
 from pathlib import Path
-from typing import Any
+from typing import Any, Self, cast
 
 import numpy as np
 import pandas as pd
@@ -73,9 +73,10 @@ from ribasim.utils import (
 from ribasim.validation import link_neighbor_amount
 
 try:
-    import xugrid
+    import xugrid as _xugrid
 except ImportError:
-    xugrid = MissingOptionalModule("xugrid")
+    _xugrid = MissingOptionalModule("xugrid")
+
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +170,7 @@ class Model(FileModel, ParentModel):
         return v
 
     @model_validator(mode="after")
-    def _ensure_topology_tables_are_present(self) -> "Model":
+    def _ensure_topology_tables_are_present(self) -> Self:
         if self.link.df is None:
             self.link.df = GeoDataFrame[LinkSchema](
                 index=pd.Index([], name="link_id"),
@@ -261,9 +262,9 @@ class Model(FileModel, ParentModel):
         # and at the end move this over the target file.
         # This does not throw a PermissionError if the file is open in QGIS.
 
-        if internal:
-            db_path = directory / ".database.gpkg"
+        db_path = directory / ".database.gpkg"
 
+        if internal:
             # avoid adding tables to existing model
             db_path.unlink(missing_ok=True)
 
@@ -376,10 +377,10 @@ class Model(FileModel, ParentModel):
         removed_link = self.link.df.loc[link_id]
         self.link._remove_link_id(link_id)
 
-        if removed_link["link_type"] != "control":
+        if str(removed_link["link_type"]) != "control":
             return
 
-        control_node_id = int(removed_link["from_node_id"])
+        control_node_id = cast(int, removed_link["from_node_id"])
         self._remove_dangling_listen_links(control_node_id)
 
     def _nodes(self) -> Generator[NodeModel, None, None]:
@@ -392,7 +393,7 @@ class Model(FileModel, ParentModel):
     @classmethod
     def read(
         cls, filepath: str | PathLike[str], internal: bool = True, external: bool = True
-    ) -> "Model":
+    ) -> Self:
         """Read a model from a TOML file.
 
         Parameters
@@ -414,7 +415,8 @@ class Model(FileModel, ParentModel):
                 "directory": Path(filepath).parent,
             }
         ):
-            return cls(filepath=Path(filepath).name)  # type: ignore
+            # pyrefly: ignore[missing-argument]
+            return cls(filepath=Path(filepath).name)
 
     def write(
         self,
@@ -703,7 +705,8 @@ class Model(FileModel, ParentModel):
             config["filepath"] = filepath  # make sure we store the whole filepath
             directory = filepath.parent / config["input_dir"]
             context_file_loading.get()["directory"] = directory
-            _init_context_var.get()["directory"] = directory  # type: ignore
+            # pyrefly: ignore[unsupported-operation]
+            _init_context_var.get()["directory"] = directory
 
             db_path = directory / "database.gpkg"
             if not db_path.is_file():
@@ -715,7 +718,7 @@ class Model(FileModel, ParentModel):
             return {}
 
     @model_validator(mode="after")
-    def _reset_contextvar(self) -> "Model":
+    def _reset_contextvar(self) -> Self:
         # Drop database info
         context_file_loading.set({})
         return self
@@ -771,7 +774,7 @@ class Model(FileModel, ParentModel):
             The path to the results directory.
         """
         toml_path = self.toml_path
-        results_dir = DirectoryPath(toml_path.parent / self.results_dir)
+        results_dir = toml_path.parent / self.results_dir
         # This only checks results that are always written.
         # Some results like allocation_flow are optional.
         filenames = ["basin_state.nc", "basin.nc", "flow.nc"]
@@ -860,6 +863,8 @@ class Model(FileModel, ParentModel):
         if add_flow and add_allocation:
             raise ValueError("Cannot add both allocation and flow results.")
 
+        xugrid = cast(Any, _xugrid)
+
         node_df = self.node.df
         assert node_df is not None
 
@@ -874,8 +879,8 @@ class Model(FileModel, ParentModel):
         node_lookup = _node_lookup_numpy(node_id)
 
         grid = xugrid.Ugrid1d(
-            node_x=node_df.geometry.x,
-            node_y=node_df.geometry.y,
+            node_x=node_df.geometry.x.to_numpy(),
+            node_y=node_df.geometry.y.to_numpy(),
             fill_value=-1,
             edge_node_connectivity=np.column_stack(
                 (

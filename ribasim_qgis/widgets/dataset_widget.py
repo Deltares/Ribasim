@@ -164,7 +164,10 @@ class DatasetWidget:
         rel.setReferencingLayer(from_layer.id())
         rel.setReferencedLayer(to_layer_id)
         rel.setName(name)
-        rel.setStrength(rel.RelationStrength.Composition)  # type: ignore
+        rel.setStrength(
+            # pyrefly: ignore[missing-attribute]
+            rel.RelationStrength.Composition
+        )
         rel.addFieldPair(fk, "node_id")
         rel.generateId()
         instance = QgsProject.instance()
@@ -219,14 +222,17 @@ class DatasetWidget:
         def filterbyrel(relationships, feature_ids):
             """Filter all related tables by the selected features in the node table."""
             ids = []
+            rel_for_selection = None
             selection = QgsFeatureRequest().setFilterFids(feature_ids)
             for rel in relationships:
                 if rel.isValid() and rel.referencedLayer():
                     for feature in rel.referencedLayer().getFeatures(selection):
                         ids.extend(f.id() for f in rel.getRelatedFeatures(feature))
+                if rel.isValid() and rel.referencingLayer() is not None:
+                    rel_for_selection = rel
 
-            if rel.isValid() and rel.referencingLayer():
-                rel.referencingLayer().selectByIds(ids)
+            if rel_for_selection is not None and rel_for_selection.referencingLayer():
+                rel_for_selection.referencingLayer().selectByIds(ids)
 
         # When the Node selection changes, filter all related tables
         link_rels = []
@@ -326,7 +332,7 @@ class DatasetWidget:
             message_bar.pushMessage(
                 "Warning",
                 f"Simulation already running for {model_name}",
-                level=Qgis.MessageLevel.Warning,
+                level=cast(Qgis.MessageLevel, Qgis.MessageLevel.Warning),
                 duration=5,
             )
             return
@@ -346,7 +352,9 @@ class DatasetWidget:
         # Text area for output
         text_edit = QPlainTextEdit()
         text_edit.setReadOnly(True)
-        text_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        text_edit.setLineWrapMode(
+            cast(QPlainTextEdit.LineWrapMode, QPlainTextEdit.LineWrapMode.NoWrap)
+        )
         # Use monospace font for proper progress bar display
         font = text_edit.font()
         font.setFamily("Consolas, Monaco, monospace")
@@ -362,8 +370,12 @@ class DatasetWidget:
             if replace:
                 # Update last line instead of appending for progress updates
                 cursor = text_edit.textCursor()
-                cursor.movePosition(cursor.MoveOperation.End)
-                cursor.select(cursor.SelectionType.LineUnderCursor)
+                cursor.movePosition(
+                    cast(cursor.MoveOperation, cursor.MoveOperation.End)
+                )
+                cursor.select(
+                    cast(cursor.SelectionType, cursor.SelectionType.LineUnderCursor)
+                )
                 cursor.removeSelectedText()
                 cursor.insertText(line)
             else:
@@ -695,7 +707,13 @@ class DatasetWidget:
             self._edit_result_layer(result, self.flow_layer)
 
     def _duplicate_layer(
-        self, layer, name, fid_column, filterkey=1, filtervalue=1, fids=None
+        self,
+        layer,
+        name,
+        fid_column,
+        filterkey: str | int = 1,
+        filtervalue: str | int = 1,
+        fids=None,
     ):
         """Duplicate a layer for use with output data."""
         if fids is None:
@@ -722,24 +740,28 @@ class DatasetWidget:
             fids.append(feature.id())
             rids.append(feature[fid_column])
         if sorted(fids) != fids or sorted(rids) != rids:
-            self.ribasim_widget.iface.messageBar().pushMessage(
-                "Ribasim",
-                "Cannot duplicate layer, fids are not sorted",
-                level=Qgis.MessageLevel.Critical,
-                duration=3,
-            )
+            message_bar = self.ribasim_widget.iface.messageBar()
+            if message_bar is not None:
+                message_bar.pushMessage(
+                    "Ribasim",
+                    "Cannot duplicate layer, fids are not sorted",
+                    level=cast(Qgis.MessageLevel, Qgis.MessageLevel.Critical),
+                    duration=3,
+                )
             return
 
         maplayer = self.add_layer(duplicate, "Results", False, labels=None)
+        if maplayer is None:
+            return
         self.set_layer_visible(duplicate, False)
 
         toml = get_toml_dict(self.path)
         trange = QgsDateTimeRange(
             QDateTime(toml["starttime"]), QDateTime(toml["endtime"])
         )
-        tprop = maplayer.temporalProperties()
+        tprop = cast(QgsVectorLayerTemporalProperties, maplayer.temporalProperties())
         tprop.setMode(
-            QgsVectorLayerTemporalProperties.TemporalMode.ModeFixedTemporalRange
+            QgsVectorLayerTemporalProperties.TemporalMode.ModeFixedTemporalRange  # pyrefly: ignore[missing-attribute]
         )
         tprop.setFixedTemporalRange(trange)
         tprop.setIsActive(True)
@@ -756,7 +778,9 @@ class DatasetWidget:
         for column in result.variables:
             dataprovider = layer.dataProvider()
             if dataprovider is not None and dataprovider.fieldNameIndex(column) == -1:
-                dataprovider.addAttributes([QgsField(column, QMetaType.Type.Double)])
+                dataprovider.addAttributes(
+                    [QgsField(column, cast(QMetaType.Type, QMetaType.Type.Double))]
+                )
             layer.updateFields()
         layer.commitChanges()
 

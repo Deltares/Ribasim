@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
 import ribasim
@@ -12,8 +14,8 @@ from shapely.geometry import Point
 def bucket_model() -> ribasim.Model:
     """Bucket model with just a single basin at Deltares' headquarter."""
     model = ribasim.Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )
@@ -40,8 +42,8 @@ def bucket_model() -> ribasim.Model:
 def leaky_bucket_model() -> ribasim.Model:
     """Bucket model with dynamic forcing with missings at Deltares' headquarter."""
     model = ribasim.Model(
-        starttime="2020-01-01",
-        endtime="2020-01-05",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 5),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )
