@@ -103,7 +103,7 @@ function add_conservation!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
     )::Nothing
-    (; problem, subnetwork_id, Δt_allocation, scaling, node_ids_in_subnetwork) =
+    (; problem, subnetwork_id, scaling, node_ids_in_subnetwork) =
         allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
 
@@ -127,6 +127,9 @@ function add_conservation!(
     # Mathematical formulation: dS/dt = Σ Q_in - Σ Q_out + f_pos - f_neg
     # Discretized (backward Euler): ΔS = Δt * (Σ Q_in - α * Σ Q_out + f_pos - f_neg)
     # where α (low_storage_factor) prevents negative storage by reducing outflows
+    # Note: Δt is NOT baked into the constraint here. Instead, all Δt-dependent coefficients
+    # (flow terms, forcing, low_storage_factor) are set in set_simulation_data! before each solve.
+    # This allows Δt to vary between solves for adaptive timestepping.
     storage_change = problem[:basin_storage_change]
     low_storage_factor = problem[:low_storage_factor]
     flow = problem[:flow]
@@ -142,14 +145,14 @@ function add_conservation!(
                 init = 0,
             ) for basin_id in basin_ids_subnetwork
     )
-    f_pos = 1.0 # Example positive forcing (scaling.flow * m^3/s, to be filled in before optimizing)
-    f_neg = 1.0 # Example negative forcing (scaling.flow * m^3/s, to be filled in before optimizing)
+    f_pos = 1.0 # Placeholder (set in set_simulation_data!)
+    f_neg = 1.0 # Placeholder (set in set_simulation_data!)
+    flow_storage_ratio = scaling.flow / scaling.storage
     problem[:volume_conservation] = JuMP.@constraint(
         problem,
         [node_id = basin_ids_subnetwork],
         storage_change[node_id] ==
-            Δt_allocation *
-            (scaling.flow / scaling.storage) *
+            flow_storage_ratio *
             (
             f_pos - f_neg * low_storage_factor[node_id] + inflow_sum[node_id] -
                 outflow_sum[node_id]

@@ -58,6 +58,8 @@ function set_simulation_data!(
     (; current_storage) = p.state_and_time_dependent_cache
 
     errors = false
+    flow = problem[:flow]
+    flow_storage_ratio = scaling.flow / scaling.storage
 
     # Set Basin starting storages and levels
     for basin_id in basin_ids_subnetwork
@@ -93,6 +95,25 @@ function set_simulation_data!(
         ) * Δt_allocation
 
         volume_conservation_constraint = volume_conservation[basin_id]
+
+        # Update flow variable coefficients with current Δt_allocation.
+        # The constraint was initialized without Δt; here we set the full coefficient
+        # Δt * scaling.flow / scaling.storage for each flow term.
+        Δt_flow_storage_ratio = Δt_allocation * flow_storage_ratio
+        for other_id in basin.inflow_ids[basin_id.idx]
+            JuMP.set_normalized_coefficient(
+                volume_conservation_constraint,
+                flow[(other_id, basin_id)],
+                -Δt_flow_storage_ratio,
+            )
+        end
+        for other_id in basin.outflow_ids[basin_id.idx]
+            JuMP.set_normalized_coefficient(
+                volume_conservation_constraint,
+                flow[(basin_id, other_id)],
+                Δt_flow_storage_ratio,
+            )
+        end
 
         ### This is an euler-backward discretization in disguise:
         # where the positive forcing is independent on the state so it can be calculated explicitly and ends up in the rhs of Ax = b

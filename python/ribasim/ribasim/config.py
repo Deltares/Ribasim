@@ -92,10 +92,20 @@ class Allocation(ChildModel):
     Attributes
     ----------
     timestep : float
-        The simulated time in seconds between successive allocation calls (Optional, defaults to 86400)
+        The simulated time in seconds between successive allocation calls (Optional, defaults to 86400).
+        When adaptive_timestep is enabled, this acts as the maximum timestep.
+    adaptive_timestep : bool
+        Enable adaptive allocation timestepping based on basin profile linearization error (Optional, defaults to False)
+    timestep_tolerance : float
+        Maximum allowed linearization error in m³ for adaptive timestepping (Optional, defaults to 1000.0)
+    min_timestep : float
+        Minimum allocation timestep in seconds for adaptive timestepping (Optional, defaults to 3600.0)
     """
 
     timestep: float = 86400.0
+    adaptive_timestep: bool = False
+    timestep_tolerance: float = 1000.0
+    min_timestep: float = 3600.0
     default_route_priority: RoutePriority = RoutePriority()
 
 

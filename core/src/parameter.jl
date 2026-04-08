@@ -244,7 +244,7 @@ sources: The nodes in the subnetwork which can act as sources, sorted by route p
 secondary_network_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
 scaling: The flow and storage scaling factors to make the optimization problem more numerically stable
 """
-@kwdef struct AllocationModel
+@kwdef mutable struct AllocationModel
     subnetwork_id::Int32
     node_ids_in_subnetwork::NodeIDsInSubnetwork
     problem::JuMP.Model

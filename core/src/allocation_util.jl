@@ -277,6 +277,8 @@ function ScalingFactors(
             node_id in basin.node_id if graph[node_id].subnetwork_id == subnetwork_id
     ]
     mean_half_storage = sum(max_storages) / (2 * length(max_storages))
+    # Use the configured (max) timestep for scaling, not the adaptive timestep.
+    # This keeps scaling stable when Δt varies between solves.
     return ScalingFactors(;
         storage = mean_half_storage,
         flow = mean_half_storage / Δt_allocation,
@@ -304,6 +306,92 @@ end
 
 get_Δt_allocation(allocation::Allocation) =
     first(allocation.allocation_models).Δt_allocation
+
+"""
+Compute the slope dA/dh of the basin profile at a given level.
+The basin profile is piecewise-linear in A(h), so dA/dh is piecewise-constant.
+Returns the max absolute slope of the current and adjacent segments for safety.
+"""
+function get_area_slope(basin::Basin, state_idx::Int, level::Float64)::Float64
+    levels = basin_levels(basin, state_idx)
+    areas = basin_areas(basin, state_idx)
+    n = length(levels)
+    if n < 2
+        return 0.0
+    end
+
+    # Find the segment containing the current level
+    seg = searchsortedlast(levels, level)
+    seg = clamp(seg, 1, n - 1)
+
+    # Compute slopes of current and adjacent segments, take the max for safety
+    max_slope = 0.0
+    for i in max(1, seg - 1):min(n - 1, seg + 1)
+        dh = levels[i + 1] - levels[i]
+        if dh > 0
+            slope = abs(areas[i + 1] - areas[i]) / dh
+            max_slope = max(max_slope, slope)
+        end
+    end
+    return max_slope
+end
+
+"""
+Compute the adaptive allocation timestep for a single subnetwork.
+The timestep is chosen so that the linearization error of S(h) stays within tolerance ε.
+
+ΔS_max = A * sqrt(2ε / |dA/dh|), then Δt = ΔS_max / |dS/dt|.
+"""
+function compute_adaptive_Δt(
+        allocation_model::AllocationModel,
+        p::Parameters,
+        du_buff::CVector,
+        t::Float64,
+        allocation_config,
+    )::Float64
+    (; node_ids_in_subnetwork) = allocation_model
+    (; basin_ids_subnetwork) = node_ids_in_subnetwork
+    (; basin) = p.p_independent
+    (; current_storage) = p.state_and_time_dependent_cache
+
+    Δt_max = allocation_config.timestep
+    Δt_min = allocation_config.min_timestep
+    ε = allocation_config.timestep_tolerance
+    safety_factor = 0.8
+
+    Δt = Δt_max
+
+    for basin_id in basin_ids_subnetwork
+        idx = basin_id.idx
+        storage_now = current_storage[idx]
+        level_now = get_level_from_storage(basin, idx, storage_now)
+        A = get_area_from_storage(basin, idx, storage_now)
+
+        # dA/dh: slope of the piecewise-linear area profile
+        m = get_area_slope(basin, idx, level_now)
+
+        if m < eps() || A < eps()
+            # Cylindrical basin or empty basin: linearization is exact
+            continue
+        end
+
+        # ΔS_max from linearization error bound: |S - S*| ≤ ε → ΔS_max = A * sqrt(2ε / m)
+        ΔS_max = A * sqrt(2 * ε / m)
+
+        # Net storage rate from water balance
+        dstorage = formulate_dstorage(du_buff, p.p_independent, t, basin_id)
+
+        if abs(dstorage) < eps()
+            # No net flow: no storage change, no linearization error
+            continue
+        end
+
+        Δt_basin = safety_factor * ΔS_max / abs(dstorage)
+        Δt = min(Δt, Δt_basin)
+    end
+
+    return clamp(Δt, Δt_min, Δt_max)
+end
 
 # Custom iterator to iterate over the demand priorities for which a particular node has a demand
 struct DemandPriorityIterator{V}

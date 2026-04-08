@@ -468,3 +468,23 @@ end
     @test !isempty(high_level_flows)
     @test !isempty(low_level_flows)
 end
+
+@testitem "Adaptive allocation timestep" begin
+    using Ribasim: get_area_slope
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/adaptive_allocation/ribasim.toml")
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    (; p) = model.integrator
+    (; p_independent) = p
+    (; allocation, basin) = p_independent
+
+    # The trapezoidal basin should have non-zero area slope
+    # Profile: area [1000, 50000] over level [0, 10] → dA/dh = 4900
+    slope = get_area_slope(basin, 1, 5.0)
+    @test slope ≈ 4900.0
+end
