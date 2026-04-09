@@ -4,7 +4,6 @@ import logging
 import os
 import platform
 import struct
-import subprocess
 from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -13,6 +12,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from ribasim.cli import _run_subprocess
 from ribasim.utils import MissingOptionalModule
 
 try:
@@ -203,13 +203,12 @@ def run_delwaq(
     system = platform.system()
     if system == "Windows":
         # run_delwaq.bat prepends working directory to the inp file
-        subprocess.run(
+        _run_subprocess(
             [binfolder / "run_delwaq.bat", "delwaq.inp"],
             cwd=model_dir.absolute(),
-            check=True,
         )
     elif system == "Linux":
-        subprocess.run([binfolder / "run_delwaq.sh", inp_path.absolute()], check=True)
+        _run_subprocess([binfolder / "run_delwaq.sh", inp_path.absolute()])
     else:
         raise OSError(f"No support for running Delwaq automatically on {system}.")
 
