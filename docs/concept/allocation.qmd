@@ -96,6 +96,56 @@ $$Q(x_1,x_2) \approx Q(x_1^n,x_2^n) + \frac{\partial Q}{\partial x_1}(x_1^n,x_2^
 
 This yields a linear programming problem that can be solved efficiently while maintaining acceptable accuracy for small changes around the operating point.
 
+## Adaptive timestepping {#sec-adaptive-timestepping}
+
+The linearization of the basin profile $S(h)$ is only valid for small deviations from the operating point. By bounding the linearization error, we can derive an adaptive timestep that keeps the approximation accurate while taking large steps when possible.
+
+### Linearization error bound
+
+The basin profile has a piecewise-linear area $A(h)$, so the storage $S(h) = \int_0^h A(h')\,dh'$ is piecewise quadratic. Within a profile segment where the area varies linearly with slope $m = \frac{dA}{dh}$:
+
+$$A(h) = A^n + m\,(h - h^n)$$
+
+The linearization approximates the storage with a tangent line:
+
+$$S^*(h) = S^n + A^n\,(h - h^n)$$
+
+The true storage is obtained by integrating the area:
+
+$$S(h) = S^n + \int_{h^n}^{h} A(h')\,dh' = S^n + A^n\,(h - h^n) + \tfrac{1}{2}\,m\,(h - h^n)^2$$
+
+so the linearization error is
+
+$$|S(h) - S^*(h)| = \tfrac{1}{2}|m|\,(h - h^n)^2$$
+
+### Maximum storage change
+
+Setting the relative linearization error to be at most a fraction $\varepsilon$ of the maximum basin storage capacity $S_{\max}$:
+
+$$\tfrac{1}{2}|m|\,(\Delta h)^2 \leq \varepsilon\, S_{\max}$$
+
+gives a maximum level change
+
+$$\Delta h_{\max} = \sqrt{\frac{2\,\varepsilon\, S_{\max}}{|m|}}$$
+
+Converting to storage using the linear approximation $\Delta S \approx A^n \,\Delta h$:
+
+$$\Delta S_{\max} = A^n \sqrt{\frac{2\,\varepsilon\, S_{\max}}{|m|}}$$
+
+### Adaptive timestep
+
+Using the current net storage rate $\dot{S} = \sum Q_{\text{in}} - \sum Q_{\text{out}} + f_{\text{forcing}}$ from the physical layer as a predictor, the maximum timestep for which the linearization remains valid is:
+
+$$\Delta t = \frac{\Delta S_{\max}}{|\dot{S}|}$$
+
+When $|m| \approx 0$ (basin with constant area), the linearization is exact and imposes no limit on $\Delta t$. When $|\dot{S}| \approx 0$ (basin in equilibrium), the storage does not change and again $\Delta t$ is unconstrained.
+
+In a network with multiple basins, the adaptive timestep is the minimum across all basins:
+
+$$\Delta t_{\text{adaptive}} = \min_i \Delta t_i$$
+
+clamped between a configured minimum and maximum.
+
 ## The high level algorithm {#sec-high-level-algorithm}
 The allocation algorithm contains 2 types of optimization:
 

@@ -97,14 +97,14 @@ class Allocation(ChildModel):
     adaptive_timestep : bool
         Enable adaptive allocation timestepping based on basin profile linearization error (Optional, defaults to False)
     timestep_tolerance : float
-        Maximum allowed linearization error in m³ for adaptive timestepping (Optional, defaults to 1000.0)
+        Maximum allowed relative linearization error |S - S*| / S_max for adaptive timestepping (Optional, defaults to 0.01)
     min_timestep : float
         Minimum allocation timestep in seconds for adaptive timestepping (Optional, defaults to 3600.0)
     """
 
     timestep: float = 86400.0
     adaptive_timestep: bool = False
-    timestep_tolerance: float = 1000.0
+    timestep_tolerance: float = 0.01
     min_timestep: float = 3600.0
     default_route_priority: RoutePriority = RoutePriority()
 

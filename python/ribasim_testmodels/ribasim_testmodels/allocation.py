@@ -109,9 +109,9 @@ def adaptive_allocation_model() -> Model:
         endtime=datetime(2020, 7, 1),
         crs="EPSG:28992",
         allocation=Allocation(
-            timestep=86400,
+            timestep=5 * 86400,
             adaptive_timestep=True,
-            timestep_tolerance=1000.0,
+            timestep_tolerance=0.01,
             min_timestep=3600.0,
         ),
         experimental=Experimental(allocation=True),

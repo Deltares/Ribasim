@@ -338,9 +338,14 @@ end
 
 """
 Compute the adaptive allocation timestep for a single subnetwork.
-The timestep is chosen so that the linearization error of S(h) stays within tolerance ε.
+The timestep is chosen so that the linearization error of S(h) stays within
+a relative tolerance of the maximum basin storage capacity:
 
-ΔS_max = A * sqrt(2ε / |dA/dh|), then Δt = ΔS_max / |dS/dt|.
+    |S(h) - S*(h)| / S_max ≤ ε_rel
+
+This gives ε = ε_rel * S_max per basin, and then:
+
+    ΔS_max = A * sqrt(2ε / |dA/dh|),  Δt = ΔS_max / |dS/dt|
 """
 function compute_adaptive_Δt(
         allocation_model::AllocationModel,
@@ -356,7 +361,7 @@ function compute_adaptive_Δt(
 
     Δt_max = allocation_config.timestep
     Δt_min = allocation_config.min_timestep
-    ε = allocation_config.timestep_tolerance
+    ε_rel = allocation_config.timestep_tolerance
     safety_factor = 0.8
 
     Δt = Δt_max
@@ -366,6 +371,7 @@ function compute_adaptive_Δt(
         storage_now = current_storage[idx]
         level_now = get_level_from_storage(basin, idx, storage_now)
         A = get_area_from_storage(basin, idx, storage_now)
+        storage_max = basin.storage_to_level[idx].t[end]
 
         # dA/dh: slope of the piecewise-linear area profile
         m = get_area_slope(basin, idx, level_now)
@@ -375,7 +381,9 @@ function compute_adaptive_Δt(
             continue
         end
 
-        # ΔS_max from linearization error bound: |S - S*| ≤ ε → ΔS_max = A * sqrt(2ε / m)
+        # ΔS_max from relative linearization error bound:
+        # |S - S*| / S_max ≤ ε_rel → ΔS_max = A * sqrt(2 * ε_rel * S_max / m)
+        ε = ε_rel * storage_max
         ΔS_max = A * sqrt(2 * ε / m)
 
         # Net storage rate from water balance
