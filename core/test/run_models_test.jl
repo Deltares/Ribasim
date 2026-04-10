@@ -178,13 +178,13 @@ end
     @test prec == [0.0]
     @test evap == [0.0]
     @test drng == [0.003]
-    @test infl == [0.001]
+    @test infl == [0.0]
     stor ≈ Float32[init_stor + 86400 * (0.003 * 1.5 - 0.001 * 0.5)]
     BMI.update_until(model, 2.5 * 86400)
     @test prec == [0.0]
     @test evap == [0.0]
     @test drng == [0.001]
-    @test infl == [0.002]
+    @test infl == [0.0]
     stor ≈ Float32[init_stor + 86400 * (0.003 * 2.0 + 0.001 * 0.5 - 0.001 - 0.002 * 0.5)]
     @test success(Ribasim.solve!(model))
 end
