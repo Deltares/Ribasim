@@ -14,46 +14,34 @@ Ribasim builds on several packages from the [SciML](https://sciml.ai/) ecosystem
 | [DifferentiationInterface.jl](https://github.com/JuliaDiff/DifferentiationInterface.jl) | Unified API for Jacobian computation |
 | [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl) | Forward-mode automatic differentiation via dual numbers |
 | [SparseConnectivityTracer.jl](https://github.com/adrhill/SparseConnectivityTracer.jl) | Sparsity pattern detection |
-| [SparseMatrixColorings.jl](https://github.com/gdalle/SparseMatrixColorings.jl) | Graph coloring for efficient sparse Jacobian evaluation |
+| [SparseMatrixColorings.jl](https://github.com/JuliaDiff/SparseMatrixColorings.jl) | Graph coloring for efficient sparse Jacobian evaluation |
 | [LinearSolve.jl](https://github.com/SciML/LinearSolve.jl) | Linear solver interface (KLU factorization) |
-| [DataInterpolations.jl](https://github.com/SciML/DataInterpolations.jl) | Interpolation of time-dependent forcing data |
+| [DataInterpolations.jl](https://github.com/SciML/DataInterpolations.jl) | Interpolation of forcing data and other tabular inputs (e.g. Basin profiles, rating curves, control look-up functions) |
 
 # ODE problem setup
 
 The ODE problem is assembled in `core/src/model.jl`. The key steps are:
 
 1. Build the `Parameters` struct containing all model data
-2. Construct the `ODEFunction` with the RHS and Jacobian operator
-3. Create the `ODEProblem` and initialize the integrator
+2. Construct an in-place `ODEFunction` wrapping `water_balance!`, with a custom `HalfLazyJacobian` operator and the analytic Jacobian update routine `get_jacobian!`
+3. Wrap it in an `ODEProblem` and create the integrator with `init`, registering all callbacks
 
-```julia
-# model.jl — simplified
-RHS = ODEFunction{true, specialize}(
-    water_balance!;
-    jac_prototype = HalfLazyJacobian(...),
-    jac = get_jacobian!,
-    ...
-)
-prob = ODEProblem{true, specialize}(RHS, u0, (t0, t_end), parameters)
-integrator = init(prob, algorithm; callback = callbacks, ...)
-```
-
-The `specialize` parameter controls whether OrdinaryDiffEq specializes the internal code on the exact function types (`FullSpecialize`) or not (`NoSpecialize`). `NoSpecialize` reduces compilation time at the cost of some runtime performance.
+OrdinaryDiffEq's specialization level is also chosen here: `FullSpecialize` produces the fastest code but compiles on every type change, while `NoSpecialize` reduces compilation time at the cost of some runtime performance.
 
 The simulation is then advanced with `step!(integrator)` in a loop until `t_end`.
 
 # The right-hand side: `water_balance!`
 
-The RHS function `water_balance!` in `core/src/solve.jl` computes $\mathbf{f}(\mathbf{u}, t)$ — the time derivatives of all cumulative flow states. Its execution follows a fixed order:
+The RHS function `water_balance!` in `core/src/solve.jl` has the in-place signature `water_balance!(du, u, p, t)` expected by OrdinaryDiffEq. It writes the time derivatives of all cumulative flow states into the pre-allocated output vector `du` (the same length as the state vector `u`); no allocations or return value are involved. Its execution follows a fixed order:
 
 1. **Cache check** — `check_new_input!` determines whether time-dependent or state-dependent cached quantities need recomputation
-2. **Zero `du`** — initialize all derivatives to zero
-3. **Basin properties** — compute current storage and level from cumulative flows
-4. **Vertical fluxes** — precipitation, evaporation, infiltration, drainage
-5. **Horizontal flows** — `formulate_flows!` for each node type (pumps, outlets, Manning resistance, etc.)
-6. **Continuous control** — evaluate control rules that depend on current flows
+2. **Zero `du`** — every entry is reset before any flow contributions are accumulated into it
+3. **Basin properties** — compute current storage, level, area, and the [low storage factor](/reference/node/basin.qmd#sec-reduction-factor) from the cumulative flows in `u`
+4. **Vertical fluxes** — precipitation and drainage are state-independent and added directly, while evaporation and infiltration are scaled by the low storage factor so they smoothly vanish as a Basin empties; this asymmetry is what makes the outgoing fluxes contribute to the Jacobian while the incoming ones do not
+5. **Horizontal flows** — `formulate_flows!` for each node type ([Pump](/reference/node/pump.qmd), [Outlet](/reference/node/outlet.qmd), [LinearResistance](/reference/node/linear-resistance.qmd), [ManningResistance](/reference/node/manning-resistance.qmd), [TabulatedRatingCurve](/reference/node/tabulated-rating-curve.qmd), [UserDemand](/reference/node/user-demand.qmd), …)
+6. **Continuous control** — evaluate [continuous control](/reference/node/continuous-control.qmd) rules that depend on current flows and levels
 7. **Controlled flows** — flows whose parameters are set by continuous control
-8. **PID control** — integral/proportional/derivative control
+8. **PID control** — evaluate [PID control](/reference/node/pid-control.qmd) (integral/proportional/derivative)
 9. **PID-controlled flows** — flows whose parameters are set by PID control
 
 ::: {.callout-note}
@@ -81,7 +69,14 @@ The default solver is **QNDF** (quasi-Newton backward differentiation formula), 
 
 ## The Jacobian
 
-The Jacobian $J$ is an $N \times N$ matrix where entry $J_{i,j}$ describes how a small change in state component $j$ affects the rate of change of component $i$. The solver uses this sensitivity information to take stable, accurate steps through stiff regions.
+The Jacobian $J$ is an $N \times N$ matrix where entry $J_{i,j}$ describes how a small change in state component $j$ affects the rate of change of component $i$. The solver uses this sensitivity information to take stable, accurate steps through stiff regions. The components of the state vector $\mathbf{u}$ — and therefore the size of $J$ — are assembled in `state_node_ids` (`core/src/util.jl`):
+
+- one cumulative horizontal flow for each TabulatedRatingCurve, Pump, Outlet, LinearResistance, and ManningResistance node;
+- two cumulative horizontal flows per UserDemand (inflow and outflow tracked separately);
+- two cumulative vertical fluxes per Basin (evaporation and infiltration);
+- one integral term per PID control node.
+
+Precipitation and drainage are deliberately *not* states — they are state-independent forcings and are integrated outside the ODE solver.
 
 In practice, most entries of $J$ are zero — a pump in one part of the network does not affect a weir in a distant part. This **sparsity** is the key to making implicit solves affordable, as both the Jacobian computation and the linear solves can exploit it.
 
@@ -94,7 +89,7 @@ $$
 \mathbf{u}_\text{reduced} = A \mathbf{u}
 $$
 
-where $A$ is a linear operator implemented by `reduce_state!`. This means the Jacobian of the full RHS can be decomposed as:
+where $A$ is a linear operator implemented by `reduce_state!` in `core/src/util.jl`, with all entries in $\{-1, 0, +1\}$. Each Basin row picks out the cumulative flow states that change that Basin's storage: $+1$ for the flows arriving at the Basin (the outflow-side states of upstream nodes), $-1$ for the flows leaving it (the inflow-side states of downstream nodes), and $-1$ on the Basin's own evaporation and infiltration columns. The PID rows form an identity block on the integral states. This means the Jacobian of the full RHS can be decomposed as:
 $$
 J_f(\mathbf{u}) = J_g(\mathbf{u}_\text{reduced}) \cdot A
 $$
@@ -107,21 +102,7 @@ The Jacobian computation pipeline lives in `core/src/differentiation.jl`.
 
 ## Forward-mode automatic differentiation
 
-There are three common ways to obtain a Jacobian: finite differences (simple but slow and imprecise), hand-coded derivatives (exact but hard to maintain), and automatic differentiation (AD). Ribasim uses **forward-mode AD** via `ForwardDiff.jl`.
-
-The idea is to replace regular floating-point numbers with **dual numbers** that carry both a value and a derivative component:
-
-$$
-\tilde{x} = x + \epsilon \dot{x}
-$$
-
-where $\epsilon$ is a formal infinitesimal satisfying $\epsilon^2 = 0$. Arithmetic on dual numbers propagates derivatives automatically — for example, multiplication gives:
-
-$$
-(x + \epsilon\dot{x})(y + \epsilon\dot{y}) = xy + \epsilon(x\dot{y} + y\dot{x})
-$$
-
-which is exactly the product rule. By running `water_balance!` with dual-number inputs seeded with a unit perturbation in one state direction, the derivative part of the output gives one column of the Jacobian. Repeating for each direction yields the full matrix.
+There are three common ways to obtain a Jacobian: finite differences (simple but slow and imprecise), hand-coded derivatives (exact but hard to maintain), and automatic differentiation (AD). Ribasim uses **forward-mode AD** via [`ForwardDiff.jl`](https://juliadiff.org/ForwardDiff.jl/stable/), which propagates derivatives by replacing floating-point numbers with dual numbers — see the [ForwardDiff documentation](https://juliadiff.org/ForwardDiff.jl/stable/dev/how_it_works/) for the underlying theory. By running `water_balance!` with dual-number inputs seeded with a unit perturbation in one state direction, the derivative part of the output gives one column of the Jacobian; repeating for each direction yields the full matrix.
 
 ## Exploiting sparsity: graph coloring
 
