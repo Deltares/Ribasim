@@ -112,8 +112,9 @@ class BaseModel(PydanticBaseModel):
         extra="forbid",
     )
 
+    @classmethod
     @contextmanager
-    def _no_validate(self) -> Generator[None, None, None]:
+    def _no_validate(cls) -> Generator[None, None, None]:
         """Temporarily bypass pydantic/pandera validation on field assignments.
 
         Replaces ``__setattr__`` on this model's class so that assignments
@@ -121,7 +122,6 @@ class BaseModel(PydanticBaseModel):
         and pandera validation.  Useful for hot paths like ``add()`` where
         input data has already been validated at construction time.
         """
-        cls = type(self)
         original = cls.__setattr__
         cls.__setattr__ = _bypass_setattr
         try:

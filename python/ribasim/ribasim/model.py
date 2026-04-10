@@ -15,6 +15,7 @@ import tomli_w
 import xarray as xr
 from matplotlib import pyplot as plt
 from packaging import version
+from pandera.typing.geopandas import GeoDataFrame
 from pydantic import (
     DirectoryPath,
     Field,
@@ -52,8 +53,8 @@ from ribasim.config import (
     UserDemand,
 )
 from ribasim.db_utils import _set_db_schema_version
-from ribasim.geometry.link import LinkTable
-from ribasim.geometry.node import NodeModel, NodeTable
+from ribasim.geometry.link import LinkSchema, LinkTable
+from ribasim.geometry.node import NodeModel, NodeSchema, NodeTable
 from ribasim.input_base import (
     FileModel,
     ParentModel,
@@ -171,13 +172,13 @@ class Model(FileModel, ParentModel):
     @model_validator(mode="after")
     def _ensure_topology_tables_are_present(self) -> "Model":
         if self.link.df is None:
-            self.link.df = gpd.GeoDataFrame(
+            self.link.df = GeoDataFrame[LinkSchema](
                 index=pd.Index([], name="link_id"),
                 geometry=[],
             )
         self.link.df = self.link.df.set_geometry("geometry", crs=self.crs)
         if self.node.df is None:
-            self.node.df = gpd.GeoDataFrame(
+            self.node.df = GeoDataFrame[NodeSchema](
                 index=pd.Index([], name="node_id"),
                 geometry=[],
             )

@@ -494,9 +494,13 @@ class NodeModel(ParentModel, ChildModel):
         else:
             df = _concat([self._parent.node.df, node_table])
 
-        has_extra_cols = node.model_extra is not None and len(node.model_extra) > 0
+        has_extra_cols = (
+            node.model_extra is not None
+            and len(node.model_extra) > 0
+            and not all(key.startswith("meta_") for key in node.model_extra)
+        )
         if has_extra_cols:
-            # User-provided extra columns go through validation (checks meta_ prefix).
+            # User-provided extra columns go through validation
             self._parent.node.df = df
         else:
             with self._parent.node._no_validate():
