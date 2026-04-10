@@ -1,5 +1,6 @@
 @testitem "Pump discrete control" begin
     using Ribasim: NodeID, OrderedDict
+    using OrdinaryDiffEqCore: get_du
     using Dates: DateTime
     using NCDatasets: NCDataset
 
@@ -57,10 +58,9 @@
     @test level[2, t_2_index] >=
         discrete_control.compound_variables[1][2].threshold_high[1](0)
 
-    du = p_independent.du_buff
-    Ribasim.water_balance!(du, model.integrator.u, model.integrator.p, model.integrator.t)
-    @test all(iszero, du.linear_resistance)
-    @test all(iszero, du.pump)
+    du = get_du(model.integrator)
+    @test all(x -> isapprox(x, 0; atol = 1.0e-10), du.linear_resistance)
+    @test all(x -> isapprox(x, 0; atol = 1.0e-10), du.pump)
 end
 
 @testitem "Flow condition control" begin
