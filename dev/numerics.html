@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.27">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Numerical implementation – Ribasim</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../dev/benchmark.html" rel="next">
+<link href="../dev/core.html" rel="prev">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-95ac28389d2672089f5c568a994f6185.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo light-content">
+    <img src="https://user-images.githubusercontent.com/4471859/224825908-bee7e044-bc6b-4561-8b08-5d330cce3ed5.png" alt="" class="navbar-logo dark-content">
+    </a>
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">Ribasim</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../index.html"> 
+<span class="menu-text">Overview</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../getting-started/install.html"> 
+<span class="menu-text">Getting started</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../guide/qgis.html"> 
+<span class="menu-text">How-to guides</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../concept/concept.html"> 
+<span class="menu-text">Concepts</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">Reference</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link active" href="../dev/index.html" aria-current="page"> 
+<span class="menu-text">Contributing</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/Deltares/Ribasim"> <i class="bi bi-github" role="img" aria-label="GitHub">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../dev/numerics.html">Numerical implementation</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Contributing</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/core.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Julia core development</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/numerics.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Numerical implementation</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/benchmark.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Benchmark</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/addnode.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Adding node types</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/python.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Python tooling development</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/allocation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Allocation</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/bmi.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Basic Model Interface (BMI)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/ci.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Continuous integration</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/release.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Release process</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/copilot.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Copilot instructions</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">QGIS</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/qgis.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">QGIS plugin development</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../dev/qgis_test_plan.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">QGIS plugin manual test plan</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#sciml-ecosystem-overview" id="toc-sciml-ecosystem-overview" class="nav-link active" data-scroll-target="#sciml-ecosystem-overview"><span class="header-section-number">1</span> SciML ecosystem overview</a></li>
+  <li><a href="#ode-problem-setup" id="toc-ode-problem-setup" class="nav-link" data-scroll-target="#ode-problem-setup"><span class="header-section-number">2</span> ODE problem setup</a></li>
+  <li><a href="#the-right-hand-side-water_balance" id="toc-the-right-hand-side-water_balance" class="nav-link" data-scroll-target="#the-right-hand-side-water_balance"><span class="header-section-number">3</span> The right-hand side: <code>water_balance!</code></a>
+  <ul class="collapse">
+  <li><a href="#parameter-structure" id="toc-parameter-structure" class="nav-link" data-scroll-target="#parameter-structure"><span class="header-section-number">3.1</span> Parameter structure</a></li>
+  </ul></li>
+  <li><a href="#implicit-time-integration" id="toc-implicit-time-integration" class="nav-link" data-scroll-target="#implicit-time-integration"><span class="header-section-number">4</span> Implicit time integration</a>
+  <ul class="collapse">
+  <li><a href="#the-jacobian" id="toc-the-jacobian" class="nav-link" data-scroll-target="#the-jacobian"><span class="header-section-number">4.1</span> The Jacobian</a></li>
+  </ul></li>
+  <li><a href="#sec-state-reduction" id="toc-sec-state-reduction" class="nav-link" data-scroll-target="#sec-state-reduction"><span class="header-section-number">5</span> State reduction</a></li>
+  <li><a href="#jacobian-computation" id="toc-jacobian-computation" class="nav-link" data-scroll-target="#jacobian-computation"><span class="header-section-number">6</span> Jacobian computation</a>
+  <ul class="collapse">
+  <li><a href="#forward-mode-automatic-differentiation" id="toc-forward-mode-automatic-differentiation" class="nav-link" data-scroll-target="#forward-mode-automatic-differentiation"><span class="header-section-number">6.1</span> Forward-mode automatic differentiation</a></li>
+  <li><a href="#exploiting-sparsity-graph-coloring" id="toc-exploiting-sparsity-graph-coloring" class="nav-link" data-scroll-target="#exploiting-sparsity-graph-coloring"><span class="header-section-number">6.2</span> Exploiting sparsity: graph coloring</a></li>
+  <li><a href="#preparation-phase" id="toc-preparation-phase" class="nav-link" data-scroll-target="#preparation-phase"><span class="header-section-number">6.3</span> Preparation phase</a></li>
+  <li><a href="#cache-vs-constant-in-differentiationinterface" id="toc-cache-vs-constant-in-differentiationinterface" class="nav-link" data-scroll-target="#cache-vs-constant-in-differentiationinterface"><span class="header-section-number">6.4</span> <code>Cache()</code> vs <code>Constant()</code> in DifferentiationInterface</a></li>
+  <li><a href="#the-halflazyjacobian-operator" id="toc-the-halflazyjacobian-operator" class="nav-link" data-scroll-target="#the-halflazyjacobian-operator"><span class="header-section-number">6.5</span> The <code>HalfLazyJacobian</code> operator</a></li>
+  </ul></li>
+  <li><a href="#custom-linear-solver" id="toc-custom-linear-solver" class="nav-link" data-scroll-target="#custom-linear-solver"><span class="header-section-number">7</span> Custom linear solver</a></li>
+  <li><a href="#callbacks" id="toc-callbacks" class="nav-link" data-scroll-target="#callbacks"><span class="header-section-number">8</span> Callbacks</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Numerical implementation</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>This page describes how Ribasim’s Julia core implements the numerical methods discussed in <a href="../concept/numerics.html">numerical considerations</a> and solves the equations defined in <a href="../concept/equations.html">equations</a>. It focuses on the SciML ecosystem integration, the automatic differentiation pipeline, and the key implementation patterns in <code>core/src/</code>.</p>
+<section id="sciml-ecosystem-overview" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> SciML ecosystem overview</h1>
+<p>Ribasim builds on several packages from the <a href="https://sciml.ai/">SciML</a> ecosystem:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Package</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="https://github.com/SciML/OrdinaryDiffEq.jl">OrdinaryDiffEq.jl</a> subpackages</td>
+<td>Time integration (default solver: QNDF)</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/JuliaDiff/DifferentiationInterface.jl">DifferentiationInterface.jl</a></td>
+<td>Unified API for Jacobian computation</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/JuliaDiff/ForwardDiff.jl">ForwardDiff.jl</a></td>
+<td>Forward-mode automatic differentiation via dual numbers</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/adrhill/SparseConnectivityTracer.jl">SparseConnectivityTracer.jl</a></td>
+<td>Sparsity pattern detection</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/JuliaDiff/SparseMatrixColorings.jl">SparseMatrixColorings.jl</a></td>
+<td>Graph coloring for efficient sparse Jacobian evaluation</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/SciML/LinearSolve.jl">LinearSolve.jl</a></td>
+<td>Linear solver interface (KLU factorization)</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/SciML/DataInterpolations.jl">DataInterpolations.jl</a></td>
+<td>Interpolation of forcing data and other tabular inputs (e.g.&nbsp;Basin profiles, rating curves, control look-up functions)</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="ode-problem-setup" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> ODE problem setup</h1>
+<p>The ODE problem is assembled in <code>core/src/model.jl</code>. The key steps are:</p>
+<ol type="1">
+<li>Build the <code>Parameters</code> struct containing all model data</li>
+<li>Construct an in-place <code>ODEFunction</code> wrapping <code>water_balance!</code>, with a custom <code>HalfLazyJacobian</code> operator and the analytic Jacobian update routine <code>get_jacobian!</code></li>
+<li>Wrap it in an <code>ODEProblem</code> and create the integrator with <code>init</code>, registering all callbacks</li>
+</ol>
+<p>OrdinaryDiffEq’s specialization level is also chosen here: <code>FullSpecialize</code> produces the fastest code but compiles on every type change, while <code>NoSpecialize</code> reduces compilation time at the cost of some runtime performance.</p>
+<p>The simulation is then advanced with <code>step!(integrator)</code> in a loop until <code>t_end</code>.</p>
+</section>
+<section id="the-right-hand-side-water_balance" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> The right-hand side: <code>water_balance!</code></h1>
+<p>The RHS function <code>water_balance!</code> in <code>core/src/solve.jl</code> has the in-place signature <code>water_balance!(du, u, p, t)</code> expected by OrdinaryDiffEq. It writes the time derivatives of all cumulative flow states into the pre-allocated output vector <code>du</code> (the same length as the state vector <code>u</code>); no allocations or return value are involved. Its execution follows a fixed order:</p>
+<ol type="1">
+<li><strong>Cache check</strong> — <code>check_new_input!</code> determines whether time-dependent or state-dependent cached quantities need recomputation</li>
+<li><strong>Zero <code>du</code></strong> — every entry is reset before any flow contributions are accumulated into it</li>
+<li><strong>Basin properties</strong> — compute current storage, level, area, and the <a href="../reference/node/basin.html#sec-reduction-factor">low storage factor</a> from the cumulative flows in <code>u</code></li>
+<li><strong>Vertical fluxes</strong> — precipitation and drainage are state-independent and added directly, while evaporation and infiltration are state dependent; this asymmetry is what makes the outgoing fluxes contribute to the Jacobian while the incoming ones do not</li>
+<li><strong>Horizontal flows</strong> — <code>formulate_flows!</code> for each node type (<a href="../reference/node/pump.html">Pump</a>, <a href="../reference/node/outlet.html">Outlet</a>, <a href="../reference/node/linear-resistance.html">LinearResistance</a>, <a href="../reference/node/manning-resistance.html">ManningResistance</a>, <a href="../reference/node/tabulated-rating-curve.html">TabulatedRatingCurve</a>, <a href="../reference/node/user-demand.html">UserDemand</a>, …)</li>
+<li><strong>Continuous control</strong> — evaluate <a href="../reference/node/continuous-control.html">continuous control</a> rules that depend on current flows and levels</li>
+<li><strong>Controlled flows</strong> — flows whose parameters are set by continuous control</li>
+<li><strong>PID control</strong> — evaluate <a href="../reference/node/pid-control.html">PID control</a> (integral/proportional/derivative)</li>
+<li><strong>PID-controlled flows</strong> — flows whose parameters are set by PID control</li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The state vector <span class="math inline">\(\mathbf{u}\)</span> contains cumulative flows, not instantaneous flows or storages. See <a href="../concept/equations.html#why-this-formulation">why this formulation</a> for the rationale.</p>
+</div>
+</div>
+<section id="parameter-structure" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="parameter-structure"><span class="header-section-number">3.1</span> Parameter structure</h2>
+<p>The <code>Parameters</code> struct (defined in <code>core/src/parameter.jl</code>) is split into four components that play distinct roles during Jacobian computation:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 36%">
+<col style="width: 33%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Component</th>
+<th>Contents</th>
+<th>AD role</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>p_independent</code></td>
+<td>All node data, graph, interpolations, pre-allocated buffers</td>
+<td><code>Constant()</code> — shared, not copied</td>
+</tr>
+<tr class="even">
+<td><code>state_and_time_dependent_cache</code></td>
+<td>Cached values that depend on both state and time (current level, storage, flow rates)</td>
+<td><code>Cache()</code> — copied as dual-number arrays</td>
+</tr>
+<tr class="odd">
+<td><code>time_dependent_cache</code></td>
+<td>Cached values that depend only on time (forcing interpolations)</td>
+<td><code>Constant()</code> — shared</td>
+</tr>
+<tr class="even">
+<td><code>p_mutable</code></td>
+<td>Flags controlling cache validity (<code>new_time_dependent_cache</code>, etc.)</td>
+<td><code>Constant()</code> — shared</td>
+</tr>
+</tbody>
+</table>
+<p>This split is driven by AD requirements — see <a href="#jacobian-computation">Jacobian computation</a> below.</p>
+</section>
+</section>
+<section id="implicit-time-integration" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Implicit time integration</h1>
+<p>Water systems can be <strong>stiff</strong> — some processes change on timescales of seconds (a pump switching on), while others evolve over days (a reservoir slowly filling). Explicit methods like forward Euler would need extremely small timesteps to remain stable, making them impractical. Implicit methods avoid this by solving an equation at each step that accounts for the system’s coupled dynamics, allowing much larger steps.</p>
+<p>The default solver is <strong>QNDF</strong> (quasi-Newton backward differentiation formula), an implicit multi-step method from <code>OrdinaryDiffEq.jl</code> well-suited for stiff problems. The trade-off is that each implicit step requires solving a nonlinear system, which in turn requires the <strong>Jacobian</strong> — a matrix of partial derivatives of the RHS.</p>
+<section id="the-jacobian" class="level2" data-number="4.1">
+<h2 data-number="4.1" class="anchored" data-anchor-id="the-jacobian"><span class="header-section-number">4.1</span> The Jacobian</h2>
+<p>The Jacobian <span class="math inline">\(J\)</span> is an <span class="math inline">\(N \times N\)</span> matrix where entry <span class="math inline">\(J_{i,j}\)</span> describes how a small change in state component <span class="math inline">\(j\)</span> affects the rate of change of component <span class="math inline">\(i\)</span>. The solver uses this sensitivity information to take stable, accurate steps through stiff regions. The components of the state vector <span class="math inline">\(\mathbf{u}\)</span> — and therefore the size of <span class="math inline">\(J\)</span> — are assembled in <code>state_node_ids</code> (<code>core/src/util.jl</code>):</p>
+<ul>
+<li>one cumulative horizontal flow for each TabulatedRatingCurve, Pump, Outlet, LinearResistance, and ManningResistance node;</li>
+<li>two cumulative horizontal flows per UserDemand (inflow and outflow tracked separately);</li>
+<li>two cumulative vertical fluxes per Basin (evaporation and infiltration);</li>
+<li>one integral term per PID control node.</li>
+</ul>
+<p>Precipitation and drainage are deliberately <em>not</em> states — they are state-independent forcings and are integrated outside the ODE solver.</p>
+<p>In practice, most entries of <span class="math inline">\(J\)</span> are zero — a pump in one part of the network does not affect a weir in a distant part. This <strong>sparsity</strong> is the key to making implicit solves affordable, as both the Jacobian computation and the linear solves can exploit it.</p>
+</section>
+</section>
+<section id="sec-state-reduction" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> State reduction</h1>
+<p>Not every component of the state vector <span class="math inline">\(\mathbf{u}\)</span> influences every flow independently. Many flow states depend on basin levels, which in turn depend on basin storages. Ribasim exploits this by working with a <strong>reduced state</strong> <span class="math inline">\(\mathbf{u}_\text{reduced}\)</span> that contains only the basin storages and PID integral terms.</p>
+<p>The relationship is: <span class="math display">\[
+\mathbf{u}_\text{reduced} = A \mathbf{u}
+\]</span></p>
+<p>where <span class="math inline">\(A\)</span> is a linear operator implemented by <code>reduce_state!</code> in <code>core/src/util.jl</code>. All of its entries lie in <span class="math inline">\(\{-1, 0, +1\}\)</span>, and each Basin row simply sums the cumulative flow states that change that Basin’s storage:</p>
+<ul>
+<li><span class="math inline">\(+1\)</span> for every horizontal flow state whose link enters the Basin,</li>
+<li><span class="math inline">\(-1\)</span> for every horizontal flow state whose link leaves the Basin,</li>
+<li><span class="math inline">\(-1\)</span> on the Basin’s own evaporation and infiltration columns.</li>
+</ul>
+<p>UserDemand is the one node type that contributes two separate flow states (inflow and outflow); each enters the appropriate Basin row with the corresponding sign. The PID rows form an identity block on the integral states. Because each non-Basin node is constrained to have at most one upstream and one downstream Basin, every flow column has at most one <span class="math inline">\(+1\)</span> and one <span class="math inline">\(-1\)</span> — i.e.&nbsp;<span class="math inline">\(A\)</span> is the signed incidence matrix of the model graph as seen by the Basins, augmented with the vertical-flux and PID-integral columns. This means the Jacobian of the full RHS can be decomposed as: <span class="math display">\[
+J_f(\mathbf{u}) = J_g(\mathbf{u}_\text{reduced}) \cdot A
+\]</span></p>
+<p>where <span class="math inline">\(g\)</span> is <code>water_balance!</code> as a function of <span class="math inline">\(\mathbf{u}_\text{reduced}\)</span>. AD only needs to differentiate <span class="math inline">\(g\)</span> (smaller matrix), and the multiplication by <span class="math inline">\(A\)</span> is handled analytically. This decomposition is central to the <code>HalfLazyJacobian</code> operator and the custom linear solver.</p>
+</section>
+<section id="jacobian-computation" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> Jacobian computation</h1>
+<p>The Jacobian computation pipeline lives in <code>core/src/differentiation.jl</code>.</p>
+<section id="forward-mode-automatic-differentiation" class="level2" data-number="6.1">
+<h2 data-number="6.1" class="anchored" data-anchor-id="forward-mode-automatic-differentiation"><span class="header-section-number">6.1</span> Forward-mode automatic differentiation</h2>
+<p>There are three common ways to obtain a Jacobian: finite differences (simple but slow and imprecise), hand-coded derivatives (exact but hard to maintain), and automatic differentiation (AD). Ribasim uses <strong>forward-mode AD</strong> via <a href="https://juliadiff.org/ForwardDiff.jl/stable/"><code>ForwardDiff.jl</code></a>, which propagates derivatives by replacing floating-point numbers with dual numbers — see the <a href="https://juliadiff.org/ForwardDiff.jl/stable/dev/how_it_works/">ForwardDiff documentation</a> for the underlying theory. By running <code>water_balance!</code> with dual-number inputs seeded with a unit perturbation in one state direction, the derivative part of the output gives one column of the Jacobian; repeating for each direction yields the full matrix.</p>
+</section>
+<section id="exploiting-sparsity-graph-coloring" class="level2" data-number="6.2">
+<h2 data-number="6.2" class="anchored" data-anchor-id="exploiting-sparsity-graph-coloring"><span class="header-section-number">6.2</span> Exploiting sparsity: graph coloring</h2>
+<p>Computing each Jacobian column requires a full evaluation of <code>water_balance!</code> with dual numbers. With <span class="math inline">\(N\)</span> states, that would mean <span class="math inline">\(N\)</span> evaluations — prohibitively expensive for large models.</p>
+<p>However, since the Jacobian is sparse, many columns have no overlapping nonzero rows. If columns <span class="math inline">\(i\)</span> and <span class="math inline">\(j\)</span> never have a nonzero in the same row, their perturbations can be seeded simultaneously in a single evaluation without interfering. This observation leads to <strong>graph coloring</strong>: columns are partitioned into groups (colors) such that all columns within a group are structurally independent. One evaluation per color suffices, reducing the cost from <span class="math inline">\(N\)</span> evaluations to the number of colors — typically a small constant for network-structured problems.</p>
+</section>
+<section id="preparation-phase" class="level2" data-number="6.3">
+<h2 data-number="6.3" class="anchored" data-anchor-id="preparation-phase"><span class="header-section-number">6.3</span> Preparation phase</h2>
+<p>At model initialization, <code>get_diff_eval</code> prepares everything the solver will need:</p>
+<ol type="1">
+<li><p><strong>Sparsity detection</strong> — <code>TracerSparsityDetector</code> from SparseConnectivityTracer runs <code>water_balance!</code> with tracer inputs to determine which outputs depend on which inputs, producing a sparse boolean matrix.</p></li>
+<li><p><strong>Graph coloring</strong> — <code>GreedyColoringAlgorithm</code> from SparseMatrixColorings partitions the columns of the Jacobian into groups (colors) such that columns in the same group have no overlapping nonzero rows. This allows multiple columns to be computed in a single ForwardDiff pass by seeding multiple perturbation directions simultaneously.</p></li>
+<li><p><strong>AD preparation</strong> — <code>DifferentiationInterface.prepare_jacobian</code> pre-allocates all working arrays (dual-number buffers, etc.) based on the sparsity pattern and coloring.</p></li>
+</ol>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>backend_jac <span class="op">=</span> <span class="fu">AutoSparse</span>(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">AutoForwardDiff</span>(; tag <span class="op">=</span> <span class="op">:</span>Ribasim),</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    sparsity_detector <span class="op">=</span> <span class="fu">TracerSparsityDetector</span>(),</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    coloring_algorithm <span class="op">=</span> <span class="fu">GreedyColoringAlgorithm</span>(),</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>jac_prep <span class="op">=</span> <span class="fu">prepare_jacobian</span>(</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    water_balance!, du, backend_jac,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    u_reduced,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">Constant</span>(p_independent),</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">Cache</span>(state_and_time_dependent_cache),</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">Constant</span>(time_dependent_cache),</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">Constant</span>(p_mutable),</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">Constant</span>(t);</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    strict <span class="op">=</span> <span class="fu">Val</span>(<span class="cn">true</span>),</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="cache-vs-constant-in-differentiationinterface" class="level2" data-number="6.4">
+<h2 data-number="6.4" class="anchored" data-anchor-id="cache-vs-constant-in-differentiationinterface"><span class="header-section-number">6.4</span> <code>Cache()</code> vs <code>Constant()</code> in DifferentiationInterface</h2>
+<p>When <code>DifferentiationInterface.jacobian!</code> calls the RHS, it needs to know how to handle each argument:</p>
+<ul>
+<li><strong><code>Cache(x)</code></strong> — “this depends on the differentiation variable; make a copy promoted to dual numbers.” The copy is allocated with the right dual-number element type but is <strong>not initialized</strong> with the original values. The RHS must write meaningful values into it before reading.</li>
+<li><strong><code>Constant(x)</code></strong> — “this is independent of the differentiation variable; pass the original object directly.” No copy, no promotion. But this means AD calls can <strong>mutate shared state</strong>.</li>
+</ul>
+<p>This distinction is a performance optimization (fewer allocations), but it introduces a subtle invariant: any cached value in a <code>Cache()</code> argument must be freshly computed during the AD call, because the copy starts uninitialized.</p>
+</section>
+<section id="the-halflazyjacobian-operator" class="level2" data-number="6.5">
+<h2 data-number="6.5" class="anchored" data-anchor-id="the-halflazyjacobian-operator"><span class="header-section-number">6.5</span> The <code>HalfLazyJacobian</code> operator</h2>
+<p>Rather than materializing the full <span class="math inline">\(N \times N\)</span> Jacobian, Ribasim uses a custom <code>AbstractSciMLOperator</code> called <code>HalfLazyJacobian</code>. It stores:</p>
+<ul>
+<li><code>J_intermediate</code> — the sparse Jacobian <span class="math inline">\(J_g\)</span> of the RHS with respect to <span class="math inline">\(\mathbf{u}_\text{reduced}\)</span> (computed by AD)</li>
+<li>References to the parameters and AD preparation objects</li>
+</ul>
+<p>When the solver needs a matrix-vector product <span class="math inline">\(J \cdot v\)</span>, it computes:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>u_reduced <span class="op">=</span> A <span class="op">*</span> v          <span class="co"># reduce_state!</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>result <span class="op">=</span> J_intermediate <span class="op">*</span> u_reduced  <span class="co"># sparse matvec</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>When the solver needs to update the Jacobian (via <code>update_coefficients!</code>), it calls <code>get_jacobian!</code> which invokes <code>DifferentiationInterface.jacobian!</code> to fill <code>J_intermediate</code>.</p>
+</section>
+</section>
+<section id="custom-linear-solver" class="level1" data-number="7">
+<h1 data-number="7"><span class="header-section-number">7</span> Custom linear solver</h1>
+<p>At each Newton iteration the solver must solve a linear system involving the Jacobian. Ribasim provides a custom <code>RibasimLinearSolve</code> wrapper (in <code>core/src/differentiation.jl</code>) that exploits the state reduction structure.</p>
+<p>Instead of solving the full system, it:</p>
+<ol type="1">
+<li><strong>Reduces</strong> the right-hand side: <span class="math inline">\(\mathbf{b}_\text{reduced} = A \cdot \mathbf{b}\)</span></li>
+<li><strong>Builds</strong> the reduced system matrix: <span class="math inline">\(W_\text{inner} = -\gamma^{-1}I - A \cdot J_\text{intermediate}\)</span></li>
+<li><strong>Solves</strong> the smaller system using KLU factorization (efficient for sparse matrices)</li>
+<li><strong>Expands</strong> the solution back to the full state space</li>
+</ol>
+<p>This is significantly cheaper than solving in the full state space, since the reduced system only has dimension equal to the number of basins plus PID integral terms.</p>
+</section>
+<section id="callbacks" class="level1" data-number="8">
+<h1 data-number="8"><span class="header-section-number">8</span> Callbacks</h1>
+<p>Ribasim uses SciML’s <a href="https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/">callback mechanism</a> to handle events that occur during simulation. These are set up in <code>core/src/callback.jl</code>:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Callback</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Negative storage check</td>
+<td><code>FunctionCallingCallback</code></td>
+<td>Detects and handles negative basin storage at every accepted step</td>
+</tr>
+<tr class="even">
+<td>Basin state saving</td>
+<td><code>SavingCallback</code></td>
+<td>Records basin storage/level at output times</td>
+</tr>
+<tr class="odd">
+<td>Cumulative flow update</td>
+<td><code>FunctionCallingCallback</code></td>
+<td>Tracks cumulative flows for mass balance</td>
+</tr>
+<tr class="even">
+<td>Basin forcing update</td>
+<td><code>PresetTimeCallback</code></td>
+<td>Injects new forcing data at prescribed times</td>
+</tr>
+<tr class="odd">
+<td>Flow saving</td>
+<td><code>SavingCallback</code></td>
+<td>Records averaged flows at output times</td>
+</tr>
+<tr class="even">
+<td>Discrete control</td>
+<td><code>FunctionCallingCallback</code></td>
+<td>Evaluates and applies discrete control rules</td>
+</tr>
+<tr class="odd">
+<td>Tolerance decrease</td>
+<td><code>FunctionCallingCallback</code></td>
+<td>Compensates for growing cumulative state magnitudes (see <a href="../concept/numerics.html#compensating-for-cumulative-flows">numerical considerations</a>)</td>
+</tr>
+<tr class="even">
+<td>Subgrid interpolation</td>
+<td><code>SavingCallback</code></td>
+<td>Interpolates subgrid levels for output</td>
+</tr>
+</tbody>
+</table>
+<p><code>PresetTimeCallback</code> fires at specific times (e.g.&nbsp;when forcing data changes). <code>FunctionCallingCallback</code> fires at every accepted solver step. <code>SavingCallback</code> fires at the <code>saveat</code> interval and stores results for later output.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../dev/core.html" class="pagination-link" aria-label="Julia core development">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Julia core development</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../dev/benchmark.html" class="pagination-link" aria-label="Benchmark">
+        <span class="nav-page-text">Benchmark</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
