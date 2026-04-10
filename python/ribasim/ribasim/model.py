@@ -220,8 +220,10 @@ class Model(FileModel, ParentModel):
         INDENT = "    "
         for field in self.model_fields_set:
             attr = getattr(self, field)
-            if isinstance(attr, (LinkTable, NodeTable)):
+            if isinstance(attr, LinkTable):
                 content.append(f"{INDENT}{field}=Link(...),")
+            elif isinstance(attr, NodeTable):
+                content.append(f"{INDENT}{field}=Node(...),")
             else:
                 if isinstance(attr, NodeModel):
                     # Skip unused node types
