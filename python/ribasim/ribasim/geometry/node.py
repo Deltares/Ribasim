@@ -494,7 +494,7 @@ class NodeModel(ParentModel, ChildModel):
         )
         node_table.set_crs(model.crs, inplace=True)
         if model.node.df is None:
-            model.node.df = node_table
+            df = node_table
         else:
             df = _concat([model.node.df, node_table])
 
@@ -505,10 +505,10 @@ class NodeModel(ParentModel, ChildModel):
         )
         if has_extra_cols:
             # User-provided extra columns go through validation
-            self._parent.node.df = df
+            model.node.df = df  # type: ignore[assignment]
         else:
-            with self._parent.node._no_validate():
-                self._parent.node.df = df
+            with model.node._no_validate():
+                model.node.df = df  # type: ignore[assignment]
 
         model.node._used_node_ids.add(node_id)
         return self[node_id]
