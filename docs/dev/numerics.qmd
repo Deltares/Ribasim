@@ -37,7 +37,7 @@ The RHS function `water_balance!` in `core/src/solve.jl` has the in-place signat
 1. **Cache check** — `check_new_input!` determines whether time-dependent or state-dependent cached quantities need recomputation
 2. **Zero `du`** — every entry is reset before any flow contributions are accumulated into it
 3. **Basin properties** — compute current storage, level, area, and the [low storage factor](/reference/node/basin.qmd#sec-reduction-factor) from the cumulative flows in `u`
-4. **Vertical fluxes** — precipitation and drainage are state-independent and added directly, while evaporation and infiltration are scaled by the low storage factor so they smoothly vanish as a Basin empties; this asymmetry is what makes the outgoing fluxes contribute to the Jacobian while the incoming ones do not
+4. **Vertical fluxes** — precipitation and drainage are state-independent and added directly, while evaporation and infiltration are state dependent; this asymmetry is what makes the outgoing fluxes contribute to the Jacobian while the incoming ones do not
 5. **Horizontal flows** — `formulate_flows!` for each node type ([Pump](/reference/node/pump.qmd), [Outlet](/reference/node/outlet.qmd), [LinearResistance](/reference/node/linear-resistance.qmd), [ManningResistance](/reference/node/manning-resistance.qmd), [TabulatedRatingCurve](/reference/node/tabulated-rating-curve.qmd), [UserDemand](/reference/node/user-demand.qmd), …)
 6. **Continuous control** — evaluate [continuous control](/reference/node/continuous-control.qmd) rules that depend on current flows and levels
 7. **Controlled flows** — flows whose parameters are set by continuous control
@@ -89,7 +89,13 @@ $$
 \mathbf{u}_\text{reduced} = A \mathbf{u}
 $$
 
-where $A$ is a linear operator implemented by `reduce_state!` in `core/src/util.jl`, with all entries in $\{-1, 0, +1\}$. Each Basin row picks out the cumulative flow states that change that Basin's storage: $+1$ for the flows arriving at the Basin (the outflow-side states of upstream nodes), $-1$ for the flows leaving it (the inflow-side states of downstream nodes), and $-1$ on the Basin's own evaporation and infiltration columns. The PID rows form an identity block on the integral states. This means the Jacobian of the full RHS can be decomposed as:
+where $A$ is a linear operator implemented by `reduce_state!` in `core/src/util.jl`. All of its entries lie in $\{-1, 0, +1\}$, and each Basin row simply sums the cumulative flow states that change that Basin's storage:
+
+- $+1$ for every horizontal flow state whose link enters the Basin,
+- $-1$ for every horizontal flow state whose link leaves the Basin,
+- $-1$ on the Basin's own evaporation and infiltration columns.
+
+UserDemand is the one node type that contributes two separate flow states (inflow and outflow); each enters the appropriate Basin row with the corresponding sign. The PID rows form an identity block on the integral states. Because each non-Basin node is constrained to have at most one upstream and one downstream Basin, every flow column has at most one $+1$ and one $-1$ — i.e. $A$ is the signed incidence matrix of the model graph as seen by the Basins, augmented with the vertical-flux and PID-integral columns. This means the Jacobian of the full RHS can be decomposed as:
 $$
 J_f(\mathbf{u}) = J_g(\mathbf{u}_\text{reduced}) \cdot A
 $$
