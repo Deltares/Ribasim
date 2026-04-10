@@ -574,8 +574,9 @@ end
 function check_negative_storage(u, t, integrator)::Nothing
     (; p) = integrator
     (; p_independent, state_and_time_dependent_cache) = p
-    (; basin, du_buff) = p_independent
-    water_balance!(du_buff, u, p, t)
+    (; basin) = p_independent
+    du = get_du(integrator)
+    water_balance!(du, u, p, t)
 
     errors = false
     for id in basin.node_id
@@ -606,8 +607,9 @@ Apply the discrete control logic. There's somewhat of a complex structure:
 """
 function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
-    (; discrete_control, du_buff) = p.p_independent
+    (; discrete_control) = p.p_independent
     (; node_id, truth_state, compound_variables) = discrete_control
+    du = get_du(integrator)
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes
@@ -623,7 +625,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 
         # Loop over the compound variables listened to by this discrete control node
         for compound_variable in compound_variables_node
-            value = compound_variable_value(compound_variable, p, du_buff, t)
+            value = compound_variable_value(compound_variable, p, du, t)
 
             # Loop over the threshold interpolations associated with the current compound variable
             for (threshold_low, threshold_high) in
