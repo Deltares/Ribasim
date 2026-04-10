@@ -1,9 +1,8 @@
-from typing import Any
+from datetime import datetime
 
 import numpy as np
 from ribasim.config import Experimental, Solver
 from ribasim.geometry.node import Node
-from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import (
     basin,
@@ -21,8 +20,8 @@ from shapely.geometry import Point
 def linear_resistance_model() -> Model:
     """Set up a minimal model which uses a linear_resistance node."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )
@@ -54,8 +53,8 @@ def linear_resistance_model() -> Model:
 def rating_curve_model() -> Model:
     """Set up a minimal model which uses a tabulated_rating_curve node."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )
@@ -93,8 +92,8 @@ def rating_curve_model() -> Model:
 def rating_curve_between_basins_model() -> Model:
     """Set up a minimal model which uses a tabulated_rating_curve node."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )
@@ -153,8 +152,8 @@ def rating_curve_between_basins_model() -> Model:
 def manning_resistance_model() -> Model:
     """Set up a minimal model which uses a manning_resistance node."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )
@@ -191,14 +190,14 @@ def manning_resistance_model() -> Model:
 def misc_nodes_model() -> Model:
     """Set up a minimal model using flow_boundary and pump nodes."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         solver=Solver(dt=24 * 60 * 60, algorithm="Euler"),
         experimental=Experimental(concentration=True),
     )
 
-    basin_shared: list[TableModel[Any]] = [
+    basin_shared = [
         basin.Profile(area=[0.01, 100.0, 100.0], level=[0.0, 1.0, 2.0]),
         basin.State(level=[10.5]),
     ]
@@ -229,8 +228,8 @@ def misc_nodes_model() -> Model:
 def pid_control_equation_model() -> Model:
     """Set up a model with pid control for an analytical solution test."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2020-01-01 00:05:00",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 1, 0, 5, 0),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )

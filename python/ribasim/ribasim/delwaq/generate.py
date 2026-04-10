@@ -7,23 +7,33 @@ import shutil
 from collections import defaultdict
 from datetime import timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, cast
 
 from ribasim import Model, nodes
-from ribasim.utils import MissingOptionalModule, _concat, _pascal_to_snake
+from ribasim.utils import (
+    MissingOptionalModule,
+    _concat,
+    _pascal_to_snake,
+)
+
+if TYPE_CHECKING:
+    import networkx as nx_types
 
 try:
-    import networkx as nx
+    import networkx as _nx
 except ImportError:
-    nx = MissingOptionalModule("networkx", "delwaq")
+    _nx = MissingOptionalModule("networkx", "delwaq")
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 
+from ribasim.geometry.link import SPATIALCONTROLNODETYPES
+
 try:
-    import jinja2
+    import jinja2 as _jinja2
 except ImportError:
-    jinja2 = MissingOptionalModule("jinja2", "delwaq")  # type: ignore[assignment]
+    _jinja2 = MissingOptionalModule("jinja2", "delwaq")
 
 import ribasim
 from ribasim.delwaq.util import (
@@ -38,6 +48,7 @@ from ribasim.delwaq.util import (
 
 logger = logging.getLogger(__name__)
 
+jinja2 = cast(Any, _jinja2)
 env = jinja2.Environment(
     autoescape=False, loader=jinja2.FileSystemLoader(delwaq_dir / "template")
 )
@@ -91,11 +102,12 @@ def _make_boundary(data, boundary_type, values="concentration"):
 
 
 def _setup_graph(nodes, link, evaporate_mass=True):
+    nx = cast(Any, _nx)
     G = nx.DiGraph()
 
     assert nodes.df is not None
     for row in nodes.df.itertuples():
-        if row.node_type not in ribasim.geometry.link.SPATIALCONTROLNODETYPES:
+        if row.node_type not in SPATIALCONTROLNODETYPES:
             G.add_node(
                 row.Index,
                 type=row.node_type,
@@ -341,7 +353,7 @@ def _setup_boundaries(model, node_mapping):
             substances.update(substance)
 
     if model.user_demand.concentration.df is not None:
-        for _, rows in model.flow_boundary.concentration.df.groupby("node_id"):
+        for _, rows in model.user_demand.concentration.df.groupby("node_id"):
             boundary, substance = _make_boundary(rows, "UserDemand")
             concentrations.append(boundary)
             substances.update(substance)
@@ -365,13 +377,13 @@ def _setup_boundaries(model, node_mapping):
 
 
 def generate(
-    model: Path | ribasim.Model,
+    model: Path | Model,
     output_path: Path | None = None,
-) -> tuple[nx.DiGraph, set[str]]:
+) -> tuple["nx_types.DiGraph", set[str]]:
     """Generate a Delwaq model from a Ribasim model and results."""
     # Read in model and results
-    if not isinstance(model, ribasim.Model):
-        model = ribasim.Model.read(model)
+    if not isinstance(model, Model):
+        model = Model.read(model)
 
     evaporate_mass = model.solver.evaporate_mass
 
@@ -441,8 +453,9 @@ def generate(
     uds = ugrid(G, crs=model.crs)
     grid = uds.ugrid.grid
     dataset = uds.ugrid.to_dataset(optional_attributes=True)
-    dataset[grid.name].attrs["node_id"] = grid.node_dimension
-    dataset[grid.name].attrs["node_long_name"] = "Node dimension of 1D network"
+    grid_name = cast(Any, grid).name
+    dataset[grid_name].attrs["node_id"] = grid.node_dimension
+    dataset[grid_name].attrs["node_long_name"] = "Node dimension of 1D network"
     dataset.to_netcdf(output_path / "ribasim.nc")
 
     # Generate area and flows
@@ -576,6 +589,7 @@ def generate(
 
     # Override default concentrations with the user defined values
     if model.basin.concentration_state.df is not None:
+        initial = model.basin.concentration_state.df
         for _, row in initial.iterrows():
             icdf.loc[basin_mapping[row.node_id], row.substance] = row.concentration
 

@@ -2,15 +2,15 @@
     "recommendations": [
         "aviatesk.jetls-client",
         "charliermarsh.ruff",
+        "GitHub.copilot",
         "julialang.language-julia",
-        "ms-python.mypy-type-checker",
+        "meta.pyrefly",
         "ms-python.python",
         "ms-toolsai.jupyter",
         "njpwerner.autodocstring",
         "quarto.quarto",
         "renan-r-santos.pixi-code",
         "samuelcolvin.jinjahtml",
-        "streetsidesoftware.code-spell-checker",
         "tamasfe.even-better-toml",
         "yy0931.vscode-sqlite3-editor"
     ]

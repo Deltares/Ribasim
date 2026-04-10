@@ -1,0 +1,18 @@
+project-includes = [
+    "python/ribasim/ribasim",
+    "python/ribasim_api/ribasim_api",
+    "python/ribasim_testmodels/ribasim_testmodels",
+    "ribasim_qgis",
+]
+search-path = [
+    "python/ribasim",
+    "python/ribasim_api",
+    "python/ribasim_testmodels",
+    "ribasim_qgis/scripts",
+]
+python-version = "3.12"
+
+[errors]
+missing-source = "error"
+untyped-import = "error"
+unused-ignore = "error"

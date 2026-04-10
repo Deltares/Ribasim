@@ -113,7 +113,7 @@ def _subprocess_handling() -> SubprocessHandling:
     """
     # Check for Marimo first
     try:
-        import marimo
+        import marimo  # pyrefly: ignore[missing-import]
 
         if marimo.running_in_notebook():
             return SubprocessHandling.DISPLAY
@@ -202,34 +202,49 @@ def run_ribasim(
         raise ValueError("Provide a toml_path, or set version=True")
 
     cli = _find_cli(ribasim_home)
+    _run_subprocess([cli, *args])
+
+
+def _run_subprocess(args: list[str | Path], cwd: Path | None = None) -> None:
+    """Run a subprocess with output handling appropriate for the environment.
+
+    In terminal environments, output is forwarded directly (preserving colors).
+    In Jupyter/Spyder, output is captured and displayed with progress bar handling.
+
+    Parameters
+    ----------
+    args : list[str | Path]
+        Full command-line arguments including the executable.
+    cwd : Path | None, optional
+        Working directory for the subprocess.
+    """
     handling = _subprocess_handling()
 
     if handling == SubprocessHandling.FORWARD:
         # In terminal: direct forwarding preserves colors and formatting
-        result = subprocess.run([cli, *args])
+        result = subprocess.run(args, cwd=cwd)
         result.check_returncode()
     else:
         # For DISPLAY and SPYDER: capture output and handle progress bars
-        _run_with_progress_handling(cli, args, handling)
+        _run_with_progress_handling(args, handling, cwd=cwd)
 
 
 def _run_with_progress_handling(
-    cli: Path, args: list[str | Path], handling: SubprocessHandling
+    args: list[str | Path],
+    handling: SubprocessHandling,
+    cwd: Path | None = None,
 ) -> None:
     """Run subprocess with special handling for progress bars.
 
     Parameters
     ----------
-    cli : Path
-        Path to the Ribasim CLI executable.
     args : list[str | Path]
-        Command-line arguments.
+        Full command-line arguments including the executable.
     handling : SubprocessHandling
         The output handling method (DISPLAY or SPYDER).
+    cwd : Path | None, optional
+        Working directory for the subprocess.
     """
-    if handling == SubprocessHandling.DISPLAY:
-        from IPython.display import HTML, display, update_display
-
     progress_display_id = "ribasim_progress"
     progress_displayed = False
 
@@ -240,12 +255,13 @@ def _run_with_progress_handling(
     )
 
     with subprocess.Popen(
-        [cli, *args],
+        args,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         universal_newlines=True,
         encoding="utf-8",
         bufsize=1,
+        cwd=cwd,
     ) as proc:
         if proc.stdout:
             for line in proc.stdout:
@@ -253,6 +269,8 @@ def _run_with_progress_handling(
                 if line.startswith("Simulating"):
                     # This is a progress bar line - update in place
                     if handling == SubprocessHandling.DISPLAY:
+                        from IPython.display import HTML, display, update_display
+
                         if not progress_displayed:
                             display(
                                 HTML(f"<pre>{line}</pre>"),
@@ -281,4 +299,4 @@ def _run_with_progress_handling(
                         sys.stdout.flush()
 
     if proc.returncode != 0:
-        raise subprocess.CalledProcessError(proc.returncode, [cli, *args])
+        raise subprocess.CalledProcessError(proc.returncode, args)

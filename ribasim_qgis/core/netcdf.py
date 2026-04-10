@@ -167,5 +167,5 @@ def read_concentration_nc(path: Path) -> NetCDFResult | None:
         variables[sub] = conc[:, i, :]  # (n_times, n_node_ids)
 
     conc_unit = root.OpenMDArray("concentration").GetUnit()
-    units = dict.fromkeys(substances, conc_unit) if conc_unit else {}
+    units = dict.fromkeys(substances, conc_unit) if isinstance(conc_unit, str) else {}
     return NetCDFResult(time=time_index, ids=node_ids, variables=variables, units=units)

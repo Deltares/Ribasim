@@ -1,8 +1,7 @@
-from typing import Any
+from datetime import datetime
 
 from ribasim.config import Allocation, Experimental, Solver
 from ribasim.geometry.node import Node
-from ribasim.input_base import TableModel
 from ribasim.model import Model
 from ribasim.nodes import (
     basin,
@@ -27,8 +26,8 @@ def invalid_qh_model() -> Model:
     - flow_rate must not be decreasing
     """
     model = Model(
-        starttime="2020-01-01",
-        endtime="2020-12-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 12, 1),
         crs="EPSG:28992",
         use_validation=False,
     )
@@ -56,13 +55,13 @@ def invalid_qh_model() -> Model:
 
 def invalid_discrete_control_model() -> Model:
     model = Model(
-        starttime="2020-01-01",
-        endtime="2020-12-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 12, 1),
         crs="EPSG:28992",
         use_validation=False,
     )
 
-    basin_shared: list[TableModel[Any]] = [
+    basin_shared = [
         basin.Profile(area=[0.01, 1.0], level=[0.0, 1.0]),
         basin.State(level=[1.4112729908597084]),
     ]
@@ -130,13 +129,13 @@ def invalid_discrete_control_model() -> Model:
 def invalid_link_types_model() -> Model:
     """Set up a minimal model with invalid link types."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2020-12-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 12, 1),
         crs="EPSG:28992",
         use_validation=False,
     )
 
-    basin_shared: list[TableModel[Any]] = [
+    basin_shared = [
         basin.Profile(area=[0.01, 1000.0], level=[0.0, 1.0]),
         basin.State(level=[0.04471158417652035]),
     ]
@@ -163,8 +162,8 @@ def invalid_link_types_model() -> Model:
 def invalid_unstable_model() -> Model:
     """Model with several extremely quickly emptying basins."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         solver=Solver(dtmin=60.0),
         use_validation=False,
@@ -190,8 +189,8 @@ def invalid_unstable_model() -> Model:
 def invalid_priorities_model() -> Model:
     """Model with allocation active but missing demand_priority parameter(s)."""
     model = Model(
-        starttime="2020-01-01 00:00:00",
-        endtime="2021-01-01 00:00:00",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         allocation=Allocation(timestep=1e5),
         experimental=Experimental(allocation=True),
@@ -242,8 +241,8 @@ def invalid_priorities_model() -> Model:
 
 def invalid_no_basin_model() -> Model:
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
     )
 
