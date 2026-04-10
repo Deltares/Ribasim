@@ -13,7 +13,7 @@ from ribasim import migrations
 
 
 class _BaseSchema(pa.DataFrameModel):
-    class Config:
+    class Config:  # pyrefly: ignore[bad-override]
         add_missing_columns = True
         coerce = True
 

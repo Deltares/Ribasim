@@ -70,12 +70,12 @@
     ],
     "julia.lint.run": true,
     "julia.numTestProcesses": 6,
-    "mypy-type-checker.importStrategy": "fromEnvironment",
     "notebook.codeActionsOnSave": {
         "notebook.source.fixAll": "explicit",
         "notebook.source.organizeImports": "explicit"
     },
     "notebook.formatOnSave.enabled": true,
+    "python.analysis.typeCheckingMode": "off",
     "python.testing.pytestArgs": [
         "python/ribasim/tests",
         "build/tests"

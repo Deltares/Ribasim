@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from ribasim.config import Experimental
 from ribasim.geometry.node import Node
 from ribasim.model import Model
@@ -17,8 +19,8 @@ from shapely.geometry import Point
 def pid_control_model() -> Model:
     """Set up a basic model with a PID controlled pump controlling a basin with abundant inflow."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-12-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 12, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )
@@ -64,8 +66,8 @@ def pid_control_model() -> Model:
 def discrete_control_of_pid_control_model() -> Model:
     """Set up a basic model where a discrete control node sets the target level of a pid control node."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2020-12-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 12, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )

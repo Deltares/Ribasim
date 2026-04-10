@@ -87,7 +87,7 @@ def __get_test_function(test_module_name):
 
 
 class QgsProjectBadLayerDefaultHandler(QgsProjectBadLayerHandler):
-    def handleBadLayers(self, layers, dom):
+    def handleBadLayers(self, layers):
         # Ignore bad layers
         pass
 
@@ -110,13 +110,19 @@ def __exit_qgis(exit_code: int):
 def __run_test():
     """Run the test specified in QGIS_TEST_MODULE environment variable."""
     # Disable modal handler for bad layers
-    QgsProject.instance().setBadLayerHandler(QgsProjectBadLayerDefaultHandler())
+    project = QgsProject.instance()
+    assert project is not None
+    project.setBadLayerHandler(QgsProjectBadLayerDefaultHandler())
     print("QGIS Test Runner Inside - starting the tests ...")
     try:
         test_module_name = os.environ.get("QGIS_TEST_MODULE")
         if not test_module_name:
             raise ValueError("QGIS_TEST_MODULE environment variable not set")
         function_name = __get_test_function(test_module_name)
+        if function_name is None:
+            raise ValueError(
+                f"No callable test entrypoint found for {test_module_name}"
+            )
         print(f"QGIS Test Runner Inside - executing function {function_name}")
         function_name()
         __exit_qgis(0)

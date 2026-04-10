@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
 from ribasim.config import Experimental, Interpolation
@@ -10,8 +12,8 @@ from shapely.geometry import Point
 def flow_boundary_time_model() -> Model:
     """Set up a minimal model with time-varying flow boundary."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
         interpolation=Interpolation(flow_boundary="linear"),
@@ -57,8 +59,8 @@ def flow_boundary_time_model() -> Model:
 def transient_pump_outlet_model() -> Model:
     """Set up a model with time dependent pump and outlet flows."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )

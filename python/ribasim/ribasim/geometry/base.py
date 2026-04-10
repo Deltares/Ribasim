@@ -1,4 +1,4 @@
-from typing import get_type_hints
+from typing import cast, get_type_hints
 
 import pandera as pa
 from geopandas import GeoSeries as _GeoSeries
@@ -12,7 +12,7 @@ class _GeoBaseSchema(_BaseSchema):
     @pa.check("geometry")
     def is_correct_geometry_type(cls, geoseries: GeoSeries[object]) -> Series[bool]:
         T = get_type_hints(cls)["geometry"].__args__[0]
-        return geoseries.map(lambda geom: isinstance(geom, T))
+        return cast(Series[bool], geoseries.map(lambda geom: isinstance(geom, T)))
 
     @pa.parser("geometry")
     def force_2d(cls, geometry: GeoSeries[object]) -> GeoSeries[object]:

@@ -3,6 +3,7 @@
 import re
 import subprocess
 from pathlib import Path
+from typing import cast
 
 from qgis.core import Qgis, QgsMessageLog, QgsTask
 from qgis.PyQt.QtCore import pyqtSignal
@@ -27,7 +28,7 @@ class RibasimTask(QgsTask):
         model_name = f"{model_path.parent.stem}/{model_path.stem}"
         super().__init__(
             f"Ribasim simulation - {model_name}",
-            QgsTask.Flag.CanCancel,
+            cast(QgsTask.Flags, QgsTask.Flag.CanCancel),
         )
         self.cli = cli
         self.toml_path = toml_path
@@ -79,7 +80,9 @@ class RibasimTask(QgsTask):
 
         except Exception as e:
             QgsMessageLog.logMessage(
-                f"Error running Ribasim: {e}", "Ribasim", Qgis.MessageLevel.Critical
+                f"Error running Ribasim: {e}",
+                "Ribasim",
+                cast(Qgis.MessageLevel, Qgis.MessageLevel.Critical),
             )
             self.exit_code = -1
             return False

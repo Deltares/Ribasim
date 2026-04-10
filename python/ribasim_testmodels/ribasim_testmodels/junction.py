@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from ribasim import Model
 from ribasim.config import Experimental
 from ribasim.geometry.node import Node
@@ -16,8 +18,8 @@ def junction_combined() -> Model:
     That way we can check the fractional flow after the junctions.
     """
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )
@@ -96,8 +98,8 @@ def junction_combined() -> Model:
 def junction_chained() -> Model:
     """Testmodel with chained junctions."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
     )
 

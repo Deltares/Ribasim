@@ -66,16 +66,11 @@ docs = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto preview docs/{
     "initialize-julia",
 ], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "yes", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
 # Lint
-mypy-ribasim-python = "mypy python/ribasim/ribasim"
-mypy-ribasim-testmodels = "mypy python/ribasim_testmodels/ribasim_testmodels"
-mypy-ribasim-api = "mypy python/ribasim_api/ribasim_api"
+typecheck = "pyrefly check"
 prek-run = "prek run --all-files"
 lint = { depends-on = [
     "prek-run",
-    "mypy-ribasim-python",
-    "mypy-ribasim-testmodels",
-    "mypy-ribasim-api",
-    "mypy-ribasim-qgis",
+    "typecheck",
 ] }
 # Build
 build = { "cmd" = "julia --project build/build.jl", depends-on = [
@@ -161,7 +156,7 @@ test-ribasim-qgis-docker = { cmd = "sh ./test.sh", cwd = ".docker" }
 test-ribasim-qgis = { cmd = "python ribasim_qgis/scripts/run_qgis_ui_tests.py", depends-on = [
     "install-ribasim-qgis",
 ] }
-mypy-ribasim-qgis = "mypy ribasim_qgis"
+
 # Run
 ribasim-core = { cmd = "julia --project=core -e 'using Ribasim; Ribasim.main(ARGS)'", depends-on = [
     "initialize-julia",
@@ -268,7 +263,6 @@ jupyter = "*"
 lxml = "*"
 matplotlib = ">=3.9"
 minio = "*"
-mypy = "*"
 nbstripout = "*"
 netcdf4 = ">=1.7.1"
 networkx = ">=3.3"
@@ -284,6 +278,7 @@ pydantic = ">=2.0"
 pydantic-settings = "*"
 pyogrio = ">=0.8"
 pyqt-stubs = "*"
+pyrefly = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
@@ -297,6 +292,7 @@ tomli = ">=2.0"
 tomli-w = ">=1.0"
 tomlkit = ">=0.13,<0.14"  # temp until juliacall >0.9.31
 twine = "*"
+types-geopandas = "*"
 typos = "*"
 xarray = ">=2023.11"
 xmipy = ">=1.3"

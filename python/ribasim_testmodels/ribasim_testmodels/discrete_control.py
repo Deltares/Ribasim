@@ -1,11 +1,10 @@
+from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pandas as pd
 from ribasim.config import Experimental, Interpolation
 from ribasim.geometry.node import Node
-from ribasim.input_base import TableModel
 from ribasim.model import Model, Solver
 from ribasim.nodes import (
     basin,
@@ -28,8 +27,8 @@ def pump_discrete_control_model() -> Model:
     The LinearResistance is deactivated when the levels are almost equal.
     """
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )
@@ -129,8 +128,8 @@ def pump_discrete_control_model() -> Model:
 def flow_condition_model() -> Model:
     """Set up a basic model that involves discrete control based on a flow condition."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
         interpolation=Interpolation(flow_boundary="linear"),
@@ -195,8 +194,8 @@ def flow_condition_model() -> Model:
 def level_boundary_condition_model() -> Model:
     """Set up a small model with a condition on a level boundary."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         input_dir=Path("input"),
         experimental=Experimental(concentration=True),
@@ -274,8 +273,8 @@ def tabulated_rating_curve_control_model() -> Model:
     at some threshold level.
     """
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         input_dir=Path("input"),
         experimental=Experimental(concentration=True),
@@ -342,8 +341,8 @@ def tabulated_rating_curve_control_model() -> Model:
 def compound_variable_condition_model() -> Model:
     """Model with a condition on a compound variable for DiscreteControl."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         input_dir=Path("input"),
         experimental=Experimental(concentration=True),
@@ -405,8 +404,8 @@ def level_range_model() -> Model:
     This is done by bringing the level back to the setpoint once the level goes beyond this range.
     """
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         solver=Solver(abstol=1e-6, reltol=1e-5),
         experimental=Experimental(concentration=True),
@@ -496,8 +495,8 @@ def level_range_model() -> Model:
 def storage_condition_model() -> Model:
     """Create a model with a discrete control condition based on the storage of a Basin."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
     )
 
@@ -541,8 +540,8 @@ def storage_condition_model() -> Model:
 def connector_node_flow_condition_model() -> Model:
     """DiscreteControl with a condition on the flow through a connector node."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )
@@ -594,8 +593,8 @@ def connector_node_flow_condition_model() -> Model:
 def concentration_condition_model() -> Model:
     """DiscreteControl based on a concentration condition."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(concentration=True),
     )
@@ -659,8 +658,8 @@ def continuous_concentration_condition_model() -> Model:
                 term
     """
     model = Model(
-        starttime="2020-01-01",
-        endtime="2020-02-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 2, 1),
         crs="EPSG:28992",
         solver=Solver(saveat=86400 / 8),
         experimental=Experimental(concentration=True),
@@ -755,7 +754,9 @@ def continuous_concentration_condition_model() -> Model:
 
 def transient_condition_model() -> Model:
     """DiscreteControl based on transient condition."""
-    model = Model(starttime="2020-01-01", endtime="2020-03-01", crs="EPSG:28992")
+    model = Model(
+        starttime=datetime(2020, 1, 1), endtime=datetime(2020, 3, 1), crs="EPSG:28992"
+    )
 
     lb = model.level_boundary.add(
         Node(1, Point(0, 0)), [level_boundary.Static(level=[2.0])]
@@ -800,8 +801,8 @@ def transient_condition_model() -> Model:
 def circular_flow_model() -> Model:
     """Create a model with a circular flow and a discrete control on a pump."""
     model = Model(
-        starttime="2020-01-01",
-        endtime="2021-01-01",
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
         crs="EPSG:4326",
         solver=Solver(saveat=3600),
     )
@@ -819,7 +820,7 @@ def circular_flow_model() -> Model:
     evaporation[180:270] = 0
     evaporation[270:366] = 1e-6
 
-    basin_data: list[TableModel[Any]] = [
+    basin_data = [
         basin.Profile(area=[10, 10_000.0], level=[-10, 1.0]),
         basin.Time(
             time=pd.date_range(model.starttime, model.endtime),
