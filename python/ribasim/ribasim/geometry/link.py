@@ -12,7 +12,7 @@ from matplotlib.axes import Axes
 from numpy.typing import NDArray
 from pandera.dtypes import Int32
 from pandera.typing import Index, Series
-from pandera.typing.geopandas import GeoSeries
+from pandera.typing.geopandas import GeoDataFrame, GeoSeries
 from pydantic import NonNegativeInt, PrivateAttr, model_validator
 from shapely.geometry import LineString, MultiLineString, Point
 
