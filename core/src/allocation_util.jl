@@ -337,15 +337,58 @@ function get_area_slope(basin::Basin, state_idx::Int, level::Float64)::Float64
 end
 
 """
+Compute the max |d²Q/dh²| across all connector nodes of a given type in the subnetwork.
+Uses nested ForwardDiff to get the second derivative numerically.
+"""
+function get_max_flow_curvature(
+        connector_node::AbstractParameterNode,
+        connector_ids::Vector{NodeID},
+        flow_function::Function,
+        p::Parameters,
+        t::Float64,
+    )::Float64
+    max_curvature = 0.0
+
+    for node_id in connector_ids
+        inflow_id = connector_node.inflow_link[node_id.idx].link[1]
+        outflow_id = connector_node.outflow_link[node_id.idx].link[2]
+
+        h_a = get_level(p, inflow_id, t)
+        h_b = get_level(p, outflow_id, t)
+
+        # d²Q/dh_a² via nested ForwardDiff
+        d²Q_dh_a² = forward_diff(
+            h -> forward_diff(
+                h_ -> flow_function(connector_node, node_id, h_, h_b, p, t),
+                h,
+            ),
+            h_a,
+        )
+        max_curvature = max(max_curvature, abs(d²Q_dh_a²))
+
+        # d²Q/dh_b² via nested ForwardDiff
+        d²Q_dh_b² = forward_diff(
+            h -> forward_diff(
+                h_ -> flow_function(connector_node, node_id, h_a, h_, p, t),
+                h,
+            ),
+            h_b,
+        )
+        max_curvature = max(max_curvature, abs(d²Q_dh_b²))
+    end
+
+    return max_curvature
+end
+
+"""
 Compute the adaptive allocation timestep for a single subnetwork.
-The timestep is chosen so that the linearization error of S(h) stays within
-a relative tolerance of the maximum basin storage capacity:
 
-    |S(h) - S*(h)| / S_max ≤ ε_rel
+The timestep is bounded by two linearization error sources:
+1. Basin profiles: |error| = ½|dA/dh|·Δh² ≤ ε_S = ε_rel·S_max
+2. Connector Q(h):  |error| = ½|d²Q/dh²|·Δh² ≤ ε_Q
 
-This gives ε = ε_rel * S_max per basin, and then:
-
-    ΔS_max = A * sqrt(2ε / |dA/dh|),  Δt = ΔS_max / |dS/dt|
+Both give a Δh_max. The global Δh_max is the minimum across all basins
+and connector nodes. Then Δt_i = A_i·Δh_max / |dS_i/dt| per basin.
 """
 function compute_adaptive_Δt(
         allocation_model::AllocationModel,
@@ -355,46 +398,80 @@ function compute_adaptive_Δt(
         allocation_config,
     )::Float64
     (; node_ids_in_subnetwork) = allocation_model
-    (; basin_ids_subnetwork) = node_ids_in_subnetwork
-    (; basin) = p.p_independent
+    (;
+        basin_ids_subnetwork,
+        tabulated_rating_curve_ids_subnetwork,
+        linear_resistance_ids_subnetwork,
+        manning_resistance_ids_subnetwork,
+    ) = node_ids_in_subnetwork
+    (; basin, tabulated_rating_curve, linear_resistance, manning_resistance) = p.p_independent
     (; current_storage) = p.state_and_time_dependent_cache
 
     Δt_max = allocation_config.timestep
     Δt_min = allocation_config.min_timestep
     ε_rel = allocation_config.timestep_tolerance
-    safety_factor = 0.8
+    overshoot_reduction = 0.8
 
-    Δt = Δt_max
+    # Phase 1: compute global Δh_max from all linearization curvatures
+    Δh_max = Inf
 
+    # Basin profile curvature: Δh ≤ sqrt(2·ε_rel·S_max / |dA/dh|)
     for basin_id in basin_ids_subnetwork
         idx = basin_id.idx
         storage_now = current_storage[idx]
         level_now = get_level_from_storage(basin, idx, storage_now)
-        A = get_area_from_storage(basin, idx, storage_now)
         storage_max = basin.storage_to_level[idx].t[end]
-
-        # dA/dh: slope of the piecewise-linear area profile
         m = get_area_slope(basin, idx, level_now)
 
-        if m < eps() || A < eps()
-            # Cylindrical basin or empty basin: linearization is exact
+        if m < eps()
             continue
         end
 
-        # ΔS_max from relative linearization error bound:
-        # |S - S*| / S_max ≤ ε_rel → ΔS_max = A * sqrt(2 * ε_rel * S_max / m)
-        ε = ε_rel * storage_max
-        ΔS_max = A * sqrt(2 * ε / m)
+        ε_S = ε_rel * storage_max
+        Δh_max = min(Δh_max, sqrt(2 * ε_S / m))
+    end
 
-        # Net storage rate from water balance
+    # Connector node curvature: Δh ≤ sqrt(2·ε_Q / |d²Q/dh²|)
+    # Use ε_Q = ε_rel · max_flow_rate as a scale for flow error tolerance
+    connector_types = (
+        (tabulated_rating_curve, tabulated_rating_curve_ids_subnetwork, tabulated_rating_curve_flow),
+        (linear_resistance, linear_resistance_ids_subnetwork, linear_resistance_flow),
+        (manning_resistance, manning_resistance_ids_subnetwork, manning_resistance_flow),
+    )
+
+    for (connector, ids, flow_fn) in connector_types
+        isempty(ids) && continue
+        curvature = get_max_flow_curvature(connector, ids, flow_fn, p, t)
+        if curvature > eps()
+            # Use 1.0 m³/s as absolute flow error tolerance
+            # (relative tolerance would require knowing Q, which varies per node)
+            ε_Q = ε_rel
+            Δh_max = min(Δh_max, sqrt(2 * ε_Q / curvature))
+        end
+    end
+
+    if isinf(Δh_max)
+        return Δt_max
+    end
+
+    # Phase 2: convert Δh_max to Δt per basin
+    Δt = Δt_max
+
+    for basin_id in basin_ids_subnetwork
+        idx = basin_id.idx
+        A = get_area_from_storage(basin, idx, current_storage[idx])
+
+        if A < eps()
+            continue
+        end
+
         dstorage = formulate_dstorage(du_buff, p.p_independent, t, basin_id)
 
         if abs(dstorage) < eps()
-            # No net flow: no storage change, no linearization error
             continue
         end
 
-        Δt_basin = safety_factor * ΔS_max / abs(dstorage)
+        Δt_basin = overshoot_reduction * A * Δh_max / abs(dstorage)
         Δt = min(Δt, Δt_basin)
     end
 

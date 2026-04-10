@@ -95,9 +95,9 @@ class Allocation(ChildModel):
         The simulated time in seconds between successive allocation calls (Optional, defaults to 86400).
         When adaptive_timestep is enabled, this acts as the maximum timestep.
     adaptive_timestep : bool
-        Enable adaptive allocation timestepping based on basin profile linearization error (Optional, defaults to False)
+        Enable adaptive allocation timestepping based on linearization error bounds (Optional, defaults to False)
     timestep_tolerance : float
-        Maximum allowed relative linearization error |S - S*| / S_max for adaptive timestepping (Optional, defaults to 0.01)
+        Relative tolerance for linearization errors of basin profiles and connector node Q(h) relationships (Optional, defaults to 0.01)
     min_timestep : float
         Minimum allocation timestep in seconds for adaptive timestepping (Optional, defaults to 3600.0)
     """
