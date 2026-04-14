@@ -393,7 +393,7 @@ and connector nodes. Then Δt_i = A_i·Δh_max / |dS_i/dt| per basin.
 function compute_adaptive_Δt(
         allocation_model::AllocationModel,
         p::Parameters,
-        du_buff::CVector,
+        du::CVector,
         t::Float64,
         allocation_config,
     )::Float64
@@ -465,7 +465,7 @@ function compute_adaptive_Δt(
             continue
         end
 
-        dstorage = formulate_dstorage(du_buff, p.p_independent, t, basin_id)
+        dstorage = formulate_dstorage(du, p.p_independent, t, basin_id)
 
         if abs(dstorage) < eps()
             continue

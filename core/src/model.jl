@@ -305,13 +305,14 @@ function compute_and_set_adaptive_Δt!(model)::Float64
     (; config, integrator) = model
     (; u, p, t) = integrator
     (; p_independent) = p
-    (; allocation, du_buff) = p_independent
+    (; allocation) = p_independent
+    du = get_du(integrator)
 
-    water_balance!(du_buff, u, p, t)
+    water_balance!(du, u, p, t)
 
     Δt = config.allocation.timestep
     for am in allocation.allocation_models
-        Δt_sub = compute_adaptive_Δt(am, p, du_buff, t, config.allocation)
+        Δt_sub = compute_adaptive_Δt(am, p, du, t, config.allocation)
         am.Δt_allocation = Δt_sub
         Δt = min(Δt, Δt_sub)
     end
