@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 from ribasim import Model, nodes
+from ribasim.config import Verbosity
 from ribasim.utils import (
     MissingOptionalModule,
     _concat,
@@ -647,6 +648,7 @@ def generate(
                 nexchanges=total_exchanges,
                 substances=sorted(substances),
                 ribasim_version=ribasim.__version__,
+                loglevel=loglevel(model.logging.verbosity),
             )
         )
 
@@ -696,6 +698,22 @@ def add_tracer(
         nt.concentration = table
     else:
         nt.concentration = pd.concat([nt.concentration.df, table.df], ignore_index=True)
+
+
+def loglevel(verbosity: Verbosity) -> int:
+    if verbosity == Verbosity.debug:
+        # administration of monitoring locations, boundary link administration,
+        # boundary names and IDs, boundary time lags, waste load names and IDs,
+        # specific information on cells where defaults are overridden
+        # any variable time step specification
+        return 9
+    elif verbosity == Verbosity.info:
+        # grid layouts, dispersion IDs and fields, boundary types,
+        # waste load types, names of constants, parameters, functions, segment functions
+        return 2
+    else:
+        # only very basic output + substance names
+        return 1
 
 
 if __name__ == "__main__":
