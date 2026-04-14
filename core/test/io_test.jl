@@ -435,7 +435,7 @@ end
 
 @testitem "parse_time_strings!" begin
     using Ribasim: parse_time_strings!
-    using OrderedCollections: OrderedDict
+    using DataStructures: OrderedDict
     using Dates: DateTime
 
     starttime = DateTime(2020)
@@ -469,7 +469,7 @@ end
 
 @testitem "typed_columntable" begin
     using Ribasim: typed_columntable, Schema
-    using OrderedCollections: OrderedDict
+    using DataStructures: OrderedDict
     using Dates: DateTime
 
     # Convert Union{Missing, Float32} to Float64 (as from NetCDF)

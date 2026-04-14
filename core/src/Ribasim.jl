@@ -147,7 +147,7 @@ using Accessors: @set, @reset
 import IterTools
 
 # Tables interface that works with SQLite tables.
-using Tables: Tables, AbstractRow, columntable, dictcolumntable
+using Tables: Tables, AbstractRow, columntable
 
 # Wrapper around a vector of structs to easily retrieve the same field from all elements.
 using StructArrays: StructVector

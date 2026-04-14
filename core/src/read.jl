@@ -1999,7 +1999,7 @@ function load_data(
     else
         if exists(db, sql_name)
             query = execute(prepare(db, "select * from $(esc_id(sql_name))"), (), strict = true)
-            dict = dictcolumntable(query)
+            dict = OrderedDict{Symbol, AbstractVector}(pairs(columntable(query)))
             parse_time_strings!(dict, config.starttime)
             return typed_columntable(dict, table_type)
         else
