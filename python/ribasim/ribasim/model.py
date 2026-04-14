@@ -7,6 +7,7 @@ from os import PathLike
 from pathlib import Path
 from typing import Any, Self, cast
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 import tomli
@@ -200,9 +201,8 @@ class Model(FileModel, ParentModel):
         # By overriding `BaseModel.model_post_init` we can set them explicitly,
         # and enforce that they are always written.
         # Since migration runs on reading, the ribasim_version should be reset.
-        self.model_config["validate_assignment"] = False
-        self.ribasim_version = ribasim.__version__
-        self.model_config["validate_assignment"] = True
+        with self._no_validate():
+            self.ribasim_version = ribasim.__version__
         self.model_fields_set.update({"input_dir", "results_dir"})
 
         # Finally we add all NodeModel children to the model_fields_set,
@@ -220,8 +220,10 @@ class Model(FileModel, ParentModel):
         INDENT = "    "
         for field in self.model_fields_set:
             attr = getattr(self, field)
-            if isinstance(attr, (LinkTable, NodeTable)):
+            if isinstance(attr, LinkTable):
                 content.append(f"{INDENT}{field}=Link(...),")
+            elif isinstance(attr, NodeTable):
+                content.append(f"{INDENT}{field}=Node(...),")
             else:
                 if isinstance(attr, NodeModel):
                     # Skip unused node types
@@ -558,7 +560,7 @@ class Model(FileModel, ParentModel):
             new_link_id = self.link._used_link_ids.new_id()
             self.link._used_link_ids.add(new_link_id)
             new_link_ids.append(new_link_id)
-        table_to_append = GeoDataFrame[LinkSchema](
+        table_to_append = gpd.GeoDataFrame(
             data={
                 "from_node_id": missing_pairs["from_node_id"].to_numpy(np.int32),
                 "to_node_id": missing_pairs["to_node_id"].to_numpy(np.int32),
@@ -570,7 +572,8 @@ class Model(FileModel, ParentModel):
             index=pd.Index(new_link_ids, name="link_id"),
         )
 
-        self.link.df = GeoDataFrame[LinkSchema](_concat([df_link, table_to_append]))
+        with self.link._no_validate():
+            self.link.df = _concat([df_link, table_to_append])
 
     def _validate_model(self) -> None:
         """Validate that all nodes satisfy their neighbor-count bounds for every link type.

@@ -1,0 +1,200 @@
+---
+title: "Numerical implementation"
+---
+
+This page describes how Ribasim's Julia core implements the numerical methods discussed in [numerical considerations](/concept/numerics.qmd) and solves the equations defined in [equations](/concept/equations.qmd). It focuses on the SciML ecosystem integration, the automatic differentiation pipeline, and the key implementation patterns in `core/src/`.
+
+# SciML ecosystem overview
+
+Ribasim builds on several packages from the [SciML](https://sciml.ai/) ecosystem:
+
+| Package | Role |
+|---------|------|
+| [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl) subpackages | Time integration (default solver: QNDF) |
+| [DifferentiationInterface.jl](https://github.com/JuliaDiff/DifferentiationInterface.jl) | Unified API for Jacobian computation |
+| [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl) | Forward-mode automatic differentiation via dual numbers |
+| [SparseConnectivityTracer.jl](https://github.com/adrhill/SparseConnectivityTracer.jl) | Sparsity pattern detection |
+| [SparseMatrixColorings.jl](https://github.com/JuliaDiff/SparseMatrixColorings.jl) | Graph coloring for efficient sparse Jacobian evaluation |
+| [LinearSolve.jl](https://github.com/SciML/LinearSolve.jl) | Linear solver interface (KLU factorization) |
+| [DataInterpolations.jl](https://github.com/SciML/DataInterpolations.jl) | Interpolation of forcing data and other tabular inputs (e.g. Basin profiles, rating curves, control look-up functions) |
+
+# ODE problem setup
+
+The ODE problem is assembled in `core/src/model.jl`. The key steps are:
+
+1. Build the `Parameters` struct containing all model data
+2. Construct an in-place `ODEFunction` wrapping `water_balance!`, with a custom `HalfLazyJacobian` operator and the analytic Jacobian update routine `get_jacobian!`
+3. Wrap it in an `ODEProblem` and create the integrator with `init`, registering all callbacks
+
+OrdinaryDiffEq's specialization level is also chosen here: `FullSpecialize` produces the fastest code but compiles on every type change, while `NoSpecialize` reduces compilation time at the cost of some runtime performance.
+
+The simulation is then advanced with `step!(integrator)` in a loop until `t_end`.
+
+# The right-hand side: `water_balance!`
+
+The RHS function `water_balance!` in `core/src/solve.jl` has the in-place signature `water_balance!(du, u, p, t)` expected by OrdinaryDiffEq. It writes the time derivatives of all cumulative flow states into the pre-allocated output vector `du` (the same length as the state vector `u`); no allocations or return value are involved. Its execution follows a fixed order:
+
+1. **Cache check** — `check_new_input!` determines whether time-dependent or state-dependent cached quantities need recomputation
+2. **Zero `du`** — every entry is reset before any flow contributions are accumulated into it
+3. **Basin properties** — compute current storage, level, area, and the [low storage factor](/reference/node/basin.qmd#sec-reduction-factor) from the cumulative flows in `u`
+4. **Vertical fluxes** — precipitation and drainage are state-independent and added directly, while evaporation and infiltration are state dependent; this asymmetry is what makes the outgoing fluxes contribute to the Jacobian while the incoming ones do not
+5. **Horizontal flows** — `formulate_flows!` for each node type ([Pump](/reference/node/pump.qmd), [Outlet](/reference/node/outlet.qmd), [LinearResistance](/reference/node/linear-resistance.qmd), [ManningResistance](/reference/node/manning-resistance.qmd), [TabulatedRatingCurve](/reference/node/tabulated-rating-curve.qmd), [UserDemand](/reference/node/user-demand.qmd), …)
+6. **Continuous control** — evaluate [continuous control](/reference/node/continuous-control.qmd) rules that depend on current flows and levels
+7. **Controlled flows** — flows whose parameters are set by continuous control
+8. **PID control** — evaluate [PID control](/reference/node/pid-control.qmd) (integral/proportional/derivative)
+9. **PID-controlled flows** — flows whose parameters are set by PID control
+
+::: {.callout-note}
+The state vector $\mathbf{u}$ contains cumulative flows, not instantaneous flows or storages. See [why this formulation](/concept/equations.qmd#why-this-formulation) for the rationale.
+:::
+
+## Parameter structure
+
+The `Parameters` struct (defined in `core/src/parameter.jl`) is split into four components that play distinct roles during Jacobian computation:
+
+| Component | Contents | AD role |
+|-----------|----------|---------|
+| `p_independent` | All node data, graph, interpolations, pre-allocated buffers | `Constant()` — shared, not copied |
+| `state_and_time_dependent_cache` | Cached values that depend on both state and time (current level, storage, flow rates) | `Cache()` — copied as dual-number arrays |
+| `time_dependent_cache` | Cached values that depend only on time (forcing interpolations) | `Constant()` — shared |
+| `p_mutable` | Flags controlling cache validity (`new_time_dependent_cache`, etc.) | `Constant()` — shared |
+
+This split is driven by AD requirements — see [Jacobian computation](#jacobian-computation) below.
+
+# Implicit time integration
+
+Water systems can be **stiff** — some processes change on timescales of seconds (a pump switching on), while others evolve over days (a reservoir slowly filling). Explicit methods like forward Euler would need extremely small timesteps to remain stable, making them impractical. Implicit methods avoid this by solving an equation at each step that accounts for the system's coupled dynamics, allowing much larger steps.
+
+The default solver is **QNDF** (quasi-Newton backward differentiation formula), an implicit multi-step method from `OrdinaryDiffEq.jl` well-suited for stiff problems. The trade-off is that each implicit step requires solving a nonlinear system, which in turn requires the **Jacobian** — a matrix of partial derivatives of the RHS.
+
+## The Jacobian
+
+The Jacobian $J$ is an $N \times N$ matrix where entry $J_{i,j}$ describes how a small change in state component $j$ affects the rate of change of component $i$. The solver uses this sensitivity information to take stable, accurate steps through stiff regions. The components of the state vector $\mathbf{u}$ — and therefore the size of $J$ — are assembled in `state_node_ids` (`core/src/util.jl`):
+
+- one cumulative horizontal flow for each TabulatedRatingCurve, Pump, Outlet, LinearResistance, and ManningResistance node;
+- two cumulative horizontal flows per UserDemand (inflow and outflow tracked separately);
+- two cumulative vertical fluxes per Basin (evaporation and infiltration);
+- one integral term per PID control node.
+
+Precipitation and drainage are deliberately *not* states — they are state-independent forcings and are integrated outside the ODE solver.
+
+In practice, most entries of $J$ are zero — a pump in one part of the network does not affect a weir in a distant part. This **sparsity** is the key to making implicit solves affordable, as both the Jacobian computation and the linear solves can exploit it.
+
+# State reduction {#sec-state-reduction}
+
+Not every component of the state vector $\mathbf{u}$ influences every flow independently. Many flow states depend on basin levels, which in turn depend on basin storages. Ribasim exploits this by working with a **reduced state** $\mathbf{u}_\text{reduced}$ that contains only the basin storages and PID integral terms.
+
+The relationship is:
+$$
+\mathbf{u}_\text{reduced} = A \mathbf{u}
+$$
+
+where $A$ is a linear operator implemented by `reduce_state!` in `core/src/util.jl`. All of its entries lie in $\{-1, 0, +1\}$, and each Basin row simply sums the cumulative flow states that change that Basin's storage:
+
+- $+1$ for every horizontal flow state whose link enters the Basin,
+- $-1$ for every horizontal flow state whose link leaves the Basin,
+- $-1$ on the Basin's own evaporation and infiltration columns.
+
+UserDemand is the one node type that contributes two separate flow states (inflow and outflow); each enters the appropriate Basin row with the corresponding sign. The PID rows form an identity block on the integral states. Because each non-Basin node is constrained to have at most one upstream and one downstream Basin, every flow column has at most one $+1$ and one $-1$ — i.e. $A$ is the signed incidence matrix of the model graph as seen by the Basins, augmented with the vertical-flux and PID-integral columns. This means the Jacobian of the full RHS can be decomposed as:
+$$
+J_f(\mathbf{u}) = J_g(\mathbf{u}_\text{reduced}) \cdot A
+$$
+
+where $g$ is `water_balance!` as a function of $\mathbf{u}_\text{reduced}$. AD only needs to differentiate $g$ (smaller matrix), and the multiplication by $A$ is handled analytically. This decomposition is central to the `HalfLazyJacobian` operator and the custom linear solver.
+
+# Jacobian computation
+
+The Jacobian computation pipeline lives in `core/src/differentiation.jl`.
+
+## Forward-mode automatic differentiation
+
+There are three common ways to obtain a Jacobian: finite differences (simple but slow and imprecise), hand-coded derivatives (exact but hard to maintain), and automatic differentiation (AD). Ribasim uses **forward-mode AD** via [`ForwardDiff.jl`](https://juliadiff.org/ForwardDiff.jl/stable/), which propagates derivatives by replacing floating-point numbers with dual numbers — see the [ForwardDiff documentation](https://juliadiff.org/ForwardDiff.jl/stable/dev/how_it_works/) for the underlying theory. By running `water_balance!` with dual-number inputs seeded with a unit perturbation in one state direction, the derivative part of the output gives one column of the Jacobian; repeating for each direction yields the full matrix.
+
+## Exploiting sparsity: graph coloring
+
+Computing each Jacobian column requires a full evaluation of `water_balance!` with dual numbers. With $N$ states, that would mean $N$ evaluations — prohibitively expensive for large models.
+
+However, since the Jacobian is sparse, many columns have no overlapping nonzero rows. If columns $i$ and $j$ never have a nonzero in the same row, their perturbations can be seeded simultaneously in a single evaluation without interfering. This observation leads to **graph coloring**: columns are partitioned into groups (colors) such that all columns within a group are structurally independent. One evaluation per color suffices, reducing the cost from $N$ evaluations to the number of colors — typically a small constant for network-structured problems.
+
+## Preparation phase
+
+At model initialization, `get_diff_eval` prepares everything the solver will need:
+
+1. **Sparsity detection** — `TracerSparsityDetector` from SparseConnectivityTracer runs `water_balance!` with tracer inputs to determine which outputs depend on which inputs, producing a sparse boolean matrix.
+
+2. **Graph coloring** — `GreedyColoringAlgorithm` from SparseMatrixColorings partitions the columns of the Jacobian into groups (colors) such that columns in the same group have no overlapping nonzero rows. This allows multiple columns to be computed in a single ForwardDiff pass by seeding multiple perturbation directions simultaneously.
+
+3. **AD preparation** — `DifferentiationInterface.prepare_jacobian` pre-allocates all working arrays (dual-number buffers, etc.) based on the sparsity pattern and coloring.
+
+```julia
+backend_jac = AutoSparse(
+    AutoForwardDiff(; tag = :Ribasim),
+    sparsity_detector = TracerSparsityDetector(),
+    coloring_algorithm = GreedyColoringAlgorithm(),
+)
+jac_prep = prepare_jacobian(
+    water_balance!, du, backend_jac,
+    u_reduced,
+    Constant(p_independent),
+    Cache(state_and_time_dependent_cache),
+    Constant(time_dependent_cache),
+    Constant(p_mutable),
+    Constant(t);
+    strict = Val(true),
+)
+```
+
+## `Cache()` vs `Constant()` in DifferentiationInterface
+
+When `DifferentiationInterface.jacobian!` calls the RHS, it needs to know how to handle each argument:
+
+- **`Cache(x)`** — "this depends on the differentiation variable; make a copy promoted to dual numbers." The copy is allocated with the right dual-number element type but is **not initialized** with the original values. The RHS must write meaningful values into it before reading.
+- **`Constant(x)`** — "this is independent of the differentiation variable; pass the original object directly." No copy, no promotion. But this means AD calls can **mutate shared state**.
+
+This distinction is a performance optimization (fewer allocations), but it introduces a subtle invariant: any cached value in a `Cache()` argument must be freshly computed during the AD call, because the copy starts uninitialized.
+
+## The `HalfLazyJacobian` operator
+
+Rather than materializing the full $N \times N$ Jacobian, Ribasim uses a custom `AbstractSciMLOperator` called `HalfLazyJacobian`. It stores:
+
+- `J_intermediate` — the sparse Jacobian $J_g$ of the RHS with respect to $\mathbf{u}_\text{reduced}$ (computed by AD)
+- References to the parameters and AD preparation objects
+
+When the solver needs a matrix-vector product $J \cdot v$, it computes:
+
+```julia
+u_reduced = A * v          # reduce_state!
+result = J_intermediate * u_reduced  # sparse matvec
+```
+
+When the solver needs to update the Jacobian (via `update_coefficients!`), it calls `get_jacobian!` which invokes `DifferentiationInterface.jacobian!` to fill `J_intermediate`.
+
+# Custom linear solver
+
+At each Newton iteration the solver must solve a linear system involving the Jacobian. Ribasim provides a custom `RibasimLinearSolve` wrapper (in `core/src/differentiation.jl`) that exploits the state reduction structure.
+
+Instead of solving the full system, it:
+
+1. **Reduces** the right-hand side: $\mathbf{b}_\text{reduced} = A \cdot \mathbf{b}$
+2. **Builds** the reduced system matrix: $W_\text{inner} = -\gamma^{-1}I - A \cdot J_\text{intermediate}$
+3. **Solves** the smaller system using KLU factorization (efficient for sparse matrices)
+4. **Expands** the solution back to the full state space
+
+This is significantly cheaper than solving in the full state space, since the reduced system only has dimension equal to the number of basins plus PID integral terms.
+
+# Callbacks
+
+Ribasim uses SciML's [callback mechanism](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/) to handle events that occur during simulation. These are set up in `core/src/callback.jl`:
+
+| Callback | Type | Purpose |
+|----------|------|---------|
+| Negative storage check | `FunctionCallingCallback` | Detects and handles negative basin storage at every accepted step |
+| Basin state saving | `SavingCallback` | Records basin storage/level at output times |
+| Cumulative flow update | `FunctionCallingCallback` | Tracks cumulative flows for mass balance |
+| Basin forcing update | `PresetTimeCallback` | Injects new forcing data at prescribed times |
+| Flow saving | `SavingCallback` | Records averaged flows at output times |
+| Discrete control | `FunctionCallingCallback` | Evaluates and applies discrete control rules |
+| Tolerance decrease | `FunctionCallingCallback` | Compensates for growing cumulative state magnitudes (see [numerical considerations](/concept/numerics.qmd#compensating-for-cumulative-flows)) |
+| Subgrid interpolation | `SavingCallback` | Interpolates subgrid levels for output |
+
+`PresetTimeCallback` fires at specific times (e.g. when forcing data changes). `FunctionCallingCallback` fires at every accepted solver step. `SavingCallback` fires at the `saveat` interval and stores results for later output.

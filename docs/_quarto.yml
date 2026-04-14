@@ -108,6 +108,7 @@ website:
       contents:
         - dev/index.qmd
         - dev/core.qmd
+        - dev/numerics.qmd
         - dev/benchmark.qmd
         - dev/addnode.qmd
         - dev/python.qmd

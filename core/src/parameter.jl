@@ -1151,8 +1151,6 @@ the object itself is not.
     temp_convergence::RibasimCVectorType{Float64}
     convergence::RibasimCVectorType{Float64}
     ncalls::Vector{Int} = [0]
-    # Pre-allocated buffer for computing du via water_balance!
-    du_buff::RibasimCVectorType{Float64}
     # Reduced state where the cumulative flows are combined into Basin
     # storages (without non-state cumulative_flows)
     u_reduced::RibasimReducedCVectorType{Float64}

@@ -1698,7 +1698,6 @@ function Parameters(db::DB, config::Config)::Parameters
         do_subgrid = config.results.subgrid,
         temp_convergence = CVector(zeros(n_states), state_ranges),
         convergence = CVector(zeros(n_states), state_ranges),
-        du_buff = CVector(zeros(n_states), state_ranges),
         u_reduced,
         config.solver.level_difference_threshold,
     )
