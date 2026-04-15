@@ -1312,7 +1312,17 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
 
     user_demand = UserDemand(; node_id, concentration_itp, demand_priorities)
 
-    set_inoutflow_links!(user_demand, graph)
+    for (i, id) in enumerate(user_demand.node_id)
+        user_demand.inflow_links[i] =
+            [graph[src, id] for src in inflow_ids(graph, id)]
+        n_links = length(user_demand.inflow_links[i])
+        user_demand.inflow_link_offsets[i + 1] =
+            user_demand.inflow_link_offsets[i] + n_links
+        # Inf sentinel: physics falls back to equal split of demand until the
+        # allocation LP populates absolute per-link rates (m³/s).
+        user_demand.inflow_link_allocated[i] = fill(Inf, n_links)
+    end
+    map!(id -> outflow_link(graph, id), user_demand.outflow_link, user_demand.node_id)
     errors = parse_parameter!(
         user_demand,
         config,
@@ -1654,6 +1664,17 @@ function Parameters(db::DB, config::Config)::Parameters
     state_ranges = count_state_ranges(u_ids)
     state_inflow_link, state_outflow_link = get_state_flow_links(graph, nodes)
 
+    # Build link → state index map from state_inflow_link (inflow-link states only cover
+    # horizontal flow components, which come first in the state vector).
+    link_to_state_idx = Dict{Tuple{NodeID, NodeID}, Int}()
+    for (idx, link_meta) in enumerate(state_inflow_link)
+        # Skip placeholder links (used for states that have no inflow link, like
+        # user_demand_outflow whose state is aligned to the outflow side).
+        from_node, to_node = link_meta.link
+        from_node.value == 0 && to_node.value == 0 && continue
+        link_to_state_idx[link_meta.link] = idx
+    end
+
     set_target_ref!(
         nodes.pid_control.target_ref,
         nodes.pid_control.node_id,
@@ -1689,6 +1710,7 @@ function Parameters(db::DB, config::Config)::Parameters
         subgrid,
         state_inflow_link,
         state_outflow_link,
+        link_to_state_idx,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
         u_prev_saveat = zeros(n_states),

@@ -976,7 +976,16 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
 @kwdef struct UserDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
     demand_priorities::Vector{Int32} = Int32[]
-    inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    inflow_links::Vector{Vector{LinkMetadata}} = [LinkMetadata[] for _ in node_id]
+    # Cumulative offsets into the flat per-link `user_demand_inflow` state component.
+    # inflow_links[i] occupies state entries (inflow_link_offsets[i]+1):inflow_link_offsets[i+1]
+    # inside that component. Has length `length(node_id) + 1`.
+    inflow_link_offsets::Vector{Int} = zeros(Int, length(node_id) + 1)
+    # Per inflow link, the absolute flow rate the allocation LP has allocated through
+    # that link (m³/s). Updated after each LP solve. When set to Inf (the default), the
+    # physics falls back to an equal split of the total demand across inflow links —
+    # this preserves correct behaviour when allocation is not active.
+    inflow_link_allocated::Vector{Vector{Float64}} = [Float64[] for _ in node_id]
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
@@ -1137,6 +1146,10 @@ the object itself is not.
     # Per state the in- and outflow links associated with that state (if they exist)
     state_inflow_link::Vector{LinkMetadata} = LinkMetadata[]
     state_outflow_link::Vector{LinkMetadata} = LinkMetadata[]
+    # Map each flow link to its state index. Used for link→state lookups where the
+    # destination node can have multiple inflow-link states (currently only UserDemand).
+    link_to_state_idx::Dict{Tuple{NodeID, NodeID}, Int} =
+        Dict{Tuple{NodeID, NodeID}, Int}()
     # Water balance tolerances
     water_balance_abstol::Float64
     water_balance_reltol::Float64

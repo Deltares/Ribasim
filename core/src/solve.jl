@@ -357,41 +357,51 @@ function formulate_flow!(
 
     for node_idx in eachindex(user_demand.node_id)
         id = user_demand.node_id[node_idx]
-        inflow_link = user_demand.inflow_link[node_idx]
-        outflow_link = user_demand.outflow_link[node_idx]
+        inflow_links = user_demand.inflow_links[node_idx]
+        link_offset = user_demand.inflow_link_offsets[node_idx]
         has_demand_priority = view(user_demand.has_demand_priority, node_idx, :)
         allocated = view(user_demand.allocated, node_idx, :)
         return_factor = user_demand.return_factor[node_idx]
         min_level = user_demand.min_level[node_idx]
 
-        q = 0.0
-
-        # Take as effectively allocated the minimum of what is allocated by allocation optimization
-        # and the current demand.
-        # If allocation is not optimized then allocated = Inf, so the result is always
-        # effectively allocated = demand.
+        # Total effective demand = min(allocated, demand) summed over priorities.
+        # When allocation is not optimized, allocated = Inf and this becomes the demand.
+        q_total_demand = 0.0
         for demand_priority_idx in eachindex(allocation.demand_priorities_all)
             !has_demand_priority[demand_priority_idx] && continue
-            alloc_prio = allocated[demand_priority_idx]
-            demand_prio = get_demand(user_demand, id, demand_priority_idx, t)
-            alloc = min(alloc_prio, demand_prio)
-            q += alloc
+            q_total_demand += min(
+                allocated[demand_priority_idx],
+                get_demand(user_demand, id, demand_priority_idx, t),
+            )
         end
 
-        # Smoothly let abstraction go to 0 as the source basin dries out
-        inflow_id = inflow_link.link[1]
-        factor_basin = get_low_storage_factor(p, inflow_id)
-        q *= factor_basin
+        # Per-link target: use the LP's absolute allocation (m³/s) when available.
+        # When the LP hasn't populated it (sentinel Inf) — e.g. allocation disabled —
+        # fall back to an equal split of the total demand. Each link then applies
+        # its own source basin reduction factors, so the link's actual flow can be
+        # less than the target if its source basin is drying out.
+        link_alloc = user_demand.inflow_link_allocated[node_idx]
+        n_links = length(inflow_links)
+        equal_split = n_links == 0 ? 0.0 : q_total_demand / n_links
 
-        # Smoothly let abstraction go to 0 as the source basin
-        # level reaches its minimum level
-        source_level = get_level(p, inflow_id, t)
-        Δsource_level = source_level - min_level
-        factor_level = reduction_factor(Δsource_level, level_difference_threshold)
-        q *= factor_level
-        du.user_demand_inflow[id.idx] = q
+        q_total_actual = 0.0
+        for (k, link_meta) in enumerate(inflow_links)
+            src_id = link_meta.link[1]
+            factor_basin = get_low_storage_factor(p, src_id)
+            source_level = get_level(p, src_id, t)
+            factor_level = reduction_factor(
+                source_level - min_level,
+                level_difference_threshold,
+            )
+            q_k_target = isinf(link_alloc[k]) ? equal_split : link_alloc[k]
+            q_k = q_k_target * factor_basin * factor_level
+            du.user_demand_inflow[link_offset + k] = q_k
+            q_total_actual += q_k
+        end
+
         du.user_demand_outflow[id.idx] =
-            q * eval_time_interpolation(return_factor, current_return_factor, id.idx, p, t)
+            q_total_actual *
+            eval_time_interpolation(return_factor, current_return_factor, id.idx, p, t)
     end
     return nothing
 end
@@ -904,50 +914,62 @@ function limit_flow!(
         )
     end
 
-    # UserDemand inflow bounds depend on multiple aspects of the simulation
-    for (id, inflow_link, demand_from_timeseries) in zip(
-            user_demand.node_id,
-            user_demand.inflow_link,
-            user_demand.demand_from_timeseries,
-        )
-        min_flow_rate, max_flow_rate = if demand_from_timeseries
-            # Bounding the flow rate if the demand comes from a time series is hard
-            0, Inf
+    # UserDemand inflow bounds: per-link bounds derived from the LP's absolute per-link
+    # allocation (or equal split fallback when the LP hasn't populated them yet). Using
+    # link_alloc here — rather than allocated_total / n_links — is important because the
+    # LP may have routed nearly all demand through one source (LevelDemand, route
+    # priority), and bounding the other link against equal-split would force flow
+    # through a link the LP wants kept at zero.
+    for node_idx in eachindex(user_demand.node_id)
+        id = user_demand.node_id[node_idx]
+        inflow_links = user_demand.inflow_links[node_idx]
+        link_offset = user_demand.inflow_link_offsets[node_idx]
+        n_links = length(inflow_links)
+        demand_from_timeseries = user_demand.demand_from_timeseries[node_idx]
+        link_alloc = user_demand.inflow_link_allocated[node_idx]
+
+        allocated_total = if demand_from_timeseries
+            0.0
         else
-            # The lower bound is estimated as the lowest inflow given the minimum values
-            # of the reduction factors involved (with a margin)
-            inflow_id = inflow_link.link[1]
-            factor_basin_min = min_low_storage_factor(
-                current_storage,
-                basin.storage_prev,
-                basin,
-                inflow_id,
-            )
-            factor_level_min = min_low_user_demand_level_factor(
-                current_level,
-                basin.level_prev,
-                user_demand.min_level,
-                id,
-                inflow_id,
-                level_difference_threshold,
-            )
-            allocated_total = sum(
+            sum(
                 min(
                         user_demand.demand[id.idx, demand_priority_idx],
                         user_demand.allocated[id.idx, demand_priority_idx],
-                    ) for
-                    demand_priority_idx in eachindex(allocation.demand_priorities_all)
+                    ) for demand_priority_idx in eachindex(allocation.demand_priorities_all)
             )
-            factor_basin_min * factor_level_min * allocated_total, allocated_total
         end
-        limit_flow!(
-            u.user_demand_inflow,
-            uprev.user_demand_inflow,
-            id,
-            min_flow_rate,
-            max_flow_rate,
-            dt,
-        )
+        equal_split = n_links == 0 ? 0.0 : allocated_total / n_links
+
+        for (k, link_meta) in enumerate(inflow_links)
+            state_idx = link_offset + k
+            q_k_max = isinf(link_alloc[k]) ? equal_split : link_alloc[k]
+            min_flow_rate, max_flow_rate = if demand_from_timeseries
+                0.0, Inf
+            else
+                src_id = link_meta.link[1]
+                factor_basin_min = min_low_storage_factor(
+                    current_storage,
+                    basin.storage_prev,
+                    basin,
+                    src_id,
+                )
+                factor_level_min = min_low_user_demand_level_factor(
+                    current_level,
+                    basin.level_prev,
+                    user_demand.min_level,
+                    id,
+                    src_id,
+                    level_difference_threshold,
+                )
+                factor_basin_min * factor_level_min * q_k_max, q_k_max
+            end
+            u_prev = uprev.user_demand_inflow[state_idx]
+            u.user_demand_inflow[state_idx] = clamp(
+                u.user_demand_inflow[state_idx],
+                u_prev + min_flow_rate * dt,
+                u_prev + max_flow_rate * dt,
+            )
+        end
     end
 
     # Evaporation is in [0, ∞) (stricter bounds would require also estimating the area)

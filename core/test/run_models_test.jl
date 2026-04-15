@@ -428,6 +428,57 @@ end
     )
 end
 
+@testitem "UserDemand with multiple inflow links" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/two_basin_user_demand/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+
+    flow = DataFrame(Ribasim.flow_data(model))
+
+    # Topology (issues #2725/#2776):
+    #   FB1 (time-decaying) → B3 (route_priority=1, preferred) ─┐
+    #                                                            ├─→ UD5 → T6
+    #   FB2 (constant)      → B4 (route_priority=2)             ─┤
+    #                                                            └─→ O9 → T10
+    # LevelDemand 11 pins B3 and B4 at level 1.
+    flow_b3_ud = filter(
+        [:from_node_id, :to_node_id] => ==((3, 5)) ∘ tuple,
+        flow,
+    )
+    flow_b4_ud = filter(
+        [:from_node_id, :to_node_id] => ==((4, 5)) ∘ tuple,
+        flow,
+    )
+    flow_ud_out = filter(
+        [:from_node_id, :to_node_id] => ==((5, 6)) ∘ tuple,
+        flow,
+    )
+    flow_fb1 = filter(
+        [:from_node_id, :to_node_id] => ==((1, 3)) ∘ tuple,
+        flow,
+    )
+    @test !isempty(flow_b3_ud) && !isempty(flow_b4_ud)
+
+    # UD demand is 2e-3; LD priority (1) outranks UD priority (2), so the LP holds
+    # both basins at level 1 and the UD's total inflow still sums to demand.
+    @test all(isapprox.(flow_b3_ud.flow_rate .+ flow_b4_ud.flow_rate, 2.0e-3; atol = 1.0e-8))
+    @test all(isapprox.(flow_ud_out.flow_rate, 2.0e-3; atol = 1.0e-6))
+
+    # Route priority pushes the preferred source (B3, route_priority=1) to supply as
+    # much as its FlowBoundary allows; B4 fills the remainder.
+    @test all(isapprox.(flow_b3_ud.flow_rate, flow_fb1.flow_rate; atol = 1.0e-7))
+
+    # LevelDemand holds both basins at target level 1; small numerical drift is OK.
+    (; current_level) = model.integrator.p.state_and_time_dependent_cache
+    @test current_level[1] ≈ 1.0 atol = 1.0e-3
+    @test current_level[2] ≈ 1.0 atol = 1.0e-3
+end
+
 @testitem "ManningResistance" begin
     using OrdinaryDiffEqCore: get_du
     using Ribasim: NodeID

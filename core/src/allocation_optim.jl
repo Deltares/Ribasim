@@ -378,15 +378,15 @@ function set_simulation_data!(
     constraints = problem[:user_demand_return_flow]
     flow = problem[:flow]
 
-    # Set the return factor for the end of the time step
+    # Set the return factor for the end of the time step. The return-flow constraint
+    # sums over all inflow links, so every inflow link's flow variable gets the
+    # return factor as coefficient in this constraint.
     for node_id in only(constraints.axes)
         constraint = constraints[node_id]
-        outflow = flow[user_demand.inflow_link[node_id.idx].link]
-        JuMP.set_normalized_coefficient(
-            constraint,
-            outflow,
-            -user_demand.return_factor[node_id.idx](t + Δt_allocation),
-        )
+        rf = -user_demand.return_factor[node_id.idx](t + Δt_allocation)
+        for lm in user_demand.inflow_links[node_id.idx]
+            JuMP.set_normalized_coefficient(constraint, flow[lm.link], rf)
+        end
     end
     return nothing
 end
@@ -743,10 +743,11 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     flow = problem[:flow]
     storage_change = problem[:basin_storage_change]
     du = get_du(integrator)
+    (; link_to_state_idx) = p.p_independent
 
     # Extrapolate the current instantaneous flow rates from the physical layer
     for link in only(flow.axes)
-        state_index = get_state_index(getaxes(du), link)
+        state_index = get_state_index(getaxes(du), link_to_state_idx, link)
         if !isnothing(state_index)
             JuMP.set_start_value(flow[link], du[state_index] / scaling.flow)
         end
@@ -883,8 +884,32 @@ function parse_allocations!(
         allocation_model
     (; allocation) = p_independent
     (; record_demand, demand_priorities_all) = allocation
-    (; demand, has_demand_priority, inflow_link) = node
+    (; demand, has_demand_priority) = node
     is_user_demand = (node isa UserDemand)
+    flow = allocation_model.problem[:flow]
+
+    # Helper for cumulative supplied volume: UserDemand has multiple inflow links, sum them.
+    supplied_volume = node_id ->
+    if is_user_demand
+        sum(cumulative_supplied_volume[lm.link] for lm in node.inflow_links[node_id.idx])
+    else
+        cumulative_supplied_volume[node.inflow_link[node_id.idx].link]
+    end
+
+    # Store the LP's absolute per-link flow rate (m³/s) so the physics can split
+    # the UserDemand's inflow across source basins exactly as the LP decided —
+    # including when LevelDemands or route priorities steer flow away from a
+    # particular source.
+    if is_user_demand
+        for node_id in node_ids_subnetwork
+            inflow_links = node.inflow_links[node_id.idx]
+            isempty(inflow_links) && continue
+            link_alloc = node.inflow_link_allocated[node_id.idx]
+            for (k, lm) in enumerate(inflow_links)
+                link_alloc[k] = max(0.0, JuMP.value(flow[lm.link]) * scaling.flow)
+            end
+        end
+    end
 
     for node_id in node_ids_subnetwork
         demand_id =
@@ -905,8 +930,7 @@ function parse_allocations!(
                     demand[demand_id.idx, demand_priority_idx],
                     allocated_flow,
                     # NOTE: The supplied amount lags one allocation period behind
-                    cumulative_supplied_volume[inflow_link[node_id.idx].link] /
-                        Δt_allocation,
+                    supplied_volume(node_id) / Δt_allocation,
                 ),
             )
             if is_user_demand

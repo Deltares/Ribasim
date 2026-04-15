@@ -39,7 +39,7 @@ def user_demand_model() -> Model:
 
     model.basin.add(
         Node(1, Point(0, 0)),
-        [basin.Profile(area=1000.0, level=[0.0, 1.0]), basin.State(level=[1.0])],
+        [basin.Profile(area=1000.0, level=[0.0, 2.0]), basin.State(level=[1.0])],
     )
     model.user_demand.add(
         Node(2, Point(1, 0.5)),
@@ -91,6 +91,95 @@ def user_demand_model() -> Model:
     model.link.add(model.user_demand[2], model.terminal[5])
     model.link.add(model.user_demand[3], model.terminal[5])
     model.link.add(model.user_demand[4], model.terminal[5])
+
+    return model
+
+
+def two_basin_user_demand_model() -> Model:
+    """Two Basins supplying a single UserDemand, exercising multi-inflow with route priority.
+
+    Topology (issues #2725/#2776):
+        FlowBoundary 1 (1 → 0 over time) → Basin 3 (route_priority=1, preferred) ─┐
+                                                                                  ├─→ UserDemand 5 → Terminal 6
+        FlowBoundary 2 (constant 2)      → Basin 4 (route_priority=2)             ─┤
+                                                                                  └─→ Outlet 7 → Terminal 8
+                                                                     LevelDemand 9 ─→ Basin 4 (target level 1 m)
+
+    With allocation on, the UserDemand (demand = 2) initially draws 1 from each
+    basin. As FlowBoundary 1's supply decays toward zero, Basin 3 can no longer
+    keep up; the LP shifts the deficit onto Basin 4 (the higher-priority-number
+    fallback) so total UD inflow stays at 2. The allocation-controlled outlet
+    from Basin 4 plus a LevelDemand hold Basin 4's level at 1 m, letting the
+    excess supply from FlowBoundary 2 drain to Terminal 8 when the UD does not
+    need it.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 4, 1),
+        crs="EPSG:28992",
+        allocation=Allocation(timestep=86400),
+        experimental=Experimental(allocation=True),
+    )
+
+    time = pd.date_range(start="2020-01-01", end="2020-04-01")
+    decaying_flow = np.linspace(1.0e-3, 0.0, num=len(time))
+
+    model.flow_boundary.add(
+        Node(1, Point(-1, 1), subnetwork_id=1),
+        [flow_boundary.Time(time=time, flow_rate=decaying_flow)],
+    )
+    model.flow_boundary.add(
+        Node(2, Point(-1, -1), subnetwork_id=1),
+        [flow_boundary.Static(flow_rate=[2.0e-3])],
+    )
+    model.basin.add(
+        Node(3, Point(0, 1), subnetwork_id=1, route_priority=1),
+        [basin.Profile(area=1000.0, level=[0.0, 2.0]), basin.State(level=[1.0])],
+    )
+    model.basin.add(
+        Node(4, Point(0, -1), subnetwork_id=1, route_priority=2),
+        [basin.Profile(area=1000.0, level=[0.0, 2.0]), basin.State(level=[1.0])],
+    )
+    model.user_demand.add(
+        Node(5, Point(1, 0), subnetwork_id=1),
+        [
+            user_demand.Static(
+                demand=[2.0e-3], return_factor=1.0, min_level=0.0, demand_priority=2
+            )
+        ],
+    )
+    model.terminal.add(Node(6, Point(2, 0), subnetwork_id=1))
+
+    # Allocation-controlled drains so the basins do not overflow when the UD pulls
+    # less than their upstream FlowBoundary supplies.
+    model.outlet.add(
+        Node(7, Point(1, 1), subnetwork_id=1),
+        [outlet.Static(flow_rate=[0.0], allocation_controlled=True)],
+    )
+    model.terminal.add(Node(8, Point(2, 1), subnetwork_id=1))
+    model.outlet.add(
+        Node(9, Point(1, -1), subnetwork_id=1),
+        [outlet.Static(flow_rate=[0.0], allocation_controlled=True)],
+    )
+    model.terminal.add(Node(10, Point(2, -1), subnetwork_id=1))
+
+    # LevelDemand pins both basins at 1 m, giving the LP a reason to drain the excess
+    model.level_demand.add(
+        Node(11, Point(0, 2), subnetwork_id=1),
+        [level_demand.Static(min_level=[1.0], max_level=[1.0], demand_priority=1)],
+    )
+
+    model.link.add(model.flow_boundary[1], model.basin[3])
+    model.link.add(model.flow_boundary[2], model.basin[4])
+    model.link.add(model.basin[3], model.user_demand[5])
+    model.link.add(model.basin[4], model.user_demand[5])
+    model.link.add(model.user_demand[5], model.terminal[6])
+    model.link.add(model.basin[3], model.outlet[7])
+    model.link.add(model.outlet[7], model.terminal[8])
+    model.link.add(model.basin[4], model.outlet[9])
+    model.link.add(model.outlet[9], model.terminal[10])
+    model.link.add(model.level_demand[11], model.basin[3])
+    model.link.add(model.level_demand[11], model.basin[4])
 
     return model
 
