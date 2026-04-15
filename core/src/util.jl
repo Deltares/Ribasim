@@ -827,6 +827,23 @@ function get_state_flow_links(
 end
 
 """
+Build a mapping from a (from_node, to_node) link tuple to the index of that link's state.
+Only inflow-link states are covered (horizontal flow components, which come first in the
+state vector). Placeholder links (both node values == 0) are skipped.
+"""
+function build_link_to_state_idx(
+        state_inflow_link::Vector{LinkMetadata},
+    )::Dict{Tuple{NodeID, NodeID}, Int}
+    link_to_state_idx = Dict{Tuple{NodeID, NodeID}, Int}()
+    for (idx, link_meta) in enumerate(state_inflow_link)
+        from_node, to_node = link_meta.link
+        from_node.value == 0 && to_node.value == 0 && continue
+        link_to_state_idx[link_meta.link] = idx
+    end
+    return link_to_state_idx
+end
+
+"""
 Get the index of the state vector corresponding to the given NodeID.
 Use the inflow Boolean argument to disambiguite for node types that have multiple states.
 Can return nothing for node types that do not have a state, like Terminal.

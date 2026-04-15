@@ -957,8 +957,15 @@ end
 """
 node_id: node ID of the UserDemand node
 demand_priorities: All demand priorities that exist in the model (not just by UserDemand) sorted
-inflow_link: incoming flow link
+inflow_links: incoming flow links
     The ID of the destination node is always the ID of the UserDemand node
+inflow_link_offsets: Cumulative offsets into the flat per-link `user_demand_inflow` state component.
+    inflow_links[i] occupies state entries (inflow_link_offsets[i]+1):inflow_link_offsets[i+1]
+    inside that component. Has length `length(node_id) + 1`.
+inflow_link_allocated: Per inflow link, the absolute flow rate the allocation LP has allocated through
+    that link (m³/s). Updated after each LP solve. When set to Inf (the default), the
+    physics falls back to an equal split of the total demand across inflow links —
+    this defines behaviour when allocation is not active.
 outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the UserDemand node
 has_demand_priority: boolean matrix stating per UserDemand node per demand priority index whether the (node_idx, demand_priority_idx)
@@ -977,14 +984,7 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
     node_id::Vector{NodeID}
     demand_priorities::Vector{Int32} = Int32[]
     inflow_links::Vector{Vector{LinkMetadata}} = [LinkMetadata[] for _ in node_id]
-    # Cumulative offsets into the flat per-link `user_demand_inflow` state component.
-    # inflow_links[i] occupies state entries (inflow_link_offsets[i]+1):inflow_link_offsets[i+1]
-    # inside that component. Has length `length(node_id) + 1`.
     inflow_link_offsets::Vector{Int} = zeros(Int, length(node_id) + 1)
-    # Per inflow link, the absolute flow rate the allocation LP has allocated through
-    # that link (m³/s). Updated after each LP solve. When set to Inf (the default), the
-    # physics falls back to an equal split of the total demand across inflow links —
-    # this preserves correct behaviour when allocation is not active.
     inflow_link_allocated::Vector{Vector{Float64}} = [Float64[] for _ in node_id]
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     has_demand_priority::Matrix{Bool} =

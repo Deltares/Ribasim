@@ -378,14 +378,14 @@ function set_simulation_data!(
     constraints = problem[:user_demand_return_flow]
     flow = problem[:flow]
 
-    # Set the return factor for the end of the time step. The return-flow constraint
-    # sums over all inflow links, so every inflow link's flow variable gets the
-    # return factor as coefficient in this constraint.
+    # Set the return factor for the end of the time step.
+    # The return-flow constraint is: return_flow  = return_factor * Σ inflow
     for node_id in only(constraints.axes)
         constraint = constraints[node_id]
-        rf = -user_demand.return_factor[node_id.idx](t + Δt_allocation)
-        for lm in user_demand.inflow_links[node_id.idx]
-            JuMP.set_normalized_coefficient(constraint, flow[lm.link], rf)
+        return_factor = user_demand.return_factor[node_id.idx](t + Δt_allocation)
+        for inflow_link_metadata in user_demand.inflow_links[node_id.idx]
+            inflow = flow[inflow_link_metadata.link]
+            JuMP.set_normalized_coefficient(constraint, inflow, -return_factor)
         end
     end
     return nothing
@@ -888,25 +888,24 @@ function parse_allocations!(
     is_user_demand = (node isa UserDemand)
     flow = allocation_model.problem[:flow]
 
-    # Helper for cumulative supplied volume: UserDemand has multiple inflow links, sum them.
+
     supplied_volume = node_id ->
     if is_user_demand
+        # UserDemand has multiple inflow links, sum them.
         sum(cumulative_supplied_volume[lm.link] for lm in node.inflow_links[node_id.idx])
     else
         cumulative_supplied_volume[node.inflow_link[node_id.idx].link]
     end
 
-    # Store the LP's absolute per-link flow rate (m³/s) so the physics can split
-    # the UserDemand's inflow across source basins exactly as the LP decided —
-    # including when LevelDemands or route priorities steer flow away from a
-    # particular source.
+    # Store the flow rate (m³/s) per inflow link of the UserDemand so the physics can split
+    # the inflow across source basins exactly as the allocation decided
     if is_user_demand
         for node_id in node_ids_subnetwork
             inflow_links = node.inflow_links[node_id.idx]
             isempty(inflow_links) && continue
             link_alloc = node.inflow_link_allocated[node_id.idx]
-            for (k, lm) in enumerate(inflow_links)
-                link_alloc[k] = max(0.0, JuMP.value(flow[lm.link]) * scaling.flow)
+            for (i, link_metadata) in enumerate(inflow_links)
+                link_alloc[i] = max(0.0, JuMP.value(flow[link_metadata.link]) * scaling.flow)
             end
         end
     end

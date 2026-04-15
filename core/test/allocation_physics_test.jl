@@ -83,7 +83,6 @@ end
     @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate rtol = 1.0e-2
 end
 
-
 @testitem "Outlet" begin
     using DataFrames: DataFrame
 

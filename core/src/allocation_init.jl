@@ -192,7 +192,7 @@ function add_user_demand!(
     problem[:user_demand_allocated_sum_constraint] = JuMP.@constraint(
         problem,
         [node_id = user_demand_ids_subnetwork],
-        sum(flow[lm.link] for lm in inflow_links[node_id.idx]) == sum(
+        sum(flow[link_metadata.link] for link_metadata in inflow_links[node_id.idx]) == sum(
             user_demand_allocated[node_id, demand_priority] for
                 demand_priority in DemandPriorityIterator(node_id, p_independent)
         );
@@ -238,8 +238,8 @@ function add_user_demand!(
 
     # Add the links for which the supplied volume is required for output
     for node_id in user_demand_ids_subnetwork
-        for lm in inflow_links[node_id.idx]
-            cumulative_supplied_volume[lm.link] = 0.0
+        for link_metadata in inflow_links[node_id.idx]
+            cumulative_supplied_volume[link_metadata.link] = 0.0
         end
     end
 

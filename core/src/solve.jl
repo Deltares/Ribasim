@@ -365,7 +365,7 @@ function formulate_flow!(
         min_level = user_demand.min_level[node_idx]
 
         # Total effective demand = min(allocated, demand) summed over priorities.
-        # When allocation is not optimized, allocated = Inf and this becomes the demand.
+        # When allocation is not running, allocated = Inf and this becomes the demand.
         q_total_demand = 0.0
         for demand_priority_idx in eachindex(allocation.demand_priorities_all)
             !has_demand_priority[demand_priority_idx] && continue
@@ -375,11 +375,9 @@ function formulate_flow!(
             )
         end
 
-        # Per-link target: use the LP's absolute allocation (m³/s) when available.
-        # When the LP hasn't populated it (sentinel Inf) — e.g. allocation disabled —
+        # When allocation disabled,
         # fall back to an equal split of the total demand. Each link then applies
-        # its own source basin reduction factors, so the link's actual flow can be
-        # less than the target if its source basin is drying out.
+        # its own source basin reduction factors
         link_alloc = user_demand.inflow_link_allocated[node_idx]
         n_links = length(inflow_links)
         equal_split = n_links == 0 ? 0.0 : q_total_demand / n_links
@@ -387,14 +385,14 @@ function formulate_flow!(
         q_total_actual = 0.0
         for (k, link_meta) in enumerate(inflow_links)
             src_id = link_meta.link[1]
-            factor_basin = get_low_storage_factor(p, src_id)
+            f_low_storage = get_low_storage_factor(p, src_id)
             source_level = get_level(p, src_id, t)
-            factor_level = reduction_factor(
+            f_reduction = reduction_factor(
                 source_level - min_level,
                 level_difference_threshold,
             )
             q_k_target = isinf(link_alloc[k]) ? equal_split : link_alloc[k]
-            q_k = q_k_target * factor_basin * factor_level
+            q_k = q_k_target * f_low_storage * f_reduction
             du.user_demand_inflow[link_offset + k] = q_k
             q_total_actual += q_k
         end
@@ -914,12 +912,7 @@ function limit_flow!(
         )
     end
 
-    # UserDemand inflow bounds: per-link bounds derived from the LP's absolute per-link
-    # allocation (or equal split fallback when the LP hasn't populated them yet). Using
-    # link_alloc here — rather than allocated_total / n_links — is important because the
-    # LP may have routed nearly all demand through one source (LevelDemand, route
-    # priority), and bounding the other link against equal-split would force flow
-    # through a link the LP wants kept at zero.
+    # UserDemand per inflow link bounds
     for node_idx in eachindex(user_demand.node_id)
         id = user_demand.node_id[node_idx]
         inflow_links = user_demand.inflow_links[node_idx]
