@@ -639,10 +639,11 @@ class Model(FileModel, ParentModel):
         # add the node that is not the upstream of any other nodes
         from_node_info = self._add_source_sink_node(nodes, from_node_info, "from")
 
-        # loop over all the "from_node" and check if they have enough outneighbor
-        for _, row in from_node_info.iterrows():
-            # from node's outneighbor
-            if row["from_node_count"] < link_amount[row["from_node_type"]][2]:
+        # vectorized check for outneighbor minimum
+        if not from_node_info.empty:
+            min_out = from_node_info["from_node_type"].map(lambda t: link_amount[t][2])
+            violations = from_node_info[from_node_info["from_node_count"] < min_out]
+            for _, row in violations.iterrows():
                 is_valid = False
                 logger.error(
                     f"Node {row['from_node_id']} must have at least {link_amount[row['from_node_type']][2]} outneighbor(s) (got {row['from_node_count']})"
@@ -664,9 +665,11 @@ class Model(FileModel, ParentModel):
         # add the node that is not the downstream of any other nodes
         to_node_info = self._add_source_sink_node(nodes, to_node_info, "to")
 
-        # loop over all the "to_node" and check if they have enough inneighbor
-        for _, row in to_node_info.iterrows():
-            if row["to_node_count"] < link_amount[row["to_node_type"]][0]:
+        # vectorized check for inneighbor minimum
+        if not to_node_info.empty:
+            min_in = to_node_info["to_node_type"].map(lambda t: link_amount[t][0])
+            violations = to_node_info[to_node_info["to_node_count"] < min_in]
+            for _, row in violations.iterrows():
                 is_valid = False
                 logger.error(
                     f"Node {row['to_node_id']} must have at least {link_amount[row['to_node_type']][0]} inneighbor(s) (got {row['to_node_count']})"
@@ -677,24 +680,20 @@ class Model(FileModel, ParentModel):
     def _add_source_sink_node(
         self, nodes, node_info: pd.DataFrame, direction: str
     ) -> pd.DataFrame:
-        """Loop over node table.
-
-        Add the nodes whose id are missing in the from_node and to_node column in the link table because they are not the upstream or downstrem of other nodes.
-
-        Specify that their occurrence in from_node table or to_node table is 0.
-        """
-        # loop over nodes, add the one that is not the downstream (from) or upstream (to) of any other nodes
-        for index, node in enumerate(nodes):
-            if nodes.index[index] not in node_info[f"{direction}_node_id"].to_numpy():
-                new_row = {
-                    f"{direction}_node_id": nodes.index[index],
-                    f"{direction}_node_count": 0,
-                    f"{direction}_node_type": node,
-                }
-                node_info = _concat(
-                    [node_info, pd.DataFrame([new_row])], ignore_index=True
-                )
-
+        """Return nodes missing from `direction`_node_id the link table."""
+        id_col = f"{direction}_node_id"
+        present_ids = set(node_info[id_col].to_numpy())
+        new_rows = [
+            {
+                id_col: nodes.index[i],
+                f"{direction}_node_count": 0,
+                f"{direction}_node_type": node,
+            }
+            for i, node in enumerate(nodes)
+            if nodes.index[i] not in present_ids
+        ]
+        if new_rows:
+            node_info = _concat([node_info, pd.DataFrame(new_rows)], ignore_index=True)
         return node_info
 
     @classmethod
