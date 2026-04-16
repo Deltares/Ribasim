@@ -384,3 +384,7 @@ function get_convergence(
         convergence[a]
     end
 end
+
+function get_inflow_links(graph::MetaGraph, id::NodeID)::Vector{LinkMetadata}
+    return [graph[src, id] for src in inflow_ids(graph, id)]
+end

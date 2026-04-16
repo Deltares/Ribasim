@@ -1312,10 +1312,10 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
 
     user_demand = UserDemand(; node_id, concentration_itp, demand_priorities)
 
-    # init in and outflow link bookkeeping
+
     for (i, id) in enumerate(user_demand.node_id)
-        user_demand.inflow_links[i] =
-            [graph[src, id] for src in inflow_ids(graph, id)]
+        # multi inflow link bookkeeping
+        user_demand.inflow_links[i] = get_inflow_links(graph, id)
         n_links = length(user_demand.inflow_links[i])
         user_demand.inflow_link_offsets[i + 1] =
             user_demand.inflow_link_offsets[i] + n_links
