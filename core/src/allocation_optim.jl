@@ -14,7 +14,6 @@ function set_simulation_data!(
         user_demand,
         tabulated_rating_curve,
     ) = p.p_independent
-    du = get_du(integrator)
 
     errors = false
 
@@ -24,7 +23,7 @@ function set_simulation_data!(
     set_simulation_data!(allocation_model, linear_resistance, p, t)
     set_simulation_data!(allocation_model, manning_resistance, p, t)
     set_simulation_data!(allocation_model, tabulated_rating_curve, p, t)
-    set_simulation_data!(allocation_model, pump, outlet, du)
+    set_simulation_data!(allocation_model, pump, outlet, p.state_and_time_dependent_cache)
     set_simulation_data!(allocation_model, user_demand, t)
 
     if errors
@@ -327,7 +326,7 @@ function set_simulation_data!(
         allocation_model::AllocationModel,
         pump::Pump,
         outlet::Outlet,
-        du::CVector,
+        cache::StateAndTimeDependentCache,
     )::Nothing
     (; problem, scaling) = allocation_model
     pump_constraints = problem[:pump]
@@ -337,7 +336,7 @@ function set_simulation_data!(
     for node_id in only(pump_constraints.axes)
         constraint = pump_constraints[node_id]
         upstream_node_id = pump.inflow_link[node_id.idx].link[1]
-        q = du.pump[node_id.idx]
+        q = cache.current_flow_rate_pump[node_id.idx]
         if upstream_node_id.type == NodeType.Basin
             low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
             JuMP.set_normalized_coefficient(
@@ -354,7 +353,7 @@ function set_simulation_data!(
     for node_id in only(outlet_constraints.axes)
         constraint = outlet_constraints[node_id]
         upstream_node_id = outlet.inflow_link[node_id.idx].link[1]
-        q = du.outlet[node_id.idx]
+        q = cache.current_flow_rate_outlet[node_id.idx]
         if upstream_node_id.type == NodeType.Basin
             low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
             JuMP.set_normalized_coefficient(
