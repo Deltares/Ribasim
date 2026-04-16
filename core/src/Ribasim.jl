@@ -32,9 +32,6 @@ using ForwardDiff: derivative as forward_diff
 
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du
-using OrdinaryDiffEqDifferentiation:
-    OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
-using SciMLOperators: WOperator, MatrixOperator
 import ADTypes
 import ForwardDiff
 
@@ -49,12 +46,7 @@ using SciMLBase:
     ODEProblem,
     get_proposed_dt,
     DEIntegrator,
-    FullSpecialize,
-    NoSpecialize,
-    SciMLOperators,
-    AbstractSciMLOperator,
-    LinearProblem,
-    LinearSolution
+    FullSpecialize
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading

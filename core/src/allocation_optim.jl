@@ -745,19 +745,21 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     du = get_du(integrator)
 
     # Extrapolate the current instantaneous flow rates from the physical layer
+    # Flow rates are now stored in cache vectors, look up by link
+    internal_flow_links = p.p_independent.graph[].internal_flow_links
     for link in only(flow.axes)
-        state_index = get_state_index(getaxes(du), link)
-        if !isnothing(state_index)
-            JuMP.set_start_value(flow[link], du[state_index] / scaling.flow)
+        link_idx = findfirst(l -> l.link == link, internal_flow_links)
+        if !isnothing(link_idx)
+            JuMP.set_start_value(flow[link], p.p_independent.current_flow_rate[link_idx] / scaling.flow)
         end
     end
 
     # Extrapolate the current instantaneous storage rates from the physical layer
+    # du.basin[idx] now directly contains dS/dt
     for node_id in basin_ids_subnetwork
         JuMP.set_start_value(
             storage_change[node_id],
-            formulate_dstorage(du, p.p_independent, t, node_id) * Δt_allocation /
-                scaling.storage,
+            du.basin[node_id.idx] * Δt_allocation / scaling.storage,
         )
     end
 
