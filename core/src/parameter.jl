@@ -356,6 +356,68 @@ The parameter update associated with a certain control state for discrete contro
 end
 
 """
+Cache for mass-balance-consistent correction of trapezoidal flow estimates.
+Projects trapezoidal estimates onto the subspace satisfying exact mass balance
+using the minimum-norm adjustment: q̄ = q̄* + Aᵀ(AAᵀ+2I)⁻¹(b - Aq̄*)
+
+- `A_flow`: Signed incidence matrix (n_basins × n_links), +1 for inflow, -1 for outflow
+- `AAt_2I_inv`: Precomputed (AAᵀ+2I)⁻¹, always positive definite
+- `storage_prev`: Basin storage at previous accepted step
+- `lambda`, `residual`, `correction_flow`: Preallocated work vectors
+"""
+struct BalanceCorrectionCache
+    A_flow::SparseMatrixCSC{Float64, Int}
+    AAt_2I_inv::Matrix{Float64}
+    storage_prev::Vector{Float64}
+    lambda::Vector{Float64}
+    residual::Vector{Float64}
+    correction_flow::Vector{Float64}
+end
+
+function BalanceCorrectionCache(
+        internal_flow_links::Vector{LinkMetadata},
+        basin_node_ids::Vector{NodeID},
+        n_links::Int,
+    )
+    n_basins = length(basin_node_ids)
+
+    # Build sparse signed incidence matrix: n_basins × n_links
+    I_idx = Int[]
+    J_idx = Int[]
+    V_val = Float64[]
+    for (j, lm) in enumerate(internal_flow_links)
+        src, dst = lm.link
+        if src.type == NodeType.Basin
+            push!(I_idx, src.idx)
+            push!(J_idx, j)
+            push!(V_val, -1.0)  # outflow from source basin
+        end
+        if dst.type == NodeType.Basin
+            push!(I_idx, dst.idx)
+            push!(J_idx, j)
+            push!(V_val, +1.0)  # inflow to destination basin
+        end
+    end
+    A_flow = sparse(I_idx, J_idx, V_val, n_basins, n_links)
+
+    # (AAᵀ + 2I) is always positive definite; precompute its inverse
+    AAt_2I = Matrix(A_flow * A_flow')
+    for i in 1:n_basins
+        AAt_2I[i, i] += 2.0
+    end
+    AAt_2I_inv = inv(AAt_2I)
+
+    return BalanceCorrectionCache(
+        A_flow,
+        AAt_2I_inv,
+        zeros(n_basins),  # storage_prev
+        zeros(n_basins),  # lambda
+        zeros(n_basins),  # residual
+        zeros(n_links),   # correction_flow
+    )
+end
+
+"""
 In-memory storage of saved mean flows for writing to results.
 
 - `flow`: The mean flows on all links and state-dependent forcings
@@ -371,6 +433,7 @@ In-memory storage of saved mean flows for writing to results.
 - `t`: Endtime of the interval over which is averaged
 """
 @kwdef struct SavedFlow
+
     # Mean flow rates per internal flow link
     flow::Vector{Float64}
     inflow::Vector{Float64}
@@ -1158,6 +1221,8 @@ the object itself is not.
     cumulative_infiltration::Vector{Float64} = Float64[]
     cumulative_evaporation_saveat::Vector{Float64} = Float64[]
     cumulative_infiltration_saveat::Vector{Float64} = Float64[]
+    # Mass-balance-consistent correction cache
+    balance_correction::BalanceCorrectionCache
 end
 
 """

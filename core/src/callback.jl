@@ -188,6 +188,79 @@ function sync_flow_rates!(p::Parameters)::Nothing
 end
 
 """
+Apply mass-balance-consistent correction to trapezoidal flow estimates.
+Projects the trapezoidal estimates onto the subspace satisfying exact mass balance
+using the minimum-norm adjustment: δq = Aᵀ(AAᵀ+2I)⁻¹(b - Aq̄*)
+
+The correction distributes the per-basin water balance residual back to the
+internal flow links, evaporation, and infiltration in proportion to the network
+topology, guaranteeing mass conservation at every step.
+"""
+function apply_balance_correction!(u, p_independent, time_dependent_cache)::Nothing
+    (; basin, flow_boundary, balance_correction) = p_independent
+    (; A_flow, AAt_2I_inv, storage_prev, lambda, residual, correction_flow) =
+        balance_correction
+    n_basins = length(basin.node_id)
+
+    if n_basins == 0
+        return nothing
+    end
+
+    # b[i] = ΔS[i] - exact_forcings[i]
+    # where exact_forcings = precipitation + drainage + surface_runoff
+    for i in 1:n_basins
+        ΔS = u.basin[i] - storage_prev[i]
+        precip = time_dependent_cache.basin.current_cumulative_precipitation[i] -
+            basin.cumulative_precipitation[i]
+        drainage = time_dependent_cache.basin.current_cumulative_drainage[i] -
+            basin.cumulative_drainage[i]
+        surface_runoff = time_dependent_cache.basin.current_cumulative_surface_runoff[i] -
+            basin.cumulative_surface_runoff[i]
+        residual[i] = ΔS - precip - drainage - surface_runoff
+    end
+
+    # Subtract exact flow boundary contributions to receiving basins
+    for (outflow_link, id) in zip(flow_boundary.outflow_link, flow_boundary.node_id)
+        dst = outflow_link.link[2]
+        if dst.type == NodeType.Basin
+            fb_vol =
+                time_dependent_cache.flow_boundary.current_cumulative_boundary_flow[id.idx] -
+                flow_boundary.cumulative_flow[id.idx]
+            residual[dst.idx] -= fb_vol
+        end
+    end
+
+    # Subtract A_ext * q_ext* (the trapezoidal estimate contribution)
+    # A_ext * q_ext* = A_flow * cumulative_flow - cumulative_evaporation - cumulative_infiltration
+    mul!(lambda, A_flow, p_independent.cumulative_flow)  # reuse lambda as temp
+    @. residual -= lambda
+    @. residual += p_independent.cumulative_evaporation
+    @. residual += p_independent.cumulative_infiltration
+    # Now residual = b - A_ext * q_ext* = per-basin mass balance error (in volumes)
+
+    # Solve for Lagrange multipliers: λ = (AAᵀ + 2I)⁻¹ r
+    mul!(lambda, AAt_2I_inv, residual)
+
+    # Compute flow corrections: δq_flow = Aᵀλ
+    mul!(correction_flow, A_flow', lambda)
+
+    # Apply corrections to per-step and saveat accumulators
+    @. p_independent.cumulative_flow += correction_flow
+    @. p_independent.cumulative_flow_saveat += correction_flow
+    @. p_independent.cumulative_evaporation -= lambda
+    @. p_independent.cumulative_evaporation_saveat -= lambda
+    @. p_independent.cumulative_infiltration -= lambda
+    @. p_independent.cumulative_infiltration_saveat -= lambda
+
+    # Update storage_prev for next step
+    for i in 1:n_basins
+        storage_prev[i] = u.basin[i]
+    end
+
+    return nothing
+end
+
+"""
 Update cumulative flows using trapezoidal integration of flow rates.
 Also updates cumulative forcings and allocation flows.
 """
@@ -220,6 +293,9 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         @. p_independent.cumulative_infiltration = 0.5 * dt * (state_and_time_dependent_cache.current_infiltration + p_independent.infiltration_prev)
         @. p_independent.cumulative_infiltration_saveat += p_independent.cumulative_infiltration
         @. p_independent.infiltration_prev = state_and_time_dependent_cache.current_infiltration
+
+        # Project trapezoidal estimates onto mass-balance-consistent subspace
+        apply_balance_correction!(u, p_independent, time_dependent_cache)
     end
 
     # Update cumulative boundary flow which is integrated exactly

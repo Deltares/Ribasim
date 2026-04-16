@@ -57,7 +57,7 @@ using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 using SparseArrays: SparseMatrixCSC, sparse, nzrange
 
 # Linear algebra
-using LinearAlgebra: LinearAlgebra, mul!, UniformScaling
+using LinearAlgebra: LinearAlgebra, mul!, UniformScaling, inv
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node

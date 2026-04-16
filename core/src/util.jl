@@ -710,6 +710,8 @@ function initialize_state_vector!(u::CVector, p_independent::ParametersIndepende
     # Initialize prev-saveat storage so the first water balance check
     # correctly computes storage_rate = (s_now - storage0) / Δt
     basin.Δstorage_prev_saveat .= basin.storage0
+    # Initialize balance correction storage tracking
+    p_independent.balance_correction.storage_prev .= basin.storage0
     return nothing
 end
 
