@@ -305,11 +305,14 @@ class NodeModel(ParentModel, ChildModel):
           their union must equal the node table.
         - ``"subset"``: table node_ids must be a subset of the node table.
         """
-        node_table = self.node
-        if node_table is None or node_table.df is None or node_table.df.empty:
+        if self._parent is None:
+            return
+        model = cast("Model", self._parent)
+        node_df = model.node.filter(self.__class__.__name__)
+        if node_df is None or node_df.empty:
             return
 
-        expected_ids: set[int] = set(node_table.df.index)
+        expected_ids: set[int] = set(node_df.index)
         node_type = self.__class__.__name__
 
         partition_tables: list[tuple[str, set[int]]] = []
