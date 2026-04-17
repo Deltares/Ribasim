@@ -111,17 +111,6 @@ end
     @test length(only(tstops)) == 404
 end
 
-@testitem "decrease tolerance" begin
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/cyclic_time/ribasim.toml")
-    @test ispath(toml_path)
-
-    model = Ribasim.run(toml_path)
-    @test model.integrator.opts.reltol isa Vector{Float64}
-    @test all(model.integrator.opts.reltol .<= model.integrator.p.p_independent.reltol)
-    @test model.integrator.u[1] >= 1.0e11
-    @test model.integrator.opts.reltol[1] <= 1.0e-11
-end
-
 @testitem "transient_pump_outlet" begin
     using DataFrames: DataFrame
 

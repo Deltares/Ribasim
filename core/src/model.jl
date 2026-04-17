@@ -104,7 +104,6 @@ function Model(config::Config)::Model
     # Initialize basin storages in the state vector
     initialize_state_vector!(u0, parameters.p_independent)
 
-    reltolv = fill(config.solver.reltol, length(u0))
     du0 = zero(u0)
 
     # The Solver algorithm
@@ -163,7 +162,7 @@ function Model(config::Config)::Model
         dtmax = something(config.solver.dtmax, t_end),
         config.solver.force_dtmin,
         config.solver.abstol,
-        reltol = reltolv,
+        reltol = config.solver.reltol,
         config.solver.maxiters,
     )
     @debug "Setup integrator."

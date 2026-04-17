@@ -1176,7 +1176,6 @@ the object itself is not.
 """
 @kwdef struct ParametersIndependent{C1}
     starttime::DateTime
-    reltol::Float64
     graph::ModelGraph
     allocation::Allocation
     basin::Basin

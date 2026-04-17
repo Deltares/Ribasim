@@ -1667,7 +1667,6 @@ function Parameters(db::DB, config::Config)::Parameters
 
     p_independent = ParametersIndependent(;
         config.starttime,
-        config.solver.reltol,
         graph,
         allocation,
         nodes...,

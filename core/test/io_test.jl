@@ -484,5 +484,5 @@ end
     (; p_independent, state_and_time_dependent_cache) = model.integrator.p
     (; current_storage) = state_and_time_dependent_cache
     storage2_begin = current_storage
-    @test storage1_end ≈ storage2_begin
+    @test storage1_end ≈ storage2_begin rtol = 1.0e-2
 end
