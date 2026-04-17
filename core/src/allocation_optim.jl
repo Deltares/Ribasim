@@ -66,10 +66,8 @@ function set_simulation_data!(
 
         # Check whether the storage in the physical layer is within the maximum storage bound
         if storage_now > storage_max
-            # double the maximum storage
-            storage_max *= 2.0
-            # @error "Maximum basin storage exceeded (allocation infeasibility)" storage_now storage_max basin_id
-            # errors = true
+            @error "Maximum basin storage exceeded (allocation infeasibility)" storage_now storage_max basin_id
+            errors = true
         end
 
         # Set bounds on the storage change based on the current storage and the Basin minimum and maximum
