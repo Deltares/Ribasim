@@ -1212,7 +1212,7 @@ the object itself is not.
     current_flow_rate::Vector{Float64} = Float64[]
     # Previous step's flow rates for trapezoidal integration
     flow_rate_prev::Vector{Float64} = Float64[]
-    # Cumulative flow volumes per link (reset at save points)
+    # Cumulative flow volumes per link (reset each timestep)
     cumulative_flow::Vector{Float64} = Float64[]
     # Cumulative flow volumes per link since previous saveat
     cumulative_flow_saveat::Vector{Float64} = Float64[]
