@@ -2030,7 +2030,15 @@ the final NamedTuple.
 function typed_columntable(table, ::Type{T})::NamedTuple where {T <: Table}
     names_T = fieldnames(T)
     types_T = fieldtypes(T)
+    n_row = isempty(table) ? 0 : length(first(values(table)))
     for (name, target_type) in zip(names_T, types_T)
+        if !haskey(table, name)
+            if Missing <: target_type
+                table[name] = fill(missing, n_row)
+            else
+                throw(ArgumentError("Missing required column $(name) for table $(T)."))
+            end
+        end
         col = table[name]
         if eltype(col) !== target_type
             target = Vector{target_type}(undef, length(col))
