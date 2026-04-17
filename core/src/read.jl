@@ -1690,6 +1690,8 @@ function Parameters(db::DB, config::Config)::Parameters
         cumulative_evaporation_saveat = zeros(n_basin),
         cumulative_infiltration_saveat = zeros(n_basin),
         balance_correction,
+        convergence = zeros(n_basin),
+        flow_convergence_saveat = zeros(n_internal_flow_links),
     )
 
     collect_control_mappings!(p_independent)

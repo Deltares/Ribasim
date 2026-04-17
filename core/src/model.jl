@@ -110,7 +110,7 @@ function Model(config::Config)::Model
     # The Solver algorithm
     alg = algorithm(config.solver)
 
-    # Synchronize level with storage (storage is now directly in u0.basin)
+    # Synchronize level with storage
     set_current_basin_properties!(u0, parameters, t0)
 
     # Previous level is used to track level changes
@@ -121,7 +121,6 @@ function Model(config::Config)::Model
     tstops = sort(unique(reduce(vcat, tstops)))
     adaptive = is_adaptive(config.solver.dt)
 
-    # Always use FullSpecialize (no HalfLazyJacobian needed)
     RHS = ODEFunction{true, FullSpecialize}(
         water_balance!;
         get_diff_eval(du0, u0, parameters, config.solver)...,

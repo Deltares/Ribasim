@@ -252,6 +252,9 @@ function apply_balance_correction!(u, p_independent, time_dependent_cache)::Noth
     @. p_independent.cumulative_infiltration -= lambda
     @. p_independent.cumulative_infiltration_saveat -= lambda
 
+    # Accumulate absolute correction for per-link flow convergence output
+    @. p_independent.flow_convergence_saveat += abs(correction_flow)
+
     # Update storage_prev for next step
     for i in 1:n_basins
         storage_prev[i] = u.basin[i]
@@ -296,6 +299,19 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
 
         # Project trapezoidal estimates onto mass-balance-consistent subspace
         apply_balance_correction!(u, p_independent, time_dependent_cache)
+
+        # Accumulate normalized Newton residual for convergence output
+        cache = integrator.cache
+        if hasproperty(cache, :nlsolver)
+            atmp = cache.nlsolver.cache.atmp
+            abs_atmp = abs.(atmp)
+            max_atmp = finitemaximum(abs_atmp; init = one(eltype(abs_atmp)))
+            for i in eachindex(p_independent.convergence)
+                v = abs_atmp[i]
+                p_independent.convergence[i] += isfinite(v) ? v / max_atmp : 0.0
+            end
+            p_independent.convergence_ncalls[1] += 1
+        end
     end
 
     # Update cumulative boundary flow which is integrated exactly
@@ -617,6 +633,19 @@ function save_flow(u, t, integrator)
     p_independent.cumulative_infiltration_saveat .= 0.0
 
     concentration = copy(basin.concentration_data.concentration_state)
+
+    # Compute mean convergence over the saveat interval (missing if no nlsolver calls)
+    n_basin = length(basin.node_id)
+    convergence = fill(missing, n_basin) |> Vector{Union{Missing, Float64}}
+    ncalls = p_independent.convergence_ncalls[1]
+    if ncalls > 0
+        for i in 1:n_basin
+            convergence[i] = p_independent.convergence[i] / ncalls
+        end
+        fill!(p_independent.convergence, 0.0)
+        p_independent.convergence_ncalls[1] = 0
+    end
+
     saved_flow = SavedFlow(;
         flow = flow_mean,
         inflow = inflow_mean,
@@ -628,8 +657,11 @@ function save_flow(u, t, integrator)
         evaporation,
         infiltration,
         concentration,
+        convergence,
+        flow_convergence = copy(p_independent.flow_convergence_saveat) ./ Δt,
         t,
     )
+    p_independent.flow_convergence_saveat .= 0.0
     check_water_balance_error!(saved_flow, integrator, Δt)
     return saved_flow
 end

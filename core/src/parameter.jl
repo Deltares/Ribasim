@@ -385,8 +385,8 @@ function BalanceCorrectionCache(
     I_idx = Int[]
     J_idx = Int[]
     V_val = Float64[]
-    for (j, lm) in enumerate(internal_flow_links)
-        src, dst = lm.link
+    for (j, link_metadata) in enumerate(internal_flow_links)
+        src, dst = link_metadata.link
         if src.type == NodeType.Basin
             push!(I_idx, src.idx)
             push!(J_idx, j)
@@ -449,6 +449,8 @@ In-memory storage of saved mean flows for writing to results.
     storage_rate::Vector{Float64} = zero(precipitation)
     balance_error::Vector{Float64} = zero(precipitation)
     relative_error::Vector{Float64} = zero(precipitation)
+    convergence::Vector{Union{Missing, Float64}}
+    flow_convergence::Vector{Float64}
     t::Float64
 end
 
@@ -1223,6 +1225,11 @@ the object itself is not.
     cumulative_infiltration_saveat::Vector{Float64} = Float64[]
     # Mass-balance-consistent correction cache
     balance_correction::BalanceCorrectionCache
+    # Convergence tracking: accumulated normalized Newton residual per basin
+    convergence::Vector{Float64} = Float64[]
+    convergence_ncalls::Vector{Int} = [0]
+    # Accumulated absolute flow correction from balance correction (per internal flow link)
+    flow_convergence_saveat::Vector{Float64} = Float64[]
 end
 
 """
