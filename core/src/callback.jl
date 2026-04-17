@@ -77,6 +77,25 @@ function create_callbacks(
     return callback, saved
 end
 
+function sync_flow_rates!(node_sym::Symbol, current_flow_cache::Vector{T}, p_independent::ParametersIndependent) where {T}
+    internal_flow_links = p_independent.graph[].internal_flow_links
+    node = getproperty(p_independent, node_sym)
+    for (node_idx, id) in enumerate(node.node_id)
+        q = current_flow_cache[id.idx]
+        inflow_link = node.inflow_link[node_idx]
+        outflow_link = node.outflow_link[node_idx]
+        idx = get_link_index(inflow_link.link, internal_flow_links)
+        if idx !== nothing
+            p_independent.current_flow_rate[idx] = q
+        end
+        idx = get_link_index(outflow_link.link, internal_flow_links)
+        if idx !== nothing
+            p_independent.current_flow_rate[idx] = q
+        end
+    end
+    return
+end
+
 """
 Synchronize per-node-type flow rate caches into the per-link flow rate vector
 used for trapezoidal flow accumulation.
@@ -87,102 +106,12 @@ function sync_flow_rates!(p::Parameters)::Nothing
     internal_flow_links = graph[].internal_flow_links
     cache = state_and_time_dependent_cache
 
-    # Helper to find internal flow link index for a given link tuple
-    function link_idx(link_tuple)
-        return findfirst(l -> l.link == link_tuple, internal_flow_links)
-    end
-
-    # Pump
-    for (node_idx, id) in enumerate(p_independent.pump.node_id)
-        q = cache.current_flow_rate_pump[id.idx]
-        inflow_link = p_independent.pump.inflow_link[node_idx]
-        outflow_link = p_independent.pump.outflow_link[node_idx]
-        idx = link_idx(inflow_link.link)
-        if idx !== nothing
-            p_independent.current_flow_rate[idx] = q
-        end
-        idx = link_idx(outflow_link.link)
-        if idx !== nothing
-            p_independent.current_flow_rate[idx] = q
-        end
-    end
-
-    # Outlet
-    for (node_idx, id) in enumerate(p_independent.outlet.node_id)
-        q = cache.current_flow_rate_outlet[id.idx]
-        inflow_link = p_independent.outlet.inflow_link[node_idx]
-        outflow_link = p_independent.outlet.outflow_link[node_idx]
-        idx = link_idx(inflow_link.link)
-        if idx !== nothing
-            p_independent.current_flow_rate[idx] = q
-        end
-        idx = link_idx(outflow_link.link)
-        if idx !== nothing
-            p_independent.current_flow_rate[idx] = q
-        end
-    end
-
-    # TabulatedRatingCurve
-    for (node_idx, id) in enumerate(p_independent.tabulated_rating_curve.node_id)
-        q = cache.current_flow_rate_tabulated_rating_curve[id.idx]
-        inflow_link = p_independent.tabulated_rating_curve.inflow_link[node_idx]
-        outflow_link = p_independent.tabulated_rating_curve.outflow_link[node_idx]
-        idx = link_idx(inflow_link.link)
-        if idx !== nothing
-            p_independent.current_flow_rate[idx] = q
-        end
-        idx = link_idx(outflow_link.link)
-        if idx !== nothing
-            p_independent.current_flow_rate[idx] = q
-        end
-    end
-
-    # LinearResistance
-    for (node_idx, id) in enumerate(p_independent.linear_resistance.node_id)
-        q = cache.current_flow_rate_linear_resistance[id.idx]
-        inflow_link = p_independent.linear_resistance.inflow_link[node_idx]
-        outflow_link = p_independent.linear_resistance.outflow_link[node_idx]
-        idx = link_idx(inflow_link.link)
-        if idx !== nothing
-            p_independent.current_flow_rate[idx] = q
-        end
-        idx = link_idx(outflow_link.link)
-        if idx !== nothing
-            p_independent.current_flow_rate[idx] = q
-        end
-    end
-
-    # ManningResistance
-    for (node_idx, id) in enumerate(p_independent.manning_resistance.node_id)
-        q = cache.current_flow_rate_manning_resistance[id.idx]
-        inflow_link = p_independent.manning_resistance.inflow_link[node_idx]
-        outflow_link = p_independent.manning_resistance.outflow_link[node_idx]
-        idx = link_idx(inflow_link.link)
-        if idx !== nothing
-            p_independent.current_flow_rate[idx] = q
-        end
-        idx = link_idx(outflow_link.link)
-        if idx !== nothing
-            p_independent.current_flow_rate[idx] = q
-        end
-    end
-
-    # UserDemand - has separate inflow and return flow
-    for (node_idx, id) in enumerate(p_independent.user_demand.node_id)
-        q = cache.current_flow_rate_user_demand[id.idx]
-        inflow_link = p_independent.user_demand.inflow_link[node_idx]
-        idx = link_idx(inflow_link.link)
-        if idx !== nothing
-            p_independent.current_flow_rate[idx] = q
-        end
-        # Return flow: q * return_factor
-        outflow_link = p_independent.user_demand.outflow_link[node_idx]
-        idx = link_idx(outflow_link.link)
-        if idx !== nothing
-            return_factor = time_dependent_cache.user_demand.current_return_factor[id.idx]
-            p_independent.current_flow_rate[idx] = q * return_factor
-        end
-    end
+    sync_flow_rates!(:pump, cache.current_flow_rate_pump, p_independent)
+    sync_flow_rates!(:outlet, cache.current_flow_rate_outlet, p_independent)
+    sync_flow_rates!(:tabulated_rating_curve, cache.current_flow_rate_tabulated_rating_curve, p_independent)
+    sync_flow_rates!(:linear_resistance, cache.current_flow_rate_linear_resistance, p_independent)
+    sync_flow_rates!(:manning_resistance, cache.current_flow_rate_manning_resistance, p_independent)
+    sync_flow_rates!(:user_demand, cache.current_flow_rate_user_demand, p_independent)
 
     return nothing
 end
@@ -542,7 +471,7 @@ function flow_update_on_link(
         # Look up the internal flow link index and use cumulative flow
         graph = p.p_independent.graph
         internal_flow_links = graph[].internal_flow_links
-        link_idx = findfirst(l -> l.link == link_src, internal_flow_links)
+        link_idx = get_link_index(link_src, internal_flow_links)
         if isnothing(link_idx)
             0.0
         else

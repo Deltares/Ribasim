@@ -715,11 +715,6 @@ function initialize_state_vector!(u::CVector, p_independent::ParametersIndepende
     return nothing
 end
 
-function build_reltol_vector(u0::CVector, reltol::Float64)
-    reltolv = fill(reltol, length(u0))
-    # No mask needed - basin storages are bounded, reltol stays effective
-    return reltolv
-end
 
 """
 Check whether any storages are negative given the state u.
@@ -1141,4 +1136,11 @@ function add_substance_mass!(
         mass[substance_idx] += cumulative_flow * itp(t)
     end
     return nothing
+end
+
+function get_link_index(
+        link::Tuple{NodeID, NodeID},
+        flow_links::Vector{LinkMetadata},
+    )::Union{Int64, Nothing}
+    return findfirst(l -> l.link == link, flow_links)
 end

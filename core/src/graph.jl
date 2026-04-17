@@ -363,7 +363,7 @@ function get_flow(
         end
     else
         internal_flow_links = graph[].internal_flow_links
-        link_idx = findfirst(l -> l.link == link, internal_flow_links)
+        link_idx = get_link_index(link, internal_flow_links)
         isnothing(link_idx) ? 0.0 : flow[link_idx]
     end
 end

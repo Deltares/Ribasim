@@ -104,7 +104,7 @@ function Model(config::Config)::Model
     # Initialize basin storages in the state vector
     initialize_state_vector!(u0, parameters.p_independent)
 
-    reltolv = build_reltol_vector(u0, config.solver.reltol)
+    reltolv = fill(config.solver.reltol, length(u0))
     du0 = zero(u0)
 
     # The Solver algorithm

@@ -747,7 +747,7 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     # Flow rates are now stored in cache vectors, look up by link
     internal_flow_links = p.p_independent.graph[].internal_flow_links
     for link in only(flow.axes)
-        link_idx = findfirst(l -> l.link == link, internal_flow_links)
+        link_idx = get_link_index(link, internal_flow_links)
         if !isnothing(link_idx)
             JuMP.set_start_value(flow[link], p.p_independent.current_flow_rate[link_idx] / scaling.flow)
         end
