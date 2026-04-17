@@ -226,6 +226,9 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         @. p_independent.cumulative_infiltration_saveat += p_independent.cumulative_infiltration
         @. p_independent.infiltration_prev = state_and_time_dependent_cache.current_infiltration
 
+        # Accumulate running total for BMI using current rate * dt (like an ODE state)
+        @. p_independent.cumulative_infiltration_total += dt * state_and_time_dependent_cache.current_infiltration
+
         # Project trapezoidal estimates onto mass-balance-consistent subspace
         apply_balance_correction!(u, p_independent, time_dependent_cache)
 

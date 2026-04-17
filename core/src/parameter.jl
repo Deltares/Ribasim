@@ -1222,6 +1222,8 @@ the object itself is not.
     cumulative_infiltration::Vector{Float64} = Float64[]
     cumulative_evaporation_saveat::Vector{Float64} = Float64[]
     cumulative_infiltration_saveat::Vector{Float64} = Float64[]
+    # Running totals for BMI (never reset)
+    cumulative_infiltration_total::Vector{Float64} = Float64[]
     # Mass-balance-consistent correction cache
     balance_correction::BalanceCorrectionCache
     # Convergence tracking: accumulated normalized Newton residual per basin
