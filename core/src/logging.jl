@@ -69,6 +69,7 @@ function log_bottlenecks(model; interrupt::Bool)
         flow_error = @. abs(cache.nlsolver.cache.atmp / u)
         flow_error ./= finitemaximum(flow_error)
 
+        (; state_ranges, basin, pid_control) = p.p_independent
         errors = Pair{Symbol, String}[]
         error_count = 0
         max_errors = 5
@@ -79,7 +80,15 @@ function log_bottlenecks(model; interrupt::Bool)
             if error < 1 / length(flow_error) || error_count >= max_errors
                 break
             end
-            push!(errors, Symbol("state_$i") => @sprintf("%.2f", error * 100) * "%")
+            # Map state index to node ID
+            label = if i in state_ranges.basin
+                string(basin.node_id[i - first(state_ranges.basin) + 1])
+            elseif i in state_ranges.integral
+                string(pid_control.node_id[i - first(state_ranges.integral) + 1])
+            else
+                "state_$i"
+            end
+            push!(errors, Symbol(label) => @sprintf("%.2f", error * 100) * "%")
             error_count += 1
         end
         if !isempty(errors)
