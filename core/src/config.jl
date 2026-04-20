@@ -189,7 +189,7 @@ end
     autodiff::Bool = true
     evaporate_mass::Bool = true
     depth_threshold::Float64 = 0.1
-    level_difference_threshold::Float64 = 1.0e-4
+    level_difference_threshold::Float64 = 0.02
     specialize::Bool = false
 end
 
