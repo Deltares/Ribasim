@@ -174,7 +174,7 @@ for (node_type, kinds) in pairs(node_kinds)
 end
 
 @option struct Solver <: TableOption
-    algorithm::String = "QNDF"
+    algorithm::String = "Rosenbrock23"
     saveat::Float64 = 86400.0
     dt::Union{Float64, Nothing} = nothing
     dtmin::Float64 = 0.0

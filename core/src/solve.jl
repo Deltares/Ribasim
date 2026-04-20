@@ -147,7 +147,8 @@ function set_current_basin_properties!(
         # Storage is directly in u.basin
         state_and_time_dependent_cache.current_storage .= u.basin
         for i in eachindex(basin.node_id)
-            s = u.basin[i]
+            # Force storage positive, since Rosenbrock methods can overshoot to negative storages
+            s = ifelse(u.basin[i] > 0.0, u.basin[i], 0.0)
             state_and_time_dependent_cache.current_low_storage_factor[i] =
                 reduction_factor(s, low_storage_threshold[i])
             @inbounds state_and_time_dependent_cache.current_level[i] =

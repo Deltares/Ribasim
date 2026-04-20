@@ -40,7 +40,9 @@ end
 Compute the level of a basin given its storage.
 """
 function get_level_from_storage(basin::Basin, state_idx::Int, storage::T)::T where {T}
-    return basin.storage_to_level[state_idx](storage)
+    # Clamp storage positive, since Rosenbrock methods can overshoot to negative
+    s = ifelse(storage > zero(T), storage, zero(T))
+    return basin.storage_to_level[state_idx](s)
 end
 
 """
