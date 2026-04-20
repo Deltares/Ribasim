@@ -122,7 +122,7 @@ end
     storage = Ribasim.get_storages_and_levels(model).storage
     flowrate = Ribasim.get_flow
     @test storage[1, 1] ≈ 100.0f0
-    @test storage[1, end] ≈ 110.0f0 atol = 1.0e-1
+    @test storage[1, end] ≈ 110.0f0 atol = 1.0e-2
 
     # test the flowrate has been set correctly
     flow_data = DataFrame(Ribasim.flow_data(model))

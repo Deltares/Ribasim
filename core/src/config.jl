@@ -180,7 +180,7 @@ end
     dtmin::Float64 = 0.0
     dtmax::Union{Float64, Nothing} = nothing
     force_dtmin::Bool = false
-    abstol::Float64 = 1.0e-5
+    abstol::Float64 = 1.0e-1
     reltol::Float64 = 1.0e-5
     water_balance_abstol::Float64 = 1.0e-3
     water_balance_reltol::Float64 = 1.0e-2

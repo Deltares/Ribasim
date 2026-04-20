@@ -816,7 +816,7 @@ end
 Get a value for a condition. Currently supports getting levels from Basins and flows
 from FlowBoundaries.
 """
-function get_value(subvariable::SubVariable, p::Parameters, t::Float64)
+function get_value(subvariable::SubVariable, p::Parameters, t::Real)
     (; flow_boundary, level_boundary, basin) = p.p_independent
     (; listen_node_id, look_ahead, variable, cache_ref) = subvariable
 
@@ -856,7 +856,7 @@ function get_value(subvariable::SubVariable, p::Parameters, t::Float64)
 end
 
 function compound_variable_value(compound_variable::CompoundVariable, p, t)
-    value = zero(Float64)
+    value = zero(typeof(t))
     for subvariable in compound_variable.subvariables
         value += subvariable.weight * get_value(subvariable, p, t)
     end
