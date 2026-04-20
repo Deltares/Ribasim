@@ -367,7 +367,7 @@ using the minimum-norm adjustment: q̄ = q̄* + Aᵀ(AAᵀ+2I)⁻¹(b - Aq̄*)
 """
 struct BalanceCorrectionCache
     A_flow::SparseMatrixCSC{Float64, Int}
-    AAt_2I_inv::Matrix{Float64}
+    AAt_2I_chol::Factorization{Float64}
     storage_prev::Vector{Float64}
     lambda::Vector{Float64}
     residual::Vector{Float64}
@@ -400,16 +400,16 @@ function BalanceCorrectionCache(
     end
     A_flow = sparse(I_idx, J_idx, V_val, n_basins, n_links)
 
-    # (AAᵀ + 2I) is always positive definite; precompute its inverse
-    AAt_2I = Matrix(A_flow * A_flow')
+    # (AAᵀ + 2I) is always positive definite; precompute sparse Cholesky factorization
+    AAt_sparse = A_flow * A_flow'
     for i in 1:n_basins
-        AAt_2I[i, i] += 2.0
+        AAt_sparse[i, i] += 2.0
     end
-    AAt_2I_inv = inv(AAt_2I)
+    AAt_2I_chol = cholesky(Symmetric(AAt_sparse))
 
     return BalanceCorrectionCache(
         A_flow,
-        AAt_2I_inv,
+        AAt_2I_chol,
         zeros(n_basins),  # storage_prev
         zeros(n_basins),  # lambda
         zeros(n_basins),  # residual

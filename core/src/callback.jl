@@ -127,7 +127,7 @@ topology, guaranteeing mass conservation at every step.
 """
 function apply_balance_correction!(u, p_independent, time_dependent_cache)::Nothing
     (; basin, flow_boundary, balance_correction) = p_independent
-    (; A_flow, AAt_2I_inv, storage_prev, lambda, residual, correction_flow) =
+    (; A_flow, AAt_2I_chol, storage_prev, lambda, residual, correction_flow) =
         balance_correction
     n_basins = length(basin.node_id)
 
@@ -168,7 +168,7 @@ function apply_balance_correction!(u, p_independent, time_dependent_cache)::Noth
     # Now residual = b - A_ext * q_ext* = per-basin mass balance error (in volumes)
 
     # Solve for Lagrange multipliers: λ = (AAᵀ + 2I)⁻¹ r
-    mul!(lambda, AAt_2I_inv, residual)
+    lambda .= AAt_2I_chol \ residual
 
     # Compute flow corrections: δq_flow = Aᵀλ
     mul!(correction_flow, A_flow', lambda)
