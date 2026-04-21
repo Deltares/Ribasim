@@ -403,11 +403,14 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
     are represented by a filepath, and are ChildModels, as they're contained in a NodeModel.
     """
 
-    df: DataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
+    df: DataFrame[TableT] | pd.DataFrame | None = Field(
+        default=None, exclude=True, repr=False
+    )
     _sort_keys: list[str] = PrivateAttr(default=[])
 
     model_config = ConfigDict(
         extra="allow",
+        arbitrary_types_allowed=True,
     )
 
     def __eq__(self, other: object) -> bool:
@@ -709,12 +712,14 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
     def tableschema(cls) -> TableT:
         """Retrieve Pandera Schema.
 
-        The type of the field `df` is known to always be an DataFrame[TableT]]] | None
+        The schema type is extracted from the annotation of the `df` field,
+        which contains a parameterized pandera type (e.g. DataFrame[TableT]) in the union.
         """
         optionalfieldtype = cls.model_fields["df"].annotation
-        fieldtype = optionalfieldtype.__args__[0]  # pyrefly: ignore[missing-attribute]
-        T: TableT = fieldtype.__args__[0]
-        return T
+        for arg in optionalfieldtype.__args__:  # pyrefly: ignore[missing-attribute]
+            if hasattr(arg, "__args__") and arg.__args__:
+                return arg.__args__[0]
+        raise TypeError(f"Could not determine table schema for {cls}")
 
     @classmethod
     def columns(cls) -> list[str]:
