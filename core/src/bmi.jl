@@ -57,7 +57,7 @@ end
 This uses a typeassert to ensure that the return type annotation doesn't create a copy.
 """
 function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
-    (; p) = model.integrator
+    (; u, p) = model.integrator
     (; p_independent, state_and_time_dependent_cache) = p
     (; basin, user_demand, subgrid) = p_independent
 
@@ -81,6 +81,8 @@ function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
         subgrid.level::Vector{Float64}
     elseif name == "user_demand.demand"
         vec(user_demand.demand)::Vector{Float64}
+    elseif name == "user_demand.cumulative_inflow"
+        state_and_time_dependent_cache.current_flow_rate_user_demand
     else
         error("Unknown variable $name")
     end
