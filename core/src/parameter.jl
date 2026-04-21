@@ -368,6 +368,7 @@ using the minimum-norm adjustment: q̄ = q̄* + Aᵀ(AAᵀ+2I)⁻¹(b - Aq̄*)
 struct BalanceCorrectionCache
     A_flow::SparseMatrixCSC{Float64, Int}
     AAt_2I_chol::Factorization{Float64}
+    nonnegative_link::BitVector
     storage_prev::Vector{Float64}
     lambda::Vector{Float64}
     residual::Vector{Float64}
@@ -407,9 +408,20 @@ function BalanceCorrectionCache(
     end
     AAt_2I_chol = cholesky(Symmetric(AAt_sparse))
 
+    # Links connected to one-way controlled components should remain nonnegative
+    # in link orientation after correction.
+    nonnegative_link = BitVector(undef, n_links)
+    for (j, link_metadata) in enumerate(internal_flow_links)
+        src, dst = link_metadata.link
+        nonnegative_link[j] =
+            src.type in (NodeType.Pump, NodeType.Outlet, NodeType.TabulatedRatingCurve, NodeType.UserDemand) ||
+            dst.type in (NodeType.Pump, NodeType.Outlet, NodeType.TabulatedRatingCurve, NodeType.UserDemand)
+    end
+
     return BalanceCorrectionCache(
         A_flow,
         AAt_2I_chol,
+        nonnegative_link,
         zeros(n_basins),  # storage_prev
         zeros(n_basins),  # lambda
         zeros(n_basins),  # residual

@@ -117,6 +117,74 @@ function sync_flow_rates!(p::Parameters)::Nothing
 end
 
 """
+Solve a constrained least-squares balance correction when the unconstrained
+projection would violate nonnegative flow physics on one-way links.
+
+Minimize 0.5*(||dq||^2 + ||de||^2 + ||di||^2)
+subject to: A_flow * dq + de + di == residual,
+and q* + dq >= 0 on constrained links,
+and corrected evaporation/infiltration remaining nonnegative.
+
+Returns true when an optimal solution was found and writes the solution into
+`correction_flow`, `evap_correction`, and `infiltration_correction`.
+"""
+function solve_constrained_balance_correction!(
+        correction_flow::Vector{Float64},
+        evap_correction::Vector{Float64},
+        infiltration_correction::Vector{Float64},
+        residual::Vector{Float64},
+        A_flow::SparseMatrixCSC{Float64, Int},
+        cumulative_flow::Vector{Float64},
+        cumulative_evaporation::Vector{Float64},
+        cumulative_infiltration::Vector{Float64},
+        nonnegative_link::BitVector,
+    )::Bool
+    n_links = length(cumulative_flow)
+    n_basins = length(residual)
+
+    model = JuMP.Model(HiGHS.Optimizer)
+    JuMP.set_silent(model)
+
+    JuMP.@variable(model, dq[1:n_links])
+    JuMP.@variable(model, de[1:n_basins])
+    JuMP.@variable(model, di[1:n_basins])
+
+    for j in 1:n_links
+        if nonnegative_link[j]
+            JuMP.set_lower_bound(dq[j], -cumulative_flow[j])
+        end
+    end
+    for i in 1:n_basins
+        # corrected fluxes are e* - de and i* - di
+        JuMP.set_upper_bound(de[i], cumulative_evaporation[i])
+        JuMP.set_upper_bound(di[i], cumulative_infiltration[i])
+    end
+
+    JuMP.@constraint(model, A_flow * dq + de + di .== residual)
+    JuMP.@objective(
+        model,
+        Min,
+        0.5 * sum(dq[j]^2 for j in 1:n_links) +
+            0.5 * sum(de[i]^2 for i in 1:n_basins) +
+            0.5 * sum(di[i]^2 for i in 1:n_basins),
+    )
+
+    JuMP.optimize!(model)
+    if JuMP.termination_status(model) != JuMP.OPTIMAL
+        return false
+    end
+
+    for j in 1:n_links
+        correction_flow[j] = JuMP.value(dq[j])
+    end
+    for i in 1:n_basins
+        evap_correction[i] = JuMP.value(de[i])
+        infiltration_correction[i] = JuMP.value(di[i])
+    end
+    return true
+end
+
+"""
 Apply mass-balance-consistent correction to trapezoidal flow estimates.
 Projects the trapezoidal estimates onto the subspace satisfying exact mass balance
 using the minimum-norm adjustment: δq = Aᵀ(AAᵀ+2I)⁻¹(b - Aq̄*)
@@ -127,7 +195,7 @@ topology, guaranteeing mass conservation at every step.
 """
 function apply_balance_correction!(u, p_independent, time_dependent_cache)::Nothing
     (; basin, flow_boundary, balance_correction) = p_independent
-    (; A_flow, AAt_2I_chol, storage_prev, lambda, residual, correction_flow) =
+    (; A_flow, AAt_2I_chol, nonnegative_link, storage_prev, lambda, residual, correction_flow) =
         balance_correction
     n_basins = length(basin.node_id)
 
@@ -173,13 +241,57 @@ function apply_balance_correction!(u, p_independent, time_dependent_cache)::Noth
     # Compute flow corrections: δq_flow = Aᵀλ
     mul!(correction_flow, A_flow', lambda)
 
-    # Apply corrections to per-step and saveat accumulators
-    @. p_independent.cumulative_flow += correction_flow
-    @. p_independent.cumulative_flow_saveat += correction_flow
-    @. p_independent.cumulative_evaporation -= lambda
-    @. p_independent.cumulative_evaporation_saveat -= lambda
-    @. p_independent.cumulative_infiltration -= lambda
-    @. p_independent.cumulative_infiltration_saveat -= lambda
+    # If unconstrained correction would violate one-way link orientation,
+    # solve a constrained least-squares problem instead.
+    constrained_correction = false
+    for j in eachindex(correction_flow)
+        if nonnegative_link[j] && (p_independent.cumulative_flow[j] + correction_flow[j] < 0.0)
+            constrained_correction = true
+            break
+        end
+    end
+
+    if constrained_correction
+        # Reuse lambda/residual vectors as work arrays for evap/infiltration corrections.
+        success = solve_constrained_balance_correction!(
+            correction_flow,
+            lambda,
+            residual,
+            residual,
+            A_flow,
+            p_independent.cumulative_flow,
+            p_independent.cumulative_evaporation,
+            p_independent.cumulative_infiltration,
+            nonnegative_link,
+        )
+        if !success
+            @warn "Constrained balance correction failed; using unconstrained projection."
+            lambda .= AAt_2I_chol \ residual
+            mul!(correction_flow, A_flow', lambda)
+
+            @. p_independent.cumulative_flow += correction_flow
+            @. p_independent.cumulative_flow_saveat += correction_flow
+            @. p_independent.cumulative_evaporation -= lambda
+            @. p_independent.cumulative_evaporation_saveat -= lambda
+            @. p_independent.cumulative_infiltration -= lambda
+            @. p_independent.cumulative_infiltration_saveat -= lambda
+        else
+            @. p_independent.cumulative_flow += correction_flow
+            @. p_independent.cumulative_flow_saveat += correction_flow
+            @. p_independent.cumulative_evaporation -= lambda
+            @. p_independent.cumulative_evaporation_saveat -= lambda
+            @. p_independent.cumulative_infiltration -= residual
+            @. p_independent.cumulative_infiltration_saveat -= residual
+        end
+    else
+        # Apply corrections to per-step and saveat accumulators
+        @. p_independent.cumulative_flow += correction_flow
+        @. p_independent.cumulative_flow_saveat += correction_flow
+        @. p_independent.cumulative_evaporation -= lambda
+        @. p_independent.cumulative_evaporation_saveat -= lambda
+        @. p_independent.cumulative_infiltration -= lambda
+        @. p_independent.cumulative_infiltration_saveat -= lambda
+    end
 
     # Accumulate absolute correction for per-link flow convergence output
     @. p_independent.flow_convergence_saveat += abs(correction_flow)
@@ -193,7 +305,7 @@ function apply_balance_correction!(u, p_independent, time_dependent_cache)::Noth
 end
 
 """
-Update cumulative flows using trapezoidal integration of flow rates.
+Update cumulative flows.
 Also updates cumulative forcings and allocation flows.
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
@@ -214,9 +326,17 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     # cumulative_flow_saveat accumulates across the saveat interval (used for output).
     p_independent.cumulative_flow .= 0.0
     if dt > 0
-        @. p_independent.cumulative_flow = 0.5 * dt * (p_independent.current_flow_rate + p_independent.flow_rate_prev)
+        # Use trapezoidal integration, but fall back to backward Euler for links where
+        # flow_rate_prev was set to NaN as a sentinel at a control state transition.
+        # This avoids a spurious spike from averaging the pre-transition and post-transition
+        for i in eachindex(p_independent.cumulative_flow)
+            curr = p_independent.current_flow_rate[i]
+            prev = p_independent.flow_rate_prev[i]
+            p_independent.cumulative_flow[i] =
+                isnan(prev) ? dt * curr : 0.5 * dt * (curr + prev)
+            p_independent.flow_rate_prev[i] = curr
+        end
         @. p_independent.cumulative_flow_saveat += p_independent.cumulative_flow
-        @. p_independent.flow_rate_prev = p_independent.current_flow_rate
 
         @. p_independent.cumulative_evaporation = 0.5 * dt * (state_and_time_dependent_cache.current_evaporation + p_independent.evaporation_prev)
         @. p_independent.cumulative_evaporation_saveat += p_independent.cumulative_evaporation
@@ -803,6 +923,26 @@ function set_new_control_state!(
                 control_state_update = tabulated_rating_curve.control_mapping[(target_node_id, control_state_new)]
                 tabulated_rating_curve.allocation_controlled[target_node_id.idx] =
                     control_state_update.allocation_controlled
+            end
+
+            # Mark the links of this node so that the next trapezoidal integration step
+            # uses backward Euler (avoids a spike from averaging pre/post-switch rates).
+            internal_flow_links = p_independent.graph[].internal_flow_links
+            idx = target_node_id.idx
+            node_links = if target_node_id.type == NodeType.Pump
+                (pump.inflow_link[idx].link, pump.outflow_link[idx].link)
+            elseif target_node_id.type == NodeType.Outlet
+                (outlet.inflow_link[idx].link, outlet.outflow_link[idx].link)
+            elseif target_node_id.type == NodeType.TabulatedRatingCurve
+                (tabulated_rating_curve.inflow_link[idx].link, tabulated_rating_curve.outflow_link[idx].link)
+            else
+                nothing
+            end
+            if node_links !== nothing
+                for link in node_links
+                    link_idx = get_link_index(link, internal_flow_links)
+                    link_idx !== nothing && (p_independent.flow_rate_prev[link_idx] = NaN)
+                end
             end
         end
 
