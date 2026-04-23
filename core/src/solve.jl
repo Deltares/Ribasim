@@ -302,7 +302,7 @@ function formulate_pid_control!(
                 dtarget = derivative(target[i], t)
             end
             dstorage_listened_basin_old =
-                formulate_dstorage(du, p_independent, t, listened_node_id)
+                formulate_storage_time_derivative(du, p_independent, t, listened_node_id)
             # The expression below is the solution to an implicit equation for
             # dstorage_listened_basin. This equation results from the fact that if the derivative
             # term in the PID controller is used, the controlled pump flow rate depends on itself.
@@ -318,7 +318,7 @@ end
 """
 Formulate the time derivative of the storage in a single Basin.
 """
-function formulate_dstorage(
+function formulate_storage_time_derivative(
         du::CVector,
         p_independent::ParametersIndependent,
         t::Number,

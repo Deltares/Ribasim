@@ -18,7 +18,7 @@ function set_simulation_data!(
 
     errors = false
 
-    errors |= set_simulation_data!(allocation_model, basin, p, t)
+    errors |= set_simulation_data!(allocation_model, basin, p, t, du)
     set_simulation_data!(allocation_model, level_boundary, t)
     set_simulation_data!(allocation_model, flow_boundary, p, t)
     set_simulation_data!(allocation_model, linear_resistance, p, t)
@@ -40,6 +40,7 @@ function set_simulation_data!(
         basin::Basin,
         p::Parameters,
         t::Float64,
+        du::CVector,
     )::Bool
     (;
         problem,
@@ -67,16 +68,17 @@ function set_simulation_data!(
         storage_now = current_storage[idx]
         storage_max = storage_to_level[idx].t[end]
 
-        # Check whether the storage in the physical layer is within the maximum storage bound
-        if storage_now > storage_max
-            @error "Maximum basin storage exceeded (allocation infeasibility)" storage_now storage_max basin_id
-            errors = true
-        end
-
-        # Set bounds on the storage change based on the current storage and the Basin minimum and maximum
+        # Set bounds on the storage change based on the current storage and the Basin minimum, maximum, and a delta_storage prediction
         Δstorage = storage_change[basin_id]
         JuMP.set_lower_bound(Δstorage, -storage_now / scaling.storage)
-        JuMP.set_upper_bound(Δstorage, (storage_max - storage_now) / scaling.storage)
+        Δstorage_predicted = formulate_storage_time_derivative(du, p.p_independent, t, basin_id) * Δt_allocation
+
+        Δstorage_upper = if storage_now > storage_max
+            max(2 * Δstorage_predicted, 0.0)
+        else
+            max(2 * Δstorage_predicted, storage_max - storage_now)
+        end
+        JuMP.set_upper_bound(Δstorage, Δstorage_upper / scaling.storage)
 
         A = get_area_from_storage(basin, idx, storage_now)
         A_max = get_area_from_storage(basin, idx, storage_max)
@@ -777,7 +779,7 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     for node_id in basin_ids_subnetwork
         JuMP.set_start_value(
             storage_change[node_id],
-            formulate_dstorage(du, p.p_independent, t, node_id) * Δt_allocation /
+            formulate_storage_time_derivative(du, p.p_independent, t, node_id) * Δt_allocation /
                 scaling.storage,
         )
     end
