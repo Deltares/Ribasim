@@ -465,7 +465,7 @@ function compute_adaptive_Δt(
             continue
         end
 
-        dstorage = formulate_storage_time_derivative(du, p.p_independent, t, basin_id)
+        dstorage = formulate_dstorage_wrt_time(du, p.p_independent, t, basin_id)
 
         if abs(dstorage) < eps()
             continue
