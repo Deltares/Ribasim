@@ -1799,12 +1799,15 @@ DateTime. This is used to convert between the solver's inner float time, and the
 datetime_since(t::Real, t0::DateTime)::DateTime = t0 + Millisecond(round(1000 * t))
 
 """
-    load_netcdf(table_path::String, table_type::Type{<:Table})::NamedTuple
+    load_netcdf(table_path::String, table_type::Type{<:Table})::OrderedDict{Symbol, AbstractVector}
 
 Load a table from a NetCDF file. The data is stored as multi-dimensional arrays, and
 converted to a table for compatibility with the rest of the internals.
 """
-function load_netcdf(table_path::String, table_type::Type{<:Table})::NamedTuple
+function load_netcdf(
+        table_path::String,
+        table_type::Type{<:Table},
+    )::OrderedDict{Symbol, AbstractVector}
     table = OrderedDict{Symbol, AbstractVector}()
     NCDataset(table_path) do ds
         names = fieldnames(table_type)
@@ -1870,15 +1873,28 @@ function load_netcdf(table_path::String, table_type::Type{<:Table})::NamedTuple
             end
             table[data_varname] = vec(data)
         end
+
+        # Drop rows where all data variables are missing (happens with NetCDF dense grids)
+        n = n_node_id * n_time * n_priority
+        mask = trues(n)
+        for i in 1:n
+            if all(name -> ismissing(table[name][i]), data_varnames)
+                mask[i] = false
+            end
+        end
+        for (name, col) in pairs(table)
+            table[name] = col[mask]
+        end
     end
-    # columntable does not check lengths, so we do it here
+    # check lengths, since OrderedDict does not validate them
     n = length(first(values(table)))
     for (name, col) in pairs(table)
         if length(col) != n
             error("Inconsistent lengths in NetCDF file $table_path for variable $name")
         end
     end
-    return columntable(table)
+
+    return table
 end
 
 function check_attrib(var::CFVariable, attname::String, attval::String)::Bool
@@ -1975,47 +1991,62 @@ function load_data(
         # check suffix and read with NCDatasets
         ext = lowercase(splitext(table_path)[2])
         if ext == ".nc"
-            return load_netcdf(table_path, table_type)
+            dict = load_netcdf(table_path, table_type)
+            return typed_columntable(dict, table_type)
         else
             error("Unsupported file format: $table_path. Only '.nc' is supported.")
         end
     else
         if exists(db, sql_name)
-            table = execute(prepare(db, "select * from $(esc_id(sql_name))"), (), strict = true)
-            return sqlite_columntable(table, db, config, table_type)
+            query = execute(prepare(db, "select * from $(esc_id(sql_name))"), (), strict = true)
+            dict = OrderedDict{Symbol, AbstractVector}(pairs(columntable(query)))
+            parse_time_strings!(dict, config.starttime)
+            return typed_columntable(dict, table_type)
         else
             return nothing
         end
     end
 end
 
-"Faster alternative to Tables.columntable that preallocates based on the schema."
-function sqlite_columntable(
-        table::Query,
-        db::DB,
-        config::Config,
-        T::Type{<:Table},
-    )::NamedTuple
-    sql_name = sql_table_name(T)
-    nrows = execute(db, "SELECT COUNT(*) FROM $(esc_id(sql_name))") |> first |> first
+"Parse SQLite time strings to DateTime in-place."
+function parse_time_strings!(dict::OrderedDict{Symbol, AbstractVector}, starttime::DateTime)::Nothing
+    if haskey(dict, :time)
+        df = dateformat"yyyy-mm-dd HH:MM:SS.s"
+        dict[:time] = [
+            ismissing(val) ? DateTime(starttime) :
+                DateTime(replace(val, r"(\.\d{3})\d+$" => s"\1"), df) for val in dict[:time]
+        ]
+    end
+    return nothing
+end
 
-    names = fieldnames(T)
-    types = fieldtypes(T)
-    vals = ntuple(i -> Vector{types[i]}(undef, nrows), length(names))
-    nt = NamedTuple{names}(vals)
+"""
+    typed_columntable(table, ::Type{T})::NamedTuple
 
-    for (name, column) in pairs(columntable(table))
-        if name == :time
-            df = dateformat"yyyy-mm-dd HH:MM:SS.s"
-            @. nt[name] = [
-                ismissing(val) ? DateTime(config.starttime) :
-                    DateTime(replace(val, r"(\.\d{3})\d+$" => s"\1"), df) for val in column
-            ]
-        elseif name in names
-            nt[name] .= column
+Convert a dict-like column table to a typed `NamedTuple` matching the field types of `T`.
+Replaces columns whose element type doesn't match the schema in-place before constructing
+the final NamedTuple.
+"""
+function typed_columntable(table, ::Type{T})::NamedTuple where {T <: Table}
+    names_T = fieldnames(T)
+    types_T = fieldtypes(T)
+    n_row = isempty(table) ? 0 : length(first(values(table)))
+    for (name, target_type) in zip(names_T, types_T)
+        if !haskey(table, name)
+            if Missing <: target_type
+                table[name] = fill(missing, n_row)
+            else
+                throw(ArgumentError("Missing required column $(name) for table $(T)."))
+            end
+        end
+        col = table[name]
+        if eltype(col) !== target_type
+            target = Vector{target_type}(undef, length(col))
+            target .= col
+            table[name] = target
         end
     end
-    return nt
+    return NamedTuple{names_T}(ntuple(i -> table[names_T[i]], length(names_T)))
 end
 
 """
