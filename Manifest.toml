@@ -2067,7 +2067,9 @@ version = "0.4.2"
 
 [[deps.SQLite]]
 deps = ["DBInterface", "Random", "SQLite_jll", "Serialization", "Tables", "WeakRefStrings"]
-git-tree-sha1 = "87b47a05946c50f44531b447b1f24968345316a4"
+git-tree-sha1 = "9dc29d53398065b69a7228fa60bbf22f106d086a"
+repo-rev = "timestamp"
+repo-url = "https://github.com/visr/SQLite.jl"
 uuid = "0aa819cd-b072-5ff4-a722-6bc24af294d9"
 version = "1.8.0"
 
