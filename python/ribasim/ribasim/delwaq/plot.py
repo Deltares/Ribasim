@@ -4,6 +4,13 @@ import xarray as xr
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
+def _sort_tracers(tracers):
+    stracers = sorted(tracers)
+    if "Initial" in stracers:
+        stracers.insert(0, stracers.pop(stracers.index("Initial")))
+    return stracers
+
+
 def plot_fraction(
     model,
     node_id,
@@ -29,7 +36,7 @@ def plot_fraction(
     groups = table.groupby("substance")
     stack = {
         k: groups.get_group(k)["concentration"].to_numpy()
-        for k in tracers
+        for k in _sort_tracers(tracers)
         if k in groups.groups
     }
 
@@ -48,7 +55,8 @@ def plot_fraction(
         c="black",
         lw=2,
     )
-    ax.legend()
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(handles[::-1], labels[::-1])
     ax.set_title(f"Fraction plot for node {node_id}")
     ax.set_xlabel("Time")
     ax.set_ylabel("Fraction")
