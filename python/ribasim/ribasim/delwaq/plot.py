@@ -1,7 +1,11 @@
+from itertools import cycle
+
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+DEFAULT_TRACER_COLORS = {"Initial": "darkgray"}
 
 
 def _sort_tracers(tracers):
@@ -15,8 +19,26 @@ def plot_fraction(
     model,
     node_id,
     tracers=None,
+    colors=DEFAULT_TRACER_COLORS,
     ax=None,
 ):
+    """Plot the fraction of different tracers at a given basin node over time.
+
+    Args:
+        model (Model): The Ribasim model
+        node_id (int): The ID of the basin node
+        tracers (list, optional): List of tracers to plot. Defaults to None.
+        colors (dict, optional): Dictionary of colors for each tracer. Defaults to DEFAULT_COLORS.
+        ax (matplotlib.axes.Axes, optional): Axes object to plot on. Defaults to None.
+
+    Raises
+    ------
+        ValueError: If no data is found for the specified node and tracers
+
+    Returns
+    -------
+        matplotlib.axes.Axes: The Axes object with the plot
+    """
     if tracers is None:
         tracers = [
             "Initial",
@@ -44,10 +66,14 @@ def plot_fraction(
         _, ax = plt.subplots()
     key = next(iter(stack))
     time = groups.get_group(key)["time"]
+
+    prop_cycle = plt.rcParams["axes.prop_cycle"]
+    color_iters = cycle(prop_cycle.by_key()["color"])
     ax.stackplot(
         time,
         stack.values(),  # pyrefly: ignore[bad-argument-type]
         labels=stack.keys(),
+        colors=[colors.get(k, next(color_iters)) for k in stack],
     )
     ax.plot(
         time,
