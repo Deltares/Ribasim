@@ -902,12 +902,22 @@ function parse_allocations!(
     )::Nothing
     (; p, t) = integrator
     (; p_independent) = p
-    (; subnetwork_id, Δt_allocation, cumulative_supplied_volume, scaling) =
-        allocation_model
+    (;
+        subnetwork_id,
+        Δt_since_last_record,
+        cumulative_supplied_volume,
+        scaling,
+    ) = allocation_model
     (; allocation) = p_independent
     (; record_demand, demand_priorities_all) = allocation
     (; demand, has_demand_priority, inflow_link) = node
     is_user_demand = (node isa UserDemand)
+
+    # Use Δt_since_last_record (which equals Δt_allocation when the LP runs once
+    # per saveat, or the sum of multiple sub-saveat steps when adaptive timestepping
+    # produces several solves per saveat) to convert cumulative volume to a rate.
+    Δt_record = iszero(Δt_since_last_record) ? allocation_model.Δt_allocation :
+        Δt_since_last_record
 
     for node_id in node_ids_subnetwork
         demand_id =
@@ -929,7 +939,7 @@ function parse_allocations!(
                     allocated_flow,
                     # NOTE: The supplied amount lags one allocation period behind
                     cumulative_supplied_volume[inflow_link[node_id.idx].link] /
-                        Δt_allocation,
+                        Δt_record,
                 ),
             )
             if is_user_demand
@@ -1166,8 +1176,14 @@ function update_control_states!(
     return nothing
 end
 
-"Solve the allocation problem for all demands and assign allocated abstractions."
-function update_allocation!(model)::Nothing
+"""
+Solve the allocation problem for all demands and assign allocated abstractions.
+
+`record` controls whether allocation results are pushed to output records and
+whether `cumulative_supplied_volume` is reset. Set `record = false` for
+intermediate (sub-saveat) adaptive LP solves
+"""
+function update_allocation!(model; record::Bool = true)::Nothing
     (; integrator) = model
     (; u, p, t) = integrator
     (; p_independent) = p
@@ -1223,21 +1239,34 @@ function update_allocation!(model)::Nothing
 
     # Allocate in all networks, starting with the primary network if it exists
     for allocation_model in allocation_models
+        # Track time since the last saveat-aligned record. parse_allocations!
+        # divides cumulative_supplied_volume by this, so it must be the elapsed
+        # interval since the last reset rather than just the most recent Δt.
+        allocation_model.Δt_since_last_record += allocation_model.Δt_allocation
+
         delete_temporary_constraints!(allocation_model)
         optimize!(allocation_model, model)
-        parse_allocations!(integrator, allocation_model)
+        if record
+            parse_allocations!(integrator, allocation_model)
+        end
         # allocate flows optimized from the primary network to the secondary networks
         if is_primary_network(allocation_model.subnetwork_id)
             allocate_flows_to_subnetwork(allocation_models, primary_network_connections)
         end
 
-        save_flows!(integrator, allocation_model)
+        if record
+            save_flows!(integrator, allocation_model)
+        end
         apply_control_from_allocation!(pump, allocation_model, integrator)
         apply_control_from_allocation!(outlet, allocation_model, integrator)
         apply_control_from_allocation!(tabulated_rating_curve, allocation_model, integrator)
 
-        # Reset cumulative data
-        reset_cumulative!(allocation_model)
+        # Reset cumulative data only on saveat-aligned solves; intermediate solves
+        # let cumulative_supplied_volume keep accumulating until the next record.
+        if record
+            reset_cumulative!(allocation_model)
+            allocation_model.Δt_since_last_record = 0.0
+        end
     end
 
     # Update storage_prev for level_demand

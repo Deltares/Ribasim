@@ -236,6 +236,10 @@ subnetwork_id: The ID of this subnetwork
 node_ids_in_subnetwork: Per node type a vector of the nodes of that type in the subnetwork
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
+Δt_since_last_record: Time elapsed since the last saveat-aligned LP solve
+    (i.e., since the last call that pushed records and reset cumulative_supplied_volume).
+    Updated after every LP solve and reset to 0 when records are emitted;
+    used to divide cumulative_supplied_volume into a rate for the records.
 has_demand_priority: Per demand priority in the whole model whether a demand of this priority is present in this
     subnetwork
 objectives: The objectives (goals) in the order in which they will be optimized for
@@ -249,6 +253,7 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     node_ids_in_subnetwork::NodeIDsInSubnetwork
     problem::JuMP.Model
     Δt_allocation::Float64
+    Δt_since_last_record::Float64 = 0.0
     has_demand_priority::Vector{Bool}
     objectives::AllocationObjectives = AllocationObjectives()
     explicit_positive_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()

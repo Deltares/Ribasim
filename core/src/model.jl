@@ -327,10 +327,19 @@ function solve_with_allocation!(model::Model)::Nothing
     (; tspan::Tuple{Float64, Float64}) = integrator.sol.prob
 
     if config.allocation.adaptive_timestep
+        saveat = config.solver.saveat
         while integrator.t < tspan[end] - eps(tspan[end])
             Δt = compute_and_set_adaptive_Δt!(model)
+            Δt = min(Δt, time_to_next_saveat(integrator.t, saveat, tspan[end]))
             Δt = min(Δt, tspan[end] - integrator.t)
-            update_allocation!(model)
+            t_after = integrator.t + Δt
+            on_saveat =
+                iszero(saveat) ||
+                isinf(saveat) ||
+                isapprox(t_after % saveat, 0.0; atol = 1.0e-9) ||
+                isapprox(t_after % saveat, saveat; atol = 1.0e-9) ||
+                isapprox(t_after, tspan[end]; atol = 1.0e-9)
+            update_allocation!(model; record = on_saveat)
             SciMLBase.step!(integrator, Δt, true)
         end
     else
