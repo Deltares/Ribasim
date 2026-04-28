@@ -142,8 +142,8 @@ function add_conservation!(
                 init = 0,
             ) for basin_id in basin_ids_subnetwork
     )
-    f_pos = 1.0 # Placeholder (set in set_simulation_data!)
-    f_neg = 1.0 # Placeholder (set in set_simulation_data!)
+    f_pos = 1.0 # Placeholder positive forcing (set in set_simulation_data!)
+    f_neg = 1.0 # Placeholder negative forcing (set in set_simulation_data!)
 
     problem[:volume_conservation] = JuMP.@constraint(
         problem,
