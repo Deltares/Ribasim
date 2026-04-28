@@ -2,7 +2,7 @@
 
 julia_version = "1.12.5"
 manifest_format = "2.0"
-project_hash = "b7ffbbb4053ec93425cc330c6de2b0aad205f3d2"
+project_hash = "6d7f371fe6ce10c0b50a8267facd84f97da45c0d"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "f7304359109c768cf32dc5fa2d371565bb63b68a"
@@ -1743,11 +1743,9 @@ version = "10.44.0+1"
 
 [[deps.PackageCompiler]]
 deps = ["Artifacts", "Glob", "LazyArtifacts", "Libdl", "Pkg", "Printf", "RelocatableFolders", "TOML", "UUIDs", "p7zip_jll"]
-git-tree-sha1 = "947dfecc8f7c9f7ebf2a4c8dc99b781dbf3a54f7"
-repo-rev = "bundle_less_artifacts_v1.12"
-repo-url = "https://github.com/visr/PackageCompiler.jl"
+git-tree-sha1 = "5193091a937c1e84cab042d55f8071dd2116c6f2"
 uuid = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
-version = "2.2.4"
+version = "2.3.0"
 
 [[deps.Pango_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "FriBidi_jll", "Glib_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl"]

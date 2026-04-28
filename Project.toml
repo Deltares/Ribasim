@@ -79,13 +79,12 @@ TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 
 [sources]
 JuliaC = {rev = "default_cpu_target", url = "https://github.com/visr/JuliaC.jl"}
-PackageCompiler = {rev = "bundle_less_artifacts_v1.12", url = "https://github.com/visr/PackageCompiler.jl"}
 Ribasim = {path = "core"}
 
 [compat]
 OpenSSL_jll = "3.5.4"
 OteraEngine = "1.1.3"
-PackageCompiler = "2.2.4"
+PackageCompiler = "2.3"
 PkgToSoftwareBOM = "0.1.17"
 Plots = "1.41.4"
 PythonCall = "=0.9.31"
