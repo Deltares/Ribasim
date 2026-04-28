@@ -1183,7 +1183,7 @@ Solve the allocation problem for all demands and assign allocated abstractions.
 whether `cumulative_supplied_volume` is reset. Set `record = false` for
 intermediate (sub-saveat) adaptive LP solves
 """
-function update_allocation!(model; record::Bool = true)::Nothing
+function update_allocation!(model, Δt; record::Bool = true)::Nothing
     (; integrator) = model
     (; u, p, t) = integrator
     (; p_independent) = p
@@ -1242,7 +1242,7 @@ function update_allocation!(model; record::Bool = true)::Nothing
         # Track time since the last saveat-aligned record. parse_allocations!
         # divides cumulative_supplied_volume by this, so it must be the elapsed
         # interval since the last reset rather than just the most recent Δt.
-        allocation_model.Δt_since_last_record += allocation_model.Δt_allocation
+        allocation_model.Δt_since_last_record += Δt
 
         delete_temporary_constraints!(allocation_model)
         optimize!(allocation_model, model)

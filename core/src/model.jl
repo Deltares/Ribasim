@@ -339,7 +339,7 @@ function solve_with_allocation!(model::Model)::Nothing
                 isapprox(integrator.t % saveat, 0.0; atol = 1.0e-9) ||
                 isapprox(integrator.t % saveat, saveat; atol = 1.0e-9) ||
                 isapprox(integrator.t, tspan[end]; atol = 1.0e-9)
-            update_allocation!(model; record = on_saveat)
+            update_allocation!(model, Δt; record = on_saveat)
             SciMLBase.step!(integrator, Δt, true)
         end
     else
