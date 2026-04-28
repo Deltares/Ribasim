@@ -924,7 +924,7 @@ function parse_allocations!(
             is_user_demand ? node_id : get_external_demand_id(p_independent, node_id)
 
         for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
-            !has_demand_priority[node_id.idx, demand_priority_idx] && continue
+            !has_demand_priority[demand_id.idx, demand_priority_idx] && continue
             allocated_flow =
                 max(0, JuMP.value(node_allocated[node_id, demand_priority]) * scaling.flow)
             push!(
@@ -938,8 +938,8 @@ function parse_allocations!(
                     demand[demand_id.idx, demand_priority_idx],
                     allocated_flow,
                     # NOTE: The supplied amount lags one allocation period behind
-                    cumulative_supplied_volume[inflow_link[node_id.idx].link] /
-                        Δt_record,
+                    cumulative_supplied_volume[inflow_link[demand_id.idx].link] /
+                        Δt_allocation,
                 ),
             )
             if is_user_demand
