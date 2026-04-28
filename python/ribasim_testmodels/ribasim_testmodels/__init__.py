@@ -6,7 +6,6 @@ from ribasim.model import Model
 
 import ribasim_testmodels
 from ribasim_testmodels.allocation import (
-    adaptive_allocation_model,
     allocation_control_model,
     allocation_example_model,
     allocation_off_flow_demand_model,
@@ -96,7 +95,6 @@ from ribasim_testmodels.trivial import trivial_model
 from ribasim_testmodels.two_basin import two_basin_model
 
 __all__ = [
-    "adaptive_allocation_model",
     "allocation_control_model",
     "allocation_example_model",
     "allocation_off_flow_demand_model",

@@ -95,62 +95,6 @@ def user_demand_model() -> Model:
     return model
 
 
-def adaptive_allocation_model() -> Model:
-    """Test model for adaptive allocation timestepping.
-
-    Simple network: FlowBoundary -> Basin(trapezoidal) -> UserDemand
-    The trapezoidal basin has area increasing with level, giving non-trivial
-    curvature in S(h). Time-varying inflow tests that adaptive Δt responds
-    to changing flow rates: small steps when flows are large, large steps
-    when flows are small.
-    """
-    model = Model(
-        starttime=datetime(2020, 1, 1),
-        endtime=datetime(2020, 7, 1),
-        crs="EPSG:28992",
-        allocation=Allocation(
-            timestep=5 * 86400,
-            adaptive_timestep=True,
-            timestep_tolerance=0.01,
-            min_timestep=3600.0,
-        ),
-        experimental=Experimental(allocation=True),
-    )
-
-    # Trapezoidal basin: area increases from 1000 to 50000 m² over 10 m of level.
-    # dA/dh = 4900 m²/m, so S(h) is quadratic with significant curvature.
-    basin_data = [
-        basin.Profile(area=[1000.0, 50000.0], level=[0.0, 10.0]),
-        basin.State(level=[5.0]),
-    ]
-
-    # Time-varying inflow: high flow first 3 months, then low flow.
-    model.flow_boundary.add(
-        Node(1, Point(0, 0), subnetwork_id=2),
-        [
-            flow_boundary.Time(
-                time=["2020-01-01", "2020-04-01", "2020-04-02", "2020-07-01"],
-                flow_rate=[0.05, 0.05, 0.005, 0.005],
-            )
-        ],
-    )
-    model.basin.add(Node(2, Point(1, 0), subnetwork_id=2), basin_data)
-    model.user_demand.add(
-        Node(3, Point(2, 0), subnetwork_id=2),
-        [
-            user_demand.Static(
-                demand=[0.05], return_factor=0.0, min_level=0.0, demand_priority=1
-            )
-        ],
-    )
-
-    model.link.add(model.flow_boundary[1], model.basin[2])
-    model.link.add(model.basin[2], model.user_demand[3])
-    model.link.add(model.user_demand[3], model.basin[2])
-
-    return model
-
-
 def minimal_subnetwork_model() -> Model:
     """Create a subnetwork that is minimal with non-trivial allocation."""
     model = Model(
