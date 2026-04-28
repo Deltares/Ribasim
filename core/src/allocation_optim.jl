@@ -939,7 +939,7 @@ function parse_allocations!(
                     allocated_flow,
                     # NOTE: The supplied amount lags one allocation period behind
                     cumulative_supplied_volume[inflow_link[demand_id.idx].link] /
-                        Δt_allocation,
+                        Δt_record,
                 ),
             )
             if is_user_demand
