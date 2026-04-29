@@ -220,6 +220,9 @@ end
 
 @option struct Allocation <: TableOption
     timestep::Float64 = 86400
+    adaptive_timestep::Bool = true
+    timestep_tolerance::Float64 = 0.01
+    min_timestep::Float64 = 3600.0
     route_priority::RoutePriority = RoutePriority()
 end
 

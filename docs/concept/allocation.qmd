@@ -96,6 +96,72 @@ $$Q(x_1,x_2) \approx Q(x_1^n,x_2^n) + \frac{\partial Q}{\partial x_1}(x_1^n,x_2^
 
 This yields a linear programming problem that can be solved efficiently while maintaining acceptable accuracy for small changes around the operating point.
 
+## Adaptive timestepping {#sec-adaptive-timestepping}
+
+The allocation LP linearizes two types of relationships, both of which are only valid for small level changes $\Delta h$. By bounding the linearization errors, we can derive an adaptive timestep that keeps all approximations accurate while taking large steps when possible.
+
+### Basin profile linearization error
+
+The basin profile has a piecewise-linear area $A(h)$, so the storage $S(h) = \int_0^h A(h')\,dh'$ is piecewise quadratic. Within a profile segment where the area varies linearly with slope $m = \frac{dA}{dh}$:
+
+$$A(h) = A^n + m\,(h - h^n)$$
+
+The linearization approximates the storage with a tangent line:
+
+$$S^*(h) = S^n + A^n\,(h - h^n)$$
+
+The true storage is obtained by integrating the area:
+
+$$S(h) = S^n + \int_{h^n}^{h} A(h')\,dh' = S^n + A^n\,(h - h^n) + \tfrac{1}{2}\,m\,(h - h^n)^2$$
+
+so the linearization error is
+
+$$|S(h) - S^*(h)| = \tfrac{1}{2}|m|\,(\Delta h)^2$$
+
+Setting this to be at most a fraction $\varepsilon$ of the maximum basin storage capacity $S_{\max}$:
+
+$$\tfrac{1}{2}|m|\,(\Delta h)^2 \leq \varepsilon\, S_{\max}$$
+
+gives a maximum level change
+
+$$\Delta h_{\max}^{\text{basin}} = \sqrt{\frac{2\,\varepsilon\, S_{\max}}{|m|}}$$
+
+When $|m| \approx 0$ (basin with constant area), the linearization is exact and imposes no constraint.
+
+### Connector node linearization error
+
+Connector nodes ([LinearResistance](../reference/node/linear-resistance.qmd), [ManningResistance](../reference/node/manning-resistance.qmd) and [TabulatedRatingCurve](../reference/node/tabulated-rating-curve.qmd)) have nonlinear flow-level relationships $Q(h)$ that are also linearized:
+
+$$Q^{n+1} \approx Q^{n} + \frac{\partial Q}{\partial h}(h^n)\,(h^{n+1} - h^{n})$$
+
+The second-order error of this Taylor expansion is
+
+$$|Q(h) - Q^*(h)| = \tfrac{1}{2}\left|\frac{d^2 Q}{d h^2}\right|\,(\Delta h)^2$$
+
+Bounding this by a flow error tolerance $\varepsilon_Q$:
+
+$$\Delta h_{\max}^{\text{connector}} = \sqrt{\frac{2\,\varepsilon_Q}{\left|\frac{d^2 Q}{d h^2}\right|}}$$
+
+The second derivative $\frac{d^2 Q}{d h^2}$ is computed numerically via nested automatic differentiation. This handles all connector types uniformly, including the PCHIP interpolation of tabulated rating curves and the nonlinear Manning equation.
+
+### Global maximum level change
+
+The adaptive timestep is governed by whichever linearization is most sensitive to level changes:
+
+$$\Delta h_{\max} = \min\left(\min_i \Delta h_{\max,i}^{\text{basin}},\; \min_j \Delta h_{\max,j}^{\text{connector}}\right)$$
+
+### Adaptive timestep
+
+Converting the level change bound to a time bound using $\Delta S \approx A^n \,\Delta h$ and the current net storage rate $\dot{S}$:
+
+$$\Delta t_i = \frac{A_i^n \cdot \Delta h_{\max}}{|\dot{S}_i|}$$
+
+The adaptive timestep for the subnetwork is:
+
+$$\Delta t_{\text{adaptive}} = \min_i \Delta t_i$$
+
+clamped between a configured minimum and maximum.
+
 ## The high level algorithm {#sec-high-level-algorithm}
 The allocation algorithm contains 2 types of optimization:
 

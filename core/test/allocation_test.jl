@@ -224,42 +224,6 @@ end
     @test all(≈(0.5), user_demand.allocated ./ user_demand.demand)
 end
 
-# Do we still want this feature?
-# @testitem "direct_basin_allocation" begin
-#     using Ribasim: NodeID
-#     import SQLite
-#     import JuMP
-
-#     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
-#     model = Ribasim.Model(toml_path)
-#     (; p) = model.integrator
-#     (; p_independent) = p
-#     t = 0.0
-#     demand_priority_idx = 2
-
-#     allocation_model = first(p_independent.allocation.allocation_models)
-#     Ribasim.set_initial_values!(allocation_model, p, t)
-#     Ribasim.set_objective_demand_priority!(allocation_model, p, t, demand_priority_idx)
-#     Ribasim.allocate_to_users_from_connected_basin!(
-#         allocation_model,
-#         p_independent,
-#         demand_priority_idx,
-#     )
-#     flow_data = allocation_model.flow.data
-#     @test flow_data[(
-#         NodeID(:FlowBoundary, 1, p_independent),
-#         NodeID(:Basin, 2, p_independent),
-#     )] == 0.0
-#     @test flow_data[(
-#         NodeID(:Basin, 2, p_independent),
-#         NodeID(:UserDemand, 3, p_independent),
-#     )] == 0.0015
-#     @test flow_data[(
-#         NodeID(:UserDemand, 3, p_independent),
-#         NodeID(:Basin, 5, p_independent),
-#     )] == 0.0
-# end
-
 @testitem "cyclic_demand" begin
     using DataInterpolations.ExtrapolationType: Periodic
 

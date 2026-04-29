@@ -5,7 +5,7 @@ storage_constraint_lower_Basin_#7,1_: 1 basin_storage_change_Basin_#7_ + 1 level
 storage_constraint_upper_Basin_#7,1_: -1 basin_storage_change_Basin_#7_ + 1 level_demand_error_Basin_#7,1,upper,first_ >= -750
 level_demand_fairness_error_constraint_Basin_#7,1,lower_: -0.001 level_demand_error_Basin_#7,1,lower,first_ + 1 level_demand_error_Basin_#7,1,lower,second_ + 1 average_storage_unit_error_1,lower_ >= 0
 level_demand_fairness_error_constraint_Basin_#7,1,upper_: -0.001 level_demand_error_Basin_#7,1,upper,first_ + 1 level_demand_error_Basin_#7,1,upper,second_ + 1 average_storage_unit_error_1,upper_ >= 0
-volume_conservation_Basin_#7_: 1 basin_storage_change_Basin_#7_ + 1 low_storage_factor_Basin_#7_ = 1
+volume_conservation_Basin_#7_: 1 basin_storage_change_Basin_#7_ + 1.1574074074074073e-5 low_storage_factor_Basin_#7_ = 1.1574074074074073e-5
 average_storage_unit_error_constraint_1,upper_: -1 level_demand_error_Basin_#7,1,upper,first_ + 1000 average_storage_unit_error_1,upper_ = 0
 average_storage_unit_error_constraint_1,lower_: -1 level_demand_error_Basin_#7,1,lower,first_ + 1000 average_storage_unit_error_1,lower_ = 0
 Bounds

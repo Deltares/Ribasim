@@ -440,6 +440,33 @@ function get_Δt(integrator)::Float64
     end
 end
 
+"""
+Time from `t` to the next save boundary, capped at `t_end`.
+
+For `saveat == 0` (every step saved) or `saveat == Inf` (only end saved),
+the full remaining horizon is returned so the caller imposes no extra clamp.
+"""
+function time_to_next_saveat(t::Float64, saveat::Float64, t_end::Float64)::Float64
+    iszero(saveat) && return t_end - t
+    isinf(saveat) && return t_end - t
+    rem = t % saveat
+    Δ = iszero(rem) ? saveat : saveat - rem
+    return min(Δ, t_end - t)
+end
+
+"""
+Whether `t` falls on a save boundary, i.e. a multiple of `saveat` or the end
+of the simulation horizon. The save grid is degenerate when `saveat` is 0 (every
+step) or `Inf` (only end), so both return `true`.
+"""
+function is_saveat_time(t::Float64, saveat::Float64, t_end::Float64; atol::Float64 = 1.0e-9)::Bool
+    iszero(saveat) && return true
+    isinf(saveat) && return true
+    isapprox(t, t_end; atol) && return true
+    rem = t % saveat
+    return isapprox(rem, 0.0; atol) || isapprox(rem, saveat; atol)
+end
+
 inflow_link(graph, node_id)::LinkMetadata = graph[inflow_id(graph, node_id), node_id]
 outflow_link(graph, node_id)::LinkMetadata = graph[node_id, outflow_id(graph, node_id)]
 

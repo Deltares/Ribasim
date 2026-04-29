@@ -1639,6 +1639,47 @@ def level_demand_with_rating_curve_model() -> Model:
     return model
 
 
+def basin_overflow_model() -> Model:
+    """Test model for basin overflow handling in allocation."""
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+
+    # Small basin: area=1000 m², levels 0-1 m (max storage ~1000 m³)
+    basin_data = [
+        basin.Profile(area=1000.0, level=[0.0, 1.0]),
+        basin.State(level=[0.5]),
+    ]
+
+    # High constant inflow: 0.1 m³/s will fill 1000 m³ basin in ~2.8 hours,
+    # forcing overflow within a day
+    model.flow_boundary.add(
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [flow_boundary.Static(flow_rate=[0.1])],
+    )
+
+    model.basin.add(Node(2, Point(1, 0), subnetwork_id=2), basin_data)
+
+    # Small demand to allow outflow
+    model.user_demand.add(
+        Node(3, Point(2, 0), subnetwork_id=2),
+        [
+            user_demand.Static(
+                demand=[0.01], return_factor=0.0, min_level=0.0, demand_priority=1
+            )
+        ],
+    )
+
+    model.link.add(model.flow_boundary[1], model.basin[2])
+    model.link.add(model.basin[2], model.user_demand[3])
+    model.link.add(model.user_demand[3], model.basin[2])
+
+    return model
+
+
 def outlet_allocation_discrete_control_model() -> Model:
     """LevelBoundary supplies water via an allocation-controlled Outlet to a Basin with a LevelDemand.
 

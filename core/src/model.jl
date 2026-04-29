@@ -298,27 +298,78 @@ function step!(model::Model, dt::Float64)::Model
 end
 
 """
-    solve!(model::Model)::Model
-
-Solve a Model until the configured `endtime`.
+Compute adaptive Δt for all allocation models based on linearization error bounds,
+set each model's Δt_allocation, clamp to saveat/tspan boundaries, and return (Δt, on_saveat).
 """
-function solve!(model::Model)::Model
+function compute_and_set_adaptive_Δt!(model, saveat, tspan_end)::Tuple{Float64, Bool}
+    (; config, integrator) = model
+    (; u, p, t) = integrator
+    (; p_independent) = p
+    (; allocation) = p_independent
+    du = get_du(integrator)
+
+    water_balance!(du, u, p, t)
+
+    Δt = config.allocation.timestep
+    for am in allocation.allocation_models
+        Δt_sub = compute_adaptive_Δt(am, p, du, t, config.allocation)
+        am.Δt_allocation = Δt_sub
+        Δt = min(Δt, Δt_sub)
+    end
+
+    Δt = min(Δt, time_to_next_saveat(t, saveat, tspan_end))
+    Δt = min(Δt, tspan_end - t)
+
+    on_saveat =
+        iszero(saveat) ||
+        isinf(saveat) ||
+        isapprox(t % saveat, 0.0; atol = 1.0e-9) ||
+        isapprox(t % saveat, saveat; atol = 1.0e-9) ||
+        isapprox(t, tspan_end; atol = 1.0e-9)
+
+    return Δt, on_saveat
+end
+
+"""
+Step through the simulation with allocation, using either adaptive or fixed timesteps.
+"""
+function solve_with_allocation!(model::Model)::Nothing
     (; config, integrator) = model
     (; tspan::Tuple{Float64, Float64}) = integrator.sol.prob
 
-    comptime_s = @elapsed if config.experimental.allocation
+    if config.allocation.adaptive_timestep
+        saveat = config.solver.saveat
+        while integrator.t < tspan[end] - eps(tspan[end])
+            Δt, on_saveat = compute_and_set_adaptive_Δt!(model, saveat, tspan[end])
+            update_allocation!(model, Δt; record = on_saveat)
+            SciMLBase.step!(integrator, Δt, true)
+        end
+    else
         (; timestep) = config.allocation
         n_allocation_times = floor(Int, tspan[end] / timestep)
         for _ in 1:n_allocation_times
             update_allocation!(model)
             SciMLBase.step!(integrator, timestep, true)
         end
-        # Any possible remaining step (< allocation.timestep) after the last allocation
         dt = tspan[end] - integrator.t
         if dt > 0
             update_allocation!(model)
             SciMLBase.step!(integrator, dt, true)
         end
+    end
+    return nothing
+end
+
+"""
+    solve!(model::Model)::Model
+
+Solve a Model until the configured `endtime`.
+"""
+function solve!(model::Model)::Model
+    (; config, integrator) = model
+
+    comptime_s = @elapsed if config.experimental.allocation
+        solve_with_allocation!(model)
     else
         SciMLBase.solve!(integrator)
     end
