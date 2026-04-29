@@ -14,10 +14,8 @@
     (; u, du) = model.integrator
     (; p_independent) = model.integrator.p
 
-    @test p_independent.node_id == [0, 6, 6]
     @test u isa CVector
-    @test filter(!isempty, getaxes(u)) ==
-        (; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
+    @test filter(!isempty, getaxes(u)) == (; basin = 1:1)
 
     # Open NetCDF result files
     flow_path = normpath(dirname(toml_path), "results/flow.nc")
@@ -138,8 +136,6 @@ end
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
-    @test du.evaporation == [0.0]
-    @test du.infiltration == [0.0]
     @test success(model)
 end
 
@@ -164,9 +160,9 @@ end
     Ribasim.water_balance!(du, u, p, t)
     stor = state_and_time_dependent_cache.current_storage
     prec = basin.vertical_flux.precipitation
-    evap = du.evaporation
+    evap = basin.vertical_flux.potential_evaporation
     drng = basin.vertical_flux.drainage
-    infl = du.infiltration
+    infl = basin.vertical_flux.infiltration
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
     @test evap == [0.0]
@@ -178,13 +174,13 @@ end
     @test prec == [0.0]
     @test evap == [0.0]
     @test drng == [0.003]
-    @test infl == [0.0]
+    @test infl == [0.001]
     stor ≈ Float32[init_stor + 86400 * (0.003 * 1.5 - 0.001 * 0.5)]
     BMI.update_until(model, 2.5 * 86400)
     @test prec == [0.0]
     @test evap == [0.0]
     @test drng == [0.001]
-    @test infl == [0.0]
+    @test infl == [0.002]
     stor ≈ Float32[init_stor + 86400 * (0.003 * 2.0 + 0.001 * 0.5 - 0.001 - 0.002 * 0.5)]
     @test success(Ribasim.solve!(model))
 end
@@ -214,7 +210,7 @@ end
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p_independent))
     @test all(isconcretetype, fieldtypes(typeof(p_independent)))
-    @test p_independent.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
+    # node_id field was removed; state vector now only has basin and integral axes
 
     @test success(model)
     @test length(model.integrator.sol) == 2 # start and end
@@ -388,7 +384,6 @@ end
 @testitem "UserDemand" begin
     using Dates
     using DataFrames: DataFrame
-    using Ribasim: formulate_storages!
     import BasicModelInterface as BMI
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/user_demand/ribasim.toml")
@@ -401,16 +396,12 @@ end
 
     day = 86400.0
 
-    @test only(state_and_time_dependent_cache.current_storage) ≈ 1000.0
+    @test only(u.basin) ≈ 1000.0
     # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
     BMI.update_until(model, 150day)
-    (; u_reduced) = p.p_independent
-    Ribasim.reduce_state!(u_reduced, u, p_independent)
-    formulate_storages!(u_reduced, p, t)
     @test only(state_and_time_dependent_cache.current_storage) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
     BMI.update_until(model, 200day)
-    formulate_storages!(u_reduced, p, t)
     @test only(state_and_time_dependent_cache.current_storage) ≈ 500 atol = 2
 
     # Transient return factor

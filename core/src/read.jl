@@ -1639,67 +1639,59 @@ function Parameters(db::DB, config::Config)::Parameters
 
     u_ids = state_node_ids(
         (;
-            nodes.tabulated_rating_curve,
-            nodes.pump,
-            nodes.outlet,
-            nodes.user_demand,
-            nodes.linear_resistance,
-            nodes.manning_resistance,
             nodes.basin,
             nodes.pid_control,
         )
     )
-    node_id = reduce(vcat, u_ids)
-    n_states = length(node_id)
     state_ranges = count_state_ranges(u_ids)
-    state_inflow_link, state_outflow_link = get_state_flow_links(graph, nodes)
 
     set_target_ref!(
         nodes.pid_control.target_ref,
         nodes.pid_control.node_id,
-        fill("flow_rate", length(node_id)),
-        state_ranges,
+        fill("flow_rate", length(nodes.pid_control.node_id)),
         graph,
     )
     set_target_ref!(
         nodes.continuous_control.target_ref,
         nodes.continuous_control.node_id,
         nodes.continuous_control.controlled_variable,
-        state_ranges,
         graph,
     )
 
     n_basin = length(nodes.basin.node_id)
-    n_pid_control = length(nodes.pid_control.node_id)
-    u_reduced = CVector(
-        zeros(n_basin + n_pid_control),
-        (;
-            combined_cumulative_flows = 1:n_basin,
-            integral = (n_basin + 1):(n_basin + n_pid_control),
-        ),
+    n_internal_flow_links = length(graph[].internal_flow_links)
+
+    balance_correction = BalanceCorrectionCache(
+        graph[].internal_flow_links, nodes.basin.node_id, n_internal_flow_links,
     )
 
     p_independent = ParametersIndependent(;
         config.starttime,
-        config.solver.reltol,
-        relmask = collect(trues(n_states)),
         graph,
         allocation,
         nodes...,
         subgrid,
-        state_inflow_link,
-        state_outflow_link,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
-        u_prev_saveat = zeros(n_states),
-        node_id,
         state_ranges,
         do_concentration = config.experimental.concentration,
         do_subgrid = config.results.subgrid,
-        temp_convergence = CVector(zeros(n_states), state_ranges),
-        convergence = CVector(zeros(n_states), state_ranges),
-        u_reduced,
         config.solver.level_difference_threshold,
+        # Flow accumulation vectors
+        current_flow_rate = zeros(n_internal_flow_links),
+        flow_rate_prev = zeros(n_internal_flow_links),
+        cumulative_flow = zeros(n_internal_flow_links),
+        cumulative_flow_saveat = zeros(n_internal_flow_links),
+        evaporation_prev = zeros(n_basin),
+        infiltration_prev = zeros(n_basin),
+        cumulative_evaporation = zeros(n_basin),
+        cumulative_infiltration = zeros(n_basin),
+        cumulative_evaporation_saveat = zeros(n_basin),
+        cumulative_infiltration_saveat = zeros(n_basin),
+        cumulative_infiltration_total = zeros(n_basin),
+        balance_correction,
+        convergence = zeros(n_basin),
+        flow_convergence_saveat = zeros(n_internal_flow_links),
     )
 
     collect_control_mappings!(p_independent)

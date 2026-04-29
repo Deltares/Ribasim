@@ -32,9 +32,6 @@ using ForwardDiff: derivative as forward_diff
 
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du
-using OrdinaryDiffEqDifferentiation:
-    OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
-using SciMLOperators: WOperator, MatrixOperator
 import ADTypes
 import ForwardDiff
 
@@ -49,12 +46,7 @@ using SciMLBase:
     ODEProblem,
     get_proposed_dt,
     DEIntegrator,
-    FullSpecialize,
-    NoSpecialize,
-    SciMLOperators,
-    AbstractSciMLOperator,
-    LinearProblem,
-    LinearSolution
+    FullSpecialize
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
@@ -65,7 +57,7 @@ using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 using SparseArrays: SparseMatrixCSC, sparse, nzrange
 
 # Linear algebra
-using LinearAlgebra: LinearAlgebra, mul!, UniformScaling
+using LinearAlgebra: LinearAlgebra, mul!, UniformScaling, Symmetric, cholesky, Factorization
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node
@@ -180,7 +172,6 @@ include("allocation_init.jl")
 include("allocation_optim.jl")
 include("util.jl")
 include("graph.jl")
-include("differentiation.jl")
 include("model.jl")
 include("read.jl")
 include("write.jl")

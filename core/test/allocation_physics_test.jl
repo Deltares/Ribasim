@@ -98,7 +98,6 @@ end
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
 
-
     @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate atol = 8.0e-4
 end
 

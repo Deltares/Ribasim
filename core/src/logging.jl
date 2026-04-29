@@ -61,32 +61,34 @@ end
 "Log the convergence bottlenecks."
 function log_bottlenecks(model; interrupt::Bool)
     (; cache, p, u) = model.integrator
-    (; p_independent) = p
 
     level = LoggingExtras.Warn
 
     # Indicate convergence bottlenecks if possible with the current algorithm
     return if hasproperty(cache, :nlsolver)
-        flow_error = if interrupt && p.p_independent.ncalls[1] > 0
-            flow_error = p.p_independent.convergence ./ p.p_independent.ncalls[1]
-        else
-            temp_convergence = @. abs(cache.nlsolver.cache.atmp / u)
-            temp_convergence / finitemaximum(temp_convergence)
-        end
+        flow_error = @. abs(cache.nlsolver.cache.atmp / u)
+        flow_error ./= finitemaximum(flow_error)
 
+        (; state_ranges, basin, pid_control) = p.p_independent
         errors = Pair{Symbol, String}[]
         error_count = 0
         max_errors = 5
         # Iterate over the errors in descending order
         for i in sortperm(flow_error; rev = true)
-            node_id = Symbol(p_independent.node_id[i])
             error = flow_error[i]
-            isnan(error) && continue  # NaN are sorted as largest
-            # Stop reporting errors if they are too small or too many
+            isnan(error) && continue
             if error < 1 / length(flow_error) || error_count >= max_errors
                 break
             end
-            push!(errors, node_id => @sprintf("%.2f", error * 100) * "%")
+            # Map state index to node ID
+            label = if i in state_ranges.basin
+                string(basin.node_id[i - first(state_ranges.basin) + 1])
+            elseif i in state_ranges.integral
+                string(pid_control.node_id[i - first(state_ranges.integral) + 1])
+            else
+                "state_$i"
+            end
+            push!(errors, Symbol(label) => @sprintf("%.2f", error * 100) * "%")
             error_count += 1
         end
         if !isempty(errors)

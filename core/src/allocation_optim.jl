@@ -14,7 +14,6 @@ function set_simulation_data!(
         user_demand,
         tabulated_rating_curve,
     ) = p.p_independent
-    du = get_du(integrator)
 
     errors = false
 
@@ -24,7 +23,7 @@ function set_simulation_data!(
     set_simulation_data!(allocation_model, linear_resistance, p, t)
     set_simulation_data!(allocation_model, manning_resistance, p, t)
     set_simulation_data!(allocation_model, tabulated_rating_curve, p, t)
-    set_simulation_data!(allocation_model, pump, outlet, du)
+    set_simulation_data!(allocation_model, pump, outlet, p.state_and_time_dependent_cache)
     set_simulation_data!(allocation_model, user_demand, t)
 
     if errors
@@ -327,7 +326,7 @@ function set_simulation_data!(
         allocation_model::AllocationModel,
         pump::Pump,
         outlet::Outlet,
-        du::CVector,
+        cache::StateAndTimeDependentCache,
     )::Nothing
     (; problem, scaling) = allocation_model
     pump_constraints = problem[:pump]
@@ -337,7 +336,7 @@ function set_simulation_data!(
     for node_id in only(pump_constraints.axes)
         constraint = pump_constraints[node_id]
         upstream_node_id = pump.inflow_link[node_id.idx].link[1]
-        q = du.pump[node_id.idx]
+        q = cache.current_flow_rate_pump[node_id.idx]
         if upstream_node_id.type == NodeType.Basin
             low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
             JuMP.set_normalized_coefficient(
@@ -354,7 +353,7 @@ function set_simulation_data!(
     for node_id in only(outlet_constraints.axes)
         constraint = outlet_constraints[node_id]
         upstream_node_id = outlet.inflow_link[node_id.idx].link[1]
-        q = du.outlet[node_id.idx]
+        q = cache.current_flow_rate_outlet[node_id.idx]
         if upstream_node_id.type == NodeType.Basin
             low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
             JuMP.set_normalized_coefficient(
@@ -745,19 +744,21 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     du = get_du(integrator)
 
     # Extrapolate the current instantaneous flow rates from the physical layer
+    # Flow rates are now stored in cache vectors, look up by link
+    internal_flow_links = p.p_independent.graph[].internal_flow_links
     for link in only(flow.axes)
-        state_index = get_state_index(getaxes(du), link)
-        if !isnothing(state_index)
-            JuMP.set_start_value(flow[link], du[state_index] / scaling.flow)
+        link_idx = get_link_index(link, internal_flow_links)
+        if !isnothing(link_idx)
+            JuMP.set_start_value(flow[link], p.p_independent.current_flow_rate[link_idx] / scaling.flow)
         end
     end
 
     # Extrapolate the current instantaneous storage rates from the physical layer
+    # du.basin[idx] now directly contains dS/dt
     for node_id in basin_ids_subnetwork
         JuMP.set_start_value(
             storage_change[node_id],
-            formulate_dstorage(du, p.p_independent, t, node_id) * Δt_allocation /
-                scaling.storage,
+            du.basin[node_id.idx] * Δt_allocation / scaling.storage,
         )
     end
 

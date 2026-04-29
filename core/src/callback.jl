@@ -66,11 +66,6 @@ function create_callbacks(
     discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
     push!(callbacks, discrete_control_cb)
 
-    toltimes = get_log_tstops(config.starttime, config.endtime)
-    decrease_tol_cb =
-        FunctionCallingCallback(decrease_tolerance!; funcat = toltimes, func_start = false)
-    push!(callbacks, decrease_tol_cb)
-
     saved = SavedResults(
         saved_flow,
         saved_basin_states,
@@ -82,68 +77,301 @@ function create_callbacks(
     return callback, saved
 end
 
-"""
-Decrease the relative tolerance of the integrator over time,
-to compensate for the ever increasing cumulative flows.
-"""
-function decrease_tolerance!(u, t, integrator)::Nothing
-    (; p, t, opts) = integrator
-
-    for (i, state) in enumerate(u)
-        p.p_independent.relmask[i] || continue
-
-        # Use the internal norm to get the magnitude of the (cumulative) states,
-        # as used in calculate_residuals, and compare to an estimated average magnitude
-        cum_magnitude = opts.internalnorm(state, t)
-        iszero(cum_magnitude) && continue
-        avg_magnitude = max(opts.internalnorm(1.0e4, t), cum_magnitude / t)  # allow for 1e4 m3/s
-
-        # Decrease the relative tolerance based on their difference
-        diff_norm = max(0, log10(cum_magnitude / avg_magnitude))
-        # Limit new tolerance to floating point precision (~-14)
-        newtol = max(10.0^(log10(integrator.p.p_independent.reltol) - diff_norm), 1.0e-14)
-
-        if opts.reltol[i] > newtol
-            @debug "Relative tolerance changed at t = $t, state = $i to $(newtol)"
-            opts.reltol[i] = newtol
+function sync_flow_rates!(node_sym::Symbol, current_flow_cache::Vector{T}, p_independent::ParametersIndependent) where {T}
+    internal_flow_links = p_independent.graph[].internal_flow_links
+    node = getproperty(p_independent, node_sym)
+    for (node_idx, id) in enumerate(node.node_id)
+        q = current_flow_cache[id.idx]
+        inflow_link = node.inflow_link[node_idx]
+        outflow_link = node.outflow_link[node_idx]
+        idx = get_link_index(inflow_link.link, internal_flow_links)
+        if idx !== nothing
+            p_independent.current_flow_rate[idx] = q
+        end
+        idx = get_link_index(outflow_link.link, internal_flow_links)
+        if idx !== nothing
+            p_independent.current_flow_rate[idx] = q
         end
     end
     return
 end
 
 """
-Update with the latest timestep:
-- Cumulative flows/forcings which are integrated exactly
-- Cumulative flows/forcings which are input for the allocation algorithm
-- Cumulative flows/forcings which are supplied demands in the allocation context
+Synchronize per-node-type flow rate caches into the per-link flow rate vector
+used for trapezoidal flow accumulation.
+"""
+function sync_flow_rates!(p::Parameters)::Nothing
+    (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
+    (; graph, basin) = p_independent
+    internal_flow_links = graph[].internal_flow_links
+    cache = state_and_time_dependent_cache
 
-During these cumulative flow updates, we can also update the mass balance of the system,
-as each flow carries mass, based on the concentrations of the flow source.
-Specifically, we first use all the inflows to update the mass of the Basins, recalculate
-the Basin concentration(s) and then remove the mass that is being lost to the outflows.
+    sync_flow_rates!(:pump, cache.current_flow_rate_pump, p_independent)
+    sync_flow_rates!(:outlet, cache.current_flow_rate_outlet, p_independent)
+    sync_flow_rates!(:tabulated_rating_curve, cache.current_flow_rate_tabulated_rating_curve, p_independent)
+    sync_flow_rates!(:linear_resistance, cache.current_flow_rate_linear_resistance, p_independent)
+    sync_flow_rates!(:manning_resistance, cache.current_flow_rate_manning_resistance, p_independent)
+    sync_flow_rates!(:user_demand, cache.current_flow_rate_user_demand, p_independent)
+
+    return nothing
+end
+
+"""
+Solve a constrained least-squares balance correction when the unconstrained
+projection would violate nonnegative flow physics on one-way links.
+
+Minimize 0.5*(||dq||^2 + ||de||^2 + ||di||^2)
+subject to: A_flow * dq + de + di == residual,
+and q* + dq >= 0 on constrained links,
+and corrected evaporation/infiltration remaining nonnegative.
+
+Returns true when an optimal solution was found and writes the solution into
+`correction_flow`, `evap_correction`, and `infiltration_correction`.
+"""
+function solve_constrained_balance_correction!(
+        correction_flow::Vector{Float64},
+        evap_correction::Vector{Float64},
+        infiltration_correction::Vector{Float64},
+        residual::Vector{Float64},
+        A_flow::SparseMatrixCSC{Float64, Int},
+        cumulative_flow::Vector{Float64},
+        cumulative_evaporation::Vector{Float64},
+        cumulative_infiltration::Vector{Float64},
+        nonnegative_link::BitVector,
+    )::Bool
+    n_links = length(cumulative_flow)
+    n_basins = length(residual)
+
+    model = JuMP.Model(HiGHS.Optimizer)
+    JuMP.set_silent(model)
+
+    JuMP.@variable(model, dq[1:n_links])
+    JuMP.@variable(model, de[1:n_basins])
+    JuMP.@variable(model, di[1:n_basins])
+
+    for j in 1:n_links
+        if nonnegative_link[j]
+            JuMP.set_lower_bound(dq[j], -cumulative_flow[j])
+        end
+    end
+    for i in 1:n_basins
+        # corrected fluxes are e* - de and i* - di
+        JuMP.set_upper_bound(de[i], cumulative_evaporation[i])
+        JuMP.set_upper_bound(di[i], cumulative_infiltration[i])
+    end
+
+    JuMP.@constraint(model, A_flow * dq + de + di .== residual)
+    JuMP.@objective(
+        model,
+        Min,
+        0.5 * sum(dq[j]^2 for j in 1:n_links) +
+            0.5 * sum(de[i]^2 for i in 1:n_basins) +
+            0.5 * sum(di[i]^2 for i in 1:n_basins),
+    )
+
+    JuMP.optimize!(model)
+    if JuMP.termination_status(model) != JuMP.OPTIMAL
+        return false
+    end
+
+    for j in 1:n_links
+        correction_flow[j] = JuMP.value(dq[j])
+    end
+    for i in 1:n_basins
+        evap_correction[i] = JuMP.value(de[i])
+        infiltration_correction[i] = JuMP.value(di[i])
+    end
+    return true
+end
+
+"""
+Apply mass-balance-consistent correction to trapezoidal flow estimates.
+Projects the trapezoidal estimates onto the subspace satisfying exact mass balance
+using the minimum-norm adjustment: δq = Aᵀ(AAᵀ+2I)⁻¹(b - Aq̄*)
+
+The correction distributes the per-basin water balance residual back to the
+internal flow links, evaporation, and infiltration in proportion to the network
+topology, guaranteeing mass conservation at every step.
+"""
+function apply_balance_correction!(u, p_independent, time_dependent_cache)::Nothing
+    (; basin, flow_boundary, balance_correction) = p_independent
+    (; A_flow, AAt_2I_chol, nonnegative_link, storage_prev, lambda, residual, correction_flow) =
+        balance_correction
+    n_basins = length(basin.node_id)
+
+    if n_basins == 0
+        return nothing
+    end
+
+    # b[i] = ΔS[i] - exact_forcings[i]
+    # where exact_forcings = precipitation + drainage + surface_runoff
+    for i in 1:n_basins
+        ΔS = u.basin[i] - storage_prev[i]
+        precip = time_dependent_cache.basin.current_cumulative_precipitation[i] -
+            basin.cumulative_precipitation[i]
+        drainage = time_dependent_cache.basin.current_cumulative_drainage[i] -
+            basin.cumulative_drainage[i]
+        surface_runoff = time_dependent_cache.basin.current_cumulative_surface_runoff[i] -
+            basin.cumulative_surface_runoff[i]
+        residual[i] = ΔS - precip - drainage - surface_runoff
+    end
+
+    # Subtract exact flow boundary contributions to receiving basins
+    for (outflow_link, id) in zip(flow_boundary.outflow_link, flow_boundary.node_id)
+        dst = outflow_link.link[2]
+        if dst.type == NodeType.Basin
+            fb_vol =
+                time_dependent_cache.flow_boundary.current_cumulative_boundary_flow[id.idx] -
+                flow_boundary.cumulative_flow[id.idx]
+            residual[dst.idx] -= fb_vol
+        end
+    end
+
+    # Subtract A_ext * q_ext* (the trapezoidal estimate contribution)
+    # A_ext * q_ext* = A_flow * cumulative_flow - cumulative_evaporation - cumulative_infiltration
+    mul!(lambda, A_flow, p_independent.cumulative_flow)  # reuse lambda as temp
+    @. residual -= lambda
+    @. residual += p_independent.cumulative_evaporation
+    @. residual += p_independent.cumulative_infiltration
+    # Now residual = b - A_ext * q_ext* = per-basin mass balance error (in volumes)
+
+    # Solve for Lagrange multipliers: λ = (AAᵀ + 2I)⁻¹ r
+    lambda .= AAt_2I_chol \ residual
+
+    # Compute flow corrections: δq_flow = Aᵀλ
+    mul!(correction_flow, A_flow', lambda)
+
+    # If unconstrained correction would violate one-way link orientation,
+    # solve a constrained least-squares problem instead.
+    constrained_correction = false
+    for j in eachindex(correction_flow)
+        if nonnegative_link[j] && (p_independent.cumulative_flow[j] + correction_flow[j] < 0.0)
+            constrained_correction = true
+            break
+        end
+    end
+
+    if constrained_correction
+        # Reuse lambda/residual vectors as work arrays for evap/infiltration corrections.
+        success = solve_constrained_balance_correction!(
+            correction_flow,
+            lambda,
+            residual,
+            residual,
+            A_flow,
+            p_independent.cumulative_flow,
+            p_independent.cumulative_evaporation,
+            p_independent.cumulative_infiltration,
+            nonnegative_link,
+        )
+        if !success
+            @warn "Constrained balance correction failed; using unconstrained projection."
+            lambda .= AAt_2I_chol \ residual
+            mul!(correction_flow, A_flow', lambda)
+
+            @. p_independent.cumulative_flow += correction_flow
+            @. p_independent.cumulative_flow_saveat += correction_flow
+            @. p_independent.cumulative_evaporation -= lambda
+            @. p_independent.cumulative_evaporation_saveat -= lambda
+            @. p_independent.cumulative_infiltration -= lambda
+            @. p_independent.cumulative_infiltration_saveat -= lambda
+        else
+            @. p_independent.cumulative_flow += correction_flow
+            @. p_independent.cumulative_flow_saveat += correction_flow
+            @. p_independent.cumulative_evaporation -= lambda
+            @. p_independent.cumulative_evaporation_saveat -= lambda
+            @. p_independent.cumulative_infiltration -= residual
+            @. p_independent.cumulative_infiltration_saveat -= residual
+        end
+    else
+        # Apply corrections to per-step and saveat accumulators
+        @. p_independent.cumulative_flow += correction_flow
+        @. p_independent.cumulative_flow_saveat += correction_flow
+        @. p_independent.cumulative_evaporation -= lambda
+        @. p_independent.cumulative_evaporation_saveat -= lambda
+        @. p_independent.cumulative_infiltration -= lambda
+        @. p_independent.cumulative_infiltration_saveat -= lambda
+    end
+
+    # Accumulate absolute correction for per-link flow convergence output
+    @. p_independent.flow_convergence_saveat += abs(correction_flow)
+
+    # Update storage_prev for next step
+    for i in 1:n_basins
+        storage_prev[i] = u.basin[i]
+    end
+
+    return nothing
+end
+
+"""
+Update cumulative flows.
+Also updates cumulative forcings and allocation flows.
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
-    (; cache, p) = integrator
-    (; p_independent, p_mutable, time_dependent_cache) = p
-    (; basin, flow_boundary, allocation, temp_convergence, convergence, ncalls) =
-        p_independent
+    (; p) = integrator
+    (; p_independent, p_mutable, time_dependent_cache, state_and_time_dependent_cache) = p
+    (; basin, flow_boundary, allocation) = p_independent
+
+    dt = t - p_mutable.tprev
 
     # Update tprev
     p_mutable.tprev = t
 
-    # Update convergence measure
-    if hasproperty(cache, :nlsolver)
-        @. temp_convergence = abs(cache.nlsolver.cache.atmp / u)
-        @inbounds for I in eachindex(temp_convergence)
-            if !isfinite(temp_convergence[I])
-                temp_convergence[I] = zero(eltype(temp_convergence))
-            end
+    # Sync per-node-type flow rates to per-link vector
+    sync_flow_rates!(p)
+
+    # Compute per-step flow volumes via trapezoidal integration.
+    # cumulative_flow holds the per-step volume (used by concentration and allocation),
+    # cumulative_flow_saveat accumulates across the saveat interval (used for output).
+    p_independent.cumulative_flow .= 0.0
+    if dt > 0
+        # Use trapezoidal integration, but fall back to backward Euler for links where
+        # flow_rate_prev was set to NaN as a sentinel at a control state transition.
+        # This avoids a spurious spike from averaging the pre-transition and post-transition
+        for i in eachindex(p_independent.cumulative_flow)
+            curr = p_independent.current_flow_rate[i]
+            prev = p_independent.flow_rate_prev[i]
+            p_independent.cumulative_flow[i] =
+                isnan(prev) ? dt * curr : 0.5 * dt * (curr + prev)
+            p_independent.flow_rate_prev[i] = curr
         end
-        convergence .+=
-            temp_convergence /
-            finitemaximum(temp_convergence; init = one(eltype(temp_convergence)))
-        ncalls[1] += 1
+        @. p_independent.cumulative_flow_saveat += p_independent.cumulative_flow
+
+        @. p_independent.cumulative_evaporation = 0.5 * dt * (state_and_time_dependent_cache.current_evaporation + p_independent.evaporation_prev)
+        @. p_independent.cumulative_evaporation_saveat += p_independent.cumulative_evaporation
+        @. p_independent.evaporation_prev = state_and_time_dependent_cache.current_evaporation
+
+        @. p_independent.cumulative_infiltration = 0.5 * dt * (state_and_time_dependent_cache.current_infiltration + p_independent.infiltration_prev)
+        @. p_independent.cumulative_infiltration_saveat += p_independent.cumulative_infiltration
+        @. p_independent.infiltration_prev = state_and_time_dependent_cache.current_infiltration
+
+        # Accumulate running total for BMI using current rate * dt (like an ODE state)
+        @. p_independent.cumulative_infiltration_total += dt * state_and_time_dependent_cache.current_infiltration
+
+        # Project trapezoidal estimates onto mass-balance-consistent subspace
+        apply_balance_correction!(u, p_independent, time_dependent_cache)
+
+        # Accumulate normalized Newton residual for convergence output
+        cache = integrator.cache
+        if hasproperty(cache, :nlsolver)
+            atmp = cache.nlsolver.cache.atmp
+            abs_atmp = abs.(atmp)
+            max_atmp = finitemaximum(abs_atmp; init = one(eltype(abs_atmp)))
+            for i in eachindex(p_independent.convergence)
+                v = abs_atmp[i]
+                p_independent.convergence[i] += isfinite(v) ? v / max_atmp : 0.0
+            end
+            p_independent.convergence_ncalls[1] += 1
+        end
     end
+
+    # Update cumulative boundary flow which is integrated exactly
+    @. flow_boundary.cumulative_flow_saveat +=
+        time_dependent_cache.flow_boundary.current_cumulative_boundary_flow -
+        flow_boundary.cumulative_flow
+    @. flow_boundary.cumulative_flow =
+        time_dependent_cache.flow_boundary.current_cumulative_boundary_flow
 
     # Update cumulative forcings which are integrated exactly
     @. basin.cumulative_drainage_saveat +=
@@ -162,18 +390,10 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     @. basin.cumulative_surface_runoff =
         time_dependent_cache.basin.current_cumulative_surface_runoff
 
-    # Update cumulative boundary flow which is integrated exactly
-    @. flow_boundary.cumulative_flow_saveat +=
-        time_dependent_cache.flow_boundary.current_cumulative_boundary_flow -
-        flow_boundary.cumulative_flow
-    @. flow_boundary.cumulative_flow =
-        time_dependent_cache.flow_boundary.current_cumulative_boundary_flow
-
     # Update supplied flows for allocation input and output
     for allocation_model in allocation.allocation_models
         (; cumulative_supplied_volume) = allocation_model
 
-        # Update supplied flows for allocation output
         for link in keys(cumulative_supplied_volume)
             cumulative_supplied_volume[link] += flow_update_on_link(integrator, link)
         end
@@ -182,7 +402,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
 end
 
 function update_concentrations!(u, t, integrator)::Nothing
-    (; uprev, p, tprev, dt) = integrator
+    (; p, tprev, dt) = integrator
     (; p_independent, state_and_time_dependent_cache) = p
     (; current_storage, current_level) = state_and_time_dependent_cache
     (; basin, flow_boundary, do_concentration) = p_independent
@@ -236,7 +456,7 @@ function update_concentrations!(u, t, integrator)::Nothing
         add_substance_mass!(
             mass_node,
             loads_itp[node_id.idx],
-            dt,  # loads are per second, not volume, so the flow is just the time step
+            dt,
             t,
         )
     end
@@ -281,13 +501,13 @@ function update_concentrations!(u, t, integrator)::Nothing
     for node_id in basin.node_id
         mass_node = mass[node_id.idx]
 
-        # Evaporate mass to keep the mass balance, if enabled in model config
+        # Evaporate mass using accumulated evaporation
         if evaporate_mass
-            evaporated_volume = u.evaporation[node_id.idx] - uprev.evaporation[node_id.idx]
+            evaporated_volume = p.state_and_time_dependent_cache.current_evaporation[node_id.idx] * dt
             mass_node .-= concentration_state[node_id.idx, :] .* evaporated_volume
         end
 
-        infiltrated_volume = u.infiltration[node_id.idx] - uprev.infiltration[node_id.idx]
+        infiltrated_volume = p.state_and_time_dependent_cache.current_infiltration[node_id.idx] * dt
         mass_node .-= concentration_state[node_id.idx, :] .* infiltrated_volume
 
         # Take care of infinitely small masses, possibly becoming negative due to truncation.
@@ -328,8 +548,9 @@ end
 Compute the forcing volume entering and leaving the Basin over the last time step
 """
 function forcing_update(integrator::DEIntegrator, node_id::NodeID)::Tuple{Float64, Float64}
-    (; u, uprev, p, dt) = integrator
-    (; basin) = p.p_independent
+    (; p, dt) = integrator
+    (; basin, p_independent) = (p.p_independent, p)
+    basin = p.p_independent.basin
     (; vertical_flux) = basin
 
     @assert node_id.type == NodeType.Basin
@@ -343,23 +564,24 @@ function forcing_update(integrator::DEIntegrator, node_id::NodeID)::Tuple{Float6
             vertical_flux.surface_runoff[node_id.idx]
     ) * dt
 
+    # Use trapezoidal accumulated evaporation/infiltration
     outflow_update =
-        (u.evaporation[node_id.idx] - uprev.evaporation[node_id.idx]) +
-        (u.infiltration[node_id.idx] - uprev.infiltration[node_id.idx])
+        p.state_and_time_dependent_cache.current_evaporation[node_id.idx] * dt +
+        p.state_and_time_dependent_cache.current_infiltration[node_id.idx] * dt
 
     return inflow_update, outflow_update
 end
 
 """
-Given an link (from_id, to_id), compute the cumulative flow over that
-link over the latest time step.
+Given a link (from_id, to_id), compute the cumulative flow over that
+link over the latest time step. Uses the trapezoidal-accumulated cumulative flows.
 """
 function flow_update_on_link(
         integrator::DEIntegrator,
         link_src::Tuple{NodeID, NodeID},
     )::Float64
-    (; u, uprev, p, t, tprev) = integrator
-    (; flow_boundary, state_ranges) = p.p_independent
+    (; p, t, tprev) = integrator
+    (; flow_boundary) = p.p_independent
 
     from_id, to_id = link_src
     return if from_id == to_id
@@ -369,8 +591,17 @@ function flow_update_on_link(
     elseif from_id.type == NodeType.FlowBoundary
         integral(flow_boundary.flow_rate[from_id.idx], tprev, t)
     else
-        flow_idx = get_state_index(state_ranges, link_src)
-        u[flow_idx] - uprev[flow_idx]
+        # Look up the internal flow link index and use cumulative flow
+        graph = p.p_independent.graph
+        internal_flow_links = graph[].internal_flow_links
+        link_idx = get_link_index(link_src, internal_flow_links)
+        if isnothing(link_idx)
+            0.0
+        else
+            # Return cumulative flow since last update
+            # This gets reset in update_cumulative_flows! or save_flow
+            p.p_independent.cumulative_flow[link_idx]
+        end
     end
 end
 
@@ -383,38 +614,33 @@ function save_basin_state(u, t, integrator)
 end
 
 """
-Save all cumulative forcings and flows over links over the latest timestep,
-Both computed by the solver and integrated exactly. Also computes the total horizontal
-inflow and outflow per Basin.
+Save all flow rates (averaged over the saveat interval) and vertical fluxes.
 """
 function save_flow(u, t, integrator)
-    (; cache, p) = integrator
-    (;
-        basin,
-        state_inflow_link,
-        state_outflow_link,
-        flow_boundary,
-        u_prev_saveat,
-        convergence,
-        ncalls,
-        node_id,
-    ) = p.p_independent
-    Δt = get_Δt(integrator)
-    flow_mean = (u - u_prev_saveat) / Δt
+    (; p) = integrator
+    (; p_independent) = p
+    (; basin, flow_boundary, graph) = p_independent
+    internal_flow_links = graph[].internal_flow_links
 
-    # Current u is previous u in next computation
-    u_prev_saveat .= u
+    Δt = get_Δt(integrator)
+
+    # Compute mean flow rate per internal link from cumulative flows
+    n_links = length(internal_flow_links)
+    flow_mean = p_independent.cumulative_flow_saveat ./ Δt
+
+    # Reset saveat accumulators
+    p_independent.cumulative_flow_saveat .= 0.0
 
     n_basin = length(basin.node_id)
     inflow_mean = zeros(n_basin)
     outflow_mean = zeros(n_basin)
-    flow_convergence = fill(missing, length(u)) |> Vector{Union{Missing, Float64}}
-    basin_convergence = fill(missing, n_basin) |> Vector{Union{Missing, Float64}}
 
-    # Flow contributions from horizontal flow states
-    for (flow, inflow_link, outflow_link) in
-        zip(flow_mean, state_inflow_link, state_outflow_link)
-        inflow_id = inflow_link.link[1]
+    # Flow contributions from horizontal flow links
+    for (fi, link_meta) in enumerate(internal_flow_links)
+        flow = flow_mean[fi]
+        inflow_id = link_meta.link[1]
+        outflow_id = link_meta.link[2]
+
         if inflow_id.type == NodeType.Basin
             if flow > 0
                 outflow_mean[inflow_id.idx] += flow
@@ -423,7 +649,6 @@ function save_flow(u, t, integrator)
             end
         end
 
-        outflow_id = outflow_link.link[2]
         if outflow_id.type == NodeType.Basin
             if flow > 0
                 inflow_mean[outflow_id.idx] += flow
@@ -445,30 +670,34 @@ function save_flow(u, t, integrator)
         end
     end
 
+    # Vertical fluxes from exact integration via time_dependent_cache
     precipitation = copy(basin.cumulative_precipitation_saveat) ./ Δt
     surface_runoff = copy(basin.cumulative_surface_runoff_saveat) ./ Δt
     drainage = copy(basin.cumulative_drainage_saveat) ./ Δt
     @. basin.cumulative_precipitation_saveat = 0.0
     @. basin.cumulative_surface_runoff_saveat = 0.0
     @. basin.cumulative_drainage_saveat = 0.0
+    evaporation = p_independent.cumulative_evaporation_saveat ./ Δt
+    infiltration = p_independent.cumulative_infiltration_saveat ./ Δt
 
-    if hasproperty(cache, :nlsolver)
-        flow_convergence = convergence ./ ncalls[1]
-        for (i, (evap, infil)) in
-            enumerate(zip(flow_convergence.evaporation, flow_convergence.infiltration))
-            if isnan(evap)
-                basin_convergence[i] = infil
-            elseif isnan(infil)
-                basin_convergence[i] = evap
-            else
-                basin_convergence[i] = max(evap, infil)
-            end
-        end
-        fill!(convergence, 0)
-        ncalls[1] = 0
-    end
+    # Reset saveat accumulators for evaporation/infiltration
+    p_independent.cumulative_evaporation_saveat .= 0.0
+    p_independent.cumulative_infiltration_saveat .= 0.0
 
     concentration = copy(basin.concentration_data.concentration_state)
+
+    # Compute mean convergence over the saveat interval (missing if no nlsolver calls)
+    n_basin = length(basin.node_id)
+    convergence = fill(missing, n_basin) |> Vector{Union{Missing, Float64}}
+    ncalls = p_independent.convergence_ncalls[1]
+    if ncalls > 0
+        for i in 1:n_basin
+            convergence[i] = p_independent.convergence[i] / ncalls
+        end
+        fill!(p_independent.convergence, 0.0)
+        p_independent.convergence_ncalls[1] = 0
+    end
+
     saved_flow = SavedFlow(;
         flow = flow_mean,
         inflow = inflow_mean,
@@ -477,11 +706,14 @@ function save_flow(u, t, integrator)
         precipitation,
         surface_runoff,
         drainage,
+        evaporation,
+        infiltration,
         concentration,
-        flow_convergence,
-        basin_convergence,
+        convergence,
+        flow_convergence = copy(p_independent.flow_convergence_saveat) ./ Δt,
         t,
     )
+    p_independent.flow_convergence_saveat .= 0.0
     check_water_balance_error!(saved_flow, integrator, Δt)
     return saved_flow
 end
@@ -493,19 +725,10 @@ function check_water_balance_error!(
     )::Nothing
     (; u, p, t) = integrator
     (; p_independent, state_and_time_dependent_cache) = p
-    (; u_reduced, state_ranges) = p_independent
     (; current_storage) = state_and_time_dependent_cache
 
     (; basin, water_balance_abstol, water_balance_reltol, starttime) = p_independent
     errors = false
-
-    # The initial storage is irrelevant for the storage rate and can only cause
-    # floating point truncation errors
-    reduce_state!(u_reduced, u, p_independent)
-    formulate_storages!(u_reduced, p, t; add_initial_storage = false)
-
-    evaporation = view(saved_flow.flow, state_ranges.evaporation)
-    infiltration = view(saved_flow.flow, state_ranges.infiltration)
 
     for (
             inflow_rate,
@@ -524,8 +747,8 @@ function check_water_balance_error!(
             saved_flow.precipitation,
             saved_flow.surface_runoff,
             saved_flow.drainage,
-            evaporation,
-            infiltration,
+            saved_flow.evaporation,
+            saved_flow.infiltration,
             current_storage,
             basin.Δstorage_prev_saveat,
             basin.node_id,
@@ -553,7 +776,6 @@ function check_water_balance_error!(
     end
 
     @. basin.Δstorage_prev_saveat = current_storage
-    current_storage .+= basin.storage0
     return nothing
 end
 
@@ -573,14 +795,14 @@ end
 
 function check_negative_storage(u, t, integrator)::Nothing
     (; p) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
+    (; p_independent) = p
     (; basin) = p_independent
     du = get_du(integrator)
     water_balance!(du, u, p, t)
 
     errors = false
     for id in basin.node_id
-        if state_and_time_dependent_cache.current_storage[id.idx] < 0
+        if u.basin[id.idx] < 0
             @error "Negative storage detected in $id"
             errors = true
         end
@@ -609,7 +831,6 @@ function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p.p_independent
     (; node_id, truth_state, compound_variables) = discrete_control
-    du = get_du(integrator)
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes
@@ -625,7 +846,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 
         # Loop over the compound variables listened to by this discrete control node
         for compound_variable in compound_variables_node
-            value = compound_variable_value(compound_variable, p, du, t)
+            value = compound_variable_value(compound_variable, p, t)
 
             # Loop over the threshold interpolations associated with the current compound variable
             for (threshold_low, threshold_high) in
@@ -703,6 +924,26 @@ function set_new_control_state!(
                 tabulated_rating_curve.allocation_controlled[target_node_id.idx] =
                     control_state_update.allocation_controlled
             end
+
+            # Mark the links of this node so that the next trapezoidal integration step
+            # uses backward Euler (avoids a spike from averaging pre/post-switch rates).
+            internal_flow_links = p_independent.graph[].internal_flow_links
+            idx = target_node_id.idx
+            node_links = if target_node_id.type == NodeType.Pump
+                (pump.inflow_link[idx].link, pump.outflow_link[idx].link)
+            elseif target_node_id.type == NodeType.Outlet
+                (outlet.inflow_link[idx].link, outlet.outflow_link[idx].link)
+            elseif target_node_id.type == NodeType.TabulatedRatingCurve
+                (tabulated_rating_curve.inflow_link[idx].link, tabulated_rating_curve.outflow_link[idx].link)
+            else
+                nothing
+            end
+            if node_links !== nothing
+                for link in node_links
+                    link_idx = get_link_index(link, internal_flow_links)
+                    link_idx !== nothing && (p_independent.flow_rate_prev[link_idx] = NaN)
+                end
+            end
         end
 
         discrete_control.control_state[discrete_control_id.idx] = control_state_new
@@ -715,12 +956,12 @@ end
 Get a value for a condition. Currently supports getting levels from Basins and flows
 from FlowBoundaries.
 """
-function get_value(subvariable::SubVariable, p::Parameters, du::CVector, t::Float64)
+function get_value(subvariable::SubVariable, p::Parameters, t::Real)
     (; flow_boundary, level_boundary, basin) = p.p_independent
     (; listen_node_id, look_ahead, variable, cache_ref) = subvariable
 
     if !iszero(cache_ref.idx)
-        return get_value(cache_ref, p, du)
+        return get_value(cache_ref, p)
     end
 
     if variable == "level"
@@ -754,10 +995,10 @@ function get_value(subvariable::SubVariable, p::Parameters, du::CVector, t::Floa
     return value
 end
 
-function compound_variable_value(compound_variable::CompoundVariable, p, du, t)
-    value = zero(eltype(du))
+function compound_variable_value(compound_variable::CompoundVariable, p, t)
+    value = zero(typeof(t))
     for subvariable in compound_variable.subvariables
-        value += subvariable.weight * get_value(subvariable, p, du, t)
+        value += subvariable.weight * get_value(subvariable, p, t)
     end
     return value
 end

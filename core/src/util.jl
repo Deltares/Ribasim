@@ -40,7 +40,9 @@ end
 Compute the level of a basin given its storage.
 """
 function get_level_from_storage(basin::Basin, state_idx::Int, storage::T)::T where {T}
-    return basin.storage_to_level[state_idx](storage)
+    # Clamp storage positive, since Rosenbrock methods can overshoot to negative
+    s = ifelse(storage > zero(T), storage, zero(T))
+    return basin.storage_to_level[state_idx](s)
 end
 
 """
@@ -458,13 +460,31 @@ function NodeID(type::Symbol, value::Integer, p_independent::ParametersIndepende
     return NodeID(node_type, value, idx)
 end
 
+"Map a NodeType to its corresponding CacheType for flow rate listening."
+function cache_type_for_node(node_type::NodeType.T)::CacheType.T
+    return if node_type == NodeType.Pump
+        CacheType.flow_rate_pump
+    elseif node_type == NodeType.Outlet
+        CacheType.flow_rate_outlet
+    elseif node_type == NodeType.TabulatedRatingCurve
+        CacheType.flow_rate_tabulated_rating_curve
+    elseif node_type == NodeType.LinearResistance
+        CacheType.flow_rate_linear_resistance
+    elseif node_type == NodeType.ManningResistance
+        CacheType.flow_rate_manning_resistance
+    elseif node_type == NodeType.UserDemand
+        CacheType.flow_rate_user_demand
+    else
+        error("No cache type for node type $node_type")
+    end
+end
+
 """
 Get the reference to a parameter
 """
 function get_cache_ref(
         node_id::NodeID,
-        variable::String,
-        state_ranges::StateTuple{UnitRange{Int}};
+        variable::String;
         listen::Bool = true,
     )::Tuple{CacheRef, Bool}
     errors = false
@@ -480,9 +500,8 @@ function get_cache_ref(
                 @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_nodetypes."
                 CacheRef()
             else
-                # Index in the state vector (inflow)
-                idx = get_state_index(state_ranges, node_id)
-                CacheRef(; idx, from_du = true)
+                type = cache_type_for_node(node_id.type)
+                CacheRef(; type, node_id.idx)
             end
         else
             type = if node_id.type == NodeType.Pump
@@ -507,7 +526,7 @@ end
 Set references to all variables that are listened to by discrete/continuous control
 """
 function set_listen_cache_refs!(p_independent::ParametersIndependent)::Nothing
-    (; discrete_control, continuous_control, state_ranges) = p_independent
+    (; discrete_control, continuous_control) = p_independent
     compound_variable_sets =
         [discrete_control.compound_variables..., continuous_control.compound_variable]
     errors = false
@@ -519,7 +538,6 @@ function set_listen_cache_refs!(p_independent::ParametersIndependent)::Nothing
                 ref, error = get_cache_ref(
                     subvariable.listen_node_id,
                     subvariable.variable,
-                    state_ranges,
                 )
                 if !error
                     subvariables[j] = @set subvariable.cache_ref = ref
@@ -600,14 +618,13 @@ function set_target_ref!(
         target_ref::Vector{CacheRef},
         node_id::Vector{NodeID},
         controlled_variable::Vector{String},
-        state_ranges::StateTuple{UnitRange{Int}},
         graph::MetaGraph,
     )::Nothing
     errors = false
     for (i, (id, variable)) in enumerate(zip(node_id, controlled_variable))
         controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
         ref, error =
-            get_cache_ref(controlled_node_id, variable, state_ranges; listen = false)
+            get_cache_ref(controlled_node_id, variable; listen = false)
         target_ref[i] = ref
         errors |= error
     end
@@ -668,15 +685,7 @@ function state_node_ids(
         p::Union{ParametersIndependent, NamedTuple},
     )::StateTuple{Vector{NodeID}}
     return (;
-        tabulated_rating_curve = p.tabulated_rating_curve.node_id,
-        pump = p.pump.node_id,
-        outlet = p.outlet.node_id,
-        user_demand_inflow = p.user_demand.node_id,
-        user_demand_outflow = p.user_demand.node_id,
-        linear_resistance = p.linear_resistance.node_id,
-        manning_resistance = p.manning_resistance.node_id,
-        evaporation = p.basin.node_id,
-        infiltration = p.basin.node_id,
+        basin = p.basin.node_id,
         integral = p.pid_control.node_id,
     )
 end
@@ -687,159 +696,34 @@ function count_state_ranges(u_ids::StateTuple{Vector{NodeID}})::StateTuple{UnitR
 end
 
 function build_state_vector(p_independent::ParametersIndependent)
-    # It is assumed that the horizontal flow states come first in
-    # p_independent.state_inflow_link and p_independent.state_outflow_link
     (; state_ranges) = p_independent
     u_ids = state_node_ids(p_independent)
-    data = zeros(length(p_independent.node_id))
+    n_states = sum(length, u_ids)
+    data = zeros(n_states)
     u = CVector(data, state_ranges)
-    # Ensure p_independent.node_id, state_ranges and u have the same length and order
-    ranges = (getproperty(state_ranges, x) for x in propertynames(state_ranges))
-    @assert length(u) == length(p_independent.node_id) == mapreduce(length, +, ranges)
     @assert keys(u_ids) == state_components
     return u
 end
 
-function build_reltol_vector(u0::CVector, reltol::Float64)
-    reltolv = fill(reltol, length(u0))
-    mask = trues(length(u0))
-    # Mask the non-cumulative states
-    for (node, range) in pairs(getaxes(u0))
-        if node in (:integral,)
-            mask[range] .= false
-        end
-    end
-    return reltolv, mask
-end
-
-function reduce_state!(u_reduced, u, p_independent)::Nothing
+"Initialize the state vector with basin storages"
+function initialize_state_vector!(u::CVector, p_independent::ParametersIndependent)
     (; basin) = p_independent
-    (; inflow_ids, outflow_ids) = basin
-    (; combined_cumulative_flows) = u_reduced
-    state_ranges = getaxes(u)
-    u_reduced .= 0
-
-    for i in eachindex(basin.node_id)
-        for inflow_id in inflow_ids[i]
-            state_idx = get_state_index(state_ranges, inflow_id; inflow = false)
-            isnothing(state_idx) && continue
-            combined_cumulative_flows[i] += u[state_idx]
-        end
-
-        for outflow_id in outflow_ids[i]
-            state_idx = get_state_index(state_ranges, outflow_id; inflow = true)
-            isnothing(state_idx) && continue
-            combined_cumulative_flows[i] -= u[state_idx]
-        end
-
-        combined_cumulative_flows[i] -= u.evaporation[i]
-        combined_cumulative_flows[i] -= u.infiltration[i]
-    end
-
-    u_reduced.integral .= u.integral
+    u.basin .= basin.storage0
+    # Initialize prev-saveat storage so the first water balance check
+    # correctly computes storage_rate = (s_now - storage0) / Δt
+    basin.Δstorage_prev_saveat .= basin.storage0
+    # Initialize balance correction storage tracking
+    p_independent.balance_correction.storage_prev .= basin.storage0
     return nothing
 end
 
-"""
-Create vectors state_inflow_link and state_outflow_link which give for each state
-in the state vector in order the metadata of the link that is associated with that state.
-Only for horizontal flows, which are assumed to come first in the state vector.
-"""
-function get_state_flow_links(
-        graph::MetaGraph,
-        nodes::NamedTuple,
-    )::Tuple{Vector{LinkMetadata}, Vector{LinkMetadata}}
-    (; user_demand) = nodes
-    state_inflow_link = LinkMetadata[]
-    state_outflow_link = LinkMetadata[]
-
-    placeholder_link =
-        LinkMetadata(0, LinkType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
-
-    for node_name in state_components
-        if hasproperty(nodes, node_name)
-            node::AbstractParameterNode = getproperty(nodes, node_name)
-            for id in node.node_id
-                inflow_ids_ = collect(inflow_ids(graph, id))
-                outflow_ids_ = collect(outflow_ids(graph, id))
-
-                inflow_link = if length(inflow_ids_) == 0
-                    placeholder_link
-                elseif length(inflow_ids_) == 1
-                    inflow_id = only(inflow_ids_)
-                    graph[inflow_id, id]
-                else
-                    error("Multiple inflows not supported")
-                end
-                push!(state_inflow_link, inflow_link)
-
-                outflow_link = if length(outflow_ids_) == 0
-                    placeholder_link
-                elseif length(outflow_ids_) == 1
-                    outflow_id = only(outflow_ids_)
-                    graph[id, outflow_id]
-                else
-                    error("Multiple outflows not supported")
-                end
-                push!(state_outflow_link, outflow_link)
-            end
-        elseif startswith(String(node_name), "user_demand")
-            placeholder_links = fill(placeholder_link, length(user_demand.node_id))
-            if node_name == :user_demand_inflow
-                append!(state_inflow_link, user_demand.inflow_link)
-                append!(state_outflow_link, placeholder_links)
-            elseif node_name == :user_demand_outflow
-                append!(state_inflow_link, placeholder_links)
-                append!(state_outflow_link, user_demand.outflow_link)
-            end
-        end
-    end
-
-    return state_inflow_link, state_outflow_link
-end
-
-"""
-Get the index of the state vector corresponding to the given NodeID.
-Use the inflow Boolean argument to disambiguite for node types that have multiple states.
-Can return nothing for node types that do not have a state, like Terminal.
-"""
-function get_state_index(
-        state_ranges::StateTuple{UnitRange{Int}},
-        id::NodeID;
-        inflow::Bool = true,
-    )::Union{Int, Nothing}
-    component_name = if id.type == NodeType.UserDemand
-        inflow ? :user_demand_inflow : :user_demand_outflow
-    else
-        snake_case(id)
-    end
-
-    if hasproperty(state_ranges, component_name)
-        state_range = getproperty(state_ranges, component_name)
-        return state_range[id.idx]
-    else
-        return nothing
-    end
-end
-
-"Get the state index of the to-node of the link if it exists, otherwise the from-node."
-function get_state_index(
-        state_ranges::StateTuple{UnitRange{Int}},
-        link::Tuple{NodeID, NodeID},
-    )::Union{Int, Nothing}
-    idx = get_state_index(state_ranges, link[2])
-    return isnothing(idx) ? get_state_index(state_ranges, link[1]; inflow = false) : idx
-end
 
 """
 Check whether any storages are negative given the state u.
+Storage states are directly in u.basin.
 """
 function isoutofdomain(u, p, t)
-    (; current_storage) = p.state_and_time_dependent_cache
-    (; u_reduced) = p.p_independent
-    reduce_state!(u_reduced, u, p.p_independent)
-    formulate_storages!(u_reduced, p, t)
-    return any(<(0), current_storage)
+    return any(<(0), u.basin)
 end
 
 function get_demand(user_demand, id, demand_priority_idx, t)::Float64
@@ -1093,7 +977,7 @@ Check whether the inputs u and t are different from the previous call of water_b
 update the boolean flags in p_mutable. In several parts of the calculations in water_balance!,
 caches are only updated if the data they depend on is different from the previous water_balance! call.
 """
-function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
+function check_new_input!(p::Parameters, u::CVector, t::Number)::Nothing
     (; state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
 
     # Whether the time dependent cache must be renewed
@@ -1114,18 +998,18 @@ function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
     )
     new_u_state_and_time_dependent_cache =
         any(
-        i -> !isassigned(state_and_time_dependent_cache.u_reduced_prev_call, i),
-        eachindex(u_reduced),
+        i -> !isassigned(state_and_time_dependent_cache.u_prev_call, i),
+        eachindex(u),
     ) || any(
         i -> !(
-            u_reduced[i] == state_and_time_dependent_cache.u_reduced_prev_call[i] &&
-                ForwardDiff.partials(u_reduced[i]) == ForwardDiff.partials(
-                state_and_time_dependent_cache.u_reduced_prev_call[i],
+            u[i] == state_and_time_dependent_cache.u_prev_call[i] &&
+                ForwardDiff.partials(u[i]) == ForwardDiff.partials(
+                state_and_time_dependent_cache.u_prev_call[i],
             )
         ),
-        eachindex(u_reduced),
+        eachindex(u),
     )
-    state_and_time_dependent_cache.u_reduced_prev_call .= u_reduced
+    state_and_time_dependent_cache.u_prev_call .= u
     state_and_time_dependent_cache.t_prev_call[1] = t
     p_mutable.new_state_and_time_dependent_cache =
         new_t_state_and_time_dependent_cache || new_u_state_and_time_dependent_cache
@@ -1254,4 +1138,11 @@ function add_substance_mass!(
         mass[substance_idx] += cumulative_flow * itp(t)
     end
     return nothing
+end
+
+function get_link_index(
+        link::Tuple{NodeID, NodeID},
+        flow_links::Vector{LinkMetadata},
+    )::Union{Int64, Nothing}
+    return findfirst(l -> l.link == link, flow_links)
 end
