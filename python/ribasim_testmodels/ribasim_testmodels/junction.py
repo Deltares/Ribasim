@@ -96,7 +96,12 @@ def junction_combined() -> Model:
 
 
 def junction_chained() -> Model:
-    """Testmodel with chained junctions."""
+    """Testmodel with chained junctions, including a bifurcation.
+
+    Junction 8 chains into Junction 9, which bifurcates into Basin 10 and Basin 11.
+    This tests that the flow_link_map correctly separates the two branches
+    after the bifurcation, even when the incoming link has been through a chain.
+    """
     model = Model(
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2021, 1, 1),
@@ -142,7 +147,14 @@ def junction_chained() -> Model:
     model.junction.add(Node(9, Point(2.0, 1.0)))
 
     model.basin.add(
-        Node(10, Point(3.0, 1.0)),
+        Node(10, Point(3.0, 0.5)),
+        [
+            basin.Profile(area=[10.0, 10.0], level=[0.0, 1.0]),
+            basin.State(level=[0.0]),
+        ],
+    )
+    model.basin.add(
+        Node(11, Point(3.0, 1.5)),
         [
             basin.Profile(area=[10.0, 10.0], level=[0.0, 1.0]),
             basin.State(level=[0.0]),
@@ -157,5 +169,6 @@ def junction_chained() -> Model:
     model.link.add(model.linear_resistance[6], model.junction[9])
     model.link.add(model.junction[8], model.junction[9])
     model.link.add(model.junction[9], model.basin[10])
+    model.link.add(model.junction[9], model.basin[11])
 
     return model

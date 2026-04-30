@@ -664,6 +664,7 @@ end
 
 @testitem "junction" begin
     import SQLite
+    import SparseArrays
     import MetaGraphsNext: labels
 
     # Combined (confluence and bifurcation) model
@@ -692,9 +693,12 @@ end
     graph = Ribasim.create_graph(db, config)
 
     (; internal_flow_links, external_flow_links, flow_link_map) = graph.graph_data
-    @test length(internal_flow_links) == 6
-    @test length(external_flow_links) == 8
+    @test length(internal_flow_links) == 9
+    @test length(external_flow_links) == 9
     @test all(node.type != Ribasim.NodeType.Junction for node in labels(graph))
+    # Regression for aliasing in the bifurcation mapping:
+    # without the fix, an extra entry appears (nnz = 18 instead of 17).
+    @test SparseArrays.nnz(flow_link_map) == 17
 
     model = Ribasim.run(toml_path)
 end
