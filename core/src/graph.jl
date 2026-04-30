@@ -166,7 +166,7 @@ function simplify_graph!(
                 out_neighbor in collect(outneighbor_labels(graph, junction_id))
 
             link_id = graph[in_neighbor, junction_id].id
-            external_link_ids = get(link_mapping, link_id, [link_id])
+            external_link_ids = copy(get(link_mapping, link_id, [link_id]))
 
             link_id = graph[junction_id, out_neighbor].id
             append!(external_link_ids, get(link_mapping, link_id, [link_id]))
