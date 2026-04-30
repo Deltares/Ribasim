@@ -21,25 +21,27 @@ and are not used in the equations themselves.
 This testmodel (juction_combined) with Junctions
 ```{mermaid}
 flowchart LR
-    C{Boundary} --> E[/Junction\]
-    E --> F((Basin))
-    E --> G((Basin))
-    F --> H{Connector}
-    G --> I{Connector}
-    H --> J[/Junction\]
+    classDef junction fill:#000,stroke:#000,color:white
+    C((Boundary)) --> E((Junction))
+    E --> F[\Basin/]
+    E --> G[\Basin/]
+    F --> H{{Connector}}
+    G --> I{{Connector}}
+    H --> J((Junction))
     I --> J
-    J --> K((Basin))
+    J --> K[\Basin/]
+    class E,J junction
 ```
 
 translates to the following model:
 
 ```{mermaid}
 flowchart LR
-    C{Boundary} --> F((Basin))
-    C --> G((Basin))
-    F --> H{Connector}
-    G --> I{Connector}
-    H --> K((Basin))
+    C((Boundary)) --> F[\Basin/]
+    C --> G[\Basin/]
+    F --> H{{Connector}}
+    G --> I{{Connector}}
+    H --> K[\Basin/]
     I --> K
 ```
 
@@ -47,18 +49,20 @@ And this testmodel (junction_chained) with Junctions
 
 ```{mermaid}
 flowchart LR
-    A{Connector} --> D[/Junction\]
-    B{Connector} --> D[/Junction\]
-    C{Connector} --> E[/Junction\]
+    classDef junction fill:#000,stroke:#000,color:white
+    A{{Connector}} --> D((Junction))
+    B{{Connector}} --> D
+    C{{Connector}} --> E((Junction))
     D --> E
-    E --> F((Basin))
+    E --> F[\Basin/]
+    class D,E junction
 ```
 
 translates to the following model:
 
 ```{mermaid}
 flowchart LR
-    A{Connector} --> F((Basin))
-    B{Connector} --> F
-    C{Connector} --> F
+    A{{Connector}} --> F[\Basin/]
+    B{{Connector}} --> F
+    C{{Connector}} --> F
 ```
