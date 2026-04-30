@@ -1,7 +1,6 @@
 name: Update Pixi lockfile
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 on:
   schedule:
     # At 03:00 on day 3 of the month

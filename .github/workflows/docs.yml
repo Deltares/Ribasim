@@ -13,14 +13,14 @@ concurrency:
 # needed to allow julia-actions/cache to delete old caches that it has created
 permissions:
   actions: write
-  contents: write
-  pages: write
+  contents: read
 jobs:
   publish:
     name: Docs Julia
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
+      actions: write
       contents: write
     steps:
       - name: Configure Git for quarto-publish
