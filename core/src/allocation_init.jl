@@ -170,7 +170,7 @@ function add_user_demand!(
     (; problem, cumulative_supplied_volume, node_ids_in_subnetwork) = allocation_model
     (; user_demand_ids_subnetwork) = node_ids_in_subnetwork
     (; user_demand) = p_independent
-    (; inflow_link, outflow_link) = user_demand
+    (; inflow_links, outflow_link) = user_demand
     flow = problem[:flow]
 
     # Define decision variables: Per UserDemand node the flow allocated to that node
@@ -187,11 +187,12 @@ function add_user_demand!(
             d
     )
 
-    # Define constraints: The sum of the flows allocated to UserDemand is equal to the total flow into the demand node
+    # Define constraints: the total flow over all inflow links equals the sum of
+    # allocated demand across priorities for the UserDemand node.
     problem[:user_demand_allocated_sum_constraint] = JuMP.@constraint(
         problem,
         [node_id = user_demand_ids_subnetwork],
-        flow[inflow_link[node_id.idx].link] == sum(
+        sum(flow[link_metadata.link] for link_metadata in inflow_links[node_id.idx]) == sum(
             user_demand_allocated[node_id, demand_priority] for
                 demand_priority in DemandPriorityIterator(node_id, p_independent)
         );
@@ -224,19 +225,22 @@ function add_user_demand!(
         base_name = "user_demand_relative_error_constraint"
     )
 
-    # Define constraints: user demand return flow
+    # Define constraints: user demand return flow. The outflow equals the return
+    # factor times the total inflow summed across all inflow links.
     return_factor = 0.5 # example return factor
     problem[:user_demand_return_flow] = JuMP.@constraint(
         problem,
         [node_id = user_demand_ids_subnetwork],
         flow[outflow_link[node_id.idx].link] ==
-            return_factor * flow[inflow_link[node_id.idx].link],
+            return_factor * sum(flow[lm.link] for lm in inflow_links[node_id.idx]),
         base_name = "user_demand_return_flow"
     )
 
     # Add the links for which the supplied volume is required for output
     for node_id in user_demand_ids_subnetwork
-        cumulative_supplied_volume[inflow_link[node_id.idx].link] = 0.0
+        for link_metadata in inflow_links[node_id.idx]
+            cumulative_supplied_volume[link_metadata.link] = 0.0
+        end
     end
 
     return nothing

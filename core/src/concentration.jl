@@ -7,24 +7,35 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
     (; basin, user_demand) = p.p_independent
     (; concentration_state, mass) = basin.concentration_data
 
-    for (inflow_link, outflow_link) in
-        zip(user_demand.inflow_link, user_demand.outflow_link)
-        from_node = inflow_link.link[1]
+    for (node_idx, outflow_link) in enumerate(user_demand.outflow_link)
         to_node = outflow_link.link[2]
         user_demand_idx = outflow_link.link[1].idx
+        inflow_links = user_demand.inflow_links[node_idx]
 
         cumulative_user_demand_outflow = flow_update_on_link(integrator, outflow_link.link)
 
         if to_node.type == NodeType.Basin
-            # Pass through all upstream substance concentrations.
-            # Note that when outflow < inflow UserDemand consumes the
-            # difference including the substances.
-            # Exclude the UserDemand tracer from upstream: save before,
-            # restore after, so only the fresh tracer from
-            # add_substance_mass! (= 1.0) ends up in the return flow.
+            # Mix concentrations of all inflow links weighted by each link's cumulative
+            # flow. The return-flow concentration is a mass-weighted average of the
+            # source basins' concentrations.
+            total_inflow = 0.0
+            for lm in inflow_links
+                total_inflow += flow_update_on_link(integrator, lm.link)
+            end
+
+            # Exclude the UserDemand tracer from upstream: save before, restore after,
+            # so only the fresh tracer from add_substance_mass! ends up in the return flow.
             ud_mass_before = mass[to_node.idx][Substance.UserDemand]
-            mass[to_node.idx] .+=
-                concentration_state[from_node.idx, :] .* cumulative_user_demand_outflow
+            if total_inflow > 0
+                for lm in inflow_links
+                    from_node = lm.link[1]
+                    link_inflow = flow_update_on_link(integrator, lm.link)
+                    fraction = link_inflow / total_inflow
+                    mass[to_node.idx] .+=
+                        concentration_state[from_node.idx, :] .*
+                        cumulative_user_demand_outflow .* fraction
+                end
+            end
             mass[to_node.idx][Substance.UserDemand] = ud_mass_before
 
             # Add fresh UserDemand tracer (= 1.0) and any user-defined substances

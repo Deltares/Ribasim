@@ -620,11 +620,14 @@ function allocation_data(model::Model; table::Bool = true)
                 basin_ids_subnetwork_with_level_demand,
             ) = node_ids_in_subnetwork
 
-            # UserDemand
+            # UserDemand: sum supplied volumes across all inflow links for each node
             for id in user_demand_ids_subnetwork
                 j = searchsortedfirst(node_id, id)
-                supplied[view(has_priority, :, j), j, end] .=
-                    cumulative_supplied_volume[user_demand.inflow_link[id.idx].link] / Δt
+                total_supplied = sum(
+                    cumulative_supplied_volume[lm.link] for
+                        lm in user_demand.inflow_links[id.idx]
+                )
+                supplied[view(has_priority, :, j), j, end] .= total_supplied / Δt
             end
 
             # FlowDemand

@@ -191,7 +191,11 @@ function update_J_inner!(
     elseif row in state_ranges.outlet
         update_J_inner!(J_inner, val, node_id, col_reduced, outlet)
     elseif row in state_ranges.user_demand_inflow
-        update_J_inner!(J_inner, val, node_id, col_reduced, user_demand; do_outflow = false)
+        inflow_link_meta = p_independent.state_inflow_link[row]
+        inflow_id = inflow_link_meta.link[1]
+        if inflow_id.type == NodeType.Basin
+            J_inner[inflow_id.idx, col_reduced] -= val
+        end
     elseif row in state_ranges.user_demand_outflow
         update_J_inner!(J_inner, val, node_id, col_reduced, user_demand; do_inflow = false)
     elseif row in state_ranges.linear_resistance

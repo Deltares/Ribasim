@@ -671,7 +671,10 @@ function state_node_ids(
         tabulated_rating_curve = p.tabulated_rating_curve.node_id,
         pump = p.pump.node_id,
         outlet = p.outlet.node_id,
-        user_demand_inflow = p.user_demand.node_id,
+        user_demand_inflow = [
+            p.user_demand.node_id[i] for i in eachindex(p.user_demand.node_id) for
+                _ in 1:length(p.user_demand.inflow_links[i])
+        ],
         user_demand_outflow = p.user_demand.node_id,
         linear_resistance = p.linear_resistance.node_id,
         manning_resistance = p.manning_resistance.node_id,
@@ -713,21 +716,41 @@ function build_reltol_vector(u0::CVector, reltol::Float64)
 end
 
 function reduce_state!(u_reduced, u, p_independent)::Nothing
-    (; basin) = p_independent
+    (; basin, link_to_state_idx) = p_independent
     (; inflow_ids, outflow_ids) = basin
     (; combined_cumulative_flows) = u_reduced
     state_ranges = getaxes(u)
     u_reduced .= 0
 
     for i in eachindex(basin.node_id)
+        basin_id = basin.node_id[i]
         for inflow_id in inflow_ids[i]
-            state_idx = get_state_index(state_ranges, inflow_id; inflow = false)
+            # Flow on the link (inflow_id → basin). For UserDemand outflow this is
+            # the single user_demand_outflow state (1:1 per node). Link-based lookup
+            # correctly resolves per-link states if we ever get them upstream too.
+            state_idx = get_state_index(
+                state_ranges,
+                link_to_state_idx,
+                (inflow_id, basin_id),
+            )
+            if isnothing(state_idx)
+                state_idx = get_state_index(state_ranges, inflow_id; inflow = false)
+            end
             isnothing(state_idx) && continue
             combined_cumulative_flows[i] += u[state_idx]
         end
 
         for outflow_id in outflow_ids[i]
-            state_idx = get_state_index(state_ranges, outflow_id; inflow = true)
+            # Flow on the link (basin → outflow_id). Must be link-based because a
+            # UserDemand can have multiple inflow-link states, one per source basin.
+            state_idx = get_state_index(
+                state_ranges,
+                link_to_state_idx,
+                (basin_id, outflow_id),
+            )
+            if isnothing(state_idx)
+                state_idx = get_state_index(state_ranges, outflow_id; inflow = true)
+            end
             isnothing(state_idx) && continue
             combined_cumulative_flows[i] -= u[state_idx]
         end
@@ -784,11 +807,16 @@ function get_state_flow_links(
                 push!(state_outflow_link, outflow_link)
             end
         elseif startswith(String(node_name), "user_demand")
-            placeholder_links = fill(placeholder_link, length(user_demand.node_id))
             if node_name == :user_demand_inflow
-                append!(state_inflow_link, user_demand.inflow_link)
-                append!(state_outflow_link, placeholder_links)
+                # One state per (UserDemand, inflow link) pair.
+                for links in user_demand.inflow_links
+                    for link_meta in links
+                        push!(state_inflow_link, link_meta)
+                        push!(state_outflow_link, placeholder_link)
+                    end
+                end
             elseif node_name == :user_demand_outflow
+                placeholder_links = fill(placeholder_link, length(user_demand.node_id))
                 append!(state_inflow_link, placeholder_links)
                 append!(state_outflow_link, user_demand.outflow_link)
             end
@@ -796,6 +824,23 @@ function get_state_flow_links(
     end
 
     return state_inflow_link, state_outflow_link
+end
+
+"""
+Build a mapping from a (from_node, to_node) link tuple to the index of that link's state.
+Only inflow-link states are covered (horizontal flow components, which come first in the
+state vector). Placeholder links (both node values == 0) are skipped.
+"""
+function build_link_to_state_idx(
+        state_inflow_link::Vector{LinkMetadata},
+    )::Dict{Tuple{NodeID, NodeID}, Int}
+    link_to_state_idx = Dict{Tuple{NodeID, NodeID}, Int}()
+    for (idx, link_meta) in enumerate(state_inflow_link)
+        from_node, to_node = link_meta.link
+        from_node.value == 0 && to_node.value == 0 && continue
+        link_to_state_idx[link_meta.link] = idx
+    end
+    return link_to_state_idx
 end
 
 """
@@ -822,11 +867,20 @@ function get_state_index(
     end
 end
 
-"Get the state index of the to-node of the link if it exists, otherwise the from-node."
+"""
+Get the state index for a flow link.
+
+When the destination node has multiple inflow-link states (UserDemand with multiple
+source links), the per-link index must be resolved via `link_to_state_idx`. Otherwise
+this falls back to the to-node's (or from-node's) state.
+"""
 function get_state_index(
         state_ranges::StateTuple{UnitRange{Int}},
+        link_to_state_idx::Dict{Tuple{NodeID, NodeID}, Int},
         link::Tuple{NodeID, NodeID},
     )::Union{Int, Nothing}
+    idx = get(link_to_state_idx, link, nothing)
+    isnothing(idx) || return idx
     idx = get_state_index(state_ranges, link[2])
     return isnothing(idx) ? get_state_index(state_ranges, link[1]; inflow = false) : idx
 end

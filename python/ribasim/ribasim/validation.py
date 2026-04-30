@@ -125,7 +125,7 @@ link_neighbor_amount: dict[str, dict[str, list[int]]] = {
         "Pump": [1, 1, 1, 1],
         "TabulatedRatingCurve": [1, 1, 1, 1],
         "Terminal": [1, 9223372036854775807, 0, 0],
-        "UserDemand": [1, 1, 1, 1],
+        "UserDemand": [1, 9223372036854775807, 1, 1],
     },
     "control": {
         "Basin": [0, 1, 0, 0],
