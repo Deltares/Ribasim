@@ -5,7 +5,6 @@ from ribasim.config import Experimental
 from ribasim.geometry.node import Node
 from ribasim.nodes import (
     basin,
-    level_boundary,
     linear_resistance,
 )
 from shapely.geometry import Point
@@ -98,7 +97,9 @@ def junction_combined() -> Model:
 def junction_chained() -> Model:
     """Testmodel with chained junctions, including a bifurcation.
 
-    Junction 8 chains into Junction 9, which bifurcates into Basin 10 and Basin 11.
+    Basin 1 → Junction 2 → Junction 3 → LR 4/5 → Basin 6/7
+
+    Junction 2 chains into Junction 3, which bifurcates into LR 4 and LR 5.
     This tests that the flow_link_map correctly separates the two branches
     after the bifurcation, even when the incoming link has been through a chain.
     """
@@ -108,67 +109,47 @@ def junction_chained() -> Model:
         crs="EPSG:28992",
     )
 
-    model.level_boundary.add(
-        Node(
-            1,
-            Point(-1, 0),
-        ),
-        [level_boundary.Static(level=[2.0])],
-    )
-    model.level_boundary.add(
-        Node(
-            2,
-            Point(-1, 1),
-        ),
-        [level_boundary.Static(level=[2.0])],
-    )
-    model.level_boundary.add(
-        Node(
-            3,
-            Point(-1, 2),
-        ),
-        [level_boundary.Static(level=[2.0])],
+    model.basin.add(
+        Node(1, Point(0.0, 0.0)),
+        [
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+            basin.Static(drainage=[1.0]),
+            basin.State(level=[1.0]),
+        ],
     )
 
-    model.linear_resistance.add(
-        Node(4, Point(0.0, 0.0)),
-        [linear_resistance.Static(resistance=[300.0])],
-    )
-    model.linear_resistance.add(
-        Node(5, Point(0.0, 1.0)),
-        [linear_resistance.Static(resistance=[300.0])],
-    )
-    model.linear_resistance.add(
-        Node(6, Point(0.0, 2.0)),
-        [linear_resistance.Static(resistance=[300.0])],
-    )
+    model.junction.add(Node(2, Point(1.0, 0.0)))
+    model.junction.add(Node(3, Point(2.0, 0.0)))
 
-    model.junction.add(Node(8, Point(1.0, 1.0)))
-    model.junction.add(Node(9, Point(2.0, 1.0)))
+    model.linear_resistance.add(
+        Node(4, Point(3.0, -0.5)),
+        [linear_resistance.Static(resistance=[1.0])],
+    )
+    model.linear_resistance.add(
+        Node(5, Point(3.0, 0.5)),
+        [linear_resistance.Static(resistance=[1.0])],
+    )
 
     model.basin.add(
-        Node(10, Point(3.0, 0.5)),
+        Node(6, Point(4.0, -0.5)),
         [
-            basin.Profile(area=[10.0, 10.0], level=[0.0, 1.0]),
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
             basin.State(level=[0.0]),
         ],
     )
     model.basin.add(
-        Node(11, Point(3.0, 1.5)),
+        Node(7, Point(4.0, 0.5)),
         [
-            basin.Profile(area=[10.0, 10.0], level=[0.0, 1.0]),
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
             basin.State(level=[0.0]),
         ],
     )
 
-    model.link.add(model.level_boundary[1], model.linear_resistance[4])
-    model.link.add(model.level_boundary[2], model.linear_resistance[5])
-    model.link.add(model.level_boundary[3], model.linear_resistance[6])
-    model.link.add(model.linear_resistance[4], model.junction[8])
-    model.link.add(model.linear_resistance[5], model.junction[9])
-    model.link.add(model.linear_resistance[6], model.junction[9])
-    model.link.add(model.junction[8], model.junction[9])
-    model.link.add(model.junction[9], model.basin[10])
-    model.link.add(model.junction[9], model.basin[11])
+    model.link.add(model.basin[1], model.junction[2])
+    model.link.add(model.junction[2], model.junction[3])
+    model.link.add(model.junction[3], model.linear_resistance[4])
+    model.link.add(model.junction[3], model.linear_resistance[5])
+    model.link.add(model.linear_resistance[4], model.basin[6])
+    model.link.add(model.linear_resistance[5], model.basin[7])
 
     return model

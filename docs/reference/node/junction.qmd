@@ -18,7 +18,7 @@ and are not used in the equations themselves.
 
 # Examples
 
-This testmodel (juction_combined) with Junctions
+This model with both diverging and converging Junctions
 ```{mermaid}
 flowchart LR
     classDef junction fill:#000,stroke:#000,color:white
@@ -45,7 +45,7 @@ flowchart LR
     I --> K
 ```
 
-And this testmodel (junction_chained) with Junctions
+And this model with chained Junctions
 
 ```{mermaid}
 flowchart LR
