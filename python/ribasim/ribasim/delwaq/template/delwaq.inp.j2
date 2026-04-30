@@ -1,6 +1,6 @@
 1000 80 ';'
 ;DELWAQ_VERSION_4.910                               ; Delwaq version number
-;PRINT_OUTPUT_OPTION_9                              ; Debug level
+;PRINT_OUTPUT_OPTION_{{ loglevel }}                              ; Debug level
 
 ; TEMPLATE FILE FOR WATER QUALITY CALCULATION
 ; First input block
@@ -22,7 +22,7 @@
 
 ;###############################################################################
 ; Second input block
-1 'DDHHMMSS' 'DDHHMMSS'                         ; system clock
+86400 'DDHHMMSS' 'DDHHMMSS'                         ; system clock
 ; Integration options:
 15.70 											    ; integration option, no balance keywords yet
 

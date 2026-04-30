@@ -565,6 +565,11 @@ function add_secondary_network_demand!(
     connecting_links =
         vcat(sort!(collect(values(allocation.primary_network_connections)))...)
 
+    if isempty(connecting_links)
+        # No secondary network connections, nothing to do
+        return nothing
+    end
+
     # Define decision variables: flow allocated to secondary networks
     # (scaling.flow * m^3/s, values to be filled in before optimizing)
     d = 2.0 # Example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
@@ -599,9 +604,10 @@ function add_secondary_network_demand!(
             secondary_network_error[
                 link = connecting_links,
                 DemandPriorityIterator(link, p_independent),
-                [:first, :second],
+                objective_ord = [:first, :second],
             ] ≤
-            1
+            1,
+        base_name = "secondary_network_error",
     )
 
     # Define constraints: error terms
@@ -660,7 +666,7 @@ function add_demand_objectives!(
 
         # Add UserDemand, FlowDemand and secondary network errors
         error_collections = [user_demand_error, flow_demand_error]
-        if is_primary_network(subnetwork_id)
+        if is_primary_network(subnetwork_id) && haskey(problem, :secondary_network_error)
             secondary_network_error = problem[:secondary_network_error]
             push!(error_collections, secondary_network_error)
         end
@@ -769,7 +775,7 @@ function add_demand_objectives!(
     )
 
     # If this is the primary network, also add fairness constraints for secondary network demands
-    if is_primary_network(subnetwork_id)
+    if is_primary_network(subnetwork_id) && haskey(problem, :secondary_network_error)
         secondary_demand_error = problem[:secondary_network_error]
         # Sort connections for deterministic problem generation
         connecting_links =
@@ -942,7 +948,7 @@ function has_demand_priority_subnetwork(
     (; demand_priorities_all) = allocation
     (;
         user_demand_ids_subnetwork,
-        node_ids_subnetwork_with_flow_demand,
+        flow_demand_ids_subnetwork,
         level_demand_ids_subnetwork,
     ) = node_ids_in_subnetwork
 
@@ -952,7 +958,7 @@ function has_demand_priority_subnetwork(
         has_demand_priority .|= view(user_demand.has_demand_priority, node_id.idx, :)
     end
 
-    for node_id in node_ids_subnetwork_with_flow_demand
+    for node_id in flow_demand_ids_subnetwork
         has_demand_priority .|= view(flow_demand.has_demand_priority, node_id.idx, :)
     end
 
@@ -977,7 +983,7 @@ function AllocationModel(
         has_demand_priority_subnetwork(p_independent, node_ids_in_subnetwork)
 
     # Initialize secondary_network_demand before constructing AllocationModel
-    secondary_network_demand = Dict{Tuple{NodeID, NodeID}, Vector{Float64}}()
+    secondary_network_demand = OrderedDict{Tuple{NodeID, NodeID}, Vector{Float64}}()
     if !is_primary_network(subnetwork_id)
         n_priorities = length(p_independent.allocation.demand_priorities_all)
         for link in p_independent.allocation.primary_network_connections[subnetwork_id]
