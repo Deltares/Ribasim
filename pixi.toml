@@ -70,7 +70,6 @@ typecheck = "pyrefly check"
 prek-run = "prek run --all-files"
 lint = { depends-on = [
     "prek-run",
-    "typecheck",
 ] }
 # Build
 build = { "cmd" = "julia --project build/build.jl", depends-on = [
@@ -293,6 +292,7 @@ tomli-w = ">=1.0"
 tomlkit = ">=0.13,<0.14"  # temp until juliacall >0.9.31
 twine = "*"
 types-geopandas = "*"
+types-networkx = "*"
 typos = "*"
 xarray = ">=2023.11"
 xmipy = ">=1.3"
