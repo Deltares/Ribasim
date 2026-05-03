@@ -54,6 +54,11 @@ repos:
         args: [--write-changes, --force-exclude]
         types: [text]
         stages: [pre-commit, pre-merge-commit, pre-push, manual]
+      - id: pyrefly-check
+        name: Pyrefly (type checking)
+        entry: pixi run typecheck
+        pass_filenames: false
+        language: system
   - repo: https://github.com/fredrikekre/runic-pre-commit
     rev: v2.2.0
     hooks:
