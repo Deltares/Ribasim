@@ -198,7 +198,6 @@ We use the `GitHub` repository https://github.com/Deltares/Ribasim for issues an
 - **Code comments**: Focus on *why*, not *what*
 - **Examples**: Include runnable examples in docstrings
 
-
 ## Common Gotchas
 
 1. **Julia compilation**: First run is slow due to compilation
