@@ -243,55 +243,55 @@ function apply_balance_correction!(u, p_independent, time_dependent_cache)::Noth
 
     # If unconstrained correction would violate one-way link orientation,
     # solve a constrained least-squares problem instead.
-    constrained_correction = false
-    for j in eachindex(correction_flow)
-        if nonnegative_link[j] && (p_independent.cumulative_flow[j] + correction_flow[j] < 0.0)
-            constrained_correction = true
-            break
-        end
-    end
+    # constrained_correction = false
+    # for j in eachindex(correction_flow)
+    #     if nonnegative_link[j] && (p_independent.cumulative_flow[j] + correction_flow[j] < 0.0)
+    #         constrained_correction = true
+    #         break
+    #     end
+    # end
 
-    if constrained_correction
-        # Reuse lambda/residual vectors as work arrays for evap/infiltration corrections.
-        success = solve_constrained_balance_correction!(
-            correction_flow,
-            lambda,
-            residual,
-            residual,
-            A_flow,
-            p_independent.cumulative_flow,
-            p_independent.cumulative_evaporation,
-            p_independent.cumulative_infiltration,
-            nonnegative_link,
-        )
-        if !success
-            @warn "Constrained balance correction failed; using unconstrained projection."
-            lambda .= AAt_2I_chol \ residual
-            mul!(correction_flow, A_flow', lambda)
+    # if constrained_correction
+    #     # Reuse lambda/residual vectors as work arrays for evap/infiltration corrections.
+    #     success = solve_constrained_balance_correction!(
+    #         correction_flow,
+    #         lambda,
+    #         residual,
+    #         residual,
+    #         A_flow,
+    #         p_independent.cumulative_flow,
+    #         p_independent.cumulative_evaporation,
+    #         p_independent.cumulative_infiltration,
+    #         nonnegative_link,
+    #     )
+    #     if !success
+    #         @warn "Constrained balance correction failed; using unconstrained projection."
+    #         lambda .= AAt_2I_chol \ residual
+    #         mul!(correction_flow, A_flow', lambda)
 
-            @. p_independent.cumulative_flow += correction_flow
-            @. p_independent.cumulative_flow_saveat += correction_flow
-            @. p_independent.cumulative_evaporation -= lambda
-            @. p_independent.cumulative_evaporation_saveat -= lambda
-            @. p_independent.cumulative_infiltration -= lambda
-            @. p_independent.cumulative_infiltration_saveat -= lambda
-        else
-            @. p_independent.cumulative_flow += correction_flow
-            @. p_independent.cumulative_flow_saveat += correction_flow
-            @. p_independent.cumulative_evaporation -= lambda
-            @. p_independent.cumulative_evaporation_saveat -= lambda
-            @. p_independent.cumulative_infiltration -= residual
-            @. p_independent.cumulative_infiltration_saveat -= residual
-        end
-    else
-        # Apply corrections to per-step and saveat accumulators
-        @. p_independent.cumulative_flow += correction_flow
-        @. p_independent.cumulative_flow_saveat += correction_flow
-        @. p_independent.cumulative_evaporation -= lambda
-        @. p_independent.cumulative_evaporation_saveat -= lambda
-        @. p_independent.cumulative_infiltration -= lambda
-        @. p_independent.cumulative_infiltration_saveat -= lambda
-    end
+    #         @. p_independent.cumulative_flow += correction_flow
+    #         @. p_independent.cumulative_flow_saveat += correction_flow
+    #         @. p_independent.cumulative_evaporation -= lambda
+    #         @. p_independent.cumulative_evaporation_saveat -= lambda
+    #         @. p_independent.cumulative_infiltration -= lambda
+    #         @. p_independent.cumulative_infiltration_saveat -= lambda
+    #     else
+    #         @. p_independent.cumulative_flow += correction_flow
+    #         @. p_independent.cumulative_flow_saveat += correction_flow
+    #         @. p_independent.cumulative_evaporation -= lambda
+    #         @. p_independent.cumulative_evaporation_saveat -= lambda
+    #         @. p_independent.cumulative_infiltration -= residual
+    #         @. p_independent.cumulative_infiltration_saveat -= residual
+    #     end
+    # else
+    # Apply corrections to per-step and saveat accumulators
+    @. p_independent.cumulative_flow += correction_flow
+    @. p_independent.cumulative_flow_saveat += correction_flow
+    @. p_independent.cumulative_evaporation -= lambda
+    @. p_independent.cumulative_evaporation_saveat -= lambda
+    @. p_independent.cumulative_infiltration -= lambda
+    @. p_independent.cumulative_infiltration_saveat -= lambda
+    # end
 
     # Accumulate absolute correction for per-link flow convergence output
     @. p_independent.flow_convergence_saveat += abs(correction_flow)
