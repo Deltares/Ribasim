@@ -130,7 +130,7 @@ When $|m| \approx 0$ (basin with constant area), the linearization is exact and 
 
 ### Connector node linearization error
 
-Connector nodes ([LinearResistance](../reference/node/linear-resistance.qmd), [ManningResistance](../reference/node/manning-resistance.qmd) and [TabulatedRatingCurve](../reference/node/tabulated-rating-curve.qmd)) have nonlinear flow-level relationships $Q(h)$ that are also linearized:
+Connector nodes ([LinearResistance](/reference/node/linear-resistance.qmd), [ManningResistance](/reference/node/manning-resistance.qmd) and [TabulatedRatingCurve](/reference/node/tabulated-rating-curve.qmd)) have nonlinear flow-level relationships $Q(h)$ that are also linearized:
 
 $$Q^{n+1} \approx Q^{n} + \frac{\partial Q}{\partial h}(h^n)\,(h^{n+1} - h^{n})$$
 
