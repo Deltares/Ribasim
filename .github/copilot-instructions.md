@@ -198,6 +198,23 @@ We use the `GitHub` repository https://github.com/Deltares/Ribasim for issues an
 - **Code comments**: Focus on *why*, not *what*
 - **Examples**: Include runnable examples in docstrings
 
+## Regression Test Benchmarks
+
+Regression test benchmarks are stored in `models/benchmark/` (gitignored) and tracked via `models/benchmark.dvc`. The files are hosted on S3-compatible MinIO storage.
+
+### When a test model changes (structure, endtime, nodes, etc.), the benchmarks must be updated:
+
+1. **Regenerate the test model**: `pixi run generate-testmodels <modelname>`
+2. **Run the model** with `QNDF` + `sparse=true` + `autodiff=true` to produce new results
+3. **Copy results** to `models/benchmark/<modelname>/`
+4. **Upload to S3** using `pixi run s3-upload models/benchmark/<modelname>/flow.nc benchmark/<modelname>/flow.nc` (and `basin.nc`)
+5. **Update `models/benchmark.dvc`** — DVC is not installed in the pixi environment, so update manually:
+   - Compute MD5 of each file and total size
+   - Update `deps` and `outs` sections with new `md5`, `size`, and `nfiles`
+   - The top-level `md5` field is DVC's self-integrity hash of the file content (without that line) — recompute with `md5(file_content)`
+
+> **Note**: The preferred approach is `dvc import-url`, but since DVC is not available in the pixi environment, the manual steps above are required. The download in CI uses `pixi run s3-download benchmark/ benchmark/` which bypasses DVC and pulls directly from MinIO, so the `.dvc` file hashes do not affect CI correctness — but keep them accurate for auditability.
+
 ## Common Gotchas
 
 1. **Julia compilation**: First run is slow due to compilation
