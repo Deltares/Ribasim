@@ -1,14 +1,14 @@
-md5: 2fac758278d29071bb3e4632d69cbb0c
+md5: 9897d77c3211033f6fed2b16cfcea6c0
 frozen: true
 deps:
-- md5: 8620613cb3fc380a20bcbbb2bd36b28c.dir
-  size: 187932
+- md5: dae467ef09bce110c413c50975d6bcf7.dir
+  size: 488302
   nfiles: 6
   hash: md5
   path: remote://minio_readonly/benchmark
 outs:
-- md5: ceb5e5e81c402510497da43d29dce099.dir
-  size: 187932
+- md5: dae467ef09bce110c413c50975d6bcf7.dir
+  size: 488302
   nfiles: 6
   hash: md5
   path: benchmark
