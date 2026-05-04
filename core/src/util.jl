@@ -680,6 +680,146 @@ low_storage_factor_resistance_node(::Parameters, q::GradientTracer, ::NodeID, ::
 relaxed_root(x::GradientTracer, threshold::Real) = x
 get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
 
+@kwdef struct BackTracking
+    c_1::Float64 = 1.0e-4
+    ρ_hi::Float64 = 0.5
+    ρ_lo::Float64 = 0.1
+    iter_max::Int = 100
+end
+
+"""
+Find the minimum of the loss function between 0 and 1
+by approximating the loss function by cubic polynomials
+"""
+function (ls::BackTracking)(loss)
+    (; c_1, iter_max, ρ_lo, ρ_hi) = ls
+
+    loss_0 = loss(0.0)
+    ϵ = sqrt(eps())
+    dloss_0 = (loss(ϵ) - loss_0) / ϵ
+
+    success = true
+
+    αₙ₋₁ = 1.0
+    loss_αₙ₋₁ = loss(αₙ₋₁)
+
+    iterfinite = 0
+    iterfinitemax = -log2(eps(Float64))
+    while !isfinite(loss_αₙ₋₁) && (iterfinite < iterfinitemax)
+        iterfinite += 1
+        αₙ₋₁ /= 2
+        loss_αₙ₋₁ = loss(αₙ₋₁)
+    end
+
+    αₙ = αₙ₋₁
+    loss_αₙ = loss_αₙ₋₁
+
+    iterations = 0
+
+    # Check convergence criterion
+    while loss_αₙ > loss_0 + c_1 * αₙ * dloss_0
+        iterations += 1
+        if iterations > iter_max
+            # If the maximum number of iterations is exceeded,
+            # the line search has failed
+            success = false
+            break
+        end
+
+        if iterations == 1
+            # For the first iteration, approximate the loss function with a quadratic
+            # polynomial based on loss(0), loss'(0) and loss(α_start) and find its minimum
+            αₙ₊₁ = -dloss_0 / (2 * (loss_αₙ₋₁ - loss_0 - dloss_0))
+        else
+            # For the later iterations, approximate the loss function with a cubic
+            # polynomial based on loss(0), loss'(0), loss(αₙ₋₁) and loss(αₙ) and find its minimum
+            rhs_1 = loss_αₙ - loss_0 - dloss_0 * αₙ
+            rhs_2 = loss_αₙ₋₁ - loss_0 - dloss_0 * αₙ₋₁
+            det = (αₙ * αₙ₋₁)^2 * (αₙ - αₙ₋₁)
+            a = (rhs_1 * αₙ₋₁^2 - rhs_2 * αₙ^2) / det
+            b = (rhs_2 * αₙ^3 - rhs_1 * αₙ₋₁^3) / det
+
+            αₙ₊₁ = if isapprox(a, 0.0; atol = eps(Float64))
+                -dloss_0 / (2 * b)
+            else
+                # Discriminant
+                d = max(0.0, b^2 - 3a * dloss_0)
+                (-b + sqrt(d)) / (3a)
+            end
+        end
+
+        # Avoid reductions that are too big or too small
+        αₙ₊₁ = NaNMath.min(αₙ₊₁, αₙ * ρ_hi)
+        αₙ₊₁ = NaNMath.max(αₙ₊₁, αₙ * ρ_lo)
+
+        αₙ₋₁ = αₙ
+        loss_αₙ₋₁ = loss_αₙ
+
+        αₙ = αₙ₊₁
+        loss_αₙ = loss(αₙ)
+    end
+
+    # As a last check, say the line search failed when the loss value actually increased
+    if success && (loss_αₙ > loss(1.0))
+        success = false
+    end
+
+    # If the line search failed, this NaN will propagate through OrdinaryDiffEq
+    # and causes the time step to be rejected
+    return success ? αₙ : NaN
+end
+
+"""
+Compute the residual of the non-linear solver, i.e. a measure of the
+error in the solution to the implicit equation defined by the solver algorithm
+"""
+function residual(z::CVector, integrator, nlsolver, f::TF) where {TF}
+    (; uprev, t, p, dt, opts, isdae) = integrator
+    (; tmp, ztmp, γ, α, cache, method) = nlsolver
+    (; ustep, atmp, tstep, k, invγdt) = cache
+    @assert !isdae
+    b, ustep2 = _compute_rhs!(tmp, ztmp, ustep, γ, α, tstep, k, invγdt, method, p, dt, f, z)
+    calculate_residuals!(
+        atmp,
+        b,
+        uprev,
+        ustep2,
+        opts.abstol,
+        opts.reltol,
+        opts.internalnorm,
+        t,
+    )
+    ndz = opts.internalnorm(atmp, t)
+    return ndz
+end
+
+function OrdinaryDiffEqNonlinearSolve.relax!(
+        dz,
+        nlsolver::AbstractNLSolver,
+        integrator::DEIntegrator,
+        f,
+        linesearch::BackTracking,
+    )
+    atmp = nlsolver.cache.atmp
+
+    let dz = dz,
+            integrator = integrator,
+            nlsolver = nlsolver,
+            f = f,
+            linesearch = linesearch
+
+        function loss(α)
+            @. atmp = nlsolver.z - dz * α
+            return residual(atmp, integrator, nlsolver, f)
+        end
+
+        α = linesearch(loss)
+        @. dz *= α
+
+        return dz
+    end
+end
+
 "Create a NamedTuple of the node IDs per state component in the state order"
 function state_node_ids(
         p::Union{ParametersIndependent, NamedTuple},

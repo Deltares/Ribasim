@@ -31,9 +31,12 @@ using DifferentiationInterface:
 using ForwardDiff: derivative as forward_diff
 
 # Algorithms for solving ODEs.
-using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du
+using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
+using DiffEqBase: DiffEqBase, calculate_residuals!
+using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
 import ADTypes
 import ForwardDiff
+import NaNMath
 
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
