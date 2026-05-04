@@ -1,3 +1,4 @@
+import datetime
 import re
 from sqlite3 import connect
 
@@ -46,6 +47,17 @@ def test_solver():
 
     with pytest.raises(ValidationError):
         Solver(saveat="a")
+
+
+def test_time_window_validation(basic):
+    model = basic
+    with pytest.raises(ValidationError, match="starttime must be before the endtime"):
+        model.endtime = model.starttime
+        model.model_validate(model.model_dump())
+
+    with pytest.raises(ValidationError, match="starttime must be before the endtime"):
+        model.endtime = model.starttime - datetime.timedelta(days=1)
+        model.model_validate(model.model_dump())
 
 
 def test_parent_relationship(basic):

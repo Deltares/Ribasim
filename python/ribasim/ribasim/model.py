@@ -171,6 +171,12 @@ class Model(FileModel, ParentModel):
         return v
 
     @model_validator(mode="after")
+    def _validate_time_window(self) -> Self:
+        if self.starttime >= self.endtime:
+            raise ValueError("The model starttime must be before the endtime.")
+        return self
+
+    @model_validator(mode="after")
     def _ensure_topology_tables_are_present(self) -> Self:
         if self.link.df is None:
             self.link.df = GeoDataFrame[LinkSchema](
