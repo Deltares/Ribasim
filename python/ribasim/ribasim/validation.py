@@ -26,8 +26,6 @@ node_type_connectivity: dict[str, list[str]] = {
     ],
     "FlowBoundary": [
         "Basin",
-        "Terminal",
-        "LevelBoundary",
         "Junction",
     ],
     "FlowDemand": [
