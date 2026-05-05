@@ -5,6 +5,7 @@ const SolverStats = @NamedTuple{
     linear_solves::Int,
     accepted_timesteps::Int,
     rejected_timesteps::Int,
+    max_subtimesteps::Int,
     dt::Float64,
 }
 
@@ -420,8 +421,16 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
 @kwdef struct ConcentrationData
     # Config setting to enable/disable evaporation of mass
     evaporate_mass::Bool = true
+    # Safety factor to determine number of substeps based on residence time
+    substep_ratio::Float64 = 1 / 5
+    # Maximum number of substeps (2^substep_depth)
+    substep_depth::Int = 10
     # Cumulative inflow for each Basin at a given time
     cumulative_in::Vector{Float64} = zeros(Float64, 0)
+    # Number of substeps per Basin for mass outflow processing
+    nsubsteps::Vector{Int16} = zeros(Int16, 0)
+    # Stepsize for each Basin for mass outflow processing, in number of substeps (e.g. stepsize of 2 means every other substep is processed)
+    stepsize::Vector{Int16} = zeros(Int16, 0)
     # Matrix with concentrations for each Basin and substance
     concentration_state::Matrix{Float64} = zeros(Float64, 0, 0)  # Basin, substance
     # Vectors with concentration timeseries interpolations for each incoming forcing per Basin per substance

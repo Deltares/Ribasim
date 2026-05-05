@@ -275,6 +275,8 @@ const CF = OrderedDict{String, OrderedDict{String, String}}(
         OrderedDict("units" => "1", "long_name" => "number of accepted timesteps"),
     "rejected_timesteps" =>
         OrderedDict("units" => "1", "long_name" => "number of rejected timesteps"),
+    "max_subtimesteps" =>
+        OrderedDict("units" => "1", "long_name" => "maximum number of subtimesteps in the last timestep"),
     "dt" => OrderedDict("units" => "s", "long_name" => "timestep size"),
     "from_node_id" => OrderedDict("long_name" => "source node identifier"),
     "to_node_id" => OrderedDict("long_name" => "destination node identifier"),
@@ -434,6 +436,7 @@ function solver_stats_data(model::Model; table::Bool = true)
         linear_solves = diff(solver_stats.linear_solves),
         accepted_timesteps = diff(solver_stats.accepted_timesteps),
         rejected_timesteps = diff(solver_stats.rejected_timesteps),
+        max_subtimesteps = solver_stats.max_subtimesteps[2:end],
         dt = solver_stats.dt[2:end],
     )
 end
