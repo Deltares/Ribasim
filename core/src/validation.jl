@@ -31,7 +31,7 @@ neighbortypes(::Val{:junction}) = OrderedSet(
     )
 )
 neighbortypes(::Val{:flow_boundary}) =
-    OrderedSet((:basin, :junction))
+    OrderedSet((:basin, :terminal, :junction))
 neighbortypes(::Val{:level_boundary}) =
     OrderedSet((:linear_resistance, :pump, :outlet, :tabulated_rating_curve))
 neighbortypes(::Val{:linear_resistance}) = OrderedSet((:basin, :level_boundary, :junction))
