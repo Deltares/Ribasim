@@ -970,7 +970,7 @@ function AllocationModel(
         p_independent::ParametersIndependent,
         allocation_config::config.Allocation,
     )
-    Δt_allocation = allocation_config.timestep
+    Δt_allocation = something(allocation_config.dt, 86400.0)
     problem = JuMP.Model()
     JuMP.set_optimizer(problem, get_optimizer())
     node_ids_in_subnetwork = NodeIDsInSubnetwork(p_independent, subnetwork_id)

@@ -432,3 +432,121 @@ end
     @test !isempty(high_level_flows)
     @test !isempty(low_level_flows)
 end
+
+@testitem "get_area_slope" begin
+    import Ribasim
+    using Ribasim: get_area_slope
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    (; basin) = model.integrator.p.p_independent
+
+    # The basic model has a piecewise-linear A(h) profile. Pick basin index 1.
+    # get_area_slope returns dA/dh, which equals the slope of the linear segment.
+    itp = basin.level_to_area[1]
+    h_mid = (itp.t[1] + itp.t[2]) / 2
+    expected_slope = (itp.u[2] - itp.u[1]) / (itp.t[2] - itp.t[1])
+
+    @test get_area_slope(basin, 1, h_mid) ≈ expected_slope
+
+    # At a level beyond the last breakpoint the slope should equal the last segment slope
+    h_last_segment = (itp.t[end - 1] + itp.t[end]) / 2
+    expected_last_slope = (itp.u[end] - itp.u[end - 1]) / (itp.t[end] - itp.t[end - 1])
+    @test get_area_slope(basin, 1, h_last_segment) ≈ expected_last_slope
+end
+
+@testitem "get_max_flow_curvature" begin
+    import Ribasim
+    using Ribasim: get_max_flow_curvature, tabulated_rating_curve_flow
+
+    t = 0.0
+
+    # level_demand_with_rating_curve has a 2-point (linear) TabulatedRatingCurve,
+    # so the second derivative is zero everywhere.
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/level_demand_with_rating_curve/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    (; p) = model.integrator
+    (; p_independent) = p
+    (; allocation) = p_independent
+
+    linear_curvatures = Float64[]
+    for allocation_model in allocation.allocation_models
+        (; tabulated_rating_curve_ids_subnetwork) = allocation_model.node_ids_in_subnetwork
+        isempty(tabulated_rating_curve_ids_subnetwork) && continue
+        push!(
+            linear_curvatures,
+            get_max_flow_curvature(
+                p_independent.tabulated_rating_curve,
+                tabulated_rating_curve_ids_subnetwork,
+                tabulated_rating_curve_flow,
+                p,
+                t,
+            ),
+        )
+    end
+    @test !isempty(linear_curvatures)
+    @test all(iszero, linear_curvatures)
+
+    # allocation_training has 3-point rating curves (PCHIP interpolation),
+    # which are nonlinear so the second derivative must be strictly positive.
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/allocation_training/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    (; p) = model.integrator
+    (; p_independent) = p
+    (; allocation) = p_independent
+
+    nonlinear_curvatures = Float64[]
+    for allocation_model in allocation.allocation_models
+        (; tabulated_rating_curve_ids_subnetwork) = allocation_model.node_ids_in_subnetwork
+        isempty(tabulated_rating_curve_ids_subnetwork) && continue
+        push!(
+            nonlinear_curvatures,
+            get_max_flow_curvature(
+                p_independent.tabulated_rating_curve,
+                tabulated_rating_curve_ids_subnetwork,
+                tabulated_rating_curve_flow,
+                p,
+                t,
+            ),
+        )
+    end
+    @test !isempty(nonlinear_curvatures)
+    @test all(>(0), nonlinear_curvatures)
+end
+
+@testitem "compute_adaptive_Δt" begin
+    import Ribasim
+    using Ribasim: compute_adaptive_Δt, water_balance!, get_du
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/adaptive_allocation/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    (; config, integrator) = model
+    (; u, p, t) = integrator
+    (; p_independent) = p
+    (; allocation) = p_independent
+
+    du = get_du(integrator)
+    water_balance!(du, u, p, t)
+
+    for am in allocation.allocation_models
+        Δt = compute_adaptive_Δt(am, p, du, t, config.allocation)
+
+        # Result must be at least dtmin and positive
+        @test Δt >= config.allocation.dtmin
+        @test isfinite(Δt) || isinf(Δt)  # Inf is allowed when no curvature constraint applies
+    end
+end

@@ -312,7 +312,7 @@ Compute the slope dA/dh of the basin profile at a given level.
 The basin profile is piecewise-linear in A(h), so dA/dh is piecewise-constant.
 """
 function get_area_slope(basin::Basin, state_idx::Int, level::Float64)::Float64
-    return DataInterpolations.derivative(basin.level_to_area[state_idx], level)
+    return derivative(basin.level_to_area[state_idx], level)
 end
 
 """
