@@ -263,7 +263,7 @@ end
     # Add a contradictory constraint to force INFEASIBLE
     flow = problem[:flow]
     first_link = first(only(flow.axes))
-    JuMP.@constraint(problem, flow[first_link] >= 1e10)
+    JuMP.@constraint(problem, flow[first_link] >= 1.0e10)
     JuMP.optimize!(problem)
     @test JuMP.termination_status(problem) == JuMP.INFEASIBLE
 
