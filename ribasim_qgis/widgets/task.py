@@ -1,5 +1,6 @@
 """QgsTask for running Ribasim simulations in the background."""
 
+import contextlib
 import re
 import subprocess
 from pathlib import Path
@@ -86,6 +87,17 @@ class RibasimTask(QgsTask):
             )
             self.exit_code = -1
             return False
+
+    def cancel(self) -> None:
+        """Cancel the task by terminating the subprocess.
+
+        Overridden so that a hanging pipe (e.g. after a segfault) gets closed,
+        unblocking the stdout read loop in run().
+        """
+        super().cancel()
+        if self.process is not None:
+            with contextlib.suppress(OSError):
+                self.process.kill()
 
     def finished(self, result: bool) -> None:
         """Emit completion signal on the main thread."""
