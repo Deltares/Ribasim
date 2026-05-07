@@ -251,6 +251,8 @@ quarto-check = { cmd = "echo 'Skipping quarto check on ARM64 Linux (Quarto not s
 quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not supported)'" }
 
 [dependencies]
+dvc = "*"
+dvc-s3 = "*"
 geopandas = ">=1.0"
 gh = "*"
 griffe = ">=1,<2"
