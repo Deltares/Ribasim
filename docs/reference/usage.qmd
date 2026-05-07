@@ -1,6 +1,9 @@
 ---
 title: "Usage"
+filters:
+  - include-code-files
 ---
+
 
 # Configuration file
 

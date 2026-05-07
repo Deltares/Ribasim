@@ -544,7 +544,7 @@ end
 
     toml_path = normpath(
         @__DIR__,
-        "../../generated_testmodels/adaptive_allocation/ribasim.toml",
+        "../../generated_testmodels/basin_overflow/ribasim.toml",
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
