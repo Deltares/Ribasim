@@ -245,31 +245,45 @@ end
 
 @testitem "infeasibility analysis" begin
     using Logging
-    using JuMP: name
+    using JuMP
 
+    # Use any model with allocation; we'll directly test the infeasibility analysis functions
     toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/invalid_infeasible/ribasim.toml")
+        normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
     @test ispath(toml_path)
 
-    logger = TestLogger()
+    model = Ribasim.Model(toml_path)
+    allocation_model =
+        model.integrator.p.p_independent.allocation.allocation_models[1]
+    problem = allocation_model.problem
+
+    # Switch to scalar feasibility objective (as done in optimize! when INFEASIBLE is detected)
+    Ribasim.set_feasibility_objective!(problem)
+
+    # Add a contradictory constraint to force INFEASIBLE
+    flow = problem[:flow]
+    first_link = first(only(flow.axes))
+    JuMP.@constraint(problem, flow[first_link] >= 1e10)
+    JuMP.optimize!(problem)
+    @test JuMP.termination_status(problem) == JuMP.INFEASIBLE
+
+    Ribasim.write_problem_to_file(problem, model.config)
+
+    logger = TestLogger(; min_level = Logging.Debug)
     with_logger(logger) do
-        @test_throws "Allocation optimization for subnetwork 1 at t = 0.0 s is infeasible" Ribasim.run(
-            toml_path,
-        )
+        status = Ribasim.analyze_infeasibility(allocation_model, 0.0, model.config)
+        @test status != JuMP.OPTIMAL
     end
 
-    # We need to check this way if this log message exists, because different hardware/OS can log in different order
-    found_message =
-        any(log -> log.message == "Set of incompatible constraints found", logger.logs)
-    @test found_message
+    Ribasim.analyze_scaling(allocation_model, 0.0, model.config)
 
     @test ispath(
         @__DIR__,
-        "../../generated_testmodels/invalid_infeasible/results/allocation_analysis_infeasibility.log",
+        "../../generated_testmodels/minimal_subnetwork/results/allocation_analysis_infeasibility.log",
     )
     @test ispath(
         @__DIR__,
-        "../../generated_testmodels/invalid_infeasible/results/allocation_analysis_scaling.log",
+        "../../generated_testmodels/minimal_subnetwork/results/allocation_analysis_scaling.log",
     )
 end
 

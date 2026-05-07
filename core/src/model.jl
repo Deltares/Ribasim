@@ -301,7 +301,7 @@ end
 Compute adaptive Δt for all allocation models based on linearization error bounds,
 set each model's Δt_allocation, clamp to saveat/tspan boundaries, and return (Δt, on_saveat).
 """
-function compute_and_set_adaptive_Δt!(model, saveat, tspan_end)::Tuple{Float64}
+function compute_and_set_adaptive_Δt!(model, saveat, tspan_end)::Float64
     (; config, integrator) = model
     (; u, p, t) = integrator
     (; p_independent) = p
@@ -320,6 +320,11 @@ function compute_and_set_adaptive_Δt!(model, saveat, tspan_end)::Tuple{Float64}
     Δt = min(Δt, time_to_next_saveat(t, saveat, tspan_end))
     Δt = min(Δt, tspan_end - t)
 
+    # Clamp each model's Δt_allocation to the global bound so it is never Inf
+    for am in allocation.allocation_models
+        am.Δt_allocation = min(am.Δt_allocation, Δt)
+    end
+
     return Δt
 end
 
@@ -334,7 +339,7 @@ function solve_with_allocation!(model::Model)::Nothing
         saveat = config.solver.saveat
         while integrator.t < tspan[end] - eps(tspan[end])
             Δt = compute_and_set_adaptive_Δt!(model, saveat, tspan[end])
-            update_allocation!(model, Δt; record = is_saveat_time(t, saveat, tspan[end]))
+            update_allocation!(model, Δt; record = is_saveat_time(integrator.t, saveat, tspan[end]))
             SciMLBase.step!(integrator, Δt, true)
         end
     else

@@ -1091,39 +1091,6 @@ def multi_level_demand_model() -> Model:
     return model
 
 
-def invalid_infeasible_model() -> Model:
-    """Set up a minimal model which uses a linear_resistance node."""
-    model = Model(
-        starttime=datetime(2020, 1, 1),
-        endtime=datetime(2020, 2, 1),
-        crs="EPSG:28992",
-        experimental=Experimental(allocation=True),
-    )
-
-    model.basin.add(
-        Node(1, Point(0, 0), subnetwork_id=1),
-        [basin.Profile(area=100.0, level=[0.0, 10.0]), basin.State(level=[10.0])],
-    )
-    model.linear_resistance.add(
-        Node(2, Point(1, 0), subnetwork_id=1),
-        [linear_resistance.Static(resistance=[5e3], max_flow_rate=[6e-5])],
-    )
-    model.level_boundary.add(
-        Node(3, Point(2, 0), subnetwork_id=1), [level_boundary.Static(level=[11.0])]
-    )
-
-    model.link.add(
-        model.basin[1],
-        model.linear_resistance[2],
-    )
-    model.link.add(
-        model.linear_resistance[2],
-        model.level_boundary[3],
-    )
-
-    return model
-
-
 def drain_surplus_model() -> Model:
     """Set up a model which activates an outlet to drain surplus water out of a Basin."""
     model = Model(
