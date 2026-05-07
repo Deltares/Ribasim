@@ -105,13 +105,13 @@ function sync_flow_rates!(p::Parameters)::Nothing
     (; basin) = p_independent
     cache = state_and_time_dependent_cache
 
-    Threads.@sync begin
-        Threads.@spawn sync_flow_rates!(:pump, cache.current_flow_rate_pump, p_independent)
-        Threads.@spawn sync_flow_rates!(:outlet, cache.current_flow_rate_outlet, p_independent)
-        Threads.@spawn sync_flow_rates!(:linear_resistance, cache.current_flow_rate_linear_resistance, p_independent)
-        Threads.@spawn sync_flow_rates!(:tabulated_rating_curve, cache.current_flow_rate_tabulated_rating_curve, p_independent)
-        Threads.@spawn sync_flow_rates!(:manning_resistance, cache.current_flow_rate_manning_resistance, p_independent)
-        Threads.@spawn sync_flow_rates!(:user_demand, cache.current_flow_rate_user_demand, p_independent)
+
+        sync_flow_rates!(:pump, cache.current_flow_rate_pump, p_independent)
+        sync_flow_rates!(:outlet, cache.current_flow_rate_outlet, p_independent)
+        sync_flow_rates!(:linear_resistance, cache.current_flow_rate_linear_resistance, p_independent)
+        sync_flow_rates!(:tabulated_rating_curve, cache.current_flow_rate_tabulated_rating_curve, p_independent)
+        sync_flow_rates!(:manning_resistance, cache.current_flow_rate_manning_resistance, p_independent)
+        sync_flow_rates!(:user_demand, cache.current_flow_rate_user_demand, p_independent)
     end
 
     return nothing
