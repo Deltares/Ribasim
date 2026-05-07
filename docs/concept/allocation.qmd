@@ -158,9 +158,9 @@ $$\Delta t_i = \frac{A_i^n \cdot \Delta h_{\max}}{|\dot{S}_i|}$$
 
 The adaptive timestep for the subnetwork is:
 
-$$\Delta t_{\text{adaptive}} = \min_i \Delta t_i$$
+$$\Delta t_{\text{adaptive}} = \max\left(\min_i \Delta t_i,\; \Delta t_{\min}\right)$$
 
-clamped between a configured minimum and maximum.
+bounded below by the configured minimum `dtmin`, and above by the time to the next save point or the end of the simulation.
 
 ## The high level algorithm {#sec-high-level-algorithm}
 The allocation algorithm contains 2 types of optimization:
