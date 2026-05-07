@@ -240,8 +240,7 @@ For Ribasim Python documentation please see the [examples](/getting-started/exam
 
 # Install Ribasim QGIS plugin {#sec-install-qgis-plugin}
 
-The Ribasim QGIS plugin requires [QGIS](https://qgis.org/en/site/) 3.40 or 3.44.
-QGIS 4 support is experimental, the plotting pane does not yet work on Windows.
+The Ribasim QGIS plugin requires [QGIS](https://qgis.org/en/site/) 3.40+ or 4.
 
 ## Install from QGIS Plugin Repository (recommended)
 
