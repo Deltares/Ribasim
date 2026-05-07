@@ -39,6 +39,10 @@ function main(toml_path::AbstractString)::Cint
                 try
                     model = Model(config)
                     try
+                        if get(ENV, "RIBASIM_SEGFAULT", nothing) !== nothing
+                            p = reinterpret(Ptr{Int}, 0x0000000000000001)
+                            unsafe_load(p)
+                        end
                         solve!(model)
                     catch e
                         # Catch errors thrown during simulation.
