@@ -1286,3 +1286,10 @@ function get_link_index(
     )::Union{Int64, Nothing}
     return findfirst(l -> l.link == link, flow_links)
 end
+
+function get_link_index(
+        link::Tuple{NodeID, NodeID},
+        flow_link_lookup::Dict{Tuple{NodeID, NodeID}, Int},
+    )::Union{Int64, Nothing}
+    return get(flow_link_lookup, link, nothing)
+end

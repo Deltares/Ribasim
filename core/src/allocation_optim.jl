@@ -745,9 +745,9 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
 
     # Extrapolate the current instantaneous flow rates from the physical layer
     # Flow rates are now stored in cache vectors, look up by link
-    internal_flow_links = p.p_independent.graph[].internal_flow_links
+    flow_link_lookup = p.p_independent.graph[].flow_link_lookup
     for link in only(flow.axes)
-        link_idx = get_link_index(link, internal_flow_links)
+        link_idx = get_link_index(link, flow_link_lookup)
         if !isnothing(link_idx)
             JuMP.set_start_value(flow[link], p.p_independent.current_flow_rate[link_idx] / scaling.flow)
         end

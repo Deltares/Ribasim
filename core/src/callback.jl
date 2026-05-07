@@ -78,17 +78,17 @@ function create_callbacks(
 end
 
 function sync_flow_rates!(node_sym::Symbol, current_flow_cache::Vector{T}, p_independent::ParametersIndependent) where {T}
-    internal_flow_links = p_independent.graph[].internal_flow_links
+    flow_link_lookup = p_independent.graph[].flow_link_lookup
     node = getproperty(p_independent, node_sym)
     for (node_idx, id) in enumerate(node.node_id)
         q = current_flow_cache[id.idx]
         inflow_link = node.inflow_link[node_idx]
         outflow_link = node.outflow_link[node_idx]
-        idx = get_link_index(inflow_link.link, internal_flow_links)
+        idx = get_link_index(inflow_link.link, flow_link_lookup)
         if idx !== nothing
             p_independent.current_flow_rate[idx] = q
         end
-        idx = get_link_index(outflow_link.link, internal_flow_links)
+        idx = get_link_index(outflow_link.link, flow_link_lookup)
         if idx !== nothing
             p_independent.current_flow_rate[idx] = q
         end
@@ -102,8 +102,7 @@ used for trapezoidal flow accumulation.
 """
 function sync_flow_rates!(p::Parameters)::Nothing
     (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
-    (; graph, basin) = p_independent
-    internal_flow_links = graph[].internal_flow_links
+    (; basin) = p_independent
     cache = state_and_time_dependent_cache
 
     Threads.@sync begin
@@ -594,9 +593,8 @@ function flow_update_on_link(
         integral(flow_boundary.flow_rate[from_id.idx], tprev, t)
     else
         # Look up the internal flow link index and use cumulative flow
-        graph = p.p_independent.graph
-        internal_flow_links = graph[].internal_flow_links
-        link_idx = get_link_index(link_src, internal_flow_links)
+        flow_link_lookup = p.p_independent.graph[].flow_link_lookup
+        link_idx = get_link_index(link_src, flow_link_lookup)
         if isnothing(link_idx)
             0.0
         else
@@ -929,7 +927,7 @@ function set_new_control_state!(
 
             # Mark the links of this node so that the next trapezoidal integration step
             # uses backward Euler (avoids a spike from averaging pre/post-switch rates).
-            internal_flow_links = p_independent.graph[].internal_flow_links
+            flow_link_lookup = p_independent.graph[].flow_link_lookup
             idx = target_node_id.idx
             node_links = if target_node_id.type == NodeType.Pump
                 (pump.inflow_link[idx].link, pump.outflow_link[idx].link)
@@ -942,7 +940,7 @@ function set_new_control_state!(
             end
             if node_links !== nothing
                 for link in node_links
-                    link_idx = get_link_index(link, internal_flow_links)
+                    link_idx = get_link_index(link, flow_link_lookup)
                     link_idx !== nothing && (p_independent.flow_rate_prev[link_idx] = NaN)
                 end
             end
