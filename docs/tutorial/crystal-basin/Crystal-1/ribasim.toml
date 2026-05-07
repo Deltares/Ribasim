@@ -1,6 +1,0 @@
-starttime = 2022-01-01 00:00:00
-endtime = 2023-01-01 00:00:00
-crs = "EPSG:4326"
-input_dir = "input"
-results_dir = "results"
-ribasim_version = "2025.5.0"
