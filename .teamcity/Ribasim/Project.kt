@@ -57,8 +57,8 @@ object Project : Project({
             bucketName = "ribasim"
         }
         activeStorage {
-            id = "PROJECT_EXT_172"
-            activeStorageID = "PROJECT_EXT_171"
+            id = "PROJECT_EXT_25"
+            activeStorageID = "DefaultStorage"
         }
         s3Storage {
             id = "s3_ribasim"

@@ -102,14 +102,13 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
 end
 
 function Model(config_path::AbstractString)::Model
-    config = Config(config_path)
-    if !valid_config(config)
-        error("Invalid configuration in TOML.")
-    end
-    return Model(config)
+    return Model(Config(config_path))
 end
 
 function Model(config::Config)::Model
+    if !valid_config(config)
+        error("Invalid configuration in TOML.")
+    end
     mkpath(results_path(config))
     check_result_netcdf_files_writable!(config)
     db_path = database_path(config)

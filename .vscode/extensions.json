@@ -2,7 +2,6 @@
     "recommendations": [
         "aviatesk.jetls-client",
         "charliermarsh.ruff",
-        "GitHub.copilot",
         "julialang.language-julia",
         "meta.pyrefly",
         "ms-python.python",

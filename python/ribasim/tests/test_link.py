@@ -1,6 +1,7 @@
 import geopandas as gpd
 import pytest
 import shapely.geometry as sg
+from pandera.errors import SchemaErrors
 from pydantic import ValidationError
 from ribasim.geometry.link import LinkTable, NodeData, _infer_link_type
 
@@ -24,7 +25,7 @@ def link() -> LinkTable:
 def test_validation(link):
     assert isinstance(link, LinkTable)
 
-    with pytest.raises(ValidationError):
+    with pytest.raises((ValidationError, SchemaErrors)):
         df = gpd.GeoDataFrame(
             data={
                 "link_id": [0, 1],

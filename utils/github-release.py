@@ -42,6 +42,7 @@ def main(proc: subprocess.CompletedProcess[str]):
         [
             "ribasim_linux.zip",
             "ribasim_windows.zip",
+            "ribasim_windows.msix",
             "ribasim_qgis.zip",
             "generated_testmodels.zip",
         ]
