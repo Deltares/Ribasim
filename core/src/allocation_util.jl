@@ -310,35 +310,14 @@ get_Δt_allocation(allocation::Allocation) =
 """
 Compute the slope dA/dh of the basin profile at a given level.
 The basin profile is piecewise-linear in A(h), so dA/dh is piecewise-constant.
-Returns the max absolute slope of the current and adjacent segments for safety.
 """
 function get_area_slope(basin::Basin, state_idx::Int, level::Float64)::Float64
-    levels = basin_levels(basin, state_idx)
-    areas = basin_areas(basin, state_idx)
-    n = length(levels)
-    if n < 2
-        return 0.0
-    end
-
-    # Find the segment containing the current level
-    seg = searchsortedlast(levels, level)
-    seg = clamp(seg, 1, n - 1)
-
-    # Compute slopes of current and adjacent segments, take the max for safety
-    max_slope = 0.0
-    for i in max(1, seg - 1):min(n - 1, seg + 1)
-        dh = levels[i + 1] - levels[i]
-        if dh > 0
-            slope = abs(areas[i + 1] - areas[i]) / dh
-            max_slope = max(max_slope, slope)
-        end
-    end
-    return max_slope
+    return DataInterpolations.derivative(basin.level_to_area[state_idx], level)
 end
 
 """
 Compute the max |d²Q/dh²| across all connector nodes of a given type in the subnetwork.
-Uses nested ForwardDiff to get the second derivative numerically.
+Uses DifferentiationInterface second_derivative with AutoForwardDiff backend.
 """
 function get_max_flow_curvature(
         connector_node::AbstractParameterNode,
@@ -348,6 +327,7 @@ function get_max_flow_curvature(
         t::Float64,
     )::Float64
     max_curvature = 0.0
+    backend = AutoForwardDiff()
 
     for node_id in connector_ids
         inflow_id = connector_node.inflow_link[node_id.idx].link[1]
@@ -356,22 +336,16 @@ function get_max_flow_curvature(
         h_a = get_level(p, inflow_id, t)
         h_b = get_level(p, outflow_id, t)
 
-        # d²Q/dh_a² via nested ForwardDiff
-        d²Q_dh_a² = forward_diff(
-            h -> forward_diff(
-                h_ -> flow_function(connector_node, node_id, h_, h_b, p, t),
-                h,
-            ),
+        d²Q_dh_a² = second_derivative(
+            h_ -> flow_function(connector_node, node_id, h_, h_b, p, t),
+            backend,
             h_a,
         )
         max_curvature = max(max_curvature, abs(d²Q_dh_a²))
 
-        # d²Q/dh_b² via nested ForwardDiff
-        d²Q_dh_b² = forward_diff(
-            h -> forward_diff(
-                h_ -> flow_function(connector_node, node_id, h_a, h_, p, t),
-                h,
-            ),
+        d²Q_dh_b² = second_derivative(
+            h_ -> flow_function(connector_node, node_id, h_a, h_, p, t),
+            backend,
             h_b,
         )
         max_curvature = max(max_curvature, abs(d²Q_dh_b²))
@@ -407,9 +381,8 @@ function compute_adaptive_Δt(
     (; basin, tabulated_rating_curve, linear_resistance, manning_resistance) = p.p_independent
     (; current_storage) = p.state_and_time_dependent_cache
 
-    Δt_max = allocation_config.timestep
-    Δt_min = allocation_config.min_timestep
-    ε_rel = allocation_config.timestep_tolerance
+    Δt_min = allocation_config.dtmin
+    ε_rel = allocation_config.reltol_linearization
     overshoot_reduction = 0.8
 
     # Phase 1: compute global Δh_max from all linearization curvatures
@@ -451,11 +424,11 @@ function compute_adaptive_Δt(
     end
 
     if isinf(Δh_max)
-        return Δt_max
+        return Inf
     end
 
     # Phase 2: convert Δh_max to Δt per basin
-    Δt = Δt_max
+    Δt = Inf
 
     for basin_id in basin_ids_subnetwork
         idx = basin_id.idx
@@ -475,7 +448,8 @@ function compute_adaptive_Δt(
         Δt = min(Δt, Δt_basin)
     end
 
-    return clamp(Δt, Δt_min, Δt_max)
+    # Upper bound is applied externally (saveat, tspan_end)
+    return max(Δt, Δt_min)
 end
 
 # Custom iterator to iterate over the demand priorities for which a particular node has a demand

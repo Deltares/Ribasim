@@ -101,7 +101,7 @@ def minimal_subnetwork_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
+        allocation=Allocation(),
         experimental=Experimental(concentration=True, allocation=True),
     )
 
@@ -158,7 +158,7 @@ def allocation_example_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2020, 1, 20),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
+        allocation=Allocation(),
         experimental=Experimental(concentration=True, allocation=True),
     )
 
@@ -220,7 +220,7 @@ def small_primary_secondary_network_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2020, 1, 20),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
+        allocation=Allocation(),
         experimental=Experimental(concentration=True, allocation=True),
     )
 
@@ -279,7 +279,7 @@ def medium_primary_secondary_network_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2020, 1, 20),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
+        allocation=Allocation(),
         experimental=Experimental(allocation=True),
     )
 
@@ -471,7 +471,7 @@ def small_primary_secondary_network_verification_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2020, 1, 20),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
+        allocation=Allocation(),
         experimental=Experimental(concentration=True, allocation=True),
     )
 
@@ -530,7 +530,7 @@ def level_demand_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2020, 2, 1),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
+        allocation=Allocation(),
         experimental=Experimental(concentration=True, allocation=True),
     )
     model.flow_boundary.add(
@@ -591,7 +591,7 @@ def flow_demand_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=1e5),
+        allocation=Allocation(),
         experimental=Experimental(concentration=True, allocation=True),
     )
 
@@ -1697,7 +1697,7 @@ def outlet_allocation_discrete_control_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
+        allocation=Allocation(),
         experimental=Experimental(allocation=True),
     )
 

@@ -289,7 +289,7 @@ function step!(model::Model, dt::Float64)::Model
     # If we are at an allocation time, run allocation before the next physical
     # layer timestep. This allows allocation over period (t, t + dt) to use variables
     # set over BMI at time t before calling this function.
-    ntimes = t / config.allocation.timestep
+    ntimes = t / something(config.allocation.dt, 86400.0)
     if round(ntimes) ≈ ntimes
         update_allocation!(model)
     end
@@ -301,7 +301,7 @@ end
 Compute adaptive Δt for all allocation models based on linearization error bounds,
 set each model's Δt_allocation, clamp to saveat/tspan boundaries, and return (Δt, on_saveat).
 """
-function compute_and_set_adaptive_Δt!(model, saveat, tspan_end)::Tuple{Float64, Bool}
+function compute_and_set_adaptive_Δt!(model, saveat, tspan_end)::Tuple{Float64}
     (; config, integrator) = model
     (; u, p, t) = integrator
     (; p_independent) = p
@@ -310,7 +310,7 @@ function compute_and_set_adaptive_Δt!(model, saveat, tspan_end)::Tuple{Float64,
 
     water_balance!(du, u, p, t)
 
-    Δt = config.allocation.timestep
+    Δt = Inf
     for am in allocation.allocation_models
         Δt_sub = compute_adaptive_Δt(am, p, du, t, config.allocation)
         am.Δt_allocation = Δt_sub
@@ -320,14 +320,7 @@ function compute_and_set_adaptive_Δt!(model, saveat, tspan_end)::Tuple{Float64,
     Δt = min(Δt, time_to_next_saveat(t, saveat, tspan_end))
     Δt = min(Δt, tspan_end - t)
 
-    on_saveat =
-        iszero(saveat) ||
-        isinf(saveat) ||
-        isapprox(t % saveat, 0.0; atol = 1.0e-9) ||
-        isapprox(t % saveat, saveat; atol = 1.0e-9) ||
-        isapprox(t, tspan_end; atol = 1.0e-9)
-
-    return Δt, on_saveat
+    return Δt
 end
 
 """
@@ -337,19 +330,19 @@ function solve_with_allocation!(model::Model)::Nothing
     (; config, integrator) = model
     (; tspan::Tuple{Float64, Float64}) = integrator.sol.prob
 
-    if config.allocation.adaptive_timestep
+    if config.allocation.dt === nothing
         saveat = config.solver.saveat
         while integrator.t < tspan[end] - eps(tspan[end])
-            Δt, on_saveat = compute_and_set_adaptive_Δt!(model, saveat, tspan[end])
-            update_allocation!(model, Δt; record = on_saveat)
+            Δt = compute_and_set_adaptive_Δt!(model, saveat, tspan[end])
+            update_allocation!(model, Δt; record = is_saveat_time(t, saveat, tspan[end]))
             SciMLBase.step!(integrator, Δt, true)
         end
     else
-        (; timestep) = config.allocation
-        n_allocation_times = floor(Int, tspan[end] / timestep)
+        dt_alloc = config.allocation.dt
+        n_allocation_times = floor(Int, tspan[end] / dt_alloc)
         for _ in 1:n_allocation_times
             update_allocation!(model)
-            SciMLBase.step!(integrator, timestep, true)
+            SciMLBase.step!(integrator, dt_alloc, true)
         end
         dt = tspan[end] - integrator.t
         if dt > 0

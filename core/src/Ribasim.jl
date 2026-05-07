@@ -26,7 +26,8 @@ using DifferentiationInterface:
     prepare_jacobian,
     jacobian!,
     prepare_derivative,
-    derivative!
+    derivative!,
+    second_derivative
 
 using ForwardDiff: derivative as forward_diff
 
@@ -36,6 +37,7 @@ using OrdinaryDiffEqDifferentiation:
     OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
 using SciMLOperators: WOperator, MatrixOperator
 import ADTypes
+using ADTypes: AutoForwardDiff
 import ForwardDiff
 
 # Interface for defining and solving the ODE problem of the physical layer.
