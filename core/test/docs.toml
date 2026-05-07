@@ -25,9 +25,9 @@ flow_boundary = "block"   # optional, default "block", can otherwise be "linear"
 block_transition_period = 0  # optional, default 0
 
 [allocation]
-# dt = 86400               # optional, fixed allocation timestep in seconds; if omitted, adaptive timestepping is used
-dtmin = 3600.0             # optional, minimum allocation timestep in seconds (default 3600.0)
-reltol_linearization = 0.01 # optional, relative linearization error tolerance (default 0.01)
+dt = 86400                  # optional, remove for adaptive time stepping
+dtmin = 3600.0              # optional, 3600.0
+reltol_linearization = 0.01 # optional, default 0.01
 
 [allocation.route_priority]
 level_boundary = 1000       # optional, default 1000
