@@ -257,7 +257,14 @@ window.Quarto = {
   <li><a href="#mathematical-formulation" id="toc-mathematical-formulation" class="nav-link" data-scroll-target="#mathematical-formulation"><span class="header-section-number">1.2</span> Mathematical formulation</a></li>
   <li><a href="#discretization" id="toc-discretization" class="nav-link" data-scroll-target="#discretization"><span class="header-section-number">1.3</span> Discretization</a></li>
   <li><a href="#linearization" id="toc-linearization" class="nav-link" data-scroll-target="#linearization"><span class="header-section-number">1.4</span> Linearization</a></li>
-  <li><a href="#sec-high-level-algorithm" id="toc-sec-high-level-algorithm" class="nav-link" data-scroll-target="#sec-high-level-algorithm"><span class="header-section-number">1.5</span> The high level algorithm</a></li>
+  <li><a href="#sec-adaptive-timestepping" id="toc-sec-adaptive-timestepping" class="nav-link" data-scroll-target="#sec-adaptive-timestepping"><span class="header-section-number">1.5</span> Adaptive timestepping</a>
+  <ul class="collapse">
+  <li><a href="#basin-profile-linearization-error" id="toc-basin-profile-linearization-error" class="nav-link" data-scroll-target="#basin-profile-linearization-error"><span class="header-section-number">1.5.1</span> Basin profile linearization error</a></li>
+  <li><a href="#connector-node-linearization-error" id="toc-connector-node-linearization-error" class="nav-link" data-scroll-target="#connector-node-linearization-error"><span class="header-section-number">1.5.2</span> Connector node linearization error</a></li>
+  <li><a href="#global-maximum-level-change" id="toc-global-maximum-level-change" class="nav-link" data-scroll-target="#global-maximum-level-change"><span class="header-section-number">1.5.3</span> Global maximum level change</a></li>
+  <li><a href="#adaptive-timestep" id="toc-adaptive-timestep" class="nav-link" data-scroll-target="#adaptive-timestep"><span class="header-section-number">1.5.4</span> Adaptive timestep</a></li>
+  </ul></li>
+  <li><a href="#sec-high-level-algorithm" id="toc-sec-high-level-algorithm" class="nav-link" data-scroll-target="#sec-high-level-algorithm"><span class="header-section-number">1.6</span> The high level algorithm</a></li>
   </ul></li>
   <li><a href="#implementation" id="toc-implementation" class="nav-link" data-scroll-target="#implementation"><span class="header-section-number">2</span> Implementation</a>
   <ul class="collapse">
@@ -423,8 +430,51 @@ Figure&nbsp;1: The primary network (subnetwork 1, blue) with connected secondary
 <p><span class="math display">\[Q(x_1,x_2) \approx Q(x_1^n,x_2^n) + \frac{\partial Q}{\partial x_1}(x_1^n,x_2^n)(x_1^{n+1}-x_1^n) + \frac{\partial Q}{\partial x_2}(x_1^n,x_2^n)(x_2^{n+1}-x_2^n)\]</span></p>
 <p>This yields a linear programming problem that can be solved efficiently while maintaining acceptable accuracy for small changes around the operating point.</p>
 </section>
-<section id="sec-high-level-algorithm" class="level2" data-number="1.5">
-<h2 data-number="1.5" class="anchored" data-anchor-id="sec-high-level-algorithm"><span class="header-section-number">1.5</span> The high level algorithm</h2>
+<section id="sec-adaptive-timestepping" class="level2" data-number="1.5">
+<h2 data-number="1.5" class="anchored" data-anchor-id="sec-adaptive-timestepping"><span class="header-section-number">1.5</span> Adaptive timestepping</h2>
+<p>The allocation LP linearizes two types of relationships, both of which are only valid for small level changes <span class="math inline">\(\Delta h\)</span>. By bounding the linearization errors, we can derive an adaptive timestep that keeps all approximations accurate while taking large steps when possible.</p>
+<section id="basin-profile-linearization-error" class="level3" data-number="1.5.1">
+<h3 data-number="1.5.1" class="anchored" data-anchor-id="basin-profile-linearization-error"><span class="header-section-number">1.5.1</span> Basin profile linearization error</h3>
+<p>The basin profile has a piecewise-linear area <span class="math inline">\(A(h)\)</span>, so the storage <span class="math inline">\(S(h) = \int_0^h A(h')\,dh'\)</span> is piecewise quadratic. Within a profile segment where the area varies linearly with slope <span class="math inline">\(m = \frac{dA}{dh}\)</span>:</p>
+<p><span class="math display">\[A(h) = A^n + m\,(h - h^n)\]</span></p>
+<p>The linearization approximates the storage with a tangent line:</p>
+<p><span class="math display">\[S^*(h) = S^n + A^n\,(h - h^n)\]</span></p>
+<p>The true storage is obtained by integrating the area:</p>
+<p><span class="math display">\[S(h) = S^n + \int_{h^n}^{h} A(h')\,dh' = S^n + A^n\,(h - h^n) + \tfrac{1}{2}\,m\,(h - h^n)^2\]</span></p>
+<p>so the linearization error is</p>
+<p><span class="math display">\[|S(h) - S^*(h)| = \tfrac{1}{2}|m|\,(\Delta h)^2\]</span></p>
+<p>Setting this to be at most a fraction <span class="math inline">\(\varepsilon\)</span> of the maximum basin storage capacity <span class="math inline">\(S_{\max}\)</span>:</p>
+<p><span class="math display">\[\tfrac{1}{2}|m|\,(\Delta h)^2 \leq \varepsilon\, S_{\max}\]</span></p>
+<p>gives a maximum level change</p>
+<p><span class="math display">\[\Delta h_{\max}^{\text{basin}} = \sqrt{\frac{2\,\varepsilon\, S_{\max}}{|m|}}\]</span></p>
+<p>When <span class="math inline">\(|m| \approx 0\)</span> (basin with constant area), the linearization is exact and imposes no constraint.</p>
+</section>
+<section id="connector-node-linearization-error" class="level3" data-number="1.5.2">
+<h3 data-number="1.5.2" class="anchored" data-anchor-id="connector-node-linearization-error"><span class="header-section-number">1.5.2</span> Connector node linearization error</h3>
+<p>Connector nodes (<a href="../reference/node/linear-resistance.html">LinearResistance</a>, <a href="../reference/node/manning-resistance.html">ManningResistance</a> and <a href="../reference/node/tabulated-rating-curve.html">TabulatedRatingCurve</a>) have nonlinear flow-level relationships <span class="math inline">\(Q(h)\)</span> that are also linearized:</p>
+<p><span class="math display">\[Q^{n+1} \approx Q^{n} + \frac{\partial Q}{\partial h}(h^n)\,(h^{n+1} - h^{n})\]</span></p>
+<p>The second-order error of this Taylor expansion is</p>
+<p><span class="math display">\[|Q(h) - Q^*(h)| = \tfrac{1}{2}\left|\frac{d^2 Q}{d h^2}\right|\,(\Delta h)^2\]</span></p>
+<p>Bounding this by a flow error tolerance <span class="math inline">\(\varepsilon_Q\)</span>:</p>
+<p><span class="math display">\[\Delta h_{\max}^{\text{connector}} = \sqrt{\frac{2\,\varepsilon_Q}{\left|\frac{d^2 Q}{d h^2}\right|}}\]</span></p>
+<p>The second derivative <span class="math inline">\(\frac{d^2 Q}{d h^2}\)</span> is computed numerically via nested automatic differentiation. This handles all connector types uniformly, including the PCHIP interpolation of tabulated rating curves and the nonlinear Manning equation.</p>
+</section>
+<section id="global-maximum-level-change" class="level3" data-number="1.5.3">
+<h3 data-number="1.5.3" class="anchored" data-anchor-id="global-maximum-level-change"><span class="header-section-number">1.5.3</span> Global maximum level change</h3>
+<p>The adaptive timestep is governed by whichever linearization is most sensitive to level changes:</p>
+<p><span class="math display">\[\Delta h_{\max} = \min\left(\min_i \Delta h_{\max,i}^{\text{basin}},\; \min_j \Delta h_{\max,j}^{\text{connector}}\right)\]</span></p>
+</section>
+<section id="adaptive-timestep" class="level3" data-number="1.5.4">
+<h3 data-number="1.5.4" class="anchored" data-anchor-id="adaptive-timestep"><span class="header-section-number">1.5.4</span> Adaptive timestep</h3>
+<p>Converting the level change bound to a time bound using <span class="math inline">\(\Delta S \approx A^n \,\Delta h\)</span> and the current net storage rate <span class="math inline">\(\dot{S}\)</span>:</p>
+<p><span class="math display">\[\Delta t_i = \frac{A_i^n \cdot \Delta h_{\max}}{|\dot{S}_i|}\]</span></p>
+<p>The adaptive timestep for the subnetwork is:</p>
+<p><span class="math display">\[\Delta t_{\text{adaptive}} = \max\left(\min_i \Delta t_i,\; \Delta t_{\min}\right)\]</span></p>
+<p>bounded below by the configured minimum <code>dtmin</code>, and above by the time to the next save point or the end of the simulation.</p>
+</section>
+</section>
+<section id="sec-high-level-algorithm" class="level2" data-number="1.6">
+<h2 data-number="1.6" class="anchored" data-anchor-id="sec-high-level-algorithm"><span class="header-section-number">1.6</span> The high level algorithm</h2>
 <p>The allocation algorithm contains 2 types of optimization:</p>
 <ul>
 <li>Demand collection, where water is allocated in the secondary networks with the sole purpose of finding out what the demand of the secondary network is from the primary network;</li>

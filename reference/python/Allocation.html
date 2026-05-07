@@ -205,9 +205,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-attributes anchored" data-number="1.1" data-anchor-id="attributes"><span class="header-section-number">1.1</span> Attributes</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 8%">
-<col style="width: 6%">
-<col style="width: 84%">
+<col style="width: 10%">
+<col style="width: 9%">
+<col style="width: 79%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -218,9 +218,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td>timestep</td>
+<td>dt</td>
+<td>(float, optional)</td>
+<td>The simulated time in seconds between successive allocation calls. If not provided, adaptive timestepping is used. When provided, this acts as a fixed timestep.</td>
+</tr>
+<tr class="even">
+<td>reltol_linearization</td>
 <td>float</td>
-<td>The simulated time in seconds between successive allocation calls (Optional, defaults to 86400)</td>
+<td>Relative tolerance for linearization errors of basin profiles and connector node Q(h) relationships (Optional, defaults to 0.01)</td>
+</tr>
+<tr class="odd">
+<td>dtmin</td>
+<td>float</td>
+<td>Minimum allocation timestep in seconds for adaptive timestepping (Optional, defaults to 3600.0)</td>
 </tr>
 </tbody>
 </table>
