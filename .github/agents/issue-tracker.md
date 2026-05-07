@@ -17,6 +17,10 @@ Infer the repo from `git remote -v` — `gh` does this automatically when run in
 
 Create a GitHub issue.
 
+When publishing a PRD:
+1. Write a copy of the PRD to `.github/prd/<slug>.md` before publishing. This file is a **historical reference only**.
+2. Publish the PRD as a GitHub issue. The GitHub issue is **always the source of truth** — edits, comments, and status updates happen there, not in the file copy.
+
 ## When a skill says "fetch the relevant ticket"
 
 Run `gh issue view <number> --comments`.
