@@ -117,7 +117,7 @@ def two_basin_user_demand_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2020, 4, 1),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
+        allocation=Allocation(dt=86400),
         experimental=Experimental(allocation=True),
     )
 
