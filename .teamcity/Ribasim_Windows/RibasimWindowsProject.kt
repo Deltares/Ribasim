@@ -9,6 +9,7 @@ import jetbrains.buildServer.configs.kotlin.triggers.vcs
 import jetbrains.buildServer.configs.kotlin.buildSteps.script
 import jetbrains.buildServer.configs.kotlin.buildSteps.PowerShellStep
 import jetbrains.buildServer.configs.kotlin.buildSteps.powerShell
+import jetbrains.buildServer.configs.kotlin.projectFeatures.activeStorage
 import Ribasim.vcsRoots.Ribasim as RibasimVcs
 
 object RibasimWindowsProject : Project({
@@ -24,6 +25,13 @@ object RibasimWindowsProject : Project({
     template(TestBinariesWindows)
     template(TestDelwaqCouplingWindows)
     template(GenerateCacheWindows)
+
+    features {
+        activeStorage {
+            id = "PROJECT_EXT_263"
+            activeStorageID = "DefaultStorage"
+        }
+    }
 })
 
 object Windows_Main : BuildType({
@@ -80,9 +88,6 @@ object Windows_BuildMsix : BuildType({
     templates(WindowsAgent, GithubCommitStatusIntegration)
     name = "Build MSIX Package"
 
-    // Disable this until signtool is updated so we can sign the MSIX
-    paused = true
-
     vcs {
         root(RibasimVcs, ". => ribasim")
         cleanCheckout = true
@@ -113,7 +118,7 @@ object Windows_BuildMsix : BuildType({
         }
     }
 
-    artifactRules = """ribasim\build\ribasim_windows.msix"""
+    artifactRules = "ribasim/build/ribasim_windows.msix => ribasim_windows.zip"
 
     dependencies {
         dependency(Windows_BuildRibasim) {
@@ -160,7 +165,6 @@ object Windows_TestDelwaqCoupling : BuildType({
     name = "Test Delwaq coupling"
 
     vcs {
-        root(RibasimVcs, ". => ribasim")
         cleanCheckout = true
     }
 

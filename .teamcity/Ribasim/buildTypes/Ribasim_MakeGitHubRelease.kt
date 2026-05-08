@@ -97,6 +97,17 @@ object Ribasim_MakeGitHubRelease : BuildType({
                 artifactRules = "ribasim_windows.zip"
             }
         }
+        dependency(AbsoluteId("SigningAndCertificates_Ribasim_SigningRibasimWsixRelease")) {
+            snapshot {
+                reuseBuilds = ReuseBuilds.NO
+                onDependencyFailure = FailureAction.FAIL_TO_START
+            }
+
+            artifacts {
+                id = "ARTIFACT_DEPENDENCY_158"
+                artifactRules = "ribasim_windows.msix"
+            }
+        }
         snapshot(Windows_TestRibasimBinaries) {
             reuseBuilds = ReuseBuilds.ANY
         }

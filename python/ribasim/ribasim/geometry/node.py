@@ -309,7 +309,7 @@ class NodeModel(ParentModel, ChildModel):
             return
         model = cast("Model", self._parent)
         node_df = model.node.filter(self.__class__.__name__)
-        if node_df is None or node_df.empty:
+        if node_df is None:
             return
 
         expected_ids: set[int] = set(node_df.index)
