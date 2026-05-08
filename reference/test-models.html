@@ -471,7 +471,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#transient_pump_outlet" id="toc-transient_pump_outlet" class="nav-link" data-scroll-target="#transient_pump_outlet"><span class="header-section-number">63</span> transient_pump_outlet</a></li>
   <li><a href="#trivial" id="toc-trivial" class="nav-link" data-scroll-target="#trivial"><span class="header-section-number">64</span> trivial</a></li>
   <li><a href="#two_basin" id="toc-two_basin" class="nav-link" data-scroll-target="#two_basin"><span class="header-section-number">65</span> two_basin</a></li>
-  <li><a href="#user_demand" id="toc-user_demand" class="nav-link" data-scroll-target="#user_demand"><span class="header-section-number">66</span> user_demand</a></li>
+  <li><a href="#two_basin_user_demand" id="toc-two_basin_user_demand" class="nav-link" data-scroll-target="#two_basin_user_demand"><span class="header-section-number">66</span> two_basin_user_demand</a></li>
+  <li><a href="#user_demand" id="toc-user_demand" class="nav-link" data-scroll-target="#user_demand"><span class="header-section-number">67</span> user_demand</a></li>
   </ul>
 </nav>
     </div>
@@ -805,9 +806,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>The left basin receives water. In case of a coupled run, the water infiltrates in the left basin, and exfiltrates in the right basin. The right basin fills up and discharges over the rating curve.</p>
 <p><img src="test-models_files/figure-html/cell-2-output-184.png" width="578" height="167"></p>
 </section>
-<section id="user_demand" class="level1" data-number="66">
-<h1 data-number="66"><span class="header-section-number">66</span> user_demand</h1>
-<p>Create a UserDemand test model with static and dynamic UserDemand on the same basin. <img src="test-models_files/figure-html/cell-2-output-187.png" width="578" height="245"></p>
+<section id="two_basin_user_demand" class="level1" data-number="66">
+<h1 data-number="66"><span class="header-section-number">66</span> two_basin_user_demand</h1>
+<p>Two Basins supplying a single UserDemand, exercising multi-inflow with route priority.</p>
+<p>Topology (issues #2725/#2776): FlowBoundary 1 (1 → 0 over time) → Basin 3 (route_priority=1, preferred) ─┐ ├─→ UserDemand 5 → Terminal 6 FlowBoundary 2 (constant 2) → Basin 4 (route_priority=2) ─┤ └─→ Outlet 7 → Terminal 8 LevelDemand 9 ─→ Basin 4 (target level 1 m)</p>
+<p>With allocation on, the UserDemand (demand = 2) initially draws 1 from each basin. As FlowBoundary 1’s supply decays toward zero, Basin 3 can no longer keep up; the LP shifts the deficit onto Basin 4 (the higher-priority-number fallback) so total UD inflow stays at 2. The allocation-controlled outlet from Basin 4 plus a LevelDemand hold Basin 4’s level at 1 m, letting the excess supply from FlowBoundary 2 drain to Terminal 8 when the UD does not need it.</p>
+<p><img src="test-models_files/figure-html/cell-2-output-187.png" width="479" height="315"></p>
+</section>
+<section id="user_demand" class="level1" data-number="67">
+<h1 data-number="67"><span class="header-section-number">67</span> user_demand</h1>
+<p>Create a UserDemand test model with static and dynamic UserDemand on the same basin. <img src="test-models_files/figure-html/cell-2-output-190.png" width="578" height="245"></p>
 
 
 </section>
