@@ -190,7 +190,7 @@ def minimal_subnetwork_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
+        allocation=Allocation(),
         experimental=Experimental(concentration=True, allocation=True),
     )
 
@@ -247,7 +247,7 @@ def allocation_example_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2020, 1, 20),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
+        allocation=Allocation(),
         experimental=Experimental(concentration=True, allocation=True),
     )
 
@@ -309,7 +309,7 @@ def small_primary_secondary_network_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2020, 1, 20),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
+        allocation=Allocation(),
         experimental=Experimental(concentration=True, allocation=True),
     )
 
@@ -368,7 +368,7 @@ def medium_primary_secondary_network_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2020, 1, 20),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
+        allocation=Allocation(),
         experimental=Experimental(allocation=True),
     )
 
@@ -560,7 +560,7 @@ def small_primary_secondary_network_verification_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2020, 1, 20),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
+        allocation=Allocation(),
         experimental=Experimental(concentration=True, allocation=True),
     )
 
@@ -619,7 +619,7 @@ def level_demand_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2020, 2, 1),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
+        allocation=Allocation(),
         experimental=Experimental(concentration=True, allocation=True),
     )
     model.flow_boundary.add(
@@ -680,7 +680,7 @@ def flow_demand_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=1e5),
+        allocation=Allocation(),
         experimental=Experimental(concentration=True, allocation=True),
     )
 
@@ -1176,39 +1176,6 @@ def multi_level_demand_model() -> Model:
     model.link.add(b, ud)
     model.link.add(ud, b)
     model.link.add(ld, b)
-
-    return model
-
-
-def invalid_infeasible_model() -> Model:
-    """Set up a minimal model which uses a linear_resistance node."""
-    model = Model(
-        starttime=datetime(2020, 1, 1),
-        endtime=datetime(2020, 2, 1),
-        crs="EPSG:28992",
-        experimental=Experimental(allocation=True),
-    )
-
-    model.basin.add(
-        Node(1, Point(0, 0), subnetwork_id=1),
-        [basin.Profile(area=100.0, level=[0.0, 10.0]), basin.State(level=[10.0])],
-    )
-    model.linear_resistance.add(
-        Node(2, Point(1, 0), subnetwork_id=1),
-        [linear_resistance.Static(resistance=[5e3], max_flow_rate=[6e-5])],
-    )
-    model.level_boundary.add(
-        Node(3, Point(2, 0), subnetwork_id=1), [level_boundary.Static(level=[11.0])]
-    )
-
-    model.link.add(
-        model.basin[1],
-        model.linear_resistance[2],
-    )
-    model.link.add(
-        model.linear_resistance[2],
-        model.level_boundary[3],
-    )
 
     return model
 
@@ -1728,6 +1695,47 @@ def level_demand_with_rating_curve_model() -> Model:
     return model
 
 
+def basin_overflow_model() -> Model:
+    """Test model for basin overflow handling in allocation."""
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+
+    # Small basin: area=1000 m², levels 0-1 m (max storage ~1000 m³)
+    basin_data = [
+        basin.Profile(area=1000.0, level=[0.0, 1.0]),
+        basin.State(level=[0.5]),
+    ]
+
+    # High constant inflow: 0.1 m³/s will fill 1000 m³ basin in ~2.8 hours,
+    # forcing overflow within a day
+    model.flow_boundary.add(
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [flow_boundary.Static(flow_rate=[0.1])],
+    )
+
+    model.basin.add(Node(2, Point(1, 0), subnetwork_id=2), basin_data)
+
+    # Small demand to allow outflow
+    model.user_demand.add(
+        Node(3, Point(2, 0), subnetwork_id=2),
+        [
+            user_demand.Static(
+                demand=[0.01], return_factor=0.0, min_level=0.0, demand_priority=1
+            )
+        ],
+    )
+
+    model.link.add(model.flow_boundary[1], model.basin[2])
+    model.link.add(model.basin[2], model.user_demand[3])
+    model.link.add(model.user_demand[3], model.basin[2])
+
+    return model
+
+
 def outlet_allocation_discrete_control_model() -> Model:
     """LevelBoundary supplies water via an allocation-controlled Outlet to a Basin with a LevelDemand.
 
@@ -1745,7 +1753,7 @@ def outlet_allocation_discrete_control_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=86400),
+        allocation=Allocation(),
         experimental=Experimental(allocation=True),
     )
 

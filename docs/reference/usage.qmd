@@ -4,6 +4,7 @@ filters:
   - include-code-files
 ---
 
+
 # Configuration file
 
 Ribasim has a single configuration file, which is written in the [TOML](https://toml.io/)
@@ -77,7 +78,9 @@ There are the following interpolation settings:
 ## Allocation settings {#sec-allocation-settings}
 There are the following allocation settings:
 
-- `timestep`: A float value in seconds which dictates the update interval for allocations;
+- `dt`: A float value in seconds which sets a fixed update interval for allocation. If not provided (the default), adaptive timestepping is used, where the interval is determined automatically based on linearization error bounds (see [Adaptive timestepping](/concept/allocation.qmd#sec-adaptive-timestepping));
+- `dtmin`: The minimum allocation timestep in seconds when using adaptive timestepping (default: 3600.0);
+- `reltol_linearization`: Relative tolerance for linearization errors of basin profiles and connector node Q(h) relationships when using adaptive timestepping (default: 0.01);
 - `route_priority`: An integer per source type for the allocation algorithm. The prioritisable sources are: `basin`, `level_boundary`, `linear_resistance`, `manning_resistance`, `tabulated_rating_curve`, `outlet` and `pump`.
   - If you wish to set the route priority for specific nodes rather than a fallback per node type, these can be set in the [Node table](#sec-node).
   - By default, all nodes of the same type have the same route priority. To obtain a strict source ordering, the sources are sorted by node ID for each route priority within a subnetwork.
