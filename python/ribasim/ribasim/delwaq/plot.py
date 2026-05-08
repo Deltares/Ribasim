@@ -48,6 +48,9 @@ def plot_fraction(
             "LevelBoundary",
             "Precipitation",
         ]
+        ordered = tracers
+    else:
+        ordered = _sort_tracers(tracers)
     ds_basin = xr.open_dataset(model.results_path / "concentration.nc")
     table = ds_basin.to_dataframe().reset_index()
     table = table[table["node_id"] == node_id]
@@ -58,7 +61,7 @@ def plot_fraction(
     groups = table.groupby("substance")
     stack = {
         k: groups.get_group(k)["concentration"].to_numpy()
-        for k in _sort_tracers(tracers)
+        for k in ordered
         if k in groups.groups
     }
 
