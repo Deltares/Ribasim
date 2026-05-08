@@ -5,6 +5,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [v2026.1.1] - 2026-05-09
+
+This release makes allocation use adaptive timestepping by default, just like the physical layer.
+That means users run into infeasible optimization problems less.
+We also added support for multiple inflow links for UserDemand, so it can tap directly from multiple sources.
+Besides that the Python package saw some performance improvements, and we squashed several bugs.
+
+### Added
+- Support multiple inflow links for UserDemand. [#3035](https://github.com/Deltares/Ribasim/pull/3035)
+- Adaptive timestepping for allocation. [#3026](https://github.com/Deltares/Ribasim/pull/3026)
+- Add numerical documentation. [#2994](https://github.com/Deltares/Ribasim/pull/2994)
+
+### Changed
+- Improve order of tracers in plot/legend. [#3052](https://github.com/Deltares/Ribasim/pull/3052)
+- Python: Speed up validation. [#3036](https://github.com/Deltares/Ribasim/pull/3036)
+- Python: Speed up `add` API. [#3015](https://github.com/Deltares/Ribasim/pull/3015)
+- Delwaq: Change system timer and verbosity control. [#3032](https://github.com/Deltares/Ribasim/pull/3032)
+- `run_delwaq`: show stdout like `run_ribasim`. [#3027](https://github.com/Deltares/Ribasim/pull/3027)
+
+### Fixed
+- Fix allocation infeasibility reporting for some constraints. [#3078](https://github.com/Deltares/Ribasim/pull/3078)
+- QGIS: More robust run cancellation. [#3077](https://github.com/Deltares/Ribasim/pull/3077)
+- Delwaq: Remove boundary-boundary connections. [#3063](https://github.com/Deltares/Ribasim/pull/3063)
+- Fix `starttime < endtime` validation. [#3059](https://github.com/Deltares/Ribasim/pull/3059)
+- Fix wrongly reported intra-Junction flows. [#3054](https://github.com/Deltares/Ribasim/pull/3054)
+- Fix allocation bug with allocation-controlled and flow demand node IDs. [#3044](https://github.com/Deltares/Ribasim/pull/3044)
+- Filter missing data out of NetCDF. [#3033](https://github.com/Deltares/Ribasim/pull/3033)
+
+
+
 ## [v2026.1.0] - 2026-03-31
 
 This stable release fixes several issues found during testing of rc2.
