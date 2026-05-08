@@ -1,15 +1,44 @@
+from itertools import cycle
+
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+DEFAULT_TRACER_COLORS = {"Initial": "darkgray"}
+
+
+def _sort_tracers(tracers):
+    stracers = sorted(tracers)
+    if "Initial" in stracers:
+        stracers.insert(0, stracers.pop(stracers.index("Initial")))
+    return stracers
 
 
 def plot_fraction(
     model,
     node_id,
     tracers=None,
+    colors=DEFAULT_TRACER_COLORS,
     ax=None,
 ):
+    """Plot the fraction of different tracers at a given basin node over time.
+
+    Args:
+        model (Model): The Ribasim model
+        node_id (int): The ID of the basin node
+        tracers (list, optional): List of tracers to plot. Defaults to None.
+        colors (dict, optional): Dictionary of colors for each tracer. Defaults to DEFAULT_COLORS.
+        ax (matplotlib.axes.Axes, optional): Axes object to plot on. Defaults to None.
+
+    Raises
+    ------
+        ValueError: If no data is found for the specified node and tracers
+
+    Returns
+    -------
+        matplotlib.axes.Axes: The Axes object with the plot
+    """
     if tracers is None:
         tracers = [
             "Initial",
@@ -19,6 +48,9 @@ def plot_fraction(
             "LevelBoundary",
             "Precipitation",
         ]
+        ordered = tracers
+    else:
+        ordered = _sort_tracers(tracers)
     ds_basin = xr.open_dataset(model.results_path / "concentration.nc")
     table = ds_basin.to_dataframe().reset_index()
     table = table[table["node_id"] == node_id]
@@ -29,7 +61,7 @@ def plot_fraction(
     groups = table.groupby("substance")
     stack = {
         k: groups.get_group(k)["concentration"].to_numpy()
-        for k in tracers
+        for k in ordered
         if k in groups.groups
     }
 
@@ -37,10 +69,14 @@ def plot_fraction(
         _, ax = plt.subplots()
     key = next(iter(stack))
     time = groups.get_group(key)["time"]
+
+    prop_cycle = plt.rcParams["axes.prop_cycle"]
+    color_iters = cycle(prop_cycle.by_key()["color"])
     ax.stackplot(
         time,
         stack.values(),  # pyrefly: ignore[bad-argument-type]
         labels=stack.keys(),
+        colors=[colors.get(k, next(color_iters)) for k in stack],
     )
     ax.plot(
         time,
@@ -48,7 +84,8 @@ def plot_fraction(
         c="black",
         lw=2,
     )
-    ax.legend()
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(handles[::-1], labels[::-1])
     ax.set_title(f"Fraction plot for node {node_id}")
     ax.set_xlabel("Time")
     ax.set_ylabel("Fraction")
