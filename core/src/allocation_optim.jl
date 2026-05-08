@@ -897,7 +897,7 @@ end
 function get_supplied_volume(
         node::UserDemand,
         node_id::NodeID,
-        cumulative_supplied_volume::Dict,
+        cumulative_supplied_volume::AbstractDict,
     )::Float64
     return sum(
         cumulative_supplied_volume[link_meta.link] for link_meta in node.inflow_links[node_id.idx]
@@ -907,7 +907,7 @@ end
 function get_supplied_volume(
         node,
         node_id::NodeID,
-        cumulative_supplied_volume::Dict,
+        cumulative_supplied_volume::AbstractDict,
     )::Float64
     return cumulative_supplied_volume[node.inflow_link[node_id.idx].link]
 end
