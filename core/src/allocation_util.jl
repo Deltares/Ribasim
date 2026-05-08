@@ -238,7 +238,8 @@ function analyze_scaling(
     # Parse small matrix coefficients for modeller readable logging
     if !isempty(data_numerical.matrix_small)
         for data in data_numerical.matrix_small
-            constraint_name = JuMP.name(constraint_ref_from_index(problem, data.ref))
+            constraint_ref = constraint_ref_from_index(problem, data.ref)
+            constraint_name = isnothing(constraint_ref) ? nothing : JuMP.name(constraint_ref)
             variable = variable_ref_from_index(problem, data.variable)
             @error "Too small coefficient found" constraint_name variable data.coefficient
         end
@@ -247,7 +248,8 @@ function analyze_scaling(
     # Parse large matrix coefficients for modeller readable logging
     if !isempty(data_numerical.matrix_large)
         for data in data_numerical.matrix_large
-            constraint_name = JuMP.name(constraint_ref_from_index(problem, data.ref))
+            constraint_ref = constraint_ref_from_index(problem, data.ref)
+            constraint_name = isnothing(constraint_ref) ? nothing : JuMP.name(constraint_ref)
             variable = variable_ref_from_index(problem, data.variable)
             @error "Too large coefficient found" constraint_name variable data.coefficient
         end
