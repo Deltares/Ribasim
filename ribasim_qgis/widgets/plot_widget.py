@@ -902,8 +902,11 @@ class PlotWidget(QWidget):
             )
             selected = sorted(defaults)
         # Enforce _DEFAULT_TRACERS ordering; unknown substances go last (sorted).
+        # Initial always comes last so it ends up at the bottom of the stack.
         order = {name: i for i, name in enumerate(_DEFAULT_TRACERS)}
         selected.sort(key=lambda s: (order.get(s, len(_DEFAULT_TRACERS)), s))
+        if "Initial" in selected:
+            selected.append(selected.pop(selected.index("Initial")))
         return selected
 
     def _redraw_fractional_storage(
