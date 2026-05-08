@@ -375,9 +375,8 @@ function formulate_flow!(
             )
         end
 
-        # When allocation disabled,
-        # fall back to an equal split of the total demand. Each link then applies
-        # its own source basin reduction factors
+        # With allocation disabled, fall back to an equal split of the total demand.
+        # Each link then applies its own source basin reduction factors.
         link_alloc = user_demand.inflow_link_allocated[node_idx]
         n_links = length(inflow_links)
         equal_split = n_links == 0 ? 0.0 : q_total_demand / n_links

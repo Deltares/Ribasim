@@ -225,7 +225,6 @@ function update_J_inner!(
         col_reduced::Int,
         node::AbstractParameterNode;
         do_inflow::Bool = true,
-        do_outflow::Bool = true,
     )::Nothing
     if do_inflow
         inflow_id = node.inflow_link[node_id.idx].link[1]
@@ -234,11 +233,9 @@ function update_J_inner!(
         end
     end
 
-    if do_outflow
-        outflow_id = node.outflow_link[node_id.idx].link[2]
-        if outflow_id.type == NodeType.Basin
-            J_inner[outflow_id.idx, col_reduced] += val
-        end
+    outflow_id = node.outflow_link[node_id.idx].link[2]
+    if outflow_id.type == NodeType.Basin
+        J_inner[outflow_id.idx, col_reduced] += val
     end
     return nothing
 end
