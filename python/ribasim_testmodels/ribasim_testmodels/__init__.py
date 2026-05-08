@@ -29,6 +29,7 @@ from ribasim_testmodels.allocation import (
     small_primary_secondary_network_model,
     small_primary_secondary_network_verification_model,
     switch_allocation_control_model,
+    two_basin_user_demand_model,
     user_demand_model,
 )
 from ribasim_testmodels.backwater import backwater_model
@@ -165,6 +166,7 @@ __all__ = [
     "transient_pump_outlet_model",
     "trivial_model",
     "two_basin_model",
+    "two_basin_user_demand_model",
     "user_demand_model",
 ]
 

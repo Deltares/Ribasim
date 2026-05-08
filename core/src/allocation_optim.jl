@@ -401,15 +401,15 @@ function set_simulation_data!(
     constraints = problem[:user_demand_return_flow]
     flow = problem[:flow]
 
-    # Set the return factor for the end of the time step
+    # Set the return factor for the end of the time step.
+    # The return-flow constraint is: return_flow  = return_factor * Σ inflow
     for node_id in only(constraints.axes)
         constraint = constraints[node_id]
-        outflow = flow[user_demand.inflow_link[node_id.idx].link]
-        JuMP.set_normalized_coefficient(
-            constraint,
-            outflow,
-            -user_demand.return_factor[node_id.idx](t + Δt_allocation),
-        )
+        return_factor = user_demand.return_factor[node_id.idx](t + Δt_allocation)
+        for inflow_link_metadata in user_demand.inflow_links[node_id.idx]
+            inflow = flow[inflow_link_metadata.link]
+            JuMP.set_normalized_coefficient(constraint, inflow, -return_factor)
+        end
     end
     return nothing
 end
@@ -766,10 +766,11 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     flow = problem[:flow]
     storage_change = problem[:basin_storage_change]
     du = get_du(integrator)
+    (; link_to_state_idx) = p.p_independent
 
     # Extrapolate the current instantaneous flow rates from the physical layer
     for link in only(flow.axes)
-        state_index = get_state_index(getaxes(du), link)
+        state_index = get_state_index(getaxes(du), link_to_state_idx, link)
         if !isnothing(state_index)
             JuMP.set_start_value(flow[link], du[state_index] / scaling.flow)
         end
@@ -893,6 +894,24 @@ function parse_allocations!(
     return nothing
 end
 
+function get_supplied_volume(
+        node::UserDemand,
+        node_id::NodeID,
+        cumulative_supplied_volume::AbstractDict,
+    )::Float64
+    return sum(
+        cumulative_supplied_volume[link_meta.link] for link_meta in node.inflow_links[node_id.idx]
+    )
+end
+
+function get_supplied_volume(
+        node,
+        node_id::NodeID,
+        cumulative_supplied_volume::AbstractDict,
+    )::Float64
+    return cumulative_supplied_volume[node.inflow_link[node_id.idx].link]
+end
+
 function parse_allocations!(
         integrator::DEIntegrator,
         node::Union{UserDemand, FlowDemand},
@@ -910,8 +929,23 @@ function parse_allocations!(
     ) = allocation_model
     (; allocation) = p_independent
     (; record_demand, demand_priorities_all) = allocation
-    (; demand, has_demand_priority, inflow_link) = node
+    (; demand, has_demand_priority) = node
     is_user_demand = (node isa UserDemand)
+
+    flow = allocation_model.problem[:flow]
+
+    # Store the flow rate (m³/s) per inflow link of the UserDemand so the physics can split
+    # the inflow across source basins exactly as the allocation decided
+    if is_user_demand
+        for node_id in node_ids_subnetwork
+            inflow_links = node.inflow_links[node_id.idx]
+            isempty(inflow_links) && continue
+            link_alloc = node.inflow_link_allocated[node_id.idx]
+            for (i, link_metadata) in enumerate(inflow_links)
+                link_alloc[i] = max(0.0, JuMP.value(flow[link_metadata.link]) * scaling.flow)
+            end
+        end
+    end
 
     # Use Δt_since_last_record (which equals Δt_allocation when the LP runs once
     # per saveat, or the sum of multiple sub-saveat steps when adaptive timestepping
@@ -938,7 +972,7 @@ function parse_allocations!(
                     demand[demand_id.idx, demand_priority_idx],
                     allocated_flow,
                     # NOTE: The supplied amount lags one allocation period behind
-                    cumulative_supplied_volume[inflow_link[demand_id.idx].link] /
+                    get_supplied_volume(node, demand_id, cumulative_supplied_volume) /
                         Δt_record,
                 ),
             )

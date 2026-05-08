@@ -354,7 +354,7 @@ function get_flow(
         link::Tuple{NodeID, NodeID};
         boundary_flow = nothing,
     )
-    (; flow_boundary, state_ranges) = p_independent
+    (; flow_boundary, state_ranges, link_to_state_idx) = p_independent
     from_id = link[1]
     return if from_id.type == NodeType.FlowBoundary
         if boundary_flow === nothing
@@ -363,7 +363,7 @@ function get_flow(
             boundary_flow[from_id.idx]
         end
     else
-        flow[get_state_index(state_ranges, link)]
+        flow[get_state_index(state_ranges, link_to_state_idx, link)]
     end
 end
 
@@ -383,4 +383,8 @@ function get_convergence(
     elseif isnothing(b)
         convergence[a]
     end
+end
+
+function get_inflow_links(graph::MetaGraph, id::NodeID)::Vector{LinkMetadata}
+    return [graph[src, id] for src in inflow_ids(graph, id)]
 end

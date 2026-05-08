@@ -359,7 +359,7 @@ function flow_update_on_link(
         link_src::Tuple{NodeID, NodeID},
     )::Float64
     (; u, uprev, p, t, tprev) = integrator
-    (; flow_boundary, state_ranges) = p.p_independent
+    (; flow_boundary, state_ranges, link_to_state_idx) = p.p_independent
 
     from_id, to_id = link_src
     return if from_id == to_id
@@ -369,7 +369,7 @@ function flow_update_on_link(
     elseif from_id.type == NodeType.FlowBoundary
         integral(flow_boundary.flow_rate[from_id.idx], tprev, t)
     else
-        flow_idx = get_state_index(state_ranges, link_src)
+        flow_idx = get_state_index(state_ranges, link_to_state_idx, link_src)
         u[flow_idx] - uprev[flow_idx]
     end
 end
