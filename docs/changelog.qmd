@@ -33,8 +33,6 @@ Besides that the Python package saw some performance improvements, and we squash
 - Fix allocation bug with allocation-controlled and flow demand node IDs. [#3044](https://github.com/Deltares/Ribasim/pull/3044)
 - Filter missing data out of NetCDF. [#3033](https://github.com/Deltares/Ribasim/pull/3033)
 
-
-
 ## [v2026.1.0] - 2026-03-31
 
 This stable release fixes several issues found during testing of rc2.
