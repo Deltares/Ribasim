@@ -131,6 +131,9 @@ function create_graph(db::DB, config::Config)::MetaGraph
         internal_flow_links,
         external_flow_links,
         flow_link_map,
+        flow_link_lookup = Dict{Tuple{NodeID, NodeID}, Int}(
+            link_meta.link => i for (i, link_meta) in enumerate(internal_flow_links)
+        ),
     )
     @reset graph.graph_data = graph_data
 
@@ -342,19 +345,18 @@ function inflow_id(graph::MetaGraph, id::NodeID)::NodeID
 end
 
 """
-Get the specific q from the input vector `flow` which has the same components as
-the state vector, given an link (inflow_id, outflow_id).
-`flow` can be either instantaneous or integrated/averaged. Instantaneous FlowBoundary flows can be obtained
-from the parameters, but integrated/averaged FlowBoundary flows must be provided via `boundary_flow`.
+Get the flow rate for a given link.
+For internal flow links, looks up in the flow vector by link index.
+For flow boundaries, returns the interpolated boundary flow rate.
 """
 function get_flow(
-        flow::CVector,
+        flow::Vector{Float64},
         p_independent::ParametersIndependent,
         t::Number,
         link::Tuple{NodeID, NodeID};
         boundary_flow = nothing,
     )
-    (; flow_boundary, state_ranges, link_to_state_idx) = p_independent
+    (; flow_boundary, graph) = p_independent
     from_id = link[1]
     return if from_id.type == NodeType.FlowBoundary
         if boundary_flow === nothing
@@ -363,25 +365,9 @@ function get_flow(
             boundary_flow[from_id.idx]
         end
     else
-        flow[get_state_index(state_ranges, link_to_state_idx, link)]
-    end
-end
-
-"""
-Like `get_flow` and `get_state_index`, but for convergence, so without the boundary flow.
-"""
-function get_convergence(
-        convergence::CVector,
-        link::Tuple{NodeID, NodeID},
-    )::Union{Missing, Float64}
-    a = get_state_index(getaxes(convergence), link[1]; inflow = false)
-    b = get_state_index(getaxes(convergence), link[2])
-    return if isnothing(a) && isnothing(b)
-        missing
-    elseif isnothing(a)
-        convergence[b]
-    elseif isnothing(b)
-        convergence[a]
+        internal_flow_links = graph[].internal_flow_links
+        link_idx = get_link_index(link, internal_flow_links)
+        isnothing(link_idx) ? 0.0 : flow[link_idx]
     end
 end
 

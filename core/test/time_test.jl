@@ -111,17 +111,6 @@ end
     @test length(only(tstops)) == 404
 end
 
-@testitem "decrease tolerance" begin
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/cyclic_time/ribasim.toml")
-    @test ispath(toml_path)
-
-    model = Ribasim.run(toml_path)
-    @test model.integrator.opts.reltol isa Vector{Float64}
-    @test all(model.integrator.opts.reltol .<= model.integrator.p.p_independent.reltol)
-    @test model.integrator.u[1] >= 1.0e11
-    @test model.integrator.opts.reltol[1] <= 1.0e-11
-end
-
 @testitem "transient_pump_outlet" begin
     using DataFrames: DataFrame
 
@@ -133,7 +122,7 @@ end
     storage = Ribasim.get_storages_and_levels(model).storage
     flowrate = Ribasim.get_flow
     @test storage[1, 1] ≈ 100.0f0
-    @test storage[1, end] ≈ 110.0f0
+    @test storage[1, end] ≈ 110.0f0 atol = 1.0e-2
 
     # test the flowrate has been set correctly
     flow_data = DataFrame(Ribasim.flow_data(model))

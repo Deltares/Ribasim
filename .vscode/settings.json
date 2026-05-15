@@ -69,6 +69,7 @@
         ".pixi"
     ],
     "julia.lint.run": true,
+    "julia.NumThreads": "1",
     "julia.numTestProcesses": 6,
     "notebook.codeActionsOnSave": {
         "notebook.source.fixAll": "explicit",

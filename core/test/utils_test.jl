@@ -294,7 +294,6 @@ end
 
 @testitem "Solver algorithm" begin
     using LinearSolve: KLUFactorization
-    using OrdinaryDiffEqNonlinearSolve: NLNewton
     using OrdinaryDiffEqBDF: QNDF
 
     model =
@@ -303,7 +302,7 @@ end
 
     @test alg isa QNDF
     @test alg.step_limiter! == Ribasim.limit_flow!
-    @test alg.nlsolve == NLNewton()
+    @test alg.nlsolve.relax isa Ribasim.BackTracking
     @test alg.linsolve ==
         Ribasim.config.RibasimLinearSolve(KLUFactorization(; check_pattern = false))
 end
