@@ -169,7 +169,7 @@ function simplify_graph!(
                 out_neighbor in collect(outneighbor_labels(graph, junction_id))
 
             link_id = graph[in_neighbor, junction_id].id
-            external_link_ids = get(link_mapping, link_id, [link_id])
+            external_link_ids = copy(get(link_mapping, link_id, [link_id]))
 
             link_id = graph[junction_id, out_neighbor].id
             append!(external_link_ids, get(link_mapping, link_id, [link_id]))
@@ -369,4 +369,8 @@ function get_flow(
         link_idx = get_link_index(link, internal_flow_links)
         isnothing(link_idx) ? 0.0 : flow[link_idx]
     end
+end
+
+function get_inflow_links(graph::MetaGraph, id::NodeID)::Vector{LinkMetadata}
+    return [graph[src, id] for src in inflow_ids(graph, id)]
 end

@@ -192,7 +192,7 @@ def invalid_priorities_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2021, 1, 1),
         crs="EPSG:28992",
-        allocation=Allocation(timestep=1e5),
+        allocation=Allocation(),
         experimental=Experimental(allocation=True),
         use_validation=False,
     )

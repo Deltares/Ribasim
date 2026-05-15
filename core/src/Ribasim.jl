@@ -14,7 +14,7 @@ For more granular access, see:
 """
 module Ribasim
 
-const RIBASIM_VERSION = "2026.1.0"
+const RIBASIM_VERSION = "2026.1.1"
 
 using PrecompileTools: @setup_workload, @compile_workload
 
@@ -26,7 +26,8 @@ using DifferentiationInterface:
     prepare_jacobian,
     jacobian!,
     prepare_derivative,
-    derivative!
+    derivative!,
+    second_derivative
 
 using ForwardDiff: derivative as forward_diff
 
@@ -35,6 +36,7 @@ using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
 using DiffEqBase: DiffEqBase, calculate_residuals!
 using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
 import ADTypes
+using ADTypes: AutoForwardDiff
 import ForwardDiff
 import NaNMath
 

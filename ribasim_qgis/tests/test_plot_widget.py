@@ -390,6 +390,59 @@ def test_plot_widget_combined_menu_has_presets_and_file_submenus():
     assert flow_labels == {"q"}
 
 
+# --- _selected_tracers ordering ---
+
+_ST = PlotWidget()._selected_tracers
+
+
+def test_selected_tracers_default_order():
+    all_defaults = {
+        "Precipitation",
+        "LevelBoundary",
+        "FlowBoundary",
+        "SurfaceRunoff",
+        "Drainage",
+        "Initial",
+    }
+    assert _ST([], all_defaults) == [
+        "Precipitation",
+        "LevelBoundary",
+        "FlowBoundary",
+        "SurfaceRunoff",
+        "Drainage",
+        "Initial",
+    ]
+
+
+def test_selected_tracers_initial_last_among_defaults():
+    assert _ST([], {"Precipitation", "LevelBoundary", "Initial"}) == [
+        "Precipitation",
+        "LevelBoundary",
+        "Initial",
+    ]
+
+
+def test_selected_tracers_user_selected_initial_last():
+    keys = [
+        ("concentration", "Initial"),
+        ("concentration", "FlowBoundary"),
+        ("concentration", "Custom"),
+    ]
+    assert _ST(keys, {"Initial", "FlowBoundary", "Custom"}) == [
+        "FlowBoundary",
+        "Custom",
+        "Initial",
+    ]
+
+
+def test_selected_tracers_only_custom_sorted():
+    assert _ST([], {"Zebra", "Alpha", "Mango"}) == ["Alpha", "Mango", "Zebra"]
+
+
+def test_selected_tracers_no_initial():
+    assert _ST([], {"Precipitation", "Drainage"}) == ["Precipitation", "Drainage"]
+
+
 def test_plot_widget_fractional_storage_preset_plots_default_tracers(monkeypatch):
     captured_figures = []
 

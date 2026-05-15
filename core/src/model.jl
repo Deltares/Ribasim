@@ -25,14 +25,13 @@ struct Model
 end
 
 function Model(config_path::AbstractString)::Model
-    config = Config(config_path)
-    if !valid_config(config)
-        error("Invalid configuration in TOML.")
-    end
-    return Model(config)
+    return Model(Config(config_path))
 end
 
 function Model(config::Config)::Model
+    if !valid_config(config)
+        error("Invalid configuration in TOML.")
+    end
     mkpath(results_path(config))
     check_result_netcdf_files_writable!(config)
     db_path = database_path(config)
@@ -218,12 +217,73 @@ function step!(model::Model, dt::Float64)::Model
     # If we are at an allocation time, run allocation before the next physical
     # layer timestep. This allows allocation over period (t, t + dt) to use variables
     # set over BMI at time t before calling this function.
-    ntimes = t / config.allocation.timestep
+    ntimes = t / something(config.allocation.dt, 86400.0)
     if round(ntimes) ≈ ntimes
         update_allocation!(model)
     end
     SciMLBase.step!(integrator, dt, true)
     return model
+end
+
+"""
+Compute adaptive Δt for all allocation models based on linearization error bounds,
+set each model's Δt_allocation, clamp to saveat/tspan boundaries, and return (Δt, on_saveat).
+"""
+function compute_and_set_adaptive_Δt!(model, saveat, tspan_end)::Float64
+    (; config, integrator) = model
+    (; u, p, t) = integrator
+    (; p_independent) = p
+    (; allocation) = p_independent
+    du = get_du(integrator)
+
+    water_balance!(du, u, p, t)
+
+    Δt = Inf
+    for am in allocation.allocation_models
+        Δt_sub = compute_adaptive_Δt(am, p, du, t, config.allocation)
+        am.Δt_allocation = Δt_sub
+        Δt = min(Δt, Δt_sub)
+    end
+
+    Δt = min(Δt, time_to_next_saveat(t, saveat, tspan_end))
+    Δt = min(Δt, tspan_end - t)
+
+    # Clamp each model's Δt_allocation to the global bound so it is never Inf
+    for am in allocation.allocation_models
+        am.Δt_allocation = min(am.Δt_allocation, Δt)
+    end
+
+    return Δt
+end
+
+"""
+Step through the simulation with allocation, using either adaptive or fixed timesteps.
+"""
+function solve_with_allocation!(model::Model)::Nothing
+    (; config, integrator) = model
+    (; tspan::Tuple{Float64, Float64}) = integrator.sol.prob
+
+    if config.allocation.dt === nothing
+        saveat = config.solver.saveat
+        while integrator.t < tspan[end] - eps(tspan[end])
+            Δt = compute_and_set_adaptive_Δt!(model, saveat, tspan[end])
+            update_allocation!(model, Δt; record = is_saveat_time(integrator.t, saveat, tspan[end]))
+            SciMLBase.step!(integrator, Δt, true)
+        end
+    else
+        dt_alloc = config.allocation.dt
+        n_allocation_times = floor(Int, tspan[end] / dt_alloc)
+        for _ in 1:n_allocation_times
+            update_allocation!(model)
+            SciMLBase.step!(integrator, dt_alloc, true)
+        end
+        dt = tspan[end] - integrator.t
+        if dt > 0
+            update_allocation!(model)
+            SciMLBase.step!(integrator, dt, true)
+        end
+    end
+    return nothing
 end
 
 """
@@ -233,21 +293,9 @@ Solve a Model until the configured `endtime`.
 """
 function solve!(model::Model)::Model
     (; config, integrator) = model
-    (; tspan::Tuple{Float64, Float64}) = integrator.sol.prob
 
     comptime_s = @elapsed if config.experimental.allocation
-        (; timestep) = config.allocation
-        n_allocation_times = floor(Int, tspan[end] / timestep)
-        for _ in 1:n_allocation_times
-            update_allocation!(model)
-            SciMLBase.step!(integrator, timestep, true)
-        end
-        # Any possible remaining step (< allocation.timestep) after the last allocation
-        dt = tspan[end] - integrator.t
-        if dt > 0
-            update_allocation!(model)
-            SciMLBase.step!(integrator, dt, true)
-        end
+        solve_with_allocation!(model)
     else
         SciMLBase.solve!(integrator)
     end

@@ -103,7 +103,7 @@ function add_conservation!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
     )::Nothing
-    (; problem, subnetwork_id, Δt_allocation, scaling, node_ids_in_subnetwork) =
+    (; problem, subnetwork_id, scaling, node_ids_in_subnetwork) =
         allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
 
@@ -142,14 +142,14 @@ function add_conservation!(
                 init = 0,
             ) for basin_id in basin_ids_subnetwork
     )
-    f_pos = 1.0 # Example positive forcing (scaling.flow * m^3/s, to be filled in before optimizing)
-    f_neg = 1.0 # Example negative forcing (scaling.flow * m^3/s, to be filled in before optimizing)
+    f_pos = 1.0 # Placeholder positive forcing (set in set_simulation_data!)
+    f_neg = 1.0 # Placeholder negative forcing (set in set_simulation_data!)
+
     problem[:volume_conservation] = JuMP.@constraint(
         problem,
         [node_id = basin_ids_subnetwork],
         storage_change[node_id] ==
-            Δt_allocation *
-            (scaling.flow / scaling.storage) *
+            scaling.flow / scaling.storage *
             (
             f_pos - f_neg * low_storage_factor[node_id] + inflow_sum[node_id] -
                 outflow_sum[node_id]
@@ -170,7 +170,7 @@ function add_user_demand!(
     (; problem, cumulative_supplied_volume, node_ids_in_subnetwork) = allocation_model
     (; user_demand_ids_subnetwork) = node_ids_in_subnetwork
     (; user_demand) = p_independent
-    (; inflow_link, outflow_link) = user_demand
+    (; inflow_links, outflow_link) = user_demand
     flow = problem[:flow]
 
     # Define decision variables: Per UserDemand node the flow allocated to that node
@@ -187,11 +187,12 @@ function add_user_demand!(
             d
     )
 
-    # Define constraints: The sum of the flows allocated to UserDemand is equal to the total flow into the demand node
+    # Define constraints: the total flow over all inflow links equals the sum of
+    # allocated demand across priorities for the UserDemand node.
     problem[:user_demand_allocated_sum_constraint] = JuMP.@constraint(
         problem,
         [node_id = user_demand_ids_subnetwork],
-        flow[inflow_link[node_id.idx].link] == sum(
+        sum(flow[link_metadata.link] for link_metadata in inflow_links[node_id.idx]) == sum(
             user_demand_allocated[node_id, demand_priority] for
                 demand_priority in DemandPriorityIterator(node_id, p_independent)
         );
@@ -224,19 +225,22 @@ function add_user_demand!(
         base_name = "user_demand_relative_error_constraint"
     )
 
-    # Define constraints: user demand return flow
+    # Define constraints: user demand return flow. The outflow equals the return
+    # factor times the total inflow summed across all inflow links.
     return_factor = 0.5 # example return factor
     problem[:user_demand_return_flow] = JuMP.@constraint(
         problem,
         [node_id = user_demand_ids_subnetwork],
         flow[outflow_link[node_id.idx].link] ==
-            return_factor * flow[inflow_link[node_id.idx].link],
+            return_factor * sum(flow[lm.link] for lm in inflow_links[node_id.idx]),
         base_name = "user_demand_return_flow"
     )
 
     # Add the links for which the supplied volume is required for output
     for node_id in user_demand_ids_subnetwork
-        cumulative_supplied_volume[inflow_link[node_id.idx].link] = 0.0
+        for link_metadata in inflow_links[node_id.idx]
+            cumulative_supplied_volume[link_metadata.link] = 0.0
+        end
     end
 
     return nothing
@@ -561,6 +565,11 @@ function add_secondary_network_demand!(
     connecting_links =
         vcat(sort!(collect(values(allocation.primary_network_connections)))...)
 
+    if isempty(connecting_links)
+        # No secondary network connections, nothing to do
+        return nothing
+    end
+
     # Define decision variables: flow allocated to secondary networks
     # (scaling.flow * m^3/s, values to be filled in before optimizing)
     d = 2.0 # Example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
@@ -595,9 +604,10 @@ function add_secondary_network_demand!(
             secondary_network_error[
                 link = connecting_links,
                 DemandPriorityIterator(link, p_independent),
-                [:first, :second],
+                objective_ord = [:first, :second],
             ] ≤
-            1
+            1,
+        base_name = "secondary_network_error",
     )
 
     # Define constraints: error terms
@@ -656,7 +666,7 @@ function add_demand_objectives!(
 
         # Add UserDemand, FlowDemand and secondary network errors
         error_collections = [user_demand_error, flow_demand_error]
-        if is_primary_network(subnetwork_id)
+        if is_primary_network(subnetwork_id) && haskey(problem, :secondary_network_error)
             secondary_network_error = problem[:secondary_network_error]
             push!(error_collections, secondary_network_error)
         end
@@ -765,7 +775,7 @@ function add_demand_objectives!(
     )
 
     # If this is the primary network, also add fairness constraints for secondary network demands
-    if is_primary_network(subnetwork_id)
+    if is_primary_network(subnetwork_id) && haskey(problem, :secondary_network_error)
         secondary_demand_error = problem[:secondary_network_error]
         # Sort connections for deterministic problem generation
         connecting_links =
@@ -938,7 +948,7 @@ function has_demand_priority_subnetwork(
     (; demand_priorities_all) = allocation
     (;
         user_demand_ids_subnetwork,
-        node_ids_subnetwork_with_flow_demand,
+        flow_demand_ids_subnetwork,
         level_demand_ids_subnetwork,
     ) = node_ids_in_subnetwork
 
@@ -948,7 +958,7 @@ function has_demand_priority_subnetwork(
         has_demand_priority .|= view(user_demand.has_demand_priority, node_id.idx, :)
     end
 
-    for node_id in node_ids_subnetwork_with_flow_demand
+    for node_id in flow_demand_ids_subnetwork
         has_demand_priority .|= view(flow_demand.has_demand_priority, node_id.idx, :)
     end
 
@@ -964,7 +974,7 @@ function AllocationModel(
         p_independent::ParametersIndependent,
         allocation_config::config.Allocation,
     )
-    Δt_allocation = allocation_config.timestep
+    Δt_allocation = something(allocation_config.dt, 86400.0)
     problem = JuMP.Model()
     JuMP.set_optimizer(problem, get_optimizer())
     node_ids_in_subnetwork = NodeIDsInSubnetwork(p_independent, subnetwork_id)
@@ -973,7 +983,7 @@ function AllocationModel(
         has_demand_priority_subnetwork(p_independent, node_ids_in_subnetwork)
 
     # Initialize secondary_network_demand before constructing AllocationModel
-    secondary_network_demand = Dict{Tuple{NodeID, NodeID}, Vector{Float64}}()
+    secondary_network_demand = OrderedDict{Tuple{NodeID, NodeID}, Vector{Float64}}()
     if !is_primary_network(subnetwork_id)
         n_priorities = length(p_independent.allocation.demand_priorities_all)
         for link in p_independent.allocation.primary_network_connections[subnetwork_id]

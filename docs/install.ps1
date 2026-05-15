@@ -15,7 +15,7 @@ This install script is deprecated and may be removed.
 For alternatives see: https://ribasim.org/getting-started/install
 "@
 
-$RibasimVersion = 'v2026.1.0'
+$RibasimVersion = 'v2026.1.1'
 $RibasimHome = "$Env:USERPROFILE\.ribasim"
 
 function Publish-Env {

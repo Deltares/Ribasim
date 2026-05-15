@@ -299,3 +299,66 @@ end
     above = basin_level .>= 0.5
     @test all(outlet_flow[above] .≤ 2.0e-4 + 1.0e-5)
 end
+
+
+@testitem "UserDemand with multiple inflow links" begin
+    using DataFrames: DataFrame
+    using Dates: DateTime
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/two_basin_user_demand/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    model = Ribasim.run(toml_path)
+    flow_table = DataFrame(Ribasim.flow_data(model))
+
+    # Link (4, 5) is the inflow from Basin 4 (fallback source, route_priority=2) into
+    # the UserDemand. FlowBoundary 1 decays linearly from 1e-3 to 0 over the run; the
+    # LP prefers Basin 3 (route_priority=1) for the UD, so Basin 4's contribution must
+    # linearly ramp from 1e-3 up to 2e-3 to keep total UD inflow at the 2e-3 demand.
+    filter!([:from_node_id, :to_node_id] => ==((4, 5)) ∘ tuple, flow_table)
+    @test !isempty(flow_table)
+
+    t0 = model.integrator.sol.prob.tspan[1]
+    tend = model.integrator.sol.prob.tspan[2]
+    time_seconds = Ribasim.seconds_since.(flow_table.time, model.config.starttime)
+    # Expected linear ramp from 1e-3 (at t0) to 2e-3 (at tend).
+    expected = 1.0e-3 .+ 1.0e-3 .* (time_seconds .- t0) ./ (tend - t0)
+    @test all(isapprox.(flow_table.flow_rate, expected; atol = 5.0e-6))
+end
+
+@testitem "UserDemand multi-inflow parameter fields" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/two_basin_user_demand/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    config = Ribasim.Config(toml_path)
+    model = Ribasim.Model(config)
+    p_independent = model.integrator.p.p_independent
+    user_demand = p_independent.user_demand
+
+    # The model has one UserDemand node with two inflow links (Basin 3 and Basin 4).
+    @test length(user_demand.node_id) == 1
+
+    # inflow_link_offsets has length n_nodes + 1 and accumulates inflow link counts.
+    # One UserDemand with 2 inflow links → [0, 2].
+    @test user_demand.inflow_link_offsets == [0, 2]
+
+    # inflow_links for that node contains both source basins.
+    inflow_links = user_demand.inflow_links[1]
+    @test length(inflow_links) == 2
+
+    # link_to_state_idx must contain an entry for each of the two inflow links,
+    # and they must map to different (consecutive) state indices.
+    link_to_state_idx = p_independent.link_to_state_idx
+    inflow_link_tuples = [lm.link for lm in inflow_links]
+    for link in inflow_link_tuples
+        @test haskey(link_to_state_idx, link)
+    end
+    state_indices = [link_to_state_idx[link] for link in inflow_link_tuples]
+    @test allunique(state_indices)
+end

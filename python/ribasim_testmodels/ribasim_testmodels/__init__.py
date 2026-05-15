@@ -1,4 +1,4 @@
-__version__ = "2026.1.0"
+__version__ = "2026.1.1"
 
 from collections.abc import Callable
 
@@ -10,11 +10,11 @@ from ribasim_testmodels.allocation import (
     allocation_example_model,
     allocation_off_flow_demand_model,
     allocation_training_model,
+    basin_overflow_model,
     cyclic_demand_model,
     drain_surplus_model,
     fair_distribution_model,
     flow_demand_model,
-    invalid_infeasible_model,
     level_demand_model,
     level_demand_with_rating_curve_model,
     linear_resistance_demand_model,
@@ -29,6 +29,7 @@ from ribasim_testmodels.allocation import (
     small_primary_secondary_network_model,
     small_primary_secondary_network_verification_model,
     switch_allocation_control_model,
+    two_basin_user_demand_model,
     user_demand_model,
 )
 from ribasim_testmodels.backwater import backwater_model
@@ -104,6 +105,7 @@ __all__ = [
     "basic_basin_only_storage_model",
     "basic_model",
     "basic_transient_model",
+    "basin_overflow_model",
     "bucket_model",
     "circular_flow_model",
     "compound_variable_condition_model",
@@ -121,7 +123,6 @@ __all__ = [
     "flow_condition_model",
     "flow_demand_model",
     "invalid_discrete_control_model",
-    "invalid_infeasible_model",
     "invalid_link_types_model",
     "invalid_no_basin_model",
     "invalid_priorities_model",
@@ -165,6 +166,7 @@ __all__ = [
     "transient_pump_outlet_model",
     "trivial_model",
     "two_basin_model",
+    "two_basin_user_demand_model",
     "user_demand_model",
 ]
 

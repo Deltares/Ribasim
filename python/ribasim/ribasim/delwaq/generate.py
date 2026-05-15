@@ -186,11 +186,6 @@ def _setup_graph(nodes, link, evaporate_mass=True):
                     else:
                         G.add_edge(*link, id=[link_id])
 
-    iso = nx.number_of_isolates(G)
-    if iso > 0:
-        logger.debug(f"Found {iso} isolated nodes in the network.")
-        remove_nodes.extend(list(nx.isolates(G)))
-
     for node_id in remove_nodes:
         G.remove_node(node_id)
 
@@ -202,11 +197,12 @@ def _setup_graph(nodes, link, evaporate_mass=True):
     merge_links = []
     for loop in nx.simple_cycles(G, length_bound=2):
         if len(loop) == 2:
-            if (
-                G.nodes[loop[0]]["type"] != "UserDemand"
-                and G.nodes[loop[1]]["type"] != "UserDemand"
-            ):
-                logger.debug("Found cycle that is not a UserDemand.")
+            node_a = G.nodes[loop[0]]
+            node_b = G.nodes[loop[1]]
+            if node_a["type"] != "UserDemand" and node_b["type"] != "UserDemand":
+                logger.debug(
+                    f"Found non UserDemand cycle between {node_a['type']} #{loop[0]} and {node_b['type']} #{loop[1]}."
+                )
             else:
                 link_ids = G.edges[loop]["id"]
                 G.edges[reversed(loop)]["id"].extend(link_ids)
@@ -214,17 +210,36 @@ def _setup_graph(nodes, link, evaporate_mass=True):
                 G.remove_edge(*loop)
 
     # Remove boundary to boundary links
-    remove_double_links = []
+    remove_double_boundary = []
+    boundary_nodes = [
+        "Terminal",
+        "LevelBoundary",
+        "FlowBoundary",
+        "UserDemand",
+    ]
     for x in G.edges(data=True):
         a, b, d = x
-        if G.nodes[a]["type"] == "Terminal" and G.nodes[b]["type"] == "UserDemand":
-            logger.debug("Removing link between Terminal and UserDemand")
-            remove_double_links.append(a)
-        elif G.nodes[a]["type"] == "UserDemand" and G.nodes[b]["type"] == "Terminal":
-            remove_double_links.append(b)
-            logger.debug("Removing link between UserDemand and Terminal")
+        if (
+            G.nodes[a]["type"] in boundary_nodes
+            and G.nodes[b]["type"] in boundary_nodes
+        ):
+            logger.debug(
+                f"Removing link between {G.nodes[a]['type']} #{G.nodes[a]['id']} and {G.nodes[b]['type']} #{G.nodes[b]['id']}."
+            )
+            remove_double_boundary.append((a, b))
 
-    for node_id in remove_double_links:
+    for edge in remove_double_boundary:
+        G.remove_edge(*edge)
+
+    remove_nodes = []
+    iso = nx.number_of_isolates(G)
+    if iso > 0:
+        remove_nodes.extend(list(nx.isolates(G)))
+
+    for node_id in remove_nodes:
+        logger.debug(
+            f"Removing isolated {G.nodes[node_id]['type']} #{node_id} from the network."
+        )
         G.remove_node(node_id)
 
     # Relabel the nodes as consecutive integers for Delwaq
@@ -731,7 +746,21 @@ if __name__ == "__main__":
         help="The relative path to store the Delwaq model.",
         default="delwaq",
     )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Increase verbosity (-v for info, -vv for debug).",
+    )
     args = parser.parse_args()
+
+    log_level = logging.WARNING
+    if args.verbose >= 2:
+        log_level = logging.DEBUG
+    elif args.verbose >= 1:
+        log_level = logging.INFO
+    logging.basicConfig(level=log_level)
 
     graph, substances = generate(
         args.toml_path, args.toml_path.parent / args.output_path

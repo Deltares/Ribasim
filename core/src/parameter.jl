@@ -219,6 +219,10 @@ subnetwork_id: The ID of this subnetwork
 node_ids_in_subnetwork: Per node type a vector of the nodes of that type in the subnetwork
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
+Δt_since_last_record: Time elapsed since the last saveat-aligned LP solve
+    (i.e., since the last call that pushed records and reset cumulative_supplied_volume).
+    Updated after every LP solve and reset to 0 when records are emitted;
+    used to divide cumulative_supplied_volume into a rate for the records.
 has_demand_priority: Per demand priority in the whole model whether a demand of this priority is present in this
     subnetwork
 objectives: The objectives (goals) in the order in which they will be optimized for
@@ -227,11 +231,12 @@ sources: The nodes in the subnetwork which can act as sources, sorted by route p
 secondary_network_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
 scaling: The flow and storage scaling factors to make the optimization problem more numerically stable
 """
-@kwdef struct AllocationModel
+@kwdef mutable struct AllocationModel
     subnetwork_id::Int32
     node_ids_in_subnetwork::NodeIDsInSubnetwork
     problem::JuMP.Model
     Δt_allocation::Float64
+    Δt_since_last_record::Float64 = 0.0
     has_demand_priority::Vector{Bool}
     objectives::AllocationObjectives = AllocationObjectives()
     explicit_positive_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
@@ -1032,8 +1037,15 @@ end
 """
 node_id: node ID of the UserDemand node
 demand_priorities: All demand priorities that exist in the model (not just by UserDemand) sorted
-inflow_link: incoming flow link
+inflow_links: incoming flow links
     The ID of the destination node is always the ID of the UserDemand node
+inflow_link_offsets: Cumulative offsets into the flat per-link `user_demand_inflow` state component.
+    inflow_links[i] occupies state entries (inflow_link_offsets[i]+1):inflow_link_offsets[i+1]
+    inside that component. Has length `length(node_id) + 1`.
+inflow_link_allocated: Per inflow link, the absolute flow rate the allocation LP has allocated through
+    that link (m³/s). Updated after each LP solve. When set to Inf (the default), the
+    physics falls back to an equal split of the total demand across inflow links —
+    this defines behaviour when allocation is not active.
 outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the UserDemand node
 has_demand_priority: boolean matrix stating per UserDemand node per demand priority index whether the (node_idx, demand_priority_idx)
@@ -1051,7 +1063,9 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
 @kwdef struct UserDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
     demand_priorities::Vector{Int32} = Int32[]
-    inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    inflow_links::Vector{Vector{LinkMetadata}} = [LinkMetadata[] for _ in node_id]
+    inflow_link_offsets::Vector{Int} = zeros(Int, length(node_id) + 1)
+    inflow_link_allocated::Vector{Vector{Float64}} = [Float64[] for _ in node_id]
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))

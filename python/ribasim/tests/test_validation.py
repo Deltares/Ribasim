@@ -321,3 +321,42 @@ def test_node_id_equal_mismatch():
 
     with pytest.raises(ValueError, match=r"Basin / state.*missing node_ids"):
         model._validate_model()
+
+
+def test_node_id_unexpected_without_node_type():
+    """Data tables with node_ids for a node type absent from the Node table should raise."""
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+    )
+
+    model.basin.add(
+        Node(1, Point(0.0, 0.0)),
+        [
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+            basin.State(level=[0.0]),
+            basin.Static(precipitation=[0.001 / 86400]),
+        ],
+    )
+    model.pump.add(
+        Node(2, Point(1.0, 0.0)),
+        [pump.Static(flow_rate=[1e-3])],
+    )
+    model.terminal.add(Node(3, Point(2.0, 0.0)))
+
+    model.link.add(model.basin[1], model.pump[2])
+    model.link.add(model.pump[2], model.terminal[3])
+
+    # Inject data into FlowBoundary / static for node_ids that are not FlowBoundary
+    model.flow_boundary.static.df = pd.DataFrame(
+        data={
+            "node_id": [1, 3],
+            "flow_rate": [1.0, 2.0],
+        }
+    )
+
+    with pytest.raises(
+        ValueError, match=r"FlowBoundary partition.*unexpected node_ids"
+    ):
+        model._validate_model()

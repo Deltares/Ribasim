@@ -17,7 +17,7 @@ function set_simulation_data!(
 
     errors = false
 
-    errors |= set_simulation_data!(allocation_model, basin, p, t)
+    errors |= set_simulation_data!(allocation_model, basin, p, t, du)
     set_simulation_data!(allocation_model, level_boundary, t)
     set_simulation_data!(allocation_model, flow_boundary, p, t)
     set_simulation_data!(allocation_model, linear_resistance, p, t)
@@ -39,6 +39,7 @@ function set_simulation_data!(
         basin::Basin,
         p::Parameters,
         t::Float64,
+        du::CVector,
     )::Bool
     (;
         problem,
@@ -57,6 +58,8 @@ function set_simulation_data!(
     (; current_storage) = p.state_and_time_dependent_cache
 
     errors = false
+    flow = problem[:flow]
+    flow_storage_ratio = scaling.flow / scaling.storage
 
     # Set Basin starting storages and levels
     for basin_id in basin_ids_subnetwork
@@ -64,16 +67,17 @@ function set_simulation_data!(
         storage_now = current_storage[idx]
         storage_max = storage_to_level[idx].t[end]
 
-        # Check whether the storage in the physical layer is within the maximum storage bound
-        if storage_now > storage_max
-            @error "Maximum basin storage exceeded (allocation infeasibility)" storage_now storage_max basin_id
-            errors = true
-        end
-
-        # Set bounds on the storage change based on the current storage and the Basin minimum and maximum
+        # Set bounds on the storage change based on the current storage and the Basin minimum, maximum, and a delta_storage prediction
         Δstorage = storage_change[basin_id]
         JuMP.set_lower_bound(Δstorage, -storage_now / scaling.storage)
-        JuMP.set_upper_bound(Δstorage, (storage_max - storage_now) / scaling.storage)
+        Δstorage_predicted = formulate_dstorage_wrt_time(du, p.p_independent, t, basin_id) * Δt_allocation
+
+        Δstorage_upper = if storage_now > storage_max
+            max(2 * Δstorage_predicted, 0.0)
+        else
+            max(2 * Δstorage_predicted, storage_max - storage_now)
+        end
+        JuMP.set_upper_bound(Δstorage, Δstorage_upper / scaling.storage)
 
         A = get_area_from_storage(basin, idx, storage_now)
         A_max = get_area_from_storage(basin, idx, storage_max)
@@ -92,6 +96,25 @@ function set_simulation_data!(
         ) * Δt_allocation
 
         volume_conservation_constraint = volume_conservation[basin_id]
+
+        # Update flow variable coefficients with current Δt_allocation.
+        # The constraint was initialized without Δt; here we set the full coefficient
+        # Δt * scaling.flow / scaling.storage for each flow term.
+        Δt_flow_storage_ratio = Δt_allocation * flow_storage_ratio
+        for other_id in basin.inflow_ids[basin_id.idx]
+            JuMP.set_normalized_coefficient(
+                volume_conservation_constraint,
+                flow[(other_id, basin_id)],
+                -Δt_flow_storage_ratio,
+            )
+        end
+        for other_id in basin.outflow_ids[basin_id.idx]
+            JuMP.set_normalized_coefficient(
+                volume_conservation_constraint,
+                flow[(basin_id, other_id)],
+                Δt_flow_storage_ratio,
+            )
+        end
 
         ### This is an euler-backward discretization in disguise:
         # where the positive forcing is independent on the state so it can be calculated explicitly and ends up in the rhs of Ax = b
@@ -377,15 +400,15 @@ function set_simulation_data!(
     constraints = problem[:user_demand_return_flow]
     flow = problem[:flow]
 
-    # Set the return factor for the end of the time step
+    # Set the return factor for the end of the time step.
+    # The return-flow constraint is: return_flow  = return_factor * Σ inflow
     for node_id in only(constraints.axes)
         constraint = constraints[node_id]
-        outflow = flow[user_demand.inflow_link[node_id.idx].link]
-        JuMP.set_normalized_coefficient(
-            constraint,
-            outflow,
-            -user_demand.return_factor[node_id.idx](t + Δt_allocation),
-        )
+        return_factor = user_demand.return_factor[node_id.idx](t + Δt_allocation)
+        for inflow_link_metadata in user_demand.inflow_links[node_id.idx]
+            inflow = flow[inflow_link_metadata.link]
+            JuMP.set_normalized_coefficient(constraint, inflow, -return_factor)
+        end
     end
     return nothing
 end
@@ -742,6 +765,7 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     flow = problem[:flow]
     storage_change = problem[:basin_storage_change]
     du = get_du(integrator)
+    (; link_to_state_idx) = p.p_independent
 
     # Extrapolate the current instantaneous flow rates from the physical layer
     # Flow rates are now stored in cache vectors, look up by link
@@ -871,6 +895,24 @@ function parse_allocations!(
     return nothing
 end
 
+function get_supplied_volume(
+        node::UserDemand,
+        node_id::NodeID,
+        cumulative_supplied_volume::AbstractDict,
+    )::Float64
+    return sum(
+        cumulative_supplied_volume[link_meta.link] for link_meta in node.inflow_links[node_id.idx]
+    )
+end
+
+function get_supplied_volume(
+        node,
+        node_id::NodeID,
+        cumulative_supplied_volume::AbstractDict,
+    )::Float64
+    return cumulative_supplied_volume[node.inflow_link[node_id.idx].link]
+end
+
 function parse_allocations!(
         integrator::DEIntegrator,
         node::Union{UserDemand, FlowDemand},
@@ -880,19 +922,44 @@ function parse_allocations!(
     )::Nothing
     (; p, t) = integrator
     (; p_independent) = p
-    (; subnetwork_id, Δt_allocation, cumulative_supplied_volume, scaling) =
-        allocation_model
+    (;
+        subnetwork_id,
+        Δt_since_last_record,
+        cumulative_supplied_volume,
+        scaling,
+    ) = allocation_model
     (; allocation) = p_independent
     (; record_demand, demand_priorities_all) = allocation
-    (; demand, has_demand_priority, inflow_link) = node
+    (; demand, has_demand_priority) = node
     is_user_demand = (node isa UserDemand)
+
+    flow = allocation_model.problem[:flow]
+
+    # Store the flow rate (m³/s) per inflow link of the UserDemand so the physics can split
+    # the inflow across source basins exactly as the allocation decided
+    if is_user_demand
+        for node_id in node_ids_subnetwork
+            inflow_links = node.inflow_links[node_id.idx]
+            isempty(inflow_links) && continue
+            link_alloc = node.inflow_link_allocated[node_id.idx]
+            for (i, link_metadata) in enumerate(inflow_links)
+                link_alloc[i] = max(0.0, JuMP.value(flow[link_metadata.link]) * scaling.flow)
+            end
+        end
+    end
+
+    # Use Δt_since_last_record (which equals Δt_allocation when the LP runs once
+    # per saveat, or the sum of multiple sub-saveat steps when adaptive timestepping
+    # produces several solves per saveat) to convert cumulative volume to a rate.
+    Δt_record = iszero(Δt_since_last_record) ? allocation_model.Δt_allocation :
+        Δt_since_last_record
 
     for node_id in node_ids_subnetwork
         demand_id =
             is_user_demand ? node_id : get_external_demand_id(p_independent, node_id)
 
         for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
-            !has_demand_priority[node_id.idx, demand_priority_idx] && continue
+            !has_demand_priority[demand_id.idx, demand_priority_idx] && continue
             allocated_flow =
                 max(0, JuMP.value(node_allocated[node_id, demand_priority]) * scaling.flow)
             push!(
@@ -906,8 +973,8 @@ function parse_allocations!(
                     demand[demand_id.idx, demand_priority_idx],
                     allocated_flow,
                     # NOTE: The supplied amount lags one allocation period behind
-                    cumulative_supplied_volume[inflow_link[node_id.idx].link] /
-                        Δt_allocation,
+                    get_supplied_volume(node, demand_id, cumulative_supplied_volume) /
+                        Δt_record,
                 ),
             )
             if is_user_demand
@@ -1144,8 +1211,14 @@ function update_control_states!(
     return nothing
 end
 
-"Solve the allocation problem for all demands and assign allocated abstractions."
-function update_allocation!(model)::Nothing
+"""
+Solve the allocation problem for all demands and assign allocated abstractions.
+
+`record` controls whether allocation results are pushed to output records and
+whether `cumulative_supplied_volume` is reset. Set `record = false` for
+intermediate (sub-saveat) adaptive LP solves
+"""
+function update_allocation!(model, Δt = 0.0; record::Bool = true)::Nothing
     (; integrator) = model
     (; u, p, t) = integrator
     (; p_independent) = p
@@ -1201,21 +1274,37 @@ function update_allocation!(model)::Nothing
 
     # Allocate in all networks, starting with the primary network if it exists
     for allocation_model in allocation_models
+        # Track time since the last saveat-aligned record. parse_allocations!
+        # divides cumulative_supplied_volume by this, so it must be the elapsed
+        # interval since the last reset rather than just the most recent Δt.
+        if Δt == 0.0
+            Δt = allocation_model.Δt_allocation
+        end
+        allocation_model.Δt_since_last_record += Δt
+
         delete_temporary_constraints!(allocation_model)
         optimize!(allocation_model, model)
-        parse_allocations!(integrator, allocation_model)
+        if record
+            parse_allocations!(integrator, allocation_model)
+        end
         # allocate flows optimized from the primary network to the secondary networks
         if is_primary_network(allocation_model.subnetwork_id)
             allocate_flows_to_subnetwork(allocation_models, primary_network_connections)
         end
 
-        save_flows!(integrator, allocation_model)
+        if record
+            save_flows!(integrator, allocation_model)
+        end
         apply_control_from_allocation!(pump, allocation_model, integrator)
         apply_control_from_allocation!(outlet, allocation_model, integrator)
         apply_control_from_allocation!(tabulated_rating_curve, allocation_model, integrator)
 
-        # Reset cumulative data
-        reset_cumulative!(allocation_model)
+        # Reset cumulative data only on saveat-aligned solves; intermediate solves
+        # let cumulative_supplied_volume keep accumulating until the next record.
+        if record
+            reset_cumulative!(allocation_model)
+            allocation_model.Δt_since_last_record = 0.0
+        end
     end
 
     # Update storage_prev for level_demand

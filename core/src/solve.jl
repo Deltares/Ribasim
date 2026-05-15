@@ -323,44 +323,55 @@ function formulate_flow!(
 
     for node_idx in eachindex(user_demand.node_id)
         id = user_demand.node_id[node_idx]
-        inflow_link = user_demand.inflow_link[node_idx]
-        outflow_link = user_demand.outflow_link[node_idx]
+        inflow_links = user_demand.inflow_links[node_idx]
+        link_offset = user_demand.inflow_link_offsets[node_idx]
         has_demand_priority = view(user_demand.has_demand_priority, node_idx, :)
         allocated = view(user_demand.allocated, node_idx, :)
         return_factor = user_demand.return_factor[node_idx]
         min_level = user_demand.min_level[node_idx]
 
-        q = 0.0
-
+        # Total effective demand = min(allocated, demand) summed over priorities.
+        # When allocation is not running, allocated = Inf and this becomes the demand.
+        q_total_demand = 0.0
         for demand_priority_idx in eachindex(allocation.demand_priorities_all)
             !has_demand_priority[demand_priority_idx] && continue
-            alloc_prio = allocated[demand_priority_idx]
-            demand_prio = get_demand(user_demand, id, demand_priority_idx, t)
-            alloc = min(alloc_prio, demand_prio)
-            q += alloc
+            q_total_demand += min(
+                allocated[demand_priority_idx],
+                get_demand(user_demand, id, demand_priority_idx, t),
+            )
         end
 
-        # Smoothly let abstraction go to 0 as the source basin dries out
-        inflow_id = inflow_link.link[1]
-        factor_basin = get_low_storage_factor(p, inflow_id)
-        q *= factor_basin
+        # With allocation disabled, fall back to an equal split of the total demand.
+        # Each link then applies its own source basin reduction factors.
+        link_alloc = user_demand.inflow_link_allocated[node_idx]
+        n_links = length(inflow_links)
+        equal_split = n_links == 0 ? 0.0 : q_total_demand / n_links
 
-        # Smoothly let abstraction go to 0 as the source basin
-        # level reaches its minimum level
-        source_level = get_level(p, inflow_id, t)
-        Δsource_level = source_level - min_level
-        factor_level = reduction_factor(Δsource_level, level_difference_threshold)
-        q *= factor_level
+        q_total_actual = 0.0
+        for (k, link_meta) in enumerate(inflow_links)
+            src_id = link_meta.link[1]
+            f_low_storage = get_low_storage_factor(p, src_id)
+            source_level = get_level(p, src_id, t)
+            f_reduction = reduction_factor(
+                source_level - min_level,
+                level_difference_threshold,
+            )
+            q_k_target = isinf(link_alloc[k]) ? equal_split : link_alloc[k]
+            q_k = q_k_target * f_low_storage * f_reduction
+            # Apply each inflow link's abstraction to the source basin
+            apply_flow_to_basins!(du, q_k, src_id, id)
+            q_total_actual += q_k
+        end
 
         q_return =
-            q * eval_time_interpolation(return_factor, current_return_factor, id.idx, p, t)
+            q_total_actual *
+            eval_time_interpolation(return_factor, current_return_factor, id.idx, p, t)
 
-        # Store flow rate in cache for control listening
-        state_and_time_dependent_cache.current_flow_rate_user_demand[id.idx] = q
+        # Store total flow rate in cache for control listening
+        state_and_time_dependent_cache.current_flow_rate_user_demand[id.idx] = q_total_actual
 
-        # Apply inflow (abstraction from source basin)
-        apply_flow_to_basins!(du, q, inflow_id, id)
         # Apply return flow (from UserDemand to downstream basin)
+        outflow_link = user_demand.outflow_link[node_idx]
         outflow_id = outflow_link.link[2]
         apply_flow_to_basins!(du, q_return, id, outflow_id)
     end

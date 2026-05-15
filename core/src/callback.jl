@@ -97,6 +97,35 @@ function sync_flow_rates!(node_sym::Symbol, current_flow_cache::Vector{T}, p_ind
 end
 
 """
+Synchronize UserDemand flow rates into the per-link flow rate vector.
+UserDemand has multiple inflow links per node, so it needs special handling.
+"""
+function sync_user_demand_flow_rates!(current_flow_cache::Vector{T}, p_independent::ParametersIndependent) where {T}
+    flow_link_lookup = p_independent.graph[].flow_link_lookup
+    user_demand = p_independent.user_demand
+    for (node_idx, id) in enumerate(user_demand.node_id)
+        q = current_flow_cache[id.idx]
+        # Sync outflow link
+        outflow_link = user_demand.outflow_link[node_idx]
+        idx = get_link_index(outflow_link.link, flow_link_lookup)
+        if idx !== nothing
+            p_independent.current_flow_rate[idx] = q
+        end
+        # Sync inflow links (distribute evenly for trapezoidal accumulation)
+        inflow_links = user_demand.inflow_links[node_idx]
+        n_links = length(inflow_links)
+        q_per_link = n_links == 0 ? zero(T) : q / n_links
+        for link_meta in inflow_links
+            idx = get_link_index(link_meta.link, flow_link_lookup)
+            if idx !== nothing
+                p_independent.current_flow_rate[idx] = q_per_link
+            end
+        end
+    end
+    return
+end
+
+"""
 Synchronize per-node-type flow rate caches into the per-link flow rate vector
 used for trapezoidal flow accumulation.
 """
@@ -105,12 +134,12 @@ function sync_flow_rates!(p::Parameters)::Nothing
     (; basin) = p_independent
     cache = state_and_time_dependent_cache
 
-        sync_flow_rates!(:pump, cache.current_flow_rate_pump, p_independent)
-        sync_flow_rates!(:outlet, cache.current_flow_rate_outlet, p_independent)
-        sync_flow_rates!(:linear_resistance, cache.current_flow_rate_linear_resistance, p_independent)
-        sync_flow_rates!(:tabulated_rating_curve, cache.current_flow_rate_tabulated_rating_curve, p_independent)
-        sync_flow_rates!(:manning_resistance, cache.current_flow_rate_manning_resistance, p_independent)
-        sync_flow_rates!(:user_demand, cache.current_flow_rate_user_demand, p_independent)
+    sync_flow_rates!(:pump, cache.current_flow_rate_pump, p_independent)
+    sync_flow_rates!(:outlet, cache.current_flow_rate_outlet, p_independent)
+    sync_flow_rates!(:linear_resistance, cache.current_flow_rate_linear_resistance, p_independent)
+    sync_flow_rates!(:tabulated_rating_curve, cache.current_flow_rate_tabulated_rating_curve, p_independent)
+    sync_flow_rates!(:manning_resistance, cache.current_flow_rate_manning_resistance, p_independent)
+    sync_user_demand_flow_rates!(cache.current_flow_rate_user_demand, p_independent)
 
     return nothing
 end

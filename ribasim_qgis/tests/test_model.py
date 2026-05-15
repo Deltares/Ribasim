@@ -28,14 +28,11 @@ def test_get_directory_path_from_model_file(prop, expected):
     assert path == data_folder_path / expected
 
 
-def test_get_database_path_from_model_file(self):
+def test_get_database_path_from_model_file():
     """Tests that get_database_path_from_model_file() can find the input directory and appends the database.gpkg to it."""
-    path = get_database_path_from_model_file(
-        self.data_folder_path / "simple_valid.toml"
+    path = get_database_path_from_model_file(data_folder_path / "simple_valid.toml")
+    assert path.is_absolute(), f"{path} is not absolute"
+    assert path.is_relative_to(tests_folder_path), (
+        f"Path '{path}' is not relative to {tests_folder_path}"
     )
-    self.assertTrue(path.is_absolute(), msg=f"{path} is not absolute")
-    self.assertTrue(
-        path.is_relative_to(self.tests_folder_path),
-        msg=f"Path '{path}' is not relative to {self.tests_folder_path}",
-    )
-    self.assertEqual(path, self.data_folder_path / "database.gpkg")
+    assert path == data_folder_path / "database.gpkg"
