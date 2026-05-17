@@ -4,6 +4,6 @@
         Ribasim;
         ambiguities = false,
         persistent_tasks = false,
-        piracies = true,
+        piracies = false,
     )
 end
