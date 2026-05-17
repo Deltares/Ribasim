@@ -1,3 +1,12 @@
+# Workaround for OrdinaryDiffEq.jl StackOverflowError in post_newton_controller!
+# Remove once a fixed version of OrdinaryDiffEqBDF is released.
+function OrdinaryDiffEqCore.post_newton_controller!(
+        integrator, ::OrdinaryDiffEqBDF.BDFControllerCache, alg,
+    )
+    integrator.dt = integrator.dt / OrdinaryDiffEqCore.get_failfactor(integrator)
+    return nothing
+end
+
 """
 The right hand side function of the system of ODEs set up by Ribasim.
 State vector u contains basin storages and PID integral terms.
