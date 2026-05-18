@@ -39,6 +39,7 @@ import ADTypes
 using ADTypes: AutoForwardDiff
 import ForwardDiff
 import NaNMath
+import OrdinaryDiffEqBDF
 
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
