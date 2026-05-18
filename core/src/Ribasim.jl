@@ -60,7 +60,10 @@ using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
-using SparseArrays: SparseMatrixCSC, sparse, nzrange
+using SparseArrays: SparseMatrixCSC, sparse, nzrange, nonzeros
+
+# Positivity-preserving time integration
+using PositiveIntegrators: PDSProblem, MPRK22, MPRK43I, MPRK43II
 
 # Linear algebra
 using LinearAlgebra: LinearAlgebra, mul!, UniformScaling, Symmetric, cholesky, Factorization
@@ -178,6 +181,7 @@ include("allocation_init.jl")
 include("allocation_optim.jl")
 include("util.jl")
 include("graph.jl")
+include("pds.jl")
 include("model.jl")
 include("read.jl")
 include("write.jl")

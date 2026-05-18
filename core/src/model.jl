@@ -119,11 +119,16 @@ function Model(config::Config)::Model
     tstops = sort(unique(reduce(vcat, tstops)))
     adaptive = is_adaptive(config.solver.dt)
 
-    RHS = ODEFunction{true, FullSpecialize}(
-        water_balance!;
-        get_diff_eval(du0, u0, parameters, config.solver)...,
-    )
-    prob = ODEProblem{true, FullSpecialize}(RHS, u0, timespan, parameters)
+    prob = if is_mprk_algorithm(config.solver)
+        # Use PDSProblem for positivity-preserving MPRK methods
+        build_pds_problem(u0, timespan, parameters, p_independent)
+    else
+        RHS = ODEFunction{true, FullSpecialize}(
+            water_balance!;
+            get_diff_eval(du0, u0, parameters, config.solver)...,
+        )
+        ODEProblem{true, FullSpecialize}(RHS, u0, timespan, parameters)
+    end
     @debug "Setup ODEProblem."
 
     callback, saved = create_callbacks(p_independent, config, saveat)
@@ -145,25 +150,29 @@ function Model(config::Config)::Model
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
     # Not all keyword arguments (e.g. `dtmax`) support `nothing`, in which case we follow
     # https://github.com/SciML/OrdinaryDiffEq.jl/blob/v6.57.0/src/solve.jl#L10
-    integrator = init(
-        prob,
-        alg;
-        progress = true,
-        progress_name = "Simulating",
-        progress_steps = 100,
-        save_everystep = false,
-        callback,
-        tstops,
-        isoutofdomain,
-        adaptive,
-        config.solver.dt,
-        config.solver.dtmin,
-        dtmax = something(config.solver.dtmax, t_end),
-        config.solver.force_dtmin,
-        config.solver.abstol,
-        reltol = config.solver.reltol,
-        config.solver.maxiters,
+    kwargs = Dict{Symbol, Any}(
+        :progress => true,
+        :progress_name => "Simulating",
+        :progress_steps => 100,
+        :save_everystep => false,
+        :callback => callback,
+        :tstops => tstops,
+        :adaptive => adaptive,
+        :dt => config.solver.dt,
+        :dtmin => config.solver.dtmin,
+        :dtmax => something(config.solver.dtmax, t_end),
+        :force_dtmin => config.solver.force_dtmin,
+        :abstol => config.solver.abstol,
+        :reltol => config.solver.reltol,
+        :maxiters => config.solver.maxiters,
     )
+
+    # MPRK methods guarantee positivity; skip isoutofdomain to avoid interference
+    if !is_mprk_algorithm(config.solver)
+        kwargs[:isoutofdomain] = isoutofdomain
+    end
+
+    integrator = init(prob, alg; kwargs...)
     @debug "Setup integrator."
 
     model = Model(integrator, config, saved)
