@@ -162,6 +162,7 @@ function solve_constrained_balance_correction!(
         infiltration_correction::Vector{Float64},
         residual::Vector{Float64},
         A_flow::SparseMatrixCSC{Float64, Int},
+        link_to_group::Vector{Int},
         cumulative_flow::Vector{Float64},
         cumulative_evaporation::Vector{Float64},
         cumulative_infiltration::Vector{Float64},
@@ -186,6 +187,18 @@ function solve_constrained_balance_correction!(
         # corrected fluxes are e* - de and i* - di
         JuMP.set_upper_bound(de[i], cumulative_evaporation[i])
         JuMP.set_upper_bound(di[i], cumulative_infiltration[i])
+    end
+
+    # Enforce equal corrections on links passing through the same connector node
+    for j in 2:n_links
+        g = link_to_group[j]
+        # Find the first link in this group and constrain equality
+        for k in 1:(j - 1)
+            if link_to_group[k] == g
+                JuMP.@constraint(model, dq[j] == dq[k])
+                break
+            end
+        end
     end
 
     JuMP.@constraint(model, A_flow * dq + de + di .== residual)
@@ -223,7 +236,8 @@ topology, guaranteeing mass conservation at every step.
 """
 function apply_balance_correction!(u, p_independent, time_dependent_cache)::Nothing
     (; basin, flow_boundary, balance_correction) = p_independent
-    (; A_flow, AAt_2I_chol, nonnegative_link, storage_prev, lambda, residual, correction_flow) =
+    (; A_flow, A_reduced, link_to_group, AAt_2I_chol, nonnegative_link, storage_prev,
+        lambda, residual, correction_flow, correction_reduced) =
         balance_correction
     n_basins = length(basin.node_id)
 
@@ -263,55 +277,17 @@ function apply_balance_correction!(u, p_independent, time_dependent_cache)::Noth
     @. residual += p_independent.cumulative_infiltration
     # Now residual = b - A_ext * q_ext* = per-basin mass balance error (in volumes)
 
-    # Solve for Lagrange multipliers: λ = (AAᵀ + 2I)⁻¹ r
-    lambda .= AAt_2I_chol \ residual
+    # Solve for Lagrange multipliers: λ = (A_reduced * A_reduced' + 2I)⁻¹ r
+    ldiv!(lambda, AAt_2I_chol, residual)
 
-    # Compute flow corrections: δq_flow = Aᵀλ
-    mul!(correction_flow, A_flow', lambda)
+    # Compute flow corrections in reduced space: δq_reduced = A_reduced' * λ
+    mul!(correction_reduced, A_reduced', lambda)
 
-    # If unconstrained correction would violate one-way link orientation,
-    # solve a constrained least-squares problem instead.
-    # constrained_correction = false
-    # for j in eachindex(correction_flow)
-    #     if nonnegative_link[j] && (p_independent.cumulative_flow[j] + correction_flow[j] < 0.0)
-    #         constrained_correction = true
-    #         break
-    #     end
-    # end
+    # Expand to full link space: grouped links get the same correction
+    for j in eachindex(correction_flow)
+        correction_flow[j] = correction_reduced[link_to_group[j]]
+    end
 
-    # if constrained_correction
-    #     # Reuse lambda/residual vectors as work arrays for evap/infiltration corrections.
-    #     success = solve_constrained_balance_correction!(
-    #         correction_flow,
-    #         lambda,
-    #         residual,
-    #         residual,
-    #         A_flow,
-    #         p_independent.cumulative_flow,
-    #         p_independent.cumulative_evaporation,
-    #         p_independent.cumulative_infiltration,
-    #         nonnegative_link,
-    #     )
-    #     if !success
-    #         @warn "Constrained balance correction failed; using unconstrained projection."
-    #         lambda .= AAt_2I_chol \ residual
-    #         mul!(correction_flow, A_flow', lambda)
-
-    #         @. p_independent.cumulative_flow += correction_flow
-    #         @. p_independent.cumulative_flow_saveat += correction_flow
-    #         @. p_independent.cumulative_evaporation -= lambda
-    #         @. p_independent.cumulative_evaporation_saveat -= lambda
-    #         @. p_independent.cumulative_infiltration -= lambda
-    #         @. p_independent.cumulative_infiltration_saveat -= lambda
-    #     else
-    #         @. p_independent.cumulative_flow += correction_flow
-    #         @. p_independent.cumulative_flow_saveat += correction_flow
-    #         @. p_independent.cumulative_evaporation -= lambda
-    #         @. p_independent.cumulative_evaporation_saveat -= lambda
-    #         @. p_independent.cumulative_infiltration -= residual
-    #         @. p_independent.cumulative_infiltration_saveat -= residual
-    #     end
-    # else
     # Apply corrections to per-step and saveat accumulators
     @. p_independent.cumulative_flow += correction_flow
     @. p_independent.cumulative_flow_saveat += correction_flow
@@ -319,7 +295,6 @@ function apply_balance_correction!(u, p_independent, time_dependent_cache)::Noth
     @. p_independent.cumulative_evaporation_saveat -= lambda
     @. p_independent.cumulative_infiltration -= lambda
     @. p_independent.cumulative_infiltration_saveat -= lambda
-    # end
 
     # Accumulate absolute correction for per-link flow convergence output
     @. p_independent.flow_convergence_saveat += abs(correction_flow)

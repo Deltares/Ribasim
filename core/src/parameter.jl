@@ -366,18 +366,24 @@ Projects trapezoidal estimates onto the subspace satisfying exact mass balance
 using the minimum-norm adjustment: q̄ = q̄* + Aᵀ(AAᵀ+2I)⁻¹(b - Aq̄*)
 
 - `A_flow`: Signed incidence matrix (n_basins × n_links), +1 for inflow, -1 for outflow
-- `AAt_2I_inv`: Precomputed (AAᵀ+2I)⁻¹, always positive definite
+- `A_reduced`: Reduced incidence matrix (n_basins × n_groups) where connector node
+  link pairs share a single column, enforcing equal corrections on inflow/outflow links
+- `link_to_group`: Maps each link index to its group index in A_reduced
+- `AAt_2I_chol`: Precomputed Cholesky of (A_reduced * A_reduced' + 2I)
 - `storage_prev`: Basin storage at previous accepted step
-- `lambda`, `residual`, `correction_flow`: Preallocated work vectors
+- `lambda`, `residual`, `correction_flow`, `correction_reduced`: Preallocated work vectors
 """
 struct BalanceCorrectionCache
     A_flow::SparseMatrixCSC{Float64, Int}
+    A_reduced::SparseMatrixCSC{Float64, Int}
+    link_to_group::Vector{Int}
     AAt_2I_chol::Factorization{Float64}
     nonnegative_link::BitVector
     storage_prev::Vector{Float64}
     lambda::Vector{Float64}
     residual::Vector{Float64}
     correction_flow::Vector{Float64}
+    correction_reduced::Vector{Float64}
 end
 
 function BalanceCorrectionCache(
@@ -406,8 +412,74 @@ function BalanceCorrectionCache(
     end
     A_flow = sparse(I_idx, J_idx, V_val, n_basins, n_links)
 
-    # (AAᵀ + 2I) is always positive definite; precompute sparse Cholesky factorization
-    AAt_sparse = A_flow * A_flow'
+    # Group links that pass through the same connector node.
+    # Connector nodes are conservative: inflow link and outflow link carry the same flow,
+    # so they must receive the same correction.
+    # Collect links per non-basin endpoint (connector node)
+    connector_links = Dict{NodeID, Vector{Int}}()
+    for (j, link_metadata) in enumerate(internal_flow_links)
+        src, dst = link_metadata.link
+        if src.type != NodeType.Basin
+            push!(get!(Vector{Int}, connector_links, src), j)
+        end
+        if dst.type != NodeType.Basin
+            push!(get!(Vector{Int}, connector_links, dst), j)
+        end
+    end
+
+    # Assign each link to a group using Union-Find
+    parent = collect(1:n_links)
+    function find_root(x)
+        while parent[x] != x
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        end
+        return x
+    end
+    function union_links!(a, b)
+        ra, rb = find_root(a), find_root(b)
+        if ra != rb
+            parent[ra] = rb
+        end
+    end
+
+    for (_, links) in connector_links
+        # All links touching the same connector node get the same correction
+        for i in 2:length(links)
+            union_links!(links[1], links[i])
+        end
+    end
+
+    # Build link_to_group mapping (compact group indices)
+    roots = [find_root(j) for j in 1:n_links]
+    unique_roots = sort(unique(roots))
+    root_to_group = Dict(r => g for (g, r) in enumerate(unique_roots))
+    link_to_group = [root_to_group[roots[j]] for j in 1:n_links]
+    n_groups = length(unique_roots)
+
+    # Build reduced incidence matrix: n_basins × n_groups
+    # Each group's column combines the basin contributions from all its links
+    I_red = Int[]
+    J_red = Int[]
+    V_red = Float64[]
+    for (j, link_metadata) in enumerate(internal_flow_links)
+        src, dst = link_metadata.link
+        g = link_to_group[j]
+        if src.type == NodeType.Basin
+            push!(I_red, src.idx)
+            push!(J_red, g)
+            push!(V_red, -1.0)
+        end
+        if dst.type == NodeType.Basin
+            push!(I_red, dst.idx)
+            push!(J_red, g)
+            push!(V_red, +1.0)
+        end
+    end
+    A_reduced = sparse(I_red, J_red, V_red, n_basins, n_groups)
+
+    # (A_reduced * A_reduced' + 2I) is always positive definite; precompute Cholesky
+    AAt_sparse = A_reduced * A_reduced'
     for i in 1:n_basins
         AAt_sparse[i, i] += 2.0
     end
@@ -425,12 +497,15 @@ function BalanceCorrectionCache(
 
     return BalanceCorrectionCache(
         A_flow,
+        A_reduced,
+        link_to_group,
         AAt_2I_chol,
         nonnegative_link,
         zeros(n_basins),  # storage_prev
         zeros(n_basins),  # lambda
         zeros(n_basins),  # residual
         zeros(n_links),   # correction_flow
+        zeros(n_groups),  # correction_reduced
     )
 end
 
