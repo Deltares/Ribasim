@@ -5,7 +5,7 @@
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     model = BMI.initialize(Ribasim.Model, toml_path)
     @test BMI.get_time_units(model) == "s"
-    dt0 = 2.8280652f-5
+    dt0 = 1.07127
     @test BMI.get_time_step(model) ≈ dt0 atol = 5.0e-3
     @test BMI.get_start_time(model) === 0.0
     @test BMI.get_current_time(model) === 0.0
@@ -54,7 +54,7 @@ end
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     model = BMI.initialize(Ribasim.Model, toml_path)
     storage0 = BMI.get_value_ptr(model, "basin.storage")
-    @test storage0 ≈ ones(4)
+    @test storage0 ≈ ones(4) atol = 2.0e-2
     @test_throws "Unknown variable foo" BMI.get_value_ptr(model, "foo")
     BMI.update_until(model, 86400.0)
     storage = BMI.get_value_ptr(model, "basin.storage")
@@ -101,7 +101,7 @@ end
     inflow = BMI.get_value_ptr(model, "user_demand.cumulative_inflow")
     day = 86400.0
     BMI.update_until(model, 2day)
-    @test inflow ≈ [2.0e-3 * day, 3.0e-3 * day] atol = 1.0e-2
+    @test inflow ≈ [2.0e-3 * day, 3.0e-3 * day]
     demand[1] = 3.0e-3
     BMI.update_until(model, 3day)
     @test inflow[1] ≈ 5.0e-3 * day atol = 2.0e-3

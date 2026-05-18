@@ -24,83 +24,6 @@ struct Model
     end
 end
 
-"""
-Get the Jacobian evaluation function via DifferentiationInterface.jl.
-The time derivative is also supplied in case a Rosenbrock method is used.
-"""
-function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
-    (; p_independent, state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
-    backend = get_ad_type(solver)
-    sparsity_detector = TracerSparsityDetector()
-
-    backend_jac = if solver.sparse
-        AutoSparse(backend; sparsity_detector, coloring_algorithm = GreedyColoringAlgorithm())
-    else
-        backend
-    end
-
-    t = 0.0
-
-    jac_prep = prepare_jacobian(
-        water_balance!,
-        du,
-        backend_jac,
-        u,
-        Constant(p_independent),
-        Cache(state_and_time_dependent_cache),
-        Constant(time_dependent_cache),
-        Constant(p_mutable),
-        Constant(t);
-        strict = Val(true),
-    )
-
-    jac_prototype = solver.sparse ? sparsity_pattern(jac_prep) : nothing
-
-    jac(J, u, p, t) = jacobian!(
-        water_balance!,
-        du,
-        J,
-        jac_prep,
-        backend_jac,
-        u,
-        Constant(p.p_independent),
-        Cache(state_and_time_dependent_cache),
-        Constant(time_dependent_cache),
-        Constant(p.p_mutable),
-        Constant(t),
-    )
-
-    tgrad_prep = prepare_derivative(
-        water_balance!,
-        du,
-        backend,
-        t,
-        Constant(u),
-        Constant(p_independent),
-        Cache(state_and_time_dependent_cache),
-        Cache(time_dependent_cache),
-        Constant(p_mutable);
-        strict = Val(true),
-    )
-    tgrad(dT, u, p, t) = derivative!(
-        water_balance!,
-        du,
-        dT,
-        tgrad_prep,
-        backend,
-        t,
-        Constant(u),
-        Constant(p.p_independent),
-        Cache(state_and_time_dependent_cache),
-        Cache(time_dependent_cache),
-        Constant(p.p_mutable),
-    )
-
-    time_dependent_cache.t_prev_call[1] = -1.0
-
-    return jac_prototype, jac, tgrad
-end
-
 function Model(config_path::AbstractString)::Model
     return Model(Config(config_path))
 end
@@ -177,18 +100,18 @@ function Model(config::Config)::Model
         error("Model has no state.")
     end
 
-    reltol, relmask = build_reltol_vector(u0, config.solver.reltol)
-    parameters.p_independent.relmask .= relmask
+    # Initialize basin storages in the state vector
+    initialize_state_vector!(u0, parameters.p_independent)
+
     du0 = zero(u0)
 
     # The Solver algorithm
     alg = algorithm(config.solver)
 
     # Synchronize level with storage
-    set_current_basin_properties!(p_independent.u_reduced, parameters, t0)
+    set_current_basin_properties!(u0, parameters, t0)
 
-    # Previous level is used to estimate the minimum level that was attained during a time step
-    # in limit_flow!
+    # Previous level is used to track level changes
     p_independent.basin.level_prev .= state_and_time_dependent_cache.current_level
 
     saveat = convert_saveat(config.solver.saveat, t_end)
@@ -196,12 +119,16 @@ function Model(config::Config)::Model
     tstops = sort(unique(reduce(vcat, tstops)))
     adaptive = is_adaptive(config.solver.dt)
 
-    specialize = config.solver.specialize ? FullSpecialize : NoSpecialize
-    RHS = ODEFunction{true, specialize}(
-        water_balance!;
-        get_diff_eval(du0, parameters, config.solver)...,
-    )
-    prob = ODEProblem{true, specialize}(RHS, u0, timespan, parameters)
+    prob = if is_mprk_algorithm(config.solver)
+        # Use PDSProblem for positivity-preserving MPRK methods
+        build_pds_problem(u0, timespan, parameters, p_independent)
+    else
+        RHS = ODEFunction{true, FullSpecialize}(
+            water_balance!;
+            get_diff_eval(du0, u0, parameters, config.solver)...,
+        )
+        ODEProblem{true, FullSpecialize}(RHS, u0, timespan, parameters)
+    end
     @debug "Setup ODEProblem."
 
     callback, saved = create_callbacks(p_independent, config, saveat)
@@ -212,29 +139,40 @@ function Model(config::Config)::Model
     # time which depends on the flows formulated in water_balance!
     water_balance!(du0, u0, parameters, t0)
 
+    # Initialize flow_rate_prev from the initial water_balance! so that
+    # the first trapezoidal integration step uses correct initial flow rates
+    sync_flow_rates!(parameters)
+    p_independent.flow_rate_prev .= p_independent.current_flow_rate
+    p_independent.evaporation_prev .= state_and_time_dependent_cache.current_evaporation
+    p_independent.infiltration_prev .= state_and_time_dependent_cache.current_infiltration
+
     # Initialize the integrator, providing all solver options as described in
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
     # Not all keyword arguments (e.g. `dtmax`) support `nothing`, in which case we follow
     # https://github.com/SciML/OrdinaryDiffEq.jl/blob/v6.57.0/src/solve.jl#L10
-    integrator = init(
-        prob,
-        alg;
-        progress = true,
-        progress_name = "Simulating",
-        progress_steps = 100,
-        save_everystep = false,
-        callback,
-        tstops,
-        isoutofdomain,
-        adaptive,
-        config.solver.dt,
-        config.solver.dtmin,
-        dtmax = something(config.solver.dtmax, t_end),
-        config.solver.force_dtmin,
-        config.solver.abstol,
-        reltol,
-        config.solver.maxiters,
+    kwargs = Dict{Symbol, Any}(
+        :progress => true,
+        :progress_name => "Simulating",
+        :progress_steps => 100,
+        :save_everystep => false,
+        :callback => callback,
+        :tstops => tstops,
+        :adaptive => adaptive,
+        :dt => config.solver.dt,
+        :dtmin => config.solver.dtmin,
+        :dtmax => something(config.solver.dtmax, t_end),
+        :force_dtmin => config.solver.force_dtmin,
+        :abstol => config.solver.abstol,
+        :reltol => config.solver.reltol,
+        :maxiters => config.solver.maxiters,
     )
+
+    # MPRK methods guarantee positivity; skip isoutofdomain to avoid interference
+    if !is_mprk_algorithm(config.solver)
+        kwargs[:isoutofdomain] = isoutofdomain
+    end
+
+    integrator = init(prob, alg; kwargs...)
     @debug "Setup integrator."
 
     model = Model(integrator, config, saved)

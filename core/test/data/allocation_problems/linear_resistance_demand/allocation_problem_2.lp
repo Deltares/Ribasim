@@ -10,14 +10,14 @@ linear_resistance_constraint_LinearResistance_#2_: -0.01 basin_storage_change_Ba
 flow_demand_allocated_sum_constraint_LinearResistance_#2_: 1 flow_(Basin_#1,_LinearResistance_#2)_ - 1 flow_demand_allocated_LinearResistance_#2,1_ - 1 flow_demand_extra_LinearResistance_#2_ = 0
 average_flow_unit_error_constraint_1_: -1 flow_demand_error_LinearResistance_#2,1,first_ + 1 average_flow_unit_error_1_ = 0
 Bounds
--2 <= basin_storage_change_Basin_#1_ <= 8
--2 <= basin_storage_change_Basin_#3_ <= 8
+-1.8181818181818181 <= basin_storage_change_Basin_#1_ <= 7.2727272727272725
+-1.8181818181818181 <= basin_storage_change_Basin_#3_ <= 7.2727272727272725
 0 <= low_storage_factor_Basin_#1_ <= 1
 0 <= low_storage_factor_Basin_#3_ <= 1
--345.6 <= flow_(Basin_#1,_LinearResistance_#2)_ <= 345.6
--345.6 <= flow_(LinearResistance_#2,_Basin_#3)_ <= 345.6
--86400000 <= flow_demand_allocated_LinearResistance_#2,1_ <= 2
-0 <= flow_demand_extra_LinearResistance_#2_ <= 86400000
+-314.1818181818182 <= flow_(Basin_#1,_LinearResistance_#2)_ <= 314.1818181818182
+-314.1818181818182 <= flow_(LinearResistance_#2,_Basin_#3)_ <= 314.1818181818182
+-7.854545454545455e7 <= flow_demand_allocated_LinearResistance_#2,1_ <= 2
+0 <= flow_demand_extra_LinearResistance_#2_ <= 7.854545454545455e7
 0 <= flow_demand_error_LinearResistance_#2,1,first_ <= 1
 0 <= flow_demand_error_LinearResistance_#2,1,second_ <= 1
 0 <= average_flow_unit_error_1_ <= 1

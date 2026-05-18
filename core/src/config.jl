@@ -22,6 +22,7 @@ using OrdinaryDiffEqSDIRK: ImplicitEuler, KenCarp4, TRBDF2
 using OrdinaryDiffEqBDF: FBDF, QNDF
 using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
 import OrdinaryDiffEqDifferentiation
+using PositiveIntegrators: MPRK22, MPRK43I, MPRK43II
 using LinearSolve:
     KLUFactorization, SciMLLinearSolveAlgorithm, LinearSolve, SciMLLinearSolveAlgorithm
 
@@ -29,6 +30,7 @@ export Config, Solver, Results, Logging, Toml
 export algorithm,
     camel_case,
     get_ad_type,
+    is_mprk_algorithm,
     snake_case,
     input_path,
     database_path,
@@ -180,7 +182,7 @@ end
     dtmin::Float64 = 0.0
     dtmax::Union{Float64, Nothing} = nothing
     force_dtmin::Bool = false
-    abstol::Float64 = 1.0e-5
+    abstol::Float64 = 1.0e-4
     reltol::Float64 = 1.0e-5
     water_balance_abstol::Float64 = 1.0e-3
     water_balance_reltol::Float64 = 1.0e-2
@@ -288,8 +290,8 @@ to avoid runtime errors, especially when writing results.
 function validate_config(toml::Toml)::Nothing
     is_valid = true
 
-    if !haskey(algorithms, toml.solver.algorithm)
-        options = join(keys(algorithms), ", ")
+    if !haskey(algorithms, toml.solver.algorithm) && toml.solver.algorithm ∉ mprk_algorithms
+        options = join(union(keys(algorithms), mprk_algorithms), ", ")
         @error("Given solver algorithm $(toml.solver.algorithm) not supported.\n\
             Available options are: ($(options)).")
         is_valid = false
@@ -375,6 +377,9 @@ const algorithms = Dict{String, Type}(
     "Euler" => Euler,
 )
 
+"MPRK algorithms requiring PDSProblem formulation"
+const mprk_algorithms = Set(["MPRK22", "MPRK43I", "MPRK43II"])
+
 """
 Check whether the given function has a method that accepts the given kwarg.
 Note that it is possible that methods exist that accept :a and :b individually,
@@ -388,39 +393,30 @@ function function_accepts_kwarg(f, kwarg)::Bool
 end
 
 function get_ad_type(solver::Solver)
-    chunksize = solver.specialize ? nothing : 1
     return if solver.autodiff
-        AutoForwardDiff(; chunksize, tag = :Ribasim)
+        AutoForwardDiff(; tag = :Ribasim)
     else
         AutoFiniteDiff()
     end
 end
 
-"""
-A wrapper of a SciMLLinearSolveAlgorithm to dispatch on for the specialized Jacobian
-matrix of Ribasim.
-"""
-struct RibasimLinearSolve{AType <: SciMLLinearSolveAlgorithm} <: SciMLLinearSolveAlgorithm
-    algorithm::AType
-end
+"Whether the configured algorithm is a positivity-preserving MPRK method"
+is_mprk_algorithm(solver::Solver)::Bool = solver.algorithm in mprk_algorithms
 
-LinearSolve.needs_concrete_A(::RibasimLinearSolve) = false
+"Create an algorithm from solver config"
+function algorithm(solver::Solver)
+    if is_mprk_algorithm(solver)
+        return mprk_algorithm(solver)
+    end
 
-"Create an OrdinaryDiffEqAlgorithm from solver config"
-function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     kwargs = Dict{Symbol, Any}()
     algotype = algorithms[solver.algorithm]
 
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NLNewton()
+        kwargs[:nlsolve] = NLNewton(; relax = Ribasim.BackTracking())
         if solver.sparse
-            kwargs[:linsolve] =
-                RibasimLinearSolve(KLUFactorization(; check_pattern = false))
+            kwargs[:linsolve] = KLUFactorization(; check_pattern = false)
         end
-    end
-
-    if function_accepts_kwarg(algotype, :step_limiter!)
-        kwargs[:step_limiter!] = Ribasim.limit_flow!
     end
 
     if function_accepts_kwarg(algotype, :autodiff)
@@ -428,6 +424,22 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     end
 
     return algotype(; kwargs...)
+end
+
+"Create an MPRK algorithm from solver config"
+function mprk_algorithm(solver::Solver)
+    linsolve = solver.sparse ? KLUFactorization(; check_pattern = false) : nothing
+    kwargs = isnothing(linsolve) ? (;) : (; linsolve)
+
+    return if solver.algorithm == "MPRK22"
+        MPRK22(1.0; kwargs...)
+    elseif solver.algorithm == "MPRK43I"
+        MPRK43I(1.0, 0.5; kwargs...)
+    elseif solver.algorithm == "MPRK43II"
+        MPRK43II(2.0 / 3.0; kwargs...)
+    else
+        error("Unknown MPRK algorithm: $(solver.algorithm)")
+    end
 end
 
 "Convert the saveat Float64 from our Config to SciML's saveat"

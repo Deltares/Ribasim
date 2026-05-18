@@ -135,9 +135,9 @@ class Solver(ChildModel):
         If a smaller dt than dtmin is needed to meet the set error tolerances, the simulation stops, unless force_dtmin = true
         (Optional, defaults to False)
     abstol : float
-        The absolute tolerance for adaptive timestepping (Optional, defaults to 1e-7)
+        The absolute tolerance for adaptive timestepping (Optional, defaults to 1e-4)
     reltol : float
-        The relative tolerance for adaptive timestepping (Optional, defaults to 1e-7)
+        The relative tolerance for adaptive timestepping (Optional, defaults to 1e-5)
     maxiters : int
         The total number of linear iterations over the whole simulation. (Defaults to 1e9, only needs to be increased for extremely long simulations)
     sparse : bool
@@ -160,7 +160,7 @@ class Solver(ChildModel):
     dtmin: float | None = None
     dtmax: float | None = None
     force_dtmin: bool = False
-    abstol: float = 1e-06
+    abstol: float = 1e-04
     reltol: float = 1e-05
     maxiters: int = 1000000000
     sparse: bool = True

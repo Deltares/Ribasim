@@ -72,7 +72,7 @@ function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     elseif name == "basin.surface_runoff"
         basin.vertical_flux.surface_runoff::Vector{Float64}
     elseif name == "basin.cumulative_infiltration"
-        unsafe_array(u.infiltration)::Vector{Float64}
+        p_independent.cumulative_infiltration_total::Vector{Float64}
     elseif name == "basin.cumulative_drainage"
         basin.cumulative_drainage::Vector{Float64}
     elseif name == "basin.cumulative_surface_runoff"
@@ -82,7 +82,7 @@ function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     elseif name == "user_demand.demand"
         vec(user_demand.demand)::Vector{Float64}
     elseif name == "user_demand.cumulative_inflow"
-        unsafe_array(u.user_demand_inflow)::Vector{Float64}
+        state_and_time_dependent_cache.current_flow_rate_user_demand
     else
         error("Unknown variable $name")
     end

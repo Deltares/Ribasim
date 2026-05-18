@@ -32,13 +32,14 @@ using DifferentiationInterface:
 using ForwardDiff: derivative as forward_diff
 
 # Algorithms for solving ODEs.
-using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du
-using OrdinaryDiffEqDifferentiation:
-    OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
-using SciMLOperators: WOperator, MatrixOperator
+using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
+using DiffEqBase: DiffEqBase, calculate_residuals!
+using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
 import ADTypes
 using ADTypes: AutoForwardDiff
 import ForwardDiff
+import NaNMath
+import OrdinaryDiffEqBDF
 
 # Interface for defining and solving the ODE problem of the physical layer.
 using SciMLBase:
@@ -51,12 +52,7 @@ using SciMLBase:
     ODEProblem,
     get_proposed_dt,
     DEIntegrator,
-    FullSpecialize,
-    NoSpecialize,
-    SciMLOperators,
-    AbstractSciMLOperator,
-    LinearProblem,
-    LinearSolution
+    FullSpecialize
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
@@ -64,10 +60,13 @@ using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
-using SparseArrays: SparseMatrixCSC, sparse, nzrange
+using SparseArrays: SparseMatrixCSC, sparse, nzrange, nonzeros
+
+# Positivity-preserving time integration
+using PositiveIntegrators: PDSProblem, MPRK22, MPRK43I, MPRK43II
 
 # Linear algebra
-using LinearAlgebra: LinearAlgebra, mul!, UniformScaling
+using LinearAlgebra: LinearAlgebra, mul!, UniformScaling, Symmetric, cholesky, Factorization
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node
@@ -182,7 +181,7 @@ include("allocation_init.jl")
 include("allocation_optim.jl")
 include("util.jl")
 include("graph.jl")
-include("differentiation.jl")
+include("pds.jl")
 include("model.jl")
 include("read.jl")
 include("write.jl")
