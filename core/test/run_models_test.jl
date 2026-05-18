@@ -217,7 +217,7 @@ end
     @test p_independent.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
 
     @test success(model)
-    @test length(model.integrator.sol) == 2 # start and end
+    @test length(model.integrator.sol.t) == 2 # start and end
     @test state_and_time_dependent_cache.current_storage ≈
         Float32[775.23576, 775.23365, 572.60102, 1130.005] skip = Sys.isapple() atol = 1.5
 
