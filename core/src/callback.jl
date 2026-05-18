@@ -145,173 +145,10 @@ function sync_flow_rates!(p::Parameters)::Nothing
 end
 
 """
-Solve a constrained least-squares balance correction when the unconstrained
-projection would violate nonnegative flow physics on one-way links.
-
-Minimize 0.5*(||dq||^2 + ||de||^2 + ||di||^2)
-subject to: A_flow * dq + de + di == residual,
-and q* + dq >= 0 on constrained links,
-and corrected evaporation/infiltration remaining nonnegative.
-
-Returns true when an optimal solution was found and writes the solution into
-`correction_flow`, `evap_correction`, and `infiltration_correction`.
-"""
-function solve_constrained_balance_correction!(
-        correction_flow::Vector{Float64},
-        evap_correction::Vector{Float64},
-        infiltration_correction::Vector{Float64},
-        residual::Vector{Float64},
-        A_flow::SparseMatrixCSC{Float64, Int},
-        link_to_group::Vector{Int},
-        cumulative_flow::Vector{Float64},
-        cumulative_evaporation::Vector{Float64},
-        cumulative_infiltration::Vector{Float64},
-        nonnegative_link::BitVector,
-    )::Bool
-    n_links = length(cumulative_flow)
-    n_basins = length(residual)
-
-    model = JuMP.Model(HiGHS.Optimizer)
-    JuMP.set_silent(model)
-
-    JuMP.@variable(model, dq[1:n_links])
-    JuMP.@variable(model, de[1:n_basins])
-    JuMP.@variable(model, di[1:n_basins])
-
-    for j in 1:n_links
-        if nonnegative_link[j]
-            JuMP.set_lower_bound(dq[j], -cumulative_flow[j])
-        end
-    end
-    for i in 1:n_basins
-        # corrected fluxes are e* - de and i* - di
-        JuMP.set_upper_bound(de[i], cumulative_evaporation[i])
-        JuMP.set_upper_bound(di[i], cumulative_infiltration[i])
-    end
-
-    # Enforce equal corrections on links passing through the same connector node
-    for j in 2:n_links
-        g = link_to_group[j]
-        # Find the first link in this group and constrain equality
-        for k in 1:(j - 1)
-            if link_to_group[k] == g
-                JuMP.@constraint(model, dq[j] == dq[k])
-                break
-            end
-        end
-    end
-
-    JuMP.@constraint(model, A_flow * dq + de + di .== residual)
-    JuMP.@objective(
-        model,
-        Min,
-        0.5 * sum(dq[j]^2 for j in 1:n_links) +
-            0.5 * sum(de[i]^2 for i in 1:n_basins) +
-            0.5 * sum(di[i]^2 for i in 1:n_basins),
-    )
-
-    JuMP.optimize!(model)
-    if JuMP.termination_status(model) != JuMP.OPTIMAL
-        return false
-    end
-
-    for j in 1:n_links
-        correction_flow[j] = JuMP.value(dq[j])
-    end
-    for i in 1:n_basins
-        evap_correction[i] = JuMP.value(de[i])
-        infiltration_correction[i] = JuMP.value(di[i])
-    end
-    return true
-end
-
-"""
-Apply mass-balance-consistent correction to trapezoidal flow estimates.
-Projects the trapezoidal estimates onto the subspace satisfying exact mass balance
-using the minimum-norm adjustment: δq = Aᵀ(AAᵀ+2I)⁻¹(b - Aq̄*)
-
-The correction distributes the per-basin water balance residual back to the
-internal flow links, evaporation, and infiltration in proportion to the network
-topology, guaranteeing mass conservation at every step.
-"""
-function apply_balance_correction!(u, p_independent, time_dependent_cache)::Nothing
-    (; basin, flow_boundary, balance_correction) = p_independent
-    (; A_flow, A_reduced, link_to_group, AAt_2I_chol, nonnegative_link, storage_prev,
-        lambda, residual, correction_flow, correction_reduced) =
-        balance_correction
-    n_basins = length(basin.node_id)
-
-    if n_basins == 0
-        return nothing
-    end
-
-    # b[i] = ΔS[i] - exact_forcings[i]
-    # where exact_forcings = precipitation + drainage + surface_runoff
-    for i in 1:n_basins
-        ΔS = u.basin[i] - storage_prev[i]
-        precip = time_dependent_cache.basin.current_cumulative_precipitation[i] -
-            basin.cumulative_precipitation[i]
-        drainage = time_dependent_cache.basin.current_cumulative_drainage[i] -
-            basin.cumulative_drainage[i]
-        surface_runoff = time_dependent_cache.basin.current_cumulative_surface_runoff[i] -
-            basin.cumulative_surface_runoff[i]
-        residual[i] = ΔS - precip - drainage - surface_runoff
-    end
-
-    # Subtract exact flow boundary contributions to receiving basins
-    for (outflow_link, id) in zip(flow_boundary.outflow_link, flow_boundary.node_id)
-        dst = outflow_link.link[2]
-        if dst.type == NodeType.Basin
-            fb_vol =
-                time_dependent_cache.flow_boundary.current_cumulative_boundary_flow[id.idx] -
-                flow_boundary.cumulative_flow[id.idx]
-            residual[dst.idx] -= fb_vol
-        end
-    end
-
-    # Subtract A_ext * q_ext* (the trapezoidal estimate contribution)
-    # A_ext * q_ext* = A_flow * cumulative_flow - cumulative_evaporation - cumulative_infiltration
-    mul!(lambda, A_flow, p_independent.cumulative_flow)  # reuse lambda as temp
-    @. residual -= lambda
-    @. residual += p_independent.cumulative_evaporation
-    @. residual += p_independent.cumulative_infiltration
-    # Now residual = b - A_ext * q_ext* = per-basin mass balance error (in volumes)
-
-    # Solve for Lagrange multipliers: λ = (A_reduced * A_reduced' + 2I)⁻¹ r
-    ldiv!(lambda, AAt_2I_chol, residual)
-
-    # Compute flow corrections in reduced space: δq_reduced = A_reduced' * λ
-    mul!(correction_reduced, A_reduced', lambda)
-
-    # Expand to full link space: grouped links get the same correction
-    for j in eachindex(correction_flow)
-        correction_flow[j] = correction_reduced[link_to_group[j]]
-    end
-
-    # Apply corrections to per-step and saveat accumulators
-    @. p_independent.cumulative_flow += correction_flow
-    @. p_independent.cumulative_flow_saveat += correction_flow
-    @. p_independent.cumulative_evaporation -= lambda
-    @. p_independent.cumulative_evaporation_saveat -= lambda
-    @. p_independent.cumulative_infiltration -= lambda
-    @. p_independent.cumulative_infiltration_saveat -= lambda
-
-    # Accumulate absolute correction for per-link flow convergence output
-    @. p_independent.flow_convergence_saveat += abs(correction_flow)
-
-    # Update storage_prev for next step
-    for i in 1:n_basins
-        storage_prev[i] = u.basin[i]
-    end
-
-    return nothing
-end
-
-"""
 Update cumulative flows.
 Also updates cumulative forcings and allocation flows.
 """
-function update_cumulative_flows!(u, t, integrator)::Nothing
+function update_cumulative_flows!(_, t, integrator)::Nothing
     (; p) = integrator
     (; p_independent, p_mutable, time_dependent_cache, state_and_time_dependent_cache) = p
     (; basin, flow_boundary, allocation) = p_independent
@@ -351,9 +188,6 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
 
         # Accumulate running total for BMI using current rate * dt (like an ODE state)
         @. p_independent.cumulative_infiltration_total += dt * state_and_time_dependent_cache.current_infiltration
-
-        # Project trapezoidal estimates onto mass-balance-consistent subspace
-        apply_balance_correction!(u, p_independent, time_dependent_cache)
 
         # Accumulate normalized Newton residual for convergence output
         cache = integrator.cache
@@ -700,6 +534,28 @@ function save_flow(u, t, integrator)
         p_independent.convergence_ncalls[1] = 0
     end
 
+    # Advance cosmetic storage: S*[k+1] = S*[k] + trapezoidal volumes + forcings
+    # Uses the already-computed mean rates × Δt to recover the accumulated volumes.
+    cosmetic_storage = p_independent.cosmetic_storage
+    for (j, link_meta) in enumerate(internal_flow_links)
+        src, dst = link_meta.link
+        q = flow_mean[j] * Δt
+        if src.type == NodeType.Basin
+            cosmetic_storage[src.idx] -= q
+        end
+        if dst.type == NodeType.Basin
+            cosmetic_storage[dst.idx] += q
+        end
+    end
+    @. cosmetic_storage +=
+        (precipitation + drainage + surface_runoff - evaporation - infiltration) * Δt
+    for (outflow_link, id) in zip(flow_boundary.outflow_link, flow_boundary.node_id)
+        dst = outflow_link.link[2]
+        if dst.type == NodeType.Basin
+            cosmetic_storage[dst.idx] += flow_boundary_mean[id.idx] * Δt
+        end
+    end
+
     saved_flow = SavedFlow(;
         flow = flow_mean,
         inflow = inflow_mean,
@@ -712,10 +568,9 @@ function save_flow(u, t, integrator)
         infiltration,
         concentration,
         convergence,
-        flow_convergence = copy(p_independent.flow_convergence_saveat) ./ Δt,
+        cosmetic_storage = copy(cosmetic_storage),
         t,
     )
-    p_independent.flow_convergence_saveat .= 0.0
     check_water_balance_error!(saved_flow, integrator, Δt)
     return saved_flow
 end

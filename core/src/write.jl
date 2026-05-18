@@ -227,6 +227,10 @@ const CF = OrderedDict{String, OrderedDict{String, String}}(
         "standard_name" => "surface_water_amount",
         "long_name" => "water storage volume",
     ),
+    "storage_internal" => OrderedDict(
+        "units" => "m3",
+        "long_name" => "internal solver storage volume",
+    ),
     "inflow_rate" => OrderedDict(
         "units" => "m3 s-1",
         "standard_name" => "water_volume_transport_in_river_channel",
@@ -319,6 +323,7 @@ function get_storages_and_levels(
         time::Vector{DateTime},
         node_id::Vector{NodeID},
         storage::Matrix{Float64},
+        storage_internal::Matrix{Float64},
         level::Matrix{Float64},
     }
     (; config, integrator, saved) = model
@@ -328,14 +333,32 @@ function get_storages_and_levels(
     tsteps = datetime_since.(tsaves(model), config.starttime)
 
     storage = zeros(length(node_id), length(tsteps))
+    storage_internal = zeros(length(node_id), length(tsteps))
     level = zero(storage)
-    for (i, cvec) in enumerate(saved.basin_state.saveval)
-        i > length(tsteps) && break
-        storage[:, i] .= cvec.storage
-        level[:, i] .= cvec.level
+
+    # t = 0: cosmetic storage equals the initial ODE storage
+    if !isempty(saved.basin_state.saveval)
+        storage[:, 1] .= p_independent.basin.storage0
+        level[:, 1] .= saved.basin_state.saveval[1].level
+        storage_internal[:, 1] .= saved.basin_state.saveval[1].storage
     end
 
-    return (; time = tsteps, node_id, storage, level)
+    # t > 0: cosmetic storage from SavedFlow (closed by trapezoidal construction)
+    for (i, sv) in enumerate(saved.flow.saveval)
+        col = i + 1
+        col > length(tsteps) && break
+        storage[:, col] .= sv.cosmetic_storage
+    end
+
+    # levels and internal storage from SavedBasinState for t > 0
+    for (i, cvec) in enumerate(saved.basin_state.saveval)
+        i == 1 && continue  # already handled t = 0
+        i > length(tsteps) && break
+        level[:, i] .= cvec.level
+        storage_internal[:, i] .= cvec.storage
+    end
+
+    return (; time = tsteps, node_id, storage, storage_internal, level)
 end
 
 "Create the basin state table from the saved data"
@@ -356,6 +379,7 @@ function basin_data(model::Model; table::Bool = true)
     # The last timestep is not included; there is no period over which to compute flows.
     data = get_storages_and_levels(model)
     storage = vec(data.storage[:, begin:(end - 1)])
+    storage_internal = vec(data.storage_internal[:, begin:(end - 1)])
     level = vec(data.level[:, begin:(end - 1)])
 
     nbasin = length(data.node_id)
@@ -383,6 +407,7 @@ function basin_data(model::Model; table::Bool = true)
     else
         level = reshape(level, nbasin, ntsteps)
         storage = reshape(storage, nbasin, ntsteps)
+        storage_internal = reshape(storage_internal, nbasin, ntsteps)
         evaporation = reshape(evaporation, nbasin, ntsteps)
         infiltration = reshape(infiltration, nbasin, ntsteps)
     end
@@ -392,6 +417,7 @@ function basin_data(model::Model; table::Bool = true)
         node_id,
         level,
         storage,
+        storage_internal,
         inflow_rate,
         outflow_rate,
         storage_rate,
@@ -445,26 +471,18 @@ function flow_data(model::Model; table::Bool = true)
     nflow = length(unique_link_ids_flow)
     ntsteps = length(t)
     flow_rate = zeros(nflow * ntsteps)
-    flow_rate_conv = zeros(nflow * ntsteps)
     internal_flow_rate = zeros(length(internal_flow_links))
-    internal_flow_rate_conv = zeros(length(internal_flow_links))
 
     for (ti, saved_flow) in enumerate(saveval)
-        (; flow, flow_boundary, flow_convergence) = saved_flow
+        (; flow, flow_boundary) = saved_flow
         for (fi, link) in enumerate(internal_flow_links)
             internal_flow_rate[fi] =
                 get_flow(flow, p_independent, 0.0, link.link; boundary_flow = flow_boundary)
-            internal_flow_rate_conv[fi] = flow_convergence[fi]
         end
         mul!(
             view(flow_rate, (1 + (ti - 1) * nflow):(ti * nflow)),
             flow_link_map,
             internal_flow_rate,
-        )
-        mul!(
-            view(flow_rate_conv, (1 + (ti - 1) * nflow):(ti * nflow)),
-            flow_link_map,
-            internal_flow_rate_conv,
         )
     end
 
@@ -486,7 +504,6 @@ function flow_data(model::Model; table::Bool = true)
         to_node_id = repeat(to_node_id; outer = ntsteps)
     else
         flow_rate = reshape(flow_rate, nflow, ntsteps)
-        flow_rate_conv = reshape(flow_rate_conv, nflow, ntsteps)
     end
 
     return (;
@@ -495,7 +512,6 @@ function flow_data(model::Model; table::Bool = true)
         from_node_id,
         to_node_id,
         flow_rate,
-        convergence = flow_rate_conv,
     )
 end
 
