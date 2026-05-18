@@ -290,8 +290,8 @@ to avoid runtime errors, especially when writing results.
 function validate_config(toml::Toml)::Nothing
     is_valid = true
 
-    if !haskey(algorithms, toml.solver.algorithm)
-        options = join(keys(algorithms), ", ")
+    if !haskey(algorithms, toml.solver.algorithm) && toml.solver.algorithm ∉ mprk_algorithms
+        options = join(union(keys(algorithms), mprk_algorithms), ", ")
         @error("Given solver algorithm $(toml.solver.algorithm) not supported.\n\
             Available options are: ($(options)).")
         is_valid = false
