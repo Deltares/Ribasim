@@ -24,8 +24,8 @@ function create_callbacks(
     push!(callbacks, save_basin_state_cb)
 
     # Update cumulative flows (exact integration and for allocation)
-    cumulative_flows_cb =
-        FunctionCallingCallback(update_cumulative_flows!; func_start = false)
+    # func_start = true so that flow_rate_prev etc. are initialized at t=0
+    cumulative_flows_cb = FunctionCallingCallback(update_cumulative_flows!)
     push!(callbacks, cumulative_flows_cb)
 
     # Update concentrations
@@ -99,17 +99,18 @@ end
 """
 Synchronize UserDemand flow rates into the per-link flow rate vector.
 UserDemand has multiple inflow links per node, so it needs special handling.
+The outflow link carries the return flow (q * return_factor), not the full abstraction.
 """
-function sync_user_demand_flow_rates!(current_flow_cache::Vector{T}, p_independent::ParametersIndependent) where {T}
+function sync_user_demand_flow_rates!(current_flow_cache::Vector{T}, current_return_factor::Vector, p_independent::ParametersIndependent) where {T}
     flow_link_lookup = p_independent.graph[].flow_link_lookup
     user_demand = p_independent.user_demand
     for (node_idx, id) in enumerate(user_demand.node_id)
         q = current_flow_cache[id.idx]
-        # Sync outflow link
+        # Sync outflow link with return flow (only the returned fraction reaches downstream)
         outflow_link = user_demand.outflow_link[node_idx]
         idx = get_link_index(outflow_link.link, flow_link_lookup)
         if idx !== nothing
-            p_independent.current_flow_rate[idx] = q
+            p_independent.current_flow_rate[idx] = q * current_return_factor[id.idx]
         end
         # Sync inflow links (distribute evenly for trapezoidal accumulation)
         inflow_links = user_demand.inflow_links[node_idx]
@@ -139,7 +140,7 @@ function sync_flow_rates!(p::Parameters)::Nothing
     sync_flow_rates!(:linear_resistance, cache.current_flow_rate_linear_resistance, p_independent)
     sync_flow_rates!(:tabulated_rating_curve, cache.current_flow_rate_tabulated_rating_curve, p_independent)
     sync_flow_rates!(:manning_resistance, cache.current_flow_rate_manning_resistance, p_independent)
-    sync_user_demand_flow_rates!(cache.current_flow_rate_user_demand, p_independent)
+    sync_user_demand_flow_rates!(cache.current_flow_rate_user_demand, time_dependent_cache.user_demand.current_return_factor, p_independent)
 
     return nothing
 end
@@ -201,6 +202,11 @@ function update_cumulative_flows!(_, t, integrator)::Nothing
             end
             p_independent.convergence_ncalls[1] += 1
         end
+    else
+        # At t=0: initialize prev rates so the first trapezoidal step is accurate
+        @. p_independent.flow_rate_prev = p_independent.current_flow_rate
+        @. p_independent.evaporation_prev = state_and_time_dependent_cache.current_evaporation
+        @. p_independent.infiltration_prev = state_and_time_dependent_cache.current_infiltration
     end
 
     # Update cumulative boundary flow which is integrated exactly
@@ -534,28 +540,11 @@ function save_flow(u, t, integrator)
         p_independent.convergence_ncalls[1] = 0
     end
 
-    # Advance cosmetic storage: S*[k+1] = S*[k] + trapezoidal volumes + forcings
-    # Uses the already-computed mean rates × Δt to recover the accumulated volumes.
-    cosmetic_storage = p_independent.cosmetic_storage
-    for (j, link_meta) in enumerate(internal_flow_links)
-        src, dst = link_meta.link
-        q = flow_mean[j] * Δt
-        if src.type == NodeType.Basin
-            cosmetic_storage[src.idx] -= q
-        end
-        if dst.type == NodeType.Basin
-            cosmetic_storage[dst.idx] += q
-        end
-    end
-    @. cosmetic_storage +=
-        (precipitation + drainage + surface_runoff - evaporation - infiltration) * Δt
-    for (outflow_link, id) in zip(flow_boundary.outflow_link, flow_boundary.node_id)
-        dst = outflow_link.link[2]
-        if dst.type == NodeType.Basin
-            cosmetic_storage[dst.idx] += flow_boundary_mean[id.idx] * Δt
-        end
-    end
-
+    # Use the actual ODE state as the output storage.
+    # The trapezoidal flow approximation has inherent errors (especially at discrete
+    # control events where backward Euler is used), so an open-loop accumulation drifts.
+    # Re-anchoring to the solver state keeps storage accurate; any mismatch with
+    # the reported mean flows appears as a small balance_error.
     saved_flow = SavedFlow(;
         flow = flow_mean,
         inflow = inflow_mean,
@@ -568,7 +557,7 @@ function save_flow(u, t, integrator)
         infiltration,
         concentration,
         convergence,
-        cosmetic_storage = copy(cosmetic_storage),
+        cosmetic_storage = copy(current_storage),
         t,
     )
     # check_water_balance_error!(saved_flow, integrator, Δt) #TODO: temp turn off!!!!
