@@ -1694,7 +1694,6 @@ function Parameters(db::DB, config::Config)::Parameters
         cumulative_evaporation_saveat = zeros(n_basin),
         cumulative_infiltration_saveat = zeros(n_basin),
         cumulative_infiltration_total = zeros(n_basin),
-        cosmetic_storage = zeros(n_basin),
         convergence = zeros(n_basin),
     )
 

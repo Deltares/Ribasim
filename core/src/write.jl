@@ -227,10 +227,7 @@ const CF = OrderedDict{String, OrderedDict{String, String}}(
         "standard_name" => "surface_water_amount",
         "long_name" => "water storage volume",
     ),
-    "storage_internal" => OrderedDict(
-        "units" => "m3",
-        "long_name" => "internal solver storage volume",
-    ),
+
     "inflow_rate" => OrderedDict(
         "units" => "m3 s-1",
         "standard_name" => "water_volume_transport_in_river_channel",
@@ -323,7 +320,6 @@ function get_storages_and_levels(
         time::Vector{DateTime},
         node_id::Vector{NodeID},
         storage::Matrix{Float64},
-        storage_internal::Matrix{Float64},
         level::Matrix{Float64},
     }
     (; config, integrator, saved) = model
@@ -333,32 +329,16 @@ function get_storages_and_levels(
     tsteps = datetime_since.(tsaves(model), config.starttime)
 
     storage = zeros(length(node_id), length(tsteps))
-    storage_internal = zeros(length(node_id), length(tsteps))
     level = zero(storage)
 
-    # t = 0: cosmetic storage equals the initial ODE storage
-    if !isempty(saved.basin_state.saveval)
-        storage[:, 1] .= p_independent.basin.storage0
-        level[:, 1] .= saved.basin_state.saveval[1].level
-        storage_internal[:, 1] .= saved.basin_state.saveval[1].storage
-    end
-
-    # t > 0: cosmetic storage from SavedFlow (closed by trapezoidal construction)
-    for (i, sv) in enumerate(saved.flow.saveval)
-        col = i + 1
-        col > length(tsteps) && break
-        storage[:, col] .= sv.cosmetic_storage
-    end
-
-    # levels and internal storage from SavedBasinState for t > 0
+    # Storage and level from SavedBasinState (the actual ODE solver state)
     for (i, cvec) in enumerate(saved.basin_state.saveval)
-        i == 1 && continue  # already handled t = 0
         i > length(tsteps) && break
+        storage[:, i] .= cvec.storage
         level[:, i] .= cvec.level
-        storage_internal[:, i] .= cvec.storage
     end
 
-    return (; time = tsteps, node_id, storage, storage_internal, level)
+    return (; time = tsteps, node_id, storage, level)
 end
 
 "Create the basin state table from the saved data"
@@ -379,7 +359,6 @@ function basin_data(model::Model; table::Bool = true)
     # The last timestep is not included; there is no period over which to compute flows.
     data = get_storages_and_levels(model)
     storage = vec(data.storage[:, begin:(end - 1)])
-    storage_internal = vec(data.storage_internal[:, begin:(end - 1)])
     level = vec(data.level[:, begin:(end - 1)])
 
     nbasin = length(data.node_id)
@@ -407,7 +386,6 @@ function basin_data(model::Model; table::Bool = true)
     else
         level = reshape(level, nbasin, ntsteps)
         storage = reshape(storage, nbasin, ntsteps)
-        storage_internal = reshape(storage_internal, nbasin, ntsteps)
         evaporation = reshape(evaporation, nbasin, ntsteps)
         infiltration = reshape(infiltration, nbasin, ntsteps)
     end
@@ -417,7 +395,6 @@ function basin_data(model::Model; table::Bool = true)
         node_id,
         level,
         storage,
-        storage_internal,
         inflow_rate,
         outflow_rate,
         storage_rate,

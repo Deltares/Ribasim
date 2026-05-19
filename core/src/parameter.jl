@@ -393,9 +393,6 @@ In-memory storage of saved mean flows for writing to results.
     balance_error::Vector{Float64} = zero(precipitation)
     relative_error::Vector{Float64} = zero(precipitation)
     convergence::Vector{Union{Missing, Float64}}
-    # Cosmetic basin storage at the end of this saveat interval, advanced by
-    # trapezoidal flow volumes — closes the output water balance by construction.
-    cosmetic_storage::Vector{Float64}
     t::Float64
 end
 
@@ -1180,8 +1177,6 @@ the object itself is not.
     cumulative_infiltration_saveat::Vector{Float64} = Float64[]
     # Running totals for BMI (never reset)
     cumulative_infiltration_total::Vector{Float64} = Float64[]
-    # Cosmetic basin storage: advanced by trapezoidal flows at each saveat; saved for output
-    cosmetic_storage::Vector{Float64} = Float64[]
     # Convergence tracking: accumulated normalized Newton residual per basin
     convergence::Vector{Float64} = Float64[]
     convergence_ncalls::Vector{Int} = [0]

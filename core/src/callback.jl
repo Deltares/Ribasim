@@ -540,11 +540,6 @@ function save_flow(u, t, integrator)
         p_independent.convergence_ncalls[1] = 0
     end
 
-    # Use the actual ODE state as the output storage.
-    # The trapezoidal flow approximation has inherent errors (especially at discrete
-    # control events where backward Euler is used), so an open-loop accumulation drifts.
-    # Re-anchoring to the solver state keeps storage accurate; any mismatch with
-    # the reported mean flows appears as a small balance_error.
     saved_flow = SavedFlow(;
         flow = flow_mean,
         inflow = inflow_mean,
@@ -557,7 +552,6 @@ function save_flow(u, t, integrator)
         infiltration,
         concentration,
         convergence,
-        cosmetic_storage = copy(current_storage),
         t,
     )
     # check_water_balance_error!(saved_flow, integrator, Δt) #TODO: temp turn off!!!!
