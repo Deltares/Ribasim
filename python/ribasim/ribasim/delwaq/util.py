@@ -224,7 +224,6 @@ def is_valid_substance(name: str) -> bool:
         logger.error(
             f"{name} is an invalid substance name; must be at most 20 characters."
         )
-        return False
     if name.find(";") >= 0:
         logger.error(
             f"{name} is an invalid substance name; cannot contain semicolon ;."
