@@ -232,9 +232,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
         G.remove_edge(*edge)
 
     remove_nodes = [
-        node_id
-        for node_id in nx.isolates(G)
-        if G.nodes[node_id]["type"] != "Basin"
+        node_id for node_id in nx.isolates(G) if G.nodes[node_id]["type"] != "Basin"
     ]
 
     for node_id in remove_nodes:
