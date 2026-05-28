@@ -38,6 +38,7 @@ except ImportError:
 
 import ribasim
 from ribasim.delwaq.util import (
+    check_substance_uniqueness,
     delwaq_dir,
     is_valid_substance,
     strfdelta,
@@ -591,6 +592,8 @@ def generate(
     if model.basin.concentration_state.df is not None:
         initial = model.basin.concentration_state.df
         substances.update(initial.substance.unique())
+
+    check_substance_uniqueness(substances)
 
     # Make a wide table with the initial default concentrations
     # using zero for all user defined substances

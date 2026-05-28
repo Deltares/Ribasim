@@ -6,6 +6,7 @@ import pytest
 import xarray as xr
 from ribasim import Model
 from ribasim.delwaq import add_tracer, generate, parse, run_delwaq
+from ribasim.delwaq.util import check_substance_uniqueness
 
 delwaq_dir = Path(__file__).parent
 
@@ -65,7 +66,7 @@ def test_offline_delwaq_coupling(tmp_path):
 
     # Ensure concentration.nc uses the expected dimension order
     with xr.open_dataset(results_dir / "concentration.nc") as uds:
-        assert uds["concentration"].dims == ("node_id", "substance", "time")
+        assert uds["concentration"].dims == ("time", "substance", "node_id")
 
 
 @pytest.mark.skipif(
@@ -125,3 +126,13 @@ def test_offline_delwaq_coupling_evaporate_mass(tmp_path):
 def test_invalid_substance_name(basic, name):
     with pytest.raises(ValueError, match="Invalid Delwaq substance"):
         add_tracer(basic, 11, name)
+
+
+def test_substance_uniqueness():
+    """Long names are allowed, but must be unique when truncated to 20 chars."""
+    substances = {"AVeryLongSubstanceName"}
+    check_substance_uniqueness(substances)
+
+    substances = {"AVeryLongSubstanceNameAlpha", "AVeryLongSubstanceNameBeta"}
+    with pytest.raises(ValueError, match="not unique when truncated"):
+        check_substance_uniqueness(substances)
