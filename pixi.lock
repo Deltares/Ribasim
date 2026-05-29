@@ -702,7 +702,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-ng-2.3.3-hceb46e0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
       - pypi: https://files.pythonhosted.org/packages/14/5a/4ddfd9aeecdc75a78b5d85d882abc2b822115caae2c00a4d0eb23cc101fc/elementpath-5.1.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/14/1d/d6d77bd84c5261a5cbcb17e5000527d0f895e512545bd442caf28a7e3336/juliacall-0.9.31-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/59/f3/77f85bfac22ee84b231ee8b147cdd948f679edf7d5a622acf9169d2a9b63/juliacall-0.9.34-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/86/9d/1f4495bf047e61e904a69242941aca04ad3c7453639d9019c5d8facb3862/juliapkg-0.1.23-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/e0/9fa2a95f3428e3484d6687513495ea1e08d0eac9af7b3a86a77c2f1464ac/lib4sbom-0.10.4-py3-none-any.whl
@@ -1304,7 +1304,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/zlib-ng-2.3.3-ha7cb516_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/zstd-1.5.7-h85ac4a6_6.conda
       - pypi: https://files.pythonhosted.org/packages/14/5a/4ddfd9aeecdc75a78b5d85d882abc2b822115caae2c00a4d0eb23cc101fc/elementpath-5.1.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/14/1d/d6d77bd84c5261a5cbcb17e5000527d0f895e512545bd442caf28a7e3336/juliacall-0.9.31-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/59/f3/77f85bfac22ee84b231ee8b147cdd948f679edf7d5a622acf9169d2a9b63/juliacall-0.9.34-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/86/9d/1f4495bf047e61e904a69242941aca04ad3c7453639d9019c5d8facb3862/juliapkg-0.1.23-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/e0/9fa2a95f3428e3484d6687513495ea1e08d0eac9af7b3a86a77c2f1464ac/lib4sbom-0.10.4-py3-none-any.whl
@@ -1851,7 +1851,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.3.3-hed4e4f5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
       - pypi: https://files.pythonhosted.org/packages/14/5a/4ddfd9aeecdc75a78b5d85d882abc2b822115caae2c00a4d0eb23cc101fc/elementpath-5.1.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/14/1d/d6d77bd84c5261a5cbcb17e5000527d0f895e512545bd442caf28a7e3336/juliacall-0.9.31-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/59/f3/77f85bfac22ee84b231ee8b147cdd948f679edf7d5a622acf9169d2a9b63/juliacall-0.9.34-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/86/9d/1f4495bf047e61e904a69242941aca04ad3c7453639d9019c5d8facb3862/juliapkg-0.1.23-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/e0/9fa2a95f3428e3484d6687513495ea1e08d0eac9af7b3a86a77c2f1464ac/lib4sbom-0.10.4-py3-none-any.whl
@@ -2475,7 +2475,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
       - pypi: https://files.pythonhosted.org/packages/14/5a/4ddfd9aeecdc75a78b5d85d882abc2b822115caae2c00a4d0eb23cc101fc/elementpath-5.1.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/14/1d/d6d77bd84c5261a5cbcb17e5000527d0f895e512545bd442caf28a7e3336/juliacall-0.9.31-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/59/f3/77f85bfac22ee84b231ee8b147cdd948f679edf7d5a622acf9169d2a9b63/juliacall-0.9.34-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/86/9d/1f4495bf047e61e904a69242941aca04ad3c7453639d9019c5d8facb3862/juliapkg-0.1.23-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/e0/9fa2a95f3428e3484d6687513495ea1e08d0eac9af7b3a86a77c2f1464ac/lib4sbom-0.10.4-py3-none-any.whl
@@ -3198,7 +3198,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-ng-2.3.3-hceb46e0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
       - pypi: https://files.pythonhosted.org/packages/14/5a/4ddfd9aeecdc75a78b5d85d882abc2b822115caae2c00a4d0eb23cc101fc/elementpath-5.1.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/14/1d/d6d77bd84c5261a5cbcb17e5000527d0f895e512545bd442caf28a7e3336/juliacall-0.9.31-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/59/f3/77f85bfac22ee84b231ee8b147cdd948f679edf7d5a622acf9169d2a9b63/juliacall-0.9.34-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/86/9d/1f4495bf047e61e904a69242941aca04ad3c7453639d9019c5d8facb3862/juliapkg-0.1.23-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/e0/9fa2a95f3428e3484d6687513495ea1e08d0eac9af7b3a86a77c2f1464ac/lib4sbom-0.10.4-py3-none-any.whl
@@ -3805,7 +3805,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/zlib-ng-2.3.3-ha7cb516_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/zstd-1.5.7-h85ac4a6_6.conda
       - pypi: https://files.pythonhosted.org/packages/14/5a/4ddfd9aeecdc75a78b5d85d882abc2b822115caae2c00a4d0eb23cc101fc/elementpath-5.1.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/14/1d/d6d77bd84c5261a5cbcb17e5000527d0f895e512545bd442caf28a7e3336/juliacall-0.9.31-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/59/f3/77f85bfac22ee84b231ee8b147cdd948f679edf7d5a622acf9169d2a9b63/juliacall-0.9.34-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/86/9d/1f4495bf047e61e904a69242941aca04ad3c7453639d9019c5d8facb3862/juliapkg-0.1.23-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/e0/9fa2a95f3428e3484d6687513495ea1e08d0eac9af7b3a86a77c2f1464ac/lib4sbom-0.10.4-py3-none-any.whl
@@ -4357,7 +4357,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.3.3-hed4e4f5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
       - pypi: https://files.pythonhosted.org/packages/14/5a/4ddfd9aeecdc75a78b5d85d882abc2b822115caae2c00a4d0eb23cc101fc/elementpath-5.1.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/14/1d/d6d77bd84c5261a5cbcb17e5000527d0f895e512545bd442caf28a7e3336/juliacall-0.9.31-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/59/f3/77f85bfac22ee84b231ee8b147cdd948f679edf7d5a622acf9169d2a9b63/juliacall-0.9.34-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/86/9d/1f4495bf047e61e904a69242941aca04ad3c7453639d9019c5d8facb3862/juliapkg-0.1.23-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/e0/9fa2a95f3428e3484d6687513495ea1e08d0eac9af7b3a86a77c2f1464ac/lib4sbom-0.10.4-py3-none-any.whl
@@ -4985,7 +4985,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
       - pypi: https://files.pythonhosted.org/packages/14/5a/4ddfd9aeecdc75a78b5d85d882abc2b822115caae2c00a4d0eb23cc101fc/elementpath-5.1.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/14/1d/d6d77bd84c5261a5cbcb17e5000527d0f895e512545bd442caf28a7e3336/juliacall-0.9.31-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/59/f3/77f85bfac22ee84b231ee8b147cdd948f679edf7d5a622acf9169d2a9b63/juliacall-0.9.34-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/86/9d/1f4495bf047e61e904a69242941aca04ad3c7453639d9019c5d8facb3862/juliapkg-0.1.23-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/e0/9fa2a95f3428e3484d6687513495ea1e08d0eac9af7b3a86a77c2f1464ac/lib4sbom-0.10.4-py3-none-any.whl
@@ -5704,7 +5704,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-ng-2.3.3-hceb46e0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
       - pypi: https://files.pythonhosted.org/packages/14/5a/4ddfd9aeecdc75a78b5d85d882abc2b822115caae2c00a4d0eb23cc101fc/elementpath-5.1.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/14/1d/d6d77bd84c5261a5cbcb17e5000527d0f895e512545bd442caf28a7e3336/juliacall-0.9.31-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/59/f3/77f85bfac22ee84b231ee8b147cdd948f679edf7d5a622acf9169d2a9b63/juliacall-0.9.34-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/86/9d/1f4495bf047e61e904a69242941aca04ad3c7453639d9019c5d8facb3862/juliapkg-0.1.23-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/e0/9fa2a95f3428e3484d6687513495ea1e08d0eac9af7b3a86a77c2f1464ac/lib4sbom-0.10.4-py3-none-any.whl
@@ -6306,7 +6306,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/zlib-ng-2.3.3-ha7cb516_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/zstd-1.5.7-h85ac4a6_6.conda
       - pypi: https://files.pythonhosted.org/packages/14/5a/4ddfd9aeecdc75a78b5d85d882abc2b822115caae2c00a4d0eb23cc101fc/elementpath-5.1.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/14/1d/d6d77bd84c5261a5cbcb17e5000527d0f895e512545bd442caf28a7e3336/juliacall-0.9.31-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/59/f3/77f85bfac22ee84b231ee8b147cdd948f679edf7d5a622acf9169d2a9b63/juliacall-0.9.34-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/86/9d/1f4495bf047e61e904a69242941aca04ad3c7453639d9019c5d8facb3862/juliapkg-0.1.23-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/e0/9fa2a95f3428e3484d6687513495ea1e08d0eac9af7b3a86a77c2f1464ac/lib4sbom-0.10.4-py3-none-any.whl
@@ -6853,7 +6853,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.3.3-hed4e4f5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
       - pypi: https://files.pythonhosted.org/packages/14/5a/4ddfd9aeecdc75a78b5d85d882abc2b822115caae2c00a4d0eb23cc101fc/elementpath-5.1.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/14/1d/d6d77bd84c5261a5cbcb17e5000527d0f895e512545bd442caf28a7e3336/juliacall-0.9.31-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/59/f3/77f85bfac22ee84b231ee8b147cdd948f679edf7d5a622acf9169d2a9b63/juliacall-0.9.34-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/86/9d/1f4495bf047e61e904a69242941aca04ad3c7453639d9019c5d8facb3862/juliapkg-0.1.23-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/e0/9fa2a95f3428e3484d6687513495ea1e08d0eac9af7b3a86a77c2f1464ac/lib4sbom-0.10.4-py3-none-any.whl
@@ -7477,7 +7477,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
       - pypi: https://files.pythonhosted.org/packages/14/5a/4ddfd9aeecdc75a78b5d85d882abc2b822115caae2c00a4d0eb23cc101fc/elementpath-5.1.1-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/14/1d/d6d77bd84c5261a5cbcb17e5000527d0f895e512545bd442caf28a7e3336/juliacall-0.9.31-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/59/f3/77f85bfac22ee84b231ee8b147cdd948f679edf7d5a622acf9169d2a9b63/juliacall-0.9.34-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/86/9d/1f4495bf047e61e904a69242941aca04ad3c7453639d9019c5d8facb3862/juliapkg-0.1.23-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/d7/2344419cb255399ff2253cdb81cb38827867f854f66e98a780478fc13c19/lib4package-0.3.3-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/e0/9fa2a95f3428e3484d6687513495ea1e08d0eac9af7b3a86a77c2f1464ac/lib4sbom-0.10.4-py3-none-any.whl
@@ -15289,10 +15289,10 @@ packages:
   purls: []
   size: 4740
   timestamp: 1767839954258
-- pypi: https://files.pythonhosted.org/packages/14/1d/d6d77bd84c5261a5cbcb17e5000527d0f895e512545bd442caf28a7e3336/juliacall-0.9.31-py3-none-any.whl
+- pypi: https://files.pythonhosted.org/packages/59/f3/77f85bfac22ee84b231ee8b147cdd948f679edf7d5a622acf9169d2a9b63/juliacall-0.9.34-py3-none-any.whl
   name: juliacall
-  version: 0.9.31
-  sha256: 171dd97489a855336558c49fea2eb26dcbeb1ddb1344acaddf99fff2a5a1b9ad
+  version: 0.9.34
+  sha256: ac75b718a25357343d9be86981e5e5b7551621f3d2d5f58a815b852793857f41
   requires_dist:
   - juliapkg>=0.1.21,<0.2
   requires_python: '>=3.10,<4'
