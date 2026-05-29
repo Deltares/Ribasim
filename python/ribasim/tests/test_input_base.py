@@ -1,10 +1,25 @@
 from pathlib import Path
 
 from ribasim import Model, Node
-from ribasim.input_base import TableModel
+from ribasim.input_base import NodeData, TableModel
 from ribasim.nodes import basin
 from ribasim.schemas import BasinSubgridSchema
 from shapely.geometry import Point
+
+
+def test_node_data_hashable():
+    node = NodeData(node_id=1, node_type="Basin", geometry=Point(0, 0))
+    assert hash(node) == hash(1)
+
+    # Can be used in sets and as dict keys
+    node_set = {node}
+    assert node in node_set
+    node_dict = {node: "value"}
+    assert node_dict[node] == "value"
+
+    # Different node_id gives different hash
+    other = NodeData(node_id=2, node_type="Basin", geometry=Point(1, 1))
+    assert hash(node) != hash(other)
 
 
 def test_tablemodel_schema():
