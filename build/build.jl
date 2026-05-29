@@ -2,6 +2,7 @@ using TOML
 using LibGit2
 using JuliaC
 import Pkg
+using PackageCompiler: default_app_cpu_target
 
 function (@main)(_)::Cint
     project_dir = "core"
@@ -15,6 +16,7 @@ function (@main)(_)::Cint
         output_type = "--output-lib",
         file = "build/libribasim.jl",
         project = project_dir,
+        cpu_target = default_app_cpu_target(),
         add_ccallables = true,
         verbose = true,
     )

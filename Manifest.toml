@@ -1015,9 +1015,7 @@ version = "1.30.1"
 
 [[deps.JuliaC]]
 deps = ["LazyArtifacts", "Libdl", "Mmap", "ObjectFile", "PackageCompiler", "Patchelf_jll", "Pkg", "RelocatableFolders", "StructIO"]
-git-tree-sha1 = "95eb12ccaa00c52e376c342a0056a0a5b811caa3"
-repo-rev = "ribasim_cpu_target_v0.3.0"
-repo-url = "https://github.com/visr/JuliaC.jl"
+git-tree-sha1 = "dbbecb7776be9d9d1c58f990d12084656551c4c6"
 uuid = "acedd4c2-ced6-4a15-accc-2607eb759ba2"
 version = "0.3.0"
 
