@@ -1015,9 +1015,9 @@ version = "1.30.1"
 
 [[deps.JuliaC]]
 deps = ["LazyArtifacts", "Libdl", "Mmap", "ObjectFile", "PackageCompiler", "Patchelf_jll", "Pkg", "RelocatableFolders", "StructIO"]
-git-tree-sha1 = "dbbecb7776be9d9d1c58f990d12084656551c4c6"
+git-tree-sha1 = "7b6709004d81f3fdbf534b5181af0a6d6b8dad58"
 uuid = "acedd4c2-ced6-4a15-accc-2607eb759ba2"
-version = "0.3.0"
+version = "0.3.1"
 
 [[deps.JuliaInterpreter]]
 deps = ["CodeTracking", "InteractiveUtils", "Random", "UUIDs"]
