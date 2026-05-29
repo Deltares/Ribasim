@@ -221,10 +221,9 @@ def is_valid_substance(name: str) -> bool:
         logger.error(f"{name} is an invalid substance name; must be ASCII.")
         return False
     if len(name) > 20:
-        logger.error(
-            f"{name} is an invalid substance name; must be at most 20 characters."
+        logger.warning(
+            f"Substance name '{name}' exceeds 20 characters and will be truncated."
         )
-        return False
     if name.find(";") >= 0:
         logger.error(
             f"{name} is an invalid substance name; cannot contain semicolon ;."
@@ -238,3 +237,19 @@ def is_valid_substance(name: str) -> bool:
         return False
 
     return True
+
+
+def check_substance_uniqueness(substances: set[str]) -> None:
+    """Check that substance names are unique when truncated to 20 characters."""
+    truncated: dict[str, list[str]] = {}
+    for name in substances:
+        key = name[:20]
+        truncated.setdefault(key, []).append(name)
+
+    duplicates = {k: v for k, v in truncated.items() if len(v) > 1}
+    if duplicates:
+        msgs = [f"'{k}': {v}" for k, v in duplicates.items()]
+        raise ValueError(
+            "Substance names are not unique when truncated to 20 characters: "
+            + "; ".join(msgs)
+        )
