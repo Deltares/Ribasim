@@ -249,6 +249,9 @@ class NodeData:
     def __repr__(self) -> str:
         return f"{self.node_type} #{self.node_id}"
 
+    def __hash__(self) -> int:
+        return hash(self.node_id)
+
 
 class FileModel(BaseModel, ABC):
     """Base class to represent models with a file representation.
