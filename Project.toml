@@ -81,6 +81,7 @@ TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 Ribasim = {path = "core"}
 
 [compat]
+JuliaC = "=0.3.0"
 OpenSSL_jll = "3.5.4"
 OteraEngine = "1.1.3"
 PackageCompiler = "2.3"
