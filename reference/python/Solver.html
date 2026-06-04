@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.37">
+<meta name="generator" content="quarto-1.9.38">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -74,7 +74,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../../site_libs/bootstrap/bootstrap-28c78c9623f2855a034a1b73b8f5ffd5.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
@@ -336,8 +336,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> nbasic <span class="op">==</span> basic</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="va">False</span></span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> x <span class="op">=</span> nbasic.diff(basic)</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>{<span class="st">'basin'</span>: {<span class="st">'node'</span>: {<span class="st">'diff'</span>: <span class="op">&lt;</span>datacompy.core.Compare <span class="bu">object</span> at <span class="bn">0x16e5a45c0</span><span class="op">&gt;</span>},</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">'static'</span>: {<span class="st">'diff'</span>: <span class="op">&lt;</span>datacompy.core.Compare <span class="bu">object</span> at <span class="bn">0x16eb90080</span><span class="op">&gt;</span>}},</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>{<span class="st">'basin'</span>: {<span class="st">'node'</span>: {<span class="st">'diff'</span>: <span class="op">&lt;</span>datacompy.pandas.PandasCompare <span class="bu">object</span> at <span class="bn">0x16e5a45c0</span><span class="op">&gt;</span>},</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">'static'</span>: {<span class="st">'diff'</span>: <span class="op">&lt;</span>datacompy.pandas.PandasCompare <span class="bu">object</span> at <span class="bn">0x16eb90080</span><span class="op">&gt;</span>}},</span>
 <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="st">'solver'</span>: {<span class="st">'saveat'</span>: {<span class="st">'other'</span>: <span class="fl">86400.0</span>, <span class="st">'self'</span>: <span class="fl">0.0</span>}}}</span>
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> x[<span class="st">"basin"</span>][<span class="st">"static"</span>][<span class="st">"diff"</span>].report()</span>
 <span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>DataComPy Comparison</span>
