@@ -1177,6 +1177,8 @@ the object itself is not.
     cumulative_infiltration_saveat::Vector{Float64} = Float64[]
     # Running totals for BMI (never reset)
     cumulative_infiltration_total::Vector{Float64} = Float64[]
+    # Running total of UserDemand inflow per node for BMI (never reset)
+    cumulative_user_demand_inflow::Vector{Float64} = Float64[]
     # Convergence tracking: accumulated normalized Newton residual per basin
     convergence::Vector{Float64} = Float64[]
     convergence_ncalls::Vector{Int} = [0]

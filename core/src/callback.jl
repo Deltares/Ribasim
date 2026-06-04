@@ -189,6 +189,7 @@ function update_cumulative_flows!(_, t, integrator)::Nothing
 
         # Accumulate running total for BMI using current rate * dt (like an ODE state)
         @. p_independent.cumulative_infiltration_total += dt * state_and_time_dependent_cache.current_infiltration
+        @. p_independent.cumulative_user_demand_inflow += dt * state_and_time_dependent_cache.current_flow_rate_user_demand
 
         # Accumulate normalized Newton residual for convergence output
         cache = integrator.cache

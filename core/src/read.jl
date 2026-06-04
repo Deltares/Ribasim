@@ -1668,6 +1668,7 @@ function Parameters(db::DB, config::Config)::Parameters
     )
 
     n_basin = length(nodes.basin.node_id)
+    n_user_demand = length(nodes.user_demand.node_id)
     n_internal_flow_links = length(graph[].internal_flow_links)
 
     p_independent = ParametersIndependent(;
@@ -1694,6 +1695,7 @@ function Parameters(db::DB, config::Config)::Parameters
         cumulative_evaporation_saveat = zeros(n_basin),
         cumulative_infiltration_saveat = zeros(n_basin),
         cumulative_infiltration_total = zeros(n_basin),
+        cumulative_user_demand_inflow = zeros(n_user_demand),
         convergence = zeros(n_basin),
     )
 

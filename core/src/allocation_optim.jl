@@ -778,7 +778,6 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     end
 
     # Extrapolate the current instantaneous storage rates from the physical layer
-    # du.basin[idx] now directly contains dS/dt
     for node_id in basin_ids_subnetwork
         JuMP.set_start_value(
             storage_change[node_id],

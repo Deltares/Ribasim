@@ -82,7 +82,7 @@ function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     elseif name == "user_demand.demand"
         vec(user_demand.demand)::Vector{Float64}
     elseif name == "user_demand.cumulative_inflow"
-        state_and_time_dependent_cache.current_flow_rate_user_demand
+        p_independent.cumulative_user_demand_inflow::Vector{Float64}
     else
         error("Unknown variable $name")
     end
