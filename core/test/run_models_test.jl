@@ -191,14 +191,19 @@ end
     using LoggingExtras
     import Tables
     using Dates
+    using Ribasim
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
 
+    # Tighter solver tolerances so the ODE state is accurate enough for the concentration
+    # continuity checks (the continuity gap is bounded by the solver tolerance).
+    config = Ribasim.Config(toml_path; solver_abstol = 1.0e-6, solver_reltol = 1.0e-6)
+
     logger = TestLogger(; min_level = Debug)
     filtered_logger = EarlyFilteredLogger(Ribasim.is_current_module, logger)
     model = with_logger(filtered_logger) do
-        Ribasim.run(toml_path)
+        Ribasim.run(config)
     end
 
     @test model isa Ribasim.Model
@@ -235,8 +240,9 @@ end
     table = Ribasim.concentration_data(model)
     @test "Continuity" in table.substance
     # Concentrations are normalized by the ODE storage (u.basin) while tracer mass is built
-    # from the trapezoidal flow integration; the difference is the integration gap (~1%).
-    @test all(isapprox.(table.concentration[table.substance .== "Continuity"], 1.0; atol = 2.0e-2))
+    # from the (5-point Boole) integrated flows; the residual gap is bounded by the solver
+    # tolerance (set to 1e-6 above).
+    @test all(isapprox.(table.concentration[table.substance .== "Continuity"], 1.0; atol = 6.0e-4))
     summed_source_concentrations = reduce(
         +,
         [
@@ -251,7 +257,7 @@ end
                 ]
         ],
     )
-    @test all(isapprox.(summed_source_concentrations, 1.0; atol = 2.0e-2))
+    @test all(isapprox.(summed_source_concentrations, 1.0; atol = 1.0e-3))
 
     @test unique(table.substance) ⊆ [
         "Basic",
