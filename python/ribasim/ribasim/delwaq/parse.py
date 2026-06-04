@@ -33,7 +33,7 @@ def parse(
         dfs = []
         for substance in substances:
             df = (
-                ds[f"ribasim_{substance.replace(' ', '_')}"]
+                ds[f"ribasim_{substance[:20].replace(' ', '_')}"]
                 .to_dataframe()
                 .reset_index()
             )
@@ -41,7 +41,7 @@ def parse(
                 columns={
                     "ribasim_nNodes": "node_id",
                     "nTimesDlwq": "time",
-                    f"ribasim_{substance.replace(' ', '_')}": "concentration",
+                    f"ribasim_{substance[:20].replace(' ', '_')}": "concentration",
                 },
                 inplace=True,
             )
@@ -57,7 +57,7 @@ def parse(
     df = _concat(dfs).reset_index(drop=True)
     df.sort_values(["time", "node_id"], inplace=True)
 
-    ds = df.set_index(["node_id", "substance", "time"]).to_xarray()
+    ds = df.set_index(["time", "substance", "node_id"]).to_xarray()
     ds.to_netcdf(model.results_path / "concentration.nc")
 
     if to_input:

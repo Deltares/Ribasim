@@ -38,6 +38,7 @@ except ImportError:
 
 import ribasim
 from ribasim.delwaq.util import (
+    check_substance_uniqueness,
     delwaq_dir,
     is_valid_substance,
     strfdelta,
@@ -231,10 +232,9 @@ def _setup_graph(nodes, link, evaporate_mass=True):
     for edge in remove_double_boundary:
         G.remove_edge(*edge)
 
-    remove_nodes = []
-    iso = nx.number_of_isolates(G)
-    if iso > 0:
-        remove_nodes.extend(list(nx.isolates(G)))
+    remove_nodes = [
+        node_id for node_id in nx.isolates(G) if G.nodes[node_id]["type"] != "Basin"
+    ]
 
     for node_id in remove_nodes:
         logger.debug(
@@ -541,9 +541,9 @@ def generate(
     # copy is to avoid false positive SettingWithCopyWarning on pandas 2
     volumes = basins[["time", "node_id", "storage"]].copy()
     volumes["riba_node_id"] = volumes["node_id"]
-    volumes.loc[:, "node_id"] = (
-        volumes["node_id"].map(basin_mapping).astype(pd.Int32Dtype())
-    )
+    mapped_node_id = volumes["node_id"].map(basin_mapping)
+    assert mapped_node_id.notna().all(), "basin_mapping is incomplete"
+    volumes.loc[:, "node_id"] = mapped_node_id.astype("int32")
     volumes = volumes.sort_values(by=["time", "node_id"])
     # volumes.to_csv(output_path / "volumes.csv", index=False)  # not needed
     volumes.drop(columns=["node_id", "riba_node_id"], inplace=True)
@@ -592,6 +592,8 @@ def generate(
     if model.basin.concentration_state.df is not None:
         initial = model.basin.concentration_state.df
         substances.update(initial.substance.unique())
+
+    check_substance_uniqueness(substances)
 
     # Make a wide table with the initial default concentrations
     # using zero for all user defined substances

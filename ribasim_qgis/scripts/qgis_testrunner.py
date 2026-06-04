@@ -102,9 +102,9 @@ writeOut.write = _write
 sys.path.append(QDir.current().path())
 
 
-def __exit_qgis(exit_code: int):
+def __exit_qgis(return_code: int):
     """Exit the QGIS application with the given exit code."""
-    sys.exit(exit_code)
+    sys.exit(return_code)
 
 
 def __run_test():
@@ -124,8 +124,8 @@ def __run_test():
                 f"No callable test entrypoint found for {test_module_name}"
             )
         print(f"QGIS Test Runner Inside - executing function {function_name}")
-        function_name()
-        __exit_qgis(0)
+        return_code = function_name()
+        __exit_qgis(return_code)
     except Exception as e:
         logging.error(f"QGIS Test Runner Inside - [FAILED] Exception: {e}")  # noqa: LOG015
         # Print tb

@@ -124,7 +124,7 @@ class BaseModel(PydanticBaseModel):
         input data has already been validated at construction time.
         """
         original = cls.__setattr__
-        cls.__setattr__ = _bypass_setattr
+        cls.__setattr__ = _bypass_setattr  # pyrefly: ignore[bad-override]
         try:
             yield
         finally:
@@ -248,6 +248,9 @@ class NodeData:
 
     def __repr__(self) -> str:
         return f"{self.node_type} #{self.node_id}"
+
+    def __hash__(self) -> int:
+        return hash(self.node_id)
 
 
 class FileModel(BaseModel, ABC):
