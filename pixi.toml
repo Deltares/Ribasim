@@ -251,6 +251,7 @@ quarto-check = { cmd = "echo 'Skipping quarto check on ARM64 Linux (Quarto not s
 quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not supported)'" }
 
 [dependencies]
+datacompy = ">=0.16"
 dvc = "*"
 dvc-s3 = "*"
 geopandas = ">=1.0"
@@ -317,10 +318,7 @@ python = "3.12.*"
 python = "3.13.*"
 
 [feature.pandas2.dependencies]
-# datacompy can go back in the default env once v1 is released
-# and also remove importorskip for datacompy
 pandas = ">=2.2,<3"
-datacompy = ">=0.16"
 
 [target.win-64.dependencies]
 rcedit = "*"

@@ -9,6 +9,12 @@ import ribasim
 import tomli
 import tomli_w
 import xugrid
+
+try:
+    from datacompy.pandas import PandasCompare as Compare
+except ImportError:
+    # pre-v1 API
+    from datacompy.core import Compare
 from pydantic import ValidationError
 from pyproj import CRS
 from ribasim import Node
@@ -464,9 +470,6 @@ def test_model_equals(basic):
 
 
 def test_model_diff(basic):
-    Compare = pytest.importorskip(
-        "datacompy", reason="datacompy not installed"
-    ).core.Compare
     # Create a copy of the model to compare with
     nbasic = basic.model_copy(deep=True)
     x = nbasic.diff(basic)
