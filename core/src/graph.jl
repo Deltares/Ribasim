@@ -125,6 +125,9 @@ function create_graph(db::DB, config::Config)::MetaGraph
         error("Incomplete connectivity in subnetwork")
     end
 
+    concentration_source, concentration_dest =
+        build_concentration_endpoints(internal_flow_links)
+
     graph_data = (;
         node_ids,
         config.solver.saveat,
@@ -134,10 +137,74 @@ function create_graph(db::DB, config::Config)::MetaGraph
         flow_link_lookup = Dict{Tuple{NodeID, NodeID}, Int}(
             link_meta.link => i for (i, link_meta) in enumerate(internal_flow_links)
         ),
+        concentration_source,
+        concentration_dest,
     )
     @reset graph.graph_data = graph_data
 
     return graph
+end
+
+"""
+For each internal flow link, resolve the upstream Basin/Boundary (`concentration_source`)
+and downstream Basin/Boundary (`concentration_dest`) that determine the concentration of the
+water flowing on that link. Connector nodes (Pump, Outlet, TabulatedRatingCurve,
+LinearResistance, ManningResistance) are transparent: they carry the concentration of the
+Basin/Boundary on either side. This lets the concentration mass transfer follow water through
+connectors instead of stopping at the connector node, which would otherwise drop mass and
+break continuity.
+
+Tracing uses the `internal_flow_links` adjacency directly (not the graph) so it is guaranteed
+consistent with the per-link `cumulative_flow` used for mass transfer.
+"""
+function build_concentration_endpoints(
+        internal_flow_links::Vector{LinkMetadata},
+    )::Tuple{Vector{NodeID}, Vector{NodeID}}
+    n_links = length(internal_flow_links)
+    source = Vector{NodeID}(undef, n_links)
+    dest = Vector{NodeID}(undef, n_links)
+
+    # Node types that carry their own concentration (tracing stops here).
+    concentration_types = (
+        NodeType.Basin,
+        NodeType.LevelBoundary,
+        NodeType.FlowBoundary,
+        NodeType.UserDemand,
+        NodeType.Terminal,
+    )
+
+    # Build single-step adjacency from the internal flow links.
+    upstream = Dict{NodeID, Vector{NodeID}}()
+    downstream = Dict{NodeID, Vector{NodeID}}()
+    for lm in internal_flow_links
+        from_node, to_node = lm.link
+        push!(get!(Vector{NodeID}, downstream, from_node), to_node)
+        push!(get!(Vector{NodeID}, upstream, to_node), from_node)
+    end
+
+    # Trace from `start` through transparent connector nodes following `adjacency`,
+    # stopping at the first concentration-carrying node (or a branch/dead end).
+    function trace_endpoint(start::NodeID, adjacency::Dict{NodeID, Vector{NodeID}})::NodeID
+        current = start
+        visited = Set{NodeID}()
+        while current.type ∉ concentration_types
+            push!(visited, current)
+            neighbors = get(adjacency, current, NodeID[])
+            if length(neighbors) == 1 && neighbors[1] ∉ visited
+                current = neighbors[1]
+            else
+                break
+            end
+        end
+        return current
+    end
+
+    for (i, lm) in enumerate(internal_flow_links)
+        source[i] = trace_endpoint(lm.link[1], upstream)
+        dest[i] = trace_endpoint(lm.link[2], downstream)
+    end
+
+    return source, dest
 end
 
 function simplify_graph!(

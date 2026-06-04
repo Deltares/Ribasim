@@ -59,6 +59,8 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
     (; basin, level_boundary, graph) = p.p_independent
     (; cumulative_in, concentration_state, mass) = basin.concentration_data
     internal_flow_links = graph[].internal_flow_links
+    concentration_source = graph[].concentration_source
+    concentration_dest = graph[].concentration_dest
 
     # Loop over internal flow links
     for (fi, link_meta) in enumerate(internal_flow_links)
@@ -73,32 +75,37 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
         # Use cumulative flow from trapezoidal integration
         cumulative_flow = p.p_independent.cumulative_flow[fi]
 
-        if from_node.type == NodeType.Basin && cumulative_flow < 0
-            # Negative flow means flow into from_node
-            cumulative_in[from_node.idx] -= cumulative_flow
-            if to_node.type == NodeType.Basin
-                mass[from_node.idx] .-=
-                    concentration_state[to_node.idx, :] .* cumulative_flow
-            elseif to_node.type == NodeType.LevelBoundary
+        if to_node.type == NodeType.Basin && cumulative_flow > 0
+            # Water flows from_node → to_node, into the Basin at to_node.
+            # The incoming concentration is that of the upstream source, traced through
+            # any transparent connector nodes (Pump, Outlet, resistances, rating curves).
+            cumulative_in[to_node.idx] += cumulative_flow
+            source = concentration_source[fi]
+            if source.type == NodeType.Basin
+                mass[to_node.idx] .+=
+                    concentration_state[source.idx, :] .* cumulative_flow
+            elseif source.type == NodeType.LevelBoundary
                 add_substance_mass!(
-                    mass[from_node.idx],
-                    level_boundary.concentration_itp[to_node.idx],
-                    -cumulative_flow,
+                    mass[to_node.idx],
+                    level_boundary.concentration_itp[source.idx],
+                    cumulative_flow,
                     t,
                 )
             end
-        end
-
-        if to_node.type == NodeType.Basin && cumulative_flow > 0
-            cumulative_in[to_node.idx] += cumulative_flow
-            if from_node.type == NodeType.Basin
-                mass[to_node.idx] .+=
-                    concentration_state[from_node.idx, :] .* cumulative_flow
-            elseif from_node.type == NodeType.LevelBoundary
+        elseif from_node.type == NodeType.Basin && cumulative_flow < 0
+            # Negative flow: water flows to_node → from_node, into the Basin at from_node.
+            # The incoming concentration is that of the downstream source, traced through
+            # any transparent connector nodes.
+            cumulative_in[from_node.idx] -= cumulative_flow
+            source = concentration_dest[fi]
+            if source.type == NodeType.Basin
+                mass[from_node.idx] .-=
+                    concentration_state[source.idx, :] .* cumulative_flow
+            elseif source.type == NodeType.LevelBoundary
                 add_substance_mass!(
-                    mass[to_node.idx],
-                    level_boundary.concentration_itp[from_node.idx],
-                    cumulative_flow,
+                    mass[from_node.idx],
+                    level_boundary.concentration_itp[source.idx],
+                    -cumulative_flow,
                     t,
                 )
             end

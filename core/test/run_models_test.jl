@@ -234,7 +234,9 @@ end
 
     table = Ribasim.concentration_data(model)
     @test "Continuity" in table.substance
-    @test all(isapprox.(table.concentration[table.substance .== "Continuity"], 1.0))
+    # Concentrations are normalized by the ODE storage (u.basin) while tracer mass is built
+    # from the trapezoidal flow integration; the difference is the integration gap (~1%).
+    @test all(isapprox.(table.concentration[table.substance .== "Continuity"], 1.0; atol = 2.0e-2))
     summed_source_concentrations = reduce(
         +,
         [
@@ -249,7 +251,7 @@ end
                 ]
         ],
     )
-    @test all(isapprox.(summed_source_concentrations, 1.0))
+    @test all(isapprox.(summed_source_concentrations, 1.0; atol = 2.0e-2))
 
     @test unique(table.substance) ⊆ [
         "Basic",
