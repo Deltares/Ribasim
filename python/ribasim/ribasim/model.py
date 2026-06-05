@@ -192,6 +192,16 @@ class Model(FileModel, ParentModel):
         self.node.df = self.node.df.set_geometry("geometry", crs=self.crs)
         return self
 
+    def update_used_ids(self) -> None:
+        """Update the used node and link IDs from the topology tables.
+
+        This advances the counters used for automatic node and link ID generation
+        after direct edits to ``model.node.df`` or ``model.link.df``. IDs that are
+        no longer present in the topology tables are not removed from the counters.
+        """
+        self.node._update_used_ids()
+        self.link._update_used_ids()
+
     def node_table(self):
         """Return the node table of the model."""
         warnings.warn("Use `model.node` instead", DeprecationWarning, stacklevel=2)

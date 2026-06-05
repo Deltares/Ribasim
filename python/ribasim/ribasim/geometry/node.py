@@ -72,12 +72,15 @@ class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
 
     _used_node_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
 
-    @model_validator(mode="after")
     def _update_used_ids(self) -> "NodeTable":
         if self.df is not None and len(self.df.index) > 0:
             self._used_node_ids.node_ids.update(self.df.index)
             self._used_node_ids.max_node_id = self.df.index.max()
         return self
+
+    @model_validator(mode="after")
+    def _validate_used_ids(self) -> "NodeTable":
+        return self._update_used_ids()
 
     def filter(self, nodetype: str):
         """Filter the node table based on the node type."""
