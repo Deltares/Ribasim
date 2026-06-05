@@ -162,6 +162,36 @@ def test_link_autoincrement(basic):
         )
 
 
+def test_update_used_ids(basic):
+    model = Model(
+        starttime="2020-01-01",
+        endtime="2021-01-01",
+        crs="EPSG:28992",
+    )
+    model.basin.add(Node(1, Point(0, 0)), [basin.State(level=[1.0])])
+    assert model.node.df is not None
+    model.node.df.index = pd.Index([20], name="node_id")
+
+    model.update_used_ids()
+
+    assert {1, 20}.issubset(model.node._used_node_ids.node_ids)
+    nbasin = model.basin.add(
+        Node(geometry=Point(1, 0)),
+        [basin.State(level=[2.0])],
+    )
+    assert nbasin.node_id == 21
+
+    assert basic.link.df is not None
+    basic.link.df = basic.link.df.iloc[[0]].copy()
+    basic.link.df.index = pd.Index([40], name="link_id")
+
+    basic.update_used_ids()
+
+    assert {1, 40}.issubset(basic.link._used_link_ids.node_ids)
+    basic.link.add(basic.manning_resistance[2], basic.basin[3])
+    assert basic.link.df.index[-1] == 41
+
+
 def test_node_autoincrement():
     model = Model(
         starttime="2020-01-01",

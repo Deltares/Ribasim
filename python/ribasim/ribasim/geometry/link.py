@@ -86,12 +86,15 @@ class LinkTable(SpatialTableModel[LinkSchema]):
 
     _used_link_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
 
-    @model_validator(mode="after")
     def _update_used_ids(self) -> "LinkTable":
         if self.df is not None and len(self.df.index) > 0:
             self._used_link_ids.node_ids.update(self.df.index)
             self._used_link_ids.max_node_id = self.df.index.max()
         return self
+
+    @model_validator(mode="after")
+    def _validate_used_ids(self) -> "LinkTable":
+        return self._update_used_ids()
 
     @classmethod
     def _from_db(cls, path: Path, table: str) -> GeoDataFrame | None:
