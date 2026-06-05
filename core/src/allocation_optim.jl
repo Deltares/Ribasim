@@ -14,6 +14,7 @@ function set_simulation_data!(
         user_demand,
         tabulated_rating_curve,
     ) = p.p_independent
+    du = get_du(integrator)
 
     errors = false
 
