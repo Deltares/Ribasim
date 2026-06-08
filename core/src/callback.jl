@@ -161,17 +161,18 @@ function update_cumulative_flows!(_, t, integrator)::Nothing
     # Sync per-node-type flow rates to per-link vector (end-of-step rates)
     sync_flow_rates!(p)
 
-    # Compute per-step flow volumes via the 5-point Boole's rule:
-    #   ∫ f dt ≈ (Δt/90)(7 f₀ + 32 f₁ + 12 f₂ + 32 f₃ + 7 f₄),  h = Δt/4
-    # f₀ = start-of-step rate (flow_rate_prev), f₄ = end-of-step rate (current), and
-    # f₁,f₂,f₃ are evaluated from the solver's dense output at the interior nodes.
-    # This matches the solver's order far better than the trapezoidal rule, keeping the
-    # reported flows consistent with the basin storage change (continuity).
+    # Compute per-step flow volumes via Simpson's rule:
+    #   ∫ f dt ≈ (Δt/6)(f₀ + 4 f_mid + f₁)
+    # f₀ = start-of-step rate (flow_rate_prev), f₁ = end-of-step rate (current), and
+    # f_mid is evaluated from the solver's dense output at the step midpoint.
+    # This is O(h⁵) locally, far better than the trapezoidal rule, keeping the reported
+    # flows consistent with the basin storage change (continuity), at the cost of one extra
+    # RHS evaluation (the midpoint) plus the restore call per accepted step.
     # cumulative_flow holds the per-step volume (used by concentration and allocation),
     # cumulative_flow_saveat accumulates across the saveat interval (used for output).
     p_independent.cumulative_flow .= 0.0
     if dt > 0
-        # Snapshot end-of-step (f₄) rates before the interior evaluations overwrite them.
+        # Snapshot end-of-step (f₁) rates before the midpoint evaluation overwrites them.
         flow_end = copy(p_independent.current_flow_rate)
         evap_end = copy(sc.current_evaporation)
         infil_end = copy(sc.current_infiltration)
@@ -181,7 +182,7 @@ function update_cumulative_flows!(_, t, integrator)::Nothing
 
         # At a control-state transition the stored f₀ (flow_rate_prev) was invalidated with
         # NaN because it held the pre-transition rate. Re-evaluate it under the current
-        # control state at the start-of-step state so Boole's rule is valid for that step.
+        # control state at the start-of-step state so Simpson's rule is valid for that step.
         if any(isnan, p_independent.flow_rate_prev)
             water_balance!(du_tmp, integrator.uprev, p, t0)
             sync_flow_rates!(p)
@@ -192,27 +193,25 @@ function update_cumulative_flows!(_, t, integrator)::Nothing
             end
         end
 
-        # Endpoint contributions f₀ and f₄ (weight 7 each).
-        @. p_independent.cumulative_flow = 7 * (p_independent.flow_rate_prev + flow_end)
-        @. p_independent.cumulative_evaporation = 7 * (p_independent.evaporation_prev + evap_end)
-        @. p_independent.cumulative_infiltration = 7 * (p_independent.infiltration_prev + infil_end)
+        # Endpoint contributions f₀ and f₁ (weight 1 each).
+        @. p_independent.cumulative_flow = p_independent.flow_rate_prev + flow_end
+        @. p_independent.cumulative_evaporation = p_independent.evaporation_prev + evap_end
+        @. p_independent.cumulative_infiltration = p_independent.infiltration_prev + infil_end
 
-        # Interior nodes f₁ (w=32), f₂ (w=12), f₃ (w=32) from the dense output.
+        # Midpoint f_mid (weight 4) from the dense output.
         # tprev is intentionally still t0, so the restore call below recomputes the exact
         # forcing integrals (e.g. current_cumulative_precipitation) over the full step.
-        h = dt / 4
-        for (k, w) in ((1, 32), (2, 12), (3, 32))
-            τ = t0 + k * h
-            integrator(u_tmp, τ)
-            water_balance!(du_tmp, u_tmp, p, τ)
-            sync_flow_rates!(p)
-            @. p_independent.cumulative_flow += w * p_independent.current_flow_rate
-            @. p_independent.cumulative_evaporation += w * sc.current_evaporation
-            @. p_independent.cumulative_infiltration += w * sc.current_infiltration
-        end
-        @. p_independent.cumulative_flow *= dt / 90
-        @. p_independent.cumulative_evaporation *= dt / 90
-        @. p_independent.cumulative_infiltration *= dt / 90
+        τ = t0 + dt / 2
+        integrator(u_tmp, τ)
+        water_balance!(du_tmp, u_tmp, p, τ)
+        sync_flow_rates!(p)
+        @. p_independent.cumulative_flow += 4 * p_independent.current_flow_rate
+        @. p_independent.cumulative_evaporation += 4 * sc.current_evaporation
+        @. p_independent.cumulative_infiltration += 4 * sc.current_infiltration
+
+        @. p_independent.cumulative_flow *= dt / 6
+        @. p_independent.cumulative_evaporation *= dt / 6
+        @. p_independent.cumulative_infiltration *= dt / 6
 
         # Restore caches to the end-of-step state for downstream callbacks (concentration)
         # and so the exact forcing integrals below use the full-step values.
