@@ -601,7 +601,7 @@ function save_flow(u, t, integrator)
         convergence,
         t,
     )
-    # check_water_balance_error!(saved_flow, integrator, Δt) #TODO: temp turn off!!!!
+    check_water_balance_error!(saved_flow, integrator, Δt)
     return saved_flow
 end
 

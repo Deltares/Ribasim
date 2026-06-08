@@ -642,6 +642,7 @@ function formulate_pump_or_outlet_flow!(
     )::Nothing
     (; allocation, flow_demand, level_difference_threshold) = p.p_independent
     (;
+        current_flow_rate_setpoint,
         current_min_flow_rate,
         current_max_flow_rate,
         current_min_upstream_level,
@@ -665,9 +666,13 @@ function formulate_pump_or_outlet_flow!(
         flow_rate = if control_type != ContinuousControlType.None
             current_flow_rate[id.idx]
         elseif isassigned(node.time_dependent_flow_rate, node_idx)
+            # Cache the time-dependent setpoint in its own vector, NOT current_flow_rate:
+            # the latter is overwritten below with the reduced flow, and reusing it as the
+            # interpolation cache would make repeated water_balance! calls at the same t
+            # (Newton iterations) read back the reduced value and shrink the flow each call.
             eval_time_interpolation(
                 node.time_dependent_flow_rate[node_idx],
-                current_flow_rate,
+                current_flow_rate_setpoint,
                 id.idx,
                 p,
                 t,

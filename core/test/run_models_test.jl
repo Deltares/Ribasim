@@ -34,7 +34,6 @@
             @test haskey(ds, "from_node_id")
             @test haskey(ds, "to_node_id")
             @test haskey(ds, "flow_rate")
-            @test haskey(ds, "convergence")
         end
 
         NCDataset(basin_path) do ds

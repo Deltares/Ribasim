@@ -803,12 +803,14 @@ const TimeDependentCache{T} = @NamedTuple{
     level_boundary::@NamedTuple{current_level::Vector{T}},
     flow_boundary::@NamedTuple{current_cumulative_boundary_flow::Vector{T}},
     pump::@NamedTuple{
+        current_flow_rate_setpoint::Vector{T},
         current_min_flow_rate::Vector{T},
         current_max_flow_rate::Vector{T},
         current_min_upstream_level::Vector{T},
         current_max_downstream_level::Vector{T},
     },
     outlet::@NamedTuple{
+        current_flow_rate_setpoint::Vector{T},
         current_min_flow_rate::Vector{T},
         current_max_flow_rate::Vector{T},
         current_min_upstream_level::Vector{T},
@@ -1242,6 +1244,7 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
 
     n_pump = length(p_independent.pump.node_id)
     pump = (;
+        current_flow_rate_setpoint = zeros(n_pump),
         current_min_flow_rate = zeros(n_pump),
         current_max_flow_rate = zeros(n_pump),
         current_min_upstream_level = zeros(n_pump),
@@ -1250,6 +1253,7 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
 
     n_outlet = length(p_independent.outlet.node_id)
     outlet = (;
+        current_flow_rate_setpoint = zeros(n_outlet),
         current_min_flow_rate = zeros(n_outlet),
         current_max_flow_rate = zeros(n_outlet),
         current_min_upstream_level = zeros(n_outlet),

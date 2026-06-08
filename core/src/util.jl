@@ -722,6 +722,13 @@ function (ls::BackTracking)(loss)
     (; c_1, iter_max, ρ_lo, ρ_hi) = ls
 
     loss_0 = loss(0.0)
+
+    # Accept the full Newton step when it does not increase the residual.
+    loss_1 = loss(1.0)
+    if isfinite(loss_1) && loss_1 ≤ loss_0
+        return 1.0
+    end
+
     ϵ = sqrt(eps())
     dloss_0 = (loss(ϵ) - loss_0) / ϵ
 
@@ -787,7 +794,7 @@ function (ls::BackTracking)(loss)
     end
 
     # As a last check, say the line search failed when the loss value actually increased
-    if success && (loss_αₙ > loss(1.0))
+    if success && (loss_αₙ > loss_1)
         success = false
     end
 
