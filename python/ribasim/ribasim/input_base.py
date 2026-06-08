@@ -43,9 +43,15 @@ from ribasim.utils import MissingOptionalModule
 from .styles import _add_styles_to_geopackage
 
 try:
-    from datacompy.core import Compare as _Compare  # pyrefly: ignore[missing-import]
+    from datacompy.pandas import PandasCompare as _Compare
 except ImportError:
-    _Compare = MissingOptionalModule("datacompy", "diff")
+    try:
+        # pre-v1 API
+        from datacompy.core import (  # pyrefly: ignore[missing-import]
+            Compare as _Compare,
+        )
+    except ImportError:
+        _Compare = MissingOptionalModule("datacompy", "diff")
 
 
 __all__ = ("TableModel",)
@@ -167,8 +173,8 @@ class BaseModel(PydanticBaseModel):
         >>> nbasic == basic
         False
         >>> x = nbasic.diff(basic)
-        {'basin': {'node': {'diff': <datacompy.core.Compare object at 0x16e5a45c0>},
-                'static': {'diff': <datacompy.core.Compare object at 0x16eb90080>}},
+        {'basin': {'node': {'diff': <datacompy.pandas.PandasCompare object at 0x16e5a45c0>},
+                'static': {'diff': <datacompy.pandas.PandasCompare object at 0x16eb90080>}},
         'solver': {'saveat': {'other': 86400.0, 'self': 0.0}}}
         >>> x["basin"]["static"]["diff"].report()
         DataComPy Comparison
