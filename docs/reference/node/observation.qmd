@@ -1,12 +1,12 @@
 ---
-title: "![](/assets/node-icons/Observation.svg){height=20} Observation / time"
+title: "![](/assets/node-icons/Observation.svg){height=20} Observation"
 ---
 
 An Observation node is used to attach time series of observed or reference data to a node in the network. These are not used in the simulation core, but are available for visualization, validation, or post-processing.
 
-Observation nodes can be linked to Basin and connector nodes with an observation link.
-The link direction is always from the Observation node to the observed node.
-An Observation node can connect to 0 or 1 nodes, but can hold multiple observed variables for a single node.
+Observation nodes can be linked to Basins and connector nodes.
+This is done with an observation link, whose direction is always from the Observation node to the observed node.
+An Observation node connects to at most one other node, but may carry multiple variables for that node.
 
 # Tables
 
@@ -15,24 +15,27 @@ An Observation node can connect to 0 or 1 nodes, but can hold multiple observed 
 column   | type     | unit   | restriction
 -------- | -------- | ------ | -----------
 node_id  | Int32    | -      |
-variable | String   | -      | Name of the observed variable (e.g. "level", "flow_rate")
+variable | String   | -      | Name of the Ribasim variable being observed (e.g. "level", "flow_rate"), see [Results](reference/usage.qmd#sec-results)
 time     | DateTime | -      | Timestamp of the observation
-value    | Float64  | -      | Value of the observation
+value    | Float64  | -      | Value of the observation, unit equal to Ribasim variable
 
 # Examples
 
-This example shows two Observation nodes observing a Basin and a TabulatedRatingCurve. The table below shows the time series for both nodes:
+This example shows two Observation nodes (#1 and #2) observing a Basin and a TabulatedRatingCurve.
+The table below shows the time series for both nodes:
 
-| node_id | variable   | time                | value |
-| ------- | ---------- | ------------------- | ----- |
-| 1       | level      | 2020-01-01 00:00:00 | 0.5   |
-| 1       | level      | 2020-02-01 00:00:00 | 0.3   |
-| 1       | level      | 2020-03-01 00:00:00 | 0.4   |
-| 2       | flow_rate  | 2020-01-01 00:00:00 | 0.0   |
-| 2       | flow_rate  | 2020-02-01 00:00:00 | 0.05  |
-| 2       | flow_rate  | 2020-03-01 00:00:00 | 0.1   |
+| node_id | variable  | time                | value |
+| ------- | --------- | ------------------- | ----- |
+| 1       | level     | 2020-01-01 00:00:00 | 0.5   |
+| 1       | level     | 2020-02-01 00:00:00 | 0.3   |
+| 1       | level     | 2020-03-01 00:00:00 | 0.4   |
+| 2       | flow_rate | 2020-01-01 00:00:00 | 0.0   |
+| 2       | flow_rate | 2020-02-01 00:00:00 | 0.05  |
+| 2       | flow_rate | 2020-03-01 00:00:00 | 0.1   |
 
 # Notes
 
 - Observation nodes are not included in the simulation graph and do not affect results.
 - They are intended for reference, validation, or visualization purposes only.
+- Flow links cannot be observed directly; link to the connector node with variable `flow_rate` instead.
+- Non-conservative nodes don't have `flow_rate`; specify either `inflow_rate` or `outflow_rate` for e.g. Basin or UserDemand.
