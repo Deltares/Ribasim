@@ -238,9 +238,7 @@ end
 
     table = Ribasim.concentration_data(model)
     @test "Continuity" in table.substance
-    # Concentrations are normalized by the ODE storage (u.basin) while tracer mass is built
-    # from the (5-point Boole) integrated flows; the residual gap is bounded by the solver
-    # tolerance (set to 1e-6 above).
+
     @test all(isapprox.(table.concentration[table.substance .== "Continuity"], 1.0; atol = 6.0e-4))
     summed_source_concentrations = reduce(
         +,
