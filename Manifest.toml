@@ -2,7 +2,7 @@
 
 julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "63e06f82102c0a8ae15d7c88fba77c95968eb2b2"
+project_hash = "72b77173aefc1f87be3096e012f07d57f45f85a7"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "bbc22a9a08a0ef6460041086d8a7b27940ed4ffd"
@@ -2169,6 +2169,15 @@ deps = ["ConstructionBase", "Future", "MacroTools", "StaticArraysCore"]
 git-tree-sha1 = "c5391c6ace3bc430ca630251d02ea9687169ca68"
 uuid = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 version = "1.1.2"
+
+[[deps.SharedHydrology]]
+deps = ["StaticArrays"]
+git-tree-sha1 = "d41bcb38334371e7bb7c68a28e8b9b13f8cbcde0"
+repo-rev = "shared_module_soil_moisture"
+repo-subdir = "SharedHydrology"
+repo-url = "https://github.com/Deltares/Wflow.jl.git"
+uuid = "e4c7f7b8-5a3d-4e6f-9c1a-2b8d3f4e5a6c"
+version = "0.1.0-dev"
 
 [[deps.Showoff]]
 deps = ["Dates", "Grisu"]
