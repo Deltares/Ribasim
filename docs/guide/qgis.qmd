@@ -92,3 +92,4 @@ This reloads both the model and the results.
 
 This avoids the need to remove the group and open the same model again via the plugin.
 It can be convenient when iteratively building your model via Python, or running new simulations.
+If no model is loaded, the most recently opened model is loaded.
