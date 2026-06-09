@@ -139,7 +139,7 @@ VariableTraces = dict[str, Trace]
 # Full plot payload: file -> variable -> traces.
 PlotData = dict[str, dict[str, VariableTraces]]
 
-_PLACEHOLDER_DEFAULT = "Select Basin nodes and/or links on the map to plot timeseries."
+_PLACEHOLDER_DEFAULT = "Select nodes and/or links on the map to plot timeseries."
 _PLACEHOLDER_WATER_BALANCE = (
     "Basin water balance requires exactly one Basin node selection."
 )
@@ -149,9 +149,6 @@ _PLACEHOLDER_FRACTIONAL_STORAGE = (
 _PLACEHOLDER_FRACTIONAL_FLOW = "Fractional flow requires exactly one link selection."
 _PLACEHOLDER_FRACTIONAL_FLOW_NO_BASIN = (
     "Fractional flow: could not find a Basin on either side of the selected link."
-)
-_PLACEHOLDER_FRACTIONAL_FLOW_NO_CONCENTRATION = (
-    "Fractional flow: no concentration data found for the resolved Basin side(s)."
 )
 
 _TRAVERSABLE_NODE_TYPES: frozenset[str] = frozenset(
@@ -185,10 +182,20 @@ _BASIN_WATER_BALANCE_TERMS: tuple[tuple[str, int], ...] = (
 )
 _BASIN_WATER_BALANCE_ERROR_TERM = "balance_error"
 
-_ROOT_VARIABLES: tuple[str, ...] = (
-    "basin / level",
-    "basin / storage",
-    "flow / flow_rate",
+# Synthetic root variable groups: a single root checkbox toggles the listed
+# (file, variable) keys together.  Group constituents are hidden from their
+# file submenus, so the only way to toggle them is via the group checkbox.
+_ROOT_VARIABLE_GROUPS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
+    ("level", (("basin", "level"),)),
+    ("storage", (("basin", "storage"),)),
+    (
+        "flow_rate",
+        (
+            ("basin", "inflow_rate"),
+            ("basin", "outflow_rate"),
+            ("flow", "flow_rate"),
+        ),
+    ),
 )
 
 _PLOT_LAYOUT = {
@@ -209,20 +216,22 @@ class _PlotMenu(QMenu):
         super().__init__(parent)
         self.setContentsMargins(10, 5, 5, 5)
         self._checkboxes: list[QCheckBox] = []
-        self._variables: list[str] = []
+        # Per-checkbox list of (file, variable) keys controlled by it.
+        # Singleton tuple for submenu items, multi-element for root groups.
+        self._checkbox_keys: list[tuple[tuple[str, str], ...]] = []
 
     def populate(
         self,
         available: dict[str, list[str]],
-        previously_checked: set[str],
-        defaults: dict[str, str] | None = None,
+        previously_checked: set[tuple[str, str]],
+        defaults: dict[str, list[str]] | None = None,
         water_balance_enabled: bool = False,
         fractional_storage_enabled: bool = False,
         fractional_flow_enabled: bool = False,
     ) -> None:
         self.clear()
         self._checkboxes = []
-        self._variables = []
+        self._checkbox_keys = []
         checked_state = cast(int, Qt.CheckState.Checked)
 
         wb_cb = QCheckBox("water balance")
@@ -255,62 +264,74 @@ class _PlotMenu(QMenu):
         self.addSeparator()
 
         defaults = defaults or {}
-        root_variables: set[str] = set()
-        for label in _ROOT_VARIABLES:
-            file_name, variable = label.split(" / ", 1)
-            if file_name in available and variable in available[file_name]:
-                root_variables.add(label)
-        for label in sorted(root_variables):
-            _, variable = label.split(" / ", 1)
-            cb = QCheckBox(variable)
-            if label in previously_checked:
+        default_keys = {
+            (file_name, var) for file_name, vars_ in defaults.items() for var in vars_
+        }
+
+        # Root group checkboxes; each toggles one or more (file, var) keys.
+        # Constituents are hidden from submenus regardless of availability.
+        grouped_keys: set[tuple[str, str]] = set()
+        has_root = False
+        for label, group in _ROOT_VARIABLE_GROUPS:
+            available_keys = tuple(
+                (file_name, var)
+                for file_name, var in group
+                if file_name in available and var in available[file_name]
+            )
+            if not available_keys:
+                continue
+            grouped_keys.update(group)
+            cb = QCheckBox(label)
+            if previously_checked & set(available_keys):
                 cb.setChecked(True)
             self._checkboxes.append(cb)
-            self._variables.append(label)
+            self._checkbox_keys.append(available_keys)
             action = QWidgetAction(self)
             action.setDefaultWidget(cb)
             self.addAction(action)
+            has_root = True
 
-        if root_variables:
+        if has_root:
             self.addSeparator()
 
         for file_name in sorted(available):
             variables_for_submenu = [
                 variable
                 for variable in sorted(available[file_name])
-                if f"{file_name} / {variable}" not in root_variables
+                if (file_name, variable) not in grouped_keys
             ]
             if not variables_for_submenu:
                 continue
             submenu = self.addMenu(file_name)
             for variable in variables_for_submenu:
-                label = f"{file_name} / {variable}"
                 cb = QCheckBox(variable)
-                if label in previously_checked:
+                if (file_name, variable) in previously_checked:
                     cb.setChecked(True)
                 self._checkboxes.append(cb)
-                self._variables.append(label)
+                self._checkbox_keys.append(((file_name, variable),))
                 action = QWidgetAction(submenu)
                 action.setDefaultWidget(cb)
                 submenu.addAction(action)
 
         if not any(cb.isChecked() for cb in self._checkboxes) and self._checkboxes:
-            default_labels = {
-                f"{file_name} / {default_var}"
-                for file_name, default_var in defaults.items()
-            }
-            for i, label in enumerate(self._variables):
-                if label in default_labels:
-                    self._checkboxes[i].setChecked(True)
+            for cb, cb_keys in zip(self._checkboxes, self._checkbox_keys, strict=True):
+                if any(key in default_keys for key in cb_keys):
+                    cb.setChecked(True)
             if not any(cb.isChecked() for cb in self._checkboxes):
                 self._checkboxes[0].setChecked(True)
 
-    def checked_variables(self) -> list[str]:
-        return [
-            label
-            for label, cb in zip(self._variables, self._checkboxes, strict=True)
-            if cb.isChecked()
-        ]
+    def checked_keys(self) -> list[tuple[str, str]]:
+        """Return the flat, deduplicated list of currently checked keys."""
+        seen: set[tuple[str, str]] = set()
+        keys: list[tuple[str, str]] = []
+        for cb, cb_keys in zip(self._checkboxes, self._checkbox_keys, strict=True):
+            if not cb.isChecked():
+                continue
+            for key in cb_keys:
+                if key not in seen:
+                    seen.add(key)
+                    keys.append(key)
+        return keys
 
 
 class PlotWidget(QWidget):
@@ -388,11 +409,13 @@ class PlotWidget(QWidget):
 
         self._node_button = QToolButton()
         self._node_button.setText("node")
+        self._node_button.setCheckable(True)
         self._node_button.clicked.connect(self._activate_node_selection)
         row.addWidget(self._node_button)
 
         self._link_button = QToolButton()
         self._link_button.setText("link")
+        self._link_button.setCheckable(True)
         self._link_button.clicked.connect(self._activate_link_selection)
         row.addWidget(self._link_button)
 
@@ -434,10 +457,60 @@ class PlotWidget(QWidget):
         self._units: dict[str, dict[str, str]] = {}
         # Available variables per file: {file_name: [var1, var2, ...]}
         self._available: dict[str, list[str]] = {}
-        # Default variable per file: {file_name: variable}
-        self._defaults: dict[str, str] = {}
-        # Variable menu mapping: "file / variable" -> (file, variable)
-        self._menu_to_key: dict[str, tuple[str, str]] = {}
+        # Default variables per file: {file_name: [variable, ...]}
+        self._defaults: dict[str, list[str]] = {}
+
+        # Keep node/link buttons in sync with the active layer and map tool.
+        if self._iface is not None:
+            self._iface.currentLayerChanged.connect(self._sync_layer_buttons)
+            canvas = self._iface.mapCanvas()
+            if canvas is not None:
+                canvas.mapToolSet.connect(self._on_map_tool_set)
+
+    def showEvent(self, a0):
+        """Activate the select tool (and the node layer if neither is active)."""
+        super().showEvent(a0)
+        if self._iface is None:
+            return
+        active = self._iface.activeLayer()
+        node_layer = self._node_layer_getter() if self._node_layer_getter else None
+        link_layer = self._link_layer_getter() if self._link_layer_getter else None
+        if active is not node_layer and active is not link_layer:
+            # _activate_selection_target also activates the select tool.
+            self._activate_node_selection()
+        else:
+            self._activate_qgis_select_tool()
+            self._sync_layer_buttons(active)
+
+    def _on_map_tool_set(self, *_args: Any) -> None:
+        """Slot for QgsMapCanvas.mapToolSet (signal signature varies)."""
+        self._sync_layer_buttons()
+
+    def _is_select_tool_active(self) -> bool:
+        if self._iface is None:
+            return False
+        action = self._iface.actionSelect()
+        return action is not None and action.isChecked()
+
+    def _sync_layer_buttons(self, layer: Any | None = None) -> None:
+        """Update node/link button checked state.
+
+        Buttons are only checked when the matching layer is active *and*
+        the QGIS select tool is currently the active map tool.
+        """
+        if self._iface is None:
+            return
+        if layer is None:
+            layer = self._iface.activeLayer()
+        node_layer = self._node_layer_getter() if self._node_layer_getter else None
+        link_layer = self._link_layer_getter() if self._link_layer_getter else None
+        select_active = self._is_select_tool_active()
+        self._node_button.setChecked(
+            select_active and layer is node_layer and node_layer is not None
+        )
+        self._link_button.setChecked(
+            select_active and layer is link_layer and link_layer is not None
+        )
 
     # --- Public API ---
 
@@ -450,7 +523,7 @@ class PlotWidget(QWidget):
         self,
         available: dict[str, list[str]],
         units: dict[str, dict[str, str]] | None = None,
-        defaults: dict[str, str] | None = None,
+        defaults: dict[str, list[str]] | None = None,
     ) -> None:
         """Pre-populate variable dropdown without trace data.
 
@@ -461,37 +534,18 @@ class PlotWidget(QWidget):
         units:
             file_name -> variable -> unit string.
         defaults:
-            file_name -> default variable to check.
+            file_name -> list of default variables to check.
         """
         if not self.plotting_supported:
             return
         self._available = available
         self._units = units or {}
         self._defaults = defaults or {}
-        previously_checked_labels = set(self._var_menu.checked_variables())
-        previously_checked_keys = {
-            self._menu_to_key[label]
-            for label in previously_checked_labels
-            if label in self._menu_to_key
-        }
-
-        menu_to_key: dict[str, tuple[str, str]] = {}
-        for file_name, file_variables in self._available.items():
-            for variable in sorted(file_variables):
-                label = f"{file_name} / {variable}"
-                menu_to_key[label] = (file_name, variable)
-
-        self._menu_to_key = menu_to_key
-
-        checked_labels = {
-            label
-            for label, key in self._menu_to_key.items()
-            if key in previously_checked_keys
-        }
+        previously_checked_keys = set(self._var_menu.checked_keys())
 
         self._var_menu.populate(
             self._available,
-            checked_labels,
+            previously_checked_keys,
             self._defaults,
             self._water_balance_enabled,
             self._fractional_storage_enabled,
@@ -557,12 +611,17 @@ class PlotWidget(QWidget):
         self, layer_getter: Callable[[], Any | None] | None
     ) -> None:
         if self._iface is None or layer_getter is None:
+            self._sync_layer_buttons()
             return
         layer = layer_getter()
         if layer is None:
+            self._sync_layer_buttons()
             return
         self._iface.setActiveLayer(layer)
         self._activate_qgis_select_tool()
+        # If the layer was already active, currentLayerChanged isn't emitted,
+        # so re-sync explicitly to keep the clicked button pressed.
+        self._sync_layer_buttons()
 
     def _activate_qgis_select_tool(self) -> None:
         if self._iface is None:
@@ -572,11 +631,7 @@ class PlotWidget(QWidget):
             action.trigger()
 
     def _selected_keys(self) -> list[tuple[str, str]]:
-        return [
-            self._menu_to_key[label]
-            for label in self._var_menu.checked_variables()
-            if label in self._menu_to_key
-        ]
+        return self._var_menu.checked_keys()
 
     def _to_plotly_xy(
         self, x: np.ndarray, y: np.ndarray
@@ -624,7 +679,13 @@ class PlotWidget(QWidget):
             unit_key = unit or "(no unit)"
             for trace_name, (x, y) in var_traces.items():
                 x_data, y_data = self._to_plotly_xy(x, y)
-                legend_name = f"{file_name} / {var} {trace_name}"
+                # Entity-only trace names ("Basin #3", "Link #4") end with a
+                # digit; node-injected traces already encode the variable
+                # (e.g. "UserDemand #5 inflow_rate") and need no suffix.
+                if trace_name[-1:].isdigit():
+                    legend_name = f"{trace_name} {var}"
+                else:
+                    legend_name = trace_name
                 traces_by_unit[unit_key].append(
                     go.Scatter(
                         x=x_data,
@@ -1231,15 +1292,21 @@ class PlotWidget(QWidget):
             self._show_placeholder(self._placeholder_for_current_preset())
             return
 
-        # Need exactly one link in flow data.
+        # Need exactly one link in flow data. Trace names that don't start
+        # with `"Link #"` originate from a node selection (e.g.
+        # `"TabulatedRatingCurve #5"`) and are ignored here.
         flow_data = self._plot_data.get("flow", {})
-        flow_rate_traces = flow_data.get("flow_rate", {})
+        flow_rate_traces = {
+            name: trace
+            for name, trace in flow_data.get("flow_rate", {}).items()
+            if name.startswith("Link #")
+        }
         if len(flow_rate_traces) != 1:
             self._show_placeholder(_PLACEHOLDER_FRACTIONAL_FLOW)
             return
 
         trace_name = next(iter(flow_rate_traces))
-        link_id = int(trace_name.lstrip("#"))
+        link_id = int(trace_name.removeprefix("Link #"))
         flow_time, flow_values = flow_rate_traces[trace_name]
 
         # Resolve both endpoints to Basins (traversing connectors).

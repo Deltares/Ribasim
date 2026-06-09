@@ -44,7 +44,7 @@ def test_ribasim_home_setting_roundtrip(monkeypatch):
     assert DatasetWidget.get_ribasim_home_setting() is None
 
 
-def test_last_model_dir_setting_roundtrip(monkeypatch):
+def test_last_model_path_setting_roundtrip(monkeypatch):
     store: dict[str, str] = {}
 
     class FakeQgsSettings:
@@ -61,12 +61,12 @@ def test_last_model_dir_setting_roundtrip(monkeypatch):
         "ribasim_qgis.widgets.dataset_widget.QgsSettings", FakeQgsSettings
     )
 
-    assert DatasetWidget.get_last_model_dir_setting() is None
+    assert DatasetWidget.get_last_model_path_setting() is None
 
-    expected = Path("C:/models/basic")
-    DatasetWidget.set_last_model_dir_setting(expected)
+    expected = Path("C:/models/basic/ribasim.toml")
+    DatasetWidget.set_last_model_path_setting(expected)
 
-    assert DatasetWidget.get_last_model_dir_setting() == expected
+    assert DatasetWidget.get_last_model_path_setting() == expected
 
 
 def test_open_model_uses_last_model_dir_for_dialog(monkeypatch):
@@ -75,8 +75,8 @@ def test_open_model_uses_last_model_dir_for_dialog(monkeypatch):
 
     monkeypatch.setattr(
         DatasetWidget,
-        "get_last_model_dir_setting",
-        staticmethod(lambda: Path("C:/models/basic")),
+        "get_last_model_path_setting",
+        staticmethod(lambda: Path("C:/models/basic/ribasim.toml")),
     )
 
     captured: dict[str, str] = {}
@@ -96,13 +96,13 @@ def test_open_model_uses_last_model_dir_for_dialog(monkeypatch):
     assert Path(captured["directory"]) == Path("C:/models/basic")
 
 
-def test_open_model_stores_parent_directory(monkeypatch):
+def test_open_model_stores_model_path(monkeypatch):
     widget = DatasetWidget.__new__(DatasetWidget)
 
     captured: dict[str, Path] = {}
     monkeypatch.setattr(
         DatasetWidget,
-        "set_last_model_dir_setting",
+        "set_last_model_path_setting",
         staticmethod(lambda path: captured.__setitem__("path", path)),
     )
     monkeypatch.setattr(DatasetWidget, "set_current_time_extent", lambda self: None)
@@ -113,7 +113,7 @@ def test_open_model_stores_parent_directory(monkeypatch):
     widget._open_model("C:/models/basic/ribasim.toml")
 
     assert widget.path == Path("C:/models/basic/ribasim.toml")
-    assert captured["path"] == Path("C:/models/basic")
+    assert captured["path"] == Path("C:/models/basic/ribasim.toml")
 
 
 def test_find_ribasim_cli_uses_setting_first(monkeypatch):
