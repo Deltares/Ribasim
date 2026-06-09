@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from qgis.core import (
+    Qgis,
     QgsAbstractVectorLayerLabeling,
     QgsCoordinateReferenceSystem,
     QgsLayerTreeGroup,
@@ -94,11 +95,52 @@ class RibasimWidget(QWidget):
         self.__dataset_widget.run_action(path, self.group)
 
     def reload_model(self) -> None:
-        """Reload the currently loaded Ribasim model."""
-        path = str(self.__dataset_widget.path)
-        if not path or self.group is None:
+        """Reload the currently loaded Ribasim model.
+
+        If no model is currently loaded (or its layer group has been
+        removed), fall back to the last opened model recorded in the
+        QGIS settings. If that path no longer exists, show a message.
+        """
+        current_path = self.__dataset_widget.path
+
+        # The user may have deleted the layer group while keeping the
+        # widget alive; accessing the wrapped C++ object then raises.
+        group_alive = self.group is not None
+        if group_alive:
+            try:
+                _ = cast(QgsLayerTreeGroup, self.group).parent()
+            except RuntimeError as e:
+                if e.args and e.args[0] == PYQT_DELETED_ERROR:
+                    self.group = None
+                    group_alive = False
+                else:
+                    raise
+
+        if current_path != Path() and group_alive:
+            self.__dataset_widget.reload_action(str(current_path), self.group)
             return
-        self.__dataset_widget.reload_action(path, self.group)
+
+        last_path = DatasetWidget.get_last_model_path_setting()
+        if last_path is not None and last_path.exists():
+            self.__dataset_widget.open_model(str(last_path))
+            return
+
+        message_bar = self.iface.messageBar()
+        if message_bar is None:
+            return
+        if last_path is None:
+            text = "No Ribasim model has been opened in this QGIS profile yet."
+        else:
+            text = (
+                f"Last opened Ribasim model not found: {last_path}. "
+                "Open a model via Plugins > Ribasim > Open Ribasim model."
+            )
+        message_bar.pushMessage(
+            "Ribasim",
+            text,
+            level=cast(Qgis.MessageLevel, Qgis.MessageLevel.Warning),
+            duration=5,
+        )
 
     # QGIS layers
     # -----------
@@ -127,7 +169,6 @@ class RibasimWidget(QWidget):
         self.create_subgroup(name, "Input")
         self.create_subgroup(name, "Results", visible=False)
         assert self.group is not None
-        self.group.setIsMutuallyExclusive(True)
 
     def add_to_group(self, maplayer: Any, destination: str, on_top: bool):
         """Try to add to a group.

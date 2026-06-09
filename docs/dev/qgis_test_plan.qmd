@@ -93,7 +93,7 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 
 ## Basin timeseries on node selection
 
-- Change the variable to "level": _Variable changes to "level", placeholder says "Select Basin nodes and/or links on the map to plot timeseries."_.
+- Change the variable to "level": _Variable changes to "level", placeholder says "Select nodes and/or links on the map to plot timeseries."_.
 - Select one or more Basin nodes on the map: _Level timeseries appear for the selected nodes_.
 
 ## Variable selection
