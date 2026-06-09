@@ -4,6 +4,7 @@ A widget that displays the available input layers in the GeoPackage.
 It also allows enabling or disabling individual elements for a computation.
 """
 
+import contextlib
 import os
 import re
 import shutil
@@ -13,6 +14,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any, cast
 
+import numpy as np
 from qgis.core import (
     Qgis,
     QgsApplication,
@@ -68,14 +70,51 @@ _ID_COLUMNS: dict[str, str] = {
     "concentration": "node_id",
 }
 
-# Default variable to select per file when no previous selection exists.
-_DEFAULT_VARIABLES: dict[str, str] = {
-    "basin": "level",
-    "flow": "flow_rate",
+# Mapping from result file name to the entity type used as legend prefix.
+_ENTITY_BY_FILE: dict[str, str] = {
+    "basin": "Basin",
+    "flow": "Link",
+    "concentration": "Basin",
 }
 
+# Default variables to select per file when no previous selection exists.
+_DEFAULT_VARIABLES: dict[str, list[str]] = {
+    "basin": ["level", "inflow_rate", "outflow_rate"],
+    "flow": ["flow_rate"],
+}
+
+# Non-Basin node types whose flow_rate is taken from their outgoing flow link.
+# These nodes are conservative (inflow == outflow), so the outgoing link
+# flow_rate represents the node's flow_rate.
+_FLOW_RATE_FROM_OUTGOING_LINK: frozenset[str] = frozenset(
+    {
+        "TabulatedRatingCurve",
+        "LinearResistance",
+        "ManningResistance",
+        "Pump",
+        "Outlet",
+        "FlowBoundary",
+    }
+)
+
+# Non-conservative node types: inflow and outflow can differ, so we plot both
+# the incoming and outgoing flow links as separate traces.
+_FLOW_RATE_FROM_INCOMING_AND_OUTGOING_LINKS: frozenset[str] = frozenset({"UserDemand"})
+
+# Node types with potentially multiple incoming flow links whose summed
+# inflow we plot. ``Terminal`` only has incoming flow; ``Junction`` is
+# conservative so the inflow sum equals the outflow sum.
+_FLOW_RATE_FROM_INCOMING_LINKS_SUM: frozenset[str] = frozenset({"Terminal", "Junction"})
+
+# Node types with potentially multiple incoming and outgoing flow links
+# where inflow and outflow may differ. We plot the sum of incoming and the
+# sum of outgoing links as separate traces.
+_FLOW_RATE_FROM_INCOMING_AND_OUTGOING_LINKS_SUM: frozenset[str] = frozenset(
+    {"LevelBoundary"}
+)
+
 RIBASIM_HOME_SETTING = "ribasim/home"
-RIBASIM_LAST_MODEL_DIR_SETTING = "ribasim/last_model_dir"
+RIBASIM_LAST_MODEL_PATH_SETTING = "ribasim/last_model_path"
 
 _ANSI_ESCAPE_RE = re.compile(r"\x1B(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1B\\))")
 
@@ -168,7 +207,8 @@ class DatasetWidget:
             # pyrefly: ignore[missing-attribute]
             rel.RelationStrength.Composition
         )
-        rel.addFieldPair(fk, "node_id")
+        # Both layers use the same field name for their primary key.
+        rel.addFieldPair(fk, fk)
         rel.generateId()
         instance = QgsProject.instance()
         assert instance is not None
@@ -204,10 +244,6 @@ class DatasetWidget:
 
         link = nodes.pop("Link")
         self.add_item_to_qgis(link)
-        self.add_relationship(
-            link.layer, node.layer.id(), "LinkFromNode", "from_node_id"
-        )
-        self.add_relationship(link.layer, node.layer.id(), "LinkToNode", "to_node_id")
 
         # Add the remaining layers
         for table_name, node_layer in nodes.items():
@@ -258,7 +294,8 @@ class DatasetWidget:
     def open_model(self, path=None) -> None:
         """Open a Ribasim model file."""
         if not path:
-            start_dir = self.get_last_model_dir_setting()
+            last_path = self.get_last_model_path_setting()
+            start_dir = last_path.parent if last_path is not None else None
             path, _ = QFileDialog.getOpenFileName(
                 self.ribasim_widget,
                 "Select file",
@@ -270,7 +307,7 @@ class DatasetWidget:
     def _open_model(self, path: str) -> None:
         if path != "":  # Empty string in case of cancel button press
             self.path = Path(path)
-            self.set_last_model_dir_setting(self.path.parent)
+            self.set_last_model_path_setting(self.path)
             self.set_current_time_extent()
             self.load_geopackage()
             self.add_topology_context()
@@ -424,15 +461,15 @@ class DatasetWidget:
         settings.remove(RIBASIM_HOME_SETTING)
 
     @staticmethod
-    def get_last_model_dir_setting() -> Path | None:
+    def get_last_model_path_setting() -> Path | None:
         settings = QgsSettings()
-        value = settings.value(RIBASIM_LAST_MODEL_DIR_SETTING, "", type=str)
+        value = settings.value(RIBASIM_LAST_MODEL_PATH_SETTING, "", type=str)
         return Path(value) if value else None
 
     @staticmethod
-    def set_last_model_dir_setting(path: Path) -> None:
+    def set_last_model_path_setting(path: Path) -> None:
         settings = QgsSettings()
-        settings.setValue(RIBASIM_LAST_MODEL_DIR_SETTING, str(path))
+        settings.setValue(RIBASIM_LAST_MODEL_PATH_SETTING, str(path))
 
     @staticmethod
     def get_ribasim_cli_from_home(ribasim_home: Path) -> Path | None:
@@ -684,6 +721,10 @@ class DatasetWidget:
             )
             assert self.basin_layer is not None
             self._edit_result_layer(result, self.basin_layer)
+            self.add_relationship(
+                self.basin_layer, node_layer.id(), "BasinResult", fk="node_id"
+            )
+            self._sync_selection_to_result(node_layer, self.basin_layer, "node_id")
 
         result = self.results.get("concentration")
         if result is not None:
@@ -692,6 +733,15 @@ class DatasetWidget:
             )
             assert self.concentration_layer is not None
             self._edit_result_layer(result, self.concentration_layer)
+            self.add_relationship(
+                self.concentration_layer,
+                node_layer.id(),
+                "ConcentrationResult",
+                fk="node_id",
+            )
+            self._sync_selection_to_result(
+                node_layer, self.concentration_layer, "node_id"
+            )
 
     def _set_link_results(self) -> None:
         link_layer = self.ribasim_widget.link_layer
@@ -705,6 +755,44 @@ class DatasetWidget:
             assert self.flow_layer is not None
             self.set_layer_visible(self.flow_layer, True)
             self._edit_result_layer(result, self.flow_layer)
+            self.add_relationship(
+                self.flow_layer, link_layer.id(), "FlowResult", fk="link_id"
+            )
+            self._sync_selection_to_result(link_layer, self.flow_layer, "link_id")
+
+    @staticmethod
+    def _sync_selection_to_result(
+        source_layer: QgsVectorLayer,
+        result_layer: QgsVectorLayer,
+        fk: str,
+    ) -> None:
+        """Mirror the selection in *source_layer* to *result_layer*.
+
+        Selecting Node/Link features in the (possibly hidden) input layer
+        highlights the corresponding Basin/Flow features in the spatial
+        results, so users can see which ones are selected via the standard
+        QGIS yellow highlight.
+        """
+
+        def on_selection_changed(_selected_fids: list[int]) -> None:
+            try:
+                fk_values = {int(feat[fk]) for feat in source_layer.selectedFeatures()}
+            except RuntimeError:
+                # source_layer was deleted underneath us.
+                return
+            if not fk_values:
+                with contextlib.suppress(RuntimeError):
+                    result_layer.removeSelection()
+                return
+            expr = f'"{fk}" IN ({",".join(str(v) for v in fk_values)})'
+            request = QgsFeatureRequest().setFilterExpression(expr)
+            try:
+                target_fids = [feat.id() for feat in result_layer.getFeatures(request)]  # pyrefly: ignore[not-iterable]
+                result_layer.selectByIds(target_fids)
+            except RuntimeError:
+                return
+
+        source_layer.selectionChanged.connect(on_selection_changed)
 
     def _duplicate_layer(
         self,
@@ -869,12 +957,14 @@ class DatasetWidget:
         node_layer = self.ribasim_widget.node_layer
         link_layer = self.ribasim_widget.link_layer
 
-        # Gather selected node IDs
-        selected_node_ids: list[int] = []
+        # Gather selected nodes as (node_id, node_type) tuples.
+        selected_nodes: list[tuple[int, str]] = []
         if node_layer is not None:
             for fid in node_layer.selectedFeatureIds():
                 feat = node_layer.getFeature(fid)
-                selected_node_ids.append(feat["node_id"])
+                selected_nodes.append((int(feat["node_id"]), str(feat["node_type"])))
+
+        selected_node_ids = [node_id for node_id, _ in selected_nodes]
 
         # Gather selected link IDs
         selected_link_ids: list[int] = []
@@ -893,6 +983,7 @@ class DatasetWidget:
             if not ids:
                 continue
 
+            entity = _ENTITY_BY_FILE.get(name, "")
             # Build id -> column-index mapping (O(1) lookup)
             id_to_idx = {int(v): i for i, v in enumerate(result.ids)}
             time_strings = result.time.strftime("%Y-%m-%dT%H:%M:%S").to_numpy()
@@ -903,12 +994,17 @@ class DatasetWidget:
                 for sel_id in ids:
                     idx = id_to_idx.get(sel_id)
                     if idx is not None:
-                        traces[f"#{sel_id}"] = (time_strings, arr[:, idx])
+                        trace_key = f"{entity} #{sel_id}" if entity else f"#{sel_id}"
+                        traces[trace_key] = (time_strings, arr[:, idx])
                 if traces:
                     vars_data[var_name] = traces
 
             if vars_data:
                 plot_data[name] = vars_data
+
+        # Inject flow_rate traces derived from outgoing links for selected
+        # non-Basin conservative nodes (e.g. TabulatedRatingCurve).
+        self._inject_node_flow_rate_traces(plot_data, selected_nodes, link_layer)
 
         # Collect units from results
         units: dict[str, dict[str, str]] = {
@@ -918,3 +1014,117 @@ class DatasetWidget:
             self.plot_widget.set_data(plot_data, units)
         else:
             self.plot_widget.clear()
+
+    def _inject_node_flow_rate_traces(
+        self,
+        plot_data: PlotData,
+        selected_nodes: list[tuple[int, str]],
+        link_layer: Any,
+    ) -> None:
+        """Add flow.nc flow_rate traces for selected non-Basin nodes.
+
+        Four cases:
+
+        * Conservative single-link nodes (e.g. ``TabulatedRatingCurve``):
+          show the outgoing flow link as the node's flow_rate.
+        * Non-conservative single-link nodes (e.g. ``UserDemand``): show
+          the incoming and outgoing flow links separately.
+        * Multi-link inflow-only nodes (``Terminal``, ``Junction``): show
+          the sum of all incoming flow links.
+        * Multi-link non-conservative nodes (``LevelBoundary``): show the
+          sum of incoming and the sum of outgoing flow links separately.
+        """
+        flow_result = self.results.get("flow")
+        if flow_result is None or link_layer is None:
+            return
+        flow_arr = flow_result.variables.get("flow_rate")
+        if flow_arr is None:
+            return
+
+        link_id_to_idx = {int(v): i for i, v in enumerate(flow_result.ids)}
+        time_strings = flow_result.time.strftime("%Y-%m-%dT%H:%M:%S").to_numpy()
+
+        new_traces: VariableTraces = {}
+        for node_id, node_type in selected_nodes:
+            if node_type in _FLOW_RATE_FROM_OUTGOING_LINK:
+                outgoing = self._connected_flow_columns(
+                    link_layer, node_id, "from", link_id_to_idx, flow_arr
+                )
+                if outgoing:
+                    new_traces[f"{node_type} #{node_id} flow_rate"] = (
+                        time_strings,
+                        outgoing[0],
+                    )
+            elif node_type in _FLOW_RATE_FROM_INCOMING_AND_OUTGOING_LINKS:
+                incoming = self._connected_flow_columns(
+                    link_layer, node_id, "to", link_id_to_idx, flow_arr
+                )
+                outgoing = self._connected_flow_columns(
+                    link_layer, node_id, "from", link_id_to_idx, flow_arr
+                )
+                if incoming:
+                    new_traces[f"{node_type} #{node_id} inflow_rate"] = (
+                        time_strings,
+                        incoming[0],
+                    )
+                if outgoing:
+                    new_traces[f"{node_type} #{node_id} outflow_rate"] = (
+                        time_strings,
+                        outgoing[0],
+                    )
+            elif node_type in _FLOW_RATE_FROM_INCOMING_LINKS_SUM:
+                incoming = self._connected_flow_columns(
+                    link_layer, node_id, "to", link_id_to_idx, flow_arr
+                )
+                if incoming:
+                    new_traces[f"{node_type} #{node_id} inflow_rate"] = (
+                        time_strings,
+                        np.sum(incoming, axis=0),
+                    )
+            elif node_type in _FLOW_RATE_FROM_INCOMING_AND_OUTGOING_LINKS_SUM:
+                incoming = self._connected_flow_columns(
+                    link_layer, node_id, "to", link_id_to_idx, flow_arr
+                )
+                outgoing = self._connected_flow_columns(
+                    link_layer, node_id, "from", link_id_to_idx, flow_arr
+                )
+                if incoming:
+                    new_traces[f"{node_type} #{node_id} inflow_rate"] = (
+                        time_strings,
+                        np.sum(incoming, axis=0),
+                    )
+                if outgoing:
+                    new_traces[f"{node_type} #{node_id} outflow_rate"] = (
+                        time_strings,
+                        np.sum(outgoing, axis=0),
+                    )
+
+        if not new_traces:
+            return
+        flow_vars = plot_data.setdefault("flow", {})
+        flow_rate_traces = flow_vars.setdefault("flow_rate", {})
+        flow_rate_traces.update(new_traces)
+
+    @staticmethod
+    def _connected_flow_columns(
+        link_layer: Any,
+        node_id: int,
+        direction: str,
+        link_id_to_idx: dict[int, int],
+        flow_arr: np.ndarray,
+    ) -> list[np.ndarray]:
+        """Return flow_rate columns for flow links connected to *node_id*.
+
+        *direction* is ``"from"`` for outgoing links (``from_node_id``) and
+        ``"to"`` for incoming links (``to_node_id``).
+        """
+        column = "from_node_id" if direction == "from" else "to_node_id"
+        request = QgsFeatureRequest().setFilterExpression(
+            f'"{column}" = {node_id} AND "link_type" = \'flow\''
+        )
+        columns: list[np.ndarray] = []
+        for feat in link_layer.getFeatures(request):
+            idx = link_id_to_idx.get(int(feat["link_id"]))
+            if idx is not None:
+                columns.append(flow_arr[:, idx])
+        return columns

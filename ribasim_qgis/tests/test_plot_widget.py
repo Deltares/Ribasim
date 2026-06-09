@@ -37,16 +37,11 @@ def test_plot_widget_preload_variables():
         "basin": {"level": "m", "storage": "m3"},
         "flow": {"flow_rate": "m3 s-1"},
     }
-    widget.preload_variables(available, units, defaults={"basin": "level"})
+    widget.preload_variables(available, units, defaults={"basin": ["level"]})
     assert widget._available == available
     assert widget._units == units
-    assert widget._defaults == {"basin": "level"}
-    assert set(widget._var_menu.checked_variables()) == {"basin / level"}
-    assert widget._menu_to_key == {
-        "basin / level": ("basin", "level"),
-        "basin / storage": ("basin", "storage"),
-        "flow / flow_rate": ("flow", "flow_rate"),
-    }
+    assert widget._defaults == {"basin": ["level"]}
+    assert set(widget._var_menu.checked_keys()) == {("basin", "level")}
 
 
 def test_plot_widget_preload_multiple_defaults():
@@ -56,12 +51,42 @@ def test_plot_widget_preload_multiple_defaults():
         "basin": ["level", "storage"],
         "flow": ["flow_rate"],
     }
-    defaults = {"basin": "level", "flow": "flow_rate"}
+    defaults = {"basin": ["level"], "flow": ["flow_rate"]}
     widget.preload_variables(available, defaults=defaults)
-    assert set(widget._var_menu.checked_variables()) == {
-        "basin / level",
-        "flow / flow_rate",
+    assert set(widget._var_menu.checked_keys()) == {
+        ("basin", "level"),
+        ("flow", "flow_rate"),
     }
+
+
+def test_plot_widget_flow_rate_group_toggles_all_constituents():
+    """The synthetic 'flow_rate' root checkbox toggles all three keys."""
+    widget = PlotWidget()
+    available = {
+        "basin": ["level", "inflow_rate", "outflow_rate"],
+        "flow": ["flow_rate"],
+    }
+    defaults = {
+        "basin": ["level", "inflow_rate", "outflow_rate"],
+        "flow": ["flow_rate"],
+    }
+    widget.preload_variables(available, defaults=defaults)
+
+    # Default-on: level + flow_rate group => 4 keys.
+    assert set(widget._var_menu.checked_keys()) == {
+        ("basin", "level"),
+        ("basin", "inflow_rate"),
+        ("basin", "outflow_rate"),
+        ("flow", "flow_rate"),
+    }
+
+    # All basin variables are constituents of root groups, so no basin
+    # submenu is created.
+    submenu_titles = {
+        action.menu().title() for action in widget._var_menu.actions() if action.menu()
+    }
+    assert "basin" not in submenu_titles
+    assert "flow" not in submenu_titles
 
 
 def test_plot_widget_set_data_and_redraw():
@@ -73,10 +98,10 @@ def test_plot_widget_set_data_and_redraw():
         "basin": {"level": "m"},
         "flow": {"flow_rate": "m3 s-1"},
     }
-    widget.preload_variables(available, units=units, defaults={"basin": "level"})
+    widget.preload_variables(available, units=units, defaults={"basin": ["level"]})
     widget._var_menu.populate(
         widget._available,
-        {"basin / level", "flow / flow_rate"},
+        {("basin", "level"), ("flow", "flow_rate")},
         widget._defaults,
         widget._water_balance_enabled,
     )
@@ -88,12 +113,12 @@ def test_plot_widget_set_data_and_redraw():
     plot_data: PlotData = {
         "basin": {
             "level": {
-                "#1": (time, basin_values),
+                "Basin #1": (time, basin_values),
             }
         },
         "flow": {
             "flow_rate": {
-                "#3": (time, flow_values),
+                "Link #3": (time, flow_values),
             }
         },
     }
@@ -108,11 +133,11 @@ def test_plot_widget_clear():
     widget = PlotWidget()
 
     available = {"basin": ["level"]}
-    widget.preload_variables(available, defaults={"basin": "level"})
+    widget.preload_variables(available, defaults={"basin": ["level"]})
 
     time = np.array(["2020-01-01", "2020-01-02"])
     values = np.array([1.0, 2.0])
-    widget.set_data({"basin": {"level": {"#1": (time, values)}}})
+    widget.set_data({"basin": {"level": {"Basin #1": (time, values)}}})
 
     widget.clear()
     assert widget._plot_data == {}
@@ -123,13 +148,13 @@ def test_plot_widget_clear():
 def test_plot_widget_empty_data_shows_placeholder():
     widget = PlotWidget()
     available = {"basin": ["level"]}
-    widget.preload_variables(available, defaults={"basin": "level"})
+    widget.preload_variables(available, defaults={"basin": ["level"]})
     widget.set_data({})
     assert widget._placeholder.isVisibleTo(widget)
     assert not widget._web_view.isVisibleTo(widget)
 
 
-def test_plot_widget_legend_includes_file_and_variable(monkeypatch):
+def test_plot_widget_legend_uses_entity_and_variable(monkeypatch):
     captured_figures = []
 
     def _capture_plot(fig, **kwargs):
@@ -142,11 +167,11 @@ def test_plot_widget_legend_includes_file_and_variable(monkeypatch):
     widget.preload_variables(
         {"basin": ["level"], "flow": ["level"]},
         units={"basin": {"level": "m"}, "flow": {"level": "m"}},
-        defaults={"basin": "level"},
+        defaults={"basin": ["level"]},
     )
     widget._var_menu.populate(
         widget._available,
-        {"basin / level", "flow / level"},
+        {("basin", "level"), ("flow", "level")},
         widget._defaults,
         widget._water_balance_enabled,
     )
@@ -154,14 +179,14 @@ def test_plot_widget_legend_includes_file_and_variable(monkeypatch):
     time = np.array(["2020-01-01", "2020-01-02"])
     widget.set_data(
         {
-            "basin": {"level": {"#1": (time, np.array([1.0, 2.0]))}},
-            "flow": {"level": {"#9": (time, np.array([3.0, 4.0]))}},
+            "basin": {"level": {"Basin #1": (time, np.array([1.0, 2.0]))}},
+            "flow": {"level": {"Link #9": (time, np.array([3.0, 4.0]))}},
         }
     )
 
     assert len(captured_figures) == 1
     names = {trace.name for trace in captured_figures[0].data}
-    assert names == {"basin / level #1", "flow / level #9"}
+    assert names == {"Basin #1 level", "Link #9 level"}
 
 
 def test_plot_widget_groups_unitless_into_no_unit_subplot(monkeypatch):
@@ -177,11 +202,11 @@ def test_plot_widget_groups_unitless_into_no_unit_subplot(monkeypatch):
     widget.preload_variables(
         {"basin": ["level", "state"]},
         units={"basin": {"level": "m", "state": ""}},
-        defaults={"basin": "level"},
+        defaults={"basin": ["level"]},
     )
     widget._var_menu.populate(
         widget._available,
-        {"basin / level", "basin / state"},
+        {("basin", "level"), ("basin", "state")},
         widget._defaults,
         widget._water_balance_enabled,
     )
@@ -190,8 +215,8 @@ def test_plot_widget_groups_unitless_into_no_unit_subplot(monkeypatch):
     widget.set_data(
         {
             "basin": {
-                "level": {"#1": (time, np.array([1.0, 2.0]))},
-                "state": {"#1": (time, np.array([0.0, 1.0]))},
+                "level": {"Basin #1": (time, np.array([1.0, 2.0]))},
+                "state": {"Basin #1": (time, np.array([0.0, 1.0]))},
             }
         }
     )
@@ -217,15 +242,15 @@ def test_plot_widget_basin_water_balance_preset_applies_signs(monkeypatch):
     time = np.array(["2020-01-01", "2020-01-02"])
     plot_data = {
         "basin": {
-            "inflow_rate": {"#1": (time, np.array([10.0, 11.0]))},
-            "precipitation": {"#1": (time, np.array([1.0, 2.0]))},
-            "surface_runoff": {"#1": (time, np.array([3.0, 4.0]))},
-            "drainage": {"#1": (time, np.array([5.0, 6.0]))},
-            "outflow_rate": {"#1": (time, np.array([7.0, 8.0]))},
-            "storage_rate": {"#1": (time, np.array([9.0, 10.0]))},
-            "evaporation": {"#1": (time, np.array([11.0, 12.0]))},
-            "infiltration": {"#1": (time, np.array([13.0, 14.0]))},
-            "balance_error": {"#1": (time, np.array([15.0, 16.0]))},
+            "inflow_rate": {"Basin #1": (time, np.array([10.0, 11.0]))},
+            "precipitation": {"Basin #1": (time, np.array([1.0, 2.0]))},
+            "surface_runoff": {"Basin #1": (time, np.array([3.0, 4.0]))},
+            "drainage": {"Basin #1": (time, np.array([5.0, 6.0]))},
+            "outflow_rate": {"Basin #1": (time, np.array([7.0, 8.0]))},
+            "storage_rate": {"Basin #1": (time, np.array([9.0, 10.0]))},
+            "evaporation": {"Basin #1": (time, np.array([11.0, 12.0]))},
+            "infiltration": {"Basin #1": (time, np.array([13.0, 14.0]))},
+            "balance_error": {"Basin #1": (time, np.array([15.0, 16.0]))},
         }
     }
     units = {
@@ -276,8 +301,8 @@ def test_plot_widget_basin_water_balance_preset_requires_single_basin():
         {
             "basin": {
                 "inflow_rate": {
-                    "#1": (time, np.array([1.0, 2.0])),
-                    "#2": (time, np.array([3.0, 4.0])),
+                    "Basin #1": (time, np.array([1.0, 2.0])),
+                    "Basin #2": (time, np.array([3.0, 4.0])),
                 }
             }
         }
@@ -303,11 +328,11 @@ def test_plot_widget_basin_water_balance_preset_includes_other_selected_variable
 
     widget.preload_variables(
         {"basin": ["inflow_rate"], "flow": ["flow_rate"]},
-        defaults={"flow": "flow_rate"},
+        defaults={"flow": ["flow_rate"]},
     )
     widget._var_menu.populate(
         widget._available,
-        {"flow / flow_rate"},
+        {("flow", "flow_rate")},
         widget._defaults,
         widget._water_balance_enabled,
     )
@@ -316,11 +341,11 @@ def test_plot_widget_basin_water_balance_preset_includes_other_selected_variable
     widget.set_data(
         {
             "basin": {
-                "inflow_rate": {"#1": (time, np.array([10.0, 11.0]))},
-                "outflow_rate": {"#1": (time, np.array([7.0, 8.0]))},
+                "inflow_rate": {"Basin #1": (time, np.array([10.0, 11.0]))},
+                "outflow_rate": {"Basin #1": (time, np.array([7.0, 8.0]))},
             },
             "flow": {
-                "flow_rate": {"#9": (time, np.array([2.0, 3.0]))},
+                "flow_rate": {"Link #9": (time, np.array([2.0, 3.0]))},
             },
         },
         units={
@@ -331,7 +356,7 @@ def test_plot_widget_basin_water_balance_preset_includes_other_selected_variable
 
     assert len(captured_figures) == 1
     names = [trace.name for trace in captured_figures[0].data]
-    assert names == ["- outflow_rate", "+ inflow_rate", "flow / flow_rate #9"]
+    assert names == ["- outflow_rate", "+ inflow_rate", "Link #9 flow_rate"]
     assert captured_figures[0].layout.yaxis2.title.text == "m3 s-1"
 
 
@@ -339,7 +364,7 @@ def test_plot_widget_combined_menu_has_presets_and_file_submenus():
     widget = PlotWidget()
     widget.preload_variables(
         {"basin": ["level", "storage", "state"], "flow": ["flow_rate", "q"]},
-        defaults={"basin": "level"},
+        defaults={"basin": ["level"]},
     )
 
     root_checkbox_texts = {
@@ -458,11 +483,11 @@ def test_plot_widget_fractional_storage_preset_plots_default_tracers(monkeypatch
     time = np.array(["2020-01-01", "2020-01-02"])
     plot_data = {
         "concentration": {
-            "LevelBoundary": {"#1": (time, np.array([0.1, 0.2]))},
-            "FlowBoundary": {"#1": (time, np.array([0.3, 0.4]))},
-            "Initial": {"#1": (time, np.array([0.5, 0.3]))},
-            "Drainage": {"#1": (time, np.array([0.05, 0.05]))},
-            "Precipitation": {"#1": (time, np.array([0.05, 0.05]))},
+            "LevelBoundary": {"Basin #1": (time, np.array([0.1, 0.2]))},
+            "FlowBoundary": {"Basin #1": (time, np.array([0.3, 0.4]))},
+            "Initial": {"Basin #1": (time, np.array([0.5, 0.3]))},
+            "Drainage": {"Basin #1": (time, np.array([0.05, 0.05]))},
+            "Precipitation": {"Basin #1": (time, np.array([0.05, 0.05]))},
         }
     }
 
@@ -491,8 +516,8 @@ def test_plot_widget_fractional_storage_preset_requires_single_node():
         {
             "concentration": {
                 "LevelBoundary": {
-                    "#1": (time, np.array([0.5, 0.5])),
-                    "#2": (time, np.array([0.5, 0.5])),
+                    "Basin #1": (time, np.array([0.5, 0.5])),
+                    "Basin #2": (time, np.array([0.5, 0.5])),
                 }
             }
         }
@@ -520,7 +545,7 @@ def test_plot_widget_fractional_storage_preset_uses_selected_substances(monkeypa
     # Check only LevelBoundary in the concentration submenu.
     widget._var_menu.populate(
         widget._available,
-        {"concentration / LevelBoundary"},
+        {("concentration", "LevelBoundary")},
         widget._defaults,
         widget._water_balance_enabled,
         widget._fractional_storage_enabled,
@@ -531,9 +556,9 @@ def test_plot_widget_fractional_storage_preset_uses_selected_substances(monkeypa
     widget.set_data(
         {
             "concentration": {
-                "LevelBoundary": {"#1": (time, np.array([0.5, 0.6]))},
-                "FlowBoundary": {"#1": (time, np.array([0.3, 0.2]))},
-                "Initial": {"#1": (time, np.array([0.2, 0.2]))},
+                "LevelBoundary": {"Basin #1": (time, np.array([0.5, 0.6]))},
+                "FlowBoundary": {"Basin #1": (time, np.array([0.3, 0.2]))},
+                "Initial": {"Basin #1": (time, np.array([0.2, 0.2]))},
             }
         },
     )
@@ -571,9 +596,9 @@ def test_plot_widget_fractional_storage_distinct_from_regular_concentration(
     widget._var_menu.populate(
         widget._available,
         {
-            "concentration / LevelBoundary",
-            "concentration / FlowBoundary",
-            "basin / level",
+            ("concentration", "LevelBoundary"),
+            ("concentration", "FlowBoundary"),
+            ("basin", "level"),
         },
         widget._defaults,
         widget._water_balance_enabled,
@@ -585,11 +610,11 @@ def test_plot_widget_fractional_storage_distinct_from_regular_concentration(
     widget.set_data(
         {
             "concentration": {
-                "LevelBoundary": {"#1": (time, np.array([0.5, 0.6]))},
-                "FlowBoundary": {"#1": (time, np.array([0.5, 0.4]))},
+                "LevelBoundary": {"Basin #1": (time, np.array([0.5, 0.6]))},
+                "FlowBoundary": {"Basin #1": (time, np.array([0.5, 0.4]))},
             },
             "basin": {
-                "level": {"#1": (time, np.array([2.0, 2.1]))},
+                "level": {"Basin #1": (time, np.array([2.0, 2.1]))},
             },
         },
         units={"basin": {"level": "m"}},
@@ -602,7 +627,7 @@ def test_plot_widget_fractional_storage_distinct_from_regular_concentration(
     # concentration line traces.
     assert "LevelBoundary" in names
     assert "FlowBoundary" in names
-    assert "basin / level #1" in names
+    assert "Basin #1 level" in names
     # Ensure the concentration substances are in the stacked area, not lines.
     for trace in fig.data:
         if trace.name in ("LevelBoundary", "FlowBoundary"):
@@ -644,7 +669,7 @@ def test_plot_widget_fractional_flow_plots_multiplied_values(monkeypatch):
     widget.set_data(
         {
             "flow": {
-                "flow_rate": {"#42": (time, np.array([10.0, 20.0]))},
+                "flow_rate": {"Link #42": (time, np.array([10.0, 20.0]))},
             },
         },
         units={"flow": {"flow_rate": "m3 s-1"}},
@@ -680,8 +705,8 @@ def test_plot_widget_fractional_flow_requires_single_link():
         {
             "flow": {
                 "flow_rate": {
-                    "#1": (time, np.array([5.0, 6.0])),
-                    "#2": (time, np.array([3.0, 4.0])),
+                    "Link #1": (time, np.array([5.0, 6.0])),
+                    "Link #2": (time, np.array([3.0, 4.0])),
                 },
             },
         },
@@ -756,7 +781,7 @@ def test_plot_widget_fractional_flow_junction(monkeypatch):
     widget.set_data(
         {
             "flow": {
-                "flow_rate": {"#1": (time, np.array([10.0, 20.0]))},
+                "flow_rate": {"Link #1": (time, np.array([10.0, 20.0]))},
             },
         },
         units={"flow": {"flow_rate": "m3 s-1"}},
@@ -812,7 +837,7 @@ def test_plot_widget_fractional_flow_traverses_connector(monkeypatch):
     widget.set_data(
         {
             "flow": {
-                "flow_rate": {"#1": (time, np.array([10.0, 20.0]))},
+                "flow_rate": {"Link #1": (time, np.array([10.0, 20.0]))},
             },
         },
     )
@@ -858,7 +883,7 @@ def test_plot_widget_fractional_flow_sign_flip(monkeypatch):
     widget.set_data(
         {
             "flow": {
-                "flow_rate": {"#1": (time, np.array([10.0, -10.0]))},
+                "flow_rate": {"Link #1": (time, np.array([10.0, -10.0]))},
             },
         },
     )
@@ -937,7 +962,7 @@ def test_plot_widget_fractional_flow_connector_to_junction(monkeypatch):
     widget.set_data(
         {
             "flow": {
-                "flow_rate": {"#1": (time, np.array([10.0, 20.0]))},
+                "flow_rate": {"Link #1": (time, np.array([10.0, 20.0]))},
             },
         },
         units={"flow": {"flow_rate": "m3 s-1"}},
