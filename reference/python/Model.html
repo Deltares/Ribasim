@@ -197,7 +197,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#ribasim.Model.set_crs" id="toc-ribasim.Model.set_crs" class="nav-link" data-scroll-target="#ribasim.Model.set_crs"><span class="header-section-number">1.2.12</span> set_crs</a></li>
   <li><a href="#ribasim.Model.to_crs" id="toc-ribasim.Model.to_crs" class="nav-link" data-scroll-target="#ribasim.Model.to_crs"><span class="header-section-number">1.2.13</span> to_crs</a></li>
   <li><a href="#ribasim.Model.to_xugrid" id="toc-ribasim.Model.to_xugrid" class="nav-link" data-scroll-target="#ribasim.Model.to_xugrid"><span class="header-section-number">1.2.14</span> to_xugrid</a></li>
-  <li><a href="#ribasim.Model.write" id="toc-ribasim.Model.write" class="nav-link" data-scroll-target="#ribasim.Model.write"><span class="header-section-number">1.2.15</span> write</a></li>
+  <li><a href="#ribasim.Model.update_used_ids" id="toc-ribasim.Model.update_used_ids" class="nav-link" data-scroll-target="#ribasim.Model.update_used_ids"><span class="header-section-number">1.2.15</span> update_used_ids</a></li>
+  <li><a href="#ribasim.Model.write" id="toc-ribasim.Model.write" class="nav-link" data-scroll-target="#ribasim.Model.write"><span class="header-section-number">1.2.16</span> write</a></li>
   </ul></li>
   </ul></li>
   </ul>
@@ -446,6 +447,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Convert the network to a <code>xugrid.UgridDataset</code>.</td>
 </tr>
 <tr class="odd">
+<td><a href="#ribasim.Model.update_used_ids">update_used_ids</a></td>
+<td>Update the used node and link IDs from the topology tables.</td>
+</tr>
+<tr class="even">
 <td><a href="#ribasim.Model.write">write</a></td>
 <td>Write the contents of the model to disk and save it as a TOML configuration file.</td>
 </tr>
@@ -693,13 +698,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 </section>
 </section>
-<section id="ribasim.Model.write" class="level3" data-number="1.2.15">
-<h3 data-number="1.2.15" class="anchored" data-anchor-id="ribasim.Model.write"><span class="header-section-number">1.2.15</span> write</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>Model.write(filepath, toml<span class="op">=</span><span class="va">True</span>, internal<span class="op">=</span><span class="va">True</span>, external<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="ribasim.Model.update_used_ids" class="level3" data-number="1.2.15">
+<h3 data-number="1.2.15" class="anchored" data-anchor-id="ribasim.Model.update_used_ids"><span class="header-section-number">1.2.15</span> update_used_ids</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>Model.update_used_ids()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Update the used node and link IDs from the topology tables.</p>
+<p>This advances the counters used for automatic node and link ID generation after direct edits to <code>model.node.df</code> or <code>model.link.df</code>. IDs that are no longer present in the topology tables are not removed from the counters.</p>
+</section>
+<section id="ribasim.Model.write" class="level3" data-number="1.2.16">
+<h3 data-number="1.2.16" class="anchored" data-anchor-id="ribasim.Model.write"><span class="header-section-number">1.2.16</span> write</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>Model.write(filepath, toml<span class="op">=</span><span class="va">True</span>, internal<span class="op">=</span><span class="va">True</span>, external<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Write the contents of the model to disk and save it as a TOML configuration file.</p>
 <p>If <code>filepath.parent</code> does not exist, it is created before writing.</p>
-<section id="parameters-4" class="level4 doc-section doc-section-parameters" data-number="1.2.15.1">
-<h4 class="doc-section doc-section-parameters anchored" data-number="1.2.15.1" data-anchor-id="parameters-4"><span class="header-section-number">1.2.15.1</span> Parameters</h4>
+<section id="parameters-4" class="level4 doc-section doc-section-parameters" data-number="1.2.16.1">
+<h4 class="doc-section doc-section-parameters anchored" data-number="1.2.16.1" data-anchor-id="parameters-4"><span class="header-section-number">1.2.16.1</span> Parameters</h4>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 10%">

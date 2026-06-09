@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title> Observation / time – Ribasim</title>
+<title> Observation – Ribasim</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -139,7 +139,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Nodes</li><li class="breadcrumb-item"><a href="../../reference/node/junction.html">Other</a></li><li class="breadcrumb-item"><a href="../../reference/node/observation.html"><img src="../../assets/node-icons/Observation.svg" height="20"> Observation / time</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Nodes</li><li class="breadcrumb-item"><a href="../../reference/node/junction.html">Other</a></li><li class="breadcrumb-item"><a href="../../reference/node/observation.html"><img src="../../assets/node-icons/Observation.svg" height="20"> Observation</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -353,7 +353,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../reference/node/observation.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><img src="../../assets/node-icons/Observation.svg" height="20"> Observation / time</span></a>
+ <span class="menu-text"><img src="../../assets/node-icons/Observation.svg" height="20"> Observation</span></a>
   </div>
 </li>
       </ul>
@@ -382,9 +382,9 @@ ul.task-list li input[type="checkbox"] {
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Nodes</li><li class="breadcrumb-item"><a href="../../reference/node/junction.html">Other</a></li><li class="breadcrumb-item"><a href="../../reference/node/observation.html"><img src="../../assets/node-icons/Observation.svg" height="20"> Observation / time</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Nodes</li><li class="breadcrumb-item"><a href="../../reference/node/junction.html">Other</a></li><li class="breadcrumb-item"><a href="../../reference/node/observation.html"><img src="../../assets/node-icons/Observation.svg" height="20"> Observation</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><img src="../../assets/node-icons/Observation.svg" height="20"> Observation / time</h1>
+<h1 class="title"><img src="../../assets/node-icons/Observation.svg" height="20"> Observation</h1>
 </div>
 
 
@@ -402,18 +402,12 @@ ul.task-list li input[type="checkbox"] {
 
 
 <p>An Observation node is used to attach time series of observed or reference data to a node in the network. These are not used in the simulation core, but are available for visualization, validation, or post-processing.</p>
-<p>Observation nodes can be linked to Basin and connector nodes with an observation link. The link direction is always from the Observation node to the observed node. An Observation node can connect to 0 or 1 nodes, but can hold multiple observed variables for a single node.</p>
+<p>Observation nodes can be linked to Basins and connector nodes. This is done with an observation link, whose direction is always from the Observation node to the observed node. An Observation node connects to at most one other node, but may carry multiple variables for that node.</p>
 <section id="tables" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Tables</h1>
 <section id="time" class="level2" data-number="1.1">
 <h2 data-number="1.1" class="anchored" data-anchor-id="time"><span class="header-section-number">1.1</span> Time</h2>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 24%">
-<col style="width: 24%">
-<col style="width: 18%">
-<col style="width: 33%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
@@ -433,7 +427,7 @@ ul.task-list li input[type="checkbox"] {
 <td>variable</td>
 <td>String</td>
 <td>-</td>
-<td>Name of the observed variable (e.g.&nbsp;“level”, “flow_rate”)</td>
+<td>Name of the Ribasim variable being observed (e.g.&nbsp;“level”, “flow_rate”), see <a href="reference/usage.qmd#sec-results">Results</a></td>
 </tr>
 <tr class="odd">
 <td>time</td>
@@ -445,7 +439,7 @@ ul.task-list li input[type="checkbox"] {
 <td>value</td>
 <td>Float64</td>
 <td>-</td>
-<td>Value of the observation</td>
+<td>Value of the observation, unit equal to Ribasim variable</td>
 </tr>
 </tbody>
 </table>
@@ -453,7 +447,7 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="examples" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> Examples</h1>
-<p>This example shows two Observation nodes observing a Basin and a TabulatedRatingCurve. The table below shows the time series for both nodes:</p>
+<p>This example shows two Observation nodes (#1 and #2) observing a Basin and a TabulatedRatingCurve. The table below shows the time series for both nodes:</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -508,6 +502,8 @@ ul.task-list li input[type="checkbox"] {
 <ul>
 <li>Observation nodes are not included in the simulation graph and do not affect results.</li>
 <li>They are intended for reference, validation, or visualization purposes only.</li>
+<li>Flow links cannot be observed directly; link to the connector node with variable <code>flow_rate</code> instead.</li>
+<li>Non-conservative nodes don’t have <code>flow_rate</code>; specify either <code>inflow_rate</code> or <code>outflow_rate</code> for e.g.&nbsp;Basin or UserDemand.</li>
 </ul>
 
 
