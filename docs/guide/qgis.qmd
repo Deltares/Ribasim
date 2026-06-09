@@ -93,3 +93,17 @@ This reloads both the model and the results.
 This avoids the need to remove the group and open the same model again via the plugin.
 It can be convenient when iteratively building your model via Python, or running new simulations.
 If no model is loaded, the most recently opened model is loaded.
+
+# Network topology {#sec-topology}
+
+Link geometries can be either straight lines connecting nodes, or curved lines that follow waterbodies.
+Curved geometries can be more recognizable on the map, but when inspecting the connections in the network,
+it can be useful to view the curved lines as straight lines.
+This can be done by the "Show topology" toggle in the context menu, seen when right-clicking the `Input / Link` or `Results / Flow` layers.
+
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/topology-menu.png){fig-align="left"}
+
+The effect on a curved river segment can be seen below.
+The `Basin / area` polygons are not affected by this change.
+
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/topology-off-on.png){fig-align="left"}
