@@ -207,36 +207,45 @@ class RibasimPlugin:
             duration=5,
         )
 
-    def reload_model(self):
-        """Reload the currently loaded Ribasim model."""
+    def _ensure_ribasim_widget(self) -> bool:
+        """Initialize the Ribasim widget and plot dock if not yet created.
+
+        Returns True if the widget is ready, False if initialization failed.
+        """
         if self.ribasim_widget is not None:
+            return True
+
+        if importlib.util.find_spec("pandas") is None:
+            self.iface.messageBar().pushMessage(
+                "Error: The Ribasim plugin requires the `pandas` package.",
+                level=Qgis.MessageLevel.Critical,
+            )
+            return False
+
+        from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
+
+        self.ribasim_widget = RibasimWidget(self.iface)
+
+        # Create a dockable plot panel (hidden initially)
+        self.plot_dock = QDockWidget(
+            "Ribasim Timeseries Results", self.iface.mainWindow()
+        )
+        self.plot_dock.setObjectName("RibasimPlotDock")
+        self.plot_dock.setWidget(self.ribasim_widget.plot_widget)
+        self.iface.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.plot_dock)
+        self.plot_dock.setVisible(False)
+        return True
+
+    def reload_model(self):
+        """Reload the last loaded Ribasim model."""
+        if self._ensure_ribasim_widget():
+            assert self.ribasim_widget is not None
             self.ribasim_widget.reload_model()
 
     def open_model(self, path=None):
-        if self.ribasim_widget is None:
-            if importlib.util.find_spec("pandas") is None:
-                self.iface.messageBar().pushMessage(
-                    "Error: The Ribasim plugin requires the `pandas` package.",
-                    level=Qgis.MessageLevel.Critical,
-                )
-                return
-
-            from ribasim_qgis.widgets.ribasim_widget import RibasimWidget
-
-            self.ribasim_widget = RibasimWidget(self.iface)
-
-            # Create a dockable plot panel (hidden initially)
-            self.plot_dock = QDockWidget(
-                "Ribasim Timeseries Results", self.iface.mainWindow()
-            )
-            self.plot_dock.setObjectName("RibasimPlotDock")
-            self.plot_dock.setWidget(self.ribasim_widget.plot_widget)
-            self.iface.addDockWidget(
-                Qt.DockWidgetArea.BottomDockWidgetArea, self.plot_dock
-            )
-            self.plot_dock.setVisible(False)
-
-        self.ribasim_widget.open_model(path)
+        if self._ensure_ribasim_widget():
+            assert self.ribasim_widget is not None
+            self.ribasim_widget.open_model(path)
 
     def unload(self):
         if self.plot_dock:
