@@ -959,6 +959,24 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
         OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
 end
 
+@kwdef struct IrrigationDemand
+    node_id::Vector{NodeID}
+    do_irrigation::Vector{Bool} = zeros(Bool, length(node_id))
+    soil::SbmSoilModel{1, 2, KvExponential} = SbmSoilModel(;
+        n = length(node_id),
+        maximum_number_of_layers = 1,
+        parameters =
+            SbmSoilParameters(;
+            n = length(node_id),
+            maximum_number_of_layers = 1,
+            kv_profile = KvExponential(
+                zeros(length(node_id)),
+                zeros(length(node_id)),
+            )
+        )
+    )
+end
+
 """
 node_id: node ID of the UserDemand node
 demand_priorities: All demand priorities that exist in the model (not just by UserDemand) sorted
@@ -1003,6 +1021,7 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     min_level::Vector{Float64} = zeros(length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
+    irrigation_demand::IrrigationDemand = IrrigationDemand(; node_id)
 end
 
 """

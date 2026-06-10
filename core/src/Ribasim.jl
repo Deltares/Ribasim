@@ -168,6 +168,16 @@ using Printf: @sprintf
 
 using Base.Threads: nthreads
 
+import SharedHydrology:
+    AbstractSoilModel,
+    SharedHydrology,
+    VegetationParameters,
+    SbmSoilParameters,
+    SbmSoilVariables,
+    SbmSoilBC,
+    KvExponential,
+    SbmSoilModel
+
 include("carrays.jl")
 using .CArrays: CVector, getaxes, getdata
 include("schema.jl")
