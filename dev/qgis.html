@@ -79,7 +79,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-28c78c9623f2855a034a1b73b8f5ffd5.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-a585631caaf8dceca076a51019091dde.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-contrib/kbd/kbd.js"></script>
+<link href="../site_libs/quarto-contrib/kbd/kbd.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -388,22 +390,11 @@ Note
 </section>
 <section id="debugging" class="level1" data-number="5">
 <h1 data-number="5"><span class="header-section-number">5</span> Debugging</h1>
-<p>After installing the plugins via <code>pixi run install-qgis-plugins</code>. Extra debugging tools are also installed in QGIS that is installed within your pixi environment.</p>
-<p>After you have started <code>pixi run qgis</code>, you can make alterations to the Python code and use the <a href="https://github.com/borysiasty/plugin_reloader">Plugin Reloader</a> to reload the plugin without restarting QGIS. The shortcut in QGIS is <code>CTRL+F5</code>.</p>
-<p>It is also possible to connect the debugger of Visual Studio Code. For this the <a href="https://github.com/lmotta/debug_vs_plugin">debugvs</a> plugin is installed in QGIS. In QGIS press the button to <em>Enable Debug for Visual Studio</em>. Then go to Visual Studio Code and start the launch task <em>Ribasim QGIS: Attach to QGIS</em>. Now you can place breakpoints.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p>We are currently using debugvs 0.7 with ptvsd as service, since there is an <a href="https://github.com/lmotta/debug_vs_plugin/issues/12">open issue</a> that breaks debugvs 0.8 with debugpy.</p>
-</div>
-</div>
+<p>After installing the plugins via <code>pixi run install-qgis-plugins</code> (part of <code>pixi run install</code>). Extra debugging tools are also installed in the QGIS that is installed within your pixi environment.</p>
+<p>After you have started <code>pixi run qgis</code>, you can make alterations to the Python code and use the <a href="https://github.com/borysiasty/plugin_reloader">Plugin Reloader</a> to reload the plugin without restarting QGIS. The shortcut in QGIS is <kbd title="Ctrl+F5" aria-hidden="true">Ctrl+F5</kbd><span class="visually-hidden">Ctrl+F5</span>.</p>
+<p>It is also possible to connect the debugger of Visual Studio Code. For this the <a href="https://github.com/nextgis/qgis_devtools">QGIS DevTools</a> plugin is installed in QGIS.</p>
+<p>In QGIS press the debug button in the bottom right corner and click <em>Start</em>. Then go to the Visual Studio Code Run and Debug panel (<kbd title="Ctrl+Shift+D" aria-hidden="true">Ctrl+Shift+D</kbd><span class="visually-hidden">Ctrl+Shift+D</span>) and launch the task <em>Ribasim QGIS: Attach to QGIS</em>. Now you can place breakpoints.</p>
+<p>For more information see the QGIS DevTools docs on <a href="https://docs.nextgis.com/docs_ngqgis/source/devtools.html#debug-a-plugin">how to debug a QGIS plugin</a>.</p>
 
 
 </section>
