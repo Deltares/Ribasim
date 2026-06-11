@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.6"
+julia_version = "1.12.5"
 manifest_format = "2.0"
 project_hash = "72b77173aefc1f87be3096e012f07d57f45f85a7"
 
@@ -2172,7 +2172,7 @@ version = "1.1.2"
 
 [[deps.SharedHydrology]]
 deps = ["StaticArrays"]
-git-tree-sha1 = "cd40dea3c0a4d01f9267315a183859e4096f9d5a"
+git-tree-sha1 = "de66f4daff4440d93c625822ba38aec3d2fcd478"
 repo-rev = "shared_module_soil_moisture"
 repo-subdir = "SharedHydrology"
 repo-url = "https://github.com/Deltares/Wflow.jl.git"

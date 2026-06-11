@@ -59,6 +59,10 @@ function create_callbacks(
     # interpolate the levels
     saved_subgrid_level = SavedValues(Float64, Vector{Float64})
 
+    # Compute irrigation demand from soil moisture balance
+    irrigation_demand_cb = FunctionCallingCallback(irrigation_demand!)
+    push!(callbacks, irrigation_demand_cb)
+
     export_cb =
         SavingCallback(save_subgrid_level, saved_subgrid_level; saveat, save_start = true)
     push!(callbacks, export_cb)
@@ -80,6 +84,19 @@ function create_callbacks(
     callback = CallbackSet(callbacks...)
 
     return callback, saved
+end
+
+function irrigation_demand!(u, t, integrator)::Nothing
+    (; irrigation_demand, demand) = integrator.p.p_independent.user_demand
+    (; node_id, do_irrigation, soil) = irrigation_demand
+
+    for id in node_id
+        if do_irrigation[id.idx]
+            # Do stuff!
+        end
+    end
+
+    return nothing
 end
 
 """

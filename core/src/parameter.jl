@@ -962,18 +962,8 @@ end
 @kwdef struct IrrigationDemand
     node_id::Vector{NodeID}
     do_irrigation::Vector{Bool} = zeros(Bool, length(node_id))
-    soil::SbmSoilModel{1, 2, KvExponential} = SbmSoilModel(;
-        n = length(node_id),
-        maximum_number_of_layers = 1,
-        parameters =
-            SbmSoilParameters(;
-            n = length(node_id),
-            maximum_number_of_layers = 1,
-            kv_profile = KvExponential(
-                zeros(length(node_id)),
-                zeros(length(node_id)),
-            )
-        )
+    soil::SbmSoilModel{1, 2, Nothing} = SbmSoilModel(;
+        n = length(node_id), maximum_number_of_layers = 1
     )
 end
 
