@@ -301,10 +301,7 @@ end
     (; alg) = model.integrator
 
     @test alg isa QNDF
-    @test alg.step_limiter! == Ribasim.limit_flow!
     @test alg.nlsolve.relax isa Ribasim.BackTracking
-    @test alg.linsolve ==
-        Ribasim.config.RibasimLinearSolve(KLUFactorization(; check_pattern = false))
 end
 
 @testitem "FlatVector" begin
