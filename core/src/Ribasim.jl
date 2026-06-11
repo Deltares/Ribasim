@@ -168,9 +168,9 @@ using Printf: @sprintf
 
 using Base.Threads: nthreads
 
-import SharedHydrology:
+import WflowSoil:
     AbstractSoilModel,
-    SharedHydrology,
+    WflowSoil,
     VegetationParameters,
     SbmSoilParameters,
     SbmSoilVariables,
