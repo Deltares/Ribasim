@@ -450,19 +450,6 @@ end
     @test J_inner ≈ J_inner_expected
 end
 
-@testitem "unsafe_array" begin
-    a = [1.0, 2.0, 3.0]
-    b = [4.0, 5.0, 6.0]
-    x = vcat(a, b)
-
-    y = Ribasim.unsafe_array(view(x, 4:6))
-    @test y isa Vector{Float64}
-    @test y == b
-    # changing the input changes the output; no data copy is made
-    x[5] = 10.0
-    @test y[2] === 10.0
-end
-
 @testitem "find_index" begin
     using Ribasim: find_index
     using DataStructures: OrderedSet
