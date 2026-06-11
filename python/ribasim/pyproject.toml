@@ -57,6 +57,10 @@ path = "ribasim/__init__.py"
 artifacts = ["delwaq/reference/*", "delwaq/template/*"]
 
 [tool.pytest.ini_options]
+# pytest-qgis auto-initializes a QgsApplication for every pytest session in the
+# environment, which fails in headless CI. These tests don't need QGIS, so we
+# disable the plugin here. The QGIS plugin tests (ribasim_qgis) run separately.
+addopts = "-p no:pytest_qgis"
 markers = [
     "regression: Older models that are not on the current database schema.",
 ]

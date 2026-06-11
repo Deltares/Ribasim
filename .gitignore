@@ -145,6 +145,7 @@ dmypy.json
 build/tests/temp/
 python/ribasim/tests/temp/
 python/ribasim_api/tests/temp/
+ribasim_qgis/tests/temp/
 report.xml
 
 # Designated working dir for working on Ribasim models
@@ -166,6 +167,7 @@ utils/node_icons
 
 pyjuliapkg/
 .CondaPkg/
+.qgis-settings/
 
 # debugging files
 debug/*
