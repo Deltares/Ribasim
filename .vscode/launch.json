@@ -28,6 +28,14 @@
                 "port": 5678
             },
             "justMyCode": false
+        },
+        {
+            "name": "Run Python debugger",
+            "type": "debugpy",
+            "request": "launch",
+            "justMyCode": false,
+            "console": "integratedTerminal",
+            "purpose": ["debug-test"]
         }
     ]
 }

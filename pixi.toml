@@ -150,7 +150,7 @@ publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api",
 
 
 test-ribasim-qgis-docker = { cmd = "sh ./test.sh", cwd = ".docker" }
-test-ribasim-qgis = { cmd = "python ribasim_qgis/scripts/run_qgis_ui_tests.py", depends-on = [
+test-ribasim-qgis = { cmd = "pytest --basetemp=ribasim_qgis/tests/temp ribasim_qgis", depends-on = [
     "install-ribasim-qgis",
 ] }
 
@@ -177,12 +177,12 @@ github-release = "python utils/github-release.py"
 
 # QGIS
 [tasks.qgis]
-args = [{ "arg" = "profiles_path", "default" = ".pixi/qgis_env" }]
+args = [{ "arg" = "profiles_path", "default" = ".qgis-settings" }]
 cmd = "qgis --profiles-path {{ profiles_path }}"
 
 [tasks.install-ribasim-qgis]
 args = [
-    { "arg" = "profile_path", "default" = ".pixi/qgis_env/profiles/default" },
+    { "arg" = "profile_path", "default" = ".qgis-settings/profiles/default" },
 ]
 cmd = "python ribasim_qgis/scripts/install_ribasim_qgis.py {{ profile_path }}"
 
@@ -190,13 +190,13 @@ cmd = "python ribasim_qgis/scripts/install_ribasim_qgis.py {{ profile_path }}"
 args = [
     { "arg" = "package" },
     { "arg" = "package_name" },
-    { "arg" = "profile_path", "default" = ".pixi/qgis_env/profiles/default" },
+    { "arg" = "profile_path", "default" = ".qgis-settings/profiles/default" },
 ]
 cmd = "python ribasim_qgis/scripts/install_qgis_plugin.py {{ package }} {{ profile_path }} && python ribasim_qgis/scripts/enable_plugin.py {{ package_name }} {{ profile_path }}"
 
 [tasks.install-qgis-plugins]
 args = [
-    { "arg" = "profile_path", "default" = ".pixi/qgis_env/profiles/default" },
+    { "arg" = "profile_path", "default" = ".qgis-settings/profiles/default" },
 ]
 depends-on = [
     { "task" = "install-qgis-plugin", "args" = [
@@ -302,12 +302,13 @@ yamlfmt = "*"
 
 [pypi-dependencies]
 juliacall = "==0.9.34"
+pytest-qgis = ">=4.0.1, <5"
+python-magic = ">=0.4.27"
+qgis-plugin-manager = ">=1.7.2"
 ribasim = { path = "python/ribasim", editable = true }
 ribasim_api = { path = "python/ribasim_api", editable = true }
 ribasim_testmodels = { path = "python/ribasim_testmodels", editable = true }
 sbom4python = ">=0.12.3"
-python-magic = ">=0.4.27"
-qgis-plugin-manager = ">=1.7.2"
 
 [feature.py312.dependencies]
 python = "3.12.*"

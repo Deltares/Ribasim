@@ -1,25 +1,21 @@
-from typing import Any, cast
+from typing import Any
 
-from qgis.PyQt.QtWidgets import QToolButton
-from qgis.utils import iface, plugins
-
-
-def test_plugin_is_loaded():
-    """Test plugin is properly loaded and appears in QGIS plugins."""
-    qgis_plugins = cast(dict[str, Any], plugins)
-    plugin = qgis_plugins.get("ribasim_qgis")
-    assert plugin, "Ribasim plugin not loaded"
+from qgis.PyQt.QtWidgets import QToolBar, QToolButton
 
 
-def test_plugin():
-    """Triggers Ribasim button and checks that Dock is added."""
+def test_plugin(ribasim_plugin: Any):
+    """Checks that the Ribasim toolbar and tool button menu are set up."""
+    from qgis.utils import iface
+
     assert iface is not None, "QGIS interface not available"
-    qgis_iface = cast(Any, iface)
+    main_window = iface.mainWindow()
 
     toolbars = [
-        c for c in qgis_iface.mainWindow().children() if c.objectName() == "Ribasim"
+        c
+        for c in main_window.children()
+        if isinstance(c, QToolBar) and c.objectName() == "Ribasim"
     ]
-    assert len(toolbars) == 2, "No Ribasim toolbar and menu"
+    assert len(toolbars) == 1, "No Ribasim toolbar"
     toolbar = toolbars[0]
     actions = toolbar.actions()
     assert len(actions) == 1, "No (single) Ribasim action button in toolbar"
