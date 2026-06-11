@@ -15,7 +15,7 @@ if __name__ == "__main__":
     styles_source_path.unlink(missing_ok=True)
     styles_source_path.symlink_to(styles_target_path, target_is_directory=True)
 
-    # Symlink qgis_env to ribasim_qgis, and hence qgis_env styles to ribasim styles
+    # Symlink .qgis-settings/**/ribasim_qgis to ribasim_qgis, and hence its styles to ribasim styles
     plugins_path.mkdir(parents=True, exist_ok=True)
     source_path.unlink(missing_ok=True)
     source_path.symlink_to(target_path, target_is_directory=True)
