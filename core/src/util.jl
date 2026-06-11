@@ -955,19 +955,6 @@ function min_low_user_demand_level_factor(
 end
 
 """
-Wrap the data of a SubArray into a Vector.
-
-This function is labeled unsafe because it will crash if pointer is not a valid memory
-address to data of the requested length, and it will not prevent the input array A from
-being freed.
-"""
-function unsafe_array(
-        A::SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true},
-    )::Vector{Float64}
-    return GC.@preserve A unsafe_wrap(Array, pointer(A), length(A))
-end
-
-"""
 Find the index of a symbol in an ordered set using iteration.
 
 This replaces `findfirst(==(x), s)` which triggered this depwarn:
