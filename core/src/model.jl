@@ -161,7 +161,7 @@ function Model(config::Config)::Model
         dtmax = something(config.solver.dtmax, t_end),
         config.solver.force_dtmin,
         config.solver.abstol,
-        reltol = config.solver.reltol,
+        config.solver.reltol,
         config.solver.maxiters,
     )
     @debug "Setup integrator."

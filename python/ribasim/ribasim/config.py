@@ -160,8 +160,8 @@ class Solver(ChildModel):
     dtmin: float | None = None
     dtmax: float | None = None
     force_dtmin: bool = False
-    abstol: float = 1e-04
-    reltol: float = 1e-05
+    abstol: float = 1e-06
+    reltol: float = 1e-07
     maxiters: int = 1000000000
     sparse: bool = True
     autodiff: bool = True
