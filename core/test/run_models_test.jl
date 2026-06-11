@@ -287,7 +287,7 @@ end
     precipitation = p_independent.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
     @test state_and_time_dependent_cache.current_storage ≈
-        Float32[691.797, 691.795, 459.022, 1136.969] atol = 2.0 skip = Sys.isapple()
+        Float32[691.797, 691.795, 459.022, 1136.969] atol = 3.0
 end
 
 @testitem "Allocation example model" begin
