@@ -440,7 +440,8 @@ function compute_adaptive_Δt(
             continue
         end
 
-        dstorage = formulate_dstorage_wrt_time(du, p.p_independent, t, basin_id)
+        # du.basin = dS/dt
+        dstorage = du.basin[idx]
 
         if abs(dstorage) < eps()
             continue

@@ -71,7 +71,8 @@ function set_simulation_data!(
         # Set bounds on the storage change based on the current storage and the Basin minimum, maximum, and a delta_storage prediction
         Δstorage = storage_change[basin_id]
         JuMP.set_lower_bound(Δstorage, -storage_now / scaling.storage)
-        Δstorage_predicted = formulate_dstorage_wrt_time(du, p.p_independent, t, basin_id) * Δt_allocation
+        # du.basin holds dS/dt directly (the Basin storages are the ODE states)
+        Δstorage_predicted = du.basin[idx] * Δt_allocation
 
         Δstorage_upper = if storage_now > storage_max
             max(2 * Δstorage_predicted, 0.0)
@@ -766,7 +767,6 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     flow = problem[:flow]
     storage_change = problem[:basin_storage_change]
     du = get_du(integrator)
-    (; link_to_state_idx) = p.p_independent
 
     # Extrapolate the current instantaneous flow rates from the physical layer
     # Flow rates are now stored in cache vectors, look up by link
