@@ -21,10 +21,12 @@
         },
         {
             "name": "Ribasim QGIS: Attach to QGIS",
-            "type": "python",
+            "type": "debugpy",
             "request": "attach",
-            "host": "localhost",
-            "port": 5678,
+            "connect": {
+                "host": "127.0.0.1",
+                "port": 5678
+            },
             "justMyCode": false
         }
     ]

@@ -68,9 +68,7 @@ docs = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto preview docs/{
 # Lint
 typecheck = "pyrefly check"
 prek-run = "prek run --all-files"
-lint = { depends-on = [
-    "prek-run",
-] }
+lint = { depends-on = ["prek-run"] }
 # Build
 build = { "cmd" = "julia --project build/build.jl", depends-on = [
     "generate-testmodels",
@@ -210,8 +208,8 @@ depends-on = [
         " {{ profile_path }} ",
     ] },
     { "task" = "install-qgis-plugin", "args" = [
-        "debugvs",
-        "debug_vs",
+        "QGIS\\ DevTools",
+        "devtools",
         " {{ profile_path }} ",
     ] },
 ]
@@ -252,6 +250,7 @@ quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not
 
 [dependencies]
 datacompy = ">=0.16"
+debugpy = "*"
 dvc = "*"
 dvc-s3 = "*"
 geopandas = ">=1.0"
