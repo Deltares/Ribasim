@@ -301,7 +301,6 @@ xugrid = "*"
 yamlfmt = "*"
 
 [pypi-dependencies]
-ptvsd = "*"
 juliacall = "==0.9.34"
 ribasim = { path = "python/ribasim", editable = true }
 ribasim_api = { path = "python/ribasim_api", editable = true }
