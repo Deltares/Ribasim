@@ -769,7 +769,6 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     du = get_du(integrator)
 
     # Extrapolate the current instantaneous flow rates from the physical layer
-    # Flow rates are now stored in cache vectors, look up by link
     flow_link_lookup = p.p_independent.graph[].flow_link_lookup
     for link in only(flow.axes)
         link_idx = get_link_index(link, flow_link_lookup)
