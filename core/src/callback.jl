@@ -146,6 +146,67 @@ function sync_flow_rates!(p::Parameters)::Nothing
 end
 
 """
+Project the per-step link flow volumes onto the per-basin continuity constraints
+Δstorage = inflows - outflows (see the FlowCorrection docstring).
+
+Quadrature alone leaves volume errors on links whose flow rate is algebraically
+determined by near-equal basin levels. Those errors are exactly observable in the
+per-basin continuity residual, and are removed here by the minimum-norm correction
+that keeps connector nodes conservative.
+
+Must be called when the quadrature volumes for the step are in `cumulative_flow`,
+`cumulative_evaporation` and `cumulative_infiltration`, the time dependent cache is
+at the end-of-step time, and `basin.cumulative_*`/`flow_boundary.cumulative_flow`
+still hold the start-of-step values of the exact forcing integrals.
+"""
+function correct_cumulative_flows!(integrator)::Nothing
+    (; u, uprev, p) = integrator
+    (; p_independent, time_dependent_cache) = p
+    (; basin, flow_boundary, flow_correction, cumulative_flow) = p_independent
+    (; groups, incidence, factor, rhs) = flow_correction
+    tdc_basin = time_dependent_cache.basin
+
+    isempty(groups) && return nothing
+
+    # Per-basin continuity residual: exact storage change minus what the exact forcing
+    # integrals and the quadrature volumes account for.
+    @. rhs =
+        u.basin - uprev.basin -
+        (tdc_basin.current_cumulative_precipitation - basin.cumulative_precipitation) -
+        (tdc_basin.current_cumulative_surface_runoff - basin.cumulative_surface_runoff) -
+        (tdc_basin.current_cumulative_drainage - basin.cumulative_drainage) +
+        p_independent.cumulative_evaporation + p_independent.cumulative_infiltration
+
+    # Exact FlowBoundary volumes (FlowBoundary links carry no quadrature volume)
+    for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
+        to_id = outflow_link.link[2]
+        if to_id.type == NodeType.Basin
+            rhs[to_id.idx] -=
+                time_dependent_cache.flow_boundary.current_cumulative_boundary_flow[id.idx] -
+                flow_boundary.cumulative_flow[id.idx]
+        end
+    end
+
+    # Signed quadrature link volumes
+    for (link_idx, link_meta) in enumerate(p_independent.graph[].internal_flow_links)
+        volume = cumulative_flow[link_idx]
+        from_id, to_id = link_meta.link
+        from_id.type == NodeType.Basin && (rhs[from_id.idx] += volume)
+        to_id.type == NodeType.Basin && (rhs[to_id.idx] -= volume)
+    end
+
+    # Minimum-norm correction satisfying all basin continuity constraints at once
+    λ = factor \ rhs
+    correction = incidence' * λ
+    for (group_idx, link_idxs) in enumerate(groups)
+        for link_idx in link_idxs
+            cumulative_flow[link_idx] += correction[group_idx]
+        end
+    end
+    return nothing
+end
+
+"""
 Update cumulative flows.
 Also updates cumulative forcings and allocation flows.
 """
@@ -205,9 +266,32 @@ function update_cumulative_flows!(_, t, integrator)::Nothing
         integrator(u_tmp, τ)
         water_balance!(du_tmp, u_tmp, p, τ)
         sync_flow_rates!(p)
-        @. p_independent.cumulative_flow += 4 * p_independent.current_flow_rate
-        @. p_independent.cumulative_evaporation += 4 * sc.current_evaporation
-        @. p_independent.cumulative_infiltration += 4 * sc.current_infiltration
+        # The interpolated midpoint state is only accurate to solver tolerance. Flow rates
+        # that depend on the difference of near-equal states (e.g. ManningResistance between
+        # equilibrated basins) amplify that interpolation noise by orders of magnitude,
+        # producing midpoint rates far outside the endpoint rates and hence wildly wrong
+        # volumes (even larger than the basin storage itself). The endpoint rates come from
+        # real (Newton-converged) solver states, so clamp f_mid to their bracket: for smooth
+        # flows f_mid already lies inside and Simpson's accuracy is unaffected, while on
+        # interpolation spikes the volume gracefully degrades towards the trapezoidal rule.
+        @. p_independent.cumulative_flow +=
+            4 * clamp(
+            p_independent.current_flow_rate,
+            min(p_independent.flow_rate_prev, flow_end),
+            max(p_independent.flow_rate_prev, flow_end),
+        )
+        @. p_independent.cumulative_evaporation +=
+            4 * clamp(
+            sc.current_evaporation,
+            min(p_independent.evaporation_prev, evap_end),
+            max(p_independent.evaporation_prev, evap_end),
+        )
+        @. p_independent.cumulative_infiltration +=
+            4 * clamp(
+            sc.current_infiltration,
+            min(p_independent.infiltration_prev, infil_end),
+            max(p_independent.infiltration_prev, infil_end),
+        )
 
         @. p_independent.cumulative_flow *= dt / 6
         @. p_independent.cumulative_evaporation *= dt / 6
@@ -217,6 +301,9 @@ function update_cumulative_flows!(_, t, integrator)::Nothing
         # and so the exact forcing integrals below use the full-step values.
         water_balance!(du_tmp, integrator.u, p, t)
         sync_flow_rates!(p)
+
+        # Make the link volumes exactly consistent with the basin storage changes
+        correct_cumulative_flows!(integrator)
 
         # Carry end-of-step rates as the next step's f₀.
         @. p_independent.flow_rate_prev = flow_end
@@ -645,6 +732,14 @@ function check_water_balance_error!(
         balance_error = storage_rate - (total_in - total_out)
         mean_flow_rate = (total_in + total_out) / 2
         relative_error = iszero(mean_flow_rate) ? 0.0 : balance_error / mean_flow_rate
+
+        if s_now > 1.0e6 && abs(relative_error) > 0.006
+            du = get_du(integrator)
+            println(stderr,
+                "WBDBG2 t=$(datetime_since(t, starttime)) id=$(id) " *
+                "storage_rate=$(storage_rate) net_acct=$(total_in - total_out) " *
+                "du_basin_inst=$(du.basin[id.idx]) inflow=$(inflow_rate) outflow=$(outflow_rate)")
+        end
 
         if abs(balance_error) > water_balance_abstol &&
                 abs(relative_error) > water_balance_reltol

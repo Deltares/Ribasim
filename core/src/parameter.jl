@@ -1126,6 +1126,36 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
 end
 
 """
+Data for the conservative correction of the per-step link flow volumes.
+
+The per-step flow volumes are computed by quadrature of instantaneous flow rates sampled
+from the solver states and dense output. For flow rates that are algebraically determined
+by near-equal basin levels (e.g. a ManningResistance between equilibrated basins), the
+step-average flow cannot be recovered from such point samples at all: the level difference
+driving the flow lies below solver tolerance, while the flow itself is large. The basin
+storage change over a step is however known exactly from the states. The quadrature volumes
+V are therefore projected onto the per-basin continuity constraints by the minimum-norm
+correction ΔV = Aᵀ(AAᵀ + ridge)⁻¹r, with r the per-basin continuity residual.
+
+- `groups`: per correction variable the indices into `internal_flow_links` that carry the
+  same flow (the in- and outflow link of one connector node), so connector nodes remain
+  exactly conservative. UserDemand links form single-link groups since UserDemand is
+  consumptive. FlowBoundary links are not corrected as their volumes are integrated exactly.
+- `incidence`: A, the n_basin × n_groups matrix with A[b, g] = -1 if group g flows out of
+  basin b and +1 if it flows into it.
+- `factor`: factorization of AAᵀ + ridge, computed once. AAᵀ is the Laplacian of the basin
+  connectivity graph, made positive definite by the ridge for connected components without
+  a boundary connection.
+- `rhs`: buffer for the per-basin continuity residual.
+"""
+struct FlowCorrection
+    groups::Vector{Vector{Int}}
+    incidence::SparseMatrixCSC{Float64, Int}
+    factor::LinearAlgebra.Factorization{Float64}
+    rhs::Vector{Float64}
+end
+
+"""
 The part of the parameters passed to the rhs and callbacks that are non-mutable,
 and not derived from the state vector `u` (or the time `t`). In this context e.g. a vector
 of floats (not dependent on `u`) is not considered mutable, because even though it's elements are mutable,
@@ -1186,6 +1216,8 @@ the object itself is not.
     # Convergence tracking: accumulated normalized Newton residual per basin
     convergence::Vector{Float64} = Float64[]
     convergence_ncalls::Vector{Int} = [0]
+    # Conservative correction of the per-step link flow volumes
+    flow_correction::FlowCorrection
 end
 
 """
