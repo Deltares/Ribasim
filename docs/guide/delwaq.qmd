@@ -124,12 +124,20 @@ You can optionally set the path to the results folder of the Delwaq simulation, 
 ```{python}
 #| include: false
 # For documentation purposes, we will download the generated map file
-import urllib.request
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
-urllib.request.urlretrieve(
-    "https://s3.deltares.nl/ribasim/doc-image/delwaq/delwaq_map.nc",
-    output_path / "delwaq_map.nc",
-)
+url = "https://s3.deltares.nl/ribasim/doc-image/delwaq/delwaq_map.nc"
+dest = output_path / "delwaq_map.nc"
+
+session = requests.Session()
+retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504])
+session.mount("https://", HTTPAdapter(max_retries=retries))
+
+response = session.get(url, timeout=30)
+response.raise_for_status()
+dest.write_bytes(response.content)
 ```
 
 ```{python}
