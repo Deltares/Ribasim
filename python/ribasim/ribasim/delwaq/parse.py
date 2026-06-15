@@ -1,4 +1,19 @@
-"""Read a Delwaq model generated from a Ribasim model and inject the results back to Ribasim."""
+"""
+Parse Delwaq results from `generate` and save the results back to Ribasim.
+
+Can be used as a command line tool:
+
+usage: parse.py [-h] [--output_path OUTPUT_PATH] [-v] toml_path
+
+positional arguments:
+  toml_path             The path to the Ribasim TOML file.
+
+options:
+  -h, --help            show this help message and exit
+  --output_path OUTPUT_PATH
+                        The relative path to the Delwaq output.
+  -v, --verbose         Increase verbosity (-v for info, -vv for debug).
+"""
 
 import argparse
 import logging
@@ -94,7 +109,9 @@ def parse(
 if __name__ == "__main__":
     # Parse Delwaq output
 
-    parser = argparse.ArgumentParser(description="Parse Delwaq output.")
+    parser = argparse.ArgumentParser(
+        description="Parse Delwaq results from `generate` and save the results back to Ribasim."
+    )
     parser.add_argument(
         "toml_path", type=Path, help="The path to the Ribasim TOML file."
     )

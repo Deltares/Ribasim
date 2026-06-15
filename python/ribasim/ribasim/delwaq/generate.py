@@ -1,4 +1,19 @@
-"""Setup a Delwaq model from a Ribasim model and results."""
+"""
+Generate Delwaq input from Ribasim results.
+
+Can be used as a command line tool:
+
+usage: generate.py [-h] [--output_path OUTPUT_PATH] [-v] toml_path
+
+positional arguments:
+  toml_path             The path to the Ribasim TOML file.
+
+options:
+  -h, --help            show this help message and exit
+  --output_path OUTPUT_PATH
+                        The relative path to store the Delwaq model.
+  -v, --verbose         Increase verbosity (-v for info, -vv for debug).
+"""
 
 import argparse
 import csv
