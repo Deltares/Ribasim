@@ -1,5 +1,7 @@
 """Read a Delwaq model generated from a Ribasim model and inject the results back to Ribasim."""
 
+import argparse
+import logging
 from pathlib import Path
 
 import xarray as xr
@@ -87,3 +89,35 @@ def parse(
         model.basin.concentration_external = df
 
     return model
+
+
+if __name__ == "__main__":
+    # Parse Delwaq output
+
+    parser = argparse.ArgumentParser(description="Parse Delwaq output.")
+    parser.add_argument(
+        "toml_path", type=Path, help="The path to the Ribasim TOML file."
+    )
+    parser.add_argument(
+        "--output_path",
+        type=Path,
+        help="The relative path to the Delwaq output.",
+        default="delwaq",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Increase verbosity (-v for info, -vv for debug).",
+    )
+    args = parser.parse_args()
+
+    log_level = logging.WARNING
+    if args.verbose >= 2:
+        log_level = logging.DEBUG
+    elif args.verbose >= 1:
+        log_level = logging.INFO
+    logging.basicConfig(level=log_level)
+
+    parse(args.toml_path, args.toml_path.parent / args.output_path)
