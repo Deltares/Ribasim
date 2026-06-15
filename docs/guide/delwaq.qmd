@@ -123,21 +123,32 @@ You can optionally set the path to the results folder of the Delwaq simulation, 
 
 ```{python}
 #| include: false
-# For documentation purposes, we will download the generated map file
+# For documentation purposes, we download the pre-generated Delwaq map file from
+# S3 (uploaded by CI from the latest successful run on main). S3 is generally
+# reliable but occasionally unreachable for a few minutes, so if the download
+# fails we fall back to a persistent cached copy (cached across CI runs via
+# actions/cache, see docs.yml) and emit a warning visible in the render log.
+import shutil
+import warnings
+from pathlib import Path
+
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
 url = "https://s3.deltares.nl/ribasim/doc-image/delwaq/delwaq_map.nc"
 dest = output_path / "delwaq_map.nc"
+cache_file = Path.home() / ".cache" / "ribasim" / "delwaq_map.nc"
+cache_file.parent.mkdir(parents=True, exist_ok=True)
 
-session = requests.Session()
-retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504])
-session.mount("https://", HTTPAdapter(max_retries=retries))
+try:
+    response = requests.get(url, timeout=30)
+    response.raise_for_status()
+    cache_file.write_bytes(response.content)
+except requests.exceptions.RequestException as e:
+    if not cache_file.exists():
+        raise RuntimeError(f"Could not download {url} and no cached copy is available") from e
+    warnings.warn(f"Download of {url} failed ({e}); using cached copy at {cache_file}")
 
-response = session.get(url, timeout=30)
-response.raise_for_status()
-dest.write_bytes(response.content)
+shutil.copyfile(cache_file, dest)
 ```
 
 ```{python}

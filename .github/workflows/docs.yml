@@ -38,6 +38,13 @@ jobs:
             git config set --path includeIf.gitdir:"${GIT_DIR}/worktrees/*".path "${CRED_PATH}"
           fi
       - uses: julia-actions/cache@a45e8fa8be21c18a06b7177052533149e61e9b38 # v3.1.0
+      - name: Cache Delwaq map file
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/ribasim
+          key: delwaq-map-${{ github.run_id }}
+          restore-keys: |
+            delwaq-map-
       - uses: prefix-dev/setup-pixi@5185adfbffb4bd703da3010310260805d89ebb11 # v0.9.6
         with:
           pixi-version: "latest"
