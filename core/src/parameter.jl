@@ -67,11 +67,7 @@ end
 
 # Support creating a NodeType enum instance from a symbol or string
 function NodeType.T(s::Symbol)::NodeType.T
-    symbol_map = EnumX.symbol_map(NodeType.T)
-    for (sym, val) in symbol_map
-        sym == s && return NodeType.T(val)
-    end
-    throw(ArgumentError("Invalid value for NodeType: $s"))
+    return getfield(NodeType, s)
 end
 
 NodeType.T(str::AbstractString) = NodeType.T(Symbol(str))
