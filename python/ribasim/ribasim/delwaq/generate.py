@@ -7,7 +7,7 @@ import shutil
 from collections import defaultdict
 from datetime import timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 from ribasim import Model, nodes
 from ribasim.config import Verbosity
@@ -16,9 +16,6 @@ from ribasim.utils import (
     _concat,
     _pascal_to_snake,
 )
-
-if TYPE_CHECKING:
-    import networkx as nx_types
 
 try:
     import networkx as _nx
@@ -395,7 +392,7 @@ def _setup_boundaries(model, node_mapping):
 def generate(
     model: Path | Model,
     output_path: Path | None = None,
-) -> tuple["nx_types.DiGraph", set[str]]:
+) -> Model:
     """Generate a Delwaq model from a Ribasim model and results."""
     # Read in model and results
     if not isinstance(model, Model):
@@ -465,14 +462,16 @@ def generate(
             )
         )
 
-    # Generate mesh and write to NetCDF, adding attributes to avoid Delwaq warnings
+    # Generate mesh and write to NetCDF, adding attributes to avoid Delwaq warnings.
+    # The dataset is written further down, once the substance set is complete, so
+    # the graph mapping (node_id <-> ribasim_node_id) and substances are stored
+    # alongside the mesh for parsing the results back.
     uds = ugrid(G, crs=model.crs)
     grid = uds.ugrid.grid
     dataset = uds.ugrid.to_dataset(optional_attributes=True)
     grid_name = cast(Any, grid).name
     dataset[grid_name].attrs["node_id"] = grid.node_dimension
     dataset[grid_name].attrs["node_long_name"] = "Node dimension of 1D network"
-    dataset.to_netcdf(output_path / "ribasim.nc")
 
     # Generate area and flows
     # File format is int32, float32 based
@@ -595,6 +594,11 @@ def generate(
 
     check_substance_uniqueness(substances)
 
+    # Store the complete substance set alongside the mesh and write ribasim.nc,
+    # so parse() can recover the substances and the node mapping from this file.
+    dataset["substances"] = ("substance", sorted(substances))
+    dataset.to_netcdf(output_path / "ribasim.nc")
+
     # Make a wide table with the initial default concentrations
     # using zero for all user defined substances
     icdf = pd.DataFrame(
@@ -678,9 +682,9 @@ def generate(
             )
         )
 
-    # Return the graph with original links and the substances
-    # so we can parse the results back to the original model
-    return G, substances
+    # Return the model so the results can be parsed back. The graph mapping and
+    # substances needed by parse() are stored in output_path / "ribasim.nc".
+    return model
 
 
 def add_tracer(
@@ -764,6 +768,4 @@ if __name__ == "__main__":
         log_level = logging.INFO
     logging.basicConfig(level=log_level)
 
-    graph, substances = generate(
-        args.toml_path, args.toml_path.parent / args.output_path
-    )
+    generate(args.toml_path, args.toml_path.parent / args.output_path)

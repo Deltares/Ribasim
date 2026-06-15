@@ -136,6 +136,8 @@ def ugrid(G, crs=None) -> "xugrid_types.UgridDataset":
     node_df = pd.DataFrame(G.nodes(), columns=["node_id"])
     node_df["x"] = [i[1] for i in G.nodes(data="x")]
     node_df["y"] = [i[1] for i in G.nodes(data="y")]
+    # Original Ribasim node_id, to map Delwaq segments back when parsing
+    node_df["ribasim_node_id"] = [i[1] for i in G.nodes(data="id")]
     node_df = node_df[node_df.node_id > 0].reset_index(drop=True)
     node_df.set_index("node_id", drop=False, inplace=True)
     node_df.sort_index(inplace=True)
@@ -145,6 +147,7 @@ def ugrid(G, crs=None) -> "xugrid_types.UgridDataset":
     ].reset_index(drop=True)
 
     node_id = node_df.node_id.to_numpy()
+    ribasim_node_id = node_df.ribasim_node_id.to_numpy()
     link_id = link_df.index.to_numpy()
     from_node_id = link_df.from_node_id.to_numpy()
     to_node_id = link_df.to_node_id.to_numpy()
@@ -175,6 +178,7 @@ def ugrid(G, crs=None) -> "xugrid_types.UgridDataset":
 
     uds = xugrid.UgridDataset(None, grid)
     uds = uds.assign_coords(node_id=(node_dim, node_id))
+    uds = uds.assign_coords(ribasim_node_id=(node_dim, ribasim_node_id))
     uds = uds.assign_coords(link_id=(link_dim, link_id))
     uds = uds.assign_coords(from_node_id=(link_dim, from_node_id))
     uds = uds.assign_coords(to_node_id=(link_dim, to_node_id))

@@ -10,23 +10,45 @@ from ribasim.utils import _concat
 
 def parse(
     model: Path | ribasim.Model,
-    graph,
-    substances,
-    output_folder=None,
-    *,
+    output_folder: str | Path | None = None,
+    *args,
     to_input: bool = False,
 ) -> ribasim.Model:
+    # parse() used to take (model, graph, substances, output_folder); the graph
+    # mapping and substances are now read from the ribasim.nc file written by
+    # generate(), so those arguments are no longer needed.
+    if args or not isinstance(output_folder, (str, Path, type(None))):
+        raise TypeError(
+            "parse() no longer takes `graph` and `substances` arguments; they are "
+            "read from the `ribasim.nc` file written by generate(). "
+            "Call parse(model, output_folder=..., to_input=...) instead."
+        )
+
     if not isinstance(model, ribasim.Model):
         model = ribasim.Model.read(model)
     else:
         model = model.model_copy(deep=True)
 
     # Output of Delwaq
-    if output_folder is None:
+    if isinstance(output_folder, (str, Path)):
+        folder = Path(output_folder)
+    else:
         assert model.filepath is not None
-        output_folder = model.filepath.parent / "delwaq"
-    with xr.open_dataset(output_folder / "delwaq_map.nc") as ds:
-        mapping = dict(graph.nodes(data="id"))
+        folder = model.filepath.parent / "delwaq"
+
+    # Recover the node mapping (Delwaq segment -> original Ribasim node_id) and
+    # the substances from the mesh file written by generate().
+    with xr.open_dataset(folder / "ribasim.nc") as nc:
+        mapping = dict(
+            zip(
+                nc["node_id"].to_numpy(),
+                nc["ribasim_node_id"].to_numpy(),
+                strict=True,
+            )
+        )
+        substances = set(nc["substances"].to_numpy().astype(str))
+
+    with xr.open_dataset(folder / "delwaq_map.nc") as ds:
         # Continuity is a (default) tracer representing the mass balance
         substances.add("Continuity")
 
