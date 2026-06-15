@@ -1,5 +1,6 @@
 /.quarto/
 /_site/
+/_freeze/
 /site_libs/
 /reference/python/
 /getting-started/tutorial/crystal-basin/
@@ -8,3 +9,6 @@
 objects.json
 
 **/*.quarto_ipynb
+
+# Quarto/Pandoc per-document output directories (figures, embeds)
+**/*_files/
