@@ -290,13 +290,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>All testmodels can be <a href="../getting-started/install.html">downloaded from here</a>.</p>
 <section id="generating-delwaq-input" class="level2" data-number="1">
 <h2 data-number="1" class="anchored" data-anchor-id="generating-delwaq-input"><span class="header-section-number">1</span> Generating Delwaq input</h2>
-<div id="5eb28e77" class="cell" data-execution_count="1">
+<div id="54c267e3" class="cell" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>toml_path <span class="op">=</span> Path(<span class="st">"../../generated_testmodels/basic/ribasim.toml"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>This Ribasim model already has substance concentrations for <code>Cl</code> and <code>Tracer</code> in the input tables, and we will use these to generate the Delwaq input files.</p>
-<div id="ebca445c" class="cell" data-execution_count="2">
+<div id="f941f276" class="cell" data-execution_count="2">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim <span class="im">import</span> Model, run_ribasim</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> Model.read(toml_path)</span>
@@ -706,7 +706,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
-<div id="6ce1235a" class="cell" data-execution_count="4">
+<div id="3383a37c" class="cell" data-execution_count="4">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>model.basin.profile</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="4">
 <div>Basin / profile</div><div>
@@ -793,7 +793,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>Let’s add another tracer to the model, to setup a fraction calculation.</p>
-<div id="f1256569" class="cell" data-execution_count="5">
+<div id="7644bf06" class="cell" data-execution_count="5">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> add_tracer</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>add_tracer(model, <span class="dv">11</span>, <span class="st">"Foo"</span>)</span>
@@ -916,7 +916,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <pre><code>PosixPath('../../generated_testmodels/basic/ribasim.toml')</code></pre>
 </div>
 </div>
-<div id="8feca820" class="cell" data-execution_count="6">
+<div id="f2f2a9a3" class="cell" data-execution_count="6">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>run_ribasim(toml_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>⠀⠀⠀⠀⠀⠀⠀⣿⣿⢂⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -929,7 +929,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 ⠀⠀⠀⢿⣿⠇⠿⠟⢿⣾⣿⠿⠿⠿⠃⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠁⣿⣿⠆⠀⠀⠀⠀⠀⠀
 
-┌ Info: Starting a Ribasim simulation at 2026-06-16T15:11:11.936.
+┌ Info: Starting a Ribasim simulation at 2026-06-16T17:55:12.682.
 │   toml_path = "../../generated_testmodels/basic/ribasim.toml"
 │   ribasim_version = "2026.1.2"
 │   ribasim_home = "/home/runner/.julia/juliaup/julia-1.12.6+0.x64.linux.gnu"
@@ -939,18 +939,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 ┌ Warning: The following experimental features are enabled: concentration
 └ @ Ribasim /home/runner/work/Ribasim/Ribasim/core/src/logging.jl:56
 Simulating   0%|                                        |  ETA: N/A
-Simulating   6%|██▎                                     |  ETA: 0:02:45
+Simulating   6%|██▎                                     |  ETA: 0:02:43
 Simulating  33%|█████████████▎                          |  ETA: 0:00:20
 Simulating  60%|████████████████████████▏               |  ETA: 0:00:07
 Simulating  88%|███████████████████████████████████▏    |  ETA: 0:00:01
 Simulating 100%|████████████████████████████████████████| Time: 0:00:10
-[ Info: Computation time: 6 seconds, 751 milliseconds
+[ Info: Computation time: 6 seconds, 716 milliseconds
 [ Info: Writing results.
-[ Info: The model finished successfully at 2026-06-16T15:12:07.763.</code></pre>
+[ Info: The model finished successfully at 2026-06-16T17:56:07.226.</code></pre>
 </div>
 </div>
 <p>Given the path to a completed Ribasim simulation, we can call <code>ribasim.delwaq.generate</code> for generating the required input files for Delwaq from scratch. <code>ribasim.delwaq.generate</code> either takes a <code>Model</code> instance, or the path to a toml file, as well as an output_path keyword, where the input for Delwaq will be written. By default it is set to the delwaq folder next to the toml.</p>
-<div id="f2972b5f" class="cell" data-execution_count="7">
+<div id="e7181fe8" class="cell" data-execution_count="7">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> generate</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co"># The default path is the delwaq folder next to the toml</span></span>
@@ -959,22 +959,22 @@ Simulating 100%|█████████████████████�
 <span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>generate(model, output_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="7">
 <pre><code>ribasim.Model(
-    starttime=datetime.datetime(2020, 1, 1, 0, 0),
-    filepath=PosixPath('../../generated_testmodels/basic/ribasim.toml'),
-    crs='EPSG:28992',
-    link=Link(...),
-    experimental=Experimental(concentration=True, allocation=False),
-    logging=Logging(verbosity='debug'),
-    ribasim_version='2026.1.2',
     endtime=datetime.datetime(2021, 1, 1, 0, 0),
+    logging=Logging(verbosity='debug'),
+    filepath=PosixPath('../../generated_testmodels/basic/ribasim.toml'),
+    starttime=datetime.datetime(2020, 1, 1, 0, 0),
+    ribasim_version='2026.1.2',
+    results_dir=PosixPath('results'),
+    experimental=Experimental(concentration=True, allocation=False),
+    crs='EPSG:28992',
     node=Node(...),
     input_dir=PosixPath('input'),
-    results_dir=PosixPath('results'),
+    link=Link(...),
 )</code></pre>
 </div>
 </div>
 <p>This call produces a handful of files in the user defined folder. Let’s take a look at them:</p>
-<div id="68bd14d9" class="cell" data-execution_count="8">
+<div id="5772dd3c" class="cell" data-execution_count="8">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="bu">list</span>(output_path.iterdir())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="8">
 <pre><code>[PosixPath('../../generated_testmodels/basic/delwaq/bndlist.csv'),
@@ -1007,7 +1007,7 @@ Simulating 100%|█████████████████████�
 <section id="parsing-the-results" class="level2" data-number="2">
 <h2 data-number="2" class="anchored" data-anchor-id="parsing-the-results"><span class="header-section-number">2</span> Parsing the results</h2>
 <p>With Delwaq having run, we can now parse the results using <code>ribasim.delwaq.parse</code>. This function requires either a path to a toml file, or a Model instance. The mapping and substances needed to interpret the results are read from the <code>ribasim.nc</code> file written by <code>ribasim.delwaq.generate</code>. You can optionally set the path to the results folder of the Delwaq simulation, if you overrode the default during <code>ribasim.delwaq.generate</code>.</p>
-<div id="e94fa202" class="cell" data-execution_count="10">
+<div id="e383cb0a" class="cell" data-execution_count="10">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> parse</span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>nmodel_nc <span class="op">=</span> parse(model, output_path, to_input<span class="op">=</span><span class="va">False</span>)</span>
@@ -1019,11 +1019,11 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>By default (<code>to_input=False</code>), the parsed model writes the Delwaq tracer results to <code>results/concentration.nc</code> and does not populate the <code>Basin / concentration_external</code> table.</p>
-<div id="46c60c1c" class="cell" data-execution_count="11">
+<div id="5e6ec5a0" class="cell" data-execution_count="11">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Parse Delwaq results and also populate Basin / concentration_external for plotting</span></span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>nmodel <span class="op">=</span> parse(model, output_path, to_input<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div id="18d9a3e1" class="cell" data-execution_count="12">
+<div id="54f109dd" class="cell" data-execution_count="12">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>display(nmodel.basin.concentration_external)</span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>t <span class="op">=</span> nmodel.basin.concentration_external.df</span>
 <span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="bu">sorted</span>(t.substance.unique()))</span>
@@ -1056,35 +1056,35 @@ Simulating 100%|█████████████████████�
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.000000</td>
-<td>LevelBoundary</td>
+<td>Precipitation</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1464</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>1.000000</td>
-<td>Cl</td>
+<td>0.000000</td>
+<td>Foo</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2928</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.000000</td>
-<td>Foo</td>
+<td>Bar</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">4392</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>0.000000</td>
-<td>SurfaceRunoff</td>
+<td>1.000000</td>
+<td>Continuity</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">5856</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>1.000000</td>
-<td>Initial</td>
+<td>Cl</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">...</th>
@@ -1097,29 +1097,29 @@ Simulating 100%|█████████████████████�
 <th data-quarto-table-cell-role="th">13175</th>
 <td>2020-12-31</td>
 <td>9</td>
-<td>0.000000</td>
-<td>UserDemand</td>
+<td>29.914879</td>
+<td>Tracer</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">14639</th>
 <td>2020-12-31</td>
 <td>9</td>
-<td>0.645681</td>
-<td>FlowBoundary</td>
+<td>0.167443</td>
+<td>SurfaceRunoff</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">16103</th>
 <td>2020-12-31</td>
 <td>9</td>
-<td>0.999999</td>
-<td>Continuity</td>
+<td>0.019346</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">17567</th>
 <td>2020-12-31</td>
 <td>9</td>
-<td>0.499193</td>
-<td>Bar</td>
+<td>14.467084</td>
+<td>Basic</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">19031</th>
@@ -1164,84 +1164,84 @@ Simulating 100%|█████████████████████�
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>LevelBoundary</td>
+<td>Precipitation</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1464</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>1.0</td>
-<td>Cl</td>
+<td>0.0</td>
+<td>Foo</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2928</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>Foo</td>
+<td>Bar</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">4392</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>0.0</td>
-<td>SurfaceRunoff</td>
+<td>1.0</td>
+<td>Continuity</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">5856</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>1.0</td>
-<td>Initial</td>
+<td>Cl</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">7320</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>0.0</td>
-<td>Precipitation</td>
+<td>1.0</td>
+<td>Initial</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">8784</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>2.0</td>
-<td>Tracer</td>
+<td>0.0</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">10248</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>Basic</td>
+<td>UserDemand</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">11712</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>0.0</td>
-<td>UserDemand</td>
+<td>2.0</td>
+<td>Tracer</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">13176</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>FlowBoundary</td>
+<td>SurfaceRunoff</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">14640</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>1.0</td>
-<td>Continuity</td>
+<td>0.0</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">16104</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>Bar</td>
+<td>Basic</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">17568</th>
@@ -1255,84 +1255,84 @@ Simulating 100%|█████████████████████�
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>LevelBoundary</td>
+<td>Precipitation</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">1465</th>
 <td>2020-01-01</td>
 <td>3</td>
-<td>1.0</td>
-<td>Cl</td>
+<td>0.0</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">2929</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>Foo</td>
+<td>Bar</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">4393</th>
 <td>2020-01-01</td>
 <td>3</td>
-<td>0.0</td>
-<td>SurfaceRunoff</td>
+<td>1.0</td>
+<td>Continuity</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">5857</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>1.0</td>
-<td>Initial</td>
+<td>Cl</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">7321</th>
 <td>2020-01-01</td>
 <td>3</td>
-<td>0.0</td>
-<td>Precipitation</td>
+<td>1.0</td>
+<td>Initial</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">8785</th>
 <td>2020-01-01</td>
 <td>3</td>
-<td>2.0</td>
-<td>Tracer</td>
+<td>0.0</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">10249</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>Basic</td>
+<td>UserDemand</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">11713</th>
 <td>2020-01-01</td>
 <td>3</td>
-<td>0.0</td>
-<td>UserDemand</td>
+<td>2.0</td>
+<td>Tracer</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">13177</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>FlowBoundary</td>
+<td>SurfaceRunoff</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">14641</th>
 <td>2020-01-01</td>
 <td>3</td>
-<td>1.0</td>
-<td>Continuity</td>
+<td>0.0</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">16105</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>Bar</td>
+<td>Basic</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">17569</th>
@@ -1346,84 +1346,84 @@ Simulating 100%|█████████████████████�
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>LevelBoundary</td>
+<td>Precipitation</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1466</th>
 <td>2020-01-01</td>
 <td>6</td>
-<td>1.0</td>
-<td>Cl</td>
+<td>0.0</td>
+<td>Foo</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2930</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>Foo</td>
+<td>Bar</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">4394</th>
 <td>2020-01-01</td>
 <td>6</td>
-<td>0.0</td>
-<td>SurfaceRunoff</td>
+<td>1.0</td>
+<td>Continuity</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">5858</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>1.0</td>
-<td>Initial</td>
+<td>Cl</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">7322</th>
 <td>2020-01-01</td>
 <td>6</td>
-<td>0.0</td>
-<td>Precipitation</td>
+<td>1.0</td>
+<td>Initial</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">8786</th>
 <td>2020-01-01</td>
 <td>6</td>
-<td>2.0</td>
-<td>Tracer</td>
+<td>0.0</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">10250</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>Basic</td>
+<td>UserDemand</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">11714</th>
 <td>2020-01-01</td>
 <td>6</td>
-<td>0.0</td>
-<td>UserDemand</td>
+<td>2.0</td>
+<td>Tracer</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">13178</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>FlowBoundary</td>
+<td>SurfaceRunoff</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">14642</th>
 <td>2020-01-01</td>
 <td>6</td>
-<td>1.0</td>
-<td>Continuity</td>
+<td>0.0</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">16106</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>Bar</td>
+<td>Basic</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">17570</th>
@@ -1437,84 +1437,84 @@ Simulating 100%|█████████████████████�
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>LevelBoundary</td>
+<td>Precipitation</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">1467</th>
 <td>2020-01-01</td>
 <td>9</td>
-<td>1.0</td>
-<td>Cl</td>
+<td>0.0</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">2931</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>Foo</td>
+<td>Bar</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">4395</th>
 <td>2020-01-01</td>
 <td>9</td>
-<td>0.0</td>
-<td>SurfaceRunoff</td>
+<td>1.0</td>
+<td>Continuity</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">5859</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>1.0</td>
-<td>Initial</td>
+<td>Cl</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">7323</th>
 <td>2020-01-01</td>
 <td>9</td>
-<td>0.0</td>
-<td>Precipitation</td>
+<td>1.0</td>
+<td>Initial</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">8787</th>
 <td>2020-01-01</td>
 <td>9</td>
-<td>2.0</td>
-<td>Tracer</td>
+<td>0.0</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">10251</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>Basic</td>
+<td>UserDemand</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">11715</th>
 <td>2020-01-01</td>
 <td>9</td>
-<td>0.0</td>
-<td>UserDemand</td>
+<td>2.0</td>
+<td>Tracer</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">13179</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>FlowBoundary</td>
+<td>SurfaceRunoff</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">14643</th>
 <td>2020-01-01</td>
 <td>9</td>
-<td>1.0</td>
-<td>Continuity</td>
+<td>0.0</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">16107</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>Bar</td>
+<td>Basic</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">17571</th>
@@ -1530,7 +1530,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>We can use this table to plot the results of the Delwaq model, both spatially as over time.</p>
-<div id="ad61d7e5" class="cell" data-execution_count="13">
+<div id="0ffc0956" class="cell" data-execution_count="13">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> plot_fraction</span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot default tracers (sum to 1), plus custom tracers on node 9</span></span>
@@ -1559,7 +1559,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 </div>
-<div id="6c4f1c02" class="cell" data-execution_count="14">
+<div id="a4a50d93" class="cell" data-execution_count="14">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> plot_spatial</span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>plot_spatial(nmodel, <span class="st">"Bar"</span>)</span>
