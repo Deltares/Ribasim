@@ -7,11 +7,16 @@ natural 2-D NumPy shape (n_times x n_ids).
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from functools import cached_property
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from osgeo import gdal
+
+# Plotly x-axis time format. Result and observation traces share this encoding
+# so they align on a common time axis.
+TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
 
 @dataclass
@@ -34,6 +39,11 @@ class NetCDFResult:
     ids: np.ndarray
     variables: dict[str, np.ndarray]
     units: dict[str, str]
+
+    @cached_property
+    def time_strings(self) -> np.ndarray:
+        """The time index formatted as plotly-ready ISO strings."""
+        return self.time.strftime(TIME_FORMAT).to_numpy()
 
 
 def _read_time(root_group) -> pd.DatetimeIndex:
