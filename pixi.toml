@@ -118,6 +118,7 @@ upload-node-icons = "python utils/write_node_icons.py --upload"
 tests = { depends-on = ["lint", "test-ribasim-python", "test-ribasim-core"] }
 delwaq = { cmd = "pytest --basetemp=python/ribasim/ribasim/delwaq/model python/ribasim/tests/test_delwaq.py" }
 gen-delwaq = { cmd = "python python/ribasim/ribasim/delwaq/generate.py" }
+parse-delwaq = { cmd = "python python/ribasim/ribasim/delwaq/parse.py" }
 model-integration-test = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"integration\"])'", depends-on = [
     { task = "s3-download", args = [
         "hws_2025_4_0/",
