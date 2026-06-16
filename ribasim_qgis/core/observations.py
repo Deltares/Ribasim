@@ -63,8 +63,7 @@ def read_observations(gpkg_path: Path) -> Observations | None:
         if not _table_exists(cursor, OBSERVATION_TABLE):
             return None
         cursor.execute(
-            # OBSERVATION_TABLE is a trusted module constant, not user input.
-            f'SELECT node_id, variable, time, value FROM "{OBSERVATION_TABLE}" '  # noqa: S608
+            'SELECT node_id, variable, time, value FROM "Observation / time" '
             "ORDER BY node_id, variable, time"
         )
         rows = cursor.fetchall()
