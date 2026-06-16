@@ -120,6 +120,15 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 
 - With a plot showing, deselect all features from all layers: _Plot clears and the placeholder reappears_.
 
+## Observation comparison
+
+- Load the `generated_testmodels/observation` model and run it so results are available.
+- Open the plotting pane, select the `node` button, and click an Observation node: _The observed series is drawn in black and the matching simulated series in red, on the same unit-grouped subplot_.
+- Zoom or pan the plot, then click a different Observation node (keeping the same variable groups): _The plot updates without flicker and the zoom/pan is retained_.
+- Click the "Reset axes" button in the plot toolbar: _The x-axis returns to the simulated period (TOML `starttime`/`endtime`), not the full observed span_.
+- Briefly deselect (e.g. a misclick) and reselect a node: _The plot returns with the previous zoom retained_.
+- Open the same model **without** running it (no results): _Selecting an Observation node still plots the observed series on its own, for level and flow variables_.
+
 # Tutorial tests
 
 ## Perform tutorial in documentation

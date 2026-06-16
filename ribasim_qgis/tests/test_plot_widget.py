@@ -976,3 +976,236 @@ def test_plot_widget_fractional_flow_connector_to_junction(monkeypatch):
     for trace in fig.data:
         if trace.name == "Tracer":
             assert np.allclose(trace.y, np.array([6.8, 13.6]))
+
+
+def test_plot_widget_observation_grouped_with_results():
+    """A single root checkbox toggles both result and observation variables."""
+    widget = PlotWidget()
+    available = {
+        "basin": ["level"],
+        "observation": ["level"],
+    }
+    units = {
+        "basin": {"level": "m"},
+        "observation": {"level": "m"},
+    }
+    widget.preload_variables(available, units=units, defaults={"basin": ["level"]})
+
+    # The 'level' root checkbox toggles both basin and observation level.
+    assert set(widget._var_menu.checked_keys()) == {
+        ("basin", "level"),
+        ("observation", "level"),
+    }
+
+    # No observation submenu: its 'level' is a grouped constituent.
+    submenu_titles = {
+        action.menu().title() for action in widget._var_menu.actions() if action.menu()
+    }
+    assert "observation" not in submenu_titles
+
+
+def test_plot_widget_renders_observed_and_simulated_observation_traces(monkeypatch):
+    """Observed and simulated observation traces render on a shared unit subplot."""
+    captured_figures = []
+
+    def _capture_plot(fig, **kwargs):
+        captured_figures.append(fig)
+        return "<div></div>"
+
+    monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
+
+    widget = PlotWidget()
+    widget.preload_variables(
+        {"observation": ["level"]},
+        units={"observation": {"level": "m"}},
+        defaults={"observation": ["level"]},
+    )
+    widget._var_menu.populate(
+        widget._available,
+        {("observation", "level")},
+        widget._defaults,
+        widget._water_balance_enabled,
+    )
+
+    time = np.array(["2020-01-01", "2020-01-02"])
+    widget.set_data(
+        {
+            "observation": {
+                "level": {
+                    "Observation #4 observed level": (time, np.array([0.5, 0.3])),
+                    "Observation #4 simulated level": (time, np.array([0.4, 0.35])),
+                }
+            }
+        },
+        units={"observation": {"level": "m"}},
+    )
+
+    assert len(captured_figures) == 1
+    fig = captured_figures[0]
+    names = {trace.name for trace in fig.data}
+    assert names == {
+        "Observation #4 observed level",
+        "Observation #4 simulated level",
+    }
+    # Both share the same unit subplot.
+    assert fig.layout.yaxis.title.text == "m"
+
+
+def test_plot_widget_observation_trace_colors(monkeypatch):
+    """Observed traces render black, simulated traces render red."""
+    captured_figures = []
+
+    def _capture_plot(fig, **kwargs):
+        captured_figures.append(fig)
+        return "<div></div>"
+
+    monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
+
+    widget = PlotWidget()
+    widget.preload_variables(
+        {"observation": ["level"]},
+        units={"observation": {"level": "m"}},
+        defaults={"observation": ["level"]},
+    )
+    widget._var_menu.populate(
+        widget._available,
+        {("observation", "level")},
+        widget._defaults,
+        widget._water_balance_enabled,
+    )
+
+    time = np.array(["2020-01-01", "2020-01-02"])
+    widget.set_data(
+        {
+            "observation": {
+                "level": {
+                    "Observation #4 observed level": (time, np.array([0.5, 0.3])),
+                    "Observation #4 simulated level": (time, np.array([0.4, 0.35])),
+                }
+            }
+        },
+        units={"observation": {"level": "m"}},
+    )
+
+    assert len(captured_figures) == 1
+    colors = {trace.name: trace.line.color for trace in captured_figures[0].data}
+    assert colors["Observation #4 observed level"] == "black"
+    assert colors["Observation #4 simulated level"] == "red"
+
+
+def test_plot_widget_observation_only_flow_rate_checked_by_default(monkeypatch):
+    """Without results, a non-first observation group still renders by default.
+
+    The flow_rate root group is only reachable here via its observation
+    constituent. It must be default-checked, not just the first ('level') group.
+    """
+    captured_figures = []
+
+    def _capture_plot(fig, **kwargs):
+        captured_figures.append(fig)
+        return "<div></div>"
+
+    monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
+
+    widget = PlotWidget()
+    # Mirror DatasetWidget: observation variables are passed as defaults so each
+    # available observation root group is checked, even without results.
+    widget.preload_variables(
+        {"observation": ["flow_rate", "level"]},
+        units={"observation": {}},
+        defaults={"observation": ["flow_rate", "level"]},
+    )
+
+    time = np.array(["2020-01-01", "2020-01-02"])
+    widget.set_data(
+        {
+            "observation": {
+                "level": {
+                    "Observation #4 observed level": (time, np.array([0.5, 0.3])),
+                },
+                "flow_rate": {
+                    "Observation #5 observed flow_rate": (time, np.array([0.0, 0.05])),
+                },
+            }
+        },
+        units={"observation": {}},
+    )
+
+    assert captured_figures
+    names = {trace.name for trace in captured_figures[-1].data}
+    assert "Observation #5 observed flow_rate" in names
+    assert "Observation #4 observed level" in names
+
+
+def test_plot_widget_defaults_x_axis_to_simulated_period(monkeypatch):
+    """Plots open on the simulated period, not the full (longer) data span."""
+    captured_figures = []
+
+    def _capture_plot(fig, **kwargs):
+        captured_figures.append(fig)
+        return "<div></div>"
+
+    monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
+
+    widget = PlotWidget()
+    widget.preload_variables(
+        {"observation": ["level"]},
+        units={"observation": {"level": "m"}},
+        defaults={"observation": ["level"]},
+    )
+    widget._var_menu.populate(
+        widget._available,
+        {("observation", "level")},
+        widget._defaults,
+        widget._water_balance_enabled,
+    )
+    widget.set_simulated_period("2020-01-01T00:00:00", "2020-12-31T00:00:00")
+
+    # Observed series runs well past the simulated end.
+    time = np.array(["2020-06-01T00:00:00", "2021-06-01T00:00:00"])
+    widget.set_data(
+        {
+            "observation": {
+                "level": {
+                    "Observation #4 observed level": (time, np.array([0.5, 0.3])),
+                }
+            }
+        },
+        units={"observation": {"level": "m"}},
+    )
+
+    assert len(captured_figures) == 1
+    fig = captured_figures[0]
+    assert tuple(fig.layout.xaxis.range) == (
+        "2020-01-01T00:00:00",
+        "2020-12-31T00:00:00",
+    )
+
+
+def test_plot_widget_simulated_period_can_be_cleared(monkeypatch):
+    """Clearing the simulated period restores auto-ranging (no explicit range)."""
+    captured_figures = []
+
+    def _capture_plot(fig, **kwargs):
+        captured_figures.append(fig)
+        return "<div></div>"
+
+    monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
+
+    widget = PlotWidget()
+    widget.preload_variables(
+        {"basin": ["level"]},
+        units={"basin": {"level": "m"}},
+        defaults={"basin": ["level"]},
+    )
+    widget.set_simulated_period("2020-01-01T00:00:00", "2020-12-31T00:00:00")
+    widget.set_simulated_period(None, None)
+
+    time = np.array(["2020-06-01T00:00:00", "2020-07-01T00:00:00"])
+    widget.set_data(
+        {"basin": {"level": {"Basin #1": (time, np.array([0.5, 0.3]))}}},
+        units={"basin": {"level": "m"}},
+    )
+
+    assert len(captured_figures) == 1
+    assert captured_figures[0].layout.xaxis.range is None
