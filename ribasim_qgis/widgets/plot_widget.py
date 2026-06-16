@@ -1,6 +1,7 @@
 """Plot widget using plotly to render Ribasim timeseries from NetCDF results."""
 
 import importlib.resources
+import json
 from collections import defaultdict
 from collections.abc import Callable
 from enum import Enum, auto
@@ -186,14 +187,17 @@ _BASIN_WATER_BALANCE_ERROR_TERM = "balance_error"
 # (file, variable) keys together.  Group constituents are hidden from their
 # file submenus, so the only way to toggle them is via the group checkbox.
 _ROOT_VARIABLE_GROUPS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
-    ("level", (("basin", "level"),)),
-    ("storage", (("basin", "storage"),)),
+    ("level", (("basin", "level"), ("observation", "level"))),
+    ("storage", (("basin", "storage"), ("observation", "storage"))),
     (
         "flow_rate",
         (
             ("basin", "inflow_rate"),
             ("basin", "outflow_rate"),
             ("flow", "flow_rate"),
+            ("observation", "flow_rate"),
+            ("observation", "inflow_rate"),
+            ("observation", "outflow_rate"),
         ),
     ),
 )
@@ -459,6 +463,21 @@ class PlotWidget(QWidget):
         self._available: dict[str, list[str]] = {}
         # Default variables per file: {file_name: [variable, ...]}
         self._defaults: dict[str, list[str]] = {}
+        # Default x-axis range (the simulated period) as ISO time strings.
+        # When set, every plot opens on this range instead of auto-fitting all
+        # data (which may include observed series longer than the simulation).
+        self._sim_x_range: tuple[str, str] | None = None
+        # Plotly ``uirevision`` token. Kept constant while the simulated period
+        # is unchanged so Plotly preserves the user's pan/zoom across in-place
+        # updates; it changes when a new model (period) is loaded, resetting it.
+        self._uirevision: str | None = None
+        # In-place update bookkeeping: after the first full page load we update
+        # the existing plot via ``Plotly.react`` (no reload, hence no flicker).
+        self._initialized = False
+        self._page_loaded = False
+        self._pending_js: str | None = None
+        # pyrefly: ignore[missing-attribute]
+        self._web_view.loadFinished.connect(self._on_load_finished)
 
         # Keep node/link buttons in sync with the active layer and map tool.
         if self._iface is not None:
@@ -553,6 +572,35 @@ class PlotWidget(QWidget):
         )
         self._redraw()
 
+    def set_simulated_period(self, start: str | None, end: str | None) -> None:
+        """Set the default x-axis range (the simulated period).
+
+        Plots open on this range so an observed series that extends beyond the
+        simulation does not stretch the view. ``start``/``end`` are ISO time
+        strings (``"%Y-%m-%dT%H:%M:%S"``); pass ``None`` to clear and fall back
+        to auto-ranging.
+        """
+        if not self.plotting_supported:
+            return
+        if start is None or end is None:
+            new_range = None
+            new_token = None
+        else:
+            new_range = (start, end)
+            # One token per simulated period: unchanged within a model so the
+            # user's zoom persists, changed across models so the view resets.
+            new_token = f"{start}/{end}"
+
+        if new_token != self._uirevision:
+            # Plotly's "Reset axes" button restores the range saved at the first
+            # full render; in-place ``Plotly.react`` updates never re-save it.
+            # Force the next render to reload the page so the reset target
+            # becomes this simulated period instead of a previous model's span.
+            self._initialized = False
+
+        self._sim_x_range = new_range
+        self._uirevision = new_token
+
     def set_data(
         self,
         plot_data: PlotData,
@@ -579,9 +627,10 @@ class PlotWidget(QWidget):
         if not self.plotting_supported:
             return
         self._plot_data = {}
-        self._web_view.setVisible(False)
-        self._web_view.setUrl(QUrl("about:blank"))
-        self._placeholder.setVisible(True)
+        # Keep the (now hidden) plot DOM alive rather than navigating away, so a
+        # transient empty selection (e.g. a misclick) doesn't discard the user's
+        # zoom; re-selecting reacts onto the same plot and uirevision restores it.
+        self._show_placeholder(self._placeholder_for_current_preset())
 
     # --- Internal slots ---
 
@@ -686,12 +735,21 @@ class PlotWidget(QWidget):
                     legend_name = f"{trace_name} {var}"
                 else:
                     legend_name = trace_name
+                # Observation comparison traces use fixed colors: the observed
+                # (measured) series is black, the simulated series is red.
+                line = None
+                if file_name == "observation":
+                    if "observed" in trace_name:
+                        line = {"color": "black"}
+                    elif "simulated" in trace_name:
+                        line = {"color": "red"}
                 traces_by_unit[unit_key].append(
                     go.Scatter(
                         x=x_data,
                         y=y_data,
                         mode="lines",
                         name=legend_name,
+                        line=line,
                         hovertemplate=self._hover_template(legend_name),
                     )
                 )
@@ -713,6 +771,29 @@ class PlotWidget(QWidget):
         self._placeholder.setVisible(True)
 
     def _render_figure(self, fig, config: dict[str, bool | list[str]]) -> None:
+        # Open every plot on the simulated period rather than auto-fitting all
+        # data (observed series may extend past the simulation). This range is
+        # also what Plotly saves as the "Reset axes" target on a full render;
+        # "Autoscale" still fits all data. ``set_simulated_period`` forces a full
+        # render whenever the period changes so the reset target stays correct.
+        if self._sim_x_range is not None:
+            fig.update_xaxes(range=list(self._sim_x_range))
+        # ``uirevision`` makes Plotly preserve the user's pan/zoom across
+        # in-place updates: supplying the same range token each redraw keeps the
+        # user's edits, while a new model (new token) resets to its own range.
+        fig.update_layout(uirevision=self._uirevision)
+
+        self._placeholder.setVisible(False)
+        self._web_view.setVisible(True)
+
+        if self._initialized:
+            # Update the existing plot in place — no page reload, no flicker.
+            self._update_figure_in_place(fig, config)
+        else:
+            self._load_figure_page(fig, config)
+
+    def _load_figure_page(self, fig, config: dict[str, bool | list[str]]) -> None:
+        """Write the full plot HTML and load it into the web view (first draw)."""
         div = po.plot(
             fig,
             output_type="div",
@@ -731,9 +812,49 @@ class PlotWidget(QWidget):
             f'<body style="margin:0;overflow:hidden">{div}</body></html>'
         )
         _PLOT_HTML_FILE.write_text(html, encoding="utf-8")
-        self._placeholder.setVisible(False)
-        self._web_view.setVisible(True)
+        self._page_loaded = False
+        self._pending_js = None
+        self._initialized = True
         self._web_view.setUrl(QUrl.fromLocalFile(str(_PLOT_HTML_FILE)))
+
+    def _update_figure_in_place(self, fig, config: dict[str, bool | list[str]]) -> None:
+        """Update the already-loaded plot via ``Plotly.react``.
+
+        Reusing the existing page (instead of reloading) avoids flicker and lets
+        ``uirevision`` keep the user's pan/zoom across updates, as long as the
+        subplot layout is unchanged. If the page is still loading, defer the
+        update until ``loadFinished``.
+        """
+        js = (
+            "(function(){var f=" + fig.to_json() + ";"
+            "var gd=document.querySelector('.plotly-graph-div');"
+            "if(gd&&window.Plotly){Plotly.react(gd,f.data,f.layout,"
+            + json.dumps(config)
+            + ");}})();"
+        )
+        if self._page_loaded:
+            self._run_js(js)
+        else:
+            self._pending_js = js
+
+    def _run_js(self, js: str) -> None:
+        """Execute JavaScript in the web view for the active backend."""
+        page = self._web_view.page()
+        if page is None:
+            return
+        if _BACKEND is _WebViewBackend.WEBENGINE:
+            page.runJavaScript(js)
+        else:
+            frame = page.mainFrame()  # pyrefly: ignore[missing-attribute]
+            if frame is not None:
+                frame.evaluateJavaScript(js)
+
+    def _on_load_finished(self, _ok: bool = True) -> None:
+        """Flush any update that was requested while the page was loading."""
+        self._page_loaded = True
+        if self._pending_js is not None:
+            self._run_js(self._pending_js)
+            self._pending_js = None
 
     def _redraw_standard(
         self, selected_keys: list[tuple[str, str]], config: dict[str, bool | list[str]]

@@ -89,6 +89,11 @@ Select one link, and if you have concentration results, you can choose the varia
 
 Under the variable → concentration dropdown menu you can select another set of tracers if they are available.
 
+If your model has [Observation](/reference/node/observation.qmd) nodes, select the `node` button and click an Observation node to compare its observed and simulated timeseries.
+The observed series (read from the input) is drawn in black, and the corresponding simulated series in red.
+
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/timeseries-plot-observation.png){fig-align="left"}
+
 # Spatial results {#sec-spatial-results}
 
 The timeseries results show the change of selected nodes and links over time.
