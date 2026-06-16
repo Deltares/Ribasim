@@ -66,7 +66,7 @@ from ribasim.delwaq import generate
 # The default path is the delwaq folder next to the toml
 output_path = Path("../../generated_testmodels/basic/delwaq")
 
-graph, substances = generate(model, output_path)
+generate(model, output_path)
 ```
 
 This call produces a handful of files in the user defined folder. Let's take a look at them:
@@ -77,49 +77,20 @@ list(output_path.iterdir())
 
 These files form a complete Delwaq simulation, and can be run by either pointing DIMR to the `dimr_config.xml` file or pointing Delwaq to the `delwaq.inp` file.
 
-Note that the call to `generate` produces two output variables; `graph` and `substances` that are required for parsing the results of the Delwaq model later on. Nonetheless, we can also inspect them here, and inspect the created Delwaq network.
+The call to `generate` also writes a `ribasim.nc` file in the output folder. Besides the Delwaq network mesh, it stores the mapping between Delwaq and Ribasim node IDs and the list of substances. These are everything `parse` needs to map the Delwaq results back to the original Ribasim model, so no extra variables have to be passed between `generate` and `parse`.
 
-```{python}
-substances  # list of substances, as will be present in the Delwaq netcdf output
-```
+The substances stored are a combination of user input (`Cl` and `Tracer` in the input tables), a `Continuity` tracer, and tracers for all nodetypes in the Ribasim model. The latter tracers allow for deeper inspection of the Ribasim model, such as debugging the mass balance by plotting fraction graphs.
 
-As you can see, the complete substances list is a combination of user input (`Cl` and `Tracer` in the input tables), a `Continuity` tracer, and tracers for all nodetypes in the Ribasim model. The latter tracers allow for deeper inspection of the Ribasim model, such as debugging the mass balance by plotting fraction graphs. Let's inspect the `graph` next, which is the Delwaq network that was created from the Ribasim model:
-
-```{python}
-import matplotlib.pyplot as plt
-import networkx as nx
-
-# Let's draw the graph
-fig, ax = plt.subplots(1, 2, figsize=(10, 5))
-nx.draw(
-    graph,
-    pos={k: v["pos"] for k, v in graph.nodes(data=True)},
-    with_labels=True,
-    labels={k: k for k, v in graph.nodes(data=True)},
-    ax=ax[0],
-)
-ax[0].set_title("Delwaq node IDs")
-nx.draw(
-    graph,
-    pos={k: v["pos"] for k, v in graph.nodes(data=True)},
-    with_labels=True,
-    labels={k: v["id"] for k, v in graph.nodes(data=True)},
-    ax=ax[1],
-)
-ax[1].set_title("Ribasim node IDs")
-fig.suptitle("Delwaq network");
-```
-
-Here we plotted the Delwaq network twice, with the node IDs as used by Delwaq on the left hand side, and the corresponding Ribasim node IDs on the right hand side.
-As you can see, the Delwaq network is very similar to the Ribasim network, with some notable changes:
+The Delwaq network that `generate` builds from the Ribasim model is very similar to the Ribasim network, with some notable changes:
 
 - All non-Basin or non-boundary types are removed (e.g. no more Pumps or TabulatedRatingCurves)
-- Basin boundaries are split into separate nodes and links (drainage, precipitation, and evaporation, as indicated by the duplicated Basin IDs on the right hand side)
+- Basin boundaries are split into separate nodes and links (drainage, precipitation, and evaporation)
 - All node IDs have been renumbered, with boundaries being negative, and Basins being positive.
 
 ## Parsing the results
-With Delwaq having run, we can now parse the results using `ribasim.delwaq.parse`. This function requires either a path to a toml file, or a Model instance, as well as the `graph` and `substances` variables that were output by `ribasim.delwaq.generate`.
+With Delwaq having run, we can now parse the results using `ribasim.delwaq.parse`. This function requires either a path to a toml file, or a Model instance. The mapping and substances needed to interpret the results are read from the `ribasim.nc` file written by `ribasim.delwaq.generate`.
 You can optionally set the path to the results folder of the Delwaq simulation, if you overrode the default during `ribasim.delwaq.generate`.
+
 
 ```{python}
 #| include: false
@@ -154,7 +125,7 @@ shutil.copyfile(cache_file, dest)
 ```{python}
 from ribasim.delwaq import parse
 
-nmodel_nc = parse(model, graph, substances, to_input=False)
+nmodel_nc = parse(model, output_path, to_input=False)
 
 concentration_nc = toml_path.parent / "results" / "concentration.nc"
 concentration_nc
@@ -165,13 +136,13 @@ By default (`to_input=False`), the parsed model writes the Delwaq tracer results
 
 ```{python}
 # Parse Delwaq results and also populate Basin / concentration_external for plotting
-nmodel = parse(model, graph, substances, to_input=True)
+nmodel = parse(model, output_path, to_input=True)
 ```
 
 ```{python}
 display(nmodel.basin.concentration_external)
-print(substances)
 t = nmodel.basin.concentration_external.df
+print(sorted(t.substance.unique()))
 # Show the first available timestep
 t[t.time == t.time.unique()[0]]
 ```
