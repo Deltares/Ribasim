@@ -123,6 +123,11 @@ In order to publish Ribasim Python or Ribasim API follow the following steps:
 3) Go to [Upload a plugin](https://plugins.qgis.org/plugins/upload/) and upload the zip file.
 4) The plugin will be available after manual approval from a QGIS plugin repository maintainer.
 
+## Update version numbers in docs
+
+When the new release is published, we can update the version numbers in `install.qmd` as well,
+so users are directed to the new release when installing.
+
 ## Announce release
 
 Announce the release in appropriate channels.

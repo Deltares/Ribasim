@@ -43,7 +43,6 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 - Choose an existing model from the `generated_testmodels` folder in the file explorer.
 - Drag the TOML file onto QGIS: _The model layers appear in the layer panel and on the map_.
 - Select the node layer, and make a subselection of nodes on the map: _Nodes are highlighted in yellow, including their links_.
-- Open the Link attribute table: _The highlighted rows are those with a from/to node\_id that was selected_.
 - Open any non-spatial attribute table: _The highlighted rows are those with a node\_id that was selected_.
 
 # Result inspection tests
@@ -71,7 +70,7 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 
 - Start a simulation on `models/hws`.
 - Open task manager and cancel the task: _Task is removed from manager_.
-- Check output dialog: _Shows "The Ribasim simulation was canceled."_.
+- Check output dialog: _Shows "Task failed"_.
 
 ## Prevent duplicate simulations
 
@@ -88,18 +87,18 @@ Intended behavior: The same model is loaded twice, but there is only a connectio
 
 ## Flow timeseries on link selection
 
-- With the plot widget open on "flow" / "flow\_rate", select one or more links on the map: _Flow rate timeseries appear in the plot, one trace per selected link (e.g. "#10", "#20")_.
+- With the plot widget open on "flow" / "flow\_rate", select one or more links on the map: _Flow rate timeseries appear in the plot, one trace per selected link (e.g. "Link #10 flow\_rate", "Link #20 flow\_rate")_.
 - Select different links: _Plot updates to show the new selection_.
 
 ## Basin timeseries on node selection
 
 - Change the variable to "level": _Variable changes to "level", placeholder says "Select nodes and/or links on the map to plot timeseries."_.
-- Select one or more Basin nodes on the map: _Level timeseries appear for the selected nodes_.
+- Select one or more Basin nodes on the map: _Level and inflow/outflow rate timeseries appear for the selected nodes_.
 
 ## Variable selection
 
 - With Basin nodes selected and the plot showing, click the "variable" button: _A dropdown menu with checkboxes appears listing variables (e.g. level, storage)_.
-- Check multiple variables: _Plot updates to show all checked variables, grouped by unit, legend shows "variable — #node\_id"_.
+- Check multiple variables: _Plot updates to show all checked variables, grouped by unit, legend shows "Node type #node\_id variable"_.
 - Uncheck all variables: _Plot hides, placeholder reappears_.
 
 ## Concentration results
