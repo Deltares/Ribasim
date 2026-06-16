@@ -87,18 +87,6 @@ After installation, open a new terminal and run `ribasim --help` to verify.
 
 To uninstall Ribasim, go to "Add or remove programs" in Windows Settings and search for "Ribasim".
 
-## Windows installation script (deprecated) {.unlisted}
-
-::: {.callout-warning}
-The installation script is deprecated. Use the installer instead.
-:::
-
-Ribasim can be installed from the terminal by running this installation script:
-
-```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://ribasim.org/install.ps1 | iex"
-```
-
 ## Manual installation
 
 Alternatively you can download a zip archive and extract it manually:

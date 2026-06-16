@@ -47,9 +47,11 @@ Here `N` represents an integer, starting at 1, so we can have, in chronological 
 
 Update the version numbers in the repository to the new version number.
 See also the [latest Ribasim release](https://github.com/Deltares/Ribasim/releases/latest).
-Use find and replace to update all locations.
+Use find and replace to update the locations.
+Don't yet change `install.qmd`, this happens in a later step.
 Only update the lines in `pixi.lock` that refer to Ribasim packages, to avoid accidentally changing the version number of dependencies that happen to have the same version number.
 Don't change the old version numbers in `changelog.qmd`.
+Remember to save all files after edits.
 
 ::: {.callout-important}
 Always update the example version numbers in `docs/guide/installing-other-versions.qmd` to refer to the latest release candidate and never to a stable release.
@@ -122,6 +124,11 @@ In order to publish Ribasim Python or Ribasim API follow the following steps:
 2) Log in to the [QGIS plugin repository](https://plugins.qgis.org/).
 3) Go to [Upload a plugin](https://plugins.qgis.org/plugins/upload/) and upload the zip file.
 4) The plugin will be available after manual approval from a QGIS plugin repository maintainer.
+
+## Update version numbers in docs
+
+When the new release is published, we can update the version numbers in `install.qmd` as well,
+so users are directed to the new release when installing.
 
 ## Announce release
 
