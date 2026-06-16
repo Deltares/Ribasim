@@ -2,7 +2,6 @@ project:
   type: website
   resources:
     - CNAME
-    - install.ps1
 website:
   title: "Ribasim"
   page-navigation: true
