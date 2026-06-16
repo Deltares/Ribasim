@@ -297,8 +297,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#create-a-new-release" id="toc-create-a-new-release" class="nav-link" data-scroll-target="#create-a-new-release"><span class="header-section-number">2.6</span> Create a new release</a></li>
   <li><a href="#publish-the-ribasim-python-packages-to-pypi" id="toc-publish-the-ribasim-python-packages-to-pypi" class="nav-link" data-scroll-target="#publish-the-ribasim-python-packages-to-pypi"><span class="header-section-number">2.7</span> Publish the Ribasim Python packages to PyPI</a></li>
   <li><a href="#publish-the-qgis-plugin-to-the-qgis-plugin-repository" id="toc-publish-the-qgis-plugin-to-the-qgis-plugin-repository" class="nav-link" data-scroll-target="#publish-the-qgis-plugin-to-the-qgis-plugin-repository"><span class="header-section-number">2.8</span> Publish the QGIS plugin to the QGIS plugin repository</a></li>
-  <li><a href="#announce-release" id="toc-announce-release" class="nav-link" data-scroll-target="#announce-release"><span class="header-section-number">2.9</span> Announce release</a></li>
-  <li><a href="#create-a-release-branch" id="toc-create-a-release-branch" class="nav-link" data-scroll-target="#create-a-release-branch"><span class="header-section-number">2.10</span> Create a release branch</a></li>
+  <li><a href="#update-version-numbers-in-docs" id="toc-update-version-numbers-in-docs" class="nav-link" data-scroll-target="#update-version-numbers-in-docs"><span class="header-section-number">2.9</span> Update version numbers in docs</a></li>
+  <li><a href="#announce-release" id="toc-announce-release" class="nav-link" data-scroll-target="#announce-release"><span class="header-section-number">2.10</span> Announce release</a></li>
+  <li><a href="#create-a-release-branch" id="toc-create-a-release-branch" class="nav-link" data-scroll-target="#create-a-release-branch"><span class="header-section-number">2.11</span> Create a release branch</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -351,7 +352,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <pre><code>2023.1.0-rc1 as the first release candidate pre-release of 2023.1.0
 2023.1.0-rc2 as the second release candidate pre-release of 2023.1.0
 2023.1.0 as the release</code></pre>
-<p>Update the version numbers in the repository to the new version number. See also the <a href="https://github.com/Deltares/Ribasim/releases/latest">latest Ribasim release</a>. Use find and replace to update all locations. Only update the lines in <code>pixi.lock</code> that refer to Ribasim packages, to avoid accidentally changing the version number of dependencies that happen to have the same version number. Don’t change the old version numbers in <code>changelog.qmd</code>.</p>
+<p>Update the version numbers in the repository to the new version number. See also the <a href="https://github.com/Deltares/Ribasim/releases/latest">latest Ribasim release</a>. Use find and replace to update the locations. Don’t yet change <code>install.qmd</code>, this happens in a later step. Only update the lines in <code>pixi.lock</code> that refer to Ribasim packages, to avoid accidentally changing the version number of dependencies that happen to have the same version number. Don’t change the old version numbers in <code>changelog.qmd</code>. Remember to save all files after edits.</p>
 <div class="callout callout-style-default callout-important callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -424,12 +425,16 @@ All changes
 <li>The plugin will be available after manual approval from a QGIS plugin repository maintainer.</li>
 </ol>
 </section>
-<section id="announce-release" class="level2" data-number="2.9">
-<h2 data-number="2.9" class="anchored" data-anchor-id="announce-release"><span class="header-section-number">2.9</span> Announce release</h2>
+<section id="update-version-numbers-in-docs" class="level2" data-number="2.9">
+<h2 data-number="2.9" class="anchored" data-anchor-id="update-version-numbers-in-docs"><span class="header-section-number">2.9</span> Update version numbers in docs</h2>
+<p>When the new release is published, we can update the version numbers in <code>install.qmd</code> as well, so users are directed to the new release when installing.</p>
+</section>
+<section id="announce-release" class="level2" data-number="2.10">
+<h2 data-number="2.10" class="anchored" data-anchor-id="announce-release"><span class="header-section-number">2.10</span> Announce release</h2>
 <p>Announce the release in appropriate channels. Include a link to the release notes and assets, which is whatever <a href="https://github.com/Deltares/Ribasim/releases/latest">this</a> resolves to at that time. Also include a link to the <a href="https://ribasim.org/">documentation</a>.</p>
 </section>
-<section id="create-a-release-branch" class="level2" data-number="2.10">
-<h2 data-number="2.10" class="anchored" data-anchor-id="create-a-release-branch"><span class="header-section-number">2.10</span> Create a release branch</h2>
+<section id="create-a-release-branch" class="level2" data-number="2.11">
+<h2 data-number="2.11" class="anchored" data-anchor-id="create-a-release-branch"><span class="header-section-number">2.11</span> Create a release branch</h2>
 <p>If it is a new stable non-hotfix release (<code>MICRO</code> is equal to 0, and not a pre-release), we need to create and push a release branch. For example, if the release is <code>v2023.1.0</code>, follow these steps:</p>
 <pre><code>git checkout v2023.1.0
 git switch -c release/v2023.1
