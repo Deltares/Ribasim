@@ -5,6 +5,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [v2026.1.2] - 2026-06-16
+
+This release brings several improvements to the QGIS plugin, most notably the ability to compare observed and simulated timeseries using Observation nodes.
+
+### Added
+- QGIS: Compare observed and simulated timeseries for Observation nodes in the plot widget. [#3115](https://github.com/Deltares/Ribasim/pull/3115)
+- Python: Add `model.update_used_ids()` to refresh node and link ID counters after direct edits. [#3099](https://github.com/Deltares/Ribasim/pull/3099)
+- Python: Make `NodeData` hashable, so nodes can be used in sets and as dictionary keys. [#3094](https://github.com/Deltares/Ribasim/pull/3094)
+- QGIS guide: Add sections on spatial results and topology. [#3104](https://github.com/Deltares/Ribasim/pull/3104)
+
+### Changed
+- QGIS: Plot and guide improvements, including plotting flow rates on non-Basin nodes and unified legend labels. [#3102](https://github.com/Deltares/Ribasim/pull/3102)
+- Delwaq: Drop required graph and substance state variables, so `generate` and `parse` can be run independently. [#3110](https://github.com/Deltares/Ribasim/pull/3110)
+- Update to OrdinaryDiffEq v7. [#3082](https://github.com/Deltares/Ribasim/pull/3082)
+
+### Fixed
+- Delwaq: Allow for isolated Basin nodes. [#3088](https://github.com/Deltares/Ribasim/pull/3088)
+
+### Removed
+- The deprecated Ribasim core Windows installation script; use the installer or ZIP archive instead. [#3116](https://github.com/Deltares/Ribasim/pull/3116)
+
 ## [v2026.1.1] - 2026-05-09
 
 This release makes allocation use adaptive timestepping by default, just like the physical layer.
