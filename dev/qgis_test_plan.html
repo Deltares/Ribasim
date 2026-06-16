@@ -280,6 +280,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#concentration-results" id="toc-concentration-results" class="nav-link" data-scroll-target="#concentration-results"><span class="header-section-number">5.5</span> Concentration results</a></li>
   <li><a href="#plot-presets" id="toc-plot-presets" class="nav-link" data-scroll-target="#plot-presets"><span class="header-section-number">5.6</span> Plot presets</a></li>
   <li><a href="#plot-clears-on-deselection" id="toc-plot-clears-on-deselection" class="nav-link" data-scroll-target="#plot-clears-on-deselection"><span class="header-section-number">5.7</span> Plot clears on deselection</a></li>
+  <li><a href="#observation-comparison" id="toc-observation-comparison" class="nav-link" data-scroll-target="#observation-comparison"><span class="header-section-number">5.8</span> Observation comparison</a></li>
   </ul></li>
   <li><a href="#tutorial-tests" id="toc-tutorial-tests" class="nav-link" data-scroll-target="#tutorial-tests"><span class="header-section-number">6</span> Tutorial tests</a>
   <ul class="collapse">
@@ -458,6 +459,17 @@ ul.task-list li input[type="checkbox"] {
 <h2 data-number="5.7" class="anchored" data-anchor-id="plot-clears-on-deselection"><span class="header-section-number">5.7</span> Plot clears on deselection</h2>
 <ul>
 <li>With a plot showing, deselect all features from all layers: <em>Plot clears and the placeholder reappears</em>.</li>
+</ul>
+</section>
+<section id="observation-comparison" class="level2" data-number="5.8">
+<h2 data-number="5.8" class="anchored" data-anchor-id="observation-comparison"><span class="header-section-number">5.8</span> Observation comparison</h2>
+<ul>
+<li>Load the <code>generated_testmodels/observation</code> model and run it so results are available.</li>
+<li>Open the plotting pane, select the <code>node</code> button, and click an Observation node: <em>The observed series is drawn in black and the matching simulated series in red, on the same unit-grouped subplot</em>.</li>
+<li>Zoom or pan the plot, then click a different Observation node (keeping the same variable groups): <em>The plot updates without flicker and the zoom/pan is retained</em>.</li>
+<li>Click the “Reset axes” button in the plot toolbar: <em>The x-axis returns to the simulated period (TOML <code>starttime</code>/<code>endtime</code>), not the full observed span</em>.</li>
+<li>Briefly deselect (e.g.&nbsp;a misclick) and reselect a node: <em>The plot returns with the previous zoom retained</em>.</li>
+<li>Open the same model <strong>without</strong> running it (no results): <em>Selecting an Observation node still plots the observed series on its own, for level and flow variables</em>.</li>
 </ul>
 </section>
 </section>
