@@ -2,7 +2,7 @@
 
 julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "63e06f82102c0a8ae15d7c88fba77c95968eb2b2"
+project_hash = "e47d1534789152887e1b7cd88b9e78a3f573de6b"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "bbc22a9a08a0ef6460041086d8a7b27940ed4ffd"
@@ -2043,11 +2043,9 @@ version = "0.4.2"
 
 [[deps.SQLite]]
 deps = ["DBInterface", "Random", "SQLite_jll", "Serialization", "Tables", "WeakRefStrings"]
-git-tree-sha1 = "0a0028977ebf68853f422c5ede14f12248d0ba07"
-repo-rev = "feat/typescan"
-repo-url = "https://github.com/evetion/SQLite.jl"
+git-tree-sha1 = "e06c74d1b23a4180c3f79a718235c8a15c165849"
 uuid = "0aa819cd-b072-5ff4-a722-6bc24af294d9"
-version = "1.7.1"
+version = "1.8.1"
 
 [[deps.SQLite_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Zlib_jll", "dlfcn_win32_jll"]
