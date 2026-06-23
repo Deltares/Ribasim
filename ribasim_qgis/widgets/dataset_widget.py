@@ -49,6 +49,7 @@ from ribasim_qgis.core.model import (
     get_toml_dict,
 )
 from ribasim_qgis.core.netcdf import (
+    TIME_FORMAT,
     NetCDFResult,
     read_basin_nc,
     read_concentration_nc,
@@ -58,6 +59,7 @@ from ribasim_qgis.core.nodes import (
     STYLE_DIR,
     load_nodes_from_geopackage,
 )
+from ribasim_qgis.core.observations import Observations, read_observations
 from ribasim_qgis.widgets.plot_widget import PlotData, PlotWidget, Trace, VariableTraces
 from ribasim_qgis.widgets.task import RibasimTask
 
@@ -113,6 +115,13 @@ _FLOW_RATE_FROM_INCOMING_AND_OUTGOING_LINKS_SUM: frozenset[str] = frozenset(
     {"LevelBoundary"}
 )
 
+# Observation flow variables and the link direction they sum over.
+# ``inflow_rate`` sums incoming flow links; ``outflow_rate`` sums outgoing.
+_OBSERVATION_FLOW_DIRECTION: dict[str, str] = {
+    "inflow_rate": "to",
+    "outflow_rate": "from",
+}
+
 RIBASIM_HOME_SETTING = "ribasim/home"
 RIBASIM_LAST_MODEL_PATH_SETTING = "ribasim/last_model_path"
 
@@ -143,6 +152,9 @@ class DatasetWidget:
         self.basin_layer: QgsVectorLayer | None = None
         self.concentration_layer: QgsVectorLayer | None = None
         self.results: dict[str, NetCDFResult] = {}
+
+        # Observation input data (read from the GeoPackage, not the results).
+        self.observations: Observations | None = None
 
         # Plot widget for timeseries
         self.plot_widget = PlotWidget(
@@ -608,6 +620,7 @@ class DatasetWidget:
 
     def refresh_results(self) -> None:
         self._load_netcdf_results()
+        self._load_observations()
         self._preload_plot_variables()
         self._set_node_results()
         self._set_link_results()
@@ -672,14 +685,56 @@ class DatasetWidget:
             if result is not None:
                 self.results[name] = result
 
+    def _load_observations(self) -> None:
+        """Load Observation input data from the GeoPackage into self.observations."""
+        self.observations = read_observations(
+            get_database_path_from_model_file(self.ribasim_widget.path)
+        )
+
+    def _observation_units(self) -> dict[str, str]:
+        """Map each observation variable to a unit borrowed from the results.
+
+        Observed and simulated series share a variable name, so reusing the
+        result unit guarantees they land on the same unit-grouped subplot.
+        """
+        if self.observations is None:
+            return {}
+        units: dict[str, str] = {}
+        for variable in self.observations.variables:
+            for result in self.results.values():
+                if variable in result.units:
+                    units[variable] = result.units[variable]
+                    break
+        return units
+
     def _preload_plot_variables(self) -> None:
         """Pre-populate the plot widget dropdowns from loaded results."""
         available: dict[str, list[str]] = {}
         units: dict[str, dict[str, str]] = {}
+        defaults = dict(_DEFAULT_VARIABLES)
         for name, result in self.results.items():
             available[name] = list(result.variables.keys())
             units[name] = result.units
-        self.plot_widget.preload_variables(available, units, _DEFAULT_VARIABLES)
+        if self.observations is not None and self.observations.variables:
+            available["observation"] = sorted(self.observations.variables)
+            units["observation"] = self._observation_units()
+            # Default observation variables on, so their root group is checked
+            # even without results (when it is the group's only constituent).
+            defaults["observation"] = available["observation"]
+        self.plot_widget.preload_variables(available, units, defaults)
+        self._set_plot_simulated_period()
+
+    def _set_plot_simulated_period(self) -> None:
+        """Tell the plot widget the simulated period to use as default x-range.
+
+        Use the model's ``starttime``/``endtime`` from the TOML so plots open on
+        the simulation window even when an observed series extends beyond it.
+        """
+        toml = get_toml_dict(self.path)
+        self.plot_widget.set_simulated_period(
+            toml["starttime"].strftime(TIME_FORMAT),
+            toml["endtime"].strftime(TIME_FORMAT),
+        )
 
     def _get_concentration_for_node(self, node_id: int) -> dict[str, Trace] | None:
         """Return concentration traces for a single *node_id*."""
@@ -690,7 +745,7 @@ class DatasetWidget:
         idx = id_to_idx.get(node_id)
         if idx is None:
             return None
-        time_strings = result.time.strftime("%Y-%m-%dT%H:%M:%S").to_numpy()
+        time_strings = result.time_strings
         return {
             sub: (time_strings, arr[:, idx]) for sub, arr in result.variables.items()
         }
@@ -707,7 +762,7 @@ class DatasetWidget:
         idx = id_to_idx.get(link_id)
         if idx is None:
             return None
-        time_strings = result.time.strftime("%Y-%m-%dT%H:%M:%S").to_numpy()
+        time_strings = result.time_strings
         return (time_strings, flow_arr[:, idx])
 
     def _set_node_results(self) -> None:
@@ -986,7 +1041,7 @@ class DatasetWidget:
             entity = _ENTITY_BY_FILE.get(name, "")
             # Build id -> column-index mapping (O(1) lookup)
             id_to_idx = {int(v): i for i, v in enumerate(result.ids)}
-            time_strings = result.time.strftime("%Y-%m-%dT%H:%M:%S").to_numpy()
+            time_strings = result.time_strings
 
             vars_data: dict[str, VariableTraces] = {}
             for var_name, arr in result.variables.items():
@@ -1006,10 +1061,16 @@ class DatasetWidget:
         # non-Basin conservative nodes (e.g. TabulatedRatingCurve).
         self._inject_node_flow_rate_traces(plot_data, selected_nodes, link_layer)
 
+        # Inject observed (input) and matching simulated traces for selected
+        # Observation nodes.
+        self._inject_observation_traces(plot_data, selected_nodes, link_layer)
+
         # Collect units from results
         units: dict[str, dict[str, str]] = {
             name: result.units for name, result in self.results.items()
         }
+        if self.observations is not None and self.observations.variables:
+            units["observation"] = self._observation_units()
         if plot_data:
             self.plot_widget.set_data(plot_data, units)
         else:
@@ -1042,7 +1103,7 @@ class DatasetWidget:
             return
 
         link_id_to_idx = {int(v): i for i, v in enumerate(flow_result.ids)}
-        time_strings = flow_result.time.strftime("%Y-%m-%dT%H:%M:%S").to_numpy()
+        time_strings = flow_result.time_strings
 
         new_traces: VariableTraces = {}
         for node_id, node_type in selected_nodes:
@@ -1128,3 +1189,167 @@ class DatasetWidget:
             if idx is not None:
                 columns.append(flow_arr[:, idx])
         return columns
+
+    def _inject_observation_traces(
+        self,
+        plot_data: PlotData,
+        selected_nodes: list[tuple[int, str]],
+        link_layer: Any,
+    ) -> None:
+        """Add observed (input) and simulated traces for selected Observation nodes.
+
+        For each selected Observation node we plot, per observed variable, the
+        observed series read from the GeoPackage together with the matching
+        simulated series from the results of the observed target node. Observed
+        and simulated traces share the same ``("observation", variable)`` key so
+        a single dropdown entry toggles both. When no matching simulated series
+        is available (e.g. results not loaded), only the observed series is
+        shown.
+        """
+        if self.observations is None:
+            return
+
+        node_layer = self.ribasim_widget.node_layer
+        for node_id, node_type in selected_nodes:
+            if node_type != "Observation":
+                continue
+            node_data = self.observations.data.get(node_id)
+            if not node_data:
+                continue
+
+            target_id = self._observation_target_node_id(link_layer, node_id)
+            target_type = (
+                self._node_type_of(node_layer, target_id)
+                if target_id is not None
+                else None
+            )
+
+            for variable, (times, values) in node_data.items():
+                var_traces = plot_data.setdefault("observation", {}).setdefault(
+                    variable, {}
+                )
+                var_traces[f"Observation #{node_id} observed {variable}"] = (
+                    times,
+                    values,
+                )
+                simulated: Trace | None = None
+                if target_id is not None:
+                    simulated = self._simulated_observation_trace(
+                        target_id, target_type, variable, link_layer
+                    )
+                if simulated is not None:
+                    var_traces[f"Observation #{node_id} simulated {variable}"] = (
+                        simulated
+                    )
+
+    def _simulated_observation_trace(
+        self,
+        target_id: int,
+        target_type: str | None,
+        variable: str,
+        link_layer: Any,
+    ) -> Trace | None:
+        """Return the simulated series of *variable* for the observed target node.
+
+        Node-indexed results (e.g. Basin ``level``, ``inflow_rate``) are looked
+        up directly by node_id. Flow variables on connector nodes are derived
+        from the connected flow links of ``flow.nc``.
+        """
+        # Node-indexed results: direct lookup by node_id.
+        basin_result = self.results.get("basin")
+        if basin_result is not None and variable in basin_result.variables:
+            id_to_idx = {int(v): i for i, v in enumerate(basin_result.ids)}
+            idx = id_to_idx.get(target_id)
+            if idx is not None:
+                return (
+                    basin_result.time_strings,
+                    basin_result.variables[variable][:, idx],
+                )
+
+        # Flow variables: derive from connected flow links.
+        flow_result = self.results.get("flow")
+        if (
+            flow_result is not None
+            and link_layer is not None
+            and target_type is not None
+        ):
+            flow_arr = flow_result.variables.get("flow_rate")
+            if flow_arr is not None:
+                link_id_to_idx = {int(v): i for i, v in enumerate(flow_result.ids)}
+                column = self._observation_flow_column(
+                    link_layer,
+                    target_id,
+                    target_type,
+                    variable,
+                    link_id_to_idx,
+                    flow_arr,
+                )
+                if column is not None:
+                    return (flow_result.time_strings, column)
+
+        return None
+
+    def _observation_flow_column(
+        self,
+        link_layer: Any,
+        target_id: int,
+        target_type: str,
+        variable: str,
+        link_id_to_idx: dict[int, int],
+        flow_arr: np.ndarray,
+    ) -> np.ndarray | None:
+        """Return the summed flow_rate column for a flow observation variable.
+
+        ``inflow_rate`` and ``outflow_rate`` sum incoming resp. outgoing flow
+        links. Plain ``flow_rate`` is only meaningful for conservative nodes and
+        is taken from the relevant single link direction.
+        """
+        direction = _OBSERVATION_FLOW_DIRECTION.get(variable)
+        if direction is not None:
+            columns = self._connected_flow_columns(
+                link_layer, target_id, direction, link_id_to_idx, flow_arr
+            )
+            return np.sum(columns, axis=0) if columns else None
+
+        if variable == "flow_rate":
+            # A conservative node's flow_rate equals its single connected flow
+            # link: outgoing for source-style nodes, incoming for sink-style.
+            if target_type in _FLOW_RATE_FROM_OUTGOING_LINK:
+                columns = self._connected_flow_columns(
+                    link_layer, target_id, "from", link_id_to_idx, flow_arr
+                )
+            elif target_type in _FLOW_RATE_FROM_INCOMING_LINKS_SUM:
+                columns = self._connected_flow_columns(
+                    link_layer, target_id, "to", link_id_to_idx, flow_arr
+                )
+            else:
+                return None
+            return np.sum(columns, axis=0) if columns else None
+
+        return None
+
+    @staticmethod
+    def _observation_target_node_id(link_layer: Any, node_id: int) -> int | None:
+        """Return the node_id observed by Observation *node_id*, if any.
+
+        An Observation node connects to at most one other node via an
+        ``observation`` link (from the Observation node to the target).
+        """
+        if link_layer is None:
+            return None
+        request = QgsFeatureRequest().setFilterExpression(
+            f'"from_node_id" = {node_id} AND "link_type" = \'observation\''
+        )
+        for feat in link_layer.getFeatures(request):
+            return int(feat["to_node_id"])
+        return None
+
+    @staticmethod
+    def _node_type_of(node_layer: Any, node_id: int) -> str | None:
+        """Return the node_type of *node_id* from the node layer, if found."""
+        if node_layer is None:
+            return None
+        request = QgsFeatureRequest().setFilterExpression(f'"node_id" = {node_id}')
+        for feat in node_layer.getFeatures(request):
+            return str(feat["node_type"])
+        return None

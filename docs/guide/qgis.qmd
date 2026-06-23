@@ -20,6 +20,12 @@ The same options are also available under the Plugins menu.
 
 ![](https://s3.deltares.nl/ribasim/doc-image/qgis/plugin-menu.png){fig-align="left"}
 
+When the model is opened, the network is shown on the map.
+The model is loaded as a layer group, consisting of an Input layer group and, if available, a Results layer group.
+The input consists of the spatial layers for the network, and data tables that are loaded as attribute tables.
+
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/model-loaded.png){fig-align="left"}
+
 # Running a model
 
 Click on the Ribasim icon on the toolbar, select **Run Ribasim model**.
@@ -40,7 +46,7 @@ QGIS resolves the Ribasim executable in this order:
 
 See the [install section](/getting-started/install.qmd#ribasim-home) for details.
 
-# Inspect a (large) model {#sec-inspect}
+# Inspect model tables {#sec-inspect}
 
 For larger models the node tables can grow quite large. To facilitate inspection,
 the tables are linked via the `node_id` field to the Node table, and react to the selection of the Node layer. That is, on selection of certain nodes---either via the map or the attribute table---the selection is also made in all related tables. This is also the case for the Link layer.
@@ -48,7 +54,7 @@ It helps to set the attribute table of a table of interest to show selected feat
 
 <img alt="Selection change" src="https://github.com/user-attachments/assets/074c1f58-926b-4d5e-a640-86a5a746a4c2" class="img-fluid"/>
 
-# Inspecting results {#sec-results}
+# Timeseries results {#sec-results}
 
 Click on the Ribasim icon on the toolbar, select **Timeseries results**.
 
@@ -83,6 +89,29 @@ Select one link, and if you have concentration results, you can choose the varia
 
 Under the variable → concentration dropdown menu you can select another set of tracers if they are available.
 
+If your model has [Observation](/reference/node/observation.qmd) nodes, select the `node` button and click an Observation node to compare its observed and simulated timeseries.
+The observed series (read from the input) is drawn in black, and the corresponding simulated series in red.
+
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/timeseries-plot-observation.png){fig-align="left"}
+
+# Spatial results {#sec-spatial-results}
+
+The timeseries results show the change of selected nodes and links over time.
+To get more insight into the model at a selected time, you can show the results on the map.
+In the Layers panel, the Results group shows a Basin layer that by default shows water levels,
+and a Flow layer that shows flow rates on links by default.
+If you ran with concentration enabled, a Concentration layer can show concentrations on the map.
+
+By selecting layers and configuring layer properties you can control how you want to present results.
+For instance in the figure below, the `Input / Node` is shown with the `Results / Flow`.
+By clicking the clock icon, you can open the QGIS Temporal Controller Panel.
+That allows you to select the time, or animate through time.
+
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/spatial-results.png){fig-align="left"}
+
+By default, the values are shown as labels, and the line thickness increases with the flow rate.
+These styling options can be configured just like regular QGIS layers.
+
 # Reloading models {#sec-reload}
 
 If you made changes to your model outside of QGIS, and want to see the new version in QGIS, the quickest way is to click **Reload Ribasim model**.
@@ -92,3 +121,18 @@ This reloads both the model and the results.
 
 This avoids the need to remove the group and open the same model again via the plugin.
 It can be convenient when iteratively building your model via Python, or running new simulations.
+If no model is loaded, the most recently opened model is loaded.
+
+# Network topology {#sec-topology}
+
+Link geometries can be either straight lines connecting nodes, or curved lines that follow waterbodies.
+Curved geometries can be more recognizable on the map, but when inspecting the connections in the network,
+it can be useful to view the curved lines as straight lines.
+This can be done by the "Show topology" toggle in the context menu, seen when right-clicking the `Input / Link` or `Results / Flow` layers.
+
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/topology-menu.png){fig-align="left"}
+
+The effect on a curved river segment can be seen below.
+The `Basin / area` polygons are not affected by this change.
+
+![](https://s3.deltares.nl/ribasim/doc-image/qgis/topology-off-on.png){fig-align="left"}

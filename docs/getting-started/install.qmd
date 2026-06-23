@@ -80,31 +80,19 @@ Ribasim is typically used as a command-line interface (CLI).
 The easiest way to install Ribasim on Windows is to use the installer.
 Download and run:
 
-- Ribasim installer - Windows: [ribasim_windows.msix](https://github.com/Deltares/Ribasim/releases/download/v2026.1.1/ribasim_windows.msix)
+- Ribasim installer - Windows: [ribasim_windows.msix](https://github.com/Deltares/Ribasim/releases/download/v2026.1.2/ribasim_windows.msix)
 
 This installer puts `ribasim.exe` on the PATH automatically.
 After installation, open a new terminal and run `ribasim --help` to verify.
 
 To uninstall Ribasim, go to "Add or remove programs" in Windows Settings and search for "Ribasim".
 
-## Windows installation script (deprecated) {.unlisted}
-
-::: {.callout-warning}
-The installation script is deprecated. Use the installer instead.
-:::
-
-Ribasim can be installed from the terminal by running this installation script:
-
-```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://ribasim.org/install.ps1 | iex"
-```
-
 ## Manual installation
 
 Alternatively you can download a zip archive and extract it manually:
 
-- Ribasim executable - Windows: [ribasim_windows.zip](https://github.com/Deltares/Ribasim/releases/download/v2026.1.1/ribasim_windows.zip)
-- Ribasim executable - Linux: [ribasim_linux.zip](https://github.com/Deltares/Ribasim/releases/download/v2026.1.1/ribasim_linux.zip)
+- Ribasim executable - Windows: [ribasim_windows.zip](https://github.com/Deltares/Ribasim/releases/download/v2026.1.2/ribasim_windows.zip)
+- Ribasim executable - Linux: [ribasim_linux.zip](https://github.com/Deltares/Ribasim/releases/download/v2026.1.2/ribasim_linux.zip)
 
 Note that we currently only support and provide binaries for Windows and Linux, for the x86_64 architecture.
 
@@ -191,7 +179,7 @@ uv init --python '>=3.12'
 ```
 Now add Ribasim Python:
 ```sh
-uv add ribasim==2026.1.1
+uv add ribasim==2026.1.2
 ```
 If you wish to start Python, run:
 ```sh
@@ -209,7 +197,7 @@ pixi init
 ```
 Now add Ribasim Python:
 ```sh
-pixi add ribasim==2026.1.1
+pixi add ribasim==2026.1.2
 ```
 If you wish to start Python, run:
 ```sh
@@ -222,7 +210,7 @@ When you run into what seems like installation issues, try `pixi clean`, followe
 ## pip
 
 ```sh
-pip install --upgrade ribasim==2026.1.1
+pip install --upgrade ribasim==2026.1.2
 ```
 
 ## conda
@@ -232,7 +220,7 @@ Ribasim is available in the [conda-forge](https://conda-forge.org/) channel.
 It may not work well when combined with the Anaconda default channel, see [transitioning from defaults](https://conda-forge.org/docs/user/transitioning_from_defaults/).
 
 ```sh
-conda install -c conda-forge ribasim=2026.1.1
+conda install -c conda-forge ribasim=2026.1.2
 ```
 
 :::
@@ -273,7 +261,7 @@ If the plugin repository method doesn't work or you need a specific version, you
 
 Download `ribasim_qgis.zip`:
 
-- QGIS plugin: [ribasim_qgis.zip](https://github.com/Deltares/Ribasim/releases/download/v2026.1.1/ribasim_qgis.zip).
+- QGIS plugin: [ribasim_qgis.zip](https://github.com/Deltares/Ribasim/releases/download/v2026.1.2/ribasim_qgis.zip).
 
 In QGIS, go to Plugins menu > Manage and Install Plugins...
 

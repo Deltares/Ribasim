@@ -27,7 +27,7 @@ jobs:
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Propagate git credentials for v6
         run: |
           # Propagate git credentials to worktrees (required for actions/checkout@v6)
@@ -38,6 +38,13 @@ jobs:
             git config set --path includeIf.gitdir:"${GIT_DIR}/worktrees/*".path "${CRED_PATH}"
           fi
       - uses: julia-actions/cache@a45e8fa8be21c18a06b7177052533149e61e9b38 # v3.1.0
+      - name: Cache Delwaq map file
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/ribasim
+          key: delwaq-map-${{ github.run_id }}
+          restore-keys: |
+            delwaq-map-
       - uses: prefix-dev/setup-pixi@5185adfbffb4bd703da3010310260805d89ebb11 # v0.9.6
         with:
           pixi-version: "latest"

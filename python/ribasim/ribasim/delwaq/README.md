@@ -19,9 +19,9 @@ from util import run_delwaq
 
 toml_path = Path("generated_testmodels/basic/ribasim.toml")
 
-graph, substances = generate(toml_path)
+generate(toml_path)
 run_delwaq()
-model = parse(toml_path, graph, substances)
+model = parse(toml_path)
 ```
 
 The resulting Ribasim model will have an updated `model.basin.concentration_external` table with the Delwaq output.

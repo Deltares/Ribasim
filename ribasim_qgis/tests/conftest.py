@@ -1,10 +1,40 @@
 """Shared fixtures for QGIS plugin tests."""
 
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import netCDF4 as nc4
 import numpy as np
 import pytest
+
+
+@pytest.fixture(scope="session")
+def ribasim_plugin() -> Iterator[Any]:
+    """Provide the Ribasim plugin instance in both test environments.
+
+    - In a real QGIS process (the Docker test runner) the plugin is already
+      loaded by ``qgis_setup.sh`` and registered in ``qgis.utils.plugins``.
+    - Locally, pytest-qgis starts a QGIS application and patches
+      ``qgis.utils.iface`` with a mock interface, but does not load any
+      plugins, so we instantiate the plugin against that interface ourselves.
+    """
+    from qgis import utils
+
+    existing = utils.plugins.get("ribasim_qgis")
+    if existing is not None:
+        yield existing
+        return
+
+    from ribasim_qgis import classFactory
+
+    plugin = classFactory(utils.iface)
+    plugin.initGui()
+    utils.plugins["ribasim_qgis"] = plugin
+    try:
+        yield plugin
+    finally:
+        utils.plugins.pop("ribasim_qgis", None)
 
 
 @pytest.fixture
