@@ -735,10 +735,12 @@ function check_water_balance_error!(
 
         if s_now > 1.0e6 && abs(relative_error) > 0.006
             du = get_du(integrator)
-            println(stderr,
+            println(
+                stderr,
                 "WBDBG2 t=$(datetime_since(t, starttime)) id=$(id) " *
-                "storage_rate=$(storage_rate) net_acct=$(total_in - total_out) " *
-                "du_basin_inst=$(du.basin[id.idx]) inflow=$(inflow_rate) outflow=$(outflow_rate)")
+                    "storage_rate=$(storage_rate) net_acct=$(total_in - total_out) " *
+                    "du_basin_inst=$(du.basin[id.idx]) inflow=$(inflow_rate) outflow=$(outflow_rate)"
+            )
         end
 
         if abs(balance_error) > water_balance_abstol &&
