@@ -119,11 +119,12 @@ function Model(config::Config)::Model
     tstops = sort(unique(reduce(vcat, tstops)))
     adaptive = is_adaptive(config.solver.dt)
 
-    RHS = ODEFunction{true, FullSpecialize}(
+    specialize = config.solver.specialize ? FullSpecialize : NoSpecialize
+    RHS = ODEFunction{true, specialize}(
         water_balance!;
         get_diff_eval(du0, u0, parameters, config.solver)...,
     )
-    prob = ODEProblem{true, FullSpecialize}(RHS, u0, timespan, parameters)
+    prob = ODEProblem{true, specialize}(RHS, u0, timespan, parameters)
     @debug "Setup ODEProblem."
 
     callback, saved = create_callbacks(p_independent, config, saveat)

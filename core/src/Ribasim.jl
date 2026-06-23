@@ -52,7 +52,8 @@ using SciMLBase:
     ODEProblem,
     get_proposed_dt,
     DEIntegrator,
-    FullSpecialize
+    FullSpecialize,
+    NoSpecialize
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
