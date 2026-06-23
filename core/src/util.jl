@@ -1336,3 +1336,14 @@ function add_substance_mass!(
     end
     return nothing
 end
+
+get_t_end(config::Config) = seconds_since(config.endtime, config.starttime)
+
+function get_soil_moisture_tstops(config::Config)::Vector{Float64}
+    return if config.experimental.soil_moisture
+        t_end = get_t_end(config)
+        range(0, t_end; step = config.soil_moisture.dt)
+    else
+        Float64[]
+    end
+end

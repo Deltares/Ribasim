@@ -225,9 +225,14 @@ end
     route_priority::RoutePriority = RoutePriority()
 end
 
+@option struct SoilMoisture <: TableOption
+    dt::Union{Float64} = 86400.0
+end
+
 @option struct Experimental <: TableOption
     concentration::Bool = false
     allocation::Bool = false
+    soil_moisture::Bool = false
 end
 
 # For logging enabled experimental features
@@ -250,6 +255,7 @@ end
     results_dir::String
     interpolation::Interpolation = Interpolation()
     allocation::Allocation = Allocation()
+    soil_moisture::SoilMoisture = SoilMoisture()
     solver::Solver = Solver()
     logging::Logging = Logging()
     results::Results = Results()

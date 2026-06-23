@@ -60,8 +60,11 @@ function create_callbacks(
     saved_subgrid_level = SavedValues(Float64, Vector{Float64})
 
     # Compute irrigation demand from soil moisture balance
-    irrigation_demand_cb = FunctionCallingCallback(irrigation_demand!)
-    push!(callbacks, irrigation_demand_cb)
+    soil_moisture_tstops = get_soil_moisture_tstops(config)
+    if !isempty(soil_moisture_tstops)
+        soil_moisture_cb = FunctionCallingCallback(soil_moisture!; funcat = soil_moisture_tstops)
+        push!(callbacks, soil_moisture_cb)
+    end
 
     export_cb =
         SavingCallback(save_subgrid_level, saved_subgrid_level; saveat, save_start = true)
@@ -86,15 +89,23 @@ function create_callbacks(
     return callback, saved
 end
 
-function irrigation_demand!(u, t, integrator)::Nothing
-    (; irrigation_demand, demand) = integrator.p.p_independent.user_demand
-    (; node_id, do_irrigation, soil) = irrigation_demand
+function soil_moisture!(u, t, integrator)::Nothing
+    (; soil_moisture, demand) = integrator.p.p_independent.user_demand
+    (; node_id, do_soil_moisture, soil, dt_soil_moisture, cumulative_inflow_prev) = soil_moisture
+    (; water_flux_surface) = soil.boundary_conditions
+    (; user_demand_inflow) = u
+
+    is_start = iszero(t)
+    du = get_du(integrator)
 
     for id in node_id
-        if do_irrigation[id.idx]
-            # Do stuff!
+        if do_soil_moisture[id.idx]
+            # Set soil model surface inflow
+            water_flux_surface[id.idx] = is_start ? du.user_demand_inflow[id.idx] : (user_demand_inflow[id.idx] - cumulative_inflow_prev[id.idx]) / dt_soil_moisture
         end
     end
+
+    cumulative_inflow_prev .= user_demand_inflow
 
     return nothing
 end

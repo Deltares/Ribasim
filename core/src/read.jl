@@ -1310,7 +1310,19 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
         continuity_tracer = false,
     )
 
-    user_demand = UserDemand(; node_id, concentration_itp, demand_priorities)
+    user_demand = UserDemand(;
+        node_id,
+        concentration_itp,
+        demand_priorities,
+        soil_moisture = SoilMoisture(;
+            node_id,
+            dt_soil_moisture = config.soil_moisture.dt
+        )
+    )
+
+    if config.experimental.soil_moisture
+        user_demand.soil_moisture.do_soil_moisture .= true
+    end
 
 
     for (i, id) in enumerate(user_demand.node_id)
@@ -1711,6 +1723,7 @@ function Parameters(db::DB, config::Config)::Parameters
         convergence = CVector(zeros(n_states), state_ranges),
         u_reduced,
         config.solver.level_difference_threshold,
+        soil_moisture_tstops = get_soil_moisture_tstops(config)
     )
 
     collect_control_mappings!(p_independent)
