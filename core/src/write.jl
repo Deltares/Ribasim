@@ -535,9 +535,8 @@ end
 "Create an allocation result table for the saved data"
 function allocation_data(model::Model; table::Bool = true)
     (; config, integrator) = model
-    (; p_independent, state_and_time_dependent_cache) = integrator.p
-    (; current_storage) = state_and_time_dependent_cache
-    (; allocation, graph, basin, user_demand, flow_demand, level_demand) = p_independent
+    (; u, p) = integrator
+    (; allocation, graph, user_demand, flow_demand, level_demand) = p.p_independent
     (; demand_priorities_all, allocation_models) = allocation
     record_demand = StructVector(model.integrator.p.p_independent.allocation.record_demand)
 
@@ -618,7 +617,7 @@ function allocation_data(model::Model; table::Bool = true)
             for id in basin_ids_subnetwork_with_level_demand
                 j = searchsortedfirst(node_id, id)
                 supplied[view(has_priority, :, j), j, end] .=
-                    (current_storage[id.idx] - level_demand.storage_prev[id]) / Δt
+                    (u.storage[id.idx] - level_demand.storage_prev[id]) / Δt
             end
         end
     end

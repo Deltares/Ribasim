@@ -53,7 +53,7 @@ function water_balance!(
 
     du .= 0.0
 
-    # Ensures current_* vectors are current (storage, level, area from u.basin)
+    # Ensures current_* vectors are current (storage, level, area from u.storage)
     set_current_basin_properties!(u, p, t)
 
     # Notes on the ordering of these formulations:
@@ -144,11 +144,9 @@ function set_current_basin_properties!(
     end
 
     return if p_mutable.new_state_and_time_dependent_cache
-        # Storage is directly in u.basin
-        state_and_time_dependent_cache.current_storage .= u.basin
         for i in eachindex(basin.node_id)
             # Force storage positive, since Rosenbrock methods can overshoot to negative storages
-            s = ifelse(u.basin[i] > 0.0, u.basin[i], 0.0)
+            s = ifelse(u.storage[i] > 0.0, u.storage[i], 0.0)
             state_and_time_dependent_cache.current_low_storage_factor[i] =
                 reduction_factor(s, low_storage_threshold[i])
             @inbounds state_and_time_dependent_cache.current_level[i] =
@@ -183,11 +181,11 @@ function update_vertical_flux!(du::CVector, p::Parameters, t::Number)::Nothing
         state_and_time_dependent_cache.current_infiltration[i] = infiltration
 
         # Add vertical fluxes to basin storage derivative
-        du.basin[i] += fixed_area * vertical_flux.precipitation[i]
-        du.basin[i] += vertical_flux.surface_runoff[i]
-        du.basin[i] += vertical_flux.drainage[i]
-        du.basin[i] -= evaporation
-        du.basin[i] -= infiltration
+        du.storage[i] += fixed_area * vertical_flux.precipitation[i]
+        du.storage[i] += vertical_flux.surface_runoff[i]
+        du.storage[i] += vertical_flux.drainage[i]
+        du.storage[i] -= evaporation
+        du.storage[i] -= infiltration
     end
 
     # Flow boundary contributions
@@ -196,7 +194,7 @@ function update_vertical_flux!(du::CVector, p::Parameters, t::Number)::Nothing
         from_id = outflow_link.link[1]
         to_id = outflow_link.link[2]
         if to_id.type == NodeType.Basin
-            du.basin[to_id.idx] += p_independent.flow_boundary.flow_rate[from_id.idx](t)
+            du.storage[to_id.idx] += p_independent.flow_boundary.flow_rate[from_id.idx](t)
         end
     end
 
@@ -278,8 +276,8 @@ function formulate_pid_control!(
             else
                 dtarget = derivative(target[i], t)
             end
-            # With basin storage states, du.basin[idx] already contains the current dstorage
-            dstorage_listened_basin_old = du.basin[listened_node_id.idx]
+            # With basin storage states, du.storage[idx] already contains the current dstorage
+            dstorage_listened_basin_old = du.storage[listened_node_id.idx]
             # The expression below is the solution to an implicit equation for
             # dstorage_listened_basin. This equation results from the fact that if the derivative
             # term in the PID controller is used, the controlled pump flow rate depends on itself.
@@ -303,10 +301,10 @@ function apply_flow_to_basins!(
         outflow_id::NodeID,
     )::Nothing
     if inflow_id.type == NodeType.Basin
-        du.basin[inflow_id.idx] -= q
+        du.storage[inflow_id.idx] -= q
     end
     if outflow_id.type == NodeType.Basin
-        du.basin[outflow_id.idx] += q
+        du.storage[outflow_id.idx] += q
     end
     return nothing
 end

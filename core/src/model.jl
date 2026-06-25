@@ -241,7 +241,7 @@ function compute_and_set_adaptive_Δt!(model, saveat, tspan_end)::Float64
 
     Δt = Inf
     for am in allocation.allocation_models
-        Δt_sub = compute_adaptive_Δt(am, p, du, t, config.allocation)
+        Δt_sub = compute_adaptive_Δt(am, integrator, config.allocation)
         am.Δt_allocation = Δt_sub
         Δt = min(Δt, Δt_sub)
     end

@@ -557,7 +557,7 @@ end
     water_balance!(du, u, p, t)
 
     for am in allocation.allocation_models
-        Δt = compute_adaptive_Δt(am, p, du, t, config.allocation)
+        Δt = compute_adaptive_Δt(am, integrator, config.allocation)
 
         # Result must be at least dtmin and positive
         @test Δt >= config.allocation.dtmin

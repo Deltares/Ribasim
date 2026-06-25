@@ -368,9 +368,7 @@ and connector nodes. Then Δt_i = A_i·Δh_max / |dS_i/dt| per basin.
 """
 function compute_adaptive_Δt(
         allocation_model::AllocationModel,
-        p::Parameters,
-        du::CVector,
-        t::Float64,
+        integrator::DEIntegrator,
         allocation_config,
     )::Float64
     (; node_ids_in_subnetwork) = allocation_model
@@ -380,8 +378,8 @@ function compute_adaptive_Δt(
         linear_resistance_ids_subnetwork,
         manning_resistance_ids_subnetwork,
     ) = node_ids_in_subnetwork
+    (; du, u, p, t) = integrator
     (; basin, tabulated_rating_curve, linear_resistance, manning_resistance) = p.p_independent
-    (; current_storage) = p.state_and_time_dependent_cache
 
     Δt_min = allocation_config.dtmin
     ε_rel = allocation_config.reltol_linearization
@@ -393,7 +391,7 @@ function compute_adaptive_Δt(
     # Basin profile curvature: Δh ≤ sqrt(2·ε_rel·S_max / |dA/dh|)
     for basin_id in basin_ids_subnetwork
         idx = basin_id.idx
-        storage_now = current_storage[idx]
+        storage_now = u.storage[idx]
         level_now = get_level_from_storage(basin, idx, storage_now)
         storage_max = basin.storage_to_level[idx].t[end]
         m = get_area_slope(basin, idx, level_now)
@@ -434,14 +432,14 @@ function compute_adaptive_Δt(
 
     for basin_id in basin_ids_subnetwork
         idx = basin_id.idx
-        A = get_area_from_storage(basin, idx, current_storage[idx])
+        A = get_area_from_storage(basin, idx, u.storage[idx])
 
         if A < eps()
             continue
         end
 
-        # du.basin = dS/dt
-        dstorage = du.basin[idx]
+        # du.storage = dS/dt
+        dstorage = du.storage[idx]
 
         if abs(dstorage) < eps()
             continue
@@ -610,13 +608,12 @@ function add_to_coefficient!(
     return JuMP.set_normalized_coefficient(constraint, variable, value + addition)
 end
 
-function update_storage_prev!(p::Parameters)::Nothing
-    (; p_independent, state_and_time_dependent_cache) = p
-    (; current_storage) = state_and_time_dependent_cache
+function update_storage_prev!(u::CVector, p::Parameters)::Nothing
+    (; p_independent) = p
     (; storage_prev) = p_independent.level_demand
 
     for node_id in keys(storage_prev)
-        storage_prev[node_id] = current_storage[node_id.idx]
+        storage_prev[node_id] = u.storage[node_id.idx]
     end
 
     return nothing

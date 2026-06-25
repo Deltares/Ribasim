@@ -171,7 +171,7 @@ function correct_cumulative_flows!(integrator)::Nothing
     # Per-basin continuity residual: exact storage change minus what the exact forcing
     # integrals and the quadrature volumes account for.
     @. rhs =
-        u.basin - uprev.basin -
+        u.storage - uprev.storage -
         (tdc_basin.current_cumulative_precipitation - basin.cumulative_precipitation) -
         (tdc_basin.current_cumulative_surface_runoff - basin.cumulative_surface_runoff) -
         (tdc_basin.current_cumulative_drainage - basin.cumulative_drainage) +
@@ -378,7 +378,7 @@ end
 function update_concentrations!(u, t, integrator)::Nothing
     (; p, tprev, dt) = integrator
     (; p_independent, state_and_time_dependent_cache) = p
-    (; current_storage, current_level) = state_and_time_dependent_cache
+    (; current_level) = state_and_time_dependent_cache
     (; basin, flow_boundary, do_concentration) = p_independent
     (; vertical_flux, concentration_data) = basin
     (;
@@ -504,18 +504,18 @@ function update_concentrations!(u, t, integrator)::Nothing
         end
 
         # Update the Basin concentrations again based on the removed mass
-        s = current_storage[node_id.idx]
+        s = u.storage[node_id.idx]
         if iszero(s)
             concentration_state[node_id.idx, :] .= 0
         else
             concentration_state[node_id.idx, :] .=
-                mass[node_id.idx] ./ current_storage[node_id.idx]
+                mass[node_id.idx] ./ u.storage[node_id.idx]
         end
     end
 
     errors && error("Negative mass(es) detected at t = $t s")
 
-    basin.storage_prev .= current_storage
+    basin.storage_prev .= u.storage
     basin.level_prev .= current_level
     return nothing
 end
@@ -584,8 +584,8 @@ end
 Save the storages and levels at the latest t.
 """
 function save_basin_state(u, t, integrator)
-    (; current_storage, current_level) = integrator.p.state_and_time_dependent_cache
-    return SavedBasinState(; storage = copy(current_storage), level = copy(current_level), t)
+    (; current_level) = integrator.p.state_and_time_dependent_cache
+    return SavedBasinState(; storage = copy(u.storage), level = copy(current_level), t)
 end
 
 """
@@ -697,8 +697,7 @@ function check_water_balance_error!(
         Δt::Float64,
     )::Nothing
     (; u, p, t) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
-    (; current_storage) = state_and_time_dependent_cache
+    (; p_independent) = p
 
     (; basin, water_balance_abstol, water_balance_reltol, starttime) = p_independent
     errors = false
@@ -722,7 +721,7 @@ function check_water_balance_error!(
             saved_flow.drainage,
             saved_flow.evaporation,
             saved_flow.infiltration,
-            current_storage,
+            u.storage,
             basin.Δstorage_prev_saveat,
             basin.node_id,
         )
@@ -739,7 +738,7 @@ function check_water_balance_error!(
                 stderr,
                 "WBDBG2 t=$(datetime_since(t, starttime)) id=$(id) " *
                     "storage_rate=$(storage_rate) net_acct=$(total_in - total_out) " *
-                    "du_basin_inst=$(du.basin[id.idx]) inflow=$(inflow_rate) outflow=$(outflow_rate)"
+                    "du_basin_inst=$(du.aroeFW[id.idx]) inflow=$(inflow_rate) outflow=$(outflow_rate)"
             )
         end
 
@@ -758,7 +757,7 @@ function check_water_balance_error!(
         error("Too large water balance error(s) detected at t = $t")
     end
 
-    @. basin.Δstorage_prev_saveat = current_storage
+    @. basin.Δstorage_prev_saveat = u.storage
     return nothing
 end
 
@@ -785,7 +784,7 @@ function check_negative_storage(u, t, integrator)::Nothing
 
     errors = false
     for id in basin.node_id
-        if u.basin[id.idx] < 0
+        if u.storage[id.idx] < 0
             @error "Negative storage detected in $id"
             errors = true
         end

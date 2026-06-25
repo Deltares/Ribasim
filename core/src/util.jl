@@ -192,12 +192,6 @@ function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
     end
 end
 
-function get_storage(p::Parameters, node_id::NodeID, t::Number)::Float64
-    (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
-
-    return state_and_time_dependent_cache.current_storage[node_id.idx]
-end
-
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
 function basin_bottom(basin::Basin, node_id::NodeID)::Tuple{Bool, Float64}
     return if node_id.type == NodeType.Basin
@@ -859,7 +853,7 @@ function state_node_ids(
         p::Union{ParametersIndependent, NamedTuple},
     )::StateTuple{Vector{NodeID}}
     return (;
-        basin = p.basin.node_id,
+        storage = p.basin.node_id,
         integral = p.pid_control.node_id,
     )
 end
@@ -882,7 +876,7 @@ end
 "Initialize the state vector with basin storages"
 function initialize_state_vector!(u::CVector, p_independent::ParametersIndependent)
     (; basin) = p_independent
-    u.basin .= basin.storage0
+    u.storage .= basin.storage0
     # Initialize prev-saveat storage so the first water balance check
     # correctly computes storage_rate = (s_now - storage0) / Δt
     basin.Δstorage_prev_saveat .= basin.storage0
@@ -891,10 +885,10 @@ end
 
 """
 Check whether any storages are negative given the state u.
-Storage states are directly in u.basin.
+Storage states are directly in u.storage.
 """
 function isoutofdomain(u, p, t)
-    return any(<(0), u.basin)
+    return any(<(0), u.storage)
 end
 
 function get_demand(user_demand, id, demand_priority_idx, t)::Float64

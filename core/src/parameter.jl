@@ -8,7 +8,7 @@ const SolverStats = @NamedTuple{
     dt::Float64,
 }
 
-const state_components = (:basin, :integral)
+const state_components = (:storage, :integral)
 const n_components = length(state_components)
 const StateTuple{V} = NamedTuple{state_components, NTuple{n_components, V}}
 const RibasimCVectorType{T} =
@@ -764,7 +764,6 @@ this cache is required for automatic differentiation, where e.g. ForwardDiff req
 be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
 """
 const StateAndTimeDependentCache{T} = @NamedTuple{
-    current_storage::Vector{T},
     current_low_storage_factor::Vector{T},
     current_level::Vector{T},
     current_area::Vector{T},
@@ -837,6 +836,7 @@ Get one of the vectors of the StateAndTimeDependentCache based on the passed typ
 """
 function get_cache_vector(
         state_and_time_dependent_cache::StateAndTimeDependentCache,
+        u::CVector,
         type::CacheType.T,
     )
     return if type == CacheType.flow_rate_pump
@@ -854,7 +854,7 @@ function get_cache_vector(
     elseif type == CacheType.basin_level
         state_and_time_dependent_cache.current_level
     elseif type == CacheType.basin_storage
-        state_and_time_dependent_cache.current_storage
+        u.storage
     else
         error("Invalid cache type $type passed.")
     end
@@ -1233,7 +1233,6 @@ function StateAndTimeDependentCache(
     n_states = n_basin + n_pid_control
 
     return (;
-        current_storage = zeros(n_basin),
         current_low_storage_factor = zeros(n_basin),
         current_level = zeros(n_basin),
         current_area = zeros(n_basin),

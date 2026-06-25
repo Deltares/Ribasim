@@ -15,7 +15,7 @@
     (; p_independent) = model.integrator.p
 
     @test u isa CVector
-    @test filter(!isempty, getaxes(u)) == (; basin = 1:1)
+    @test filter(!isempty, getaxes(u)) == (; storage = 1:1)
 
     # Open NetCDF result files
     flow_path = normpath(dirname(toml_path), "results/flow.nc")
@@ -129,9 +129,9 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    (; p_independent, state_and_time_dependent_cache) = model.integrator.p
-    (; basin) = p_independent
-    @test state_and_time_dependent_cache.current_storage ≈ [1000]
+    (; u, p) = model.integrator
+    (; basin) = p.p_independent
+    @test u.storage ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
@@ -153,11 +153,10 @@ end
     (; integrator) = model
     du = get_du(integrator)
     (; u, p, t) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
-    (; basin) = p_independent
+    (; basin) = p.p_independent
 
     Ribasim.water_balance!(du, u, p, t)
-    stor = state_and_time_dependent_cache.current_storage
+    stor = u.storage
     prec = basin.vertical_flux.precipitation
     evap = basin.vertical_flux.potential_evaporation
     drng = basin.vertical_flux.drainage
@@ -208,8 +207,8 @@ end
     @test model isa Ribasim.Model
 
     (; integrator) = model
-    (; p) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
+    (; u, p) = integrator
+    (; p_independent) = p
 
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p_independent))
@@ -218,7 +217,7 @@ end
 
     @test success(model)
     @test length(model.integrator.sol.t) == 2 # start and end
-    @test state_and_time_dependent_cache.current_storage ≈
+    @test u.storage ≈
         Float32[775.23576, 775.23365, 572.60102, 1130.005] skip = Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
@@ -283,10 +282,11 @@ end
     @test model isa Ribasim.Model
     @test success(model)
     @test allunique(Ribasim.tsaves(model))
-    (; p_independent, state_and_time_dependent_cache) = model.integrator.p
+    (; u, p) = model.integrator
+    (; p_independent, state_and_time_dependent_cache) = p
     precipitation = p_independent.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
-    @test state_and_time_dependent_cache.current_storage ≈
+    @test u.storage ≈
         Float32[691.797, 691.795, 459.022, 1136.969] atol = 3.0
 end
 
@@ -334,9 +334,9 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test success(model)
-    (; p_independent, state_and_time_dependent_cache) = model.integrator.p
-    @test state_and_time_dependent_cache.current_storage ≈ Float32[368.31558, 365.68442] skip =
-        Sys.isapple()
+    (; u, p) = model.integrator
+    (; p_independent, state_and_time_dependent_cache) = p
+    @test u.storage ≈ Float32[368.31558, 365.68442] skip = Sys.isapple()
     (; tabulated_rating_curve) = p_independent
     # The first node is static, the first interpolation object always applies
     index_itp1 = tabulated_rating_curve.current_interpolation_index[1]
@@ -401,13 +401,13 @@ end
 
     day = 86400.0
 
-    @test only(u.basin) ≈ 1000.0
+    @test only(u.storage) ≈ 1000.0
     # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
     BMI.update_until(model, 150day)
-    @test only(state_and_time_dependent_cache.current_storage) ≈ 900 atol = 5
+    @test only(u.storage) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
     BMI.update_until(model, 200day)
-    @test only(state_and_time_dependent_cache.current_storage) ≈ 500 atol = 2
+    @test only(u.storage) ≈ 500 atol = 2
 
     # Transient return factor
     flow = DataFrame(Ribasim.flow_data(model))
@@ -502,13 +502,13 @@ end
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
     @test Ribasim.get_flow(
-        du,
+        p_independent.current_flow_rate,
         p_independent,
         t,
         (NodeID(:FlowBoundary, 1, p_independent), NodeID(:Basin, 2, p_independent)),
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
     @test Ribasim.get_flow(
-        du,
+        p_independent.current_flow_rate,
         p_independent,
         t,
         (
