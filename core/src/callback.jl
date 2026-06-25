@@ -91,7 +91,7 @@ end
 
 function soil_moisture!(u, t, integrator)::Nothing
     (; soil_moisture, demand) = integrator.p.p_independent.user_demand
-    (; node_id, do_soil_moisture, soil, dt_soil_moisture, cumulative_inflow_prev) = soil_moisture
+    (; node_id, do_soil_moisture, soil, dt_soil_moisture, cumulative_inflow_prev, dt_soil_moisture) = soil_moisture
     (; water_flux_surface) = soil.boundary_conditions
     (; user_demand_inflow) = u
 
@@ -101,9 +101,15 @@ function soil_moisture!(u, t, integrator)::Nothing
     for id in node_id
         if do_soil_moisture[id.idx]
             # Set soil model surface inflow
-            water_flux_surface[id.idx] = is_start ? du.user_demand_inflow[id.idx] : (user_demand_inflow[id.idx] - cumulative_inflow_prev[id.idx]) / dt_soil_moisture
+            water_flux_surface[id.idx] = is_start ?
+                du.user_demand_inflow[id.idx] :
+                (user_demand_inflow[id.idx] - cumulative_inflow_prev[id.idx]) / dt_soil_moisture
         end
     end
+
+    update_soil_water_flow!(soil, dt_soil_moisture)
+
+    @show water_flux_surface
 
     cumulative_inflow_prev .= user_demand_inflow
 

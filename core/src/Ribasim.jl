@@ -67,6 +67,9 @@ using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 # For efficient sparse computations
 using SparseArrays: SparseMatrixCSC, sparse, nzrange
 
+# For fast small arrays
+using StaticArrays: SVector
+
 # Linear algebra
 using LinearAlgebra: LinearAlgebra, mul!, UniformScaling
 
@@ -176,6 +179,7 @@ import WflowSoil:
     SbmSoilVariables,
     SbmSoilBC,
     KvExponential,
+    update_soil_water_flow!,
     SbmSoilModel
 
 include("carrays.jl")

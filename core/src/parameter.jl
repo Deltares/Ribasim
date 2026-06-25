@@ -960,8 +960,14 @@ end
     do_soil_moisture::Vector{Bool} = zeros(Bool, length(node_id))
     dt_soil_moisture::Float64 = NaN
     cumulative_inflow_prev::Vector{Float64} = zeros(length(node_id))
-    soil::SbmSoilModel{1, 2, Nothing} = SbmSoilModel(;
-        n = length(node_id), maximum_number_of_layers = 1
+    soil::SbmSoilModel{4, 5, KvExponential} = SbmSoilModel(;
+        n = length(node_id),
+        maximum_number_of_layers = 4,
+        parameters = SbmSoilParameters(;
+            n = length(node_id),
+            maximum_number_of_layers = 4,
+            kv_profile = KvExponential(zeros(length(node_id)), zeros(length(node_id)))
+        )
     )
 end
 
