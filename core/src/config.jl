@@ -388,8 +388,9 @@ function function_accepts_kwarg(f, kwarg)::Bool
 end
 
 function get_ad_type(solver::Solver)
+    chunksize = solver.specialize ? nothing : 1
     return if solver.autodiff
-        AutoForwardDiff(; tag = :Ribasim)
+        AutoForwardDiff(; chunksize, tag = :Ribasim)
     else
         AutoFiniteDiff()
     end
