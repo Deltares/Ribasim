@@ -23,8 +23,10 @@ Ribasim builds on several packages from the [SciML](https://sciml.ai/) ecosystem
 The ODE problem is assembled in `core/src/model.jl`. The key steps are:
 
 1. Build the `Parameters` struct containing all model data
-2. Construct an in-place `ODEFunction{true, FullSpecialize}` wrapping `water_balance!`, supplying the analytic sparsity pattern, the AD-based Jacobian, and (for Rosenbrock methods) the time gradient produced by `get_diff_eval` (`core/src/solve.jl`)
+2. Construct an in-place `ODEFunction` wrapping `water_balance!`, supplying the analytic sparsity pattern, the AD-based Jacobian, and (for Rosenbrock methods) the time gradient produced by `get_diff_eval` (`core/src/solve.jl`)
 3. Wrap it in an `ODEProblem` and create the integrator with `init`, registering all callbacks
+
+OrdinaryDiffEq's specialization level is also chosen here: `FullSpecialize` produces the fastest code but compiles on every type change, while `NoSpecialize` reduces compilation time at the cost of some runtime performance.
 
 The simulation is then advanced with `step!(integrator)` in a loop until `t_end`.
 
