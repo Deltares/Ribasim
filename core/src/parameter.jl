@@ -836,8 +836,8 @@ Get one of the vectors of the StateAndTimeDependentCache based on the passed typ
 """
 function get_cache_vector(
         state_and_time_dependent_cache::StateAndTimeDependentCache,
-        u::CVector,
-        type::CacheType.T,
+        type::CacheType.T;
+        u::Union{Nothing, CVector} = nothing
     )
     return if type == CacheType.flow_rate_pump
         state_and_time_dependent_cache.current_flow_rate_pump
@@ -1327,8 +1327,8 @@ end
 Base.show(io::IO, ::Parameters) = print(io, "Ribasim Parameters")
 Base.show(io::IO, ::MIME"text/plain", ::Parameters) = print(io, "Ribasim Parameters")
 
-function get_value(ref::CacheRef, p::Parameters)
-    return get_cache_vector(p.state_and_time_dependent_cache, ref.type)[ref.idx]
+function get_value(ref::CacheRef, u::CVector, p::Parameters)
+    return get_cache_vector(p.state_and_time_dependent_cache, ref.type; u)[ref.idx]
 end
 
 function set_value!(ref::CacheRef, p::Parameters, value)

@@ -62,7 +62,8 @@ function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     (; basin, user_demand, subgrid) = p_independent
 
     return if name == "basin.storage"
-        u.storage::Vector{Float64}
+        s = u.storage
+        unsafe_wrap(Vector{Float64}, pointer(s), length(s))
     elseif name == "basin.level"
         state_and_time_dependent_cache.current_level
     elseif name == "basin.infiltration"

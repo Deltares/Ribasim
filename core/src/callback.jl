@@ -828,7 +828,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 
         # Loop over the compound variables listened to by this discrete control node
         for compound_variable in compound_variables_node
-            value = compound_variable_value(compound_variable, p, t)
+            value = compound_variable_value(compound_variable, u, p, t)
 
             # Loop over the threshold interpolations associated with the current compound variable
             for (threshold_low, threshold_high) in
@@ -938,12 +938,12 @@ end
 Get a value for a condition. Currently supports getting levels from Basins and flows
 from FlowBoundaries.
 """
-function get_value(subvariable::SubVariable, p::Parameters, t::Real)
+function get_value(subvariable::SubVariable, u::CVector, p::Parameters, t::Real)
     (; flow_boundary, level_boundary, basin) = p.p_independent
     (; listen_node_id, look_ahead, variable, cache_ref) = subvariable
 
     if !iszero(cache_ref.idx)
-        return get_value(cache_ref, p)
+        return get_value(cache_ref, u, p)
     end
 
     if variable == "level"
@@ -977,10 +977,10 @@ function get_value(subvariable::SubVariable, p::Parameters, t::Real)
     return value
 end
 
-function compound_variable_value(compound_variable::CompoundVariable, p, t)
+function compound_variable_value(compound_variable::CompoundVariable, u, p, t)
     value = zero(typeof(t))
     for subvariable in compound_variable.subvariables
-        value += subvariable.weight * get_value(subvariable, p, t)
+        value += subvariable.weight * get_value(subvariable, u, p, t)
     end
     return value
 end

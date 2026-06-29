@@ -378,7 +378,8 @@ function compute_adaptive_Δt(
         linear_resistance_ids_subnetwork,
         manning_resistance_ids_subnetwork,
     ) = node_ids_in_subnetwork
-    (; du, u, p, t) = integrator
+    (; u, p, t) = integrator
+    du = get_du(integrator)
     (; basin, tabulated_rating_curve, linear_resistance, manning_resistance) = p.p_independent
 
     Δt_min = allocation_config.dtmin
