@@ -67,6 +67,9 @@ using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 # For efficient sparse computations
 using SparseArrays: SparseMatrixCSC, sparse, nzrange
 
+# For fast small arrays
+using StaticArrays: SVector
+
 # Linear algebra
 using LinearAlgebra: LinearAlgebra, mul!, UniformScaling
 
@@ -167,6 +170,17 @@ using Dates: Second
 using Printf: @sprintf
 
 using Base.Threads: nthreads
+
+import WflowSoil:
+    AbstractSoilModel,
+    WflowSoil,
+    VegetationParameters,
+    SbmSoilParameters,
+    SbmSoilVariables,
+    SbmSoilBC,
+    KvExponential,
+    update_soil_water_flow!,
+    SbmSoilModel
 
 include("carrays.jl")
 using .CArrays: CVector, getaxes, getdata

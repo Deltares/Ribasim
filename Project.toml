@@ -68,6 +68,7 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 SparseConnectivityTracer = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
 SparseMatrixColorings = "0a514795-09f3-496d-8182-132a7b665d35"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
@@ -76,6 +77,7 @@ TerminalLoggers = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
+WflowSoil = "e4c7f7b8-5a3d-4e6f-9c1a-2b8d3f4e5a6c"
 
 [sources]
 Ribasim = {path = "core"}

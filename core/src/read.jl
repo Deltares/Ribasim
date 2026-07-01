@@ -1310,7 +1310,76 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
         continuity_tracer = false,
     )
 
-    user_demand = UserDemand(; node_id, concentration_itp, demand_priorities)
+    user_demand = UserDemand(;
+        node_id,
+        concentration_itp,
+        demand_priorities,
+        soil_moisture = SoilMoisture(;
+            node_id,
+            dt_soil_moisture = config.soil_moisture.dt
+        )
+    )
+
+    if config.experimental.soil_moisture
+        user_demand.soil_moisture.do_soil_moisture .= true
+
+        (; parameters, variables) = user_demand.soil_moisture.soil
+
+        # --- States ---
+        variables.states.saturated_water_depth .= [0.6336819142103195, 0.6223440952599049, 0.633393421024084]
+        variables.states.unsaturated_layer_depth .= [SVector(0.0, 0.0, 0.0, 0.0) for _ in 1:3]
+        variables.states.soil_surface_temperature .= 283.15
+
+        # --- Parameters ---
+        parameters.number_of_layers .= 4
+        parameters.theta_s .= [0.4936501383781433, 0.4856095016002655, 0.4896019399166107]
+        parameters.theta_r .= [0.12089607119560242, 0.11952473968267441, 0.11701757460832596]
+        parameters.theta_fc .= [0.28829374379326417, 0.2828934334246708, 0.28145770829497696]
+        parameters.soil_water_capacity .= [0.7455081343650818, 0.7321695238351822, 0.7451687306165695]
+        parameters.vertical_hydraulic_conductivity_factor .= [SVector(1.0, 1.0, 1.0, 1.0) for _ in 1:3]
+        parameters.air_entry_pressure .= -0.1
+        parameters.soil_thickness .= 2.0
+        parameters.actual_layer_thickness .= [SVector(0.1, 0.3, 0.8, 0.8) for _ in 1:3]
+        parameters.cumulative_layer_depth .= [SVector(0.0, 0.1, 0.4, 1.2, 2.0) for _ in 1:3]
+        parameters.infiltration_capacity_compacted_soil .= 5.787037037037037e-8
+        parameters.infiltration_capacity_soil .= [1.8060196770562067e-5, 2.1529566446940104e-5, 2.6307799727828415e-5]
+        parameters.maximum_leakage .= 0.0
+        parameters.cap_hmax .= 2.0
+        parameters.cap_n .= 2.0
+        parameters.brooks_corey_exponent .= [
+            SVector(9.152995289601465, 8.919674421902961, 8.70537452585209, 8.690681062890977),
+            SVector(9.093686256541382, 8.858799630699316, 8.669394392029556, 8.644073326906648),
+            SVector(9.026845461395366, 8.800500076253016, 8.599553948318007, 8.55168237076936),
+        ]
+        parameters.w_soil .= 0.1125
+        parameters.cf_soil .= 0.038
+        parameters.compacted_soil_area_fraction .= 0.0
+        parameters.wet_root_distribution_parameter .= -500000.0
+        parameters.rootfraction .= [
+            SVector(0.25252525252525254, 0.7474747474747475, 0.0, 0.0),
+            SVector(0.25125628140703515, 0.7487437185929648, 0.0, 0.0),
+            SVector(0.25, 0.7499999999999999, 0.0, 0.0),
+        ]
+        parameters.h1 .= 0.0
+        parameters.h2 .= -1.0
+        parameters.h3_high .= -4.0
+        parameters.h3_low .= -10.0
+        parameters.h4 .= -160.0
+        parameters.alpha_h1 .= 1.0
+
+        # --- kv_profile (KvExponential) ---
+        kv = parameters.kv_profile
+        kv.kv_0 .= [1.8060196770562067e-5, 2.1529566446940104e-5, 2.6307799727828415e-5]
+        kv.hydraulic_conductivity_scale_parameter .= [0.6724068662151694, 0.9589388500899076, 0.9221120271831751]
+
+        # --- VegetationParameters ---
+        veg = parameters.vegetation_parameter_set
+        veg.rooting_depth .= [0.396, 0.398, 0.4]
+        veg.crop_coefficient .= 1.0
+        # veg.storage_wood .= [0.0005, 0.0004847555458545685, 0.0005]
+        # veg.light_extinction_coefficient .= [0.800000011920929, 0.7937777638435364, 0.800000011920929]
+        # veg.storage_specific_leaf .= [4.164666682481766e-5, 4.365777969360352e-5, 4.041333496570587e-5]
+    end
 
 
     for (i, id) in enumerate(user_demand.node_id)
@@ -1711,6 +1780,7 @@ function Parameters(db::DB, config::Config)::Parameters
         convergence = CVector(zeros(n_states), state_ranges),
         u_reduced,
         config.solver.level_difference_threshold,
+        soil_moisture_tstops = get_soil_moisture_tstops(config)
     )
 
     collect_control_mappings!(p_independent)

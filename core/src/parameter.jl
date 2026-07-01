@@ -955,6 +955,22 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
         OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
 end
 
+@kwdef struct SoilMoisture
+    node_id::Vector{NodeID}
+    do_soil_moisture::Vector{Bool} = zeros(Bool, length(node_id))
+    dt_soil_moisture::Float64 = NaN
+    cumulative_inflow_prev::Vector{Float64} = zeros(length(node_id))
+    soil::SbmSoilModel{4, 5, KvExponential} = SbmSoilModel(;
+        n = length(node_id),
+        maximum_number_of_layers = 4,
+        parameters = SbmSoilParameters(;
+            n = length(node_id),
+            maximum_number_of_layers = 4,
+            kv_profile = KvExponential(zeros(length(node_id)), zeros(length(node_id)))
+        )
+    )
+end
+
 """
 node_id: node ID of the UserDemand node
 demand_priorities: All demand priorities that exist in the model (not just by UserDemand) sorted
@@ -999,6 +1015,7 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     min_level::Vector{Float64} = zeros(length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
+    soil_moisture = SoilMoisture(; node_id)
 end
 
 """
@@ -1168,6 +1185,8 @@ the object itself is not.
     # Reduced state where the cumulative flows are combined into Basin
     # storages (without non-state cumulative_flows)
     u_reduced::RibasimReducedCVectorType{Float64}
+    # Solver stops for soil moisture
+    soil_moisture_tstops::Vector{Float64} = Float[]
     # Solver constants
     level_difference_threshold::Float64
 end
