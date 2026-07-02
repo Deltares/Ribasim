@@ -18,13 +18,13 @@ function set_simulation_data!(
 
     errors = false
 
-    errors |= set_simulation_data!(allocation_model, basin, p, t, du)
+    errors |= set_simulation_data!(allocation_model, basin, integrator)
     set_simulation_data!(allocation_model, level_boundary, t)
     set_simulation_data!(allocation_model, flow_boundary, p, t)
     set_simulation_data!(allocation_model, linear_resistance, p, t)
     set_simulation_data!(allocation_model, manning_resistance, p, t)
     set_simulation_data!(allocation_model, tabulated_rating_curve, p, t)
-    set_simulation_data!(allocation_model, pump, outlet, du)
+    set_simulation_data!(allocation_model, pump, outlet, p.state_and_time_dependent_cache)
     set_simulation_data!(allocation_model, user_demand, t)
 
     if errors
@@ -38,9 +38,7 @@ end
 function set_simulation_data!(
         allocation_model::AllocationModel,
         basin::Basin,
-        p::Parameters,
-        t::Float64,
-        du::CVector,
+        integrator::DEIntegrator
     )::Bool
     (;
         problem,
@@ -52,11 +50,12 @@ function set_simulation_data!(
     ) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
     (; storage_to_level, vertical_flux) = basin
+    du = get_du(integrator)
+    (; u) = integrator
 
     storage_change = problem[:basin_storage_change]
     volume_conservation = problem[:volume_conservation]
     low_storage_factor = problem[:low_storage_factor]
-    (; current_storage) = p.state_and_time_dependent_cache
 
     errors = false
     flow = problem[:flow]
@@ -65,13 +64,14 @@ function set_simulation_data!(
     # Set Basin starting storages and levels
     for basin_id in basin_ids_subnetwork
         idx = basin_id.idx
-        storage_now = current_storage[idx]
+        storage_now = u.storage[idx]
         storage_max = storage_to_level[idx].t[end]
 
         # Set bounds on the storage change based on the current storage and the Basin minimum, maximum, and a delta_storage prediction
         Δstorage = storage_change[basin_id]
         JuMP.set_lower_bound(Δstorage, -storage_now / scaling.storage)
-        Δstorage_predicted = formulate_dstorage_wrt_time(du, p.p_independent, t, basin_id) * Δt_allocation
+        # du.storage = dS/dt
+        Δstorage_predicted = du.storage[idx] * Δt_allocation
 
         Δstorage_upper = if storage_now > storage_max
             max(2 * Δstorage_predicted, 0.0)
@@ -350,7 +350,7 @@ function set_simulation_data!(
         allocation_model::AllocationModel,
         pump::Pump,
         outlet::Outlet,
-        du::CVector,
+        cache::StateAndTimeDependentCache,
     )::Nothing
     (; problem, scaling) = allocation_model
     pump_constraints = problem[:pump]
@@ -360,7 +360,7 @@ function set_simulation_data!(
     for node_id in only(pump_constraints.axes)
         constraint = pump_constraints[node_id]
         upstream_node_id = pump.inflow_link[node_id.idx].link[1]
-        q = du.pump[node_id.idx]
+        q = cache.current_flow_rate.pump[node_id.idx]
         if upstream_node_id.type == NodeType.Basin
             low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
             JuMP.set_normalized_coefficient(
@@ -377,7 +377,7 @@ function set_simulation_data!(
     for node_id in only(outlet_constraints.axes)
         constraint = outlet_constraints[node_id]
         upstream_node_id = outlet.inflow_link[node_id.idx].link[1]
-        q = du.outlet[node_id.idx]
+        q = cache.current_flow_rate.outlet[node_id.idx]
         if upstream_node_id.type == NodeType.Basin
             low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
             JuMP.set_normalized_coefficient(
@@ -661,9 +661,9 @@ function set_demands!(
         level_demand::LevelDemand,
         integrator::DEIntegrator,
     )::Nothing
-    (; p, t) = integrator
+    (; u, p, t) = integrator
     (; p_independent, state_and_time_dependent_cache) = p
-    (; current_level, current_area, current_storage) = state_and_time_dependent_cache
+    (; current_level, current_area) = state_and_time_dependent_cache
     (; basin, allocation) = p_independent
     (; demand_priorities_all) = allocation
     (; has_demand_priority, min_level, max_level, storage_demand) = level_demand
@@ -695,7 +695,7 @@ function set_demands!(
         level_min_prev_priority = basin_bottom(basin, basin_id)[2]
         level_max_prev_priority = Inf
         A = current_area[basin_id.idx]
-        storage_now = current_storage[basin_id.idx]
+        storage_now = u.storage[basin_id.idx]
 
         for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
             !has_demand_priority[level_demand_id.idx, demand_priority_idx] && continue
@@ -766,13 +766,13 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     flow = problem[:flow]
     storage_change = problem[:basin_storage_change]
     du = get_du(integrator)
-    (; link_to_state_idx) = p.p_independent
 
     # Extrapolate the current instantaneous flow rates from the physical layer
+    flow_link_lookup = p.p_independent.graph[].flow_link_lookup
     for link in only(flow.axes)
-        state_index = get_state_index(getaxes(du), link_to_state_idx, link)
-        if !isnothing(state_index)
-            JuMP.set_start_value(flow[link], du[state_index] / scaling.flow)
+        link_idx = get_link_index(link, flow_link_lookup)
+        if !isnothing(link_idx)
+            JuMP.set_start_value(flow[link], p.p_independent.mean_flow_dt[link_idx] / scaling.flow)
         end
     end
 
@@ -780,8 +780,7 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     for node_id in basin_ids_subnetwork
         JuMP.set_start_value(
             storage_change[node_id],
-            formulate_dstorage_wrt_time(du, p.p_independent, t, node_id) * Δt_allocation /
-                scaling.storage,
+            du.storage[node_id.idx] * Δt_allocation / scaling.storage,
         )
     end
 
@@ -990,9 +989,8 @@ function parse_allocations!(
         level_demand::LevelDemand,
         allocation_model::AllocationModel,
     )::Nothing
-    (; p, t) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
-    (; current_storage) = state_and_time_dependent_cache
+    (; u, p, t) = integrator
+    (; p_independent) = p
     (; allocation, basin) = p_independent
     (; record_demand, demand_priorities_all) = allocation
     (; has_demand_priority, storage_prev, storage_demand) = level_demand
@@ -1002,7 +1000,7 @@ function parse_allocations!(
     storage_change = problem[:basin_storage_change]
 
     for node_id in basin_ids_subnetwork_with_level_demand
-        supplied_basin_volume = current_storage[node_id.idx] - storage_prev[node_id]
+        supplied_basin_volume = u.storage[node_id.idx] - storage_prev[node_id]
         storage_change_basin = JuMP.value(storage_change[node_id]) * scaling.storage
 
         for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
@@ -1307,7 +1305,7 @@ function update_allocation!(model, Δt = 0.0; record::Bool = true)::Nothing
     end
 
     # Update storage_prev for level_demand
-    update_storage_prev!(p)
+    update_storage_prev!(u, p)
 
     return nothing
 end

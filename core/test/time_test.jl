@@ -42,7 +42,7 @@ end
         # high tolerance since the area is only approximate
         @test gb.evaporation ≈ area .* pot_evap atol = 1.0e-5
         prec = basin.forcing.precipitation[i](seconds)
-        fixed_area = Ribasim.basin_areas(basin, i)[end]
+        fixed_area = Ribasim.get_fixed_area(basin, i)
         @test gb.precipitation ≈ fixed_area .* prec
     end
 end
@@ -109,17 +109,6 @@ end
     tstops = Vector{Float64}[]
     Ribasim.get_timeseries_tstops!(tstops, t_end, basin.forcing.precipitation)
     @test length(only(tstops)) == 404
-end
-
-@testitem "decrease tolerance" begin
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/cyclic_time/ribasim.toml")
-    @test ispath(toml_path)
-
-    model = Ribasim.run(toml_path)
-    @test model.integrator.opts.reltol isa Vector{Float64}
-    @test all(model.integrator.opts.reltol .<= model.integrator.p.p_independent.reltol)
-    @test model.integrator.u[1] >= 1.0e11
-    @test model.integrator.opts.reltol[1] <= 1.0e-11
 end
 
 @testitem "transient_pump_outlet" begin

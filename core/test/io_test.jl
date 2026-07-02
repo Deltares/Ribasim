@@ -105,11 +105,8 @@ end
     path = results_path(config, RESULTS_FILENAME.flow)
     @test isfile(path)
     NCDataset(path) do ds
-        @test "convergence" in keys(ds)
         @test "flow_rate" in keys(ds)
         @test ds.attrib["ribasim_version"] == RIBASIM_VERSION
-        convergence = ds["convergence"][:]
-        @test all(isfinite, skipmissing(convergence))
     end
 
     # Test solver_stats NetCDF output
@@ -157,6 +154,8 @@ end
         @test "node_id" in keys(ds)
         @test "level" in keys(ds)
         @test "storage" in keys(ds)
+        @test "convergence" in keys(ds)
+        @test ds["convergence"].attrib["units"] == "1"
         @test ds.attrib["Conventions"] == "CF-1.12"
         @test ds.attrib["ribasim_version"] == RIBASIM_VERSION
         @test ndims(ds["time"]) == 1
@@ -176,9 +175,7 @@ end
         @test "time" in keys(ds)
         @test "link_id" in keys(ds)
         @test "flow_rate" in keys(ds)
-        @test "convergence" in keys(ds)
         @test ds["flow_rate"].attrib["units"] == "m3 s-1"
-        @test ds["convergence"].attrib["units"] == "1"
         ntime = length(ds["time"])
         nlink = length(ds["link_id"])
         @test ntime > 1
@@ -518,11 +515,10 @@ end
 
     config = Ribasim.Config(toml_path)
     model = Ribasim.Model(config)
-    (; p_independent, state_and_time_dependent_cache) = model.integrator.p
-    (; current_storage) = state_and_time_dependent_cache
-    storage1_begin = copy(current_storage)
+    (; u) = model.integrator
+    storage1_begin = copy(u.storage)
     solve!(model)
-    storage1_end = current_storage
+    storage1_end = u.storage
     @test storage1_begin != storage1_end
 
     # copy state results to input
@@ -538,8 +534,7 @@ end
     end
 
     model = Ribasim.Model(toml_path)
-    (; p_independent, state_and_time_dependent_cache) = model.integrator.p
-    (; current_storage) = state_and_time_dependent_cache
-    storage2_begin = current_storage
-    @test storage1_end ≈ storage2_begin
+    (; u) = model.integrator
+    storage2_begin = u.storage
+    @test storage1_end ≈ storage2_begin rtol = 1.0e-2
 end

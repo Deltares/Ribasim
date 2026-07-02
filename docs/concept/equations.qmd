@@ -13,32 +13,23 @@ which is a system of coupled first order differential equations.
 The model is given by a directed graph, consisting of a set of node IDs (vertices) $V$ and links $E$, consisting of ordered pairs of node IDs.
 We denote the subset of the nodes given by the Basins $B \subset V$, and the subset of nodes that prescribe flow $N \subset V$.
 
-The states $\mathbf{u}$ of the model are given by cumulative flows since the start of the simulation as prescribed by the nodes $N$:
+The states $\mathbf{u}$ of the model are given by the storages of the Basins $B$:
 $$
-	u_n(t) = \int_{t_0}^t q_n\text{d}t' \quad \forall n \in N,
+	\mathbf{u} = (S_b)_{b \in B},
 $$
-as well as by the Basin forcings:
+together with the PID control integral terms (see below). The storage of each Basin changes according to the flows into and out of it:
 $$
-	u_b^\text{forcing}(t) = \int_{t_0}^t q_b^\text{forcing}\text{d}t' \quad \forall b \in B.
+	\frac{\text{d}S_b}{\text{d}t} =
+	\underbrace{q_b^\text{precipitation} + q_b^\text{drainage} + q_b^\text{surface runoff}}_{\text{vertical inflows}}
+	- \underbrace{q_b^\text{evaporation} - q_b^\text{infiltration}}_{\text{vertical outflows}}
+	+ \sum_{n\;|\;(n,b)\in E} q_n - \sum_{n\;|\;(b,n)\in E} q_n,
 $$
+where the last two sums are the horizontal in- and outflows on the links connected to the Basin.
 
-Because of this definition, the initial conditions of all states are simple:
+The initial conditions are simply the initial Basin storages:
 $$
-	u_i(t_0) = 0 \quad \forall i.
+	S_b(t_0) = S_b^0 \quad \forall b \in B.
 $$
-
-From these cumulative flows, the storage in each Basin can be determined at each point in time:
-$$
-	S_b(t) = S_i(0) + S^\text{exact}(t) - u_b^\text{forcing}(t) + \sum_{n\;|\;(n,b)\in E} u(t) - \sum_{n\;|\;(b,n)\in E} u(t),
-$$
-
-i.e. the storage is given by:
-
-- the initial storage;
-- plus the exactly integrated flows (more on that below);
-- minus the cumulative outgoing forcings;
-- plus the cumulative horizontal inflows;
-- minus the cumulative horizontal outflows.
 
 From these storages in combination with the Basin profiles the Basin levels $h$ are computed.
 The relationship between the profile and the storage is given by
@@ -56,15 +47,16 @@ and so areas of zero are not allowed in the Basin profiles.
 
 ## The PID control integral state
 
-There's one other type of state, which is not a cumulative flow but a cumulative error.
+Besides the Basin storages there is one other type of state: a cumulative error rather than a storage.
 This is the error integral for PID control, further explained in [PID equations](/reference/node/pid-control.qmd#equations).
 
-## Exactly integrating flows to minimize the number of states
+## Reporting flows
 
-The more states the problem has, the more time it takes to solve it.
-Therefore we want to minimize the number of states.
-Flows do not have to be states when they can be integrated over time exactly because they do not depend on the other states.
-This is true for FlowBoundary nodes, and Basin precipitation (which uses a fixed basin area) and drainage.
+The flows $q_n$ are not states; they are diagnostic quantities computed from the current storages (via the Basin levels) each time the right-hand side is evaluated.
+To report individual flows and to close the water balance in volume terms, each flow is integrated over the output interval.
+State-dependent flows (horizontal links, evaporation and infiltration) are integrated with a high-order quadrature (Simpson's rule) using the solver's dense output, so that the reported flow volumes are consistent with the change in Basin storage.
+State-*independent* contributions — FlowBoundary nodes, and Basin precipitation (which uses a fixed Basin area), surface runoff and drainage — do not depend on the states and are integrated over time exactly.
+See [numerical implementation](/dev/numerics.qmd#sec-flow-integration) for details.
 
 ## The Jacobian
 
@@ -138,13 +130,11 @@ Note that the balance error and relative error are negative, but we use their ab
 
 ## Why this formulation
 
-You might wonder why in the above explanation the states are given by the cumulative flows and not by the Basin storages, which is arguably conceptually simpler.
-The reason is that we do not just want to model the storages in the Basins over time, but we also want accurate output of each individual flow, e.g. to model the spread of pollutants.
+Using the Basin storages as states keeps the state vector small — one state per Basin (plus the PID integral terms) — which keeps the implicit solves cheap, and it is conceptually simple: each state is a physical water volume.
 
-When the states are given by the storages, generally the individual flows can not accurately be computed from that as a post processing step, because there are more flows than storages.
-Also, we can only compute flows at individual points in time explicitly, not over a whole interval.
-When the states are given by the cumulative flows however, the output of the problem solve gives these flows directly, and from those the storage over time can be computed accurately.
-Hence in short, the formulation above gives more information than a formulation with Basin storages as states.
+The catch is that we do not just want the storages over time, but also accurate output of each individual flow, e.g. to model the spread of pollutants.
+Because the solver only gives the flows at discrete evaluation points, the flow *volumes* over each output interval are reconstructed afterwards by integrating the flows with a high-order (Simpson) quadrature on the solver's dense output (see [reporting flows](#reporting-flows)).
+This keeps the reported flow volumes consistent with the change in Basin storage, so that the water balance closes and the same flows can drive the conservative transport of substances.
 
 ## Numerical solution
 
@@ -158,7 +148,7 @@ For a more in-depth discussion of numerical computations see [Numerical consider
 There are many things that can influence the calculations times, for instance:
 
 - [Solver tolerance](https://docs.sciml.ai/DiffEqDocs/stable/basics/faq/#What-does-tolerance-mean-and-how-much-error-should-I-expect):
-  By default both the absolute and relative tolerance is `1e-5`.
+  By default the absolute tolerance is `1e-4` and the relative tolerance is `1e-5`.
 - [ODE solvers](https://diffeq.sciml.ai/stable/solvers/ode_solve/):
   The `QNDF` method we use is robust to oscillations and massive stiffness, however other solvers should be tried as well.
 - Forcing: Every time new forcing data is injected into the model, it needs to pause.

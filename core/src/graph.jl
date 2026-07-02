@@ -131,6 +131,9 @@ function create_graph(db::DB, config::Config)::MetaGraph
         internal_flow_links,
         external_flow_links,
         flow_link_map,
+        flow_link_lookup = Dict{Tuple{NodeID, NodeID}, Int}(
+            link_meta.link => i for (i, link_meta) in enumerate(internal_flow_links)
+        ),
     )
     @reset graph.graph_data = graph_data
 
@@ -341,48 +344,48 @@ function inflow_id(graph::MetaGraph, id::NodeID)::NodeID
     return only(inflow_ids(graph, id))
 end
 
-"""
-Get the specific q from the input vector `flow` which has the same components as
-the state vector, given an link (inflow_id, outflow_id).
-`flow` can be either instantaneous or integrated/averaged. Instantaneous FlowBoundary flows can be obtained
-from the parameters, but integrated/averaged FlowBoundary flows must be provided via `boundary_flow`.
-"""
 function get_flow(
-        flow::CVector,
-        p_independent::ParametersIndependent,
-        t::Number,
-        link::Tuple{NodeID, NodeID};
-        boundary_flow = nothing,
-    )
-    (; flow_boundary, state_ranges, link_to_state_idx) = p_independent
-    from_id = link[1]
-    return if from_id.type == NodeType.FlowBoundary
-        if boundary_flow === nothing
-            flow_boundary.flow_rate[from_id.idx](t)
-        else
-            boundary_flow[from_id.idx]
-        end
-    else
-        flow[get_state_index(state_ranges, link_to_state_idx, link)]
-    end
-end
-
-"""
-Like `get_flow` and `get_state_index`, but for convergence, so without the boundary flow.
-"""
-function get_convergence(
-        convergence::CVector,
+        flow::FlowCVectorType,
+        flow_boundary_flow::Vector,
         link::Tuple{NodeID, NodeID},
-    )::Union{Missing, Float64}
-    a = get_state_index(getaxes(convergence), link[1]; inflow = false)
-    b = get_state_index(getaxes(convergence), link[2])
-    return if isnothing(a) && isnothing(b)
-        missing
-    elseif isnothing(a)
-        convergence[b]
-    elseif isnothing(b)
-        convergence[a]
+        p_independent::ParametersIndependent,
+    )
+    (; user_demand) = p_independent
+
+    from_id, to_id = link
+
+    # Connector node flows
+    for (flow_component_data, node_type) in (
+            (flow.pump, NodeType.Pump),
+            (flow.outlet, NodeType.Outlet),
+            (flow.tabulated_rating_curve, NodeType.TabulatedRatingCurve),
+            (flow.linear_resistance, NodeType.LinearResistance),
+            (flow.manning_resistance, NodeType.ManningResistance),
+        )
+        if from_id.type == node_type
+            return flow_component_data[from_id.idx]
+        elseif to_id.type == node_type
+            return flow_component_data[to_id.idx]
+        end
     end
+
+    # UserDemand
+    if from_id.type == NodeType.UserDemand
+        return flow.user_demand_outflow[from_id.idx]
+    elseif to_id.type == NodeType.UserDemand
+        # Find the index of the UserDemand inflow
+        node_inflow_idx = findfirst(lm -> lm.link[1] == from_id, user_demand.inflow_links[to_id.idx])
+        offset = user_demand.inflow_link_offsets[to_id.idx]
+        return flow.user_demand_inflow[offset + node_inflow_idx]
+    end
+
+    # FlowBoundary
+    if from_id.type == NodeType.FlowBoundary
+        return flow_boundary_flow[from_id.idx]
+    end
+
+    error("Couldn't obtain flow for link $(link.link)")
+    return 0.0
 end
 
 function get_inflow_links(graph::MetaGraph, id::NodeID)::Vector{LinkMetadata}

@@ -868,7 +868,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     storage0 = get_storages_from_levels(basin, state.level)
     basin.storage0 .= storage0
-    basin.storage_prev .= storage0
+    basin.storage_prev_dt .= storage0
     basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
 
     for id in node_id
@@ -1648,69 +1648,62 @@ function Parameters(db::DB, config::Config)::Parameters
 
     u_ids = state_node_ids(
         (;
-            nodes.tabulated_rating_curve,
-            nodes.pump,
-            nodes.outlet,
-            nodes.user_demand,
-            nodes.linear_resistance,
-            nodes.manning_resistance,
             nodes.basin,
             nodes.pid_control,
         )
     )
-    node_id = reduce(vcat, u_ids)
-    n_states = length(node_id)
     state_ranges = count_state_ranges(u_ids)
-    state_inflow_link, state_outflow_link = get_state_flow_links(graph, nodes)
-    link_to_state_idx = build_link_to_state_idx(state_inflow_link)
 
     set_target_ref!(
         nodes.pid_control.target_ref,
         nodes.pid_control.node_id,
-        fill("flow_rate", length(node_id)),
-        state_ranges,
+        fill("flow_rate", length(nodes.pid_control.node_id)),
         graph,
     )
     set_target_ref!(
         nodes.continuous_control.target_ref,
         nodes.continuous_control.node_id,
         nodes.continuous_control.controlled_variable,
-        state_ranges,
         graph,
     )
 
+    for node_id in nodes.pid_control.node_id
+        nodes.pid_control.controlled_node_id[node_id.idx] = only(outneighbor_labels_type(graph, node_id, LinkType.control))
+    end
+
     n_basin = length(nodes.basin.node_id)
-    n_pid_control = length(nodes.pid_control.node_id)
-    u_reduced = CVector(
-        zeros(n_basin + n_pid_control),
-        (;
-            combined_cumulative_flows = 1:n_basin,
-            integral = (n_basin + 1):(n_basin + n_pid_control),
-        ),
+    n_user_demand = length(nodes.user_demand.node_id)
+    n_pid = length(nodes.pid_control.node_id)
+
+    flow_rate_prev = get_flow_vector(nodes)
+    flow_quadrature_cache = FlowQuadratureCache(;
+        flow_rate_prev,
+        u_mid = CVector(zeros(n_basin + n_pid), state_ranges)
     )
+
+    inflow_link, outflow_link = get_flow_links(nodes, getaxes(flow_rate_prev))
 
     p_independent = ParametersIndependent(;
         config.starttime,
-        config.solver.reltol,
-        relmask = collect(trues(n_states)),
         graph,
         allocation,
         nodes...,
         subgrid,
-        state_inflow_link,
-        state_outflow_link,
-        link_to_state_idx,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
-        u_prev_saveat = zeros(n_states),
-        node_id,
         state_ranges,
         do_concentration = config.experimental.concentration,
         do_subgrid = config.results.subgrid,
-        temp_convergence = CVector(zeros(n_states), state_ranges),
-        convergence = CVector(zeros(n_states), state_ranges),
-        u_reduced,
         config.solver.level_difference_threshold,
+        flow_quadrature_cache,
+        inflow_link,
+        outflow_link,
+        # Flow accumulation vectors
+        cumulative_flow_dt = zero(flow_rate_prev),
+        cumulative_flow_saveat = zero(flow_rate_prev),
+        cumulative_infiltration_total = zeros(n_basin),
+        cumulative_user_demand_inflow = zeros(n_user_demand),
+        convergence = zeros(n_basin),
     )
 
     collect_control_mappings!(p_independent)

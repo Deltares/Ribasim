@@ -24,83 +24,6 @@ struct Model
     end
 end
 
-"""
-Get the Jacobian evaluation function via DifferentiationInterface.jl.
-The time derivative is also supplied in case a Rosenbrock method is used.
-"""
-function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
-    (; p_independent, state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
-    backend = get_ad_type(solver)
-    sparsity_detector = TracerSparsityDetector()
-
-    backend_jac = if solver.sparse
-        AutoSparse(backend; sparsity_detector, coloring_algorithm = GreedyColoringAlgorithm())
-    else
-        backend
-    end
-
-    t = 0.0
-
-    jac_prep = prepare_jacobian(
-        water_balance!,
-        du,
-        backend_jac,
-        u,
-        Constant(p_independent),
-        Cache(state_and_time_dependent_cache),
-        Constant(time_dependent_cache),
-        Constant(p_mutable),
-        Constant(t);
-        strict = Val(true),
-    )
-
-    jac_prototype = solver.sparse ? sparsity_pattern(jac_prep) : nothing
-
-    jac(J, u, p, t) = jacobian!(
-        water_balance!,
-        du,
-        J,
-        jac_prep,
-        backend_jac,
-        u,
-        Constant(p.p_independent),
-        Cache(state_and_time_dependent_cache),
-        Constant(time_dependent_cache),
-        Constant(p.p_mutable),
-        Constant(t),
-    )
-
-    tgrad_prep = prepare_derivative(
-        water_balance!,
-        du,
-        backend,
-        t,
-        Constant(u),
-        Constant(p_independent),
-        Cache(state_and_time_dependent_cache),
-        Cache(time_dependent_cache),
-        Constant(p_mutable);
-        strict = Val(true),
-    )
-    tgrad(dT, u, p, t) = derivative!(
-        water_balance!,
-        du,
-        dT,
-        tgrad_prep,
-        backend,
-        t,
-        Constant(u),
-        Constant(p.p_independent),
-        Cache(state_and_time_dependent_cache),
-        Cache(time_dependent_cache),
-        Constant(p.p_mutable),
-    )
-
-    time_dependent_cache.t_prev_call[1] = -1.0
-
-    return jac_prototype, jac, tgrad
-end
-
 function Model(config_path::AbstractString)::Model
     return Model(Config(config_path))
 end
@@ -177,18 +100,20 @@ function Model(config::Config)::Model
         error("Model has no state.")
     end
 
-    reltol, relmask = build_reltol_vector(u0, config.solver.reltol)
-    parameters.p_independent.relmask .= relmask
+    # Initialize basin storages in the state vector
+    initialize_state_vector!(u0, parameters.p_independent)
+
     du0 = zero(u0)
 
     # The Solver algorithm
     alg = algorithm(config.solver)
 
-    # Synchronize level with storage
-    set_current_basin_properties!(p_independent.u_reduced, parameters, t0)
+    # Run water_balance! before initializing the integrator. This is because
+    # at this initialization the discrete control callback is called for the first
+    # time which depends on the flows formulated in water_balance!
+    water_balance!(du0, u0, parameters, t0)
 
-    # Previous level is used to estimate the minimum level that was attained during a time step
-    # in limit_flow!
+    # Previous level is used to track level changes
     p_independent.basin.level_prev .= state_and_time_dependent_cache.current_level
 
     saveat = convert_saveat(config.solver.saveat, t_end)
@@ -199,7 +124,7 @@ function Model(config::Config)::Model
     specialize = config.solver.specialize ? FullSpecialize : NoSpecialize
     RHS = ODEFunction{true, specialize}(
         water_balance!;
-        get_diff_eval(du0, parameters, config.solver)...,
+        get_diff_eval(du0, u0, parameters, config.solver)...,
     )
     prob = ODEProblem{true, specialize}(RHS, u0, timespan, parameters)
     @debug "Setup ODEProblem."
@@ -207,10 +132,7 @@ function Model(config::Config)::Model
     callback, saved = create_callbacks(p_independent, config, saveat)
     @debug "Created callbacks."
 
-    # Run water_balance! before initializing the integrator. This is because
-    # at this initialization the discrete control callback is called for the first
-    # time which depends on the flows formulated in water_balance!
-    water_balance!(du0, u0, parameters, t0)
+    p_independent.flow_quadrature_cache.flow_rate_prev .= parameters.state_and_time_dependent_cache.current_flow_rate
 
     # Initialize the integrator, providing all solver options as described in
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
@@ -232,7 +154,7 @@ function Model(config::Config)::Model
         dtmax = something(config.solver.dtmax, t_end),
         config.solver.force_dtmin,
         config.solver.abstol,
-        reltol,
+        config.solver.reltol,
         config.solver.maxiters,
     )
     @debug "Setup integrator."
@@ -311,7 +233,7 @@ function compute_and_set_adaptive_Δt!(model, saveat, tspan_end)::Float64
 
     Δt = Inf
     for am in allocation.allocation_models
-        Δt_sub = compute_adaptive_Δt(am, p, du, t, config.allocation)
+        Δt_sub = compute_adaptive_Δt(am, integrator, config.allocation)
         am.Δt_allocation = Δt_sub
         Δt = min(Δt, Δt_sub)
     end

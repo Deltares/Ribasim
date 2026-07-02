@@ -181,7 +181,7 @@ end
     dtmax::Union{Float64, Nothing} = nothing
     force_dtmin::Bool = false
     abstol::Float64 = 1.0e-5
-    reltol::Float64 = 1.0e-5
+    reltol::Float64 = 1.0e-6
     water_balance_abstol::Float64 = 1.0e-3
     water_balance_reltol::Float64 = 1.0e-2
     maxiters::Int = 1.0e9
@@ -396,31 +396,16 @@ function get_ad_type(solver::Solver)
     end
 end
 
-"""
-A wrapper of a SciMLLinearSolveAlgorithm to dispatch on for the specialized Jacobian
-matrix of Ribasim.
-"""
-struct RibasimLinearSolve{AType <: SciMLLinearSolveAlgorithm} <: SciMLLinearSolveAlgorithm
-    algorithm::AType
-end
-
-LinearSolve.needs_concrete_A(::RibasimLinearSolve) = false
-
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     kwargs = Dict{Symbol, Any}()
     algotype = algorithms[solver.algorithm]
 
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NLNewton()
+        kwargs[:nlsolve] = NLNewton(; relax = Ribasim.BackTracking())
         if solver.sparse
-            kwargs[:linsolve] =
-                RibasimLinearSolve(KLUFactorization(; check_pattern = false))
+            kwargs[:linsolve] = KLUFactorization(; check_pattern = false)
         end
-    end
-
-    if function_accepts_kwarg(algotype, :step_limiter!)
-        kwargs[:step_limiter!] = Ribasim.limit_flow!
     end
 
     if function_accepts_kwarg(algotype, :autodiff)

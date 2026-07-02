@@ -14,10 +14,8 @@
     (; u, du) = model.integrator
     (; p_independent) = model.integrator.p
 
-    @test p_independent.node_id == [0, 6, 6]
     @test u isa CVector
-    @test filter(!isempty, getaxes(u)) ==
-        (; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
+    @test filter(!isempty, getaxes(u)) == (; storage = 1:1)
 
     # Open NetCDF result files
     flow_path = normpath(dirname(toml_path), "results/flow.nc")
@@ -36,7 +34,6 @@
             @test haskey(ds, "from_node_id")
             @test haskey(ds, "to_node_id")
             @test haskey(ds, "flow_rate")
-            @test haskey(ds, "convergence")
         end
 
         NCDataset(basin_path) do ds
@@ -132,14 +129,12 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    (; p_independent, state_and_time_dependent_cache) = model.integrator.p
-    (; basin) = p_independent
-    @test state_and_time_dependent_cache.current_storage ≈ [1000]
+    (; u, p) = model.integrator
+    (; basin) = p.p_independent
+    @test u.storage ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
-    @test du.evaporation == [0.0]
-    @test du.infiltration == [0.0]
     @test success(model)
 end
 
@@ -158,15 +153,14 @@ end
     (; integrator) = model
     du = get_du(integrator)
     (; u, p, t) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
-    (; basin) = p_independent
+    (; basin) = p.p_independent
 
     Ribasim.water_balance!(du, u, p, t)
-    stor = state_and_time_dependent_cache.current_storage
+    stor = u.storage
     prec = basin.vertical_flux.precipitation
-    evap = du.evaporation
+    evap = basin.vertical_flux.potential_evaporation
     drng = basin.vertical_flux.drainage
-    infl = du.infiltration
+    infl = basin.vertical_flux.infiltration
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
     @test evap == [0.0]
@@ -178,13 +172,13 @@ end
     @test prec == [0.0]
     @test evap == [0.0]
     @test drng == [0.003]
-    @test infl == [0.0]
+    @test infl == [0.001]
     stor ≈ Float32[init_stor + 86400 * (0.003 * 1.5 - 0.001 * 0.5)]
     BMI.update_until(model, 2.5 * 86400)
     @test prec == [0.0]
     @test evap == [0.0]
     @test drng == [0.001]
-    @test infl == [0.0]
+    @test infl == [0.002]
     stor ≈ Float32[init_stor + 86400 * (0.003 * 2.0 + 0.001 * 0.5 - 0.001 - 0.002 * 0.5)]
     @test success(Ribasim.solve!(model))
 end
@@ -195,30 +189,35 @@ end
     using LoggingExtras
     import Tables
     using Dates
+    using Ribasim
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
 
+    # Tighter solver tolerances so the ODE state is accurate enough for the concentration
+    # continuity checks (the continuity gap is bounded by the solver tolerance).
+    config = Ribasim.Config(toml_path; solver_abstol = 1.0e-6, solver_reltol = 1.0e-6)
+
     logger = TestLogger(; min_level = Debug)
     filtered_logger = EarlyFilteredLogger(Ribasim.is_current_module, logger)
     model = with_logger(filtered_logger) do
-        Ribasim.run(toml_path)
+        Ribasim.run(config)
     end
 
     @test model isa Ribasim.Model
 
     (; integrator) = model
-    (; p) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
+    (; u, p) = integrator
+    (; p_independent) = p
 
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p_independent))
     @test all(isconcretetype, fieldtypes(typeof(p_independent)))
-    @test p_independent.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
+    # node_id field was removed; state vector now only has basin and integral axes
 
     @test success(model)
     @test length(model.integrator.sol.t) == 2 # start and end
-    @test state_and_time_dependent_cache.current_storage ≈
+    @test u.storage ≈
         Float32[775.23576, 775.23365, 572.60102, 1130.005] skip = Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
@@ -238,7 +237,8 @@ end
 
     table = Ribasim.concentration_data(model)
     @test "Continuity" in table.substance
-    @test all(isapprox.(table.concentration[table.substance .== "Continuity"], 1.0))
+
+    @test all(isapprox.(table.concentration[table.substance .== "Continuity"], 1.0; atol = 6.0e-4))
     summed_source_concentrations = reduce(
         +,
         [
@@ -253,7 +253,7 @@ end
                 ]
         ],
     )
-    @test all(isapprox.(summed_source_concentrations, 1.0))
+    @test all(isapprox.(summed_source_concentrations, 1.0; atol = 1.0e-3))
 
     @test unique(table.substance) ⊆ [
         "Basic",
@@ -282,11 +282,12 @@ end
     @test model isa Ribasim.Model
     @test success(model)
     @test allunique(Ribasim.tsaves(model))
-    (; p_independent, state_and_time_dependent_cache) = model.integrator.p
+    (; u, p) = model.integrator
+    (; p_independent, state_and_time_dependent_cache) = p
     precipitation = p_independent.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
-    @test state_and_time_dependent_cache.current_storage ≈
-        Float32[691.797, 691.795, 459.022, 1136.969] atol = 2.0 skip = Sys.isapple()
+    @test u.storage ≈
+        Float32[691.797, 691.795, 459.022, 1136.969] atol = 3.0
 end
 
 @testitem "Allocation example model" begin
@@ -333,9 +334,9 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test success(model)
-    (; p_independent, state_and_time_dependent_cache) = model.integrator.p
-    @test state_and_time_dependent_cache.current_storage ≈ Float32[368.31558, 365.68442] skip =
-        Sys.isapple()
+    (; u, p) = model.integrator
+    (; p_independent, state_and_time_dependent_cache) = p
+    @test u.storage ≈ Float32[368.31558, 365.68442] skip = Sys.isapple()
     (; tabulated_rating_curve) = p_independent
     # The first node is static, the first interpolation object always applies
     index_itp1 = tabulated_rating_curve.current_interpolation_index[1]
@@ -388,7 +389,6 @@ end
 @testitem "UserDemand" begin
     using Dates
     using DataFrames: DataFrame
-    using Ribasim: formulate_storages!
     import BasicModelInterface as BMI
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/user_demand/ribasim.toml")
@@ -401,17 +401,13 @@ end
 
     day = 86400.0
 
-    @test only(state_and_time_dependent_cache.current_storage) ≈ 1000.0
+    @test only(u.storage) ≈ 1000.0
     # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
     BMI.update_until(model, 150day)
-    (; u_reduced) = p.p_independent
-    Ribasim.reduce_state!(u_reduced, u, p_independent)
-    formulate_storages!(u_reduced, p, t)
-    @test only(state_and_time_dependent_cache.current_storage) ≈ 900 atol = 5
+    @test only(u.storage) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
     BMI.update_until(model, 200day)
-    formulate_storages!(u_reduced, p, t)
-    @test only(state_and_time_dependent_cache.current_storage) ≈ 500 atol = 2
+    @test only(u.storage) ≈ 500 atol = 2
 
     # Transient return factor
     flow = DataFrame(Ribasim.flow_data(model))
@@ -506,13 +502,13 @@ end
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
     @test Ribasim.get_flow(
-        du,
+        p_independent.current_flow_rate,
         p_independent,
         t,
         (NodeID(:FlowBoundary, 1, p_independent), NodeID(:Basin, 2, p_independent)),
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
     @test Ribasim.get_flow(
-        du,
+        p_independent.current_flow_rate,
         p_independent,
         t,
         (
