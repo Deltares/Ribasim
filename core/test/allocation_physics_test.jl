@@ -351,14 +351,4 @@ end
     # inflow_links for that node contains both source basins.
     inflow_links = user_demand.inflow_links[1]
     @test length(inflow_links) == 2
-
-    # link_to_state_idx must contain an entry for each of the two inflow links,
-    # and they must map to different (consecutive) state indices.
-    link_to_state_idx = p_independent.link_to_state_idx
-    inflow_link_tuples = [lm.link for lm in inflow_links]
-    for link in inflow_link_tuples
-        @test haskey(link_to_state_idx, link)
-    end
-    state_indices = [link_to_state_idx[link] for link in inflow_link_tuples]
-    @test allunique(state_indices)
 end

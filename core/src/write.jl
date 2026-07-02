@@ -347,7 +347,7 @@ function basin_state_data(model::Model; table::Bool = true)
     (; current_level) = p.state_and_time_dependent_cache
 
     # ensure the levels are up-to-date
-    set_current_basin_properties!(u, p, t)
+    set_current_basin_properties!(u, p)
 
     return (; node_id = Int32.(p.p_independent.basin.node_id), level = current_level)
 end
@@ -367,11 +367,11 @@ function basin_data(model::Model; table::Bool = true)
 
     inflow_rate = FlatVector(saved.flow.saveval, :inflow)
     outflow_rate = FlatVector(saved.flow.saveval, :outflow)
-    drainage = FlatVector(saved.flow.saveval, :drainage)
-    evaporation = FlatVector(saved.flow.saveval, :evaporation)
-    infiltration = FlatVector(saved.flow.saveval, :infiltration)
-    precipitation = FlatVector(saved.flow.saveval, :precipitation)
-    surface_runoff = FlatVector(saved.flow.saveval, :surface_runoff)
+    drainage = FlatVector(saved.flow.saveval, :positive_forcing, :drainage)
+    precipitation = FlatVector(saved.flow.saveval, :positive_forcing, :precipitation)
+    surface_runoff = FlatVector(saved.flow.saveval, :positive_forcing, :surface_runoff)
+    evaporation = FlatVector(saved.flow.saveval, :flow, :evaporation)
+    infiltration = FlatVector(saved.flow.saveval, :flow, :infiltration)
     storage_rate = FlatVector(saved.flow.saveval, :storage_rate)
     balance_error = FlatVector(saved.flow.saveval, :balance_error)
     relative_error = FlatVector(saved.flow.saveval, :relative_error)
@@ -454,7 +454,7 @@ function flow_data(model::Model; table::Bool = true)
         (; flow, flow_boundary) = saved_flow
         for (fi, link) in enumerate(internal_flow_links)
             internal_flow_rate[fi] =
-                get_flow(flow, p_independent, 0.0, link.link; boundary_flow = flow_boundary)
+                get_flow(flow, flow_boundary, link.link, p_independent)
         end
         mul!(
             view(flow_rate, (1 + (ti - 1) * nflow):(ti * nflow)),

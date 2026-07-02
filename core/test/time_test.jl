@@ -42,7 +42,7 @@ end
         # high tolerance since the area is only approximate
         @test gb.evaporation ≈ area .* pot_evap atol = 1.0e-5
         prec = basin.forcing.precipitation[i](seconds)
-        fixed_area = Ribasim.basin_areas(basin, i)[end]
+        fixed_area = Ribasim.get_fixed_area(basin, i)
         @test gb.precipitation ≈ fixed_area .* prec
     end
 end

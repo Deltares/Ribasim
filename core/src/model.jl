@@ -108,8 +108,10 @@ function Model(config::Config)::Model
     # The Solver algorithm
     alg = algorithm(config.solver)
 
-    # Synchronize level with storage
-    set_current_basin_properties!(u0, parameters, t0)
+    # Run water_balance! before initializing the integrator. This is because
+    # at this initialization the discrete control callback is called for the first
+    # time which depends on the flows formulated in water_balance!
+    water_balance!(du0, u0, parameters, t0)
 
     # Previous level is used to track level changes
     p_independent.basin.level_prev .= state_and_time_dependent_cache.current_level
@@ -130,17 +132,7 @@ function Model(config::Config)::Model
     callback, saved = create_callbacks(p_independent, config, saveat)
     @debug "Created callbacks."
 
-    # Run water_balance! before initializing the integrator. This is because
-    # at this initialization the discrete control callback is called for the first
-    # time which depends on the flows formulated in water_balance!
-    water_balance!(du0, u0, parameters, t0)
-
-    # Initialize flow_rate_prev from the initial water_balance! so that
-    # the first trapezoidal integration step uses correct initial flow rates
-    sync_flow_rates!(parameters)
-    p_independent.flow_rate_prev .= p_independent.current_flow_rate
-    p_independent.evaporation_prev .= state_and_time_dependent_cache.current_evaporation
-    p_independent.infiltration_prev .= state_and_time_dependent_cache.current_infiltration
+    p_independent.flow_quadrature_cache.flow_rate_prev .= parameters.state_and_time_dependent_cache.current_flow_rate
 
     # Initialize the integrator, providing all solver options as described in
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/

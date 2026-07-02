@@ -273,8 +273,8 @@ Each inner vector is assumed to be of equal length.
 It is similar to `Iterators.flatten`, though that doesn't work with the `Tables.Column`
 interface, which needs `length` and `getindex` support.
 """
-struct FlatVector{T} <: AbstractVector{T}
-    v::Vector{Vector{T}}
+struct FlatVector{T, V <: AbstractVector{T}} <: AbstractVector{T}
+    v::Vector{V}
 end
 
 function Base.length(fv::FlatVector)
@@ -295,8 +295,13 @@ function Base.getindex(fv::FlatVector, i::Int)
 end
 
 "Construct a FlatVector from one of the fields of SavedFlow."
-function FlatVector(saveval::Vector{SavedFlow}, sym::Symbol)
-    v = isempty(saveval) ? Vector{Float64}[] : getfield.(saveval, sym)
+function FlatVector(saveval::Vector{SavedFlow}, sym::Symbol, subvector::Union{Nothing, Symbol} = nothing)
+    v = if isempty(saveval)
+        Vector{Float64}[]
+    else
+        v_ = getfield.(saveval, sym)
+        isnothing(subvector) ? v_ : getproperty.(v_, subvector)
+    end
     return FlatVector(v)
 end
 FlatVector(v::Vector{Matrix{Float64}}) = FlatVector(vec.(v))
@@ -682,6 +687,8 @@ function basin_areas(basin::Basin, state_idx::Int)
     return basin.level_to_area[state_idx].u
 end
 
+get_fixed_area(basin::Basin, state_idx::Int) = basin_areas(basin, state_idx)[end]
+
 """
 The function f(x) = sign(x)*√(|x|) where for |x|<threshold a
 polynomial is used so that the function is still differentiable
@@ -877,10 +884,20 @@ end
 function initialize_state_vector!(u::CVector, p_independent::ParametersIndependent)
     (; basin) = p_independent
     u.storage .= basin.storage0
+
     # Initialize prev-saveat storage so the first water balance check
-    # correctly computes storage_rate = (s_now - storage0) / Δt
-    basin.Δstorage_prev_saveat .= basin.storage0
+    # correctly computes the storage rate
+    basin.storage_prev_saveat .= basin.storage0
     return nothing
+end
+
+function build_positive_forcing_vector(n_basin::Integer)
+    forcing_ranges = (;
+        precipitation = 1:n_basin,
+        surface_runoff = (n_basin + 1):(2 * n_basin),
+        drainage = (2 * n_basin + 1):(3 * n_basin),
+    )
+    return CVector(zeros(3 * n_basin), forcing_ranges)
 end
 
 """
@@ -1081,17 +1098,6 @@ function get_timeseries_tstops(itp::AbstractInterpolation, t_end::Float64)::Vect
     end
 
     return tstops
-end
-
-"""Get the exponential time stops for decreasing the tolerance."""
-function get_log_tstops(starttime, t_end)::Vector{Float64}
-    log_tstops = Float64[]
-    t = 60 * 60
-    while Second(t) <= round(t_end - starttime, Second)
-        push!(log_tstops, t)
-        t *= 2.0
-    end
-    return log_tstops
 end
 
 function ranges(lengths::Vector{<:Integer})
@@ -1304,4 +1310,61 @@ function get_link_index(
         flow_link_lookup::Dict{Tuple{NodeID, NodeID}, Int},
     )::Union{Int64, Nothing}
     return get(flow_link_lookup, link, nothing)
+end
+
+function set_flow_links!(inflow_link, outflow_link, node::AbstractParameterNode)
+    inflow_link .= node.inflow_link
+    outflow_link .= node.outflow_link
+    return nothing
+end
+
+function set_flow_links!(inflow_link, outflow_link, user_demand::UserDemand)
+    inflow_link .= vcat(user_demand.inflow_links...)
+    outflow_link .= user_demand.outflow_link
+    return nothing
+end
+
+function set_flow_links!(outflow_link, basin::Basin)
+    (; node_id) = basin
+    (; evaporation, infiltration) = outflow_link
+
+    placeholder_node_id = NodeID(NodeType.Terminal, 0, 0)
+
+    for id in node_id
+        link_metadata = LinkMetadata(0, LinkType.flow, (placeholder_node_id, id))
+        evaporation[id.idx] = link_metadata
+        infiltration[id.idx] = link_metadata
+    end
+    return
+end
+
+"""
+Get the LinkMetadata for the in- and outflow link for each flow in a
+vector of type FlowCVectorType
+"""
+function get_flow_links(nodes::NamedTuple, flow_ranges::FlowTuple{UnitRange{Int}})
+    (;
+        pump,
+        outlet,
+        tabulated_rating_curve,
+        linear_resistance,
+        manning_resistance,
+        user_demand,
+        basin,
+    ) = nodes
+    n_flows = flow_ranges[end].stop
+    placeholder_link_metadata = LinkMetadata(0, LinkType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
+
+    inflow_link = CVector(fill(placeholder_link_metadata, n_flows), flow_ranges)
+    outflow_link = CVector(fill(placeholder_link_metadata, n_flows), flow_ranges)
+
+    set_flow_links!(inflow_link.pump, outflow_link.pump, pump)
+    set_flow_links!(inflow_link.outlet, outflow_link.outlet, outlet)
+    set_flow_links!(inflow_link.tabulated_rating_curve, outflow_link.tabulated_rating_curve, tabulated_rating_curve)
+    set_flow_links!(inflow_link.linear_resistance, outflow_link.linear_resistance, linear_resistance)
+    set_flow_links!(inflow_link.manning_resistance, outflow_link.manning_resistance, manning_resistance)
+    set_flow_links!(inflow_link.user_demand_inflow, outflow_link.user_demand_outflow, user_demand)
+    set_flow_links!(outflow_link, basin)
+
+    return inflow_link, outflow_link
 end

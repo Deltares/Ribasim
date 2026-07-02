@@ -868,7 +868,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     storage0 = get_storages_from_levels(basin, state.level)
     basin.storage0 .= storage0
-    basin.storage_prev .= storage0
+    basin.storage_prev_dt .= storage0
     basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
 
     for id in node_id
@@ -1667,9 +1667,21 @@ function Parameters(db::DB, config::Config)::Parameters
         graph,
     )
 
+    for node_id in nodes.pid_control.node_id
+        nodes.pid_control.controlled_node_id[node_id.idx] = only(outneighbor_labels_type(graph, node_id, LinkType.control))
+    end
+
     n_basin = length(nodes.basin.node_id)
     n_user_demand = length(nodes.user_demand.node_id)
-    n_internal_flow_links = length(graph[].internal_flow_links)
+    n_pid = length(nodes.pid_control.node_id)
+
+    flow_rate_prev = get_flow_vector(nodes)
+    flow_quadrature_cache = FlowQuadratureCache(;
+        flow_rate_prev,
+        u_mid = CVector(zeros(n_basin + n_pid), state_ranges)
+    )
+
+    inflow_link, outflow_link = get_flow_links(nodes, getaxes(flow_rate_prev))
 
     p_independent = ParametersIndependent(;
         config.starttime,
@@ -1683,21 +1695,15 @@ function Parameters(db::DB, config::Config)::Parameters
         do_concentration = config.experimental.concentration,
         do_subgrid = config.results.subgrid,
         config.solver.level_difference_threshold,
+        flow_quadrature_cache,
+        inflow_link,
+        outflow_link,
         # Flow accumulation vectors
-        current_flow_rate = zeros(n_internal_flow_links),
-        flow_rate_prev = zeros(n_internal_flow_links),
-        cumulative_flow = zeros(n_internal_flow_links),
-        cumulative_flow_saveat = zeros(n_internal_flow_links),
-        evaporation_prev = zeros(n_basin),
-        infiltration_prev = zeros(n_basin),
-        cumulative_evaporation = zeros(n_basin),
-        cumulative_infiltration = zeros(n_basin),
-        cumulative_evaporation_saveat = zeros(n_basin),
-        cumulative_infiltration_saveat = zeros(n_basin),
+        cumulative_flow_dt = zero(flow_rate_prev),
+        cumulative_flow_saveat = zero(flow_rate_prev),
         cumulative_infiltration_total = zeros(n_basin),
         cumulative_user_demand_inflow = zeros(n_user_demand),
         convergence = zeros(n_basin),
-        flow_correction = FlowCorrection(graph, nodes),
     )
 
     collect_control_mappings!(p_independent)
@@ -1710,91 +1716,6 @@ function Parameters(db::DB, config::Config)::Parameters
     end
 
     return Parameters(; p_independent)
-end
-
-"""
-Build the FlowCorrection: the correction variables (groups of links carrying the same flow),
-the basin-link incidence matrix and the factorization of its Laplacian. See the
-FlowCorrection docstring for the why and how.
-"""
-function FlowCorrection(graph::ModelGraph, nodes::NamedTuple)::FlowCorrection
-    (; flow_link_lookup) = graph[]
-    n_basin = length(nodes.basin.node_id)
-
-    groups = Vector{Int}[]
-    rows = Int[]
-    cols = Int[]
-    vals = Float64[]
-
-    function add_group!(link_idxs, basin_entries)
-        (isempty(link_idxs) || isempty(basin_entries)) && return
-        push!(groups, link_idxs)
-        for (row, val) in basin_entries
-            push!(rows, row)
-            push!(cols, length(groups))
-            push!(vals, val)
-        end
-        return
-    end
-
-    # Connector nodes whose in- and outflow link carry the same flow rate form one
-    # correction variable, so they remain exactly conservative under correction.
-    for node in (
-            nodes.pump,
-            nodes.outlet,
-            nodes.linear_resistance,
-            nodes.tabulated_rating_curve,
-            nodes.manning_resistance,
-        )
-        for node_idx in eachindex(node.node_id)
-            link_idxs = Int[]
-            basin_entries = Tuple{Int, Float64}[]
-            for (link_meta, basin_end, sign) in (
-                    (node.inflow_link[node_idx], 1, -1.0),
-                    (node.outflow_link[node_idx], 2, 1.0),
-                )
-                link_idx = get_link_index(link_meta.link, flow_link_lookup)
-                isnothing(link_idx) || push!(link_idxs, link_idx)
-                id = link_meta.link[basin_end]
-                id.type == NodeType.Basin && push!(basin_entries, (id.idx, sign))
-            end
-            add_group!(link_idxs, basin_entries)
-        end
-    end
-
-    # UserDemand is consumptive (outflow = return factor * inflow), so each of its links
-    # is its own correction variable.
-    user_demand = nodes.user_demand
-    for node_idx in eachindex(user_demand.node_id)
-        for link_meta in user_demand.inflow_links[node_idx]
-            link_idx = get_link_index(link_meta.link, flow_link_lookup)
-            from_id = link_meta.link[1]
-            if !isnothing(link_idx) && from_id.type == NodeType.Basin
-                add_group!([link_idx], ((from_id.idx, -1.0),))
-            end
-        end
-        outflow_link = user_demand.outflow_link[node_idx]
-        link_idx = get_link_index(outflow_link.link, flow_link_lookup)
-        to_id = outflow_link.link[2]
-        if !isnothing(link_idx) && to_id.type == NodeType.Basin
-            add_group!([link_idx], ((to_id.idx, 1.0),))
-        end
-    end
-
-    incidence = sparse(rows, cols, vals, n_basin, length(groups))
-    M = if n_basin == 0
-        # Placeholder factorization; never used since there is nothing to correct
-        sparse([1], [1], 1.0, 1, 1)
-    else
-        # AAᵀ is the (positive semi-definite) Laplacian of the basin connectivity graph;
-        # the ridge makes connected components without a boundary connection (where it
-        # is singular) solvable, at a continuity error far below solver tolerance.
-        laplacian = incidence * incidence'
-        ridge = 1.0e-12 * max(1.0, maximum(LinearAlgebra.diag(laplacian); init = 0.0))
-        laplacian + ridge * sparse(LinearAlgebra.I, n_basin, n_basin)
-    end
-    factor = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(M))
-    return FlowCorrection(groups, incidence, factor, zeros(n_basin))
 end
 
 function get_node_ids_int32(db::DB, node_type)::Vector{Int32}

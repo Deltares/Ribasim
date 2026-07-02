@@ -81,8 +81,8 @@ function log_bottlenecks(model; interrupt::Bool)
                 break
             end
             # Map state index to node ID
-            label = if i in state_ranges.basin
-                string(basin.node_id[i - first(state_ranges.basin) + 1])
+            label = if i in state_ranges.storage
+                string(basin.node_id[i - first(state_ranges.storage) + 1])
             elseif i in state_ranges.integral
                 string(pid_control.node_id[i - first(state_ranges.integral) + 1])
             else

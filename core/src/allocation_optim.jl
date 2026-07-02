@@ -360,7 +360,7 @@ function set_simulation_data!(
     for node_id in only(pump_constraints.axes)
         constraint = pump_constraints[node_id]
         upstream_node_id = pump.inflow_link[node_id.idx].link[1]
-        q = cache.current_flow_rate_pump[node_id.idx]
+        q = cache.current_flow_rate.pump[node_id.idx]
         if upstream_node_id.type == NodeType.Basin
             low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
             JuMP.set_normalized_coefficient(
@@ -377,7 +377,7 @@ function set_simulation_data!(
     for node_id in only(outlet_constraints.axes)
         constraint = outlet_constraints[node_id]
         upstream_node_id = outlet.inflow_link[node_id.idx].link[1]
-        q = cache.current_flow_rate_outlet[node_id.idx]
+        q = cache.current_flow_rate.outlet[node_id.idx]
         if upstream_node_id.type == NodeType.Basin
             low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
             JuMP.set_normalized_coefficient(
@@ -772,7 +772,7 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     for link in only(flow.axes)
         link_idx = get_link_index(link, flow_link_lookup)
         if !isnothing(link_idx)
-            JuMP.set_start_value(flow[link], p.p_independent.current_flow_rate[link_idx] / scaling.flow)
+            JuMP.set_start_value(flow[link], p.p_independent.mean_flow_dt[link_idx] / scaling.flow)
         end
     end
 

@@ -125,9 +125,6 @@ function create_graph(db::DB, config::Config)::MetaGraph
         error("Incomplete connectivity in subnetwork")
     end
 
-    concentration_source, concentration_dest =
-        build_concentration_endpoints(internal_flow_links)
-
     graph_data = (;
         node_ids,
         config.solver.saveat,
@@ -137,74 +134,10 @@ function create_graph(db::DB, config::Config)::MetaGraph
         flow_link_lookup = Dict{Tuple{NodeID, NodeID}, Int}(
             link_meta.link => i for (i, link_meta) in enumerate(internal_flow_links)
         ),
-        concentration_source,
-        concentration_dest,
     )
     @reset graph.graph_data = graph_data
 
     return graph
-end
-
-"""
-For each internal flow link, resolve the upstream Basin/Boundary (`concentration_source`)
-and downstream Basin/Boundary (`concentration_dest`) that determine the concentration of the
-water flowing on that link. Connector nodes (Pump, Outlet, TabulatedRatingCurve,
-LinearResistance, ManningResistance) are transparent: they carry the concentration of the
-Basin/Boundary on either side. This lets the concentration mass transfer follow water through
-connectors instead of stopping at the connector node, which would otherwise drop mass and
-break continuity.
-
-Tracing uses the `internal_flow_links` adjacency directly (not the graph) so it is guaranteed
-consistent with the per-link `cumulative_flow` used for mass transfer.
-"""
-function build_concentration_endpoints(
-        internal_flow_links::Vector{LinkMetadata},
-    )::Tuple{Vector{NodeID}, Vector{NodeID}}
-    n_links = length(internal_flow_links)
-    source = Vector{NodeID}(undef, n_links)
-    dest = Vector{NodeID}(undef, n_links)
-
-    # Node types that carry their own concentration (tracing stops here).
-    concentration_types = (
-        NodeType.Basin,
-        NodeType.LevelBoundary,
-        NodeType.FlowBoundary,
-        NodeType.UserDemand,
-        NodeType.Terminal,
-    )
-
-    # Build single-step adjacency from the internal flow links.
-    upstream = Dict{NodeID, Vector{NodeID}}()
-    downstream = Dict{NodeID, Vector{NodeID}}()
-    for lm in internal_flow_links
-        from_node, to_node = lm.link
-        push!(get!(Vector{NodeID}, downstream, from_node), to_node)
-        push!(get!(Vector{NodeID}, upstream, to_node), from_node)
-    end
-
-    # Trace from `start` through transparent connector nodes following `adjacency`,
-    # stopping at the first concentration-carrying node (or a branch/dead end).
-    function trace_endpoint(start::NodeID, adjacency::Dict{NodeID, Vector{NodeID}})::NodeID
-        current = start
-        visited = Set{NodeID}()
-        while current.type ∉ concentration_types
-            push!(visited, current)
-            neighbors = get(adjacency, current, NodeID[])
-            if length(neighbors) == 1 && neighbors[1] ∉ visited
-                current = neighbors[1]
-            else
-                break
-            end
-        end
-        return current
-    end
-
-    for (i, lm) in enumerate(internal_flow_links)
-        source[i] = trace_endpoint(lm.link[1], upstream)
-        dest[i] = trace_endpoint(lm.link[2], downstream)
-    end
-
-    return source, dest
 end
 
 function simplify_graph!(
@@ -411,31 +344,48 @@ function inflow_id(graph::MetaGraph, id::NodeID)::NodeID
     return only(inflow_ids(graph, id))
 end
 
-"""
-Get the flow rate for a given link.
-For internal flow links, looks up in the flow vector by link index.
-For flow boundaries, returns the interpolated boundary flow rate.
-"""
 function get_flow(
-        flow::Vector{Float64},
+        flow::FlowCVectorType,
+        flow_boundary_flow::Vector,
+        link::Tuple{NodeID, NodeID},
         p_independent::ParametersIndependent,
-        t::Number,
-        link::Tuple{NodeID, NodeID};
-        boundary_flow = nothing,
     )
-    (; flow_boundary, graph) = p_independent
-    from_id = link[1]
-    return if from_id.type == NodeType.FlowBoundary
-        if boundary_flow === nothing
-            flow_boundary.flow_rate[from_id.idx](t)
-        else
-            boundary_flow[from_id.idx]
+    (; user_demand) = p_independent
+
+    from_id, to_id = link
+
+    # Connector node flows
+    for (flow_component_data, node_type) in (
+            (flow.pump, NodeType.Pump),
+            (flow.outlet, NodeType.Outlet),
+            (flow.tabulated_rating_curve, NodeType.TabulatedRatingCurve),
+            (flow.linear_resistance, NodeType.LinearResistance),
+            (flow.manning_resistance, NodeType.ManningResistance),
+        )
+        if from_id.type == node_type
+            return flow_component_data[from_id.idx]
+        elseif to_id.type == node_type
+            return flow_component_data[to_id.idx]
         end
-    else
-        internal_flow_links = graph[].internal_flow_links
-        link_idx = get_link_index(link, internal_flow_links)
-        isnothing(link_idx) ? 0.0 : flow[link_idx]
     end
+
+    # UserDemand
+    if from_id.type == NodeType.UserDemand
+        return flow.user_demand_outflow[from_id.idx]
+    elseif to_id.type == NodeType.UserDemand
+        # Find the index of the UserDemand inflow
+        node_inflow_idx = findfirst(lm -> lm.link[1] == from_id, user_demand.inflow_links[to_id.idx])
+        offset = user_demand.inflow_link_offsets[to_id.idx]
+        return flow.user_demand_inflow[offset + node_inflow_idx]
+    end
+
+    # FlowBoundary
+    if from_id.type == NodeType.FlowBoundary
+        return flow_boundary_flow[from_id.idx]
+    end
+
+    error("Couldn't obtain flow for link $(link.link)")
+    return 0.0
 end
 
 function get_inflow_links(graph::MetaGraph, id::NodeID)::Vector{LinkMetadata}
