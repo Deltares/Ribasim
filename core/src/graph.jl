@@ -346,11 +346,13 @@ end
 
 function get_flow(
         flow::FlowCVectorType,
-        flow_boundary_flow::Vector,
         link::Tuple{NodeID, NodeID},
-        p_independent::ParametersIndependent,
+        p::Parameters,
+        t::Number;
+        boundary_flow::Union{Nothing, Vector{Float64}} = nothing
     )
-    (; user_demand) = p_independent
+    (; p_independent, time_dependent_cache) = p
+    (; user_demand, flow_boundary) = p_independent
 
     from_id, to_id = link
 
@@ -381,7 +383,17 @@ function get_flow(
 
     # FlowBoundary
     if from_id.type == NodeType.FlowBoundary
-        return flow_boundary_flow[from_id.idx]
+        return if isnothing(boundary_flow)
+            eval_time_interpolation(
+                flow_boundary.flow_rate[from_id.idx],
+                time_dependent_cache.flow_boundary.current_boundary_flow,
+                from_id.idx,
+                p,
+                t
+            )
+        else
+            boundary_flow[from_id.idx]
+        end
     end
 
     error("Couldn't obtain flow for link $(link.link)")

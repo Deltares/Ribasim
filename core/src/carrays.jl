@@ -94,7 +94,36 @@ function Base.similar(bc::Broadcasted{ArrayStyle{CArray}}, ::Type{T}) where {T}
     return CArray(similar(Array{T}, axes(bc)), getaxes(x))
 end
 
-Base.show(io::IO, x::CArray) = summary(io, x)
+function _show_components(f, io::IO, x::CArray)
+    axes = getaxes(x)
+    data = getdata(x)
+    for name in propertynames(axes)
+        loc = getproperty(axes, name)
+        vals = component(data, loc)
+        f(io, name, vals isa AbstractArray ? collect(vals) : vals)
+    end
+    return
+end
+
+function Base.show(io::IO, x::CArray)
+    print(io, "CArray(")
+    first_component = true
+    _show_components(io, x) do io, name, vals
+        first_component || print(io, ", ")
+        print(io, name, " = ")
+        show(io, vals)
+        first_component = false
+    end
+    return print(io, ")")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", x::CArray)
+    summary(io, x)
+    return _show_components(io, x) do io, name, vals
+        print(io, "\n  ", name, ": ")
+        show(io, vals)
+    end
+end
 
 component(data, loc::Integer) = data[loc]
 component(data, loc::CartesianIndex) = data[loc]

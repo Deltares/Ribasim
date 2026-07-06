@@ -14,8 +14,6 @@ function set_simulation_data!(
         user_demand,
         tabulated_rating_curve,
     ) = p.p_independent
-    du = get_du(integrator)
-
     errors = false
 
     errors |= set_simulation_data!(allocation_model, basin, integrator)
@@ -51,7 +49,8 @@ function set_simulation_data!(
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
     (; storage_to_level, vertical_flux) = basin
     du = get_du(integrator)
-    (; u) = integrator
+    (; u, p) = integrator
+    (; state_and_time_dependent_cache) = p
 
     storage_change = problem[:basin_storage_change]
     volume_conservation = problem[:volume_conservation]
@@ -80,15 +79,14 @@ function set_simulation_data!(
         end
         JuMP.set_upper_bound(Δstorage, Δstorage_upper / scaling.storage)
 
-        A = get_area_from_storage(basin, idx, storage_now)
-        A_max = get_area_from_storage(basin, idx, storage_max)
-
         explicit_positive_forcing_volume[basin_id] =
             (
-            A_max * vertical_flux.precipitation[idx] +
+            vertical_flux.precipitation[idx] +
                 vertical_flux.drainage[idx] +
                 vertical_flux.surface_runoff[idx]
         ) * Δt_allocation
+
+        A = state_and_time_dependent_cache.current_area[basin_id.idx]
 
         implicit_negative_forcing_volume[basin_id] =
             (
@@ -761,6 +759,8 @@ end
 
 function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator)::Nothing
     (; p, t) = integrator
+    (; p_independent, time_dependent_cache) = p
+    (; mean_flow_dt) = p_independent
     (; problem, scaling, node_ids_in_subnetwork, Δt_allocation) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
     flow = problem[:flow]
@@ -772,7 +772,15 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     for link in only(flow.axes)
         link_idx = get_link_index(link, flow_link_lookup)
         if !isnothing(link_idx)
-            JuMP.set_start_value(flow[link], p.p_independent.mean_flow_dt[link_idx] / scaling.flow)
+            JuMP.set_start_value(
+                flow[link], get_flow(
+                    mean_flow_dt,
+                    link,
+                    p,
+                    t;
+                    boundary_flow = time_dependent_cache.flow_boundary.current_boundary_flow,
+                ) / scaling.flow
+            )
         end
     end
 
@@ -1226,7 +1234,7 @@ function update_allocation!(model, Δt = 0.0; record::Bool = true)::Nothing
     !is_active(allocation) && return nothing
 
     du = get_du(integrator)
-    water_balance!(du, u, p, t)
+    water_balance!(du, u, p, t; formulate_du = false)
 
     for secondary_network in get_secondary_networks(allocation_models)
         update_control_states!(secondary_network, p_independent)

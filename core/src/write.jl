@@ -454,7 +454,7 @@ function flow_data(model::Model; table::Bool = true)
         (; flow, flow_boundary) = saved_flow
         for (fi, link) in enumerate(internal_flow_links)
             internal_flow_rate[fi] =
-                get_flow(flow, flow_boundary, link.link, p_independent)
+                get_flow(flow, link.link, p, 0; boundary_flow = flow_boundary)
         end
         mul!(
             view(flow_rate, (1 + (ti - 1) * nflow):(ti * nflow)),

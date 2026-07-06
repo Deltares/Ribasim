@@ -3,14 +3,15 @@ The right hand side function of the system of ODEs set up by Ribasim.
 State vector u contains basin storages and PID integral terms.
 du contains dS/dt per basin and d(integral)/dt per PID control.
 """
-water_balance!(du::CVector, u::CVector, p::Parameters, t::Number)::Nothing = water_balance!(
+water_balance!(du::CVector, u::CVector, p::Parameters, t::Number; kwargs...)::Nothing = water_balance!(
     du::RibasimCVectorType,
     u::RibasimCVectorType,
     p.p_independent,
     p.state_and_time_dependent_cache,
     p.time_dependent_cache,
     p.p_mutable,
-    t,
+    t;
+    kwargs...
 )
 
 # Method with `t` as second argument parsable by DifferentiationInterface.jl for time derivative computation
@@ -21,7 +22,8 @@ water_balance!(
     p_independent::ParametersIndependent,
     state_and_time_dependent_cache::StateAndTimeDependentCache,
     time_dependent_cache::TimeDependentCache,
-    p_mutable::ParametersMutable,
+    p_mutable::ParametersMutable;
+    kwargs...
 ) = water_balance!(
     du,
     u,
@@ -29,7 +31,8 @@ water_balance!(
     state_and_time_dependent_cache,
     time_dependent_cache,
     p_mutable,
-    t,
+    t;
+    kwargs...
 )
 
 function water_balance!(
@@ -39,7 +42,8 @@ function water_balance!(
         state_and_time_dependent_cache::StateAndTimeDependentCache,
         time_dependent_cache::TimeDependentCache,
         p_mutable::ParametersMutable,
-        t::Number,
+        t::Number;
+        formulate_du = true
     )::Nothing
     p = Parameters(
         p_independent,
@@ -51,7 +55,7 @@ function water_balance!(
     # Check whether t or u is different from the last water_balance! call
     check_new_input!(p, u, t)
 
-    du .= 0.0
+    formulate_du && (du .= 0.0)
 
     # Ensures current_* vectors are current (storage, level, area from u.storage)
     set_current_basin_properties!(u, p)
@@ -75,66 +79,20 @@ function water_balance!(
     formulate_flows!(p, t; control_type = ContinuousControlType.Continuous)
 
     # Compute PID control
-    formulate_pid_control!(du, u, p, t)
+    formulate_pid_control!(du, u, p, t; formulate_du)
 
     # Formulate intermediate flow (controlled by PID control)
     formulate_flows!(p, t; control_type = ContinuousControlType.PID)
 
-    formulate_dstorage!(du, p, t)
-    return nothing
-end
-
-function contribute_dstorage!(du::CVector, flow, node::AbstractParameterNode)
-    (; inflow_link, outflow_link) = node
-    for (q, inflow_link_metadata, outflow_link_metadata) in zip(flow, inflow_link, outflow_link)
-        inflow_id = inflow_link_metadata.link[1]
-        outflow_id = outflow_link_metadata.link[2]
-
-        if inflow_id.type == NodeType.Basin
-            du.storage[inflow_id.idx] -= q
-        end
-
-        if outflow_id.type == NodeType.Basin
-            du.storage[outflow_id.idx] += q
-        end
-    end
-    return nothing
-end
-
-function contribute_dstorage!(du::CVector, current_flow_rate, user_demand::UserDemand)
-    (; inflow_links, outflow_link, inflow_link_offsets) = user_demand
-
-    for (
-            outflow,
-            inflow_links_metadata,
-            outflow_link_metadata,
-            offset,
-        ) in zip(
-            current_flow_rate.user_demand_outflow,
-            inflow_links,
-            outflow_link,
-            inflow_link_offsets
-        )
-
-        for (inflow_link_idx, inflow_link_metadata) in enumerate(inflow_links_metadata)
-            inflow_id = inflow_link_metadata.link[1]
-            if inflow_id.type == NodeType.Basin
-                du.storage[inflow_id.idx] -= current_flow_rate.user_demand_inflow[offset + inflow_link_idx]
-            end
-        end
-
-        outflow_id = outflow_link_metadata.link[2]
-
-        if outflow_id.type == NodeType.Basin
-            du.storage[outflow_id.idx] += outflow
-        end
+    # Formulate the storage
+    if formulate_du
+        formulate_dstorage!(du, p, t)
     end
     return nothing
 end
 
 function contribute_dstorage!(du::CVector, flow_boundary::FlowBoundary, p::Parameters, t::Number)
     (; outflow_link, flow_rate) = flow_boundary
-    (; time_dependent_cache) = p
     (; current_boundary_flow) = p.time_dependent_cache.flow_boundary
 
     for (idx, outflow_link_metadata) in enumerate(outflow_link)
@@ -154,33 +112,19 @@ function formulate_dstorage!(du::CVector, p::Parameters, t::Number)
     (; current_flow_rate) = state_and_time_dependent_cache
     (;
         basin,
-        pump,
-        outlet,
-        tabulated_rating_curve,
-        linear_resistance,
-        manning_resistance,
-        user_demand,
         flow_boundary,
     ) = p_independent
+    (; incidence_matrix) = p_independent.flow_quadrature_cache
     (; vertical_flux) = basin
+    mul!(du.storage, incidence_matrix, current_flow_rate)
 
     # Vertical flows
     @. du.storage +=
         vertical_flux.precipitation +
         vertical_flux.surface_runoff +
-        vertical_flux.drainage -
-        current_flow_rate.infiltration -
-        current_flow_rate.evaporation
+        vertical_flux.drainage
 
-    # Horizontal flows
-    contribute_dstorage!(du, current_flow_rate.pump, pump)
-    contribute_dstorage!(du, current_flow_rate.outlet, outlet)
-    contribute_dstorage!(du, current_flow_rate.tabulated_rating_curve, tabulated_rating_curve)
-    contribute_dstorage!(du, current_flow_rate.linear_resistance, linear_resistance)
-    contribute_dstorage!(du, current_flow_rate.manning_resistance, manning_resistance)
-    contribute_dstorage!(du, current_flow_rate, user_demand)
     contribute_dstorage!(du, flow_boundary, p, t)
-
     return nothing
 end
 
@@ -266,7 +210,8 @@ function formulate_pid_control!(
         du::CVector,
         u::CVector,
         p::Parameters,
-        t::Number,
+        t::Number;
+        formulate_du::Bool = true
     )::Nothing
     (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
     (; current_proportional, current_integral, current_derivative) =
@@ -279,7 +224,7 @@ function formulate_pid_control!(
     set_error!(pid_control, p, t)
     for i in eachindex(node_id)
 
-        du.integral[i] = current_error_pid_control[i]
+        formulate_du && (du.integral[i] = current_error_pid_control[i])
 
         listened_node_id = listen_node_id[i]
 
@@ -320,7 +265,7 @@ function formulate_pid_control!(
             else
                 dtarget = derivative(target[i], t)
             end
-            dstorage_listened_basin_old = formulate_dstorage_single_basin(p, t, listened_node_id; skip = controlled_node_id[i])
+            dstorage_listened_basin_old = formulate_dstorage_single_basin(p, t, listened_node_id; skip_node = controlled_node_id[i])
             # The expression below is the solution to an implicit equation for
             # dstorage_listened_basin. This equation results from the fact that if the derivative
             # term in the PID controller is used, the controlled pump flow rate depends on itself.
@@ -333,39 +278,22 @@ function formulate_pid_control!(
     return nothing
 end
 
-function formulate_dstorage_single_basin(p::Parameters, t::Number, node_id::NodeID; skip::Union{Nothing, NodeID} = nothing)
-    (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
+function formulate_dstorage_single_basin(
+        p::Parameters,
+        t::Number,
+        node_id::NodeID;
+        skip_node::Union{Nothing, NodeID} = nothing
+    )
+    (; p_independent, state_and_time_dependent_cache) = p
     (; current_flow_rate) = state_and_time_dependent_cache
-    (; basin, flow_boundary) = p_independent
-    (; vertical_flux, inflow_ids, outflow_ids) = basin
+    (; basin) = p_independent
+    (; vertical_flux) = basin
     dstorage = vertical_flux.precipitation[node_id.idx] +
         vertical_flux.surface_runoff[node_id.idx] +
         vertical_flux.drainage[node_id.idx] -
         current_flow_rate.infiltration[node_id.idx] -
-        current_flow_rate.evaporation[node_id.idx]
-
-    for outflow_id in outflow_ids[node_id.idx]
-        (outflow_id == skip) && continue
-        dstorage -= get_flow(
-            current_flow_rate,
-            time_dependent_cache.flow_boundary.current_boundary_flow, # Placeholder, does nothing
-            (node_id, outflow_id),
-            p_independent
-        )
-    end
-    for inflow_id in inflow_ids[node_id.idx]
-        (inflow_id == skip) && continue
-        dstorage += if inflow_id.type == NodeType.FlowBoundary
-            flow_boundary.flow_rate[inflow_id.idx](t)
-        else
-            get_flow(
-                current_flow_rate,
-                time_dependent_cache.flow_boundary.current_boundary_flow, # Placeholder, does nothing
-                (inflow_id, node_id),
-                p_independent
-            )
-        end
-    end
+        current_flow_rate.evaporation[node_id.idx] +
+        sum_basin_flows(p, current_flow_rate, node_id, t; skip_node)
     return dstorage
 end
 

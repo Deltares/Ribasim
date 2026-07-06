@@ -19,8 +19,8 @@
     # Fill state_and_time_dependent_cache with known garbage to simulate
     # uninitialized Cache() dual arrays deterministically.
     # Without the cache invalidation fix in check_new_input!, these NaNs propagate into the Jacobian.
-    fill!(p.state_and_time_dependent_cache.current_flow_rate_outlet, NaN)
-    fill!(p.state_and_time_dependent_cache.current_flow_rate_pump, NaN)
+    fill!(p.state_and_time_dependent_cache.current_flow_rate.outlet, NaN)
+    fill!(p.state_and_time_dependent_cache.current_flow_rate.pump, NaN)
 
     J = similar(f.jac_prototype)
     f.jac(J, u, p, t)

@@ -1671,17 +1671,13 @@ function Parameters(db::DB, config::Config)::Parameters
         nodes.pid_control.controlled_node_id[node_id.idx] = only(outneighbor_labels_type(graph, node_id, LinkType.control))
     end
 
+    flow_rate_prototype = get_flow_vector(nodes)
+    inflow_link, outflow_link = get_flow_links(nodes, getaxes(flow_rate_prototype))
+
     n_basin = length(nodes.basin.node_id)
-    n_user_demand = length(nodes.user_demand.node_id)
     n_pid = length(nodes.pid_control.node_id)
-
-    flow_rate_prev = get_flow_vector(nodes)
-    flow_quadrature_cache = FlowQuadratureCache(;
-        flow_rate_prev,
-        u_mid = CVector(zeros(n_basin + n_pid), state_ranges)
-    )
-
-    inflow_link, outflow_link = get_flow_links(nodes, getaxes(flow_rate_prev))
+    u_mid = CVector(zeros(n_basin + n_pid), state_ranges)
+    flow_quadrature_cache = FlowQuadratureCache(inflow_link, outflow_link, u_mid)
 
     p_independent = ParametersIndependent(;
         config.starttime,
@@ -1698,12 +1694,6 @@ function Parameters(db::DB, config::Config)::Parameters
         flow_quadrature_cache,
         inflow_link,
         outflow_link,
-        # Flow accumulation vectors
-        cumulative_flow_dt = zero(flow_rate_prev),
-        cumulative_flow_saveat = zero(flow_rate_prev),
-        cumulative_infiltration_total = zeros(n_basin),
-        cumulative_user_demand_inflow = zeros(n_user_demand),
-        convergence = zeros(n_basin),
     )
 
     collect_control_mappings!(p_independent)

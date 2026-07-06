@@ -487,7 +487,9 @@ end
     model = Ribasim.run(toml_path)
     @test success(model)
 
-    (; p, t) = model.integrator
+    (; integrator, saved) = model
+    (; p, t) = integrator
+    (; saveval) = saved.flow
     (; p_independent, state_and_time_dependent_cache) = p
     du = get_du(model.integrator)
     (; current_level) = state_and_time_dependent_cache
@@ -501,21 +503,8 @@ end
     # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
-    @test Ribasim.get_flow(
-        p_independent.current_flow_rate,
-        p_independent,
-        t,
-        (NodeID(:FlowBoundary, 1, p_independent), NodeID(:Basin, 2, p_independent)),
-    ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
-    @test Ribasim.get_flow(
-        p_independent.current_flow_rate,
-        p_independent,
-        t,
-        (
-            NodeID(:ManningResistance, 101, p_independent),
-            NodeID(:Basin, 102, p_independent),
-        ),
-    ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
+    @test saveval[end].flow_boundary[1] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
+    @test saveval[end].flow.manning_resistance[end] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
 
 @testitem "mean_flow" begin

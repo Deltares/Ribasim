@@ -27,7 +27,7 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
             ud_mass_before = mass[to_node.idx][Substance.UserDemand]
             if total_inflow > 0
                 for node_inflow_idx in eachindex(inflow_links)
-                    from_node = outflow_link.link[1]
+                    from_node = inflow_links[node_inflow_idx].link[1]
                     link_inflow = cumulative_flow_dt.user_demand_inflow[inflow_idx_start + node_inflow_idx]
                     fraction = link_inflow / total_inflow
                     mass[to_node.idx] .+=

@@ -66,12 +66,6 @@ function create_callbacks(
     discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
     push!(callbacks, discrete_control_cb)
 
-    # Callback that >must be the last one< to make sure that flow_rate_prev
-    # was computed with the parameter values used in the coming timestep,
-    # for correct flow integration
-    update_flow_rate_prev_cb = FunctionCallingCallback(update_flow_rate_prev!)
-    push!(callbacks, update_flow_rate_prev_cb)
-
     saved = SavedResults(
         saved_flow,
         saved_basin_states,
@@ -83,16 +77,57 @@ function create_callbacks(
     return callback, saved
 end
 
-function update_flow_rate_prev!(u, t, integrator)::Nothing
-    (; p) = integrator
-    du = get_du(integrator)
-    water_balance!(du, u, p, t)
-    p.p_independent.flow_quadrature_cache.flow_rate_prev .= p.state_and_time_dependent_cache.current_flow_rate
+function correct_cumulative_flow!(integrator::DEIntegrator)
+    (; u, uprev, p) = integrator
+    (; basin, flow_boundary, flow_quadrature_cache, cumulative_flow_dt) = p.p_independent
+    (;
+        residual,
+        intermediate_result,
+        incidence_matrix,
+        factorized_matrix,
+        cumulative_flow_dt_correction,
+    ) = flow_quadrature_cache
+    (; cumulative_positive_forcing_dt) = basin
+
+    # Residual: the water balance error
+    mul!(residual, incidence_matrix, cumulative_flow_dt)
+    @. residual -=
+        (u.storage - uprev.storage) - # storage change
+        (
+        cumulative_positive_forcing_dt.precipitation +
+            cumulative_positive_forcing_dt.surface_runoff +
+            cumulative_positive_forcing_dt.drainage
+    ) # positive_forcing
+
+    # FLowBoundary
+    for node_id in flow_boundary.node_id
+        outflow_id = flow_boundary.outflow_link[node_id.idx].link[2]
+        if outflow_id.type == NodeType.Basin
+            residual[outflow_id.idx] += flow_boundary.cumulative_flow_dt[node_id.idx]
+        end
+    end
+
+    # Intermediate result
+    ldiv!(intermediate_result, factorized_matrix, residual)
+
+    # Compute the correction
+    mul!(cumulative_flow_dt_correction, incidence_matrix', intermediate_result)
+
+    # Apply the correction
+    cumulative_flow_dt .-= cumulative_flow_dt_correction
+
+    # Enforce non-negativity where required
+    for component_name in flow_components
+        (component_name ∈ (:linear_resistance, :manning_resistance)) && continue
+        component = getproperty(cumulative_flow_dt, component_name)
+        @. component = max(0.0, component)
+    end
+
     return nothing
 end
 
 function update_cumulative_flows!(u, t, integrator)::Nothing
-    (; p, dt, tprev) = integrator
+    (; p, uprev) = integrator
     (; p_independent, p_mutable, state_and_time_dependent_cache) = p
     (; current_flow_rate) = state_and_time_dependent_cache
     (;
@@ -103,9 +138,10 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         flow_boundary,
         basin,
         allocation,
+        user_demand,
     ) = p_independent
     (; cumulative_positive_forcing_dt, cumulative_positive_forcing_saveat) = basin
-    (; flow_rate_prev, flow_rate_mid, u_mid) = flow_quadrature_cache
+    (; flow_rate_now, flow_rate_mid, flow_rate_prev, u_mid) = flow_quadrature_cache
     du = get_du(integrator)
     dt = t - p_mutable.tprev
     iszero(dt) && return nothing
@@ -118,37 +154,33 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     # Simpson's rule is a higher order integration scheme than trapezoid, but note that the storages with which
     # the midpoint is evaluated introduce an extra approximation step
 
+
+    # Evaluate the flow rates for current u and t
+    # Do this first to minimize cache misses
+    water_balance!(du, u, p, t; formulate_du = false)
+    flow_rate_now .= current_flow_rate
+
     # Evaluate storage at timestep midpoint by using the interpolation of
     # the storage up to now
     t_mid = t - dt / 2
     integrator(u_mid, t_mid)
 
     # Evaluate the flows at the timestep midpoint
-    water_balance!(du, u_mid, p, t_mid)
+    water_balance!(du, u_mid, p, t_mid; formulate_du = false)
     flow_rate_mid .= current_flow_rate
 
-    # Evaluate the flow rates for current u and t
-    water_balance!(du, u, p, t)
+    # Evaluate the flows at the previous timestep with current parameter values
+    water_balance!(du, uprev, p, p_mutable.tprev; formulate_du = false)
+    flow_rate_prev .= current_flow_rate
 
-    # # Clamp flow_rate_mid
-    # for flow_idx in eachindex(flow_rate_mid)
-    #     flow_min, flow_max = extrema((flow_rate_prev[flow_idx], current_flow_rate[flow_idx]))
-    #     flow_rate_mid[flow_idx] = clamp(flow_rate_mid[flow_idx], flow_min, flow_max)
-    # end
+    # Clamp flow_rate_mid
+    for flow_idx in eachindex(flow_rate_mid)
+        flow_min, flow_max = extrema((flow_rate_prev[flow_idx], flow_rate_now[flow_idx]))
+        flow_rate_mid[flow_idx] = clamp(flow_rate_mid[flow_idx], flow_min, flow_max)
+    end
 
     # Apply Simpson's rule
-    @. mean_flow_dt = (1 / 6) * (flow_rate_prev + 4 * flow_rate_mid + current_flow_rate)
-    @. cumulative_flow_dt = dt * mean_flow_dt
-
-    # Accumulate into the saveat cumulative flow
-    cumulative_flow_saveat .+= cumulative_flow_dt
-
-    # Exact integration of flow boundary flow
-    for idx in eachindex(flow_boundary.node_id)
-        cumulative_flow = integral(flow_boundary.flow_rate[idx], tprev, t)
-        flow_boundary.cumulative_flow_dt[idx] = cumulative_flow
-        flow_boundary.cumulative_flow_saveat[idx] += cumulative_flow
-    end
+    @. cumulative_flow_dt = (dt / 6) * (flow_rate_prev + 4 * flow_rate_mid + flow_rate_now)
 
     # Exact integration of positive (state independent) Basin forcings
     @. cumulative_positive_forcing_dt.precipitation = basin.vertical_flux.precipitation * dt
@@ -160,6 +192,33 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     @. cumulative_positive_forcing_dt.drainage = basin.vertical_flux.drainage * dt
     cumulative_positive_forcing_saveat.drainage .+= cumulative_positive_forcing_dt.drainage
 
+    # Exact integration of flow boundary flow
+    for idx in eachindex(flow_boundary.node_id)
+        cumulative_flow = integral(flow_boundary.flow_rate[idx], p_mutable.tprev, t)
+        flow_boundary.cumulative_flow_dt[idx] = cumulative_flow
+    end
+    flow_boundary.cumulative_flow_saveat .+= flow_boundary.cumulative_flow_dt
+
+    # Correct cumulative flows
+    correct_cumulative_flow!(integrator)
+
+    # Accumulate into the saveat cumulative flow (after correction)
+    cumulative_flow_saveat .+= cumulative_flow_dt
+
+    @. mean_flow_dt = cumulative_flow_dt / dt
+
+    # Cumulative flows for BMI
+    basin.cumulative_infiltration .+= cumulative_flow_dt.infiltration
+    basin.cumulative_drainage .+= cumulative_positive_forcing_dt.drainage
+    basin.cumulative_surface_runoff .+= cumulative_positive_forcing_dt.surface_runoff
+    for node_id in user_demand.node_id
+        offset_1 = user_demand.inflow_link_offsets[node_id.idx]
+        offset_2 = user_demand.inflow_link_offsets[node_id.idx + 1]
+        user_demand.cumulative_inflow[node_id.idx] += sum(
+            @view cumulative_flow_dt.user_demand_inflow[(offset_1 + 1):offset_2]
+        )
+    end
+
     # Update supplied flows for allocation input and output
     for allocation_model in allocation.allocation_models
         (; cumulative_supplied_volume) = allocation_model
@@ -167,15 +226,31 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         for link in keys(cumulative_supplied_volume)
             cumulative_supplied_volume[link] += get_flow(
                 cumulative_flow_dt,
-                flow_boundary.cumulative_flow_dt,
                 link,
-                p_independent
+                p,
+                t;
+                boundary_flow = flow_boundary.cumulative_flow_dt,
             )
         end
     end
 
-    p_mutable.tprev = t
+    # Accumulate normalized Newton residual for convergence output
+    cache = integrator.cache
+    if hasproperty(cache, :nlsolver)
+        atmp = cache.nlsolver.cache.atmp
+        abs_atmp = abs.(atmp)
+        max_atmp = finitemaximum(abs_atmp; init = one(eltype(abs_atmp)))
+        for i in eachindex(p_independent.convergence)
+            v = abs_atmp[i]
+            p_independent.convergence[i] += isfinite(v) ? v / max_atmp : 0.0
+        end
+        p_independent.convergence_ncalls[1] += 1
+    end
 
+    # Set proper cache for subsequent callbacks
+    set_current_basin_properties!(u, p)
+
+    p_mutable.tprev = t
     return nothing
 end
 
@@ -212,9 +287,7 @@ function update_concentrations!(u, t, integrator)::Nothing
             t,
         )
 
-        # Precipitation depends on fixed area
-        fixed_area = get_fixed_area(basin, node_id.idx)
-        added_precipitation = fixed_area * vertical_flux.precipitation[node_id.idx] * dt
+        added_precipitation = vertical_flux.precipitation[node_id.idx] * dt
         add_substance_mass!(
             mass_node,
             concentration_itp_precipitation[node_id.idx],
@@ -329,11 +402,9 @@ function forcing_update(integrator::DEIntegrator, node_id::NodeID)::Tuple{Float6
 
     @assert node_id.type == NodeType.Basin
 
-    fixed_area = get_fixed_area(basin, node_id.idx)
-
     inflow_update =
         (
-        fixed_area * vertical_flux.precipitation[node_id.idx] +
+        vertical_flux.precipitation[node_id.idx] +
             vertical_flux.drainage[node_id.idx] +
             vertical_flux.surface_runoff[node_id.idx]
     ) * dt

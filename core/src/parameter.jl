@@ -516,10 +516,14 @@ Requirements:
     # Storage for each Basin at the previous time step (used for tracers)
     storage_prev_dt::Vector{Float64} = zeros(length(node_id))
     # Storage at previous saveat (used for water balance error)
-    storage_prev_saveat = zeros(length(node_id))
+    storage_prev_saveat::Vector{Float64} = zeros(length(node_id))
     # Cumulative positive forcing volumes, per timestep and saveat
     cumulative_positive_forcing_dt::PositiveForcingCVectorType{Float64} = build_positive_forcing_vector(length(node_id))
     cumulative_positive_forcing_saveat::PositiveForcingCVectorType{Float64} = zero(cumulative_positive_forcing_dt)
+    # Cumulative flows over the whole simulation for BMI
+    cumulative_infiltration::Vector{Float64} = zeros(length(node_id))
+    cumulative_drainage::Vector{Float64} = zeros(length(node_id))
+    cumulative_surface_runoff::Vector{Float64} = zeros(length(node_id))
     # Basin profile interpolations
     storage_to_level::Vector{StorageToLevelType} =
         Vector{StorageToLevelType}(undef, length(node_id))
@@ -994,6 +998,7 @@ demand_from_timeseries: If false the demand comes from the BMI or is fixed
 allocated: water flux currently allocated to UserDemand per demand priority (node_idx, demand_priority_idx)
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source Basin below which the UserDemand does not abstract
+cumulative_inflow: The summed inflow since the start of the simulation
 concentration_itp: matrix with timeseries interpolations of concentrations per LevelBoundary per substance
 """
 @kwdef struct UserDemand <: AbstractDemandNode
@@ -1013,6 +1018,7 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
     return_factor::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     min_level::Vector{Float64} = zeros(length(node_id))
+    cumulative_inflow::Vector{Float64} = zeros(length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
 end
 
@@ -1066,7 +1072,6 @@ end
 @kwdef struct Subgrid
     # current level of each subgrid (static and dynamic) ordered by subgrid_id
     level::Vector{Float64} = []
-
     # Static part
     # Static subgrid ids
     subgrid_id_static::Vector{Int32} = []
@@ -1133,9 +1138,34 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
 end
 
 @kwdef struct FlowQuadratureCache
-    flow_rate_prev::FlowCVectorType{Float64} = CVector(Float64[], FlowTuple{UnitRange{Int}}([1:0 for _ in flow_components]))
-    flow_rate_mid::FlowCVectorType{Float64} = zero(flow_rate_prev)
+    # Caches for Simpson Quadrature
+    flow_rate_now::FlowCVectorType{Float64} = CVector(Float64[], FlowTuple{UnitRange{Int}}([1:0 for _ in flow_components]))
+    flow_rate_mid::FlowCVectorType{Float64} = zero(flow_rate_now)
+    flow_rate_prev::FlowCVectorType{Float64} = zero(flow_rate_now)
     u_mid::RibasimCVectorType{Float64} = CVector(Float64[], (; storage = 1:0, integral = 1:0))
+    # Caches for water balance correction
+    residual::Vector{Float64} = zeros(length(flow_rate_now.evaporation))
+    intermediate_result::Vector{Float64} = zero(residual)
+    incidence_matrix::SparseMatrixCSC{Float64, Int} = spzeros(0, 0)
+    factorized_matrix::CHOLMOD.Factor{Float64, Int}
+    cumulative_flow_dt_correction::FlowCVectorType{Float64} = zero(flow_rate_now)
+end
+
+function FlowQuadratureCache(
+        inflow_link::FlowCVectorType{LinkMetadata},
+        outflow_link::FlowCVectorType{LinkMetadata},
+        u_mid::RibasimCVectorType
+    )
+    flow_rate_now = similar(inflow_link, Float64)
+    incidence_matrix = build_incidence_matrix(inflow_link, outflow_link)
+    factorized_matrix = cholesky(Symmetric(incidence_matrix * incidence_matrix'))
+
+    return FlowQuadratureCache(;
+        flow_rate_now,
+        u_mid,
+        incidence_matrix,
+        factorized_matrix
+    )
 end
 
 """
@@ -1186,12 +1216,8 @@ the object itself is not.
     cumulative_flow_saveat::FlowCVectorType{Float64} = zero(flow_quadrature_cache.flow_rate_prev)
     # Mean flow per link over last timestep
     mean_flow_dt::FlowCVectorType{Float64} = zero(flow_quadrature_cache.flow_rate_prev)
-    # Running totals for BMI (never reset)
-    cumulative_infiltration_total::Vector{Float64} = Float64[]
-    # Running total of UserDemand inflow per node for BMI (never reset)
-    cumulative_user_demand_inflow::Vector{Float64} = Float64[]
     # Convergence tracking: accumulated normalized Newton residual per basin
-    convergence::Vector{Float64} = Float64[]
+    convergence::Vector{Float64} = zeros(length(basin.node_id))
     convergence_ncalls::Vector{Int} = [0]
 end
 

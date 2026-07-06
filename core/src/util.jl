@@ -1324,14 +1324,14 @@ function set_flow_links!(inflow_link, outflow_link, user_demand::UserDemand)
     return nothing
 end
 
-function set_flow_links!(outflow_link, basin::Basin)
+function set_flow_links!(inflow_link, basin::Basin)
     (; node_id) = basin
-    (; evaporation, infiltration) = outflow_link
+    (; evaporation, infiltration) = inflow_link
 
     placeholder_node_id = NodeID(NodeType.Terminal, 0, 0)
 
     for id in node_id
-        link_metadata = LinkMetadata(0, LinkType.flow, (placeholder_node_id, id))
+        link_metadata = LinkMetadata(0, LinkType.flow, (id, placeholder_node_id))
         evaporation[id.idx] = link_metadata
         infiltration[id.idx] = link_metadata
     end
@@ -1364,7 +1364,96 @@ function get_flow_links(nodes::NamedTuple, flow_ranges::FlowTuple{UnitRange{Int}
     set_flow_links!(inflow_link.linear_resistance, outflow_link.linear_resistance, linear_resistance)
     set_flow_links!(inflow_link.manning_resistance, outflow_link.manning_resistance, manning_resistance)
     set_flow_links!(inflow_link.user_demand_inflow, outflow_link.user_demand_outflow, user_demand)
-    set_flow_links!(outflow_link, basin)
+    set_flow_links!(inflow_link, basin)
 
     return inflow_link, outflow_link
+end
+
+"""
+Wrap the data of a SubArray into a Vector.
+
+This function is labeled unsafe because it will crash if pointer is not a valid memory
+address to data of the requested length, and it will not prevent the input array A from
+being freed.
+"""
+function unsafe_array(
+        A::SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true},
+    )::Vector{Float64}
+    return GC.@preserve A unsafe_wrap(Array, pointer(A), length(A))
+end
+
+function sum_basin_flows(
+        p::Parameters,
+        flow::FlowCVectorType,
+        node_id::NodeID,
+        t::Number;
+        boundary_flow::Union{Nothing, Vector{Float64}} = nothing,
+        skip_boundary_flow::Bool = false,
+        skip_node::Union{Nothing, NodeID} = nothing
+    )
+    (; inflow_ids, outflow_ids) = p.p_independent.basin
+    out = 0.0
+
+    for outflow_id in outflow_ids[node_id.idx]
+        (outflow_id == skip_node) && continue
+        out -= get_flow(
+            flow,
+            (node_id, outflow_id),
+            p,
+            t;
+            boundary_flow
+        )
+    end
+    for inflow_id in inflow_ids[node_id.idx]
+        skip_boundary_flow && (inflow_id.type == NodeType.FlowBoundary) && continue
+        (inflow_id == skip_node) && continue
+        out += get_flow(
+            flow,
+            (inflow_id, node_id),
+            p,
+            t;
+            boundary_flow
+        )
+    end
+
+    return out
+end
+
+function Δstorage_single_basin_without_boundary_flow(
+        p::Parameters,
+        node_id::NodeID,
+        t
+    )
+    (; basin, cumulative_flow_dt) = p.p_independent
+    (; cumulative_positive_forcing_dt) = basin
+    return cumulative_positive_forcing_dt.precipitation[node_id.idx] +
+        cumulative_positive_forcing_dt.surface_runoff[node_id.idx] +
+        cumulative_positive_forcing_dt.drainage[node_id.idx] +
+        sum_basin_flows(
+        p, cumulative_flow_dt, node_id, t;
+        skip_boundary_flow = true
+    )
+end
+
+function build_incidence_matrix(
+        inflow_link::FlowCVectorType{LinkMetadata},
+        outflow_link::FlowCVectorType{LinkMetadata}
+    )
+    n_basin = length(inflow_link.evaporation)
+    n_flow = length(inflow_link)
+    incidence_matrix = spzeros(n_basin, n_flow)
+
+    for (flow_idx, (link_in, link_out)) in enumerate(zip(inflow_link, outflow_link))
+        from_node = link_in.link[1]
+        to_node = link_out.link[2]
+
+        if from_node.type == NodeType.Basin
+            incidence_matrix[from_node.idx, flow_idx] = -1
+        end
+        if to_node.type == NodeType.Basin
+            incidence_matrix[to_node.idx, flow_idx] = 1
+        end
+    end
+
+    return incidence_matrix
 end
