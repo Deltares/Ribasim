@@ -15,7 +15,7 @@ Ribasim is written in the [Julia programming language](https://julialang.org/) a
 on top of the [SciML: Open Source Software for Scientific Machine Learning](https://sciml.ai/)
 libraries.
 
-# Download
+## Download
 
 For most users the [latest release](https://github.com/Deltares/Ribasim/releases/latest) is recommended, it can be downloaded here:
 
@@ -24,7 +24,7 @@ For most users the [latest release](https://github.com/Deltares/Ribasim/releases
 - QGIS plugin: [ribasim_qgis.zip](https://github.com/Deltares/Ribasim/releases/latest/download/ribasim_qgis.zip).
 - Generated testmodels: [generated_testmodels.zip](https://github.com/Deltares/Ribasim/releases/latest/download/generated_testmodels.zip)
 
-# Example model
+## Example model
 
 Ribasim model of the main water distribution network in the Netherlands.
 
