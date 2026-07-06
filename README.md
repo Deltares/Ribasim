@@ -28,4 +28,4 @@ For most users the [latest release](https://github.com/Deltares/Ribasim/releases
 
 Ribasim model of the main water distribution network in the Netherlands.
 
-![dutch_model_on_map](https://github.com/user-attachments/assets/5095a4fe-c336-4380-aa0c-851c851d3895)
+![Dutch main water network](https://s3.deltares.nl/ribasim/doc-image/network-nl.png)
