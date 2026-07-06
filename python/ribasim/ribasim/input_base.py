@@ -130,7 +130,7 @@ class BaseModel(PydanticBaseModel):
         input data has already been validated at construction time.
         """
         original = cls.__setattr__
-        cls.__setattr__ = _bypass_setattr  # pyrefly: ignore[bad-override]
+        cls.__setattr__ = _bypass_setattr  # pyrefly: ignore[bad-assignment]
         try:
             yield
         finally:
