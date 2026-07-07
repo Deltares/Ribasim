@@ -9,16 +9,11 @@ const SolverStats = @NamedTuple{
 }
 
 # State vector
-const state_components = (:storage, :integral)
-const n_components = length(state_components)
-const StateTuple{V} = NamedTuple{state_components, NTuple{n_components, V}}
-const RibasimCVectorType{T} =
-    Ribasim.CArrays.CArray{T, 1, Vector{T}, StateTuple{UnitRange{Int}}}
-
-# state dependent flow vector
+const state_components = (:storage, :flow, :pid_integral)
 const flow_components = (
     :pump,
     :outlet,
+    :flow_boundary,
     :tabulated_rating_curve,
     :linear_resistance,
     :manning_resistance,
@@ -26,17 +21,14 @@ const flow_components = (
     :user_demand_outflow,
     :evaporation,
     :infiltration,
+    :drainage,
+    :surface_runoff,
+    :precipitation,
 )
 const n_flow_components = length(flow_components)
 const FlowTuple{V} = NamedTuple{flow_components, NTuple{n_flow_components, V}}
-const FlowCVectorType{T} =
-    Ribasim.CArrays.CArray{T, 1, Vector{T}, FlowTuple{UnitRange{Int}}}
-
-# State independent positive vertical forcing vector
-const positive_forcing_components = (:precipitation, :surface_runoff, :drainage)
-const n_positive_forcing_components = length(positive_forcing_components)
-const PositiveForcingTuple{V} = NamedTuple{positive_forcing_components, NTuple{n_positive_forcing_components, V}}
-const PositiveForcingCVectorType{T} = Ribasim.CArrays.CArray{T, 1, Vector{T}, PositiveForcingTuple{UnitRange{Int}}}
+const StateTuple{V} = NamedTuple{state_components, Tuple{V, FlowTuple{V}, V}}
+const RibasimCVectorType{T} = CArrays.CVector{T, StateTuple{UnitRange{Int}}}
 
 # LinkType.flow and NodeType.FlowBoundary
 @enumx LinkType flow control listen observation none
@@ -1233,21 +1225,6 @@ the object itself is not.
     # Convergence tracking: accumulated normalized Newton residual per basin
     convergence::Vector{Float64} = zeros(length(basin.node_id))
     convergence_ncalls::Vector{Int} = [0]
-end
-
-function get_flow_vector(node_container)
-    n_basin = length(node_container.basin.node_id)
-    n_pump = length(node_container.pump.node_id)
-    n_outlet = length(node_container.outlet.node_id)
-    n_trc = length(node_container.tabulated_rating_curve.node_id)
-    n_lr = length(node_container.linear_resistance.node_id)
-    n_mr = length(node_container.manning_resistance.node_id)
-    n_ud = length(node_container.user_demand.node_id)
-    n_ud_inflow = mapreduce(links -> length(links), +, node_container.user_demand.inflow_links; init = 0)
-
-    n_flows = [n_pump, n_outlet, n_trc, n_lr, n_mr, n_ud_inflow, n_ud, n_basin, n_basin]
-
-    return CVector(zeros(sum(n_flows)), FlowTuple{UnitRange{Int}}(ranges(n_flows)))
 end
 
 """

@@ -855,19 +855,67 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
     end
 end
 
-"Create a NamedTuple of the node IDs per state component in the state order"
-function state_node_ids(
-        p::Union{ParametersIndependent, NamedTuple},
-    )::StateTuple{Vector{NodeID}}
-    return (;
-        storage = p.basin.node_id,
-        integral = p.pid_control.node_id,
-    )
-end
-
 "Create the axis of the state vector"
-function count_state_ranges(u_ids::StateTuple{Vector{NodeID}})::StateTuple{UnitRange{Int}}
-    return StateTuple{UnitRange{Int}}(ranges(map(length, collect(u_ids))))
+function count_state_ranges(nodes::Union{NamedTuple, ParametersIndependent})::StateTuple{UnitRange{Int}}
+    (;
+        pump,
+        outlet,
+        flow_boundary,
+        tabulated_rating_curve,
+        linear_resistance,
+        manning_resistance,
+        user_demand,
+        basin,
+        pid_control,
+    ) = nodes
+
+    n_pump = length(pump.node_id)
+    n_outlet = length(outlet.node_d)
+    n_flow_boundary = length(flow_boundary.node_id)
+    n_tabulated_rating_curve = length(tabulated_rating_curve.node_id)
+    n_linear_resistance = length(linear_resistance.node_id)
+    n_manning_resistance = length(manning_resistance.node_id)
+    n_user_demand_inflow = mapreduce(length, +, user_demand.inflow_links)
+    n_user_demand_outflow = length(user_demand.node_id)
+    n_basin = length(basin.node_id)
+    n_pid_control = length(pid_control.node_id)
+
+    ns_flow = [
+        n_pump,
+        n_outlet,
+        n_flow_boundary,
+        n_tabulated_rating_curve,
+        n_linear_resistance,
+        n_manning_resistance,
+        n_user_demand_inflow,
+        n_user_demand_outflow,
+        n_basin, # evaporation,
+        n_basin, # infiltration,
+        n_basin, # drainage,
+        n_basin, # surface_runoff,
+        n_basin, # precipitation
+    ]
+    ns_flow_cumsum = pushfirst!(cumsum(ns_flow), 0)
+    n_flow = sum(ns_flow)
+
+    trivial_range = 1:0
+    flow_ranges = ntuple(
+        i -> iszero(ns_flow[i]) ? trivial_range : (ns_flow_cumsum[i] + 1):ns_flow_cumsum[i + 1],
+        Val(n_flow_components)
+    )
+    flow_tuple = StateTuple{UnitRange{Int}}(flow_ranges)
+
+    pid_integral = if iszero(n_pid_control)
+        trivial_range
+    else
+        (n_basin + n_flow + 1):(n_basin + n_flow + n_pid_control)
+    end
+
+    return (;
+        storage = 1:n_basin,
+        flow = flow_tuple,
+        pid_integral,
+    )
 end
 
 function build_state_vector(p_independent::ParametersIndependent)
@@ -891,15 +939,6 @@ function initialize_state_vector!(u::CVector, p_independent::ParametersIndepende
     return nothing
 end
 
-function build_positive_forcing_vector(n_basin::Integer)
-    forcing_ranges = (;
-        precipitation = 1:n_basin,
-        surface_runoff = (n_basin + 1):(2 * n_basin),
-        drainage = (2 * n_basin + 1):(3 * n_basin),
-    )
-    return CVector(zeros(3 * n_basin), forcing_ranges)
-end
-
 """
 Check whether any storages are negative given the state u.
 Storage states are directly in u.storage.
@@ -914,54 +953,6 @@ function get_demand(user_demand, id, demand_priority_idx, t)::Float64
         demand_interpolation[id.idx][demand_priority_idx](t)
     else
         demand[id.idx, demand_priority_idx]
-    end
-end
-
-"""
-Estimate the minimum reduction factor achieved over the last time step by
-estimating the lowest storage achieved over the last time step. To make sure
-it is an underestimate of the minimum, 2low_storage_threshold is subtracted from this lowest storage.
-This is done to not be too strict in clamping the flow in the limiter
-"""
-function min_low_storage_factor(
-        storage_now::AbstractVector{T},
-        storage_prev,
-        basin,
-        id,
-    ) where {T}
-    return if id.type == NodeType.Basin
-        low_storage_threshold = basin.low_storage_threshold[id.idx]
-        reduction_factor(
-            min(storage_now[id.idx], storage_prev[id.idx]) - 2low_storage_threshold,
-            low_storage_threshold,
-        )
-    else
-        one(T)
-    end
-end
-
-"""
-Estimate the minimum level reduction factor achieved over the last time step by
-estimating the lowest level achieved over the last time step. To make sure
-it is an underestimate of the minimum, 2 * level_difference_threshold is subtracted from this lowest level.
-This is done to not be too strict in clamping the flow in the limiter
-"""
-function min_low_user_demand_level_factor(
-        level_now::AbstractVector{T},
-        level_prev,
-        min_level,
-        id_user_demand,
-        id_inflow,
-        level_difference_threshold,
-    ) where {T}
-    return if id_inflow.type == NodeType.Basin
-        reduction_factor(
-            min(level_now[id_inflow.idx], level_prev[id_inflow.idx]) -
-                min_level[id_user_demand.idx] - 2 * level_difference_threshold,
-            level_difference_threshold,
-        )
-    else
-        one(T)
     end
 end
 
@@ -1098,17 +1089,6 @@ function get_timeseries_tstops(itp::AbstractInterpolation, t_end::Float64)::Vect
     end
 
     return tstops
-end
-
-function ranges(lengths::Vector{<:Integer})
-    # from the lengths of the components
-    # construct [1:n_pump, (n_pump+1):(n_pump+n_outlet)]
-    # which are used to create views into the data array
-    bounds = pushfirst!(cumsum(lengths), 0)
-    ranges = [range(p[1] + 1, p[2]) for p in IterTools.partition(bounds, 2, 1)]
-    # standardize empty ranges to 1:0 for easier testing
-    replace!(x -> isempty(x) ? (1:0) : x, ranges)
-    return ranges
 end
 
 function get_interpolation_vec(

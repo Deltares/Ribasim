@@ -1645,14 +1645,7 @@ function Parameters(db::DB, config::Config)::Parameters
     )
 
     subgrid = Subgrid(db, config, basin)
-
-    u_ids = state_node_ids(
-        (;
-            nodes.basin,
-            nodes.pid_control,
-        )
-    )
-    state_ranges = count_state_ranges(u_ids)
+    state_ranges = count_state_ranges(nodes)
 
     set_target_ref!(
         nodes.pid_control.target_ref,
