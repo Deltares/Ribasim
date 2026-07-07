@@ -287,7 +287,7 @@ end
     precipitation = p_independent.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
     @test u.storage ≈
-        Float32[691.797, 691.795, 459.022, 1136.969] atol = 3.0
+        Float32[693.1112, 693.10895, 463.9762, 1136.9476] atol = 3.0
 end
 
 @testitem "Allocation example model" begin

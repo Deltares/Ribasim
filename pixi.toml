@@ -302,7 +302,7 @@ xugrid = "*"
 yamlfmt = "*"
 
 [pypi-dependencies]
-juliacall = "==0.9.34"
+juliacall = "==0.9.35"
 pytest-qgis = ">=4.0.1, <5"
 python-magic = ">=0.4.27"
 qgis-plugin-manager = ">=1.7.2"
@@ -336,9 +336,6 @@ quarto = "*"
 default = ["py313"]
 py312 = ["py312"]
 pandas2 = ["py313", "pandas2"]
-
-[system-requirements]
-linux = "3.10.0"
 
 [activation.env]
 JULIA_CONDAPKG_BACKEND = "Null"

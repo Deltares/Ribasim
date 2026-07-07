@@ -429,8 +429,10 @@ end
     # Test control state switching based on basin level
     # When level >= 1m, flow should be 0.05 m³/s
     # When level < 1m, flow should be either 0.08 or 0 m³/s
-
-    high_level_flows = flow.flow_rate[basin_data.level .>= 1.0]
+    # A small margin around the 1m threshold excludes transient samples recorded
+    # at the exact timestep the level crosses the threshold, where the flow is
+    # still mid-switch between control states.
+    high_level_flows = flow.flow_rate[basin_data.level .>= 1.01]
     low_level_flows = flow.flow_rate[basin_data.level .< 1.0]
 
     # All flows when level >= 1m should be 0.05
