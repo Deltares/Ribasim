@@ -93,9 +93,12 @@ def parse(
 
             dfs.append(df)
 
-    df = _concat(dfs).reset_index(drop=True)
-    df.sort_values(["time", "node_id"], inplace=True)
+    df = _concat(dfs, ignore_index=True)
 
+    # set_index(...).to_xarray() reindexes to sorted coords, so the NetCDF output is
+    # independent of row order. We don't sort df here: it would copy the large
+    # PyArrow-backed `substance` column (and can blow up memory), while write() already
+    # sorts concentration_external by its sort_keys before writing it to disk.
     ds = df.set_index(["time", "substance", "node_id"]).to_xarray()
     ds.to_netcdf(model.results_path / "concentration.nc")
 

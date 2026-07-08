@@ -91,6 +91,7 @@ using DataInterpolations:
     ExtrapolationType
 using DataInterpolations.ExtrapolationType:
     Constant as ConstantExtrapolation, Periodic, Linear
+using FindFirstFunctions: SearchProperties
 
 # Modeling language for Mathematical Optimization.
 # Used for allocation, see the docs: https://ribasim.org/dev/allocation.html

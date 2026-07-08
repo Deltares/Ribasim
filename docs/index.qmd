@@ -16,4 +16,4 @@ Ribasim will be used as the surface water module of the [Netherlands Hydrologic 
 
 Ribasim model of the main water distribution network in the Netherlands.
 
-<img alt="HWS on map" src="https://github.com/user-attachments/assets/5095a4fe-c336-4380-aa0c-851c851d3895" class="img-fluid">
+![](https://s3.deltares.nl/ribasim/doc-image/network-nl.png){fig-align="left"}
