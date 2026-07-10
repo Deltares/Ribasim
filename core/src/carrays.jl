@@ -7,7 +7,7 @@ module CArrays
 
 using Base.Broadcast: Broadcasted, ArrayStyle, Extruded
 
-struct CArray{T, N, A <: DenseArray{T, N}, NT} <: DenseArray{T, N}
+struct CArray{T, N, A <: AbstractArray{T, N}, NT} <: AbstractArray{T, N}
     data::A
     axes::NT
 end
@@ -15,7 +15,7 @@ end
 function CArray{T, N, A, NT}(
         ::UndefInitializer,
         n::Int,
-    ) where {T, N, A <: DenseArray{T, N}, NT}
+    ) where {T, N, A <: AbstractArray{T, N}, NT}
     data = similar(A, n)
     # We can say `axes = (;)`, but this doesn't preserve axes type, problematic for
     # https://github.com/JuliaSmoothOptimizers/Krylov.jl/blob/v0.9.10/src/krylov_solvers.jl#L2500
@@ -33,8 +33,8 @@ end
 const CVector{T, NT} = CArray{T, 1, NT}
 const CMatrix{T, NT} = CArray{T, 2, NT}
 
-CVector(data::DenseVector, axes) = CArray(data, axes)
-CMatrix(data::DenseMatrix, axes) = CArray(data, axes)
+CVector(data::AbstractVector, axes) = CArray(data, axes)
+CMatrix(data::AbstractMatrix, axes) = CArray(data, axes)
 
 getdata(x::CArray) = getfield(x, :data)
 getaxes(x::CArray) = getfield(x, :axes)
@@ -94,41 +94,67 @@ function Base.similar(bc::Broadcasted{ArrayStyle{CArray}}, ::Type{T}) where {T}
     return CArray(similar(Array{T}, axes(bc)), getaxes(x))
 end
 
-function _show_components(f, io::IO, x::CArray)
-    axes = getaxes(x)
-    data = getdata(x)
-    for name in propertynames(axes)
-        loc = getproperty(axes, name)
-        vals = component(data, loc)
-        f(io, name, vals isa AbstractArray ? collect(vals) : vals)
-    end
-    return
-end
-
-function Base.show(io::IO, x::CArray)
+function _show_compact(io::IO, x::CArray)
     print(io, "CArray(")
     first_component = true
-    _show_components(io, x) do io, name, vals
+    for name in propertynames(x)
         first_component || print(io, ", ")
+        vals = getproperty(x, name)
         print(io, name, " = ")
-        show(io, vals)
+        if vals isa CArray
+            _show_compact(io, vals)
+        else
+            show(io, vals isa AbstractArray ? collect(vals) : vals)
+        end
         first_component = false
     end
     return print(io, ")")
 end
 
+function _show_plain(io::IO, x::CArray, indent::String)
+    for name in propertynames(x)
+        vals = getproperty(x, name)
+        if vals isa CArray
+            print(io, "\n", indent, name, ":")
+            _show_plain(io, vals, indent * "  ")
+        else
+            print(io, "\n", indent, name, ": ")
+            show(io, vals isa AbstractArray ? collect(vals) : vals)
+        end
+    end
+    return
+end
+
+function Base.show(io::IO, x::CArray)
+    return _show_compact(io, x)
+end
+
 function Base.show(io::IO, ::MIME"text/plain", x::CArray)
     summary(io, x)
-    return _show_components(io, x) do io, name, vals
-        print(io, "\n  ", name, ": ")
-        show(io, vals)
-    end
+    return _show_plain(io, x, "  ")
 end
 
 component(data, loc::Integer) = data[loc]
 component(data, loc::CartesianIndex) = data[loc]
 component(data, loc::AbstractUnitRange{<:Integer}) = view(data, loc)
-component(data, loc::NamedTuple) = CArray(data, loc)
+
+# For nested axes, slice the data to the covered range and offset indices to be relative.
+_flat_range(loc::Integer) = loc:loc
+_flat_range(loc::AbstractUnitRange{<:Integer}) = loc
+_flat_range(loc::NamedTuple) =
+    minimum(first ∘ _flat_range, values(loc)):maximum(last ∘ _flat_range, values(loc))
+
+_offset(loc::Integer, offset::Int) = loc - offset
+_offset(loc::AbstractUnitRange{<:Integer}, offset::Int) =
+    (first(loc) - offset):(last(loc) - offset)
+_offset(loc::NamedTuple, offset::Int) = map(l -> _offset(l, offset), loc)
+
+function component(data, loc::NamedTuple)
+    range = _flat_range(loc)
+    offset = first(range) - 1
+    adjusted = _offset(loc, offset)
+    return CArray(view(data, range), adjusted)
+end
 
 function Base.getproperty(x::CArray, name::Symbol)
     data = getdata(x)
