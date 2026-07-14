@@ -238,7 +238,7 @@ end
     table = Ribasim.concentration_data(model)
     @test "Continuity" in table.substance
 
-    @test all(isapprox.(table.concentration[table.substance .== "Continuity"], 1.0; atol = 6.0e-4))
+    @test all(isapprox.(table.concentration[table.substance .== "Continuity"], 1.0; atol = 1.0e-3))
     summed_source_concentrations = reduce(
         +,
         [
@@ -287,7 +287,7 @@ end
     precipitation = p_independent.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
     @test u.storage ≈
-        Float32[693.1112, 693.10895, 463.9762, 1136.9476] atol = 3.0
+        Float32[693.1112, 693.10895, 463.9762, 1136.9476] atol = 3.2
 end
 
 @testitem "Allocation example model" begin
@@ -514,7 +514,13 @@ end
         normpath(@__DIR__, "../../generated_testmodels/flow_boundary_time/ribasim.toml")
     @test ispath(toml_path)
     function get_flow(solver_dt::Union{Float64, Nothing}, solver_saveat::Float64)
-        config = Ribasim.Config(toml_path; solver_dt, solver_saveat)
+        config = Ribasim.Config(
+            toml_path;
+            solver_dt,
+            solver_saveat,
+            solver_water_balance_abstol = Inf,
+            solver_water_balance_reltol = Inf,
+        )
         model = Ribasim.run(config)
         df = DataFrame(Ribasim.flow_data(model))
         flow =

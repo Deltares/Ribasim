@@ -91,7 +91,7 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
             end
         end
 
-        if (to_node.type == Basin) && (cumulative_flow > 0)
+        if (to_node.type == NodeType.Basin) && (cumulative_flow > 0)
             cumulative_in[to_node.idx] += cumulative_flow
             if from_node.type == NodeType.Basin
                 mass[to_node.idx] .+=

@@ -731,7 +731,7 @@ function ConcentrationData(
     concentration_state[:, Substance.Continuity] .= 1.0
     concentration_state[:, Substance.Initial] .= 1.0
     set_concentrations!(concentration_state, concentration_state_data, substances, node_id)
-    mass = collect(eachrow(concentration_state))
+    mass = [copy(row) for row in eachrow(concentration_state)]
 
     concentration_itp_drainage =
         [initialize_concentration_itp(n_substance, Substance.Drainage) for _ in node_id]

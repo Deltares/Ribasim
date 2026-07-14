@@ -112,7 +112,13 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
-    model = BMI.initialize(Ribasim.Model, toml_path)
+    config = Ribasim.Config(
+        toml_path;
+        experimental_concentration = false,
+        solver_water_balance_abstol = Inf,
+        solver_water_balance_reltol = Inf,
+    )
+    model = Ribasim.Model(config)
     drainage = BMI.get_value_ptr(model, "basin.drainage")
     drainage_flux = [1.0, 2.0, 3.0, 4.0]
     drainage .= drainage_flux

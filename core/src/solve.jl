@@ -814,7 +814,10 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
         strict = Val(true),
     )
 
-    jac_prototype = solver.sparse ? Float64.(sparsity_pattern(jac_prep)) : nothing
+    jac_prototype =
+        solver.sparse ?
+        Float64.(sparsity_pattern(jac_prep)) :
+        zeros(length(u), length(u))
 
     jac(J, u, p, t) = jacobian!(
         water_balance!,

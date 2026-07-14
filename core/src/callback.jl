@@ -255,7 +255,8 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
 end
 
 function update_concentrations!(u, t, integrator)::Nothing
-    (; p, tprev, dt) = integrator
+    (; p, tprev) = integrator
+    dt = t - tprev
     (; p_independent, state_and_time_dependent_cache) = p
     (; current_level) = state_and_time_dependent_cache
     (; basin, flow_boundary, do_concentration, cumulative_flow_dt) = p_independent
