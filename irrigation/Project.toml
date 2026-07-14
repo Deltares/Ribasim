@@ -1,8 +1,10 @@
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 FillArrays = "1a297f60-69ca-5386-bcde-b61e274b549b"
+NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
+Ribasim = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Wflow = "d48b7d99-76e7-47ae-b1d5-ff0c1cf9a818"
 
 [sources]
-Wflow = {url = "https://github.com/Deltares/Wflow.jl", rev = "ea8754e6382ffc8327929fc44b6954c6c0605b1d", subdir = "Wflow"}
+Wflow = {rev = "ea8754e6382ffc8327929fc44b6954c6c0605b1d", subdir = "Wflow", url = "https://github.com/Deltares/Wflow.jl"}

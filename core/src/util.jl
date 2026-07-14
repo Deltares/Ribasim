@@ -1336,3 +1336,18 @@ function add_substance_mass!(
     end
     return nothing
 end
+
+get_t_end(config::Config) = seconds_since(config.endtime, config.starttime)
+
+"""
+Return the uniform grid of solver tstops [s] for the irrigation coupling, or an
+empty vector when irrigation is disabled.
+"""
+function get_irrigation_tstops(config::Config)::Vector{Float64}
+    return if config.experimental.irrigation
+        t_end = get_t_end(config)
+        collect(range(0, t_end; step = config.irrigation.dt))
+    else
+        Float64[]
+    end
+end

@@ -342,6 +342,18 @@ module Schema
             concentration::Float64
         end
 
+        struct IrrigationStatic <: Table
+            node_id::Int32
+            irrigated_area_m2::Float64
+        end
+
+        struct IrrigationForcing <: Table
+            node_id::Int32
+            time::DateTime
+            precipitation::Float64
+            potential_evaporation::Float64
+        end
+
     end
 
     module LevelDemand

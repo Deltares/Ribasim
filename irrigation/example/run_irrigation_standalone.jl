@@ -267,7 +267,8 @@ initial_total_storage =
 # runs full simulation at ones for reference, without any allocation
 nsteps = length(forcing.timestamps)
 Irrigation.update_until!(m, nsteps * m.dt)
-plot_results(m.logger, nsteps, initial_total_storage, "single_column_no_allocation.png")
+plot_results(m.logger, nsteps, initial_total_storage, joinpath(@__DIR__, "single_column_no_allocation.png"))
+Irrigation.finalize!(m, joinpath(@__DIR__, "single_column_no_allocation.nc"); initial_total_storage)
 
 # -- run simulation with allocation --------------------------------------------
 m = Irrigation.init(; forcing)
@@ -284,7 +285,8 @@ for step in 1:nsteps
     print(step, step * m.dt)
     Irrigation.update_until!(m, step * m.dt)
 end
-plot_results(m.logger, nsteps, initial_total_storage, "single_column_allocation.png")
+plot_results(m.logger, nsteps, initial_total_storage, joinpath(@__DIR__, "single_column_allocation.png"))
+Irrigation.finalize!(m, joinpath(@__DIR__, "single_column_allocation.nc"); initial_total_storage)
 
 # -- run multi column simulation with allocation --------------------------------
 m = Irrigation.init(; forcing, n = 4)
@@ -308,7 +310,8 @@ for icol in 1:4
         m.logger,
         nsteps,
         initial_total_storage_multicol,
-        "multi_column_col$(icol).png";
+        joinpath(@__DIR__, "multi_column_col$(icol).png");
         icol,
     )
 end
+Irrigation.finalize!(m, joinpath(@__DIR__, "multi_column.nc"); initial_total_storage = initial_total_storage_multicol)

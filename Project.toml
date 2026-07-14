@@ -86,7 +86,6 @@ TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 
 [sources]
 Ribasim = {path = "core"}
-Wflow = {url = "https://github.com/Deltares/Wflow.jl", rev = "ea8754e6382ffc8327929fc44b6954c6c0605b1d", subdir = "Wflow"}
 
 [compat]
 JuliaC = "=0.3.0"

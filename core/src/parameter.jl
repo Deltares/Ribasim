@@ -1130,6 +1130,38 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
 end
 
 """
+Coupling parameters for the Wflow-based irrigation soil model.
+
+node_id: NodeIDs of the UserDemand nodes that have irrigation enabled
+model: The IrrigationModel instance from irrigation/src/irrigation.jl (set after construction)
+demand_priority_idx: Column index into UserDemand.demand / UserDemand.allocated to write/read
+allocated_buffer: Scratch buffer [m/s] for passing allocation results to the soil model
+"""
+mutable struct IrrigationCoupling
+    node_id::Vector{NodeID}
+    model::Any   # Irrigation.IrrigationModel; set externally before solve
+    compute_demand!::Any   # Function (model) -> demand_vec; set together with model
+    advance!::Any          # Function (model) -> nothing; advances soil model one dt
+    demand_priority_idxs::Vector{Int}  # per-node priority column index into UserDemand.demand
+    irrigated_area_m2::Vector{Float64} # irrigated area per soil column [m²]
+    # Parsed forcing per node (index i = node order in node_id)
+    precipitation_mmday::Vector{Vector{Float64}}
+    potential_evaporation_mmday::Vector{Vector{Float64}}
+    forcing_timestamps::Vector{DateTime}
+    allocated_buffer::Vector{Float64}
+end
+
+IrrigationCoupling(node_id::Vector{NodeID}, demand_priority_idxs::Vector{Int}) =
+    IrrigationCoupling(
+    node_id, nothing, nothing, nothing, demand_priority_idxs,
+    ones(length(node_id)),
+    [Float64[] for _ in node_id],
+    [Float64[] for _ in node_id],
+    DateTime[],
+    zeros(length(node_id)),
+)
+
+"""
 The part of the parameters passed to the rhs and callbacks that are non-mutable,
 and not derived from the state vector `u` (or the time `t`). In this context e.g. a vector
 of floats (not dependent on `u`) is not considered mutable, because even though it's elements are mutable,
@@ -1184,6 +1216,8 @@ the object itself is not.
     u_reduced::RibasimReducedCVectorType{Float64}
     # Solver constants
     level_difference_threshold::Float64
+    # Optional irrigation soil model coupling (nothing when not enabled)
+    irrigation::Union{IrrigationCoupling, Nothing} = nothing
 end
 
 """

@@ -193,6 +193,7 @@ function Model(config::Config)::Model
 
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))
+    push!(tstops, get_irrigation_tstops(config))
     tstops = sort(unique(reduce(vcat, tstops)))
     adaptive = is_adaptive(config.solver.dt)
 
@@ -278,10 +279,55 @@ function is_finished(model::Model)::Bool
 end
 
 """
-    step!(model::Model, dt::Float64)::Model
-
-Take Model timesteps until `t + dt` is reached exactly.
+Before each allocation solve: pull irrigation demand from the soil model and
+write it into the corresponding UserDemand demand column.
+No-op when irrigation is disabled or the IrrigationModel has not been set yet.
 """
+function update_irrigation_demand!(p_independent::ParametersIndependent, t::Float64)::Nothing
+    (; irrigation, user_demand) = p_independent
+    isnothing(irrigation) && return nothing
+    isnothing(irrigation.model) && return nothing
+    isnothing(irrigation.compute_demand!) && return nothing
+    demand_vec = irrigation.compute_demand!(irrigation.model)
+    for (i, id) in enumerate(irrigation.node_id)
+        val = isnan(demand_vec[i]) ? 0.0 : demand_vec[i]
+        user_demand.demand[id.idx, irrigation.demand_priority_idxs[i]] = val * irrigation.irrigated_area_m2[i]
+    end
+    return nothing
+end
+
+"""
+After each allocation solve: pass the granted allocation back into the soil model
+and advance the soil model to `t + Δt`.
+No-op when irrigation is disabled or the IrrigationModel has not been set yet.
+"""
+function update_irrigation_supply!(p_independent::ParametersIndependent, Δt::Float64)::Nothing
+    (; irrigation, user_demand, allocation) = p_independent
+    isnothing(irrigation) && return nothing
+    isnothing(irrigation.model) && return nothing
+    isnothing(irrigation.advance!) && return nothing
+    for (i, id) in enumerate(irrigation.node_id)
+        # Sum realized volume [m³] over all inflow links of this UserDemand node,
+        # across all allocation models (there is typically one subnetwork).
+        realized_m3 = sum(
+            get(am.cumulative_supplied_volume, lm.link, 0.0)
+                for am in allocation.allocation_models
+                for lm in user_demand.inflow_links[id.idx];
+            init = 0.0,
+        )
+        # Convert m³ over Δt → m/s → set on soil model
+        irrigation.allocated_buffer[i] = realized_m3 / Δt / irrigation.irrigated_area_m2[i]
+    end
+    irrigation.model.allocation.irrigation_allocation .= irrigation.allocated_buffer
+    # Advance the soil model one step (update! increments tcurrent internally)
+    t_end_soil = irrigation.model.tcurrent + Δt
+    while irrigation.model.tcurrent < t_end_soil - 0.5 * irrigation.model.dt
+        irrigation.model.allocation.irrigation_allocation .= irrigation.allocated_buffer
+        irrigation.advance!(irrigation.model)
+    end
+    return nothing
+end
+
 function step!(model::Model, dt::Float64)::Model
     (; config, integrator) = model
     (; t) = integrator
@@ -290,7 +336,11 @@ function step!(model::Model, dt::Float64)::Model
     # set over BMI at time t before calling this function.
     ntimes = t / something(config.allocation.dt, 86400.0)
     if round(ntimes) ≈ ntimes
+        update_irrigation_demand!(integrator.p.p_independent, t)
         update_allocation!(model)
+        SciMLBase.step!(integrator, dt, true)
+        update_irrigation_supply!(integrator.p.p_independent, dt)
+        return model
     end
     SciMLBase.step!(integrator, dt, true)
     return model
@@ -334,24 +384,31 @@ function solve_with_allocation!(model::Model)::Nothing
     (; config, integrator) = model
     (; tspan::Tuple{Float64, Float64}) = integrator.sol.prob
 
+    p_independent = integrator.p.p_independent
     if config.allocation.dt === nothing
         saveat = config.solver.saveat
         while integrator.t < tspan[end] - eps(tspan[end])
             Δt = compute_and_set_adaptive_Δt!(model, saveat, tspan[end])
+            update_irrigation_demand!(p_independent, integrator.t)
             update_allocation!(model, Δt; record = is_saveat_time(integrator.t, saveat, tspan[end]))
             SciMLBase.step!(integrator, Δt, true)
+            update_irrigation_supply!(p_independent, Δt)
         end
     else
         dt_alloc = config.allocation.dt
         n_allocation_times = floor(Int, tspan[end] / dt_alloc)
         for _ in 1:n_allocation_times
+            update_irrigation_demand!(p_independent, integrator.t)
             update_allocation!(model)
             SciMLBase.step!(integrator, dt_alloc, true)
+            update_irrigation_supply!(p_independent, dt_alloc)
         end
         dt = tspan[end] - integrator.t
         if dt > 0
+            update_irrigation_demand!(p_independent, integrator.t)
             update_allocation!(model)
             SciMLBase.step!(integrator, dt, true)
+            update_irrigation_supply!(p_independent, dt)
         end
     end
     return nothing

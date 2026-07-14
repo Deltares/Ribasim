@@ -225,9 +225,14 @@ end
     route_priority::RoutePriority = RoutePriority()
 end
 
+@option struct IrrigationConfig <: TableOption
+    dt::Float64 = 86400.0
+end
+
 @option struct Experimental <: TableOption
     concentration::Bool = false
     allocation::Bool = false
+    irrigation::Bool = false
 end
 
 # For logging enabled experimental features
@@ -254,6 +259,7 @@ end
     logging::Logging = Logging()
     results::Results = Results()
     experimental::Experimental = Experimental()
+    irrigation::IrrigationConfig = IrrigationConfig()
 end
 
 struct Config

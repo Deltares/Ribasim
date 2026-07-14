@@ -1,6 +1,7 @@
 module Irrigation
 
 using Dates
+using NCDatasets
 using Wflow
 using StaticArrays: SVector
 using FillArrays
@@ -292,6 +293,86 @@ end
 
 function set_allocated!(m::IrrigationModel, allocation::AbstractVector{Float64})
     return m.allocation.irrigation_allocation .= allocation
+end
+
+# ── finalize! ──────────────────────────────────────────────────────────────────
+"""
+    finalize!(m, path; initial_total_storage)
+
+Write `m.logger` to a NetCDF file at `path` so Python (or any other tool) can
+read and plot the results without a live Julia session.
+
+Dimensions
+- `cell`  : cell index (0-based integer, length `n`)
+- `time`  : time-step index (1-based integer, length `nsteps`)
+
+Variables
+- `rec_precip`  : `(time,)` — uniform precipitation forcing [mm/day]
+- all other `rec_*` fields : `(cell, time)` — per-cell per-step values [mm/day or m]
+- `initial_total_storage`  : `(cell,)` — soil+canopy storage at t=0 [mm]
+"""
+function finalize!(
+        m::IrrigationModel,
+        path::AbstractString;
+        initial_total_storage::Union{Float64, Vector{Float64}} = zeros(m.n),
+        ribasim_node_ids::Vector{Int32} = Int32[],
+        irrigated_area_m2::Vector{Float64} = ones(m.n),
+    )
+    logger = m.logger
+    n = m.n
+    nsteps = length(logger.rec_precip)
+
+    NCDataset(path, "c") do ds
+        defDim(ds, "cell", n)
+        defDim(ds, "time", nsteps)
+
+        # 1-D forcing (same for all cells)
+        v = defVar(ds, "rec_precip", Float64, ("time",); attrib = ["units" => "mm/day"])
+        v[:] = logger.rec_precip
+
+        # initial storage per cell
+        v = defVar(ds, "initial_total_storage", Float64, ("cell",); attrib = ["units" => "mm"])
+        v[:] = isa(initial_total_storage, Float64) ? fill(initial_total_storage, n) : initial_total_storage
+
+        # 2-D per-cell variables (cell × time)
+        matrix_vars = [
+            ("rec_wt_depth", logger.rec_wt_depth, "m"),
+            ("rec_sat_storage", logger.rec_sat_storage, "mm"),
+            ("rec_unsat_storage", logger.rec_unsat_storage, "mm"),
+            ("rec_actual_et", logger.rec_actual_et, "mm/day"),
+            ("rec_interception", logger.rec_interception, "mm/day"),
+            ("rec_infiltration", logger.rec_infiltration, "mm/day"),
+            ("rec_infiltration_excess", logger.rec_infiltration_excess, "mm/day"),
+            ("rec_saturated_excess", logger.rec_saturated_excess, "mm/day"),
+            ("rec_net_runoff_soil", logger.rec_net_runoff_soil, "mm/day"),
+            ("rec_storage", logger.rec_storage, "mm"),
+            ("rec_leakage", logger.rec_leakage, "mm/day"),
+            ("rec_demand", logger.rec_demand, "mm/day"),
+            ("rec_irrigation", logger.rec_irrigation, "mm/day"),
+            ("rec_canopy_storage", logger.rec_canopy_storage, "mm"),
+        ]
+        for (name, data, units) in matrix_vars
+            v = defVar(ds, name, Float64, ("cell", "time"); attrib = ["units" => units])
+            v[:, :] = data
+        end
+
+        # Ribasim node IDs (one per soil column) — empty when run standalone
+        if !isempty(ribasim_node_ids)
+            v = defVar(
+                ds, "ribasim_node_id", Int32, ("cell",);
+                attrib = ["long_name" => "Ribasim UserDemand node_id for each soil column"]
+            )
+            v[:] = ribasim_node_ids
+        end
+
+        # Irrigated area per soil column [m²]
+        v = defVar(
+            ds, "irrigated_area_m2", Float64, ("cell",);
+            attrib = ["units" => "m2", "long_name" => "irrigated area per soil column"]
+        )
+        v[:] = irrigated_area_m2
+    end
+    return println("Logger written to: $path")
 end
 
 end # module Irrigation
