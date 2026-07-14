@@ -487,7 +487,7 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; p) = model.integrator
+    (; p, u) = model.integrator
     (; p_independent) = p
     (; allocation) = p_independent
 
@@ -502,6 +502,7 @@ end
                 tabulated_rating_curve_ids_subnetwork,
                 tabulated_rating_curve_flow,
                 p,
+                u,
                 t,
             ),
         )
@@ -517,7 +518,7 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; p) = model.integrator
+    (; p, u, t) = model.integrator
     (; p_independent) = p
     (; allocation) = p_independent
 
@@ -532,6 +533,7 @@ end
                 tabulated_rating_curve_ids_subnetwork,
                 tabulated_rating_curve_flow,
                 p,
+                u,
                 t,
             ),
         )

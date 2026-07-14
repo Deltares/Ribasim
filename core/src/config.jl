@@ -396,6 +396,16 @@ function get_ad_type(solver::Solver)
     end
 end
 
+"""
+A wrapper of a SciMLLinearSolveAlgorithm to dispatch on for the specialized Jacobian
+matrix of Ribasim.
+"""
+struct RibasimLinearSolve{AType <: SciMLLinearSolveAlgorithm} <: SciMLLinearSolveAlgorithm
+    algorithm::AType
+end
+
+LinearSolve.needs_concrete_A(::RibasimLinearSolve) = false
+
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     kwargs = Dict{Symbol, Any}()
@@ -404,7 +414,7 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
         kwargs[:nlsolve] = NLNewton(; relax = Ribasim.BackTracking())
         if solver.sparse
-            kwargs[:linsolve] = KLUFactorization(; check_pattern = false)
+            kwargs[:linsolve] = RibasimLinearSolve(KLUFactorization(; check_pattern = false))
         end
     end
 
@@ -412,7 +422,15 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
         kwargs[:autodiff] = get_ad_type(solver)
     end
 
+    if function_accepts_kwarg(algotype, :step_limiter!)
+        kwargs[:step_limiter!] = Ribasim.correct_step!
+    end
+
     return algotype(; kwargs...)
+end
+
+function with_mass_matrix(solver::Solver)
+    return algorithm(solver) isa OrdinaryDiffEqNewtonAdaptiveAlgorithm
 end
 
 "Convert the saveat Float64 from our Config to SciML's saveat"

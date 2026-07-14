@@ -343,13 +343,11 @@ end
 
 "Create the basin state table from the saved data"
 function basin_state_data(model::Model; table::Bool = true)
-    (; u, p, t) = model.integrator
-    (; current_level) = p.state_and_time_dependent_cache
+    (; u, p) = model.integrator
+    (; basin) = p.p_independent
+    update_level_and_area_cache!(u, p)
 
-    # ensure the levels are up-to-date
-    set_current_basin_properties!(u, p)
-
-    return (; node_id = Int32.(p.p_independent.basin.node_id), level = current_level)
+    return (; node_id = Int32.(basin.node_id), level = copy(basin.level_cache))
 end
 
 "Create the basin result table from the saved data"
@@ -367,9 +365,9 @@ function basin_data(model::Model; table::Bool = true)
 
     inflow_rate = FlatVector(saved.flow.saveval, :inflow)
     outflow_rate = FlatVector(saved.flow.saveval, :outflow)
-    drainage = FlatVector(saved.flow.saveval, :positive_forcing, :drainage)
-    precipitation = FlatVector(saved.flow.saveval, :positive_forcing, :precipitation)
-    surface_runoff = FlatVector(saved.flow.saveval, :positive_forcing, :surface_runoff)
+    drainage = FlatVector(saved.flow.saveval, :flow, :drainage)
+    precipitation = FlatVector(saved.flow.saveval, :flow, :precipitation)
+    surface_runoff = FlatVector(saved.flow.saveval, :flow, :surface_runoff)
     evaporation = FlatVector(saved.flow.saveval, :flow, :evaporation)
     infiltration = FlatVector(saved.flow.saveval, :flow, :infiltration)
     storage_rate = FlatVector(saved.flow.saveval, :storage_rate)
@@ -451,10 +449,9 @@ function flow_data(model::Model; table::Bool = true)
     internal_flow_rate = zeros(length(internal_flow_links))
 
     for (ti, saved_flow) in enumerate(saveval)
-        (; flow, flow_boundary) = saved_flow
         for (fi, link) in enumerate(internal_flow_links)
             internal_flow_rate[fi] =
-                get_flow(flow, link.link, p, 0; boundary_flow = flow_boundary)
+                get_flow(saved_flow.flow, link.link, p)
         end
         mul!(
             view(flow_rate, (1 + (ti - 1) * nflow):(ti * nflow)),
@@ -471,8 +468,6 @@ function flow_data(model::Model; table::Bool = true)
 
     time = datetime_since.(t_starts, config.starttime)
     link_id = unique_link_ids_flow
-    from_node_id = from_node_id
-    to_node_id = to_node_id
 
     if table
         time = repeat(time; inner = nflow)
@@ -587,7 +582,7 @@ function allocation_data(model::Model; table::Bool = true)
     if !isempty(record_demand)
         Δt = integrator.t - last(record_demand).time
         for allocation_model in allocation_models
-            (; cumulative_supplied_volume, node_ids_in_subnetwork) = allocation_model
+            (; node_ids_in_subnetwork) = allocation_model
             (;
                 user_demand_ids_subnetwork,
                 node_ids_subnetwork_with_flow_demand,
@@ -597,10 +592,7 @@ function allocation_data(model::Model; table::Bool = true)
             # UserDemand: sum supplied volumes across all inflow links for each node
             for id in user_demand_ids_subnetwork
                 j = searchsortedfirst(node_id, id)
-                total_supplied = sum(
-                    cumulative_supplied_volume[lm.link] for
-                        lm in user_demand.inflow_links[id.idx]
-                )
+                total_supplied = get_supplied_volume(user_demand, u.flow, p, id)
                 supplied[view(has_priority, :, j), j, end] .= total_supplied / Δt
             end
 
@@ -608,9 +600,7 @@ function allocation_data(model::Model; table::Bool = true)
             for id in node_ids_subnetwork_with_flow_demand
                 j = searchsortedfirst(node_id, id)
                 flow_demand_id = only(inneighbor_labels_type(graph, id, LinkType.control))
-                supplied[view(has_priority, :, j), j, end] .=
-                    cumulative_supplied_volume[flow_demand.inflow_link[flow_demand_id.idx].link] /
-                    Δt
+                supplied[view(has_priority, :, j), j, end] .= get_supplied_volume(flow_demand, u.flow, p, flow_demand_id) / Δt
             end
 
             # LevelDemand

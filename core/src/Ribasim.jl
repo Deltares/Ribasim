@@ -29,10 +29,17 @@ using DifferentiationInterface:
     derivative!,
     second_derivative
 
-using ForwardDiff: derivative as forward_diff
+using ForwardDiff: Dual, Partials, seed!, partials, derivative as forward_diff
+
+using ArrayInterface: ArrayInterface
 
 # Algorithms for solving ODEs.
-using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du, AbstractNLSolver
+using OrdinaryDiffEqCore:
+    OrdinaryDiffEqCore,
+    OrdinaryDiffEqAdaptiveImplicitAlgorithm,
+    OrdinaryDiffEqImplicitAlgorithm,
+    get_du,
+    AbstractNLSolver
 using DiffEqBase: DiffEqBase, calculate_residuals!
 using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
 import ADTypes
@@ -53,7 +60,12 @@ using SciMLBase:
     get_proposed_dt,
     DEIntegrator,
     FullSpecialize,
-    NoSpecialize
+    NoSpecialize,
+    LinearProblem,
+    LinearSolution
+
+using OrdinaryDiffEqDifferentiation:
+    OrdinaryDiffEqDifferentiation, do_newJW, jacobian2W!, dolinsolve
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
@@ -61,14 +73,10 @@ using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
-using SparseArrays:
-    SparseMatrixCSC,
-    sparse,
-    spzeros,
-    CHOLMOD
+using SparseArrays: SparseMatrixCSC, spzeros, sparse
 
 # Linear algebra
-using LinearAlgebra: cholesky, Symmetric, mul!, ldiv!
+using LinearAlgebra: LinearAlgebra, mul!, dot, I
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node
@@ -169,13 +177,17 @@ using Printf: @sprintf
 
 using Base.Threads: nthreads
 
-include("carrays.jl")
-using .CArrays: CVector, getaxes, getdata
+using SciMLOperators: SciMLOperators, WOperator, AbstractSciMLOperator
+
+include("cvectors.jl")
+using .CVectors: CVector, getaxes, getdata
 include("schema.jl")
 include("config.jl")
 using .config
+using .config: with_mass_matrix
 include("parameter.jl")
 include("validation.jl")
+include("formulate_flows.jl")
 include("solve.jl")
 include("logo.jl")
 include("logging.jl")

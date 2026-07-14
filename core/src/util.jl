@@ -164,16 +164,26 @@ function get_tstops(time, starttime::DateTime)::Vector{Float64}
     return seconds_since.(unique_times, starttime)
 end
 
+function get_level(storage::AbstractVector, p::Parameters, node_id::NodeID, t::Number)::Number
+    return get_level(
+        node_id.is_basin ? storage[node_id.idx] : 0.0,
+        p,
+        node_id,
+        t
+    )
+end
+
 """
 Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
 du: tells ForwardDiff whether this call is for differentiation or not
 """
-function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
-    (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
+function get_level(storage::Number, p::Parameters, node_id::NodeID, t::Number)::Number
+    (; p_independent, time_dependent_cache) = p
+    (; storage_to_level) = p_independent.basin
 
-    return if node_id.type == NodeType.Basin
-        state_and_time_dependent_cache.current_level[node_id.idx]
+    return if node_id.is_basin
+        storage_to_level[node_id.idx](storage)
     elseif node_id.type == NodeType.LevelBoundary
         itp = p_independent.level_boundary.level[node_id.idx]
         eval_time_interpolation(
@@ -194,7 +204,7 @@ end
 
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
 function basin_bottom(basin::Basin, node_id::NodeID)::Tuple{Bool, Float64}
-    return if node_id.type == NodeType.Basin
+    return if node_id.is_basin
         # get level(storage) interpolation function
         level_discrete = basin_levels(basin, node_id.idx)
         # and return the first level in this vector, representing the bottom
@@ -321,12 +331,16 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
     end
 end
 
-function get_low_storage_factor(p::Parameters, id::NodeID)
-    (; current_low_storage_factor) = p.state_and_time_dependent_cache
-    return if id.type == NodeType.Basin
-        current_low_storage_factor[id.idx]
+function get_low_storage_factor(
+        storage::Number,
+        p_independent::ParametersIndependent,
+        id::NodeID,
+    )
+    (; low_storage_threshold) = p_independent.basin
+    return if id.is_basin
+        reduction_factor(storage, low_storage_threshold[id.idx])
     else
-        one(eltype(current_low_storage_factor))
+        one(eltype(storage))
     end
 end
 
@@ -335,15 +349,17 @@ For resistance nodes, give a reduction factor based on the upstream node
 as defined by the flow direction.
 """
 function low_storage_factor_resistance_node(
-        p::Parameters,
+        s_a::Number,
+        s_b::Number,
+        p_independent::ParametersIndependent,
         q::Number,
         inflow_id::NodeID,
         outflow_id::NodeID,
     )
     return if q > 0
-        get_low_storage_factor(p, inflow_id)
+        get_low_storage_factor(s_a, p_independent, inflow_id)
     else
-        get_low_storage_factor(p, outflow_id)
+        get_low_storage_factor(s_b, p_independent, outflow_id)
     end
 end
 
@@ -486,178 +502,60 @@ function NodeID(type::Symbol, value::Integer, p_independent::ParametersIndepende
     return NodeID(node_type, value, idx)
 end
 
-"Map a NodeType to its corresponding CacheType for flow rate listening."
-function cache_type_for_node(node_type::NodeType.T)::CacheType.T
-    return if node_type == NodeType.Pump
-        CacheType.flow_rate_pump
-    elseif node_type == NodeType.Outlet
-        CacheType.flow_rate_outlet
-    elseif node_type == NodeType.TabulatedRatingCurve
-        CacheType.flow_rate_tabulated_rating_curve
-    elseif node_type == NodeType.LinearResistance
-        CacheType.flow_rate_linear_resistance
-    elseif node_type == NodeType.ManningResistance
-        CacheType.flow_rate_manning_resistance
-    elseif node_type == NodeType.UserDemand
-        CacheType.flow_rate_user_demand
-    else
-        error("No cache type for node type $node_type")
-    end
-end
-
-"""
-Get the reference to a parameter
-"""
-function get_cache_ref(
-        node_id::NodeID,
-        variable::String;
-        listen::Bool = true,
-    )::Tuple{CacheRef, Bool}
-    errors = false
-
-    ref = if node_id.type == NodeType.Basin && variable == "level"
-        CacheRef(; type = CacheType.basin_level, node_id.idx)
-    elseif node_id.type == NodeType.Basin && variable == "storage"
-        CacheRef(; type = CacheType.basin_storage, node_id.idx)
-    elseif variable == "flow_rate" && node_id.type != NodeType.FlowBoundary
-        if listen
-            if node_id.type ∉ conservative_nodetypes
-                errors = true
-                @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_nodetypes."
-                CacheRef()
-            else
-                type = cache_type_for_node(node_id.type)
-                CacheRef(; type, node_id.idx)
-            end
-        else
-            type = if node_id.type == NodeType.Pump
-                CacheType.flow_rate_pump
-            elseif node_id.type == NodeType.Outlet
-                CacheType.flow_rate_outlet
-            else
-                errors = true
-                @error "Cannot set the flow rate of $node_id."
-                CacheType.flow_rate_pump
-            end
-            CacheRef(; type, node_id.idx)
-        end
-    else
-        # Placeholder to obtain correct type
-        CacheRef()
-    end
-    return ref, errors
-end
-
-"""
-Set references to all variables that are listened to by discrete/continuous control
-"""
-function set_listen_cache_refs!(p_independent::ParametersIndependent)::Nothing
-    (; discrete_control, continuous_control) = p_independent
-    compound_variable_sets =
-        [discrete_control.compound_variables..., continuous_control.compound_variable]
-    errors = false
-
-    for compound_variables in compound_variable_sets
-        for compound_variable in compound_variables
-            (; subvariables) = compound_variable
-            for (j, subvariable) in enumerate(subvariables)
-                ref, error = get_cache_ref(
-                    subvariable.listen_node_id,
-                    subvariable.variable,
-                )
-                if !error
-                    subvariables[j] = @set subvariable.cache_ref = ref
-                end
-                errors |= error
-            end
-        end
-    end
-
-    if errors
-        error("Error(s) occurred when parsing listen variables.")
-    end
+function set_discrete_controlled_target_refs!(p_independent::ParametersIndependent)
+    (;
+        tabulated_rating_curve,
+        linear_resistance,
+        manning_resistance,
+        pump,
+        outlet,
+        pid_control,
+    ) = p_independent
+    set_discrete_controlled_target_refs!(tabulated_rating_curve)
+    set_discrete_controlled_target_refs!(linear_resistance)
+    set_discrete_controlled_target_refs!(manning_resistance)
+    set_discrete_controlled_target_refs!(pump)
+    set_discrete_controlled_target_refs!(outlet)
+    set_discrete_controlled_target_refs!(pid_control)
     return nothing
 end
 
-"""
-Set references to all variables that are controlled by discrete control
-"""
-function set_discrete_controlled_variable_refs!(
-        p_independent::ParametersIndependent,
-    )::Nothing
-    for nodetype in propertynames(p_independent)
-        node = getfield(p_independent, nodetype)
-        if node isa AbstractParameterNode && hasfield(typeof(node), :control_mapping)
-            control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
-                node.control_mapping
+function set_discrete_controlled_target_refs!(
+        node::AbstractParameterNode
+    )
+    (; control_mapping) = node
 
-            for ((node_id, control_state), control_state_update) in control_mapping
-                (; scalar_update, itp_update_constant, itp_update_linear, itp_update_lookup) =
-                    control_state_update
+    for ((node_id, _), control_state_update) in control_mapping
+        (; idx) = node_id
 
-                # References to scalar parameters
-                for (i, parameter_update) in enumerate(scalar_update)
-                    field = getfield(node, parameter_update.name)
-                    scalar_update[i] = ParameterUpdate(
-                        parameter_update.name,
-                        parameter_update.value,
-                        Ref(field, node_id.idx),
-                    )
-                end
+        (; scalar_update, itp_update_constant, itp_update_linear, itp_update_lookup) =
+            control_state_update
 
-                # References to constant interpolation parameters
-                for (i, parameter_update) in enumerate(itp_update_constant)
-                    field = getfield(node, parameter_update.name)
-                    itp_update_constant[i] = ParameterUpdate(
-                        parameter_update.name,
-                        parameter_update.value,
-                        Ref(field, node_id.idx),
-                    )
-                end
+        # References to scalar parameters
+        for (i, parameter_update) in enumerate(scalar_update)
+            field = getfield(node, parameter_update.name)
+            scalar_update[i] = @set parameter_update.ref = Ref(field, idx)
+        end
 
-                # References to linear interpolation parameters
-                for (i, parameter_update) in enumerate(itp_update_linear)
-                    field = getfield(node, parameter_update.name)
-                    itp_update_linear[i] = ParameterUpdate(
-                        parameter_update.name,
-                        parameter_update.value,
-                        Ref(field, node_id.idx),
-                    )
-                end
+        # References to constant interpolation parameters
+        for (i, parameter_update) in enumerate(itp_update_constant)
+            field = getfield(node, parameter_update.name)
+            itp_update_constant[i] = @set parameter_update.ref = Ref(field, idx)
+        end
 
-                # References to index interpolation parameters
-                for (i, parameter_update) in enumerate(itp_update_lookup)
-                    field = getfield(node, parameter_update.name)
-                    itp_update_lookup[i] = ParameterUpdate(
-                        parameter_update.name,
-                        parameter_update.value,
-                        Ref(field, node_id.idx),
-                    )
-                end
-            end
+        # References to linear interpolation parameters
+        for (i, parameter_update) in enumerate(itp_update_linear)
+            field = getfield(node, parameter_update.name)
+            itp_update_linear[i] = @set parameter_update.ref = Ref(field, idx)
+        end
+
+        # References to index interpolation parameters
+        for (i, parameter_update) in enumerate(itp_update_lookup)
+            field = getfield(node, parameter_update.name)
+            itp_update_lookup[i] = @set parameter_update.ref = Ref(field, idx)
         end
     end
-    return nothing
-end
 
-function set_target_ref!(
-        target_ref::Vector{CacheRef},
-        node_id::Vector{NodeID},
-        controlled_variable::Vector{String},
-        graph::MetaGraph,
-    )::Nothing
-    errors = false
-    for (i, (id, variable)) in enumerate(zip(node_id, controlled_variable))
-        controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
-        ref, error =
-            get_cache_ref(controlled_node_id, variable; listen = false)
-        target_ref[i] = ref
-        errors |= error
-    end
-
-    if errors
-        error("Errors encountered when setting continuously controlled variable refs.")
-    end
     return nothing
 end
 
@@ -855,8 +753,7 @@ function OrdinaryDiffEqNonlinearSolve.relax!(
     end
 end
 
-"Create the axis of the state vector"
-function count_state_ranges(nodes::Union{NamedTuple, ParametersIndependent})::StateTuple{UnitRange{Int}}
+function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::FlowTuple{UnitRange{Int}}
     (;
         pump,
         outlet,
@@ -866,19 +763,17 @@ function count_state_ranges(nodes::Union{NamedTuple, ParametersIndependent})::St
         manning_resistance,
         user_demand,
         basin,
-        pid_control,
     ) = nodes
 
+    n_basin = length(basin.node_id)
     n_pump = length(pump.node_id)
-    n_outlet = length(outlet.node_d)
+    n_outlet = length(outlet.node_id)
     n_flow_boundary = length(flow_boundary.node_id)
     n_tabulated_rating_curve = length(tabulated_rating_curve.node_id)
     n_linear_resistance = length(linear_resistance.node_id)
     n_manning_resistance = length(manning_resistance.node_id)
-    n_user_demand_inflow = mapreduce(length, +, user_demand.inflow_links)
+    n_user_demand_inflow = mapreduce(length, +, user_demand.inflow_links; init = 0)
     n_user_demand_outflow = length(user_demand.node_id)
-    n_basin = length(basin.node_id)
-    n_pid_control = length(pid_control.node_id)
 
     ns_flow = [
         n_pump,
@@ -903,40 +798,34 @@ function count_state_ranges(nodes::Union{NamedTuple, ParametersIndependent})::St
         i -> iszero(ns_flow[i]) ? trivial_range : (ns_flow_cumsum[i] + 1):ns_flow_cumsum[i + 1],
         Val(n_flow_components)
     )
-    flow_tuple = StateTuple{UnitRange{Int}}(flow_ranges)
+    return FlowTuple{UnitRange{Int}}(flow_ranges)
+end
 
-    pid_integral = if iszero(n_pid_control)
-        trivial_range
-    else
-        (n_basin + n_flow + 1):(n_basin + n_flow + n_pid_control)
-    end
+"Create the axis of the state vector"
+function count_state_ranges(nodes::Union{NamedTuple, ParametersIndependent})::StateTuple{UnitRange{Int}}
+    (; basin, pid_control) = nodes
+
+    n_basin = length(basin.node_id)
+    n_pid = length(pid_control.node_id)
+
+    flow_ranges = count_flow_ranges(nodes)
+    flow_ranges_shifted = FlowTuple{UnitRange{Int}}(
+        map(r -> (r.start + n_basin):(r.stop + n_basin), flow_ranges)
+    )
+    last = values(flow_ranges_shifted)[end].stop
 
     return (;
         storage = 1:n_basin,
-        flow = flow_tuple,
-        pid_integral,
+        flow = flow_ranges_shifted,
+        pid_integral = (last + 1):(last + n_pid),
     )
 end
 
 function build_state_vector(p_independent::ParametersIndependent)
-    (; state_ranges) = p_independent
-    u_ids = state_node_ids(p_independent)
-    n_states = sum(length, u_ids)
-    data = zeros(n_states)
-    u = CVector(data, state_ranges)
-    @assert keys(u_ids) == state_components
-    return u
-end
-
-"Initialize the state vector with basin storages"
-function initialize_state_vector!(u::CVector, p_independent::ParametersIndependent)
-    (; basin) = p_independent
+    (; u_prev_saveat, basin) = p_independent
+    u = zero(u_prev_saveat)
     u.storage .= basin.storage0
-
-    # Initialize prev-saveat storage so the first water balance check
-    # correctly computes the storage rate
-    basin.storage_prev_saveat .= basin.storage0
-    return nothing
+    return u
 end
 
 """
@@ -1115,8 +1004,8 @@ Check whether the inputs u and t are different from the previous call of water_b
 update the boolean flags in p_mutable. In several parts of the calculations in water_balance!,
 caches are only updated if the data they depend on is different from the previous water_balance! call.
 """
-function check_new_input!(p::Parameters, u::CVector, t::Number)::Nothing
-    (; state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
+function check_new_input!(p::Parameters, t::Number)::Nothing
+    (; time_dependent_cache, p_mutable) = p
 
     # Whether the time dependent cache must be renewed
     p_mutable.new_time_dependent_cache =
@@ -1126,31 +1015,6 @@ function check_new_input!(p::Parameters, u::CVector, t::Number)::Nothing
             ForwardDiff.partials(time_dependent_cache.t_prev_call[1])
     )
     time_dependent_cache.t_prev_call[1] = t
-
-    # Whether the state and time dependent cache must be renewed
-    new_t_state_and_time_dependent_cache =
-        !isassigned(state_and_time_dependent_cache.t_prev_call, 1) || (
-        t != state_and_time_dependent_cache.t_prev_call[1] &&
-            ForwardDiff.partials(t) ==
-            ForwardDiff.partials(state_and_time_dependent_cache.t_prev_call[1])
-    )
-    new_u_state_and_time_dependent_cache =
-        any(
-        i -> !isassigned(state_and_time_dependent_cache.u_prev_call, i),
-        eachindex(u),
-    ) || any(
-        i -> !(
-            u[i] == state_and_time_dependent_cache.u_prev_call[i] &&
-                ForwardDiff.partials(u[i]) == ForwardDiff.partials(
-                state_and_time_dependent_cache.u_prev_call[i],
-            )
-        ),
-        eachindex(u),
-    )
-    state_and_time_dependent_cache.u_prev_call .= u
-    state_and_time_dependent_cache.t_prev_call[1] = t
-    p_mutable.new_state_and_time_dependent_cache =
-        new_t_state_and_time_dependent_cache || new_u_state_and_time_dependent_cache
     return nothing
 end
 
@@ -1304,16 +1168,30 @@ function set_flow_links!(inflow_link, outflow_link, user_demand::UserDemand)
     return nothing
 end
 
-function set_flow_links!(inflow_link, basin::Basin)
+function set_flow_links!(inflow_link, outflow_link, flow_boundary::FlowBoundary)
+    # FlowBoundary has no inflow_link; use outflow_link for both so that
+    # link[1] = FlowBoundary node (not a basin) and link[2] = downstream node (basin)
+    inflow_link .= flow_boundary.outflow_link
+    outflow_link .= flow_boundary.outflow_link
+    return nothing
+end
+
+function set_flow_links!(inflow_link, outflow_link, basin::Basin)
     (; node_id) = basin
-    (; evaporation, infiltration) = inflow_link
 
     placeholder_node_id = NodeID(NodeType.Terminal, 0, 0)
 
     for id in node_id
+        # Incoming forcings
+        link_metadata = LinkMetadata(0, LinkType.flow, (placeholder_node_id, id))
+        outflow_link.precipitation[id.idx] = link_metadata
+        outflow_link.drainage[id.idx] = link_metadata
+        outflow_link.surface_runoff[id.idx] = link_metadata
+
+        # Outgoing forcings
         link_metadata = LinkMetadata(0, LinkType.flow, (id, placeholder_node_id))
-        evaporation[id.idx] = link_metadata
-        infiltration[id.idx] = link_metadata
+        inflow_link.evaporation[id.idx] = link_metadata
+        inflow_link.infiltration[id.idx] = link_metadata
     end
     return
 end
@@ -1326,6 +1204,7 @@ function get_flow_links(nodes::NamedTuple, flow_ranges::FlowTuple{UnitRange{Int}
     (;
         pump,
         outlet,
+        flow_boundary,
         tabulated_rating_curve,
         linear_resistance,
         manning_resistance,
@@ -1340,11 +1219,12 @@ function get_flow_links(nodes::NamedTuple, flow_ranges::FlowTuple{UnitRange{Int}
 
     set_flow_links!(inflow_link.pump, outflow_link.pump, pump)
     set_flow_links!(inflow_link.outlet, outflow_link.outlet, outlet)
+    set_flow_links!(inflow_link.flow_boundary, outflow_link.flow_boundary, flow_boundary)
     set_flow_links!(inflow_link.tabulated_rating_curve, outflow_link.tabulated_rating_curve, tabulated_rating_curve)
     set_flow_links!(inflow_link.linear_resistance, outflow_link.linear_resistance, linear_resistance)
     set_flow_links!(inflow_link.manning_resistance, outflow_link.manning_resistance, manning_resistance)
     set_flow_links!(inflow_link.user_demand_inflow, outflow_link.user_demand_outflow, user_demand)
-    set_flow_links!(inflow_link, basin)
+    set_flow_links!(inflow_link, outflow_link, basin)
 
     return inflow_link, outflow_link
 end
@@ -1362,78 +1242,120 @@ function unsafe_array(
     return GC.@preserve A unsafe_wrap(Array, pointer(A), length(A))
 end
 
-function sum_basin_flows(
-        p::Parameters,
+function aggregate_flows!(
+        aggregate::AbstractVector,
         flow::FlowCVectorType,
-        node_id::NodeID,
-        t::Number;
-        boundary_flow::Union{Nothing, Vector{Float64}} = nothing,
-        skip_boundary_flow::Bool = false,
-        skip_node::Union{Nothing, NodeID} = nothing
+        p_independent::ParametersIndependent;
+        do_inflows::Bool = true,
+        do_outflows::Bool = true,
+        do_horizontal_flows::Bool = true,
+        do_vertical_flows::Bool = true,
+        weight::Number = true,
+        from_zero::Bool = true
     )
-    (; inflow_ids, outflow_ids) = p.p_independent.basin
-    out = 0.0
+    (; inflow_link, outflow_link, basin) = p_independent
+    n_basin = length(basin.node_id)
 
-    for outflow_id in outflow_ids[node_id.idx]
-        (outflow_id == skip_node) && continue
-        out -= get_flow(
-            flow,
-            (node_id, outflow_id),
-            p,
-            t;
-            boundary_flow
-        )
-    end
-    for inflow_id in inflow_ids[node_id.idx]
-        skip_boundary_flow && (inflow_id.type == NodeType.FlowBoundary) && continue
-        (inflow_id == skip_node) && continue
-        out += get_flow(
-            flow,
-            (inflow_id, node_id),
-            p,
-            t;
-            boundary_flow
-        )
+    from_zero && (aggregate .= 0.0)
+
+    if do_horizontal_flows
+        # Use length of the range to handle both shifted (sub-CVector from state)
+        # and unshifted (standalone FlowCVector) axes correctly
+        n_horizontal = length(flow) - 5 * n_basin
+        for idx in 1:n_horizontal
+            flow_ = flow[idx]
+            inflow_id = inflow_link[idx].link[1]
+            outflow_id = outflow_link[idx].link[2]
+            positive_flow = (flow_ > 0)
+
+            if inflow_id.is_basin
+                if (!positive_flow && do_inflows) || (positive_flow && do_outflows)
+                    aggregate[inflow_id.idx] -= weight * flow_
+                end
+            end
+
+            if outflow_id.is_basin
+                if (positive_flow && do_inflows) || (!positive_flow && do_outflows)
+                    aggregate[outflow_id.idx] += weight * flow_
+                end
+            end
+        end
     end
 
-    return out
+    if do_vertical_flows
+        if do_inflows
+            @. aggregate += weight * (flow.drainage + flow.surface_runoff + flow.precipitation)
+        end
+        if do_outflows
+            @. aggregate -= weight * (flow.evaporation + flow.infiltration)
+        end
+    end
+    return nothing
 end
 
-function Δstorage_single_basin_without_boundary_flow(
-        p::Parameters,
-        node_id::NodeID,
-        t
-    )
-    (; basin, cumulative_flow_dt) = p.p_independent
-    (; cumulative_positive_forcing_dt) = basin
-    return cumulative_positive_forcing_dt.precipitation[node_id.idx] +
-        cumulative_positive_forcing_dt.surface_runoff[node_id.idx] +
-        cumulative_positive_forcing_dt.drainage[node_id.idx] +
-        sum_basin_flows(
-        p, cumulative_flow_dt, node_id, t;
-        skip_boundary_flow = true
-    )
-end
-
-function build_incidence_matrix(
+function get_incidence_matrix(
         inflow_link::FlowCVectorType{LinkMetadata},
-        outflow_link::FlowCVectorType{LinkMetadata}
+        outflow_link::FlowCVectorType{LinkMetadata},
     )
-    n_basin = length(inflow_link.evaporation)
     n_flow = length(inflow_link)
-    incidence_matrix = spzeros(n_basin, n_flow)
+    n_basin = length(inflow_link.evaporation)
 
-    for (flow_idx, (link_in, link_out)) in enumerate(zip(inflow_link, outflow_link))
-        from_node = link_in.link[1]
-        to_node = link_out.link[2]
+    incidence_matrix = spzeros(Int, n_basin, n_flow)
 
-        if from_node.type == NodeType.Basin
-            incidence_matrix[from_node.idx, flow_idx] = -1
+    for flow_idx in 1:n_flow
+        inflow_id = inflow_link[flow_idx].link[1]
+        outflow_id = outflow_link[flow_idx].link[2]
+
+        if inflow_id.is_basin
+            incidence_matrix[inflow_id.idx, flow_idx] = -1
         end
-        if to_node.type == NodeType.Basin
-            incidence_matrix[to_node.idx, flow_idx] = 1
+        if outflow_id.is_basin
+            incidence_matrix[outflow_id.idx, flow_idx] = 1
+        end
+    end
+    return incidence_matrix
+end
+
+function get_inflows(flow::FlowCVectorType, user_demand::UserDemand, idx::Integer)
+    offset_1 = user_demand.inflow_link_offsets[idx]
+    offset_2 = user_demand.inflow_link_offsets[idx + 1]
+    return @view flow.user_demand_inflow[(offset_1 + 1):offset_2]
+end
+
+function set_uplink_downlink_storage!(
+        storage_uplink::FlowCVectorType,
+        storage_downlink::FlowCVectorType,
+        storage::AbstractVector,
+        p_independent::ParametersIndependent,
+    )
+    (; inflow_link, outflow_link) = p_independent
+
+    storage_uplink .= 0.0
+    storage_downlink .= 0.0
+
+    for idx in eachindex(storage_uplink)
+        inflow_id = inflow_link[idx].link[1]
+        outflow_id = outflow_link[idx].link[2]
+
+        if inflow_id.is_basin
+            storage_uplink[idx] = storage[inflow_id.idx]
+        end
+        if outflow_id.is_basin
+            storage_downlink[idx] = storage[outflow_id.idx]
         end
     end
 
-    return incidence_matrix
+    return nothing
+end
+
+function update_level_and_area_cache!(u::RibasimCVectorType, p::Parameters)
+    (; level_cache, area_cache, storage_to_level, level_to_area) = p.p_independent.basin
+    map!(idx -> storage_to_level[idx](u.storage[idx]), level_cache, eachindex(level_cache))
+    for idx in eachindex(level_cache)
+        level = storage_to_level[idx](u.storage[idx])
+        area = level_to_area[idx](level)
+        level_cache[idx] = level
+        area_cache[idx] = area
+    end
+    return nothing
 end

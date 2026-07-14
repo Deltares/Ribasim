@@ -378,7 +378,7 @@ function valid_pid_connectivity(
     errors = false
 
     for (pid_control_id, listen_id) in zip(pid_control_node_id, pid_control_listen_node_id)
-        if listen_id.type !== NodeType.Basin
+        if !listen_id.is_basin
             @error "Listen node $listen_id of $pid_control_id is not a Basin"
             errors = true
         end
@@ -458,7 +458,7 @@ function valid_min_upstream_level!(
     errors = false
     for (id, min_upstream_level) in zip(node.node_id, node.min_upstream_level)
         id_in = inflow_id(graph, id)
-        if id_in.type == NodeType.Basin
+        if id_in.is_basin
             basin_bottom_level = basin_bottom(basin, id_in)[2]
             if all(==(-Inf), min_upstream_level.u)
                 min_upstream_level.u .= basin_bottom_level
@@ -482,7 +482,7 @@ function valid_tabulated_curve_level(
             tabulated_rating_curve.current_interpolation_index,
         )
         id_in = inflow_id(graph, id)
-        if id_in.type == NodeType.Basin
+        if id_in.is_basin
             basin_bottom_level = basin_bottom(basin, id_in)[2]
             # for the complete timeseries this needs to hold
             for interpolation_index in index_lookup.u

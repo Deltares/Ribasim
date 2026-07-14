@@ -58,10 +58,10 @@ function Model(config::Config)::Model
     t0 = zero(t_end)
     timespan = (t0, t_end)
 
-    local parameters, p_independent, state_and_time_dependent_cache, p_mutable, tstops
+    local parameters, p_independent, tstops
     try
         parameters = Parameters(db, config)
-        (; p_independent, state_and_time_dependent_cache, p_mutable) = parameters
+        (; p_independent) = parameters
 
         if !valid_discrete_control(parameters.p_independent, config)
             error("Invalid discrete control state definition(s).")
@@ -95,13 +95,12 @@ function Model(config::Config)::Model
     @debug "Read database into memory."
 
     u0 = build_state_vector(parameters.p_independent)
+    p_independent.u_prev_saveat .= u0
+
     if isempty(u0)
         @error "Models without states are unsupported, please add a Basin node."
         error("Model has no state.")
     end
-
-    # Initialize basin storages in the state vector
-    initialize_state_vector!(u0, parameters.p_independent)
 
     du0 = zero(u0)
 
@@ -113,9 +112,6 @@ function Model(config::Config)::Model
     # time which depends on the flows formulated in water_balance!
     water_balance!(du0, u0, parameters, t0)
 
-    # Previous level is used to track level changes
-    p_independent.basin.level_prev .= state_and_time_dependent_cache.current_level
-
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))
     tstops = sort(unique(reduce(vcat, tstops)))
@@ -124,6 +120,7 @@ function Model(config::Config)::Model
     specialize = config.solver.specialize ? FullSpecialize : NoSpecialize
     RHS = ODEFunction{true, specialize}(
         water_balance!;
+        mass_matrix = p_independent.with_mass_matrix ? RibasimMassMatrix(p_independent) : I,
         get_diff_eval(du0, u0, parameters, config.solver)...,
     )
     prob = ODEProblem{true, specialize}(RHS, u0, timespan, parameters)
@@ -131,8 +128,6 @@ function Model(config::Config)::Model
 
     callback, saved = create_callbacks(p_independent, config, saveat)
     @debug "Created callbacks."
-
-    p_independent.flow_quadrature_cache.flow_rate_prev .= parameters.state_and_time_dependent_cache.current_flow_rate
 
     # Initialize the integrator, providing all solver options as described in
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/

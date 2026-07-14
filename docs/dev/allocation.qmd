@@ -684,12 +684,12 @@ function linearize_connector_node!(
         )
 
         # Set coefficients for basin storage variables if applicable
-        if upstream_id.type == NodeType.Basin
+        if upstream_id.tis_basin
             set_partial_derivative_wrt_level!(
                 allocation_model, upstream_id, ∂Q∂h_a, p, constraint_ref
             )
         end
-        if downstream_id.type == NodeType.Basin
+        if downstream_id.is_basin
             set_partial_derivative_wrt_level!(
                 allocation_model, downstream_id, ∂Q∂h_b, p, constraint_ref
             )

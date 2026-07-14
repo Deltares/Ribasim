@@ -8,9 +8,9 @@
         normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-    (; p_independent, state_and_time_dependent_cache) = model.integrator.p
-    (; current_flow_rate) = state_and_time_dependent_cache
+    (; p_independent) = model.integrator.p
     (; discrete_control, pump, graph) = p_independent
+    (; flow) = get_du(model.integrator)
 
     # Control input(flow rates)
     pump_control_mapping = pump.control_mapping
@@ -60,8 +60,8 @@
         discrete_control.compound_variables[1][2].threshold_high[1](0)
 
 
-    @test all(x -> isapprox(x, 0; atol = 1.0e-10), current_flow_rate.linear_resistance)
-    @test all(x -> isapprox(x, 0; atol = 1.0e-10), current_flow_rate.pump)
+    @test all(x -> isapprox(x, 0; atol = 1.0e-10), flow.linear_resistance)
+    @test all(x -> isapprox(x, 0; atol = 1.0e-10), flow.pump)
 end
 
 @testitem "Flow condition control" begin
@@ -216,14 +216,12 @@ end
 
     @test compound_variable.subvariables[1] == SubVariable(;
         listen_node_id = NodeID(:FlowBoundary, 2, p_independent),
-        cache_ref = compound_variable.subvariables[1].cache_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,
     )
     @test compound_variable.subvariables[2] == SubVariable(;
         listen_node_id = NodeID(:FlowBoundary, 3, p_independent),
-        cache_ref = compound_variable.subvariables[2].cache_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,

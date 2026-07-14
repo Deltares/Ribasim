@@ -868,7 +868,6 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     storage0 = get_storages_from_levels(basin, state.level)
     basin.storage0 .= storage0
-    basin.storage_prev_dt .= storage0
     basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
 
     for id in node_id
@@ -949,14 +948,12 @@ function CompoundVariable(
             @error "Cannot listen to Junction node" listen_node_id node_id
             error("Invalid `listen_node_id`.")
         end
-        # Placeholder until actual ref is known
-        cache_ref = CacheRef()
         variable = row.variable
         # Default to weight = 1.0 if not specified
         weight = coalesce(row.weight, 1.0)
         # Default to look_ahead = 0.0 if not specified
         look_ahead = coalesce(row.look_ahead, 0.0)
-        subvariable = SubVariable(listen_node_id, cache_ref, variable, weight, look_ahead)
+        subvariable = SubVariable(listen_node_id, variable, weight, look_ahead)
         push!(subvariables, subvariable)
     end
 
@@ -1645,32 +1642,11 @@ function Parameters(db::DB, config::Config)::Parameters
     )
 
     subgrid = Subgrid(db, config, basin)
+    flow_ranges = count_flow_ranges(nodes)
     state_ranges = count_state_ranges(nodes)
 
-    set_target_ref!(
-        nodes.pid_control.target_ref,
-        nodes.pid_control.node_id,
-        fill("flow_rate", length(nodes.pid_control.node_id)),
-        graph,
-    )
-    set_target_ref!(
-        nodes.continuous_control.target_ref,
-        nodes.continuous_control.node_id,
-        nodes.continuous_control.controlled_variable,
-        graph,
-    )
-
-    for node_id in nodes.pid_control.node_id
-        nodes.pid_control.controlled_node_id[node_id.idx] = only(outneighbor_labels_type(graph, node_id, LinkType.control))
-    end
-
-    flow_rate_prototype = get_flow_vector(nodes)
-    inflow_link, outflow_link = get_flow_links(nodes, getaxes(flow_rate_prototype))
-
-    n_basin = length(nodes.basin.node_id)
-    n_pid = length(nodes.pid_control.node_id)
-    u_mid = CVector(zeros(n_basin + n_pid), state_ranges)
-    flow_quadrature_cache = FlowQuadratureCache(inflow_link, outflow_link, u_mid)
+    inflow_link, outflow_link = get_flow_links(nodes, flow_ranges)
+    incidence_matrix = get_incidence_matrix(inflow_link, outflow_link)
 
     p_independent = ParametersIndependent(;
         config.starttime,
@@ -1680,18 +1656,20 @@ function Parameters(db::DB, config::Config)::Parameters
         subgrid,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
+        flow_ranges,
         state_ranges,
         do_concentration = config.experimental.concentration,
         do_subgrid = config.results.subgrid,
         config.solver.level_difference_threshold,
-        flow_quadrature_cache,
         inflow_link,
         outflow_link,
+        incidence_matrix,
+        with_mass_matrix = with_mass_matrix(config.solver),
     )
 
+    set_discrete_controlled_target_refs!(p_independent)
     collect_control_mappings!(p_independent)
-    set_listen_cache_refs!(p_independent)
-    set_discrete_controlled_variable_refs!(p_independent)
+    set_controlled_node_ids!(p_independent)
 
     # Allocation data structures
     if config.experimental.allocation
@@ -1699,6 +1677,19 @@ function Parameters(db::DB, config::Config)::Parameters
     end
 
     return Parameters(; p_independent)
+end
+
+function set_controlled_node_ids!(p_independent)
+    (; graph, pid_control, continuous_control) = p_independent
+
+    for id in continuous_control.node_id
+        continuous_control.controlled_node_id[id.idx] = only(outneighbor_labels_type(graph, id, LinkType.control))
+    end
+
+    for id in pid_control.node_id
+        pid_control.controlled_node_id[id.idx] = only(outneighbor_labels_type(graph, id, LinkType.control))
+    end
+    return
 end
 
 function get_node_ids_int32(db::DB, node_type)::Vector{Int32}

@@ -114,7 +114,7 @@ end
 function get_minmax_level(p_independent::ParametersIndependent, node_id::NodeID)
     (; basin, level_boundary) = p_independent
 
-    if node_id.type == NodeType.Basin
+    if node_id.is_basin
         itp = basin.level_to_area[node_id.idx]
         return itp.t[1], itp.t[end]
     elseif node_id.type == NodeType.LevelBoundary
@@ -127,7 +127,7 @@ end
 
 function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     low_storage_factor = problem[:low_storage_factor]
-    return if node_id.type == NodeType.Basin
+    return if node_id.is_basin
         low_storage_factor[node_id]
     else
         1.0
@@ -326,6 +326,7 @@ function get_max_flow_curvature(
         connector_ids::Vector{NodeID},
         flow_function::Function,
         p::Parameters,
+        u::RibasimCVectorType,
         t::Float64,
     )::Float64
     max_curvature = 0.0
@@ -335,8 +336,8 @@ function get_max_flow_curvature(
         inflow_id = connector_node.inflow_link[node_id.idx].link[1]
         outflow_id = connector_node.outflow_link[node_id.idx].link[2]
 
-        h_a = get_level(p, inflow_id, t)
-        h_b = get_level(p, outflow_id, t)
+        h_a = get_level(u.storage, p, inflow_id, t)
+        h_b = get_level(u.storage, p, outflow_id, t)
 
         d²Q_dh_a² = second_derivative(
             h_ -> flow_function(connector_node, node_id, h_, h_b, p, t),
@@ -415,7 +416,7 @@ function compute_adaptive_Δt(
 
     for (connector, ids, flow_fn) in connector_types
         isempty(ids) && continue
-        curvature = get_max_flow_curvature(connector, ids, flow_fn, p, t)
+        curvature = get_max_flow_curvature(connector, ids, flow_fn, p, u, t)
         if curvature > eps()
             # Use 1.0 m³/s as absolute flow error tolerance
             # (relative tolerance would require knowing Q, which varies per node)
@@ -534,8 +535,7 @@ end
 
 # This method should only be used in initialization because it does a graph lookup
 function get_external_demand_id(graph::MetaGraph, node_id::NodeID)::Union{NodeID, Nothing}
-    node_type =
-        (node_id.type == NodeType.Basin) ? NodeType.LevelDemand : NodeType.FlowDemand
+    node_type = node_id.is_basin ? NodeType.LevelDemand : NodeType.FlowDemand
 
     control_inneighbors = inneighbor_labels_type(graph, node_id, LinkType.control)
     for id in control_inneighbors
@@ -550,7 +550,7 @@ function get_external_demand_id(p_independent, node_id::NodeID)::Union{NodeID, N
     (; basin, tabulated_rating_curve, linear_resistance, manning_resistance, pump, outlet) =
         p_independent
 
-    external_demand_id = if node_id.type == NodeType.Basin
+    external_demand_id = if node_id.is_basin
         basin.level_demand_id[node_id.idx]
     elseif node_id.type == NodeType.TabulatedRatingCurve
         tabulated_rating_curve.flow_demand_id[node_id.idx]
@@ -656,4 +656,27 @@ function delete_flow!(
     )::Nothing
     (; problem) = allocation_model
     return JuMP.delete(problem, problem[:flow])
+end
+
+function get_supplied_volume(
+        user_demand::UserDemand,
+        flow::FlowCVectorType,
+        p::Parameters,
+        node_id::NodeID,
+    )
+    (; cumulative_flow_prev_allocation_dt) = p.p_independent
+    return sum(get_inflows(flow, user_demand, node_id.idx)) -
+        sum(get_inflows(cumulative_flow_prev_allocation_dt, user_demand, node_id.idx))
+end
+
+function get_supplied_volume(
+        flow_demand::FlowDemand,
+        flow::FlowCVectorType,
+        p::Parameters,
+        node_id::NodeID
+    )
+    (; inflow_link) = flow_demand
+    (; cumulative_flow_prev_allocation_dt) = p.p_independent
+    link = inflow_link[node_id.idx].link
+    return get_flow(flow, link, p) - get_flow(cumulative_flow_prev_allocation_dt, link, p)
 end

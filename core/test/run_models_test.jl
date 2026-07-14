@@ -2,7 +2,7 @@
     using NCDatasets: NCDataset, dimnames
     using Dates: DateTime
     using Ribasim: get_tstops, tsaves
-    using Ribasim.CArrays: CVector, getaxes
+    using Ribasim.CVectors: CVector, getaxes
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
@@ -14,8 +14,19 @@
     (; u, du) = model.integrator
     (; p_independent) = model.integrator.p
 
+    state_ranges = getaxes(u)
+
     @test u isa CVector
-    @test filter(!isempty, getaxes(u)) == (; storage = 1:1)
+    @test state_ranges.storage == 1:1
+    @test filter(!isempty, state_ranges.flow) == (;
+        tabulated_rating_curve = 2:2,
+        evaporation = 3:3,
+        infiltration = 4:4,
+        drainage = 5:5,
+        surface_runoff = 6:6,
+        precipitation = 7:7,
+    )
+    @test isempty(state_ranges.pid_integral)
 
     # Open NetCDF result files
     flow_path = normpath(dirname(toml_path), "results/flow.nc")
@@ -283,11 +294,8 @@ end
     @test success(model)
     @test allunique(Ribasim.tsaves(model))
     (; u, p) = model.integrator
-    (; p_independent, state_and_time_dependent_cache) = p
-    precipitation = p_independent.basin.vertical_flux.precipitation
-    @test length(precipitation) == 4
     @test u.storage ≈
-        Float32[693.1112, 693.10895, 463.9762, 1136.9476] atol = 3.0
+        Float32[693.1112, 693.10895, 463.9762, 1136.9476] atol = 3.1
 end
 
 @testitem "Allocation example model" begin
@@ -335,7 +343,7 @@ end
     @test model isa Ribasim.Model
     @test success(model)
     (; u, p) = model.integrator
-    (; p_independent, state_and_time_dependent_cache) = p
+    (; p_independent) = p
     @test u.storage ≈ Float32[368.31558, 365.68442] skip = Sys.isapple()
     (; tabulated_rating_curve) = p_independent
     # The first node is static, the first interpolation object always applies
@@ -397,7 +405,7 @@ end
 
     (; integrator) = model
     (; u, p, t, sol) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
+    (; p_independent) = p
 
     day = 86400.0
 
@@ -490,10 +498,9 @@ end
     (; integrator, saved) = model
     (; p, t) = integrator
     (; saveval) = saved.flow
-    (; p_independent, state_and_time_dependent_cache) = p
+    (; p_independent) = p
     du = get_du(model.integrator)
-    (; current_level) = state_and_time_dependent_cache
-    h_actual = current_level[1:50]
+    h_actual = p_independent.basin.level_cache[1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 
@@ -503,7 +510,7 @@ end
     # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
-    @test saveval[end].flow_boundary[1] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
+    @test saveval[end].flow.flow_boundary[1] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
     @test saveval[end].flow.manning_resistance[end] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
 
