@@ -94,3 +94,32 @@ m = Irrigation.init(; soil_cfg = soil, veg_cfg = veg, irr_cfg = irr)
 ## Coupling with Ribasim
 
 The module is designed so that `get_demand` / `set_allocated!` map directly to BMI `get_value` / `set_value` calls. In a coupled run Ribasim reads the demand, routes water through its network, and returns the achievable allocation (which may be less than demand).
+
+### Coupling concept
+
+Each timestep follows this update pattern:
+
+```mermaid
+sequenceDiagram
+    participant R as Ribasim
+    participant W as Irrigation module
+    Note over W: get_demand() — soil moisture @ t-1
+    W->>R: demand [m/s]
+    Note over R: update_until(t)
+    R->>W: allocated [m/s]
+    Note over W: set_allocated()
+    Note over W: update_until(t)
+```
+
+### Online coupling API
+
+```julia
+m = Irrigation.init(; n = 4)           # n independent soil columns
+
+for step in 1:nsteps
+    demand = Irrigation.get_demand!(m)              # [m/s] — reads t-1 state
+    allocation = ribasim_route(demand)              # placeholder: Ribasim BMI
+    Irrigation.set_allocated!(m, allocation)
+    Irrigation.update_until!(m, step * m.dt)        # advance Wflow to t
+end
+```
