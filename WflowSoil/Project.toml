@@ -1,0 +1,5 @@
+name = "WflowSoil"
+uuid = "f92b13d4-a3a5-4d57-93a3-bfdb119b3fae"
+
+[deps]
+Wflow = "d48b7d99-76e7-47ae-b1d5-ff0c1cf9a818"

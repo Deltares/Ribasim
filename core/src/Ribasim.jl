@@ -169,6 +169,17 @@ using Printf: @sprintf
 
 using Base.Threads: nthreads
 
+import WflowSoil:
+    AbstractSoilModel,
+    WflowSoil,
+    VegetationParameters,
+    SbmSoilParameters,
+    SbmSoilVariables,
+    SbmSoilBC,
+    KvExponential,
+    update_soil_water_flow!,
+    SbmSoilModel
+
 include("carrays.jl")
 using .CArrays: CVector, getaxes, getdata
 include("schema.jl")

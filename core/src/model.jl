@@ -130,12 +130,12 @@ function Model(config::Config)::Model
     end
 
     # for Float32 this method allows max ~1000 year simulations without accuracy issues
-    t_end = seconds_since(config.endtime, config.starttime)
+    t_end = get_t_end(config)
     @assert eps(t_end) < 3600 "Simulation time too long"
     t0 = zero(t_end)
     timespan = (t0, t_end)
 
-    local parameters, p_independent, state_and_time_dependent_cache, p_mutable, tstops
+    local parameters, p_independent, state_and_time_dependent_cache, tstops
     try
         parameters = Parameters(db, config)
         (; p_independent, state_and_time_dependent_cache, p_mutable) = parameters
@@ -193,6 +193,7 @@ function Model(config::Config)::Model
 
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))
+    push!(tstops, get_soil_moisture_tstops(config))
     tstops = sort(unique(reduce(vcat, tstops)))
     adaptive = is_adaptive(config.solver.dt)
 
@@ -304,24 +305,28 @@ function compute_and_set_adaptive_Δt!(model, saveat, tspan_end)::Float64
     (; config, integrator) = model
     (; u, p, t) = integrator
     (; p_independent) = p
-    (; allocation) = p_independent
+    (; allocation, soil_moisture_tstops) = p_independent
     du = get_du(integrator)
 
     water_balance!(du, u, p, t)
 
     Δt = Inf
-    for am in allocation.allocation_models
-        Δt_sub = compute_adaptive_Δt(am, p, du, t, config.allocation)
-        am.Δt_allocation = Δt_sub
+    for allocation_model in allocation.allocation_models
+        Δt_sub = compute_adaptive_Δt(allocation_model, p, du, t, config.allocation)
+        allocation_model.Δt_allocation = Δt_sub
         Δt = min(Δt, Δt_sub)
     end
 
     Δt = min(Δt, time_to_next_saveat(t, saveat, tspan_end))
     Δt = min(Δt, tspan_end - t)
+    idx = searchsortedfirst(soil_moisture_tstops, t, lt = <=)
+    if idx <= length(soil_moisture_tstops)
+        Δt = min(Δt, soil_moisture_tstops[idx] - t)
+    end
 
     # Clamp each model's Δt_allocation to the global bound so it is never Inf
-    for am in allocation.allocation_models
-        am.Δt_allocation = min(am.Δt_allocation, Δt)
+    for allocation_model in allocation.allocation_models
+        allocation_model.Δt_allocation = min(allocation_model.Δt_allocation, Δt)
     end
 
     return Δt
