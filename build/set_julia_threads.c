@@ -3,7 +3,13 @@
 #include <stdint.h>
 #include <stdio.h>
 
-JL_DLLEXPORT int ribasim_set_julia_threads(int32_t threads)
+#ifdef _WIN32
+#define RIBASIM_DLLEXPORT __declspec(dllexport)
+#else
+#define RIBASIM_DLLEXPORT __attribute__((visibility("default")))
+#endif
+
+RIBASIM_DLLEXPORT int ribasim_set_julia_threads(int32_t threads)
 {
     // Julia reads jl_options once, while initializing the runtime.
     if (jl_is_initialized())
