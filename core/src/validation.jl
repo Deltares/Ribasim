@@ -244,6 +244,8 @@ sort_by(::StructVector{Schema.TabulatedRatingCurve.Time}) =
 
 sort_by(::StructVector{Schema.UserDemand.Concentration}) =
     x -> (x.node_id, x.substance, x.time)
+sort_by(::StructVector{Schema.UserDemand.IrrigationStatic}) = x -> (x.node_id)
+sort_by(::StructVector{Schema.UserDemand.IrrigationForcing}) = x -> (x.node_id, x.time)
 sort_by(::StructVector{Schema.UserDemand.Static}) = x -> (x.node_id, x.demand_priority)
 sort_by(::StructVector{Schema.UserDemand.Time}) =
     x -> (x.node_id, x.demand_priority, x.time)

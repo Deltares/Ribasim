@@ -49,6 +49,8 @@ from ribasim.schemas import (
     TabulatedRatingCurveStaticSchema,
     TabulatedRatingCurveTimeSchema,
     UserDemandConcentrationSchema,
+    UserDemandIrrigationForcingSchema,
+    UserDemandIrrigationStaticSchema,
     UserDemandStaticSchema,
     UserDemandTimeSchema,
 )
@@ -201,10 +203,13 @@ class Experimental(ChildModel):
         Whether to enable tracer support (default is False)
     allocation : bool
         Whether to activate the activation layer. Replaced by 'first come first serve' when deactivated (default is False)
+    irrigation : bool
+        Whether to enable two-way coupling with the Wflow-based irrigation soil model (default is False)
     """
 
     concentration: bool = False
     allocation: bool = False
+    irrigation: bool = False
 
 
 class Terminal(NodeModel): ...
@@ -280,6 +285,14 @@ class UserDemand(NodeModel):
     concentration: TableModel[UserDemandConcentrationSchema] = Field(
         default_factory=TableModel[UserDemandConcentrationSchema],
         json_schema_extra={"sort_keys": ["node_id", "substance", "time"]},
+    )
+    irrigation_static: TableModel[UserDemandIrrigationStaticSchema] = Field(
+        default_factory=TableModel[UserDemandIrrigationStaticSchema],
+        json_schema_extra={"sort_keys": ["node_id"]},
+    )
+    irrigation_forcing: TableModel[UserDemandIrrigationForcingSchema] = Field(
+        default_factory=TableModel[UserDemandIrrigationForcingSchema],
+        json_schema_extra={"sort_keys": ["node_id", "time"]},
     )
 
 

@@ -1689,6 +1689,39 @@ function Parameters(db::DB, config::Config)::Parameters
         ),
     )
 
+    irrigation = if config.experimental.irrigation
+        user_demand = nodes.user_demand
+        # Find the priority column index for each UserDemand node (first active priority)
+        demand_priority_idxs = [findfirst(user_demand.has_demand_priority[id.idx, :]) for id in user_demand.node_id]
+        # Fall back to 1 for any node with no priority set yet (will be overridden by soil model)
+        demand_priority_idxs = [isnothing(idx) ? 1 : idx for idx in demand_priority_idxs]
+        coupling = IrrigationCoupling(user_demand.node_id, demand_priority_idxs)
+
+        # Read irrigated area per node (optional; default 1.0 m²)
+        irr_static = load_structvector(db, config, Schema.UserDemand.IrrigationStatic)
+        for row in irr_static
+            idx = findfirst(id -> id.value == row.node_id, coupling.node_id)
+            isnothing(idx) && continue
+            coupling.irrigated_area_m2[idx] = row.irrigated_area_m2
+        end
+
+        # Read per-node forcing timeseries
+        irr_forcing = load_structvector(db, config, Schema.UserDemand.IrrigationForcing)
+        if !isempty(irr_forcing)
+            coupling.forcing_timestamps = sort(unique(irr_forcing.time))
+            for (i, id) in enumerate(coupling.node_id)
+                rows = filter(r -> r.node_id == id.value, irr_forcing)
+                sorted = sort(rows; by = r -> r.time)
+                coupling.precipitation_mmday[i] = [r.precipitation         for r in sorted]
+                coupling.potential_evaporation_mmday[i] = [r.potential_evaporation  for r in sorted]
+            end
+        end
+
+        coupling
+    else
+        nothing
+    end
+
     p_independent = ParametersIndependent(;
         config.starttime,
         config.solver.reltol,
@@ -1711,6 +1744,7 @@ function Parameters(db::DB, config::Config)::Parameters
         convergence = CVector(zeros(n_states), state_ranges),
         u_reduced,
         config.solver.level_difference_threshold,
+        irrigation,
     )
 
     collect_control_mappings!(p_independent)
