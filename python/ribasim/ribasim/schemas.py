@@ -396,6 +396,22 @@ class UserDemandConcentrationSchema(_BaseSchema):
     concentration: float = pa.Field(nullable=False)
 
 
+class UserDemandIrrigationForcingSchema(_BaseSchema):
+    _node_id_relation: str = "equal"
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
+    node_id: np.int32 = pa.Field(nullable=False, default=0)
+    time: pd.Timestamp = pa.Field(nullable=False)
+    precipitation: float = pa.Field(nullable=False)
+    potential_evaporation: float = pa.Field(nullable=False)
+
+
+class UserDemandIrrigationStaticSchema(_BaseSchema):
+    _node_id_relation: str = "equal"
+    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
+    node_id: np.int32 = pa.Field(nullable=False, default=0)
+    irrigated_area_m2: float = pa.Field(nullable=False)
+
+
 class UserDemandStaticSchema(_BaseSchema):
     _node_id_relation: str = "partition"
     fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
@@ -415,19 +431,3 @@ class UserDemandTimeSchema(_BaseSchema):
     return_factor: float = pa.Field(nullable=False)
     min_level: float = pa.Field(nullable=False)
     demand_priority: pd.Int32Dtype = pa.Field(nullable=True)
-
-
-class UserDemandIrrigationStaticSchema(_BaseSchema):
-    _node_id_relation: str = "subset"
-    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
-    node_id: np.int32 = pa.Field(nullable=False, default=0)
-    irrigated_area_m2: float = pa.Field(nullable=False)
-
-
-class UserDemandIrrigationForcingSchema(_BaseSchema):
-    _node_id_relation: str = "subset"
-    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
-    node_id: np.int32 = pa.Field(nullable=False, default=0)
-    time: pd.Timestamp = pa.Field(nullable=False)
-    precipitation: float = pa.Field(nullable=False)
-    potential_evaporation: float = pa.Field(nullable=False)
