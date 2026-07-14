@@ -57,10 +57,10 @@ function water_balance!(
     set_uplink_downlink_storage!(storage_uplink, storage_downlink, u.storage, p_independent)
 
     # Notes on the ordering of these formulations:
-    # - Continuous control can depend on flows (which are not continuously controlled themselves),
-    #   so these flows have to be formulated first.
     # - Pid control can depend on the du of basins and subsequently change them
     #   because of the error derivative term.
+    # - Continuous control can depend on flows (which are not continuously controlled themselves),
+    #   so these flows have to be formulated first.
 
     # Basin forcings (precipitation, evaporation, infiltration, drainage, surface_runoff)
     formulate_vertical_flux!(du, storage_uplink, p_independent)
@@ -78,6 +78,15 @@ function water_balance!(
     # Formulate intermediate flows (non continuously controlled)
     formulate_flows!(formulate_flows_args...)
 
+    # Formulate the PID control integral term rate
+    formulate_PID_control!(du.pid_integral, storage_uplink, storage_downlink, p, t)
+
+    # Formulate intermediate flow (controlled by PID control)
+    formulate_flows!(
+        formulate_flows_args...;
+        control_type = ContinuousControlType.PID
+    )
+
     # Compute ContinuousControl compound variables
     compute_continuous_control_compound_variables!(
         continuous_control_compound_variables,
@@ -91,15 +100,6 @@ function water_balance!(
     formulate_flows!(
         formulate_flows_args...;
         control_type = ContinuousControlType.Continuous,
-    )
-
-    # Formulate the PID control integral term rate
-    formulate_PID_control!(du.pid_integral, storage_uplink, storage_downlink, p, t)
-
-    # Formulate intermediate flow (controlled by PID control)
-    formulate_flows!(
-        formulate_flows_args...;
-        control_type = ContinuousControlType.PID
     )
 
     if !p_independent.with_mass_matrix
@@ -148,7 +148,7 @@ function formulate_vertical_flux!(
 end
 
 function compute_continuous_control_compound_variables!(
-        compound_variables::Vector{Float64},
+        compound_variables::Vector{<:Number},
         storage::AbstractVector,
         flow::AbstractVector,
         p_independent::ParametersIndependent,
@@ -157,8 +157,8 @@ function compute_continuous_control_compound_variables!(
     (; compound_variable, func) = p_independent.continuous_control
 
     for idx in eachindex(compound_variables)
-        cvar = compound_variable[i]
-        f = func[i]
+        cvar = compound_variable[idx]
+        f = func[idx]
         value = compound_variable_value(cvar, storage, flow, p_independent, t)
         compound_variables[idx] = f(value)
     end

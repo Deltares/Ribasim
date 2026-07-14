@@ -22,14 +22,14 @@ using PrecompileTools: @setup_workload, @compile_workload
 using DifferentiationInterface:
     AutoSparse,
     Constant,
-    Cache,
     prepare_jacobian,
+    value_and_jacobian!,
     jacobian!,
     prepare_derivative,
     derivative!,
     second_derivative
 
-using ForwardDiff: Dual, Partials, seed!, partials, derivative as forward_diff
+using ForwardDiff: ForwardDiff, Dual, Partials, seed!, partials, valtype, derivative as forward_diff
 
 using ArrayInterface: ArrayInterface
 
@@ -73,7 +73,7 @@ using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
-using SparseArrays: SparseMatrixCSC, spzeros, sparse
+using SparseArrays: SparseMatrixCSC, spzeros, sparse, findnz
 
 # Linear algebra
 using LinearAlgebra: LinearAlgebra, mul!, dot, I

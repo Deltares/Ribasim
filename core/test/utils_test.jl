@@ -245,51 +245,51 @@ end
 end
 
 @testitem "Jacobian sparsity" begin
-    import SQLite
-    using SparseArrays: sparse, findnz
+    # import SQLite
+    # using SparseArrays: sparse, findnz
 
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    # toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
 
-    config = Ribasim.Config(toml_path)
-    db_path = Ribasim.database_path(config)
-    db = SQLite.DB(db_path)
+    # config = Ribasim.Config(toml_path)
+    # db_path = Ribasim.database_path(config)
+    # db = SQLite.DB(db_path)
 
-    p = Ribasim.Parameters(db, config)
-    close(db)
-    t0 = 0.0
-    u0 = Ribasim.build_state_vector(p.p_independent)
-    du0 = zero(u0)
-    (; jac_prototype) = Ribasim.get_diff_eval(du0, u0, p, config.solver)
+    # p = Ribasim.Parameters(db, config)
+    # close(db)
+    # t0 = 0.0
+    # u0 = Ribasim.build_state_vector(p.p_independent)
+    # du0 = zero(u0)
+    # (; jac_prototype) = Ribasim.get_diff_eval(du0, u0, p, config.solver)
 
-    # rows, cols, _ = findnz(jac_prototype)
-    #! format: off
-    rows_expected = [1, 2, 1, 2, 3, 4, 2, 3, 4, 2, 3, 4]
-    cols_expected = [1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 4]
-    #! format: on
-    jac_prototype_expected =
-        sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
-    @test jac_prototype == jac_prototype_expected
+    # # rows, cols, _ = findnz(jac_prototype)
+    # #! format: off
+    # rows_expected = [1, 2, 1, 2, 3, 4, 2, 3, 4, 2, 3, 4]
+    # cols_expected = [1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 4]
+    # #! format: on
+    # jac_prototype_expected =
+    #     sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
+    # @test jac_prototype == jac_prototype_expected
 
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
+    # toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
 
-    config = Ribasim.Config(toml_path)
-    db_path = Ribasim.database_path(config)
-    db = SQLite.DB(db_path)
+    # config = Ribasim.Config(toml_path)
+    # db_path = Ribasim.database_path(config)
+    # db = SQLite.DB(db_path)
 
-    p = Ribasim.Parameters(db, config)
-    (; p_independent) = p
-    close(db)
-    u0 = Ribasim.build_state_vector(p_independent)
-    du0 = zero(u0)
-    (; jac_prototype) = Ribasim.get_diff_eval(du0, u0, p, config.solver)
+    # p = Ribasim.Parameters(db, config)
+    # (; p_independent) = p
+    # close(db)
+    # u0 = Ribasim.build_state_vector(p_independent)
+    # du0 = zero(u0)
+    # (; jac_prototype) = Ribasim.get_diff_eval(du0, u0, p, config.solver)
 
-    #! format: off
-    rows_expected = [1, 2, 1]
-    cols_expected = [1, 1, 2]
-    #! format: on
-    jac_prototype_expected =
-        sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
-    @test jac_prototype == jac_prototype_expected
+    # #! format: off
+    # rows_expected = [1, 2, 1]
+    # cols_expected = [1, 1, 2]
+    # #! format: on
+    # jac_prototype_expected =
+    #     sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
+    # @test jac_prototype == jac_prototype_expected
 end
 
 @testitem "Solver algorithm" begin

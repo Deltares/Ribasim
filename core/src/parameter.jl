@@ -866,6 +866,8 @@ end
 @kwdef struct ContinuousControl <: AbstractParameterNode
     node_id::Vector{NodeID}
     controlled_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
+    inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     compound_variable::Vector{CompoundVariable}
     controlled_variable::Vector{String}
     func::Vector{ScalarPCHIPInterpolation}
@@ -889,6 +891,8 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
     node_id::Vector{NodeID}
     controlled_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     listen_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
+    inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     target::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     proportional::Vector{ScalarConstantInterpolation} =

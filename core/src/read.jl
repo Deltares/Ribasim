@@ -1669,7 +1669,8 @@ function Parameters(db::DB, config::Config)::Parameters
 
     set_discrete_controlled_target_refs!(p_independent)
     collect_control_mappings!(p_independent)
-    set_controlled_node_ids!(p_independent)
+    set_controlled_node_ids!(p_independent, nodes.pid_control)
+    set_controlled_node_ids!(p_independent, nodes.continuous_control)
 
     # Allocation data structures
     if config.experimental.allocation
@@ -1679,17 +1680,19 @@ function Parameters(db::DB, config::Config)::Parameters
     return Parameters(; p_independent)
 end
 
-function set_controlled_node_ids!(p_independent)
-    (; graph, pid_control, continuous_control) = p_independent
+function set_controlled_node_ids!(p_independent, node::Union{PidControl, ContinuousControl})
+    (; graph, inflow_link, outflow_link, flow_ranges) = p_independent
 
-    for id in continuous_control.node_id
-        continuous_control.controlled_node_id[id.idx] = only(outneighbor_labels_type(graph, id, LinkType.control))
-    end
+    for id in node.node_id
+        controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
+        node.controlled_node_id[id.idx] = controlled_node_id
+        component = node_type_map[controlled_node_id.type]
+        flow_idx = flow_ranges[component][controlled_node_id.idx]
 
-    for id in pid_control.node_id
-        pid_control.controlled_node_id[id.idx] = only(outneighbor_labels_type(graph, id, LinkType.control))
+        node.inflow_link[id.idx] = inflow_link[flow_idx]
+        node.outflow_link[id.idx] = outflow_link[flow_idx]
     end
-    return
+    return nothing
 end
 
 function get_node_ids_int32(db::DB, node_type)::Vector{Int32}
