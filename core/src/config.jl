@@ -412,7 +412,7 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     algotype = algorithms[solver.algorithm]
 
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NLNewton(; relax = Ribasim.BackTracking())
+        kwargs[:nlsolve] = NLNewton()
         if solver.sparse
             kwargs[:linsolve] = RibasimLinearSolve(KLUFactorization(; check_pattern = false))
         end

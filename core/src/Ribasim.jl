@@ -38,10 +38,8 @@ using OrdinaryDiffEqCore:
     OrdinaryDiffEqCore,
     OrdinaryDiffEqAdaptiveImplicitAlgorithm,
     OrdinaryDiffEqImplicitAlgorithm,
-    get_du,
-    AbstractNLSolver
-using DiffEqBase: DiffEqBase, calculate_residuals!
-using OrdinaryDiffEqNonlinearSolve: OrdinaryDiffEqNonlinearSolve, relax!, _compute_rhs!
+    get_du
+using DiffEqBase: DiffEqBase
 import ADTypes
 using ADTypes: AutoForwardDiff
 import ForwardDiff
@@ -69,7 +67,7 @@ using OrdinaryDiffEqDifferentiation:
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
-using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
+using SparseConnectivityTracer: TracerSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
@@ -116,7 +114,7 @@ import BasicModelInterface as BMI
 using DelimitedFiles: writedlm
 
 # Reading GeoPackage files, which are SQLite databases with spatial data
-using SQLite: SQLite, DB, Query, esc_id
+using SQLite: SQLite, DB, esc_id
 using DBInterface: execute, prepare
 
 # Logging to both the console and a file
