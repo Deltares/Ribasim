@@ -19,6 +19,10 @@ struct RibasimMassMatrix{PI <: ParametersIndependent} <: AbstractSciMLOperator{I
     p_independent::PI
 end
 
+"""
+Convert the lazy mass matrix to a sparse matrix. This should generally not be done for
+performance reasons but is required in the OrdinaryDiffEq.jl internals in some places
+"""
 function Base.convert(::Type{<:AbstractMatrix}, M::RibasimMassMatrix)::SparseMatrixCSC{Int, Int}
     (; basin, cumulative_flow_dt, u_prev_saveat, incidence_matrix) = M.p_independent
     n_basin = length(basin.node_id)
@@ -30,6 +34,9 @@ function Base.convert(::Type{<:AbstractMatrix}, M::RibasimMassMatrix)::SparseMat
     return out
 end
 
+"""
+Multiplication of a vector by the Ribasim mass matrix
+"""
 function LinearAlgebra.mul!(
         v_out::RibasimCVectorType,
         M::RibasimMassMatrix,
@@ -58,7 +65,10 @@ ArrayInterface.issingular(::RibasimMassMatrix) = false
 ##### Jacobian
 ###
 
-# Cache for ForwardDiff AD for the Jacobian
+"""
+Caches for evaluating the terms in the lazy Ribasim Jacobian. For more details
+see the RibasmimJacobian docstring.
+"""
 @kwdef struct RibasimJacobianEvaluationCache{T, Sprep, Fprep, S, F}
     du_dual::RibasimCVectorType{ForwardDiff.Dual{T, T, 4}}
     storage_uplink_dual::FlowCVectorType{ForwardDiff.Dual{T, T, 4}} = zero(du_dual.flow)
@@ -66,7 +76,6 @@ ArrayInterface.issingular(::RibasimMassMatrix) = false
     pid_integral_dual::Vector{ForwardDiff.Dual{T, T, 4}}
     continuous_control_compound_dual::Vector{ForwardDiff.Dual{T, T, 4}}
     continuous_control_input_flows::FlowCVectorType{T} = similar(du_dual.flow, valtype(eltype(du_dual)))
-    # Closures of caches for computing continuous control compound variable derivatives
     ∂continuous_control_compound_∂storage_prep::Sprep
     ∂continuous_control_compound_∂flow_prep::Fprep
     eval_∂continuous_control_compound_∂storage!::S
@@ -235,6 +244,11 @@ SciMLOperators.has_mul!(::RibasimJacobian) = true
 Base.size(J::RibasimJacobian, ::Integer) = length(J.p_independent.u_prev_saveat)
 Base.size(J::RibasimJacobian) = (size(J, 1), size(J, 2))
 
+"""
+Update the terms in the RibasimJacobian. `update_coefficients!` is the
+interface for updating AbstractSciMLOperator objects. Since `new_jac` is not part of this API,
+this is captured by wrapping `do_newJW` and storing the value in the parameters.
+"""
 function SciMLOperators.update_coefficients!(
         J::RibasimJacobian,
         u::RibasimCVectorType,
@@ -346,11 +360,11 @@ function SciMLOperators.update_coefficients!(
         ∂flow_∂pid_integral[pid_idx] = partials(du_dual.flow[flow_idx], 3)
     end
 
-    for cc_idx in eachindex(continuous_control.node_id)
-        controlled_node_id = continuous_control.controlled_node_id[cc_idx]
+    for continuous_control_idx in eachindex(continuous_control.node_id)
+        controlled_node_id = continuous_control.controlled_node_id[continuous_control_idx]
         component = node_type_map[controlled_node_id.type]
         flow_idx = p_independent.flow_ranges[component][controlled_node_id.idx]
-        ∂flow_∂continuous_control_compound[cc_idx] = partials(du_dual.flow[flow_idx], 4)
+        ∂flow_∂continuous_control_compound[continuous_control_idx] = partials(du_dual.flow[flow_idx], 4)
     end
 
     # Area of PID controlled Basins
@@ -423,6 +437,9 @@ function ∂flow_∂storage_mul!(
     return nothing
 end
 
+"""
+Multiplying the RibasimJacobian by a vector.
+"""
 function LinearAlgebra.mul!(
         v_out::RibasimCVectorType,
         J::RibasimJacobian,
@@ -459,7 +476,9 @@ end
 ##### Linear solve
 ###
 
-# Linear solve cache
+"""
+Wrapper of the cache for the actual (inner) linear solve
+"""
 struct RibasimLinearSolveCache{C, WType}
     # Cache for the inner storage space linear solve
     cache_inner::C
@@ -804,6 +823,29 @@ end
 ##### Correcting accepted step
 ###
 
+"""
+Estimate the minimum reduction factor achieved over the last time step by
+estimating the lowest storage achieved over the last time step. To make sure
+it is an underestimate of the minimum, 2low_storage_threshold is subtracted from this lowest storage.
+This is done to not be too strict in clamping the flow in the limiter
+"""
+function min_low_storage_factor(
+        storage_now::AbstractVector{T},
+        storage_prev,
+        basin,
+        id,
+    ) where {T}
+    return if id.type == NodeType.Basin
+        low_storage_threshold = basin.low_storage_threshold[id.idx]
+        reduction_factor(
+            min(storage_now[id.idx], storage_prev[id.idx]) - 2low_storage_threshold,
+            low_storage_threshold,
+        )
+    else
+        one(T)
+    end
+end
+
 # Correct the step that was accepted by the solver where needed
 function limit_flow!(
         u::RibasimCVectorType,
@@ -902,7 +944,11 @@ function limit_flow!(integrator, u, t, basin::Basin)
     @. u.flow.surface_runoff = uprev.flow.surface_runoff + vertical_flux.surface_runoff * dt
 
     for idx in eachindex(node_id)
+        low_storage_factor = min_low_storage_factor(u.storage, uprev.storage, basin, node_id[idx])
+        inf = vertical_flux.infiltration[idx]
 
+        limit_flow!(u.flow.infiltration, uprev.flow.infiltration, low_storage_factor * inf, inf, dt, idx)
+        @. u.flow.evaporation = max(u.flow.evaporation, uprev.flow.evaporation)
     end
 
     return nothing

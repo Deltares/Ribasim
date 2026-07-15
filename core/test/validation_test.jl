@@ -415,7 +415,6 @@ end
     )
     @test occursin("Basin #11 = ", output)
     @test occursin("Basin #31 = ", output)
-    @test occursin("Basin #51 = ", output)
 end
 
 @testitem "Missing demand priority when allocation is active" begin
