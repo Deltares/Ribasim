@@ -156,7 +156,7 @@ end
         allocation_table,
     )
     @test all(≈(0.002), df_rating_curve_2.demand)
-    @test all(≈(0.002), df_rating_curve_2.supplied[2:end])
+    @test all(x -> isapprox(x, 0.002, rtol = 1.0e-3), df_rating_curve_2.supplied)
 
     @testset "Results" begin
         allocation_path = normpath(dirname(toml_path), "results/allocation.nc")

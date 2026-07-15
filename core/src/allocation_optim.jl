@@ -214,28 +214,30 @@ function linearize_connector_node!(
     # For levels that come from a Basin `get_level` yields the level at the beginning of the time step,
     # which is the point at which we want to linearize.
     t_after = t + Δt_allocation
+    (; area_cache) = p.p_independent.basin
 
     for node_id in only(flow_constraint.axes)
         inflow_id = inflow_link[node_id.idx].link[1]
         outflow_id = outflow_link[node_id.idx].link[2]
 
-        # h_a and h_b are numbers from the last time step in the physical layer
-        h_a = get_level(u.storage, p, inflow_id, t_after)
-        h_b = get_level(u.storage, p, outflow_id, t_after)
+        # Flow functions expect storage values (not levels) and internally convert to levels
+        s_a = inflow_id.is_basin ? u.storage[inflow_id.idx] : 0.0
+        s_b = outflow_id.is_basin ? u.storage[outflow_id.idx] : 0.0
 
         # Set the right-hand side of the constraint
         constraint = flow_constraint[node_id]
-        q0 = flow_function(connector_node, node_id, h_a, h_b, p, t_after)
+        q0 = flow_function(connector_node, node_id, s_a, s_b, p, t_after)
         JuMP.set_normalized_rhs(constraint, q0 / scaling.flow)
 
         # Only linearize if the level comes from a Basin
         if inflow_id.is_basin
-            # partial derivative with respect to upstream level
-            ∂q∂h_a = forward_diff(
-                level_a ->
-                flow_function(connector_node, node_id, level_a, h_b, p, t_after),
-                h_a,
+            # partial derivative with respect to upstream storage, converted to ∂q/∂h
+            ∂q∂s_a = forward_diff(
+                storage_a ->
+                flow_function(connector_node, node_id, storage_a, s_b, p, t_after),
+                s_a,
             )
+            ∂q∂h_a = ∂q∂s_a * area_cache[inflow_id.idx]
             set_partial_derivative_wrt_level!(
                 allocation_model,
                 inflow_id,
@@ -246,12 +248,13 @@ function linearize_connector_node!(
         end
 
         if outflow_id.is_basin
-            # partial derivative with respect to downstream level
-            ∂q∂h_b = forward_diff(
-                level_b ->
-                flow_function(connector_node, node_id, h_a, level_b, p, t_after),
-                h_b,
+            # partial derivative with respect to downstream storage, converted to ∂q/∂h
+            ∂q∂s_b = forward_diff(
+                storage_b ->
+                flow_function(connector_node, node_id, s_a, storage_b, p, t_after),
+                s_b,
             )
+            ∂q∂h_b = ∂q∂s_b * area_cache[outflow_id.idx]
             set_partial_derivative_wrt_level!(
                 allocation_model,
                 outflow_id,
@@ -339,10 +342,10 @@ function set_simulation_data!(
         inflow_id = inflow_link[1]
         outflow_id = outflow_link[2]
 
-        h_a = get_level(u.storage, p, inflow_id, t + allocation_model.Δt_allocation)
-        h_b = get_level(u.storage, p, outflow_id, t + allocation_model.Δt_allocation)
+        s_a = inflow_id.is_basin ? u.storage[inflow_id.idx] : 0.0
+        s_b = outflow_id.is_basin ? u.storage[outflow_id.idx] : 0.0
         q_max = tabulated_rating_curve_flow(
-            tabulated_rating_curve, node_id, h_a, h_b, p, t + allocation_model.Δt_allocation,
+            tabulated_rating_curve, node_id, s_a, s_b, p, t + allocation_model.Δt_allocation,
         )
         upper_bound = max(0.0, q_max / allocation_model.scaling.flow)
         JuMP.set_upper_bound(flow[inflow_link], upper_bound)
