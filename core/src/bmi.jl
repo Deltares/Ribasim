@@ -39,6 +39,7 @@ function BMI.update(model::Model)::Nothing
 end
 
 function BMI.update_until(model::Model, time::Float64)::Nothing
+    model.integrator.derivative_discontinuity = true
     (; t) = model.integrator
     dt = time - t
     if dt < 0

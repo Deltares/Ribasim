@@ -493,6 +493,7 @@ function set_new_control_state!(
     control_state_now = discrete_control.control_state[discrete_control_id.idx]
     if control_state_now != control_state_new
         record = discrete_control.record
+        integrator.derivative_discontinuity = true
 
         push!(record.time, integrator.t)
         push!(record.control_node_id, Int32(discrete_control_id))
@@ -648,13 +649,14 @@ function set_flux!(
         i::Int,
         t;
         coefficient = 1.0,
-    )::Nothing
+    )::Bool
     val = interpolations[i](t)
     # keep old value if new value is NaN
     if !isnan(val)
         fluxes[i] = coefficient * val
+        return true
     end
-    return nothing
+    return false
 end
 
 """
@@ -667,23 +669,27 @@ function update_basin!(integrator)::Nothing
     (; p, t) = integrator
     (; basin) = p.p_independent
 
-    update_basin!(basin, t)
+    new_flux = update_basin!(basin, t)
+    integrator.derivative_discontinuity |= new_flux
     return nothing
 end
 
-function update_basin!(basin::Basin, t)::Nothing
+function update_basin!(basin::Basin, t)::Bool
     (; vertical_flux, forcing) = basin
+
+    new_flux = false
+
     for id in basin.node_id
         i = id.idx
         fixed_area = get_fixed_area(basin, i)
-        set_flux!(vertical_flux.precipitation, forcing.precipitation, i, t; coefficient = fixed_area)
-        set_flux!(vertical_flux.surface_runoff, forcing.surface_runoff, i, t)
-        set_flux!(vertical_flux.potential_evaporation, forcing.potential_evaporation, i, t)
-        set_flux!(vertical_flux.infiltration, forcing.infiltration, i, t)
-        set_flux!(vertical_flux.drainage, forcing.drainage, i, t)
+        new_flux |= set_flux!(vertical_flux.precipitation, forcing.precipitation, i, t; coefficient = fixed_area)
+        new_flux |= set_flux!(vertical_flux.surface_runoff, forcing.surface_runoff, i, t)
+        new_flux |= set_flux!(vertical_flux.potential_evaporation, forcing.potential_evaporation, i, t)
+        new_flux |= set_flux!(vertical_flux.infiltration, forcing.infiltration, i, t)
+        new_flux |= set_flux!(vertical_flux.drainage, forcing.drainage, i, t)
     end
 
-    return nothing
+    return new_flux
 end
 
 function update_subgrid_level(model::Model)::Model

@@ -805,7 +805,7 @@ end
 ###
 
 # Correct the step that was accepted by the solver where needed
-function correct_step!(
+function limit_flow!(
         u::RibasimCVectorType,
         integrator::DEIntegrator,
         p::Parameters,
@@ -815,18 +815,95 @@ function correct_step!(
     (; p_independent) = p
     (; cumulative_flow_dt) = p_independent
 
-    # Enforce non-negative flow where known
-    for component in flow_components
-        (component ∈ (:linear_resistance, :manning_resistance)) && continue
-        c = getproperty(u.flow, component)
-        cprev = getproperty(uprev.flow, component)
-        @. c = max(c, cprev)
-    end
+    limit_flow!(integrator, u, t, p_independent.pump)
+    limit_flow!(integrator, u, t, p_independent.outlet)
+    limit_flow!(integrator, u, t, p_independent.flow_boundary)
+    limit_flow!(integrator, u, t, p_independent.tabulated_rating_curve)
+    limit_flow!(integrator, u, t, p_independent.linear_resistance)
+    limit_flow!(integrator, u, t, p_independent.manning_resistance)
+    limit_flow!(integrator, u, t, p_independent.user_demand)
+    limit_flow!(integrator, u, t, p_independent.basin)
 
     # Correct storage to exactly close the water balance after the
     # flow corrections
     @. cumulative_flow_dt = u.flow - uprev.flow
     aggregate_flows!(u.storage, cumulative_flow_dt, p_independent)
     u.storage .+= uprev.storage
+    return nothing
+end
+
+function limit_flow!(flow_cumulative, flow_cumulative_prev, flow_min, flow_max, dt, idx)
+    flow_cumulative[idx] = clamp(
+        flow_cumulative[idx],
+        flow_cumulative_prev[idx] + flow_min * dt,
+        flow_cumulative_prev[idx] + flow_max * dt,
+    )
+    return nothing
+end
+
+function limit_flow!(integrator, u, t, node::Union{Pump, Outlet})
+    (; uprev, dt) = integrator
+    (; min_flow_rate, max_flow_rate, node_id) = node
+
+    flow_node, flow_node_prev = if node isa Pump
+        u.flow.pump, uprev.flow.pump
+    else
+        u.flow.outlet, uprev.flow.outlet
+    end
+
+    for idx in eachindex(node_id)
+        limit_flow!(flow_node, flow_node_prev, min_flow_rate[idx](t), max_flow_rate[idx](t), dt, idx)
+    end
+    return nothing
+end
+
+function limit_flow!(integrator, u, t, flow_boundary::FlowBoundary)
+    (; uprev, dt) = integrator
+    (; node_id, flow_rate) = flow_boundary
+
+    for idx in eachindex(node_id)
+        u.flow.flow_boundary[idx] = uprev.flow.flow_boundary[idx] + integral(flow_rate[idx], t - dt, t)
+    end
+    return nothing
+end
+
+function limit_flow!(integrator, u, t, tabulated_rating_curve::TabulatedRatingCurve)
+    (; uprev) = integrator
+    @. u.flow.tabulated_rating_curve = max(u.flow.tabulated_rating_curve, uprev.flow.tabulated_rating_curve)
+    return nothing
+end
+
+limit_flow!(integrator, u, t, manning_resistance::ManningResistance) = nothing
+
+function limit_flow!(integrator, u, t, linear_resistance::LinearResistance)
+    (; uprev, dt) = integrator
+    (; node_id, max_flow_rate) = linear_resistance
+
+    for idx in eachindex(node_id)
+        max_flow = max_flow_rate[idx]
+        limit_flow!(u.flow.linear_resistance, uprev.flow.linear_resistance, -max_flow, max_flow, dt, idx)
+    end
+    return
+end
+
+function limit_flow!(integrator, u, t, user_demand::UserDemand)
+    # TODO: The way UserDemand inflow is clamped on main isn't great because it duplicates logic from flow formulation
+    # I propose to compute the equal split allocation when allocation is off in a callback
+    # Also enforce outflow = return_factor * ∑ inflow since return factor is constant over timestep
+    return nothing
+end
+
+function limit_flow!(integrator, u, t, basin::Basin)
+    (; uprev, dt) = integrator
+    (; vertical_flux, node_id) = basin
+
+    @. u.flow.precipitation = uprev.flow.precipitation + vertical_flux.precipitation * dt
+    @. u.flow.drainage = uprev.flow.drainage + vertical_flux.drainage * dt
+    @. u.flow.surface_runoff = uprev.flow.surface_runoff + vertical_flux.surface_runoff * dt
+
+    for idx in eachindex(node_id)
+
+    end
+
     return nothing
 end

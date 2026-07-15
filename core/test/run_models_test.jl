@@ -599,7 +599,7 @@ end
     inf_out = fill(NaN, nday)
     drn_out = fill(NaN, nday)
 
-    Δt::Float64 = 86400.0
+    Δt = 86400.0
 
     for day in 0:(nday - 1)
         if iseven(day)

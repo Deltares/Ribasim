@@ -245,6 +245,7 @@ end
 end
 
 @testitem "Jacobian sparsity" begin
+    @test false
     # import SQLite
     # using SparseArrays: sparse, findnz
 

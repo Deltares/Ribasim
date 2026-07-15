@@ -423,7 +423,7 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     end
 
     if function_accepts_kwarg(algotype, :step_limiter!)
-        kwargs[:step_limiter!] = Ribasim.correct_step!
+        kwargs[:step_limiter!] = Ribasim.limit_flow!
     end
 
     return algotype(; kwargs...)

@@ -339,8 +339,8 @@ function set_simulation_data!(
         inflow_id = inflow_link[1]
         outflow_id = outflow_link[2]
 
-        h_a = get_level(p, inflow_id, t + allocation_model.Δt_allocation)
-        h_b = get_level(p, outflow_id, t + allocation_model.Δt_allocation)
+        h_a = get_level(u.storage, p, inflow_id, t + allocation_model.Δt_allocation)
+        h_b = get_level(u.storage, p, outflow_id, t + allocation_model.Δt_allocation)
         q_max = tabulated_rating_curve_flow(
             tabulated_rating_curve, node_id, h_a, h_b, p, t + allocation_model.Δt_allocation,
         )
@@ -1291,5 +1291,7 @@ function update_allocation!(model, Δt = 0.0; record::Bool = true)::Nothing
     # Update storage_prev for level_demand
     update_storage_prev!(u, p)
 
+    # Assume allocation changed parameters
+    integrator.derivative_discontinuity = true
     return nothing
 end
