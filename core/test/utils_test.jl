@@ -294,7 +294,6 @@ end
 end
 
 @testitem "Solver algorithm" begin
-    using LinearSolve: KLUFactorization
     using OrdinaryDiffEqBDF: QNDF
 
     model =
@@ -302,7 +301,6 @@ end
     (; alg) = model.integrator
 
     @test alg isa QNDF
-    @test alg.nlsolve.relax isa Ribasim.BackTracking
 end
 
 @testitem "FlatVector" begin

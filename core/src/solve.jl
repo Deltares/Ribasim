@@ -353,6 +353,10 @@ function SciMLOperators.update_coefficients!(
     map!(d -> partials(d, 1), ∂flow_∂storage_uplink, du_dual.flow)
     map!(d -> partials(d, 2), ∂flow_∂storage_downlink, du_dual.flow)
 
+    # Clamp unreasonably large ManningResistance derivatives
+    @. ∂flow_∂storage_uplink.manning_resistance = clamp(∂flow_∂storage_uplink.manning_resistance, -1.0e10, 1.0e10)
+    @. ∂flow_∂storage_downlink.manning_resistance = clamp(∂flow_∂storage_downlink.manning_resistance, -1.0e10, 1.0e10)
+
     for pid_idx in 1:n_pid
         controlled_node_id = pid_control.controlled_node_id[pid_idx]
         component = node_type_map[controlled_node_id.type]
@@ -942,13 +946,13 @@ function limit_flow!(integrator, u, t, basin::Basin)
     @. u.flow.precipitation = uprev.flow.precipitation + vertical_flux.precipitation * dt
     @. u.flow.drainage = uprev.flow.drainage + vertical_flux.drainage * dt
     @. u.flow.surface_runoff = uprev.flow.surface_runoff + vertical_flux.surface_runoff * dt
+    @. u.flow.evaporation = max(u.flow.evaporation, uprev.flow.evaporation)
 
     for idx in eachindex(node_id)
         low_storage_factor = min_low_storage_factor(u.storage, uprev.storage, basin, node_id[idx])
         inf = vertical_flux.infiltration[idx]
 
         limit_flow!(u.flow.infiltration, uprev.flow.infiltration, low_storage_factor * inf, inf, dt, idx)
-        @. u.flow.evaporation = max(u.flow.evaporation, uprev.flow.evaporation)
     end
 
     return nothing

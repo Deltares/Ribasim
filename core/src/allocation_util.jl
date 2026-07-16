@@ -440,8 +440,7 @@ function compute_adaptive_Δt(
             continue
         end
 
-        # du.storage = dS/dt
-        dstorage = du.storage[idx]
+        dstorage = formulate_dstorage_single_basin(du.flow, p.p_independent, basin_id)
 
         if abs(dstorage) < eps()
             continue

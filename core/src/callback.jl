@@ -572,12 +572,11 @@ function compound_variable_value(
                 error("Cannot obtain variable `$variable` from $listen_node_id.")
             end
         elseif startswith(variable, "concentration_external.")
-            value =
-                basin.concentration_data.concentration_external[listen_node_id.idx][variable](t)
+            basin.concentration_data.concentration_external[listen_node_id.idx][variable](t)
         elseif startswith(variable, "concentration.")
             substance = Symbol(last(split(variable, ".")))
             var_idx = find_index(substance, basin.concentration_data.substances)
-            value = basin.concentration_data.concentration_state[listen_node_id.idx, var_idx]
+            basin.concentration_data.concentration_state[listen_node_id.idx, var_idx]
         else
             error("Unsupported listen variable $variable.")
         end
