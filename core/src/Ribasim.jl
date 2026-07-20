@@ -194,7 +194,16 @@ include("concentration.jl")
 include("main.jl")
 
 @setup_workload begin
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    # Binary builds set this to require the workload; regular package use keeps it optional.
+    precompile_workload = get(ENV, "RIBASIM_PRECOMPILE_WORKLOAD", nothing)
+    toml_path = if isnothing(precompile_workload)
+        normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    else
+        isfile(precompile_workload) || error(
+            "Ribasim precompile workload not found at $precompile_workload",
+        )
+        precompile_workload
+    end
     isfile(toml_path) || return
     @compile_workload begin
         main(toml_path)
