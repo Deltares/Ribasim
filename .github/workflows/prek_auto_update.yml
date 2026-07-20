@@ -20,8 +20,7 @@ jobs:
       - name: Install prek hooks
         run: pixi run install-prek
       - name: Run prek on all files
-        run: pixi run prek-run
-        continue-on-error: true
+        run: pixi run prek-run || pixi run prek-run
       - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.CI_PR_PAT }}
