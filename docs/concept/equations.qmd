@@ -3,12 +3,87 @@ title: "Equations"
 ---
 
 # Formal model description
-In this section we give a formal description of the problem that is solved by Ribasim. The problem is of the form
+
+In section we give a formal description of the problem that is solved in the physical layer of Ribasim.
+
+There are 3 simultaneous sets of equations making up the problem, which are explained below.
+
+## The water balance equation
+
+First and foremost there is the water balance equation:
+
 $$
-	\frac{\text{d}\mathbf{u}}{\text{d}t} = f(\mathbf{u},p(t),t), \quad t \in [t_0, t_\text{end}],
+	\frac{\text{d}s}{\text{d}t} = Mq(s, I, p, t).
 $$
 
-which is a system of coupled first order differential equations.
+This equation states that the instantaneous storage rate $\frac{\text{d}s}{\text{d}t}$ per Basin is equal to the sum of the in- and outflows per basin $q(s, p, t)$.  The summing is represented by the signed [incidence matrix](https://en.wikipedia.org/wiki/Incidence_matrix) of the model; $1$ for inflows, $-1$ for outflows. This incidence matrix is not based directly on the Ribasim model graph as represented in the data model; it's based on the graph obtained by representing Basins as nodes and flows between them as links.
+
+Other than the storages, the flows depend on the PID integral terms (see below) the parameters $p$ and time $t$. We can distinguish different flow types:
+- Horizontal flows of connector nodes
+- Horizontal boundary flows (FlowBoundary)
+- Basin forcings (both positive and negative)
+
+## The cumulative flow equation
+
+This equation is simply
+
+$$
+\frac{\text{d}Q}{\text{d}t} = q(s, I, p, t),
+$$
+
+i.e. $Q$ is the cumulative flow volume per link over time. We include this equation alongside the water balance equation because we are not only interested in the storage change over time, but also the individual flows, which for higher order solver algorithms are not easily reconstructed from the storage results.
+
+## The PID integral equation
+
+This equation computes the integral term or cumulative error over time for PID control nodes:
+
+$$
+\frac{\text{d}I}{\text{d}t} = e(s, p, t)
+$$
+
+where the error term is the difference between the level and the setpoint (see also PID docs reference).
+
+## The equation system
+
+The above equations can be combined into the following equation system in mass-matrix form
+
+$$
+	\begin{bmatrix}
+	I_n & -M & 0 \\
+	0   & I_m & 0 \\
+	0   & 0   & I_\nu
+	\end{bmatrix}
+  \begin{bmatrix}
+  s \\ Q \\ I
+  \end{bmatrix}
+  =
+    \begin{bmatrix}
+  0 \\ q(s, I, p, t) \\ e(s, p, t)
+  \end{bmatrix}.
+$$
+
+The initial condition of this system is given by
+
+$$
+  s(0) = s_0, \quad Q(0) = 0, \quad I(0) = 0.
+$$
+
+<!--
+# Formal model description
+In this section we give a formal description of the problem that is solved by Ribasim. The problem is of the form
+$$
+	M\frac{\text{d}\mathbf{u}}{\text{d}t} = f(\mathbf{u},p(t),t), \quad t \in [t_0, t_\text{end}],
+$$
+
+$$
+	\begin{bmatrix}
+	I_n & -M & 0 \\
+	0   & I_m & 0 \\
+	0   & 0   & I_\nu
+	\end{bmatrix}
+$$
+
+which is a system of coupled first order differential equations with a mass matrix.
 
 The model is given by a directed graph, consisting of a set of node IDs (vertices) $V$ and links $E$, consisting of ordered pairs of node IDs.
 We denote the subset of the nodes given by the Basins $B \subset V$, and the subset of nodes that prescribe flow $N \subset V$.
@@ -155,4 +230,4 @@ There are many things that can influence the calculations times, for instance:
   Moreover, the larger the forcing fluxes are, the bigger the shock to the system, leading to smaller timesteps and thus longer simulation times.
 
 Similarly to other models that solve using a system of equations, like MODFLOW 6, if one Basin takes longer to converge due to extreme forcing, or bad schematization, the system as a whole need to iterate longer.
-It is important to be mindful of this, as poor schematization choices can slow down the model.
+It is important to be mindful of this, as poor schematization choices can slow down the model. -->

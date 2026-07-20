@@ -2194,7 +2194,7 @@ function interpolate_basin_profile!(
             )
         end
 
-        if !all(ismissing, group_area)
+        if !any(ismissing, group_area)
             # if all data is present for area, we use it
             level_to_area = LinearInterpolation(
                 group_area,

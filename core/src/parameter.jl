@@ -532,14 +532,13 @@ Requirements:
     demand::Vector{Float64} = zeros(length(node_id))
     allocated::Vector{Float64} = zeros(length(node_id))
     forcing::BasinForcing = BasinForcing(length(node_id))
-    # Levels and areas used in callbacks
-    level_cache::Vector{Float64} = zeros(length(node_id))
-    area_cache::Vector{Float64} = zeros(length(node_id))
     # Concentrations
     concentration_data::ConcentrationData = ConcentrationData()
     # Connected level demand node if applicable
     level_demand_id::Vector{NodeID} =
         fill(NodeID(NodeType.LevelDemand, 0, 0), length(node_id))
+    # Per Basin whether negative storage was detected in the callback
+    has_negative_storage::Vector{Bool} = zeros(Bool, length(node_id))
 end
 
 """
@@ -861,6 +860,7 @@ record: Namedtuple with discrete control information for results
         truth_state = String[],
         control_state = String[],
     )
+    extend_record_lock::ReentrantLock = ReentrantLock()
 end
 
 @kwdef struct ContinuousControl <: AbstractParameterNode
@@ -1006,7 +1006,7 @@ end
     # Static part
     # Static subgrid ids
     subgrid_id_static::Vector{Int32} = []
-    # index into the p.basin.level_cache vector for each static subgrid_id
+    # index into the p.non_ad_cache.current_level vector for each static subgrid_id
     basin_id_static::Vector{NodeID} = []
     # index into the subgrid.level vector for each static subgrid_id
     level_index_static::Vector{Int} = []
@@ -1016,7 +1016,7 @@ end
     # Dynamic part
     # Dynamic subgrid ids
     subgrid_id_time::Vector{Int32} = []
-    # index into the basin.level_cache vector for each dynamic subgrid_id
+    # index into the p.non_ad_cache.current_level vector for each dynamic subgrid_id
     basin_id_time::Vector{NodeID} = []
     # index into the subgrid.level vector for each dynamic subgrid_id
     level_index_time::Vector{Int} = []
@@ -1062,6 +1062,7 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
 @kwdef mutable struct ParametersMutable
     new_time_dependent_cache::Bool = true
     refresh_jac::Bool = true
+    ad_active::Bool = false
 end
 
 """
@@ -1180,12 +1181,21 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
     )
 end
 
+@kwdef struct NonADCache
+    n::Int
+    storage_prev_call::Vector{Float64} = zeros(n)
+    current_level::Vector{Float64} = zeros(n)
+    current_area::Vector{Float64} = zeros(n)
+    current_low_storage_factor::Vector{Float64} = zeros(n)
+end
+
 """
 The collection of all parameters that are passed to the rhs (`water_balance!`) and callbacks.
 """
 @kwdef struct Parameters{C, T}
     p_independent::ParametersIndependent{C}
     time_dependent_cache::TimeDependentCache{T} = TimeDependentCache(p_independent)
+    non_ad_cache::NonADCache = NonADCache(; n = length(p_independent.basin.node_id))
     p_mutable::ParametersMutable = ParametersMutable()
 end
 

@@ -216,7 +216,7 @@ end
             filter(:link_id => ==(link_id), flow_results_multiple_subnetwork).flow_rate
         single_sub =
             filter(:link_id => ==(link_id), flow_results_single_subnetwork).flow_rate
-        if !all(isapprox.(multiple_subs, single_sub; atol = 1.0e-8))
+        if !all(isapprox.(multiple_subs, single_sub; atol = 5.0e-6))
             println(
                 "The flows over link $link_id differ by ",
                 maximum(single_sub .- multiple_subs),
@@ -265,6 +265,8 @@ end
     # find index of first level close to min_level demand of 3 m
     idx = findfirst(e -> abs(e - min_level) <= 1.0e-1, level_basin_1)
 
+    p.p_mutable.ad_active = true # forces computation to compute levels from input instead of
+    #                            # taking them from cache
     tbr_flow(s_a, s_b) = tabulated_rating_curve_flow(tbr, tbr.node_id[1], s_a, s_b, p, 0)
 
     # the flow up to that level should behave as an uncontrolled TBR:

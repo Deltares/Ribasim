@@ -331,6 +331,7 @@ function get_max_flow_curvature(
     )::Float64
     max_curvature = 0.0
     backend = AutoForwardDiff()
+    p.p_mutable.ad_active = true
 
     for node_id in connector_ids
         inflow_id = connector_node.inflow_link[node_id.idx].link[1]
@@ -353,7 +354,7 @@ function get_max_flow_curvature(
         )
         max_curvature = max(max_curvature, abs(d²Q_dh_b²))
     end
-
+    p.p_mutable.ad_active = false
     return max_curvature
 end
 

@@ -243,8 +243,8 @@ end
 Save the storages and levels at the latest t.
 """
 function save_basin_state!(u, t, integrator)
-    (; level_cache) = integrator.p.p_independent.basin
-    return SavedBasinState(; storage = copy(u.storage), level = copy(level_cache), t)
+    (; current_level) = integrator.p.non_ad_cache
+    return SavedBasinState(; storage = copy(u.storage), level = copy(current_level), t)
 end
 
 """
@@ -388,21 +388,16 @@ function check_negative_storage(u, t, integrator)::Nothing
     (; p) = integrator
     (; p_independent) = p
     (; basin) = p_independent
+    (; has_negative_storage, node_id) = basin
 
     # Do this here so the cache is up to date for subsequent callbacks
-    update_level_and_area_cache!(u, p)
+    set_current_basin_properties!(u, p, t)
 
-    errors = false
-    for id in basin.node_id
-        if u.storage[id.idx] < 0
-            @error "Negative storage detected in $id"
-            errors = true
-        end
-    end
-
-    if errors
+    @. has_negative_storage .= (u.storage < 0.0)
+    if any(has_negative_storage)
         t_datetime = datetime_since(integrator.t, p_independent.starttime)
-        error("Negative storages found at $t_datetime.")
+        node_ids_negative_storage = node_id[has_negative_storage]
+        error("Negative storages found at $t_datetime for $node_ids_negative_storage.")
     end
     return nothing
 end
@@ -420,15 +415,17 @@ Apply the discrete control logic. There's somewhat of a complex structure:
     parameter values associated with that control state defined in their control_mapping
 """
 function apply_discrete_control!(u, t, integrator)::Nothing
-    (; p_independent) = integrator.p
-    du = get_du(integrator)
-    (; discrete_control) = p_independent
+    (; p) = integrator
+    (; discrete_control) = p.p_independent
     (; node_id, truth_state, compound_variables) = discrete_control
+    du = get_du(integrator)
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes
-    for (node_id, truth_state_node, compound_variables_node) in
-        zip(node_id, truth_state, compound_variables)
+    @batch for idx in eachindex(node_id)
+        id = node_id[idx]
+        truth_state_node = truth_state[idx]
+        compound_variables_node = compound_variables[idx]
 
         # Whether a change in truth state was detected, and thus whether
         # a change in control state is possible
@@ -439,7 +436,8 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 
         # Loop over the compound variables listened to by this discrete control node
         for compound_variable in compound_variables_node
-            value = compound_variable_value(compound_variable, u.storage, du.flow, p_independent, t)
+
+            value = compound_variable_value(compound_variable, u.storage, du.flow, p, t)
 
             # Loop over the threshold interpolations associated with the current compound variable
             for (threshold_low, threshold_high) in
@@ -465,7 +463,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 
         # Set a new control state if applicable
         if (t == 0) || truth_state_change
-            set_new_control_state!(integrator, node_id, truth_state_node)
+            set_new_control_state!(integrator, id, truth_state_node)
         end
     end
     return nothing
@@ -479,6 +477,7 @@ function set_new_control_state!(
     (; p) = integrator
     (; p_independent) = p
     (; discrete_control, pump, outlet, tabulated_rating_curve) = p_independent
+    (; record, extend_record_lock) = discrete_control
 
     # Get the control state corresponding to the new truth state,
     # if one is defined
@@ -492,13 +491,14 @@ function set_new_control_state!(
     # If there is a change, update parameters and the discrete control record
     control_state_now = discrete_control.control_state[discrete_control_id.idx]
     if control_state_now != control_state_new
-        record = discrete_control.record
         integrator.derivative_discontinuity = true
 
+        lock(extend_record_lock)
         push!(record.time, integrator.t)
         push!(record.control_node_id, Int32(discrete_control_id))
         push!(record.truth_state, convert_truth_state(truth_state))
         push!(record.control_state, control_state_new)
+        unlock(extend_record_lock)
 
         # Loop over nodes which are under control of this control node
         for target_node_id in discrete_control.controlled_nodes[discrete_control_id.idx]
@@ -529,11 +529,11 @@ end
 function compound_variable_value(
         compound_variable::CompoundVariable,
         storage::AbstractVector,
-        flow::FlowCVectorType,
-        p_independent::ParametersIndependent,
+        flow::AbstractVector,
+        p::Parameters,
         t::Number
     )
-    (; level_boundary, flow_boundary, basin, user_demand) = p_independent
+    (; level_boundary, flow_boundary, basin, user_demand) = p.p_independent
 
     value = zero(typeof(t))
     for subvariable in compound_variable.subvariables
@@ -542,7 +542,7 @@ function compound_variable_value(
         sub_value = if variable == "level"
             if listen_node_id.is_basin
                 # Basin level
-                basin.storage_to_level[listen_node_id.idx](storage[listen_node_id.idx])
+                get_level(storage[listen_node_id.idx], p, listen_node_id, t)
             elseif listen_node_id.type == NodeType.LevelBoundary
                 # Level boundary level
                 level_boundary.level[listen_node_id.idx](t + look_ahead)
@@ -567,7 +567,7 @@ function compound_variable_value(
             elseif listen_node_id.type == NodeType.ManningResistance
                 flow.manning_resistance[listen_node_id.idx]
             elseif listen_node_id.type == NodeType.UserDemand
-                sum(get_inflows(user_demand, listen_node_id.idx))
+                sum(get_inflows(flow, user_demand, listen_node_id.idx))
             else
                 error("Cannot obtain variable `$variable` from $listen_node_id.")
             end
@@ -607,8 +607,9 @@ end
 
 function update_subgrid_level!(integrator)::Nothing
     (; p, t) = integrator
-    (; subgrid, basin) = p.p_independent
-    (; level_cache) = basin
+    (; p_independent, non_ad_cache) = p
+    (; subgrid) = p_independent
+    (; current_level) = non_ad_cache
 
     # First update the all the subgrids with static h(h) relations
     for (level_index, basin_id, hh_itp) in zip(
@@ -616,7 +617,7 @@ function update_subgrid_level!(integrator)::Nothing
             subgrid.basin_id_static,
             subgrid.interpolations_static,
         )
-        subgrid.level[level_index] = hh_itp(level_cache[basin_id.idx])
+        subgrid.level[level_index] = hh_itp(current_level[basin_id.idx])
     end
     # Then update the subgrids with dynamic h(h) relations
     for (level_index, basin_id, lookup) in zip(
@@ -626,7 +627,7 @@ function update_subgrid_level!(integrator)::Nothing
         )
         itp_index = lookup(t)
         hh_itp = subgrid.interpolations_time[itp_index]
-        subgrid.level[level_index] = hh_itp(level_cache[basin_id.idx])
+        subgrid.level[level_index] = hh_itp(current_level[basin_id.idx])
     end
     return
 end

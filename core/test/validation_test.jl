@@ -334,7 +334,7 @@ end
         solver_saveat = Inf,
     )
     model = Ribasim.Model(config)
-    @test_throws "Negative storages found at 2021-01-01T00:00:00." BMI.update_until(
+    @test_throws "Negative storages found at 2021-01-01T00:00:00 for Ribasim.NodeID[Basin #1]." BMI.update_until(
         model,
         dt,
     )

@@ -82,7 +82,8 @@ see the RibasmimJacobian docstring.
     eval_∂continuous_control_compound_∂flow!::F
 end
 
-function RibasimJacobianEvaluationCache(p_independent::ParametersIndependent, solver::Solver)
+function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
+    (; p_independent) = p
     (; u_prev_saveat, pid_control, continuous_control) = p_independent
     (; continuous_control_compound_variables) = continuous_control
     flow_prototype = p_independent.cumulative_flow_dt
@@ -106,7 +107,7 @@ function RibasimJacobianEvaluationCache(p_independent::ParametersIndependent, so
         ad_backend_jac,
         storage_prototype,
         Constant(flow_prototype),
-        Constant(p_independent),
+        Constant(p),
         Constant(t)
     )
 
@@ -123,7 +124,7 @@ function RibasimJacobianEvaluationCache(p_independent::ParametersIndependent, so
         ad_backend_jac,
         flow_prototype,
         Constant(storage_prototype),
-        Constant(p_independent),
+        Constant(p),
         Constant(t)
     )
 
@@ -141,7 +142,7 @@ function RibasimJacobianEvaluationCache(p_independent::ParametersIndependent, so
         ad_backend_jac,
         storage,
         Constant(flow),
-        Constant(p_independent),
+        Constant(p),
         Constant(t),
     )
     eval_∂continuous_control_compound_∂flow!(
@@ -157,7 +158,7 @@ function RibasimJacobianEvaluationCache(p_independent::ParametersIndependent, so
         ad_backend_jac,
         flow,
         Constant(storage),
-        Constant(p_independent),
+        Constant(p),
         Constant(t)
     )
 
@@ -214,6 +215,9 @@ Here:
     n_flow = length(p_independent.cumulative_flow_dt)
     n_continuous_control = length(p_independent.continuous_control.node_id)
     n_pid = length(p_independent.pid_control.node_id)
+    # J_inner_local represents the most expensive part of the inner linear solve,
+    # namely the local dependence of flows on storages
+    J_inner_local::SparseMatrixCSC{Float64, Int} = spzeros(n_basin, n_basin)
     # ∂q_∂s_up: Derivative of the flows w.r.t. their uplink storage
     ∂flow_∂storage_uplink::FlowCVectorType{T} = CVector(ones(n_flow), p_independent.flow_ranges)
     # ∂q_∂s_down: Derivative of the flows w.r.t. their downlink storage
@@ -243,6 +247,7 @@ SciMLOperators.has_mul!(::RibasimJacobian) = true
 
 Base.size(J::RibasimJacobian, ::Integer) = length(J.p_independent.u_prev_saveat)
 Base.size(J::RibasimJacobian) = (size(J, 1), size(J, 2))
+Base.deepcopy(J::RibasimJacobian) = J # Copying is never needed and is slow
 
 """
 Update the terms in the RibasimJacobian. `update_coefficients!` is the
@@ -287,7 +292,7 @@ function SciMLOperators.update_coefficients!(
     (; continuous_control_compound_variables) = continuous_control
 
     !p_mutable.refresh_jac && return nothing
-    p_mutable.refresh_jac = false
+    p_mutable.ad_active = true
 
     # Prepare computing flow derivatives
     set_uplink_downlink_storage!(
@@ -353,10 +358,6 @@ function SciMLOperators.update_coefficients!(
     map!(d -> partials(d, 1), ∂flow_∂storage_uplink, du_dual.flow)
     map!(d -> partials(d, 2), ∂flow_∂storage_downlink, du_dual.flow)
 
-    # Clamp unreasonably large ManningResistance derivatives
-    @. ∂flow_∂storage_uplink.manning_resistance = clamp(∂flow_∂storage_uplink.manning_resistance, -1.0e10, 1.0e10)
-    @. ∂flow_∂storage_downlink.manning_resistance = clamp(∂flow_∂storage_downlink.manning_resistance, -1.0e10, 1.0e10)
-
     for pid_idx in 1:n_pid
         controlled_node_id = pid_control.controlled_node_id[pid_idx]
         component = node_type_map[controlled_node_id.type]
@@ -379,6 +380,42 @@ function SciMLOperators.update_coefficients!(
         area_pid_controlled[pid_idx] = basin.level_to_area[listen_node_id.idx](level)
     end
 
+    update_J_inner_local!(J)
+
+    p_mutable.ad_active = false
+    p_mutable.refresh_jac = false
+    return nothing
+end
+
+function update_J_inner_local!(J::RibasimJacobian)
+    (;
+        p_independent,
+        J_inner_local,
+        ∂flow_∂storage_uplink,
+        ∂flow_∂storage_downlink,
+    ) = J
+    (; inflow_link, outflow_link) = p_independent
+
+    J_inner_local .= 0.0
+    # Compute J_inner = M * (∂q_∂s_up * S_up + ∂q_∂s_down * S_down)
+    for flow_idx in eachindex(inflow_link)
+        inflow_id = inflow_link[flow_idx].link[1]
+        outflow_id = outflow_link[flow_idx].link[2]
+
+        if inflow_id.is_basin
+            # The uplink Basin affecting itself
+            J_inner_local[inflow_id.idx, inflow_id.idx] -= ∂flow_∂storage_uplink[flow_idx]
+        end
+        if outflow_id.is_basin
+            # The downlink Basin affecting itself
+            J_inner_local[outflow_id.idx, outflow_id.idx] += ∂flow_∂storage_downlink[flow_idx]
+        end
+        if inflow_id.is_basin && outflow_id.is_basin
+            # The up- and downlink Basins affecting eachother
+            J_inner_local[inflow_id.idx, outflow_id.idx] -= ∂flow_∂storage_downlink[flow_idx]
+            J_inner_local[outflow_id.idx, inflow_id.idx] += ∂flow_∂storage_uplink[flow_idx]
+        end
+    end
     return nothing
 end
 
@@ -399,7 +436,6 @@ function ∂flow_∂storage_mul!(
         ∂continuous_control_compound_∂storage,
         ∂continuous_control_compound_∂flow,
         ∂flow_∂storage_mul_cache,
-
     ) = J
     (; inflow_link, outflow_link, continuous_control) = p_independent
 
@@ -407,7 +443,7 @@ function ∂flow_∂storage_mul!(
     v_out .= 0.0
 
     # Flow storage dependencies
-    for flow_idx in eachindex(∂flow_∂storage_uplink)
+    @batch for flow_idx in eachindex(∂flow_∂storage_uplink)
         inflow_id = inflow_link[flow_idx].link[1]
         outflow_id = outflow_link[flow_idx].link[2]
 
@@ -450,7 +486,6 @@ function LinearAlgebra.mul!(
         v_in::RibasimCVectorType,
     )
     (;
-        p_independent,
         n_pid,
         ∂flow_∂pid_integral,
         area_pid_controlled,
@@ -500,14 +535,14 @@ function SciMLBase.init(
 
     W = prob.A
     (; J, gamma) = W
-    (; basin) = J.p_independent
+    (; n_basin) = J
 
-    n_basin = length(basin.node_id)
     J_inner = spzeros(n_basin, n_basin)
 
     # Make sure all derivatives are non-zero here so that the
     # sparsity pattern is properly initialized
-    build_J_inner!(J_inner, J, J.p_independent, gamma)
+    update_J_inner_local!(J)
+    build_J_inner!(J_inner, J, gamma)
 
     u_inner = zeros(n_basin)
     W_inner = WOperator{true}(I, gamma, J_inner, u_inner)
@@ -530,7 +565,9 @@ Jₛ = [Iₘ + ∂q_∂c * ∂c_∂q] * [∂q_∂s_up * S_up + ∂q_∂s_down * 
 
 so we can compute J_inner as
 
-J_inner  = M * (∂q_∂s_up * S_up + ∂q_∂s_down * S_down)
+J_inner  = M * (∂q_∂s_up * S_up + ∂q_∂s_down * S_down) # This part is cached separately as
+                                                       # J_inner_local as it is the most expensive part
+                                                       # and only depends on the outer Jacobian
 J_inner += M * ∂q_∂c * ∂c_∂s
 J_inner += M * ∂q_∂c * ∂c_∂q * [∂q_∂s_up * S_up + ∂q_∂s_down * S_down]
 J_inner -= M * γ * Jᵢ * S_PID * diag(1/area(s))
@@ -538,10 +575,11 @@ J_inner -= M * γ * Jᵢ * S_PID * diag(1/area(s))
 function build_J_inner!(
         J_inner::SparseMatrixCSC,
         J::RibasimJacobian,
-        p_independent::ParametersIndependent,
         gamma::Number
     )
     (;
+        p_independent,
+        J_inner_local,
         ∂flow_∂storage_uplink,
         ∂flow_∂storage_downlink,
         ∂flow_∂pid_integral,
@@ -552,27 +590,7 @@ function build_J_inner!(
     ) = J
     (; inflow_link, outflow_link, continuous_control, pid_control) = p_independent
 
-    J_inner .= 0.0
-
-    # Compute J_inner = M * (∂q_∂s_up * S_up + ∂q_∂s_down * S_down)
-    for flow_idx in eachindex(inflow_link)
-        inflow_id = inflow_link[flow_idx].link[1]
-        outflow_id = outflow_link[flow_idx].link[2]
-
-        if inflow_id.is_basin
-            # The uplink Basin affecting itself
-            J_inner[inflow_id.idx, inflow_id.idx] -= ∂flow_∂storage_uplink[flow_idx]
-        end
-        if outflow_id.is_basin
-            # The downlink Basin affecting itself
-            J_inner[outflow_id.idx, outflow_id.idx] += ∂flow_∂storage_downlink[flow_idx]
-        end
-        if inflow_id.is_basin && outflow_id.is_basin
-            # The up- and downlink Basins affecting eachother
-            J_inner[inflow_id.idx, outflow_id.idx] -= ∂flow_∂storage_downlink[flow_idx]
-            J_inner[outflow_id.idx, inflow_id.idx] += ∂flow_∂storage_uplink[flow_idx]
-        end
-    end
+    J_inner .= J_inner_local
 
     # Compute J_inner += M * ∂q_∂c * ∂c_∂s
     for (continuous_control_idx, basin_idx, ∂c_∂s_val) in zip(findnz(∂continuous_control_compound_∂storage)...)
@@ -674,13 +692,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
     (; gamma, J) = W
     (;
         p_independent,
-        n_basin,
-        n_flow,
-        n_continuous_control,
         n_pid,
-        ∂flow_∂continuous_control_compound,
-        ∂continuous_control_compound_∂flow,
-        ∂continuous_control_compound_∂storage,
         ∂flow_∂pid_integral,
         area_pid_controlled,
     ) = J
@@ -692,7 +704,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
 
     # Set up inner (storage space) problem rhs
     W_inner.gamma = gamma
-    b_inner .= b.storage
+    b_inner .= 0.0 # b.storage
     aggregate_flows!(b_inner, b.flow, p_independent; from_zero = false)
     for pid_idx in 1:n_pid
         listen_node_id = pid_control.listen_node_id[pid_idx]
@@ -700,7 +712,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
     end
 
     # Set up inner (storage space) problem matrix
-    build_J_inner!(J_inner, J, p_independent, gamma)
+    build_J_inner!(J_inner, J, gamma)
     jacobian2W!(W_inner._concrete_form, W_inner.mass_matrix, W_inner.gamma, W_inner.J)
 
     # Solve inner (storage space) problem
@@ -798,6 +810,48 @@ function OrdinaryDiffEqDifferentiation.do_newJW(
     return new_jac, new_W
 end
 
+@kwdef struct InternalNorm{PI <: ParametersIndependent}
+    p_independent::PI
+    ũ_cache::Vector{Float64} = zeros(length(p_independent.basin.node_id))
+    u₀_cache::Vector{Float64} = copy(ũ_cache)
+    u₁_cache::Vector{Float64} = copy(ũ_cache)
+end
+Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
+
+(::InternalNorm)(u::RibasimCVectorType, t) = ODE_DEFAULT_NORM(u.storage, t)
+(::InternalNorm)(u::Number, t) = ODE_DEFAULT_NORM(u, t)
+
+# Threaded residuals, not all algorithms support passing
+# the `thread` keyword
+@inline function DiffEqBase.calculate_residuals!(
+        out::RibasimCVectorType,
+        ũ, u₀, u₁, abstol, reltol, internalnorm, t
+    )
+    (; p_independent, ũ_cache, u₀_cache, u₁_cache) = internalnorm
+    (; storage0) = p_independent.basin
+
+    u₀_cache .= storage0
+    u₁_cache .= storage0
+    aggregate_flows!(ũ_cache, ũ.flow, p_independent)
+    aggregate_flows!(u₀_cache, u₀.flow, p_independent; from_zero = false)
+    aggregate_flows!(u₁_cache, u₁.flow, p_independent; from_zero = false)
+
+    out .= 0
+
+    @batch for i in eachindex(ũ_cache)
+        out.storage[i] = DiffEqBase.calculate_residuals(
+            ũ_cache[i],
+            u₀_cache[i],
+            u₁_cache[i],
+            abstol,
+            reltol,
+            internalnorm,
+            t
+        )
+    end
+    return nothing
+end
+
 ###
 ##### Passing solve to OrdinaryDiffEq.jl
 ###
@@ -808,10 +862,9 @@ function get_diff_eval(
         p::Parameters,
         solver::Solver
     )
-    (; p_independent) = p
 
-    evaluation_cache = RibasimJacobianEvaluationCache(p_independent, solver)
-    jac_prototype = RibasimJacobian(; p_independent, evaluation_cache)
+    evaluation_cache = RibasimJacobianEvaluationCache(p, solver)
+    jac_prototype = RibasimJacobian(; p.p_independent, evaluation_cache)
 
     tgrad(
         dT::RibasimCVectorType,
@@ -844,6 +897,31 @@ function min_low_storage_factor(
         reduction_factor(
             min(storage_now[id.idx], storage_prev[id.idx]) - 2low_storage_threshold,
             low_storage_threshold,
+        )
+    else
+        one(T)
+    end
+end
+
+"""
+Estimate the minimum level reduction factor achieved over the last time step by
+estimating the lowest level achieved over the last time step. To make sure
+it is an underestimate of the minimum, 2 * level_difference_threshold is subtracted from this lowest level.
+This is done to not be too strict in clamping the flow in the limiter
+"""
+function min_low_user_demand_level_factor(
+        level_now::Number,
+        level_prev::Number,
+        min_level,
+        id_user_demand,
+        id_inflow,
+        level_difference_threshold,
+    )
+    return if id_inflow.type == NodeType.Basin
+        reduction_factor(
+            min(level_now, level_prev) -
+                min_level[id_user_demand.idx] - 2 * level_difference_threshold,
+            level_difference_threshold,
         )
     else
         one(T)
@@ -897,8 +975,10 @@ function limit_flow!(integrator, u, t, node::Union{Pump, Outlet})
         u.flow.outlet, uprev.flow.outlet
     end
 
-    for idx in eachindex(node_id)
-        limit_flow!(flow_node, flow_node_prev, min_flow_rate[idx](t), max_flow_rate[idx](t), dt, idx)
+    @batch for idx in eachindex(node_id)
+        min_flow = min_flow_rate[idx]
+        max_flow = max_flow_rate[idx]
+        limit_flow!(flow_node, flow_node_prev, min_flow(t), max_flow(t), dt, idx)
     end
     return nothing
 end
@@ -936,6 +1016,61 @@ function limit_flow!(integrator, u, t, user_demand::UserDemand)
     # TODO: The way UserDemand inflow is clamped on main isn't great because it duplicates logic from flow formulation
     # I propose to compute the equal split allocation when allocation is off in a callback
     # Also enforce outflow = return_factor * ∑ inflow since return factor is constant over timestep
+    (; p, uprev, dt) = integrator
+    (; basin, allocation, level_difference_threshold) = p.p_independent
+
+    for node_idx in eachindex(user_demand.node_id)
+        id = user_demand.node_id[node_idx]
+        inflow_links = user_demand.inflow_links[node_idx]
+        link_offset = user_demand.inflow_link_offsets[node_idx]
+        n_links = length(inflow_links)
+        demand_from_timeseries = user_demand.demand_from_timeseries[node_idx]
+        link_alloc = user_demand.inflow_link_allocated[node_idx]
+
+        allocated_total = if demand_from_timeseries
+            0.0
+        else
+            sum(
+                min(
+                        user_demand.demand[id.idx, demand_priority_idx],
+                        user_demand.allocated[id.idx, demand_priority_idx],
+                    ) for demand_priority_idx in eachindex(allocation.demand_priorities_all)
+            )
+        end
+        equal_split = n_links == 0 ? 0.0 : allocated_total / n_links
+
+        for (k, link_meta) in enumerate(inflow_links)
+            inflow_idx = link_offset + k
+            q_k_max = isinf(link_alloc[k]) ? equal_split : link_alloc[k]
+            src_id = link_meta.link[1]
+            min_flow_rate, max_flow_rate = if demand_from_timeseries
+                0.0, Inf
+            else
+                factor_basin_min = min_low_storage_factor(
+                    u.storage,
+                    uprev.storage,
+                    basin,
+                    src_id,
+                )
+                factor_level_min = min_low_user_demand_level_factor(
+                    basin.storage_to_level[src_id.idx](u.storage[src_id.idx]),
+                    basin.storage_to_level[src_id.idx](uprev.storage[src_id.idx]),
+                    user_demand.min_level,
+                    id,
+                    src_id,
+                    level_difference_threshold,
+                )
+                factor_basin_min * factor_level_min * q_k_max, q_k_max
+            end
+
+            u_prev = uprev.flow.user_demand_inflow[inflow_idx]
+            u.flow.user_demand_inflow[inflow_idx] = clamp(
+                u.flow.user_demand_inflow[inflow_idx],
+                u_prev + min_flow_rate * dt,
+                u_prev + max_flow_rate * dt,
+            )
+        end
+    end
     return nothing
 end
 

@@ -6,6 +6,7 @@
 module CVectors
 
 using Base.Broadcast: Broadcasted, ArrayStyle, Extruded
+using StrideArraysCore: StrideArraysCore, PtrArray
 
 # Recursively compute the flat range covered by axes
 _flat_range(loc::Integer) = loc:loc
@@ -163,5 +164,7 @@ function Base.getproperty(x::CVector, name::Symbol)
     loc = getproperty(axes, name)
     return component(data, loc)
 end
+
+@inline StrideArraysCore.PtrArray(x::CVector) = CVector(PtrArray(getdata(x)), getaxes(x))
 
 end  # module CVectors

@@ -2,6 +2,132 @@
 title: "Numerical considerations"
 ---
 
+# Exploiting the problem structure
+
+The above problem formulation gives us what we want: accurate storages and flows. However, if this problem is passed to an ODE-system as-is, this is rather computationally expensive due to the large number of states that are being solved for.
+
+## The Jacobian
+
+The Jacobian of the right hand side as formulated above is given by
+
+$$
+J =
+\begin{bmatrix}
+0 & 0 & 0 \\
+J_s & 0 & J_I \\
+J_p & 0 & 0
+\end{bmatrix},
+$$
+
+where
+
+$$
+  J_s = \frac{\partial q}{\partial s}, \quad J_I = \frac{\partial q}{\partial I}, \quad J_p = \frac{\partial e}{\partial s}.
+$$
+
+### Derivatives of flow w.r.t. storage
+To see how we can efficiently evaluate the term $\frac{\partial q}{\partial s}$, we write the flows as
+
+$$
+q(s, I, t) = \tilde{q}\left(s_\text{up}(s), \ s_\text{down}(s), \ I, \ c\left(s, \ q(s, t)\right), \ t\right),
+$$
+
+that is, as a function of:
+
+- the storage uplink: $s_\text{up}(s)$;
+- the storage downlink: $s_\text{down}(s)$;
+- the PID control integral term $I$;
+- the continuous control compound variable $c(s, q(s, t))$.
+
+by the chain rule we then obtain
+
+$$
+\begin{align*}
+J_s &=& \frac{\partial q}{\partial s_\text{up}}\frac{\partial s_\text{up}}{\partial s} + \frac{\partial q}{\partial s_\text{down}}\frac{\partial s_\text{down}}{\partial s} + \frac{\partial q}{\partial c}\left[\frac{\partial c}{\partial s} + \frac{\partial c}{\partial q}J_s\right] \\
+&=& \left[I_m + \frac{\partial q}{\partial c}\frac{\partial c}{\partial q}\right]
+\left[\frac{\partial q}{\partial s_\text{up}}\frac{\partial s_\text{up}}{\partial s} + \frac{\partial q}{\partial s_\text{down}}\frac{\partial s_\text{up}}{\partial s} + \frac{\partial q}{\partial c}\frac{\partial c}{\partial s}\right].
+\end{align*}
+$$
+
+This factorization is allowed under the assumption that continuous control isn't chained; continuous control doesn't listen to storages or flows which themselves are affected by continuous control.
+
+For the individual terms we know that:
+- $\frac{\partial s_\text{up}}{\partial s}$ and $\frac{\partial s_\text{down}}{\partial s}$ are simply highly sparse fixed binary matrices which select the uplink and downlink storage per flow respectively;
+- $\frac{\partial q}{\partial s_\text{up}}$ and $\frac{\partial q}{\partial s_\text{down}}$ are diagonal matrices (with irrelevant filler values for level boundaries);
+- $\frac{\partial q}{\partial c}$ has precisely one non-zero per row since every continuous control compound variable affects exactly one flow.
+
+If we consider the Jacobian of $\tilde{q}$ with respect to $(s_\text{up}, s_\text{down}, I)^\top$, then we obtain
+
+$$
+\frac{\partial \tilde{q}}{\partial (s_\text{up}, s_\text{down}, I)^\top} =
+\begin{bmatrix}
+\frac{\partial \tilde{q}}{\partial s_\text{up}} &
+\frac{\partial \tilde{q}}{\partial s_\text{down}} &
+\frac{\partial \tilde{q}}{\partial I}
+\end{bmatrix}.
+$$
+
+This formulation lends itself very well to forward mode automatic differentiation, because forward mode AD can be used to very efficiently compute Jacobian vector products (JVPs). In particular:
+
+$$
+\begin{align*}
+\frac{\partial \tilde{q}}{\partial (s_\text{up}, s_\text{down}, I)^\top}
+\begin{pmatrix}
+\mathbf{1} \\ 0 \\ 0
+\end{pmatrix}
+=
+\text{diagvec}\left(\frac{\partial \tilde{q}}{\partial s_\text{up}} \right), \\
+\frac{\partial \tilde{q}}{\partial (s_\text{up}, s_\text{down}, I)^\top}
+\begin{pmatrix}
+0 \\ \mathbf{1} \\ 0
+\end{pmatrix}
+=
+\text{diagvec}\left(\frac{\partial \tilde{q}}{\partial s_\text{up}}\right).
+\end{align*}
+$$
+
+In finite difference terms this corresponds to e.g.
+
+$$
+\frac{\partial \tilde{q}}{\partial s_\text{up}} \approx \text{diag}\left(\frac{\tilde{q}(s_\text{up} + \varepsilon \mathbf{1}, s_\text{down}, I, c, p, t) - \tilde{q}(s_\text{up}, s_\text{down}, I, c, p, t)}{\varepsilon}\right).
+$$
+
+AD backends can make clever use of caches to compute multiple of these JVPs at the same time, which saves several calls to $q$.
+
+### The linear solve
+
+The general form of the linear solve for Newton iterations is
+
+$$
+(-\gamma^{-1}A + J)x = c,
+$$
+
+where $A$ is the mass matrix, and so
+
+$$
+-\gamma^{-1}A + J =
+\begin{bmatrix}
+-\gamma^{-1}I_n & \gamma^{-1}M & 0 \\\
+J_s & -\gamma^{-1}I_m & J_I \\\
+J_p & 0 & -\gamma^{-1}I_\nu
+\end{bmatrix}.
+$$
+
+Writing $x = [x_s, x_Q, x_I]^\top, c = [c_s, c_Q, c_I]^\top$, this linear system is solvable in 3 steps:
+
+$$
+\begin{align*}
+  \left[-\gamma^{-1}I_n + M\left(J_s + \gamma J_I J_p\right)\right]x_s &= c_s + M\left(c_Q + \gamma J_I c_I\right) \quad &\text{(linear system solve in storage space)} \\
+  x_I &= \gamma\left[J_p x_s - c_I\right] \quad &\text{(explicit computation)} \\
+  x_Q &= \gamma \left[J_s x_s + J_I x_I -c_Q\right]. &\text{(explicit computation)}
+\end{align*}
+$$
+
+
+<!-- ---
+title: "Numerical considerations"
+---
+
 We want to solve the following initial value problem:
 $$
 \begin{cases}
@@ -109,4 +235,4 @@ Negative storage needs to be avoided since it is not a real solution, and would 
 Another tool used to avoid negative storage is the [`isoutoutofdomain`](https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/) option, which Ribasim makes use of.
 This rejects timesteps that lead to negative storage, instead retrying with a smaller timestep.
 
-Because the states are the Basin storages (physical water volumes that stay bounded), rather than cumulative flows that grow without bound, the error tolerance $\text{abstol} + |\mathbf{u}| \cdot \text{reltol}$ stays meaningful throughout the simulation and needs no compensation over time.
+Because the states are the Basin storages (physical water volumes that stay bounded), rather than cumulative flows that grow without bound, the error tolerance $\text{abstol} + |\mathbf{u}| \cdot \text{reltol}$ stays meaningful throughout the simulation and needs no compensation over time. -->

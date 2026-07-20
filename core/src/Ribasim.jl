@@ -39,7 +39,7 @@ using OrdinaryDiffEqCore:
     OrdinaryDiffEqAdaptiveImplicitAlgorithm,
     OrdinaryDiffEqImplicitAlgorithm,
     get_du
-using DiffEqBase: DiffEqBase
+using DiffEqBase: DiffEqBase, ODE_DEFAULT_NORM
 import ADTypes
 using ADTypes: AutoForwardDiff
 import ForwardDiff
@@ -173,7 +173,7 @@ using Dates: Second
 
 using Printf: @sprintf
 
-using Base.Threads: nthreads
+using Polyester: @batch
 
 using SciMLOperators: SciMLOperators, WOperator, AbstractSciMLOperator
 

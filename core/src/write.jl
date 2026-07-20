@@ -343,11 +343,10 @@ end
 
 "Create the basin state table from the saved data"
 function basin_state_data(model::Model; table::Bool = true)
-    (; u, p) = model.integrator
+    (; u, p, t) = model.integrator
     (; basin) = p.p_independent
-    update_level_and_area_cache!(u, p)
-
-    return (; node_id = Int32.(basin.node_id), level = copy(basin.level_cache))
+    set_current_basin_properties!(u, p, t)
+    return (; node_id = Int32.(basin.node_id), level = copy(p.non_ad_cache.current_level))
 end
 
 "Create the basin result table from the saved data"

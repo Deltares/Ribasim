@@ -144,6 +144,7 @@ function Model(config::Config)::Model
         tstops,
         isoutofdomain,
         adaptive,
+        internalnorm = InternalNorm(; p_independent),
         config.solver.dt,
         config.solver.dtmin,
         dtmax = something(config.solver.dtmax, t_end),

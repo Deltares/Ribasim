@@ -178,12 +178,28 @@ Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
 du: tells ForwardDiff whether this call is for differentiation or not
 """
-function get_level(storage::Number, p::Parameters, node_id::NodeID, t::Number)::Number
-    (; p_independent, time_dependent_cache) = p
-    (; storage_to_level) = p_independent.basin
+function get_level(
+        storage::Number,
+        p::Parameters,
+        node_id::NodeID,
+        t::Number;
+        force_evaluation::Bool = false,
+    )::Number
+    (; p_independent, time_dependent_cache, p_mutable, non_ad_cache) = p
+    (; basin) = p_independent
+    (; storage_to_level) = basin
 
     return if node_id.is_basin
-        storage_to_level[node_id.idx](storage)
+        if p_mutable.ad_active || force_evaluation
+            if storage ≥ 0
+                storage_to_level[node_id.idx](storage)
+            else
+                # For negative storage mirror the Basin profile in the bottom
+                2 * basin_bottom(basin, node_id)[2] - storage_to_level[node_id.idx](-storage)
+            end
+        else
+            non_ad_cache.current_level[node_id.idx]
+        end
     elseif node_id.type == NodeType.LevelBoundary
         itp = p_independent.level_boundary.level[node_id.idx]
         eval_time_interpolation(
@@ -199,6 +215,21 @@ function get_level(storage::Number, p::Parameters, node_id::NodeID, t::Number)::
         -Inf
     else
         error("Node ID $node_id is not a Basin, LevelBoundary or Terminal.")
+    end
+end
+
+function get_area(
+        level::Number,
+        p::Parameters,
+        node_id::NodeID,
+    )
+    @assert node_id.is_basin
+    (; p_independent, non_ad_cache, p_mutable) = p
+    (; level_to_area) = p_independent.basin
+    return if p_mutable.ad_active
+        level_to_area[node_id.idx](level)
+    else
+        non_ad_cache.current_area[node_id.idx]
     end
 end
 
@@ -333,12 +364,17 @@ end
 
 function get_low_storage_factor(
         storage::Number,
-        p_independent::ParametersIndependent,
+        p::Parameters,
         id::NodeID,
     )
+    (; p_mutable, p_independent, non_ad_cache) = p
     (; low_storage_threshold) = p_independent.basin
     return if id.is_basin
-        reduction_factor(storage, low_storage_threshold[id.idx])
+        if p_mutable.ad_active
+            reduction_factor(storage, low_storage_threshold[id.idx])
+        else
+            non_ad_cache.current_low_storage_factor[id.idx]
+        end
     else
         one(eltype(storage))
     end
@@ -351,15 +387,15 @@ as defined by the flow direction.
 function low_storage_factor_resistance_node(
         s_a::Number,
         s_b::Number,
-        p_independent::ParametersIndependent,
+        p::Parameters,
         q::Number,
         inflow_id::NodeID,
         outflow_id::NodeID,
     )
     return if q > 0
-        get_low_storage_factor(s_a, p_independent, inflow_id)
+        get_low_storage_factor(s_a, p, inflow_id)
     else
-        get_low_storage_factor(s_b, p_independent, outflow_id)
+        get_low_storage_factor(s_b, p, outflow_id)
     end
 end
 
@@ -867,7 +903,7 @@ end
 
 function eval_time_interpolation(
         itp::AbstractInterpolation,
-        cache::Vector,
+        cache::AbstractVector,
         idx::Int,
         p::Parameters,
         t::Number,
@@ -1180,7 +1216,7 @@ function set_uplink_downlink_storage!(
     storage_uplink .= 0.0
     storage_downlink .= 0.0
 
-    for idx in eachindex(storage_uplink)
+    @batch for idx in eachindex(storage_uplink)
         inflow_id = inflow_link[idx].link[1]
         outflow_id = outflow_link[idx].link[2]
 
@@ -1192,17 +1228,5 @@ function set_uplink_downlink_storage!(
         end
     end
 
-    return nothing
-end
-
-function update_level_and_area_cache!(u::RibasimCVectorType, p::Parameters)
-    (; level_cache, area_cache, storage_to_level, level_to_area) = p.p_independent.basin
-    map!(idx -> storage_to_level[idx](u.storage[idx]), level_cache, eachindex(level_cache))
-    for idx in eachindex(level_cache)
-        level = storage_to_level[idx](u.storage[idx])
-        area = level_to_area[idx](level)
-        level_cache[idx] = level
-        area_cache[idx] = area
-    end
     return nothing
 end

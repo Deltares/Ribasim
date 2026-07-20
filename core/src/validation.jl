@@ -660,7 +660,7 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
 
             # It is known that this node type has a control mapping, otherwise
             # connectivity validation would have failed.
-            for (controlled_id, control_state) in keys(node.control_mapping)
+            for (controlled_id, control_state) in keys(node.control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate})
                 if controlled_id == id_outneighbor
                     push!(control_states_controlled, control_state)
                 end

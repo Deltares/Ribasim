@@ -49,8 +49,10 @@ function set_simulation_data!(
         Δt_allocation,
     ) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
-    (; storage_to_level, vertical_flux, area_cache) = basin
     (; u, p) = integrator
+    (; p_independent, non_ad_cache) = p
+    (; storage_to_level, vertical_flux) = p_independent.basin
+    (; current_area) = non_ad_cache
 
     storage_change = problem[:basin_storage_change]
     volume_conservation = problem[:volume_conservation]
@@ -85,7 +87,7 @@ function set_simulation_data!(
                 vertical_flux.surface_runoff[idx]
         ) * Δt_allocation
 
-        A = area_cache[idx]
+        A = current_area[idx]
 
         implicit_negative_forcing_volume[basin_id] =
             (
@@ -182,13 +184,13 @@ function set_partial_derivative_wrt_level!(
         constraint::JuMP.ConstraintRef,
     )::Nothing
     (; problem, scaling) = allocation_model
-    (; area_cache) = p.p_independent.basin
+    (; current_area) = p.non_ad_cache
 
     storage_change = problem[:basin_storage_change][node_id]
     JuMP.set_normalized_coefficient(
         constraint,
         storage_change,
-        -∂q∂h * scaling.storage / (scaling.flow * area_cache[node_id.idx]),
+        -∂q∂h * scaling.storage / (scaling.flow * current_area[node_id.idx]),
     )
     return nothing
 end
@@ -204,6 +206,7 @@ function linearize_connector_node!(
     )
     (; scaling, Δt_allocation) = allocation_model
     (; inflow_link, outflow_link) = connector_node
+    p.p_mutable.ad_active = true
 
     # Mathematical formulation: Taylor series linearization around current state
     # Q^{n+1} ≈ Q^n + (∂Q/∂h_a)(h_a^{n+1} - h_a^n) + (∂Q/∂h_b)(h_b^{n+1} - h_b^n)
@@ -212,7 +215,7 @@ function linearize_connector_node!(
     # For levels that come from a Basin `get_level` yields the level at the beginning of the time step,
     # which is the point at which we want to linearize.
     t_after = t + Δt_allocation
-    (; area_cache) = p.p_independent.basin
+    (; current_area) = p.non_ad_cache
 
     for node_id in only(flow_constraint.axes)
         inflow_id = inflow_link[node_id.idx].link[1]
@@ -235,7 +238,7 @@ function linearize_connector_node!(
                 flow_function(connector_node, node_id, storage_a, s_b, p, t_after),
                 s_a,
             )
-            ∂q∂h_a = ∂q∂s_a * area_cache[inflow_id.idx]
+            ∂q∂h_a = ∂q∂s_a * current_area[inflow_id.idx]
             set_partial_derivative_wrt_level!(
                 allocation_model,
                 inflow_id,
@@ -252,7 +255,7 @@ function linearize_connector_node!(
                 flow_function(connector_node, node_id, s_a, storage_b, p, t_after),
                 s_b,
             )
-            ∂q∂h_b = ∂q∂s_b * area_cache[outflow_id.idx]
+            ∂q∂h_b = ∂q∂s_b * current_area[outflow_id.idx]
             set_partial_derivative_wrt_level!(
                 allocation_model,
                 outflow_id,
@@ -262,7 +265,8 @@ function linearize_connector_node!(
             )
         end
     end
-    return
+    p.p_mutable.ad_active = false
+    return nothing
 end
 
 function set_simulation_data!(
@@ -669,9 +673,9 @@ function set_demands!(
         integrator::DEIntegrator,
     )::Nothing
     (; u, p, t) = integrator
-    (; p_independent) = p
+    (; p_independent, non_ad_cache) = p
     (; basin, allocation) = p_independent
-    (; level_cache, area_cache) = basin
+    (; current_level, current_area) = non_ad_cache
     (; demand_priorities_all) = allocation
     (; has_demand_priority, min_level, max_level, storage_demand) = level_demand
     (; problem, node_ids_in_subnetwork, scaling, Δt_allocation) = allocation_model
@@ -698,10 +702,10 @@ function set_demands!(
     for basin_id in basin_ids_subnetwork_with_level_demand
         level_demand_id = basin.level_demand_id[basin_id.idx]
 
-        level_now = level_cache[basin_id.idx]
+        level_now = current_level[basin_id.idx]
         level_min_prev_priority = basin_bottom(basin, basin_id)[2]
         level_max_prev_priority = Inf
-        A = area_cache[basin_id.idx]
+        A = current_area[basin_id.idx]
         storage_now = u.storage[basin_id.idx]
 
         for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
@@ -1211,7 +1215,6 @@ function update_allocation!(model, Δt = 0.0; record::Bool = true)::Nothing
 
     du = get_du(integrator)
     water_balance!(du, u, p, t)
-    update_level_and_area_cache!(u, p)
 
     for secondary_network in get_secondary_networks(allocation_models)
         update_control_states!(secondary_network, p_independent)

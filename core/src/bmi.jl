@@ -59,13 +59,13 @@ This uses a typeassert to ensure that the return type annotation doesn't create 
 """
 function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     (; u, p) = model.integrator
-    (; p_independent) = p
+    (; p_independent, non_ad_cache) = p
     (; basin, user_demand, subgrid) = p_independent
 
     return if name == "basin.storage"
         unsafe_array(u.storage)::Vector{Float64}
     elseif name == "basin.level"
-        basin.level_cache
+        non_ad_cache.current_level
     elseif name == "basin.infiltration"
         basin.vertical_flux.infiltration::Vector{Float64}
     elseif name == "basin.drainage"

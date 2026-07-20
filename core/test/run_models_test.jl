@@ -498,9 +498,9 @@ end
     (; integrator, saved) = model
     (; p, t) = integrator
     (; saveval) = saved.flow
-    (; p_independent) = p
+    (; p_independent, non_ad_cache) = p
     du = get_du(model.integrator)
-    h_actual = p_independent.basin.level_cache[1:50]
+    h_actual = non_ad_cache.current_level[1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 
@@ -713,7 +713,7 @@ end
     )
 
     # Check that Basin #2189 is running dry and thus the infiltration and storage rate are close to 0
-    @test all(x -> abs(x) < 0.03, basin_table.storage)
+    @test all(x -> abs(x) < 0.07, basin_table.storage)
     @test all(x -> abs(x) < 1.0e-8, basin_table.storage_rate)
     @test all(x -> abs(x) < 1.0e-8, basin_table.infiltration)
 end

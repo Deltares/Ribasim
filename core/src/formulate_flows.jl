@@ -7,6 +7,7 @@ water_balance!(du::CVector, u::CVector, p::Parameters, t::Number)::Nothing = wat
     u::RibasimCVectorType,
     p.p_independent,
     p.time_dependent_cache,
+    p.non_ad_cache,
     p.p_mutable,
     t
 )
@@ -18,12 +19,14 @@ water_balance!(
     u::CVector,
     p_independent::ParametersIndependent,
     time_dependent_cache::TimeDependentCache,
+    non_ad_cache::NonADCache,
     p_mutable::ParametersMutable
 ) = water_balance!(
     du,
     u,
     p_independent,
     time_dependent_cache,
+    non_ad_cache,
     p_mutable,
     t
 )
@@ -33,12 +36,14 @@ function water_balance!(
         u::RibasimCVectorType,
         p_independent::ParametersIndependent,
         time_dependent_cache::TimeDependentCache,
+        non_ad_cache::NonADCache,
         p_mutable::ParametersMutable,
         t::Number
     )::Nothing
     p = Parameters(
         p_independent,
         time_dependent_cache,
+        non_ad_cache,
         p_mutable,
     )
     (;
@@ -47,6 +52,9 @@ function water_balance!(
         continuous_control,
     ) = p_independent
     (; continuous_control_compound_variables) = continuous_control
+
+    # Compute and cache Basin level, area, low_storage_factor
+    set_current_basin_properties!(u, p, t)
 
     # Check whether t or u is different from the last water_balance! call
     check_new_input!(p, t)
@@ -63,7 +71,7 @@ function water_balance!(
     #   so these flows have to be formulated first.
 
     # Basin forcings (precipitation, evaporation, infiltration, drainage, surface_runoff)
-    formulate_vertical_flux!(du, storage_uplink, p_independent)
+    formulate_vertical_flux!(du, storage_uplink, p, t)
 
     formulate_flows_args = (
         du,
@@ -92,7 +100,7 @@ function water_balance!(
         continuous_control_compound_variables,
         u.storage,
         du.flow,
-        p_independent,
+        p,
         t
     )
 
@@ -109,17 +117,41 @@ function water_balance!(
     return nothing
 end
 
+function set_current_basin_properties!(u::RibasimCVectorType, p::Parameters, t::Number)
+    (; p_independent, p_mutable, non_ad_cache) = p
+    (; storage_prev_call, current_level, current_area, current_low_storage_factor) = non_ad_cache
+    (; node_id, level_to_area, low_storage_threshold) = p_independent.basin
+
+    p_mutable.ad_active && return nothing
+    storage = u.storage
+
+    @batch for idx in eachindex(node_id)
+        id = node_id[idx]
+        s = storage[idx]
+        (s == storage_prev_call[idx]) && continue
+        h = get_level(s, p, id, t; force_evaluation = true)
+        Ah = level_to_area[idx]
+        A = Ah(h)
+        ϕ = reduction_factor(s, low_storage_threshold[idx])
+
+        current_level[idx] = h
+        current_area[idx] = A
+        current_low_storage_factor[idx] = ϕ
+        storage_prev_call[idx] = s
+    end
+    return nothing
+end
+
 function formulate_vertical_flux!(
         du::RibasimCVectorType,
         storage_uplink::FlowCVectorType,
-        p_independent::ParametersIndependent,
+        p::Parameters,
+        t::Number
     )
     (;
         node_id,
         vertical_flux,
-        storage_to_level,
-        level_to_area,
-    ) = p_independent.basin
+    ) = p.p_independent.basin
 
     # Incoming
     du.flow.drainage .= vertical_flux.drainage
@@ -127,21 +159,21 @@ function formulate_vertical_flux!(
     du.flow.surface_runoff .= vertical_flux.surface_runoff
 
     # Outgoing
-    for id in node_id
+    @batch for id in node_id
         # Evaporation and infiltration have the same 'uplink' storage,
         # but they are separated here for AD purposes
 
         # Evaporation
         storage = storage_uplink.evaporation[id.idx]
-        level = storage_to_level[id.idx](storage)
-        area = level_to_area[id.idx](level)
-        low_storage_factor = get_low_storage_factor(storage, p_independent, id)
+        level = get_level(storage, p, id, t)
+        area = get_area(level, p, id)
+        low_storage_factor = get_low_storage_factor(storage, p, id)
         du.flow.evaporation[id.idx] =
             vertical_flux.potential_evaporation[id.idx] * area * low_storage_factor
 
         # Infiltration
         storage = storage_uplink.infiltration[id.idx]
-        low_storage_factor = get_low_storage_factor(storage, p_independent, id)
+        low_storage_factor = get_low_storage_factor(storage, p, id)
         du.flow.infiltration[id.idx] = vertical_flux.infiltration[id.idx] * low_storage_factor
     end
     return nothing
@@ -151,15 +183,15 @@ function compute_continuous_control_compound_variables!(
         compound_variables::Vector{<:Number},
         storage::AbstractVector,
         flow::AbstractVector,
-        p_independent::ParametersIndependent,
+        p::Parameters,
         t::Number
     )
-    (; compound_variable, func) = p_independent.continuous_control
+    (; compound_variable, func) = p.p_independent.continuous_control
 
     for idx in eachindex(compound_variables)
         cvar = compound_variable[idx]
         f = func[idx]
-        value = compound_variable_value(cvar, storage, flow, p_independent, t)
+        value = compound_variable_value(cvar, storage, flow, p, t)
         compound_variables[idx] = f(value)
     end
     return nothing
@@ -340,7 +372,7 @@ function formulate_flow!(
         for (inflow_idx, link_meta) in enumerate(inflow_links)
             src_id = link_meta.link[1]
             upstream_storage = storage_uplink.user_demand_inflow[inflow_idx]
-            f_low_storage = get_low_storage_factor(upstream_storage, p_independent, src_id)
+            f_low_storage = get_low_storage_factor(upstream_storage, p, src_id)
             source_level = get_level(upstream_storage, p, src_id, t)
             f_reduction = reduction_factor(
                 source_level - min_level,
@@ -407,7 +439,7 @@ function linear_resistance_flow(
     Δh = h_a - h_b
     q_unlimited = Δh / resistance[node_id.idx]
     q = clamp(q_unlimited, -max_flow_rate[node_id.idx], max_flow_rate[node_id.idx])
-    return q * low_storage_factor_resistance_node(s_a, s_b, p.p_independent, q_unlimited, inflow_id, outflow_id)
+    return q * low_storage_factor_resistance_node(s_a, s_b, p, q_unlimited, inflow_id, outflow_id)
 end
 
 function tabulated_rating_curve_flow(
@@ -429,7 +461,7 @@ function tabulated_rating_curve_flow(
     h_b = get_level(s_b, p, outflow_id, t)
     Δh = h_a - h_b
 
-    factor = get_low_storage_factor(s_a, p.p_independent, inflow_id)
+    factor = get_low_storage_factor(s_a, p, inflow_id)
     interpolation_index = current_interpolation_index[node_id.idx](t)
     qh = interpolations[interpolation_index]
     q = factor * qh(h_a)
@@ -457,7 +489,7 @@ function allocated_rating_curve_flow(
     h_b = get_level(s_b, p, outflow_id, t)
     Δh = h_a - h_b
 
-    factor = get_low_storage_factor(s_a, p.p_independent, inflow_id)
+    factor = get_low_storage_factor(s_a, p, inflow_id)
     q = tabulated_rating_curve.flow_rate[node_id.idx]
     q *= factor
     q *= reduction_factor(Δh, level_difference_threshold)
@@ -474,7 +506,7 @@ function formulate_flow!(
         p::Parameters,
         t::Number,
     )::Nothing
-    for node_idx in eachindex(tabulated_rating_curve.node_id)
+    @batch for node_idx in eachindex(tabulated_rating_curve.node_id)
         id = tabulated_rating_curve.node_id[node_idx]
         s_a = storage_uplink.tabulated_rating_curve[node_idx]
         s_b = storage_downlink.tabulated_rating_curve[node_idx]
@@ -555,7 +587,7 @@ function manning_resistance_flow(
 
     q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, threshold)
 
-    return q * low_storage_factor_resistance_node(s_a, s_b, p.p_independent, q, inflow_id, outflow_id)
+    return q * low_storage_factor_resistance_node(s_a, s_b, p, q, inflow_id, outflow_id)
 end
 
 """
@@ -607,7 +639,7 @@ function formulate_flow!(
     )::Nothing
     (; node_id) = manning_resistance
 
-    for node_idx in eachindex(manning_resistance.node_id)
+    @batch for node_idx in eachindex(manning_resistance.node_id)
         id = node_id[node_idx]
         s_a = storage_uplink.manning_resistance[node_idx]
         s_b = storage_downlink.manning_resistance[node_idx]
@@ -647,7 +679,7 @@ function formulate_pump_or_outlet_flow!(
         current_max_downstream_level,
     ) = component_cache
 
-    for node_idx in eachindex(node.node_id)
+    @batch for node_idx in eachindex(node.node_id)
         id = node.node_id[node_idx]
         inflow_id = node.inflow_link[node_idx].link[1]
         outflow_id = node.outflow_link[node_idx].link[2]
@@ -693,7 +725,7 @@ function formulate_pump_or_outlet_flow!(
         src_level = get_level(s_a, p, inflow_id, t)
         dst_level = get_level(s_b, p, outflow_id, t)
 
-        q = flow_rate * get_low_storage_factor(s_a, p.p_independent, inflow_id)
+        q = flow_rate * get_low_storage_factor(s_a, p, inflow_id)
 
         lower_bound =
             eval_time_interpolation(min_flow_rate, current_min_flow_rate, node_idx, p, t)
