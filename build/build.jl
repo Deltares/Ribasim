@@ -18,6 +18,7 @@ function (@main)(_)::Cint
         project = project_dir,
         cpu_target = default_app_cpu_target(),
         add_ccallables = true,
+        c_sources = ["build/set_julia_threads.c"],
         verbose = true,
     )
     link_recipe = LinkRecipe(;

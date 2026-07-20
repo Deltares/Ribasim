@@ -93,6 +93,21 @@ def test_threads_cli_argument(tmp_path):
     assert "threads = 2" in result.stderr
 
 
+def test_threads_cli_argument_must_be_positive(tmp_path):
+    model = ribasim_testmodels.basic_model()
+    model.write(tmp_path / "ribasim.toml")
+
+    result = subprocess.run(
+        [executable, "--threads", "0", tmp_path / "ribasim.toml"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    assert result.returncode != 0
+    assert "Julia thread count must be between 1 and 32767" in result.stderr
+
+
 def test_threads_env_var(tmp_path):
     """Test that JULIA_NUM_THREADS environment variable is not used."""
     model = ribasim_testmodels.basic_model()
