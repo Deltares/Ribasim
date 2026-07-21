@@ -24,7 +24,7 @@ function create_callbacks(
     push!(callbacks, save_basin_state_cb)
 
     # Update cumulative flows for BMI
-    cumulative_flows_cb = FunctionCallingCallback(update_BMI_cumulative_flows!; func_start = false)
+    cumulative_flows_cb = FunctionCallingCallback(update_bmi_cumulative_flows!; func_start = false)
     push!(callbacks, cumulative_flows_cb)
 
     # Update concentrations
@@ -76,7 +76,7 @@ function create_callbacks(
     return callback, saved
 end
 
-function update_BMI_cumulative_flows!(u, t, integrator)::Nothing
+function update_bmi_cumulative_flows!(u, t, integrator)::Nothing
     (; p, dt) = integrator
     (; p_independent) = p
     (;
@@ -86,7 +86,6 @@ function update_BMI_cumulative_flows!(u, t, integrator)::Nothing
     ) = p_independent
     iszero(dt) && return nothing
 
-    1[2]
     # cumulative_flow_dt is updated in correct_step!
     @. basin.cumulative_infiltration += cumulative_flow_dt.infiltration
     @. basin.cumulative_drainage += cumulative_flow_dt.drainage
