@@ -18,6 +18,7 @@ function (@main)(_)::Cint
         project = project_dir,
         cpu_target = default_app_cpu_target(),
         add_ccallables = true,
+        c_sources = ["build/set_julia_threads.c"],
         verbose = true,
     )
     link_recipe = LinkRecipe(;
@@ -27,7 +28,10 @@ function (@main)(_)::Cint
     )
     bundle_recipe = BundleRecipe(; link_recipe, output_dir)
 
-    compile_products(image_recipe)
+    precompile_workload = abspath("generated_testmodels/basic/ribasim.toml")
+    withenv("RIBASIM_PRECOMPILE_WORKLOAD" => precompile_workload) do
+        compile_products(image_recipe)
+    end
     link_products(link_recipe)
     bundle_products(bundle_recipe)
 
