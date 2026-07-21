@@ -59,45 +59,30 @@ function log_startup(config, toml_path::AbstractString)::Nothing
 end
 
 "Log the convergence bottlenecks."
-function log_bottlenecks(model; interrupt::Bool)
-    (; cache, p, u) = model.integrator
+function log_bottlenecks(model)
+    (; integrator, saved) = model
+    (; convergence, convergence_ncalls, inflow_link) = integrator.p.p_independent
 
-    level = LoggingExtras.Warn
-
-    # Indicate convergence bottlenecks if possible with the current algorithm
-    return if hasproperty(cache, :nlsolver)
-        flow_error = @. abs(cache.nlsolver.cache.atmp / u)
-        flow_error ./= finitemaximum(flow_error)
-
-        (; state_ranges, basin, pid_control) = p.p_independent
-        errors = Pair{Symbol, String}[]
-        error_count = 0
-        max_errors = 5
-        # Iterate over the errors in descending order
-        for i in sortperm(flow_error; rev = true)
-            error = flow_error[i]
-            isnan(error) && continue
-            if error < 1 / length(flow_error) || error_count >= max_errors
-                break
-            end
-            # Map state index to node ID
-            label = if i in state_ranges.storage
-                string(basin.node_id[i - first(state_ranges.storage) + 1])
-            elseif i in state_ranges.pid_integral
-                string(pid_control.node_id[i - first(state_ranges.integral) + 1])
-            else
-                "state_$i"
-            end
-            push!(errors, Symbol(label) => @sprintf("%.2f", error * 100) * "%")
-            error_count += 1
-        end
-        if !isempty(errors)
-            @logmsg level "Convergence bottlenecks in descending order of severity:" errors...
-        end
+    flow_error = if iszero(convergence_ncalls[1])
+        # Take the last saved convergence error if available
+        isempty(saved.flow.saveval) && return nothing
+        saved.flow.saveval[end].convergence
     else
-        algorithm = model.config.solver.algorithm
-        @logmsg level "Convergence bottlenecks are not shown for the chosen solver algorithm." algorithm
+        # Compute the the convergence error from accumulated
+        convergence ./ convergence_ncalls[1]
     end
+
+    # Iterate over the errors in descending order
+    errors = Pair{NodeID, String}[]
+    for i in sortperm(flow_error; rev = true)[1:10]
+        error = flow_error[i]
+        id = inflow_link[i].link[2]
+        push!(errors, id => @sprintf("%.2f", error * 100) * "%")
+    end
+
+    log_level = LoggingExtras.Warn
+    @logmsg log_level "Convergence bottlenecks in descending order of severity:" errors...
+    return nothing
 end
 
 "Log messages after the computation."

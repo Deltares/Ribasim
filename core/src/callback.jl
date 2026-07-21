@@ -23,8 +23,8 @@ function create_callbacks(
     save_basin_state_cb = SavingCallback(save_basin_state!, saved_basin_states; saveat)
     push!(callbacks, save_basin_state_cb)
 
-    # Update cumulative flows (for allocation, BMI, concentrations)
-    cumulative_flows_cb = FunctionCallingCallback(update_cumulative_flows!; func_start = false)
+    # Update cumulative flows for BMI
+    cumulative_flows_cb = FunctionCallingCallback(update_BMI_cumulative_flows!; func_start = false)
     push!(callbacks, cumulative_flows_cb)
 
     # Update concentrations
@@ -76,7 +76,7 @@ function create_callbacks(
     return callback, saved
 end
 
-function update_cumulative_flows!(u, t, integrator)::Nothing
+function update_BMI_cumulative_flows!(u, t, integrator)::Nothing
     (; p, dt) = integrator
     (; p_independent) = p
     (;
@@ -86,9 +86,8 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     ) = p_independent
     iszero(dt) && return nothing
 
+    1[2]
     # cumulative_flow_dt is updated in correct_step!
-
-    # Cumulative flows for BMI
     @. basin.cumulative_infiltration += cumulative_flow_dt.infiltration
     @. basin.cumulative_drainage += cumulative_flow_dt.drainage
     @. basin.cumulative_surface_runoff += cumulative_flow_dt.surface_runoff
@@ -96,19 +95,6 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         user_demand.cumulative_inflow[node_id.idx] += sum(
             get_inflows(cumulative_flow_dt, user_demand, node_id.idx)
         )
-    end
-
-    # Accumulate normalized Newton residual for convergence output
-    cache = integrator.cache
-    if hasproperty(cache, :nlsolver)
-        atmp = cache.nlsolver.cache.atmp
-        abs_atmp = abs.(atmp)
-        max_atmp = finitemaximum(abs_atmp; init = one(eltype(abs_atmp)))
-        for i in eachindex(p_independent.convergence)
-            v = abs_atmp[i]
-            p_independent.convergence[i] += isfinite(v) ? v / max_atmp : 0.0
-        end
-        p_independent.convergence_ncalls[1] += 1
     end
     return nothing
 end
@@ -252,7 +238,7 @@ Save all flow rates (averaged over the saveat interval) and vertical fluxes.
 """
 function save_flow(u, t, integrator)
     (; p_independent) = integrator.p
-    (; basin, u_prev_saveat, cumulative_flow_dt) = p_independent
+    (; basin, u_prev_saveat, cumulative_flow_dt, flow_ranges) = p_independent
 
     Δt = get_Δt(integrator)
 
@@ -261,6 +247,7 @@ function save_flow(u, t, integrator)
     @. flow_mean = (u.flow - u_prev_saveat.flow) / Δt
 
     n_basin = length(basin.node_id)
+    n_flow = length(flow_mean)
     inflow_mean = zeros(n_basin)
     outflow_mean = zeros(n_basin)
     # Flow contributions from horizontal flow links
@@ -283,12 +270,10 @@ function save_flow(u, t, integrator)
     concentration = copy(basin.concentration_data.concentration_state)
 
     # Compute mean convergence over the saveat interval (missing if no nlsolver calls)
-    convergence = fill(missing, n_basin) |> Vector{Union{Missing, Float64}}
+    convergence = fill(missing, n_flow) |> Vector{Union{Missing, Float64}}
     ncalls = p_independent.convergence_ncalls[1]
     if ncalls > 0
-        for i in 1:n_basin
-            convergence[i] = p_independent.convergence[i] / ncalls
-        end
+        convergence .= p_independent.convergence / ncalls
         fill!(p_independent.convergence, 0.0)
         p_independent.convergence_ncalls[1] = 0
     end
@@ -298,7 +283,7 @@ function save_flow(u, t, integrator)
         inflow = inflow_mean,
         outflow = outflow_mean,
         concentration,
-        convergence,
+        convergence = CVector(convergence, flow_ranges),
         t,
     )
     check_water_balance_error!(saved_flow, integrator, Δt)

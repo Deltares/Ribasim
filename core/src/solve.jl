@@ -889,14 +889,17 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
     (; p_independent, ũ_cache, u₀_cache, u₁_cache) = internalnorm
     (; storage0) = p_independent.basin
 
+    aggregate_flows!(ũ_cache, ũ.flow, p_independent)
+
+    # Translate u₀, u₁ which are states to storage
     u₀_cache .= storage0
     u₁_cache .= storage0
-    aggregate_flows!(ũ_cache, ũ.flow, p_independent)
     aggregate_flows!(u₀_cache, u₀.flow, p_independent; from_zero = false)
     aggregate_flows!(u₁_cache, u₁.flow, p_independent; from_zero = false)
 
     out .= 0
 
+    # Compute storage residuals
     @batch for i in eachindex(ũ_cache)
         out.storage[i] = DiffEqBase.calculate_residuals(
             ũ_cache[i],
@@ -908,6 +911,32 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
             t
         )
     end
+
+    # Accumulate residual for bottleneck identification
+    max_abs_residual = 0.0
+    for i in eachindex(ũ.flow)
+        a = abs(ũ.flow[i])
+        if isfinite(a)
+            max_abs_residual = max(max_abs_residual, a)
+        end
+    end
+    if iszero(max_abs_residual)
+        # If no finite residual exists, set maximum badness (1.0) for
+        # non finite residuals
+        @batch for i in eachindex(ũ.flow)
+            residual = ũ.flow[i]
+            !isfinite(residual) && (p_independent.convergence[i] += 1.0)
+        end
+
+    else
+        @batch for i in eachindex(ũ.flow)
+            a = abs(ũ.flow[i])
+            contribution = isfinite(a) ? a / max_abs_residual : 1.0
+            p_independent.convergence[i] += contribution
+        end
+    end
+    p_independent.convergence_ncalls[1] += 1
+
     return nothing
 end
 

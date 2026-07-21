@@ -412,7 +412,7 @@ In-memory storage of saved mean flows for writing to results.
     storage_rate::Vector{Float64} = zero(inflow)
     balance_error::Vector{Float64} = zero(inflow)
     relative_error::Vector{Float64} = zero(inflow)
-    convergence::Vector{Union{Missing, Float64}}
+    convergence::FlowCVectorType{Union{Missing, Float64}}
     t::Float64
 end
 
@@ -1115,16 +1115,16 @@ the object itself is not.
     storage_uplink::FlowCVectorType{Float64} = similar(inflow_link, Float64)
     storage_downlink::FlowCVectorType{Float64} = similar(inflow_link, Float64)
     # Cumulative flow over last timestep
-    cumulative_flow_dt::FlowCVectorType{Float64} = similar(inflow_link, Float64)
+    cumulative_flow_dt::FlowCVectorType{Float64} = zero(storage_uplink)
     # State at previous saveat
     u_prev_saveat::RibasimCVectorType{Float64} = CVector(
         zeros(length(basin.node_id) + length(inflow_link) + length(pid_control.node_id)),
         state_ranges
     )
     # Cumulative flow over last allocation times
-    cumulative_flow_prev_allocation_dt::FlowCVectorType{Float64} = similar(inflow_link, Float64)
+    cumulative_flow_prev_allocation_dt::FlowCVectorType{Float64} = zero(storage_uplink)
     # Convergence tracking: accumulated normalized Newton residual per basin
-    convergence::Vector{Float64} = zeros(length(basin.node_id))
+    convergence::FlowCVectorType{Float64} = zero(storage_uplink)
     convergence_ncalls::Vector{Int} = [0]
 end
 

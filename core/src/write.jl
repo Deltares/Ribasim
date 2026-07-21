@@ -360,7 +360,6 @@ function basin_data(model::Model; table::Bool = true)
 
     nbasin = length(data.node_id)
     ntsteps = length(data.time) - 1
-    nrows = nbasin * ntsteps
 
     inflow_rate = FlatVector(saved.flow.saveval, :inflow)
     outflow_rate = FlatVector(saved.flow.saveval, :outflow)
@@ -372,7 +371,6 @@ function basin_data(model::Model; table::Bool = true)
     storage_rate = FlatVector(saved.flow.saveval, :storage_rate)
     balance_error = FlatVector(saved.flow.saveval, :balance_error)
     relative_error = FlatVector(saved.flow.saveval, :relative_error)
-    convergence = FlatVector(saved.flow.saveval, :convergence)
 
     time = data.time[begin:(end - 1)]
     node_id = Int32.(data.node_id)
@@ -402,7 +400,6 @@ function basin_data(model::Model; table::Bool = true)
         infiltration,
         balance_error,
         relative_error,
-        convergence,
     )
 end
 
@@ -445,17 +442,26 @@ function flow_data(model::Model; table::Bool = true)
     nflow = length(unique_link_ids_flow)
     ntsteps = length(t)
     flow_rate = zeros(nflow * ntsteps)
+    convergence = zeros(nflow * ntsteps)
     internal_flow_rate = zeros(length(internal_flow_links))
+    internal_convergence = zeros(length(internal_flow_links))
 
     for (ti, saved_flow) in enumerate(saveval)
         for (fi, link) in enumerate(internal_flow_links)
             internal_flow_rate[fi] =
                 get_flow(saved_flow.flow, link.link, p)
+            internal_convergence[fi] =
+                get_flow(saved_flow.convergence, link.link, p)
         end
         mul!(
             view(flow_rate, (1 + (ti - 1) * nflow):(ti * nflow)),
             flow_link_map,
             internal_flow_rate,
+        )
+        mul!(
+            view(convergence, (1 + (ti - 1) * nflow):(ti * nflow)),
+            flow_link_map,
+            internal_convergence
         )
     end
 
@@ -475,6 +481,7 @@ function flow_data(model::Model; table::Bool = true)
         to_node_id = repeat(to_node_id; outer = ntsteps)
     else
         flow_rate = reshape(flow_rate, nflow, ntsteps)
+        convergence = reshape(convergence, nflow, ntsteps)
     end
 
     return (;
@@ -483,6 +490,7 @@ function flow_data(model::Model; table::Bool = true)
         from_node_id,
         to_node_id,
         flow_rate,
+        convergence,
     )
 end
 
