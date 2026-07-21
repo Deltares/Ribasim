@@ -180,7 +180,7 @@ function formulate_vertical_flux!(
 end
 
 function compute_continuous_control_compound_variables!(
-        compound_variables::Vector{<:Number},
+        compound_variables::AbstractVector{<:Number},
         storage::AbstractVector,
         flow::AbstractVector,
         p::Parameters,
@@ -654,7 +654,7 @@ end
 function formulate_pump_or_outlet_flow!(
         du::RibasimCVectorType,
         node::Union{Pump, Outlet},
-        continuous_control_compound_variables::Vector,
+        continuous_control_compound_variables::AbstractVector,
         pid_integral::AbstractVector,
         storage_uplink::FlowCVectorType,
         storage_downlink::FlowCVectorType,
@@ -794,7 +794,7 @@ end
 function formulate_flow!(
         du::RibasimCVectorType,
         pump::Pump,
-        continuous_control_compound_variables::Vector,
+        continuous_control_compound_variables::AbstractVector,
         pid_integral::AbstractVector,
         storage_uplink::FlowCVectorType,
         storage_downlink::FlowCVectorType,
@@ -820,7 +820,7 @@ end
 function formulate_flow!(
         du::RibasimCVectorType,
         outlet::Outlet,
-        continuous_control_compound_variables::Vector,
+        continuous_control_compound_variables::AbstractVector,
         pid_integral::AbstractVector,
         storage_uplink::FlowCVectorType,
         storage_downlink::FlowCVectorType,
@@ -864,7 +864,7 @@ function formulate_flows!(
         du::RibasimCVectorType,
         storage_uplink::FlowCVectorType,
         storage_downlink::FlowCVectorType,
-        continuous_control_compound_variables::Vector,
+        continuous_control_compound_variables::AbstractVector,
         pid_integral::AbstractVector,
         p::Parameters,
         t::Number;

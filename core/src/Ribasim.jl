@@ -25,8 +25,8 @@ using DifferentiationInterface:
     prepare_jacobian,
     value_and_jacobian!,
     jacobian!,
-    prepare_derivative,
-    derivative!,
+    prepare_pushforward,
+    pushforward!,
     second_derivative
 
 using ForwardDiff: ForwardDiff, Dual, Partials, seed!, partials, valtype, derivative as forward_diff
