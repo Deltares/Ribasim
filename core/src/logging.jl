@@ -93,7 +93,7 @@ function log_finalize(model)::Cint
     else
         # OrdinaryDiffEq doesn't error on e.g. convergence failure,
         # but we want a non-zero exit code in that case.
-        log_bottlenecks(model; interrupt = false)
+        log_bottlenecks(model)
         t = datetime_since(model.integrator.t, model.config.starttime)
         (; retcode) = model.integrator.sol
         @error """The model exited at model time $t with return code $retcode at $(now()).
