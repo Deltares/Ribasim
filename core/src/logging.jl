@@ -73,11 +73,11 @@ function log_bottlenecks(model)
     end
 
     # Iterate over the errors in descending order
-    errors = Pair{NodeID, String}[]
-    for i in sortperm(flow_error; rev = true)[1:10]
+    errors = Pair{Symbol, String}[]
+    for i in sortperm(flow_error; rev = true)[1:min(length(convergence), 10)]
         error = flow_error[i]
         id = inflow_link[i].link[2]
-        push!(errors, id => @sprintf("%.2f", error * 100) * "%")
+        push!(errors, Symbol(id) => @sprintf("%.2f", error * 100) * "%")
     end
 
     log_level = LoggingExtras.Warn

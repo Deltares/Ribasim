@@ -21,7 +21,7 @@ end
 
 """
 Convert the lazy mass matrix to a sparse matrix. This should generally not be done for
-performance reasons but is required in the OrdinaryDiffEq.jl internals in some places
+performance reasons but is required in the OrdinaryDiffEq.jl internals in some places.
 """
 function Base.convert(::Type{<:AbstractMatrix}, M::RibasimMassMatrix)::SparseMatrixCSC{Int, Int}
     (; basin, cumulative_flow_dt, u_prev_saveat, incidence_matrix) = M.p_independent
@@ -35,7 +35,7 @@ function Base.convert(::Type{<:AbstractMatrix}, M::RibasimMassMatrix)::SparseMat
 end
 
 """
-Multiplication of a vector by the Ribasim mass matrix
+Multiplication the Ribasim mass matrix by a vector
 """
 function LinearAlgebra.mul!(
         v_out::RibasimCVectorType,
@@ -44,7 +44,9 @@ function LinearAlgebra.mul!(
     )
     (; p_independent) = M
     v_out .= 0.0
+    # Incidence matrix term
     aggregate_flows!(v_out.storage, v_in.flow, p_independent; weight = -1)
+    # Identity term
     v_out .+= v_in
     return v_out
 end
@@ -152,6 +154,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
         return nothing
     end
 
+    # A pushforward is a Jacobian vector product (JVP)
     pushforward_prep = prepare_pushforward(
         formulate_flows_closure!,
         du_prototype,
@@ -259,12 +262,16 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
     )
 end
 
-
+# Make sure that the non-zeros of the sparse matrix are actually non-zero
 function sparse_init!(A::SparseMatrixCSC, prep)
     pattern = sparsity_pattern(prep)
     A[pattern] .= 1
     return A
 end
+
+###
+##### Jacobian
+###
 
 """
 Lazy representation of the Jacobian of the rhs of the Ribasim ODE system:
@@ -293,10 +300,6 @@ Here:
  - S_down selects the downstream storage per flow
  - S_PID selects the controlled storage per PID control node
 """
-
-###
-##### Jacobian
-###
 @kwdef struct RibasimJacobian{
         C <: RibasimJacobianEvaluationCache,
         PI <: ParametersIndependent,
@@ -445,7 +448,9 @@ function SciMLOperators.update_coefficients!(
     p_mutable.refresh_jac = false
     return nothing
 end
-
+"""
+Compute J_inner_local = M * (∂q_∂s_up * S_up + ∂q_∂s_down * S_down)
+ """
 function update_J_inner_local!(J::RibasimJacobian)
     (;
         p_independent,
@@ -456,7 +461,6 @@ function update_J_inner_local!(J::RibasimJacobian)
     (; inflow_link, outflow_link) = p_independent
 
     J_inner_local .= 0.0
-    # Compute J_inner = M * (∂q_∂s_up * S_up + ∂q_∂s_down * S_down)
     for flow_idx in eachindex(inflow_link)
         inflow_id = inflow_link[flow_idx].link[1]
         outflow_id = outflow_link[flow_idx].link[2]
@@ -479,7 +483,7 @@ function update_J_inner_local!(J::RibasimJacobian)
 end
 
 """
-    Compute v_out = Jₛ * v_in
+Compute v_out = Jₛ * v_in
 """
 function ∂flow_∂storage_mul!(
         v_out::FlowCVectorType,
@@ -552,13 +556,17 @@ function LinearAlgebra.mul!(
     (; pid_control) = p_independent
     v_out *= 0.0
 
+    # Multiplication by Jₛ
     ∂flow_∂storage_mul!(v_out.flow, J, v_in.storage)
 
     for pid_idx in 1:n_pid
         listen_node_id = pid_control.listen_node_id[pid_idx]
         controlled_node_id = pid_control.controlled_node_id[pid_idx]
+
+        # Multiplication by Jᵢ
         v_out.pid_integral[pid_idx] = -area_pid_controlled[pid_idx] * v_in.storage[listen_node_id.idx]
 
+        # Multiplication by Jₚ
         if controlled_node_id.type == NodeType.Pump
             v_out.flow.pump[controlled_node_id.idx] += ∂flow_∂pid_integral[pid_idx] * v_in.pid_integral[pid_idx]
         elseif controlled_node_id.type == NodeType.Outlet
@@ -596,6 +604,7 @@ function SciMLBase.init(
     (; J, gamma) = W
     (; n_basin) = J
 
+    # The effective Jacobian for the inner linear solve
     J_inner = spzeros(n_basin, n_basin)
 
     # Make sure all derivatives are non-zero here so that the
@@ -869,6 +878,7 @@ function OrdinaryDiffEqDifferentiation.do_newJW(
     return new_jac, new_W
 end
 
+# The norm applied to the residuals to obtain the final scalar solver error
 @kwdef struct InternalNorm{PI <: ParametersIndependent}
     p_independent::PI
     ũ_cache::Vector{Float64} = zeros(length(p_independent.basin.node_id))
@@ -877,6 +887,7 @@ end
 end
 Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
 
+# Base the error only on the storage term!
 (::InternalNorm)(u::RibasimCVectorType, t) = ODE_DEFAULT_NORM(u.storage, t)
 (::InternalNorm)(u::Number, t) = ODE_DEFAULT_NORM(u, t)
 
@@ -891,7 +902,7 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
 
     aggregate_flows!(ũ_cache, ũ.flow, p_independent)
 
-    # Translate u₀, u₁ which are states to storage
+    # Translate u₀, u₁ which are state vector values to storage
     u₀_cache .= storage0
     u₁_cache .= storage0
     aggregate_flows!(u₀_cache, u₀.flow, p_independent; from_zero = false)

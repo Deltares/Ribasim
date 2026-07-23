@@ -442,9 +442,9 @@ function flow_data(model::Model; table::Bool = true)
     nflow = length(unique_link_ids_flow)
     ntsteps = length(t)
     flow_rate = zeros(nflow * ntsteps)
-    convergence = zeros(nflow * ntsteps)
+    convergence = zeros(nflow * ntsteps) |> Vector{Union{Missing, Float64}}
     internal_flow_rate = zeros(length(internal_flow_links))
-    internal_convergence = zeros(length(internal_flow_links))
+    internal_convergence = zeros(length(internal_flow_links)) |> Vector{Union{Missing, Float64}}
 
     for (ti, saved_flow) in enumerate(saveval)
         for (fi, link) in enumerate(internal_flow_links)

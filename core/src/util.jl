@@ -1216,7 +1216,7 @@ function set_uplink_downlink_storage!(
     storage_uplink .= 0.0
     storage_downlink .= 0.0
 
-    @batch for idx in eachindex(storage_uplink)
+    for idx in eachindex(storage_uplink)
         inflow_id = inflow_link[idx].link[1]
         outflow_id = outflow_link[idx].link[2]
 

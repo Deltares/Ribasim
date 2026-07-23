@@ -93,12 +93,9 @@ end
     path = results_path(config, RESULTS_FILENAME.basin)
     @test isfile(path)
     NCDataset(path) do ds
-        @test "convergence" in keys(ds)
         @test "level" in keys(ds)
         @test "storage" in keys(ds)
         @test ds.attrib["ribasim_version"] == RIBASIM_VERSION
-        convergence = ds["convergence"][:]
-        @test all(isfinite, convergence)
     end
 
     # Test flow NetCDF output
@@ -106,7 +103,10 @@ end
     @test isfile(path)
     NCDataset(path) do ds
         @test "flow_rate" in keys(ds)
+        @test "convergence" in keys(ds)
         @test ds.attrib["ribasim_version"] == RIBASIM_VERSION
+        convergence = ds["convergence"][:]
+        @test all(isfinite, convergence)
     end
 
     # Test solver_stats NetCDF output
@@ -154,8 +154,6 @@ end
         @test "node_id" in keys(ds)
         @test "level" in keys(ds)
         @test "storage" in keys(ds)
-        @test "convergence" in keys(ds)
-        @test ds["convergence"].attrib["units"] == "1"
         @test ds.attrib["Conventions"] == "CF-1.12"
         @test ds.attrib["ribasim_version"] == RIBASIM_VERSION
         @test ndims(ds["time"]) == 1
