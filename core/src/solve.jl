@@ -502,7 +502,7 @@ function ∂flow_∂storage_mul!(
     v_out .= 0.0
 
     # Flow storage dependencies
-    @batch for flow_idx in eachindex(∂flow_∂storage_uplink)
+    for flow_idx in eachindex(∂flow_∂storage_uplink)
         inflow_id = inflow_link[flow_idx].link[1]
         outflow_id = outflow_link[flow_idx].link[2]
 
@@ -900,7 +900,7 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
     out .= 0
 
     # Compute storage residuals
-    @batch for i in eachindex(ũ_cache)
+    for i in eachindex(ũ_cache)
         out.storage[i] = DiffEqBase.calculate_residuals(
             ũ_cache[i],
             u₀_cache[i],
@@ -923,13 +923,13 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
     if iszero(max_abs_residual)
         # If no finite residual exists, set maximum badness (1.0) for
         # non finite residuals
-        @batch for i in eachindex(ũ.flow)
+        for i in eachindex(ũ.flow)
             residual = ũ.flow[i]
             !isfinite(residual) && (p_independent.convergence[i] += 1.0)
         end
 
     else
-        @batch for i in eachindex(ũ.flow)
+        for i in eachindex(ũ.flow)
             a = abs(ũ.flow[i])
             contribution = isfinite(a) ? a / max_abs_residual : 1.0
             p_independent.convergence[i] += contribution
@@ -1063,7 +1063,7 @@ function limit_flow!(integrator, u, t, node::Union{Pump, Outlet})
         u.flow.outlet, uprev.flow.outlet
     end
 
-    @batch for idx in eachindex(node_id)
+    for idx in eachindex(node_id)
         min_flow = min_flow_rate[idx]
         max_flow = max_flow_rate[idx]
         limit_flow!(flow_node, flow_node_prev, min_flow(t), max_flow(t), dt, idx)

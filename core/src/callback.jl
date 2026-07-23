@@ -406,7 +406,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes
-    @batch for idx in eachindex(node_id)
+    for idx in eachindex(node_id)
         id = node_id[idx]
         truth_state_node = truth_state[idx]
         compound_variables_node = compound_variables[idx]

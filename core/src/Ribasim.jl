@@ -173,8 +173,6 @@ using Dates: Second
 
 using Printf: @sprintf
 
-using Polyester: @batch
-
 using SciMLOperators: SciMLOperators, WOperator, AbstractSciMLOperator
 
 include("cvectors.jl")

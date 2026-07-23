@@ -125,7 +125,7 @@ function set_current_basin_properties!(u::RibasimCVectorType, p::Parameters, t::
     p_mutable.ad_active && return nothing
     storage = u.storage
 
-    @batch for idx in eachindex(node_id)
+    for idx in eachindex(node_id)
         id = node_id[idx]
         s = storage[idx]
         (s == storage_prev_call[idx]) && continue
@@ -159,7 +159,7 @@ function formulate_vertical_flux!(
     du.flow.surface_runoff .= vertical_flux.surface_runoff
 
     # Outgoing
-    @batch for id in node_id
+    for id in node_id
         # Evaporation and infiltration have the same 'uplink' storage,
         # but they are separated here for AD purposes
 
@@ -506,7 +506,7 @@ function formulate_flow!(
         p::Parameters,
         t::Number,
     )::Nothing
-    @batch for node_idx in eachindex(tabulated_rating_curve.node_id)
+    for node_idx in eachindex(tabulated_rating_curve.node_id)
         id = tabulated_rating_curve.node_id[node_idx]
         s_a = storage_uplink.tabulated_rating_curve[node_idx]
         s_b = storage_downlink.tabulated_rating_curve[node_idx]
@@ -639,7 +639,7 @@ function formulate_flow!(
     )::Nothing
     (; node_id) = manning_resistance
 
-    @batch for node_idx in eachindex(manning_resistance.node_id)
+    for node_idx in eachindex(manning_resistance.node_id)
         id = node_id[node_idx]
         s_a = storage_uplink.manning_resistance[node_idx]
         s_b = storage_downlink.manning_resistance[node_idx]
@@ -679,7 +679,7 @@ function formulate_pump_or_outlet_flow!(
         current_max_downstream_level,
     ) = component_cache
 
-    @batch for node_idx in eachindex(node.node_id)
+    for node_idx in eachindex(node.node_id)
         id = node.node_id[node_idx]
         inflow_id = node.inflow_link[node_idx].link[1]
         outflow_id = node.outflow_link[node_idx].link[2]
