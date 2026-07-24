@@ -113,7 +113,7 @@ def _subprocess_handling() -> SubprocessHandling:
     """
     # Check for Marimo first
     try:
-        import marimo  # pyrefly: ignore[missing-import]
+        import marimo  # ty: ignore[unresolved-import]
 
         if marimo.running_in_notebook():
             return SubprocessHandling.DISPLAY

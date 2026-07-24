@@ -18,7 +18,7 @@ from ribasim.utils import MissingOptionalModule
 try:
     import xugrid as _xugrid
 except ImportError:
-    _xugrid = MissingOptionalModule("xugrid")
+    _xugrid = MissingOptionalModule("xugrid")  # ty: ignore[invalid-assignment]
 
 if TYPE_CHECKING:
     import xugrid as xugrid_types

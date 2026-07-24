@@ -133,4 +133,4 @@ def __run_test():
         __exit_qgis(1)
 
 
-iface.initializationCompleted.connect(__run_test)
+iface.initializationCompleted.connect(__run_test)  # ty: ignore[unresolved-attribute]

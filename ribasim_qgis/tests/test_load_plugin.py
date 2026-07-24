@@ -8,7 +8,7 @@ def test_plugin(ribasim_plugin: Any):
     from qgis.utils import iface
 
     assert iface is not None, "QGIS interface not available"
-    main_window = iface.mainWindow()
+    main_window = iface.mainWindow()  # ty: ignore[unresolved-attribute]
 
     toolbars = [
         c

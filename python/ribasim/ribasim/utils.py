@@ -4,7 +4,6 @@ from warnings import catch_warnings, filterwarnings
 
 import numpy as np
 import pandas as pd
-from pandera.dtypes import Int32
 from pandera.typing import Series
 from pydantic import BaseModel, NonNegativeInt
 
@@ -28,13 +27,13 @@ class MissingOptionalModule:
         )
 
 
-def _node_lookup_numpy(node_id) -> Series[Int32]:
+def _node_lookup_numpy(node_id) -> Series[np.int32]:
     """Create a lookup table from from node_id to the node dimension index.
 
     Used when adding data onto the nodes of an xugrid dataset.
     """
     return cast(
-        Series[Int32],
+        Series[np.int32],
         pd.Series(
             index=node_id,
             data=node_id.argsort().astype(np.int32),
@@ -43,13 +42,13 @@ def _node_lookup_numpy(node_id) -> Series[Int32]:
     )
 
 
-def _node_lookup(uds) -> Series[Int32]:
+def _node_lookup(uds) -> Series[np.int32]:
     """Create a lookup table from from node_id to the node dimension index.
 
     Used when adding data onto the nodes of an xugrid dataset.
     """
     return cast(
-        Series[Int32],
+        Series[np.int32],
         pd.Series(
             index=uds["node_id"],
             data=uds[uds.grid.node_dimension],
@@ -58,13 +57,13 @@ def _node_lookup(uds) -> Series[Int32]:
     )
 
 
-def _link_lookup(uds) -> Series[Int32]:
+def _link_lookup(uds) -> Series[np.int32]:
     """Create a lookup table from link_id to the link dimension index.
 
     Used when adding data onto the links of an xugrid dataset.
     """
     return cast(
-        Series[Int32],
+        Series[np.int32],
         pd.Series(
             index=uds["link_id"],
             data=uds[uds.grid.edge_dimension],
