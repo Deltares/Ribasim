@@ -26,7 +26,7 @@ The ODE problem is assembled in `core/src/model.jl`. The key steps are:
 2. Construct an in-place `ODEFunction` wrapping `water_balance!`, supplying the analytic sparsity pattern, the AD-based Jacobian, and (for Rosenbrock methods) the time gradient produced by `get_diff_eval` (`core/src/solve.jl`)
 3. Wrap it in an `ODEProblem` and create the integrator with `init`, registering all callbacks
 
-OrdinaryDiffEq's specialization level is also chosen here: `FullSpecialize` produces the fastest code but compiles on every type change, while `NoSpecialize` reduces compilation time at the cost of some runtime performance.
+OrdinaryDiffEq's specialization level is also chosen here via the `specialize` setting (default `FullSpecialize`), which both compiles and runs faster than `NoSpecialize` for Ribasim's custom Jacobian and linear solve. `NoSpecialize` is not recommended and may be removed in the future.
 
 The simulation is then advanced with `step!(integrator)` in a loop until `t_end`.
 

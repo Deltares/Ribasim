@@ -151,7 +151,7 @@ class Solver(ChildModel):
     evaporate_mass : bool
         Whether mass is lost due to evaporation in water quality calculations. (Optional, defaults to true)
     specialize : bool
-        Trades initialization speed for simulation speed, useful for long-running simulations. (Optional, defaults to false)
+        Code generation option, true has best performance and initialization speed (Optional, defaults to true)
     """
 
     algorithm: str = "QNDF"
@@ -168,7 +168,7 @@ class Solver(ChildModel):
     evaporate_mass: bool = True
     depth_threshold: float = 0.1
     level_difference_threshold: float = 0.02
-    specialize: bool = False
+    specialize: bool = True
 
 
 class Verbosity(StrEnum):

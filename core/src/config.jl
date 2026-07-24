@@ -190,7 +190,7 @@ end
     evaporate_mass::Bool = true
     depth_threshold::Float64 = 0.1
     level_difference_threshold::Float64 = 0.02
-    specialize::Bool = false
+    specialize::Bool = true
 end
 
 @option struct Interpolation <: TableOption
