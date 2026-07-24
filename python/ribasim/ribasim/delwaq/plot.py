@@ -74,7 +74,7 @@ def plot_fraction(
     color_iters = cycle(prop_cycle.by_key()["color"])
     ax.stackplot(
         time,
-        stack.values(),  # pyrefly: ignore[bad-argument-type]
+        stack.values(),  # ty: ignore[invalid-argument-type]
         labels=stack.keys(),
         colors=[colors.get(k, next(color_iters)) for k in stack],
     )
@@ -116,7 +116,6 @@ def plot_spatial(model, tracer="Initial", versus=None, limit=0.001, ax=None):
         alpha = c > limit
     else:
         total_concentration = (
-            # pyrefly: ignore[unbound-name]
             table["concentration"][nodes.index] + vtable["concentration"][nodes.index]
         )
         c = table["concentration"][nodes.index] / total_concentration

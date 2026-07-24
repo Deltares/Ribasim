@@ -66,7 +66,7 @@ docs = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto preview docs/{
     "initialize-julia",
 ], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "yes", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
 # Lint
-typecheck = "pyrefly check"
+typecheck = "ty check"
 prek-run = "prek run --all-files"
 lint = { depends-on = ["prek-run"] }
 # Build
@@ -280,7 +280,6 @@ pydantic = ">=2.0"
 pydantic-settings = "*"
 pyogrio = ">=0.8"
 pyqt-stubs = "*"
-pyrefly = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
@@ -293,6 +292,7 @@ teamcity-messages = "*"
 tomli = ">=2.0"
 tomli-w = ">=1.0"
 twine = "*"
+ty = "*"
 types-geopandas = "*"
 types-networkx = "*"
 typos = "*"

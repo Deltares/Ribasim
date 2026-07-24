@@ -35,7 +35,7 @@ from ribasim.utils import (
 try:
     import networkx as _nx
 except ImportError:
-    _nx = MissingOptionalModule("networkx", "delwaq")
+    _nx = MissingOptionalModule("networkx", "delwaq")  # ty: ignore[invalid-assignment]
 
 import numpy as np
 import pandas as pd
@@ -46,7 +46,7 @@ from ribasim.geometry.link import SPATIALCONTROLNODETYPES
 try:
     import jinja2 as _jinja2
 except ImportError:
-    _jinja2 = MissingOptionalModule("jinja2", "delwaq")
+    _jinja2 = MissingOptionalModule("jinja2", "delwaq")  # ty: ignore[invalid-assignment]
 
 import ribasim
 from ribasim.delwaq.util import (

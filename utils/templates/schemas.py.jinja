@@ -6,13 +6,12 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import pandera.pandas as pa
-from pandera.dtypes import Int32
 from pandera.typing import Index
 
 from ribasim import migrations
 
 class _BaseSchema(pa.DataFrameModel):
-    class Config:  # pyrefly: ignore[bad-override]
+    class Config:
         add_missing_columns = True
         coerce = True
 
@@ -36,7 +35,7 @@ class _BaseSchema(pa.DataFrameModel):
 {% for m in models %}
 class {{m[:name]}}Schema(_BaseSchema):
     _node_id_relation: str = "{{m[:node_id_relation]}}"
-    fid: Index[Int32] = pa.Field(default=1, check_name=True, coerce=True)
+    fid: Index[np.int32] = pa.Field(default=1, check_name=True, coerce=True)
   {% for f in m[:fields] %}
     {% if (f[1] == :node_id) %}
     {{ f[1] }}: {{ f[2] }} = pa.Field(nullable={{ f[3] }}, default=0)

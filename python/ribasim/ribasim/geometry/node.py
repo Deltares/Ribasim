@@ -12,7 +12,6 @@ from geopandas import GeoDataFrame as GeoDataFrameType
 from matplotlib.axes import Axes
 from matplotlib.offsetbox import AnnotationBbox
 from matplotlib.patches import Patch
-from pandera.dtypes import Int32
 from pandera.typing import Index, Series
 from pandera.typing.geopandas import GeoSeries
 from pydantic import (
@@ -50,7 +49,7 @@ __all__ = ("NodeTable",)
 
 
 class NodeSchema(_GeoBaseSchema):
-    node_id: Index[Int32] = pa.Field(default=0, ge=0, check_name=True)
+    node_id: Index[np.int32] = pa.Field(default=0, ge=0, check_name=True)
     name: Series[str] = pa.Field(default="")
     node_type: Series[str] = pa.Field(default="")
     subnetwork_id: Series[pd.Int32Dtype] = pa.Field(
@@ -116,7 +115,7 @@ class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
             hull = gpd.GeoDataFrame(
                 geometry=[df_subnetwork.geometry.unary_union.convex_hull]
             )
-            hull.plot(ax=ax, color=color, alpha=ALPHA, zorder=zorder)
+            hull.plot(ax=ax, color=color, alpha=ALPHA, zorder=zorder)  # ty: ignore[invalid-argument-type]
 
         handles = []
         labels = []
@@ -511,10 +510,10 @@ class NodeModel(ParentModel, ChildModel):
         )
         if has_extra_cols:
             # User-provided extra columns go through validation
-            model.node.df = df  # type: ignore[assignment]
+            model.node.df = df  # ty: ignore[invalid-assignment]
         else:
             with model.node._no_validate():
-                model.node.df = df  # type: ignore[assignment]
+                model.node.df = df  # ty: ignore[invalid-assignment]
 
         model.node._used_node_ids.add(node_id)
         return self[node_id]

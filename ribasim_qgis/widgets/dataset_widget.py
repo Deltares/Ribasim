@@ -216,7 +216,7 @@ class DatasetWidget:
         rel.setReferencedLayer(to_layer_id)
         rel.setName(name)
         rel.setStrength(
-            # pyrefly: ignore[missing-attribute]
+            # ty: ignore[unresolved-attribute]
             rel.RelationStrength.Composition
         )
         # Both layers use the same field name for their primary key.
@@ -842,7 +842,7 @@ class DatasetWidget:
             expr = f'"{fk}" IN ({",".join(str(v) for v in fk_values)})'
             request = QgsFeatureRequest().setFilterExpression(expr)
             try:
-                target_fids = [feat.id() for feat in result_layer.getFeatures(request)]  # pyrefly: ignore[not-iterable]
+                target_fids = [feat.id() for feat in result_layer.getFeatures(request)]  # ty: ignore[not-iterable]
                 result_layer.selectByIds(target_fids)
             except RuntimeError:
                 return
@@ -904,7 +904,7 @@ class DatasetWidget:
         )
         tprop = cast(QgsVectorLayerTemporalProperties, maplayer.temporalProperties())
         tprop.setMode(
-            QgsVectorLayerTemporalProperties.TemporalMode.ModeFixedTemporalRange  # pyrefly: ignore[missing-attribute]
+            QgsVectorLayerTemporalProperties.TemporalMode.ModeFixedTemporalRange  # ty: ignore[unresolved-attribute]
         )
         tprop.setFixedTemporalRange(trange)
         tprop.setIsActive(True)
@@ -922,7 +922,9 @@ class DatasetWidget:
             dataprovider = layer.dataProvider()
             if dataprovider is not None and dataprovider.fieldNameIndex(column) == -1:
                 dataprovider.addAttributes(
-                    [QgsField(column, cast(QMetaType.Type, QMetaType.Type.Double))]
+                    [
+                        QgsField(column, cast(QMetaType.Type, QMetaType.Type.Double))  # ty: ignore[invalid-argument-type, too-many-positional-arguments]
+                    ]
                 )
             layer.updateFields()
         layer.commitChanges()

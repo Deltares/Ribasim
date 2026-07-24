@@ -10,7 +10,6 @@ import pandera as pa
 import shapely
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
-from pandera.dtypes import Int32
 from pandera.typing import Index, Series
 from pandera.typing.geopandas import GeoDataFrame, GeoSeries
 from pydantic import NonNegativeInt, PrivateAttr, model_validator
@@ -69,10 +68,10 @@ def _infer_link_type(from_node_type: str, to_node_type: str) -> str:
 
 
 class LinkSchema(_GeoBaseSchema):
-    link_id: Index[Int32] = pa.Field(default=0, ge=0, check_name=True)
+    link_id: Index[np.int32] = pa.Field(default=0, ge=0, check_name=True)
     name: Series[str] = pa.Field(default="")
-    from_node_id: Series[Int32] = pa.Field(default=0)
-    to_node_id: Series[Int32] = pa.Field(default=0)
+    from_node_id: Series[np.int32] = pa.Field(default=0)
+    to_node_id: Series[np.int32] = pa.Field(default=0)
     link_type: Series[str] = pa.Field(default="flow")
     geometry: GeoSeries[LineString] = pa.Field(default=None, nullable=True)
 
