@@ -158,26 +158,41 @@ end
 #! format: off
 "Get a list of dimension names given a file and variable name."
 function nc_dims(file_name::String, var_name::String)::Vector{String}
-    @match (file_name, var_name) begin
+    if var_name in nc_dim_names
         # dimension variables are only themselves
-        (_, var_name) && if var_name in nc_dim_names end => [var_name]
+        [var_name]
+    elseif occursin(r"^(from|to)_node_(type|id)$", var_name)
         # coordinate variables and their dimension
-        (_, Regex("^(from|to)_node_(type|id)\$")) => ["link_id"]
-        (_, "node_type") => ["node_id"]
-        ("allocation", "subnetwork_id") => ["node_id"]
-        ("allocation_flow", "subnetwork_id") => ["link_id"]
-        # data variables have the same dimensions in a file
-        ("basin", _) => ["node_id", "time"]
-        ("flow", _) => ["link_id", "time"]
-        ("basin_state", _) => ["node_id"]
-        ("concentration", _) => ["node_id", "substance", "time"]
-        ("control", _) => ["time"]
-        ("allocation", _) => ["demand_priority", "node_id", "time"]
-        ("allocation_flow", _) => ["link_id", "time"]
-        ("allocation_control", _) => ["node_id", "time"]
-        ("subgrid_level", _) => ["subgrid_id", "time"]
-        ("solver_stats", _) => ["time"]
-        _ => error("Unknown dimensionality for file: $file_name, variable: $var_name")
+        ["link_id"]
+    elseif var_name == "node_type"
+        ["node_id"]
+    elseif file_name == "allocation" && var_name == "subnetwork_id"
+        ["node_id"]
+    elseif file_name == "allocation_flow" && var_name == "subnetwork_id"
+        ["link_id"]
+    # data variables have the same dimensions in a file
+    elseif file_name == "basin"
+        ["node_id", "time"]
+    elseif file_name == "flow"
+        ["link_id", "time"]
+    elseif file_name == "basin_state"
+        ["node_id"]
+    elseif file_name == "concentration"
+        ["node_id", "substance", "time"]
+    elseif file_name == "control"
+        ["time"]
+    elseif file_name == "allocation"
+        ["demand_priority", "node_id", "time"]
+    elseif file_name == "allocation_flow"
+        ["link_id", "time"]
+    elseif file_name == "allocation_control"
+        ["node_id", "time"]
+    elseif file_name == "subgrid_level"
+        ["subgrid_id", "time"]
+    elseif file_name == "solver_stats"
+        ["time"]
+    else
+        error("Unknown dimensionality for file: $file_name, variable: $var_name")
     end
 end
 #! format: on
