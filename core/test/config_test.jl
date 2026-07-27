@@ -27,7 +27,8 @@
 end
 
 @testitem "Solver" begin
-    using OrdinaryDiffEqCore: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
+    using ADTypes: AutoFiniteDiff, AutoForwardDiff
+    using OrdinaryDiffEqCore: alg_autodiff
     using Ribasim: convert_saveat, is_adaptive, Solver, algorithm
 
     solver = Solver()

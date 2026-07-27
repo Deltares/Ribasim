@@ -331,28 +331,39 @@ function get_max_flow_curvature(
     )::Float64
     max_curvature = 0.0
     backend = AutoForwardDiff()
+    (; current_area) = p.non_ad_cache
     p.p_mutable.ad_active = true
 
     for node_id in connector_ids
         inflow_id = connector_node.inflow_link[node_id.idx].link[1]
         outflow_id = connector_node.outflow_link[node_id.idx].link[2]
 
-        h_a = get_level(u.storage, p, inflow_id, t)
-        h_b = get_level(u.storage, p, outflow_id, t)
+        s_a = inflow_id.is_basin ? u.storage[inflow_id.idx] : 0.0
+        s_b = outflow_id.is_basin ? u.storage[outflow_id.idx] : 0.0
 
-        d²Q_dh_a² = second_derivative(
-            h_ -> flow_function(connector_node, node_id, h_, h_b, p, t),
-            backend,
-            h_a,
-        )
-        max_curvature = max(max_curvature, abs(d²Q_dh_a²))
+        # d²Q/ds² is converted to d²Q/dh² via the chain rule, approximating the basin
+        # area as locally constant (dh/ds = 1/A), consistent with the linearization
+        # in `linearize_connector_node!`. Only basins have a storage state to
+        # linearize against, so non-basin (e.g. LevelBoundary) sides are skipped.
+        if inflow_id.is_basin
+            d²Q_ds_a² = second_derivative(
+                s_ -> flow_function(connector_node, node_id, s_, s_b, p, t),
+                backend,
+                s_a,
+            )
+            d²Q_dh_a² = d²Q_ds_a² * current_area[inflow_id.idx]^2
+            max_curvature = max(max_curvature, abs(d²Q_dh_a²))
+        end
 
-        d²Q_dh_b² = second_derivative(
-            h_ -> flow_function(connector_node, node_id, h_a, h_, p, t),
-            backend,
-            h_b,
-        )
-        max_curvature = max(max_curvature, abs(d²Q_dh_b²))
+        if outflow_id.is_basin
+            d²Q_ds_b² = second_derivative(
+                s_ -> flow_function(connector_node, node_id, s_a, s_, p, t),
+                backend,
+                s_b,
+            )
+            d²Q_dh_b² = d²Q_ds_b² * current_area[outflow_id.idx]^2
+            max_curvature = max(max_curvature, abs(d²Q_dh_b²))
+        end
     end
     p.p_mutable.ad_active = false
     return max_curvature

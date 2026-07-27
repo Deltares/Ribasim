@@ -757,8 +757,8 @@ linu.flow         = γ * [-b.flow + Jₛ * linu.storage + Jᵢ * linu.pid_integr
 function OrdinaryDiffEqDifferentiation.dolinsolve(
         integrator::DEIntegrator,
         linsolve::RibasimLinearSolveCache;
-        b::RibasimCVectorType = nothing,
-        linu::RibasimCVectorType = nothing,
+        b::Union{Vector, Nothing} = nothing,
+        linu::Union{Vector, Nothing} = nothing,
         kwargs...,
     )
     @assert !isnothing(b)
@@ -783,7 +783,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
 
     # Set up inner (storage space) problem rhs
     W_inner.gamma = gamma
-    b_inner .= 0.0 # b.storage
+    b_inner .= b_wrapped.storage
     aggregate_flows!(b_inner, b_wrapped.flow, p_independent; from_zero = false)
     for pid_idx in 1:n_pid
         listen_node_id = pid_control.listen_node_id[pid_idx]
@@ -855,19 +855,34 @@ end
 ##### Other
 ###
 
-# Bypass default AD preparation
+# Bypass default AD preparation when needed
 function DiffEqBase.prepare_alg(
         alg::Union{OrdinaryDiffEqAdaptiveImplicitAlgorithm, OrdinaryDiffEqImplicitAlgorithm},
-        u0::RibasimCVectorType,
+        u0_raw::Vector,
         p::Parameters,
-        prob::ODEProblem{<:RibasimCVectorType},
+        prob::ODEProblem,
     )
-    return alg
+    return if p.p_independent.optimized_implicit_solve
+        alg
+    else
+        invoke(
+            prepare_alg,
+            Tuple{
+                typeof(alg),
+                typeof(u0_raw),
+                Any,
+                typeof(prob),
+            }, alg, u0_raw, p, prob
+        )
+    end
 end
 
 # No algebraic equations
-function OrdinaryDiffEqCore.get_differential_vars(f, u::RibasimCVectorType)
-    out = similar(u, Bool)
+function OrdinaryDiffEqCore.get_differential_vars(
+        ::ODEFunction{A, B, C, D, E, F, G, H, I, <:RibasimJacobian},
+        u_raw::Vector,
+    ) where {A, B, C, D, E, F, G, H, I}
+    out = similar(u_raw, Bool)
     out .= true
     return out
 end
@@ -875,11 +890,11 @@ end
 # Capture whether the Jacobian should be refreshed since it is not passed directly to
 # update_coefficients!
 function OrdinaryDiffEqDifferentiation.do_newJW(
-        integrator::DEIntegrator{Alg, IIP, <:RibasimCVectorType},
+        integrator::OrdinaryDiffEqCore.ODEIntegrator{A, B, C, D, E, <:Parameters},
         alg,
         nlsolver,
         repeat_step
-    ) where {Alg, IIP}
+    ) where {A, B, C, D, E}
     new_jac, new_W = invoke(
         do_newJW,
         Tuple{Any, Any, Any, Any},
@@ -923,10 +938,10 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
     aggregate_flows!(ũ_cache, ũ.flow, p_independent)
 
     # Translate u₀, u₁ which are state vector values to storage
-    u₀_cache .= storage0
-    u₁_cache .= storage0
-    aggregate_flows!(u₀_cache, u₀.flow, p_independent; from_zero = false)
-    aggregate_flows!(u₁_cache, u₁.flow, p_independent; from_zero = false)
+    aggregate_flows!(u₀_cache, u₀.flow, p_independent)
+    aggregate_flows!(u₁_cache, u₁.flow, p_independent)
+    u₀_cache .+= storage0
+    u₁_cache .+= storage0
 
     out .= 0
 
@@ -983,17 +998,64 @@ function get_diff_eval(
     u_raw = copy(p.p_independent.u_prev_saveat)
     du_raw = zero(u_raw)
 
-    evaluation_cache = RibasimJacobianEvaluationCache(p, solver)
-    jac_prototype = RibasimJacobian(; p.p_independent, evaluation_cache)
+    # mass_matrix = p_independent.with_mass_matrix ? RibasimMassMatrix(p_independent) : I,
 
-    tgrad(
-        dT::RibasimCVectorType,
-        u::RibasimCVectorType,
-        p::Parameters,
-        t::Number,
-    ) = nothing
+    if solver.optimized_implicit_solve
+        evaluation_cache = RibasimJacobianEvaluationCache(p, solver)
+        jac_prototype = RibasimJacobian(; p.p_independent, evaluation_cache)
+        jac = nothing # Jacobian is updated via SciMLOperators.update_coefficients!
+        mass_matrix = RibasimMassMatrix(p.p_independent)
+    else
+        log_level = LoggingExtras.Warn
+        solver.autodiff && @logmsg log_level "`autodiff = true` is not supported for `optimized_implicit_solve = false`, using `autodiff = false`."
 
-    return (; jac_prototype, tgrad)
+        backend = AutoFiniteDiff()
+        backend_jac = if solver.sparse
+            AutoSparse(backend; detector = TracerSparsityDetector(), coloring_algorithm = GreedyColoringAlgorithm())
+        else
+            backend
+        end
+
+        jac_prep = prepare_jacobian(
+            water_balance!,
+            du_raw,
+            backend_jac,
+            u_raw,
+            Constant(p),
+            Constant(t)
+        )
+        jac_prototype = solver.sparse ? Float64.(sparsity_pattern(jac_prep)) : zeros(length(du_raw), length(du_raw))
+        jac(J, u_raw, p, t) = get_jacobian!(J, du_raw, u_raw, p, t, jac_prep, backend_jac)
+        mass_matrix = convert(AbstractMatrix, RibasimMassMatrix(p.p_independent))
+        !solver.sparse && (mass_matrix = collect(mass_matrix))
+    end
+
+    water_balance!_(du_raw, t, u_raw, p) = water_balance!(du_raw, u_raw, p, t)
+
+    # ∂rhs/∂t always with FiniteDiff
+    tgrad_prep = prepare_derivative(
+        water_balance!_,
+        du_raw,
+        AutoFiniteDiff(),
+        t,
+        Constant(u_raw),
+        Constant(p)
+    )
+
+    tgrad(dT, u_raw, p, t) = derivative!(
+        water_balance!,
+        du_raw,
+        dT,
+        tgrad_prep,
+        AutoFiniteDiff(),
+        t,
+        Constant(u_raw),
+        Constant(p),
+    )
+
+    mass_matrix = with_mass_matrix(solver) ? mass_matrix : I
+
+    return (; jac_prototype, jac, tgrad, mass_matrix)
 end
 
 ###
@@ -1050,7 +1112,7 @@ end
 
 # Correct the step that was accepted by the solver where needed
 function limit_flow!(
-        u::RibasimCVectorType,
+        u_raw::Vector,
         integrator::DEIntegrator,
         p::Parameters,
         t::Number

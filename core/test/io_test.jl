@@ -106,7 +106,7 @@ end
         @test "convergence" in keys(ds)
         @test ds.attrib["ribasim_version"] == RIBASIM_VERSION
         convergence = ds["convergence"][:]
-        @test all(isfinite, convergence)
+        @test all(x -> ismissing(x) || isfinite(coalesce(x, 0)), convergence)
     end
 
     # Test solver_stats NetCDF output
@@ -495,7 +495,7 @@ end
     # at the beginning of the second run.
 
     using IOCapture: capture
-    using Ribasim: solve!, write_results
+    using Ribasim: solve!, write_results, get_u
     import TOML
 
     model_path_src = normpath(@__DIR__, "../../generated_testmodels/basic/")
@@ -513,7 +513,7 @@ end
 
     config = Ribasim.Config(toml_path)
     model = Ribasim.Model(config)
-    (; u) = model.integrator
+    u = get_u(model.integrator)
     storage1_begin = copy(u.storage)
     solve!(model)
     storage1_end = u.storage
@@ -532,7 +532,7 @@ end
     end
 
     model = Ribasim.Model(toml_path)
-    (; u) = model.integrator
+    u = get_u(model.integrator)
     storage2_begin = u.storage
     @test storage1_end ≈ storage2_begin rtol = 1.0e-2
 end

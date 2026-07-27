@@ -27,9 +27,10 @@ using DifferentiationInterface:
     jacobian!,
     prepare_pushforward,
     pushforward!,
+    prepare_derivative,
     second_derivative
 
-using ForwardDiff: ForwardDiff, Dual, Partials, seed!, partials, valtype, derivative as forward_diff
+using ForwardDiff: ForwardDiff, derivative as forward_diff
 
 using ArrayInterface: ArrayInterface
 
@@ -37,11 +38,10 @@ using ArrayInterface: ArrayInterface
 using OrdinaryDiffEqCore:
     OrdinaryDiffEqCore,
     OrdinaryDiffEqAdaptiveImplicitAlgorithm,
-    OrdinaryDiffEqImplicitAlgorithm,
-    get_du
-using DiffEqBase: DiffEqBase, ODE_DEFAULT_NORM
+    OrdinaryDiffEqImplicitAlgorithm
+using DiffEqBase: DiffEqBase, prepare_alg, ODE_DEFAULT_NORM
 import ADTypes
-using ADTypes: AutoForwardDiff
+using ADTypes: AutoForwardDiff, AutoFiniteDiff
 import ForwardDiff
 import NaNMath
 import OrdinaryDiffEqBDF
