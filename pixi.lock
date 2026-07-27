@@ -25,6 +25,7 @@ environments:
   default:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
+    - url: https://prefix.dev/julia-forge/
     indexes:
     - https://pypi.org/simple
     packages:
@@ -124,7 +125,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/hicolor-icon-theme-0.17-ha770c72_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/icu-78.3-h33c6efd_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/json-c-0.18-h6688a6e_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/juliaup-1.19.9-hdab8a38_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/kealib-2.0.0-h5b3ced0_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/keyutils-1.6.3-hb9d3cd8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/kiwisolver-1.5.0-py313hc8edb43_0.conda
@@ -735,6 +735,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zc.lockfile-4.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zict-3.0.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
+      - conda: https://prefix.dev/julia-forge/linux-64/julia-1.12.6-hb0f4dca_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -1732,7 +1733,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/hicolor-icon-theme-0.17-hce30654_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/icu-78.3-hef89b57_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/json-c-0.18-he4178ee_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/juliaup-1.19.9-h748bcf4_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/kiwisolver-1.5.0-py313h2af2deb_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/krb5-1.22.2-hfd3d5f3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/lcms2-2.19.1-hdfa7624_1.conda
@@ -1911,6 +1911,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-1.3.2-h8088a28_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.3.3-hed4e4f5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
+      - conda: https://prefix.dev/julia-forge/osx-arm64/julia-1.12.6-h60d57d3_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -2304,7 +2305,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/hdf4-4.2.15-h5557f11_7.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/hdf5-2.1.0-nompi_ha9ae7cf_108.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/icu-78.3-h637d24d_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/juliaup-1.19.9-h77a83cd_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/kealib-2.0.0-hfd10e20_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/khronos-opencl-icd-loader-2024.10.24-h2466b09_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/kiwisolver-1.5.0-py313h1a38498_0.conda
@@ -2549,6 +2549,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-1.3.2-hfd05255_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
+      - conda: https://prefix.dev/julia-forge/win-64/julia-1.12.6-h9490d1a_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -2570,6 +2571,7 @@ environments:
   pandas2:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
+    - url: https://prefix.dev/julia-forge/
     indexes:
     - https://pypi.org/simple
     packages:
@@ -2669,7 +2671,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/hicolor-icon-theme-0.17-ha770c72_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/icu-78.3-h33c6efd_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/json-c-0.18-h6688a6e_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/juliaup-1.19.9-hdab8a38_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/kealib-2.0.0-h5b3ced0_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/keyutils-1.6.3-hb9d3cd8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/kiwisolver-1.5.0-py313hc8edb43_0.conda
@@ -3280,6 +3281,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zc.lockfile-4.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zict-3.0.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
+      - conda: https://prefix.dev/julia-forge/linux-64/julia-1.12.6-hb0f4dca_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -4279,7 +4281,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/hicolor-icon-theme-0.17-hce30654_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/icu-78.3-hef89b57_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/json-c-0.18-he4178ee_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/juliaup-1.19.9-h748bcf4_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/kiwisolver-1.5.0-py313h2af2deb_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/krb5-1.22.2-hfd3d5f3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/lcms2-2.19.1-hdfa7624_1.conda
@@ -4458,6 +4459,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-1.3.2-h8088a28_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.3.3-hed4e4f5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
+      - conda: https://prefix.dev/julia-forge/osx-arm64/julia-1.12.6-h60d57d3_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -4851,7 +4853,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/hdf4-4.2.15-h5557f11_7.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/hdf5-2.1.0-nompi_ha9ae7cf_108.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/icu-78.3-h637d24d_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/juliaup-1.19.9-h77a83cd_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/kealib-2.0.0-hfd10e20_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/khronos-opencl-icd-loader-2024.10.24-h2466b09_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/kiwisolver-1.5.0-py313h1a38498_0.conda
@@ -5096,6 +5097,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-1.3.2-hfd05255_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
+      - conda: https://prefix.dev/julia-forge/win-64/julia-1.12.6-h9490d1a_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -5117,6 +5119,7 @@ environments:
   py312:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
+    - url: https://prefix.dev/julia-forge/
     indexes:
     - https://pypi.org/simple
     packages:
@@ -5216,7 +5219,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/hicolor-icon-theme-0.17-ha770c72_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/icu-78.3-h33c6efd_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/json-c-0.18-h6688a6e_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/juliaup-1.19.9-hdab8a38_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/kealib-2.0.0-h5b3ced0_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/keyutils-1.6.3-hb9d3cd8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/kiwisolver-1.5.0-py312h0a2e395_0.conda
@@ -5827,6 +5829,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zc.lockfile-4.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zict-3.0.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
+      - conda: https://prefix.dev/julia-forge/linux-64/julia-1.12.6-hb0f4dca_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -6824,7 +6827,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/hicolor-icon-theme-0.17-hce30654_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/icu-78.3-hef89b57_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/json-c-0.18-he4178ee_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/juliaup-1.19.9-h748bcf4_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/kiwisolver-1.5.0-py312h3093aea_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/krb5-1.22.2-hfd3d5f3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/lcms2-2.19.1-hdfa7624_1.conda
@@ -7003,6 +7005,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-1.3.2-h8088a28_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.3.3-hed4e4f5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
+      - conda: https://prefix.dev/julia-forge/osx-arm64/julia-1.12.6-h60d57d3_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -7396,7 +7399,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/hdf4-4.2.15-h5557f11_7.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/hdf5-2.1.0-nompi_ha9ae7cf_108.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/icu-78.3-h637d24d_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/juliaup-1.19.9-h77a83cd_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/kealib-2.0.0-hfd10e20_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/khronos-opencl-icd-loader-2024.10.24-h2466b09_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/kiwisolver-1.5.0-py312h78d62e6_0.conda
@@ -7641,6 +7643,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-1.3.2-hfd05255_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
+      - conda: https://prefix.dev/julia-forge/win-64/julia-1.12.6-h9490d1a_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -9394,19 +9397,6 @@ packages:
   purls: []
   size: 82709
   timestamp: 1726487116178
-- conda: https://conda.anaconda.org/conda-forge/linux-64/juliaup-1.19.9-hdab8a38_0.conda
-  sha256: 992a1b197bd7f487153d12e7c17c359bbcd1c9c61bcdbc8d18ce25036e31229d
-  md5: b3de44267a563fb366da43658b49b3c3
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=14
-  constrains:
-  - __glibc >=2.17
-  license: MIT
-  license_family: MIT
-  purls: []
-  size: 3773640
-  timestamp: 1771542063816
 - conda: https://conda.anaconda.org/conda-forge/linux-64/kealib-2.0.0-h5b3ced0_0.conda
   sha256: bdefc62a52ac548f7921ea2430cd7096fd4729aa08fc991a4452c53a2d223d43
   md5: 03ff8a4612f1dde1f08c466104da557b
@@ -26915,18 +26905,6 @@ packages:
   purls: []
   size: 73715
   timestamp: 1726487214495
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/juliaup-1.19.9-h748bcf4_0.conda
-  sha256: aa73a7a0361d675726c125b5050af3e63c2203b02b156360059be5dbe1a53008
-  md5: 7e95be08e4cb89ca3dd7d678b25a105a
-  depends:
-  - __osx >=11.0
-  constrains:
-  - __osx >=11.0
-  license: MIT
-  license_family: MIT
-  purls: []
-  size: 2208062
-  timestamp: 1771542224351
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/kiwisolver-1.5.0-py312h3093aea_0.conda
   sha256: 8de440f0e33ab6895e81f2c47c51e59d177349a832087a0367e8e259c97f4833
   md5: 58261af35f0d33fd28e2257b208a1be0
@@ -28447,7 +28425,7 @@ packages:
   license: PSF-2.0
   license_family: PSF
   purls:
-  - pkg:pypi/matplotlib?source=compressed-mapping
+  - pkg:pypi/matplotlib?source=hash-mapping
   size: 8837817
   timestamp: 1782829619432
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/minizip-4.2.2-hdb7fadc_0.conda
@@ -30446,7 +30424,7 @@ packages:
   license: MIT AND Apache-2.0
   license_family: Apache
   purls:
-  - pkg:pypi/aiohttp?source=compressed-mapping
+  - pkg:pypi/aiohttp?source=hash-mapping
   size: 1033618
   timestamp: 1780913488229
 - conda: https://conda.anaconda.org/conda-forge/win-64/argon2-cffi-bindings-25.1.0-py312he06e257_2.conda
@@ -31444,7 +31422,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/fonttools?source=compressed-mapping
+  - pkg:pypi/fonttools?source=hash-mapping
   size: 2533681
   timestamp: 1778770493020
 - conda: https://conda.anaconda.org/conda-forge/win-64/fonttools-4.63.0-py313hd650c13_0.conda
@@ -31893,18 +31871,6 @@ packages:
   purls: []
   size: 14954024
   timestamp: 1773822508646
-- conda: https://conda.anaconda.org/conda-forge/win-64/juliaup-1.19.9-h77a83cd_0.conda
-  sha256: 806fc5c2e9966f8a6f73ab112fd9a74174c07b457a047383de5079c775653f7d
-  md5: 2a8a617df7c44fa49b6b2070533bc759
-  depends:
-  - ucrt >=10.0.20348.0
-  - vc >=14.3,<15
-  - vc14_runtime >=14.44.35208
-  license: MIT
-  license_family: MIT
-  purls: []
-  size: 1636383
-  timestamp: 1771542178231
 - conda: https://conda.anaconda.org/conda-forge/win-64/kealib-2.0.0-hfd10e20_0.conda
   sha256: 5dc04265a6fc8782e0e02d5d163eada850f192971e64f3b78e071fd69a0e1381
   md5: 23eb90a1d965f9a62fb8eefcdcd85616
@@ -36953,7 +36919,7 @@ packages:
   license: BSD-2-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/wrapt?source=compressed-mapping
+  - pkg:pypi/wrapt?source=hash-mapping
   size: 113162
   timestamp: 1782133745435
 - conda: https://conda.anaconda.org/conda-forge/win-64/wrapt-2.2.2-py313h5ea7bf4_0.conda
@@ -37145,7 +37111,7 @@ packages:
   license: Apache-2.0
   license_family: Apache
   purls:
-  - pkg:pypi/yarl?source=compressed-mapping
+  - pkg:pypi/yarl?source=hash-mapping
   size: 151505
   timestamp: 1779246206706
 - conda: https://conda.anaconda.org/conda-forge/win-64/zeromq-4.3.5-h3a581c9_11.conda
@@ -37200,6 +37166,27 @@ packages:
   purls: []
   size: 388453
   timestamp: 1764777142545
+- conda: https://prefix.dev/julia-forge/linux-64/julia-1.12.6-hb0f4dca_0.conda
+  sha256: f5a8355458eac135f28502904b6ca28af18e1ad812b66b9b497caecb0b04086f
+  md5: e8b3e39e2d8c1ddfb7a9f41741ecafc6
+  license: MIT
+  run_exports: {}
+  size: 219623335
+  timestamp: 1784621704266
+- conda: https://prefix.dev/julia-forge/osx-arm64/julia-1.12.6-h60d57d3_0.conda
+  sha256: cbe4253adfd038ba9a4b3a2dd9bb89d9cd0e368f3aa90a845c64b6545a570e7a
+  md5: c405ee5add647b1cd404264ddf0bfe96
+  license: MIT
+  run_exports: {}
+  size: 199877470
+  timestamp: 1784621709253
+- conda: https://prefix.dev/julia-forge/win-64/julia-1.12.6-h9490d1a_0.conda
+  sha256: c1118c2db24e3c3c740c31ba3b232bfdcec30374d95d62167220d80a74904430
+  md5: 85a715209f9a968f323ec8e7d907d930
+  license: MIT
+  run_exports: {}
+  size: 213243591
+  timestamp: 1784624009463
 - pypi: ./python/ribasim
   name: ribasim
   requires_dist:
