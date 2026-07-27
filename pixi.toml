@@ -247,17 +247,6 @@ args = [":"]
 docs = { cmd = "echo 'Skipping docs build on ARM64 Linux (Quarto not supported)'" }
 quarto-check = { cmd = "echo 'Skipping quarto check on ARM64 Linux (Quarto not supported)'" }
 quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not supported)'" }
-install = { depends-on = [
-    "install-julia",
-    "install-qgis-plugins",
-    "install-prek",
-    "initialize-julia",
-    "install-runic",
-] }
-
-# The julia-forge recipe supports Linux ARM64, but its CI does not publish it yet.
-[target.linux-aarch64.dependencies]
-juliaup = "*"
 
 [dependencies]
 datacompy = ">=0.16"
@@ -270,6 +259,7 @@ griffe = ">=1,<2"
 hatch = "*"
 hatchling = "*"
 jinja2 = "*"
+julia = { version = "==1.12.6", channel = "https://prefix.dev/julia-forge" }
 jupyter = "*"
 lxml = "*"
 matplotlib = ">=3.9"
@@ -330,18 +320,15 @@ python = "3.13.*"
 pandas = ">=2.2,<3"
 
 [target.win-64.dependencies]
-julia = { version = "==1.12.6", channel = "https://prefix.dev/julia-forge" }
 rcedit = "*"
 qgis = ">=3.40,<4"
 quarto = "*"
 
 [target.linux-64.dependencies]
-julia = { version = "==1.12.6", channel = "https://prefix.dev/julia-forge" }
 qgis = ">=3.40,<4"
 quarto = "*"
 
 [target.osx-arm64.dependencies]
-julia = { version = "==1.12.6", channel = "https://prefix.dev/julia-forge" }
 quarto = "*"
 
 [environments]
