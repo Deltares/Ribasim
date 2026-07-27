@@ -1665,6 +1665,7 @@ function Parameters(db::DB, config::Config)::Parameters
         outflow_link,
         incidence_matrix,
         with_mass_matrix = with_mass_matrix(config.solver),
+        config.solver.optimized_implicit_solve
     )
 
     set_discrete_controlled_target_refs!(p_independent)

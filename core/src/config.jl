@@ -23,7 +23,7 @@ using OrdinaryDiffEqBDF: FBDF, QNDF
 using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
 import OrdinaryDiffEqDifferentiation
 using LinearSolve:
-    KLUFactorization, SciMLLinearSolveAlgorithm, LinearSolve, SciMLLinearSolveAlgorithm
+    KLUFactorization, KrylovJL_GMRES, SciMLLinearSolveAlgorithm, LinearSolve, SciMLLinearSolveAlgorithm
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
@@ -185,6 +185,7 @@ end
     water_balance_abstol::Float64 = 1.0e-3
     water_balance_reltol::Float64 = 1.0e-2
     maxiters::Int = 1.0e9
+    optimized_implicit_solve::Bool = true
     sparse::Bool = true
     autodiff::Bool = true
     evaporate_mass::Bool = true
@@ -415,6 +416,8 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
         kwargs[:nlsolve] = NLNewton()
         if solver.sparse
             kwargs[:linsolve] = RibasimLinearSolve(KLUFactorization(; check_pattern = false))
+        else
+            kwargs[:linsolve] = RibasimLinearSolve(KrylovJL_GMRES(; concrete_jac = solver.optimized_implicit_solve))
         end
     end
 
