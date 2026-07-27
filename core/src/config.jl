@@ -23,7 +23,11 @@ using OrdinaryDiffEqBDF: FBDF, QNDF
 using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
 import OrdinaryDiffEqDifferentiation
 using LinearSolve:
-    KLUFactorization, SciMLLinearSolveAlgorithm, LinearSolve, SciMLLinearSolveAlgorithm
+    KLUFactorization,
+    LUFactorization,
+    SciMLLinearSolveAlgorithm,
+    LinearSolve,
+    SciMLLinearSolveAlgorithm
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
@@ -413,10 +417,9 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
 
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
         kwargs[:nlsolve] = NLNewton()
-        if solver.sparse
-            kwargs[:linsolve] =
-                RibasimLinearSolve(KLUFactorization(; check_pattern = false))
-        end
+        linear_algorithm =
+            solver.sparse ? KLUFactorization(; check_pattern = false) : LUFactorization()
+        kwargs[:linsolve] = RibasimLinearSolve(linear_algorithm)
     end
 
     if function_accepts_kwarg(algotype, :step_limiter!)
