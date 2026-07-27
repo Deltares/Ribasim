@@ -330,18 +330,18 @@ python = "3.13.*"
 pandas = ">=2.2,<3"
 
 [target.win-64.dependencies]
-julia = "==1.12.6"
+julia = { version = "==1.12.6", channel = "https://prefix.dev/julia-forge" }
 rcedit = "*"
 qgis = ">=3.40,<4"
 quarto = "*"
 
 [target.linux-64.dependencies]
-julia = "==1.12.6"
+julia = { version = "==1.12.6", channel = "https://prefix.dev/julia-forge" }
 qgis = ">=3.40,<4"
 quarto = "*"
 
 [target.osx-arm64.dependencies]
-julia = "==1.12.6"
+julia = { version = "==1.12.6", channel = "https://prefix.dev/julia-forge" }
 quarto = "*"
 
 [environments]
