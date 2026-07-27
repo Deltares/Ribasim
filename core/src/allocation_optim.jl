@@ -3,7 +3,7 @@ function set_simulation_data!(
         integrator::DEIntegrator,
         du::RibasimCVectorType,
     )::Nothing
-    (; p, u, t) = integrator
+    (; p, t) = integrator
     (;
         basin,
         level_boundary,
@@ -16,6 +16,7 @@ function set_simulation_data!(
         tabulated_rating_curve,
     ) = p.p_independent
     errors = false
+    u = get_u(integrator)
 
     errors |= set_simulation_data!(allocation_model, basin, integrator, du)
     set_simulation_data!(allocation_model, level_boundary, t)
@@ -49,10 +50,11 @@ function set_simulation_data!(
         Δt_allocation,
     ) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
-    (; u, p) = integrator
-    (; p_independent, non_ad_cache) = p
-    (; storage_to_level, vertical_flux) = p_independent.basin
+    (; p) = integrator
+    (; non_ad_cache) = p
+    (; storage_to_level, vertical_flux) = basin
     (; current_area) = non_ad_cache
+    u = get_u(integrator)
 
     storage_change = problem[:basin_storage_change]
     volume_conservation = problem[:volume_conservation]
@@ -672,7 +674,7 @@ function set_demands!(
         level_demand::LevelDemand,
         integrator::DEIntegrator,
     )::Nothing
-    (; u, p, t) = integrator
+    (; p, t) = integrator
     (; p_independent, non_ad_cache) = p
     (; basin, allocation) = p_independent
     (; current_level, current_area) = non_ad_cache
@@ -680,6 +682,7 @@ function set_demands!(
     (; has_demand_priority, min_level, max_level, storage_demand) = level_demand
     (; problem, node_ids_in_subnetwork, scaling, Δt_allocation) = allocation_model
     (; basin_ids_subnetwork_with_level_demand) = node_ids_in_subnetwork
+    u = get_u(integrator)
 
     level_demand_error = problem[:level_demand_error]
     storage_constraint_lower = problem[:storage_constraint_lower]
@@ -917,7 +920,7 @@ function parse_allocations!(
         node_allocated,
         allocation_model::AllocationModel,
     )::Nothing
-    (; p, u, t) = integrator
+    (; p, t) = integrator
     (; p_independent) = p
     (;
         subnetwork_id,
@@ -928,6 +931,7 @@ function parse_allocations!(
     (; record_demand, demand_priorities_all) = allocation
     (; demand, has_demand_priority) = node
     is_user_demand = (node isa UserDemand)
+    u = get_u(integrator)
 
     flow = allocation_model.problem[:flow]
 
@@ -987,7 +991,7 @@ function parse_allocations!(
         level_demand::LevelDemand,
         allocation_model::AllocationModel,
     )::Nothing
-    (; u, p, t) = integrator
+    (; p, t) = integrator
     (; p_independent) = p
     (; allocation, basin) = p_independent
     (; record_demand, demand_priorities_all) = allocation
@@ -996,6 +1000,7 @@ function parse_allocations!(
         allocation_model
     (; basin_ids_subnetwork_with_level_demand) = node_ids_in_subnetwork
     storage_change = problem[:basin_storage_change]
+    u = get_u(integrator)
 
     for node_id in basin_ids_subnetwork_with_level_demand
         supplied_basin_volume = u.storage[node_id.idx] - storage_prev[node_id]
@@ -1205,7 +1210,7 @@ intermediate (sub-saveat) adaptive LP solves
 """
 function update_allocation!(model, Δt = 0.0; record::Bool = true)::Nothing
     (; integrator) = model
-    (; u, p, t) = integrator
+    (; p, t) = integrator
     (; p_independent) = p
     (; allocation, pump, outlet, tabulated_rating_curve) = p_independent
     (; allocation_models, primary_network_connections, demand_priorities_all) = allocation
@@ -1214,7 +1219,8 @@ function update_allocation!(model, Δt = 0.0; record::Bool = true)::Nothing
     !is_active(allocation) && return nothing
 
     du = get_du(integrator)
-    water_balance!(du, u, p, t)
+    u = get_u(integrator)
+    water_balance!(getdata(du), getdata(u), p, t)
 
     for secondary_network in get_secondary_networks(allocation_models)
         update_control_states!(secondary_network, p_independent)
@@ -1289,7 +1295,7 @@ function update_allocation!(model, Δt = 0.0; record::Bool = true)::Nothing
         end
     end
 
-    record && p_independent.cumulative_flow_prev_allocation_dt .= u.flow
+    record && (p_independent.cumulative_flow_prev_allocation_dt .= u.flow)
 
     # Update storage_prev for level_demand
     update_storage_prev!(u, p)

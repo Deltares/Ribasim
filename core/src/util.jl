@@ -708,14 +708,15 @@ function build_state_vector(p_independent::ParametersIndependent)
     (; u_prev_saveat, basin) = p_independent
     u = zero(u_prev_saveat)
     u.storage .= basin.storage0
-    return u
+    return getdata(u)
 end
 
 """
 Check whether any storages are negative given the state u.
 Storage states are directly in u.storage.
 """
-function isoutofdomain(u, p, t)
+function isoutofdomain(u_raw, p, t)
+    u = CVector(u_raw, p.p_independent.state_ranges)
     return any(<(0), u.storage)
 end
 
@@ -1230,3 +1231,10 @@ function set_uplink_downlink_storage!(
 
     return nothing
 end
+
+get_u(integrator::DEIntegrator) = CVector(integrator.u, integrator.p.p_independent.state_ranges)
+get_du(integrator::DEIntegrator) = CVector(
+    OrdinaryDiffEqCore.get_du(integrator),
+    integrator.p.p_independent.state_ranges
+)
+get_uprev(integrator::DEIntegrator) = CVector(integrator.uprev, integrator.p.p_independent.state_ranges)

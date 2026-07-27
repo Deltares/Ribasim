@@ -1,57 +1,18 @@
 """
 The right hand side function of the system of ODEs set up by Ribasim.
-
 """
-water_balance!(du::CVector, u::CVector, p::Parameters, t::Number)::Nothing = water_balance!(
-    du::RibasimCVectorType,
-    u::RibasimCVectorType,
-    p.p_independent,
-    p.time_dependent_cache,
-    p.non_ad_cache,
-    p.p_mutable,
-    t
-)
-
-# Method with `t` as second argument parsable by DifferentiationInterface.jl for time derivative computation
-water_balance!(
-    du::CVector,
-    t::Number,
-    u::CVector,
-    p_independent::ParametersIndependent,
-    time_dependent_cache::TimeDependentCache,
-    non_ad_cache::NonADCache,
-    p_mutable::ParametersMutable
-) = water_balance!(
-    du,
-    u,
-    p_independent,
-    time_dependent_cache,
-    non_ad_cache,
-    p_mutable,
-    t
-)
-
-function water_balance!(
-        du::RibasimCVectorType,
-        u::RibasimCVectorType,
-        p_independent::ParametersIndependent,
-        time_dependent_cache::TimeDependentCache,
-        non_ad_cache::NonADCache,
-        p_mutable::ParametersMutable,
-        t::Number
-    )::Nothing
-    p = Parameters(
-        p_independent,
-        time_dependent_cache,
-        non_ad_cache,
-        p_mutable,
-    )
+function water_balance!(du_raw::Vector, u_raw::Vector, p::Parameters, t::Number)::Nothing
+    (; p_independent) = p
     (;
+        state_ranges,
         storage_uplink,
         storage_downlink,
         continuous_control,
     ) = p_independent
     (; continuous_control_compound_variables) = continuous_control
+
+    u = CVector(u_raw, state_ranges)
+    du = CVector(du_raw, state_ranges)
 
     # Compute and cache Basin level, area, low_storage_factor
     set_current_basin_properties!(u, p, t)

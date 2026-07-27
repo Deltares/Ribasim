@@ -94,15 +94,15 @@ function Model(config::Config)::Model
     end
     @debug "Read database into memory."
 
-    u0 = build_state_vector(parameters.p_independent)
-    p_independent.u_prev_saveat .= u0
+    u0_raw = build_state_vector(parameters.p_independent)
+    p_independent.u_prev_saveat .= u0_raw
 
-    if isempty(u0)
+    if isempty(u0_raw)
         @error "Models without states are unsupported, please add a Basin node."
         error("Model has no state.")
     end
 
-    du0 = zero(u0)
+    du0_raw = zero(u0_raw)
 
     # The Solver algorithm
     alg = algorithm(config.solver)
@@ -110,7 +110,7 @@ function Model(config::Config)::Model
     # Run water_balance! before initializing the integrator. This is because
     # at this initialization the discrete control callback is called for the first
     # time which depends on the flows formulated in water_balance!
-    water_balance!(du0, u0, parameters, t0)
+    water_balance!(du0_raw, u0_raw, parameters, t0)
 
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))
@@ -120,10 +120,9 @@ function Model(config::Config)::Model
     specialize = config.solver.specialize ? FullSpecialize : NoSpecialize
     RHS = ODEFunction{true, specialize}(
         water_balance!;
-        mass_matrix = p_independent.with_mass_matrix ? RibasimMassMatrix(p_independent) : I,
-        get_diff_eval(du0, u0, parameters, config.solver)...,
+        get_diff_eval(parameters, t0, config.solver)...,
     )
-    prob = ODEProblem{true, specialize}(RHS, u0, timespan, parameters)
+    prob = ODEProblem{true, specialize}(RHS, u0_raw, timespan, parameters)
     @debug "Setup ODEProblem."
 
     callback, saved = create_callbacks(p_independent, config, saveat)
@@ -220,12 +219,13 @@ set each model's Δt_allocation, clamp to saveat/tspan boundaries, and return (�
 """
 function compute_and_set_adaptive_Δt!(model, saveat, tspan_end)::Float64
     (; config, integrator) = model
-    (; u, p, t) = integrator
+    (; p, t) = integrator
     (; p_independent) = p
     (; allocation) = p_independent
+    u = get_u(integrator)
     du = get_du(integrator)
 
-    water_balance!(du, u, p, t)
+    water_balance!(getdata(du), getdata(u), p, t)
 
     Δt = Inf
     for am in allocation.allocation_models
