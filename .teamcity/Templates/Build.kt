@@ -44,21 +44,12 @@ open class Build(platformOs: String) : Template() {
         val header = generateBuildHeader(platformOs)
         steps {
             script {
-                name = "Set up pixi"
-                id = "RUNNER_2415"
-                workingDir = "ribasim"
-                scriptContent = header +
-                """
-                pixi --version
-                pixi run install-ci
-                """.trimIndent()
-            }
-            script {
                 name = "Build binary"
                 id = "RUNNER_2416"
                 workingDir = "ribasim"
                 scriptContent = header +
                 """
+                pixi --version
                 pixi run build
                 """.trimIndent()
             }

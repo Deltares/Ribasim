@@ -51,21 +51,12 @@ open class TestBinaries (platformOs: String) : Template() {
         val header = generateTestBinariesHeader(platformOs)
         steps {
             script {
-                name = "Set up pixi"
-                id = "RUNNER_1501"
-                workingDir = "ribasim"
-                scriptContent = header +
-                """
-                pixi --version
-                pixi run install-ci
-                """.trimIndent()
-            }
-            script {
                 name = "Run tests"
                 id = "RUNNER_1503"
                 workingDir = "ribasim"
                 scriptContent = header +
                 """
+                pixi --version
                 pixi run test-ribasim-api
                 pixi run test-ribasim-cli
                 pixi run model-integration-test

@@ -56,21 +56,12 @@ open class RegressionTest (platformOs: String) : Template() {
 
         steps {
             script {
-                name = "Set up pixi"
-                id = "RUNNER_1509"
-                workingDir = "ribasim"
-                scriptContent = header +
-                        """
-                pixi --version
-                pixi run install-ci
-                """.trimIndent()
-            }
-            script {
                 name = "Run regression tests"
                 id = "RUNNER_1511"
                 workingDir = "ribasim"
                 scriptContent = header +
                         """
+                pixi --version
                 pixi run test-ribasim-regression
                 """.trimIndent()
             }
