@@ -105,9 +105,6 @@ import HiGHS
 # Analyze infeasibilities and numerical properties
 import MathOptAnalyzer
 
-# Pattern matching
-using Moshi.Match: @match
-
 # The BMI is a standard for interacting with a Ribasim model,
 # see the docs: https://ribasim.org/dev/bmi.html
 import BasicModelInterface as BMI

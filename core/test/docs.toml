@@ -55,7 +55,7 @@ autodiff = true     # optional, default true
 evaporate_mass = true  # optional, default true to simulate a correct mass balance
 depth_threshold = 0.1  # optional, default 0.1
 level_difference_threshold = 0.02 # optional, default 0.02
-specialize = false  # optional, default false
+specialize = true   # optional, default true
 
 [logging]
 # defines the logging level of Ribasim
