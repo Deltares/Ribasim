@@ -76,8 +76,8 @@ The HalfLazyJacobian represents the Ribasim Jacobian in the form `J = J_intermed
 - `reduce_state!`, which defines the matrix-vector product `u_reduced = A * u`;
 - `calc_J_inner!`, which defined the matrix-matrix product `J_inner =  A * J_intermediate`.
 """
-struct HalfLazyJacobian <: AbstractSciMLOperator{Float64}
-    J_intermediate::SparseMatrixCSC{Float64, Int64}
+struct HalfLazyJacobian{M <: AbstractMatrix{Float64}} <: AbstractSciMLOperator{Float64}
+    J_intermediate::M
     p_independent::ParametersIndependent
     du::CVector
     prep::Any
@@ -120,9 +120,10 @@ ADTypes.KnownJacobianSparsityDetector(J::HalfLazyJacobian) =
 """
 The cache associated with the custom linear solve algorithm `config.RibasimLinearSolve`.
 """
-struct RibasimLinearSolveCache{C, WType}
+struct RibasimLinearSolveCache{C, WType, M}
     cache_inner::C
     W::WType
+    J_inner::M
 end
 
 """
@@ -158,8 +159,8 @@ end
 
 function update_J_inner!(J_inner::Matrix, J::HalfLazyJacobian, col_reduced::Int)::Nothing
     (; J_intermediate, p_independent) = J
-    for row in 1:size(J_intermediate)[2]
-        val = J_inner[row, col_reduced]
+    for row in axes(J_intermediate, 1)
+        val = J_intermediate[row, col_reduced]
         !iszero(val) && update_J_inner!(J_inner, p_independent, row, col_reduced, val)
     end
     return
@@ -241,11 +242,11 @@ function update_J_inner!(
 end
 
 """
-Calculate `W`, which is the matrix in the linear solve of the ODE solve algorithm.
+Calculate `W_inner`, the matrix in the reduced linear solve.
 """
-function calc_W_inner!(W_inner, J)::Nothing
-    calc_J_inner!(W_inner.J.A, J)
-    jacobian2W!(W_inner._concrete_form, W_inner.mass_matrix, W_inner.gamma, W_inner.J.A)
+function calc_W_inner!(W_inner, J_inner, J, gamma)::Nothing
+    calc_J_inner!(J_inner, J)
+    jacobian2W!(W_inner, I, gamma, J_inner)
     return nothing
 end
 
@@ -266,20 +267,16 @@ function SciMLBase.init(
     n_states_reduced = length(u_reduced)
     J_inner = similar(J.J_intermediate, (n_states_reduced, n_states_reduced))
 
-    # In this first call memory is allocated for the non zeros in the sparse case
+    # These first calls allocate the nonzeros, including the diagonal, in the sparse case.
     calc_J_inner!(J_inner, J)
-
-    W_inner = make_woperator(
-        ODEFunction(Returns(nothing); jac_prototype = J_inner, jac = Returns(nothing)),
-        u_reduced,
-        1.0,
-    )
+    W_inner = copy(J_inner)
+    jacobian2W!(W_inner, I, 1.0, J_inner)
 
     b_inner = copy(u_reduced)
     prob_inner = LinearProblem(W_inner, b_inner)
     cache_inner = init(prob_inner, alg.algorithm, args...; kwargs...)
 
-    return RibasimLinearSolveCache(cache_inner, W)
+    return RibasimLinearSolveCache(cache_inner, W, J_inner)
 end
 
 """
@@ -296,17 +293,14 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
     )
     @assert !isnothing(b)
     @assert !isnothing(linu)
-    (; cache_inner, W) = linsolve
+    (; cache_inner, W, J_inner) = linsolve
     (; J) = W
     (; J_intermediate, p_independent) = J
     γ = W.gamma
 
-    W_inner = cache_inner.A
-    W_inner.gamma = γ
-
     # Translate the problem to the reduced state space
     reduce_state!(cache_inner.b, b, p_independent)
-    calc_W_inner!(cache_inner.A, J)
+    calc_W_inner!(cache_inner.A, J_inner, J, γ)
     cache_inner.isfresh = true
 
     # Solve the problem in the reduced state space

@@ -293,7 +293,7 @@ end
 end
 
 @testitem "Solver algorithm" begin
-    using LinearSolve: KLUFactorization
+    using LinearSolve: KLUFactorization, LUFactorization
     using OrdinaryDiffEqNonlinearSolve: NLNewton
     using OrdinaryDiffEqBDF: QNDF
 
@@ -306,6 +306,10 @@ end
     @test alg.nlsolve == NLNewton()
     @test alg.linsolve ==
         Ribasim.config.RibasimLinearSolve(KLUFactorization(; check_pattern = false))
+
+    dense_solver = Ribasim.config.Solver(; sparse = false)
+    dense_alg = Ribasim.config.algorithm(dense_solver)
+    @test dense_alg.linsolve == Ribasim.config.RibasimLinearSolve(LUFactorization())
 end
 
 @testitem "FlatVector" begin
@@ -411,7 +415,7 @@ end
     model = Ribasim.Model(toml_path)
     (; cache) = model.integrator.cache.nlsolver
     (; J_intermediate) = cache.J
-    J_inner = cache.linsolve.cache_inner.A.J.A
+    J_inner = cache.linsolve.J_inner
     A = get_concrete_A(model)
 
     # rows, cols, vals = findnz(A)
@@ -435,7 +439,7 @@ end
     model = Ribasim.Model(toml_path)
     (; cache) = model.integrator.cache.nlsolver
     (; J_intermediate) = cache.J
-    J_inner = cache.linsolve.cache_inner.A.J.A
+    J_inner = cache.linsolve.J_inner
     A = get_concrete_A(model)
     #! format: off
     rows_expected = [1, 1, 1, 2]
