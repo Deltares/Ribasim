@@ -600,14 +600,13 @@ struct RibasimLinearSolveCache{C, WType}
     W::WType
 end
 
-# Initialize linear solve cache
+# Initialize linear solve cache for optimized implicit solve
 function SciMLBase.init(
-        prob::LinearProblem,
+        prob::LinearProblem{A, B, F},
         alg::config.RibasimLinearSolve,
         args...;
         kwargs...,
-    )
-
+    ) where {A, B, F <: WOperator{<:Any, <:Any, <:RibasimMassMatrix}}
     W = prob.A
     (; J, gamma) = W
     (; n_basin) = J
@@ -625,9 +624,19 @@ function SciMLBase.init(
     b_inner = zeros(n_basin)
 
     prob_inner = LinearProblem(W_inner, b_inner)
-    cache_inner = init(prob_inner, alg.algorithm, args..., kwargs...)
+    cache_inner = init(prob_inner, alg.algorithm, args...; kwargs...)
 
     return RibasimLinearSolveCache(cache_inner, W)
+end
+
+# Initialize linear solve cache for default solve
+function SciMLBase.init(
+        prob::LinearProblem,
+        alg::config.RibasimLinearSolve,
+        args...;
+        kwargs...,
+    )
+    return init(prob, alg.algorithm, args...; kwargs...)
 end
 
 """
@@ -907,50 +916,56 @@ end
 # The norm applied to the residuals to obtain the final scalar solver error
 @kwdef struct InternalNorm{PI <: ParametersIndependent}
     p_independent::PI
-    ũ_cache::Vector{Float64} = zeros(length(p_independent.basin.node_id))
-    u₀_cache::Vector{Float64} = copy(ũ_cache)
-    u₁_cache::Vector{Float64} = copy(ũ_cache)
 end
 Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
+(::InternalNorm)(u, t) = ODE_DEFAULT_NORM(u, t)
 
-# Base the error only on the storage term!
-(internalnorm::InternalNorm)(u_raw::Vector, t) = ODE_DEFAULT_NORM(
-    CVector(u_raw, internalnorm.p_independent.state_ranges).storage,
-    t
-)
-(::InternalNorm)(u::Number, t) = ODE_DEFAULT_NORM(u, t)
-
-# Threaded residuals, not all algorithms support passing
-# the `thread` keyword
 @inline function DiffEqBase.calculate_residuals!(
         out_raw,
         ũ_raw, u₀_raw, u₁_raw, abstol, reltol, internalnorm::InternalNorm, t
     )
-    (; p_independent, ũ_cache, u₀_cache, u₁_cache) = internalnorm
-    (; basin, state_ranges) = p_independent
-    (; storage0) = basin
+    (; p_independent) = internalnorm
+    (; state_ranges) = p_independent
 
     out = CVector(out_raw, state_ranges)
     ũ = CVector(ũ_raw, state_ranges)
     u₀ = CVector(u₀_raw, state_ranges)
     u₁ = CVector(u₁_raw, state_ranges)
 
-    aggregate_flows!(ũ_cache, ũ.flow, p_independent)
+    # Storage terms
+    for idx in eachindex(out.storage)
+        out.storage[idx] = DiffEqBase.calculate_residuals(
+            ũ.storage[idx],
+            u₀.storage[idx],
+            u₁.storage[idx],
+            abstol,
+            reltol,
+            internalnorm,
+            t
+        )
+    end
 
-    # Translate u₀, u₁ which are state vector values to storage
-    aggregate_flows!(u₀_cache, u₀.flow, p_independent)
-    aggregate_flows!(u₁_cache, u₁.flow, p_independent)
-    u₀_cache .+= storage0
-    u₁_cache .+= storage0
+    # Flow terms
+    for idx in eachindex(out.flow)
+        abs_diff = abs(u₁.flow[idx] - u₀.flow[idx])
+        out.flow[idx] = DiffEqBase.calculate_residuals(
+            ũ.flow[idx],
+            abs_diff,
+            abs_diff,
+            abstol,
+            reltol,
+            internalnorm,
+            t
+        )
+    end
 
-    out .= 0
-
-    # Compute storage residuals
-    for i in eachindex(ũ_cache)
-        out.storage[i] = DiffEqBase.calculate_residuals(
-            ũ_cache[i],
-            u₀_cache[i],
-            u₁_cache[i],
+    # PID integral terms
+    for idx in eachindex(out.pid_integral)
+        abs_diff = abs(u₁.pid_integral[idx] - u₀.pid_integral[idx])
+        out.pid_integral[idx] = DiffEqBase.calculate_residuals(
+            ũ.pid_integral[idx],
+            abs_diff,
+            abs_diff,
             abstol,
             reltol,
             internalnorm,
@@ -995,10 +1010,19 @@ function get_diff_eval(
         t::Number,
         solver::Solver
     )
-    u_raw = copy(p.p_independent.u_prev_saveat)
+    backend = get_ad_type(solver)
+
+    u_raw = getdata(copy(p.p_independent.u_prev_saveat))
     du_raw = zero(u_raw)
 
-    # mass_matrix = p_independent.with_mass_matrix ? RibasimMassMatrix(p_independent) : I,
+    # In-place AD caches, only for:
+    # - solver.optimized.implicit_solve = false
+    # - algorithm requires tgrad (Rosenbrock methods)
+    ad_caches = (
+        Cache(p.p_independent.storage_uplink),
+        Cache(p.p_independent.storage_downlink),
+        Cache(p.p_independent.continuous_control.continuous_control_compound_variables),
+    )
 
     if solver.optimized_implicit_solve
         evaluation_cache = RibasimJacobianEvaluationCache(p, solver)
@@ -1006,52 +1030,82 @@ function get_diff_eval(
         jac = nothing # Jacobian is updated via SciMLOperators.update_coefficients!
         mass_matrix = RibasimMassMatrix(p.p_independent)
     else
-        log_level = LoggingExtras.Warn
-        solver.autodiff && @logmsg log_level "`autodiff = true` is not supported for `optimized_implicit_solve = false`, using `autodiff = false`."
-
-        backend = AutoFiniteDiff()
         backend_jac = if solver.sparse
-            AutoSparse(backend; detector = TracerSparsityDetector(), coloring_algorithm = GreedyColoringAlgorithm())
+            AutoSparse(
+                backend;
+                sparsity_detector = TracerSparsityDetector(),
+                coloring_algorithm = GreedyColoringAlgorithm()
+            )
         else
             backend
         end
 
+        # water_balance! wrapper for DifferentiationInterface without kwargs
+        water_balance!_(du_raw::Vector, u_raw::Vector, p::Parameters, t::Number, storage_uplink, storage_downlink, compound_variables) =
+            water_balance!(du_raw, u_raw, p, t; storage_uplink, storage_downlink, compound_variables)
+
+        p.p_mutable.ad_active = true
         jac_prep = prepare_jacobian(
-            water_balance!,
+            water_balance!_,
             du_raw,
             backend_jac,
             u_raw,
             Constant(p),
-            Constant(t)
+            Constant(t),
+            ad_caches...
         )
+        p.p_mutable.ad_active = false
         jac_prototype = solver.sparse ? Float64.(sparsity_pattern(jac_prep)) : zeros(length(du_raw), length(du_raw))
-        jac(J, u_raw, p, t) = get_jacobian!(J, du_raw, u_raw, p, t, jac_prep, backend_jac)
+        jac(J, u_raw, p, t) = begin
+            p.p_mutable.ad_active = true
+            jacobian!(
+                water_balance!_,
+                du_raw,
+                J,
+                jac_prep,
+                backend_jac,
+                u_raw,
+                Constant(p),
+                Constant(t),
+                ad_caches...,
+            )
+            p.p_mutable.ad_active = false
+        end
         mass_matrix = convert(AbstractMatrix, RibasimMassMatrix(p.p_independent))
         !solver.sparse && (mass_matrix = collect(mass_matrix))
     end
 
-    water_balance!_(du_raw, t, u_raw, p) = water_balance!(du_raw, u_raw, p, t)
+    # water_balance! wrapper for DifferentiationInterface without kwargs and with
+    # t as second argument
+    water_balance!__(du_raw::Vector, t::Number, u_raw::Vector, p::Parameters, storage_uplink, storage_downlink, compound_variables) =
+        water_balance!(du_raw, u_raw, p, t; storage_uplink, storage_downlink, compound_variables)
 
     # ∂rhs/∂t always with FiniteDiff
     tgrad_prep = prepare_derivative(
-        water_balance!_,
+        water_balance!__,
         du_raw,
-        AutoFiniteDiff(),
-        t,
-        Constant(u_raw),
-        Constant(p)
-    )
-
-    tgrad(dT, u_raw, p, t) = derivative!(
-        water_balance!,
-        du_raw,
-        dT,
-        tgrad_prep,
-        AutoFiniteDiff(),
+        backend,
         t,
         Constant(u_raw),
         Constant(p),
+        ad_caches...,
     )
+
+    tgrad(dT, u_raw, p, t) = begin
+        p.p_mutable.ad_active = true
+        derivative!(
+            water_balance!__,
+            du_raw,
+            dT,
+            tgrad_prep,
+            backend,
+            t,
+            Constant(u_raw),
+            Constant(p),
+            ad_caches...,
+        )
+        p.p_mutable.ad_active = false
+    end
 
     mass_matrix = with_mass_matrix(solver) ? mass_matrix : I
 

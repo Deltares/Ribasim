@@ -23,7 +23,7 @@ using OrdinaryDiffEqBDF: FBDF, QNDF
 using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
 import OrdinaryDiffEqDifferentiation
 using LinearSolve:
-    KLUFactorization, KrylovJL_GMRES, SciMLLinearSolveAlgorithm, LinearSolve, SciMLLinearSolveAlgorithm
+    KLUFactorization, KrylovJL_GMRES, SciMLLinearSolveAlgorithm, LinearSolve, SciMLLinearSolveAlgorithm, needs_concrete_A
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
@@ -403,9 +403,10 @@ matrix of Ribasim.
 """
 struct RibasimLinearSolve{AType <: SciMLLinearSolveAlgorithm} <: SciMLLinearSolveAlgorithm
     algorithm::AType
+    optimized_implicit_solve::Bool
 end
 
-LinearSolve.needs_concrete_A(::RibasimLinearSolve) = false
+LinearSolve.needs_concrete_A(alg::RibasimLinearSolve) = alg.optimized_implicit_solve ? false : needs_concrete_A(alg.algorithm)
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
@@ -415,9 +416,15 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
         kwargs[:nlsolve] = NLNewton()
         if solver.sparse
-            kwargs[:linsolve] = RibasimLinearSolve(KLUFactorization(; check_pattern = false))
+            kwargs[:linsolve] = RibasimLinearSolve(
+                KLUFactorization(; check_pattern = false),
+                solver.optimized_implicit_solve,
+            )
         else
-            kwargs[:linsolve] = RibasimLinearSolve(KrylovJL_GMRES(; concrete_jac = solver.optimized_implicit_solve))
+            kwargs[:linsolve] = RibasimLinearSolve(
+                KrylovJL_GMRES(; concrete_jac = solver.optimized_implicit_solve),
+                solver.optimized_implicit_solve,
+            )
         end
     end
 

@@ -310,18 +310,18 @@ end
 end
 
 @testitem "sparse and AD/FDM jac solver options" begin
-    # toml_path =
-    #     normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
 
-    # for (solver_sparse, solver_autodiff, solver_optimized_implicit_solve) in Iterators.product(ntuple(Returns([true, false]), 3)...)
-    #     options = (; solver_sparse, solver_autodiff, solver_optimized_implicit_solve)
+    for (solver_sparse, solver_autodiff, solver_optimized_implicit_solve) in Iterators.product(ntuple(Returns([true, false]), 3)...)
+        options = (; solver_sparse, solver_autodiff, solver_optimized_implicit_solve)
 
-    #     @testset "Run with $options" begin
-    #         config = Ribasim.Config(toml_path; options...)
-    #         model = Ribasim.run(config)
-    #         @test success(model)
-    #     end
-    # end
+        @testset "Run with $options" begin
+            config = Ribasim.Config(toml_path; options...)
+            model = Ribasim.run(config)
+            @test success(model)
+        end
+    end
 
     # config = Ribasim.Config(toml_path; solver_sparse = true, solver_autodiff = true)
     # sparse_ad = Ribasim.run(config)

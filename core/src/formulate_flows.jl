@@ -1,15 +1,17 @@
 """
 The right hand side function of the system of ODEs set up by Ribasim.
 """
-function water_balance!(du_raw::Vector, u_raw::Vector, p::Parameters, t::Number)::Nothing
+function water_balance!(
+        du_raw::Vector,
+        u_raw::Vector,
+        p::Parameters,
+        t::Number;
+        storage_uplink = p.p_independent.storage_uplink,
+        storage_downlink = p.p_independent.storage_downlink,
+        compound_variables = p.p_independent.continuous_control.continuous_control_compound_variables,
+    )::Nothing
     (; p_independent) = p
-    (;
-        state_ranges,
-        storage_uplink,
-        storage_downlink,
-        continuous_control,
-    ) = p_independent
-    (; continuous_control_compound_variables) = continuous_control
+    (; state_ranges) = p_independent
 
     u = CVector(u_raw, state_ranges)
     du = CVector(du_raw, state_ranges)
@@ -38,7 +40,7 @@ function water_balance!(du_raw::Vector, u_raw::Vector, p::Parameters, t::Number)
         du,
         storage_uplink,
         storage_downlink,
-        continuous_control_compound_variables,
+        compound_variables,
         u.pid_integral,
         p,
         t,
@@ -58,7 +60,7 @@ function water_balance!(du_raw::Vector, u_raw::Vector, p::Parameters, t::Number)
 
     # Compute ContinuousControl compound variables
     compute_continuous_control_compound_variables!(
-        continuous_control_compound_variables,
+        compound_variables,
         u.storage,
         du.flow,
         p,

@@ -22,6 +22,7 @@ using PrecompileTools: @setup_workload, @compile_workload
 using DifferentiationInterface:
     AutoSparse,
     Constant,
+    Cache,
     prepare_jacobian,
     value_and_jacobian!,
     jacobian!,
@@ -67,7 +68,7 @@ using OrdinaryDiffEqDifferentiation:
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
-using SparseConnectivityTracer: TracerSparsityDetector
+using SparseConnectivityTracer: TracerSparsityDetector, GradientTracer
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations

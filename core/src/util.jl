@@ -636,6 +636,12 @@ function relaxed_root(x, threshold)
     end
 end
 
+# Overloads for SparseConnectivityTracer
+get_level(storage::GradientTracer, p::Parameters, node_id::NodeID, t::Number; kwargs...) = storage
+get_low_storage_factor(storage::GradientTracer, p::Parameters, id::NodeID) = storage
+reduction_factor(x::GradientTracer, threshold::Real) = x
+
+
 function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::FlowTuple{UnitRange{Int}}
     (;
         pump,
@@ -1143,7 +1149,7 @@ function compensated_add!(
 end
 
 function compensated_signed_add!(
-        p_independent::ParametersIndependent,
+        p_independent,
         idx::Int,
         value::Float64,
     )::Nothing
