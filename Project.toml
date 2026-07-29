@@ -91,4 +91,7 @@ PackageCompiler = "2.3"
 PkgToSoftwareBOM = "0.1.17"
 Plots = "1.41.4"
 PythonCall = "=0.9.35"
-Revise = "3.13.1"
+Revise = "3.16.2"
+
+[preferences.Revise]
+revise_structs = true
