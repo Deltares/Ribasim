@@ -16,7 +16,7 @@ $$
 	\frac{\text{d}s}{\text{d}t} = Mq(s, I, p, t).
 $$
 
-This equation states that the instantaneous storage rate $\frac{\text{d}s}{\text{d}t}$ per Basin is equal to the sum of the in- and outflows per basin $q(s, p, t)$.  The summing is represented by the signed [incidence matrix](https://en.wikipedia.org/wiki/Incidence_matrix) of the model; $1$ for inflows, $-1$ for outflows. This incidence matrix is not based directly on the Ribasim model graph as represented in the data model; it's based on the graph obtained by representing Basins as nodes and flows between them as links.
+This equation states that the instantaneous storage rate $\frac{\text{d}s}{\text{d}t}$ per Basin is equal to the sum of the in- and outflows per basin $q(s, p, t)$.  The summing is represented by the signed [incidence matrix](https://en.wikipedia.org/wiki/Incidence_matrix) of the model, which has $1$ for inflows, $-1$ for outflows. This incidence matrix is not based directly on the Ribasim model graph as represented in the data model; it's based on the graph obtained by representing Basins as nodes and flows between them as links (with 'dangling' links for the vertical flows).
 
 Other than the storages, the flows depend on the PID integral terms (see below) the parameters $p$ and time $t$. We can distinguish different flow types:
 - Horizontal flows of connector nodes
@@ -31,7 +31,7 @@ $$
 \frac{\text{d}Q}{\text{d}t} = q(s, I, p, t),
 $$
 
-i.e. $Q$ is the cumulative flow volume per link over time. We include this equation alongside the water balance equation because we are not only interested in the storage change over time, but also the individual flows, which for higher order solver algorithms are not easily reconstructed from the storage results.
+i.e. $Q$ is the cumulative flow volume per link over time. We include this equation alongside the water balance equation because we are not only interested in the storage change over time, but also the individual flows, which for higher order solver algorithms are not easily reconstructed from the storage results. Most flows depend on the water level of the upstream and downstream Basin, see [the Basin profile documentation](/reference/node/basin.qmd#profile) for the translation between storage and level.
 
 ## The PID integral equation
 
@@ -41,11 +41,11 @@ $$
 \frac{\text{d}I}{\text{d}t} = e(s, p, t)
 $$
 
-where the error term is the difference between the level and the setpoint (see also PID docs reference).
+where the error term is the difference between the level and the setpoint (see also [the PID equations](/reference/node/pid-control.qmd#equations)).
 
 ## The equation system
 
-The above equations can be combined into the following equation system in mass-matrix form
+The above equations can be combined into the following equation system in mass-matrix form:
 
 $$
 	\begin{bmatrix}
@@ -67,6 +67,46 @@ The initial condition of this system is given by
 $$
   s(0) = s_0, \quad Q(0) = 0, \quad I(0) = 0.
 $$
+
+## Reported flows
+The reported flows are averaged over the saveat interval, say $[t, t + \Delta t_\text{saveat}]$:
+
+$$
+	\overline{Q} = \frac{1}{\Delta t_\text{saveat}}\int_t^{t} q \text{d}\tilde{t} \approx \frac{\hat{Q}(t) - \hat{Q}(t - \Delta t_\text{saveat})}{\Delta t_\text{saveat}}
+$$
+
+where $\hat{Q}$ is the approximated solution to $Q$.
+
+## The water balance error
+
+The water balance error is computed on the saveat flows $\overline{Q}$. First the storage rate is computed:
+
+$$
+r_s = \frac{\hat{s}(t) - \hat{s}(t - \Delta t_\text{saveat})}{\Delta t_\text{saveat}}.
+$$
+
+Then the inflow and outflow rate are computed. Decomposing $\overline{Q}$ and $M$ into positive and negative entries, we can write these as
+
+$$
+\begin{align*}
+	r_\text{in} &= M^+ \overline{Q}^+ + M^-\overline{Q}^-, \\
+	r_\text{out} &= M^- \overline{Q}^+ + M^+\overline{Q}^-.
+\end{align*}
+$$
+
+Note that for resistance nodes which can have flows in both directions, the flow direction determines to which of $r_\text{in}$ and $r_\text{out}$ the node contributes. The balance error is then given by
+
+$$
+	E_b = r_s - (r_\text{in} - r_\text{out}),
+$$
+
+and the relative error by
+
+$$
+	E_r = \frac{E_b}{r_\text{in} + r_\text{out}}.
+$$
+
+In the [flow correction](numerics.qmd#correcting-the-solver) the new storages are computed directly from the cumulative flows, so in theory the water balance should always be closed up to floating point precision.
 
 <!--
 # Formal model description

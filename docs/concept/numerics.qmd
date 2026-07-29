@@ -2,13 +2,25 @@
 title: "Numerical considerations"
 ---
 
+# Empty basins
+
+[Reduction factors](/reference/node/basin.qmd#sec-reduction-factor) are introduced at several points in the flow equations to smooth out otherwise discontinuous transitions (e.g. the flow rate of a pump going to zero when the source basin dries out).
+If flows are not too large with respect to basin storage, this will prevent basins from reaching 0.
+Rather, the basin gets a very small storage.
+The reduction factors help with performance, but are also an important tool to avoid getting negative storage in basins.
+Negative storage needs to be avoided since it is not a real solution, and would introduce water into the model that doesn't exist.
+Another tool used to avoid negative storage is the [`isoutoutofdomain`](https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/) option, which Ribasim makes use of.
+This rejects timesteps that lead to negative storage, instead retrying with a smaller timestep.
+
 # Exploiting the problem structure
 
-The above problem formulation gives us what we want: accurate storages and flows. However, if this problem is passed to an ODE-system as-is, this is rather computationally expensive due to the large number of states that are being solved for.
+The [problem formulation](equations.qmd#the-equation-system) gives us what we want: accurate storages and flows. However, if this problem is passed to an ODE-system as-is, this is rather computationally expensive due to the large number of states that are being solved for.
+
+In the following we focous on solving the ODE system with implicit numerical methods using Newton iterations. We do this because in a time integration step with an implicit method the basins communicate information with eachother, while in an explicit method this does not happen. A consequence of this is that local events (e.g. a pump turns on, Basin forcing changes stepwise) propagate slowly through the model using an explicit method but quickly using an implicit method, making implicit methods more stable.
 
 ## The Jacobian
 
-The Jacobian of the right hand side as formulated above is given by
+The Jacobian of the right hand side is given by
 
 $$
 J =
@@ -92,7 +104,11 @@ $$
 \frac{\partial \tilde{q}}{\partial s_\text{up}} \approx \text{diag}\left(\frac{\tilde{q}(s_\text{up} + \varepsilon \mathbf{1}, s_\text{down}, I, c, p, t) - \tilde{q}(s_\text{up}, s_\text{down}, I, c, p, t)}{\varepsilon}\right).
 $$
 
-AD backends can make clever use of caches to compute multiple of these JVPs at the same time, which saves several calls to $q$.
+AD backends can make clever use of caches [@revels2016forwarddiff] to compute multiple of these JVPs at the same time, which saves several calls to $q$.
+
+The convergence of the Newton method can be [proven](https://en.wikipedia.org/wiki/Newton%27s_method#Proof_of_quadratic_convergence_for_Newton's_iterative_method) given certain properties of the right hand side function around the initial guess and root to find. An important aspect is the smoothness of the right hand side function. The basin profiles and $Q(h)$ relations are given by interpolated data, and thus we have some control over the smoothness of these functions by the choice of interpolation method.
+
+Control mechanisms can change parameters of the right hand side discontinuously, leading to discontinuities. This however does not yield problems for the time integration methods in `DifferentialEquations.jl`, since the [callback mechanisms](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/) used to change these parameters make the solver take these discontinuities into account.
 
 ### The linear solve
 
@@ -123,6 +139,39 @@ $$
 \end{align*}
 $$
 
+## Error control
+
+The default scalar error formulation used in `OrdinaryDiffEq.jl` is the root-mean-square of
+
+$$
+E = \frac{\tilde{u}}{\alpha + \rho\max(|u|, |u_\text{prev}|)},
+$$
+
+which is computed elementwise. A timestep is accepted if $\|E\|_\text{RMS}\le 1$. Here:
+
+- $\tilde{u}$ is the nonlinearsolve residual;
+- $u_\text{prev}$ is the previous state;
+- $u$ is the proposed state after the timestep;
+- $\alpha$ is the absolute tolerance;
+- $\rho$ is the relative tolerance.
+
+Recall that the Ribasim state vector consists of the storage, cumulative flow and PID integral components. For the storage state the above error formulation is directly applicable, but the cumulative flow and PID integral components have the property that they can grow without bound as the simulation progresses. That means that as these states grow, the error gets more and more relaxed due to the relative scaling term. Therefore, for the elements of these components we use a slightly different formulation:
+
+$$
+\frac{\tilde{u}}{\alpha + \rho|u - u_\text{prev}|}.
+$$
+
+## Correcting the solver
+
+The `OrdinaryDiffEq.jl` solver accepts a timestep under the aforementioned condition $\|E\|_\text{RMS}\le 1$, that is, when the errors are within the specified tolerances. It can however happen that such accepted timesteps have properties that we know to be wrong, be it in a small way. In particular, we can set bounds on the cumulative flow for certain node types:
+- Pump and Outlet flow are bounded by their minimum and maximum flow;
+- FlowBoundary flow can be integrated exactly from the flow interpolation;
+- TabulatedRatingCurve flow is non-negative;
+- Linear resistance flow is in the interval `[-max_flow, max_flow]`;
+- UserDemand inflow is bounded by the allocated amount;
+- Positive Basin forcings can be integrated exactly since they are piecewise constant.
+
+Correcting $Q$ this way makes it out of sync with $s$, so after these corrections $s$ is recomputed as $s = MQ + s_0$.
 
 <!-- ---
 title: "Numerical considerations"
@@ -224,15 +273,5 @@ $$
 $$
 
 where the continuity of this term is given by the least continuous of $Q$ and $h$.
-
-## Empty basins
-
-[Reduction factors](/reference/node/basin.qmd#sec-reduction-factor) are introduced at several points in the definition of $\mathbf{f}$ to smooth out otherwise discontinuous transitions (e.g. the flow rate of a pump going to zero when the source basin dries out).
-If flows are not too large with respect to basin storage, this will prevent basins from reaching 0.
-Rather, the basin gets a very small storage.
-The reduction factors help with performance, but are also an important tool to avoid getting negative storage in basins.
-Negative storage needs to be avoided since it is not a real solution, and would introduce water into the model that doesn't exist.
-Another tool used to avoid negative storage is the [`isoutoutofdomain`](https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/) option, which Ribasim makes use of.
-This rejects timesteps that lead to negative storage, instead retrying with a smaller timestep.
 
 Because the states are the Basin storages (physical water volumes that stay bounded), rather than cumulative flows that grow without bound, the error tolerance $\text{abstol} + |\mathbf{u}| \cdot \text{reltol}$ stays meaningful throughout the simulation and needs no compensation over time. -->

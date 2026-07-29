@@ -18,7 +18,7 @@ Ribasim expects the GeoPackage database [database.gpkg](/reference/usage.qmd#sec
 
 The solver section in the configuration file is entirely optional, since we aim to use defaults that will generally work well.
 Common reasons to modify the solver settings are to adjust the calculation or result stepsizes: `dt`, and `saveat`.
-If your model does not converge, or your performance is lower than expected, it can help to adjust other solver settings as well.
+If your model does not converge, or your performance is lower than expected, it can help to adjust other solver settings as well. For example, setting `optimized_implicit_solve = false` will bypass much of the custom numerical code written for Ribasim, using a less optimized but potentially more robust algorithm.
 
 The default solver `algorithm = "QNDF"`, which is a multistep method similar to Matlab's `ode15s` [@shampine1997matlab].
 It is an implicit method that supports the default adaptive timestepping.
