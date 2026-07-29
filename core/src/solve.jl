@@ -927,6 +927,13 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
     (; p_independent) = internalnorm
     (; state_ranges) = p_independent
 
+    if !p_independent.optimized_implicit_solve
+        return DiffEqBase.calculate_residuals!(
+            out_raw,
+            ũ_raw, u₀_raw, u₁_raw, abstol, reltol, ODE_DEFAULT_NORM, t
+        )
+    end
+
     out = CVector(out_raw, state_ranges)
     ũ = CVector(ũ_raw, state_ranges)
     u₀ = CVector(u₀_raw, state_ranges)

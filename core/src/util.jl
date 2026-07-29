@@ -639,7 +639,9 @@ end
 # Overloads for SparseConnectivityTracer
 get_level(storage::GradientTracer, p::Parameters, node_id::NodeID, t::Number; kwargs...) = storage
 get_low_storage_factor(storage::GradientTracer, p::Parameters, id::NodeID) = storage
+low_storage_factor_resistance_node(s_a::GradientTracer, s_b::GradientTracer, p::Parameters, q::Number, inflow_id::NodeID, outflow_id::NodeID) = s_a + s_b
 reduction_factor(x::GradientTracer, threshold::Real) = x
+relaxed_root(x::GradientTracer, threshold) = x
 
 
 function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::FlowTuple{UnitRange{Int}}
@@ -1132,57 +1134,6 @@ function unsafe_array(
     return GC.@preserve A unsafe_wrap(Array, pointer(A), length(A))
 end
 
-function compensated_add!(
-        sum_::AbstractVector{Float64},
-        correction::AbstractVector{Float64},
-        idx::Int,
-        value::Float64,
-    )::Nothing
-    new_sum = sum_[idx] + value
-    correction[idx] += if abs(sum_[idx]) >= abs(value)
-        (sum_[idx] - new_sum) + value
-    else
-        (value - new_sum) + sum_[idx]
-    end
-    sum_[idx] = new_sum
-    return nothing
-end
-
-function compensated_signed_add!(
-        p_independent,
-        idx::Int,
-        value::Float64,
-    )::Nothing
-    (
-        ;
-        aggregate_flow_positive_sum,
-        aggregate_flow_positive_correction,
-        aggregate_flow_negative_sum,
-        aggregate_flow_negative_correction,
-    ) = p_independent
-    if value >= 0.0
-        compensated_add!(aggregate_flow_positive_sum, aggregate_flow_positive_correction, idx, value)
-    else
-        compensated_add!(aggregate_flow_negative_sum, aggregate_flow_negative_correction, idx, -value)
-    end
-    return nothing
-end
-
-function compensated_signed_total(
-        p_independent::ParametersIndependent,
-        idx::Int,
-    )::Float64
-    (
-        ;
-        aggregate_flow_positive_sum,
-        aggregate_flow_positive_correction,
-        aggregate_flow_negative_sum,
-        aggregate_flow_negative_correction,
-    ) = p_independent
-    return (aggregate_flow_positive_sum[idx] - aggregate_flow_negative_sum[idx]) +
-        (aggregate_flow_positive_correction[idx] - aggregate_flow_negative_correction[idx])
-end
-
 function aggregate_flows!(
         aggregate::AbstractVector,
         flow::FlowCVectorType,
@@ -1197,21 +1148,7 @@ function aggregate_flows!(
     (; inflow_link, outflow_link, basin) = p_independent
     n_basin = length(basin.node_id)
 
-    fill!(p_independent.aggregate_flow_positive_sum, 0.0)
-    fill!(p_independent.aggregate_flow_positive_correction, 0.0)
-    fill!(p_independent.aggregate_flow_negative_sum, 0.0)
-    fill!(p_independent.aggregate_flow_negative_correction, 0.0)
-
-    if !from_zero
-        for idx in eachindex(aggregate)
-            value = Float64(aggregate[idx])
-            if value >= 0.0
-                p_independent.aggregate_flow_positive_sum[idx] = value
-            else
-                p_independent.aggregate_flow_negative_sum[idx] = -value
-            end
-        end
-    end
+    from_zero && (aggregate .= 0)
 
     if do_horizontal_flows
         # Use length of the range to handle both shifted (sub-CVector from state)
@@ -1225,13 +1162,13 @@ function aggregate_flows!(
 
             if inflow_id.is_basin
                 if (!positive_flow && do_inflows) || (positive_flow && do_outflows)
-                    compensated_signed_add!(p_independent, inflow_id.idx, weight * -flow_)
+                    aggregate[inflow_id.idx] -= weight * flow_
                 end
             end
 
             if outflow_id.is_basin
                 if (positive_flow && do_inflows) || (!positive_flow && do_outflows)
-                    compensated_signed_add!(p_independent, outflow_id.idx, weight * flow_)
+                    aggregate[outflow_id.idx] += weight * flow_
                 end
             end
         end
@@ -1240,19 +1177,12 @@ function aggregate_flows!(
     if do_vertical_flows
         for idx in 1:n_basin
             if do_inflows
-                compensated_signed_add!(p_independent, idx, weight * flow.drainage[idx])
-                compensated_signed_add!(p_independent, idx, weight * flow.surface_runoff[idx])
-                compensated_signed_add!(p_independent, idx, weight * flow.precipitation[idx])
+                aggregate[idx] += weight * (flow.drainage[idx] + flow.surface_runoff[idx] + flow.precipitation[idx])
             end
             if do_outflows
-                compensated_signed_add!(p_independent, idx, weight * -flow.evaporation[idx])
-                compensated_signed_add!(p_independent, idx, weight * -flow.infiltration[idx])
+                aggregate[idx] -= weight * (flow.evaporation[idx] + flow.infiltration[idx])
             end
         end
-    end
-
-    for idx in eachindex(aggregate)
-        aggregate[idx] = compensated_signed_total(p_independent, idx)
     end
     return nothing
 end

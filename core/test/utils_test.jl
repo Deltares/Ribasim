@@ -11,35 +11,6 @@
     @test convert(Int32, id) === Int32(2)
 end
 
-@testitem "Compensated signed accumulation" begin
-    using Ribasim
-
-    positive_sum = zeros(Float64, 1)
-    positive_correction = zeros(Float64, 1)
-    negative_sum = zeros(Float64, 1)
-    negative_correction = zeros(Float64, 1)
-
-    for value in (1.0e16, 1.0, -1.0e16)
-        Ribasim.compensated_signed_add!(
-            positive_sum,
-            positive_correction,
-            negative_sum,
-            negative_correction,
-            1,
-            value,
-        )
-    end
-
-    @test sum((1.0e16, 1.0, -1.0e16)) == 0.0
-    @test Ribasim.compensated_signed_total(
-        positive_sum,
-        positive_correction,
-        negative_sum,
-        negative_correction,
-        1,
-    ) == 1.0
-end
-
 @testitem "bottom" begin
     using StructArrays: StructVector
     using Ribasim: NodeID
@@ -273,30 +244,45 @@ end
     )
 end
 
-@testitem "Inner Jacobian sparsity" begin
+@testitem "Jacobian sparsity" begin
     import SQLite
     using SparseArrays: sparse, findnz
 
-    # Basic model
+    # Basic model; inner Jacobian
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     model = Ribasim.Model(toml_path)
     J_inner = model.integrator.cache.nlsolver.cache.linsolve.cache_inner.A.J
     J_inner.nzval .= 1
-    # rows, cols, _ = findnz(jac_prototype)
     rows_expected = [1, 2, 1, 2, 3, 4, 2, 3, 4, 2, 3, 4]
     cols_expected = [1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 4]
     J_inner_expected =
         sparse(rows_expected, cols_expected, true, size(J_inner)...)
     @test J_inner == J_inner_expected
 
-    # PID control
+    # PID control; standard Jacobian
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
-    model = Ribasim.Model(toml_path)
-    J_inner = model.integrator.cache.nlsolver.cache.linsolve.cache_inner.A.J
-    only(J_inner) == 1
+    config = Ribasim.Config(toml_path; solver_optimized_implicit_solve = false)
+    model = Ribasim.Model(config)
+    (; jac_prototype) = model.integrator.f
+    jac_prototype.nzval .= 1
+    # rows, cols, _ = findnz(jac_prototype)
+    rows_expected = [2, 4, 5, 9, 2]
+    cols_expected = [1, 1, 1, 1, 9]
+    jac_prototype_expected =
+        sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
+    @test jac_prototype == jac_prototype_expected
 
-    # Continuous Control
-    # TODO: Test J_inner sparsity for model where ContinuousControl input and output are more than one Basin apart
+    # Continuous Control; standard_Jacobian
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/outlet_continuous_control/ribasim.toml")
+    config = Ribasim.Config(toml_path; solver_optimized_implicit_solve = false)
+    model = Ribasim.Model(config)
+    (; jac_prototype) = model.integrator.f
+    jac_prototype.nzval .= 1
+    rows_expected = [2, 3, 4, 5, 6]
+    cols_expected = [1, 1, 1, 1, 1]
+    jac_prototype_expected =
+        sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
+    @test jac_prototype == jac_prototype_expected
 end
 
 @testitem "Solver algorithm" begin

@@ -71,6 +71,8 @@ end
         toml_path;
         experimental_allocation = true,
         endtime = DateTime("2023-01-01"),
+        solver_abstol = 1.0e-8,
+        solver_reltol = 1.0e-8,
     )
     model = Ribasim.Model(config)
     Ribasim.solve!(model)

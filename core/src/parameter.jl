@@ -1116,11 +1116,6 @@ the object itself is not.
     # The up- and downlink storage per flow
     storage_uplink::FlowCVectorType{Float64} = similar(inflow_link, Float64)
     storage_downlink::FlowCVectorType{Float64} = similar(inflow_link, Float64)
-    # Scratch arrays for robust basin flow aggregation
-    aggregate_flow_positive_sum::Vector{Float64} = zeros(length(basin.node_id))
-    aggregate_flow_positive_correction::Vector{Float64} = zeros(length(basin.node_id))
-    aggregate_flow_negative_sum::Vector{Float64} = zeros(length(basin.node_id))
-    aggregate_flow_negative_correction::Vector{Float64} = zeros(length(basin.node_id))
     # Cumulative flow over last timestep
     cumulative_flow_dt::FlowCVectorType{Float64} = zero(storage_uplink)
     # State at previous saveat

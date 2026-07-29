@@ -23,7 +23,7 @@ using OrdinaryDiffEqBDF: FBDF, QNDF
 using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
 import OrdinaryDiffEqDifferentiation
 using LinearSolve:
-    KLUFactorization, KrylovJL_GMRES, SciMLLinearSolveAlgorithm, LinearSolve, SciMLLinearSolveAlgorithm, needs_concrete_A
+    KLUFactorization, LUFactorization, SciMLLinearSolveAlgorithm, LinearSolve, SciMLLinearSolveAlgorithm, needs_concrete_A
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
@@ -422,7 +422,7 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
             )
         else
             kwargs[:linsolve] = RibasimLinearSolve(
-                KrylovJL_GMRES(; concrete_jac = solver.optimized_implicit_solve),
+                LUFactorization(),
                 solver.optimized_implicit_solve,
             )
         end

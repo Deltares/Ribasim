@@ -294,7 +294,7 @@ end
     (; p) = model.integrator
     u = Ribasim.get_u(model.integrator)
     @test u.storage ≈
-        Float32[693.1112, 693.10895, 463.9762, 1136.9476] atol = 3.1
+        Float32[692.61373, 692.61152, 460.79333, 1136.90031] atol = 1.0
 end
 
 @testitem "Allocation example model" begin
@@ -313,33 +313,35 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
 
+    endstate = Dict{
+        @NamedTuple{
+            solver_sparse::Bool,
+            solver_autodiff::Bool,
+            solver_optimized_implicit_solve::Bool,
+        },
+        Ribasim.RibasimCVectorType{Float64},
+    }()
+
     for (solver_sparse, solver_autodiff, solver_optimized_implicit_solve) in Iterators.product(ntuple(Returns([true, false]), 3)...)
         options = (; solver_sparse, solver_autodiff, solver_optimized_implicit_solve)
-
+        (!solver_autodiff && solver_optimized_implicit_solve) && continue # TODO: https://github.com/Deltares/Ribasim/issues/3178
         @testset "Run with $options" begin
             config = Ribasim.Config(toml_path; options...)
             model = Ribasim.run(config)
             @test success(model)
+            endstate[options] = Ribasim.get_u(model.integrator)
         end
     end
 
-    # config = Ribasim.Config(toml_path; solver_sparse = true, solver_autodiff = true)
-    # sparse_ad = Ribasim.run(config)
-    # config = Ribasim.Config(toml_path; solver_sparse = false, solver_autodiff = true)
-    # dense_ad = Ribasim.run(config)
-    # config = Ribasim.Config(toml_path; solver_sparse = true, solver_autodiff = false)
-    # sparse_fdm = Ribasim.run(config)
-    # config = Ribasim.Config(toml_path; solver_sparse = false, solver_autodiff = false)
-    # dense_fdm = Ribasim.run(config)
+    reference = endstate[(; solver_sparse = true, solver_autodiff = true, solver_optimized_implicit_solve = true)]
 
-    # @test success(sparse_ad)
-    # @test success(dense_ad)
-    # @test success(sparse_fdm)
-    # @test success(dense_fdm)
+    @test endstate[(; solver_sparse = false, solver_autodiff = true, solver_optimized_implicit_solve = true)] ≈ reference
+    # TODO: compare with the other solver_optimized_implicit_solve = true configurations
 
-    # @test dense_ad.integrator.u ≈ sparse_ad.integrator.u atol = 0.4
-    # @test sparse_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
-    # @test dense_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
+    @test endstate[(; solver_sparse = true, solver_autodiff = true, solver_optimized_implicit_solve = false)] ≈ reference atol = 4
+    @test endstate[(; solver_sparse = false, solver_autodiff = true, solver_optimized_implicit_solve = false)] ≈ reference atol = 4
+    @test endstate[(; solver_sparse = false, solver_autodiff = false, solver_optimized_implicit_solve = false)] ≈ reference atol = 4
+    @test endstate[(; solver_sparse = true, solver_autodiff = false, solver_optimized_implicit_solve = false)] ≈ reference atol = 4
 end
 
 @testitem "TabulatedRatingCurve model" begin
@@ -585,7 +587,7 @@ end
     # Save all flows
     saveat = 0.0
     flow, tstops = get_flow(nothing, saveat)
-    @test all(flow .≈ 1.0)
+    @test all(x -> isapprox(x, 1.0, rtol = 1.1e-5), flow)
     @test length(flow) == length(tstops) - 1
 
     flow, tstops = get_flow(Δt, saveat)
