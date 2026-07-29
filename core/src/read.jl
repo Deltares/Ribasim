@@ -56,28 +56,28 @@ end
 # Get a number parameter value
 function get_parameter_value(
         data_group,
+        parameter,
         T::Type{<:Number},
-        parameter_name::Symbol,
         default,
         ::NodeID;
         from_static = true,
         kwargs...,
     )::Tuple{Union{Missing, T}, Bool}
-    val = coalesce(getfield(last(data_group), parameter_name), default)
+    val = coalesce(parameter[last(data_group)], default)
     return val, true
 end
 
 # Get a NodeID parameter value
 function get_parameter_value(
         data_group,
+        parameter,
         ::Type{NodeID},
-        parameter_name,
         args...;
         node_ids_all,
         kwargs...,
     )
     @assert !isnothing(node_ids_all) "Setting a NodeID parameter requires passing node_ids_all to parse_parameter!."
-    return NodeID(getfield(last(data_group), parameter_name), node_ids_all), true
+    return NodeID(parameter[last(data_group)], node_ids_all), true
 end
 
 # Map interpolation type -> constructor
@@ -103,30 +103,35 @@ make_itp(
 # Get interpolation parameter value
 function get_parameter_value(
         data_group,
+        parameter,
         ::Type{T},
-        parameter_name::Symbol,
         default,
         node_id::NodeID;
         from_static::Bool = true,
+        data = nothing,
+        time_column = nothing,
         config::Union{Nothing, Config} = nothing,
         cyclic_time::Bool = false,
         take_first::NTuple{N, Symbol} where {N} = (),
         kwargs...,
     )::Tuple{T, Bool} where {T <: AbstractInterpolation}
     u, t = if from_static
-        val = coalesce(getfield(first(data_group), parameter_name), default)
+        val = coalesce(parameter[first(data_group)], default)
         [val, val], [0.0, prevfloat(Inf)]
     else
-        data_group = first(
-            IterTools.groupby(
-                row -> ntuple(i -> getfield(row, take_first[i]), length(take_first)),
-                data_group,
-            ),
-        )
-        parameter =
-            map(row -> coalesce(getfield(row, parameter_name), default), data_group)
-        times = map(row -> seconds_since(row.time, config.starttime), data_group)
-        parameter, times
+        if !isempty(take_first)
+            @assert !isnothing(data)
+            data_group = first(
+                IterTools.groupby(
+                    i -> ntuple(j -> getfield(data, take_first[j])[i], length(take_first)),
+                    data_group,
+                ),
+            )
+        end
+        @assert !isnothing(time_column)
+        parameter_values = map(i -> coalesce(parameter[i], default), data_group)
+        times = map(i -> seconds_since(time_column[i], config.starttime), data_group)
+        parameter_values, times
     end
     valid = valid_time_interpolation(t, u, node_id, cyclic_time)
     if !from_static
@@ -140,6 +145,23 @@ function get_parameter_value(
         config.interpolation.block_transition_period,
     )
     return itp, valid
+end
+
+"""Collect groups of a StructVector by node_id. Returns nothing if the input is empty."""
+function pregroup_by_node_id(sv::Union{StructVector, Nothing})
+    (isnothing(sv) || isempty(sv)) && return nothing
+    return collect(IterTools.groupby(row -> row.node_id, sv))
+end
+
+"""Get a node_id group from pre-grouped data and advance index when matched."""
+function take_node_id_group(groups::Union{Nothing, Vector}, group_i::Int, id, empty_group)
+    if !isnothing(groups) && group_i <= length(groups)
+        group = groups[group_i]
+        if first(group).node_id == id
+            return group, group_i + 1
+        end
+    end
+    return empty_group, group_i
 end
 
 """
@@ -192,12 +214,20 @@ function parse_parameter!(
         end
     end
 
+    static_parameter =
+        isnothing(static) || isempty(static) ? nothing : getproperty(static, parameter_name)
+    time_parameter = isnothing(time) || isempty(time) ? nothing : getproperty(time, parameter_name)
+
+    static_node_id = isnothing(static) || isempty(static) ? nothing : getproperty(static, :node_id)
+    time_node_id = isnothing(time) || isempty(time) ? nothing : getproperty(time, :node_id)
+    time_column = isnothing(time) || isempty(time) ? nothing : getproperty(time, :time)
+
     if !isnothing(static) && !isempty(static)
-        static_groups = IterTools.groupby(row -> row.node_id, static)
+        static_groups = IterTools.groupby(i -> static_node_id[i], eachindex(static_node_id))
         static_group, static_idx = iterate(static_groups)
     end
     if !isnothing(time) && !isempty(time)
-        time_groups = IterTools.groupby(row -> row.node_id, time)
+        time_groups = IterTools.groupby(i -> time_node_id[i], eachindex(time_node_id))
         time_group, time_idx = iterate(time_groups)
     end
 
@@ -209,9 +239,10 @@ function parse_parameter!(
         # Find out where to get the data from for this node
         in_static =
             isnothing(static) || isempty(static) ? false :
-            (first(static_group).node_id == id)
+            (static_node_id[first(static_group)] == id.value)
         in_time =
-            isnothing(time) || isempty(time) ? false : (first(time_group).node_id == id)
+            isnothing(time) || isempty(time) ? false :
+            (time_node_id[first(time_group)] == id.value)
         use_default = false
 
         if in_static && in_time
@@ -229,23 +260,35 @@ function parse_parameter!(
         end
 
         # Obtain the data
-        data_args = (T, parameter_name, default, id)
+        data_args = (T, default, id)
         data_kwargs = (; config, cyclic_time, take_first, node_ids_all)
 
         if use_default
             @assert has_default
             param_vec[id.idx] = is_itp ? itp_default : default
         elseif in_static
-            val, valid = get_parameter_value(static_group, data_args...; data_kwargs...)
+            val, valid =
+                get_parameter_value(static_group, static_parameter, data_args...; data_kwargs...)
             error |= !valid
             param_vec[id.idx] = val
             is_controllable &&
-                parse_control_states!(node, T, static_group, id, parameter_name, field_name)
+                parse_control_states!(
+                node,
+                T,
+                static_group,
+                static,
+                static_parameter,
+                id,
+                field_name,
+            )
         elseif in_time
             val, valid = get_parameter_value(
                 time_group,
+                time_parameter,
                 data_args...;
                 data_kwargs...,
+                data = time,
+                time_column,
                 from_static = false,
             )
             error |= !valid
@@ -270,19 +313,21 @@ function parse_control_states!(
         node::AbstractParameterNode,
         ::Type{T},
         static_group::Vector,
+        static::StructVector,
+        parameter,
         node_id::NodeID,
-        parameter_name::Symbol,
-        field_name::Symbol = parameter_name,
+        field_name::Symbol,
     ) where {T <: Union{<:Number, <:AbstractInterpolation}}
-    !hasproperty(first(static_group), :control_state) && return
+    hasproperty(static, :control_state) || return
+    control_state = static.control_state
     for group in
-        IterTools.groupby(row -> coalesce(row.control_state, nothing), static_group)
-        control_state = first(group).control_state
-        val = getfield(first(group), parameter_name)
-        (ismissing(control_state) || ismissing(val)) && continue
+        IterTools.groupby(i -> coalesce(control_state[i], nothing), static_group)
+        control_state_group = control_state[first(group)]
+        val = parameter[first(group)]
+        (ismissing(control_state_group) || ismissing(val)) && continue
         if T <: ConstantInterpolation
             push!(
-                node.control_mapping[(node_id, control_state)].itp_update_constant,
+                node.control_mapping[(node_id, control_state_group)].itp_update_constant,
                 ParameterUpdate(
                     field_name,
                     ConstantInterpolation(
@@ -295,7 +340,7 @@ function parse_control_states!(
             )
         elseif T <: LinearInterpolation
             push!(
-                node.control_mapping[(node_id, control_state)].itp_update_linear,
+                node.control_mapping[(node_id, control_state_group)].itp_update_linear,
                 ParameterUpdate(
                     field_name,
                     LinearInterpolation(
@@ -308,7 +353,7 @@ function parse_control_states!(
             )
         else
             push!(
-                node.control_mapping[(node_id, control_state)].scalar_update,
+                node.control_mapping[(node_id, control_state_group)].scalar_update,
                 ParameterUpdate(field_name, val),
             )
         end
@@ -320,8 +365,9 @@ parse_control_states!(
     ::AbstractParameterNode,
     ::Type{Bool},
     ::Vector,
+    ::StructVector,
+    _,
     ::NodeID,
-    ::Symbol,
     ::Symbol,
 ) = nothing
 
@@ -365,6 +411,8 @@ function initialize_control_mapping!(node::AbstractParameterNode, static::Struct
     end
     return
 end
+
+parse_control_states!(::BasinForcing, args...) = nothing
 
 function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inflow = true)
     if inflow
@@ -745,8 +793,20 @@ function ConcentrationData(
         fill(zero_constant_itp, n_substance) for _ in node_id
     ]
 
+    concentration_time_groups_raw = pregroup_by_node_id(concentration_time)
+    concentration_time_groups =
+        isnothing(concentration_time_groups_raw) ? nothing :
+        StructVector.(concentration_time_groups_raw)
+    concentration_time_group_i = 1
+    empty_concentration_time = concentration_time[1:0]
+
     for (id, cyclic_time) in zip(node_id, cyclic_times)
-        data_id = filter(row -> row.node_id == id.value, concentration_time)
+        data_id, concentration_time_group_i = take_node_id_group(
+            concentration_time_groups,
+            concentration_time_group_i,
+            id.value,
+            empty_concentration_time,
+        )
         for group in IterTools.groupby(row -> row.substance, data_id)
             first_row = first(group)
             substance_idx = find_index(Symbol(first_row.substance), substances)
@@ -758,8 +818,19 @@ function ConcentrationData(
                 filtered_constant_interpolation(group, :surface_runoff, cyclic_time, config; node_id = id)
         end
     end
+
+    loads_time_groups_raw = pregroup_by_node_id(loads_time)
+    loads_time_groups = isnothing(loads_time_groups_raw) ? nothing : StructVector.(loads_time_groups_raw)
+    loads_time_group_i = 1
+    empty_loads_time = loads_time[1:0]
+
     for (id, cyclic_time) in zip(node_id, cyclic_times)
-        data_id = filter(row -> row.node_id == id.value, loads_time)
+        data_id, loads_time_group_i = take_node_id_group(
+            loads_time_groups,
+            loads_time_group_i,
+            id.value,
+            empty_loads_time,
+        )
         for group in IterTools.groupby(row -> row.substance, data_id)
             first_row = first(group)
             substance_idx = find_index(Symbol(first_row.substance), substances)
@@ -772,10 +843,22 @@ function ConcentrationData(
 
     concentration_external_data =
         load_structvector(db, config, Schema.Basin.ConcentrationExternal)
+    concentration_external_groups_raw = pregroup_by_node_id(concentration_external_data)
+    concentration_external_groups =
+        isnothing(concentration_external_groups_raw) ? nothing :
+        StructVector.(concentration_external_groups_raw)
+    concentration_external_group_i = 1
+    empty_concentration_external = concentration_external_data[1:0]
+
     concentration_external = Dict{String, ScalarConstantInterpolation}[]
     for (id, cyclic_time) in zip(node_id, cyclic_times)
         concentration_external_id = Dict{String, ScalarConstantInterpolation}()
-        data_id = filter(row -> row.node_id == id.value, concentration_external_data)
+        data_id, concentration_external_group_i = take_node_id_group(
+            concentration_external_groups,
+            concentration_external_group_i,
+            id.value,
+            empty_concentration_external,
+        )
         for group in IterTools.groupby(row -> row.substance, data_id)
             first_row = first(group)
             substance = first_row.substance
@@ -982,13 +1065,32 @@ function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Conf
 
     node_ids_all = get_node_ids(db)
 
+    condition_groups_raw = pregroup_by_node_id(condition)
+    condition_groups = isnothing(condition_groups_raw) ? nothing : StructVector.(condition_groups_raw)
+    variable_groups_raw = pregroup_by_node_id(compound_variable)
+    variable_groups = isnothing(variable_groups_raw) ? nothing : StructVector.(variable_groups_raw)
+    condition_group_i = 1
+    variable_group_i = 1
+    empty_condition = condition[1:0]
+    empty_variable = compound_variable[1:0]
+
     # Loop over unique discrete_control node IDs
     for (id, cyclic_time) in zip(ids, cyclic_times)
         # Conditions associated with the current DiscreteControl node
-        conditions_node = filter(row -> row.node_id == id, condition)
+        conditions_node, condition_group_i = take_node_id_group(
+            condition_groups,
+            condition_group_i,
+            id,
+            empty_condition,
+        )
 
-        # Variables associated with the current Discretecontrol node
-        variables_node = filter(row -> row.node_id == id, compound_variable)
+        # Variables associated with the current DiscreteControl node
+        variables_node, variable_group_i = take_node_id_group(
+            variable_groups,
+            variable_group_i,
+            id,
+            empty_variable,
+        )
 
         # Compound variables associated with the current DiscreteControl node
         compound_variables_node = CompoundVariable[]

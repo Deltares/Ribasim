@@ -84,6 +84,8 @@ struct HalfLazyJacobian{M <: AbstractMatrix{Float64}} <: AbstractSciMLOperator{F
     backend::Any
 end
 
+Base.deepcopy(J::HalfLazyJacobian) = J # Deepcopy is slow and never needed
+
 # Used in the default GMRES linear solve for
 # dense Jacobians
 function LinearAlgebra.mul!(
