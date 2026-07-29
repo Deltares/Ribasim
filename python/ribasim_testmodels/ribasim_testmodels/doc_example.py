@@ -111,26 +111,53 @@ def local_pidcontrolled_cascade_model():
     )
 
     # Set up pid control
-    pid_control_data = {
-        "proportional": [0.1],
-        "integral": [0.00],
-        "derivative": [0.0],
-    }
     model.pid_control.add(
         Node(3, Point(-1.0, -1.0)),
-        [pid_control.Static(listen_node_id=[4], target=[2.0], **pid_control_data)],
+        [
+            pid_control.Static(
+                listen_node_id=[4],
+                target=[2.0],
+                proportional=[0.1],
+                integral=[0.0],
+                derivative=[0.0],
+            )
+        ],
     )
     model.pid_control.add(
         Node(14, Point(-1.0, -3.0)),
-        [pid_control.Static(listen_node_id=[6], target=[1.5], **pid_control_data)],
+        [
+            pid_control.Static(
+                listen_node_id=[6],
+                target=[1.5],
+                proportional=[0.1],
+                integral=[0.0],
+                derivative=[0.0],
+            )
+        ],
     )
     model.pid_control.add(
         Node(15, Point(1.0, -3.0)),
-        [pid_control.Static(listen_node_id=[8], target=[1.0], **pid_control_data)],
+        [
+            pid_control.Static(
+                listen_node_id=[8],
+                target=[1.0],
+                proportional=[0.1],
+                integral=[0.0],
+                derivative=[0.0],
+            )
+        ],
     )
     model.pid_control.add(
         Node(16, Point(3.0, -3.0)),
-        [pid_control.Static(listen_node_id=[10], target=[0.5], **pid_control_data)],
+        [
+            pid_control.Static(
+                listen_node_id=[10],
+                target=[0.5],
+                proportional=[0.1],
+                integral=[0.0],
+                derivative=[0.0],
+            )
+        ],
     )
 
     # Set up pump

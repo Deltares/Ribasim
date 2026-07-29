@@ -286,6 +286,8 @@ end
 end
 
 @testitem "Solver algorithm" begin
+    using LinearSolve: KLUFactorization, LUFactorization
+    using OrdinaryDiffEqNonlinearSolve: NLNewton
     using OrdinaryDiffEqBDF: QNDF
 
     model =
@@ -293,6 +295,14 @@ end
     (; alg) = model.integrator
 
     @test alg isa QNDF
+    @test alg.step_limiter! == Ribasim.limit_flow!
+    @test alg.nlsolve == NLNewton()
+    @test alg.linsolve ==
+        Ribasim.config.RibasimLinearSolve(KLUFactorization(; check_pattern = false), true)
+
+    dense_solver = Ribasim.config.Solver(; sparse = false)
+    dense_alg = Ribasim.config.algorithm(dense_solver)
+    @test dense_alg.linsolve == Ribasim.config.RibasimLinearSolve(LUFactorization(), true)
 end
 
 @testitem "FlatVector" begin
@@ -367,6 +377,19 @@ end
         @test T <: AbstractParameterNode
         @test hasfield(ParametersIndependent, snake_case(node_type))
     end
+end
+
+@testitem "unsafe_array" begin
+    a = [1.0, 2.0, 3.0]
+    b = [4.0, 5.0, 6.0]
+    x = vcat(a, b)
+
+    y = Ribasim.unsafe_array(view(x, 4:6))
+    @test y isa Vector{Float64}
+    @test y == b
+    # changing the input changes the output; no data copy is made
+    x[5] = 10.0
+    @test y[2] === 10.0
 end
 
 @testitem "find_index" begin

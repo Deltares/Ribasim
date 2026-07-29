@@ -47,11 +47,11 @@ try:
 except ImportError:
     try:
         # pre-v1 API
-        from datacompy.core import (  # pyrefly: ignore[missing-import]
+        from datacompy.core import (  # ty: ignore[unresolved-import]
             Compare as _Compare,
         )
     except ImportError:
-        _Compare = MissingOptionalModule("datacompy", "diff")
+        _Compare = MissingOptionalModule("datacompy", "diff")  # ty: ignore[conflicting-declarations]
 
 
 __all__ = ("TableModel",)
@@ -85,12 +85,14 @@ context_file_writing: ContextVar[dict[str, Path]] = ContextVar(
 )
 
 
-_init_context_var = ContextVar("_init_context_var", default=None)
+_init_context_var: ContextVar[dict[str, Any] | None] = ContextVar(
+    "_init_context_var", default=None
+)
 
 
 @contextmanager
 def init_context(value: dict[str, Any]) -> Generator[None]:
-    token = _init_context_var.set(value)  # pyrefly: ignore[bad-argument-type]
+    token = _init_context_var.set(value)
     try:
         yield
     finally:
@@ -130,7 +132,7 @@ class BaseModel(PydanticBaseModel):
         input data has already been validated at construction time.
         """
         original = cls.__setattr__
-        cls.__setattr__ = _bypass_setattr  # pyrefly: ignore[bad-assignment]
+        cls.__setattr__ = _bypass_setattr
         try:
             yield
         finally:
@@ -233,13 +235,13 @@ class BaseModel(PydanticBaseModel):
             getter = (
                 operator.itemgetter(*model_fields)
                 if model_fields
-                else lambda _: pydantic._utils._SENTINEL  # pyrefly: ignore[missing-attribute]
+                else lambda _: pydantic._utils._SENTINEL  # ty: ignore[unresolved-attribute]
             )
             try:
                 return getter(self.__dict__) == getter(other.__dict__)
             except KeyError:
-                self_fields_proxy = pydantic._utils.SafeGetItemProxy(self.__dict__)  # pyrefly: ignore[missing-attribute]
-                other_fields_proxy = pydantic._utils.SafeGetItemProxy(other.__dict__)  # pyrefly: ignore[missing-attribute]
+                self_fields_proxy = pydantic._utils.SafeGetItemProxy(self.__dict__)  # ty: ignore[unresolved-attribute]
+                other_fields_proxy = pydantic._utils.SafeGetItemProxy(other.__dict__)  # ty: ignore[unresolved-attribute]
                 return getter(self_fields_proxy) == getter(other_fields_proxy)
 
         else:
@@ -300,10 +302,11 @@ class FileModel(BaseModel, ABC):
 
         # Pydantic Model init requires a dict
         if isinstance(value, dict):
+            value_dict = cast(dict[str, Any], value)
             # We only load when the context is correct
 
             if info.context is None:
-                return value
+                return value_dict
             dir = info.context.get("directory")
             internal = info.context.get("internal", False)
             external = info.context.get("external", False)
@@ -311,18 +314,18 @@ class FileModel(BaseModel, ABC):
             # Skip loading when lazy (internal/external is False)
             # Otherwise load data and update our values
             # If no filepath is given, assume it is expected to be loaded from the database
-            filepath = value.get("filepath")
+            filepath = value_dict.get("filepath")
             if filepath is None and internal:
                 filepath = cls.default_filepath()
             elif filepath is not None and external:
                 filepath = Path(filepath)
             elif cls.allows_lazy():
-                value["lazy"] = True
-                return value
+                value_dict["lazy"] = True
+                return value_dict
 
             data = cls._load(dir / filepath)
-            value.update(data)
-            return value
+            value_dict.update(data)
+            return value_dict
         else:
             raise ValueError(f"Invalid type of value for FileModel: {type(value)}")
 
@@ -509,7 +512,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
     def _check_dataframe(cls, value: object) -> object:
         # Enable initialization with a Dict.
         if isinstance(value, dict) and len(value) > 0 and "df" not in value:
-            value = DataFrame(dict(**value))
+            value = DataFrame(value)
 
         # Enable initialization with a DataFrame.
         if isinstance(value, pd.DataFrame | gpd.GeoDataFrame):
@@ -574,7 +577,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         filepath = self.filepath or self.default_filepath()
 
         data = self._load(directory / filepath)
-        self.df = data.get("df", self.df)  # pyrefly: ignore[bad-assignment]
+        self.df = data.get("df", self.df)  # ty: ignore[invalid-assignment]
         self.lazy = False
         context_file_loading.set({})
 
@@ -590,9 +593,13 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         if not self.root:
             raise ValueError("Table is not connected to a model.")
         assert hasattr(self.root, "filepath") and hasattr(self.root, "input_dir")
-        if not self.root.filepath:
+        filepath = self.root.filepath
+        if not isinstance(filepath, Path):
             raise ValueError("Model has no filepath set.")
-        return self.root.filepath.parent / self.root.input_dir
+        input_dir = self.root.input_dir
+        if not isinstance(input_dir, Path):
+            raise ValueError("Model has no input directory set.")
+        return filepath.parent / input_dir
 
     def write(
         self,
@@ -721,7 +728,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         The type of the field `df` is known to always be an DataFrame[TableT]]] | None
         """
         optionalfieldtype = cls.model_fields["df"].annotation
-        fieldtype = optionalfieldtype.__args__[0]  # pyrefly: ignore[missing-attribute]
+        fieldtype = optionalfieldtype.__args__[0]
         T: TableT = fieldtype.__args__[0]
         return T
 
@@ -740,7 +747,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         if self.df is None:
             return self.__repr__()
         else:
-            table_html = self.df._repr_html_()  # pyrefly: ignore[not-callable]
+            table_html = self.df._repr_html_()  # ty: ignore[call-non-callable]
             return f"<div>{self.tablename()}</div>" + table_html
 
     def __getitem__(self, index) -> pd.DataFrame | gpd.GeoDataFrame:
@@ -764,15 +771,13 @@ class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
     Overrides the reading and writing methods of a TableModel.
     """
 
-    df: GeoDataFrame[TableT] | None = Field(  # pyrefly: ignore[bad-override]
-        default=None, exclude=True, repr=False
-    )
+    df: GeoDataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
 
     def sort(self):
         # Only sort the index (node_id / link_id) since this needs to be sorted in a GeoPackage.
         # Under most circumstances, this retains the input order,
         # making the link_id as stable as possible; useful for post-processing.
-        self.df.sort_index(inplace=True)  # pyrefly: ignore[missing-attribute]
+        self.df.sort_index(inplace=True)  # ty: ignore[unresolved-attribute]
 
     @classmethod
     def _from_db(cls, path: Path, table: str):

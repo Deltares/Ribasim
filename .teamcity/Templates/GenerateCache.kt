@@ -39,7 +39,6 @@ open class GenerateCache(platformOs: String) : Template() {
                 scriptContent =  header +
                 """
                 pixi --version
-                pixi run install-ci
                 pixi run initialize-julia-test
                 """.trimIndent()
             }

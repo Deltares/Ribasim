@@ -76,7 +76,7 @@ from ribasim.validation import link_neighbor_amount
 try:
     import xugrid as _xugrid
 except ImportError:
-    _xugrid = MissingOptionalModule("xugrid")
+    _xugrid = MissingOptionalModule("xugrid")  # ty: ignore[invalid-assignment]
 
 
 logger = logging.getLogger(__name__)
@@ -433,7 +433,7 @@ class Model(FileModel, ParentModel):
                 "directory": Path(filepath).parent,
             }
         ):
-            # pyrefly: ignore[missing-argument]
+            # ty: ignore[missing-argument]
             return cls(filepath=Path(filepath).name)
 
     def write(
@@ -657,7 +657,9 @@ class Model(FileModel, ParentModel):
 
         # vectorized check for outneighbor minimum
         if not from_node_info.empty:
-            min_out = from_node_info["from_node_type"].map(lambda t: link_amount[t][2])
+            min_out = from_node_info["from_node_type"].map(
+                lambda t: link_amount[cast(str, t)][2]
+            )
             violations = from_node_info[from_node_info["from_node_count"] < min_out]
             for _, row in violations.iterrows():
                 is_valid = False
@@ -683,7 +685,9 @@ class Model(FileModel, ParentModel):
 
         # vectorized check for inneighbor minimum
         if not to_node_info.empty:
-            min_in = to_node_info["to_node_type"].map(lambda t: link_amount[t][0])
+            min_in = to_node_info["to_node_type"].map(
+                lambda t: link_amount[cast(str, t)][0]
+            )
             violations = to_node_info[to_node_info["to_node_count"] < min_in]
             for _, row in violations.iterrows():
                 is_valid = False
@@ -723,8 +727,9 @@ class Model(FileModel, ParentModel):
             config["filepath"] = filepath  # make sure we store the whole filepath
             directory = filepath.parent / config["input_dir"]
             context_file_loading.get()["directory"] = directory
-            # pyrefly: ignore[unsupported-operation]
-            _init_context_var.get()["directory"] = directory
+            context = _init_context_var.get()
+            assert context is not None
+            context["directory"] = directory
 
             db_path = directory / "database.gpkg"
             if not db_path.is_file():

@@ -155,10 +155,9 @@ function check_result_netcdf_files_writable!(config::Config)::Nothing
     )
 end
 
-#! format: off
 "Get a list of dimension names given a file and variable name."
 function nc_dims(file_name::String, var_name::String)::Vector{String}
-    if var_name in nc_dim_names
+    return if var_name in nc_dim_names
         # dimension variables are only themselves
         [var_name]
     elseif occursin(r"^(from|to)_node_(type|id)$", var_name)
@@ -170,7 +169,7 @@ function nc_dims(file_name::String, var_name::String)::Vector{String}
         ["node_id"]
     elseif file_name == "allocation_flow" && var_name == "subnetwork_id"
         ["link_id"]
-    # data variables have the same dimensions in a file
+        # data variables have the same dimensions in a file
     elseif file_name == "basin"
         ["node_id", "time"]
     elseif file_name == "flow"
@@ -195,7 +194,6 @@ function nc_dims(file_name::String, var_name::String)::Vector{String}
         error("Unknown dimensionality for file: $file_name, variable: $var_name")
     end
 end
-#! format: on
 
 """
 NetCDF global attributes based on CF conventions.

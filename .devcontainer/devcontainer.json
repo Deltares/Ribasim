@@ -16,7 +16,7 @@
                 "charliermarsh.ruff",
                 "GitHub.copilot",
                 "julialang.language-julia",
-                "meta.pyrefly",
+                "astral-sh.ty",
                 "ms-python.python",
                 "ms-toolsai.jupyter",
                 "njpwerner.autodocstring",

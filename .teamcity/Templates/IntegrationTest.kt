@@ -56,21 +56,12 @@ open class IntegrationTest (platformOs: String) : Template() {
 
         steps {
             script {
-                name = "Set up pixi"
-                id = "RUNNER_1505"
-                workingDir = "ribasim"
-                scriptContent = header +
-                """
-                pixi --version
-                pixi run install-ci
-                """.trimIndent()
-            }
-            script {
                 name = "Run integration tests"
                 id = "RUNNER_1507"
                 workingDir = "ribasim"
                 scriptContent = header +
                 """
+                pixi --version
                 pixi run model-integration-test
                 """.trimIndent()
             }

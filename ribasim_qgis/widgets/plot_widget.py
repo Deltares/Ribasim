@@ -439,12 +439,10 @@ class PlotWidget(QWidget):
             self._web_view = QWebView()
             ws = self._web_view.settings()
             ws.setAttribute(
-                # pyrefly: ignore[bad-argument-type]
                 QWebSettings.WebGLEnabled,
                 True,
             )
             ws.setAttribute(
-                # pyrefly: ignore[bad-argument-type]
                 QWebSettings.Accelerated2dCanvasEnabled,
                 True,
             )
@@ -476,7 +474,7 @@ class PlotWidget(QWidget):
         self._initialized = False
         self._page_loaded = False
         self._pending_js: str | None = None
-        # pyrefly: ignore[missing-attribute]
+        # ty: ignore[unresolved-attribute]
         self._web_view.loadFinished.connect(self._on_load_finished)
 
         # Keep node/link buttons in sync with the active layer and map tool.
@@ -843,9 +841,9 @@ class PlotWidget(QWidget):
         if page is None:
             return
         if _BACKEND is _WebViewBackend.WEBENGINE:
-            page.runJavaScript(js)
+            page.runJavaScript(js)  # ty: ignore[unresolved-attribute]
         else:
-            frame = page.mainFrame()  # pyrefly: ignore[missing-attribute]
+            frame = page.mainFrame()  # ty: ignore[unresolved-attribute]
             if frame is not None:
                 frame.evaluateJavaScript(js)
 

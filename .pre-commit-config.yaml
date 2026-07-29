@@ -54,8 +54,8 @@ repos:
         args: [--write-changes, --force-exclude]
         types: [text]
         stages: [pre-commit, pre-merge-commit, pre-push, manual]
-      - id: pyrefly-check
-        name: Pyrefly (type checking)
+      - id: typecheck
+        name: typecheck
         entry: pixi run typecheck
         pass_filenames: false
         language: system

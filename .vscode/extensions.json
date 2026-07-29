@@ -3,7 +3,7 @@
         "aviatesk.jetls-client",
         "charliermarsh.ruff",
         "julialang.language-julia",
-        "meta.pyrefly",
+        "astral-sh.ty",
         "ms-python.python",
         "ms-toolsai.jupyter",
         "njpwerner.autodocstring",

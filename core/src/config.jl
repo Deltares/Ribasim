@@ -23,7 +23,12 @@ using OrdinaryDiffEqBDF: FBDF, QNDF
 using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
 import OrdinaryDiffEqDifferentiation
 using LinearSolve:
-    KLUFactorization, LUFactorization, SciMLLinearSolveAlgorithm, LinearSolve, SciMLLinearSolveAlgorithm, needs_concrete_A
+    KLUFactorization,
+    LUFactorization,
+    SciMLLinearSolveAlgorithm,
+    LinearSolve,
+    SciMLLinearSolveAlgorithm,
+    needs_concrete_A
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,

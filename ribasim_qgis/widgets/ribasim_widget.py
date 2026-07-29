@@ -108,7 +108,7 @@ class RibasimWidget(QWidget):
         group_alive = self.group is not None
         if group_alive:
             try:
-                _ = cast(QgsLayerTreeGroup, self.group).parent()
+                _ = self.group.parent()
             except RuntimeError as e:
                 if e.args and e.args[0] == PYQT_DELETED_ERROR:
                     self.group = None
