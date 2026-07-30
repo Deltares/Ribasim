@@ -1789,7 +1789,9 @@ version = "10.44.0+1"
 
 [[deps.PackageCompiler]]
 deps = ["Artifacts", "Glob", "LazyArtifacts", "Libdl", "Pkg", "Printf", "RelocatableFolders", "TOML", "UUIDs", "p7zip_jll"]
-git-tree-sha1 = "513193b976208b1b646ad4303323153e8bff0997"
+git-tree-sha1 = "8579d35f16cd50da52477f9f80355c587f3f93bb"
+repo-rev = "ribasim_libdir"
+repo-url = "https://github.com/visr/PackageCompiler.jl"
 uuid = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
 version = "2.4.0"
 

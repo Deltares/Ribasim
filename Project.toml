@@ -82,6 +82,7 @@ TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 
 [sources]
 DataInterpolations = {url = "https://github.com/SciML/DataInterpolations.jl", rev = "fix_SCT_for_intinv_itps"}
+PackageCompiler = {url = "https://github.com/JuliaLang/PackageCompiler.jl", rev = "ribasim_libdir"}
 Ribasim = {path = "core"}
 
 [compat]
