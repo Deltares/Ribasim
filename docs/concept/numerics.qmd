@@ -139,6 +139,26 @@ $$
 \end{align*}
 $$
 
+## The residual for BDF(k) methods
+
+[BDF(k) solvers](https://en.wikipedia.org/wiki/Backward_differentiation_formula) are based on approximating the time derivative of the state with a $k+1$ term backwards difference formula:
+
+$$
+  \left.\frac{\text{d}u}{\text{d}t}\right|_{t=t_n} \approx \frac{1}{\Delta t}_{j=1}\sum_{j=0}^k\alpha_j u_{n + 1 - j}.
+$$
+
+These methods use a $k$ step history of the state to perform the integration step, which only works under certain continuity criteria. Therefore Ribasim uses the QNDF solver algorithm by default, which adaptively chooses the best $k$ for a given timestep. The Implicit Euler method is the special case $k = 1$, which we will use to build some intuition. In that case, the residual terms for the different state components are
+
+$$
+\begin{align*}
+\tilde{u}_s &= \frac{s_{n+1} - s_n}{\Delta t} - M\frac{Q_{n+1} - Q_n}{\Delta t} \\
+\tilde{u}_Q &= \frac{Q_{n+1} - Q_n}{\Delta t} - q(s_{n+1}, I_{n+1}, t_{n+1}) \\
+\tilde{u}_I &= \frac{I_{n+1} - I_n}{\Delta t} - e(s_{n+1}, t_{n+1})
+\end{align*}
+$$
+
+in which we recognize discretized versions of the equations [here](equations.qmd#formal-model-description).
+
 ## Error control
 
 The default scalar error formulation used in `OrdinaryDiffEq.jl` is the root-mean-square of
@@ -155,11 +175,18 @@ which is computed elementwise. A timestep is accepted if $\|E\|_\text{RMS}\le 1$
 - $\alpha$ is the absolute tolerance;
 - $\rho$ is the relative tolerance.
 
-Recall that the Ribasim state vector consists of the storage, cumulative flow and PID integral components. For the storage state the above error formulation is directly applicable, but the cumulative flow and PID integral components have the property that they can grow without bound as the simulation progresses. That means that as these states grow, the error gets more and more relaxed due to the relative scaling term. Therefore, for the elements of these components we use a slightly different formulation:
+This default formulation is a good fit when the magnitude of a state is a meaningful yardstick for the error made in it. For the Ribasim state vector this is not the case for any of its components, so we replace $\max(|u|, |u_\text{prev}|)$ by the change of the state over the timestep:
 
 $$
-\frac{\tilde{u}}{\alpha + \rho|u - u_\text{prev}|}.
+E = \frac{\tilde{u}}{\alpha + \rho|u - u_\text{prev}|}.
 $$
+
+The motivation differs slightly per component, but comes down to the same thing: these states are all *accumulated* quantities, and what has been accumulated in the past says nothing about the accuracy required now.
+
+- The cumulative flow $Q$ and PID integral $I$ grow without bound as the simulation progresses. With the default formulation the tolerance would become more and more relaxed over time, simply because the simulation has been running for a while.
+- The storage $s$ does not grow without bound, but its magnitude is set by the size of the Basin rather than by the dynamics. A large Basin with a small throughflow would get a very loose tolerance, whereas a small Basin with the same absolute error would get a strict one. The quantity we actually care about is how well the storage *change* over the timestep is resolved.
+
+Using the state increment as the reference makes the criterion scale-free in this respect: the same relative accuracy is demanded of a large and a small Basin, and of the start and the end of a long simulation. It also treats the storage and cumulative flow components consistently, which matters because the two are tied together by the water balance $s = MQ + s_0$.
 
 ## Correcting the solver
 

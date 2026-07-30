@@ -29,10 +29,12 @@ using DifferentiationInterface:
     prepare_pushforward,
     pushforward!,
     prepare_derivative,
+    derivative!,
     second_derivative
 
-using ForwardDiff: ForwardDiff, derivative as forward_diff
+using ForwardDiff: derivative as forward_diff
 
+# Traits of the custom mass matrix and Jacobian operators
 using ArrayInterface: ArrayInterface
 
 # Algorithms for solving ODEs.
@@ -44,7 +46,6 @@ using DiffEqBase: DiffEqBase, prepare_alg, ODE_DEFAULT_NORM
 import ADTypes
 using ADTypes: AutoForwardDiff, AutoFiniteDiff
 import ForwardDiff
-import NaNMath
 import OrdinaryDiffEqBDF
 
 # Interface for defining and solving the ODE problem of the physical layer.
@@ -65,6 +66,9 @@ using SciMLBase:
 
 using OrdinaryDiffEqDifferentiation:
     OrdinaryDiffEqDifferentiation, do_newJW, jacobian2W!, dolinsolve
+
+# The custom mass matrix and Jacobian are implemented as SciMLOperators
+using SciMLOperators: SciMLOperators, WOperator, AbstractSciMLOperator
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
@@ -171,14 +175,13 @@ using Dates: Second
 
 using Printf: @sprintf
 
-using SciMLOperators: SciMLOperators, WOperator, AbstractSciMLOperator
-
 include("cvectors.jl")
 using .CVectors: CVector, getaxes, getdata
 include("schema.jl")
 include("config.jl")
 using .config
 using .config: with_mass_matrix
+
 include("parameter.jl")
 include("validation.jl")
 include("formulate_flows.jl")

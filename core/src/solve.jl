@@ -934,56 +934,37 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
         )
     end
 
+    # All state components (storage, flow, PID integral) are scaled by the magnitude
+    # of their change over the time step rather than by their absolute magnitude.
+    # The states are cumulative quantities whose absolute value carries no information
+    # about the local error: e.g. the storage of a large Basin with little throughflow
+    # would get a very loose tolerance.
+    for idx in eachindex(out_raw)
+        abs_diff = abs(u₁_raw[idx] - u₀_raw[idx])
+        out_raw[idx] = DiffEqBase.calculate_residuals(
+            ũ_raw[idx],
+            abs_diff,
+            abs_diff,
+            abstol,
+            reltol,
+            internalnorm,
+            t
+        )
+    end
+
     out = CVector(out_raw, state_ranges)
-    ũ = CVector(ũ_raw, state_ranges)
-    u₀ = CVector(u₀_raw, state_ranges)
-    u₁ = CVector(u₁_raw, state_ranges)
 
-    # Storage terms
-    for idx in eachindex(out.storage)
-        out.storage[idx] = DiffEqBase.calculate_residuals(
-            ũ.storage[idx],
-            u₀.storage[idx],
-            u₁.storage[idx],
-            abstol,
-            reltol,
-            internalnorm,
-            t
-        )
-    end
+    accumulate_residual!(p_independent.convergence_storage, out.storage)
+    accumulate_residual!(p_independent.convergence_flow, out.flow)
+    p_independent.convergence_ncalls[1] += 1
 
-    # Flow terms
-    for idx in eachindex(out.flow)
-        abs_diff = abs(u₁.flow[idx] - u₀.flow[idx])
-        out.flow[idx] = DiffEqBase.calculate_residuals(
-            ũ.flow[idx],
-            abs_diff,
-            abs_diff,
-            abstol,
-            reltol,
-            internalnorm,
-            t
-        )
-    end
+    return nothing
+end
 
-    # PID integral terms
-    for idx in eachindex(out.pid_integral)
-        abs_diff = abs(u₁.pid_integral[idx] - u₀.pid_integral[idx])
-        out.pid_integral[idx] = DiffEqBase.calculate_residuals(
-            ũ.pid_integral[idx],
-            abs_diff,
-            abs_diff,
-            abstol,
-            reltol,
-            internalnorm,
-            t
-        )
-    end
-
-    # Accumulate residual for bottleneck identification
+function accumulate_residual!(convergence, residual)
     max_abs_residual = 0.0
-    for i in eachindex(ũ.flow)
-        a = abs(ũ.flow[i])
+    for i in eachindex(residual)
+        a = abs(residual[i])
         if isfinite(a)
             max_abs_residual = max(max_abs_residual, a)
         end
@@ -991,20 +972,16 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
     if iszero(max_abs_residual)
         # If no finite residual exists, set maximum badness (1.0) for
         # non finite residuals
-        for i in eachindex(ũ.flow)
-            residual = ũ.flow[i]
-            !isfinite(residual) && (p_independent.convergence[i] += 1.0)
+        for i in eachindex(residual)
+            !isfinite(residual[i]) && (convergence[i] += 1.0)
         end
-
     else
-        for i in eachindex(ũ.flow)
-            a = abs(ũ.flow[i])
+        for i in eachindex(residual)
+            a = abs(residual[i])
             contribution = isfinite(a) ? a / max_abs_residual : 1.0
-            p_independent.convergence[i] += contribution
+            convergence[i] += contribution
         end
     end
-    p_independent.convergence_ncalls[1] += 1
-
     return nothing
 end
 

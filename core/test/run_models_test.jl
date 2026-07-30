@@ -587,7 +587,7 @@ end
     # Save all flows
     saveat = 0.0
     flow, tstops = get_flow(nothing, saveat)
-    @test all(x -> isapprox(x, 1.0, rtol = 1.1e-5), flow)
+    @test all(flow .≈ 1.0)
     @test length(flow) == length(tstops) - 1
 
     flow, tstops = get_flow(Δt, saveat)

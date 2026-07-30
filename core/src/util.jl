@@ -475,10 +475,14 @@ end
 Get the time interval between (flow) saves
 """
 function get_Δt(integrator)::Float64
-    (; p, t, dt) = integrator
+    (; p, t, tprev) = integrator
     (; saveat) = p.p_independent.graph[]
     return if iszero(saveat)
-        dt
+        # Not `integrator.dt`: `t` is computed as `fl(tprev + dt)`, so for large `t`
+        # and small `dt` the elapsed interval differs from `dt` by up to `eps(t) / 2`.
+        # The cumulative flows are integrated over `[tprev, t]`, so that is the
+        # interval to divide by.
+        t - tprev
     elseif isinf(saveat)
         t
     else

@@ -410,7 +410,15 @@ end
     end
 
     @test occursin(
-        "Warning: Convergence bottlenecks in descending order of severity:",
+        "Warning: Water balance convergence bottlenecks",
+        output,
+    )
+    @test occursin("Basin #11 = ", output)
+    @test occursin("Basin #31 = ", output)
+    @test occursin("Basin #51 = ", output)
+
+    @test occursin(
+        "Warning: Flow physics convergence bottlenecks",
         output,
     )
     @test occursin("Pump #12 = ", output)

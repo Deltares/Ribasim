@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Cumulative flows and PID integral terms are now solver states alongside the Basin storages, solved as a mass matrix system with a custom Jacobian and linear solve. [#3150](https://github.com/Deltares/Ribasim/pull/3150)
+- Solver setting `optimized_implicit_solve` (default `true`) to fall back to a less optimized but potentially more robust implicit solve. [#3150](https://github.com/Deltares/Ribasim/pull/3150)
+
+### Changed
+- Flows are integrated by the solver itself rather than reconstructed afterwards, so reported flow volumes close the water balance up to floating point precision. [#3150](https://github.com/Deltares/Ribasim/pull/3150)
+- Error control scales the residual of every state component by its change over the timestep, instead of by its magnitude. This avoids tolerances that loosen as cumulative states grow, or that depend on Basin size rather than on the dynamics. [#3150](https://github.com/Deltares/Ribasim/pull/3150)
+- Solver default `reltol` is now `1e-6` (was `1e-5`), and `specialize` now defaults to `true`. Setting `specialize = false` is no longer recommended and may be removed. [#3150](https://github.com/Deltares/Ribasim/pull/3150)
+- Python: Correct the documented and default `abstol` to `1e-5`, matching the core. [#3150](https://github.com/Deltares/Ribasim/pull/3150)
+- The `convergence` column of the Basin results is now a genuine storage convergence measure, instead of being derived from the convergence of the evaporation and infiltration flows. The `convergence` column of the flow results remains flow based. [#3150](https://github.com/Deltares/Ribasim/pull/3150)
+- Both convergence columns are computed from the residuals accumulated over all Newton iterations in the saveat interval, instead of from only the final residual of each converged Newton solve. This gives a better indication of how much work the solver spent on a node or link. [#3150](https://github.com/Deltares/Ribasim/pull/3150)
+- Because the convergence output is derived from these residuals, the change in residual scaling described above also changes the reported convergence values. [#3150](https://github.com/Deltares/Ribasim/pull/3150)
+
 ## [v2026.1.2] - 2026-06-16
 
 This release brings several improvements to the QGIS plugin, most notably the ability to compare observed and simulated timeseries using Observation nodes.

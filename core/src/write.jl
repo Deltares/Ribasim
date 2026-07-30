@@ -385,6 +385,7 @@ function basin_data(model::Model; table::Bool = true)
     storage_rate = FlatVector(saved.flow.saveval, :storage_rate)
     balance_error = FlatVector(saved.flow.saveval, :balance_error)
     relative_error = FlatVector(saved.flow.saveval, :relative_error)
+    convergence = FlatVector(saved.flow.saveval, :convergence_storage)
 
     time = data.time[begin:(end - 1)]
     node_id = Int32.(data.node_id)
@@ -414,6 +415,7 @@ function basin_data(model::Model; table::Bool = true)
         infiltration,
         balance_error,
         relative_error,
+        convergence,
     )
 end
 
@@ -465,7 +467,7 @@ function flow_data(model::Model; table::Bool = true)
             internal_flow_rate[fi] =
                 get_flow(saved_flow.flow, link.link, p)
             internal_convergence[fi] =
-                get_flow(saved_flow.convergence, link.link, p)
+                get_flow(saved_flow.convergence_flow, link.link, p)
         end
         mul!(
             view(flow_rate, (1 + (ti - 1) * nflow):(ti * nflow)),

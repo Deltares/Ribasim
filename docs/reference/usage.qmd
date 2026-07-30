@@ -46,13 +46,16 @@ A too large error generally indicates an error in the code or floating point tru
 
 The Jacobian matrix provides information about the local sensitivity of the model with respect to changes in the states.
 For implicit solvers it must be calculated often, which can be expensive to do.
-There are several methods to do this.
-By default Ribasim uses a Jacobian derived automatically using [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/) with memory management provided by [PreallocationTools.jl](https://docs.sciml.ai/PreallocationTools/stable/).
-If this is not used by setting `autodiff = false`, the Jacobian is calculated with a finite difference method, which can be less accurate and more expensive.
+By default (`optimized_implicit_solve = true`) Ribasim supplies its own Jacobian, which is never formed as a matrix.
+Its structure follows directly from the network, and the blocks that cannot be written down analytically are obtained with [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/) through [DifferentiationInterface.jl](https://juliadiff.org/DifferentiationInterface.jl/DifferentiationInterface/stable/).
+This makes the `autodiff` and `sparse` settings below only relevant for the fallback `optimized_implicit_solve = false`, with the exception that `sparse` also selects the factorization used in the linear solve of both.
 
-By default the Jacobian matrix is a sparse matrix (`sparse = true`).
+In the fallback, the full Jacobian of the right hand side is computed with [DifferentiationInterface.jl](https://juliadiff.org/DifferentiationInterface.jl/DifferentiationInterface/stable/).
+By default this uses ForwardDiff.jl; setting `autodiff = false` switches to a finite difference method, which can be less accurate and more expensive.
+
+Also in the fallback, the Jacobian is a sparse matrix by default (`sparse = true`).
 Since each state typically only depends on a small number of other states, this is generally more efficient, especially for larger models.
-The sparsity structure is calculated from the network and provided as a Jacobian prototype to the solver.
+The sparsity structure is detected with [SparseConnectivityTracer.jl](https://adrianhill.de/SparseConnectivityTracer.jl/stable/) and provided as a Jacobian prototype to the solver.
 For small or highly connected models it could be faster to use a dense Jacobian matrix instead by setting `sparse = false`.
 
 The total maximum number of iterations `maxiters = 1e9`, can normally stay as-is unless doing extremely long simulations.
@@ -376,7 +379,7 @@ The Basin results contain:
 - The `balance_error` is the difference between the `storage_rate` on one side and the total inflow and outflow on the other side: `storage_rate` - (total inflow - total outflow).
   It can be used to check if the numerical error when solving the water balance is sufficiently small.
 - The `relative_error` is the fraction of the `balance_error` over the mean of the `total_inflow` and `total_outflow`.
-- The `convergence` is the scaled residual of the solver, giving an indication of which nodes converge the worst (are hardest to solve). A higher value indicates a node that is harder to solve.
+- The `convergence` indicates how hard this Basin was to solve compared to the other Basins, see [convergence output](#sec-convergence).
 
 For a more in-depth explanation of the water balance error see [here](/concept/equations.qmd#the-water-balance-error).
 
@@ -409,7 +412,27 @@ ds
 
 The `link_id` value is the same as the `fid` written to the Link table, and can be used to directly look up the Link geometry.
 Flows from the "from" to the "to" node have a positive sign, and if the flow is reversed it will be negative.
-- The `convergence` is the scaled residual of the solver, giving an indication of which nodes converge the worst (are hardest to solve).
+The `convergence` indicates how hard the flow over this link was to solve compared to the other flows, see [convergence output](#sec-convergence).
+
+## Convergence output {#sec-convergence}
+
+Both the Basin and the flow results contain a `convergence` column, which indicates which parts of the model are hardest for the solver to solve.
+This is useful to find the bottleneck when a simulation is slow or fails to converge.
+The same information is written to the log at the end of a simulation, as the water balance bottlenecks (Basins) and the flow physics bottlenecks (flow links).
+
+While taking the timesteps within a `saveat` interval, the solver repeatedly evaluates the scaled residual of every state.
+How these residuals are scaled is described in the [numerical considerations](/concept/numerics.qmd).
+Each time this happens, the residuals of the Basin storages are scaled such that the largest one becomes 1, and the same is done separately for the residuals of the flows.
+The reported `convergence` is the average of these scaled values over all residual evaluations in the `saveat` interval, and therefore always lies between 0 and 1.
+
+This means that `convergence` is a relative measure, and not an absolute error:
+
+- A value close to 1 means that this Basin or link was consistently the hardest to solve, and is a likely candidate for causing small timesteps.
+- A value close to 0 means that this Basin or link never limited the solver.
+- Because the value is relative, every simulation has states with a high `convergence`, also when the model solves without any problems.
+
+The `convergence` is `missing` if the solver did not evaluate any scaled residuals in the `saveat` interval.
+This is the case when a fixed timestep (`dt`) is combined with an explicit algorithm, since then there is neither a nonlinear solve nor an error estimate, and when `optimized_implicit_solve = false`.
 
 ## State - `basin_state.nc` {#sec-state}
 
