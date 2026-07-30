@@ -248,3 +248,181 @@ end
     @test Ribasim.Model(config).integrator.p.p_independent.flow_boundary.flow_rate isa
         Vector{<:SmoothedConstantInterpolation}
 end
+
+@testitem "pregroup_by_node_id: empty input" begin
+    using Dates: DateTime
+    using Ribasim: pregroup_by_node_id
+
+    # Test with nothing
+    result = pregroup_by_node_id(nothing)
+    @test isnothing(result)
+
+    # Test with empty StructVector
+    result = pregroup_by_node_id(
+        Ribasim.StructVector{Ribasim.Schema.Basin.Concentration}(
+            node_id = Int32[],
+            time = DateTime[],
+            drainage = Float64[],
+            precipitation = Float64[],
+            surface_runoff = Float64[],
+            substance = String[],
+        )
+    )
+    @test isnothing(result)
+end
+
+@testitem "pregroup_by_node_id: single and multiple groups" begin
+    using Dates: DateTime
+    using Ribasim: pregroup_by_node_id
+
+    # Create test data with multiple node_ids
+    data = Ribasim.StructVector{Ribasim.Schema.Basin.Concentration}(
+        node_id = Int32[1, 1, 2, 2, 2, 3],
+        time = fill(DateTime(2020), 6),
+        drainage = ones(6),
+        precipitation = ones(6),
+        surface_runoff = ones(6),
+        substance = fill("substance", 6),
+    )
+
+    result = pregroup_by_node_id(data)
+    @test result !== nothing
+    @test length(result) == 3
+
+    # Check first group (node_id = 1)
+    @test first(result[1]).node_id == 1
+    @test length(result[1]) == 2
+
+    # Check second group (node_id = 2)
+    @test first(result[2]).node_id == 2
+    @test length(result[2]) == 3
+
+    # Check third group (node_id = 3)
+    @test first(result[3]).node_id == 3
+    @test length(result[3]) == 1
+end
+
+@testitem "group_lookup_by_node_id: lookup and retrieval" begin
+    using Dates: DateTime
+    using Ribasim: group_lookup_by_node_id
+
+    # Create test data
+    data = Ribasim.StructVector{Ribasim.Schema.Basin.Concentration}(
+        node_id = Int32[1, 1, 2, 2, 3],
+        time = fill(DateTime(2020), 5),
+        drainage = ones(5),
+        precipitation = ones(5),
+        surface_runoff = ones(5),
+        substance = fill("substance", 5),
+    )
+
+    lookup = group_lookup_by_node_id(data)
+
+    # Test empty/nothing input
+    empty_lookup = group_lookup_by_node_id(nothing)
+    @test isempty(empty_lookup)
+
+    # Test lookup retrieval
+    @test haskey(lookup, Int32(1))
+    @test haskey(lookup, Int32(2))
+    @test haskey(lookup, Int32(3))
+    @test !haskey(lookup, Int32(4))
+
+    # Verify group contents
+    @test length(lookup[Int32(1)]) == 2
+    @test length(lookup[Int32(2)]) == 2
+    @test length(lookup[Int32(3)]) == 1
+
+    # Verify node_id consistency
+    @test all(lookup[Int32(1)].node_id .== 1)
+    @test all(lookup[Int32(2)].node_id .== 2)
+    @test all(lookup[Int32(3)].node_id .== 3)
+end
+
+@testitem "group_lookup_by_compound_variable_id: lookup and retrieval" begin
+    using Dates: DateTime
+    using Ribasim: group_lookup_by_compound_variable_id
+
+    # Create test data with compound_variable_id
+    data = Ribasim.StructVector{Ribasim.Schema.DiscreteControl.Condition}(
+        node_id = Int32[1, 1, 1, 2, 2],
+        compound_variable_id = Int32[10, 10, 20, 20, 30],
+        condition_id = Int32[1, 2, 3, 4, 5],
+        time = fill(DateTime(2020), 5),
+        threshold_high = ones(5),
+        threshold_low = ones(5),
+    )
+
+    lookup = group_lookup_by_compound_variable_id(data)
+
+    # Test lookup retrieval
+    @test haskey(lookup, Int32(10))
+    @test haskey(lookup, Int32(20))
+    @test haskey(lookup, Int32(30))
+    @test !haskey(lookup, Int32(40))
+
+    # Verify group contents
+    @test length(lookup[Int32(10)]) == 2
+    @test length(lookup[Int32(20)]) == 2
+    @test length(lookup[Int32(30)]) == 1
+
+    # Verify compound_variable_id consistency
+    @test all(lookup[Int32(10)].compound_variable_id .== 10)
+    @test all(lookup[Int32(20)].compound_variable_id .== 20)
+    @test all(lookup[Int32(30)].compound_variable_id .== 30)
+end
+
+@testitem "pregroup_by_compound_variable_id: preserves order" begin
+    using Dates: DateTime
+    using Ribasim: pregroup_by_compound_variable_id
+
+    # Create test data where compound_variable_id groups appear in non-sorted order (20 before 10)
+    # IterTools.groupby only merges consecutive equal elements, so groups must be contiguous.
+    # This verifies that the output order reflects input order (20, 10, 30) rather than sorted order.
+    data = Ribasim.StructVector{Ribasim.Schema.DiscreteControl.Condition}(
+        node_id = Int32[1, 1, 2, 2, 1],
+        compound_variable_id = Int32[20, 20, 10, 10, 30],
+        condition_id = Int32[1, 2, 3, 4, 5],
+        time = fill(DateTime(2020), 5),
+        threshold_high = ones(5),
+        threshold_low = ones(5),
+    )
+
+    result = pregroup_by_compound_variable_id(data)
+
+    # Test that result is non-empty
+    @test length(result) == 3
+
+    # Test order preservation: groups appear in input order (20, 10, 30), not sorted order (10, 20, 30)
+    @test first(result[1]).compound_variable_id == 20
+    @test first(result[2]).compound_variable_id == 10
+    @test first(result[3]).compound_variable_id == 30
+
+    # Verify group contents
+    @test length(result[1]) == 2
+    @test length(result[2]) == 2
+    @test length(result[3]) == 1
+end
+
+@testitem "grouping helpers with single element" begin
+    using Dates: DateTime
+    using Ribasim: pregroup_by_node_id, group_lookup_by_node_id, pregroup_by_compound_variable_id
+
+    # Test pregroup_by_node_id with single element
+    single_data = Ribasim.StructVector{Ribasim.Schema.Basin.Concentration}(
+        node_id = Int32[5],
+        time = [DateTime(2020)],
+        drainage = [1.0],
+        precipitation = [2.0],
+        surface_runoff = [3.0],
+        substance = ["tracer"],
+    )
+
+    groups = pregroup_by_node_id(single_data)
+    @test length(groups) == 1
+    @test length(first(groups)) == 1
+
+    lookup = group_lookup_by_node_id(single_data)
+    @test haskey(lookup, Int32(5))
+    @test length(lookup[Int32(5)]) == 1
+end

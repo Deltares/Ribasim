@@ -56,28 +56,28 @@ end
 # Get a number parameter value
 function get_parameter_value(
         data_group,
+        parameter,
         T::Type{<:Number},
-        parameter_name::Symbol,
         default,
         ::NodeID;
         from_static = true,
         kwargs...,
     )::Tuple{Union{Missing, T}, Bool}
-    val = coalesce(getfield(last(data_group), parameter_name), default)
+    val = coalesce(parameter[last(data_group)], default)
     return val, true
 end
 
 # Get a NodeID parameter value
 function get_parameter_value(
         data_group,
+        parameter,
         ::Type{NodeID},
-        parameter_name,
         args...;
         node_ids_all,
         kwargs...,
     )
     @assert !isnothing(node_ids_all) "Setting a NodeID parameter requires passing node_ids_all to parse_parameter!."
-    return NodeID(getfield(last(data_group), parameter_name), node_ids_all), true
+    return NodeID(parameter[last(data_group)], node_ids_all), true
 end
 
 # Map interpolation type -> constructor
@@ -103,30 +103,35 @@ make_itp(
 # Get interpolation parameter value
 function get_parameter_value(
         data_group,
+        parameter,
         ::Type{T},
-        parameter_name::Symbol,
         default,
         node_id::NodeID;
         from_static::Bool = true,
+        data = nothing,
+        time_column = nothing,
         config::Union{Nothing, Config} = nothing,
         cyclic_time::Bool = false,
         take_first::NTuple{N, Symbol} where {N} = (),
         kwargs...,
     )::Tuple{T, Bool} where {T <: AbstractInterpolation}
     u, t = if from_static
-        val = coalesce(getfield(first(data_group), parameter_name), default)
+        val = coalesce(parameter[first(data_group)], default)
         [val, val], [0.0, prevfloat(Inf)]
     else
-        data_group = first(
-            IterTools.groupby(
-                row -> ntuple(i -> getfield(row, take_first[i]), length(take_first)),
-                data_group,
-            ),
-        )
-        parameter =
-            map(row -> coalesce(getfield(row, parameter_name), default), data_group)
-        times = map(row -> seconds_since(row.time, config.starttime), data_group)
-        parameter, times
+        if !isempty(take_first)
+            @assert !isnothing(data)
+            data_group = first(
+                IterTools.groupby(
+                    i -> ntuple(j -> getproperty(data, take_first[j])[i], length(take_first)),
+                    data_group,
+                ),
+            )
+        end
+        @assert !isnothing(time_column)
+        parameter_values = map(i -> coalesce(parameter[i], default), data_group)
+        times = map(i -> seconds_since(time_column[i], config.starttime), data_group)
+        parameter_values, times
     end
     valid = valid_time_interpolation(t, u, node_id, cyclic_time)
     if !from_static
@@ -140,6 +145,39 @@ function get_parameter_value(
         config.interpolation.block_transition_period,
     )
     return itp, valid
+end
+
+"""Collect groups of a StructVector by node_id. Returns nothing if the input is empty."""
+function pregroup_by_node_id(sv::Union{StructVector, Nothing})
+    (isnothing(sv) || isempty(sv)) && return nothing
+    return collect(IterTools.groupby(row -> row.node_id, sv))
+end
+
+"""Create a lookup from node_id to grouped StructVector rows."""
+function group_lookup_by_node_id(sv::Union{StructVector, Nothing})
+    groups = pregroup_by_node_id(sv)
+    lookup = Dict{Int32, StructVector}()
+    isnothing(groups) && return lookup
+    for group in groups
+        lookup[first(group).node_id] = StructVector(group)
+    end
+    return lookup
+end
+
+"""Create a lookup from compound_variable_id to grouped StructVector rows."""
+function group_lookup_by_compound_variable_id(sv::StructVector)
+    lookup = Dict{Int32, StructVector}()
+    isempty(sv) && return lookup
+    for group in IterTools.groupby(row -> row.compound_variable_id, sv)
+        lookup[first(group).compound_variable_id] = StructVector(group)
+    end
+    return lookup
+end
+
+"""Collect StructVector groups by compound_variable_id while preserving input order."""
+function pregroup_by_compound_variable_id(sv::StructVector)
+    isempty(sv) && return StructVector[]
+    return StructVector.(IterTools.groupby(row -> row.compound_variable_id, sv))
 end
 
 """
@@ -192,12 +230,20 @@ function parse_parameter!(
         end
     end
 
+    static_parameter =
+        isnothing(static) || isempty(static) ? nothing : getproperty(static, parameter_name)
+    time_parameter = isnothing(time) || isempty(time) ? nothing : getproperty(time, parameter_name)
+
+    static_node_id = isnothing(static) || isempty(static) ? nothing : getproperty(static, :node_id)
+    time_node_id = isnothing(time) || isempty(time) ? nothing : getproperty(time, :node_id)
+    time_column = isnothing(time) || isempty(time) ? nothing : getproperty(time, :time)
+
     if !isnothing(static) && !isempty(static)
-        static_groups = IterTools.groupby(row -> row.node_id, static)
+        static_groups = IterTools.groupby(i -> static_node_id[i], eachindex(static_node_id))
         static_group, static_idx = iterate(static_groups)
     end
     if !isnothing(time) && !isempty(time)
-        time_groups = IterTools.groupby(row -> row.node_id, time)
+        time_groups = IterTools.groupby(i -> time_node_id[i], eachindex(time_node_id))
         time_group, time_idx = iterate(time_groups)
     end
 
@@ -209,9 +255,10 @@ function parse_parameter!(
         # Find out where to get the data from for this node
         in_static =
             isnothing(static) || isempty(static) ? false :
-            (first(static_group).node_id == id)
+            (static_node_id[first(static_group)] == id.value)
         in_time =
-            isnothing(time) || isempty(time) ? false : (first(time_group).node_id == id)
+            isnothing(time) || isempty(time) ? false :
+            (time_node_id[first(time_group)] == id.value)
         use_default = false
 
         if in_static && in_time
@@ -229,23 +276,35 @@ function parse_parameter!(
         end
 
         # Obtain the data
-        data_args = (T, parameter_name, default, id)
+        data_args = (T, default, id)
         data_kwargs = (; config, cyclic_time, take_first, node_ids_all)
 
         if use_default
             @assert has_default
             param_vec[id.idx] = is_itp ? itp_default : default
         elseif in_static
-            val, valid = get_parameter_value(static_group, data_args...; data_kwargs...)
+            val, valid =
+                get_parameter_value(static_group, static_parameter, data_args...; data_kwargs...)
             error |= !valid
             param_vec[id.idx] = val
             is_controllable &&
-                parse_control_states!(node, T, static_group, id, parameter_name, field_name)
+                parse_control_states!(
+                node,
+                T,
+                static_group,
+                static,
+                static_parameter,
+                id,
+                field_name,
+            )
         elseif in_time
             val, valid = get_parameter_value(
                 time_group,
+                time_parameter,
                 data_args...;
                 data_kwargs...,
+                data = time,
+                time_column,
                 from_static = false,
             )
             error |= !valid
@@ -270,19 +329,21 @@ function parse_control_states!(
         node::AbstractParameterNode,
         ::Type{T},
         static_group::Vector,
+        static::StructVector,
+        parameter,
         node_id::NodeID,
-        parameter_name::Symbol,
-        field_name::Symbol = parameter_name,
+        field_name::Symbol,
     ) where {T <: Union{<:Number, <:AbstractInterpolation}}
-    !hasproperty(first(static_group), :control_state) && return
+    hasproperty(static, :control_state) || return
+    control_state = static.control_state
     for group in
-        IterTools.groupby(row -> coalesce(row.control_state, nothing), static_group)
-        control_state = first(group).control_state
-        val = getfield(first(group), parameter_name)
-        (ismissing(control_state) || ismissing(val)) && continue
+        IterTools.groupby(i -> coalesce(control_state[i], nothing), static_group)
+        control_state_group = control_state[first(group)]
+        val = parameter[first(group)]
+        (ismissing(control_state_group) || ismissing(val)) && continue
         if T <: ConstantInterpolation
             push!(
-                node.control_mapping[(node_id, control_state)].itp_update_constant,
+                node.control_mapping[(node_id, control_state_group)].itp_update_constant,
                 ParameterUpdate(
                     field_name,
                     ConstantInterpolation(
@@ -295,7 +356,7 @@ function parse_control_states!(
             )
         elseif T <: LinearInterpolation
             push!(
-                node.control_mapping[(node_id, control_state)].itp_update_linear,
+                node.control_mapping[(node_id, control_state_group)].itp_update_linear,
                 ParameterUpdate(
                     field_name,
                     LinearInterpolation(
@@ -308,7 +369,7 @@ function parse_control_states!(
             )
         else
             push!(
-                node.control_mapping[(node_id, control_state)].scalar_update,
+                node.control_mapping[(node_id, control_state_group)].scalar_update,
                 ParameterUpdate(field_name, val),
             )
         end
@@ -320,12 +381,11 @@ parse_control_states!(
     ::AbstractParameterNode,
     ::Type{Bool},
     ::Vector,
+    ::StructVector,
+    _,
     ::NodeID,
     ::Symbol,
-    ::Symbol,
 ) = nothing
-
-parse_control_states!(::BasinForcing, args...) = nothing
 
 function initialize_control_mapping!(node::AbstractParameterNode, static::StructVector)
     isempty(static) && return
@@ -365,6 +425,8 @@ function initialize_control_mapping!(node::AbstractParameterNode, static::Struct
     end
     return
 end
+
+parse_control_states!(::BasinForcing, args...) = nothing
 
 function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inflow = true)
     if inflow
@@ -745,8 +807,14 @@ function ConcentrationData(
         fill(zero_constant_itp, n_substance) for _ in node_id
     ]
 
-    for (id, cyclic_time) in zip(node_id, cyclic_times)
-        data_id = filter(row -> row.node_id == id.value, concentration_time)
+    node_id_lookup = Dict(id.value => id for id in node_id)
+    cyclic_time_lookup = Dict(id.value => cyclic_time for (id, cyclic_time) in zip(node_id, cyclic_times))
+
+    for data_id in values(group_lookup_by_node_id(concentration_time))
+        id_value = first(data_id).node_id
+        id = get(node_id_lookup, id_value, nothing)
+        isnothing(id) && continue
+        cyclic_time = cyclic_time_lookup[id_value]
         for group in IterTools.groupby(row -> row.substance, data_id)
             first_row = first(group)
             substance_idx = find_index(Symbol(first_row.substance), substances)
@@ -758,8 +826,12 @@ function ConcentrationData(
                 filtered_constant_interpolation(group, :surface_runoff, cyclic_time, config; node_id = id)
         end
     end
-    for (id, cyclic_time) in zip(node_id, cyclic_times)
-        data_id = filter(row -> row.node_id == id.value, loads_time)
+
+    for data_id in values(group_lookup_by_node_id(loads_time))
+        id_value = first(data_id).node_id
+        id = get(node_id_lookup, id_value, nothing)
+        isnothing(id) && continue
+        cyclic_time = cyclic_time_lookup[id_value]
         for group in IterTools.groupby(row -> row.substance, data_id)
             first_row = first(group)
             substance_idx = find_index(Symbol(first_row.substance), substances)
@@ -772,10 +844,14 @@ function ConcentrationData(
 
     concentration_external_data =
         load_structvector(db, config, Schema.Basin.ConcentrationExternal)
-    concentration_external = Dict{String, ScalarConstantInterpolation}[]
-    for (id, cyclic_time) in zip(node_id, cyclic_times)
-        concentration_external_id = Dict{String, ScalarConstantInterpolation}()
-        data_id = filter(row -> row.node_id == id.value, concentration_external_data)
+
+    concentration_external = [Dict{String, ScalarConstantInterpolation}() for _ in node_id]
+    for data_id in values(group_lookup_by_node_id(concentration_external_data))
+        id_value = first(data_id).node_id
+        id = get(node_id_lookup, id_value, nothing)
+        isnothing(id) && continue
+        cyclic_time = cyclic_time_lookup[id_value]
+        concentration_external_id = concentration_external[id.idx]
         for group in IterTools.groupby(row -> row.substance, data_id)
             first_row = first(group)
             substance = first_row.substance
@@ -794,7 +870,6 @@ function ConcentrationData(
                     id, substance
             end
         end
-        push!(concentration_external, concentration_external_id)
     end
 
     if errors
@@ -973,56 +1048,57 @@ end
 function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Config)
     condition = load_structvector(db, config, Schema.DiscreteControl.Condition)
     compound_variable = load_structvector(db, config, Schema.DiscreteControl.Variable)
-    compound_variables = Vector{CompoundVariable}[]
+    compound_variables = [CompoundVariable[] for _ in ids]
     cyclic_times = get_cyclic_time(db, "DiscreteControl")
     errors = false
 
     node_ids_all = get_node_ids(db)
 
-    # Loop over unique discrete_control node IDs
-    for (id, cyclic_time) in zip(ids, cyclic_times)
-        # Conditions associated with the current DiscreteControl node
-        conditions_node = filter(row -> row.node_id == id, condition)
+    id_index_lookup = Dict(id => i for (i, id) in pairs(ids))
+    cyclic_time_lookup = Dict(id => cyclic_time for (id, cyclic_time) in zip(ids, cyclic_times))
+    variable_groups_lookup = group_lookup_by_node_id(compound_variable)
 
-        # Variables associated with the current Discretecontrol node
-        variables_node = filter(row -> row.node_id == id, compound_variable)
+    # Parse by condition node groups to avoid repeatedly scanning all node IDs.
+    for conditions_node in values(group_lookup_by_node_id(condition))
+        id = first(conditions_node).node_id
+        node_idx = get(id_index_lookup, id, 0)
+        if iszero(node_idx)
+            errors = true
+            @error "Condition data references unknown DiscreteControl node." node_id = id
+            continue
+        end
 
-        # Compound variables associated with the current DiscreteControl node
-        compound_variables_node = CompoundVariable[]
+        cyclic_time = cyclic_time_lookup[id]
+        variables_node = get(variable_groups_lookup, id, compound_variable[1:0])
+        variable_by_compound = group_lookup_by_compound_variable_id(variables_node)
 
-        # Loop over compound variables for the current DiscreteControl node
-        for compound_variable_id in unique(conditions_node.compound_variable_id)
-
-            # Conditions associated with the current compound variable
-            conditions_compound_variable = filter(
-                row -> row.compound_variable_id == compound_variable_id,
-                conditions_node,
-            )
-
-            # Variables associated with the current compound variable
-            variables_compound_variable = filter(
-                row -> row.compound_variable_id == compound_variable_id,
-                variables_node,
+        for conditions_compound_variable in
+            pregroup_by_compound_variable_id(conditions_node)
+            compound_variable_id = first(conditions_compound_variable).compound_variable_id
+            variables_compound_variable = get(
+                variable_by_compound,
+                compound_variable_id,
+                compound_variable[1:0],
             )
 
             if isempty(variables_compound_variable)
                 errors = true
                 @error "compound_variable_id $compound_variable_id for DiscreteControl #$id in condition table but not in variable table"
-            else
-                push!(
-                    compound_variables_node,
-                    CompoundVariable(
-                        variables_compound_variable,
-                        NodeType.DiscreteControl,
-                        node_ids_all;
-                        conditions_compound_variable,
-                        config.starttime,
-                        cyclic_time,
-                    ),
-                )
+                continue
             end
+
+            push!(
+                compound_variables[node_idx],
+                CompoundVariable(
+                    variables_compound_variable,
+                    NodeType.DiscreteControl,
+                    node_ids_all;
+                    conditions_compound_variable,
+                    config.starttime,
+                    cyclic_time,
+                ),
+            )
         end
-        push!(compound_variables, compound_variables_node)
     end
     return compound_variables, !errors
 end
