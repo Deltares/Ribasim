@@ -153,15 +153,31 @@ function pregroup_by_node_id(sv::Union{StructVector, Nothing})
     return collect(IterTools.groupby(row -> row.node_id, sv))
 end
 
-"""Get a node_id group from pre-grouped data and advance index when matched."""
-function take_node_id_group(groups::Union{Nothing, Vector}, group_i::Int, id, empty_group)
-    if !isnothing(groups) && group_i <= length(groups)
-        group = groups[group_i]
-        if first(group).node_id == id
-            return group, group_i + 1
-        end
+"""Create a lookup from node_id to grouped StructVector rows."""
+function group_lookup_by_node_id(sv::Union{StructVector, Nothing})
+    groups = pregroup_by_node_id(sv)
+    lookup = Dict{Int32, StructVector}()
+    isnothing(groups) && return lookup
+    for group in groups
+        lookup[first(group).node_id] = StructVector(group)
     end
-    return empty_group, group_i
+    return lookup
+end
+
+"""Create a lookup from compound_variable_id to grouped StructVector rows."""
+function group_lookup_by_compound_variable_id(sv::StructVector)
+    lookup = Dict{Int32, StructVector}()
+    isempty(sv) && return lookup
+    for group in IterTools.groupby(row -> row.compound_variable_id, sv)
+        lookup[first(group).compound_variable_id] = StructVector(group)
+    end
+    return lookup
+end
+
+"""Collect StructVector groups by compound_variable_id while preserving input order."""
+function pregroup_by_compound_variable_id(sv::StructVector)
+    isempty(sv) && return StructVector[]
+    return StructVector.(IterTools.groupby(row -> row.compound_variable_id, sv))
 end
 
 """
@@ -791,20 +807,14 @@ function ConcentrationData(
         fill(zero_constant_itp, n_substance) for _ in node_id
     ]
 
-    concentration_time_groups_raw = pregroup_by_node_id(concentration_time)
-    concentration_time_groups =
-        isnothing(concentration_time_groups_raw) ? nothing :
-        StructVector.(concentration_time_groups_raw)
-    concentration_time_group_i = 1
-    empty_concentration_time = concentration_time[1:0]
+    node_id_lookup = Dict(id.value => id for id in node_id)
+    cyclic_time_lookup = Dict(id.value => cyclic_time for (id, cyclic_time) in zip(node_id, cyclic_times))
 
-    for (id, cyclic_time) in zip(node_id, cyclic_times)
-        data_id, concentration_time_group_i = take_node_id_group(
-            concentration_time_groups,
-            concentration_time_group_i,
-            id.value,
-            empty_concentration_time,
-        )
+    for data_id in values(group_lookup_by_node_id(concentration_time))
+        id_value = first(data_id).node_id
+        id = get(node_id_lookup, id_value, nothing)
+        isnothing(id) && continue
+        cyclic_time = cyclic_time_lookup[id_value]
         for group in IterTools.groupby(row -> row.substance, data_id)
             first_row = first(group)
             substance_idx = find_index(Symbol(first_row.substance), substances)
@@ -817,18 +827,11 @@ function ConcentrationData(
         end
     end
 
-    loads_time_groups_raw = pregroup_by_node_id(loads_time)
-    loads_time_groups = isnothing(loads_time_groups_raw) ? nothing : StructVector.(loads_time_groups_raw)
-    loads_time_group_i = 1
-    empty_loads_time = loads_time[1:0]
-
-    for (id, cyclic_time) in zip(node_id, cyclic_times)
-        data_id, loads_time_group_i = take_node_id_group(
-            loads_time_groups,
-            loads_time_group_i,
-            id.value,
-            empty_loads_time,
-        )
+    for data_id in values(group_lookup_by_node_id(loads_time))
+        id_value = first(data_id).node_id
+        id = get(node_id_lookup, id_value, nothing)
+        isnothing(id) && continue
+        cyclic_time = cyclic_time_lookup[id_value]
         for group in IterTools.groupby(row -> row.substance, data_id)
             first_row = first(group)
             substance_idx = find_index(Symbol(first_row.substance), substances)
@@ -841,22 +844,14 @@ function ConcentrationData(
 
     concentration_external_data =
         load_structvector(db, config, Schema.Basin.ConcentrationExternal)
-    concentration_external_groups_raw = pregroup_by_node_id(concentration_external_data)
-    concentration_external_groups =
-        isnothing(concentration_external_groups_raw) ? nothing :
-        StructVector.(concentration_external_groups_raw)
-    concentration_external_group_i = 1
-    empty_concentration_external = concentration_external_data[1:0]
 
-    concentration_external = Dict{String, ScalarConstantInterpolation}[]
-    for (id, cyclic_time) in zip(node_id, cyclic_times)
-        concentration_external_id = Dict{String, ScalarConstantInterpolation}()
-        data_id, concentration_external_group_i = take_node_id_group(
-            concentration_external_groups,
-            concentration_external_group_i,
-            id.value,
-            empty_concentration_external,
-        )
+    concentration_external = [Dict{String, ScalarConstantInterpolation}() for _ in node_id]
+    for data_id in values(group_lookup_by_node_id(concentration_external_data))
+        id_value = first(data_id).node_id
+        id = get(node_id_lookup, id_value, nothing)
+        isnothing(id) && continue
+        cyclic_time = cyclic_time_lookup[id_value]
+        concentration_external_id = concentration_external[id.idx]
         for group in IterTools.groupby(row -> row.substance, data_id)
             first_row = first(group)
             substance = first_row.substance
@@ -875,7 +870,6 @@ function ConcentrationData(
                     id, substance
             end
         end
-        push!(concentration_external, concentration_external_id)
     end
 
     if errors
@@ -1057,75 +1051,57 @@ end
 function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Config)
     condition = load_structvector(db, config, Schema.DiscreteControl.Condition)
     compound_variable = load_structvector(db, config, Schema.DiscreteControl.Variable)
-    compound_variables = Vector{CompoundVariable}[]
+    compound_variables = [CompoundVariable[] for _ in ids]
     cyclic_times = get_cyclic_time(db, "DiscreteControl")
     errors = false
 
     node_ids_all = get_node_ids(db)
 
-    condition_groups_raw = pregroup_by_node_id(condition)
-    condition_groups = isnothing(condition_groups_raw) ? nothing : StructVector.(condition_groups_raw)
-    variable_groups_raw = pregroup_by_node_id(compound_variable)
-    variable_groups = isnothing(variable_groups_raw) ? nothing : StructVector.(variable_groups_raw)
-    condition_group_i = 1
-    variable_group_i = 1
-    empty_condition = condition[1:0]
-    empty_variable = compound_variable[1:0]
+    id_index_lookup = Dict(id => i for (i, id) in pairs(ids))
+    cyclic_time_lookup = Dict(id => cyclic_time for (id, cyclic_time) in zip(ids, cyclic_times))
+    variable_groups_lookup = group_lookup_by_node_id(compound_variable)
 
-    # Loop over unique discrete_control node IDs
-    for (id, cyclic_time) in zip(ids, cyclic_times)
-        # Conditions associated with the current DiscreteControl node
-        conditions_node, condition_group_i = take_node_id_group(
-            condition_groups,
-            condition_group_i,
-            id,
-            empty_condition,
-        )
+    # Parse by condition node groups to avoid repeatedly scanning all node IDs.
+    for conditions_node in values(group_lookup_by_node_id(condition))
+        id = first(conditions_node).node_id
+        node_idx = get(id_index_lookup, id, 0)
+        if iszero(node_idx)
+            errors = true
+            @error "Condition data references unknown DiscreteControl node." node_id = id
+            continue
+        end
 
-        # Variables associated with the current DiscreteControl node
-        variables_node, variable_group_i = take_node_id_group(
-            variable_groups,
-            variable_group_i,
-            id,
-            empty_variable,
-        )
+        cyclic_time = cyclic_time_lookup[id]
+        variables_node = get(variable_groups_lookup, id, compound_variable[1:0])
+        variable_by_compound = group_lookup_by_compound_variable_id(variables_node)
 
-        # Compound variables associated with the current DiscreteControl node
-        compound_variables_node = CompoundVariable[]
-
-        # Loop over compound variables for the current DiscreteControl node
-        for compound_variable_id in unique(conditions_node.compound_variable_id)
-
-            # Conditions associated with the current compound variable
-            conditions_compound_variable = filter(
-                row -> row.compound_variable_id == compound_variable_id,
-                conditions_node,
-            )
-
-            # Variables associated with the current compound variable
-            variables_compound_variable = filter(
-                row -> row.compound_variable_id == compound_variable_id,
-                variables_node,
+        for conditions_compound_variable in
+            pregroup_by_compound_variable_id(conditions_node)
+            compound_variable_id = first(conditions_compound_variable).compound_variable_id
+            variables_compound_variable = get(
+                variable_by_compound,
+                compound_variable_id,
+                compound_variable[1:0],
             )
 
             if isempty(variables_compound_variable)
                 errors = true
                 @error "compound_variable_id $compound_variable_id for DiscreteControl #$id in condition table but not in variable table"
-            else
-                push!(
-                    compound_variables_node,
-                    CompoundVariable(
-                        variables_compound_variable,
-                        NodeType.DiscreteControl,
-                        node_ids_all;
-                        conditions_compound_variable,
-                        config.starttime,
-                        cyclic_time,
-                    ),
-                )
+                continue
             end
+
+            push!(
+                compound_variables[node_idx],
+                CompoundVariable(
+                    variables_compound_variable,
+                    NodeType.DiscreteControl,
+                    node_ids_all;
+                    conditions_compound_variable,
+                    config.starttime,
+                    cyclic_time,
+                ),
+            )
         end
-        push!(compound_variables, compound_variables_node)
     end
     return compound_variables, !errors
 end
