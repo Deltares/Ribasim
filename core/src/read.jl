@@ -123,7 +123,7 @@ function get_parameter_value(
             @assert !isnothing(data)
             data_group = first(
                 IterTools.groupby(
-                    i -> ntuple(j -> getfield(data, take_first[j])[i], length(take_first)),
+                    i -> ntuple(j -> getproperty(data, take_first[j])[i], length(take_first)),
                     data_group,
                 ),
             )
