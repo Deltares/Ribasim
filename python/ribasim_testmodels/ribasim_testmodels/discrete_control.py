@@ -731,9 +731,12 @@ def continuous_concentration_condition_model() -> Model:
                 variable=["concentration.Cl"],
                 compound_variable_id=1,
             ),
-            # More than 20% of seawater (35 g/L)
+            # More than 20% of seawater (35 g/L), with hysteresis to avoid rapid flipping
             discrete_control.Condition(
-                threshold_high=[7], compound_variable_id=1, condition_id=1
+                threshold_high=[7],
+                threshold_low=[5],
+                compound_variable_id=1,
+                condition_id=1,
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["Off", "On"]),
         ],
