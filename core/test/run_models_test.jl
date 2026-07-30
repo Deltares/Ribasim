@@ -44,6 +44,7 @@
             @test haskey(ds, "from_node_id")
             @test haskey(ds, "to_node_id")
             @test haskey(ds, "flow_rate")
+            @test haskey(ds, "convergence")
         end
 
         NCDataset(basin_path) do ds
@@ -61,7 +62,6 @@
             @test haskey(ds, "infiltration")
             @test haskey(ds, "balance_error")
             @test haskey(ds, "relative_error")
-            @test haskey(ds, "convergence")
         end
 
         NCDataset(subgrid_path) do ds
