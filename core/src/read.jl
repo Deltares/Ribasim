@@ -371,8 +371,6 @@ parse_control_states!(
     ::Symbol,
 ) = nothing
 
-parse_control_states!(::BasinForcing, args...) = nothing
-
 function initialize_control_mapping!(node::AbstractParameterNode, static::StructVector)
     isempty(static) && return
     has_alloc_controlled = hasproperty(first(static), :allocation_controlled)
