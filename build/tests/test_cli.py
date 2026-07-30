@@ -12,6 +12,11 @@ ribasim_home = Path(__file__).parents[1] / "ribasim"
 executable = ribasim_home / "bin/ribasim"
 
 
+def test_julia_runtime_is_bundled():
+    julia_lib_dir = ribasim_home / ("bin" if os.name == "nt" else "lib/julia")
+    assert any(julia_lib_dir.glob("libjulia-internal*"))
+
+
 @pytest.mark.parametrize(
     "model_constructor",
     ribasim_testmodels.constructors.values(),

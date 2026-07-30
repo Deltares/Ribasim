@@ -35,6 +35,12 @@ function (@main)(_)::Cint
     link_products(link_recipe)
     bundle_products(bundle_recipe)
 
+    julia_lib_dir =
+        Sys.iswindows() ? joinpath(output_dir, "bin") : joinpath(output_dir, "lib", "julia")
+    bundled_libraries = isdir(julia_lib_dir) ? readdir(julia_lib_dir) : String[]
+    any(startswith("libjulia-internal"), bundled_libraries) ||
+        error("JuliaC did not bundle libjulia-internal in $julia_lib_dir")
+
     # On Windows, remove the import library from the bundle root
     if Sys.iswindows()
         import_lib_path = joinpath(output_dir, "libribasim.dll.a")
