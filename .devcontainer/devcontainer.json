@@ -29,5 +29,5 @@
         }
     },
     "postCreateCommand": "pixi run install && pixi run generate-testmodels",
-    "postStartCommand": "pixi run initialize-julia"
+    "postStartCommand": "pixi run instantiate-julia"
 }
