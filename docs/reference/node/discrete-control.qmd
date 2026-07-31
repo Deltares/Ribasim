@@ -89,9 +89,12 @@ compound_variable_id | Int32    | -       | -
 condition_id         | Int32    | -       | -
 threshold_high       | Float64  | various | -
 threshold_low        | Float64  | various | (optional), <= threshold_high
+interval             | Float64  | $\text{s}$ | (optional), positive, must be the same for all rows of a node_id
 time                 | DateTime | -       | (optional)
 
 When no (or only a single) `time` is supplied for a given `condition_id`, the `threshold_high` value of this condition is unchanging over time. When multiple times are supplied, in between the given times the `threshold_high` and `threshold_low` values are block interpolated (forward fill), and outside they are constant given by the nearest time value.
+
+By default the control logic of a DiscreteControl node is applied after every solver timestep. With `interval` it is instead applied only at multiples of that interval since the simulation start time, which is often a more realistic representation of human operation. It also bounds how often a control state can change, which helps for models where conditions would otherwise flip on nearly every timestep. Since the interval is a property of the DiscreteControl node rather than of an individual condition, it must be the same for all rows with the same `node_id`.
 
 ## Logic
 

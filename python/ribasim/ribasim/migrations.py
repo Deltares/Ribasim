@@ -156,6 +156,8 @@ def discretecontrolconditionschema_migration(
     if schema_version < 8:
         df["threshold_low"] = None
         df.rename(columns={"greater_than": "threshold_high"}, inplace=True)
+    if schema_version < 12:
+        df["interval"] = None
     return df
 
 

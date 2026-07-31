@@ -798,6 +798,12 @@ function get_timeseries_tstops(
         end
     end
 
+    # Make sure the solver stops exactly at the times where DiscreteControl nodes
+    # with an update interval apply their logic
+    for interval in discrete_control.update_interval
+        iszero(interval) || push!(tstops, collect(range(0.0, t_end; step = interval)))
+    end
+
     # Pump and Outlet transient flow rate and bounds
     # time_dependent_flow_rate may have undef elements (nodes with static flow rates)
     get_timeseries_tstops_assigned!(tstops, t_end, pump.time_dependent_flow_rate)

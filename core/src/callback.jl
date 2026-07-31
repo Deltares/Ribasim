@@ -408,17 +408,31 @@ Apply the discrete control logic. There's somewhat of a complex structure:
 - The DiscreteControl node maps this truth state via the logic mapping to a control state, which is a string
 - The nodes that are controlled by this DiscreteControl node must have the same control state, for which they have
     parameter values associated with that control state defined in their control_mapping
+- Nodes with an `update_interval` only apply their logic at multiples of that interval instead of
+  after every solver timestep
 """
 function apply_discrete_control!(u_raw, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p.p_independent
-    (; node_id, truth_state, compound_variables) = discrete_control
+    (;
+        node_id,
+        truth_state,
+        compound_variables,
+        update_interval,
+        t_next_update,
+    ) = discrete_control
     du = get_du(integrator)
     u = get_u(integrator)
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes
     for idx in eachindex(node_id)
+        interval = update_interval[idx]
+        if !iszero(interval)
+            (t < t_next_update[idx]) && continue
+            t_next_update[idx] = (floor(t / interval) + 1) * interval
+        end
+
         id = node_id[idx]
         truth_state_node = truth_state[idx]
         compound_variables_node = compound_variables[idx]

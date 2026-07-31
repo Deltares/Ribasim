@@ -1049,6 +1049,7 @@ function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Conf
     condition = load_structvector(db, config, Schema.DiscreteControl.Condition)
     compound_variable = load_structvector(db, config, Schema.DiscreteControl.Variable)
     compound_variables = [CompoundVariable[] for _ in ids]
+    update_interval = zeros(length(ids))
     cyclic_times = get_cyclic_time(db, "DiscreteControl")
     errors = false
 
@@ -1066,6 +1067,23 @@ function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Conf
             errors = true
             @error "Condition data references unknown DiscreteControl node." node_id = id
             continue
+        end
+
+        # The update interval is a property of the DiscreteControl node, so it must be
+        # the same for all its conditions
+        intervals = unique(skipmissing(conditions_node.interval))
+        if length(intervals) > 1
+            errors = true
+            @error "DiscreteControl #$id has multiple different `interval` values, it must be constant per node." intervals =
+                collect(intervals)
+        elseif length(intervals) == 1
+            interval = only(intervals)
+            if interval <= 0
+                errors = true
+                @error "DiscreteControl #$id has a non-positive `interval`." interval
+            else
+                update_interval[node_idx] = interval
+            end
         end
 
         cyclic_time = cyclic_time_lookup[id]
@@ -1100,13 +1118,13 @@ function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Conf
             )
         end
     end
-    return compound_variables, !errors
+    return compound_variables, update_interval, !errors
 end
 
 function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteControl
     node_id = get_node_ids(db, NodeType.DiscreteControl)
     ids = Int32.(node_id)
-    compound_variables, valid = parse_variables_and_conditions(ids, db, config)
+    compound_variables, update_interval, valid = parse_variables_and_conditions(ids, db, config)
 
     if !valid
         error("Problems encountered when parsing DiscreteControl variables and conditions.")
@@ -1142,6 +1160,7 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
         controlled_nodes,
         compound_variables,
         truth_state,
+        update_interval,
         logic_mapping,
     )
 end

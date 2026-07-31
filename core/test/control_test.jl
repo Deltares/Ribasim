@@ -83,6 +83,29 @@ end
     @test isapprox(flow_t_control_ahead, threshold_high, rtol = 0.005)
 end
 
+@testitem "DiscreteControl update interval" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/discrete_control_interval/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    (; discrete_control) = model.integrator.p.p_independent
+    (; record) = discrete_control
+
+    interval = only(discrete_control.update_interval)
+    @test interval == 86400.0
+
+    # The control logic is only applied at multiples of the interval,
+    # so the state can change at most once per interval
+    @test all(iszero, record.time .% interval)
+    @test allunique(record.time)
+
+    # The pump alternates between on and off every day
+    @test record.control_state ==
+        ["off", "on", "off", "on", "off", "on", "off", "on", "off", "on", "off"]
+end
+
 @testitem "Transient level boundary condition control" begin
     toml_path = normpath(
         @__DIR__,

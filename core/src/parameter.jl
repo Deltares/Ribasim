@@ -834,6 +834,8 @@ compound_variables: The compound variables the DiscreteControl node listens to
 truth_state: Memory allocated for storing the truth state
 control_state: The current control state of the DiscreteControl node
 control_state_start: The start time of the  current control state
+update_interval: The interval at which the control logic is applied, 0.0 meaning every solver timestep
+t_next_update: The next time at which the control logic is applied (only used if update_interval > 0)
 logic_mapping: Dictionary: truth state => control state for the DiscreteControl node
 control_mapping: dictionary node type => control mapping for that node type
 record: Namedtuple with discrete control information for results
@@ -845,6 +847,8 @@ record: Namedtuple with discrete control information for results
     truth_state::Vector{Vector{Bool}}
     control_state::Vector{String} = fill("undefined_state", length(node_id))
     control_state_start::Vector{Float64} = zeros(length(node_id))
+    update_interval::Vector{Float64} = zeros(length(node_id))
+    t_next_update::Vector{Float64} = zeros(length(node_id))
     logic_mapping::Vector{OrderedDict{Vector{Bool}, String}}
     control_mappings::OrderedDict{
         NodeType.T,

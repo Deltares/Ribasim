@@ -191,6 +191,54 @@ def flow_condition_model() -> Model:
     return model
 
 
+def discrete_control_interval_model() -> Model:
+    """Set up a model where the DiscreteControl logic is only applied once per day."""
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 11),
+        crs="EPSG:28992",
+    )
+
+    model.flow_boundary.add(
+        Node(1, Point(0, 0)), [flow_boundary.Static(flow_rate=[1e-2])]
+    )
+    model.basin.add(
+        Node(2, Point(1, 0)),
+        [basin.Profile(level=[0.0, 10.0], area=1000.0), basin.State(level=[0.5])],
+    )
+    model.pump.add(
+        Node(3, Point(2, 0)),
+        [pump.Static(flow_rate=[2e-2, 0.0], control_state=["on", "off"])],
+    )
+    model.terminal.add(Node(4, Point(3, 0)))
+    model.discrete_control.add(
+        Node(5, Point(1, 1)),
+        [
+            discrete_control.Variable(
+                listen_node_id=[2],
+                variable="level",
+                compound_variable_id=1,
+            ),
+            # The interval decouples the control from the adaptive time stepper:
+            # the state can only change at midnight
+            discrete_control.Condition(
+                threshold_high=[1.0],
+                compound_variable_id=1,
+                condition_id=1,
+                interval=86400.0,
+            ),
+            discrete_control.Logic(truth_state=["T", "F"], control_state=["on", "off"]),
+        ],
+    )
+
+    model.link.add(model.flow_boundary[1], model.basin[2])
+    model.link.add(model.basin[2], model.pump[3])
+    model.link.add(model.pump[3], model.terminal[4])
+    model.link.add(model.discrete_control[5], model.pump[3])
+
+    return model
+
+
 def level_boundary_condition_model() -> Model:
     """Set up a small model with a condition on a level boundary."""
     model = Model(

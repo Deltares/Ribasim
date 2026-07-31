@@ -1,5 +1,5 @@
 __version__ = "2026.1.2"
-__schema_version__ = 11
+__schema_version__ = 12
 
 from pyogrio import set_gdal_config_options
 

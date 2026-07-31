@@ -156,6 +156,7 @@ class DiscreteControlConditionSchema(_BaseSchema):
     condition_id: np.int32 = pa.Field(nullable=False)
     threshold_high: float = pa.Field(nullable=False)
     threshold_low: float = pa.Field(nullable=True)
+    interval: float = pa.Field(nullable=True)
     time: pd.Timestamp = pa.Field(nullable=True)
 
 

@@ -256,6 +256,7 @@ module Schema
             condition_id::Int32
             threshold_high::Float64
             threshold_low::Union{Missing, Float64}
+            interval::Union{Missing, Float64}
             time::Union{Missing, DateTime}
         end
 
