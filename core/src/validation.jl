@@ -616,10 +616,11 @@ Check:
 """
 function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
     (; discrete_control, graph) = p
-    (; node_id, logic_mapping) = discrete_control
+    (; node_id, logic_mapping, controlled_nodes) = discrete_control
 
     t_end = seconds_since(config.endtime, config.starttime)
     errors = false
+    ids_without_deadband = NodeID[]
 
     for (id, compound_variables) in zip(node_id, discrete_control.compound_variables)
 
@@ -683,6 +684,19 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
                 if any(threshold_low.u .> threshold_high.u)
                     errors = true
                     @error "threshold_low is not less than or equal to threshold_high for '$(compound_variable.node_id)'"
+                elseif all(threshold_low.u .== threshold_high.u)
+                    push!(ids_without_deadband, id)
+                end
+            end
+        end
+
+        # A condition on the flow rate of a node that this DiscreteControl node controls itself
+        # is a direct feedback loop, which makes the control state flip on every timestep
+        for compound_variable in compound_variables
+            for subvariable in compound_variable.subvariables
+                if subvariable.variable == "flow_rate" &&
+                        subvariable.listen_node_id in controlled_nodes[id.idx]
+                    @warn "$id conditions on the flow rate of $(subvariable.listen_node_id), which it controls itself. This feedback loop can make the control state flip on every solver timestep."
                 end
             end
         end
