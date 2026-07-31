@@ -485,10 +485,10 @@ function set_new_control_state!(
 
     # Check the new control state against the current control state
     # If there is a change, update parameters and the discrete control record
+    # Note that `integrator.derivative_discontinuity` cannot be set here: `FunctionCallingCallback`
+    # unconditionally clears it again after calling `apply_discrete_control!`.
     control_state_now = discrete_control.control_state[discrete_control_id.idx]
     if control_state_now != control_state_new
-        integrator.derivative_discontinuity = true
-
         lock(extend_record_lock)
         push!(record.time, integrator.t)
         push!(record.control_node_id, Int32(discrete_control_id))
