@@ -22,6 +22,7 @@ function get_storages_from_levels(basin::Basin, levels::AbstractVector)::Vector{
     for (i, level) in enumerate(levels)
         storage = get_storage_from_level(basin, i, level)
         bottom = first(basin_levels(basin, i))
+        level = max(level, bottom)
         if level < bottom
             node_id = basin.node_id[i]
             @error "The initial level ($level) of $node_id is below the bottom ($bottom)."
@@ -721,6 +722,69 @@ function build_state_vector(p_independent::ParametersIndependent)
     u = zero(u_prev_saveat)
     u.storage .= basin.storage0
     return getdata(u)
+end
+
+"""
+Build the per component absolute tolerance vector.
+
+Since `DiffEqBase.calculate_residuals!` scales the local error estimate by the change of a
+state over the time step (see `solve.jl`), `abstol` no longer has the meaning of "a negligible
+state magnitude" but of "a state change per step that is numerically irrelevant". This holds
+for both values of `optimized_implicit_solve`. A single scalar cannot serve that role for all
+components:
+
+  - `storage` and `flow` states are volumes [m³], but their magnitudes range over many orders
+    of magnitude between models. `abstol` must stay above the roundoff floor of the largest
+    storage involved, otherwise the solver chases floating point noise on idle components.
+  - `pid_integral` states are in [m s], so a tolerance in m³ is dimensionally meaningless.
+    The integral enters the flow as `K_i * pid_integral`, so we require that the induced flow
+    error stays below `water_balance_abstol` [m³/s].
+"""
+function build_abstol_vector(
+        p_independent::ParametersIndependent,
+        abstol::Float64,
+        water_balance_abstol::Float64,
+    )::Vector{Float64}
+    (; basin, pid_control, state_ranges, u_prev_saveat) = p_independent
+
+    # Relative conditioning factor used to keep `abstol` above the double precision
+    # roundoff floor of a state: `eps(Float64) * κ` with an assumed linear solve
+    # condition number `κ ~ 1e3`.
+    abstol_roundoff_factor = 1.0e3 * eps(Float64)
+
+    abstol_vec = fill(abstol, length(u_prev_saveat))
+    out = CVector(abstol_vec, state_ranges)
+
+    # Keep the storage tolerance above the roundoff floor of the basin itself
+    for idx in eachindex(basin.node_id)
+        storage_max = basin.storage_to_level[idx].t[end]
+        out.storage[idx] = max(abstol, abstol_roundoff_factor * storage_max)
+    end
+
+    # Flow states are cumulative volumes over links, so their roundoff floor is set by the
+    # largest storage in the model rather than by an individual basin.
+    if !isempty(basin.node_id)
+        storage_max = maximum(itp.t[end] for itp in basin.storage_to_level)
+        fill!(out.flow, max(abstol, abstol_roundoff_factor * storage_max))
+    end
+
+    # Convert the flow tolerance into a tolerance on the PID integral state
+    for idx in eachindex(pid_control.node_id)
+        K_i_max = maximum(abs, pid_control.integral[idx].u; init = 0.0)
+        # The integral gain can also be set by discrete control
+        for ((node_id, _), control_state_update) in pid_control.control_mapping
+            (node_id.idx == idx) || continue
+            for parameter_update in control_state_update.itp_update_constant
+                (parameter_update.name === :integral) || continue
+                K_i_max = max(K_i_max, maximum(abs, parameter_update.value.u; init = 0.0))
+            end
+        end
+        # If the integral term is inactive the state does not influence the solution,
+        # so it does not need error control
+        out.pid_integral[idx] = iszero(K_i_max) ? Inf : water_balance_abstol / K_i_max
+    end
+
+    return abstol_vec
 end
 
 """

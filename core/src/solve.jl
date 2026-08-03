@@ -920,6 +920,10 @@ end
 Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
 (::InternalNorm)(u, t) = ODE_DEFAULT_NORM(u, t)
 
+# `abstol` and `reltol` can be given either as a scalar or as a vector with a value per state
+@inline get_tolerance(tolerance::Number, ::Int) = tolerance
+@inline get_tolerance(tolerance::AbstractVector, idx::Int) = @inbounds tolerance[idx]
+
 @inline function DiffEqBase.calculate_residuals!(
         out_raw,
         ũ_raw, u₀_raw, u₁_raw, abstol, reltol, internalnorm::InternalNorm, t
@@ -927,26 +931,21 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
     (; p_independent) = internalnorm
     (; state_ranges) = p_independent
 
-    if !p_independent.optimized_implicit_solve
-        return DiffEqBase.calculate_residuals!(
-            out_raw,
-            ũ_raw, u₀_raw, u₁_raw, abstol, reltol, ODE_DEFAULT_NORM, t
-        )
-    end
-
     # All state components (storage, flow, PID integral) are scaled by the magnitude
     # of their change over the time step rather than by their absolute magnitude.
     # The states are cumulative quantities whose absolute value carries no information
     # about the local error: e.g. the storage of a large Basin with little throughflow
     # would get a very loose tolerance.
+    # This is applied for both values of `optimized_implicit_solve`, so that `abstol` and
+    # `reltol` have the same meaning regardless of which solve path is taken.
     for idx in eachindex(out_raw)
         abs_diff = abs(u₁_raw[idx] - u₀_raw[idx])
         out_raw[idx] = DiffEqBase.calculate_residuals(
             ũ_raw[idx],
             abs_diff,
             abs_diff,
-            abstol,
-            reltol,
+            get_tolerance(abstol, idx),
+            get_tolerance(reltol, idx),
             internalnorm,
             t
         )

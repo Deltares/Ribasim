@@ -135,9 +135,12 @@ class Solver(ChildModel):
         If a smaller dt than dtmin is needed to meet the set error tolerances, the simulation stops, unless force_dtmin = true
         (Optional, defaults to False)
     abstol : float
-        The absolute tolerance for adaptive timestepping (Optional, defaults to 1e-5)
+        The absolute tolerance for adaptive timestepping, in m3 of state change per timestep.
+        Acts as a floor; per Basin it is raised to stay above the floating point roundoff
+        level of that Basin's storage. (Optional, defaults to 1e-5)
     reltol : float
-        The relative tolerance for adaptive timestepping (Optional, defaults to 1e-6)
+        The relative tolerance for adaptive timestepping, which bounds the relative error on
+        cumulative volumes over the whole simulation (Optional, defaults to 1e-4)
     maxiters : int
         The total number of linear iterations over the whole simulation. (Defaults to 1e9, only needs to be increased for extremely long simulations)
     optimized_implicit_solve : bool
@@ -164,7 +167,7 @@ class Solver(ChildModel):
     dtmax: float | None = None
     force_dtmin: bool = False
     abstol: float = 1e-05
-    reltol: float = 1e-06
+    reltol: float = 1e-04
     maxiters: int = 1000000000
     optimized_implicit_solve: bool = True
     sparse: bool = True
