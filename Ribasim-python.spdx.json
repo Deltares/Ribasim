@@ -4,14 +4,2678 @@
   "creationInfo": {
     "comment": "SBOM Type: Build - This document has been automatically generated.",
     "creators": [
-      "Tool: sbom4python-0.12.5"
+      "Tool: sbom4python-0.12.6"
     ],
-    "created": "2026-06-03T04:33:30Z",
+    "created": "2026-08-03T04:14:10Z",
     "licenseListVersion": "3.28.0"
   },
   "name": "Python-ribasim",
   "dataLicense": "CC0-1.0",
-  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-e43f0c95-5b14-49a5-92a0-52761aa3dab4",
+  "documentNamespace": "http://spdx.org/spdxdocs/Python-ribasim-9d84031a-9890-4a88-9098-88a71e7f1e0b",
+  "files": [
+    {
+      "SPDXID": "SPDXRef-File-1--multiarray-tests.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_multiarray_tests.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "27495e3d586aa7afbb066fac43d030035fe8c1a5"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "0e64c1428c69b6d00b895453fac2c143f2ff9d9a1c44091786525021637e5226"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "b577f67a08ea2be531e9adcc934805e4067777b92bad29c7411f3370eb19bf256326014795e251a62e0c12cf89aa1e058ccd8e1a3a16f20bf1db809b92e2d05b"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/_core/_multiarray_tests.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-2--multiarray-umath.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_multiarray_umath.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "7f2aac8687f0b7f9aec96ac10df6f55d97783ebf"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "2ee7f2424f18359d988693950526f0c063ee7fcf232bf01f1ed6d01a7a1099fe"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "3fdcf2044b5ed75afc5e4b07b23d157c15b4232736de6f508b6c8469447a7bd0906194e0d187c61b690b6d0e9b3a147625717443d30b504de5bd2d6b94e7d35f"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/_core/_multiarray_umath.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-3--operand-flag-tests.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_operand_flag_tests.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "06b8e41053c19ca96f6eff139f7b77d7667fc253"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "889cf44419708eae125182a8a68453768c2f757e01dea217f78139248433c5ea"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "ad8ff2d7c0d2181cdb330eaae98f87adba3211f09519fec94f4b63eddce9159e4ed3c589b56b3507b63b9788ea4c2b7eccbfa991289a3c4cebc2f2dc387f43ea"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/_core/_operand_flag_tests.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-4--rational-tests.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_rational_tests.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "02aef41f0c1b75cc85b17f2ecd797ab8ce536010"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "19b2698be52da2549e6de4fe83233851ceaa63b5ece9b17042dc0d3a5aa8ac51"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "455e12ac5e545863bff1ecfac5588581104ebf6e023f3eb74960ba5150e81700a3110511f46c2be91d3afe8f2bb3d93295cf7ffe8f6f9389cbbfba3f5ecba140"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/_core/_rational_tests.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-5--simd.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_simd.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "5335d227c1ba3a71d95ba257f836b9848cfeadc5"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "5dea9b8a2883cb0a10612c123fadcc8caebcf23156b9dd3b5e6a04f1d0628c5e"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "c70c5f7beac02bec82ca5dee319aa988860cf109fc09b2c0f389940410abddf9cdd2cee8081eecd526d60a79c23c6e3072de4e027e7d6560d2eb1b7b85095f61"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/_core/_simd.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-6--struct-ufunc-tests.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_struct_ufunc_tests.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "9ef16978ea52103c83ab4e0fbbe18e05e714ce4d"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "5720db7b473a17dc84561d95a29bd8420c2e5d73ee64a6152f45d9051437eb54"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "d1fa06effb97960ad404f2ac463685814410c59bfeeb9557daf240a5047548c2a143b2b5ecaa8f00d83e0dde2783bfddeda0d4d8d1587b95e48cd3b953ad3f6f"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/_core/_struct_ufunc_tests.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-7--umath-tests.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_umath_tests.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "cf72f12424eb6ca3fbc6aa43fcc1e1568c98c932"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "91a957a9638aaa8215a3f368fb6bacc6765b6e93bb1d35110687ac6793248888"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "0215f6d698a9752d76a808affdd75de672a36cf3808e1687c066c0caf69dcf35f9b547a40310d5fe2a214e45488ef57eaadd5fd6f9f225e7b9adf02349df0b15"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/_core/_umath_tests.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-8--pocketfft-umath.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_pocketfft_umath.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "ba5ed7cca6f8c31b6b87d46a67ff192ece1e5fc4"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "578862d62299bb9a6eb52c09b1ab740d23115cca9ecae62881dcfa260199421e"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "25324330861ca43587aea713470e4368ff1f025743f128e8bcb15c2670634db7bd687bb679daa75607d52914936ec168344cafca8f17a18568c94e039d8e5bb7"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/fft/_pocketfft_umath.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-9--umath-linalg.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_umath_linalg.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "1ca9faf05e44ff4983b3b67183f27e5e2e80ddf1"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "bd39c7b10ce29edaffa8ae1006d8cf447bd86d5826d56184bce7d5108f1c7e42"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "0352b1649dce8c65dafa3dc447598973d4117383a2b685a8d5dd9a62c6f81b57a375417a0ba9036b5717883d571e20bf24a6585c4012c1c6a5a83da8e89c8af8"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/linalg/_umath_linalg.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-10-lapack-lite.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./lapack_lite.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "1fbfaddf60287e24c181b19f00aecc9d11bb1209"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "fac4d4df16725658c691c4b241eb1d1a5450ecfed3a71557b7a02f6ae13f2865"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "7d9dc715965d28981c92b9dd27a90403bb075514415936d24b2ef3d0f9d39d8648fb6318d241e1c5c1ecd5dfcd62ad003f51bf1d4d9b52a17631645b06f7e522"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/linalg/lapack_lite.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-11--bounded-integers.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_bounded_integers.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "b016d41ae4f39b721c8989f868de4bc40ed0451d"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "032cd5e8f1b0dc378e4ac9a4e0f2848b2ff18ab59b6414f0ced57faba64331d5"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "e56051960826be246b358f23cd0258d41d9604f9715282cfb791f91f707809e05047a7956ecdf0dfb1f9641e8d3afd9ea0957c595f6ccb8884669ea52cd025c6"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/random/_bounded_integers.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-12--common.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_common.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "d4abcad784714b8f60c87322ad4e079a12aa66a5"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "39deda42f42e623541bbf1c554b188f9774c39e9bc1c6296cc37fb9d5929efe1"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "03863b03471da84ad2f01cde76471eb335edebf6e89fde168282cf69d4a9c70933e3dec37b55d6920c6f371aa58fae771c7f5299f115fba16976fd16c3db0170"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/random/_common.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-13--generator.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_generator.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "80e398b49a59906db98079a705e460fbeee0ec47"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "6c819a7b2a4bf949c755ffe463257d1c09537b033514266444d38cf371e30b29"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "8282ecd2004ac935dbc6dd103dc71825110035e7a2a5436d90318d563804e7f80bb6bf2360b53e402434745873b8a03661cfe8608f033f8e62da97a7b9223c3e"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/random/_generator.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-14--mt19937.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_mt19937.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "ec940fbdd7746410078a3b52320affa9c1a81c66"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "5e028faa64c58f595d10d0cc97180a20bd651bb08185bb8157c2f4b0eb1b8036"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "2345dc1361eaf257d5f5b84f537b75503f26746d6471e900ae222e8a06b4c730c9a7bc73abbc21d9d77d37e7a7f162f14d02b2b74b931442023e584b0e1562a0"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/random/_mt19937.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-15--pcg64.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_pcg64.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "e77ad5b2e8fdf1576c2c0c52b2e2dcd93385d86f"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3a244567acd34f43e05ca022fad424a3b98fa5406e1cdb4e7927b2b2fba4bb27"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "6c9a0ccd95daf2cc189920106070c50f7ec6b5d2dd4c1f0bee66b8cd0603ac63e0181d522a02920a4d176fb09f1075f8ae22c6d54640100e7b62a1e2c8645414"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/random/_pcg64.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-16--philox.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_philox.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "3ca21c03952e9c7d2387ccd4498baa7eef42f332"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "2d67a58c567d8a4bc6043e5d126399d00196c4b7d7a05c0ebc94f3ade8eeb709"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "5c657687b86da5f9588c4bc2864220e4f7cc3d0a76a8abc0308b3cd89e9a5628a171dba9ce27906e855be24745374ab4e37c09f1f01a5c1f441b61abdad09ed1"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/random/_philox.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-17--sfc64.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_sfc64.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "8ac96a6757be5ab70d7b7c45426a805e12be39ba"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "18031981eb8df4af7e51b1c94f301bf68a64949f6055a56ba921719661f32bfe"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "618f537ec067cfaeb21c90671cbbc7cc69cbc053bcc4de26ed7c43efcd68a891b500de9166e8cad4e8053ae8c6896658ca25b890a42278e99fb35f514c976979"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/random/_sfc64.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-18-bit-generator.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./bit_generator.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "af0d87b8024d31bc3861aa3410eb7b02649d0d3b"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "88b58a1aeecbd47cbeed62c0c60dbe42be1e51cb5539f5fc6761a1ad767f1dc7"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "6a2bf761c24b5108281730fa3088781926c52c1b57e6d6e671c1d061a369c9cdaff96b42da93afe74690b8b786c17fe71b430dd3e208e1328ebbe831d372d7a1"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/random/bit_generator.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-19-mtrand.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./mtrand.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "6a2afbc4aff7ae66ad151dfec2ceea9c6306d787"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "c2cc238ebac9c26cc1dec3853c77920c7e7de373480e89d08472f5a54c651dd1"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "4ebe04681ab58f86978491f34d25726638f0f59710e1110ea51b0b1be8b406b553468e4f873465401847f802d2a1a6c913451952c9fa40aa07be4eac9dfd4c9e"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/numpy/random/mtrand.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-20--cyutility.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_cyutility.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "fe0df9ece32b368e525698b1293a8dccea99bd68"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "99148577205d388ddff37b4dd57175dea3e44d046bbc6d2942c05e28bee2c89c"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "0ff663c058aa5d3396bb4d8672712db877938e44c866708f26e28e5f0ef6cd13dd9ea56decb993dd65fcd625cd919bf77b221b974ab51da0388bb5310b0108ab"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/_cyutility.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-21-algos.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./algos.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "686e8723d979299a7ee61b2929be884acbe1f89d"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "5ffb4825046c211a1bdc6f55d19d42d651f20f3c29a202eeacf2db24915b67f0"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "c0429af4ac4f5d95626c8b3eb90134c2babb28743f07341c032d8ca7a07470f9383ce50b46ba8b76c0a2ba3683285295a81f974d757a28917123393af51ededc"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/algos.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-22-arrays.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./arrays.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "6ebe2415d54919ab154de725735ba55fc50a7d1b"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "d2ac6e944584843154133d7db4c5a42cf71f629c8910755d4f15e1d4c06340a6"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "58e1700141a78c6f04fa95344563fef90743b4f23bae0931076eed0b3d730f3f3e7b23527678a689b0ca99fbfeea67df07d4a04cac99f51c047c90cc5c81b2d1"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/arrays.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-23-byteswap.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./byteswap.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "d042ae41c1896eeb595024831e8b81b861130375"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "872400e89bbb243957cc937bd218499632c787fd9aa955b700d1736e5d51cbe0"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "a55cad3a66c2bdd1542df640619978980215b552f80360d080736122af9dd22bdf8ff4dc677c62509d8da9d78dcab430dff476747c7c963483d2c45d72e24b43"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/byteswap.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-24-groupby.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./groupby.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "ad50e4f31ce78f7168ce11f483b6cb3ff15c169f"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "62ae685ac1dbc744af680b8ee40b982b91a4d8f8416b0d0a5634ad12b5d956b0"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "bdd9e2162bf87f30a9e70f885abb83e57e43228d0d3df75d720482e1ca10223a3905a83c8287a319a9c7c05224906950b435bf2b10aba6fe69d745e866f083ac"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/groupby.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-25-hashing.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./hashing.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "2e701f74523de57ce228eb010ebdd1bf15466769"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e07058d4b53ca4e86db7a6011208b5d2cc3e0c37d5c81cc27c70f83fb0992192"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "18c5e15392df2b2ef341a97f0be082120ef6894c3801a98f6b06d494791ece8e135f53c42c5365838771d3d56f9c153764828d0c735afd3f10f9aed97c76fc68"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/hashing.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-26-hashtable.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./hashtable.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "0a34a54838d81f5356f7f6ae37cc4bbf2b5e7b34"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "745e1dd684ae11031f8d6ca91b7a63b26a2f0d6a7a4c9e462ef931c42b3b6bba"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "508572d377093176cf8927fd46ba8b7ec822134d465e7b156fbae7c4c8af8c16b9b7789b642a548f593fc3634705721d7f04dc2c6440e88e8e900c56140a329c"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/hashtable.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-27-index.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./index.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "cb70d672151ef1c5fe5062f59322d4ec4754255d"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "35dc4f3e045e704daaa6439c321826753812b7cc4010892d22c81d5bece9740f"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "d349224015009da95af4eb1c050589ffbecf676b09ed6188921859533107844288b8a4fcb89cab48509e33f6fa22276964063ee4364857048895d8aedb54009d"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/index.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-28-indexing.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./indexing.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "11588a859bd32e5a36cd41b4e96d78cbefc88ebe"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "541dd1c8fe735d9e4279958ca3e995296193c7e066c9355bbf8dca23fd16e612"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "99ba3ae0b96bbc3a9022da4fba8acf54c11d0c47e56ad48a1fe8feb15f878a173181c608a77b2bd21a4e6499cd0d7352debabd64cad935950c616de44fbf3178"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/indexing.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-29-internals.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./internals.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "c33ac0d02f18c6d1c61889de51d1410a91de675f"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "df48730ce8eb3252a5e43def08b657f31f11fe60134e35a88c9a11a71decd2e2"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "c610054b2bb68e76ac6b5240736ce4ba345e9a3b40137c23884b35ac3807269fccc3578f796a803d2fed913d9030d0945dabbad87153b2bcbd55454c7b78d3c4"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/internals.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-30-interval.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./interval.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "ee4e5007d0a76fdadf6e5eed333cfb2184fef48c"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "7f650a80e33ba19a9728bf8304b4f6149ffcfacbb321676b66ece8dc45711141"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "8c573ca645ec8ecea9e12aa52be19b46e25f704a728cd889eaca61846b7ccc51321f0c9967f3c5df4a075fe86c5318871157cd615e6dca26000fa83a57e5e165"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/interval.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-31-join.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./join.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "48b24186ef0dceab7aec0f2d164d2c0637fea7df"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "7eb09f9a712b3e29cca05ce90a0e14200f329beb1d9c7dc8be756bab3a1deafb"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "fb816314c014a58733e460c5fcdd1dbd434e4021a5fd3bdd56e2e2be64f54a403c98a9e9fbd3dcbc25d35589d65f720cb04c2a83476a65360a8968e28cd1c5ec"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/join.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-32-json.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./json.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "4d31b6ebdb7e2b1d744cce857d552541916d0202"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "f6b4ea01a34cbad9ef1a26911223753c4254a9da5b407cd28101208972be2447"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "43ff1942441b0cdb5b2dc08773ebe8af8fe8d4f55ea51f434b1f77d4acc55d7e7a82f04e2cd688cc87f5a3200c814fe59f1c53984fab15f846eeb171d1c6de83"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/json.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-33-lib.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./lib.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "76227a66cc73456f3f76a7d3bc6a4e51b4c91651"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "71cc9ef245078796367a9a95eaa6b00eea1d6d884083eca498071e784255d527"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "86a6c84a9bc3f4364efe28b0552c8d2ceaa7bb78a4c686e0067f1e2be13ba5787ca812af9f575f122cc204a024b7d17522adf7f2c6928212fbbd65291c677888"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/lib.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-34-missing.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./missing.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "8995d0454aa35ee428d43635eb14ec26939116ad"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "fd8153f47121e4a3c37a2bcf705f42b1f6f46b60e3ee14922d25ecb31f6eb0ae"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "256ace163df120287e9d727642c9c296f438ba63e1fdadbc7803a7a537f455142cc90a1748124e1b6ddd13cce98f747d90d42eb8410e592e704ff5be123c0fe0"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/missing.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-35-ops.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./ops.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "da8dc819ff4b3d8a15d37720a5e83e491635da8c"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "f0a9175c6a38e94a887beed40429cbd1f8b355c9232885c8679295bf5c0e1c4e"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "56cf0a0ffbf3a19582040964a4be90be6dfa9d3324213350b24b37d5ffbe258e2b10a9c405aa81147b72548779803345e108e9be4b6276735da212d64ba8bf6d"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/ops.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-36-ops-dispatch.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./ops_dispatch.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "bf0220084695b3da9e350f120ed18260918f0f3f"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "47735012bb5e939e880423b3d098c64102daf2c73fc513b7978bc966a4278afe"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "6c276c7f4e2518b88d19402ba76238972dc5c1f3df3f68232d2b2efa73e55eff7210a71f95aa20bb722a7cb0304ff5e235a8577607edee2e2afa4ce7fd745fd7"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/ops_dispatch.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-37-pandas-datetime.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./pandas_datetime.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "138f1c9fb086f58ae25fb7aa45a7a4ccef3960b6"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "2f6f1ff892357f802db6a1e778b8455b638e6da5aed4572af1e1a1b1c7c35133"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "b1f17f60bbabd120d6daa93103951168ef70b847f154666c081e3dd418493bca14f2ae2e919830cba0f8882457036a886fb72841ea9145df2409d1c11b37e105"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/pandas_datetime.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-38-pandas-parser.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./pandas_parser.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "6bdcefe800f14c4a707fab61866f5fe50ef853cc"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "930407d31d5eb86d19b14e66496d90e700b4ce211fc5a861bb332df50786909a"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "49c000916a3393c63ed92f418ccd9ba9d039da9a658a6ee33eb3a228a938eeda7eec2a136008182970f425dd53afa8313a79862dcf0e73f7450dc2d683bf0067"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/pandas_parser.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-39-parsers.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./parsers.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "b7613d8aeb9db3440a55ce5d2bcba39f7aa0e16e"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "4c543af47b778342f2e1ffd5dfa7860693c786148086021a0cf5348236794ca9"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "7431f3a89ad6f560d0aa7c236e8389a40fd4251a022b9a41f6eab99d64efd65bbc902fdf30de1e30f254b60952b355b6b51594bcf71d2148036c5a0a77780260"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/parsers.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-40-properties.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./properties.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "ce02dd7f4a14aeb40f6e108079fc83de5a52e488"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "9130b7191dc7ef66790604c77292964093fcb5c4b9a2172cdae284020873c753"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "739bcd5d176e89d8ad3116bc6e936d9fca1b0da786aad7828bee541de3dcc32a3e3e8aeb4e8faf277348bbcb47822710f252ca0aa66f7ed89e5ffc9017cded34"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/properties.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-41-reshape.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./reshape.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "5863a47d202846079de8b5870bd46fcd595bb346"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "2d498c1d2d0fa8ff9c8a0a9a1d2992e7e5518264ae9537d5582e5b1d5a5ead5a"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "8fa5ebdcdc888286b80042ea29e2481a58740a64ab3f4ae89f4a153822e775d3d1fe13e9595b02148692055461cdae77c7e13aee84a4c92f4a42ccd6a64844cc"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/reshape.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-42-sas.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./sas.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "6f45b52f3137325a2f7d5765d01eb33774785edf"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "f75176f9c614acea79547b814938dca7fc30a3210d2fb3088c886664227cbcb3"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "73841b88187fa944ee953b55ff3a50ab0ed0ccc8d0e5093bf6039a318c9e03d5244e0b56f1786e19c1abb31516a4e6897f1d9b9c63bee6fd76616a188ff74f57"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/sas.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-43-sparse.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./sparse.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "df582d75b69aa6241619e998ff2e486f305305bc"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "c14065da36450cbce1d3f36fb7a9ba80386a78711e00e61e8c77fb34683b11c8"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "63312edb859e8c6dbc6c1a0473769a52de3a59864ceb4929ab41e5f3acdb5be275ab40aa0b97787d5e9d5ca9c3ad0b8953468dc9fa164b4d92399a358b18fdb2"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/sparse.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-44-testing.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./testing.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "b4fa6c591e41430fb9545cf762c6f530849c5269"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "a467488bdcedfd728f3e6c2d6a8b5f8de287aa2269daa09ab6fde8a5321e90fd"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "7cc3d5ad34afa5e1fd973d6757924b387d2698e38d7dc719b46a13560623756998bedc1a968c52dde9a47fb9da264f5a9e1b6db15d7435a451771152f0c6cfe2"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/testing.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-45-tslib.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./tslib.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "6ed0ffb417a44240bc202e148b9061adb025b446"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "624cbcab95895d246fb3a438e7fd49680d9f6de23a3116d0c64563ea4093ed96"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "f702aad23841f6fd25a4c96077551888d7e2b6562968cf93d0b519b190b08ded8a3a4f6b3a13f8c50f965b0083a02b698eabbb35bb84a0528e7be440fc448f1b"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/tslib.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-46-base.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./base.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "6cd54d91f14bda4eecd626e9ea55920f33aac736"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "d63bf247e7f3b31abaac35c082dcea4ab26303a7b1061abeec7bf789f73807f1"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "017e4e7baa8ed308f36919e5e94decb5d5842800a53710c39859f3ef1e1078d11e29937187ddf1809f1ed52518fb1e70f4bb4a620b9cdbc46c3bde349603be63"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/tslibs/base.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-47-ccalendar.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./ccalendar.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "4af2bdf463251752c482adc102d5b88799ad2a7b"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "2a168924d19133dfc9b07bb7242d23d86d961fcb2981c6398ca523725f3084c7"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "840c7fc2383028ac3083a60340c6bcb74f09431a78224368c41a629b80ad281914f19510b6d03e4ef5d9b56d1ecbd999bfbb4432303642a8c09139c3a8b33467"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/tslibs/ccalendar.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-48-conversion.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./conversion.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "999d9e65cdaeaa53c15d53a92dc7a6bfa1519c2e"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "1b007f531b7b8e1615ab32249234a2c8a7d91e752ccdd34e66c63d532e453aac"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "1c4def728160be0c51d5ed165abce6f32d9acd8c8e978bd0d5d9d33d9a54a18e29af4ede859ddd36a9c5f9f57f1ac3e66013caae6ce689ce543306b64fcc2e14"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/tslibs/conversion.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-49-dtypes.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./dtypes.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "af1252db565c357cab198296e74a72580e4b095e"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "fffe04f04d4ef62e2bb1287cd4ed78f1d2b020159a81c6c3d527d4f5e895cc52"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "a14ca614eedcc8934f46ca21b64a7ca7b8bf02b3d8b5a98875474fe8d00c3d3f1a3ca6c7ea158a1070f8b8b51efcd6e9b0aed4f77611dd31193ccfa63f9f14a1"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/tslibs/dtypes.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-50-fields.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./fields.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "6893369c6c9cf1d812967fc51fe8792158aa0cff"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "bd93ebedbc84d388ef599647b3a6bb248d2267984930159d4e5c0e43452051bc"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "040f3d72bd4c580eec7cef9c0cc8c9ae53a8a09223c5c13117d13f300d55709dd86df2bf661b1cb1dc07998fdb444380f4122af37ab95f8e8e13ce92b4dffaff"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/tslibs/fields.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-51-nattype.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./nattype.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "22a1ac13d3641f5eac5f35123f3eab6634f52b41"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "2fcfd75b3c4017d04414208ee198a7c50c7c209d76fa99a9957b37a8d776b93a"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "628f9b303b4290842fde88a480fb3c2da345f3640791533c1f065cde3388f1c75a13932adc81560ffafb720de5c3b3bfddf6bc8c951d7f70dbed56f9c8e2f89e"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/tslibs/nattype.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-52-np-datetime.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./np_datetime.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "d1c3b07344e4da45aa6aa0ec66ee85bf97a09293"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "5d74c29a950e917f897a0a30dacf8a893e4ab1c8bcb77e1be46604674a16c91a"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "034ec530717b84faf67d26852c3282493a281ca3527c6bceb1482d1bb0ea898cf3baccf1d027025d291c35569d060812b8ffddc063caa8505d21c7f000eb900c"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/tslibs/np_datetime.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-53-offsets.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./offsets.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "fa3dbf7d55d9c0381c7b2a1df32c8771e2bfb7c9"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "8b7f81613b9d7357d7ba9f43c55fecc51d211b2e33e7b65f5b7bc77f02231f19"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "7dac18dda5217d44185834066747b46e9245ce2c5bdebc0d67422c800717225ec0d74a014665d9b99aa77a5be1ad69c4c57498833b57c309cd3ca208162da758"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/tslibs/offsets.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-54-parsing.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./parsing.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "b20c813f3bc49df824346de286fe5e403a4dc4cc"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "10da916d91764397934a54126796e7ff67db5aa60040a6d4e292499a19df1023"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "5d2738b9594a1953ee2581af2755795c86cc9c5352619c95c73804ef6c9415ee8c29e7732e8db91cd16c91bfd759615d8c3637bc3d0779fdc1bbf18e87d8d628"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/tslibs/parsing.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-55-period.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./period.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "328a5cdce1d19f7065628b4717d902970e616eaa"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "290635770077f3043131f57160e93ce4cfbaa70b3c196ce94d1e880aafd28819"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "6f9a9b68737a6abdb2f96d92af9265f568bcf631f11a25a7e2a1a82e8848e49393ccaa691de1307ebcb81c958861c8af2637c0ef9ef34ec2ec0ec718968f5ee4"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/tslibs/period.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-56-strptime.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./strptime.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "9135effbaf146d8160902db33bb106f9e0cc67b3"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "8b616652d489dd266e9066501407055d68e1f9b34aa12a0b1b7156c53c26c54b"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "846b10c743616d2add55ff128c4c174620bceb911d9291a17422f220cc644fdf2c9064218505e9850e3af6acfbd8ae6a64af6d046bddd8054d982db0f1dfb36d"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/tslibs/strptime.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-57-timedeltas.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./timedeltas.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "dbb1b3abd3e4b5f82c85fc8c762f7a1fcfefefe6"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "287de80fe40ddd249f8f6a50eaf84dee421bb97edc2e63fd4d46f370c613ddbf"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "40996d70ea9a138acd9010317b2256fc8646b0c4fffcf016483c0719406219c196907381a40fe7bc51a82dfc7f9912a32817b999ceddf32035a72d25f8332eff"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/tslibs/timedeltas.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-58-timestamps.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./timestamps.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "02be48902ea0f51fe3e11379ea87857882efbbd7"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3e7a5655c427346d0c49dbdb769a15e32a2dbbc5857a512d05bb6252fbcaa27e"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "82a8f9157435d5a7ed8ba6d4735b3c7b2294cca6ebfb6a022b496a4e2860d4cc174e6ac6ee7491982d8f68f262caafa225ff764027b39f623805385ba2655adf"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/tslibs/timestamps.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-59-timezones.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./timezones.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "f530d16c353ee9434cc5eec232c7ca915f914c4e"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e74d2a83d5f3c3837a03fd9d9990a9d8747e50d7c3c6cceaf8bf2ea0f9c35909"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "96b3f8795ae93dd286eb1069c5895f5338667a007ea2d04dcbce1b0e10a0f5aceaae992dc9d9aee724ac6cb309ed711bb645e1c630414f6b433cba3ab680676f"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/tslibs/timezones.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-60-tzconversion.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./tzconversion.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "4f080f352a1f73d02a213dd527aa8bcffccef272"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "b45f6ddf9e812bb5691a358c03189d44320e0caf5c38f613b9af904a2e7aa453"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "0d93c4ea1016a21ace57360e506c5531856cc1c6682f647d2410573ee0be4c0e6aa5910fa7806f175a28fc156b019acea905c8711f3d2aa966e2d3c5519f8dcb"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/tslibs/tzconversion.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-61-vectorized.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./vectorized.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "d95c4bb601731f0b843e352bfe3944ff185ae880"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "fbf36a59720515b08d070aa7ee74b68dcd5a4b4c6d7dd0de06e9d8f0a098112a"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "35a9828596d9014b802036357116a9f17862ebf45ff3aa4e08d3a8bd50b4c97220e404ad89cd4c5ec5feac02d90e4fd671fe8d9dc19dc8d54f01c618affe9e7e"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/tslibs/vectorized.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-62-aggregations.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./aggregations.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "83b6776095e3935715ca24367479c7c4c2170087"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "76a1b7648775dd49761c1a0c40b93003a3a945439ab638f072a5c5402f9d1c54"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "e06421adac9617fadb0d50e047f6fb0950177678f23c4ba1da17bbacc2d9fc2ed875bd60683e4f8b64d2c0c072ab705100c10d6ce9bf82a42010006aa04033e4"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/window/aggregations.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-63-indexers.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./indexers.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "7ecf8fa313902a6837c41ac93c30abd44c013fe7"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "c1090ce0bd5781be29512b8e857f617bce0d02a7857a37b354757fd7a3a6085b"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "4f215e4f47234b1a447c9f96f44695cae4d4ca61813cccc54c1b9a29ac739c1ca8cca76bc2483d27d62b673ce969b6f77cc68462ceaba42919963e880c6fd6da"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/window/indexers.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-64-writers.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./writers.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "7dea0e01384c3a72ce4703133ecc347fe10dc8d3"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "a5623c83ccd8e61716a0a361b1697bf4993afbd25f4b1dea04e9015a0e10dfe5"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "58dc661a1500553d8c3f422fe990de4fe082e78fead792b51e05527ca8e33602b966d244e5d7d2d53b1cf15a657fbf6144ebf8e67d2ca9c866718993176f71a9"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pandas/_libs/writers.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-65--geometry-helpers.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_geometry_helpers.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "f58e4aa70fa85ce0245505bf6770d27a0a39e603"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "841ac491ec2d58865cf0e8846a697d232bc327100eb1e519524412bbe0ad2b79"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "f8c7715cc06f444ac53805479596d10536d62bf6892141d82df3e24452d8a2d4f2adfd7b95a9366bf7f6c362bea1067921c362fd725000cc8ccc7f4cdd20599d"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/shapely/_geometry_helpers.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-66--geos.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_geos.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "fe3c85466bffd89f7ee49328cdcfaded39b6a166"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "31ef9fad6be0e6ddcaba0ae97067cebfd6b36d5da62eadabc16ebbfaf2440cd4"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "805eff86af357a6d627c6336093db323e42b618c2116acdee588f7a659f391e3ed8a857e293e30405b6d3998a1dea0e8e6952208cbcb2d791a0dd5c8a08fbab9"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/shapely/_geos.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-67--c-internal-utils.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_c_internal_utils.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "96af7076f5328a8bc1a0cad2a30effa6cc9bbaa4"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "6f0f655f2d23853c864b840f017139aa6ffa88c076397985294bbf6587f13c55"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "10dd612a6c60a7f1ad8c76d63ca09250fe40f312556ade7334bb8c105fbc419e419f02f907d35e007d83e6e1ce4bd269d1da540852e35517bf5d5581c0f80b09"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/matplotlib/_c_internal_utils.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-68--image.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_image.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "6ee5cbc5479da1852a42047205168a3664326c9b"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "22575b52f6e4c74cd1413ff62ce05208d11df9f6bbdb3bc2453bf1bb3f96c8fe"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "5177774e3b6fe903db986f98d62446b072816af54ee33e4cfe87abcd36e00f99119df34c9bf688d728ef6cd27bb74c4f97b7f7315a62e4be258cee8002fbe318"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/matplotlib/_image.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-69--path.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_path.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "190480360cf8a6d904d915192ddb382e7e8efdd2"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "a76f83f86a8e1500309a1d7daff4a345a6cd9a5607c0c4fd612667945a8448ce"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "e6d70c4c5b5be969b2b7708f310266ce9296100f67301d8aaf1d7202cf03229dc9cf86b1bf1b4e93ff5e736e78ff7189cd491cfac9fa6b1a37b8f398d9b22a16"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/matplotlib/_path.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-70--qhull.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_qhull.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "34d400c0be72711a05ed60e7f86fe97e6f6bf0ac"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "a05537f28ba58a63a86ec0a4066e0591faecc2ad3ad7661e486893442d06253a"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "c315573cdee82eec16e21d8f3b8b7bf93f0fdb8d87f47132c76d2122a22ccf473347ec736c111fb1acb4625a55e5f7ae9b8908ec9fe327f2c9c2c38c93260b43"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/matplotlib/_qhull.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-71--tri.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_tri.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "0f72d96cc5126b73227d3f80c2bf065449159b2b"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "26ca906eb0422b934e35c8b9624dc5ad709b58d719f63bd5f37202c8d84b7f82"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "442a91536959eca14d37c75f404686fb06b0d0b1a9e486087db3bff6b42a99540a3e496f7cc6270ca263617d4d137bc686cd25e5616452bb9a533c6a1baae555"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/matplotlib/_tri.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-72--backend-agg.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_backend_agg.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "0eefa291142ea4565e809a31f80c476e6de39aa7"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "7f6f95254be2d0ccecc9e65dc596424c0b9241de586962ff5692f743207962ef"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "5ff6fe4acde8355d1b47ba67f0f24d8ea97cf5b9b30cdd19e0f1052ba6dcb8603e9cc4dfe66b5ff1b74d2cdcf5a217a069e716064cf2774724f454d70113c513"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/matplotlib/backends/_backend_agg.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-73--tkagg.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_tkagg.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "6bdb78e9f026b637bdfdfc7f8f84021ebdf9830b"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3a41dbb13e0f6bd08c81ee7f584e5ae4da13219c69faad2bb32e6af80be529b9"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "a1828d7dfc7f280e02050b9e9bf56e5326026df7f2a5dc2e70e224043c2dae39b3f72dd7c85dfd53b6987d230f0efa875e4e68ed9dae87c200f853d99f2af492"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/matplotlib/backends/_tkagg.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-74-ft2font.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./ft2font.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "45aa66e4c7304cfad247487d5977dd9f04021713"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "86374a20c071c5a29fcebf44d1a4c76fee9e5477a87d4c0b89bbb0ae8d6c7259"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "18e5210e1f84bb7eb8488db40f6c44f27163b59d5bc3ecb9efa444b9d4640b331401b879e7ad5859ef110f23c2442849e367f81875f5f929692d76c434381a8d"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/matplotlib/ft2font.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-75--contourpy.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_contourpy.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "c0702c63af75e7a277a886e318ee027dbfa1f190"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "bfbe02d16632ea0736e759f4c0e9d410b7f891213e1dcf20cfaa5e6c71973d97"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "5409945c2a058ffeb793fb574036f5d3cac4a394387ce5091ce8c33fb8418810d5a7a23afe41696268378b26749d9c545a21a64ffb4c4ad6e20e097cdc6ae9f7"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/contourpy/_contourpy.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-76-cu2qu.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./cu2qu.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "dd9c7d26b9cc6cef9f505831bbdc303107c624fc"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "a7e19a20239740d5c72d2d174adcedc4ebdf4debf7ff1300d32f0dbdbbabfe32"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "bcf1139a1b3e28d421c7f1c2d696c1c6b73f18da856f91e51c25bf5a9b32cfc14f42bd6a73cc05dabeaa96e052cef227a1e8ff22b15a8c4e0d18fc5aa4d6b2fb"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/fontTools/cu2qu/cu2qu.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-77-lexer.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./lexer.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "c88b725c00ba379be9de257dea57cfa655c8bb67"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "f314d4376734f22351145998443c9d2824d06c9d5e7bcbbddb8e69d63574da0f"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "6c795b30bc084a8c0ec9412cd57356e9abab8881c411c1ceb6eef96de0c571e607d8aaa8c0a9d98311ad6238b82adf41b552cf470cb88179dfc74b3ca38b7ac9"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/fontTools/feaLib/lexer.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-78-bezierTools.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./bezierTools.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "65ac8ae0f04fcf94fb42a6331f94bbf7d1a9ccf7"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "8cc4df27f3e4be7e044f83772100fc35a59cf2e9477952bd520d4efcf20c259a"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "fd24af56321e99d3555d536795cc309a6e593817206039892f318c60a368e197815f90269859bcc56e09ff13d90f3ce8cde417a8991b4cd775b2b8d079ed69fa"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/fontTools/misc/bezierTools.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-79-momentsPen.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./momentsPen.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "916d39497aec7dafbe2e697467a9a627c28a32c0"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "2deeb020b5cde66f6804dc419f5120bf682555ceac5ae317927cb74d9eb59bc6"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "a4135f88d3bd2f7d3a55c168bd71e6762a4c130b56035f9036045368eb74b6e916472e2a852c6982d1789d06b675f3d87258775d058d9fb93a86f73354d0eb33"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/fontTools/pens/momentsPen.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-80-qu2cu.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./qu2cu.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "b7791546f0dcf17a3df54efe840c7929867ce5b4"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "52d0dc4d956cfebbcd66fb6c89b79182cfef9edb7e0a64d6b106a9bf26e4f28f"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "b272ef9ebebc1a99c12de1ea10d8b41fe0f0a8620a88a5032562d8ef733915fda3e435d83032ecd23bba76d479f6e7b96a866091d7db6409df37f8a6b8764ef3"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/fontTools/qu2cu/qu2cu.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-81-iup.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./iup.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "2957c161ec96bda868b44d5b80db5b8a28539fd6"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "6beddba13823f758061c6a60a02819bd3296867c47ee23eaa17b13f8ac288e87"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "93235689bc5b9028546ae3c875eb7453b84993e2e39df92f0ea097c3d8bd8cd9dad084fe14ba30bf9ce0f8053567746bae9fa2883d8262c272508837e88088d2"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/fontTools/varLib/iup.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-82--cext.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_cext.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "04d8216396f86e2c659a66e6c49cbfe7570ae3aa"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "0531de3607b97152960433b9acfbe1a2626de1e91e7bdf3cb3adc8b0257c8c3e"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "d308c783b9acc3b7d6152b0ddc22d0b3793396ea4d51744e9933c7fac1201891dcf497dc51d027762e883cbc0152ebfd115df80d4caec02647f56e0b1622a9fd"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/kiwisolver/_cext.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-83--imaging.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_imaging.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "7496690151f61e340d432c5fb3c367bcec3e8d7f"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3367e3215cdb32c502e15369d702ea4e044247af87ed5a69f4d43f73136fac2e"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "a925206dd88ade9c4ae32adea26cd51005dd7406d8d3749e111f0cd028e348ac959d36013c8ef395864239a4b163ef01bf8f3df4d90ae5e82d3ec4a1e3aac30c"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/PIL/_imaging.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-84--imagingcms.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_imagingcms.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "89d3cabf86f254033f41e20f24e5c0e377194b28"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "1c492884df7085cc9fbabbdb85075b72dfb2f5160105466a486e132e6be0e7c3"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "eb38d8bc4babc8db1d96e57d9c09594f0e694e749222ce9c1ddb3d13a07a92d66617155f8ea219baac7260391a97264ece1433dc76d1723fdfcfbd525ee4626f"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/PIL/_imagingcms.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-85--imagingft.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_imagingft.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "a727e442d193eaccb3e0c65428905721c1ae5585"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "bf5e78c5b33fc33b3914e1212c37ac03637d36c41a62156e7dfc3d0073c07bd0"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "4b1fe40659944a22833784c311436f9eca5ddb0b03f0f42bc3b003c6ccb4f586174bde12fb5d6a3ad203c718e80a17f3cc1cdbcca0b43a476227f149cbaa578b"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/PIL/_imagingft.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-86--imagingmath.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_imagingmath.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "15d5584316a684232698d799a9a009df7dc7c51a"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "9ca5160b3e55cb71be9f88b87e25d0410327e7b5c38c73167ea45776076cade0"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "fee0ff748fb1f37efa4c254b407ce31f30b5fa1b00e7376a449e82c731f98eaa69b7c3e48530cc7ec7f2c46a88c4d1025881eaba91b51abfc0d08005194500bf"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/PIL/_imagingmath.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-87--imagingmorph.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_imagingmorph.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "dabb25e983873e0ee8b1b8c6e48a06d29ccd79bd"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "f7e742aa6e85a197ec3d2c65a26ae222e5d817f411de27022e148d8624951349"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "d9da657fc3573a469127f63434410520a95219a3269a744a2ac8e0f029242f12700674b8027082eaae26b7af4e88252ccd09dba9ac690937643cbb923d1d1cf2"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/PIL/_imagingmorph.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-88--imagingtk.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_imagingtk.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "463ecf383136b498d36e8e505e498e676e5c4cfb"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "9005cebf8492fc0e31b9a0a4a5775bcbc0bb95db461940aabedae5b5a240feb7"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "50007979c2b23e5687e738fd8489af225458ba270edb9fbe910f8292c27ff5f4ce45f41cd92f63201b844d585a5668b0f4a0e0524a3d4924bce27c24fd3506a5"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/PIL/_imagingtk.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-89--webp.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_webp.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "5dff5cb5b8a52c945533680c22eee497cdef040d"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "29066ad6f0415e5ef343abb37fb1763f08acdbaa19dcc61558e0bfaea2b20d68"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "5dcd237478798bf5df9eb983337aa17e404c7e67b3c2e916e11e2b6c2deb1970f4b633a8de360306e6f2ae2d22c3ec738942250cf4eafcc865cdc5fe57b08a8a"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/PIL/_webp.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-90--netCDF4.abi3.so",
+      "fileName": "./_netCDF4.abi3.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "b00d6a3bc93f6f4f5cd06d9d45177e57ca337cbd"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "9f458783f45d70b5889f61a0e0e34d19f5db21e87bde0ceb2b8155846825774b"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "be4287d6134f0567f6e88e10cc06e9291d753ccf73f7fbaf931360154aee9663c3c6840360b63b98e3d689eafa4e407e645e51ea11dc7244ee112d2a16578ac7"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/netCDF4/_netCDF4.abi3.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-91--cftime.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_cftime.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "5c8ba51680a0e739ff0e09e093cce278d718eff3"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "5d1732272b1bcaf349bca3196960bfbcf78af142dd150bdfcb9d81a79241aba7"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "46c935b813a55a23b4ca652a1fa4048aa404181eae8b28e15d6a619c3b1c2f7b497da7f7937d62224a635d4b21f41f4a2b7304ec3036b7f7bf26494d15976d4c"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/cftime/_cftime.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-92--pydantic-core.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_pydantic_core.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "3f1eb8e357c3ee8ad1f4d117860f32e418a82da1"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "f19803db1e0fa44e32a2bcb4d9f73fa1d8cce0cb941b5c8c839d41b0dac69d95"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "f2251f2bc2fcb7fb6d3acc7d2430b585d3c803ea778c6610d89aaf8b8a6de8672cc0dbc13f7403cf76e2e5ed276aba317b1e9b4e2b5de251f642b3be670717e4"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pydantic_core/_pydantic_core.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-93--acero.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_acero.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "53be0732a21995cb90d13213d16c2e35a11edc91"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "fb4b75b17b6e7e456d07be83805943a44e355df81a3826030c82587614875d1c"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "b7853d0d5f6554ff59e41902a946fb222638904f893edd63f3fe43c6069e0aa8aea24d9e5c130c5ce84270b5c80426b8f243c5103880566631b2c4c982b4795f"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_acero.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-94--azurefs.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_azurefs.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "c3b17becdaef070f8271d7c30d3b1756739fc41f"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "f94ef209c9218831dd9f2142853094fea6d6661024d15e6662a2523363f459d9"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "e09c6769104107176a4ecc3d37e8b0d16f9f04ebeba52dfa66bd074353208f8607411a5acf1c20779cff92c6a3f09d8545c9b86eeaf3ce9d70511ea08ff3451f"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_azurefs.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-95--compute.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_compute.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "ecf91582f0eadb8aec4cd34f9a58f0f46947bef8"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "d7bd19466ee75fb270293936b914dc671db17ba4c1ffece430506097147612b1"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "cbf7cc18c219bba5b670e5b2cf2882f78932c02c84c02f05c396081ee315f8c70e421ca7787c63e4071b95cf2f85c64c74641bacf683376b5962f1549d3bf8bb"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_compute.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-96--csv.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_csv.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "7b95172e0f70a2f113ad10d545aaa1bb22f1b689"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "55e401c1db95075c0923f0d82373769b3f50fb7c0f7b2f02050b5fc20abdac57"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "2d4b3f5d4e0ccfe614d27819538fb23667966b4f2f9b3e57630cf85b455c91cf74ee89408f6113aa82e583c22e10a67ab52017c6eb0de614f90a95548934cf32"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_csv.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-97--dataset.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_dataset.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "788767f4955817a2850076c003882446d0c5b477"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3de49dda0a6fcf8eee2ee0967186711d3c84ed0ebf94856914a9f357743f7d43"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "166e31847c295b447ac7e71096ee27ae55399e1626395d843c697e48c2a072b7767d77af935ac9f8db6b936cddf55b99dc12afa3be4ea3b77895eb25df668538"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_dataset.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-98--dataset-orc.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_dataset_orc.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "5f74d7b74e2ce6c4c6adb2565af4ebf73f9e9b51"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "1c020dd427a0b249721b9746381406f8cac77188401377bd8546abf8020f7522"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "a21bee873abc11bc7a5acb74b5b9f708b93b4792c92d2f51d9740acb3d76d86164049d57497221b8e16f3d58ebbcbda774b0e832e63591b3a232be5e328d5309"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_dataset_orc.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-99--dataset-parquet.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_dataset_parquet.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "c77583a989ce73020c92df80e52035da17cef0a5"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "60f8ef62e8546ea60ca395775d5e9820707e40c74fd851240f2ff81abc56268f"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "4e360d7fc88439089a0cbcaf149f53c13153f50c1443cde6b0af012e0b2c5f347b9d1341d8f5f691ed6e4e8c8380d35591ec3e194fd7ed4f066b091ca4070763"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_dataset_parquet.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-100--dataset-parquet-encryption.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_dataset_parquet_encryption.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "5ce84dc9d8fbc56b36dfd4b749a024ca94dd00cc"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "134fb30f3eef8980eb389ee569d315ece7a84a096309517a16717033e412f908"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "4900da3448a0552d792b8384e627fcf29d7f0b0a9b2480101fe8629a443d0c82e465142e71762b51403bdb9808e20c79655e2c342dce30307c8ce1c3bd44d735"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_dataset_parquet_encryption.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-101--feather.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_feather.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "960b3b4ebc7895f13ad1ee04304825f279625e09"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "4a7e085c3570e2a145943f1ca2dfac72fcd6146214710d42172324edd7d57da8"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "c365ae29619b50908d79e1436b0021d7ff8f65843d8f04e25349262d8a7c5a53ff114a824fa4aec4517a9523eca057d0805fa6ea586b9a02a7c7ea324dd5a86d"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_feather.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-102--flight.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_flight.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "30b09de4fe8526863222779b3b73bc3ce7217a96"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "ab75272f971b74d0c7e81576b9e96a7cea58c6b352036394aeaab6f95ddaa3fb"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "f0786089bfe999fc60f37a63a415eebf37028b11718150907c14b5db228097cdd10caae3d2c9df456d471c531ab281b4dad4a5af08f7a8126ed82a70e1c00a14"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_flight.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-103--fs.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_fs.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "0dda24f1870bf4d7e8be6f9f56bd711171289b83"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "9f2c88395b89325f8f4984c21215978c3c19a75f801c82fa7a0da111fbdec367"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "4dbb6816a37a1bb5f0b268c9020d0215822cf690886d86b19d6ab0061093b544770e1d72a900ba03eb9a8ae8a0f9d764a2c224ee81d315e89097338a3fb4644d"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_fs.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-104--gcsfs.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_gcsfs.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "c3fe3efc18cc2ce5217b4d788fe169ed31606ce3"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "6acf2941bc66c21c7e740f358c2f3a4d185c47f5a4a15b8c6707204a53471da1"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "232f98351caa164b6a33ad896cb69fcce38b9af9797d9ac8aef91c7ae28ee7c683f7128321addd022259dc720bb59e254177bd9e92245e3c0adcb3ee0b0d5077"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_gcsfs.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-105--hdfs.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_hdfs.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "3ba588d43a3953548921ecd2ae16c6b3574ba615"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "4f0fc34b9de3cb11da017651f416c78e2ebc150b473cc74bed60c5e7fc44af84"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "1e95d7171e85fcc3dcc793c10aa4973268b2f2405249d006f91c4a24cbbf48d18a71e28f575d10d73e2a86965160ce0dc2c252f6719b9e339a50e69b0a9af027"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_hdfs.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-106--json.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_json.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "cd0e210a5c96e45a3d52f4f26eaeca3447d024e8"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "24f47eb80ef6919607bee1b2a3d02cf5650976f4933278516e52ce84b422b3fd"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "e507b4422a8ee416bbbd6e690cd89260cb11034c6d8b9689fb314d404ce0e60b0b97b0820cce13f0cd8395dbc6467130f2345fc6744ca62d3b19fa751b6c3ca5"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_json.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-107--orc.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_orc.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "97eefa9d813973f651648c6b729e3ffb8ce626b7"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "243cab96a0a05e0e4cfc0287bc20a5ae79ef4de4842a68626cdbbff2582dc773"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "cd9b9ebb3776977eb898b6316b0b801503186a81fb4817e60bca8bdc56a2e92c80f4eb055790681ba2f487c3371a62a658bfd8bffa70be6b43f2b079d9c3e011"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_orc.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-108--parquet.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_parquet.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "969d63e62e7186fae604625d38cc48754230aaec"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e0f58a241aabe8096b1c8d823973041d0384c9ba0807d896c74d3d5862f5e9eb"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "d0a8770906c89946e3d212e517db1c73058485b413ce773ee0e6efd8f0c45f13ad7ec6fb55819ac3ecb4475e64a289bacb9ec1e7240c8d14629ce3b5973f9873"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_parquet.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-109--parquet-encryption.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_parquet_encryption.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "9cf28d6852ca80a618d20978446777bd012349e2"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "8eb2a15fbf244241f15081b2764ff10b8b189b4a05dc5601502f2519bcf18502"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "e9449d546152862eea9a97bf418242d897e3595978f81926d8ee879c7374677c4b0ec83149e764e86f0494cbb84312575719a634c9293981ccf6285394a94c77"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_parquet_encryption.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-110--pyarrow-cpp-tests.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_pyarrow_cpp_tests.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "c18659f78ddceefec69494cd36afe004e7423c8d"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "407898648d48861f0a592fda21de34aec79fcc0bfe7790e308bdd55a2ac8434a"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "aaaa2f932635caf35115327ba27c5914dd9dfac7587349a98ca9e0dcad453127766df368a6074b5330b5573eae6489674a46255a3623d41171330bf853a84b32"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_pyarrow_cpp_tests.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-111--s3fs.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_s3fs.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "c8302fe0cb25272944935eb6241c4a3bc9a7be99"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "4d9aa56d0d2a114d5162a6827e59c7d8c36f0811bebf1514696c0f8d327a31c7"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "5850ebc5a8fc934dae7f37cd89f2229fc1715458e009a773860a925f25b930aa85b5f9fb7493f117e04ce7ab47a327b678e4211595e07aac901ba8a6f3fcf641"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_s3fs.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-112--substrait.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_substrait.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "b709f573a6363f99b53cac439b35675ee5744e15"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "ebfa70bf705ed2fea41b2884e4ad66471477c4d646ad3cd643db074d4991e0a6"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "1412285b06a3d35cfdfe198bc11cf70ae61f977bb8d1cc3001458ce4d68e1d37a29c5f71ad0dc3caca3e35ed41abe8fa7ce76e47e9372e2274fec84076eccb2a"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/_substrait.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-113-gandiva.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./gandiva.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "7447f6fcbeebab634c749685d94d616d2b24bf0e"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "23dcf73602956d7d919e5dca175a8c90b56b1fa992fd879bce3cc19173494ca4"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "847213f17793a6149aab4e4db9d2d44982ccf796e7a7023bb29b14b9364fc5da438eb3240ca6ccdf8c3095cda0393b6781a4ffccaba07c0bded2dd4d0cc24e66"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/gandiva.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-114-libarrow-python.so",
+      "fileName": "./libarrow_python.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "a883d612173f89dab8d399f025dbafad52ef5851"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "2a5fe8de08596497d26bc9cbf77d9f3896121b479ea449a2af147ddf2dcf0eb5"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "00f493d5df646eb5a4a815a488ef17e24d6b062bea348add636150c4fd081f872ada021facbef594a0485bb108039344295653790508f1e54f5ae98063f0520d"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/libarrow_python.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-115-libarrow-python-flight.so",
+      "fileName": "./libarrow_python_flight.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "eaeb0e6dc1de297276c99a1a549f16babc539571"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "beaf7dc1c99890674a3ff7cbb38e50f2ee19c9f8dc4167d8dd7ffa92ced9de31"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "b468f257e0a9a3597e0851607dbc7b0d194c9941b25fbbc645ae41abab890f1bda4f28863792f7060fb9d3887a3a069c737d3471b9aebea0670786222f520f92"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/libarrow_python_flight.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-116-libarrow-python-parquet-encryption.so",
+      "fileName": "./libarrow_python_parquet_encryption.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "bf5dc8c5a940e3932a0e3f583d3709fc963726c3"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "4ddf716021d1cff88fc56fce04926d7e5a28c98feabbfd1816221b530d368888"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "dfb3fdd3fc84ea85d6fce0a195655cd27664d30051a1d9124fdaf540be535cfb7f336b55e79c8ef5fe18526322365e7e7c63720506e0cb40f6f9875f10ae937a"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyarrow/libarrow_python_parquet_encryption.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-117--err.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_err.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "452a36c59a3e6fef82bfb43db8b040e33e8d9b2b"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "f1d1b4203da68ad6a35a75ee1de0e811fb96be006881fd9f7f10ce0f4164d209"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "b97c4106f6a18b71033fad7b02ba5a7e8e38310bbc7da9a8971848d3bad41f5b5451ada48a7515b60ac78744475b788b9d7172ee22fcda1dc7b9388cfef5fea7"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyogrio/_err.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-118--geometry.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_geometry.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "d7c8aad5ee890435d2c4f5dc9e09b5cfc1c3f6e1"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "411a3a758f47bcf85659a2e92312868b3112b4d4a67976d22bb9cff4f3a739a3"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "7369ca26c1d407679766e4555a8de76e3c31a6c001976db929644f2613c4f7d56f041652b4f113739ee378e25aaaff42f24f89b410ec40f33a628073b6a65404"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyogrio/_geometry.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-119--io.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_io.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "ec5202fd28f3f3ecfbbc709a064f0dc26b8b6957"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "b4e4f23445aee7f36c4e1eaa82fb3d1b2e18a3cb234bc40b907102280ca75885"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "7cb7bda931bca9e87b43dacc9f42bcaa3f43842fe003df2e8d57f24e123ebbe855791ebf11ecd79cd34639c48439a87308d604cb4861eee2ec10179d63d31f2a"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyogrio/_io.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-120--ogr.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_ogr.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "eeb29ec7cf3df7ee6d00e84f6c679fb2a5c5b2ad"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "9fa605dd18f72c6eb628176ba4b47e4c17e6b221aeabf596d020a37d31b565f1"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "1d0c15cb56a45d6577ac39f7c995882307cbc7a2ffd151c12010a7f5eb4bbe7b0f7b99cfe3e6ddd1b17052f81bd4d82c0af726ed00a1953ccba5e195b588c8e7"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyogrio/_ogr.cpython-313-x86_64-linux-gnu.so"
+    },
+    {
+      "SPDXID": "SPDXRef-File-121--vsi.cpython-313-x86-64-linux-gnu.so",
+      "fileName": "./_vsi.cpython-313-x86_64-linux-gnu.so",
+      "fileTypes": [
+        "BINARY"
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "5061d48b77e5ac6d6036679f68ada75c81de1944"
+        },
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "d77707598ffb86a94cbdeed8d86063f396295db551c56491cfa5926730fd454a"
+        },
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "791111f1087acf2b3e13d72fc7ab6ea588b1a0168d1d12a81c96e8f0326d5ac222aa5dac033ab86681bac6febc5eb0d95f7de8501d23c726eafdaf02df8c411f"
+        }
+      ],
+      "comment": "File location: /home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/pyogrio/_vsi.cpython-313-x86_64-linux-gnu.so"
+    }
+  ],
   "packages": [
     {
       "SPDXID": "SPDXRef-1-ribasim",
@@ -24,14 +2688,14 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "0532ad09341e97085edc08b2475dd2fe78c0ab1ae9932f9512538b783cd9d859"
+          "checksumValue": "494b8111bb4f44fc83f82cb762db787b10ca5ebffd27723d668016dea0d2db8a"
         }
       ],
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
       "summary": "Pre- and post-process Ribasim",
-      "releaseDate": "2026-05-08T21:43:31Z",
+      "releaseDate": "2026-06-16T17:47:21Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -58,17 +2722,17 @@
     {
       "SPDXID": "SPDXRef-2-geopandas",
       "name": "geopandas",
-      "versionInfo": "1.1.3",
+      "versionInfo": "1.1.4",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Kelsey Jordahl (kjordahl@alum.mit.edu)",
-      "downloadLocation": "https://pypi.org/project/geopandas/1.1.3/#files",
+      "downloadLocation": "https://pypi.org/project/geopandas/1.1.4/#files",
       "filesAnalyzed": false,
       "homepage": "https://geopandas.org",
       "licenseConcluded": "BSD-3-Clause",
       "licenseDeclared": "BSD-3-Clause",
       "copyrightText": "NOASSERTION",
       "summary": "Geographic pandas extensions",
-      "releaseDate": "2026-05-08T21:43:31Z",
+      "releaseDate": "2026-06-16T17:47:21Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -78,12 +2742,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/geopandas@1.1.3"
+          "referenceLocator": "pkg:pypi/geopandas@1.1.4"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:kelsey_jordahl:geopandas:1.1.3:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:kelsey_jordahl:geopandas:1.1.4:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -100,7 +2764,7 @@
       "licenseDeclared": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
       "copyrightText": "NOASSERTION",
       "summary": "Fundamental package for array computing in Python",
-      "releaseDate": "2026-05-08T21:43:31Z",
+      "releaseDate": "2026-06-16T17:47:21Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -184,16 +2848,16 @@
     {
       "SPDXID": "SPDXRef-5-pandas",
       "name": "pandas",
-      "versionInfo": "3.0.3",
+      "versionInfo": "3.0.5",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "NOASSERTION",
-      "downloadLocation": "https://pypi.org/project/pandas/3.0.3/#files",
+      "downloadLocation": "https://pypi.org/project/pandas/3.0.5/#files",
       "filesAnalyzed": false,
       "homepage": "https://pandas.pydata.org",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "455f6f8139d4282188f526868dbc3c828470e88a3d9d59a891bd46a455f21b98"
+          "checksumValue": "2946e77e4a53cd248cbde631a12f0e51c8324ce354c3eba4d20147c1ad6f4282"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -201,7 +2865,7 @@
       "licenseComments": "pandas declares BSD 3-Clause License\n\n Copyright (c) 2008-2011, AQR Capital Management, LLC, Lambda Foundry, Inc. and PyData Development Team\n All rights reserved.\n\n Copyright (c) 2011-2026, Open source contributors.\n\n Redistribution and use in source and binary forms, with or without\n modification, are permitted provided that the following conditions are met:\n\n * Redistributions of source code must retain the above copyright notice, this\n   list of conditions and the following disclaimer.\n\n * Redistributions in binary form must reproduce the above copyright notice,\n   this list of conditions and the following disclaimer in the documentation\n   and/or other materials provided with the distribution.\n\n * Neither the name of the copyright holder nor the names of its\n   contributors may be used to endorse or promote products derived from\n   this software without specific prior written permission.\n\n THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\n AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\n IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\n DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\n FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\n DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\n SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\n CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\n OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\n OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Powerful data structures for data analysis, time series, and statistics",
-      "releaseDate": "2026-05-11T18:52:11Z",
+      "releaseDate": "2026-07-22T22:17:48Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -216,7 +2880,7 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/pandas@3.0.3"
+          "referenceLocator": "pkg:pypi/pandas@3.0.5"
         }
       ]
     },
@@ -300,23 +2964,23 @@
     {
       "SPDXID": "SPDXRef-8-tzdata",
       "name": "tzdata",
-      "versionInfo": "2026.2",
+      "versionInfo": "2026.3",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Python Software Foundation (datetime-sig@python.org)",
-      "downloadLocation": "https://pypi.org/project/tzdata/2026.2/#files",
+      "downloadLocation": "https://pypi.org/project/tzdata/2026.3/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/python/tzdata",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "bbe9af844f658da81a5f95019480da3a89415801f6cc966806612cc7169bffe7"
+          "checksumValue": "dc096730c87af6cab1b171c9d532be840741ff5d459015e7f6947bd7d7e54931"
         }
       ],
       "licenseConcluded": "Apache-2.0",
       "licenseDeclared": "Apache-2.0",
       "copyrightText": "NOASSERTION",
       "summary": "Provider of IANA time zone data",
-      "releaseDate": "2026-04-24T15:22:05Z",
+      "releaseDate": "2026-07-10T08:50:36Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -336,12 +3000,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/tzdata@2026.2"
+          "referenceLocator": "pkg:pypi/tzdata@2026.3"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_software_foundation:tzdata:2026.2:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_software_foundation:tzdata:2026.3:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -391,16 +3055,16 @@
     {
       "SPDXID": "SPDXRef-10-matplotlib",
       "name": "matplotlib",
-      "versionInfo": "3.10.9",
+      "versionInfo": "3.11.1",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: John D. Michael Droettboom",
-      "downloadLocation": "https://pypi.org/project/matplotlib/3.10.9/#files",
+      "downloadLocation": "https://pypi.org/project/matplotlib/3.11.1/#files",
       "filesAnalyzed": false,
       "homepage": "https://matplotlib.org",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "77210dce9cb8153dffc967efaae990543392563d5a376d4dd8539bebcb0ed217"
+          "checksumValue": "b7cf158e7add54a8d51ac9b5a84abd6d4e13ed4951b4f25f1c5139f41c2addb2"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -408,7 +3072,7 @@
       "licenseComments": "matplotlib declares License agreement for matplotlib versions 1.3.0 and later\n =========================================================\n\n 1. This LICENSE AGREEMENT is between the Matplotlib Development Team\n (\"MDT\"), and the Individual or Organization (\"Licensee\") accessing and\n otherwise using matplotlib software in source or binary form and its\n associated documentation.\n\n 2. Subject to the terms and conditions of this License Agreement, MDT\n hereby grants Licensee a nonexclusive, royalty-free, world-wide license\n to reproduce, analyze, test, perform and/or display publicly, prepare\n derivative works, distribute, and otherwise use matplotlib\n alone or in any derivative version, provided, however, that MDT's\n License Agreement and MDT's notice of copyright, i.e., \"Copyright (c)\n 2012- Matplotlib Development Team; All Rights Reserved\" are retained in\n matplotlib  alone or in any derivative version prepared by\n Licensee.\n\n 3. In the event Licensee prepares a derivative work that is based on or\n incorporates matplotlib or any part thereof, and wants to\n make the derivative work available to others as provided herein, then\n Licensee hereby agrees to include in any such work a brief summary of\n the changes made to matplotlib .\n\n 4. MDT is making matplotlib available to Licensee on an \"AS\n IS\" basis.  MDT MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR\n IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, MDT MAKES NO AND\n DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS\n FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF MATPLOTLIB\n WILL NOT INFRINGE ANY THIRD PARTY RIGHTS.\n\n 5. MDT SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF MATPLOTLIB\n  FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR\n LOSS AS A RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING\n MATPLOTLIB , OR ANY DERIVATIVE THEREOF, EVEN IF ADVISED OF\n THE POSSIBILITY THEREOF.\n\n 6. This License Agreement will automatically terminate upon a material\n breach of its terms and conditions.\n\n 7. Nothing in this License Agreement shall be deemed to create any\n relationship of agency, partnership, or joint venture between MDT and\n Licensee.  This License Agreement does not grant permission to use MDT\n trademarks or trade name in a trademark sense to endorse or promote\n products or services of Licensee, or any third party.\n\n 8. By copying, installing or otherwise using matplotlib ,\n Licensee agrees to be bound by the terms and conditions of this License\n Agreement.\n\n License agreement for matplotlib versions prior to 1.3.0\n ========================================================\n\n 1. This LICENSE AGREEMENT is between John D. Hunter (\"JDH\"), and the\n Individual or Organization (\"Licensee\") accessing and otherwise using\n matplotlib software in source or binary form and its associated\n documentation.\n\n 2. Subject to the terms and conditions of this License Agreement, JDH\n hereby grants Licensee a nonexclusive, royalty-free, world-wide license\n to reproduce, analyze, test, perform and/or display publicly, prepare\n derivative works, distribute, and otherwise use matplotlib\n alone or in any derivative version, provided, however, that JDH's\n License Agreement and JDH's notice of copyright, i.e., \"Copyright (c)\n 2002-2011 John D. Hunter; All Rights Reserved\" are retained in\n matplotlib  alone or in any derivative version prepared by\n Licensee.\n\n 3. In the event Licensee prepares a derivative work that is based on or\n incorporates matplotlib  or any part thereof, and wants to\n make the derivative work available to others as provided herein, then\n Licensee hereby agrees to include in any such work a brief summary of\n the changes made to matplotlib.\n\n 4. JDH is making matplotlib  available to Licensee on an \"AS\n IS\" basis.  JDH MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR\n IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, JDH MAKES NO AND\n DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS\n FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF MATPLOTLIB\n WILL NOT INFRINGE ANY THIRD PARTY RIGHTS.\n\n 5. JDH SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF MATPLOTLIB\n  FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR\n LOSS AS A RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING\n MATPLOTLIB , OR ANY DERIVATIVE THEREOF, EVEN IF ADVISED OF\n THE POSSIBILITY THEREOF.\n\n 6. This License Agreement will automatically terminate upon a material\n breach of its terms and conditions.\n\n 7. Nothing in this License Agreement shall be deemed to create any\n relationship of agency, partnership, or joint venture between JDH and\n Licensee.  This License Agreement does not grant permission to use JDH\n trademarks or trade name in a trademark sense to endorse or promote\n products or services of Licensee, or any third party.\n\n 8. By copying, installing or otherwise using matplotlib,\n Licensee agrees to be bound by the terms and conditions of this License\n Agreement. which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Python plotting package",
-      "releaseDate": "2026-04-24T00:11:43Z",
+      "releaseDate": "2026-07-18T03:38:03Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -443,12 +3107,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/matplotlib@3.10.9"
+          "referenceLocator": "pkg:pypi/matplotlib@3.11.1"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:john_d._michael_droettboom:matplotlib:3.10.9:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:john_d._michael_droettboom:matplotlib:3.11.1:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -620,23 +3284,23 @@
     {
       "SPDXID": "SPDXRef-15-pillow",
       "name": "pillow",
-      "versionInfo": "12.2.0",
+      "versionInfo": "12.3.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Jeffrey Clark (aclark@aclark.net)",
-      "downloadLocation": "https://pypi.org/project/pillow/12.2.0/#files",
+      "downloadLocation": "https://pypi.org/project/pillow/12.3.0/#files",
       "filesAnalyzed": false,
       "homepage": "https://python-pillow.github.io",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "a4e8f36e677d3336f35089648c8955c51c6d386a13cf6ee9c189c5f5bd713a9f"
+          "checksumValue": "6c0016e7b354317c4e9e525b937ac8596c38d2d232b419529b9cd7a1cd46e39a"
         }
       ],
       "licenseConcluded": "MIT-CMU",
       "licenseDeclared": "MIT-CMU",
       "copyrightText": "NOASSERTION",
       "summary": "Python Imaging Library (fork)",
-      "releaseDate": "2026-04-01T14:42:15Z",
+      "releaseDate": "2026-07-01T11:53:27Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -671,12 +3335,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/pillow@12.2.0"
+          "referenceLocator": "pkg:pypi/pillow@12.3.0"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:jeffrey_clark:pillow:12.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:jeffrey_clark:pillow:12.3.0:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -800,23 +3464,23 @@
     {
       "SPDXID": "SPDXRef-19-certifi",
       "name": "certifi",
-      "versionInfo": "2026.5.20",
+      "versionInfo": "2026.7.22",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Kenneth Reitz (me@kennethreitz.com)",
-      "downloadLocation": "https://pypi.org/project/certifi/2026.5.20/#files",
+      "downloadLocation": "https://pypi.org/project/certifi/2026.7.22/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/certifi/python-certifi",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "3c52e209ba0a4ad7aebe60436a4ab349c39e1e602e8c134221e546902ad25897"
+          "checksumValue": "62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775"
         }
       ],
       "licenseConcluded": "MPL-2.0",
       "licenseDeclared": "MPL-2.0",
       "copyrightText": "NOASSERTION",
       "summary": "Python package for providing Mozilla's CA Bundle.",
-      "releaseDate": "2026-05-20T11:46:48Z",
+      "releaseDate": "2026-07-22T03:35:11Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -826,28 +3490,28 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/certifi@2026.5.20"
+          "referenceLocator": "pkg:pypi/certifi@2026.7.22"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:kenneth_reitz:certifi:2026.5.20:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:kenneth_reitz:certifi:2026.7.22:*:*:*:*:*:*:*"
         }
       ]
     },
     {
       "SPDXID": "SPDXRef-20-pandera",
       "name": "pandera",
-      "versionInfo": "0.31.1",
+      "versionInfo": "0.32.1",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Niels Bantilan (niels.bantilan@gmail.com)",
-      "downloadLocation": "https://pypi.org/project/pandera/0.31.1/#files",
+      "downloadLocation": "https://pypi.org/project/pandera/0.32.1/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/pandera-dev/pandera",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "f9f1ff4852804e1a181a4cb968e732a492f4b6dbefe051a8c5500da43d5c326d"
+          "checksumValue": "1a17a3ffa906174d19207715f4f082ec3db3709647927ad8c095c147d74d8454"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -855,7 +3519,7 @@
       "licenseComments": "pandera declares MIT License\n\nCopyright (c) 2018 Niels Bantilan\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "A light-weight and flexible data validation and testing tool for statistical data objects.",
-      "releaseDate": "2026-04-15T03:18:58Z",
+      "releaseDate": "2026-06-29T16:01:46Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -870,12 +3534,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/pandera@0.31.1"
+          "referenceLocator": "pkg:pypi/pandera@0.32.1"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:niels_bantilan:pandera:0.31.1:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:niels_bantilan:pandera:0.32.1:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -935,24 +3599,23 @@
     {
       "SPDXID": "SPDXRef-22-annotated-types",
       "name": "annotated-types",
-      "versionInfo": "0.7.0",
+      "versionInfo": "0.8.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: Adrian Garcia Badaracco Samuel Colvin Zac Dodds (zac@zhd.dev)",
-      "downloadLocation": "https://pypi.org/project/annotated-types/0.7.0/#files",
+      "downloadLocation": "https://pypi.org/project/annotated-types/0.8.0/#files",
       "filesAnalyzed": false,
       "homepage": "https://github.com/annotated-types/annotated-types",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53"
+          "checksumValue": "f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0"
         }
       ],
       "licenseConcluded": "MIT",
-      "licenseDeclared": "NOASSERTION",
-      "licenseComments": "annotated-types declares MIT License which is not currently a valid SPDX License identifier or expression.",
+      "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
       "summary": "Reusable constraint types to use with typing.Annotated",
-      "releaseDate": "2024-05-20T21:33:24Z",
+      "releaseDate": "2026-07-23T20:16:12Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -967,75 +3630,17 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/annotated-types@0.7.0"
+          "referenceLocator": "pkg:pypi/annotated-types@0.8.0"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:adrian_garcia_badaracco_samuel_colvin_zac_dodds:annotated-types:0.7.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:adrian_garcia_badaracco_samuel_colvin_zac_dodds:annotated-types:0.8.0:*:*:*:*:*:*:*"
         }
       ]
     },
     {
-      "SPDXID": "SPDXRef-23-typing-extensions",
-      "name": "typing-extensions",
-      "versionInfo": "4.15.0",
-      "primaryPackagePurpose": "LIBRARY",
-      "supplier": "Organization: Guido van Jukka ukasz Michael (levkivskyi@gmail.com)",
-      "downloadLocation": "https://pypi.org/project/typing-extensions/4.15.0/#files",
-      "filesAnalyzed": false,
-      "homepage": "https://github.com/python/typing_extensions",
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548"
-        }
-      ],
-      "licenseConcluded": "PSF-2.0",
-      "licenseDeclared": "PSF-2.0",
-      "copyrightText": "NOASSERTION",
-      "summary": "Backported and Experimental Type Hints for Python 3.9+",
-      "releaseDate": "2025-08-25T13:49:24Z",
-      "externalRefs": [
-        {
-          "referenceCategory": "OTHER",
-          "referenceType": "issue-tracker",
-          "referenceLocator": "https://github.com/python/typing_extensions/issues"
-        },
-        {
-          "referenceCategory": "OTHER",
-          "referenceType": "log",
-          "referenceLocator": "https://github.com/python/typing_extensions/blob/main/CHANGELOG.md"
-        },
-        {
-          "referenceCategory": "OTHER",
-          "referenceType": "documentation",
-          "referenceLocator": "https://typing-extensions.readthedocs.io/"
-        },
-        {
-          "referenceCategory": "OTHER",
-          "referenceType": "other",
-          "referenceLocator": "https://github.com/python/typing/discussions"
-        },
-        {
-          "referenceCategory": "OTHER",
-          "referenceType": "vcs",
-          "referenceLocator": "https://github.com/python/typing_extensions"
-        },
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/typing-extensions@4.15.0"
-        },
-        {
-          "referenceCategory": "SECURITY",
-          "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:guido_van_jukka_ukasz_michael:typing-extensions:4.15.0:*:*:*:*:*:*:*"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-24-pydantic-core",
+      "SPDXID": "SPDXRef-23-pydantic-core",
       "name": "pydantic-core",
       "versionInfo": "2.46.4",
       "primaryPackagePurpose": "LIBRARY",
@@ -1074,6 +3679,64 @@
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
           "referenceLocator": "cpe:2.3:a:samuel_colvin_adrian_garcia_badaracco_david_montague_david_hewitt_sydney_runkle_victorien_plot:pydantic-core:2.46.4:*:*:*:*:*:*:*"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-24-typing-extensions",
+      "name": "typing-extensions",
+      "versionInfo": "4.16.0",
+      "primaryPackagePurpose": "LIBRARY",
+      "supplier": "Organization: Guido van Jukka ukasz Michael (levkivskyi@gmail.com)",
+      "downloadLocation": "https://pypi.org/project/typing-extensions/4.16.0/#files",
+      "filesAnalyzed": false,
+      "homepage": "https://github.com/python/typing_extensions",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+        }
+      ],
+      "licenseConcluded": "PSF-2.0",
+      "licenseDeclared": "PSF-2.0",
+      "copyrightText": "NOASSERTION",
+      "summary": "Backported and Experimental Type Hints for Python 3.9+",
+      "releaseDate": "2026-07-02T08:40:04Z",
+      "externalRefs": [
+        {
+          "referenceCategory": "OTHER",
+          "referenceType": "issue-tracker",
+          "referenceLocator": "https://github.com/python/typing_extensions/issues"
+        },
+        {
+          "referenceCategory": "OTHER",
+          "referenceType": "log",
+          "referenceLocator": "https://github.com/python/typing_extensions/blob/main/CHANGELOG.md"
+        },
+        {
+          "referenceCategory": "OTHER",
+          "referenceType": "documentation",
+          "referenceLocator": "https://typing-extensions.readthedocs.io/"
+        },
+        {
+          "referenceCategory": "OTHER",
+          "referenceType": "other",
+          "referenceLocator": "https://github.com/python/typing/discussions"
+        },
+        {
+          "referenceCategory": "OTHER",
+          "referenceType": "vcs",
+          "referenceLocator": "https://github.com/python/typing_extensions"
+        },
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/typing-extensions@4.16.0"
+        },
+        {
+          "referenceCategory": "SECURITY",
+          "referenceType": "cpe23Type",
+          "referenceLocator": "cpe:2.3:a:guido_van_jukka_ukasz_michael:typing-extensions:4.16.0:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -1128,22 +3791,22 @@
     {
       "SPDXID": "SPDXRef-26-typeguard",
       "name": "typeguard",
-      "versionInfo": "4.5.2",
+      "versionInfo": "4.6.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: Alex Gronholm (alex.gronholm@nextday.fi)",
-      "downloadLocation": "https://pypi.org/project/typeguard/4.5.2/#files",
+      "downloadLocation": "https://pypi.org/project/typeguard/4.6.0/#files",
       "filesAnalyzed": false,
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "fcf9de18bd945cdb4c7b996e12b4c51ce83f92f191314a6d7cf1739586ec98cf"
+          "checksumValue": "79878165bb86f2cf5d41d159a0ff1792a796cf496882d2fe1b1c6c7049b9cdd7"
         }
       ],
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
       "summary": "Run-time type checker for Python",
-      "releaseDate": "2026-05-14T12:59:39Z",
+      "releaseDate": "2026-07-26T08:40:21Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1168,91 +3831,17 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/typeguard@4.5.2"
+          "referenceLocator": "pkg:pypi/typeguard@4.6.0"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:alex_gronholm:typeguard:4.5.2:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:alex_gronholm:typeguard:4.6.0:*:*:*:*:*:*:*"
         }
       ]
     },
     {
-      "SPDXID": "SPDXRef-27-importlib-metadata",
-      "name": "importlib-metadata",
-      "versionInfo": "9.0.0",
-      "primaryPackagePurpose": "LIBRARY",
-      "supplier": "Organization: Jason R. (jaraco@jaraco.com)",
-      "downloadLocation": "https://pypi.org/project/importlib-metadata/9.0.0/#files",
-      "filesAnalyzed": false,
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "2d21d1cc5a017bd0559e36150c21c830ab1dc304dedd1b7ea85d20f45ef3edd7"
-        }
-      ],
-      "licenseConcluded": "Apache-2.0",
-      "licenseDeclared": "Apache-2.0",
-      "copyrightText": "NOASSERTION",
-      "summary": "Read metadata from Python packages",
-      "releaseDate": "2026-03-20T06:42:55Z",
-      "externalRefs": [
-        {
-          "referenceCategory": "OTHER",
-          "referenceType": "vcs",
-          "referenceLocator": "https://github.com/python/importlib_metadata"
-        },
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/importlib-metadata@9.0.0"
-        },
-        {
-          "referenceCategory": "SECURITY",
-          "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:jason_r.:importlib-metadata:9.0.0:*:*:*:*:*:*:*"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-28-zipp",
-      "name": "zipp",
-      "versionInfo": "4.1.0",
-      "primaryPackagePurpose": "LIBRARY",
-      "supplier": "Organization: Jason R. (jaraco@jaraco.com)",
-      "downloadLocation": "https://pypi.org/project/zipp/4.1.0/#files",
-      "filesAnalyzed": false,
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "25ad4e16390cd314347dd8f1de67a2ac538ae658ed4ab9db16029c07c188e97f"
-        }
-      ],
-      "licenseConcluded": "MIT",
-      "licenseDeclared": "MIT",
-      "copyrightText": "NOASSERTION",
-      "summary": "Backport of pathlib-compatible object wrapper for zip files",
-      "releaseDate": "2026-05-18T20:08:57Z",
-      "externalRefs": [
-        {
-          "referenceCategory": "OTHER",
-          "referenceType": "vcs",
-          "referenceLocator": "https://github.com/jaraco/zipp"
-        },
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/zipp@4.1.0"
-        },
-        {
-          "referenceCategory": "SECURITY",
-          "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:jason_r.:zipp:4.1.0:*:*:*:*:*:*:*"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-29-typing-inspect",
+      "SPDXID": "SPDXRef-27-typing-inspect",
       "name": "typing-inspect",
       "versionInfo": "0.9.0",
       "primaryPackagePurpose": "LIBRARY",
@@ -1285,7 +3874,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-30-mypy-extensions",
+      "SPDXID": "SPDXRef-28-mypy-extensions",
       "name": "mypy-extensions",
       "versionInfo": "1.1.0",
       "primaryPackagePurpose": "LIBRARY",
@@ -1318,25 +3907,25 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-31-pyarrow",
+      "SPDXID": "SPDXRef-29-pyarrow",
       "name": "pyarrow",
-      "versionInfo": "23.0.1",
+      "versionInfo": "24.0.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "NOASSERTION",
-      "downloadLocation": "https://pypi.org/project/pyarrow/23.0.1/#files",
+      "downloadLocation": "https://pypi.org/project/pyarrow/24.0.0/#files",
       "filesAnalyzed": false,
       "homepage": "https://arrow.apache.org/",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "3fab8f82571844eb3c460f90a75583801d14ca0cc32b1acc8c361650e006fd56"
+          "checksumValue": "7c2b98645d576a0b9616892ead22b64a83a5f043c5e2ca15ebcefcb5b70c80cb"
         }
       ],
       "licenseConcluded": "Apache-2.0",
       "licenseDeclared": "Apache-2.0",
       "copyrightText": "NOASSERTION",
       "summary": "Python library for Apache Arrow",
-      "releaseDate": "2026-02-16T10:08:08Z",
+      "releaseDate": "2026-04-21T08:51:46Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1356,23 +3945,23 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/pyarrow@23.0.1"
+          "referenceLocator": "pkg:pypi/pyarrow@24.0.0"
         }
       ]
     },
     {
-      "SPDXID": "SPDXRef-32-pyogrio",
+      "SPDXID": "SPDXRef-30-pyogrio",
       "name": "pyogrio",
-      "versionInfo": "0.12.1",
+      "versionInfo": "0.13.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Organization: pyogrio contributors Brendan C. (bcward@astutespruce.com)",
-      "downloadLocation": "https://pypi.org/project/pyogrio/0.12.1/#files",
+      "downloadLocation": "https://pypi.org/project/pyogrio/0.13.0/#files",
       "filesAnalyzed": false,
       "homepage": "https://pyogrio.readthedocs.io/",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "5c4735235ca0d8dcdb4ecd69bd73e66762d161bce913b10d4458a18137cc7062"
+          "checksumValue": "588ea200bbefc3c6b33bdc3063491a7af4287747838f3b719347587063d9fc5d"
         }
       ],
       "licenseConcluded": "NOASSERTION",
@@ -1380,7 +3969,7 @@
       "licenseComments": "pyogrio declares MIT License\n\nCopyright (c) 2020-2024 Brendan C. Ward and pyogrio contributors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n which is not currently a valid SPDX License identifier or expression.",
       "copyrightText": "NOASSERTION",
       "summary": "Vectorized spatial vector file format I/O using GDAL/OGR",
-      "releaseDate": "2025-11-28T19:02:54Z",
+      "releaseDate": "2026-06-26T15:29:08Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1390,17 +3979,17 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/pyogrio@0.12.1"
+          "referenceLocator": "pkg:pypi/pyogrio@0.13.0"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:pyogrio_contributors_brendan_c.:pyogrio:0.12.1:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:pyogrio_contributors_brendan_c.:pyogrio:0.13.0:*:*:*:*:*:*:*"
         }
       ]
     },
     {
-      "SPDXID": "SPDXRef-33-tomli-w",
+      "SPDXID": "SPDXRef-31-tomli-w",
       "name": "tomli-w",
       "versionInfo": "1.2.0",
       "primaryPackagePurpose": "LIBRARY",
@@ -1439,7 +4028,7 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-34-tomli",
+      "SPDXID": "SPDXRef-32-tomli",
       "name": "tomli",
       "versionInfo": "2.4.1",
       "primaryPackagePurpose": "LIBRARY",
@@ -1477,25 +4066,25 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-35-xarray",
+      "SPDXID": "SPDXRef-33-xarray",
       "name": "xarray",
-      "versionInfo": "2026.4.0",
+      "versionInfo": "2026.7.0",
       "primaryPackagePurpose": "LIBRARY",
       "supplier": "Person: xarray Developers (xarray@googlegroups.com)",
-      "downloadLocation": "https://pypi.org/project/xarray/2026.4.0/#files",
+      "downloadLocation": "https://pypi.org/project/xarray/2026.7.0/#files",
       "filesAnalyzed": false,
       "homepage": "https://xarray.dev/",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "d43751d9fb4a90f9249c30431684f00c41bc874f1edccd862631a40cbc0edf08"
+          "checksumValue": "bf9dd130b93806dc78e90c1b7ac24851b31557b888674c53622235691cf21824"
         }
       ],
       "licenseConcluded": "Apache-2.0",
       "licenseDeclared": "Apache-2.0",
       "copyrightText": "NOASSERTION",
       "summary": "N-D labeled arrays and datasets in Python",
-      "releaseDate": "2026-04-13T19:45:34Z",
+      "releaseDate": "2026-07-09T17:38:24Z",
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
@@ -1520,12 +4109,12 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/xarray@2026.4.0"
+          "referenceLocator": "pkg:pypi/xarray@2026.7.0"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:xarray_developers:xarray:2026.4.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:xarray_developers:xarray:2026.7.0:*:*:*:*:*:*:*"
         }
       ]
     }
@@ -1547,6 +4136,101 @@
       "relationshipType": "DEPENDS_ON"
     },
     {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-1--multiarray-tests.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-2--multiarray-umath.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-3--operand-flag-tests.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-4--rational-tests.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-5--simd.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-6--struct-ufunc-tests.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-7--umath-tests.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-8--pocketfft-umath.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-9--umath-linalg.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-10-lapack-lite.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-11--bounded-integers.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-12--common.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-13--generator.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-14--mt19937.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-15--pcg64.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-16--philox.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-17--sfc64.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-18-bit-generator.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-3-numpy",
+      "relatedSpdxElement": "SPDXRef-File-19-mtrand.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
       "spdxElementId": "SPDXRef-2-geopandas",
       "relatedSpdxElement": "SPDXRef-4-packaging",
       "relationshipType": "DEPENDS_ON"
@@ -1555,6 +4239,231 @@
       "spdxElementId": "SPDXRef-2-geopandas",
       "relatedSpdxElement": "SPDXRef-5-pandas",
       "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-20--cyutility.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-21-algos.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-22-arrays.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-23-byteswap.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-24-groupby.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-25-hashing.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-26-hashtable.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-27-index.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-28-indexing.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-29-internals.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-30-interval.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-31-join.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-32-json.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-33-lib.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-34-missing.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-35-ops.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-36-ops-dispatch.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-37-pandas-datetime.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-38-pandas-parser.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-39-parsers.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-40-properties.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-41-reshape.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-42-sas.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-43-sparse.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-44-testing.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-45-tslib.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-46-base.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-47-ccalendar.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-48-conversion.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-49-dtypes.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-50-fields.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-51-nattype.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-52-np-datetime.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-53-offsets.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-54-parsing.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-55-period.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-56-strptime.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-57-timedeltas.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-58-timestamps.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-59-timezones.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-60-tzconversion.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-61-vectorized.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-62-aggregations.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-63-indexers.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-5-pandas",
+      "relatedSpdxElement": "SPDXRef-File-64-writers.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
     },
     {
       "spdxElementId": "SPDXRef-5-pandas",
@@ -1583,6 +4492,21 @@
     },
     {
       "spdxElementId": "SPDXRef-9-shapely",
+      "relatedSpdxElement": "SPDXRef-File-65--geometry-helpers.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-9-shapely",
+      "relatedSpdxElement": "SPDXRef-File-66--geos.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-9-shapely",
+      "relatedSpdxElement": "SPDXRef-File-33-lib.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-9-shapely",
       "relatedSpdxElement": "SPDXRef-3-numpy",
       "relationshipType": "DEPENDS_ON"
     },
@@ -1593,8 +4517,53 @@
     },
     {
       "spdxElementId": "SPDXRef-10-matplotlib",
+      "relatedSpdxElement": "SPDXRef-File-67--c-internal-utils.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-10-matplotlib",
+      "relatedSpdxElement": "SPDXRef-File-68--image.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-10-matplotlib",
+      "relatedSpdxElement": "SPDXRef-File-69--path.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-10-matplotlib",
+      "relatedSpdxElement": "SPDXRef-File-70--qhull.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-10-matplotlib",
+      "relatedSpdxElement": "SPDXRef-File-71--tri.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-10-matplotlib",
+      "relatedSpdxElement": "SPDXRef-File-72--backend-agg.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-10-matplotlib",
+      "relatedSpdxElement": "SPDXRef-File-73--tkagg.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-10-matplotlib",
+      "relatedSpdxElement": "SPDXRef-File-74-ft2font.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-10-matplotlib",
       "relatedSpdxElement": "SPDXRef-11-contourpy",
       "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-11-contourpy",
+      "relatedSpdxElement": "SPDXRef-File-75--contourpy.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
     },
     {
       "spdxElementId": "SPDXRef-11-contourpy",
@@ -1612,9 +4581,44 @@
       "relationshipType": "DEPENDS_ON"
     },
     {
+      "spdxElementId": "SPDXRef-13-fonttools",
+      "relatedSpdxElement": "SPDXRef-File-76-cu2qu.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-13-fonttools",
+      "relatedSpdxElement": "SPDXRef-File-77-lexer.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-13-fonttools",
+      "relatedSpdxElement": "SPDXRef-File-78-bezierTools.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-13-fonttools",
+      "relatedSpdxElement": "SPDXRef-File-79-momentsPen.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-13-fonttools",
+      "relatedSpdxElement": "SPDXRef-File-80-qu2cu.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-13-fonttools",
+      "relatedSpdxElement": "SPDXRef-File-81-iup.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
       "spdxElementId": "SPDXRef-10-matplotlib",
       "relatedSpdxElement": "SPDXRef-14-kiwisolver",
       "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-14-kiwisolver",
+      "relatedSpdxElement": "SPDXRef-File-82--cext.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
     },
     {
       "spdxElementId": "SPDXRef-10-matplotlib",
@@ -1630,6 +4634,41 @@
       "spdxElementId": "SPDXRef-10-matplotlib",
       "relatedSpdxElement": "SPDXRef-15-pillow",
       "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-15-pillow",
+      "relatedSpdxElement": "SPDXRef-File-83--imaging.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-15-pillow",
+      "relatedSpdxElement": "SPDXRef-File-84--imagingcms.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-15-pillow",
+      "relatedSpdxElement": "SPDXRef-File-85--imagingft.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-15-pillow",
+      "relatedSpdxElement": "SPDXRef-File-86--imagingmath.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-15-pillow",
+      "relatedSpdxElement": "SPDXRef-File-87--imagingmorph.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-15-pillow",
+      "relatedSpdxElement": "SPDXRef-File-88--imagingtk.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-15-pillow",
+      "relatedSpdxElement": "SPDXRef-File-89--webp.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
     },
     {
       "spdxElementId": "SPDXRef-10-matplotlib",
@@ -1648,8 +4687,18 @@
     },
     {
       "spdxElementId": "SPDXRef-17-netcdf4",
+      "relatedSpdxElement": "SPDXRef-File-90--netCDF4.abi3.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-17-netcdf4",
       "relatedSpdxElement": "SPDXRef-18-cftime",
       "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-18-cftime",
+      "relatedSpdxElement": "SPDXRef-File-91--cftime.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
     },
     {
       "spdxElementId": "SPDXRef-18-cftime",
@@ -1702,23 +4751,23 @@
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-22-annotated-types",
-      "relatedSpdxElement": "SPDXRef-23-typing-extensions",
+      "spdxElementId": "SPDXRef-21-pydantic",
+      "relatedSpdxElement": "SPDXRef-23-pydantic-core",
+      "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-23-pydantic-core",
+      "relatedSpdxElement": "SPDXRef-File-92--pydantic-core.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-23-pydantic-core",
+      "relatedSpdxElement": "SPDXRef-24-typing-extensions",
       "relationshipType": "DEPENDS_ON"
     },
     {
       "spdxElementId": "SPDXRef-21-pydantic",
-      "relatedSpdxElement": "SPDXRef-24-pydantic-core",
-      "relationshipType": "DEPENDS_ON"
-    },
-    {
-      "spdxElementId": "SPDXRef-24-pydantic-core",
-      "relatedSpdxElement": "SPDXRef-23-typing-extensions",
-      "relationshipType": "DEPENDS_ON"
-    },
-    {
-      "spdxElementId": "SPDXRef-21-pydantic",
-      "relatedSpdxElement": "SPDXRef-23-typing-extensions",
+      "relatedSpdxElement": "SPDXRef-24-typing-extensions",
       "relationshipType": "DEPENDS_ON"
     },
     {
@@ -1728,7 +4777,7 @@
     },
     {
       "spdxElementId": "SPDXRef-25-typing-inspection",
-      "relatedSpdxElement": "SPDXRef-23-typing-extensions",
+      "relatedSpdxElement": "SPDXRef-24-typing-extensions",
       "relationshipType": "DEPENDS_ON"
     },
     {
@@ -1738,28 +4787,148 @@
     },
     {
       "spdxElementId": "SPDXRef-26-typeguard",
-      "relatedSpdxElement": "SPDXRef-27-importlib-metadata",
-      "relationshipType": "DEPENDS_ON"
-    },
-    {
-      "spdxElementId": "SPDXRef-26-typeguard",
-      "relatedSpdxElement": "SPDXRef-23-typing-extensions",
+      "relatedSpdxElement": "SPDXRef-24-typing-extensions",
       "relationshipType": "DEPENDS_ON"
     },
     {
       "spdxElementId": "SPDXRef-20-pandera",
-      "relatedSpdxElement": "SPDXRef-23-typing-extensions",
+      "relatedSpdxElement": "SPDXRef-24-typing-extensions",
       "relationshipType": "DEPENDS_ON"
     },
     {
       "spdxElementId": "SPDXRef-20-pandera",
-      "relatedSpdxElement": "SPDXRef-29-typing-inspect",
+      "relatedSpdxElement": "SPDXRef-27-typing-inspect",
       "relationshipType": "DEPENDS_ON"
     },
     {
       "spdxElementId": "SPDXRef-1-ribasim",
-      "relatedSpdxElement": "SPDXRef-31-pyarrow",
+      "relatedSpdxElement": "SPDXRef-29-pyarrow",
       "relationshipType": "DEPENDS_ON"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-93--acero.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-94--azurefs.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-95--compute.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-96--csv.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-97--dataset.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-98--dataset-orc.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-99--dataset-parquet.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-100--dataset-parquet-encryption.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-101--feather.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-102--flight.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-103--fs.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-104--gcsfs.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-105--hdfs.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-106--json.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-107--orc.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-108--parquet.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-109--parquet-encryption.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-110--pyarrow-cpp-tests.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-111--s3fs.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-112--substrait.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-113-gandiva.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-33-lib.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-114-libarrow-python.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-115-libarrow-python-flight.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-29-pyarrow",
+      "relatedSpdxElement": "SPDXRef-File-116-libarrow-python-parquet-encryption.so",
+      "relationshipType": "CONTAINS"
     },
     {
       "spdxElementId": "SPDXRef-1-ribasim",
@@ -1768,21 +4937,46 @@
     },
     {
       "spdxElementId": "SPDXRef-1-ribasim",
-      "relatedSpdxElement": "SPDXRef-32-pyogrio",
+      "relatedSpdxElement": "SPDXRef-30-pyogrio",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-32-pyogrio",
+      "spdxElementId": "SPDXRef-30-pyogrio",
+      "relatedSpdxElement": "SPDXRef-File-117--err.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-30-pyogrio",
+      "relatedSpdxElement": "SPDXRef-File-118--geometry.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-30-pyogrio",
+      "relatedSpdxElement": "SPDXRef-File-119--io.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-30-pyogrio",
+      "relatedSpdxElement": "SPDXRef-File-120--ogr.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-30-pyogrio",
+      "relatedSpdxElement": "SPDXRef-File-121--vsi.cpython-313-x86-64-linux-gnu.so",
+      "relationshipType": "CONTAINS"
+    },
+    {
+      "spdxElementId": "SPDXRef-30-pyogrio",
       "relatedSpdxElement": "SPDXRef-19-certifi",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-32-pyogrio",
+      "spdxElementId": "SPDXRef-30-pyogrio",
       "relatedSpdxElement": "SPDXRef-3-numpy",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-32-pyogrio",
+      "spdxElementId": "SPDXRef-30-pyogrio",
       "relatedSpdxElement": "SPDXRef-4-packaging",
       "relationshipType": "DEPENDS_ON"
     },
@@ -1793,31 +4987,31 @@
     },
     {
       "spdxElementId": "SPDXRef-1-ribasim",
-      "relatedSpdxElement": "SPDXRef-33-tomli-w",
+      "relatedSpdxElement": "SPDXRef-31-tomli-w",
       "relationshipType": "DEPENDS_ON"
     },
     {
       "spdxElementId": "SPDXRef-1-ribasim",
-      "relatedSpdxElement": "SPDXRef-34-tomli",
+      "relatedSpdxElement": "SPDXRef-32-tomli",
       "relationshipType": "DEPENDS_ON"
     },
     {
       "spdxElementId": "SPDXRef-1-ribasim",
-      "relatedSpdxElement": "SPDXRef-35-xarray",
+      "relatedSpdxElement": "SPDXRef-33-xarray",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-35-xarray",
+      "spdxElementId": "SPDXRef-33-xarray",
       "relatedSpdxElement": "SPDXRef-3-numpy",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-35-xarray",
+      "spdxElementId": "SPDXRef-33-xarray",
       "relatedSpdxElement": "SPDXRef-4-packaging",
       "relationshipType": "DEPENDS_ON"
     },
     {
-      "spdxElementId": "SPDXRef-35-xarray",
+      "spdxElementId": "SPDXRef-33-xarray",
       "relatedSpdxElement": "SPDXRef-5-pandas",
       "relationshipType": "DEPENDS_ON"
     }
