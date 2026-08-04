@@ -356,8 +356,7 @@ end
 
 "Create the basin state table from the saved data"
 function basin_state_data(model::Model; table::Bool = true)
-    (; p, t) = model.integrator
-    u = get_u(model.integrator)
+    (; u, p, t) = model.integrator
     (; basin) = p.p_independent
     set_current_basin_properties!(u, p, t)
     return (; node_id = Int32.(basin.node_id), level = copy(p.non_ad_cache.current_level))
@@ -553,11 +552,10 @@ end
 "Create an allocation result table for the saved data"
 function allocation_data(model::Model; table::Bool = true)
     (; config, integrator) = model
-    (; p) = integrator
+    (; u, p) = integrator
     (; allocation, graph, user_demand, flow_demand, level_demand) = p.p_independent
     (; demand_priorities_all, allocation_models) = allocation
     record_demand = StructVector(model.integrator.p.p_independent.allocation.record_demand)
-    u = get_u(integrator)
 
     datetimes = datetime_since.(record_demand.time, config.starttime)
 

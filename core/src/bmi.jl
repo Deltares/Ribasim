@@ -39,7 +39,7 @@ function BMI.update(model::Model)::Nothing
 end
 
 function BMI.update_until(model::Model, time::Float64)::Nothing
-    model.integrator.derivative_discontinuity = true
+    derivative_discontinuity!(model.integrator, true)
     (; t) = model.integrator
     dt = time - t
     if dt < 0
@@ -58,10 +58,9 @@ end
 This uses a typeassert to ensure that the return type annotation doesn't create a copy.
 """
 function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
-    (; p) = model.integrator
+    (; u, p) = model.integrator
     (; p_independent, non_ad_cache) = p
-    (; basin, user_demand, subgrid, state_ranges) = p_independent
-    u = get_u(model.integrator)
+    (; basin, user_demand, subgrid) = p_independent
 
     return if name == "basin.storage"
         unsafe_array(u.storage)::Vector{Float64}

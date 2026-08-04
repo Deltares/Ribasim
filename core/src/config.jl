@@ -190,7 +190,7 @@ end
     water_balance_abstol::Float64 = 1.0e-3
     water_balance_reltol::Float64 = 1.0e-2
     maxiters::Int = 1.0e9
-    optimized_implicit_solve::Bool = true
+    reduced_implicit_solve::Bool = true
     sparse::Bool = true
     autodiff::Bool = true
     evaporate_mass::Bool = true
@@ -408,10 +408,10 @@ matrix of Ribasim.
 """
 struct RibasimLinearSolve{AType <: SciMLLinearSolveAlgorithm} <: SciMLLinearSolveAlgorithm
     algorithm::AType
-    optimized_implicit_solve::Bool
+    reduced_implicit_solve::Bool
 end
 
-LinearSolve.needs_concrete_A(alg::RibasimLinearSolve) = alg.optimized_implicit_solve ? false : needs_concrete_A(alg.algorithm)
+LinearSolve.needs_concrete_A(alg::RibasimLinearSolve) = alg.reduced_implicit_solve ? false : needs_concrete_A(alg.algorithm)
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
@@ -423,12 +423,12 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
         if solver.sparse
             kwargs[:linsolve] = RibasimLinearSolve(
                 KLUFactorization(; check_pattern = false),
-                solver.optimized_implicit_solve,
+                solver.reduced_implicit_solve,
             )
         else
             kwargs[:linsolve] = RibasimLinearSolve(
                 LUFactorization(),
-                solver.optimized_implicit_solve,
+                solver.reduced_implicit_solve,
             )
         end
     end

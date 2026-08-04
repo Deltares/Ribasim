@@ -22,7 +22,6 @@ function get_storages_from_levels(basin::Basin, levels::AbstractVector)::Vector{
     for (i, level) in enumerate(levels)
         storage = get_storage_from_level(basin, i, level)
         bottom = first(basin_levels(basin, i))
-        level = max(level, bottom)
         if level < bottom
             node_id = basin.node_id[i]
             @error "The initial level ($level) of $node_id is below the bottom ($bottom)."
@@ -38,19 +37,10 @@ function get_storages_from_levels(basin::Basin, levels::AbstractVector)::Vector{
 end
 
 """
-Compute the level of a basin given its storage.
-"""
-function get_level_from_storage(basin::Basin, state_idx::Int, storage::T)::T where {T}
-    # Clamp storage positive, since Rosenbrock methods can overshoot to negative
-    s = ifelse(storage > zero(T), storage, zero(T))
-    return basin.storage_to_level[state_idx](s)
-end
-
-"""
 Compute the area of a basin given its storage.
 """
 function get_area_from_storage(basin::Basin, state_idx::Int, storage::T)::T where {T}
-    level = get_level_from_storage(basin, state_idx, storage)
+    level = basin.storage_to_level[state_idx](storage)
     level_to_area = basin.level_to_area[state_idx]
     return level_to_area(level)
 end
@@ -626,6 +616,7 @@ function basin_areas(basin::Basin, state_idx::Int)
     return basin.level_to_area[state_idx].u
 end
 
+"Get the area at the top of the profile"
 get_fixed_area(basin::Basin, state_idx::Int) = basin_areas(basin, state_idx)[end]
 
 """
@@ -687,7 +678,6 @@ function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::Flo
         n_basin, # precipitation
     ]
     ns_flow_cumsum = pushfirst!(cumsum(ns_flow), 0)
-    n_flow = sum(ns_flow)
 
     trivial_range = 1:0
     flow_ranges = ntuple(
@@ -721,7 +711,7 @@ function build_state_vector(p_independent::ParametersIndependent)
     (; u_prev_saveat, basin) = p_independent
     u = zero(u_prev_saveat)
     u.storage .= basin.storage0
-    return getdata(u)
+    return u
 end
 
 """
@@ -730,7 +720,7 @@ Build the per component absolute tolerance vector.
 Since `DiffEqBase.calculate_residuals!` scales the local error estimate by the change of a
 state over the time step (see `solve.jl`), `abstol` no longer has the meaning of "a negligible
 state magnitude" but of "a state change per step that is numerically irrelevant". This holds
-for both values of `optimized_implicit_solve`. A single scalar cannot serve that role for all
+for both values of `reduced_implicit_solve`. A single scalar cannot serve that role for all
 components:
 
   - `storage` and `flow` states are volumes [m³], but their magnitudes range over many orders
@@ -789,10 +779,8 @@ end
 
 """
 Check whether any storages are negative given the state u.
-Storage states are directly in u.storage.
 """
-function isoutofdomain(u_raw, p, t)
-    u = CVector(u_raw, p.p_independent.state_ranges)
+function isoutofdomain(u, p, t)
     return any(<(0), u.storage)
 end
 
@@ -1309,10 +1297,3 @@ function set_uplink_downlink_storage!(
 
     return nothing
 end
-
-get_u(integrator::DEIntegrator) = CVector(integrator.u, integrator.p.p_independent.state_ranges)
-get_du(integrator::DEIntegrator) = CVector(
-    OrdinaryDiffEqCore.get_du(integrator),
-    integrator.p.p_independent.state_ranges
-)
-get_uprev(integrator::DEIntegrator) = CVector(integrator.uprev, integrator.p.p_independent.state_ranges)

@@ -143,7 +143,7 @@ class Solver(ChildModel):
         cumulative volumes over the whole simulation (Optional, defaults to 1e-4)
     maxiters : int
         The total number of linear iterations over the whole simulation. (Defaults to 1e9, only needs to be increased for extremely long simulations)
-    optimized_implicit_solve : bool
+    reduced_implicit_solve : bool
         Whether to use the implicit solve optimized for Ribasim. Setting this to false bypasses much of the custom numerical code,
         using a less optimized but potentially more robust algorithm. (Optional, defaults to true)
     sparse : bool
@@ -169,7 +169,7 @@ class Solver(ChildModel):
     abstol: float = 1e-05
     reltol: float = 1e-04
     maxiters: int = 1000000000
-    optimized_implicit_solve: bool = True
+    reduced_implicit_solve: bool = True
     sparse: bool = True
     autodiff: bool = True
     evaporate_mass: bool = True

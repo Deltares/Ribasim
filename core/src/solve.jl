@@ -38,20 +38,18 @@ end
 Multiplication the Ribasim mass matrix by a vector
 """
 function LinearAlgebra.mul!(
-        v_out_raw::Vector,
+        v_out::RibasimCVectorType,
         M::RibasimMassMatrix,
-        v_in_raw::Vector,
+        v_in::RibasimCVectorType,
     )
     (; p_independent) = M
-    v_in = CVector(v_in_raw, p_independent.state_ranges)
-    v_out = CVector(v_out_raw, p_independent.state_ranges)
 
     v_out .= 0.0
     # Incidence matrix term
     aggregate_flows!(v_out.storage, v_in.flow, p_independent; weight = -1)
     # Identity term
     v_out .+= v_in
-    return v_out_raw
+    return v_out
 end
 
 # SciMLOperators interface
@@ -355,7 +353,7 @@ this is captured by wrapping `do_newJW` and storing the value in the parameters.
 """
 function SciMLOperators.update_coefficients!(
         J::RibasimJacobian,
-        u_raw::Vector,
+        u::RibasimCVectorType,
         p::Parameters,
         t::Number
     )
@@ -384,12 +382,10 @@ function SciMLOperators.update_coefficients!(
         pid_control,
         continuous_control,
         basin,
-        state_ranges,
     ) = p_independent
 
     !p_mutable.refresh_jac && return nothing
     p_mutable.ad_active = true
-    u = CVector(u_raw, state_ranges)
 
     # Prepare computing flow derivatives
     set_uplink_downlink_storage!(
@@ -549,18 +545,16 @@ end
 Multiplying the RibasimJacobian by a vector.
 """
 function LinearAlgebra.mul!(
-        v_out_raw::Vector,
+        v_out::RibasimCVectorType,
         J::RibasimJacobian,
-        v_in_raw::Vector,
+        v_in::RibasimCVectorType,
     )
     (;
         n_pid,
         ∂flow_∂pid_integral,
         area_pid_controlled,
     ) = J
-    (; pid_control, state_ranges) = p_independent
-    v_in = CVector(v_in_raw, state_ranges)
-    v_out = CVector(v_out_raw, state_ranges)
+    (; pid_control) = p_independent
 
     v_out *= 0.0
 
@@ -766,8 +760,8 @@ linu.flow         = γ * [-b.flow + Jₛ * linu.storage + Jᵢ * linu.pid_integr
 function OrdinaryDiffEqDifferentiation.dolinsolve(
         integrator::DEIntegrator,
         linsolve::RibasimLinearSolveCache;
-        b::Union{Vector, Nothing} = nothing,
-        linu::Union{Vector, Nothing} = nothing,
+        b::Union{RibasimCVectorType, Nothing} = nothing,
+        linu::Union{RibasimCVectorType, Nothing} = nothing,
         kwargs...,
     )
     @assert !isnothing(b)
@@ -781,10 +775,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
         ∂flow_∂pid_integral,
         area_pid_controlled,
     ) = J
-    (; pid_control, state_ranges) = p_independent
-
-    b_wrapped = CVector(b, state_ranges)
-    linu_wrapped = CVector(linu, state_ranges)
+    (; pid_control) = p_independent
 
     W_inner = cache_inner.A
     J_inner = W_inner.J
@@ -792,11 +783,11 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
 
     # Set up inner (storage space) problem rhs
     W_inner.gamma = gamma
-    b_inner .= b_wrapped.storage
-    aggregate_flows!(b_inner, b_wrapped.flow, p_independent; from_zero = false)
+    b_inner .= b.storage
+    aggregate_flows!(b_inner, b.flow, p_independent; from_zero = false)
     for pid_idx in 1:n_pid
         listen_node_id = pid_control.listen_node_id[pid_idx]
-        b_inner[listen_node_id.idx] += gamma * ∂flow_∂pid_integral[pid_idx] * b_wrapped.pid_integral[pid_idx]
+        b_inner[listen_node_id.idx] += gamma * ∂flow_∂pid_integral[pid_idx] * b.pid_integral[pid_idx]
     end
 
     # Set up inner (storage space) problem matrix
@@ -816,30 +807,30 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
     )
 
     # Copy inner solution to outer solution storage component
-    linu_wrapped.storage .= cache_inner.u
+    linu.storage .= cache_inner.u
 
     # Compute PID integral component solution
-    linu_wrapped.pid_integral .= b_wrapped.pid_integral
+    linu.pid_integral .= b.pid_integral
     for pid_idx in 1:n_pid
         listen_node_id = pid_control.listen_node_id[pid_idx]
-        linu_wrapped.pid_integral[pid_idx] += linu_wrapped.storage[listen_node_id.idx] / area_pid_controlled[pid_idx]
+        linu.pid_integral[pid_idx] += linu.storage[listen_node_id.idx] / area_pid_controlled[pid_idx]
     end
-    linu_wrapped.pid_integral .*= -gamma
+    linu.pid_integral .*= -gamma
 
     # Compute flow component solution
-    ∂flow_∂storage_mul!(linu_wrapped.flow, J, linu_wrapped.storage)
-    linu_wrapped.flow .-= b_wrapped.flow
+    ∂flow_∂storage_mul!(linu.flow, J, linu.storage)
+    linu.flow .-= b.flow
     for pid_idx in 1:n_pid
         controlled_node_id = pid_control.controlled_node_id[pid_idx]
         if controlled_node_id.type == NodeType.Pump
-            linu_wrapped.flow.pump[controlled_node_id.idx] += ∂flow_∂pid_integral[pid_idx] * linu_wrapped.pid_integral[pid_idx]
+            linu.flow.pump[controlled_node_id.idx] += ∂flow_∂pid_integral[pid_idx] * linu.pid_integral[pid_idx]
         elseif controlled_node_id.type == NodeType.Outlet
-            linu_wrapped.flow.outlet[controlled_node_id.idx] += ∂flow_∂pid_integral[pid_idx] * linu_wrapped.pid_integral[pid_idx]
+            linu.flow.outlet[controlled_node_id.idx] += ∂flow_∂pid_integral[pid_idx] * linu.pid_integral[pid_idx]
         else
             error("Unsupported PID controlled node $controlled_node_id.")
         end
     end
-    linu_wrapped.flow .*= gamma
+    linu.flow .*= gamma
 
     return LinearSolution{
         Float64,
@@ -867,21 +858,21 @@ end
 # Bypass default AD preparation when needed
 function DiffEqBase.prepare_alg(
         alg::Union{OrdinaryDiffEqAdaptiveImplicitAlgorithm, OrdinaryDiffEqImplicitAlgorithm},
-        u0_raw::Vector,
+        u0::RibasimCVectorType,
         p::Parameters,
         prob::ODEProblem,
     )
-    return if p.p_independent.optimized_implicit_solve
+    return if p.p_independent.reduced_implicit_solve
         alg
     else
         invoke(
             prepare_alg,
             Tuple{
                 typeof(alg),
-                typeof(u0_raw),
+                typeof(u0),
                 Any,
                 typeof(prob),
-            }, alg, u0_raw, p, prob
+            }, alg, u0, p, prob
         )
     end
 end
@@ -889,9 +880,9 @@ end
 # No algebraic equations
 function OrdinaryDiffEqCore.get_differential_vars(
         ::ODEFunction{A, B, C, D, E, F, G, H, I, <:RibasimJacobian},
-        u_raw::Vector,
+        u::RibasimCVectorType,
     ) where {A, B, C, D, E, F, G, H, I}
-    out = similar(u_raw, Bool)
+    out = similar(u, Bool)
     out .= true
     return out
 end
@@ -925,8 +916,8 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
 @inline get_tolerance(tolerance::AbstractVector, idx::Int) = @inbounds tolerance[idx]
 
 @inline function DiffEqBase.calculate_residuals!(
-        out_raw,
-        ũ_raw, u₀_raw, u₁_raw, abstol, reltol, internalnorm::InternalNorm, t
+        out,
+        ũ, u₀, u₁, abstol, reltol, internalnorm::InternalNorm, t
     )
     (; p_independent) = internalnorm
     (; state_ranges) = p_independent
@@ -936,12 +927,12 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
     # The states are cumulative quantities whose absolute value carries no information
     # about the local error: e.g. the storage of a large Basin with little throughflow
     # would get a very loose tolerance.
-    # This is applied for both values of `optimized_implicit_solve`, so that `abstol` and
+    # This is applied for both values of `reduced_implicit_solve`, so that `abstol` and
     # `reltol` have the same meaning regardless of which solve path is taken.
-    for idx in eachindex(out_raw)
-        abs_diff = abs(u₁_raw[idx] - u₀_raw[idx])
-        out_raw[idx] = DiffEqBase.calculate_residuals(
-            ũ_raw[idx],
+    for idx in eachindex(out)
+        abs_diff = abs(u₁[idx] - u₀[idx])
+        out[idx] = DiffEqBase.calculate_residuals(
+            ũ[idx],
             abs_diff,
             abs_diff,
             get_tolerance(abstol, idx),
@@ -950,8 +941,6 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
             t
         )
     end
-
-    out = CVector(out_raw, state_ranges)
 
     accumulate_residual!(p_independent.convergence_storage, out.storage)
     accumulate_residual!(p_independent.convergence_flow, out.flow)
@@ -991,12 +980,11 @@ end
 function get_diff_eval(
         p::Parameters,
         t::Number,
-        solver::Solver
+        solver::Solver,
+        u::RibasimCVectorType,
+        du::RibasimCVectorType,
     )
     backend = get_ad_type(solver)
-
-    u_raw = getdata(copy(p.p_independent.u_prev_saveat))
-    du_raw = zero(u_raw)
 
     # In-place AD caches, only for:
     # - solver.optimized.implicit_solve = false
@@ -1007,7 +995,7 @@ function get_diff_eval(
         Cache(p.p_independent.continuous_control.continuous_control_compound_variables),
     )
 
-    if solver.optimized_implicit_solve
+    if solver.reduced_implicit_solve
         evaluation_cache = RibasimJacobianEvaluationCache(p, solver)
         jac_prototype = RibasimJacobian(; p.p_independent, evaluation_cache)
         jac = nothing # Jacobian is updated via SciMLOperators.update_coefficients!
@@ -1024,30 +1012,30 @@ function get_diff_eval(
         end
 
         # water_balance! wrapper for DifferentiationInterface without kwargs
-        water_balance!_(du_raw::Vector, u_raw::Vector, p::Parameters, t::Number, storage_uplink, storage_downlink, compound_variables) =
-            water_balance!(du_raw, u_raw, p, t; storage_uplink, storage_downlink, compound_variables)
+        water_balance!_(du, u, p, t, storage_uplink, storage_downlink, compound_variables) =
+            water_balance!(du, u, p, t; storage_uplink, storage_downlink, compound_variables)
 
         p.p_mutable.ad_active = true
         jac_prep = prepare_jacobian(
             water_balance!_,
-            du_raw,
+            du,
             backend_jac,
-            u_raw,
+            u,
             Constant(p),
             Constant(t),
             ad_caches...
         )
         p.p_mutable.ad_active = false
-        jac_prototype = solver.sparse ? Float64.(sparsity_pattern(jac_prep)) : zeros(length(du_raw), length(du_raw))
-        jac(J, u_raw, p, t) = begin
+        jac_prototype = solver.sparse ? Float64.(sparsity_pattern(jac_prep)) : zeros(length(du), length(du))
+        jac(J, u, p, t) = begin
             p.p_mutable.ad_active = true
             jacobian!(
                 water_balance!_,
-                du_raw,
+                du,
                 J,
                 jac_prep,
                 backend_jac,
-                u_raw,
+                u,
                 Constant(p),
                 Constant(t),
                 ad_caches...,
@@ -1060,30 +1048,30 @@ function get_diff_eval(
 
     # water_balance! wrapper for DifferentiationInterface without kwargs and with
     # t as second argument
-    water_balance!__(du_raw::Vector, t::Number, u_raw::Vector, p::Parameters, storage_uplink, storage_downlink, compound_variables) =
-        water_balance!(du_raw, u_raw, p, t; storage_uplink, storage_downlink, compound_variables)
+    water_balance!__(du, t, u, p, storage_uplink, storage_downlink, compound_variables) =
+        water_balance!(du, u, p, t; storage_uplink, storage_downlink, compound_variables)
 
     # ∂rhs/∂t always with FiniteDiff
     tgrad_prep = prepare_derivative(
         water_balance!__,
-        du_raw,
+        du,
         backend,
         t,
-        Constant(u_raw),
+        Constant(u),
         Constant(p),
         ad_caches...,
     )
 
-    tgrad(dT, u_raw, p, t) = begin
+    tgrad(dT, u, p, t) = begin
         p.p_mutable.ad_active = true
         derivative!(
             water_balance!__,
-            du_raw,
+            du,
             dT,
             tgrad_prep,
             backend,
             t,
-            Constant(u_raw),
+            Constant(u),
             Constant(p),
             ad_caches...,
         )
@@ -1149,15 +1137,14 @@ end
 
 # Correct the step that was accepted by the solver where needed
 function limit_flow!(
-        u_raw::Vector,
+        u::RibasimCVectorType,
         integrator::DEIntegrator,
         p::Parameters,
         t::Number
     )
+    (; uprev) = integrator
     (; p_independent) = p
-    (; cumulative_flow_dt, state_ranges) = p_independent
-    u = CVector(u_raw, state_ranges)
-    uprev = get_uprev(integrator)
+    (; cumulative_flow_dt) = p_independent
 
     limit_flow!(integrator, u, uprev, t, p_independent.pump)
     limit_flow!(integrator, u, uprev, t, p_independent.outlet)

@@ -475,7 +475,7 @@ end
 
 @testitem "get_max_flow_curvature" begin
     import Ribasim
-    using Ribasim: get_max_flow_curvature, tabulated_rating_curve_flow, get_u
+    using Ribasim: get_max_flow_curvature, tabulated_rating_curve_flow
 
     t = 0.0
 
@@ -487,10 +487,9 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; p) = model.integrator
+    (; u, p) = model.integrator
     (; p_independent) = p
     (; allocation) = p_independent
-    u = get_u(model.integrator)
 
     linear_curvatures = Float64[]
     for allocation_model in allocation.allocation_models
@@ -519,10 +518,9 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; p, t) = model.integrator
+    (; u, p, t) = model.integrator
     (; p_independent) = p
     (; allocation) = p_independent
-    u = get_u(model.integrator)
 
     nonlinear_curvatures = Float64[]
     for allocation_model in allocation.allocation_models
@@ -546,7 +544,7 @@ end
 
 @testitem "compute_adaptive_Δt" begin
     import Ribasim
-    using Ribasim: compute_adaptive_Δt, water_balance!, get_du, get_u, getdata
+    using Ribasim: compute_adaptive_Δt, water_balance!, get_du, getdata
 
     toml_path = normpath(
         @__DIR__,
@@ -555,14 +553,12 @@ end
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
     (; config, integrator) = model
-    (; p, t) = integrator
+    (; u, p, t) = integrator
     (; p_independent) = p
     (; allocation) = p_independent
 
-
-    u = get_u(integrator)
     du = get_du(integrator)
-    water_balance!(getdata(du), getdata(u), p, t)
+    water_balance!(du, u, p, t)
 
     for am in allocation.allocation_models
         Δt = compute_adaptive_Δt(am, integrator, config.allocation)

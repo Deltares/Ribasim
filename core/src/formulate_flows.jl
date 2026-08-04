@@ -2,8 +2,8 @@
 The right hand side function of the system of ODEs set up by Ribasim.
 """
 function water_balance!(
-        du_raw::Vector,
-        u_raw::Vector,
+        du::RibasimCVectorType,
+        u::RibasimCVectorType,
         p::Parameters,
         t::Number;
         storage_uplink = p.p_independent.storage_uplink,
@@ -11,10 +11,6 @@ function water_balance!(
         compound_variables = p.p_independent.continuous_control.continuous_control_compound_variables,
     )::Nothing
     (; p_independent) = p
-    (; state_ranges) = p_independent
-
-    u = CVector(u_raw, state_ranges)
-    du = CVector(du_raw, state_ranges)
 
     # Compute and cache Basin level, area, low_storage_factor
     set_current_basin_properties!(u, p, t)

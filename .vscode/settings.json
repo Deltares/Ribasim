@@ -69,7 +69,6 @@
     ],
     "julia.lint.run": true,
     "julia.numTestProcesses": 6,
-    "julia.NumThreads": 1,
     "notebook.codeActionsOnSave": {
         "notebook.source.fixAll": "explicit",
         "notebook.source.organizeImports": "explicit"

@@ -179,7 +179,7 @@ end
 
     # Converting from storages to levels and back should return the same storages
     storages = range(0.0, 2 * storage_to_level.t[end], 50)
-    levels = [Ribasim.get_level_from_storage(basin, 1, s) for s in storages]
+    levels = [basin.storage_to_level[1](s) for s in storages]
     storages_ = [Ribasim.get_storage_from_level(basin, 1, l) for l in levels]
     @test storages ≈ storages_
 
@@ -261,7 +261,7 @@ end
 
     # PID control; standard Jacobian
     toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
-    config = Ribasim.Config(toml_path; solver_optimized_implicit_solve = false)
+    config = Ribasim.Config(toml_path; solver_reduced_implicit_solve = false)
     model = Ribasim.Model(config)
     (; jac_prototype) = model.integrator.f
     jac_prototype.nzval .= 1
@@ -274,7 +274,7 @@ end
 
     # Continuous Control; standard_Jacobian
     toml_path = normpath(@__DIR__, "../../generated_testmodels/outlet_continuous_control/ribasim.toml")
-    config = Ribasim.Config(toml_path; solver_optimized_implicit_solve = false)
+    config = Ribasim.Config(toml_path; solver_reduced_implicit_solve = false)
     model = Ribasim.Model(config)
     (; jac_prototype) = model.integrator.f
     jac_prototype.nzval .= 1

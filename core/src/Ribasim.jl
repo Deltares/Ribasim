@@ -41,10 +41,11 @@ using ArrayInterface: ArrayInterface
 using OrdinaryDiffEqCore:
     OrdinaryDiffEqCore,
     OrdinaryDiffEqAdaptiveImplicitAlgorithm,
-    OrdinaryDiffEqImplicitAlgorithm
+    OrdinaryDiffEqImplicitAlgorithm,
+    get_du
 using DiffEqBase: DiffEqBase, prepare_alg, ODE_DEFAULT_NORM
 import ADTypes
-using ADTypes: AutoForwardDiff, AutoFiniteDiff
+using ADTypes: AutoForwardDiff
 import ForwardDiff
 import OrdinaryDiffEqBDF
 
@@ -62,7 +63,8 @@ using SciMLBase:
     FullSpecialize,
     NoSpecialize,
     LinearProblem,
-    LinearSolution
+    LinearSolution,
+    derivative_discontinuity!
 
 using OrdinaryDiffEqDifferentiation:
     OrdinaryDiffEqDifferentiation, do_newJW, jacobian2W!, dolinsolve

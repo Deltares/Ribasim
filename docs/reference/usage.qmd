@@ -18,7 +18,7 @@ Ribasim expects the GeoPackage database [database.gpkg](/reference/usage.qmd#sec
 
 The solver section in the configuration file is entirely optional, since we aim to use defaults that will generally work well.
 Common reasons to modify the solver settings are to adjust the calculation or result stepsizes: `dt`, and `saveat`.
-If your model does not converge, or your performance is lower than expected, it can help to adjust other solver settings as well. For example, setting `optimized_implicit_solve = false` will bypass much of the custom numerical code written for Ribasim, using a less optimized but potentially more robust algorithm.
+If your model does not converge, or your performance is lower than expected, it can help to adjust other solver settings as well. For example, setting `reduced_implicit_solve = false` will bypass much of the custom numerical code written for Ribasim, using a less optimized but potentially more robust algorithm.
 
 The default solver `algorithm = "QNDF"`, which is a multistep method similar to Matlab's `ode15s` [@shampine1997matlab].
 It is an implicit method that supports the default adaptive timestepping.
@@ -46,9 +46,9 @@ A too large error generally indicates an error in the code or floating point tru
 
 The Jacobian matrix provides information about the local sensitivity of the model with respect to changes in the states.
 For implicit solvers it must be calculated often, which can be expensive to do.
-By default (`optimized_implicit_solve = true`) Ribasim supplies its own Jacobian, which is never formed as a matrix.
+By default (`reduced_implicit_solve = true`) Ribasim supplies its own Jacobian, which is never formed as a matrix.
 Its structure follows directly from the network, and the blocks that cannot be written down analytically are obtained with [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/) through [DifferentiationInterface.jl](https://juliadiff.org/DifferentiationInterface.jl/DifferentiationInterface/stable/).
-This makes the `autodiff` and `sparse` settings below only relevant for the fallback `optimized_implicit_solve = false`, with the exception that `sparse` also selects the factorization used in the linear solve of both.
+This makes the `autodiff` and `sparse` settings below only relevant for the fallback `reduced_implicit_solve = false`, with the exception that `sparse` also selects the factorization used in the linear solve of both.
 
 In the fallback, the full Jacobian of the right hand side is computed with [DifferentiationInterface.jl](https://juliadiff.org/DifferentiationInterface.jl/DifferentiationInterface/stable/).
 By default this uses ForwardDiff.jl; setting `autodiff = false` switches to a finite difference method, which can be less accurate and more expensive.
@@ -432,7 +432,7 @@ This means that `convergence` is a relative measure, and not an absolute error:
 - Because the value is relative, every simulation has states with a high `convergence`, also when the model solves without any problems.
 
 The `convergence` is `missing` if the solver did not evaluate any scaled residuals in the `saveat` interval.
-This is the case when a fixed timestep (`dt`) is combined with an explicit algorithm, since then there is neither a nonlinear solve nor an error estimate, and when `optimized_implicit_solve = false`.
+This is the case when a fixed timestep (`dt`) is combined with an explicit algorithm, since then there is neither a nonlinear solve nor an error estimate, and when `reduced_implicit_solve = false`.
 
 ## State - `basin_state.nc` {#sec-state}
 

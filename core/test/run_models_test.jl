@@ -15,7 +15,7 @@
     (; p_independent) = model.integrator.p
     (; state_ranges) = p_independent
 
-    @test u isa Vector
+    @test u isa CVector
     @test state_ranges.storage == 1:1
     @test filter(!isempty, state_ranges.flow) == (;
         tabulated_rating_curve = 2:2,
@@ -137,9 +137,8 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    (; p) = model.integrator
+    (; u, p) = model.integrator
     (; basin, state_ranges) = p.p_independent
-    u = Ribasim.get_u(model.integrator)
     @test u.storage ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
@@ -160,11 +159,10 @@ end
 
     (; integrator) = model
     du = Ribasim.get_du(integrator)
-    (; p, t) = integrator
+    (; u, p, t) = integrator
     (; basin, state_ranges) = p.p_independent
-    u = Ribasim.get_u(integrator)
 
-    Ribasim.water_balance!(getdata(du), getdata(u), p, t)
+    Ribasim.water_balance!(du, u, p, t)
     stor = u.storage
     prec = basin.vertical_flux.precipitation
     evap = basin.vertical_flux.potential_evaporation
@@ -215,9 +213,8 @@ end
     @test model isa Ribasim.Model
 
     (; integrator) = model
-    (; p) = integrator
+    (; u, p) = integrator
     (; p_independent) = p
-    u = Ribasim.get_u(integrator)
 
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p_independent))
@@ -291,8 +288,7 @@ end
     @test model isa Ribasim.Model
     @test success(model)
     @test allunique(Ribasim.tsaves(model))
-    (; p) = model.integrator
-    u = Ribasim.get_u(model.integrator)
+    (; u, p) = model.integrator
     @test u.storage ≈
         Float32[692.61373, 692.61152, 460.79333, 1136.90031] atol = 1.0
 end
@@ -317,31 +313,31 @@ end
         @NamedTuple{
             solver_sparse::Bool,
             solver_autodiff::Bool,
-            solver_optimized_implicit_solve::Bool,
+            solver_reduced_implicit_solve::Bool,
         },
         Ribasim.RibasimCVectorType{Float64},
     }()
 
-    for (solver_sparse, solver_autodiff, solver_optimized_implicit_solve) in Iterators.product(ntuple(Returns([true, false]), 3)...)
-        options = (; solver_sparse, solver_autodiff, solver_optimized_implicit_solve)
-        (!solver_autodiff && solver_optimized_implicit_solve) && continue # TODO: https://github.com/Deltares/Ribasim/issues/3178
+    for (solver_sparse, solver_autodiff, solver_reduced_implicit_solve) in Iterators.product(ntuple(Returns([true, false]), 3)...)
+        options = (; solver_sparse, solver_autodiff, solver_reduced_implicit_solve)
+        (!solver_autodiff && solver_reduced_implicit_solve) && continue # TODO: https://github.com/Deltares/Ribasim/issues/3178
         @testset "Run with $options" begin
             config = Ribasim.Config(toml_path; options...)
             model = Ribasim.run(config)
             @test success(model)
-            endstate[options] = Ribasim.get_u(model.integrator)
+            endstate[options] = model.integrator.u
         end
     end
 
-    reference = endstate[(; solver_sparse = true, solver_autodiff = true, solver_optimized_implicit_solve = true)]
+    reference = endstate[(; solver_sparse = true, solver_autodiff = true, solver_reduced_implicit_solve = true)]
 
-    @test endstate[(; solver_sparse = false, solver_autodiff = true, solver_optimized_implicit_solve = true)] ≈ reference
-    # TODO: compare with the other solver_optimized_implicit_solve = true configurations
+    @test endstate[(; solver_sparse = false, solver_autodiff = true, solver_reduced_implicit_solve = true)] ≈ reference
+    # TODO: compare with the other solver_reduced_implicit_solve = true configurations
 
-    @test endstate[(; solver_sparse = true, solver_autodiff = true, solver_optimized_implicit_solve = false)] ≈ reference atol = 4
-    @test endstate[(; solver_sparse = false, solver_autodiff = true, solver_optimized_implicit_solve = false)] ≈ reference atol = 4
-    @test endstate[(; solver_sparse = false, solver_autodiff = false, solver_optimized_implicit_solve = false)] ≈ reference atol = 4
-    @test endstate[(; solver_sparse = true, solver_autodiff = false, solver_optimized_implicit_solve = false)] ≈ reference atol = 4
+    @test endstate[(; solver_sparse = true, solver_autodiff = true, solver_reduced_implicit_solve = false)] ≈ reference atol = 4
+    @test endstate[(; solver_sparse = false, solver_autodiff = true, solver_reduced_implicit_solve = false)] ≈ reference atol = 4
+    @test endstate[(; solver_sparse = false, solver_autodiff = false, solver_reduced_implicit_solve = false)] ≈ reference atol = 4
+    @test endstate[(; solver_sparse = true, solver_autodiff = false, solver_reduced_implicit_solve = false)] ≈ reference atol = 4
 end
 
 @testitem "TabulatedRatingCurve model" begin
@@ -353,9 +349,8 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test success(model)
-    (; p) = model.integrator
+    (; u, p) = model.integrator
     (; p_independent) = p
-    u = Ribasim.get_u(model.integrator)
     @test u.storage ≈ Float32[368.31558, 365.68442] skip = Sys.isapple()
     (; tabulated_rating_curve) = p_independent
     # The first node is static, the first interpolation object always applies
@@ -416,9 +411,8 @@ end
     model = Ribasim.Model(toml_path)
 
     (; integrator) = model
-    (; p, t, sol) = integrator
+    (; u, p, t, sol) = integrator
     (; p_independent) = p
-    u = Ribasim.get_u(integrator)
 
     day = 86400.0
 

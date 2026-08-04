@@ -391,9 +391,8 @@ function compute_adaptive_Δt(
         linear_resistance_ids_subnetwork,
         manning_resistance_ids_subnetwork,
     ) = node_ids_in_subnetwork
-    (; p, t) = integrator
+    (; u, p, t) = integrator
     (; basin, tabulated_rating_curve, linear_resistance, manning_resistance, state_ranges) = p.p_independent
-    u = get_u(integrator)
     du = get_du(integrator)
 
     Δt_min = allocation_config.dtmin
@@ -407,7 +406,7 @@ function compute_adaptive_Δt(
     for basin_id in basin_ids_subnetwork
         idx = basin_id.idx
         storage_now = u.storage[idx]
-        level_now = get_level_from_storage(basin, idx, storage_now)
+        level_now = basin.storage_to_level[idx](storage_now)
         storage_max = basin.storage_to_level[idx].t[end]
         m = get_area_slope(basin, idx, level_now)
 

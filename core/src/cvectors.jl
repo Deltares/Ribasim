@@ -9,14 +9,14 @@ using Base.Broadcast: Broadcasted, ArrayStyle, Extruded
 using StrideArraysCore: StrideArraysCore, PtrArray
 
 # Recursively compute the flat range covered by axes
-_flat_range(loc::Integer) = loc:loc
-_flat_range(loc::AbstractUnitRange{<:Integer}) = loc
-_flat_range(loc::NamedTuple) =
-    minimum(first ∘ _flat_range, values(loc)):maximum(last ∘ _flat_range, values(loc))
+flat_range(loc::Integer) = loc:loc
+flat_range(loc::AbstractUnitRange{<:Integer}) = loc
+flat_range(loc::NamedTuple) =
+    minimum(first ∘ flat_range, values(loc)):maximum(last ∘ flat_range, values(loc))
 
-_component_length(loc::Integer) = 1
-_component_length(loc::AbstractUnitRange{<:Integer}) = length(loc)
-_component_length(loc::NamedTuple) = sum(_component_length, values(loc))
+component_length(loc::Integer) = 1
+component_length(loc::AbstractUnitRange{<:Integer}) = length(loc)
+component_length(loc::NamedTuple) = sum(component_length, values(loc))
 
 struct CVector{T, A <: DenseVector{T}, NT} <: DenseVector{T}
     data::A
@@ -25,8 +25,8 @@ struct CVector{T, A <: DenseVector{T}, NT} <: DenseVector{T}
     len::Int      # number of elements in this CVector
 
     function CVector(data::A, axes::NT) where {T, A <: DenseVector{T}, NT <: NamedTuple}
-        range = _flat_range(axes)
-        len = _component_length(axes)
+        range = flat_range(axes)
+        len = component_length(axes)
         @assert length(range) == len "Axes must be contiguous (no gaps or overlaps)"
         offset = first(range) - 1
         return new{T, A, NT}(data, axes, offset, len)

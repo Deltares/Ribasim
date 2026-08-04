@@ -12,11 +12,9 @@ function create_callbacks(
     (; basin) = p_independent
     callbacks = SciMLBase.DECallback[]
 
-    # Check for negative storage
-    # As the first callback that is always applied, this callback also calls water_balance!
-    # to make sure all parameter data is up to date with the state
-    negative_storage_cb = FunctionCallingCallback(check_negative_storage)
-    push!(callbacks, negative_storage_cb)
+    # Call set_current_basin_properties! so that these are up to date in the subsequent callbacks
+    basin_properties_cb = FunctionCallingCallback(set_current_basin_properties!)
+    push!(callbacks, basin_properties_cb)
 
     # Save storages and levels
     saved_basin_states = SavedValues(Float64, SavedBasinState)
@@ -76,7 +74,7 @@ function create_callbacks(
     return callback, saved
 end
 
-function update_bmi_cumulative_flows!(u_raw, t, integrator)::Nothing
+function update_bmi_cumulative_flows!(u, t, integrator)::Nothing
     (; p, dt) = integrator
     (; p_independent) = p
     (;
@@ -98,8 +96,8 @@ function update_bmi_cumulative_flows!(u_raw, t, integrator)::Nothing
     return nothing
 end
 
-function update_concentrations!(u_raw, t, integrator)::Nothing
-    (; p, dt) = integrator
+function update_concentrations!(u, t, integrator)::Nothing
+    (; uprev, p, tprev) = integrator
     (; p_independent) = p
     (; basin, flow_boundary, do_concentration, cumulative_flow_dt) = p_independent
     (; concentration_data) = basin
@@ -113,8 +111,7 @@ function update_concentrations!(u_raw, t, integrator)::Nothing
         loads_itp,
         mass,
     ) = concentration_data
-    u = get_u(integrator)
-    uprev = get_uprev(integrator)
+    dt = t - tprev
 
     !do_concentration && return nothing
 
@@ -229,21 +226,18 @@ end
 """
 Save the storages and levels at the latest t.
 """
-function save_basin_state!(u_raw, t, integrator)
-    (; p_independent, non_ad_cache) = integrator.p
+function save_basin_state!(u, t, integrator)
+    (; non_ad_cache) = integrator.p
     (; current_level) = non_ad_cache
-    u = CVector(u_raw, p_independent.state_ranges)
     return SavedBasinState(; storage = copy(u.storage), level = copy(current_level), t)
 end
 
 """
 Save all flow rates (averaged over the saveat interval) and vertical fluxes.
 """
-function save_flow(u_raw, t, integrator)
+function save_flow(u, t, integrator)
     (; p_independent) = integrator.p
-    (; basin, u_prev_saveat, cumulative_flow_dt, flow_ranges, state_ranges) = p_independent
-    u = CVector(u_raw, state_ranges)
-
+    (; basin, u_prev_saveat, cumulative_flow_dt, flow_ranges) = p_independent
     Δt = get_Δt(integrator)
 
     # Compute mean flow rate per internal link from cumulative flows
@@ -304,9 +298,8 @@ function check_water_balance_error!(
         integrator::DEIntegrator,
         Δt::Float64,
     )::Nothing
-    (; p, t) = integrator
+    (; u, p, t) = integrator
     (; p_independent) = p
-    u = get_u(integrator)
 
     (;
         basin,
@@ -364,7 +357,7 @@ function check_water_balance_error!(
     return nothing
 end
 
-function save_solver_stats(u_raw, t, integrator)
+function save_solver_stats(u, t, integrator)
     (; dt) = integrator
     (; stats) = integrator.sol
     return (;
@@ -378,22 +371,8 @@ function save_solver_stats(u_raw, t, integrator)
     )
 end
 
-function check_negative_storage(u_raw, t, integrator)::Nothing
-    (; p) = integrator
-    (; p_independent) = p
-    (; basin, state_ranges) = p_independent
-    (; has_negative_storage, node_id) = basin
-    u = CVector(u_raw, state_ranges)
-
-    # Do this here so the cache is up to date for subsequent callbacks
-    set_current_basin_properties!(u, p, t)
-
-    @. has_negative_storage .= (u.storage < 0.0)
-    if any(has_negative_storage)
-        t_datetime = datetime_since(integrator.t, p_independent.starttime)
-        node_ids_negative_storage = node_id[has_negative_storage]
-        error("Negative storages found at $t_datetime for $node_ids_negative_storage.")
-    end
+function set_current_basin_properties!(u::RibasimCVectorType, t::Number, integrator::DEIntegrator)
+    set_current_basin_properties!(u, integrator.p, t)
     return nothing
 end
 
@@ -409,12 +388,11 @@ Apply the discrete control logic. There's somewhat of a complex structure:
 - The nodes that are controlled by this DiscreteControl node must have the same control state, for which they have
     parameter values associated with that control state defined in their control_mapping
 """
-function apply_discrete_control!(u_raw, t, integrator)::Nothing
+function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p.p_independent
     (; node_id, truth_state, compound_variables) = discrete_control
     du = get_du(integrator)
-    u = get_u(integrator)
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes
@@ -629,7 +607,7 @@ function update_subgrid_level!(integrator)::Nothing
 end
 
 "Interpolate the levels and save them to SavedValues"
-function save_subgrid_level(u_raw, t, integrator)
+function save_subgrid_level(u, t, integrator)
     return if integrator.p.p_independent.do_concentration
         update_subgrid_level!(integrator)
         copy(integrator.p.p_independent.subgrid.level)
