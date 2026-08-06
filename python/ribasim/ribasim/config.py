@@ -135,11 +135,17 @@ class Solver(ChildModel):
         If a smaller dt than dtmin is needed to meet the set error tolerances, the simulation stops, unless force_dtmin = true
         (Optional, defaults to False)
     abstol : float
-        The absolute tolerance for adaptive timestepping (Optional, defaults to 1e-7)
+        The absolute tolerance for adaptive timestepping, in m3 of state change per timestep.
+        Acts as a floor; per Basin it is raised to stay above the floating point roundoff
+        level of that Basin's storage. (Optional, defaults to 1e-5)
     reltol : float
-        The relative tolerance for adaptive timestepping (Optional, defaults to 1e-7)
+        The relative tolerance for adaptive timestepping, which bounds the relative error on
+        cumulative volumes over the whole simulation (Optional, defaults to 1e-4)
     maxiters : int
         The total number of linear iterations over the whole simulation. (Defaults to 1e9, only needs to be increased for extremely long simulations)
+    reduced_implicit_solve : bool
+        Whether to use the implicit solve optimized for Ribasim. Setting this to false bypasses much of the custom numerical code,
+        using a less optimized but potentially more robust algorithm. (Optional, defaults to true)
     sparse : bool
         Whether a sparse Jacobian matrix is used, which gives a significant speedup for models with >~10 basins.
     autodiff : bool
@@ -151,7 +157,7 @@ class Solver(ChildModel):
     evaporate_mass : bool
         Whether mass is lost due to evaporation in water quality calculations. (Optional, defaults to true)
     specialize : bool
-        Trades initialization speed for simulation speed, useful for long-running simulations. (Optional, defaults to false)
+        Code generation option, true has best performance and initialization speed (Optional, defaults to true)
     """
 
     algorithm: str = "QNDF"
@@ -160,15 +166,16 @@ class Solver(ChildModel):
     dtmin: float | None = None
     dtmax: float | None = None
     force_dtmin: bool = False
-    abstol: float = 1e-06
-    reltol: float = 1e-05
+    abstol: float = 1e-05
+    reltol: float = 1e-04
     maxiters: int = 1000000000
+    reduced_implicit_solve: bool = True
     sparse: bool = True
     autodiff: bool = True
     evaporate_mass: bool = True
     depth_threshold: float = 0.1
     level_difference_threshold: float = 0.02
-    specialize: bool = False
+    specialize: bool = True
 
 
 class Verbosity(StrEnum):

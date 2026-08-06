@@ -129,7 +129,8 @@ If you're interested in using this experimental feature, please [contact us](/co
 :::
 
 Ribasim can calculate concentrations of conservative tracers (i.e. substances that are non-reactive).
-It does so by calculating the mass transports by flows for each timestep, in the `update_cumulative_flows!` callback.
+It does so by calculating the mass transports by flows for each timestep, in the `update_concentrations!` callback.
+It uses the per-step flow volumes computed in the `update_cumulative_flows!` callback (see [flow integration](/dev/numerics.qmd#sec-flow-integration)), so the transported mass is consistent with the reported flows and the change in Basin storage.
 Specifically, for each Basin at each timestep it calculates:
 
 - all mass inflows ($flow * source\_concentration$) given the link inflows

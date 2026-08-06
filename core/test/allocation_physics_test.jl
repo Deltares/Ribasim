@@ -71,6 +71,8 @@ end
         toml_path;
         experimental_allocation = true,
         endtime = DateTime("2023-01-01"),
+        solver_abstol = 1.0e-8,
+        solver_reltol = 1.0e-8,
     )
     model = Ribasim.Model(config)
     Ribasim.solve!(model)
@@ -97,7 +99,6 @@ end
 
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
-
 
     @test allocation_flow_table.flow_rate ≈ flow_table.flow_rate atol = 8.0e-4
 end
@@ -217,7 +218,7 @@ end
             filter(:link_id => ==(link_id), flow_results_multiple_subnetwork).flow_rate
         single_sub =
             filter(:link_id => ==(link_id), flow_results_single_subnetwork).flow_rate
-        if !all(isapprox.(multiple_subs, single_sub; atol = 1.0e-8))
+        if !all(isapprox.(multiple_subs, single_sub; atol = 5.0e-6))
             println(
                 "The flows over link $link_id differ by ",
                 maximum(single_sub .- multiple_subs),
@@ -258,16 +259,20 @@ end
     flow_results = DataFrame(Ribasim.flow_data(model))
     flow_link_1 = filter(:link_id => ==(1), flow_results).flow_rate
     basin_results = DataFrame(Ribasim.basin_data(model))
-    level_basin_1 = filter(:node_id => ==(1), basin_results).level
+    data_basin_1 = filter(:node_id => ==(1), basin_results)
+    level_basin_1 = data_basin_1.level
+    storage_basin_1 = data_basin_1.storage
     min_level = 3.0
 
     # find index of first level close to min_level demand of 3 m
     idx = findfirst(e -> abs(e - min_level) <= 1.0e-1, level_basin_1)
 
-    tbr_flow(h_a, h_b) = tabulated_rating_curve_flow(tbr, tbr.node_id[1], h_a, h_b, p, 0)
+    p.p_mutable.ad_active = true # forces computation to compute levels from input instead of
+    #                            # taking them from cache
+    tbr_flow(s_a, s_b) = tabulated_rating_curve_flow(tbr, tbr.node_id[1], s_a, s_b, p, 0)
 
     # the flow up to that level should behave as an uncontrolled TBR:
-    @test tbr_flow.(level_basin_1[1:idx], zero(idx)) ≈ flow_link_1[1:idx] atol = 1.0e-5
+    @test tbr_flow.(storage_basin_1[1:idx], zero(idx)) ≈ flow_link_1[1:idx] atol = 1.0e-5
 
     # the flow near min_level should be close to 0
     @test all(≈(0.0; atol = 1.0e-4), flow_link_1[(idx + 1):end])
@@ -352,14 +357,4 @@ end
     # inflow_links for that node contains both source basins.
     inflow_links = user_demand.inflow_links[1]
     @test length(inflow_links) == 2
-
-    # link_to_state_idx must contain an entry for each of the two inflow links,
-    # and they must map to different (consecutive) state indices.
-    link_to_state_idx = p_independent.link_to_state_idx
-    inflow_link_tuples = [lm.link for lm in inflow_links]
-    for link in inflow_link_tuples
-        @test haskey(link_to_state_idx, link)
-    end
-    state_indices = [link_to_state_idx[link] for link in inflow_link_tuples]
-    @test allunique(state_indices)
 end

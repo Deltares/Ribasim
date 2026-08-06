@@ -46,16 +46,17 @@ dtmin = 0.0         # optional, default 0.0
 dtmax = 0.0         # optional, default length of simulation
 force_dtmin = false # optional, default false
 abstol = 1e-5       # optional, default 1e-5
-reltol = 1e-5       # optional, default 1e-5
+reltol = 1e-4       # optional, default 1e-4
 water_balance_abstol = 1e-3 # optional, default 1e-3
 water_balance_reltol = 1e-2 # optional, default 1e-2
 maxiters = 1e9      # optional, default 1e9
+reduced_implicit_solve = true # optional, default true
 sparse = true       # optional, default true
 autodiff = true     # optional, default true
 evaporate_mass = true  # optional, default true to simulate a correct mass balance
 depth_threshold = 0.1  # optional, default 0.1
 level_difference_threshold = 0.02 # optional, default 0.02
-specialize = false  # optional, default false
+specialize = true   # optional, default true
 
 [logging]
 # defines the logging level of Ribasim

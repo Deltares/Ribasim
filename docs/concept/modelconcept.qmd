@@ -26,8 +26,7 @@ $$
 \frac{\mathrm{d}S}{\mathrm{d}t} = P + ET + Q_{rest}
 $$
 
-We don't use these equations directly.
-Rather, we use an equivalent formulation where we solve for the cumulative flows instead of the Basin storages.
+Ribasim solves this storage equation for every Basin: the states are the Basin storages $S$, and their time derivatives are the summed in- and outgoing fluxes.
 For more details on this see [Equations](/concept/equations.qmd).
 
 ## Time

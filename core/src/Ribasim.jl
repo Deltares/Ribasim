@@ -24,18 +24,26 @@ using DifferentiationInterface:
     Constant,
     Cache,
     prepare_jacobian,
+    value_and_jacobian!,
     jacobian!,
+    prepare_pushforward,
+    pushforward!,
     prepare_derivative,
     derivative!,
     second_derivative
 
 using ForwardDiff: derivative as forward_diff
 
+# Traits of the custom mass matrix and Jacobian operators
+using ArrayInterface: ArrayInterface
+
 # Algorithms for solving ODEs.
-using OrdinaryDiffEqCore: OrdinaryDiffEqCore, get_du
-using OrdinaryDiffEqDifferentiation:
-    OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
-using SciMLOperators: WOperator, MatrixOperator
+using OrdinaryDiffEqCore:
+    OrdinaryDiffEqCore,
+    OrdinaryDiffEqAdaptiveImplicitAlgorithm,
+    OrdinaryDiffEqImplicitAlgorithm,
+    get_du
+using DiffEqBase: DiffEqBase, prepare_alg, ODE_DEFAULT_NORM
 import ADTypes
 using ADTypes: AutoForwardDiff
 import ForwardDiff
@@ -54,21 +62,26 @@ using SciMLBase:
     DEIntegrator,
     FullSpecialize,
     NoSpecialize,
-    SciMLOperators,
-    AbstractSciMLOperator,
     LinearProblem,
-    LinearSolution
+    LinearSolution,
+    derivative_discontinuity!
+
+using OrdinaryDiffEqDifferentiation:
+    OrdinaryDiffEqDifferentiation, do_newJW, jacobian2W!, dolinsolve
+
+# The custom mass matrix and Jacobian are implemented as SciMLOperators
+using SciMLOperators: SciMLOperators, WOperator, AbstractSciMLOperator
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
-using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
+using SparseConnectivityTracer: TracerSparsityDetector, GradientTracer
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
-using SparseArrays: SparseMatrixCSC, sparse, nzrange
+using SparseArrays: SparseMatrixCSC, spzeros, sparse, findnz
 
 # Linear algebra
-using LinearAlgebra: LinearAlgebra, I, mul!, UniformScaling
+using LinearAlgebra: LinearAlgebra, mul!, dot, I
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node
@@ -105,7 +118,7 @@ import BasicModelInterface as BMI
 using DelimitedFiles: writedlm
 
 # Reading GeoPackage files, which are SQLite databases with spatial data
-using SQLite: SQLite, DB, Query, esc_id
+using SQLite: SQLite, DB, esc_id
 using DBInterface: execute, prepare
 
 # Logging to both the console and a file
@@ -164,15 +177,16 @@ using Dates: Second
 
 using Printf: @sprintf
 
-using Base.Threads: nthreads
-
-include("carrays.jl")
-using .CArrays: CVector, getaxes, getdata
+include("cvectors.jl")
+using .CVectors: CVector, getaxes, getdata
 include("schema.jl")
 include("config.jl")
 using .config
+using .config: with_mass_matrix
+
 include("parameter.jl")
 include("validation.jl")
+include("formulate_flows.jl")
 include("solve.jl")
 include("logo.jl")
 include("logging.jl")
@@ -181,7 +195,6 @@ include("allocation_init.jl")
 include("allocation_optim.jl")
 include("util.jl")
 include("graph.jl")
-include("differentiation.jl")
 include("model.jl")
 include("read.jl")
 include("write.jl")

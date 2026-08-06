@@ -58,44 +58,99 @@ function log_startup(config, toml_path::AbstractString)::Nothing
     return nothing
 end
 
-"Log the convergence bottlenecks."
-function log_bottlenecks(model; interrupt::Bool)
-    (; cache, p, u) = model.integrator
-    (; p_independent) = p
+"""
+The node ID that each flow state is attributed to when reporting convergence bottlenecks.
+Flows through a connector node are attributed to that connector node, and the Basin
+forcing flows to the Basin they act on.
+"""
+function flow_convergence_ids(p_independent::ParametersIndependent)::FlowCVectorType{NodeID}
+    (; inflow_link, outflow_link, basin) = p_independent
+    ids = similar(inflow_link, NodeID)
 
-    level = LoggingExtras.Warn
-
-    # Indicate convergence bottlenecks if possible with the current algorithm
-    return if hasproperty(cache, :nlsolver)
-        flow_error = if interrupt && p.p_independent.ncalls[1] > 0
-            flow_error = p.p_independent.convergence ./ p.p_independent.ncalls[1]
-        else
-            temp_convergence = @. abs(cache.nlsolver.cache.atmp / u)
-            temp_convergence / finitemaximum(temp_convergence)
+    # The connector node is the downstream end of its inflow link
+    for name in (
+            :pump,
+            :outlet,
+            :tabulated_rating_curve,
+            :linear_resistance,
+            :manning_resistance,
+            :user_demand_inflow,
+        )
+        ids_component = getproperty(ids, name)
+        link_component = getproperty(inflow_link, name)
+        for i in eachindex(ids_component)
+            ids_component[i] = link_component[i].link[2]
         end
-
-        errors = Pair{Symbol, String}[]
-        error_count = 0
-        max_errors = 5
-        # Iterate over the errors in descending order
-        for i in sortperm(flow_error; rev = true)
-            node_id = Symbol(p_independent.node_id[i])
-            error = flow_error[i]
-            isnan(error) && continue  # NaN are sorted as largest
-            # Stop reporting errors if they are too small or too many
-            if error < 1 / length(flow_error) || error_count >= max_errors
-                break
-            end
-            push!(errors, node_id => @sprintf("%.2f", error * 100) * "%")
-            error_count += 1
-        end
-        if !isempty(errors)
-            @logmsg level "Convergence bottlenecks in descending order of severity:" errors...
-        end
-    else
-        algorithm = model.config.solver.algorithm
-        @logmsg level "Convergence bottlenecks are not shown for the chosen solver algorithm." algorithm
     end
+
+    # These nodes have no inflow link, so take the upstream end of their outflow link
+    for name in (:flow_boundary, :user_demand_outflow)
+        ids_component = getproperty(ids, name)
+        link_component = getproperty(outflow_link, name)
+        for i in eachindex(ids_component)
+            ids_component[i] = link_component[i].link[1]
+        end
+    end
+
+    # The forcing links are not connected to a second real node
+    for name in (:evaporation, :infiltration, :drainage, :surface_runoff, :precipitation)
+        getproperty(ids, name) .= basin.node_id
+    end
+
+    return ids
+end
+
+"""
+Log the largest entries of a convergence measure, in descending order of severity.
+The entries are normalized per nonlinear solver call, so they are in the range [0, 1].
+"""
+function log_bottleneck(
+        convergence,
+        ids,
+        description::AbstractString;
+        max_entries::Int = 10,
+    )::Nothing
+    # Entries that are missing, non-finite or zero don't indicate a bottleneck
+    indices = filter(eachindex(convergence)) do i
+        value = convergence[i]
+        !ismissing(value) && isfinite(value) && (value > 0)
+    end
+    isempty(indices) && return nothing
+    sort!(indices; by = i -> convergence[i], rev = true)
+
+    entries = [
+        Symbol(ids[i]) => @sprintf("%.2f%%", 100 * convergence[i]) for
+            i in first(indices, max_entries)
+    ]
+    @logmsg LoggingExtras.Warn "$description in descending order of severity:" entries...
+    return nothing
+end
+
+"Log the convergence bottlenecks."
+function log_bottlenecks(model)::Nothing
+    (; integrator, saved) = model
+    (; p_independent) = integrator.p
+    (; convergence_storage, convergence_flow, convergence_ncalls, basin) = p_independent
+
+    ncalls = convergence_ncalls[1]
+    storage_convergence, flow_convergence = if ncalls > 0
+        # Convergence accumulated since the last save
+        convergence_storage ./ ncalls, convergence_flow ./ ncalls
+    elseif !isempty(saved.flow.saveval)
+        # Nothing accumulated yet, so fall back on the last saved convergence
+        saved_flow = saved.flow.saveval[end]
+        saved_flow.convergence_storage, saved_flow.convergence_flow
+    else
+        return nothing
+    end
+
+    log_bottleneck(storage_convergence, basin.node_id, "Water balance convergence bottlenecks")
+    log_bottleneck(
+        flow_convergence,
+        flow_convergence_ids(p_independent),
+        "Flow physics convergence bottlenecks",
+    )
+    return nothing
 end
 
 "Log messages after the computation."
@@ -106,7 +161,7 @@ function log_finalize(model)::Cint
     else
         # OrdinaryDiffEq doesn't error on e.g. convergence failure,
         # but we want a non-zero exit code in that case.
-        log_bottlenecks(model; interrupt = false)
+        log_bottlenecks(model)
         t = datetime_since(model.integrator.t, model.config.starttime)
         (; retcode) = model.integrator.sol
         @error """The model exited at model time $t with return code $retcode at $(now()).

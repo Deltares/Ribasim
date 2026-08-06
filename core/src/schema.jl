@@ -269,7 +269,7 @@ module Schema
 
     module ContinuousControl
 
-        using ...Ribasim: DateTime, Table
+        using ...Ribasim: Table
 
         struct Variable <: Table
             node_id::Int32

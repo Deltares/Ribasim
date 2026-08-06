@@ -27,7 +27,8 @@ using LinearSolve:
     LUFactorization,
     SciMLLinearSolveAlgorithm,
     LinearSolve,
-    SciMLLinearSolveAlgorithm
+    SciMLLinearSolveAlgorithm,
+    needs_concrete_A
 
 export Config, Solver, Results, Logging, Toml
 export algorithm,
@@ -185,16 +186,17 @@ end
     dtmax::Union{Float64, Nothing} = nothing
     force_dtmin::Bool = false
     abstol::Float64 = 1.0e-5
-    reltol::Float64 = 1.0e-5
+    reltol::Float64 = 1.0e-4
     water_balance_abstol::Float64 = 1.0e-3
     water_balance_reltol::Float64 = 1.0e-2
     maxiters::Int = 1.0e9
+    reduced_implicit_solve::Bool = true
     sparse::Bool = true
     autodiff::Bool = true
     evaporate_mass::Bool = true
     depth_threshold::Float64 = 0.1
     level_difference_threshold::Float64 = 0.02
-    specialize::Bool = false
+    specialize::Bool = true
 end
 
 @option struct Interpolation <: TableOption
@@ -406,9 +408,10 @@ matrix of Ribasim.
 """
 struct RibasimLinearSolve{AType <: SciMLLinearSolveAlgorithm} <: SciMLLinearSolveAlgorithm
     algorithm::AType
+    reduced_implicit_solve::Bool
 end
 
-LinearSolve.needs_concrete_A(::RibasimLinearSolve) = false
+LinearSolve.needs_concrete_A(alg::RibasimLinearSolve) = alg.reduced_implicit_solve ? false : needs_concrete_A(alg.algorithm)
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
@@ -417,20 +420,32 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
 
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
         kwargs[:nlsolve] = NLNewton()
-        linear_algorithm =
-            solver.sparse ? KLUFactorization(; check_pattern = false) : LUFactorization()
-        kwargs[:linsolve] = RibasimLinearSolve(linear_algorithm)
-    end
-
-    if function_accepts_kwarg(algotype, :step_limiter!)
-        kwargs[:step_limiter!] = Ribasim.limit_flow!
+        if solver.sparse
+            kwargs[:linsolve] = RibasimLinearSolve(
+                KLUFactorization(; check_pattern = false),
+                solver.reduced_implicit_solve,
+            )
+        else
+            kwargs[:linsolve] = RibasimLinearSolve(
+                LUFactorization(),
+                solver.reduced_implicit_solve,
+            )
+        end
     end
 
     if function_accepts_kwarg(algotype, :autodiff)
         kwargs[:autodiff] = get_ad_type(solver)
     end
 
+    if function_accepts_kwarg(algotype, :step_limiter!)
+        kwargs[:step_limiter!] = Ribasim.limit_flow!
+    end
+
     return algotype(; kwargs...)
+end
+
+function with_mass_matrix(solver::Solver)
+    return algorithm(solver) isa OrdinaryDiffEqNewtonAdaptiveAlgorithm
 end
 
 "Convert the saveat Float64 from our Config to SciML's saveat"

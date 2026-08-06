@@ -27,7 +27,8 @@
 end
 
 @testitem "Solver" begin
-    using OrdinaryDiffEqCore: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
+    using ADTypes: AutoFiniteDiff, AutoForwardDiff
+    using OrdinaryDiffEqCore: alg_autodiff
     using Ribasim: convert_saveat, is_adaptive, Solver, algorithm
 
     solver = Solver()
@@ -45,11 +46,11 @@ end
     @test_throws InexactError Solver(autodiff = 2)
     @test_throws KeyError algorithm(Solver(; algorithm = "DoesntExist"))
     @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", autodiff = true))) ==
-        AutoForwardDiff(; chunksize = 1, tag = :Ribasim)
+        AutoForwardDiff(; tag = :Ribasim)
     @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", autodiff = false))) isa
         AutoFiniteDiff
     @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF"))) ==
-        AutoForwardDiff(; chunksize = 1, tag = :Ribasim)
+        AutoForwardDiff(; tag = :Ribasim)
     @test alg_autodiff(algorithm(Solver(; algorithm = "QNDF", specialize = true))) ==
         AutoForwardDiff(; tag = :Ribasim)
     # autodiff is not a kwargs for explicit algorithms, but we use try-catch to bypass

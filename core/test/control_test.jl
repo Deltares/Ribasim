@@ -1,6 +1,5 @@
 @testitem "Pump discrete control" begin
-    using Ribasim: NodeID, OrderedDict
-    using OrdinaryDiffEqCore: get_du
+    using Ribasim: NodeID, OrderedDict, get_du
     using Dates: DateTime
     using NCDatasets: NCDataset
 
@@ -10,6 +9,7 @@
     model = Ribasim.run(toml_path)
     (; p_independent) = model.integrator.p
     (; discrete_control, pump, graph) = p_independent
+    (; flow) = get_du(model.integrator)
 
     # Control input(flow rates)
     pump_control_mapping = pump.control_mapping
@@ -58,9 +58,9 @@
     @test level[2, t_2_index] >=
         discrete_control.compound_variables[1][2].threshold_high[1](0)
 
-    du = get_du(model.integrator)
-    @test all(x -> isapprox(x, 0; atol = 1.0e-10), du.linear_resistance)
-    @test all(x -> isapprox(x, 0; atol = 1.0e-10), du.pump)
+
+    @test all(x -> isapprox(x, 0; atol = 1.0e-10), flow.linear_resistance)
+    @test all(x -> isapprox(x, 0; atol = 1.0e-10), flow.pump)
 end
 
 @testitem "Flow condition control" begin
@@ -215,14 +215,12 @@ end
 
     @test compound_variable.subvariables[1] == SubVariable(;
         listen_node_id = NodeID(:FlowBoundary, 2, p_independent),
-        cache_ref = compound_variable.subvariables[1].cache_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,
     )
     @test compound_variable.subvariables[2] == SubVariable(;
         listen_node_id = NodeID(:FlowBoundary, 3, p_independent),
-        cache_ref = compound_variable.subvariables[2].cache_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,

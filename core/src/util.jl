@@ -37,17 +37,10 @@ function get_storages_from_levels(basin::Basin, levels::AbstractVector)::Vector{
 end
 
 """
-Compute the level of a basin given its storage.
-"""
-function get_level_from_storage(basin::Basin, state_idx::Int, storage::T)::T where {T}
-    return basin.storage_to_level[state_idx](storage)
-end
-
-"""
 Compute the area of a basin given its storage.
 """
 function get_area_from_storage(basin::Basin, state_idx::Int, storage::T)::T where {T}
-    level = get_level_from_storage(basin, state_idx, storage)
+    level = basin.storage_to_level[state_idx](storage)
     level_to_area = basin.level_to_area[state_idx]
     return level_to_area(level)
 end
@@ -162,16 +155,42 @@ function get_tstops(time, starttime::DateTime)::Vector{Float64}
     return seconds_since.(unique_times, starttime)
 end
 
+function get_level(storage::AbstractVector, p::Parameters, node_id::NodeID, t::Number)::Number
+    return get_level(
+        node_id.is_basin ? storage[node_id.idx] : 0.0,
+        p,
+        node_id,
+        t
+    )
+end
+
 """
 Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
 du: tells ForwardDiff whether this call is for differentiation or not
 """
-function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
-    (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
+function get_level(
+        storage::Number,
+        p::Parameters,
+        node_id::NodeID,
+        t::Number;
+        force_evaluation::Bool = false,
+    )::Number
+    (; p_independent, time_dependent_cache, p_mutable, non_ad_cache) = p
+    (; basin) = p_independent
+    (; storage_to_level) = basin
 
-    return if node_id.type == NodeType.Basin
-        state_and_time_dependent_cache.current_level[node_id.idx]
+    return if node_id.is_basin
+        if p_mutable.ad_active || force_evaluation
+            if storage ≥ 0
+                storage_to_level[node_id.idx](storage)
+            else
+                # For negative storage mirror the Basin profile in the bottom
+                2 * basin_bottom(basin, node_id)[2] - storage_to_level[node_id.idx](-storage)
+            end
+        else
+            non_ad_cache.current_level[node_id.idx]
+        end
     elseif node_id.type == NodeType.LevelBoundary
         itp = p_independent.level_boundary.level[node_id.idx]
         eval_time_interpolation(
@@ -190,15 +209,24 @@ function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
     end
 end
 
-function get_storage(p::Parameters, node_id::NodeID, t::Number)::Float64
-    (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
-
-    return state_and_time_dependent_cache.current_storage[node_id.idx]
+function get_area(
+        level::Number,
+        p::Parameters,
+        node_id::NodeID,
+    )
+    @assert node_id.is_basin
+    (; p_independent, non_ad_cache, p_mutable) = p
+    (; level_to_area) = p_independent.basin
+    return if p_mutable.ad_active
+        level_to_area[node_id.idx](level)
+    else
+        non_ad_cache.current_area[node_id.idx]
+    end
 end
 
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
 function basin_bottom(basin::Basin, node_id::NodeID)::Tuple{Bool, Float64}
-    return if node_id.type == NodeType.Basin
+    return if node_id.is_basin
         # get level(storage) interpolation function
         level_discrete = basin_levels(basin, node_id.idx)
         # and return the first level in this vector, representing the bottom
@@ -277,8 +305,8 @@ Each inner vector is assumed to be of equal length.
 It is similar to `Iterators.flatten`, though that doesn't work with the `Tables.Column`
 interface, which needs `length` and `getindex` support.
 """
-struct FlatVector{T} <: AbstractVector{T}
-    v::Vector{Vector{T}}
+struct FlatVector{T, V <: AbstractVector{T}} <: AbstractVector{T}
+    v::Vector{V}
 end
 
 function Base.length(fv::FlatVector)
@@ -299,8 +327,13 @@ function Base.getindex(fv::FlatVector, i::Int)
 end
 
 "Construct a FlatVector from one of the fields of SavedFlow."
-function FlatVector(saveval::Vector{SavedFlow}, sym::Symbol)
-    v = isempty(saveval) ? Vector{Float64}[] : getfield.(saveval, sym)
+function FlatVector(saveval::Vector{SavedFlow}, sym::Symbol, subvector::Union{Nothing, Symbol} = nothing)
+    v = if isempty(saveval)
+        Vector{Float64}[]
+    else
+        v_ = getfield.(saveval, sym)
+        isnothing(subvector) ? v_ : getproperty.(v_, subvector)
+    end
     return FlatVector(v)
 end
 FlatVector(v::Vector{Matrix{Float64}}) = FlatVector(vec.(v))
@@ -320,12 +353,21 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
     end
 end
 
-function get_low_storage_factor(p::Parameters, id::NodeID)
-    (; current_low_storage_factor) = p.state_and_time_dependent_cache
-    return if id.type == NodeType.Basin
-        current_low_storage_factor[id.idx]
+function get_low_storage_factor(
+        storage::Number,
+        p::Parameters,
+        id::NodeID,
+    )
+    (; p_mutable, p_independent, non_ad_cache) = p
+    (; low_storage_threshold) = p_independent.basin
+    return if id.is_basin
+        if p_mutable.ad_active
+            reduction_factor(storage, low_storage_threshold[id.idx])
+        else
+            non_ad_cache.current_low_storage_factor[id.idx]
+        end
     else
-        one(eltype(current_low_storage_factor))
+        one(eltype(storage))
     end
 end
 
@@ -334,15 +376,17 @@ For resistance nodes, give a reduction factor based on the upstream node
 as defined by the flow direction.
 """
 function low_storage_factor_resistance_node(
+        s_a::Number,
+        s_b::Number,
         p::Parameters,
         q::Number,
         inflow_id::NodeID,
         outflow_id::NodeID,
     )
     return if q > 0
-        get_low_storage_factor(p, inflow_id)
+        get_low_storage_factor(s_a, p, inflow_id)
     else
-        get_low_storage_factor(p, outflow_id)
+        get_low_storage_factor(s_b, p, outflow_id)
     end
 end
 
@@ -422,10 +466,14 @@ end
 Get the time interval between (flow) saves
 """
 function get_Δt(integrator)::Float64
-    (; p, t, dt) = integrator
+    (; p, t, tprev) = integrator
     (; saveat) = p.p_independent.graph[]
     return if iszero(saveat)
-        dt
+        # Not `integrator.dt`: `t` is computed as `fl(tprev + dt)`, so for large `t`
+        # and small `dt` the elapsed interval differs from `dt` by up to `eps(t) / 2`.
+        # The cumulative flows are integrated over `[tprev, t]`, so that is the
+        # interval to divide by.
+        t - tprev
     elseif isinf(saveat)
         t
     else
@@ -485,163 +533,60 @@ function NodeID(type::Symbol, value::Integer, p_independent::ParametersIndepende
     return NodeID(node_type, value, idx)
 end
 
-"""
-Get the reference to a parameter
-"""
-function get_cache_ref(
-        node_id::NodeID,
-        variable::String,
-        state_ranges::StateTuple{UnitRange{Int}};
-        listen::Bool = true,
-    )::Tuple{CacheRef, Bool}
-    errors = false
-
-    ref = if node_id.type == NodeType.Basin && variable == "level"
-        CacheRef(; type = CacheType.basin_level, node_id.idx)
-    elseif node_id.type == NodeType.Basin && variable == "storage"
-        CacheRef(; type = CacheType.basin_storage, node_id.idx)
-    elseif variable == "flow_rate" && node_id.type != NodeType.FlowBoundary
-        if listen
-            if node_id.type ∉ conservative_nodetypes
-                errors = true
-                @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_nodetypes."
-                CacheRef()
-            else
-                # Index in the state vector (inflow)
-                idx = get_state_index(state_ranges, node_id)
-                CacheRef(; idx, from_du = true)
-            end
-        else
-            type = if node_id.type == NodeType.Pump
-                CacheType.flow_rate_pump
-            elseif node_id.type == NodeType.Outlet
-                CacheType.flow_rate_outlet
-            else
-                errors = true
-                @error "Cannot set the flow rate of $node_id."
-                CacheType.flow_rate_pump
-            end
-            CacheRef(; type, node_id.idx)
-        end
-    else
-        # Placeholder to obtain correct type
-        CacheRef()
-    end
-    return ref, errors
-end
-
-"""
-Set references to all variables that are listened to by discrete/continuous control
-"""
-function set_listen_cache_refs!(p_independent::ParametersIndependent)::Nothing
-    (; discrete_control, continuous_control, state_ranges) = p_independent
-    compound_variable_sets =
-        [discrete_control.compound_variables..., continuous_control.compound_variable]
-    errors = false
-
-    for compound_variables in compound_variable_sets
-        for compound_variable in compound_variables
-            (; subvariables) = compound_variable
-            for (j, subvariable) in enumerate(subvariables)
-                ref, error = get_cache_ref(
-                    subvariable.listen_node_id,
-                    subvariable.variable,
-                    state_ranges,
-                )
-                if !error
-                    subvariables[j] = @set subvariable.cache_ref = ref
-                end
-                errors |= error
-            end
-        end
-    end
-
-    if errors
-        error("Error(s) occurred when parsing listen variables.")
-    end
+function set_discrete_controlled_target_refs!(p_independent::ParametersIndependent)
+    (;
+        tabulated_rating_curve,
+        linear_resistance,
+        manning_resistance,
+        pump,
+        outlet,
+        pid_control,
+    ) = p_independent
+    set_discrete_controlled_target_refs!(tabulated_rating_curve)
+    set_discrete_controlled_target_refs!(linear_resistance)
+    set_discrete_controlled_target_refs!(manning_resistance)
+    set_discrete_controlled_target_refs!(pump)
+    set_discrete_controlled_target_refs!(outlet)
+    set_discrete_controlled_target_refs!(pid_control)
     return nothing
 end
 
-"""
-Set references to all variables that are controlled by discrete control
-"""
-function set_discrete_controlled_variable_refs!(
-        p_independent::ParametersIndependent,
-    )::Nothing
-    for nodetype in propertynames(p_independent)
-        node = getfield(p_independent, nodetype)
-        if node isa AbstractParameterNode && hasfield(typeof(node), :control_mapping)
-            control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
-                node.control_mapping
+function set_discrete_controlled_target_refs!(
+        node::AbstractParameterNode
+    )
+    (; control_mapping) = node
 
-            for ((node_id, control_state), control_state_update) in control_mapping
-                (; scalar_update, itp_update_constant, itp_update_linear, itp_update_lookup) =
-                    control_state_update
+    for ((node_id, _), control_state_update) in control_mapping
+        (; idx) = node_id
 
-                # References to scalar parameters
-                for (i, parameter_update) in enumerate(scalar_update)
-                    field = getfield(node, parameter_update.name)
-                    scalar_update[i] = ParameterUpdate(
-                        parameter_update.name,
-                        parameter_update.value,
-                        Ref(field, node_id.idx),
-                    )
-                end
+        (; scalar_update, itp_update_constant, itp_update_linear, itp_update_lookup) =
+            control_state_update
 
-                # References to constant interpolation parameters
-                for (i, parameter_update) in enumerate(itp_update_constant)
-                    field = getfield(node, parameter_update.name)
-                    itp_update_constant[i] = ParameterUpdate(
-                        parameter_update.name,
-                        parameter_update.value,
-                        Ref(field, node_id.idx),
-                    )
-                end
+        # References to scalar parameters
+        for (i, parameter_update) in enumerate(scalar_update)
+            field = getfield(node, parameter_update.name)
+            scalar_update[i] = @set parameter_update.ref = Ref(field, idx)
+        end
 
-                # References to linear interpolation parameters
-                for (i, parameter_update) in enumerate(itp_update_linear)
-                    field = getfield(node, parameter_update.name)
-                    itp_update_linear[i] = ParameterUpdate(
-                        parameter_update.name,
-                        parameter_update.value,
-                        Ref(field, node_id.idx),
-                    )
-                end
+        # References to constant interpolation parameters
+        for (i, parameter_update) in enumerate(itp_update_constant)
+            field = getfield(node, parameter_update.name)
+            itp_update_constant[i] = @set parameter_update.ref = Ref(field, idx)
+        end
 
-                # References to index interpolation parameters
-                for (i, parameter_update) in enumerate(itp_update_lookup)
-                    field = getfield(node, parameter_update.name)
-                    itp_update_lookup[i] = ParameterUpdate(
-                        parameter_update.name,
-                        parameter_update.value,
-                        Ref(field, node_id.idx),
-                    )
-                end
-            end
+        # References to linear interpolation parameters
+        for (i, parameter_update) in enumerate(itp_update_linear)
+            field = getfield(node, parameter_update.name)
+            itp_update_linear[i] = @set parameter_update.ref = Ref(field, idx)
+        end
+
+        # References to index interpolation parameters
+        for (i, parameter_update) in enumerate(itp_update_lookup)
+            field = getfield(node, parameter_update.name)
+            itp_update_lookup[i] = @set parameter_update.ref = Ref(field, idx)
         end
     end
-    return nothing
-end
 
-function set_target_ref!(
-        target_ref::Vector{CacheRef},
-        node_id::Vector{NodeID},
-        controlled_variable::Vector{String},
-        state_ranges::StateTuple{UnitRange{Int}},
-        graph::MetaGraph,
-    )::Nothing
-    errors = false
-    for (i, (id, variable)) in enumerate(zip(node_id, controlled_variable))
-        controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
-        ref, error =
-            get_cache_ref(controlled_node_id, variable, state_ranges; listen = false)
-        target_ref[i] = ref
-        errors |= error
-    end
-
-    if errors
-        error("Errors encountered when setting continuously controlled variable refs.")
-    end
     return nothing
 end
 
@@ -671,6 +616,9 @@ function basin_areas(basin::Basin, state_idx::Int)
     return basin.level_to_area[state_idx].u
 end
 
+"Get the area at the top of the profile"
+get_fixed_area(basin::Basin, state_idx::Int) = basin_areas(basin, state_idx)[end]
+
 """
 The function f(x) = sign(x)*√(|x|) where for |x|<threshold a
 polynomial is used so that the function is still differentiable
@@ -685,242 +633,155 @@ function relaxed_root(x, threshold)
 end
 
 # Overloads for SparseConnectivityTracer
-reduction_factor(x::GradientTracer, ::Real) = x
-low_storage_factor_resistance_node(::Parameters, q::GradientTracer, ::NodeID, ::NodeID) = q
-relaxed_root(x::GradientTracer, threshold::Real) = x
-get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
+get_level(storage::GradientTracer, p::Parameters, node_id::NodeID, t::Number; kwargs...) = storage
+get_low_storage_factor(storage::GradientTracer, p::Parameters, id::NodeID) = storage
+low_storage_factor_resistance_node(s_a::GradientTracer, s_b::GradientTracer, p::Parameters, q::Number, inflow_id::NodeID, outflow_id::NodeID) = s_a + s_b
+reduction_factor(x::GradientTracer, threshold::Real) = x
+relaxed_root(x::GradientTracer, threshold) = x
 
-"Create a NamedTuple of the node IDs per state component in the state order"
-function state_node_ids(
-        p::Union{ParametersIndependent, NamedTuple},
-    )::StateTuple{Vector{NodeID}}
-    return (;
-        tabulated_rating_curve = p.tabulated_rating_curve.node_id,
-        pump = p.pump.node_id,
-        outlet = p.outlet.node_id,
-        user_demand_inflow = [
-            p.user_demand.node_id[i] for i in eachindex(p.user_demand.node_id) for
-                _ in 1:length(p.user_demand.inflow_links[i])
-        ],
-        user_demand_outflow = p.user_demand.node_id,
-        linear_resistance = p.linear_resistance.node_id,
-        manning_resistance = p.manning_resistance.node_id,
-        evaporation = p.basin.node_id,
-        infiltration = p.basin.node_id,
-        integral = p.pid_control.node_id,
+
+function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::FlowTuple{UnitRange{Int}}
+    (;
+        pump,
+        outlet,
+        flow_boundary,
+        tabulated_rating_curve,
+        linear_resistance,
+        manning_resistance,
+        user_demand,
+        basin,
+    ) = nodes
+
+    n_basin = length(basin.node_id)
+    n_pump = length(pump.node_id)
+    n_outlet = length(outlet.node_id)
+    n_flow_boundary = length(flow_boundary.node_id)
+    n_tabulated_rating_curve = length(tabulated_rating_curve.node_id)
+    n_linear_resistance = length(linear_resistance.node_id)
+    n_manning_resistance = length(manning_resistance.node_id)
+    n_user_demand_inflow = mapreduce(length, +, user_demand.inflow_links; init = 0)
+    n_user_demand_outflow = length(user_demand.node_id)
+
+    ns_flow = [
+        n_pump,
+        n_outlet,
+        n_flow_boundary,
+        n_tabulated_rating_curve,
+        n_linear_resistance,
+        n_manning_resistance,
+        n_user_demand_inflow,
+        n_user_demand_outflow,
+        n_basin, # evaporation,
+        n_basin, # infiltration,
+        n_basin, # drainage,
+        n_basin, # surface_runoff,
+        n_basin, # precipitation
+    ]
+    ns_flow_cumsum = pushfirst!(cumsum(ns_flow), 0)
+
+    trivial_range = 1:0
+    flow_ranges = ntuple(
+        i -> iszero(ns_flow[i]) ? trivial_range : (ns_flow_cumsum[i] + 1):ns_flow_cumsum[i + 1],
+        Val(n_flow_components)
     )
+    return FlowTuple{UnitRange{Int}}(flow_ranges)
 end
 
 "Create the axis of the state vector"
-function count_state_ranges(u_ids::StateTuple{Vector{NodeID}})::StateTuple{UnitRange{Int}}
-    return StateTuple{UnitRange{Int}}(ranges(map(length, collect(u_ids))))
+function count_state_ranges(nodes::Union{NamedTuple, ParametersIndependent})::StateTuple{UnitRange{Int}}
+    (; basin, pid_control) = nodes
+
+    n_basin = length(basin.node_id)
+    n_pid = length(pid_control.node_id)
+
+    flow_ranges = count_flow_ranges(nodes)
+    flow_ranges_shifted = FlowTuple{UnitRange{Int}}(
+        map(r -> (r.start + n_basin):(r.stop + n_basin), flow_ranges)
+    )
+    last = values(flow_ranges_shifted)[end].stop
+
+    return (;
+        storage = 1:n_basin,
+        flow = flow_ranges_shifted,
+        pid_integral = (last + 1):(last + n_pid),
+    )
 end
 
 function build_state_vector(p_independent::ParametersIndependent)
-    # It is assumed that the horizontal flow states come first in
-    # p_independent.state_inflow_link and p_independent.state_outflow_link
-    (; state_ranges) = p_independent
-    u_ids = state_node_ids(p_independent)
-    data = zeros(length(p_independent.node_id))
-    u = CVector(data, state_ranges)
-    # Ensure p_independent.node_id, state_ranges and u have the same length and order
-    ranges = (getproperty(state_ranges, x) for x in propertynames(state_ranges))
-    @assert length(u) == length(p_independent.node_id) == mapreduce(length, +, ranges)
-    @assert keys(u_ids) == state_components
+    (; u_prev_saveat, basin) = p_independent
+    u = zero(u_prev_saveat)
+    u.storage .= basin.storage0
     return u
 end
 
-function build_reltol_vector(u0::CVector, reltol::Float64)
-    reltolv = fill(reltol, length(u0))
-    mask = trues(length(u0))
-    # Mask the non-cumulative states
-    for (node, range) in pairs(getaxes(u0))
-        if node in (:integral,)
-            mask[range] .= false
-        end
-    end
-    return reltolv, mask
-end
+"""
+Build the per component absolute tolerance vector.
 
-function reduce_state!(u_reduced, u, p_independent)::Nothing
-    (; basin, link_to_state_idx) = p_independent
-    (; inflow_ids, outflow_ids) = basin
-    (; combined_cumulative_flows) = u_reduced
-    state_ranges = getaxes(u)
-    u_reduced .= 0
+Since `DiffEqBase.calculate_residuals!` scales the local error estimate by the change of a
+state over the time step (see `solve.jl`), `abstol` no longer has the meaning of "a negligible
+state magnitude" but of "a state change per step that is numerically irrelevant". This holds
+for both values of `reduced_implicit_solve`. A single scalar cannot serve that role for all
+components:
 
-    for i in eachindex(basin.node_id)
-        basin_id = basin.node_id[i]
-        for inflow_id in inflow_ids[i]
-            # Flow on the link (inflow_id → basin). For UserDemand outflow this is
-            # the single user_demand_outflow state (1:1 per node). Link-based lookup
-            # correctly resolves per-link states if we ever get them upstream too.
-            state_idx = get_state_index(
-                state_ranges,
-                link_to_state_idx,
-                (inflow_id, basin_id),
-            )
-            if isnothing(state_idx)
-                state_idx = get_state_index(state_ranges, inflow_id; inflow = false)
-            end
-            isnothing(state_idx) && continue
-            combined_cumulative_flows[i] += u[state_idx]
-        end
+  - `storage` and `flow` states are volumes [m³], but their magnitudes range over many orders
+    of magnitude between models. `abstol` must stay above the roundoff floor of the largest
+    storage involved, otherwise the solver chases floating point noise on idle components.
+  - `pid_integral` states are in [m s], so a tolerance in m³ is dimensionally meaningless.
+    The integral enters the flow as `K_i * pid_integral`, so we require that the induced flow
+    error stays below `water_balance_abstol` [m³/s].
+"""
+function build_abstol_vector(
+        p_independent::ParametersIndependent,
+        abstol::Float64,
+        water_balance_abstol::Float64,
+    )::Vector{Float64}
+    (; basin, pid_control, state_ranges, u_prev_saveat) = p_independent
 
-        for outflow_id in outflow_ids[i]
-            # Flow on the link (basin → outflow_id). Must be link-based because a
-            # UserDemand can have multiple inflow-link states, one per source basin.
-            state_idx = get_state_index(
-                state_ranges,
-                link_to_state_idx,
-                (basin_id, outflow_id),
-            )
-            if isnothing(state_idx)
-                state_idx = get_state_index(state_ranges, outflow_id; inflow = true)
-            end
-            isnothing(state_idx) && continue
-            combined_cumulative_flows[i] -= u[state_idx]
-        end
+    # Relative conditioning factor used to keep `abstol` above the double precision
+    # roundoff floor of a state: `eps(Float64) * κ` with an assumed linear solve
+    # condition number `κ ~ 1e3`.
+    abstol_roundoff_factor = 1.0e3 * eps(Float64)
 
-        combined_cumulative_flows[i] -= u.evaporation[i]
-        combined_cumulative_flows[i] -= u.infiltration[i]
+    abstol_vec = fill(abstol, length(u_prev_saveat))
+    out = CVector(abstol_vec, state_ranges)
+
+    # Keep the storage tolerance above the roundoff floor of the basin itself
+    for idx in eachindex(basin.node_id)
+        storage_max = basin.storage_to_level[idx].t[end]
+        out.storage[idx] = max(abstol, abstol_roundoff_factor * storage_max)
     end
 
-    u_reduced.integral .= u.integral
-    return nothing
-end
+    # Flow states are cumulative volumes over links, so their roundoff floor is set by the
+    # largest storage in the model rather than by an individual basin.
+    if !isempty(basin.node_id)
+        storage_max = maximum(itp.t[end] for itp in basin.storage_to_level)
+        fill!(out.flow, max(abstol, abstol_roundoff_factor * storage_max))
+    end
 
-"""
-Create vectors state_inflow_link and state_outflow_link which give for each state
-in the state vector in order the metadata of the link that is associated with that state.
-Only for horizontal flows, which are assumed to come first in the state vector.
-"""
-function get_state_flow_links(
-        graph::MetaGraph,
-        nodes::NamedTuple,
-    )::Tuple{Vector{LinkMetadata}, Vector{LinkMetadata}}
-    (; user_demand) = nodes
-    state_inflow_link = LinkMetadata[]
-    state_outflow_link = LinkMetadata[]
-
-    placeholder_link =
-        LinkMetadata(0, LinkType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
-
-    for node_name in state_components
-        if hasproperty(nodes, node_name)
-            node::AbstractParameterNode = getproperty(nodes, node_name)
-            for id in node.node_id
-                inflow_ids_ = collect(inflow_ids(graph, id))
-                outflow_ids_ = collect(outflow_ids(graph, id))
-
-                inflow_link = if length(inflow_ids_) == 0
-                    placeholder_link
-                elseif length(inflow_ids_) == 1
-                    inflow_id = only(inflow_ids_)
-                    graph[inflow_id, id]
-                else
-                    error("Multiple inflows not supported")
-                end
-                push!(state_inflow_link, inflow_link)
-
-                outflow_link = if length(outflow_ids_) == 0
-                    placeholder_link
-                elseif length(outflow_ids_) == 1
-                    outflow_id = only(outflow_ids_)
-                    graph[id, outflow_id]
-                else
-                    error("Multiple outflows not supported")
-                end
-                push!(state_outflow_link, outflow_link)
-            end
-        elseif startswith(String(node_name), "user_demand")
-            if node_name == :user_demand_inflow
-                # One state per (UserDemand, inflow link) pair.
-                for links in user_demand.inflow_links
-                    for link_meta in links
-                        push!(state_inflow_link, link_meta)
-                        push!(state_outflow_link, placeholder_link)
-                    end
-                end
-            elseif node_name == :user_demand_outflow
-                placeholder_links = fill(placeholder_link, length(user_demand.node_id))
-                append!(state_inflow_link, placeholder_links)
-                append!(state_outflow_link, user_demand.outflow_link)
+    # Convert the flow tolerance into a tolerance on the PID integral state
+    for idx in eachindex(pid_control.node_id)
+        K_i_max = maximum(abs, pid_control.integral[idx].u; init = 0.0)
+        # The integral gain can also be set by discrete control
+        for ((node_id, _), control_state_update) in pid_control.control_mapping
+            (node_id.idx == idx) || continue
+            for parameter_update in control_state_update.itp_update_constant
+                (parameter_update.name === :integral) || continue
+                K_i_max = max(K_i_max, maximum(abs, parameter_update.value.u; init = 0.0))
             end
         end
+        # If the integral term is inactive the state does not influence the solution,
+        # so it does not need error control
+        out.pid_integral[idx] = iszero(K_i_max) ? Inf : water_balance_abstol / K_i_max
     end
 
-    return state_inflow_link, state_outflow_link
-end
-
-"""
-Build a mapping from a (from_node, to_node) link tuple to the index of that link's state.
-Only inflow-link states are covered (horizontal flow components, which come first in the
-state vector). Placeholder links (both node values == 0) are skipped.
-"""
-function build_link_to_state_idx(
-        state_inflow_link::Vector{LinkMetadata},
-    )::Dict{Tuple{NodeID, NodeID}, Int}
-    link_to_state_idx = Dict{Tuple{NodeID, NodeID}, Int}()
-    for (idx, link_meta) in enumerate(state_inflow_link)
-        from_node, to_node = link_meta.link
-        from_node.value == 0 && to_node.value == 0 && continue
-        link_to_state_idx[link_meta.link] = idx
-    end
-    return link_to_state_idx
-end
-
-"""
-Get the index of the state vector corresponding to the given NodeID.
-Use the inflow Boolean argument to disambiguite for node types that have multiple states.
-Can return nothing for node types that do not have a state, like Terminal.
-"""
-function get_state_index(
-        state_ranges::StateTuple{UnitRange{Int}},
-        id::NodeID;
-        inflow::Bool = true,
-    )::Union{Int, Nothing}
-    component_name = if id.type == NodeType.UserDemand
-        inflow ? :user_demand_inflow : :user_demand_outflow
-    else
-        snake_case(id)
-    end
-
-    if hasproperty(state_ranges, component_name)
-        state_range = getproperty(state_ranges, component_name)
-        return state_range[id.idx]
-    else
-        return nothing
-    end
-end
-
-"""
-Get the state index for a flow link.
-
-When the destination node has multiple inflow-link states (UserDemand with multiple
-source links), the per-link index must be resolved via `link_to_state_idx`. Otherwise
-this falls back to the to-node's (or from-node's) state.
-"""
-function get_state_index(
-        state_ranges::StateTuple{UnitRange{Int}},
-        link_to_state_idx::Dict{Tuple{NodeID, NodeID}, Int},
-        link::Tuple{NodeID, NodeID},
-    )::Union{Int, Nothing}
-    idx = get(link_to_state_idx, link, nothing)
-    isnothing(idx) || return idx
-    idx = get_state_index(state_ranges, link[2])
-    return isnothing(idx) ? get_state_index(state_ranges, link[1]; inflow = false) : idx
+    return abstol_vec
 end
 
 """
 Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
-    (; current_storage) = p.state_and_time_dependent_cache
-    (; u_reduced) = p.p_independent
-    reduce_state!(u_reduced, u, p.p_independent)
-    formulate_storages!(u_reduced, p, t)
-    return any(<(0), current_storage)
+    return any(<(0), u.storage)
 end
 
 function get_demand(user_demand, id, demand_priority_idx, t)::Float64
@@ -930,67 +791,6 @@ function get_demand(user_demand, id, demand_priority_idx, t)::Float64
     else
         demand[id.idx, demand_priority_idx]
     end
-end
-
-"""
-Estimate the minimum reduction factor achieved over the last time step by
-estimating the lowest storage achieved over the last time step. To make sure
-it is an underestimate of the minimum, 2low_storage_threshold is subtracted from this lowest storage.
-This is done to not be too strict in clamping the flow in the limiter
-"""
-function min_low_storage_factor(
-        storage_now::AbstractVector{T},
-        storage_prev,
-        basin,
-        id,
-    ) where {T}
-    return if id.type == NodeType.Basin
-        low_storage_threshold = basin.low_storage_threshold[id.idx]
-        reduction_factor(
-            min(storage_now[id.idx], storage_prev[id.idx]) - 2low_storage_threshold,
-            low_storage_threshold,
-        )
-    else
-        one(T)
-    end
-end
-
-"""
-Estimate the minimum level reduction factor achieved over the last time step by
-estimating the lowest level achieved over the last time step. To make sure
-it is an underestimate of the minimum, 2 * level_difference_threshold is subtracted from this lowest level.
-This is done to not be too strict in clamping the flow in the limiter
-"""
-function min_low_user_demand_level_factor(
-        level_now::AbstractVector{T},
-        level_prev,
-        min_level,
-        id_user_demand,
-        id_inflow,
-        level_difference_threshold,
-    ) where {T}
-    return if id_inflow.type == NodeType.Basin
-        reduction_factor(
-            min(level_now[id_inflow.idx], level_prev[id_inflow.idx]) -
-                min_level[id_user_demand.idx] - 2 * level_difference_threshold,
-            level_difference_threshold,
-        )
-    else
-        one(T)
-    end
-end
-
-"""
-Wrap the data of a SubArray into a Vector.
-
-This function is labeled unsafe because it will crash if pointer is not a valid memory
-address to data of the requested length, and it will not prevent the input array A from
-being freed.
-"""
-function unsafe_array(
-        A::SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true},
-    )::Vector{Float64}
-    return GC.@preserve A unsafe_wrap(Array, pointer(A), length(A))
 end
 
 """
@@ -1128,28 +928,6 @@ function get_timeseries_tstops(itp::AbstractInterpolation, t_end::Float64)::Vect
     return tstops
 end
 
-"""Get the exponential time stops for decreasing the tolerance."""
-function get_log_tstops(starttime, t_end)::Vector{Float64}
-    log_tstops = Float64[]
-    t = 60 * 60
-    while Second(t) <= round(t_end - starttime, Second)
-        push!(log_tstops, t)
-        t *= 2.0
-    end
-    return log_tstops
-end
-
-function ranges(lengths::Vector{<:Integer})
-    # from the lengths of the components
-    # construct [1:n_pump, (n_pump+1):(n_pump+n_outlet)]
-    # which are used to create views into the data array
-    bounds = pushfirst!(cumsum(lengths), 0)
-    ranges = [range(p[1] + 1, p[2]) for p in IterTools.partition(bounds, 2, 1)]
-    # standardize empty ranges to 1:0 for easier testing
-    replace!(x -> isempty(x) ? (1:0) : x, ranges)
-    return ranges
-end
-
 function get_interpolation_vec(
         interpolation_type::String,
         block_transition_period::Float64,
@@ -1174,8 +952,8 @@ Check whether the inputs u and t are different from the previous call of water_b
 update the boolean flags in p_mutable. In several parts of the calculations in water_balance!,
 caches are only updated if the data they depend on is different from the previous water_balance! call.
 """
-function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
-    (; state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
+function check_new_input!(p::Parameters, t::Number)::Nothing
+    (; time_dependent_cache, p_mutable) = p
 
     # Whether the time dependent cache must be renewed
     p_mutable.new_time_dependent_cache =
@@ -1185,37 +963,12 @@ function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
             ForwardDiff.partials(time_dependent_cache.t_prev_call[1])
     )
     time_dependent_cache.t_prev_call[1] = t
-
-    # Whether the state and time dependent cache must be renewed
-    new_t_state_and_time_dependent_cache =
-        !isassigned(state_and_time_dependent_cache.t_prev_call, 1) || (
-        t != state_and_time_dependent_cache.t_prev_call[1] &&
-            ForwardDiff.partials(t) ==
-            ForwardDiff.partials(state_and_time_dependent_cache.t_prev_call[1])
-    )
-    new_u_state_and_time_dependent_cache =
-        any(
-        i -> !isassigned(state_and_time_dependent_cache.u_reduced_prev_call, i),
-        eachindex(u_reduced),
-    ) || any(
-        i -> !(
-            u_reduced[i] == state_and_time_dependent_cache.u_reduced_prev_call[i] &&
-                ForwardDiff.partials(u_reduced[i]) == ForwardDiff.partials(
-                state_and_time_dependent_cache.u_reduced_prev_call[i],
-            )
-        ),
-        eachindex(u_reduced),
-    )
-    state_and_time_dependent_cache.u_reduced_prev_call .= u_reduced
-    state_and_time_dependent_cache.t_prev_call[1] = t
-    p_mutable.new_state_and_time_dependent_cache =
-        new_t_state_and_time_dependent_cache || new_u_state_and_time_dependent_cache
     return nothing
 end
 
 function eval_time_interpolation(
         itp::AbstractInterpolation,
-        cache::Vector,
+        cache::AbstractVector,
         idx::Int,
         p::Parameters,
         t::Number,
@@ -1334,5 +1087,213 @@ function add_substance_mass!(
     for (substance_idx, itp) in enumerate(concentration_itp)
         mass[substance_idx] += cumulative_flow * itp(t)
     end
+    return nothing
+end
+
+function get_link_index(
+        link::Tuple{NodeID, NodeID},
+        flow_links::Vector{LinkMetadata},
+    )::Union{Int64, Nothing}
+    return findfirst(l -> l.link == link, flow_links)
+end
+
+function get_link_index(
+        link::Tuple{NodeID, NodeID},
+        flow_link_lookup::Dict{Tuple{NodeID, NodeID}, Int},
+    )::Union{Int64, Nothing}
+    return get(flow_link_lookup, link, nothing)
+end
+
+function set_flow_links!(inflow_link, outflow_link, node::AbstractParameterNode)
+    inflow_link .= node.inflow_link
+    outflow_link .= node.outflow_link
+    return nothing
+end
+
+function set_flow_links!(inflow_link, outflow_link, user_demand::UserDemand)
+    inflow_link .= vcat(user_demand.inflow_links...)
+    outflow_link .= user_demand.outflow_link
+    return nothing
+end
+
+function set_flow_links!(inflow_link, outflow_link, flow_boundary::FlowBoundary)
+    # FlowBoundary has no inflow_link; use outflow_link for both so that
+    # link[1] = FlowBoundary node (not a basin) and link[2] = downstream node (basin)
+    inflow_link .= flow_boundary.outflow_link
+    outflow_link .= flow_boundary.outflow_link
+    return nothing
+end
+
+function set_flow_links!(inflow_link, outflow_link, basin::Basin)
+    (; node_id) = basin
+
+    placeholder_node_id = NodeID(NodeType.Terminal, 0, 0)
+
+    for id in node_id
+        # Incoming forcings
+        link_metadata = LinkMetadata(0, LinkType.flow, (placeholder_node_id, id))
+        outflow_link.precipitation[id.idx] = link_metadata
+        outflow_link.drainage[id.idx] = link_metadata
+        outflow_link.surface_runoff[id.idx] = link_metadata
+
+        # Outgoing forcings
+        link_metadata = LinkMetadata(0, LinkType.flow, (id, placeholder_node_id))
+        inflow_link.evaporation[id.idx] = link_metadata
+        inflow_link.infiltration[id.idx] = link_metadata
+    end
+    return
+end
+
+"""
+Get the LinkMetadata for the in- and outflow link for each flow in a
+vector of type FlowCVectorType
+"""
+function get_flow_links(nodes::NamedTuple, flow_ranges::FlowTuple{UnitRange{Int}})
+    (;
+        pump,
+        outlet,
+        flow_boundary,
+        tabulated_rating_curve,
+        linear_resistance,
+        manning_resistance,
+        user_demand,
+        basin,
+    ) = nodes
+    n_flows = flow_ranges[end].stop
+    placeholder_link_metadata = LinkMetadata(0, LinkType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
+
+    inflow_link = CVector(fill(placeholder_link_metadata, n_flows), flow_ranges)
+    outflow_link = CVector(fill(placeholder_link_metadata, n_flows), flow_ranges)
+
+    set_flow_links!(inflow_link.pump, outflow_link.pump, pump)
+    set_flow_links!(inflow_link.outlet, outflow_link.outlet, outlet)
+    set_flow_links!(inflow_link.flow_boundary, outflow_link.flow_boundary, flow_boundary)
+    set_flow_links!(inflow_link.tabulated_rating_curve, outflow_link.tabulated_rating_curve, tabulated_rating_curve)
+    set_flow_links!(inflow_link.linear_resistance, outflow_link.linear_resistance, linear_resistance)
+    set_flow_links!(inflow_link.manning_resistance, outflow_link.manning_resistance, manning_resistance)
+    set_flow_links!(inflow_link.user_demand_inflow, outflow_link.user_demand_outflow, user_demand)
+    set_flow_links!(inflow_link, outflow_link, basin)
+
+    return inflow_link, outflow_link
+end
+
+"""
+Wrap the data of a SubArray into a Vector.
+
+This function is labeled unsafe because it will crash if pointer is not a valid memory
+address to data of the requested length, and it will not prevent the input array A from
+being freed.
+"""
+function unsafe_array(
+        A::SubArray{Float64, 1, Vector{Float64}, Tuple{UnitRange{Int64}}, true},
+    )::Vector{Float64}
+    return GC.@preserve A unsafe_wrap(Array, pointer(A), length(A))
+end
+
+function aggregate_flows!(
+        aggregate::AbstractVector,
+        flow::FlowCVectorType,
+        p_independent::ParametersIndependent;
+        do_inflows::Bool = true,
+        do_outflows::Bool = true,
+        do_horizontal_flows::Bool = true,
+        do_vertical_flows::Bool = true,
+        weight::Number = true,
+        from_zero::Bool = true
+    )
+    (; inflow_link, outflow_link, basin) = p_independent
+    n_basin = length(basin.node_id)
+
+    from_zero && (aggregate .= 0)
+
+    if do_horizontal_flows
+        # Use length of the range to handle both shifted (sub-CVector from state)
+        # and unshifted (standalone FlowCVector) axes correctly
+        n_horizontal = length(flow) - 5 * n_basin
+        for idx in 1:n_horizontal
+            flow_ = flow[idx]
+            inflow_id = inflow_link[idx].link[1]
+            outflow_id = outflow_link[idx].link[2]
+            positive_flow = (flow_ > 0)
+
+            if inflow_id.is_basin
+                if (!positive_flow && do_inflows) || (positive_flow && do_outflows)
+                    aggregate[inflow_id.idx] -= weight * flow_
+                end
+            end
+
+            if outflow_id.is_basin
+                if (positive_flow && do_inflows) || (!positive_flow && do_outflows)
+                    aggregate[outflow_id.idx] += weight * flow_
+                end
+            end
+        end
+    end
+
+    if do_vertical_flows
+        for idx in 1:n_basin
+            if do_inflows
+                aggregate[idx] += weight * (flow.drainage[idx] + flow.surface_runoff[idx] + flow.precipitation[idx])
+            end
+            if do_outflows
+                aggregate[idx] -= weight * (flow.evaporation[idx] + flow.infiltration[idx])
+            end
+        end
+    end
+    return nothing
+end
+
+function get_incidence_matrix(
+        inflow_link::FlowCVectorType{LinkMetadata},
+        outflow_link::FlowCVectorType{LinkMetadata},
+    )
+    n_flow = length(inflow_link)
+    n_basin = length(inflow_link.evaporation)
+
+    incidence_matrix = spzeros(Int, n_basin, n_flow)
+
+    for flow_idx in 1:n_flow
+        inflow_id = inflow_link[flow_idx].link[1]
+        outflow_id = outflow_link[flow_idx].link[2]
+
+        if inflow_id.is_basin
+            incidence_matrix[inflow_id.idx, flow_idx] = -1
+        end
+        if outflow_id.is_basin
+            incidence_matrix[outflow_id.idx, flow_idx] = 1
+        end
+    end
+    return incidence_matrix
+end
+
+function get_inflows(flow::FlowCVectorType, user_demand::UserDemand, idx::Integer)
+    offset_1 = user_demand.inflow_link_offsets[idx]
+    offset_2 = user_demand.inflow_link_offsets[idx + 1]
+    return @view flow.user_demand_inflow[(offset_1 + 1):offset_2]
+end
+
+function set_uplink_downlink_storage!(
+        storage_uplink::FlowCVectorType,
+        storage_downlink::FlowCVectorType,
+        storage::AbstractVector,
+        p_independent::ParametersIndependent,
+    )
+    (; inflow_link, outflow_link) = p_independent
+
+    storage_uplink .= 0.0
+    storage_downlink .= 0.0
+
+    for idx in eachindex(storage_uplink)
+        inflow_id = inflow_link[idx].link[1]
+        outflow_id = outflow_link[idx].link[2]
+
+        if inflow_id.is_basin
+            storage_uplink[idx] = storage[inflow_id.idx]
+        end
+        if outflow_id.is_basin
+            storage_downlink[idx] = storage[outflow_id.idx]
+        end
+    end
+
     return nothing
 end

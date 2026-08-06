@@ -8,28 +8,30 @@ const SolverStats = @NamedTuple{
     dt::Float64,
 }
 
-const state_components = (
-    :tabulated_rating_curve,
+# State vector
+const state_components = (:storage, :flow, :pid_integral)
+const flow_components = (
     :pump,
     :outlet,
-    :user_demand_inflow,
-    :user_demand_outflow,
+    :flow_boundary,
+    :tabulated_rating_curve,
     :linear_resistance,
     :manning_resistance,
+    :user_demand_inflow,
+    :user_demand_outflow,
     :evaporation,
     :infiltration,
-    :integral,
+    :drainage,
+    :surface_runoff,
+    :precipitation,
 )
-const n_components = length(state_components)
-const StateTuple{V} = NamedTuple{state_components, NTuple{n_components, V}}
-const RibasimCVectorType{T} =
-    Ribasim.CArrays.CArray{T, 1, Vector{T}, StateTuple{UnitRange{Int}}}
-const RibasimReducedCVectorType{T} = Ribasim.CArrays.CArray{
-    T,
-    1,
-    Vector{T},
-    @NamedTuple{combined_cumulative_flows::UnitRange{Int}, integral::UnitRange{Int}}
-}
+const n_flow_components = length(flow_components)
+const FlowTuple{V} = NamedTuple{flow_components, NTuple{n_flow_components, V}}
+const StateTuple{V} = NamedTuple{state_components, Tuple{V, FlowTuple{V}, V}}
+const RibasimCVectorType{T} = CVectors.CVector{T, Vector{T}, StateTuple{UnitRange{Int}}}
+
+# Only flow vector
+const FlowCVectorType{T} = CVectors.CVector{T, Vector{T}, FlowTuple{UnitRange{Int}}}
 
 # LinkType.flow and NodeType.FlowBoundary
 @enumx LinkType flow control listen observation none
@@ -95,6 +97,11 @@ This index can be passed directly, or calculated from the database or parameters
     value::Int32
     "Index into the internal node type struct."
     idx::Int
+    "Fast lookup of whether this node is a Basin"
+    is_basin::Bool
+    function NodeID(type, value, idx)
+        new(type, value, idx, type ∈ (NodeType.Basin, :Basin))
+    end
 end
 
 function NodeID(node_type, value::Integer, node_ids::Vector{NodeID})::NodeID
@@ -246,13 +253,12 @@ node_ids_in_subnetwork: Per node type a vector of the nodes of that type in the 
 problem: The JuMP.jl model for solving the allocation problem
 Δt_allocation: The time interval between consecutive allocation solves
 Δt_since_last_record: Time elapsed since the last saveat-aligned LP solve
-    (i.e., since the last call that pushed records and reset cumulative_supplied_volume).
+    (i.e., since the last call that pushed records and reset cumulative_flow_prev_allocation_dt).
     Updated after every LP solve and reset to 0 when records are emitted;
-    used to divide cumulative_supplied_volume into a rate for the records.
+    used to divide cumulative_flow_prev_allocation_dt into a rate for the records.
 has_demand_priority: Per demand priority in the whole model whether a demand of this priority is present in this
     subnetwork
 objectives: The objectives (goals) in the order in which they will be optimized for
-cumulative_supplied_volume: The net volume of flow supplied to a demand node over the last Δt_allocation
 sources: The nodes in the subnetwork which can act as sources, sorted by route priority
 secondary_network_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
 scaling: The flow and storage scaling factors to make the optimization problem more numerically stable
@@ -267,7 +273,6 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     objectives::AllocationObjectives = AllocationObjectives()
     explicit_positive_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
     implicit_negative_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
-    cumulative_supplied_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict()
     sources::OrderedDict{Int32, NodeID} = OrderedDict()
     secondary_network_demand::OrderedDict{Tuple{NodeID, NodeID}, Vector{Float64}} =
         OrderedDict()
@@ -389,32 +394,26 @@ end
 """
 In-memory storage of saved mean flows for writing to results.
 
-- `flow`: The mean flows on all links and state-dependent forcings
+- `flow`: The mean flows on all links and Basin forcings
 - `inflow`: The sum of the mean flows coming into each Basin
 - `outflow`: The sum of the mean flows going out of each Basin
-- `flow_boundary`: The exact integrated mean flows of flow boundaries
-- `precipitation`: The exact integrated mean precipitation
-- `surface_runoff`: The exact integrated mean surface_runoff
-- `drainage`: The exact integrated mean drainage
 - `concentration`: Concentrations for each Basin and substance
+- `storage_rate`: The mean rate of change of the Basin storages
 - `balance_error`: The (absolute) water balance error
 - `relative_error`: The relative water balance error
 - `t`: Endtime of the interval over which is averaged
 """
 @kwdef struct SavedFlow
-    flow::Vector{Float64}
+    # Mean flow rates per internal flow link
+    flow::FlowCVectorType{Float64}
     inflow::Vector{Float64}
     outflow::Vector{Float64}
-    flow_boundary::Vector{Float64}
-    precipitation::Vector{Float64}
-    surface_runoff::Vector{Float64}
-    drainage::Vector{Float64}
     concentration::Matrix{Float64}
-    storage_rate::Vector{Float64} = zero(precipitation)
-    balance_error::Vector{Float64} = zero(precipitation)
-    relative_error::Vector{Float64} = zero(precipitation)
-    basin_convergence::Vector{Union{Missing, Float64}}
-    flow_convergence::Vector{Union{Missing, Float64}}
+    storage_rate::Vector{Float64} = zero(inflow)
+    balance_error::Vector{Float64} = zero(inflow)
+    relative_error::Vector{Float64} = zero(inflow)
+    convergence_flow::FlowCVectorType{Union{Missing, Float64}}
+    convergence_storage::Vector{Union{Missing, Float64}}
     t::Float64
 end
 
@@ -486,14 +485,13 @@ Current forcing is stored as separate array for BMI access.
 These are updated from BasinForcing at runtime.
 """
 @kwdef struct VerticalFlux
-    precipitation::Vector{Float64}
-    surface_runoff::Vector{Float64}
-    potential_evaporation::Vector{Float64}
-    drainage::Vector{Float64}
-    infiltration::Vector{Float64}
+    n::Int
+    precipitation::Vector{Float64} = zeros(n)
+    surface_runoff::Vector{Float64} = zeros(n)
+    potential_evaporation::Vector{Float64} = zeros(n)
+    drainage::Vector{Float64} = zeros(n)
+    infiltration::Vector{Float64} = zeros(n)
 end
-
-VerticalFlux(n::Int) = VerticalFlux(zeros(n), zeros(n), zeros(n), zeros(n), zeros(n))
 
 const StorageToLevelType = LinearInterpolationIntInv{
     Vector{Float64},
@@ -517,20 +515,15 @@ Requirements:
     # Storage below which outflows are reduced
     low_storage_threshold::Vector{Float64} = zeros(length(node_id))
     # Vertical fluxes
-    vertical_flux::VerticalFlux = VerticalFlux(length(node_id))
+    vertical_flux::VerticalFlux = VerticalFlux(; n = length(node_id))
     # Initial_storage
     storage0::Vector{Float64} = zeros(length(node_id))
     # The storage rate for computing the minimum basin emptying_time
     dstorage::Vector{Float64} = zeros(length(node_id))
-    # Storage at previous saveat without storage0
-    Δstorage_prev_saveat::Vector{Float64} = zeros(length(node_id))
-    # Analytically integrated forcings
-    cumulative_precipitation::Vector{Float64} = zeros(length(node_id))
-    cumulative_surface_runoff::Vector{Float64} = zeros(length(node_id))
+    # Cumulative flows over the whole simulation for BMI
+    cumulative_infiltration::Vector{Float64} = zeros(length(node_id))
     cumulative_drainage::Vector{Float64} = zeros(length(node_id))
-    cumulative_precipitation_saveat::Vector{Float64} = zeros(length(node_id))
-    cumulative_surface_runoff_saveat::Vector{Float64} = zeros(length(node_id))
-    cumulative_drainage_saveat::Vector{Float64} = zeros(length(node_id))
+    cumulative_surface_runoff::Vector{Float64} = zeros(length(node_id))
     # Basin profile interpolations
     storage_to_level::Vector{StorageToLevelType} =
         Vector{StorageToLevelType}(undef, length(node_id))
@@ -540,15 +533,13 @@ Requirements:
     demand::Vector{Float64} = zeros(length(node_id))
     allocated::Vector{Float64} = zeros(length(node_id))
     forcing::BasinForcing = BasinForcing(length(node_id))
-    # Storage for each Basin at the previous time step
-    storage_prev::Vector{Float64} = zeros(length(node_id))
-    # Level for each Basin at the previous time step
-    level_prev::Vector{Float64} = zeros(length(node_id))
     # Concentrations
     concentration_data::ConcentrationData = ConcentrationData()
     # Connected level demand node if applicable
     level_demand_id::Vector{NodeID} =
         fill(NodeID(NodeType.LevelDemand, 0, 0), length(node_id))
+    # Per Basin whether negative storage was detected in the callback
+    has_negative_storage::Vector{Bool} = zeros(Bool, length(node_id))
 end
 
 """
@@ -678,16 +669,12 @@ end
 """
 node_id: node ID of the FlowBoundary node
 outflow_link: The outgoing flow link metadata
-cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
-cumulative_flow_saveat: The exactly integrated cumulative boundary flow since the last saveat
 flow_rate: flow rate (exact)
 concentration_itp: matrix with boundary concentrations per FlowBoundary per substance
 """
 @kwdef struct FlowBoundary{I} <: AbstractParameterNode
     node_id::Vector{NodeID}
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    cumulative_flow::Vector{Float64} = zeros(length(node_id))
-    cumulative_flow_saveat::Vector{Float64} = zeros(length(node_id))
     flow_rate::Vector{I}
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
 end
@@ -786,46 +773,22 @@ node_id: node ID of the Junction node
 end
 
 """
-A cache for intermediate results in `water_balance!` which can depend on both the state vector `u` and time `t`. A second version of
-this cache is required for automatic differentiation, where e.g. ForwardDiff requires these vectors to
-be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
-"""
-const StateAndTimeDependentCache{T} = @NamedTuple{
-    current_storage::Vector{T},
-    current_low_storage_factor::Vector{T},
-    current_level::Vector{T},
-    current_area::Vector{T},
-    current_flow_rate_pump::Vector{T},
-    current_flow_rate_outlet::Vector{T},
-    current_error_pid_control::Vector{T},
-    u_reduced_prev_call::Vector{T},
-    t_prev_call::Vector{T},
-} where {T}
-
-@enumx CacheType flow_rate_pump flow_rate_outlet basin_level basin_storage
-
-"""
 A cache for intermediate results in `water_balance!` which depend only on the time `t`. A second version of this
 this cache is required for automatic differentiation (for Rosenbrock methods), where e.g. ForwardDiff requires these vectors
 to be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
 """
 const TimeDependentCache{T} = @NamedTuple{
-    basin::@NamedTuple{
-        current_cumulative_precipitation::Vector{T},
-        current_cumulative_surface_runoff::Vector{T},
-        current_cumulative_drainage::Vector{T},
-        current_potential_evaporation::Vector{T},
-        current_infiltration::Vector{T},
-    },
     level_boundary::@NamedTuple{current_level::Vector{T}},
-    flow_boundary::@NamedTuple{current_cumulative_boundary_flow::Vector{T}},
+    flow_boundary::@NamedTuple{current_boundary_flow::Vector{T}},
     pump::@NamedTuple{
+        current_flow_rate_setpoint::Vector{T},
         current_min_flow_rate::Vector{T},
         current_max_flow_rate::Vector{T},
         current_min_upstream_level::Vector{T},
         current_max_downstream_level::Vector{T},
     },
     outlet::@NamedTuple{
+        current_flow_rate_setpoint::Vector{T},
         current_min_flow_rate::Vector{T},
         current_max_flow_rate::Vector{T},
         current_min_upstream_level::Vector{T},
@@ -841,40 +804,8 @@ const TimeDependentCache{T} = @NamedTuple{
     t_prev_call::Vector{T},
 } where {T}
 
-"""
-A reference to an element of either the StateAndTimeDependentCache or the state derivative `du`.
-This is not a direct reference to the memory, because it depends on the type of call
-of `water_balance!` (AD versus 'normal') which version of these objects is passed.
-"""
-@kwdef struct CacheRef
-    type::CacheType.T = CacheType.flow_rate_pump
-    idx::Int = 0
-    from_du::Bool = false
-end
-
-"""
-Get one of the vectors of the StateAndTimeDependentCache based on the passed type.
-"""
-function get_cache_vector(
-        state_and_time_dependent_cache::StateAndTimeDependentCache,
-        type::CacheType.T,
-    )
-    return if type == CacheType.flow_rate_pump
-        state_and_time_dependent_cache.current_flow_rate_pump
-    elseif type == CacheType.flow_rate_outlet
-        state_and_time_dependent_cache.current_flow_rate_outlet
-    elseif type == CacheType.basin_level
-        state_and_time_dependent_cache.current_level
-    elseif type == CacheType.basin_storage
-        state_and_time_dependent_cache.current_storage
-    else
-        error("Invalid cache type $type passed.")
-    end
-end
-
 @kwdef struct SubVariable
     listen_node_id::NodeID
-    cache_ref::CacheRef
     variable::String
     weight::Float64
     look_ahead::Float64
@@ -930,21 +861,25 @@ record: Namedtuple with discrete control information for results
         truth_state = String[],
         control_state = String[],
     )
+    extend_record_lock::ReentrantLock = ReentrantLock()
 end
 
 @kwdef struct ContinuousControl <: AbstractParameterNode
     node_id::Vector{NodeID}
+    controlled_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
+    inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     compound_variable::Vector{CompoundVariable}
     controlled_variable::Vector{String}
-    target_ref::Vector{CacheRef} = Vector{CacheRef}(undef, length(node_id))
     func::Vector{ScalarPCHIPInterpolation}
+    continuous_control_compound_variables::Vector{Float64} = zeros(length(node_id))
 end
 
 """
 PID control currently only supports regulating basin levels.
 
 node_id: node ID of the PidControl node
-controlled_node_id: The node that is being controlled
+controlled_node_id: the id of the structure (pum/outlet) being controlled
 listen_node_id: the id of the basin being controlled
 target: target level (possibly time dependent)
 target_ref: reference to the controlled flow_rate value
@@ -955,10 +890,12 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
 """
 @kwdef struct PidControl <: AbstractParameterNode
     node_id::Vector{NodeID}
+    controlled_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     listen_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
+    inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     target::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
-    target_ref::Vector{CacheRef} = Vector{CacheRef}(undef, length(node_id))
     proportional::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     integral::Vector{ScalarConstantInterpolation} =
@@ -993,6 +930,7 @@ demand_from_timeseries: If false the demand comes from the BMI or is fixed
 allocated: water flux currently allocated to UserDemand per demand priority (node_idx, demand_priority_idx)
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source Basin below which the UserDemand does not abstract
+cumulative_inflow: The summed inflow since the start of the simulation
 concentration_itp: matrix with timeseries interpolations of concentrations per LevelBoundary per substance
 """
 @kwdef struct UserDemand <: AbstractDemandNode
@@ -1012,6 +950,7 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
     return_factor::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     min_level::Vector{Float64} = zeros(length(node_id))
+    cumulative_inflow::Vector{Float64} = zeros(length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
 end
 
@@ -1065,11 +1004,10 @@ end
 @kwdef struct Subgrid
     # current level of each subgrid (static and dynamic) ordered by subgrid_id
     level::Vector{Float64} = []
-
     # Static part
     # Static subgrid ids
     subgrid_id_static::Vector{Int32} = []
-    # index into the p.state_and_time_dependent_cache.current_level vector for each static subgrid_id
+    # index into the p.non_ad_cache.current_level vector for each static subgrid_id
     basin_id_static::Vector{NodeID} = []
     # index into the subgrid.level vector for each static subgrid_id
     level_index_static::Vector{Int} = []
@@ -1079,7 +1017,7 @@ end
     # Dynamic part
     # Dynamic subgrid ids
     subgrid_id_time::Vector{Int32} = []
-    # index into the p.state_and_time_dependent_cache.current_level vector for each dynamic subgrid_id
+    # index into the p.non_ad_cache.current_level vector for each dynamic subgrid_id
     basin_id_time::Vector{NodeID} = []
     # index into the subgrid.level vector for each dynamic subgrid_id
     level_index_time::Vector{Int} = []
@@ -1097,6 +1035,7 @@ saveat: The time interval between saves of output data (storage, flow, ...)
 internal_flow_links: The metadata of the flow links used in the core without any Junctions.
 external_flow_links: The metadata of all flow links including those with Junctions.
 flow_link_map: A sparse matrix mapping internal_flow_ids to external_flow_ids.
+flow_link_lookup: A dictionary mapping link tuples to their index in internal_flow_links for O(1) lookup.
 """
 const ModelGraph = MetaGraph{
     Int64,
@@ -1110,6 +1049,7 @@ const ModelGraph = MetaGraph{
         internal_flow_links::Vector{LinkMetadata},
         external_flow_links::Vector{LinkMetadata},
         flow_link_map::SparseMatrixCSC{Bool, Int},
+        flow_link_lookup::Dict{Tuple{NodeID, NodeID}, Int},
     },
     Returns{Float64},
     Float64,
@@ -1119,14 +1059,16 @@ const ModelGraph = MetaGraph{
 The part of the parameters passed to the rhs and callbacks that are mutable.
 - `new_time_dependent_cache`: Whether the `t` with which `water_balance!` is called is considered new,
    and thus whether `time_dependent_cache` must be updated
-- `new_state_and_time_dependent_cache`: Whether the `t` and/or `u_reduced` with which `water_balance!` are called are
-   considered new, and thus whether caches that (only) depend on `u_reduced` must be updated
-- `tprev`: The previous `t` before the latest time step
+- `refresh_jac`: Whether the Jacobian needs to be re-evaluated for the current Newton iteration.
+   This flag doesn't get passed to `update_coefficients!` for `RibasimJacobian`, so we capture it by
+   wrapping do_newJW
+- `ad_active`: Whether (parts of) the rhs are called with automatic differentiation. If `true`, storage derived
+   quantities are not cached but computed on-demand, to maintain a differentiable computational pipeline
 """
 @kwdef mutable struct ParametersMutable
     new_time_dependent_cache::Bool = true
-    new_state_and_time_dependent_cache::Bool = true
-    tprev::Float64 = 0.0
+    refresh_jac::Bool = true
+    ad_active::Bool = false
 end
 
 """
@@ -1137,8 +1079,6 @@ the object itself is not.
 """
 @kwdef struct ParametersIndependent{C1}
     starttime::DateTime
-    reltol::Float64
-    relmask::Vector{Bool}
     graph::ModelGraph
     allocation::Allocation
     basin::Basin
@@ -1158,79 +1098,58 @@ the object itself is not.
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
-    # Per state the in- and outflow links associated with that state (if they exist)
-    state_inflow_link::Vector{LinkMetadata} = LinkMetadata[]
-    state_outflow_link::Vector{LinkMetadata} = LinkMetadata[]
-    # Map each flow link to its state index. Used for link→state lookups where the
-    # destination node can have multiple inflow-link states (currently only UserDemand).
-    link_to_state_idx::Dict{Tuple{NodeID, NodeID}, Int} =
-        Dict{Tuple{NodeID, NodeID}, Int}()
+    # Whether all specialized AD and linear solve code should be used
+    reduced_implicit_solve::Bool
+    # Whether the ODE system is solved with a mass matrix or not
+    with_mass_matrix::Bool
+    # Matrix aggregates flows into the basin storages
+    incidence_matrix::SparseMatrixCSC{Int, Int}
     # Water balance tolerances
     water_balance_abstol::Float64
     water_balance_reltol::Float64
-    # State at previous saveat
-    u_prev_saveat::Vector{Float64} = Float64[]
-    # Node ID associated with each state
-    node_id::Vector{NodeID} = NodeID[]
+    # Ranges of the state and flow vectors
     state_ranges::StateTuple{UnitRange{Int}}
+    flow_ranges::FlowTuple{UnitRange{Int}}
     # Callback configurations
     do_concentration::Bool
     do_subgrid::Bool
-    temp_convergence::RibasimCVectorType{Float64}
-    convergence::RibasimCVectorType{Float64}
     ncalls::Vector{Int} = [0]
-    # Reduced state where the cumulative flows are combined into Basin
-    # storages (without non-state cumulative_flows)
-    u_reduced::RibasimReducedCVectorType{Float64}
     # Solver constants
     level_difference_threshold::Float64
-end
-
-"""
-All cache that depend on both the state vector `u` and time `t`.
-"""
-function StateAndTimeDependentCache(
-        p_independent::ParametersIndependent,
-    )::StateAndTimeDependentCache
-    n_basin = length(p_independent.basin.node_id)
-    n_pump = length(p_independent.pump.node_id)
-    n_outlet = length(p_independent.outlet.node_id)
-    n_pid_control = length(p_independent.pid_control.node_id)
-
-    return (;
-        current_storage = zeros(n_basin),
-        current_low_storage_factor = zeros(n_basin),
-        current_level = zeros(n_basin),
-        current_area = zeros(n_basin),
-        current_flow_rate_pump = zeros(n_pump),
-        current_flow_rate_outlet = zeros(n_outlet),
-        current_error_pid_control = zeros(n_pid_control),
-        u_reduced_prev_call = getdata(p_independent.u_reduced) .- 1.0,
-        t_prev_call = [-1.0],
+    # In- and outflow links for the flows in vectors of type FlowCVectorType
+    inflow_link::FlowCVectorType{LinkMetadata}
+    outflow_link::FlowCVectorType{LinkMetadata}
+    # The up- and downlink storage per flow
+    storage_uplink::FlowCVectorType{Float64} = similar(inflow_link, Float64)
+    storage_downlink::FlowCVectorType{Float64} = similar(inflow_link, Float64)
+    # Cumulative flow over last timestep
+    cumulative_flow_dt::FlowCVectorType{Float64} = zero(storage_uplink)
+    # State at previous saveat
+    u_prev_saveat::RibasimCVectorType{Float64} = CVector(
+        zeros(length(basin.node_id) + length(inflow_link) + length(pid_control.node_id)),
+        state_ranges
     )
+    # Cumulative flow over last allocation times
+    cumulative_flow_prev_allocation_dt::FlowCVectorType{Float64} = zero(storage_uplink)
+    # Convergence tracking: accumulated normalized Newton residual per saveat
+    convergence_storage::Vector{Float64} = zeros(length(basin.node_id))
+    convergence_flow::FlowCVectorType{Float64} = zero(storage_uplink)
+    convergence_ncalls::Vector{Int} = [0]
 end
 
 """
 All cached values that depend on time `t`.
 """
 function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependentCache
-    n_basin = length(p_independent.basin.node_id)
-    basin = (;
-        current_cumulative_precipitation = zeros(n_basin),
-        current_cumulative_surface_runoff = zeros(n_basin),
-        current_cumulative_drainage = zeros(n_basin),
-        current_potential_evaporation = zeros(n_basin),
-        current_infiltration = zeros(n_basin),
-    )
-
     n_level_boundary = length(p_independent.level_boundary.node_id)
     level_boundary = (; current_level = zeros(n_level_boundary))
 
     n_flow_boundary = length(p_independent.flow_boundary.node_id)
-    flow_boundary = (; current_cumulative_boundary_flow = zeros(n_flow_boundary))
+    flow_boundary = (; current_boundary_flow = zeros(n_flow_boundary))
 
     n_pump = length(p_independent.pump.node_id)
     pump = (;
+        current_flow_rate_setpoint = zeros(n_pump),
         current_min_flow_rate = zeros(n_pump),
         current_max_flow_rate = zeros(n_pump),
         current_min_upstream_level = zeros(n_pump),
@@ -1239,6 +1158,7 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
 
     n_outlet = length(p_independent.outlet.node_id)
     outlet = (;
+        current_flow_rate_setpoint = zeros(n_outlet),
         current_min_flow_rate = zeros(n_outlet),
         current_max_flow_rate = zeros(n_outlet),
         current_min_upstream_level = zeros(n_outlet),
@@ -1260,7 +1180,6 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
     )
 
     return (;
-        basin,
         level_boundary,
         flow_boundary,
         pump,
@@ -1271,29 +1190,23 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
     )
 end
 
+@kwdef struct NonADCache
+    n::Int
+    storage_prev_call::Vector{Float64} = zeros(n)
+    current_level::Vector{Float64} = zeros(n)
+    current_area::Vector{Float64} = zeros(n)
+    current_low_storage_factor::Vector{Float64} = zeros(n)
+end
+
 """
 The collection of all parameters that are passed to the rhs (`water_balance!`) and callbacks.
 """
-@kwdef struct Parameters{C1, T1, T2}
-    p_independent::ParametersIndependent{C1}
-    state_and_time_dependent_cache::StateAndTimeDependentCache{T1} =
-        StateAndTimeDependentCache(p_independent)
-    time_dependent_cache::TimeDependentCache{T2} = TimeDependentCache(p_independent)
+@kwdef struct Parameters{C, T}
+    p_independent::ParametersIndependent{C}
+    time_dependent_cache::TimeDependentCache{T} = TimeDependentCache(p_independent)
+    non_ad_cache::NonADCache = NonADCache(; n = length(p_independent.basin.node_id))
     p_mutable::ParametersMutable = ParametersMutable()
 end
 
 Base.show(io::IO, ::Parameters) = print(io, "Ribasim Parameters")
 Base.show(io::IO, ::MIME"text/plain", ::Parameters) = print(io, "Ribasim Parameters")
-
-function get_value(ref::CacheRef, p::Parameters, du::CVector)
-    return if ref.from_du
-        du[ref.idx]
-    else
-        get_cache_vector(p.state_and_time_dependent_cache, ref.type)[ref.idx]
-    end
-end
-
-function set_value!(ref::CacheRef, p::Parameters, value)
-    @assert !ref.from_du
-    return get_cache_vector(p.state_and_time_dependent_cache, ref.type)[ref.idx] = value
-end

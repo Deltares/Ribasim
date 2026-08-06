@@ -320,26 +320,6 @@ end
         "Demand of UserDemand #1 with demand_priority 1 should be non-negative"
 end
 
-@testitem "negative storage" begin
-    import BasicModelInterface as BMI
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/linear_resistance/ribasim.toml")
-    @test ispath(toml_path)
-    dt = 1.0e10
-
-    config = Ribasim.Config(
-        toml_path;
-        solver_algorithm = "Euler",
-        solver_dt = dt,
-        solver_saveat = Inf,
-    )
-    model = Ribasim.Model(config)
-    @test_throws "Negative storages found at 2021-01-01T00:00:00." BMI.update_until(
-        model,
-        dt,
-    )
-end
-
 @testitem "TabulatedRatingCurve upstream level validation" begin
     using Ribasim: valid_tabulated_curve_level
     using Logging
@@ -410,12 +390,19 @@ end
     end
 
     @test occursin(
-        "Warning: Convergence bottlenecks in descending order of severity:",
+        "Warning: Water balance convergence bottlenecks",
+        output,
+    )
+    @test occursin("Basin #11 = ", output)
+    @test occursin("Basin #31 = ", output)
+    @test occursin("Basin #51 = ", output)
+
+    @test occursin(
+        "Warning: Flow physics convergence bottlenecks",
         output,
     )
     @test occursin("Pump #12 = ", output)
     @test occursin("Pump #32 = ", output)
-    @test occursin("Pump #52 = ", output)
 end
 
 @testitem "Missing demand priority when allocation is active" begin

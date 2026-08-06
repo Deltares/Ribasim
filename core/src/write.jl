@@ -240,6 +240,7 @@ const CF = OrderedDict{String, OrderedDict{String, String}}(
         "standard_name" => "surface_water_amount",
         "long_name" => "water storage volume",
     ),
+
     "inflow_rate" => OrderedDict(
         "units" => "m3 s-1",
         "standard_name" => "water_volume_transport_in_river_channel",
@@ -342,6 +343,8 @@ function get_storages_and_levels(
 
     storage = zeros(length(node_id), length(tsteps))
     level = zero(storage)
+
+    # Storage and level from SavedBasinState (the actual ODE solver state)
     for (i, cvec) in enumerate(saved.basin_state.saveval)
         i > length(tsteps) && break
         storage[:, i] .= cvec.storage
@@ -354,21 +357,14 @@ end
 "Create the basin state table from the saved data"
 function basin_state_data(model::Model; table::Bool = true)
     (; u, p, t) = model.integrator
-    (; current_level) = p.state_and_time_dependent_cache
-
-    # ensure the levels are up-to-date
-    (; u_reduced) = p.p_independent
-    reduce_state!(u_reduced, u, p.p_independent)
-    set_current_basin_properties!(u_reduced, p, t)
-
-    return (; node_id = Int32.(p.p_independent.basin.node_id), level = current_level)
+    (; basin) = p.p_independent
+    set_current_basin_properties!(u, p, t)
+    return (; node_id = Int32.(basin.node_id), level = copy(p.non_ad_cache.current_level))
 end
 
 "Create the basin result table from the saved data"
 function basin_data(model::Model; table::Bool = true)
     (; saved) = model
-    (; u) = model.integrator
-    state_ranges = getaxes(u)
 
     # The last timestep is not included; there is no period over which to compute flows.
     data = get_storages_and_levels(model)
@@ -377,30 +373,18 @@ function basin_data(model::Model; table::Bool = true)
 
     nbasin = length(data.node_id)
     ntsteps = length(data.time) - 1
-    nrows = nbasin * ntsteps
 
     inflow_rate = FlatVector(saved.flow.saveval, :inflow)
     outflow_rate = FlatVector(saved.flow.saveval, :outflow)
-    drainage = FlatVector(saved.flow.saveval, :drainage)
-    infiltration = zeros(nrows)
-    evaporation = zeros(nrows)
-    precipitation = FlatVector(saved.flow.saveval, :precipitation)
-    surface_runoff = FlatVector(saved.flow.saveval, :surface_runoff)
+    drainage = FlatVector(saved.flow.saveval, :flow, :drainage)
+    precipitation = FlatVector(saved.flow.saveval, :flow, :precipitation)
+    surface_runoff = FlatVector(saved.flow.saveval, :flow, :surface_runoff)
+    evaporation = FlatVector(saved.flow.saveval, :flow, :evaporation)
+    infiltration = FlatVector(saved.flow.saveval, :flow, :infiltration)
     storage_rate = FlatVector(saved.flow.saveval, :storage_rate)
     balance_error = FlatVector(saved.flow.saveval, :balance_error)
     relative_error = FlatVector(saved.flow.saveval, :relative_error)
-    convergence = FlatVector(saved.flow.saveval, :basin_convergence)
-
-    idx_row = 0
-    for saved_flow in saved.flow.saveval
-        saved_evaporation = view(saved_flow.flow, state_ranges.evaporation)
-        saved_infiltration = view(saved_flow.flow, state_ranges.infiltration)
-        for (evaporation_, infiltration_) in zip(saved_evaporation, saved_infiltration)
-            idx_row += 1
-            evaporation[idx_row] = evaporation_
-            infiltration[idx_row] = infiltration_
-        end
-    end
+    convergence = FlatVector(saved.flow.saveval, :convergence_storage)
 
     time = data.time[begin:(end - 1)]
     node_id = Int32.(data.node_id)
@@ -455,7 +439,7 @@ end
 function flow_data(model::Model; table::Bool = true)
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
-    (; u, p) = integrator
+    (; p) = integrator
     (; p_independent) = p
     (; graph) = p_independent
     (; internal_flow_links, external_flow_links, flow_link_map) = graph[]
@@ -473,19 +457,16 @@ function flow_data(model::Model; table::Bool = true)
     nflow = length(unique_link_ids_flow)
     ntsteps = length(t)
     flow_rate = zeros(nflow * ntsteps)
-    flow_rate_conv = zeros(Union{Missing, Float64}, nflow * ntsteps)
+    convergence = zeros(nflow * ntsteps) |> Vector{Union{Missing, Float64}}
     internal_flow_rate = zeros(length(internal_flow_links))
-    internal_flow_rate_conv = zeros(Union{Missing, Float64}, length(internal_flow_links))
+    internal_convergence = zeros(length(internal_flow_links)) |> Vector{Union{Missing, Float64}}
 
-    for (ti, cvec) in enumerate(saveval)
-        (; flow, flow_boundary, flow_convergence) = cvec
-        flow = CVector(flow, getaxes(u))
-        convergence = CVector(flow_convergence, getaxes(u))
+    for (ti, saved_flow) in enumerate(saveval)
         for (fi, link) in enumerate(internal_flow_links)
             internal_flow_rate[fi] =
-                get_flow(flow, p_independent, 0.0, link.link; boundary_flow = flow_boundary)
-
-            internal_flow_rate_conv[fi] = get_convergence(convergence, link.link)
+                get_flow(saved_flow.flow, link.link, p)
+            internal_convergence[fi] =
+                get_flow(saved_flow.convergence_flow, link.link, p)
         end
         mul!(
             view(flow_rate, (1 + (ti - 1) * nflow):(ti * nflow)),
@@ -493,9 +474,9 @@ function flow_data(model::Model; table::Bool = true)
             internal_flow_rate,
         )
         mul!(
-            view(flow_rate_conv, (1 + (ti - 1) * nflow):(ti * nflow)),
+            view(convergence, (1 + (ti - 1) * nflow):(ti * nflow)),
             flow_link_map,
-            internal_flow_rate_conv,
+            internal_convergence
         )
     end
 
@@ -507,8 +488,6 @@ function flow_data(model::Model; table::Bool = true)
 
     time = datetime_since.(t_starts, config.starttime)
     link_id = unique_link_ids_flow
-    from_node_id = from_node_id
-    to_node_id = to_node_id
 
     if table
         time = repeat(time; inner = nflow)
@@ -517,7 +496,7 @@ function flow_data(model::Model; table::Bool = true)
         to_node_id = repeat(to_node_id; outer = ntsteps)
     else
         flow_rate = reshape(flow_rate, nflow, ntsteps)
-        flow_rate_conv = reshape(flow_rate_conv, nflow, ntsteps)
+        convergence = reshape(convergence, nflow, ntsteps)
     end
 
     return (;
@@ -526,7 +505,7 @@ function flow_data(model::Model; table::Bool = true)
         from_node_id,
         to_node_id,
         flow_rate,
-        convergence = flow_rate_conv,
+        convergence,
     )
 end
 
@@ -573,9 +552,8 @@ end
 "Create an allocation result table for the saved data"
 function allocation_data(model::Model; table::Bool = true)
     (; config, integrator) = model
-    (; p_independent, state_and_time_dependent_cache) = integrator.p
-    (; current_storage) = state_and_time_dependent_cache
-    (; allocation, graph, basin, user_demand, flow_demand, level_demand) = p_independent
+    (; u, p) = integrator
+    (; allocation, graph, user_demand, flow_demand, level_demand) = p.p_independent
     (; demand_priorities_all, allocation_models) = allocation
     record_demand = StructVector(model.integrator.p.p_independent.allocation.record_demand)
 
@@ -626,7 +604,7 @@ function allocation_data(model::Model; table::Bool = true)
     if !isempty(record_demand)
         Δt = integrator.t - last(record_demand).time
         for allocation_model in allocation_models
-            (; cumulative_supplied_volume, node_ids_in_subnetwork) = allocation_model
+            (; node_ids_in_subnetwork) = allocation_model
             (;
                 user_demand_ids_subnetwork,
                 node_ids_subnetwork_with_flow_demand,
@@ -636,10 +614,7 @@ function allocation_data(model::Model; table::Bool = true)
             # UserDemand: sum supplied volumes across all inflow links for each node
             for id in user_demand_ids_subnetwork
                 j = searchsortedfirst(node_id, id)
-                total_supplied = sum(
-                    cumulative_supplied_volume[lm.link] for
-                        lm in user_demand.inflow_links[id.idx]
-                )
+                total_supplied = get_supplied_volume(user_demand, u.flow, p, id)
                 supplied[view(has_priority, :, j), j, end] .= total_supplied / Δt
             end
 
@@ -647,16 +622,14 @@ function allocation_data(model::Model; table::Bool = true)
             for id in node_ids_subnetwork_with_flow_demand
                 j = searchsortedfirst(node_id, id)
                 flow_demand_id = only(inneighbor_labels_type(graph, id, LinkType.control))
-                supplied[view(has_priority, :, j), j, end] .=
-                    cumulative_supplied_volume[flow_demand.inflow_link[flow_demand_id.idx].link] /
-                    Δt
+                supplied[view(has_priority, :, j), j, end] .= get_supplied_volume(flow_demand, u.flow, p, flow_demand_id) / Δt
             end
 
             # LevelDemand
             for id in basin_ids_subnetwork_with_level_demand
                 j = searchsortedfirst(node_id, id)
                 supplied[view(has_priority, :, j), j, end] .=
-                    (current_storage[id.idx] - level_demand.storage_prev[id]) / Δt
+                    (u.storage[id.idx] - level_demand.storage_prev[id]) / Δt
             end
         end
     end
