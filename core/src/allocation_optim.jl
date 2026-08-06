@@ -1,7 +1,7 @@
 function set_simulation_data!(
         allocation_model::AllocationModel,
         integrator::DEIntegrator,
-        du::RibasimCVectorType,
+        du::RibasimStateCVector,
     )::Nothing
     (; u, p, t) = integrator
     (;
@@ -20,9 +20,9 @@ function set_simulation_data!(
     errors |= set_simulation_data!(allocation_model, basin, integrator, du)
     set_simulation_data!(allocation_model, level_boundary, t)
     set_simulation_data!(allocation_model, flow_boundary, p, t)
-    set_simulation_data!(allocation_model, linear_resistance, p, u, t)
-    set_simulation_data!(allocation_model, manning_resistance, p, u, t)
-    set_simulation_data!(allocation_model, tabulated_rating_curve, p, u, t)
+    set_simulation_data!(allocation_model, linear_resistance, p, t)
+    set_simulation_data!(allocation_model, manning_resistance, p, t)
+    set_simulation_data!(allocation_model, tabulated_rating_curve, p, t)
     set_simulation_data!(allocation_model, pump, outlet, du.flow)
     set_simulation_data!(allocation_model, user_demand, t)
 
@@ -38,7 +38,7 @@ function set_simulation_data!(
         allocation_model::AllocationModel,
         basin::Basin,
         integrator::DEIntegrator,
-        du::RibasimCVectorType,
+        du::RibasimStateCVector,
     )::Bool
     (;
         problem,
@@ -50,9 +50,9 @@ function set_simulation_data!(
     ) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
     (; u, p) = integrator
-    (; non_ad_cache) = p
+    (; current_basin_properties) = p
     (; storage_to_level, vertical_flux) = basin
-    (; current_area) = non_ad_cache
+    (; current_storage, current_area) = current_basin_properties
 
     storage_change = problem[:basin_storage_change]
     volume_conservation = problem[:volume_conservation]
@@ -65,7 +65,7 @@ function set_simulation_data!(
     # Set Basin starting storages and levels
     for basin_id in basin_ids_subnetwork
         idx = basin_id.idx
-        storage_now = u.storage[idx]
+        storage_now = current_storage[idx]
         storage_max = storage_to_level[idx].t[end]
 
         # Set bounds on the storage change based on the current storage and the Basin minimum, maximum, and a delta_storage prediction
@@ -184,7 +184,7 @@ function set_partial_derivative_wrt_level!(
         constraint::JuMP.ConstraintRef,
     )::Nothing
     (; problem, scaling) = allocation_model
-    (; current_area) = p.non_ad_cache
+    (; current_area) = p.current_basin_properties
 
     storage_change = problem[:basin_storage_change][node_id]
     JuMP.set_normalized_coefficient(
@@ -201,11 +201,11 @@ function linearize_connector_node!(
         flow_constraint,
         flow_function::Function,
         p::Parameters,
-        u::RibasimCVectorType,
         t::Float64,
     )
     (; scaling, Δt_allocation) = allocation_model
     (; inflow_link, outflow_link) = connector_node
+    (; current_storage) = p.current_basin_properties
     p.p_mutable.ad_active = true
 
     # Mathematical formulation: Taylor series linearization around current state
@@ -215,15 +215,15 @@ function linearize_connector_node!(
     # For levels that come from a Basin `get_level` yields the level at the beginning of the time step,
     # which is the point at which we want to linearize.
     t_after = t + Δt_allocation
-    (; current_area) = p.non_ad_cache
+    (; current_area) = p.current_basin_properties
 
     for node_id in only(flow_constraint.axes)
         inflow_id = inflow_link[node_id.idx].link[1]
         outflow_id = outflow_link[node_id.idx].link[2]
 
         # Flow functions expect storage values (not levels) and internally convert to levels
-        s_a = inflow_id.is_basin ? u.storage[inflow_id.idx] : 0.0
-        s_b = outflow_id.is_basin ? u.storage[outflow_id.idx] : 0.0
+        s_a = inflow_id.is_basin ? current_storage[inflow_id.idx] : 0.0
+        s_b = outflow_id.is_basin ? current_storage[outflow_id.idx] : 0.0
 
         # Set the right-hand side of the constraint
         constraint = flow_constraint[node_id]
@@ -273,7 +273,6 @@ function set_simulation_data!(
         allocation_model::AllocationModel,
         linear_resistance::LinearResistance,
         p::Parameters,
-        u::RibasimCVectorType,
         t::Float64,
     )::Nothing
     (; problem) = allocation_model
@@ -285,7 +284,6 @@ function set_simulation_data!(
         linear_resistance_constraint,
         linear_resistance_flow,
         p,
-        u,
         t,
     )
 
@@ -296,7 +294,6 @@ function set_simulation_data!(
         allocation_model::AllocationModel,
         manning_resistance::ManningResistance,
         p::Parameters,
-        u::RibasimCVectorType,
         t::Float64,
     )::Nothing
     (; problem) = allocation_model
@@ -308,7 +305,6 @@ function set_simulation_data!(
         manning_resistance_constraint,
         manning_resistance_flow,
         p,
-        u,
         t,
     )
 
@@ -319,10 +315,10 @@ function set_simulation_data!(
         allocation_model::AllocationModel,
         tabulated_rating_curve::TabulatedRatingCurve,
         p::Parameters,
-        u::RibasimCVectorType,
         t::Float64,
     )::Nothing
     (; problem) = allocation_model
+    (; current_storage) = p.current_basin_properties
     tabulated_rating_curve_constraint = problem[:tabulated_rating_curve_constraint]
 
     linearize_connector_node!(
@@ -331,7 +327,6 @@ function set_simulation_data!(
         tabulated_rating_curve_constraint,
         tabulated_rating_curve_flow,
         p,
-        u,
         t,
     )
 
@@ -344,8 +339,8 @@ function set_simulation_data!(
         inflow_id = inflow_link[1]
         outflow_id = outflow_link[2]
 
-        s_a = inflow_id.is_basin ? u.storage[inflow_id.idx] : 0.0
-        s_b = outflow_id.is_basin ? u.storage[outflow_id.idx] : 0.0
+        s_a = inflow_id.is_basin ? current_storage[inflow_id.idx] : 0.0
+        s_b = outflow_id.is_basin ? current_storage[outflow_id.idx] : 0.0
         q_max = tabulated_rating_curve_flow(
             tabulated_rating_curve, node_id, s_a, s_b, p, t + allocation_model.Δt_allocation,
         )
@@ -361,7 +356,7 @@ function set_simulation_data!(
         allocation_model::AllocationModel,
         pump::Pump,
         outlet::Outlet,
-        flow::FlowCVectorType
+        flow::FlowCVector
     )::Nothing
     (; problem, scaling) = allocation_model
     pump_constraints = problem[:pump]
@@ -371,7 +366,7 @@ function set_simulation_data!(
     for node_id in only(pump_constraints.axes)
         constraint = pump_constraints[node_id]
         upstream_node_id = pump.inflow_link[node_id.idx].link[1]
-        q = flow.pump[node_id.idx]
+        q = flow.horizontal_flow.pump[node_id.idx]
         if upstream_node_id.is_basin
             low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
             JuMP.set_normalized_coefficient(
@@ -388,7 +383,7 @@ function set_simulation_data!(
     for node_id in only(outlet_constraints.axes)
         constraint = outlet_constraints[node_id]
         upstream_node_id = outlet.inflow_link[node_id.idx].link[1]
-        q = flow.outlet[node_id.idx]
+        q = flow.horizontal_flow.outlet[node_id.idx]
         if upstream_node_id.is_basin
             low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
             JuMP.set_normalized_coefficient(
@@ -672,10 +667,10 @@ function set_demands!(
         level_demand::LevelDemand,
         integrator::DEIntegrator,
     )::Nothing
-    (; u, p, t) = integrator
-    (; p_independent, non_ad_cache) = p
+    (; p, t) = integrator
+    (; p_independent, current_basin_properties) = p
     (; basin, allocation) = p_independent
-    (; current_level, current_area) = non_ad_cache
+    (; current_storage, current_level, current_area) = current_basin_properties
     (; demand_priorities_all) = allocation
     (; has_demand_priority, min_level, max_level, storage_demand) = level_demand
     (; problem, node_ids_in_subnetwork, scaling, Δt_allocation) = allocation_model
@@ -706,7 +701,7 @@ function set_demands!(
         level_min_prev_priority = basin_bottom(basin, basin_id)[2]
         level_max_prev_priority = Inf
         A = current_area[basin_id.idx]
-        storage_now = u.storage[basin_id.idx]
+        storage_now = current_storage[basin_id.idx]
 
         for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
             !has_demand_priority[level_demand_id.idx, demand_priority_idx] && continue
@@ -987,8 +982,9 @@ function parse_allocations!(
         level_demand::LevelDemand,
         allocation_model::AllocationModel,
     )::Nothing
-    (; u, p, t) = integrator
-    (; p_independent) = p
+    (; p, t) = integrator
+    (; p_independent, current_basin_properties) = p
+    (; current_storage) = current_basin_properties
     (; allocation, basin) = p_independent
     (; record_demand, demand_priorities_all) = allocation
     (; has_demand_priority, storage_prev, storage_demand) = level_demand
@@ -998,7 +994,7 @@ function parse_allocations!(
     storage_change = problem[:basin_storage_change]
 
     for node_id in basin_ids_subnetwork_with_level_demand
-        supplied_basin_volume = u.storage[node_id.idx] - storage_prev[node_id]
+        supplied_basin_volume = current_storage[node_id.idx] - storage_prev[node_id]
         storage_change_basin = JuMP.value(storage_change[node_id]) * scaling.storage
 
         for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
@@ -1292,7 +1288,7 @@ function update_allocation!(model, Δt = 0.0; record::Bool = true)::Nothing
     record && (p_independent.cumulative_flow_prev_allocation_dt .= u.flow)
 
     # Update storage_prev for level_demand
-    update_storage_prev!(u, p)
+    update_storage_prev!(p)
 
     # Assume allocation changed parameters
     derivative_discontinuity!(integrator, true)

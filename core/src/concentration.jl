@@ -35,7 +35,7 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
             add_substance_mass!(
                 mass[to_node.idx],
                 user_demand.concentration_itp[node_idx],
-                cumulative_flow_dt.user_demand_outflow[node_idx],
+                cumulative_flow_dt.horizontal_flow.user_demand_outflow[node_idx],
                 t,
             )
         end
@@ -56,12 +56,12 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
     # Loop over flows
     @views for flow_idx in eachindex(cumulative_flow_dt)
 
-        if flow_idx in flow_ranges.user_demand_outflow
+        if flow_idx in flow_ranges.horizontal_flow.user_demand_outflow
             # UserDemand outflow is handled separately
             continue
         end
 
-        if flow_idx in flow_ranges.flow_boundary
+        if flow_idx in flow_ranges.horizontal_flow.flow_boundary
             # FlowBoundary is handled separately in update_concentrations!
             continue
         end
@@ -125,7 +125,7 @@ function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
 
     @views for flow_idx in eachindex(cumulative_flow_dt)
 
-        if flow_idx in flow_ranges.evaporation
+        if flow_idx in flow_ranges.vertical_flow.evaporation
             # Evaporation is handled separately
             continue
         end

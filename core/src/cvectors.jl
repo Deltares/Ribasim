@@ -167,4 +167,9 @@ end
 
 @inline StrideArraysCore.PtrArray(x::CVector) = CVector(PtrArray(getdata(x)), getaxes(x))
 
+# Shift all leaf UnitRange values in a nested NamedTuple by a given integer
+shift_axes(loc::AbstractUnitRange{<:Integer}, shift::Integer) = loc .+ shift
+shift_axes(loc::NamedTuple, shift::Integer) =
+    NamedTuple{keys(loc)}(map(v -> shift_axes(v, shift), values(loc)))
+
 end  # module CVectors

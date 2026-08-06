@@ -178,11 +178,10 @@ using Dates: Second
 using Printf: @sprintf
 
 include("cvectors.jl")
-using .CVectors: CVector, getaxes, getdata
+using .CVectors: CVector, getaxes
 include("schema.jl")
 include("config.jl")
 using .config
-using .config: with_mass_matrix
 
 include("parameter.jl")
 include("validation.jl")

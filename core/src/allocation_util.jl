@@ -326,20 +326,20 @@ function get_max_flow_curvature(
         connector_ids::Vector{NodeID},
         flow_function::Function,
         p::Parameters,
-        u::RibasimCVectorType,
+        storage::AbstractVector,
         t::Float64,
     )::Float64
     max_curvature = 0.0
     backend = AutoForwardDiff()
-    (; current_area) = p.non_ad_cache
+    (; current_area) = p.current_basin_properties
     p.p_mutable.ad_active = true
 
     for node_id in connector_ids
         inflow_id = connector_node.inflow_link[node_id.idx].link[1]
         outflow_id = connector_node.outflow_link[node_id.idx].link[2]
 
-        s_a = inflow_id.is_basin ? u.storage[inflow_id.idx] : 0.0
-        s_b = outflow_id.is_basin ? u.storage[outflow_id.idx] : 0.0
+        s_a = inflow_id.is_basin ? storage[inflow_id.idx] : 0.0
+        s_b = outflow_id.is_basin ? storage[outflow_id.idx] : 0.0
 
         # d²Q/ds² is converted to d²Q/dh² via the chain rule, approximating the basin
         # area as locally constant (dh/ds = 1/A), consistent with the linearization
@@ -391,8 +391,9 @@ function compute_adaptive_Δt(
         linear_resistance_ids_subnetwork,
         manning_resistance_ids_subnetwork,
     ) = node_ids_in_subnetwork
-    (; u, p, t) = integrator
-    (; basin, tabulated_rating_curve, linear_resistance, manning_resistance, state_ranges) = p.p_independent
+    (; p, t) = integrator
+    (; basin, tabulated_rating_curve, linear_resistance, manning_resistance) = p.p_independent
+    (; current_storage) = p.current_basin_properties
     du = get_du(integrator)
 
     Δt_min = allocation_config.dtmin
@@ -405,7 +406,7 @@ function compute_adaptive_Δt(
     # Basin profile curvature: Δh ≤ sqrt(2·ε_rel·S_max / |dA/dh|)
     for basin_id in basin_ids_subnetwork
         idx = basin_id.idx
-        storage_now = u.storage[idx]
+        storage_now = current_storage[idx]
         level_now = basin.storage_to_level[idx](storage_now)
         storage_max = basin.storage_to_level[idx].t[end]
         m = get_area_slope(basin, idx, level_now)
@@ -428,7 +429,7 @@ function compute_adaptive_Δt(
 
     for (connector, ids, flow_fn) in connector_types
         isempty(ids) && continue
-        curvature = get_max_flow_curvature(connector, ids, flow_fn, p, u, t)
+        curvature = get_max_flow_curvature(connector, ids, flow_fn, p, current_storage, t)
         if curvature > eps()
             # Use 1.0 m³/s as absolute flow error tolerance
             # (relative tolerance would require knowing Q, which varies per node)
@@ -446,7 +447,7 @@ function compute_adaptive_Δt(
 
     for basin_id in basin_ids_subnetwork
         idx = basin_id.idx
-        A = get_area_from_storage(basin, idx, u.storage[idx])
+        A = get_area_from_storage(basin, idx, current_storage[idx])
 
         if A < eps()
             continue
@@ -620,12 +621,13 @@ function add_to_coefficient!(
     return JuMP.set_normalized_coefficient(constraint, variable, value + addition)
 end
 
-function update_storage_prev!(u::CVector, p::Parameters)::Nothing
-    (; p_independent) = p
+function update_storage_prev!(p::Parameters)::Nothing
+    (; p_independent, current_basin_properties) = p
+    (; current_storage) = current_basin_properties
     (; storage_prev) = p_independent.level_demand
 
     for node_id in keys(storage_prev)
-        storage_prev[node_id] = u.storage[node_id.idx]
+        storage_prev[node_id] = current_storage[node_id.idx]
     end
 
     return nothing
@@ -671,7 +673,7 @@ end
 
 function get_supplied_volume(
         user_demand::UserDemand,
-        flow::FlowCVectorType,
+        flow::FlowCVector,
         p::Parameters,
         node_id::NodeID,
     )
@@ -682,7 +684,7 @@ end
 
 function get_supplied_volume(
         flow_demand::FlowDemand,
-        flow::FlowCVectorType,
+        flow::FlowCVector,
         p::Parameters,
         node_id::NodeID
     )

@@ -390,19 +390,12 @@ end
     end
 
     @test occursin(
-        "Warning: Water balance convergence bottlenecks",
+        "Convergence bottlenecks in descending order of severity:",
         output,
     )
     @test occursin("Basin #11 = ", output)
     @test occursin("Basin #31 = ", output)
     @test occursin("Basin #51 = ", output)
-
-    @test occursin(
-        "Warning: Flow physics convergence bottlenecks",
-        output,
-    )
-    @test occursin("Pump #12 = ", output)
-    @test occursin("Pump #32 = ", output)
 end
 
 @testitem "Missing demand priority when allocation is active" begin

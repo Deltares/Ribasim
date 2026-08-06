@@ -16,14 +16,13 @@
     (; state_ranges) = p_independent
 
     @test u isa CVector
-    @test state_ranges.storage == 1:1
-    @test filter(!isempty, state_ranges.flow) == (;
-        tabulated_rating_curve = 2:2,
-        evaporation = 3:3,
-        infiltration = 4:4,
-        drainage = 5:5,
-        surface_runoff = 6:6,
-        precipitation = 7:7,
+    @test filter(!isempty, state_ranges.flow.horizontal_flow) == (; tabulated_rating_curve = 1:1)
+    @test filter(!isempty, state_ranges.flow.vertical_flow) == (
+        evaporation = 2:2,
+        infiltration = 3:3,
+        drainage = 4:4,
+        surface_runoff = 5:5,
+        precipitation = 6:6,
     )
     @test isempty(state_ranges.pid_integral)
 
@@ -137,12 +136,12 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    (; u, p) = model.integrator
-    (; basin, state_ranges) = p.p_independent
-    @test u.storage ≈ [1000]
+    (; p) = model.integrator
+    (; p_independent, current_basin_properties) = p
+    (; basin) = p_independent
+    @test current_basin_properties.current_storage ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
-    du = Ribasim.get_du(model.integrator)
     @test success(model)
 end
 
@@ -163,7 +162,7 @@ end
     (; basin, state_ranges) = p.p_independent
 
     Ribasim.water_balance!(du, u, p, t)
-    stor = u.storage
+    stor = p.current_basin_properties.current_storage
     prec = basin.vertical_flux.precipitation
     evap = basin.vertical_flux.potential_evaporation
     drng = basin.vertical_flux.drainage
@@ -213,8 +212,8 @@ end
     @test model isa Ribasim.Model
 
     (; integrator) = model
-    (; u, p) = integrator
-    (; p_independent) = p
+    (; p) = integrator
+    (; p_independent, current_basin_properties) = p
 
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p_independent))
@@ -223,7 +222,7 @@ end
 
     @test success(model)
     @test length(model.integrator.sol.t) == 2 # start and end
-    @test u.storage ≈
+    @test current_basin_properties.current_storage ≈
         Float32[775.23576, 775.23365, 572.60102, 1130.005] skip = Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
@@ -288,8 +287,8 @@ end
     @test model isa Ribasim.Model
     @test success(model)
     @test allunique(Ribasim.tsaves(model))
-    (; u, p) = model.integrator
-    @test u.storage ≈
+    (; p) = model.integrator
+    @test p.current_basin_properties.current_storage ≈
         Float32[692.61373, 692.61152, 460.79333, 1136.90031] atol = 1.0
 end
 
@@ -315,7 +314,7 @@ end
             solver_autodiff::Bool,
             solver_reduced_implicit_solve::Bool,
         },
-        Ribasim.RibasimCVectorType{Float64},
+        Ribasim.RibasimStateCVector{Float64},
     }()
 
     for (solver_sparse, solver_autodiff, solver_reduced_implicit_solve) in Iterators.product(ntuple(Returns([true, false]), 3)...)
@@ -349,9 +348,9 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test success(model)
-    (; u, p) = model.integrator
-    (; p_independent) = p
-    @test u.storage ≈ Float32[368.31558, 365.68442] skip = Sys.isapple()
+    (; p) = model.integrator
+    (; p_independent, current_basin_properties) = p
+    @test current_basin_properties.current_storage ≈ Float32[368.31558, 365.68442] skip = Sys.isapple()
     (; tabulated_rating_curve) = p_independent
     # The first node is static, the first interpolation object always applies
     index_itp1 = tabulated_rating_curve.current_interpolation_index[1]
@@ -411,18 +410,19 @@ end
     model = Ribasim.Model(toml_path)
 
     (; integrator) = model
-    (; u, p, t, sol) = integrator
-    (; p_independent) = p
+    (; p, t, sol) = integrator
+    (; p_independent, current_basin_properties) = p
+    (; current_storage) = current_basin_properties
 
     day = 86400.0
 
-    @test only(u.storage) ≈ 1000.0
+    @test only(current_storage) ≈ 1000.0
     # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
     BMI.update_until(model, 150day)
-    @test only(u.storage) ≈ 900 atol = 5
+    @test only(current_storage) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
     BMI.update_until(model, 200day)
-    @test only(u.storage) ≈ 500 atol = 2
+    @test only(current_storage) ≈ 500 atol = 2
 
     # Transient return factor
     flow = DataFrame(Ribasim.flow_data(model))
@@ -505,9 +505,9 @@ end
     (; integrator, saved) = model
     (; p, t) = integrator
     (; saveval) = saved.flow
-    (; p_independent, non_ad_cache) = p
+    (; p_independent, current_basin_properties) = p
     du = get_du(model.integrator)
-    h_actual = non_ad_cache.current_level[1:50]
+    h_actual = current_basin_properties.current_level[1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)
 
@@ -517,8 +517,8 @@ end
     # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
-    @test saveval[end].flow.flow_boundary[1] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
-    @test saveval[end].flow.manning_resistance[end] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
+    @test saveval[end].flow.horizontal_flow.flow_boundary[1] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
+    @test saveval[end].flow.horizontal_flow.manning_resistance[end] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
 
 @testitem "mean_flow" begin

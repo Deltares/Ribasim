@@ -176,7 +176,7 @@ function get_level(
         t::Number;
         force_evaluation::Bool = false,
     )::Number
-    (; p_independent, time_dependent_cache, p_mutable, non_ad_cache) = p
+    (; p_independent, time_dependent_cache, p_mutable, current_basin_properties) = p
     (; basin) = p_independent
     (; storage_to_level) = basin
 
@@ -189,7 +189,7 @@ function get_level(
                 2 * basin_bottom(basin, node_id)[2] - storage_to_level[node_id.idx](-storage)
             end
         else
-            non_ad_cache.current_level[node_id.idx]
+            current_basin_properties.current_level[node_id.idx]
         end
     elseif node_id.type == NodeType.LevelBoundary
         itp = p_independent.level_boundary.level[node_id.idx]
@@ -215,12 +215,12 @@ function get_area(
         node_id::NodeID,
     )
     @assert node_id.is_basin
-    (; p_independent, non_ad_cache, p_mutable) = p
+    (; p_independent, current_basin_properties, p_mutable) = p
     (; level_to_area) = p_independent.basin
     return if p_mutable.ad_active
         level_to_area[node_id.idx](level)
     else
-        non_ad_cache.current_area[node_id.idx]
+        current_basin_properties.current_area[node_id.idx]
     end
 end
 
@@ -326,13 +326,16 @@ function Base.getindex(fv::FlatVector, i::Int)
     return v[r + 1]
 end
 
-"Construct a FlatVector from one of the fields of SavedFlow."
-function FlatVector(saveval::Vector{SavedFlow}, sym::Symbol, subvector::Union{Nothing, Symbol} = nothing)
+"Construct a FlatVector from one of the fields of SavedFlow, following a path of symbols."
+function FlatVector(saveval::Vector{SavedFlow}, syms::Symbol...)
     v = if isempty(saveval)
         Vector{Float64}[]
     else
-        v_ = getfield.(saveval, sym)
-        isnothing(subvector) ? v_ : getproperty.(v_, subvector)
+        v_ = getfield.(saveval, first(syms))
+        for sym in syms[2:end]
+            v_ = getproperty.(v_, sym)
+        end
+        v_
     end
     return FlatVector(v)
 end
@@ -358,13 +361,13 @@ function get_low_storage_factor(
         p::Parameters,
         id::NodeID,
     )
-    (; p_mutable, p_independent, non_ad_cache) = p
+    (; p_mutable, p_independent, current_basin_properties) = p
     (; low_storage_threshold) = p_independent.basin
     return if id.is_basin
         if p_mutable.ad_active
             reduction_factor(storage, low_storage_threshold[id.idx])
         else
-            non_ad_cache.current_low_storage_factor[id.idx]
+            current_basin_properties.current_low_storage_factor[id.idx]
         end
     else
         one(eltype(storage))
@@ -662,7 +665,7 @@ function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::Flo
     n_user_demand_inflow = mapreduce(length, +, user_demand.inflow_links; init = 0)
     n_user_demand_outflow = length(user_demand.node_id)
 
-    ns_flow = [
+    ns_horizontal_flow = [
         n_pump,
         n_outlet,
         n_flow_boundary,
@@ -671,117 +674,50 @@ function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::Flo
         n_manning_resistance,
         n_user_demand_inflow,
         n_user_demand_outflow,
-        n_basin, # evaporation,
-        n_basin, # infiltration,
-        n_basin, # drainage,
-        n_basin, # surface_runoff,
-        n_basin, # precipitation
     ]
-    ns_flow_cumsum = pushfirst!(cumsum(ns_flow), 0)
+
+    n_horizontal_flows = sum(ns_horizontal_flow)
+    ns_horizontal_flow_cumsum = pushfirst!(cumsum(vcat(ns_horizontal_flow)), 0)
 
     trivial_range = 1:0
-    flow_ranges = ntuple(
-        i -> iszero(ns_flow[i]) ? trivial_range : (ns_flow_cumsum[i] + 1):ns_flow_cumsum[i + 1],
-        Val(n_flow_components)
+    horizontal_flow_ranges = ntuple(
+        i -> iszero(ns_horizontal_flow[i]) ? trivial_range : (ns_horizontal_flow_cumsum[i] + 1):ns_horizontal_flow_cumsum[i + 1],
+        Val(n_horizontal_flow_components)
     )
-    return FlowTuple{UnitRange{Int}}(flow_ranges)
+    vertical_flow_ranges = ntuple(
+        i -> (((i - 1) * n_basin + 1):(i * n_basin)) .+ n_horizontal_flows,
+        Val(n_vertical_flow_components)
+    )
+
+    return FlowTuple{UnitRange{Int}}((horizontal_flow_ranges, vertical_flow_ranges))
 end
 
 "Create the axis of the state vector"
 function count_state_ranges(nodes::Union{NamedTuple, ParametersIndependent})::StateTuple{UnitRange{Int}}
-    (; basin, pid_control) = nodes
-
-    n_basin = length(basin.node_id)
+    (; pid_control) = nodes
     n_pid = length(pid_control.node_id)
 
     flow_ranges = count_flow_ranges(nodes)
-    flow_ranges_shifted = FlowTuple{UnitRange{Int}}(
-        map(r -> (r.start + n_basin):(r.stop + n_basin), flow_ranges)
-    )
-    last = values(flow_ranges_shifted)[end].stop
+    last = values(flow_ranges.vertical_flow)[end].stop
 
     return (;
-        storage = 1:n_basin,
-        flow = flow_ranges_shifted,
+        flow = flow_ranges,
         pid_integral = (last + 1):(last + n_pid),
     )
 end
 
 function build_state_vector(p_independent::ParametersIndependent)
-    (; u_prev_saveat, basin) = p_independent
+    (; u_prev_saveat) = p_independent
     u = zero(u_prev_saveat)
-    u.storage .= basin.storage0
     return u
-end
-
-"""
-Build the per component absolute tolerance vector.
-
-Since `DiffEqBase.calculate_residuals!` scales the local error estimate by the change of a
-state over the time step (see `solve.jl`), `abstol` no longer has the meaning of "a negligible
-state magnitude" but of "a state change per step that is numerically irrelevant". This holds
-for both values of `reduced_implicit_solve`. A single scalar cannot serve that role for all
-components:
-
-  - `storage` and `flow` states are volumes [m³], but their magnitudes range over many orders
-    of magnitude between models. `abstol` must stay above the roundoff floor of the largest
-    storage involved, otherwise the solver chases floating point noise on idle components.
-  - `pid_integral` states are in [m s], so a tolerance in m³ is dimensionally meaningless.
-    The integral enters the flow as `K_i * pid_integral`, so we require that the induced flow
-    error stays below `water_balance_abstol` [m³/s].
-"""
-function build_abstol_vector(
-        p_independent::ParametersIndependent,
-        abstol::Float64,
-        water_balance_abstol::Float64,
-    )::Vector{Float64}
-    (; basin, pid_control, state_ranges, u_prev_saveat) = p_independent
-
-    # Relative conditioning factor used to keep `abstol` above the double precision
-    # roundoff floor of a state: `eps(Float64) * κ` with an assumed linear solve
-    # condition number `κ ~ 1e3`.
-    abstol_roundoff_factor = 1.0e3 * eps(Float64)
-
-    abstol_vec = fill(abstol, length(u_prev_saveat))
-    out = CVector(abstol_vec, state_ranges)
-
-    # Keep the storage tolerance above the roundoff floor of the basin itself
-    for idx in eachindex(basin.node_id)
-        storage_max = basin.storage_to_level[idx].t[end]
-        out.storage[idx] = max(abstol, abstol_roundoff_factor * storage_max)
-    end
-
-    # Flow states are cumulative volumes over links, so their roundoff floor is set by the
-    # largest storage in the model rather than by an individual basin.
-    if !isempty(basin.node_id)
-        storage_max = maximum(itp.t[end] for itp in basin.storage_to_level)
-        fill!(out.flow, max(abstol, abstol_roundoff_factor * storage_max))
-    end
-
-    # Convert the flow tolerance into a tolerance on the PID integral state
-    for idx in eachindex(pid_control.node_id)
-        K_i_max = maximum(abs, pid_control.integral[idx].u; init = 0.0)
-        # The integral gain can also be set by discrete control
-        for ((node_id, _), control_state_update) in pid_control.control_mapping
-            (node_id.idx == idx) || continue
-            for parameter_update in control_state_update.itp_update_constant
-                (parameter_update.name === :integral) || continue
-                K_i_max = max(K_i_max, maximum(abs, parameter_update.value.u; init = 0.0))
-            end
-        end
-        # If the integral term is inactive the state does not influence the solution,
-        # so it does not need error control
-        out.pid_integral[idx] = iszero(K_i_max) ? Inf : water_balance_abstol / K_i_max
-    end
-
-    return abstol_vec
 end
 
 """
 Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
-    return any(<(0), u.storage)
+    set_current_storage!(p, u.flow)
+    return any(<(0), p.current_basin_properties.current_storage)
 end
 
 function get_demand(user_demand, id, demand_priority_idx, t)::Float64
@@ -1132,21 +1068,21 @@ function set_flow_links!(inflow_link, outflow_link, basin::Basin)
     for id in node_id
         # Incoming forcings
         link_metadata = LinkMetadata(0, LinkType.flow, (placeholder_node_id, id))
-        outflow_link.precipitation[id.idx] = link_metadata
-        outflow_link.drainage[id.idx] = link_metadata
-        outflow_link.surface_runoff[id.idx] = link_metadata
+        outflow_link.vertical_flow.precipitation[id.idx] = link_metadata
+        outflow_link.vertical_flow.drainage[id.idx] = link_metadata
+        outflow_link.vertical_flow.surface_runoff[id.idx] = link_metadata
 
         # Outgoing forcings
         link_metadata = LinkMetadata(0, LinkType.flow, (id, placeholder_node_id))
-        inflow_link.evaporation[id.idx] = link_metadata
-        inflow_link.infiltration[id.idx] = link_metadata
+        inflow_link.vertical_flow.evaporation[id.idx] = link_metadata
+        inflow_link.vertical_flow.infiltration[id.idx] = link_metadata
     end
     return
 end
 
 """
 Get the LinkMetadata for the in- and outflow link for each flow in a
-vector of type FlowCVectorType
+vector of type FlowCVector
 """
 function get_flow_links(nodes::NamedTuple, flow_ranges::FlowTuple{UnitRange{Int}})
     (;
@@ -1159,19 +1095,22 @@ function get_flow_links(nodes::NamedTuple, flow_ranges::FlowTuple{UnitRange{Int}
         user_demand,
         basin,
     ) = nodes
-    n_flows = flow_ranges[end].stop
+    n_flows = flow_ranges.vertical_flow[end].stop
     placeholder_link_metadata = LinkMetadata(0, LinkType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
 
     inflow_link = CVector(fill(placeholder_link_metadata, n_flows), flow_ranges)
     outflow_link = CVector(fill(placeholder_link_metadata, n_flows), flow_ranges)
 
-    set_flow_links!(inflow_link.pump, outflow_link.pump, pump)
-    set_flow_links!(inflow_link.outlet, outflow_link.outlet, outlet)
-    set_flow_links!(inflow_link.flow_boundary, outflow_link.flow_boundary, flow_boundary)
-    set_flow_links!(inflow_link.tabulated_rating_curve, outflow_link.tabulated_rating_curve, tabulated_rating_curve)
-    set_flow_links!(inflow_link.linear_resistance, outflow_link.linear_resistance, linear_resistance)
-    set_flow_links!(inflow_link.manning_resistance, outflow_link.manning_resistance, manning_resistance)
-    set_flow_links!(inflow_link.user_demand_inflow, outflow_link.user_demand_outflow, user_demand)
+    inflow_link_ = inflow_link.horizontal_flow
+    outflow_link_ = outflow_link.horizontal_flow
+
+    set_flow_links!(inflow_link_.pump, outflow_link_.pump, pump)
+    set_flow_links!(inflow_link_.outlet, outflow_link_.outlet, outlet)
+    set_flow_links!(inflow_link_.flow_boundary, outflow_link_.flow_boundary, flow_boundary)
+    set_flow_links!(inflow_link_.tabulated_rating_curve, outflow_link_.tabulated_rating_curve, tabulated_rating_curve)
+    set_flow_links!(inflow_link_.linear_resistance, outflow_link_.linear_resistance, linear_resistance)
+    set_flow_links!(inflow_link_.manning_resistance, outflow_link_.manning_resistance, manning_resistance)
+    set_flow_links!(inflow_link_.user_demand_inflow, outflow_link_.user_demand_outflow, user_demand)
     set_flow_links!(inflow_link, outflow_link, basin)
 
     return inflow_link, outflow_link
@@ -1192,7 +1131,7 @@ end
 
 function aggregate_flows!(
         aggregate::AbstractVector,
-        flow::FlowCVectorType,
+        flow::FlowCVector,
         p_independent::ParametersIndependent;
         do_inflows::Bool = true,
         do_outflows::Bool = true,
@@ -1201,6 +1140,7 @@ function aggregate_flows!(
         weight::Number = true,
         from_zero::Bool = true
     )
+    (; horizontal_flow, vertical_flow) = flow
     (; inflow_link, outflow_link, basin) = p_independent
     n_basin = length(basin.node_id)
 
@@ -1209,9 +1149,8 @@ function aggregate_flows!(
     if do_horizontal_flows
         # Use length of the range to handle both shifted (sub-CVector from state)
         # and unshifted (standalone FlowCVector) axes correctly
-        n_horizontal = length(flow) - 5 * n_basin
-        for idx in 1:n_horizontal
-            flow_ = flow[idx]
+        for idx in eachindex(horizontal_flow)
+            flow_ = horizontal_flow[idx]
             inflow_id = inflow_link[idx].link[1]
             outflow_id = outflow_link[idx].link[2]
             positive_flow = (flow_ > 0)
@@ -1233,10 +1172,14 @@ function aggregate_flows!(
     if do_vertical_flows
         for idx in 1:n_basin
             if do_inflows
-                aggregate[idx] += weight * (flow.drainage[idx] + flow.surface_runoff[idx] + flow.precipitation[idx])
+                aggregate[idx] += weight * (
+                    vertical_flow.drainage[idx] +
+                        vertical_flow.surface_runoff[idx] +
+                        vertical_flow.precipitation[idx]
+                )
             end
             if do_outflows
-                aggregate[idx] -= weight * (flow.evaporation[idx] + flow.infiltration[idx])
+                aggregate[idx] -= weight * (vertical_flow.evaporation[idx] + vertical_flow.infiltration[idx])
             end
         end
     end
@@ -1244,11 +1187,11 @@ function aggregate_flows!(
 end
 
 function get_incidence_matrix(
-        inflow_link::FlowCVectorType{LinkMetadata},
-        outflow_link::FlowCVectorType{LinkMetadata},
+        inflow_link::FlowCVector{LinkMetadata},
+        outflow_link::FlowCVector{LinkMetadata},
     )
     n_flow = length(inflow_link)
-    n_basin = length(inflow_link.evaporation)
+    n_basin = length(inflow_link.vertical_flow.evaporation)
 
     incidence_matrix = spzeros(Int, n_basin, n_flow)
 
@@ -1266,15 +1209,15 @@ function get_incidence_matrix(
     return incidence_matrix
 end
 
-function get_inflows(flow::FlowCVectorType, user_demand::UserDemand, idx::Integer)
+function get_inflows(flow::FlowCVector, user_demand::UserDemand, idx::Integer)
     offset_1 = user_demand.inflow_link_offsets[idx]
     offset_2 = user_demand.inflow_link_offsets[idx + 1]
-    return @view flow.user_demand_inflow[(offset_1 + 1):offset_2]
+    return @view flow.horizontal_flow.user_demand_inflow[(offset_1 + 1):offset_2]
 end
 
 function set_uplink_downlink_storage!(
-        storage_uplink::FlowCVectorType,
-        storage_downlink::FlowCVectorType,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         storage::AbstractVector,
         p_independent::ParametersIndependent,
     )
