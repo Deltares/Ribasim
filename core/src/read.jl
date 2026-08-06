@@ -943,6 +943,8 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     storage0 = get_storages_from_levels(basin, state.level)
     basin.storage0 .= storage0
+    basin.storage_prev_dt .= storage0
+    basin.storage_prev_saveat .= storage0
     basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
 
     for id in node_id
@@ -1740,7 +1742,6 @@ function Parameters(db::DB, config::Config)::Parameters
         inflow_link,
         outflow_link,
         incidence_matrix,
-        with_mass_matrix = with_mass_matrix(config.solver),
         config.solver.reduced_implicit_solve
     )
 
@@ -1764,7 +1765,7 @@ function set_controlled_node_ids!(p_independent, node::Union{PidControl, Continu
         controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
         node.controlled_node_id[id.idx] = controlled_node_id
         component = node_type_map[controlled_node_id.type]
-        flow_idx = flow_ranges[component][controlled_node_id.idx]
+        flow_idx = flow_ranges.horizontal_flow[component][controlled_node_id.idx]
 
         node.inflow_link[id.idx] = inflow_link[flow_idx]
         node.outflow_link[id.idx] = outflow_link[flow_idx]

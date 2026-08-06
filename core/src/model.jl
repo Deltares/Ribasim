@@ -102,12 +102,6 @@ function Model(config::Config)::Model
         error("Model has no state.")
     end
 
-    abstol = build_abstol_vector(
-        p_independent,
-        config.solver.abstol,
-        config.solver.water_balance_abstol,
-    )
-
     du0 = zero(u0)
 
     # The Solver algorithm
@@ -154,7 +148,7 @@ function Model(config::Config)::Model
         config.solver.dtmin,
         dtmax = something(config.solver.dtmax, t_end),
         config.solver.force_dtmin,
-        abstol,
+        config.solver.abstol,
         config.solver.reltol,
         config.solver.maxiters,
     )

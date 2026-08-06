@@ -444,10 +444,6 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
     return algotype(; kwargs...)
 end
 
-function with_mass_matrix(solver::Solver)
-    return algorithm(solver) isa OrdinaryDiffEqNewtonAdaptiveAlgorithm
-end
-
 "Convert the saveat Float64 from our Config to SciML's saveat"
 function convert_saveat(saveat::Float64, t_end::Float64)::Union{Float64, Vector{Float64}}
     errors = false

@@ -31,6 +31,11 @@ struct CVector{T, A <: DenseVector{T}, NT} <: DenseVector{T}
         offset = first(range) - 1
         return new{T, A, NT}(data, axes, offset, len)
     end
+
+    # Unchecked constructor for sub-CVectors where axes are already validated
+    function CVector(data::A, axes::NT, offset::Int, len::Int) where {T, A <: DenseVector{T}, NT <: NamedTuple}
+        return new{T, A, NT}(data, axes, offset, len)
+    end
 end
 
 function CVector{T, A, NT}(
@@ -156,9 +161,23 @@ end
 
 component(data, loc::Integer) = data[loc]
 component(data, loc::AbstractUnitRange{<:Integer}) = view(data, loc)
-component(data, loc::NamedTuple) = CVector(data, loc)
+@inline function component(data, loc::NamedTuple)
+    offset = _first_index(loc) - 1
+    len = _total_length(loc)
+    return CVector(data, loc, offset, len)
+end
 
-function Base.getproperty(x::CVector, name::Symbol)
+# Fast first/last index for nested NamedTuples without mapreduce overhead
+_first_index(loc::AbstractUnitRange{<:Integer}) = first(loc)
+_first_index(loc::NamedTuple) = _first_index(first(values(loc)))
+
+_last_index(loc::AbstractUnitRange{<:Integer}) = last(loc)
+_last_index(loc::NamedTuple) = _last_index(last(values(loc)))
+
+_total_length(loc::AbstractUnitRange{<:Integer}) = length(loc)
+_total_length(loc::NamedTuple) = _last_index(loc) - _first_index(loc) + 1
+
+Base.@constprop :aggressive @inline function Base.getproperty(x::CVector, name::Symbol)
     data = getdata(x)
     axes = getaxes(x)
     loc = getproperty(axes, name)
@@ -166,5 +185,10 @@ function Base.getproperty(x::CVector, name::Symbol)
 end
 
 @inline StrideArraysCore.PtrArray(x::CVector) = CVector(PtrArray(getdata(x)), getaxes(x))
+
+# Shift all leaf UnitRange values in a nested NamedTuple by a given integer
+shift_axes(loc::AbstractUnitRange{<:Integer}, shift::Integer) = loc .+ shift
+shift_axes(loc::NamedTuple, shift::Integer) =
+    NamedTuple{keys(loc)}(map(v -> shift_axes(v, shift), values(loc)))
 
 end  # module CVectors

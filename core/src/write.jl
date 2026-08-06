@@ -358,8 +358,8 @@ end
 function basin_state_data(model::Model; table::Bool = true)
     (; u, p, t) = model.integrator
     (; basin) = p.p_independent
-    set_current_basin_properties!(u, p, t)
-    return (; node_id = Int32.(basin.node_id), level = copy(p.non_ad_cache.current_level))
+    set_current_basin_properties!(u.flow, p, t)
+    return (; node_id = Int32.(basin.node_id), level = copy(p.current_basin_properties.current_level))
 end
 
 "Create the basin result table from the saved data"
@@ -376,15 +376,14 @@ function basin_data(model::Model; table::Bool = true)
 
     inflow_rate = FlatVector(saved.flow.saveval, :inflow)
     outflow_rate = FlatVector(saved.flow.saveval, :outflow)
-    drainage = FlatVector(saved.flow.saveval, :flow, :drainage)
-    precipitation = FlatVector(saved.flow.saveval, :flow, :precipitation)
-    surface_runoff = FlatVector(saved.flow.saveval, :flow, :surface_runoff)
-    evaporation = FlatVector(saved.flow.saveval, :flow, :evaporation)
-    infiltration = FlatVector(saved.flow.saveval, :flow, :infiltration)
+    drainage = FlatVector(saved.flow.saveval, :flow, :vertical_flow, :drainage)
+    precipitation = FlatVector(saved.flow.saveval, :flow, :vertical_flow, :precipitation)
+    surface_runoff = FlatVector(saved.flow.saveval, :flow, :vertical_flow, :surface_runoff)
+    evaporation = FlatVector(saved.flow.saveval, :flow, :vertical_flow, :evaporation)
+    infiltration = FlatVector(saved.flow.saveval, :flow, :vertical_flow, :infiltration)
     storage_rate = FlatVector(saved.flow.saveval, :storage_rate)
     balance_error = FlatVector(saved.flow.saveval, :balance_error)
     relative_error = FlatVector(saved.flow.saveval, :relative_error)
-    convergence = FlatVector(saved.flow.saveval, :convergence_storage)
 
     time = data.time[begin:(end - 1)]
     node_id = Int32.(data.node_id)
@@ -414,7 +413,6 @@ function basin_data(model::Model; table::Bool = true)
         infiltration,
         balance_error,
         relative_error,
-        convergence,
     )
 end
 
@@ -466,7 +464,7 @@ function flow_data(model::Model; table::Bool = true)
             internal_flow_rate[fi] =
                 get_flow(saved_flow.flow, link.link, p)
             internal_convergence[fi] =
-                get_flow(saved_flow.convergence_flow, link.link, p)
+                get_flow(saved_flow.convergence.flow, link.link, p)
         end
         mul!(
             view(flow_rate, (1 + (ti - 1) * nflow):(ti * nflow)),
@@ -554,6 +552,7 @@ function allocation_data(model::Model; table::Bool = true)
     (; config, integrator) = model
     (; u, p) = integrator
     (; allocation, graph, user_demand, flow_demand, level_demand) = p.p_independent
+    (; current_storage) = p.current_basin_properties
     (; demand_priorities_all, allocation_models) = allocation
     record_demand = StructVector(model.integrator.p.p_independent.allocation.record_demand)
 
@@ -629,7 +628,7 @@ function allocation_data(model::Model; table::Bool = true)
             for id in basin_ids_subnetwork_with_level_demand
                 j = searchsortedfirst(node_id, id)
                 supplied[view(has_priority, :, j), j, end] .=
-                    (u.storage[id.idx] - level_demand.storage_prev[id]) / Δt
+                    (current_storage[id.idx] - level_demand.storage_prev[id]) / Δt
             end
         end
     end

@@ -2,10 +2,11 @@
 The right hand side function of the system of ODEs set up by Ribasim.
 """
 function water_balance!(
-        du::RibasimCVectorType,
-        u::RibasimCVectorType,
+        du::RibasimStateCVector,
+        u::RibasimStateCVector,
         p::Parameters,
         t::Number;
+        storage = p.current_basin_properties.current_storage,
         storage_uplink = p.p_independent.storage_uplink,
         storage_downlink = p.p_independent.storage_downlink,
         compound_variables = p.p_independent.continuous_control.continuous_control_compound_variables,
@@ -13,7 +14,7 @@ function water_balance!(
     (; p_independent) = p
 
     # Compute and cache Basin level, area, low_storage_factor
-    set_current_basin_properties!(u, p, t)
+    set_current_basin_properties!(u.flow, p, t)
 
     # Check whether t or u is different from the last water_balance! call
     check_new_input!(p, t)
@@ -21,7 +22,12 @@ function water_balance!(
     du .= 0.0
 
     # Copy the storage into uplink and downlink storages per flow
-    set_uplink_downlink_storage!(storage_uplink, storage_downlink, u.storage, p_independent)
+    set_uplink_downlink_storage!(
+        storage_uplink,
+        storage_downlink,
+        storage,
+        p_independent
+    )
 
     # Notes on the ordering of these formulations:
     # - Pid control can depend on the du of basins and subsequently change them
@@ -30,12 +36,12 @@ function water_balance!(
     #   so these flows have to be formulated first.
 
     # Basin forcings (precipitation, evaporation, infiltration, drainage, surface_runoff)
-    formulate_vertical_flux!(du, storage_uplink, p, t)
+    formulate_vertical_flux!(du.flow.vertical_flow, storage_uplink.vertical_flow, p, t)
 
     formulate_flows_args = (
         du,
-        storage_uplink,
-        storage_downlink,
+        storage_uplink.horizontal_flow,
+        storage_downlink.horizontal_flow,
         compound_variables,
         u.pid_integral,
         p,
@@ -46,7 +52,13 @@ function water_balance!(
     formulate_flows!(formulate_flows_args...)
 
     # Formulate the PID control integral term rate
-    formulate_PID_control!(du.pid_integral, storage_uplink, storage_downlink, p, t)
+    formulate_PID_control!(
+        du.pid_integral,
+        storage_uplink.horizontal_flow,
+        storage_downlink.horizontal_flow,
+        p,
+        t
+    )
 
     # Formulate intermediate flow (controlled by PID control)
     formulate_flows!(
@@ -57,7 +69,7 @@ function water_balance!(
     # Compute ContinuousControl compound variables
     compute_continuous_control_compound_variables!(
         compound_variables,
-        u.storage,
+        storage,
         du.flow,
         p,
         t
@@ -68,25 +80,30 @@ function water_balance!(
         formulate_flows_args...;
         control_type = ContinuousControlType.Continuous,
     )
-
-    if !p_independent.with_mass_matrix
-        aggregate_flows!(du.storage, du.flow, p_independent)
-    end
-
     return nothing
 end
 
-function set_current_basin_properties!(u::RibasimCVectorType, p::Parameters, t::Number)
-    (; p_independent, p_mutable, non_ad_cache) = p
-    (; storage_prev_call, current_level, current_area, current_low_storage_factor) = non_ad_cache
+function set_current_storage!(p::Parameters, flow::FlowCVector)
+    (; current_basin_properties, p_independent) = p
+    (; current_storage) = current_basin_properties
+    (; storage0) = p_independent.basin
+    current_storage .= storage0
+    aggregate_flows!(current_storage, flow, p_independent; from_zero = false)
+    return nothing
+end
+
+function set_current_basin_properties!(flow::FlowCVector, p::Parameters, t::Number)
+    (; p_independent, p_mutable, current_basin_properties) = p
+    (; storage_prev_call, current_storage, current_level, current_area, current_low_storage_factor) = current_basin_properties
     (; node_id, level_to_area, low_storage_threshold) = p_independent.basin
 
     p_mutable.ad_active && return nothing
-    storage = u.storage
+
+    set_current_storage!(p, flow)
 
     for idx in eachindex(node_id)
         id = node_id[idx]
-        s = storage[idx]
+        s = current_storage[idx]
         (s == storage_prev_call[idx]) && continue
         h = get_level(s, p, id, t; force_evaluation = true)
         Ah = level_to_area[idx]
@@ -102,8 +119,8 @@ function set_current_basin_properties!(u::RibasimCVectorType, p::Parameters, t::
 end
 
 function formulate_vertical_flux!(
-        du::RibasimCVectorType,
-        storage_uplink::FlowCVectorType,
+        vertical_flow::VerticalFlowCVector,
+        storage_uplink::VerticalFlowCVector,
         p::Parameters,
         t::Number
     )
@@ -113,9 +130,9 @@ function formulate_vertical_flux!(
     ) = p.p_independent.basin
 
     # Incoming
-    du.flow.drainage .= vertical_flux.drainage
-    du.flow.precipitation .= vertical_flux.precipitation
-    du.flow.surface_runoff .= vertical_flux.surface_runoff
+    vertical_flow.drainage .= vertical_flux.drainage
+    vertical_flow.precipitation .= vertical_flux.precipitation
+    vertical_flow.surface_runoff .= vertical_flux.surface_runoff
 
     # Outgoing
     for id in node_id
@@ -127,13 +144,13 @@ function formulate_vertical_flux!(
         level = get_level(storage, p, id, t)
         area = get_area(level, p, id)
         low_storage_factor = get_low_storage_factor(storage, p, id)
-        du.flow.evaporation[id.idx] =
+        vertical_flow.evaporation[id.idx] =
             vertical_flux.potential_evaporation[id.idx] * area * low_storage_factor
 
         # Infiltration
         storage = storage_uplink.infiltration[id.idx]
         low_storage_factor = get_low_storage_factor(storage, p, id)
-        du.flow.infiltration[id.idx] = vertical_flux.infiltration[id.idx] * low_storage_factor
+        vertical_flow.infiltration[id.idx] = vertical_flux.infiltration[id.idx] * low_storage_factor
     end
     return nothing
 end
@@ -141,7 +158,7 @@ end
 function compute_continuous_control_compound_variables!(
         compound_variables::AbstractVector{<:Number},
         storage::AbstractVector,
-        flow::AbstractVector,
+        flow::FlowCVector,
         p::Parameters,
         t::Number
     )
@@ -181,8 +198,8 @@ end
 # Get storage as the pump/outlet uplink/downlink storage
 function get_pid_controlled_storage(
         p_independent::ParametersIndependent,
-        storage_uplink::FlowCVectorType,
-        storage_downlink::FlowCVectorType,
+        storage_uplink::HorizontalFlowCVector,
+        storage_downlink::HorizontalFlowCVector,
         idx::Integer,
     )
     (; pid_control, pump, outlet) = p_independent
@@ -210,8 +227,8 @@ end
 
 function formulate_PID_control!(
         dpid_integral::AbstractVector,
-        storage_uplink::FlowCVectorType,
-        storage_downlink::FlowCVectorType,
+        storage_uplink::HorizontalFlowCVector,
+        storage_downlink::HorizontalFlowCVector,
         p::Parameters,
         t::Number,
     )
@@ -226,7 +243,7 @@ function formulate_PID_control!(
 end
 
 function get_pid_value(
-        du::RibasimCVectorType,
+        du::RibasimStateCVector,
         storage_uplink,
         storage_downlink,
         pid_integral::AbstractVector,
@@ -281,7 +298,7 @@ function get_pid_value(
 end
 
 function formulate_dstorage_single_basin(
-        flow::FlowCVectorType,
+        flow::FlowCVector,
         p_independent::ParametersIndependent,
         node_id::NodeID,
     )
@@ -290,10 +307,10 @@ function formulate_dstorage_single_basin(
 end
 
 function formulate_flow!(
-        flow::FlowCVectorType,
+        flow::HorizontalFlowCVector,
         user_demand::UserDemand,
-        storage_uplink::FlowCVectorType,
-        storage_downlink::FlowCVectorType,
+        storage_uplink::HorizontalFlowCVector,
+        storage_downlink::HorizontalFlowCVector,
         p::Parameters,
         t::Number,
     )::Nothing
@@ -354,10 +371,10 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-        flow::FlowCVectorType,
+        flow::HorizontalFlowCVector,
         linear_resistance::LinearResistance,
-        storage_uplink::FlowCVectorType,
-        storage_downlink::FlowCVectorType,
+        storage_uplink::HorizontalFlowCVector,
+        storage_downlink::HorizontalFlowCVector,
         p::Parameters,
         t::Number,
     )::Nothing
@@ -458,10 +475,10 @@ function allocated_rating_curve_flow(
 end
 
 function formulate_flow!(
-        flow::FlowCVectorType,
+        flow::HorizontalFlowCVector,
         tabulated_rating_curve::TabulatedRatingCurve,
-        storage_uplink::FlowCVectorType,
-        storage_downlink::FlowCVectorType,
+        storage_uplink::HorizontalFlowCVector,
+        storage_downlink::HorizontalFlowCVector,
         p::Parameters,
         t::Number,
     )::Nothing
@@ -589,10 +606,10 @@ hydraulic radius. This ensures that a basin can receive water after it has gone
 dry.
 """
 function formulate_flow!(
-        flow::FlowCVectorType,
+        flow::HorizontalFlowCVector,
         manning_resistance::ManningResistance,
-        storage_uplink::FlowCVectorType,
-        storage_downlink::FlowCVectorType,
+        storage_uplink::HorizontalFlowCVector,
+        storage_downlink::HorizontalFlowCVector,
         p::Parameters,
         t::Number,
     )::Nothing
@@ -611,12 +628,12 @@ function formulate_flow!(
 end
 
 function formulate_pump_or_outlet_flow!(
-        du::RibasimCVectorType,
+        du::RibasimStateCVector,
         node::Union{Pump, Outlet},
         continuous_control_compound_variables::AbstractVector,
         pid_integral::AbstractVector,
-        storage_uplink::FlowCVectorType,
-        storage_downlink::FlowCVectorType,
+        storage_uplink::HorizontalFlowCVector,
+        storage_downlink::HorizontalFlowCVector,
         p::Parameters,
         t::Number,
         relevant_control_type::ContinuousControlType.T,
@@ -742,21 +759,21 @@ function formulate_pump_or_outlet_flow!(
         q *= reduction_factor(max_downstream_level_ - dst_level, level_difference_threshold)
 
         if node isa Pump
-            du.flow.pump[id.idx] = q
+            du.flow.horizontal_flow.pump[id.idx] = q
         else # node isa Outlet
-            du.flow.outlet[id.idx] = q
+            du.flow.horizontal_flow.outlet[id.idx] = q
         end
     end
     return nothing
 end
 
 function formulate_flow!(
-        du::RibasimCVectorType,
+        du::RibasimStateCVector,
         pump::Pump,
         continuous_control_compound_variables::AbstractVector,
         pid_integral::AbstractVector,
-        storage_uplink::FlowCVectorType,
-        storage_downlink::FlowCVectorType,
+        storage_uplink::HorizontalFlowCVector,
+        storage_downlink::HorizontalFlowCVector,
         p::Parameters,
         t::Number,
         relevant_control_type::ContinuousControlType.T,
@@ -777,12 +794,12 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-        du::RibasimCVectorType,
+        du::RibasimStateCVector,
         outlet::Outlet,
         continuous_control_compound_variables::AbstractVector,
         pid_integral::AbstractVector,
-        storage_uplink::FlowCVectorType,
-        storage_downlink::FlowCVectorType,
+        storage_uplink::HorizontalFlowCVector,
+        storage_downlink::HorizontalFlowCVector,
         p::Parameters,
         t::Number,
         relevant_control_type::ContinuousControlType.T,
@@ -804,25 +821,25 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-        flow::FlowCVectorType,
+        horizontal_flow::HorizontalFlowCVector,
         flow_boundary::FlowBoundary,
-        storage_uplink::FlowCVectorType,
-        storage_downlink::FlowCVectorType,
+        storage_uplink::HorizontalFlowCVector,
+        storage_downlink::HorizontalFlowCVector,
         p::Parameters,
         t::Number,
     )
     (; flow_rate) = flow_boundary
     (; current_boundary_flow) = p.time_dependent_cache.flow_boundary
     for idx in eachindex(flow_boundary.node_id)
-        flow.flow_boundary[idx] = eval_time_interpolation(flow_rate[idx], current_boundary_flow, idx, p, t)
+        horizontal_flow.flow_boundary[idx] = eval_time_interpolation(flow_rate[idx], current_boundary_flow, idx, p, t)
     end
     return
 end
 
 function formulate_flows!(
-        du::RibasimCVectorType,
-        storage_uplink::FlowCVectorType,
-        storage_downlink::FlowCVectorType,
+        du::RibasimStateCVector,
+        storage_uplink::HorizontalFlowCVector,
+        storage_downlink::HorizontalFlowCVector,
         continuous_control_compound_variables::AbstractVector,
         pid_integral::AbstractVector,
         p::Parameters,
@@ -849,11 +866,11 @@ function formulate_flows!(
     formulate_flow!(du, outlet, pump_outlet_common_args...)
 
     if control_type == ContinuousControlType.None
-        formulate_flow!(du.flow, linear_resistance, common_args...)
-        formulate_flow!(du.flow, manning_resistance, common_args...)
-        formulate_flow!(du.flow, tabulated_rating_curve, common_args...)
-        formulate_flow!(du.flow, user_demand, common_args...)
-        formulate_flow!(du.flow, flow_boundary, common_args...)
+        formulate_flow!(du.flow.horizontal_flow, linear_resistance, common_args...)
+        formulate_flow!(du.flow.horizontal_flow, manning_resistance, common_args...)
+        formulate_flow!(du.flow.horizontal_flow, tabulated_rating_curve, common_args...)
+        formulate_flow!(du.flow.horizontal_flow, user_demand, common_args...)
+        formulate_flow!(du.flow.horizontal_flow, flow_boundary, common_args...)
     end
     return nothing
 end

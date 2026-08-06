@@ -9,8 +9,9 @@ const SolverStats = @NamedTuple{
 }
 
 # State vector
-const state_components = (:storage, :flow, :pid_integral)
-const flow_components = (
+const state_components = (:flow, :pid_integral)
+const flow_components = (:horizontal_flow, :vertical_flow)
+const horizontal_flow_components = (
     :pump,
     :outlet,
     :flow_boundary,
@@ -19,19 +20,28 @@ const flow_components = (
     :manning_resistance,
     :user_demand_inflow,
     :user_demand_outflow,
+)
+const vertical_flow_components = (
     :evaporation,
     :infiltration,
     :drainage,
     :surface_runoff,
     :precipitation,
 )
-const n_flow_components = length(flow_components)
-const FlowTuple{V} = NamedTuple{flow_components, NTuple{n_flow_components, V}}
-const StateTuple{V} = NamedTuple{state_components, Tuple{V, FlowTuple{V}, V}}
-const RibasimCVectorType{T} = CVectors.CVector{T, Vector{T}, StateTuple{UnitRange{Int}}}
 
-# Only flow vector
-const FlowCVectorType{T} = CVectors.CVector{T, Vector{T}, FlowTuple{UnitRange{Int}}}
+const n_horizontal_flow_components = length(horizontal_flow_components)
+const HorizontalFlowTuple{V} = NamedTuple{horizontal_flow_components, NTuple{n_horizontal_flow_components, V}}
+const HorizontalFlowCVector{T} = CVectors.CVector{T, Vector{T}, HorizontalFlowTuple{UnitRange{Int}}}
+
+const n_vertical_flow_components = length(vertical_flow_components)
+const VerticalFlowTuple{V} = NamedTuple{vertical_flow_components, NTuple{n_vertical_flow_components, V}}
+const VerticalFlowCVector{T} = CVectors.CVector{T, Vector{T}, VerticalFlowTuple{UnitRange{Int}}}
+
+const FlowTuple{V} = NamedTuple{flow_components, Tuple{HorizontalFlowTuple{V}, VerticalFlowTuple{V}}}
+const FlowCVector{T} = CVectors.CVector{T, Vector{T}, FlowTuple{UnitRange{Int}}}
+
+const StateTuple{V} = NamedTuple{state_components, Tuple{FlowTuple{V}, V}}
+const RibasimStateCVector{T} = CVectors.CVector{T, Vector{T}, StateTuple{UnitRange{Int}}}
 
 # LinkType.flow and NodeType.FlowBoundary
 @enumx LinkType flow control listen observation none
@@ -405,15 +415,14 @@ In-memory storage of saved mean flows for writing to results.
 """
 @kwdef struct SavedFlow
     # Mean flow rates per internal flow link
-    flow::FlowCVectorType{Float64}
+    flow::FlowCVector{Float64}
     inflow::Vector{Float64}
     outflow::Vector{Float64}
     concentration::Matrix{Float64}
     storage_rate::Vector{Float64} = zero(inflow)
     balance_error::Vector{Float64} = zero(inflow)
     relative_error::Vector{Float64} = zero(inflow)
-    convergence_flow::FlowCVectorType{Union{Missing, Float64}}
-    convergence_storage::Vector{Union{Missing, Float64}}
+    convergence::RibasimStateCVector{Union{Missing, Float64}}
     t::Float64
 end
 
@@ -516,8 +525,12 @@ Requirements:
     low_storage_threshold::Vector{Float64} = zeros(length(node_id))
     # Vertical fluxes
     vertical_flux::VerticalFlux = VerticalFlux(; n = length(node_id))
-    # Initial_storage
+    # Initial storage
     storage0::Vector{Float64} = zeros(length(node_id))
+    # Storage at previous timestep
+    storage_prev_dt::Vector{Float64} = zeros(length(node_id))
+    # Storage at previous saveat
+    storage_prev_saveat::Vector{Float64} = zeros(length(node_id))
     # The storage rate for computing the minimum basin emptying_time
     dstorage::Vector{Float64} = zeros(length(node_id))
     # Cumulative flows over the whole simulation for BMI
@@ -1007,7 +1020,7 @@ end
     # Static part
     # Static subgrid ids
     subgrid_id_static::Vector{Int32} = []
-    # index into the p.non_ad_cache.current_level vector for each static subgrid_id
+    # index into the p.current_basin_properties.current_level vector for each static subgrid_id
     basin_id_static::Vector{NodeID} = []
     # index into the subgrid.level vector for each static subgrid_id
     level_index_static::Vector{Int} = []
@@ -1017,7 +1030,7 @@ end
     # Dynamic part
     # Dynamic subgrid ids
     subgrid_id_time::Vector{Int32} = []
-    # index into the p.non_ad_cache.current_level vector for each dynamic subgrid_id
+    # index into the p.current_basin_properties.current_level vector for each dynamic subgrid_id
     basin_id_time::Vector{NodeID} = []
     # index into the subgrid.level vector for each dynamic subgrid_id
     level_index_time::Vector{Int} = []
@@ -1100,8 +1113,6 @@ the object itself is not.
     subgrid::Subgrid
     # Whether all specialized AD and linear solve code should be used
     reduced_implicit_solve::Bool
-    # Whether the ODE system is solved with a mass matrix or not
-    with_mass_matrix::Bool
     # Matrix aggregates flows into the basin storages
     incidence_matrix::SparseMatrixCSC{Int, Int}
     # Water balance tolerances
@@ -1116,24 +1127,23 @@ the object itself is not.
     ncalls::Vector{Int} = [0]
     # Solver constants
     level_difference_threshold::Float64
-    # In- and outflow links for the flows in vectors of type FlowCVectorType
-    inflow_link::FlowCVectorType{LinkMetadata}
-    outflow_link::FlowCVectorType{LinkMetadata}
+    # In- and outflow links for the flows in vectors of type FlowCVector
+    inflow_link::FlowCVector{LinkMetadata}
+    outflow_link::FlowCVector{LinkMetadata}
     # The up- and downlink storage per flow
-    storage_uplink::FlowCVectorType{Float64} = similar(inflow_link, Float64)
-    storage_downlink::FlowCVectorType{Float64} = similar(inflow_link, Float64)
+    storage_uplink::FlowCVector{Float64} = similar(inflow_link, Float64)
+    storage_downlink::FlowCVector{Float64} = similar(inflow_link, Float64)
     # Cumulative flow over last timestep
-    cumulative_flow_dt::FlowCVectorType{Float64} = zero(storage_uplink)
+    cumulative_flow_dt::FlowCVector{Float64} = zero(storage_uplink)
     # State at previous saveat
-    u_prev_saveat::RibasimCVectorType{Float64} = CVector(
-        zeros(length(basin.node_id) + length(inflow_link) + length(pid_control.node_id)),
+    u_prev_saveat::RibasimStateCVector{Float64} = CVector(
+        zeros(length(inflow_link) + length(pid_control.node_id)),
         state_ranges
     )
     # Cumulative flow over last allocation times
-    cumulative_flow_prev_allocation_dt::FlowCVectorType{Float64} = zero(storage_uplink)
+    cumulative_flow_prev_allocation_dt::FlowCVector{Float64} = zero(storage_uplink)
     # Convergence tracking: accumulated normalized Newton residual per saveat
-    convergence_storage::Vector{Float64} = zeros(length(basin.node_id))
-    convergence_flow::FlowCVectorType{Float64} = zero(storage_uplink)
+    convergence::RibasimStateCVector{Float64} = zero(u_prev_saveat)
     convergence_ncalls::Vector{Int} = [0]
 end
 
@@ -1190,9 +1200,10 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
     )
 end
 
-@kwdef struct NonADCache
+@kwdef struct CurrentBasinProperties
     n::Int
     storage_prev_call::Vector{Float64} = zeros(n)
+    current_storage::Vector{Float64} = zeros(n)
     current_level::Vector{Float64} = zeros(n)
     current_area::Vector{Float64} = zeros(n)
     current_low_storage_factor::Vector{Float64} = zeros(n)
@@ -1204,7 +1215,8 @@ The collection of all parameters that are passed to the rhs (`water_balance!`) a
 @kwdef struct Parameters{C, T}
     p_independent::ParametersIndependent{C}
     time_dependent_cache::TimeDependentCache{T} = TimeDependentCache(p_independent)
-    non_ad_cache::NonADCache = NonADCache(; n = length(p_independent.basin.node_id))
+    current_basin_properties::CurrentBasinProperties =
+        CurrentBasinProperties(; n = length(p_independent.basin.node_id))
     p_mutable::ParametersMutable = ParametersMutable()
 end
 
