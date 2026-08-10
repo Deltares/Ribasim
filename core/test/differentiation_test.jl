@@ -25,3 +25,31 @@
 
     @test all(isfinite, nonzeros(J.J_intermediate))
 end
+
+@testitem "HalfLazyJacobian converts to a dense matrix" begin
+    using Ribasim: reduce_state!
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    (; integrator) = model
+    (; p, u, t) = integrator
+    J = integrator.f.jac_prototype
+
+    du = J.du
+    Ribasim.water_balance!(du, u, p, t)
+    Ribasim.get_jacobian!(J, du, u, p, t, J.prep, J.backend)
+
+    (; u_reduced) = p.p_independent
+    n = length(u)
+    A = zeros(length(u_reduced), n)
+    unit_vector = copy(u)
+    for i in 1:n
+        unit_vector .= 0
+        unit_vector[i] = 1
+        reduce_state!(u_reduced, unit_vector, p.p_independent)
+        A[:, i] .= u_reduced
+    end
+    J_expected = J.J_intermediate * A
+
+    @test convert(AbstractMatrix, J) ≈ J_expected
+end

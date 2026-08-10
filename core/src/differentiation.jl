@@ -104,6 +104,24 @@ function LinearAlgebra.mul!(
     return nothing
 end
 
+# Fallback so SciMLOperators/OrdinaryDiffEq internals that concretize a Jacobian
+# regardless of `isconvertible` (e.g. https://github.com/SciML/SciMLOperators.jl/pull/408)
+# get a correct, if expensive, dense matrix instead of a MethodError.
+function Base.convert(::Type{AbstractMatrix}, J::HalfLazyJacobian)
+    (; state_ranges) = J.p_independent
+    n = length(J.du)
+    mat = zeros(n, n)
+    v = CVector(zeros(n), state_ranges)
+    u = CVector(zeros(n), state_ranges)
+    for i in 1:n
+        v[i] = 1.0
+        mul!(u, J, v)
+        mat[:, i] .= getdata(u)
+        v[i] = 0.0
+    end
+    return mat
+end
+
 # SciMLOperators interface
 SciMLOperators.isconstant(::HalfLazyJacobian) = false
 SciMLOperators.issquare(::HalfLazyJacobian) = true
