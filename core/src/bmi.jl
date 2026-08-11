@@ -73,11 +73,11 @@ function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     elseif name == "basin.surface_runoff"
         basin.vertical_flux.surface_runoff::Vector{Float64}
     elseif name == "basin.cumulative_infiltration"
-        basin.cumulative_infiltration::Vector{Float64}
+        basin.forcing.cumulative_infiltration::Vector{Float64}
     elseif name == "basin.cumulative_drainage"
-        basin.cumulative_drainage::Vector{Float64}
+        unsafe_array(basin.forcing.exact_cumulative_forcing.drainage)::Vector{Float64}
     elseif name == "basin.cumulative_surface_runoff"
-        basin.cumulative_surface_runoff::Vector{Float64}
+        unsafe_array(basin.forcing.exact_cumulative_forcing.surface_runoff)::Vector{Float64}
     elseif name == "basin.subgrid_level"
         subgrid.level::Vector{Float64}
     elseif name == "user_demand.demand"

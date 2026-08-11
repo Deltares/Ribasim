@@ -36,12 +36,12 @@ function water_balance!(
     #   so these flows have to be formulated first.
 
     # Basin forcings (precipitation, evaporation, infiltration, drainage, surface_runoff)
-    formulate_vertical_flux!(du.flow.vertical_flow, storage_uplink.vertical_flow, p, t)
+    formulate_vertical_flux!(du.flow, storage_uplink, p, t)
 
     formulate_flows_args = (
         du,
-        storage_uplink.horizontal_flow,
-        storage_downlink.horizontal_flow,
+        storage_uplink,
+        storage_downlink,
         compound_variables,
         u.pid_integral,
         p,
@@ -54,8 +54,8 @@ function water_balance!(
     # Formulate the PID control integral term rate
     formulate_PID_control!(
         du.pid_integral,
-        storage_uplink.horizontal_flow,
-        storage_downlink.horizontal_flow,
+        storage_uplink,
+        storage_downlink,
         p,
         t
     )
@@ -83,12 +83,42 @@ function water_balance!(
     return nothing
 end
 
-function set_current_storage!(p::Parameters, flow::FlowCVector)
-    (; current_basin_properties, p_independent) = p
-    (; current_storage) = current_basin_properties
-    (; storage0) = p_independent.basin
-    current_storage .= storage0
-    aggregate_flows!(current_storage, flow, p_independent; from_zero = false)
+function set_current_storage!(
+        p::Parameters,
+        flow::FlowCVector,
+        t::Number;
+        storage = p.current_basin_properties.current_storage,
+        with_incidence_matrix::Bool = false,
+    )
+    (; p_independent, p_mutable, time_dependent_cache) = p
+    (; storage0, vertical_flux, forcing) = p_independent.basin
+
+    # Compute exact cumulative forcing at time t
+    if p_mutable.new_time_dependent_cache
+        dt = t - forcing.t_last_accepted[1]
+        @. time_dependent_cache.basin.precipitation =
+            forcing.exact_cumulative_forcing.precipitation + vertical_flux.precipitation * dt
+        @. time_dependent_cache.basin.drainage =
+            forcing.exact_cumulative_forcing.drainage + vertical_flux.drainage * dt
+        @. time_dependent_cache.basin.surface_runoff =
+            forcing.exact_cumulative_forcing.surface_runoff + vertical_flux.surface_runoff * dt
+    end
+
+    if with_incidence_matrix
+        mul!(storage, p_independent.incidence_matrix, flow)
+        @. storage += time_dependent_cache.basin.precipitation +
+            time_dependent_cache.basin.drainage +
+            time_dependent_cache.basin.surface_runoff
+    else
+        aggregate_flows!(
+            storage,
+            flow,
+            p_independent;
+            positive_forcing = time_dependent_cache.basin
+        )
+    end
+
+    storage .+= storage0
     return nothing
 end
 
@@ -99,7 +129,7 @@ function set_current_basin_properties!(flow::FlowCVector, p::Parameters, t::Numb
 
     p_mutable.ad_active && return nothing
 
-    set_current_storage!(p, flow)
+    set_current_storage!(p, flow, t)
 
     for idx in eachindex(node_id)
         id = node_id[idx]
@@ -119,20 +149,15 @@ function set_current_basin_properties!(flow::FlowCVector, p::Parameters, t::Numb
 end
 
 function formulate_vertical_flux!(
-        vertical_flow::VerticalFlowCVector,
-        storage_uplink::VerticalFlowCVector,
+        flow::FlowCVector,
+        storage_uplink::FlowCVector,
         p::Parameters,
-        t::Number
+        t::Number,
     )
     (;
         node_id,
         vertical_flux,
     ) = p.p_independent.basin
-
-    # Incoming
-    vertical_flow.drainage .= vertical_flux.drainage
-    vertical_flow.precipitation .= vertical_flux.precipitation
-    vertical_flow.surface_runoff .= vertical_flux.surface_runoff
 
     # Outgoing
     for id in node_id
@@ -144,21 +169,21 @@ function formulate_vertical_flux!(
         level = get_level(storage, p, id, t)
         area = get_area(level, p, id)
         low_storage_factor = get_low_storage_factor(storage, p, id)
-        vertical_flow.evaporation[id.idx] =
+        flow.evaporation[id.idx] =
             vertical_flux.potential_evaporation[id.idx] * area * low_storage_factor
 
         # Infiltration
         storage = storage_uplink.infiltration[id.idx]
         low_storage_factor = get_low_storage_factor(storage, p, id)
-        vertical_flow.infiltration[id.idx] = vertical_flux.infiltration[id.idx] * low_storage_factor
+        flow.infiltration[id.idx] = vertical_flux.infiltration[id.idx] * low_storage_factor
     end
     return nothing
 end
 
 function compute_continuous_control_compound_variables!(
-        compound_variables::AbstractVector{<:Number},
+        compound_variables::AbstractVector,
         storage::AbstractVector,
-        flow::FlowCVector,
+        flow::AbstractVector,
         p::Parameters,
         t::Number
     )
@@ -198,8 +223,8 @@ end
 # Get storage as the pump/outlet uplink/downlink storage
 function get_pid_controlled_storage(
         p_independent::ParametersIndependent,
-        storage_uplink::HorizontalFlowCVector,
-        storage_downlink::HorizontalFlowCVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         idx::Integer,
     )
     (; pid_control, pump, outlet) = p_independent
@@ -227,8 +252,8 @@ end
 
 function formulate_PID_control!(
         dpid_integral::AbstractVector,
-        storage_uplink::HorizontalFlowCVector,
-        storage_downlink::HorizontalFlowCVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
     )
@@ -302,15 +327,19 @@ function formulate_dstorage_single_basin(
         p_independent::ParametersIndependent,
         node_id::NodeID,
     )
-    (; incidence_matrix) = p_independent
-    return dot(incidence_matrix[node_id.idx, :], flow)
+    (; incidence_matrix, basin) = p_independent
+    (; vertical_flux) = basin
+    return dot(incidence_matrix[node_id.idx, :], flow) +
+        vertical_flux.precipitation[node_id.idx] +
+        vertical_flux.drainage[node_id.idx] +
+        vertical_flux.surface_runoff[node_id.idx]
 end
 
 function formulate_flow!(
-        flow::HorizontalFlowCVector,
+        flow::FlowCVector,
         user_demand::UserDemand,
-        storage_uplink::HorizontalFlowCVector,
-        storage_downlink::HorizontalFlowCVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
     )::Nothing
@@ -371,10 +400,10 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-        flow::HorizontalFlowCVector,
+        flow::FlowCVector,
         linear_resistance::LinearResistance,
-        storage_uplink::HorizontalFlowCVector,
-        storage_downlink::HorizontalFlowCVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
     )::Nothing
@@ -475,10 +504,10 @@ function allocated_rating_curve_flow(
 end
 
 function formulate_flow!(
-        flow::HorizontalFlowCVector,
+        flow::FlowCVector,
         tabulated_rating_curve::TabulatedRatingCurve,
-        storage_uplink::HorizontalFlowCVector,
-        storage_downlink::HorizontalFlowCVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
     )::Nothing
@@ -606,10 +635,10 @@ hydraulic radius. This ensures that a basin can receive water after it has gone
 dry.
 """
 function formulate_flow!(
-        flow::HorizontalFlowCVector,
+        flow::FlowCVector,
         manning_resistance::ManningResistance,
-        storage_uplink::HorizontalFlowCVector,
-        storage_downlink::HorizontalFlowCVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
     )::Nothing
@@ -632,8 +661,8 @@ function formulate_pump_or_outlet_flow!(
         node::Union{Pump, Outlet},
         continuous_control_compound_variables::AbstractVector,
         pid_integral::AbstractVector,
-        storage_uplink::HorizontalFlowCVector,
-        storage_downlink::HorizontalFlowCVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
         relevant_control_type::ContinuousControlType.T,
@@ -759,9 +788,9 @@ function formulate_pump_or_outlet_flow!(
         q *= reduction_factor(max_downstream_level_ - dst_level, level_difference_threshold)
 
         if node isa Pump
-            du.flow.horizontal_flow.pump[id.idx] = q
+            du.flow.pump[id.idx] = q
         else # node isa Outlet
-            du.flow.horizontal_flow.outlet[id.idx] = q
+            du.flow.outlet[id.idx] = q
         end
     end
     return nothing
@@ -772,8 +801,8 @@ function formulate_flow!(
         pump::Pump,
         continuous_control_compound_variables::AbstractVector,
         pid_integral::AbstractVector,
-        storage_uplink::HorizontalFlowCVector,
-        storage_downlink::HorizontalFlowCVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
         relevant_control_type::ContinuousControlType.T,
@@ -798,8 +827,8 @@ function formulate_flow!(
         outlet::Outlet,
         continuous_control_compound_variables::AbstractVector,
         pid_integral::AbstractVector,
-        storage_uplink::HorizontalFlowCVector,
-        storage_downlink::HorizontalFlowCVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
         relevant_control_type::ContinuousControlType.T,
@@ -821,25 +850,25 @@ function formulate_flow!(
 end
 
 function formulate_flow!(
-        horizontal_flow::HorizontalFlowCVector,
+        flow::FlowCVector,
         flow_boundary::FlowBoundary,
-        storage_uplink::HorizontalFlowCVector,
-        storage_downlink::HorizontalFlowCVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
     )
     (; flow_rate) = flow_boundary
     (; current_boundary_flow) = p.time_dependent_cache.flow_boundary
     for idx in eachindex(flow_boundary.node_id)
-        horizontal_flow.flow_boundary[idx] = eval_time_interpolation(flow_rate[idx], current_boundary_flow, idx, p, t)
+        flow.flow_boundary[idx] = eval_time_interpolation(flow_rate[idx], current_boundary_flow, idx, p, t)
     end
     return
 end
 
 function formulate_flows!(
         du::RibasimStateCVector,
-        storage_uplink::HorizontalFlowCVector,
-        storage_downlink::HorizontalFlowCVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         continuous_control_compound_variables::AbstractVector,
         pid_integral::AbstractVector,
         p::Parameters,
@@ -866,11 +895,11 @@ function formulate_flows!(
     formulate_flow!(du, outlet, pump_outlet_common_args...)
 
     if control_type == ContinuousControlType.None
-        formulate_flow!(du.flow.horizontal_flow, linear_resistance, common_args...)
-        formulate_flow!(du.flow.horizontal_flow, manning_resistance, common_args...)
-        formulate_flow!(du.flow.horizontal_flow, tabulated_rating_curve, common_args...)
-        formulate_flow!(du.flow.horizontal_flow, user_demand, common_args...)
-        formulate_flow!(du.flow.horizontal_flow, flow_boundary, common_args...)
+        formulate_flow!(du.flow, linear_resistance, common_args...)
+        formulate_flow!(du.flow, manning_resistance, common_args...)
+        formulate_flow!(du.flow, tabulated_rating_curve, common_args...)
+        formulate_flow!(du.flow, user_demand, common_args...)
+        formulate_flow!(du.flow, flow_boundary, common_args...)
     end
     return nothing
 end

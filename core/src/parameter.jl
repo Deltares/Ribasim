@@ -8,10 +8,8 @@ const SolverStats = @NamedTuple{
     dt::Float64,
 }
 
-# State vector
 const state_components = (:flow, :pid_integral)
-const flow_components = (:horizontal_flow, :vertical_flow)
-const horizontal_flow_components = (
+const flow_components = (
     :pump,
     :outlet,
     :flow_boundary,
@@ -20,28 +18,23 @@ const horizontal_flow_components = (
     :manning_resistance,
     :user_demand_inflow,
     :user_demand_outflow,
-)
-const vertical_flow_components = (
     :evaporation,
     :infiltration,
-    :drainage,
-    :surface_runoff,
-    :precipitation,
 )
 
-const n_horizontal_flow_components = length(horizontal_flow_components)
-const HorizontalFlowTuple{V} = NamedTuple{horizontal_flow_components, NTuple{n_horizontal_flow_components, V}}
-const HorizontalFlowCVector{T} = CVectors.CVector{T, Vector{T}, HorizontalFlowTuple{UnitRange{Int}}}
+exact_vertical_flow_components = (:precipitation, :drainage, :surface_runoff)
 
-const n_vertical_flow_components = length(vertical_flow_components)
-const VerticalFlowTuple{V} = NamedTuple{vertical_flow_components, NTuple{n_vertical_flow_components, V}}
-const VerticalFlowCVector{T} = CVectors.CVector{T, Vector{T}, VerticalFlowTuple{UnitRange{Int}}}
+n_flow_components = length(flow_components)
+const FlowTuple = NamedTuple{flow_components, NTuple{n_flow_components, UnitRange{Int}}}
+const FlowCVector{T} = CVector{T, Vector{T}, FlowTuple}
 
-const FlowTuple{V} = NamedTuple{flow_components, Tuple{HorizontalFlowTuple{V}, VerticalFlowTuple{V}}}
-const FlowCVector{T} = CVectors.CVector{T, Vector{T}, FlowTuple{UnitRange{Int}}}
+const RibasimStateTuple = NamedTuple{state_components, Tuple{FlowTuple, UnitRange{Int}}}
+const RibasimStateCVector{T} = CVector{T, Vector{T}, RibasimStateTuple}
 
-const StateTuple{V} = NamedTuple{state_components, Tuple{FlowTuple{V}, V}}
-const RibasimStateCVector{T} = CVectors.CVector{T, Vector{T}, StateTuple{UnitRange{Int}}}
+const n_exact_vertical_flow_components = length(exact_vertical_flow_components)
+const ExactVerticalFlowTuple = NamedTuple{exact_vertical_flow_components, NTuple{n_exact_vertical_flow_components, UnitRange{Int}}}
+const ExactVerticalFlowCVector{T} = CVector{T, Vector{T}, ExactVerticalFlowTuple}
+
 
 # LinkType.flow and NodeType.FlowBoundary
 @enumx LinkType flow control listen observation none
@@ -160,7 +153,6 @@ const ScalarConstantInterpolation = ConstantInterpolation{
     Vector{Float64},
     Vector{Float64},
     Float64,
-    SearchProperties{Float64},
 }
 
 "LinearInterpolation from a Float64 to a Float64"
@@ -170,7 +162,6 @@ const ScalarLinearInterpolation = LinearInterpolation{
     Vector{Float64},
     Vector{Float64},
     Float64,
-    SearchProperties{Float64},
 }
 
 "SmoothedConstantInterpolation from a Float64 to a Float64"
@@ -182,7 +173,6 @@ const ScalarBlockInterpolation = SmoothedConstantInterpolation{
     Vector{Float64},
     Float64,
     Float64,
-    SearchProperties{Float64},
 }
 
 "PCHIPInterpolation (a special type of CubicHermiteSpline) from a Float64 to a Float64"
@@ -193,7 +183,6 @@ const ScalarPCHIPInterpolation = CubicHermiteSpline{
     Vector{Float64},
     Vector{Float64},
     Float64,
-    SearchProperties{Float64},
 }
 
 "ConstantInterpolation from a Float64 to an Int, used to look up indices over time"
@@ -202,7 +191,6 @@ const IndexLookup = ConstantInterpolation{
     Vector{Float64},
     Vector{Float64},
     Int64,
-    SearchProperties{Float64},
 }
 
 @enumx AllocationObjectiveType demand_flow demand_storage low_storage_factor route_priorities none
@@ -416,6 +404,7 @@ In-memory storage of saved mean flows for writing to results.
 @kwdef struct SavedFlow
     # Mean flow rates per internal flow link
     flow::FlowCVector{Float64}
+    exact_positive_forcing::ExactVerticalFlowCVector{Float64}
     inflow::Vector{Float64}
     outflow::Vector{Float64}
     concentration::Matrix{Float64}
@@ -470,22 +459,23 @@ This is used for both static and dynamic values,
 the length of each Vector is the number of Basins.
 """
 @kwdef struct BasinForcing
-    precipitation::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
-    surface_runoff::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+    n::Int
+    precipitation::Vector{ScalarConstantInterpolation} = Vector{ScalarConstantInterpolation}(undef, n)
+    surface_runoff::Vector{ScalarConstantInterpolation} = Vector{ScalarConstantInterpolation}(undef, n)
     potential_evaporation::Vector{ScalarConstantInterpolation} =
-        ScalarConstantInterpolation[]
-    drainage::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
-    infiltration::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
-end
-
-function BasinForcing(n::Integer)
-    return BasinForcing(
-        Vector{ScalarConstantInterpolation}(undef, n),
-        Vector{ScalarConstantInterpolation}(undef, n),
-        Vector{ScalarConstantInterpolation}(undef, n),
-        Vector{ScalarConstantInterpolation}(undef, n),
-        Vector{ScalarConstantInterpolation}(undef, n),
-    )
+        Vector{ScalarConstantInterpolation}(undef, n)
+    drainage::Vector{ScalarConstantInterpolation} = Vector{ScalarConstantInterpolation}(undef, n)
+    infiltration::Vector{ScalarConstantInterpolation} = Vector{ScalarConstantInterpolation}(undef, n)
+    # Integrated incoming forcings since simulation start (all but infiltration are exact)
+    cumulative_infiltration::Vector{Float64} = zeros(n)
+    exact_cumulative_forcing::ExactVerticalFlowCVector{Float64} =
+        CVector(zeros(3n), (; precipitation = 1:n, drainage = (n + 1):2n, surface_runoff = (2n + 1):3n))
+    # Exactly integrated incoming forcings since simulation start at previous saveat
+    exact_cumulative_forcing_prev_saveat::ExactVerticalFlowCVector{Float64} = zero(exact_cumulative_forcing)
+    # Per-dt increment of exact cumulative forcing (cache, non-allocating)
+    cumulative_positive_forcing_dt::ExactVerticalFlowCVector{Float64} = zero(exact_cumulative_forcing)
+    # Time of the last accepted step (used for exact forcing computation in RHS)
+    t_last_accepted::Vector{Float64} = [0.0]
 end
 
 """Current values of the vertical fluxes in a Basin, per node ID.
@@ -507,7 +497,6 @@ const StorageToLevelType = LinearInterpolationIntInv{
     Vector{Float64},
     ScalarLinearInterpolation,
     Float64,
-    SearchProperties{Float64},
 }
 
 """
@@ -533,10 +522,6 @@ Requirements:
     storage_prev_saveat::Vector{Float64} = zeros(length(node_id))
     # The storage rate for computing the minimum basin emptying_time
     dstorage::Vector{Float64} = zeros(length(node_id))
-    # Cumulative flows over the whole simulation for BMI
-    cumulative_infiltration::Vector{Float64} = zeros(length(node_id))
-    cumulative_drainage::Vector{Float64} = zeros(length(node_id))
-    cumulative_surface_runoff::Vector{Float64} = zeros(length(node_id))
     # Basin profile interpolations
     storage_to_level::Vector{StorageToLevelType} =
         Vector{StorageToLevelType}(undef, length(node_id))
@@ -545,7 +530,7 @@ Requirements:
     # Values for allocation if applicable
     demand::Vector{Float64} = zeros(length(node_id))
     allocated::Vector{Float64} = zeros(length(node_id))
-    forcing::BasinForcing = BasinForcing(length(node_id))
+    forcing::BasinForcing = BasinForcing(; n = length(node_id))
     # Concentrations
     concentration_data::ConcentrationData = ConcentrationData()
     # Connected level demand node if applicable
@@ -814,6 +799,7 @@ const TimeDependentCache{T} = @NamedTuple{
         current_derivative::Vector{T},
     },
     user_demand::@NamedTuple{current_demand::Vector{T}, current_return_factor::Vector{T}},
+    basin::ExactVerticalFlowCVector{T},
     t_prev_call::Vector{T},
 } where {T}
 
@@ -1118,9 +1104,9 @@ the object itself is not.
     # Water balance tolerances
     water_balance_abstol::Float64
     water_balance_reltol::Float64
-    # Ranges of the state and flow vectors
-    state_ranges::StateTuple{UnitRange{Int}}
-    flow_ranges::FlowTuple{UnitRange{Int}}
+    # Ranges of the state and flow vectors (flat NamedTuples)
+    state_ranges::RibasimStateTuple
+    flow_ranges::FlowTuple
     # Callback configurations
     do_concentration::Bool
     do_subgrid::Bool
@@ -1189,6 +1175,8 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
         current_return_factor = zeros(n_user_demand),
     )
 
+    basin = zero(p_independent.basin.forcing.exact_cumulative_forcing)
+
     return (;
         level_boundary,
         flow_boundary,
@@ -1196,6 +1184,7 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
         outlet,
         pid_control,
         user_demand,
+        basin,
         t_prev_call = [-1.0],
     )
 end

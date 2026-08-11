@@ -643,7 +643,7 @@ reduction_factor(x::GradientTracer, threshold::Real) = x
 relaxed_root(x::GradientTracer, threshold) = x
 
 
-function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::FlowTuple{UnitRange{Int}}
+function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::FlowTuple
     (;
         pump,
         outlet,
@@ -665,7 +665,7 @@ function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::Flo
     n_user_demand_inflow = mapreduce(length, +, user_demand.inflow_links; init = 0)
     n_user_demand_outflow = length(user_demand.node_id)
 
-    ns_horizontal_flow = [
+    ns_flow = [
         n_pump,
         n_outlet,
         n_flow_boundary,
@@ -674,31 +674,28 @@ function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::Flo
         n_manning_resistance,
         n_user_demand_inflow,
         n_user_demand_outflow,
+        n_basin, # evaporation
+        n_basin, # infiltration
     ]
 
-    n_horizontal_flows = sum(ns_horizontal_flow)
-    ns_horizontal_flow_cumsum = pushfirst!(cumsum(vcat(ns_horizontal_flow)), 0)
+    ns_flow_cumsum = pushfirst!(cumsum(vcat(ns_flow)), 0)
 
     trivial_range = 1:0
-    horizontal_flow_ranges = ntuple(
-        i -> iszero(ns_horizontal_flow[i]) ? trivial_range : (ns_horizontal_flow_cumsum[i] + 1):ns_horizontal_flow_cumsum[i + 1],
-        Val(n_horizontal_flow_components)
-    )
-    vertical_flow_ranges = ntuple(
-        i -> (((i - 1) * n_basin + 1):(i * n_basin)) .+ n_horizontal_flows,
-        Val(n_vertical_flow_components)
+    flow_ranges = ntuple(
+        i -> iszero(ns_flow[i]) ? trivial_range : (ns_flow_cumsum[i] + 1):ns_flow_cumsum[i + 1],
+        Val(n_flow_components)
     )
 
-    return FlowTuple{UnitRange{Int}}((horizontal_flow_ranges, vertical_flow_ranges))
+    return NamedTuple{flow_components}(flow_ranges)
 end
 
 "Create the axis of the state vector"
-function count_state_ranges(nodes::Union{NamedTuple, ParametersIndependent})::StateTuple{UnitRange{Int}}
+function count_state_ranges(nodes::Union{NamedTuple, ParametersIndependent})::RibasimStateTuple
     (; pid_control) = nodes
     n_pid = length(pid_control.node_id)
 
     flow_ranges = count_flow_ranges(nodes)
-    last = values(flow_ranges.vertical_flow)[end].stop
+    last = values(flow_ranges)[end].stop
 
     return (;
         flow = flow_ranges,
@@ -716,7 +713,7 @@ end
 Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
-    set_current_storage!(p, u.flow)
+    set_current_storage!(p, u.flow, t)
     return any(<(0), p.current_basin_properties.current_storage)
 end
 
@@ -970,12 +967,16 @@ function filtered_constant_interpolation(
     times = getproperty.(group, :time)
     mask = map(!ismissing, values)
     return if any(mask)
+        u = values[mask]
         t = seconds_since.(times[mask], config.starttime)
         if !isnothing(node_id)
+            if !valid_time_interpolation(t, u, node_id, cyclic_time)
+                error("Invalid time series for $node_id.")
+            end
             log_timeseries_backfilled(t, config.starttime, node_id, cyclic_time)
         end
         ConstantInterpolation(
-            values[mask],
+            u,
             t;
             extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
         )
@@ -1066,16 +1067,10 @@ function set_flow_links!(inflow_link, outflow_link, basin::Basin)
     placeholder_node_id = NodeID(NodeType.Terminal, 0, 0)
 
     for id in node_id
-        # Incoming forcings
-        link_metadata = LinkMetadata(0, LinkType.flow, (placeholder_node_id, id))
-        outflow_link.vertical_flow.precipitation[id.idx] = link_metadata
-        outflow_link.vertical_flow.drainage[id.idx] = link_metadata
-        outflow_link.vertical_flow.surface_runoff[id.idx] = link_metadata
-
         # Outgoing forcings
         link_metadata = LinkMetadata(0, LinkType.flow, (id, placeholder_node_id))
-        inflow_link.vertical_flow.evaporation[id.idx] = link_metadata
-        inflow_link.vertical_flow.infiltration[id.idx] = link_metadata
+        inflow_link.evaporation[id.idx] = link_metadata
+        inflow_link.infiltration[id.idx] = link_metadata
     end
     return
 end
@@ -1084,7 +1079,7 @@ end
 Get the LinkMetadata for the in- and outflow link for each flow in a
 vector of type FlowCVector
 """
-function get_flow_links(nodes::NamedTuple, flow_ranges::FlowTuple{UnitRange{Int}})
+function get_flow_links(nodes::NamedTuple, flow_ranges::NamedTuple)
     (;
         pump,
         outlet,
@@ -1095,22 +1090,19 @@ function get_flow_links(nodes::NamedTuple, flow_ranges::FlowTuple{UnitRange{Int}
         user_demand,
         basin,
     ) = nodes
-    n_flows = flow_ranges.vertical_flow[end].stop
+    n_flows = last(flow_ranges[end])
     placeholder_link_metadata = LinkMetadata(0, LinkType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
 
     inflow_link = CVector(fill(placeholder_link_metadata, n_flows), flow_ranges)
     outflow_link = CVector(fill(placeholder_link_metadata, n_flows), flow_ranges)
 
-    inflow_link_ = inflow_link.horizontal_flow
-    outflow_link_ = outflow_link.horizontal_flow
-
-    set_flow_links!(inflow_link_.pump, outflow_link_.pump, pump)
-    set_flow_links!(inflow_link_.outlet, outflow_link_.outlet, outlet)
-    set_flow_links!(inflow_link_.flow_boundary, outflow_link_.flow_boundary, flow_boundary)
-    set_flow_links!(inflow_link_.tabulated_rating_curve, outflow_link_.tabulated_rating_curve, tabulated_rating_curve)
-    set_flow_links!(inflow_link_.linear_resistance, outflow_link_.linear_resistance, linear_resistance)
-    set_flow_links!(inflow_link_.manning_resistance, outflow_link_.manning_resistance, manning_resistance)
-    set_flow_links!(inflow_link_.user_demand_inflow, outflow_link_.user_demand_outflow, user_demand)
+    set_flow_links!(inflow_link.pump, outflow_link.pump, pump)
+    set_flow_links!(inflow_link.outlet, outflow_link.outlet, outlet)
+    set_flow_links!(inflow_link.flow_boundary, outflow_link.flow_boundary, flow_boundary)
+    set_flow_links!(inflow_link.tabulated_rating_curve, outflow_link.tabulated_rating_curve, tabulated_rating_curve)
+    set_flow_links!(inflow_link.linear_resistance, outflow_link.linear_resistance, linear_resistance)
+    set_flow_links!(inflow_link.manning_resistance, outflow_link.manning_resistance, manning_resistance)
+    set_flow_links!(inflow_link.user_demand_inflow, outflow_link.user_demand_outflow, user_demand)
     set_flow_links!(inflow_link, outflow_link, basin)
 
     return inflow_link, outflow_link
@@ -1138,19 +1130,17 @@ function aggregate_flows!(
         do_horizontal_flows::Bool = true,
         do_vertical_flows::Bool = true,
         weight::Number = true,
-        from_zero::Bool = true
+        from_zero::Bool = true,
+        positive_forcing::Union{ExactVerticalFlowCVector, Nothing} = nothing,
     )
-    (; horizontal_flow, vertical_flow) = flow
-    (; inflow_link, outflow_link, basin) = p_independent
-    n_basin = length(basin.node_id)
+    (; inflow_link, outflow_link) = p_independent
 
     from_zero && (aggregate .= 0)
 
     if do_horizontal_flows
-        # Use length of the range to handle both shifted (sub-CVector from state)
-        # and unshifted (standalone FlowCVector) axes correctly
-        for idx in eachindex(horizontal_flow)
-            flow_ = horizontal_flow[idx]
+        n_horizontal_flow = flow.evaporation.offset1
+        for idx in 1:n_horizontal_flow
+            flow_ = flow[idx]
             inflow_id = inflow_link[idx].link[1]
             outflow_id = outflow_link[idx].link[2]
             positive_flow = (flow_ > 0)
@@ -1170,17 +1160,12 @@ function aggregate_flows!(
     end
 
     if do_vertical_flows
-        for idx in 1:n_basin
-            if do_inflows
-                aggregate[idx] += weight * (
-                    vertical_flow.drainage[idx] +
-                        vertical_flow.surface_runoff[idx] +
-                        vertical_flow.precipitation[idx]
-                )
-            end
-            if do_outflows
-                aggregate[idx] -= weight * (vertical_flow.evaporation[idx] + vertical_flow.infiltration[idx])
-            end
+        if do_inflows && !isnothing(positive_forcing)
+            (; precipitation, drainage, surface_runoff) = positive_forcing
+            @. aggregate += weight * (precipitation + drainage + surface_runoff)
+        end
+        if do_outflows
+            @. aggregate -= weight * (flow.evaporation + flow.infiltration)
         end
     end
     return nothing
@@ -1191,7 +1176,7 @@ function get_incidence_matrix(
         outflow_link::FlowCVector{LinkMetadata},
     )
     n_flow = length(inflow_link)
-    n_basin = length(inflow_link.vertical_flow.evaporation)
+    n_basin = length(inflow_link.evaporation)
 
     incidence_matrix = spzeros(Int, n_basin, n_flow)
 
@@ -1212,12 +1197,12 @@ end
 function get_inflows(flow::FlowCVector, user_demand::UserDemand, idx::Integer)
     offset_1 = user_demand.inflow_link_offsets[idx]
     offset_2 = user_demand.inflow_link_offsets[idx + 1]
-    return @view flow.horizontal_flow.user_demand_inflow[(offset_1 + 1):offset_2]
+    return @view flow.user_demand_inflow[(offset_1 + 1):offset_2]
 end
 
 function set_uplink_downlink_storage!(
-        storage_uplink::FlowCVector,
-        storage_downlink::FlowCVector,
+        storage_uplink::AbstractVector,
+        storage_downlink::AbstractVector,
         storage::AbstractVector,
         p_independent::ParametersIndependent,
     )

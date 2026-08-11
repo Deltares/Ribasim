@@ -366,7 +366,7 @@ function set_simulation_data!(
     for node_id in only(pump_constraints.axes)
         constraint = pump_constraints[node_id]
         upstream_node_id = pump.inflow_link[node_id.idx].link[1]
-        q = flow.horizontal_flow.pump[node_id.idx]
+        q = flow.pump[node_id.idx]
         if upstream_node_id.is_basin
             low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
             JuMP.set_normalized_coefficient(
@@ -383,7 +383,7 @@ function set_simulation_data!(
     for node_id in only(outlet_constraints.axes)
         constraint = outlet_constraints[node_id]
         upstream_node_id = outlet.inflow_link[node_id.idx].link[1]
-        q = flow.horizontal_flow.outlet[node_id.idx]
+        q = flow.outlet[node_id.idx]
         if upstream_node_id.is_basin
             low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
             JuMP.set_normalized_coefficient(

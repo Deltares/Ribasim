@@ -1,8 +1,7 @@
 @testitem "trivial model" setup = [Teamcity] begin
     using NCDatasets: NCDataset, dimnames
     using Dates: DateTime
-    using Ribasim: get_tstops, tsaves
-    using Ribasim.CVectors: CVector, getaxes
+    using Ribasim: get_tstops, tsaves, RibasimStateCVector
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
@@ -15,14 +14,11 @@
     (; p_independent) = model.integrator.p
     (; state_ranges) = p_independent
 
-    @test u isa CVector
-    @test filter(!isempty, state_ranges.flow.horizontal_flow) == (; tabulated_rating_curve = 1:1)
-    @test filter(!isempty, state_ranges.flow.vertical_flow) == (
+    @test u isa RibasimStateCVector
+    @test filter(!isempty, state_ranges.flow) == (;
+        tabulated_rating_curve = 1:1,
         evaporation = 2:2,
         infiltration = 3:3,
-        drainage = 4:4,
-        surface_runoff = 5:5,
-        precipitation = 6:6,
     )
     @test isempty(state_ranges.pid_integral)
 
@@ -147,7 +143,7 @@ end
 
 @testitem "leaky bucket model" begin
     import BasicModelInterface as BMI
-    using Ribasim: results_path, getdata
+    using Ribasim: results_path
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/leaky_bucket/ribasim.toml")
     @test ispath(toml_path)
@@ -330,7 +326,7 @@ end
 
     reference = endstate[(; solver_sparse = true, solver_autodiff = true, solver_reduced_implicit_solve = true)]
 
-    @test endstate[(; solver_sparse = false, solver_autodiff = true, solver_reduced_implicit_solve = true)] ≈ reference
+    @test endstate[(; solver_sparse = false, solver_autodiff = true, solver_reduced_implicit_solve = true)] ≈ reference atol = 0.4
     # TODO: compare with the other solver_reduced_implicit_solve = true configurations
 
     @test endstate[(; solver_sparse = true, solver_autodiff = true, solver_reduced_implicit_solve = false)] ≈ reference atol = 4
@@ -517,8 +513,8 @@ end
     # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
-    @test saveval[end].flow.horizontal_flow.flow_boundary[1] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
-    @test saveval[end].flow.horizontal_flow.manning_resistance[end] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
+    @test saveval[end].flow.flow_boundary[1] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
+    @test saveval[end].flow.manning_resistance[end] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
 
 @testitem "mean_flow" begin

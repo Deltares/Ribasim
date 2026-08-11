@@ -66,6 +66,8 @@ using SciMLBase:
     LinearSolution,
     derivative_discontinuity!
 
+using LinearSolve: AbstractDenseFactorization
+
 using OrdinaryDiffEqDifferentiation:
     OrdinaryDiffEqDifferentiation, do_newJW, jacobian2W!, dolinsolve
 
@@ -74,7 +76,8 @@ using SciMLOperators: SciMLOperators, WOperator, AbstractSciMLOperator
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
-using SparseConnectivityTracer: TracerSparsityDetector, GradientTracer
+using SparseConnectivityTracer:
+    SparseConnectivityTracer, TracerSparsityDetector, GradientTracer
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
@@ -87,6 +90,7 @@ using LinearAlgebra: LinearAlgebra, mul!, dot, I
 # basin profiles and TabulatedRatingCurve. See also the node
 # references in the docs.
 using DataInterpolations:
+    DataInterpolations,
     ConstantInterpolation,
     LinearInterpolation,
     PCHIPInterpolation,
@@ -99,9 +103,9 @@ using DataInterpolations:
     integral,
     AbstractInterpolation,
     ExtrapolationType
+
 using DataInterpolations.ExtrapolationType:
     Constant as ConstantExtrapolation, Periodic, Linear
-using FindFirstFunctions: SearchProperties
 
 # Modeling language for Mathematical Optimization.
 # Used for allocation, see the docs: https://ribasim.org/dev/allocation.html

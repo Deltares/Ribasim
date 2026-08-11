@@ -266,8 +266,8 @@ end
     (; jac_prototype) = model.integrator.f
     jac_prototype.nzval .= 1
     # rows, cols, _ = findnz(jac_prototype)
-    rows_expected = [1, 3, 4, 8, 1, 3, 4, 8, 1, 3, 4, 8, 1, 3, 4, 8, 1, 3, 4, 8, 1, 3, 4, 8, 1, 3, 4, 8, 1]
-    cols_expected = [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8]
+    rows_expected = [1, 3, 4, 5, 1, 3, 4, 5, 1, 3, 4, 5, 1, 3, 4, 5, 1]
+    cols_expected = [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5]
     jac_prototype_expected =
         sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
     @test jac_prototype == jac_prototype_expected
@@ -278,8 +278,8 @@ end
     model = Ribasim.Model(config)
     (; jac_prototype) = model.integrator.f
     jac_prototype.nzval .= 1
-    rows_expected = [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5]
-    cols_expected = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8]
+    rows_expected = [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5]
+    cols_expected = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5]
     jac_prototype_expected =
         sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
     @test jac_prototype == jac_prototype_expected

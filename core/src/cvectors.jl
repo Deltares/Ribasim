@@ -170,6 +170,7 @@ end
 # Fast first/last index for nested NamedTuples without mapreduce overhead
 _first_index(loc::AbstractUnitRange{<:Integer}) = first(loc)
 _first_index(loc::NamedTuple) = _first_index(first(values(loc)))
+_first_index(loc::Int) = loc
 
 _last_index(loc::AbstractUnitRange{<:Integer}) = last(loc)
 _last_index(loc::NamedTuple) = _last_index(last(values(loc)))

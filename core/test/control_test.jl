@@ -9,7 +9,7 @@
     model = Ribasim.run(toml_path)
     (; p_independent) = model.integrator.p
     (; discrete_control, pump, graph) = p_independent
-    (; horizontal_flow) = get_du(model.integrator).flow
+    du = get_du(model.integrator)
 
     # Control input(flow rates)
     pump_control_mapping = pump.control_mapping
@@ -59,8 +59,8 @@
         discrete_control.compound_variables[1][2].threshold_high[1](0)
 
 
-    @test all(x -> isapprox(x, 0; atol = 1.0e-10), horizontal_flow.linear_resistance)
-    @test all(x -> isapprox(x, 0; atol = 1.0e-10), horizontal_flow.pump)
+    @test all(x -> isapprox(x, 0; atol = 1.0e-10), du.flow.linear_resistance)
+    @test all(x -> isapprox(x, 0; atol = 1.0e-10), du.flow.pump)
 end
 
 @testitem "Flow condition control" begin

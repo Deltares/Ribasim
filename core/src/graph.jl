@@ -355,12 +355,12 @@ function get_flow(
 
     # Connector node flows
     for (flow_component_data, node_type) in (
-            (flow.horizontal_flow.pump, NodeType.Pump),
-            (flow.horizontal_flow.outlet, NodeType.Outlet),
-            (flow.horizontal_flow.tabulated_rating_curve, NodeType.TabulatedRatingCurve),
-            (flow.horizontal_flow.linear_resistance, NodeType.LinearResistance),
-            (flow.horizontal_flow.manning_resistance, NodeType.ManningResistance),
-            (flow.horizontal_flow.flow_boundary, NodeType.FlowBoundary),
+            (flow.pump, NodeType.Pump),
+            (flow.outlet, NodeType.Outlet),
+            (flow.tabulated_rating_curve, NodeType.TabulatedRatingCurve),
+            (flow.linear_resistance, NodeType.LinearResistance),
+            (flow.manning_resistance, NodeType.ManningResistance),
+            (flow.flow_boundary, NodeType.FlowBoundary),
         )
         if from_id.type == node_type
             return flow_component_data[from_id.idx]
@@ -371,12 +371,12 @@ function get_flow(
 
     # UserDemand
     if from_id.type == NodeType.UserDemand
-        return flow.horizontal_flow.user_demand_outflow[from_id.idx]
+        return flow.user_demand_outflow[from_id.idx]
     elseif to_id.type == NodeType.UserDemand
         # Find the index of the UserDemand inflow
         node_inflow_idx = findfirst(lm -> lm.link[1] == from_id, user_demand.inflow_links[to_id.idx])
         offset = user_demand.inflow_link_offsets[to_id.idx]
-        return flow.horizontal_flow.user_demand_inflow[offset + node_inflow_idx]
+        return flow.user_demand_inflow[offset + node_inflow_idx]
     end
 
     error("Couldn't obtain flow for link $(link.link)")

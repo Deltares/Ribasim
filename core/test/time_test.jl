@@ -66,7 +66,7 @@ end
     starting_precipitation =
         basin.vertical_flux.precipitation[1]
     BMI.update_until(model, saveat)
-    mean_precipitation = only(model.saved.flow.saveval).flow.vertical_flow.precipitation[1]
+    mean_precipitation = only(model.saved.flow.saveval).exact_positive_forcing.precipitation[1]
 
     # Given that precipitation stops after 15 of the 20 days
     @test mean_precipitation ≈ 3 / 4 * starting_precipitation
