@@ -61,11 +61,6 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
             continue
         end
 
-        if flow_idx in flow_ranges.flow_boundary
-            # FlowBoundary is handled separately in update_concentrations!
-            continue
-        end
-
         cumulative_flow = cumulative_flow_dt[flow_idx]
         from_node = inflow_link[flow_idx].link[1]
         to_node = outflow_link[flow_idx].link[2]

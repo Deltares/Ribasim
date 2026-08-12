@@ -376,9 +376,9 @@ function basin_data(model::Model; table::Bool = true)
 
     inflow_rate = FlatVector(saved.flow.saveval, :inflow)
     outflow_rate = FlatVector(saved.flow.saveval, :outflow)
-    drainage = FlatVector(saved.flow.saveval, :exact_positive_forcing, :drainage)
-    precipitation = FlatVector(saved.flow.saveval, :exact_positive_forcing, :precipitation)
-    surface_runoff = FlatVector(saved.flow.saveval, :exact_positive_forcing, :surface_runoff)
+    drainage = FlatVector(saved.flow.saveval, :exact_vertical_forcing, :drainage)
+    precipitation = FlatVector(saved.flow.saveval, :exact_vertical_forcing, :precipitation)
+    surface_runoff = FlatVector(saved.flow.saveval, :exact_vertical_forcing, :surface_runoff)
     evaporation = FlatVector(saved.flow.saveval, :flow, :evaporation)
     infiltration = FlatVector(saved.flow.saveval, :flow, :infiltration)
     storage_rate = FlatVector(saved.flow.saveval, :storage_rate)
@@ -461,10 +461,16 @@ function flow_data(model::Model; table::Bool = true)
 
     for (ti, saved_flow) in enumerate(saveval)
         for (fi, link) in enumerate(internal_flow_links)
-            internal_flow_rate[fi] =
-                get_flow(saved_flow.flow, link.link, p)
-            internal_convergence[fi] =
-                get_flow(saved_flow.convergence.flow, link.link, p)
+            if link.link[1].type == NodeType.FlowBoundary
+                internal_flow_rate[fi] =
+                    saved_flow.boundary_flow[link.link[1].idx]
+                internal_convergence[fi] = missing
+            else
+                internal_flow_rate[fi] =
+                    get_flow(saved_flow.flow, link.link, p)
+                internal_convergence[fi] =
+                    get_flow(saved_flow.convergence.flow, link.link, p)
+            end
         end
         mul!(
             view(flow_rate, (1 + (ti - 1) * nflow):(ti * nflow)),

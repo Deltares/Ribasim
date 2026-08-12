@@ -266,8 +266,8 @@ end
     (; jac_prototype) = model.integrator.f
     jac_prototype.nzval .= 1
     # rows, cols, _ = findnz(jac_prototype)
-    rows_expected = [1, 3, 4, 5, 1, 3, 4, 5, 1, 3, 4, 5, 1, 3, 4, 5, 1]
-    cols_expected = [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5]
+    rows_expected = [1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1]
+    cols_expected = [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4]
     jac_prototype_expected =
         sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
     @test jac_prototype == jac_prototype_expected

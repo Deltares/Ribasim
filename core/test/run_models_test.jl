@@ -513,7 +513,7 @@ end
     # https://www.hec.usace.army.mil/confluence/rasdocs/ras1dtechref/latest/theoretical-basis-for-one-dimensional-and-two-dimensional-hydrodynamic-calculations/1d-steady-flow-water-surface-profiles/friction-loss-evaluation
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
-    @test saveval[end].flow.flow_boundary[1] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
+    @test saveval[end].boundary_flow[1] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
     @test saveval[end].flow.manning_resistance[end] ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
 

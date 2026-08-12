@@ -347,9 +347,11 @@ end
 function get_flow(
         flow::FlowCVector,
         link::Tuple{NodeID, NodeID},
-        p::Parameters
+        p::Parameters;
+        boundary_flow::Union{Nothing, Vector{Float64}} = nothing,
+        t::Union{Number, Nothing} = nothing
     )
-    (; user_demand) = p.p_independent
+    (; user_demand, flow_boundary) = p.p_independent
 
     from_id, to_id = link
 
@@ -360,12 +362,21 @@ function get_flow(
             (flow.tabulated_rating_curve, NodeType.TabulatedRatingCurve),
             (flow.linear_resistance, NodeType.LinearResistance),
             (flow.manning_resistance, NodeType.ManningResistance),
-            (flow.flow_boundary, NodeType.FlowBoundary),
         )
         if from_id.type == node_type
             return flow_component_data[from_id.idx]
         elseif to_id.type == node_type
             return flow_component_data[to_id.idx]
+        end
+    end
+
+    # FlowBoundary
+    if from_id.type == NodeType.FlowBoundary
+        return if isnothing(boundary_flow)
+            @assert !isnothing(t) "Cannot evaluate flow rate for $from_id since t is not provided."
+            flow_boundary.flow_rate[from_id.idx](t)
+        else
+            boundary_flow[from_id.idx]
         end
     end
 
@@ -379,7 +390,7 @@ function get_flow(
         return flow.user_demand_inflow[offset + node_inflow_idx]
     end
 
-    error("Couldn't obtain flow for link $(link.link)")
+    error("Couldn't obtain flow for link $link.")
     return 0.0
 end
 

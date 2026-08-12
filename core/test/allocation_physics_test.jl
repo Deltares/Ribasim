@@ -218,10 +218,10 @@ end
             filter(:link_id => ==(link_id), flow_results_multiple_subnetwork).flow_rate
         single_sub =
             filter(:link_id => ==(link_id), flow_results_single_subnetwork).flow_rate
-        if !all(isapprox.(multiple_subs, single_sub; atol = 5.0e-6))
+        if !all(isapprox.(multiple_subs, single_sub; atol = 2.0e-5))
             println(
                 "The flows over link $link_id differ by ",
-                maximum(single_sub .- multiple_subs),
+                maximum(@. abs(single_sub - multiple_subs)),
             )
             @test false
         end

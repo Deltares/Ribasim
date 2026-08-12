@@ -71,7 +71,7 @@ function set_simulation_data!(
         # Set bounds on the storage change based on the current storage and the Basin minimum, maximum, and a delta_storage prediction
         Δstorage = storage_change[basin_id]
         JuMP.set_lower_bound(Δstorage, -storage_now / scaling.storage)
-        Δstorage_predicted = formulate_dstorage_single_basin(du.flow, p.p_independent, basin_id) * Δt_allocation
+        Δstorage_predicted = formulate_dstorage_single_basin(du.flow, p.p_independent, basin_id; t = integrator.t) * Δt_allocation
 
         Δstorage_upper = if storage_now > storage_max
             max(2 * Δstorage_predicted, 0.0)
@@ -766,7 +766,7 @@ function set_demands!(
 end
 
 function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator)::Nothing
-    (; p) = integrator
+    (; p, t) = integrator
     (; problem, scaling, node_ids_in_subnetwork, Δt_allocation) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
     flow = problem[:flow]
@@ -782,7 +782,8 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
                 flow[link], get_flow(
                     du.flow,
                     link,
-                    p
+                    p;
+                    t
                 ) / scaling.flow
             )
         end
@@ -792,7 +793,7 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
     for node_id in basin_ids_subnetwork
         JuMP.set_start_value(
             storage_change[node_id],
-            formulate_dstorage_single_basin(du.flow, p.p_independent, node_id) * Δt_allocation / scaling.storage,
+            formulate_dstorage_single_basin(du.flow, p.p_independent, node_id; t) * Δt_allocation / scaling.storage,
         )
     end
 

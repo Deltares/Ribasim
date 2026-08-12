@@ -12,7 +12,7 @@ function create_callbacks(
     (; basin) = p_independent
     callbacks = SciMLBase.DECallback[]
 
-    # Call set_current_basin_properties! so that these are up to date in the subsequent callbacks
+    # Call set_current_basin_properties! and formulate_cumulative_boundary_flow! so that these are up to date in the subsequent callbacks
     basin_properties_cb = FunctionCallingCallback(set_current_basin_properties!)
     push!(callbacks, basin_properties_cb)
 
@@ -81,6 +81,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
         basin,
         user_demand,
         cumulative_flow_dt,
+        flow_boundary,
     ) = p_independent
     (; forcing, vertical_flux) = basin
     dt = t - tprev
@@ -89,17 +90,20 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     @. cumulative_flow_dt = u.flow - uprev.flow
 
     # Compute per-dt increment of exact cumulative forcing
-    @. forcing.cumulative_positive_forcing_dt.precipitation = vertical_flux.precipitation * dt
-    @. forcing.cumulative_positive_forcing_dt.surface_runoff = vertical_flux.surface_runoff * dt
-    @. forcing.cumulative_positive_forcing_dt.drainage = vertical_flux.drainage * dt
+    @. forcing.exact_cumulative_forcing_dt.precipitation = vertical_flux.precipitation * dt
+    @. forcing.exact_cumulative_forcing_dt.surface_runoff = vertical_flux.surface_runoff * dt
+    @. forcing.exact_cumulative_forcing_dt.drainage = vertical_flux.drainage * dt
+
+    for idx in eachindex(flow_boundary.node_id)
+        flow_boundary.cumulative_flow_dt[idx] = integral(flow_boundary.flow_rate[idx], tprev, t)
+    end
 
     # Update total cumulative forcing
-    @. forcing.exact_cumulative_forcing.precipitation += forcing.cumulative_positive_forcing_dt.precipitation
-    @. forcing.exact_cumulative_forcing.surface_runoff += forcing.cumulative_positive_forcing_dt.surface_runoff
-    @. forcing.exact_cumulative_forcing.drainage += forcing.cumulative_positive_forcing_dt.drainage
+    @. forcing.exact_cumulative_forcing.precipitation += forcing.exact_cumulative_forcing_dt.precipitation
+    @. forcing.exact_cumulative_forcing.surface_runoff += forcing.exact_cumulative_forcing_dt.surface_runoff
+    @. forcing.exact_cumulative_forcing.drainage += forcing.exact_cumulative_forcing_dt.drainage
     forcing.t_last_accepted[1] = t
 
-    # cumulative_flow_dt is updated in correct_step!
     forcing.cumulative_infiltration .+= cumulative_flow_dt.infiltration
 
     for node_id in user_demand.node_id
@@ -112,7 +116,7 @@ end
 
 function update_concentrations!(u, t, integrator)::Nothing
     (; p, tprev) = integrator
-    (; p_independent, current_basin_properties) = p
+    (; p_independent, current_basin_properties, time_dependent_cache) = p
     (; current_storage) = current_basin_properties
     (; basin, flow_boundary, do_concentration, cumulative_flow_dt) = p_independent
     (; storage_prev_dt, concentration_data, forcing) = basin
@@ -138,21 +142,21 @@ function update_concentrations!(u, t, integrator)::Nothing
         add_substance_mass!(
             mass_node,
             concentration_itp_drainage[node_id.idx],
-            forcing.cumulative_positive_forcing_dt.drainage[node_id.idx],
+            forcing.exact_cumulative_forcing_dt.drainage[node_id.idx],
             t,
         )
 
         add_substance_mass!(
             mass_node,
             concentration_itp_precipitation[node_id.idx],
-            forcing.cumulative_positive_forcing_dt.precipitation[node_id.idx],
+            forcing.exact_cumulative_forcing_dt.precipitation[node_id.idx],
             t,
         )
 
         add_substance_mass!(
             mass_node,
             concentration_itp_surface_runoff[node_id.idx],
-            forcing.cumulative_positive_forcing_dt.surface_runoff[node_id.idx],
+            forcing.exact_cumulative_forcing_dt.surface_runoff[node_id.idx],
             t,
         )
 
@@ -173,7 +177,7 @@ function update_concentrations!(u, t, integrator)::Nothing
         add_substance_mass!(
             mass[outflow_id.idx],
             flow_boundary.concentration_itp[id.idx],
-            cumulative_flow_dt.flow_boundary[id.idx],
+            flow_boundary.cumulative_flow_dt[id.idx],
             t,
         )
     end
@@ -185,7 +189,8 @@ function update_concentrations!(u, t, integrator)::Nothing
         cumulative_flow_dt,
         p_independent;
         do_outflows = false,
-        positive_forcing = forcing.cumulative_positive_forcing_dt,
+        positive_vertical_forcing = forcing.exact_cumulative_forcing_dt,
+        boundary_flow = flow_boundary.cumulative_flow_dt,
     )
 
     # Update the Basin concentrations based on the added mass and flows
@@ -259,12 +264,18 @@ Save all flow rates (averaged over the saveat interval) and vertical fluxes.
 """
 function save_flow(u, t, integrator)
     (; p_independent, current_basin_properties) = integrator.p
-    (; basin, u_prev_saveat, cumulative_flow_dt, state_ranges) = p_independent
+    (; basin, flow_boundary, u_prev_saveat, cumulative_flow_dt, state_ranges) = p_independent
     Δt = get_Δt(integrator)
 
     # Compute mean flow rate per internal link from cumulative flows
     flow_mean = similar(cumulative_flow_dt)
     @. flow_mean = (u.flow - u_prev_saveat.flow) / Δt
+
+    # FlowBoundary
+    boundary_flow_mean = zeros(length(flow_boundary.node_id))
+    for idx in eachindex(flow_boundary.node_id)
+        boundary_flow_mean[idx] = integral(flow_boundary.flow_rate[idx], t - Δt, t) / Δt
+    end
 
     n_basin = length(basin.node_id)
     inflow_mean = zeros(n_basin)
@@ -276,6 +287,7 @@ function save_flow(u, t, integrator)
         p_independent;
         do_vertical_flows = false,
         do_outflows = false,
+        boundary_flow = boundary_flow_mean,
     )
     aggregate_flows!(
         outflow_mean,
@@ -286,7 +298,7 @@ function save_flow(u, t, integrator)
         weight = -1,
     )
 
-    exact_positive_forcing_mean = (
+    exact_vertical_forcing_mean = (
         basin.forcing.exact_cumulative_forcing -
             basin.forcing.exact_cumulative_forcing_prev_saveat
     ) / Δt
@@ -304,7 +316,8 @@ function save_flow(u, t, integrator)
 
     saved_flow = SavedFlow(;
         flow = flow_mean,
-        exact_positive_forcing = exact_positive_forcing_mean,
+        exact_vertical_forcing = exact_vertical_forcing_mean,
+        boundary_flow = boundary_flow_mean,
         inflow = inflow_mean,
         outflow = outflow_mean,
         concentration,
@@ -348,9 +361,9 @@ function check_water_balance_error!(
         ) in zip(
             saved_flow.inflow,
             saved_flow.outflow,
-            saved_flow.exact_positive_forcing.precipitation,
-            saved_flow.exact_positive_forcing.surface_runoff,
-            saved_flow.exact_positive_forcing.drainage,
+            saved_flow.exact_vertical_forcing.precipitation,
+            saved_flow.exact_vertical_forcing.surface_runoff,
+            saved_flow.exact_vertical_forcing.drainage,
             saved_flow.flow.evaporation,
             saved_flow.flow.infiltration,
             current_basin_properties.current_storage,
@@ -396,7 +409,9 @@ function save_solver_stats(u, t, integrator)
 end
 
 function set_current_basin_properties!(u::RibasimStateCVector, t::Number, integrator::DEIntegrator)
-    set_current_basin_properties!(u.flow, integrator.p, t)
+    (; p) = integrator
+    formulate_cumulative_boundary_flow!(p.p_independent.flow_boundary, p, t)
+    set_current_basin_properties!(u.flow, p, t)
     return nothing
 end
 

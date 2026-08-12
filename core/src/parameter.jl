@@ -12,7 +12,6 @@ const state_components = (:flow, :pid_integral)
 const flow_components = (
     :pump,
     :outlet,
-    :flow_boundary,
     :tabulated_rating_curve,
     :linear_resistance,
     :manning_resistance,
@@ -24,7 +23,7 @@ const flow_components = (
 
 exact_vertical_flow_components = (:precipitation, :drainage, :surface_runoff)
 
-n_flow_components = length(flow_components)
+const n_flow_components = length(flow_components)
 const FlowTuple = NamedTuple{flow_components, NTuple{n_flow_components, UnitRange{Int}}}
 const FlowCVector{T} = CVector{T, Vector{T}, FlowTuple}
 
@@ -392,7 +391,8 @@ end
 """
 In-memory storage of saved mean flows for writing to results.
 
-- `flow`: The mean flows on all links and Basin forcings
+- `flow`: The mean flows on all links and Basin forcings which aren't integrated exactly
+- `boundary_flow`: The mean boundary fl
 - `inflow`: The sum of the mean flows coming into each Basin
 - `outflow`: The sum of the mean flows going out of each Basin
 - `concentration`: Concentrations for each Basin and substance
@@ -404,7 +404,8 @@ In-memory storage of saved mean flows for writing to results.
 @kwdef struct SavedFlow
     # Mean flow rates per internal flow link
     flow::FlowCVector{Float64}
-    exact_positive_forcing::ExactVerticalFlowCVector{Float64}
+    boundary_flow::Vector{Float64}
+    exact_vertical_forcing::ExactVerticalFlowCVector{Float64}
     inflow::Vector{Float64}
     outflow::Vector{Float64}
     concentration::Matrix{Float64}
@@ -473,7 +474,7 @@ the length of each Vector is the number of Basins.
     # Exactly integrated incoming forcings since simulation start at previous saveat
     exact_cumulative_forcing_prev_saveat::ExactVerticalFlowCVector{Float64} = zero(exact_cumulative_forcing)
     # Per-dt increment of exact cumulative forcing (cache, non-allocating)
-    cumulative_positive_forcing_dt::ExactVerticalFlowCVector{Float64} = zero(exact_cumulative_forcing)
+    exact_cumulative_forcing_dt::ExactVerticalFlowCVector{Float64} = zero(exact_cumulative_forcing)
     # Time of the last accepted step (used for exact forcing computation in RHS)
     t_last_accepted::Vector{Float64} = [0.0]
 end
@@ -668,12 +669,14 @@ end
 node_id: node ID of the FlowBoundary node
 outflow_link: The outgoing flow link metadata
 flow_rate: flow rate (exact)
+cumulative_flow_dt: The exact cumulative flow over the last timestep
 concentration_itp: matrix with boundary concentrations per FlowBoundary per substance
 """
 @kwdef struct FlowBoundary{I} <: AbstractParameterNode
     node_id::Vector{NodeID}
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     flow_rate::Vector{I}
+    cumulative_flow_dt::Vector{Float64} = zeros(length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
 end
 
@@ -777,7 +780,7 @@ to be of `ForwardDiff.Dual` type. This second version of the cache is created by
 """
 const TimeDependentCache{T} = @NamedTuple{
     level_boundary::@NamedTuple{current_level::Vector{T}},
-    flow_boundary::@NamedTuple{current_boundary_flow::Vector{T}},
+    flow_boundary::@NamedTuple{current_cumulative_boundary_flow::Vector{T}},
     pump::@NamedTuple{
         current_flow_rate_setpoint::Vector{T},
         current_min_flow_rate::Vector{T},
@@ -1141,7 +1144,7 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
     level_boundary = (; current_level = zeros(n_level_boundary))
 
     n_flow_boundary = length(p_independent.flow_boundary.node_id)
-    flow_boundary = (; current_boundary_flow = zeros(n_flow_boundary))
+    flow_boundary = (; current_cumulative_boundary_flow = zeros(n_flow_boundary))
 
     n_pump = length(p_independent.pump.node_id)
     pump = (;

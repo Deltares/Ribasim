@@ -13,11 +13,14 @@ function water_balance!(
     )::Nothing
     (; p_independent) = p
 
-    # Compute and cache Basin level, area, low_storage_factor
-    set_current_basin_properties!(u.flow, p, t)
-
     # Check whether t or u is different from the last water_balance! call
     check_new_input!(p, t)
+
+    # Compute cumulative boundary flows up to the current t
+    formulate_cumulative_boundary_flow!(p_independent.flow_boundary, p, t)
+
+    # Compute and cache Basin level, area, low_storage_factor
+    set_current_basin_properties!(u.flow, p, t)
 
     du .= 0.0
 
@@ -91,7 +94,8 @@ function set_current_storage!(
         with_incidence_matrix::Bool = false,
     )
     (; p_independent, p_mutable, time_dependent_cache) = p
-    (; storage0, vertical_flux, forcing) = p_independent.basin
+    (; basin, flow_boundary) = p_independent
+    (; storage0, vertical_flux, forcing) = basin
 
     # Compute exact cumulative forcing at time t
     if p_mutable.new_time_dependent_cache
@@ -109,12 +113,18 @@ function set_current_storage!(
         @. storage += time_dependent_cache.basin.precipitation +
             time_dependent_cache.basin.drainage +
             time_dependent_cache.basin.surface_runoff
+
+        for idx in eachindex(flow_boundary.node_id)
+            outflow_id = flow_boundary.outflow_link[idx].link[2]
+            storage[outflow_id.idx] += time_dependent_cache.flow_boundary.current_cumulative_boundary_flow[idx]
+        end
     else
         aggregate_flows!(
             storage,
             flow,
             p_independent;
-            positive_forcing = time_dependent_cache.basin
+            positive_vertical_forcing = time_dependent_cache.basin,
+            boundary_flow = time_dependent_cache.flow_boundary.current_cumulative_boundary_flow
         )
     end
 
@@ -313,7 +323,7 @@ function get_pid_value(
     if !iszero(K_d)
         # derivative() of ScalarConstantInterpolation returns a NaN at discontinuities
         dtarget = (target[idx] isa ScalarConstantInterpolation) ? 0.0 : derivative(target[idx], t)
-        dstorage_listened_basin_old = formulate_dstorage_single_basin(du.flow, p_independent, listened_node_id)
+        dstorage_listened_basin_old = formulate_dstorage_single_basin(du.flow, p_independent, listened_node_id; t)
         # The expression below is the solution to an implicit equation for
         # dstorage_listened_basin. This equation results from the fact that if the derivative
         # term in the PID controller is used, the controlled pump flow rate depends on itself.
@@ -325,14 +335,25 @@ end
 function formulate_dstorage_single_basin(
         flow::FlowCVector,
         p_independent::ParametersIndependent,
-        node_id::NodeID,
+        node_id::NodeID;
+        t::Union{Number, Nothing} = nothing,
     )
-    (; incidence_matrix, basin) = p_independent
+    (; incidence_matrix, basin, flow_boundary, basin) = p_independent
     (; vertical_flux) = basin
-    return dot(incidence_matrix[node_id.idx, :], flow) +
+    result = dot(incidence_matrix[node_id.idx, :], flow) +
         vertical_flux.precipitation[node_id.idx] +
         vertical_flux.drainage[node_id.idx] +
         vertical_flux.surface_runoff[node_id.idx]
+
+    if !isnothing(t)
+        for inflow_id in basin.inflow_ids[node_id.idx]
+            if inflow_id.type == NodeType.FlowBoundary
+                result += flow_boundary.flow_rate[inflow_id.idx](t)
+            end
+        end
+    end
+
+    return result
 end
 
 function formulate_flow!(
@@ -849,18 +870,18 @@ function formulate_flow!(
     )
 end
 
-function formulate_flow!(
-        flow::FlowCVector,
+function formulate_cumulative_boundary_flow!(
         flow_boundary::FlowBoundary,
-        storage_uplink::FlowCVector,
-        storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
     )
+    (; p_mutable, time_dependent_cache) = p
     (; flow_rate) = flow_boundary
-    (; current_boundary_flow) = p.time_dependent_cache.flow_boundary
-    for idx in eachindex(flow_boundary.node_id)
-        flow.flow_boundary[idx] = eval_time_interpolation(flow_rate[idx], current_boundary_flow, idx, p, t)
+    (; current_cumulative_boundary_flow) = time_dependent_cache.flow_boundary
+    if p_mutable.new_time_dependent_cache
+        for idx in eachindex(flow_boundary.node_id)
+            current_cumulative_boundary_flow[idx] = integral(flow_rate[idx], 0.0, t)
+        end
     end
     return
 end
@@ -882,7 +903,6 @@ function formulate_flows!(
         pump,
         outlet,
         user_demand,
-        flow_boundary,
     ) = p.p_independent
     common_args = (storage_uplink, storage_downlink, p, t)
     pump_outlet_common_args = (
@@ -899,7 +919,6 @@ function formulate_flows!(
         formulate_flow!(du.flow, manning_resistance, common_args...)
         formulate_flow!(du.flow, tabulated_rating_curve, common_args...)
         formulate_flow!(du.flow, user_demand, common_args...)
-        formulate_flow!(du.flow, flow_boundary, common_args...)
     end
     return nothing
 end

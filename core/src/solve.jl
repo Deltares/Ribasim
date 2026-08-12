@@ -69,6 +69,8 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
 
     function formulate_flows_closure!(du, flow_input, t, do_continuous_control_flows::Bool)
 
+        check_new_input!(p, t)
+
         formulate_flows_args = (
             du,
             flow_input.storage_uplink,
@@ -856,12 +858,9 @@ end
 # The norm applied to the residuals to obtain the final scalar solver error
 @kwdef struct InternalNorm{PI <: ParametersIndependent}
     p_independent::PI
-    # The effective state dimension including eliminated exact forcing components,
-    # so that the RMS norm remains equivalent to before their removal.
-    n_effective::Int = length(p_independent.u_prev_saveat) + 3 * length(p_independent.basin.node_id)
 end
 Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
-(norm::InternalNorm)(u, t) = ODE_DEFAULT_NORM(u, t) * sqrt(length(u) / norm.n_effective)
+(norm::InternalNorm)(u, t) = ODE_DEFAULT_NORM(u, t)
 
 @inline function DiffEqBase.calculate_residuals!(
         out,
@@ -1096,7 +1095,6 @@ function limit_flow!(
     common_args = (integrator, u.flow, uprev.flow, t)
     limit_flow!(common_args..., p_independent.pump)
     limit_flow!(common_args..., p_independent.outlet)
-    limit_flow!(common_args..., p_independent.flow_boundary)
     limit_flow!(common_args..., p_independent.tabulated_rating_curve)
     limit_flow!(common_args..., p_independent.linear_resistance)
     limit_flow!(common_args..., p_independent.manning_resistance)
@@ -1128,16 +1126,6 @@ function limit_flow!(integrator, flow, flow_prev, t, node::Union{Pump, Outlet})
         min_flow = min_flow_rate[idx]
         max_flow = max_flow_rate[idx]
         limit_flow!(flow_node, flow_node_prev, min_flow(t), max_flow(t), dt, idx)
-    end
-    return nothing
-end
-
-function limit_flow!(integrator, flow, flow_prev, t, flow_boundary::FlowBoundary)
-    (; dt) = integrator
-    (; node_id, flow_rate) = flow_boundary
-
-    for idx in eachindex(node_id)
-        flow.flow_boundary[idx] = flow_prev.flow_boundary[idx] + integral(flow_rate[idx], t - dt, t)
     end
     return nothing
 end

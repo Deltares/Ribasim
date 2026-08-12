@@ -641,13 +641,12 @@ get_low_storage_factor(storage::GradientTracer, p::Parameters, id::NodeID) = sto
 low_storage_factor_resistance_node(s_a::GradientTracer, s_b::GradientTracer, p::Parameters, q::Number, inflow_id::NodeID, outflow_id::NodeID) = s_a + s_b
 reduction_factor(x::GradientTracer, threshold::Real) = x
 relaxed_root(x::GradientTracer, threshold) = x
-
+(in::LinearInterpolationIntInv)(t::GradientTracer) = t # Remove with https://github.com/Deltares/Ribasim/issues/3197
 
 function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::FlowTuple
     (;
         pump,
         outlet,
-        flow_boundary,
         tabulated_rating_curve,
         linear_resistance,
         manning_resistance,
@@ -658,7 +657,6 @@ function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::Flo
     n_basin = length(basin.node_id)
     n_pump = length(pump.node_id)
     n_outlet = length(outlet.node_id)
-    n_flow_boundary = length(flow_boundary.node_id)
     n_tabulated_rating_curve = length(tabulated_rating_curve.node_id)
     n_linear_resistance = length(linear_resistance.node_id)
     n_manning_resistance = length(manning_resistance.node_id)
@@ -668,7 +666,6 @@ function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::Flo
     ns_flow = [
         n_pump,
         n_outlet,
-        n_flow_boundary,
         n_tabulated_rating_curve,
         n_linear_resistance,
         n_manning_resistance,
@@ -1098,7 +1095,6 @@ function get_flow_links(nodes::NamedTuple, flow_ranges::NamedTuple)
 
     set_flow_links!(inflow_link.pump, outflow_link.pump, pump)
     set_flow_links!(inflow_link.outlet, outflow_link.outlet, outlet)
-    set_flow_links!(inflow_link.flow_boundary, outflow_link.flow_boundary, flow_boundary)
     set_flow_links!(inflow_link.tabulated_rating_curve, outflow_link.tabulated_rating_curve, tabulated_rating_curve)
     set_flow_links!(inflow_link.linear_resistance, outflow_link.linear_resistance, linear_resistance)
     set_flow_links!(inflow_link.manning_resistance, outflow_link.manning_resistance, manning_resistance)
@@ -1131,9 +1127,10 @@ function aggregate_flows!(
         do_vertical_flows::Bool = true,
         weight::Number = true,
         from_zero::Bool = true,
-        positive_forcing::Union{ExactVerticalFlowCVector, Nothing} = nothing,
+        positive_vertical_forcing::Union{ExactVerticalFlowCVector, Nothing} = nothing,
+        boundary_flow::Union{Vector{Float64}, Nothing} = nothing
     )
-    (; inflow_link, outflow_link) = p_independent
+    (; flow_boundary, inflow_link, outflow_link) = p_independent
 
     from_zero && (aggregate .= 0)
 
@@ -1159,9 +1156,16 @@ function aggregate_flows!(
         end
     end
 
+    if do_horizontal_flows && do_inflows && !isnothing(boundary_flow)
+        for idx in eachindex(flow_boundary.node_id)
+            outflow_id = flow_boundary.outflow_link[idx].link[2]
+            aggregate[outflow_id.idx] += boundary_flow[idx]
+        end
+    end
+
     if do_vertical_flows
-        if do_inflows && !isnothing(positive_forcing)
-            (; precipitation, drainage, surface_runoff) = positive_forcing
+        if do_inflows && !isnothing(positive_vertical_forcing)
+            (; precipitation, drainage, surface_runoff) = positive_vertical_forcing
             @. aggregate += weight * (precipitation + drainage + surface_runoff)
         end
         if do_outflows
