@@ -20,7 +20,7 @@ test-ribasim-api = "pytest -p no:pytest_qgis --basetemp=python/ribasim_api/tests
 # Installation
 # This is only for developers who want their global Julia to use the right version.
 # Use `pixi run julia` for the package used by CI.
-install-julia = "juliaup add 1.12.6 && juliaup override set 1.12.6"
+install-julia = "juliaup add 1.12.7 && juliaup override set 1.12.7"
 install-prek = "prek install --overwrite"
 install = { depends-on = [
     "install-qgis-plugins",
