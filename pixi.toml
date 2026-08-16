@@ -254,7 +254,7 @@ griffe = ">=1,<2"
 hatch = "*"
 hatchling = "*"
 jinja2 = "*"
-julia = { version = "==1.12.6", channel = "https://prefix.dev/julia-forge" }
+julia = { version = "==1.12.7", channel = "https://prefix.dev/julia-forge" }
 jupyter = "*"
 lxml = "*"
 matplotlib = ">=3.9"
