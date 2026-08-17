@@ -132,13 +132,14 @@ function set_current_basin_properties!(
         cumulative_drainage,
         vertical_flux,
         low_storage_threshold,
+        profile,
     ) = basin
 
     # The exact cumulative precipitation and drainage up to the t of this water_balance call
     if p_mutable.new_time_dependent_cache
         dt = t - p_mutable.tprev
         for id in node_id
-            fixed_area = basin_areas(basin, id.idx)[end]
+            fixed_area = fixed_basin_area(profile, id.idx)
             time_dependent_cache.basin.current_cumulative_precipitation[id.idx] =
                 cumulative_precipitation[id.idx] +
                 fixed_area * vertical_flux.precipitation[id.idx] * dt
@@ -157,10 +158,10 @@ function set_current_basin_properties!(
             i = id.idx
             state_and_time_dependent_cache.current_low_storage_factor[i] =
                 reduction_factor(s, low_storage_threshold[i])
-            @inbounds state_and_time_dependent_cache.current_level[i] =
-                get_level_from_storage(basin, i, s)
-            state_and_time_dependent_cache.current_area[i] =
-                basin.level_to_area[i](state_and_time_dependent_cache.current_level[i])
+
+            @inbounds level, area = get_level_and_area_from_storage(profile, i, s)
+            state_and_time_dependent_cache.current_level[i] = level
+            state_and_time_dependent_cache.current_area[i] = area
         end
     end
 end

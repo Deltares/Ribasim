@@ -216,7 +216,7 @@ function update_concentrations!(u, t, integrator)::Nothing
         )
 
         # Precipitation depends on fixed area
-        fixed_area = basin_areas(basin, node_id.idx)[end]
+        fixed_area = fixed_basin_area(basin.profile, node_id.idx)
         added_precipitation = fixed_area * vertical_flux.precipitation[node_id.idx] * dt
         add_substance_mass!(
             mass_node,

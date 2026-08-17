@@ -27,7 +27,8 @@ using DifferentiationInterface:
     jacobian!,
     prepare_derivative,
     derivative!,
-    second_derivative
+    second_derivative,
+    value_and_derivative
 
 using ForwardDiff: derivative as forward_diff
 
@@ -78,9 +79,8 @@ using DataInterpolations:
     LinearInterpolation,
     PCHIPInterpolation,
     CubicHermiteSpline,
+    QuinticHermiteSpline,
     SmoothedConstantInterpolation,
-    LinearInterpolationIntInv,
-    invert_integral,
     get_transition_ts,
     derivative,
     integral,

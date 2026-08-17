@@ -844,30 +844,33 @@ end
 
 
 function output_basin_profiles(
-        all_levels::Vector{Vector{Float64}},
-        all_areas::Vector{Vector{Float64}},
-        all_storage::Vector{Vector{Float64}},
-        all_node_ids::Vector{Int32},
+        basin::Basin,
+        # all_levels::Vector{Vector{Float64}},
+        # all_areas::Vector{Vector{Float64}},
+        # all_storage::Vector{Vector{Float64}},
+        # all_node_ids::Vector{Int32},
         dir::AbstractString,
     )::Nothing
-    # Flatten all data and add node_id column
-    n = sum(length.(all_levels))
-    level = Vector{Float64}(undef, n)
-    area = Vector{Float64}(undef, n)
-    storage = Vector{Float64}(undef, n)
-    node_id = Vector{Int32}(undef, n)
-    idx = 1
-    for (i, nid) in enumerate(all_node_ids)
-        len = length(all_levels[i])
-        level[idx:(idx + len - 1)] = all_levels[i]
-        area[idx:(idx + len - 1)] = all_areas[i]
-        storage[idx:(idx + len - 1)] = all_storage[i]
-        node_id[idx:(idx + len - 1)] .= nid
-        idx += len
-    end
-    data = (; node_id, level, area, storage)
-    filename = joinpath(dir, "basin_profiles.csv")
-    mkpath(dirname(filename))
-    writedlm(filename, Tables.rowtable(data), ',')
+    (; node_id, profile) = basin
+
+    # # Flatten all data and add node_id column
+    # n = sum(length.(all_levels))
+    # level = Vector{Float64}(undef, n)
+    # area = Vector{Float64}(undef, n)
+    # storage = Vector{Float64}(undef, n)
+    # node_id = Vector{Int32}(undef, n)
+    # idx = 1
+    # for (i, nid) in enumerate(all_node_ids)
+    #     len = length(all_levels[i])
+    #     level[idx:(idx + len - 1)] = all_levels[i]
+    #     area[idx:(idx + len - 1)] = all_areas[i]
+    #     storage[idx:(idx + len - 1)] = all_storage[i]
+    #     node_id[idx:(idx + len - 1)] .= nid
+    #     idx += len
+    # end
+    # data = (; node_id, level, area, storage)
+    # filename = joinpath(dir, "basin_profiles.csv")
+    # mkpath(dirname(filename))
+    # writedlm(filename, Tables.rowtable(data), ',')
     return nothing
 end

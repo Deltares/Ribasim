@@ -495,13 +495,26 @@ end
 
 VerticalFlux(n::Int) = VerticalFlux(zeros(n), zeros(n), zeros(n), zeros(n), zeros(n))
 
-const StorageToLevelType = LinearInterpolationIntInv{
+const LevelToStorageType = QuinticHermiteSpline{
     Vector{Float64},
     Vector{Float64},
-    ScalarLinearInterpolation,
+    Vector{Float64},
+    Vector{Float64},
+    Vector{Float64},
+    Vector{Float64},
     Float64,
     SearchProperties{Float64},
 }
+
+@kwdef struct BasinProfile
+    n::Int
+    # C2 interpolation mapping from storage to level
+    level_from_storage::Vector{LevelToStorageType} = Vector{LevelToStorageType}(undef, n)
+    # C0 interpolation used as a first guess to solve h(s) = h_given
+    storage_from_level_guesser::Vector{ScalarLinearInterpolation} = Vector{ScalarLinearInterpolation}(undef, n)
+    # C1 interpolation mapping from level to area. Only used when both stirage and area data was provided
+    area_from_level::Vector{ScalarPCHIPInterpolation} = Vector{ScalarPCHIPInterpolation}(undef, n)
+end
 
 """
 Requirements:
@@ -532,10 +545,7 @@ Requirements:
     cumulative_surface_runoff_saveat::Vector{Float64} = zeros(length(node_id))
     cumulative_drainage_saveat::Vector{Float64} = zeros(length(node_id))
     # Basin profile interpolations
-    storage_to_level::Vector{StorageToLevelType} =
-        Vector{StorageToLevelType}(undef, length(node_id))
-    level_to_area::Vector{ScalarLinearInterpolation} =
-        Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    profile::BasinProfile = BasinProfile(; n = length(node_id))
     # Values for allocation if applicable
     demand::Vector{Float64} = zeros(length(node_id))
     allocated::Vector{Float64} = zeros(length(node_id))

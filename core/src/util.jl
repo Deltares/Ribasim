@@ -1,18 +1,31 @@
 """Get the storage of a basin from its level."""
 function get_storage_from_level(basin::Basin, state_idx::Int, level::AbstractFloat)::Float64
-    level_to_area = basin.level_to_area[state_idx]
-    return if level < level_to_area.t[1]
-        0.0
-    else
-        integral(level_to_area, level)
+    (; level_from_storage, storage_from_level_guesser) = basin.profile
+    level_from_storage_node = level_from_storage[state_idx]
+    storage_est = storage_from_level_guesser[state_idx](level)
+    eps = 1.0e-6 # 1 micrometer tolerance
+    maxiter = 10
+    i = 0
+    converged = false
+
+    while !converged && (i < maxiter)
+        level_est, area_inv = value_and_derivative(level_from_storage_node, AutoForwardDiff(), storage_est)
+        error = abs(level_est - level)
+        converged = (error < eps)
+        if !converged
+            storage_est = max(0.0, storage_est + (level - level_est) / area_inv)
+            i += 1
+        end
     end
+    !converged && error("Couldn't determine the storage corresponding to level = $level for Basin #$state_idx.")
+    return storage_est
 end
 
 """Compute the storages of the basins based on the water level of the basins."""
 function get_storages_from_levels(basin::Basin, levels::AbstractVector)::Vector{Float64}
     errors = false
     state_length = length(levels)
-    basin_length = length(basin.storage_to_level)
+    basin_length = length(basin.node_id)
     if state_length != basin_length
         @error "Unexpected 'Basin / state' length." state_length basin_length
         errors = true
@@ -21,7 +34,7 @@ function get_storages_from_levels(basin::Basin, levels::AbstractVector)::Vector{
 
     for (i, level) in enumerate(levels)
         storage = get_storage_from_level(basin, i, level)
-        bottom = first(basin_levels(basin, i))
+        bottom = basin_bottom(basin.profile, basin.node_id[i].idx)
         if level < bottom
             node_id = basin.node_id[i]
             @error "The initial level ($level) of $node_id is below the bottom ($bottom)."
@@ -39,17 +52,25 @@ end
 """
 Compute the level of a basin given its storage.
 """
-function get_level_from_storage(basin::Basin, state_idx::Int, storage::T)::T where {T}
-    return basin.storage_to_level[state_idx](storage)
-end
-
-"""
-Compute the area of a basin given its storage.
-"""
-function get_area_from_storage(basin::Basin, state_idx::Int, storage::T)::T where {T}
-    level = get_level_from_storage(basin, state_idx, storage)
-    level_to_area = basin.level_to_area[state_idx]
-    return level_to_area(level)
+function get_level_and_area_from_storage(profile::BasinProfile, state_idx::Int, storage::Number)
+    (; level_from_storage, area_from_level) = profile
+    return if isassigned(area_from_level, state_idx)
+        level = if storage > 0
+            level_from_storage[state_idx](storage)
+        else
+            2 * basin_bottom(profile, state_idx) - level_from_storage[state_idx](-storage)
+        end
+        area = area_from_level[state_idx](level)
+        level, area
+    else
+        if storage > 0
+            level, area_inv = value_and_derivative(level_from_storage[state_idx], AutoForwardDiff(), storage)
+            level, inv(area_inv)
+        else
+            dark_level, area_inv = value_and_derivative(level_from_storage[state_idx], AutoForwardDiff(), -storage)
+            2 * basin_bottom(profile, state_idx) - dark_level, inv(area_inv)
+        end
+    end
 end
 
 """
@@ -196,17 +217,11 @@ function get_storage(p::Parameters, node_id::NodeID, t::Number)::Float64
     return state_and_time_dependent_cache.current_storage[node_id.idx]
 end
 
-"Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
-function basin_bottom(basin::Basin, node_id::NodeID)::Tuple{Bool, Float64}
-    return if node_id.type == NodeType.Basin
-        # get level(storage) interpolation function
-        level_discrete = basin_levels(basin, node_id.idx)
-        # and return the first level in this vector, representing the bottom
-        return true, first(level_discrete)
-    else
-        return false, 0.0
-    end
+"Return the bottom elevation of the basin with index i"
+function basin_bottom(profile::BasinProfile, state_idx::Int)
+    return profile.level_from_storage[state_idx].u[1]
 end
+basin_bottom(profile::BasinProfile, id::NodeID) = (id.type == NodeType.Basin) ? basin_bottom(profile, id.idx) : 0.0
 
 """
 Replace the truth states in the logic mapping which contain wildcards with
@@ -663,12 +678,13 @@ function collect_control_mappings!(p_independent::ParametersIndependent)::Nothin
     return
 end
 
-function basin_levels(basin::Basin, state_idx::Int)
-    return basin.level_to_area[state_idx].t
-end
-
-function basin_areas(basin::Basin, state_idx::Int)
-    return basin.level_to_area[state_idx].u
+function fixed_basin_area(profile::BasinProfile, state_idx::Int)
+    (; area_from_level, level_from_storage) = profile
+    return if isassigned(area_from_level, state_idx)
+        area_from_level[state_idx].u[end]
+    else
+        inv(level_from_storage[state_idx].du[end])
+    end
 end
 
 """
@@ -688,7 +704,7 @@ end
 reduction_factor(x::GradientTracer, ::Real) = x
 low_storage_factor_resistance_node(::Parameters, q::GradientTracer, ::NodeID, ::NodeID) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
-get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
+get_level_and_area_from_storage(profile::BasinProfile, state_idx::Int, storage::GradientTracer) = storage, storage
 
 "Create a NamedTuple of the node IDs per state component in the state order"
 function state_node_ids(

@@ -459,7 +459,7 @@ function valid_min_upstream_level!(
     for (id, min_upstream_level) in zip(node.node_id, node.min_upstream_level)
         id_in = inflow_id(graph, id)
         if id_in.type == NodeType.Basin
-            basin_bottom_level = basin_bottom(basin, id_in)[2]
+            basin_bottom_level = basin_bottom(basin.profile, id_in)
             if all(==(-Inf), min_upstream_level.u)
                 min_upstream_level.u .= basin_bottom_level
             elseif minimum(min_upstream_level.u) < basin_bottom_level
@@ -483,7 +483,7 @@ function valid_tabulated_curve_level(
         )
         id_in = inflow_id(graph, id)
         if id_in.type == NodeType.Basin
-            basin_bottom_level = basin_bottom(basin, id_in)[2]
+            basin_bottom_level = basin_bottom(basin.profile, id_in)
             # for the complete timeseries this needs to hold
             for interpolation_index in index_lookup.u
                 qh = tabulated_rating_curve.interpolations[interpolation_index]
@@ -750,87 +750,6 @@ function valid_time_interpolation(
     end
 
     return !errors
-end
-
-"""
-Validates the initialisation of basins. Each basin at least need a level-area or level-storage relationship.
-We recommend to initialise all basins in the same way, which can be level-area, level-storage or both.
-If basins diverge from this recommendation we log info about it for the modeler.
-"""
-function validate_consistent_basin_initialization(
-        profiles::StructVector{Schema.Basin.Profile},
-    )::Bool
-    errors::Bool = false
-
-    init_with_area = Int32[]
-    init_with_storage = Int32[]
-    init_with_both = Int32[]
-
-    for group in IterTools.groupby(row -> row.node_id, profiles)
-        group_level = getproperty.(group, :level)
-        group_area = getproperty.(group, :area)
-        group_storage = getproperty.(group, :storage)
-        node_id = group[1].node_id
-
-        n = length(group_level)
-        if n < 2
-            errors = true
-            @error "Basin #$node_id profile must have at least two data points, got $n."
-        end
-        if !allunique(group_level)
-            errors = true
-            @error "$node_id profile has repeated levels, this cannot be interpolated."
-        end
-
-        if all(ismissing, group_area) && all(ismissing, group_storage)
-            @error "Basin at node $node_id is missing both area-level and storage-level input. At least specify area or storage data"
-            errors = true
-        end
-
-        if all(ismissing, group_area)
-            push!(init_with_storage, node_id)
-        elseif all(ismissing, group_storage)
-            push!(init_with_area, node_id)
-        else
-            push!(init_with_both, node_id)
-        end
-
-        if !ismissing(group_area[1]) && (group_area[1] <= 0.0)
-            @error "Basin at node $node_id has non-positive area input at level $(group_level[1])"
-            errors = true
-        end
-
-        if !issorted(group_storage)
-            @error "Basin at node $node_id has non-monotonic storage input. Storage must always be increasing."
-            errors = true
-        end
-
-        if any(ismissing, group_area) && !all(ismissing, group_area)
-            @error "Basin has missing area input at node: $node_id"
-            errors = true
-        end
-        if any(ismissing, group_storage) && !all(ismissing, group_storage)
-            @error "Basin has missing storage input data at node: $node_id"
-            errors = true
-        end
-    end
-
-    if count(x -> !isempty(x), (init_with_area, init_with_storage, init_with_both)) > 1
-        @info "Not all basins are initialised with the same input type"
-        if !isempty(init_with_area)
-            @info "Basins initialized with area-level input:" node_ids = init_with_area
-        end
-        if !isempty(init_with_storage)
-            @info "Basins initialized with storage-level input:" node_ids =
-                init_with_storage
-        end
-        if !isempty(init_with_both)
-            @info "Basins initialized with area-level and storage-level input:" node_ids =
-                init_with_both
-        end
-    end
-
-    return errors
 end
 
 function invalid_nested_interpolation_times(

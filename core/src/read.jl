@@ -589,12 +589,12 @@ function ManningResistance(db::DB, config::Config, graph::MetaGraph, basin::Basi
     errors |= parse_parameter!(manning_resistance, config, :profile_slope; static)
 
     map!(
-        id -> basin_bottom(basin, inflow_id(graph, id))[2],
+        id -> basin_bottom(basin.profile, inflow_id(graph, id)),
         manning_resistance.upstream_bottom,
         node_id,
     )
     map!(
-        id -> basin_bottom(basin, outflow_id(graph, id))[2],
+        id -> basin_bottom(basin.profile, outflow_id(graph, id)),
         manning_resistance.downstream_bottom,
         node_id,
     )
@@ -924,14 +924,12 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     profiles = load_structvector(db, config, Schema.Basin.Profile)
 
-    errors |= validate_consistent_basin_initialization(profiles)
+    errors |= interpolate_basin_profile!(basin, profiles)
     errors && error("Errors encountered when parsing Basin data.")
-
-    areas, levels, storage, node_ids = interpolate_basin_profile!(basin, profiles)
 
     if config.logging.verbosity == Debug
         dir = joinpath(config.dir, config.results_dir)
-        output_basin_profiles(levels, areas, storage, node_ids, dir)
+        output_basin_profiles(basin, dir)
     end
 
     # Inflow and outflow links
@@ -949,7 +947,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     for id in node_id
         # Compute the low storage threshold as the disk of water between the bottom
         # and `depth_threshold` meters above the bottom
-        bottom = basin_bottom(basin, id)[2]
+        bottom = basin_bottom(basin.profile, id.idx)
         basin.low_storage_threshold[id.idx] =
             get_storage_from_level(basin, id.idx, bottom + config.solver.depth_threshold)
 
@@ -2242,82 +2240,163 @@ function interpolate_basin_profile!(
         basin::Basin,
         profiles::StructVector{Schema.Basin.Profile},
     )
-    areas = Vector{Vector{Float64}}()
-    levels = Vector{Vector{Float64}}()
-    storage = Vector{Vector{Float64}}()
+    (; profile, node_id) = basin
+    (; level_from_storage, storage_from_level_guesser, area_from_level) = profile
 
-    node_ids = Vector{Int32}()
-    for (i, group) in enumerate(IterTools.groupby(row -> row.node_id, profiles))
-        push!(node_ids, first(group).node_id)
-        group_area = getproperty.(group, :area)
-        group_level = getproperty.(group, :level)
-        group_storage = getproperty.(group, :storage)
+    init_with_area = Int32[]
+    init_with_storage = Int32[]
+    init_with_both = Int32[]
+    init_errored = Int32[]
 
-        # If there is no storage as input, we integrate A(h)
-        if all(ismissing, group_storage)
-            group_storage = trapz_integrate(group_area, group_level)
+    for id in node_id
+        data = filter(row -> row.node_id == id, profiles)
+        level = getproperty.(data, :level)
+        area = getproperty.(data, :area)
+        storage = getproperty.(data, :storage)
+
+        # Check validity of the levels
+        Δh = diff(level)
+        if any(≤(0), Δh)
+            @error "The provided levels for $id are not strictly increasing."
+            push!(init_errored, id.value)
+            continue
         end
 
-        # We always differentiate storage with respect to level such that we can use invert_integral
-        # We treat level-area and storage-level as independent relations.
-        dS_dh = if ismissing(group_area[1])
-            finite_difference(group_storage, group_level)
-        else
-            finite_difference(group_storage, group_level, group_area[1])
+        # Available data
+        area_mask = map(!ismissing, area)
+        storage_mask = map(!ismissing, storage)
+        deleteat!(area, .!area_mask)
+        deleteat!(storage, .!storage_mask)
+
+        # Check what has enough data to create an interpolation
+        enough_area_data = sum(area_mask) > 1
+        enough_storage_data = sum(storage_mask) > 1
+
+        # If neither storage nor area is available, no profile can
+        # be initialized. This also triggers when `data` is empty.
+        if !(enough_area_data || enough_storage_data)
+            @error "Not enough data available to initialize the profile of $id; need at least 2 levels or 2 storages."
+            push!(init_errored, id.value)
+            continue
         end
 
-        for j in 1:(length(dS_dh) - 1)
-            if dS_dh[j + 1] < 0
-                error(
-                    (
-                        "Invalid profile for $(basin.node_id[i]). The step from (h=$(group_level[j]), S=$(group_storage[j])) to (h=$(group_level[j + 1]), S=$(group_storage[j + 1])) implies a decreasing area compared to lower points in the profile, which is not allowed."
-                    ),
-                )
+        # Check validity of available area data
+        if enough_area_data
+            if !issorted(area)
+                @error "The provided areas for $id are not non-decreasing."
+                push!(init_errored, id.value)
+                continue
+            elseif any(≤(0), area)
+                @error "The provided areas for $id are not all positive."
+                push!(init_errored, id.value)
+                continue
             end
         end
 
-        # Left extension extrapolation is cheap equivalent of linear extrapolation for informative gradients
-        # during the nonlinear solve for negative storage
-        level_to_area = LinearInterpolation(
-            dS_dh,
-            group_level;
-            extrapolation_left = ExtrapolationType.Extension,
-            extrapolation_right = ConstantExtrapolation,
-            cache_parameters = true,
-        )
+        # Check validity of available storage data
+        if enough_storage_data
+            if !iszero(storage[1])
+                @error "The first storage value of $id is not 0.0."
+                push!(init_errored, id.value)
+                continue
+            elseif any(<(0.0), storage)
+                @error "Some storage values for $id are negative."
+                push!(init_errored, id.value)
+                continue
+            end
 
-        # Left linear extrapolation for usable gradients by the nonlinear solver for negative storages
-        # Right linear extrapolation corresponds with constant extrapolation of area
-        try
-            basin.storage_to_level[i] = invert_integral(
-                level_to_area;
-                extrapolation_left = ExtrapolationType.Linear,
-                extrapolation_right = ExtrapolationType.Linear,
-            )
-        catch e
-            error(
-                "Failed to construct a storage to level interpolation for $(basin.node_id[i]): $(sprint(showerror, e))",
-            )
+            level_for_storage = level[area_mask]
+            slope = diff(storage) ./ diff(level_for_storage)
+            if !issorted(slope)
+                @error "The slope of the (level, storage) data for $id is not non-decreasing."
+                push!(init_errored, id.value)
+                continue
+            end
         end
 
-        if !all(ismissing, group_area)
-            # if all data is present for area, we use it
-            level_to_area = LinearInterpolation(
-                group_area,
-                group_level;
-                extrapolation = ConstantExtrapolation,
+        # Create a C1 area_from_level interpolation if enough area data is available
+        area_from_level_ = if enough_area_data
+            level_for_area = level[area_mask]
+            area_from_level_ = PCHIPInterpolation(
+                # Pad with extra points to enforce differentiable constant extrapolation
+                vcat(area[1:1], area, area[end:end]),
+                vcat([level_for_area[1] - 0.1], level_for_area, [level_for_area[end] + 0.1]);
                 cache_parameters = true,
+                extrapolation = ConstantExtrapolation
+            )
+            if enough_storage_data
+                # If both storage and area data are available, use the
+                # area from level interpolation which is independent from the storage data
+                area_from_level[id.idx] = area_from_level_
+            end
+            area_from_level_
+        else
+            nothing
+        end
+
+        if enough_storage_data
+            level_for_storage = level[storage_mask]
+            area_for_storage = if !isnothing(area_from_level_)
+                push!(init_with_both, id)
+                # If it was possible to create an area from level interpolation,
+                # use it to inform the storage from level interpolation
+                area_from_level_(level_for_storage)
+            else
+                push!(init_with_storage, id)
+                # If it was not possible to create an area from level interpolation,
+                # derive areas from an intermediate C1 interpolation of the storage data
+                storage_from_level_temp = PCHIPInterpolation(
+                    level_for_storage,
+                    storage,
+                    cache_parameters = true,
+                    extrapolation_right = ExtrapolationType.Linear
+                )
+                derivative.(Ref(storage_from_level_temp(level_for_storage)), level_for_storage)
+            end
+            level_from_storage[id.idx] = QuinticHermiteSpline(
+                zero(storage),
+                inv.(area_for_storage),
+                level_for_storage,
+                storage;
+                cache_parameters = true,
+                extrapolation_right = ExtrapolationType.Linear
             )
         else
-            # else the differentiated storage is used
-            group_area = dS_dh
+            push!(init_with_area, id)
+            storage = pushfirst!(cumsum(diff(level_for_area) .* (area[1:(end - 1)] + area[2:end])) / 2, 0.0)
+            level_from_storage[id.idx] = QuinticHermiteSpline(
+                zero(storage),
+                inv.(area),
+                level_for_area,
+                storage,
+                cache_parameters = true,
+                extrapolation_right = ExtrapolationType.Linear
+            )
         end
-        basin.level_to_area[i] = level_to_area
 
-        push!(areas, group_area)
-        push!(levels, group_level)
-        push!(storage, group_storage)
+        storage_from_level_guesser[id.idx] = LinearInterpolation(
+            level_from_storage[id.idx].t,
+            level_from_storage[id.idx].u,
+            cache_parameters = true,
+            extrapolation = ExtrapolationType.Linear
+
+        )
     end
 
-    return areas, levels, storage, node_ids
+    if count(x -> !isempty(x), (init_with_area, init_with_storage, init_with_both)) > 1
+        @info "Not all basins are initialised with the same input type"
+        if !isempty(init_with_area)
+            @info "Basins initialized with area-level input:" node_ids = init_with_area
+        end
+        if !isempty(init_with_storage)
+            @info "Basins initialized with storage-level input:" node_ids =
+                init_with_storage
+        end
+        if !isempty(init_with_both)
+            @info "Basins initialized with area-level and storage-level input:" node_ids =
+                init_with_both
+        end
+    end
+
+    return !isempty(init_errored)
 end
