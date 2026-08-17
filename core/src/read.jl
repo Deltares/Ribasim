@@ -2363,11 +2363,11 @@ function interpolate_basin_profile!(
             )
         else
             push!(init_with_area, id)
-            storage = pushfirst!(cumsum(diff(level_for_area) .* (area[1:(end - 1)] + area[2:end])) / 2, 0.0)
+            storage, area, level, ddu = get_interpolation_data(level_for_area, area, area_from_level_)
             level_from_storage[id.idx] = QuinticHermiteSpline(
-                zero(storage),
+                ddu,
                 inv.(area),
-                level_for_area,
+                level,
                 storage,
                 cache_parameters = true,
                 extrapolation_right = ExtrapolationType.Linear
@@ -2399,4 +2399,55 @@ function interpolate_basin_profile!(
     end
 
     return !isempty(init_errored)
+end
+
+function get_interpolation_data(level, area, area_from_level)
+    while true
+        area_left = area[1:(end - 1)]
+        area_right = area[2:end]
+        Δh = diff(level)
+        Δs = @. Δh * (area_left + area_right) / 2
+        storage = pushfirst!(cumsum(Δs), 0.0)
+        alpha = @. Δs / (Δh * area_left)
+        beta = @.Δs / (Δh * area_right)
+        kappa = @. Δs^2 / Δh
+        c = @. 8 * ((alpha + beta) - 20) / kappa
+
+        lb = zero(storage)
+        ub = zero(storage)
+
+        n = length(storage)
+        for idx in 2:n
+            lb[idx] = if (idx == n)
+                -Inf
+            else
+                -4 * alpha[idx] / kappa[idx]
+            end
+            ub[idx] = 4 * beta[idx - 1] / kappa[idx - 1]
+        end
+
+        for idx in 2:n
+            lb[idx] = max(lb[idx], lb[idx - 1], c[idx - 1])
+        end
+
+        for idx in n:-1:2
+            ub[idx - 1] = min(ub[idx - 1], ub[idx] - c[idx - 1])
+        end
+
+        infeasible = (lb .> ub)
+
+        if any(infeasible)
+            levels_new = Float64[]
+            for interval_idx in 1:(n - 1)
+                if infeasible[interval_idx] || infeasible[interval_idx + 1]
+                    push!(levels_new, (level[interval_idx] + level[interval_idx + 1]) / 2)
+                end
+            end
+            level = sort!(vcat(level, levels_new))
+            area = area_from_level(level)
+        else
+            return storage, area, level, (lb + ub) / 2
+        end
+    end
+    return
 end
