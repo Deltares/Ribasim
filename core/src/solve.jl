@@ -336,7 +336,7 @@ function formulate_dstorage_wrt_time(
         dstorage -= get_flow(du, p_independent, t, (node_id, outflow_id))
     end
 
-    fixed_area = basin_areas(basin, node_id.idx)[end]
+    fixed_area = fixed_basin_area(basin.profile, node_id.idx)
     dstorage += fixed_area * vertical_flux.precipitation[node_id.idx]
     dstorage += vertical_flux.surface_runoff[node_id.idx]
     dstorage += vertical_flux.drainage[node_id.idx]

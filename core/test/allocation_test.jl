@@ -63,7 +63,7 @@ end
     d = user_demand.demand_interpolation[1][2](0)
     ϕ = 1.0e-3 # precipitation
     q = flow_boundary.flow_rate[1](0)
-    A = Ribasim.basin_areas(basin, 1)[1]
+    A = Ribasim.basin_bottom(basin.profile, 1)
     l_max = level_demand.max_level[1][1](0)
     min_storage = 1.0e3
     Δt_allocation = allocation.allocation_models[1].Δt_allocation

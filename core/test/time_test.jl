@@ -37,12 +37,13 @@ end
     seconds = Ribasim.seconds_since.(unique(basin_table.time), basin_table.time[1])
 
     for (i, gb) in enumerate(groupby(basin_table, :node_id))
-        area = basin.level_to_area[i](gb.level)
+        storage = [Ribasim.get_storage_from_level(basin, i, h) for h in gb.level]
+        area = [Ribasim.get_level_and_area_from_storage(basin.profile, i, s)[2] for s in storage]
         pot_evap = basin.forcing.potential_evaporation[i](seconds)
         # high tolerance since the area is only approximate
         @test gb.evaporation ≈ area .* pot_evap atol = 1.0e-5
         prec = basin.forcing.precipitation[i](seconds)
-        fixed_area = Ribasim.basin_areas(basin, i)[end]
+        fixed_area = Ribasim.fixed_basin_area(basin.profile, i)
         @test gb.precipitation ≈ fixed_area .* prec
     end
 end
@@ -64,7 +65,7 @@ end
     model = Ribasim.Model(config)
     (; basin) = model.integrator.p.p_independent
     starting_precipitation =
-        basin.vertical_flux.precipitation[1] * Ribasim.basin_areas(basin, 1)[end]
+        basin.vertical_flux.precipitation[1] * Ribasim.fixed_basin_area(basin.profile, 1)
     BMI.update_until(model, saveat)
     mean_precipitation = only(model.saved.flow.saveval).precipitation[1]
 

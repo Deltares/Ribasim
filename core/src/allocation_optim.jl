@@ -51,7 +51,7 @@ function set_simulation_data!(
         Δt_allocation,
     ) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
-    (; storage_to_level, vertical_flux) = basin
+    (; profile, vertical_flux) = basin
 
     storage_change = problem[:basin_storage_change]
     volume_conservation = problem[:volume_conservation]
@@ -66,7 +66,7 @@ function set_simulation_data!(
     for basin_id in basin_ids_subnetwork
         idx = basin_id.idx
         storage_now = current_storage[idx]
-        storage_max = storage_to_level[idx].t[end]
+        storage_max = profile.level_from_storage[idx].t[end]
 
         # Set bounds on the storage change based on the current storage and the Basin minimum, maximum, and a delta_storage prediction
         Δstorage = storage_change[basin_id]
@@ -80,8 +80,8 @@ function set_simulation_data!(
         end
         JuMP.set_upper_bound(Δstorage, Δstorage_upper / scaling.storage)
 
-        A = get_area_from_storage(basin, idx, storage_now)
-        A_max = get_area_from_storage(basin, idx, storage_max)
+        _, A = get_level_and_area_from_storage(basin.profile, basin_id.idx, storage_now)
+        _, A_max = get_level_and_area_from_storage(basin.profile, basin_id.idx, storage_max)
 
         explicit_positive_forcing_volume[basin_id] =
             (
@@ -692,7 +692,7 @@ function set_demands!(
         level_demand_id = basin.level_demand_id[basin_id.idx]
 
         level_now = current_level[basin_id.idx]
-        level_min_prev_priority = basin_bottom(basin, basin_id)[2]
+        level_min_prev_priority = basin_bottom(basin.profile, basin_id)
         level_max_prev_priority = Inf
         A = current_area[basin_id.idx]
         storage_now = current_storage[basin_id.idx]

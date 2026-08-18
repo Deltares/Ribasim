@@ -1,24 +1,35 @@
 """Get the storage of a basin from its level."""
 function get_storage_from_level(basin::Basin, state_idx::Int, level::AbstractFloat)::Float64
     (; level_from_storage, storage_from_level_guesser) = basin.profile
-    level_from_storage_node = level_from_storage[state_idx]
+    isinf(level) && return level
     storage_est = storage_from_level_guesser[state_idx](level)
-    eps = 1.0e-6 # 1 micrometer tolerance
-    maxiter = 10
+    storage_est, converged = invert_interpolation(level_from_storage[state_idx], level, storage_est; lower_bound = 0.0)
+    !converged && error("Couldn't determine the storage corresponding to level = $level for Basin #$state_idx.")
+    return storage_est
+end
+
+function invert_interpolation(
+        itp::AbstractInterpolation,
+        target::Number,
+        guess::Number;
+        eps::Float64 = 1.0e-6,
+        maxiter::Number = 10,
+        lower_bound::Number = -Inf,
+        upper_bound::Number = Inf,
+    )
+    sol = guess
     i = 0
     converged = false
-
     while !converged && (i < maxiter)
-        level_est, area_inv = value_and_derivative(level_from_storage_node, AutoForwardDiff(), storage_est)
-        error = abs(level_est - level)
+        val, deriv = value_and_derivative(itp, AutoForwardDiff(), sol)
+        error = abs(val - target)
         converged = (error < eps)
         if !converged
-            storage_est = max(0.0, storage_est + (level - level_est) / area_inv)
+            sol = clamp(sol + (target - val) / deriv, lower_bound, upper_bound)
             i += 1
         end
     end
-    !converged && error("Couldn't determine the storage corresponding to level = $level for Basin #$state_idx.")
-    return storage_est
+    return sol, converged
 end
 
 """Compute the storages of the basins based on the water level of the basins."""
@@ -33,14 +44,14 @@ function get_storages_from_levels(basin::Basin, levels::AbstractVector)::Vector{
     storages = zeros(state_length)
 
     for (i, level) in enumerate(levels)
-        storage = get_storage_from_level(basin, i, level)
         bottom = basin_bottom(basin.profile, basin.node_id[i].idx)
         if level < bottom
             node_id = basin.node_id[i]
             @error "The initial level ($level) of $node_id is below the bottom ($bottom)."
             errors = true
+        else
+            storages[i] = get_storage_from_level(basin, i, level)
         end
-        storages[i] = storage
     end
     if errors
         error("Encountered errors while parsing the initial levels of basins.")
@@ -211,9 +222,8 @@ function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
     end
 end
 
-function get_storage(p::Parameters, node_id::NodeID, t::Number)::Float64
-    (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
-
+function get_storage(p::Parameters, node_id::NodeID)::Float64
+    (; state_and_time_dependent_cache) = p
     return state_and_time_dependent_cache.current_storage[node_id.idx]
 end
 

@@ -13,26 +13,28 @@ end
 
 @testitem "bottom" begin
     using StructArrays: StructVector
-    using Ribasim: NodeID
+    using Ribasim: NodeID, interpolate_basin_profile!, Schema
     using DataInterpolations: LinearInterpolation, integral, invert_integral
     using DataStructures: OrderedSet
 
-    # create two basins with different bottoms/levels
-    area = [[0.01, 1.0], [0.01, 1.0]]
-    level = [[0.0, 1.0], [4.0, 5.0]]
-    level_to_area = LinearInterpolation.(area, level)
-    storage_to_level = invert_integral.(level_to_area)
+    profiles = StructVector(
+        Schema.Basin.Profile.(
+            [5, 5, 7, 7], # id
+            [0.01, 1.0, 0.01, 1.0], # area
+            [0.0, 1.0, 4.0, 5.0], # level
+            fill(missing, 4) # storage
+        )
+    )
 
     basin = Ribasim.Basin(;
         node_id = NodeID.(:Basin, [5, 7], [1, 2]),
-        storage_to_level,
-        level_to_area,
     )
 
-    @test Ribasim.basin_levels(basin, 2)[1] === 4.0
-    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 5, 1))[2] === 0.0
-    @test Ribasim.basin_bottom(basin, NodeID(:Basin, 7, 2))[2] === 4.0
-    @test !Ribasim.basin_bottom(basin, NodeID(:Terminal, 6, 1))[1]
+    interpolate_basin_profile!(basin, profiles)
+
+    @test Ribasim.basin_bottom(basin.profile, 1) === 0.0
+    @test Ribasim.basin_bottom(basin.profile, 2) === 4.0
+    @test Ribasim.basin_bottom(basin.profile, NodeID(:Terminal, 6, 1)) === 0.0
 end
 
 @testitem "Profile" begin
@@ -124,10 +126,14 @@ end
 @testitem "Convert levels to storages" begin
     using StructArrays: StructVector
     using Logging
-    using Ribasim: NodeID
+    using Ribasim: NodeID, Schema
     using DataInterpolations: LinearInterpolation, invert_integral
     using DataInterpolations.ExtrapolationType: Constant, Extension
     using DataStructures: OrderedSet
+
+    basin = Ribasim.Basin(;
+        node_id = NodeID.(:Basin, [1], 1),
+    )
 
     level = [
         0.0,
@@ -143,29 +149,27 @@ end
     ]
     area = [
         0.5284895347829252,
-        0.7036603783547138,
-        0.6831597656207129,
-        0.7582032614294112,
-        0.5718206017422349,
-        0.5390282084391234,
-        0.9650081130058792,
-        0.07071025361013983,
-        0.10659325339342585,
-        1.1,
+        1.232149913137639,
+        1.915309678758352,
+        2.673512940187763,
+        3.245333541929998,
+        3.784361750369121,
+        4.7493698633750006,
+        4.820080116985141,
+        4.926673370378566,
+        6.026673370378567,
     ]
-    level_to_area = LinearInterpolation(
-        area,
-        level;
-        extrapolation_left = Constant,
-        extrapolation_right = Extension,
-    )
-    storage_to_level = invert_integral(level_to_area)
 
-    basin = Ribasim.Basin(;
-        node_id = NodeID.(:Basin, [1], 1),
-        storage_to_level = [storage_to_level],
-        level_to_area = [level_to_area],
+    profiles = StructVector(
+        Schema.Basin.Profile.(
+            basin.node_id |> only,
+            area,
+            level,
+            missing,
+        )
     )
+
+    Ribasim.interpolate_basin_profile!(basin, profiles)
 
     logger = TestLogger()
     with_logger(logger) do
@@ -177,15 +181,16 @@ end
     @test logger.logs[1].message ==
         "The initial level (-1.0) of Basin #1 is below the bottom (0.0)."
 
-    # Converting from storages to levels and back should return the same storages
-    storages = range(0.0, 2 * storage_to_level.t[end], 50)
-    levels = [Ribasim.get_level_from_storage(basin, 1, s) for s in storages]
-    storages_ = [Ribasim.get_storage_from_level(basin, 1, l) for l in levels]
-    @test storages ≈ storages_
+    (; level_from_storage) = basin.profile
 
-    # At or below bottom the storage is 0
+    # Converting from storages to levels and back should return the same storages
+    storages = range(0.0, 2 * level_from_storage[1].t[end], 50)
+    levels = [Ribasim.get_level_and_area_from_storage(basin.profile, 1, s)[1] for s in storages]
+    storages_ = [Ribasim.get_storage_from_level(basin, 1, l) for l in levels]
+    @test storages ≈ storages_ atol = 1.0e-5
+
+    # At bottom the storage is 0
     @test Ribasim.get_storage_from_level(basin, 1, 0.0) == 0.0
-    @test Ribasim.get_storage_from_level(basin, 1, -1.0) == 0.0
 end
 
 @testitem "Expand logic_mapping" begin

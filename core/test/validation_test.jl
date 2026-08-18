@@ -461,8 +461,10 @@ end
 end
 
 @testitem "Validate consistent basin initialization with invalid profiles" begin
-    using Ribasim: Schema, validate_consistent_basin_initialization
+    using Ribasim: Schema, interpolate_basin_profile!
     using StructArrays: StructVector
+
+    basin = Ribasim.Basin(; node_id = [Ribasim.NodeID(Ribasim.NodeType.Basin, 1, 1)])
 
     # Profile with repeated levels
     levels_repeated = [0, 1, 1, 2, 3, 4]
@@ -478,7 +480,7 @@ end
         area = areas_valid,
         storage = skipped,
     )
-    error = validate_consistent_basin_initialization(profiles_repeated_levels)
+    error = interpolate_basin_profile!(basin, profiles_repeated_levels)
     @test error
 
     # Profile with non-increasing storage should give an error
@@ -491,7 +493,7 @@ end
         area = skipped,
         storage = storage_non_increasing,
     )
-    error = validate_consistent_basin_initialization(profiles_non_increasing_storage)
+    error = interpolate_basin_profile!(basin, profiles_non_increasing_storage)
     @test error
 
     # Profile with zero area at the bottom should give an error
@@ -503,7 +505,7 @@ end
         area = areas_with_zero,
         storage = skipped,
     )
-    error = validate_consistent_basin_initialization(profiles_zero_area)
+    error = interpolate_basin_profile!(basin, profiles_zero_area)
     @test error
 
     # Profile with no storage and area should error
@@ -513,7 +515,7 @@ end
         area = skipped,
         storage = skipped,
     )
-    error = validate_consistent_basin_initialization(profiles_missing_data)
+    error = interpolate_basin_profile!(basin, profiles_missing_data)
     @test error
 end
 

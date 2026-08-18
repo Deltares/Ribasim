@@ -275,7 +275,7 @@ function ScalingFactors(
     )
     (; basin, graph) = p_independent
     max_storages = [
-        basin.storage_to_level[node_id.idx].t[end] for
+        basin.profile.level_from_storage[node_id.idx].t[end] for
             node_id in basin.node_id if graph[node_id].subnetwork_id == subnetwork_id
     ]
     mean_half_storage = sum(max_storages) / (2 * length(max_storages))
@@ -314,7 +314,19 @@ Compute the slope dA/dh of the basin profile at a given level.
 The basin profile is piecewise-linear in A(h), so dA/dh is piecewise-constant.
 """
 function get_area_slope(basin::Basin, state_idx::Int, level::Float64)::Float64
-    return derivative(basin.level_to_area[state_idx], level)
+    (; level_from_storage, area_from_level) = basin.profile
+    return if isassigned(area_from_level, state_idx)
+        derivative(area_from_level[state_idx], level)
+    else
+        storage = get_storage_from_level(basin, state_idx, level)
+        _, area = get_level_and_area_from_storage(basin.profile, state_idx, storage)
+        deriv2, deriv3 = value_and_derivative(
+            s -> derivative(level_from_storage[state_idx], s, 2),
+            AutoForwardDiff(),
+            storage
+        )
+        area^4 * (3 * area * deriv2^2 - deriv3)
+    end
 end
 
 """
@@ -381,7 +393,7 @@ function compute_adaptive_Δt(
         manning_resistance_ids_subnetwork,
     ) = node_ids_in_subnetwork
     (; basin, tabulated_rating_curve, linear_resistance, manning_resistance) = p.p_independent
-    (; current_storage) = p.state_and_time_dependent_cache
+    (; current_storage, current_area) = p.state_and_time_dependent_cache
 
     Δt_min = allocation_config.dtmin
     ε_rel = allocation_config.reltol_linearization
@@ -394,8 +406,8 @@ function compute_adaptive_Δt(
     for basin_id in basin_ids_subnetwork
         idx = basin_id.idx
         storage_now = current_storage[idx]
-        level_now = get_level_from_storage(basin, idx, storage_now)
-        storage_max = basin.storage_to_level[idx].t[end]
+        level_now = basin.profile.level_from_storage[idx](storage_now)
+        storage_max = basin.profile.level_from_storage[idx].t[end]
         m = get_area_slope(basin, idx, level_now)
 
         if m < eps()
@@ -434,7 +446,7 @@ function compute_adaptive_Δt(
 
     for basin_id in basin_ids_subnetwork
         idx = basin_id.idx
-        A = get_area_from_storage(basin, idx, current_storage[idx])
+        A = current_area[idx]
 
         if A < eps()
             continue

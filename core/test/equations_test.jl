@@ -25,7 +25,7 @@
 
     t = Ribasim.tsaves(model)
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
-    A = Ribasim.basin_areas(basin, 1)[2]  # needs to be constant
+    A = Ribasim.fixed_basin_area(basin.profile, 1)  # needs to be constant
     u0 = A * 10.0
     L = level_boundary.level[1].u[1]
     R = linear_resistance.resistance[1]
@@ -55,7 +55,7 @@ end
 
     t = Ribasim.tsaves(model)
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
-    basin_area = Ribasim.basin_areas(basin, 1)[2]
+    basin_area = Ribasim.fixed_basin_area(basin.profile, 1)
     storage_min = 50.005
     α = 24 * 60 * 60
     storage_analytic =
@@ -91,7 +91,7 @@ end
     storage = storage_both[1, :]
     storage_min = 50.005
     level_min = 1.0
-    basin_area = Ribasim.basin_areas(basin, 1)[2]
+    basin_area = Ribasim.fixed_basin_area(basin.profile, 1)
     level = @. level_min + (storage - storage_min) / basin_area
     C = sum(storage_both[:, 1])
     Λ = 2 * level_min + (C - 2 * storage_min) / basin_area
@@ -128,9 +128,9 @@ end
     K_d = pid_control.derivative[1](0)
 
     storage_min = 50.005
-    level_min = Ribasim.basin_levels(basin, 1)[2]
+    level_min = Ribasim.basin_bottom(basin.profile, 1)
     storage0 = storage[1]
-    area = Ribasim.basin_areas(basin, 1)[2]
+    area = Ribasim.fixed_basin_area(basin.profile, 1)
     level0 = level_min + (storage0 - storage_min) / area
 
     α = 1 - K_d / area

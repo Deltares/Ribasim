@@ -2265,22 +2265,37 @@ function interpolate_basin_profile!(
         # Available data
         area_mask = map(!ismissing, area)
         storage_mask = map(!ismissing, storage)
-        deleteat!(area, .!area_mask)
-        deleteat!(storage, .!storage_mask)
 
         # Check what has enough data to create an interpolation
         enough_area_data = sum(area_mask) > 1
         enough_storage_data = sum(storage_mask) > 1
 
-        # If neither storage nor area is available, no profile can
-        # be initialized. This also triggers when `data` is empty.
-        if !(enough_area_data || enough_storage_data)
+        # Filter available data
+        if enough_area_data && enough_storage_data
+            # If both storage and area data is available, validate that they are available for the same levels
+            if !all(area_mask == storage_mask)
+                @error "For $id there was both storage and area data provided, but not for the same levels."
+                push!(init_errored, id.value)
+                continue
+            end
+            deleteat!(area, .!area_mask)
+            deleteat!(storage, .!area_mask)
+            deleteat!(level, .!area_mask)
+        elseif enough_area_data
+            deleteat!(area, .!area_mask)
+            deleteat!(level, .!area_mask)
+        elseif enough_storage_data
+            deleteat!(storage, .!storage_mask)
+            deleteat!(level, .!storage_mask)
+        else # !(enough_area_data || enough_storage_data)
+            # If neither storage nor area is available, no profile can
+            # be initialized. This also triggers when `data` is empty.
             @error "Not enough data available to initialize the profile of $id; need at least 2 levels or 2 storages."
             push!(init_errored, id.value)
             continue
         end
 
-        # Check validity of available area data
+        # Check validity of area data
         if enough_area_data
             if !issorted(area)
                 @error "The provided areas for $id are not non-decreasing."
@@ -2293,7 +2308,7 @@ function interpolate_basin_profile!(
             end
         end
 
-        # Check validity of available storage data
+        # Check validity of storage data
         if enough_storage_data
             if !iszero(storage[1])
                 @error "The first storage value of $id is not 0.0."
@@ -2305,8 +2320,7 @@ function interpolate_basin_profile!(
                 continue
             end
 
-            level_for_storage = level[area_mask]
-            slope = diff(storage) ./ diff(level_for_storage)
+            slope = diff(storage) ./ diff(level)
             if !issorted(slope)
                 @error "The slope of the (level, storage) data for $id is not non-decreasing."
                 push!(init_errored, id.value)
@@ -2316,11 +2330,10 @@ function interpolate_basin_profile!(
 
         # Create a C1 area_from_level interpolation if enough area data is available
         area_from_level_ = if enough_area_data
-            level_for_area = level[area_mask]
             area_from_level_ = PCHIPInterpolation(
                 # Pad with extra points to enforce differentiable constant extrapolation
                 vcat(area[1:1], area, area[end:end]),
-                vcat([level_for_area[1] - 0.1], level_for_area, [level_for_area[end] + 0.1]);
+                vcat([level[1] - 0.1], level, [level[end] + 0.1]);
                 cache_parameters = true,
                 extrapolation = ConstantExtrapolation
             )
@@ -2335,35 +2348,34 @@ function interpolate_basin_profile!(
         end
 
         if enough_storage_data
-            level_for_storage = level[storage_mask]
-            area_for_storage = if !isnothing(area_from_level_)
+            area = if !isnothing(area_from_level_)
                 push!(init_with_both, id)
                 # If it was possible to create an area from level interpolation,
                 # use it to inform the storage from level interpolation
-                area_from_level_(level_for_storage)
+                area_from_level_(level)
             else
                 push!(init_with_storage, id)
                 # If it was not possible to create an area from level interpolation,
                 # derive areas from an intermediate C1 interpolation of the storage data
                 storage_from_level_temp = PCHIPInterpolation(
-                    level_for_storage,
+                    level,
                     storage,
                     cache_parameters = true,
                     extrapolation_right = ExtrapolationType.Linear
                 )
-                derivative.(Ref(storage_from_level_temp(level_for_storage)), level_for_storage)
+                derivative.(Ref(storage_from_level_temp), level)
             end
             level_from_storage[id.idx] = QuinticHermiteSpline(
                 zero(storage),
-                inv.(area_for_storage),
-                level_for_storage,
+                inv.(area),
+                level,
                 storage;
                 cache_parameters = true,
                 extrapolation_right = ExtrapolationType.Linear
             )
         else
             push!(init_with_area, id)
-            storage, area, level, ddu = get_interpolation_data(level_for_area, area, area_from_level_)
+            storage, area, level, ddu = get_interpolation_data(level, area, area_from_level_)
             level_from_storage[id.idx] = QuinticHermiteSpline(
                 ddu,
                 inv.(area),
@@ -2409,9 +2421,9 @@ function get_interpolation_data(level, area, area_from_level)
         Δs = @. Δh * (area_left + area_right) / 2
         storage = pushfirst!(cumsum(Δs), 0.0)
         alpha = @. Δs / (Δh * area_left)
-        beta = @.Δs / (Δh * area_right)
+        beta = @. Δs / (Δh * area_right)
         kappa = @. Δs^2 / Δh
-        c = @. 8 * ((alpha + beta) - 20) / kappa
+        c = @. (8 * (alpha + beta) - 20) / kappa
 
         lb = zero(storage)
         ub = zero(storage)
@@ -2427,7 +2439,7 @@ function get_interpolation_data(level, area, area_from_level)
         end
 
         for idx in 2:n
-            lb[idx] = max(lb[idx], lb[idx - 1], c[idx - 1])
+            lb[idx] = max(lb[idx], lb[idx - 1] + c[idx - 1])
         end
 
         for idx in n:-1:2
@@ -2440,12 +2452,29 @@ function get_interpolation_data(level, area, area_from_level)
             levels_new = Float64[]
             for interval_idx in 1:(n - 1)
                 if infeasible[interval_idx] || infeasible[interval_idx + 1]
-                    push!(levels_new, (level[interval_idx] + level[interval_idx + 1]) / 2)
+                    A_1 = area[interval_idx]
+                    A_2 = area[interval_idx + 1]
+                    h_1 = level[interval_idx]
+                    h_2 = level[interval_idx + 1]
+                    level_new_proposed, converged = invert_interpolation(
+                        area_from_level,
+                        sqrt(A_1 * A_2),
+                        (h_1 + h_2) / 2;
+                        lower_bound = h_1,
+                        upper_bound = h_2,
+                    )
+                    level_new = if (A_1 == A_2) || !converged
+                        (h_1 + h_2) / 2
+                    else
+                        level_new_proposed
+                    end
+                    push!(levels_new, level_new)
                 end
             end
             level = sort!(vcat(level, levels_new))
             area = area_from_level(level)
         else
+            @assert allunique(level)
             return storage, area, level, (lb + ub) / 2
         end
     end

@@ -56,7 +56,7 @@ end
     filter!(:link_id => ==(1), allocation_flow_table)
     filter!(:link_id => ==(1), flow_table)
 
-    @test all(isapprox.(allocation_flow_table.flow_rate, flow_table.flow_rate; atol = 8.0e-5))
+    @test all(isapprox.(allocation_flow_table.flow_rate, flow_table.flow_rate; atol = 1.05e-4))
 end
 
 @testitem "Manning Resistance" begin

@@ -1146,7 +1146,7 @@ def multi_level_demand_model() -> Model:
     b = model.basin.add(
         Node(2, Point(1, 0), subnetwork_id=2),
         [
-            basin.Profile(level=[0.0, 1.0, 10.0], storage=[1000.0, 2000.0, 10000.0]),
+            basin.Profile(level=[0.0, 1.0, 10.0], storage=[0.0, 2000.0, 20000.0]),
             basin.State(level=[5.0]),
         ],
     )
