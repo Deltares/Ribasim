@@ -790,32 +790,38 @@ function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator
 end
 
 function optimize_multi_objective!(
-        secondary_model::AllocationModel,
+        model::AllocationModel,
+        config::Config,
+        t::Number,
         primary_network_connections = [],
     )::Nothing
     (; problem, objectives, temporary_constraints) =
-        secondary_model
+        model
 
     # Lexicographic goal programming: optimize objectives in sequence
     # After optimizing objective i, add constraint: obj_i = optimal_i
     # This ensures later objectives don't degrade earlier ones
 
-    latest_constraint = nothing
+    latest_optimized_expression = JuMP.AffExpr()
+    latest_bound = 0.0
 
     for objective in objectives
         (; expressions, type, demand_priority_idx) = objective
 
         for expression in expressions
             iszero(expression) && continue
-            if !isnothing(latest_constraint)
+            if !iszero(latest_optimized_expression)
                 # Only add a constraint from the latest expression if there is a new expression
                 # to optimize for, otherwise we get an error when trying to retrieve results
-                push!(temporary_constraints, JuMP.add_constraint(problem, latest_constraint))
+                push!(temporary_constraints, JuMP.@constraint(problem, latest_optimized_expression ≤ latest_bound))
             end
             JuMP.@objective(problem, Min, expression)
             JuMP.optimize!(problem)
-            objective_value = JuMP.objective_value(problem)
-            latest_constraint = JuMP.@build_constraint(expression == objective_value)
+            @debug objective expression JuMP.solution_summary(problem)
+            latest_constraint = isempty(temporary_constraints) ? nothing : last(temporary_constraints)
+            parse_termination_status(model, objective, expression, latest_constraint, config, t)
+            latest_bound = JuMP.objective_value(problem)
+            latest_optimized_expression = expression
         end
 
         # collect secondary network demands if primary network connections are given
@@ -824,10 +830,10 @@ function optimize_multi_objective!(
                 demand_of_previous_priority = 0
                 if demand_priority_idx > 1
                     demand_of_previous_priority =
-                        secondary_model.secondary_network_demand[link][demand_priority_idx - 1]
+                        model.secondary_network_demand[link][demand_priority_idx - 1]
                 end
                 demand = JuMP.value(problem[:flow][link]) - demand_of_previous_priority
-                secondary_model.secondary_network_demand[link][demand_priority_idx] = demand
+                model.secondary_network_demand[link][demand_priority_idx] = demand
             end
         end
     end
@@ -835,33 +841,50 @@ function optimize_multi_objective!(
     return nothing
 end
 
-function optimize!(allocation_model::AllocationModel, model)::Nothing
-    (; config, integrator) = model
-    (; t) = integrator
-    (; problem, subnetwork_id) = allocation_model
+function parse_termination_status(
+        model::AllocationModel,
+        objective::AllocationObjective,
+        expression::JuMP.AffExpr,
+        latest_constraint,
+        config::Config,
+        t::Number
+    )
+    (; problem, subnetwork_id) = model
 
-    optimize_multi_objective!(allocation_model)
-
-    @debug JuMP.solution_summary(problem)
     termination_status = JuMP.termination_status(problem)
 
-    # Handle non-optimal termination status
-    if termination_status == JuMP.INFEASIBLE
-        # Change to scalar objective since vector-valued objective cannot be written
-        # to .lp
-        set_feasibility_objective!(problem)
+    if termination_status == JuMP.OPTIMAL
+        return nothing
+    elseif termination_status == JuMP.INFEASIBLE
         write_problem_to_file(problem, config)
-        status = analyze_infeasibility(allocation_model, t, config)
-        analyze_scaling(allocation_model, t, config)
+        set_feasibility_objective!(problem)
+        status = analyze_infeasibility(model, t, config)
+        analyze_scaling(model, t, config)
         if status == JuMP.OPTIMAL
-            @info "Allocation optimization for subnetwork $subnetwork_id at t = $t s is feasible after infeasibility analysis, continuing with solution"
+            @info "Allocation optimization for subnetwork $subnetwork_id at t = $t s is feasible after infeasibility analysis, continuing with solution."
         else
             error(
-                "Allocation optimization for subnetwork $subnetwork_id at t = $t s is infeasible",
+                """
+                Allocation optimization for subnetwork $subnetwork_id at t = $t s is infeasible, with:
+                objective:         $objective
+                latest constraint: $latest_constraint
+                expression:        $expression
+                """,
             )
         end
+    else
+        write_problem_to_file(problem, config)
+        error(
+            """
+            Allocation optimization for subnetwork $subnetwork_id at t = $t s failed with termination status $termination_status.
+            Ribasim doesn't have a way to handle this termination status; search for MathOptInterface.TerminationStatusCode or make an issue.
+            With:
+            objective:         $objective
+            latest constraint: $latest_constraint
+            expression:        $expression
+            """
+        )
     end
-
     return nothing
 end
 
@@ -1213,7 +1236,7 @@ whether `cumulative_supplied_volume` is reset. Set `record = false` for
 intermediate (sub-saveat) adaptive LP solves
 """
 function update_allocation!(model, Δt = 0.0; record::Bool = true)::Nothing
-    (; integrator) = model
+    (; integrator, config) = model
     (; u, p, t) = integrator
     (; p_independent) = p
     (; allocation, pump, outlet, tabulated_rating_curve) = p_independent
@@ -1253,6 +1276,8 @@ function update_allocation!(model, Δt = 0.0; record::Bool = true)::Nothing
             preprocess_demand_collection!(secondary_network, p_independent)
             optimize_multi_objective!(
                 secondary_network,
+                config,
+                t,
                 primary_network_connections[secondary_network.subnetwork_id],
             )
             set_secondary_network_demands!(
@@ -1277,7 +1302,7 @@ function update_allocation!(model, Δt = 0.0; record::Bool = true)::Nothing
         allocation_model.Δt_since_last_record += Δt
 
         delete_temporary_constraints!(allocation_model)
-        optimize!(allocation_model, model)
+        optimize_multi_objective!(allocation_model, config, t)
         if record
             parse_allocations!(integrator, allocation_model)
         end

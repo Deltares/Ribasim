@@ -200,6 +200,15 @@ TODO: Add docstring
     expressions::Vector{JuMP.AffExpr} = JuMP.AffExpr[]
 end
 
+function Base.show(io::IO, objective::AllocationObjective)
+    (; type, demand_priority) = objective
+    out = "AllocationObjective of type $type"
+    if startswith(string(type), "demand")
+        out *= " with demand priority $demand_priority"
+    end
+    return print(io, out)
+end
+
 @kwdef mutable struct ScalingFactors
     flow::Float64 = 1.0e3
     storage::Float64 = 1.0e6
