@@ -271,6 +271,11 @@ end
 
     # the flow near min_level should be close to 0
     @test all(≈(0.0; atol = 1.0e-4), flow_link_1[(idx + 1):end])
+
+    # Run with allocation off; TRC should have default behaviour
+    config = Ribasim.Config(toml_path; experimental_allocation = false)
+    model = Ribasim.run(config)
+    @test all(DataFrame(Ribasim.flow_data(model)).flow_rate .> 0)
 end
 
 
