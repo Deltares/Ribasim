@@ -43,14 +43,14 @@ function create_graph(db::DB, config::Config)::MetaGraph
     )
 
     default_route_priority = Dict(
-        "LevelBoundary" => config.allocation.route_priority.level_boundary,
-        "Basin" => config.allocation.route_priority.basin,
-        "LinearResistance" => config.allocation.route_priority.linear_resistance,
-        "ManningResistance" => config.allocation.route_priority.manning_resistance,
+        "LevelBoundary" => config.allocation.default_route_priority.level_boundary,
+        "Basin" => config.allocation.default_route_priority.basin,
+        "LinearResistance" => config.allocation.default_route_priority.linear_resistance,
+        "ManningResistance" => config.allocation.default_route_priority.manning_resistance,
         "TabulatedRatingCurve" =>
-            config.allocation.route_priority.tabulated_rating_curve,
-        "Outlet" => config.allocation.route_priority.outlet,
-        "Pump" => config.allocation.route_priority.pump,
+            config.allocation.default_route_priority.tabulated_rating_curve,
+        "Outlet" => config.allocation.default_route_priority.outlet,
+        "Pump" => config.allocation.default_route_priority.pump,
     )
 
     for row in node_rows

@@ -193,24 +193,11 @@ const IndexLookup = ConstantInterpolation{
 """
 TODO: Add docstring
 """
-@kwdef struct AllocationObjectiveMetadata
+@kwdef struct AllocationObjective
     type::AllocationObjectiveType.T
     demand_priority::Int32 = 0
     demand_priority_idx::Int = 0
-    expression_first::JuMP.AffExpr
-    expression_second::JuMP.AffExpr = JuMP.AffExpr()
-end
-
-"""
-The objectives corresponding to a subnetwork along with metadata
-objective_expressions_all: A vector of JuMP.AffExpr to be passed to the optimizer (HiGHS) and
-    optimized for in lexicographic fashion
-objective_metadata: Metadata per objective. Note that there are more objective expressions than objective data
-        instances, because some objective data instances have more than one objective expression.
-"""
-@kwdef struct AllocationObjectives
-    objective_expressions_all::Vector{JuMP.AffExpr} = JuMP.AffExpr[]
-    objective_metadata::Vector{AllocationObjectiveMetadata} = AllocationObjectiveMetadata[]
+    expressions::Vector{JuMP.AffExpr} = JuMP.AffExpr[]
 end
 
 @kwdef mutable struct ScalingFactors
@@ -264,7 +251,7 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     Δt_allocation::Float64
     Δt_since_last_record::Float64 = 0.0
     has_demand_priority::Vector{Bool}
-    objectives::AllocationObjectives = AllocationObjectives()
+    objectives::Vector{AllocationObjective} = AllocationObjective[]
     explicit_positive_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
     implicit_negative_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
     cumulative_supplied_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict()
@@ -274,7 +261,6 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     flow_links_subnetwork::Vector{Tuple{NodeID, NodeID}} = Vector{Tuple{NodeID, NodeID}}()
     scaling::ScalingFactors = ScalingFactors()
     temporary_constraints::Vector{JuMP.ConstraintRef} = JuMP.ConstraintRef[]
-    route_priority_expression::JuMP.AffExpr = JuMP.AffExpr()
 end
 
 struct DemandRecordDatum

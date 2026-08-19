@@ -111,20 +111,6 @@ function collect_primary_network_connections!(
     return nothing
 end
 
-function get_minmax_level(p_independent::ParametersIndependent, node_id::NodeID)
-    (; basin, level_boundary) = p_independent
-
-    if node_id.type == NodeType.Basin
-        itp = basin.level_to_area[node_id.idx]
-        return itp.t[1], itp.t[end]
-    elseif node_id.type == NodeType.LevelBoundary
-        itp = level_boundary.level[node_id.idx]
-        return minimum(itp.u), maximum(itp.u)
-    else
-        error("Min and max level are not defined for nodes of type $(node_id.type).")
-    end
-end
-
 function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     low_storage_factor = problem[:low_storage_factor]
     return if node_id.type == NodeType.Basin
@@ -521,15 +507,14 @@ function Base.iterate(
 end
 
 function get_objective_data_of_demand_priority(
-        objectives::AllocationObjectives,
+        objectives::Vector{AllocationObjective},
         demand_priority::Int32,
     )
-    (; objective_metadata) = objectives
     index = findfirst(
-        metadata -> metadata.demand_priority == demand_priority,
-        objective_metadata,
+        objective -> objective.demand_priority == demand_priority,
+        objectives,
     )
-    return objective_metadata[index]
+    return objectives[index]
 end
 
 # This method should only be used in initialization because it does a graph lookup

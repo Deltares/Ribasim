@@ -469,8 +469,8 @@ function reset_demand_coefficients(allocation_model::AllocationModel)::Nothing
 
     average_storage_unit_error = problem[:average_storage_unit_error]
     average_storage_unit_error_constraint = problem[:average_storage_unit_error_constraint]
-    for objective_metadata in objectives.objective_metadata
-        (; type, demand_priority) = objective_metadata
+    for objective in objectives
+        (; type, demand_priority) = objective
 
         if type == AllocationObjectiveType.demand_flow
             # Reset cumulative demand coefficients
@@ -539,8 +539,8 @@ function set_secondary_network_demands!(
             continue
         end
         # Objective metadata corresponding to this demand priority
-        (; expression_first) =
-            get_objective_data_of_demand_priority(objectives, demand_priority)
+        expression_first =
+            get_objective_data_of_demand_priority(objectives, demand_priority).expressions[1]
 
         for link in keys(secondary_model.secondary_network_demand)
             d =
@@ -607,9 +607,10 @@ function set_demands!(
     for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
 
         # Objective metadata corresponding to this demand priority
-        (; expression_first, type) =
+        objective =
             get_objective_data_of_demand_priority(objectives, demand_priority)
-        (type != AllocationObjectiveType.demand_flow) && continue
+        expression_first = objective.expressions[1]
+        (objective.type != AllocationObjectiveType.demand_flow) && continue
 
         for node_id in demand_node_ids_subnetwork
             !has_demand_priority[node_id.idx, demand_priority_idx] && continue
@@ -792,39 +793,33 @@ function optimize_multi_objective!(
         secondary_model::AllocationModel,
         primary_network_connections = [],
     )::Nothing
-    (; problem, objectives, temporary_constraints, route_priority_expression) =
+    (; problem, objectives, temporary_constraints) =
         secondary_model
 
     # Lexicographic goal programming: optimize objectives in sequence
-    # After optimizing objective i, add constraint: obj_i ≤ optimal_i + ε
+    # After optimizing objective i, add constraint: obj_i = optimal_i
     # This ensures later objectives don't degrade earlier ones
 
-    for metadata in objectives.objective_metadata
-        (; expression_first, expression_second, type, demand_priority_idx) = metadata
+    latest_constraint = nothing
 
-        # First expression
-        JuMP.@objective(problem, Min, expression_first)
-        JuMP.optimize!(problem)
-        push!(
-            temporary_constraints,
-            JuMP.@constraint(problem, expression_first == JuMP.objective_value(problem))
-        )
+    for objective in objectives
+        (; expressions, type, demand_priority_idx) = objective
 
-        # Second expression
-        JuMP.@objective(problem, Min, expression_second)
-        JuMP.optimize!(problem)
-        push!(
-            temporary_constraints,
-            JuMP.@constraint(problem, expression_second == JuMP.objective_value(problem))
-        )
-
-        # Route priority
-        JuMP.@objective(problem, Min, route_priority_expression)
-        JuMP.optimize!(problem)
+        for expression in expressions
+            iszero(expression) && continue
+            if !isnothing(latest_constraint)
+                # Only add a constraint from the latest expression if there is a new expression
+                # to optimize for, otherwise we get an error when trying to retrieve results
+                push!(temporary_constraints, JuMP.add_constraint(problem, latest_constraint))
+            end
+            JuMP.@objective(problem, Min, expression)
+            JuMP.optimize!(problem)
+            objective_value = JuMP.objective_value(problem)
+            latest_constraint = JuMP.@build_constraint(expression == objective_value)
+        end
 
         # collect secondary network demands if primary network connections are given
-        if type == AllocationObjectiveType.demand_flow ||
-                type == AllocationObjectiveType.demand_storage
+        if type in (AllocationObjectiveType.demand_flow, AllocationObjectiveType.demand_storage)
             for link in primary_network_connections
                 demand_of_previous_priority = 0
                 if demand_priority_idx > 1
