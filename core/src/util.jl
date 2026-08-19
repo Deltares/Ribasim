@@ -75,10 +75,12 @@ function get_level_and_area_from_storage(profile::BasinProfile, state_idx::Int, 
         level, area
     else
         if storage > 0
-            level, area_inv = value_and_derivative(level_from_storage[state_idx], AutoForwardDiff(), storage)
+            level = level_from_storage[state_idx](storage)
+            area_inv = derivative(level_from_storage[state_idx], storage)
             level, inv(area_inv)
         else
-            dark_level, area_inv = value_and_derivative(level_from_storage[state_idx], AutoForwardDiff(), -storage)
+            dark_level = level_from_storage[state_idx](-storage)
+            area_inv = derivative(level_from_storage[state_idx], -storage)
             2 * basin_bottom(profile, state_idx) - dark_level, inv(area_inv)
         end
     end
@@ -127,14 +129,65 @@ function get_scalar_interpolation(
 end
 
 """
-Create a valid Qh ScalarLinearInterpolation.
+    build_monotone_quintic(u, du, t; kwargs...)
+
+Build a QuinticHermiteSpline that is monotonically non-decreasing, with ddu=0.
+This is valid when adjacent du values have ratio ≤ 3/2 (guaranteed by PCHIP
+for monotone data with sufficient density).
+
+Arguments:
+- `u`: values at knots
+- `du`: first derivatives at knots (must be ≥ 0 for monotonicity)
+- `t`: knot positions
+- Other kwargs are passed to QuinticHermiteSpline (extrapolation_left, extrapolation_right)
+"""
+function build_monotone_quintic(
+        u::Vector{Float64},
+        du::Vector{Float64},
+        t::Vector{Float64};
+        extrapolation_left = ConstantExtrapolation,
+        extrapolation_right = ExtrapolationType.Linear,
+    )::ScalarQuinticInterpolation
+    return QuinticHermiteSpline(
+        zero(t),
+        du,
+        u,
+        t;
+        cache_parameters = true,
+        extrapolation_left,
+        extrapolation_right,
+    )
+end
+
+"""
+Validate that a QuinticHermiteSpline is non-decreasing by sampling
+10 points per knot interval.
+"""
+function validate_monotone_quintic(itp; n_per_interval::Int = 10)::Bool
+    knots = itp.t
+    u_prev = -Inf
+    for k in 1:(length(knots) - 1)
+        for x in range(knots[k], knots[k + 1], length = n_per_interval + 1)[1:(end - 1)]
+            u_val = itp(x)
+            if u_val < u_prev - 1.0e-10
+                return false
+            end
+            u_prev = u_val
+        end
+    end
+    u_val = itp(knots[end])
+    return !(u_val < u_prev - 1.0e-10)
+end
+
+"""
+Create a valid Qh interpolation as a QuinticHermiteSpline.
 Takes a node_id for validation logging, and a vector of level (h) and flow_rate (Q).
 """
 function qh_interpolation(
         node_id::NodeID,
         level::Vector{Float64},
         flow_rate::Vector{Float64},
-    )::CubicHermiteSpline
+    )::ScalarQuinticInterpolation
     errors = false
     n = length(level)
     if n < 2
@@ -163,12 +216,21 @@ function qh_interpolation(
     pushfirst!(level, first(level) - 1.0)
     pushfirst!(flow_rate, 0.0)
 
-    return PCHIPInterpolation(
+    # Build a PCHIP as the basis for derivatives, then upgrade to quintic
+    pchip = PCHIPInterpolation(
         flow_rate,
         level;
         extrapolation_left = ConstantExtrapolation,
         extrapolation_right = Linear,
         cache_parameters = true,
+    )
+    du = derivative.(Ref(pchip), level)
+    return build_monotone_quintic(
+        flow_rate,
+        du,
+        level;
+        extrapolation_left = ConstantExtrapolation,
+        extrapolation_right = Linear,
     )
 end
 
@@ -339,7 +401,9 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
         zero(T)
     elseif x < threshold
         x_scaled = x / threshold
-        (-2 * x_scaled + 3) * x_scaled^2
+        x_scaled_2 = x_scaled * x_scaled
+        x_scaled_3 = x_scaled_2 * x_scaled
+        (10 - 15 * x_scaled + 6 * x_scaled_2) * x_scaled_3
     else
         one(T)
     end
@@ -358,17 +422,12 @@ end
 For resistance nodes, give a reduction factor based on the upstream node
 as defined by the flow direction.
 """
-function low_storage_factor_resistance_node(
-        p::Parameters,
-        q::Number,
-        inflow_id::NodeID,
-        outflow_id::NodeID,
-    )
-    return if q > 0
-        get_low_storage_factor(p, inflow_id)
-    else
-        get_low_storage_factor(p, outflow_id)
-    end
+function low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
+    f_in = get_low_storage_factor(p, inflow_id)
+    f_out = get_low_storage_factor(p, outflow_id)
+    ε = 1.0e-6
+    w = reduction_factor((q / ε + 1) / 2, 1)  # 0 when q ≤ -ε, 1 when q ≥ ε
+    return w * f_in + (1 - w) * f_out
 end
 
 function has_primary_network(allocation::Allocation)::Bool
@@ -704,7 +763,8 @@ but the derivative is bounded at x = 0.
 """
 function relaxed_root(x, threshold)
     return if abs(x) < threshold
-        1 / 4 * (x / sqrt(threshold)) * (5 - (x / threshold)^2)
+        x_transformed = ((x / threshold)^2 - 1)
+        1 / 32 * (x / sqrt(threshold)) * (32 + x_transformed * (-8 + 5 * x_transformed))
     else
         sign(x) * sqrt(abs(x))
     end

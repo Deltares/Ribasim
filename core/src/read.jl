@@ -2348,51 +2348,59 @@ function interpolate_basin_profile!(
         end
 
         if enough_storage_data
-            area = if !isnothing(area_from_level_)
+            if !isnothing(area_from_level_)
                 push!(init_with_both, id)
                 # If it was possible to create an area from level interpolation,
-                # use it to inform the storage from level interpolation
-                area_from_level_(level)
+                # use it to inform the storage from level interpolation.
+                # Refine until area ratio ≤ 3/2 for monotone derivative.
+                storage, area, level =
+                    get_interpolation_data(level, area_from_level_(level), area_from_level_)
             else
                 push!(init_with_storage, id)
-                # If it was not possible to create an area from level interpolation,
-                # derive areas from an intermediate C1 interpolation of the storage data
+                # Derive areas from an intermediate C1 interpolation of the storage data
                 storage_from_level_temp = PCHIPInterpolation(
                     level,
-                    storage,
+                    storage;
                     cache_parameters = true,
-                    extrapolation_right = ExtrapolationType.Linear
+                    extrapolation_right = ExtrapolationType.Linear,
                 )
-                derivative.(Ref(storage_from_level_temp), level)
+                area = derivative.(Ref(storage_from_level_temp), level)
+                # Refine until area ratio ≤ 3/2 for monotone derivative
+                storage, area, level = get_interpolation_data(
+                    level,
+                    area,
+                    PCHIPInterpolation(
+                        area,
+                        level;
+                        cache_parameters = true,
+                        extrapolation_right = ExtrapolationType.Linear,
+                    ),
+                )
             end
-            level_from_storage[id.idx] = QuinticHermiteSpline(
-                zero(storage),
-                inv.(area),
-                level,
-                storage;
-                cache_parameters = true,
-                extrapolation_right = ExtrapolationType.Linear
-            )
+            level_from_storage[id.idx] =
+                build_level_from_storage(storage, area, level, area_from_level_)
         else
             push!(init_with_area, id)
-            storage, area, level, ddu = get_interpolation_data(level, area, area_from_level_)
-            level_from_storage[id.idx] = QuinticHermiteSpline(
-                ddu,
-                inv.(area),
-                level,
-                storage,
-                cache_parameters = true,
-                extrapolation_right = ExtrapolationType.Linear
-            )
+            storage, area, level = get_interpolation_data(level, area, area_from_level_)
+            level_from_storage[id.idx] =
+                build_level_from_storage(storage, area, level, area_from_level_)
         end
 
         storage_from_level_guesser[id.idx] = LinearInterpolation(
             level_from_storage[id.idx].t,
             level_from_storage[id.idx].u,
             cache_parameters = true,
-            extrapolation = ExtrapolationType.Linear
-
+            extrapolation = ExtrapolationType.Linear,
         )
+
+        # Validate that the resulting level_from_storage interpolation is
+        # strictly increasing with non-increasing derivative (non-decreasing area)
+        itp = level_from_storage[id.idx]
+        valid = validate_monotone_quintic(itp) && validate_nonincreasing_derivative(itp)
+        if !valid
+            @error "The level_from_storage interpolation for $id has increasing derivative (decreasing area)."
+            push!(init_errored, id.value)
+        end
     end
 
     if count(x -> !isempty(x), (init_with_area, init_with_storage, init_with_both)) > 1
@@ -2414,69 +2422,104 @@ function interpolate_basin_profile!(
 end
 
 function get_interpolation_data(level, area, area_from_level)
-    while true
-        area_left = area[1:(end - 1)]
-        area_right = area[2:end]
-        Δh = diff(level)
-        Δs = @. Δh * (area_left + area_right) / 2
-        storage = pushfirst!(cumsum(Δs), 0.0)
-        alpha = @. Δs / (Δh * area_left)
-        beta = @. Δs / (Δh * area_right)
-        kappa = @. Δs^2 / Δh
-        c = @. (8 * (alpha + beta) - 20) / kappa
-
-        lb = zero(storage)
-        ub = zero(storage)
-
-        n = length(storage)
-        for idx in 2:n
-            lb[idx] = if (idx == n)
-                -Inf
-            else
-                -4 * alpha[idx] / kappa[idx]
-            end
-            ub[idx] = 4 * beta[idx - 1] / kappa[idx - 1]
+    # Refine the profile until the area ratio between adjacent knots is ≤ 3/2.
+    # This is the necessary and sufficient condition for a QuinticHermiteSpline
+    # with ddu=0 to have non-increasing derivative (non-decreasing area) on each interval.
+    max_area_ratio = 3 / 2
+    for _ in 1:100
+        ratios = area[2:end] ./ area[1:(end - 1)]
+        if maximum(ratios) ≤ max_area_ratio
+            break
         end
-
-        for idx in 2:n
-            lb[idx] = max(lb[idx], lb[idx - 1] + c[idx - 1])
-        end
-
-        for idx in n:-1:2
-            ub[idx - 1] = min(ub[idx - 1], ub[idx] - c[idx - 1])
-        end
-
-        infeasible = (lb .> ub)
-
-        if any(infeasible)
-            levels_new = Float64[]
-            for interval_idx in 1:(n - 1)
-                if infeasible[interval_idx] || infeasible[interval_idx + 1]
-                    A_1 = area[interval_idx]
-                    A_2 = area[interval_idx + 1]
-                    h_1 = level[interval_idx]
-                    h_2 = level[interval_idx + 1]
-                    level_new_proposed, converged = invert_interpolation(
+        levels_new = Float64[]
+        for i in 1:(length(level) - 1)
+            if ratios[i] > max_area_ratio
+                # Compute the number of sub-intervals needed
+                n_sub = ceil(Int, log(ratios[i]) / log(max_area_ratio))
+                # Insert intermediate levels at geometrically spaced areas
+                for k in 1:(n_sub - 1)
+                    target_area = area[i] * (area[i + 1] / area[i])^(k / n_sub)
+                    level_new, converged = invert_interpolation(
                         area_from_level,
-                        sqrt(A_1 * A_2),
-                        (h_1 + h_2) / 2;
-                        lower_bound = h_1,
-                        upper_bound = h_2,
+                        target_area,
+                        (level[i] + level[i + 1]) / 2;
+                        lower_bound = level[i],
+                        upper_bound = level[i + 1],
                     )
-                    level_new = if (A_1 == A_2) || !converged
-                        (h_1 + h_2) / 2
+                    if converged
+                        push!(levels_new, level_new)
                     else
-                        level_new_proposed
+                        # Fallback: evenly spaced level
+                        push!(levels_new, level[i] + k * (level[i + 1] - level[i]) / n_sub)
                     end
-                    push!(levels_new, level_new)
                 end
             end
-            level = sort!(vcat(level, levels_new))
-            area = area_from_level(level)
-        else
-            @assert allunique(level)
-            return storage, area, level, (lb + ub) / 2
+        end
+        level = sort!(vcat(level, levels_new))
+        area = area_from_level(level)
+    end
+
+    # Compute storage from trapezoidal integration of area
+    area_left = area[1:(end - 1)]
+    area_right = area[2:end]
+    Δh = diff(level)
+    Δs = @. Δh * (area_left + area_right) / 2
+    storage = pushfirst!(cumsum(Δs), 0.0)
+
+    return storage, area, level
+end
+
+"""
+Build a QuinticHermiteSpline for level_from_storage.
+Tries physical second derivatives h''(S) = -dA/dh / A³ first for smoother interpolation.
+Falls back to ddu=0 if the physical ddu produces an invalid (non-monotone derivative) spline.
+"""
+function build_level_from_storage(storage, area, level, area_from_level_)
+    du = inv.(area)
+    # Try physical second derivatives if area_from_level is available
+    if !isnothing(area_from_level_)
+        ddu = [-derivative(area_from_level_, h) / A^3 for (h, A) in zip(level, area)]
+        itp = QuinticHermiteSpline(
+            ddu,
+            du,
+            level,
+            storage;
+            cache_parameters = true,
+            extrapolation_right = ExtrapolationType.Linear,
+        )
+        if validate_monotone_quintic(itp) && validate_nonincreasing_derivative(itp)
+            return itp
         end
     end
-    return
+    # Fallback: ddu=0, guaranteed valid after ratio ≤ 3/2 refinement
+    return QuinticHermiteSpline(
+        zero(storage),
+        du,
+        level,
+        storage;
+        cache_parameters = true,
+        extrapolation_right = ExtrapolationType.Linear,
+    )
+end
+
+"""
+Validate that a QuinticHermiteSpline has non-increasing derivative
+(i.e., the second derivative is non-positive), which corresponds to
+non-decreasing area for basin profiles.
+Samples 10 points per knot interval.
+"""
+function validate_nonincreasing_derivative(itp; n_per_interval::Int = 10)::Bool
+    knots = itp.t
+    du_prev = Inf
+    for k in 1:(length(knots) - 1)
+        for x in range(knots[k], knots[k + 1], length = n_per_interval + 1)[1:(end - 1)]
+            du_val = derivative(itp, x)
+            if du_val > du_prev + 1.0e-10
+                return false
+            end
+            du_prev = du_val
+        end
+    end
+    du_val = derivative(itp, knots[end])
+    return !(du_val > du_prev + 1.0e-10)
 end

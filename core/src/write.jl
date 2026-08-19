@@ -854,11 +854,11 @@ function output_basin_profiles(
     storage = Float64[]
     node_id = Int32[]
 
-    for id in node_id
+    for id in basin.node_id
         areas = if isassigned(area_from_level, id.idx)
             area_from_level[id.idx].u
         else
-            inv.(level_from_storage.du)
+            inv.(level_from_storage[id.idx].du)
         end
         append!(level, level_from_storage[id.idx].u)
         append!(area, areas)

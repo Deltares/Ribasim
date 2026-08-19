@@ -111,20 +111,6 @@ function collect_primary_network_connections!(
     return nothing
 end
 
-function get_minmax_level(p_independent::ParametersIndependent, node_id::NodeID)
-    (; basin, level_boundary) = p_independent
-
-    if node_id.type == NodeType.Basin
-        itp = basin.level_to_area[node_id.idx]
-        return itp.t[1], itp.t[end]
-    elseif node_id.type == NodeType.LevelBoundary
-        itp = level_boundary.level[node_id.idx]
-        return minimum(itp.u), maximum(itp.u)
-    else
-        error("Min and max level are not defined for nodes of type $(node_id.type).")
-    end
-end
-
 function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     low_storage_factor = problem[:low_storage_factor]
     return if node_id.type == NodeType.Basin
@@ -311,22 +297,12 @@ get_Δt_allocation(allocation::Allocation) =
 
 """
 Compute the slope dA/dh of the basin profile at a given level.
-The basin profile is piecewise-linear in A(h), so dA/dh is piecewise-constant.
 """
 function get_area_slope(basin::Basin, state_idx::Int, level::Float64)::Float64
-    (; level_from_storage, area_from_level) = basin.profile
-    return if isassigned(area_from_level, state_idx)
-        derivative(area_from_level[state_idx], level)
-    else
-        storage = get_storage_from_level(basin, state_idx, level)
-        _, area = get_level_and_area_from_storage(basin.profile, state_idx, storage)
-        deriv2, deriv3 = value_and_derivative(
-            s -> derivative(level_from_storage[state_idx], s, 2),
-            AutoForwardDiff(),
-            storage
-        )
-        area^4 * (3 * area * deriv2^2 - deriv3)
-    end
+    (; level_from_storage) = basin.profile
+    storage = get_storage_from_level(basin, state_idx, level)
+    _, area = get_level_and_area_from_storage(basin.profile, state_idx, storage)
+    return - area^3 * derivative(level_from_storage[state_idx], storage, 2)
 end
 
 """

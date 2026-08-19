@@ -495,7 +495,8 @@ end
 
 VerticalFlux(n::Int) = VerticalFlux(zeros(n), zeros(n), zeros(n), zeros(n), zeros(n))
 
-const LevelToStorageType = QuinticHermiteSpline{
+"QuinticHermiteSpline from a Float64 to a Float64"
+const ScalarQuinticInterpolation = QuinticHermiteSpline{
     Vector{Float64},
     Vector{Float64},
     Vector{Float64},
@@ -509,7 +510,7 @@ const LevelToStorageType = QuinticHermiteSpline{
 @kwdef struct BasinProfile
     n::Int
     # C2 interpolation mapping from storage to level
-    level_from_storage::Vector{LevelToStorageType} = Vector{LevelToStorageType}(undef, n)
+    level_from_storage::Vector{ScalarQuinticInterpolation} = Vector{ScalarQuinticInterpolation}(undef, n)
     # C0 interpolation used as a first guess to solve h(s) = h_given
     storage_from_level_guesser::Vector{ScalarLinearInterpolation} = Vector{ScalarLinearInterpolation}(undef, n)
     # C1 interpolation mapping from level to area. Only used when both stirage and area data was provided
@@ -585,7 +586,7 @@ allocation_controlled: whether this TabulatedRatingCurve is controlled by alloca
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
-    interpolations::Vector{ScalarPCHIPInterpolation} = ScalarLinearInterpolation[]
+    interpolations::Vector{ScalarQuinticInterpolation} = ScalarQuinticInterpolation[]
     current_interpolation_index::Vector{IndexLookup} = IndexLookup[]
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
         OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
