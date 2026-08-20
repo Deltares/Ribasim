@@ -452,7 +452,7 @@ problem[Symbol(constraint_name)] = JuMP.@constraint(
 
 ## Objectives
 
-The allocation optimization solves multiple objectives in sequence using **lexicographic goal programming**. Each objective is optimized, then the optimal value is constrained in subsequent objectives.
+The allocation optimization solves multiple objectives in sequence using **lexicographic goal programming**. Each objective is optimized; before the next non-empty objective is solved, the preceding result is constrained with an inequality in the direction of improvement.
 
 ### Primary Objective: Minimize Absolute Error Sum
 
@@ -468,24 +468,26 @@ $$\min \sum_{b; p\in P^\min_b} E^p_{b, \text{lower}} + \sum_{b; p\in P^\max_b} E
 ```julia
 # From add_demand_objectives!
 # For flow demands
-objective_expression = JuMP.AffExpr(0.0)
+first_objective_expression = JuMP.AffExpr(0.0)
 for node_id in user_demand_ids_subnetwork
     if has_demand_priority[node_id.idx, demand_priority_idx]
         demand = get_demand(user_demand, node_id, demand_priority, t)
         JuMP.add_to_expression!(
-            objective_expression,
+            first_objective_expression,
             demand * user_demand_error[node_id, demand_priority, 1]
         )
     end
 end
 
-# Store for later optimization
+# Store both demand goals for later optimization
+second_objective_expression = JuMP.AffExpr(0.0)  # Fairness-error expression
 push!(
-    objective_metadata,
-    ObjectiveMetadata(
+    objectives,
+    AllocationObjective(
+        AllocationObjectiveType.demand_flow,
         demand_priority,
-        objective_expression,
-        # ... other metadata
+        demand_priority_idx,
+        [first_objective_expression, second_objective_expression],
     )
 )
 ```
@@ -574,19 +576,18 @@ where $\alpha_b$ is the low storage factor for basin $b$.
 
 ```julia
 # From add_low_storage_factor_objective!
-objective_expression = sum(
+# Note: Maximizing low_storage_factor is equivalent to minimizing its negative
+expression = -sum(
     low_storage_factor[node_id]
     for node_id in basin_ids_subnetwork
 )
 
-# Note: Maximizing low_storage_factor is equivalent to minimizing its negative
 push!(
-    objective_metadata,
-    ObjectiveMetadata(
-        Int32(-1),  # Special priority for this objective
-        -objective_expression,  # Negative for maximization
-        # ...
-    )
+    objectives,
+    AllocationObjective(
+        type = AllocationObjectiveType.low_storage_factor,
+        expressions = [expression],
+    ),
 )
 ```
 
@@ -753,32 +754,34 @@ The main optimization loop in `optimize_multi_objective!` solves objectives in s
 
 ```julia
 function optimize_multi_objective!(
-    allocation_model::AllocationModel,
+    model::AllocationModel,
+    config::Config,
+    t::Number,
     # ...
 )::Nothing
-    (; problem, objectives, temporary_constraints) = allocation_model
+    (; problem, objectives, temporary_constraints) = model
 
-    for metadata in objectives.objective_metadata
-        (; demand_priority, objective_expression) = metadata
-
-        # Set the current objective
-        JuMP.@objective(problem, Min, objective_expression)
-
-        # Solve
-        JuMP.optimize!(problem)
-
-        # Check termination status
-        if JuMP.termination_status(problem) != JuMP.OPTIMAL
-            # Handle infeasibility...
+    latest_expression = JuMP.AffExpr()
+    latest_bound = 0.0
+    for objective in objectives
+        for expression in objective.expressions
+            iszero(expression) && continue
+            if !iszero(latest_expression)
+                push!(
+                    temporary_constraints,
+                    JuMP.@constraint(problem, latest_expression <= latest_bound),
+                )
+            end
+            JuMP.@objective(problem, Min, expression)
+            JuMP.optimize!(problem)
+            latest_constraint =
+                isempty(temporary_constraints) ? nothing : last(temporary_constraints)
+            parse_termination_status(
+                model, objective, expression, latest_constraint, config, t,
+            )
+            latest_bound = JuMP.objective_value(problem)
+            latest_expression = expression
         end
-
-        # Add constraint to preserve this objective's value
-        optimal_value = JuMP.objective_value(problem)
-        constraint = JuMP.@constraint(
-            problem,
-            objective_expression <= optimal_value + tolerance
-        )
-        push!(temporary_constraints, constraint)
     end
 
     # Clean up temporary constraints after optimization
@@ -790,10 +793,10 @@ end
 
 **Key concepts:**
 - **Lexicographic optimization**: Each objective is optimized in order
-- After optimizing objective $i$, add constraint: $\text{obj}_i \le \text{optimal}_i + \epsilon$
+- Before optimizing objective $i + 1$, add constraint: $\text{obj}_i \le \text{optimal}_i$
 - This ensures later objectives don't degrade earlier ones
 - Temporary constraints are removed after all objectives are solved
-- If any objective is infeasible, the entire optimization fails
+- The termination status is checked after every objective optimization; an infeasible or other non-optimal solve stops allocation immediately
 
 # Scaling for Numerical Stability
 
@@ -803,12 +806,12 @@ The optimization uses scaling factors to improve numerical conditioning:
 struct ScalingFactors
     storage::Float64  # Typical storage value (m³)
     flow::Float64     # Typical flow rate (m³/s)
+    mean_half_storage::Float64  # Initialization-time reference storage (m³)
 end
 
 function ScalingFactors(
     p_independent::ParametersIndependent,
     subnetwork_id::Int32,
-    Δt_allocation::Float64,
 )
     # Compute average half-storage across basins
     max_storages = [
@@ -816,18 +819,31 @@ function ScalingFactors(
         for node_id in basin.node_id
         if graph[node_id].subnetwork_id == subnetwork_id
     ]
-    mean_half_storage = sum(max_storages) / (2 * length(max_storages))
-
     return ScalingFactors(
-        storage = mean_half_storage,
-        flow = mean_half_storage / Δt_allocation
+        mean_half_storage = sum(max_storages) / (2 * length(max_storages)),
     )
+end
+
+function update_scaling!(p::Parameters, Δt::Float64)
+    (; p_independent, state_and_time_dependent_cache) = p
+    (; allocation) = p_independent
+    (; current_storage) = state_and_time_dependent_cache
+    for allocation_model in allocation.allocation_models
+        (; node_ids_in_subnetwork, scaling) = allocation_model
+        (; basin_ids_subnetwork) = node_ids_in_subnetwork
+        mean_storage = sum(current_storage[id.idx] for id in basin_ids_subnetwork) /
+            length(basin_ids_subnetwork)
+        scaling.storage = (scaling.mean_half_storage + mean_storage) / 2
+        scaling.flow = scaling.storage / Δt
+    end
 end
 ```
 
 **Key concepts:**
 - Storage variables are divided by `scaling.storage`
 - Flow variables are divided by `scaling.flow`
+- The storage scale is updated for each allocation solve from the current mean storage and the initialization-time mean half-storage
+- The flow scale is updated from the storage scale and the allocation timestep
 - Typical values are O(1) in the scaled problem
 - Improves numerical stability and solver performance
 - Must scale/unscale when communicating with physical layer
@@ -912,7 +928,6 @@ struct AllocationModel
     problem::JuMP.Model  # The JuMP optimization problem
     node_ids_in_subnetwork::NodeIDsInSubnetwork
     scaling::ScalingFactors
-    Δt_allocation::Float64
 
     # Cumulative tracking for output
     cumulative_supplied_volume::Dict{Tuple{NodeID, NodeID}, Float64}
@@ -922,13 +937,11 @@ struct AllocationModel
     implicit_negative_forcing_volume::Dict{NodeID, Float64}
 
     # Optimization objectives
-    objectives::AllocationObjectives
+    objectives::Vector{AllocationObjective}
 
     # Temporary constraints for lexicographic optimization
     temporary_constraints::Vector{JuMP.ConstraintRef}
 
-    # For routing optimization
-    route_priority_expression::JuMP.AffExpr
 end
 ```
 

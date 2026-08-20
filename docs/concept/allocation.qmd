@@ -220,7 +220,7 @@ The flow rate of a FlowBoundary is given as a timeseries so we could use the int
 
 # Objectives (goals)
 
-The allocation algorithm optimizes for a sequence of objectives in succession, adding constraints after optimization for each goal to retain the result of that optimization in the subsequent optimizations. This approach is known as [goal programming](https://en.wikipedia.org/wiki/Goal_programming).
+The allocation algorithm optimizes for a sequence of objectives in succession. Before optimizing the next goal, it adds an inequality constraint that retains the preceding result in the direction of improvement. For a minimization objective with optimal value $z^*$, this is $z \le z^*$. This approach is known as [goal programming](https://en.wikipedia.org/wiki/Goal_programming).
 
 
 ### Demand objectives
