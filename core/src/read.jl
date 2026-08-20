@@ -35,7 +35,7 @@ function initialize_allocation!(
     for subnetwork_id in circshift(subnetwork_ids_, -1)
         push!(
             allocation_models,
-            AllocationModel(subnetwork_id, p_independent, config.allocation),
+            AllocationModel(subnetwork_id, p_independent),
         )
     end
     allocation_models .= reverse!(allocation_models)
@@ -1683,9 +1683,13 @@ function Subgrid(db::DB, config::Config, basin::Basin)
 end
 
 function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
+    dt_allocation = config.allocation.dt
+    adaptive = isnothing(dt_allocation)
     return Allocation(;
         demand_priorities_all = get_all_demand_priorities(db, config),
         subnetwork_ids = sort(collect(keys(graph[].node_ids))),
+        dt_allocation = adaptive ? 86400.0 : dt_allocation,
+        adaptive
     )
 end
 

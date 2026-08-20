@@ -14,31 +14,26 @@
     (; user_demand, flow_boundary, allocation) = p_independent
     allocation_model = allocation.allocation_models[1]
     (; objectives, problem) = allocation_model
-    (; objective_metadata, objective_expressions_all) = objectives
 
     flow = problem[:flow]
     user_demand_error = problem[:user_demand_error]
     low_storage_factor = problem[:low_storage_factor]
 
     # Demand objective
-    metadata = objective_metadata[1]
-    @test metadata.type == AllocationObjectiveType.demand_flow
-    first_expression_terms = keys(metadata.expression_first.terms)
+    objective = objectives[1]
+    @test objective.type == AllocationObjectiveType.demand_flow
+    first_expression_terms = keys(objective.expressions[1].terms)
     @test length(first_expression_terms) == 2
     @test user_demand_error[NodeID(:UserDemand, 5, p_independent), 1, :first] ∈
         first_expression_terms
     @test user_demand_error[NodeID(:UserDemand, 6, p_independent), 1, :first] ∈
         first_expression_terms
-    @test metadata.expression_first === objective_expressions_all[1]
-    @test metadata.expression_second === objective_expressions_all[2]
-    @test metadata.expression_second ==
+    @test objective.expressions[2] ==
         user_demand_error[NodeID(:UserDemand, 5, p_independent), 1, :second] +
         user_demand_error[NodeID(:UserDemand, 6, p_independent), 1, :second]
 
     # Low storage factor objective
-    metadata = objective_metadata[2]
-    @test metadata.expression_first == -sum(low_storage_factor)
-    @test metadata.expression_first === objective_expressions_all[3]
+    @test objectives[2].expressions[1] == -sum(low_storage_factor)
 end
 
 
@@ -66,7 +61,7 @@ end
     A = Ribasim.basin_areas(basin, 1)[1]
     l_max = level_demand.max_level[1][1](0)
     min_storage = 1.0e3
-    Δt_allocation = allocation.allocation_models[1].Δt_allocation
+    Δt_allocation = allocation.dt_allocation
 
     # In this section the Basin leaves no supply for the UserDemand
     stage_1 = t .≤ 2Δt_allocation
@@ -208,7 +203,7 @@ end
     end
 end
 
-@testitem "equal_fraction_allocation" begin
+@testitem "Equal fraction allocation" begin
     using Ribasim: NodeID, NodeType
     using StructArrays: StructVector
     using DataFrames: DataFrame
@@ -216,8 +211,7 @@ end
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/fair_distribution/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.Model(toml_path)
-    Ribasim.solve!(model)
+    model = Ribasim.run(toml_path)
     (; problem, scaling) =
         only(model.integrator.p.p_independent.allocation.allocation_models)
     (; user_demand) = model.integrator.p.p_independent

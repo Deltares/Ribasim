@@ -151,6 +151,8 @@ This means the flow is still smoothly reduced to zero when:
 - the level difference across the node is small, or
 - the downstream level exceeds `max_downstream_level`.
 
+When allocation is disabled, `allocation_controlled` has no effect and the TabulatedRatingCurve follows its normal physics-based $Q(h)$ relationship.
+
 ## Route priority
 
 In a typical setup you want the TabulatedRatingCurve to follow its $Q(h)$ relationship under normal conditions and only reduce flow when there is a water shortage (i.e. when a demand cannot be met). This is achieved by giving the TabulatedRatingCurve node a **negative route priority** by default.

@@ -29,7 +29,7 @@ dt = 86400                  # optional, remove for adaptive time stepping
 dtmin = 3600.0              # optional, 3600.0
 reltol_linearization = 0.01 # optional, default 0.01
 
-[allocation.route_priority]
+[allocation.default_route_priority]
 level_boundary = 1000       # optional, default 1000
 basin = 0                   # optional, default 0
 manning_resistance = 10     # optional, default 10

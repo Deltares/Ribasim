@@ -5,6 +5,7 @@ import pandas as pd
 from ribasim import Model
 from ribasim.config import (
     Allocation,
+    DefaultRoutePriority,
     Experimental,
     Interpolation,
     Solver,
@@ -368,7 +369,16 @@ def medium_primary_secondary_network_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2020, 1, 20),
         crs="EPSG:28992",
-        allocation=Allocation(),
+        allocation=Allocation(
+            default_route_priority=DefaultRoutePriority(
+                level_boundary=0,
+                manning_resistance=0,
+                linear_resistance=0,
+                tabulated_rating_curve=0,
+                outlet=0,
+                pump=0,
+            ),
+        ),
         experimental=Experimental(allocation=True),
     )
 
