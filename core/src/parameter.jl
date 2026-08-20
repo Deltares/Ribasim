@@ -191,7 +191,10 @@ const IndexLookup = ConstantInterpolation{
 @enumx AllocationObjectiveType demand_flow demand_storage low_storage_factor route_priorities none
 
 """
-TODO: Add docstring
+The data associated with a single objective. Only demand objectives have demand priorities.
+Some objectives have multiple expressions which are optimized for successively in goal programming fashion,
+like for demands where the first expression optimizes for the total allocated volume and the second optimizes
+for an equal distribution.
 """
 @kwdef struct AllocationObjective
     type::AllocationObjectiveType.T
@@ -209,6 +212,10 @@ function Base.show(io::IO, objective::AllocationObjective)
     return print(io, out)
 end
 
+"""
+Factors with which the variables in the allocation optimization problem are scaled.
+This doesn't change the results, it just makes the problem easier for the optimizer.
+"""
 @kwdef mutable struct ScalingFactors
     flow::Float64 = 1.0e3
     storage::Float64 = 1.0e6
@@ -248,10 +255,14 @@ problem: The JuMP.jl model for solving the allocation problem
 has_demand_priority: Per demand priority in the whole model whether a demand of this priority is present in this
     subnetwork
 objectives: The objectives (goals) in the order in which they will be optimized for
+explicit_positive_forcing_volume: The computable cumulative forcing over the coming allocation timestep
+implicit_negative_forcing_volume: The predicted cumuative forcing over the coming allocation timestep (assuming no reduction)
 cumulative_supplied_volume: The net volume of flow supplied to a demand node over the last Δt_allocation
 sources: The nodes in the subnetwork which can act as sources, sorted by route priority
 secondary_network_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
+flow_links_subnetwork: The physical layer flow links from which at least one node has this allocation model's subnetwork ID
 scaling: The flow and storage scaling factors to make the optimization problem more numerically stable
+temporary_constraints: Goal programming constraints; one is added after each optimization to retain their results
 """
 @kwdef mutable struct AllocationModel
     subnetwork_id::Int32
