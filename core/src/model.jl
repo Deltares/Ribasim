@@ -309,21 +309,11 @@ function compute_and_set_adaptive_Δt!(model, saveat, tspan_end)::Float64
 
     water_balance!(du, u, p, t)
 
-    Δt = Inf
+    Δt = min(time_to_next_saveat(t, saveat, tspan_end), tspan_end - t)
     for am in allocation.allocation_models
         Δt_sub = compute_adaptive_Δt(am, p, du, t, config.allocation)
-        am.Δt_allocation = Δt_sub
         Δt = min(Δt, Δt_sub)
     end
-
-    Δt = min(Δt, time_to_next_saveat(t, saveat, tspan_end))
-    Δt = min(Δt, tspan_end - t)
-
-    # Clamp each model's Δt_allocation to the global bound so it is never Inf
-    for am in allocation.allocation_models
-        am.Δt_allocation = min(am.Δt_allocation, Δt)
-    end
-
     return Δt
 end
 
@@ -333,8 +323,9 @@ Step through the simulation with allocation, using either adaptive or fixed time
 function solve_with_allocation!(model::Model)::Nothing
     (; config, integrator) = model
     (; tspan::Tuple{Float64, Float64}) = integrator.sol.prob
+    (; adaptive, dt_allocation) = integrator.p.p_independent.allocation
 
-    if config.allocation.dt === nothing
+    if adaptive
         saveat = config.solver.saveat
         while integrator.t < tspan[end] - eps(tspan[end])
             Δt = compute_and_set_adaptive_Δt!(model, saveat, tspan[end])
@@ -342,11 +333,10 @@ function solve_with_allocation!(model::Model)::Nothing
             SciMLBase.step!(integrator, Δt, true)
         end
     else
-        dt_alloc = config.allocation.dt
-        n_allocation_times = floor(Int, tspan[end] / dt_alloc)
+        n_allocation_times = floor(Int, tspan[end] / dt_allocation)
         for _ in 1:n_allocation_times
             update_allocation!(model)
-            SciMLBase.step!(integrator, dt_alloc, true)
+            SciMLBase.step!(integrator, dt_allocation, true)
         end
         dt = tspan[end] - integrator.t
         if dt > 0

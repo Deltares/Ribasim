@@ -61,7 +61,7 @@ end
     A = Ribasim.basin_areas(basin, 1)[1]
     l_max = level_demand.max_level[1][1](0)
     min_storage = 1.0e3
-    Δt_allocation = allocation.allocation_models[1].Δt_allocation
+    Δt_allocation = allocation.dt_allocation
 
     # In this section the Basin leaves no supply for the UserDemand
     stage_1 = t .≤ 2Δt_allocation

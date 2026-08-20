@@ -257,20 +257,28 @@ end
 function ScalingFactors(
         p_independent::ParametersIndependent,
         subnetwork_id::Int32,
-        Δt_allocation::Float64,
     )
     (; basin, graph) = p_independent
     max_storages = [
         basin.storage_to_level[node_id.idx].t[end] for
             node_id in basin.node_id if graph[node_id].subnetwork_id == subnetwork_id
     ]
-    mean_half_storage = sum(max_storages) / (2 * length(max_storages))
-    # Use the configured (max) timestep for scaling, not the adaptive timestep.
-    # This keeps scaling stable when Δt varies between solves.
-    return ScalingFactors(;
-        storage = mean_half_storage,
-        flow = mean_half_storage / Δt_allocation,
-    )
+    return ScalingFactors(; mean_half_storage = sum(max_storages) / (2 * length(max_storages)))
+end
+
+function update_scaling!(p::Parameters, Δt::Float64)
+    (; p_independent, state_and_time_dependent_cache) = p
+    (; allocation_models) = p_independent.allocation
+    (; current_storage) = state_and_time_dependent_cache
+    for allocation_model in allocation_models
+        (; node_ids_in_subnetwork, scaling) = allocation_model
+        (; basin_ids_subnetwork) = node_ids_in_subnetwork
+
+        storage_sum = sum(current_storage[id.idx] for id in basin_ids_subnetwork)
+        scaling.storage = (scaling.mean_half_storage + storage_sum / length(basin_ids_subnetwork)) / 2
+        scaling.flow = scaling.storage / Δt
+    end
+    return
 end
 
 function constraint_ref_from_index(problem::JuMP.Model, constraint_index)

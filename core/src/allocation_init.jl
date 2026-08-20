@@ -970,16 +970,11 @@ function has_demand_priority_subnetwork(
     return has_demand_priority
 end
 
-function AllocationModel(
-        subnetwork_id::Int32,
-        p_independent::ParametersIndependent,
-        allocation_config::config.Allocation,
-    )
-    Δt_allocation = something(allocation_config.dt, 86400.0)
+function AllocationModel(subnetwork_id::Int32, p_independent::ParametersIndependent)
     problem = JuMP.Model()
     JuMP.set_optimizer(problem, get_optimizer())
     node_ids_in_subnetwork = NodeIDsInSubnetwork(p_independent, subnetwork_id)
-    scaling = ScalingFactors(p_independent, subnetwork_id, Δt_allocation)
+    scaling = ScalingFactors(p_independent, subnetwork_id)
     has_demand_priority =
         has_demand_priority_subnetwork(p_independent, node_ids_in_subnetwork)
 
@@ -1010,7 +1005,6 @@ function AllocationModel(
         subnetwork_id,
         node_ids_in_subnetwork,
         problem,
-        Δt_allocation,
         scaling,
         has_demand_priority,
         secondary_network_demand,

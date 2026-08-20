@@ -219,6 +219,7 @@ This doesn't change the results, it just makes the problem easier for the optimi
 @kwdef mutable struct ScalingFactors
     flow::Float64 = 1.0e3
     storage::Float64 = 1.0e6
+    mean_half_storage::Float64 = 0.0
 end
 
 """
@@ -247,7 +248,6 @@ Store information for a subnetwork used for allocation.
 subnetwork_id: The ID of this subnetwork
 node_ids_in_subnetwork: Per node type a vector of the nodes of that type in the subnetwork
 problem: The JuMP.jl model for solving the allocation problem
-Δt_allocation: The time interval between consecutive allocation solves
 Δt_since_last_record: Time elapsed since the last saveat-aligned LP solve
     (i.e., since the last call that pushed records and reset cumulative_supplied_volume).
     Updated after every LP solve and reset to 0 when records are emitted;
@@ -268,7 +268,6 @@ temporary_constraints: Goal programming constraints; one is added after each opt
     subnetwork_id::Int32
     node_ids_in_subnetwork::NodeIDsInSubnetwork
     problem::JuMP.Model
-    Δt_allocation::Float64
     Δt_since_last_record::Float64 = 0.0
     has_demand_priority::Vector{Bool}
     objectives::Vector{AllocationObjective} = AllocationObjective[]
@@ -322,6 +321,7 @@ allocation_models: The allocation models for the primary network and subnetworks
 primary_network_connections: (from_id: pump or outlet in the primary network, to_id: node in the subnetwork, generally a basin)
     per subnetwork
 demand_priorities_all: All used demand priority values from all subnetworks
+dt_allocation: Used as the timestep if the timestepping is not adaptive
 record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
@@ -333,6 +333,8 @@ record_control: A record of all flow rates assigned to pumps and outlets by allo
     primary_network_connections::OrderedDict{Int32, Vector{Tuple{NodeID, NodeID}}} =
         OrderedDict()
     demand_priorities_all::Vector{Int32} = []
+    dt_allocation::Float64 = 86400.0
+    adaptive::Bool = false
     record_demand::Vector{DemandRecordDatum} = []
     record_flow::Vector{FlowRecordDatum} = []
     record_control::Vector{AllocationControlRecordDatum} = []
