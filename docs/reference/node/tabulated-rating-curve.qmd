@@ -151,7 +151,7 @@ This means the flow is still smoothly reduced to zero when:
 - the level difference across the node is small, or
 - the downstream level exceeds `max_downstream_level`.
 
-When experimental allocation is disabled, `allocation_controlled` has no effect and the TabulatedRatingCurve follows its normal physics-based $Q(h)$ relationship.
+When allocation is disabled, `allocation_controlled` has no effect and the TabulatedRatingCurve follows its normal physics-based $Q(h)$ relationship.
 
 ## Route priority
 

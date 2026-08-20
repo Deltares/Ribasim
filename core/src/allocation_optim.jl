@@ -72,7 +72,8 @@ function set_simulation_data!(
         # Set bounds on the storage change based on the current storage and the Basin minimum, maximum, and a delta_storage prediction
         Δstorage = storage_change[basin_id]
         JuMP.set_lower_bound(Δstorage, -storage_now / scaling.storage)
-        Δstorage_predicted = formulate_dstorage_wrt_time(du, p.p_independent, t, basin_id)
+        Δstorage_predicted =
+            formulate_dstorage_wrt_time(du, p.p_independent, t, basin_id) * Δt_allocation
 
         Δstorage_upper = if storage_now > storage_max
             max(2 * Δstorage_predicted, 0.0)
@@ -912,6 +913,7 @@ function parse_allocations!(
         node_ids_in_subnetwork.user_demand_ids_subnetwork,
         problem[:user_demand_allocated],
         allocation_model,
+        Δt_allocation,
     )
     parse_allocations!(
         integrator,
@@ -919,6 +921,7 @@ function parse_allocations!(
         node_ids_in_subnetwork.node_ids_subnetwork_with_flow_demand,
         problem[:flow_demand_allocated],
         allocation_model,
+        Δt_allocation,
     )
     parse_allocations!(integrator, level_demand, allocation_model, Δt_allocation)
     return nothing
@@ -948,6 +951,7 @@ function parse_allocations!(
         node_ids_subnetwork::Vector{NodeID},
         node_allocated,
         allocation_model::AllocationModel,
+        Δt_allocation::Float64,
     )::Nothing
     (; p, t) = integrator
     (; p_independent) = p
@@ -980,8 +984,7 @@ function parse_allocations!(
     # Use Δt_since_last_record (which equals Δt_allocation when the LP runs once
     # per saveat, or the sum of multiple sub-saveat steps when adaptive timestepping
     # produces several solves per saveat) to convert cumulative volume to a rate.
-    Δt_record = iszero(Δt_since_last_record) ? allocation_model.Δt_allocation :
-        Δt_since_last_record
+    Δt_record = iszero(Δt_since_last_record) ? Δt_allocation : Δt_since_last_record
 
     for node_id in node_ids_subnetwork
         demand_id =
@@ -1227,6 +1230,24 @@ function update_flow_variable_bounds!(
     return nothing
 end
 
+function update_flow_demand_variable_bounds!(
+        allocation_model::AllocationModel,
+        p_independent::ParametersIndependent,
+    )::Nothing
+    (; problem, node_ids_in_subnetwork, scaling) = allocation_model
+    (; node_ids_subnetwork_with_flow_demand) = node_ids_in_subnetwork
+    flow_demand_allocated = problem[:flow_demand_allocated]
+    flow_demand_extra = problem[:flow_demand_extra]
+    bound = MAX_ABS_FLOW / scaling.flow
+
+    for node_id in node_ids_subnetwork_with_flow_demand
+        earliest_priority = first(DemandPriorityIterator(node_id, p_independent))
+        JuMP.set_lower_bound(flow_demand_allocated[node_id, earliest_priority], -bound)
+        JuMP.set_upper_bound(flow_demand_extra[node_id], bound)
+    end
+    return nothing
+end
+
 function update_control_states!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
@@ -1238,6 +1259,7 @@ function update_control_states!(
     add_outlet!(allocation_model, p_independent)
     add_tabulated_rating_curve!(allocation_model, p_independent)
     update_flow_variable_bounds!(allocation_model, p_independent)
+    update_flow_demand_variable_bounds!(allocation_model, p_independent)
     return nothing
 end
 

@@ -824,17 +824,20 @@ function ScalingFactors(
     )
 end
 
-function update_scaling!(p::Parameters, Δt::Float64)
+function update_scaling!(p::Parameters, du::CVector, t::Float64, Δt::Float64)
     (; p_independent, state_and_time_dependent_cache) = p
     (; allocation) = p_independent
     (; current_storage) = state_and_time_dependent_cache
     for allocation_model in allocation.allocation_models
-        (; node_ids_in_subnetwork, scaling) = allocation_model
+        (; node_ids_in_subnetwork, scaling, flow_links_subnetwork) = allocation_model
         (; basin_ids_subnetwork) = node_ids_in_subnetwork
         mean_storage = sum(current_storage[id.idx] for id in basin_ids_subnetwork) /
             length(basin_ids_subnetwork)
         scaling.storage = (scaling.mean_half_storage + mean_storage) / 2
-        scaling.flow = scaling.storage / Δt
+        mean_flow = sum(
+            abs(get_flow(du, p_independent, t, link)) for link in flow_links_subnetwork
+        ) / length(flow_links_subnetwork)
+        scaling.flow = (scaling.storage / Δt + mean_flow) / 2
     end
 end
 ```
@@ -843,7 +846,7 @@ end
 - Storage variables are divided by `scaling.storage`
 - Flow variables are divided by `scaling.flow`
 - The storage scale is updated for each allocation solve from the current mean storage and the initialization-time mean half-storage
-- The flow scale is updated from the storage scale and the allocation timestep
+- The flow scale is the average of the storage-derived flow scale and the mean magnitude of the current physical flows in the subnetwork
 - Typical values are O(1) in the scaled problem
 - Improves numerical stability and solver performance
 - Must scale/unscale when communicating with physical layer

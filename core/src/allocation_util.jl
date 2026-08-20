@@ -300,9 +300,6 @@ function variable_ref_from_index(problem::JuMP.Model, variable_index)
     return
 end
 
-get_Δt_allocation(allocation::Allocation) =
-    first(allocation.allocation_models).Δt_allocation
-
 """
 Compute the slope dA/dh of the basin profile at a given level.
 The basin profile is piecewise-linear in A(h), so dA/dh is piecewise-constant.
