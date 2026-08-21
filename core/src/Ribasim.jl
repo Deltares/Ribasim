@@ -58,6 +58,7 @@ using SciMLBase:
     CallbackSet,
     ODEFunction,
     ODEProblem,
+    get_du,
     get_proposed_dt,
     DEIntegrator,
     FullSpecialize,
@@ -103,6 +104,7 @@ using DataInterpolations:
     integral,
     AbstractInterpolation,
     ExtrapolationType
+using FindFirstFunctions: SearchProperties
 
 using DataInterpolations.ExtrapolationType:
     Constant as ConstantExtrapolation, Periodic, Linear

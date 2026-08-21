@@ -641,7 +641,7 @@ get_low_storage_factor(storage::GradientTracer, p::Parameters, id::NodeID) = sto
 low_storage_factor_resistance_node(s_a::GradientTracer, s_b::GradientTracer, p::Parameters, q::Number, inflow_id::NodeID, outflow_id::NodeID) = s_a + s_b
 reduction_factor(x::GradientTracer, threshold::Real) = x
 relaxed_root(x::GradientTracer, threshold) = x
-(in::LinearInterpolationIntInv)(t::GradientTracer) = t # Remove with https://github.com/Deltares/Ribasim/issues/3197
+(::StorageToLevelType)(t::GradientTracer) = t # Remove with https://github.com/Deltares/Ribasim/issues/3197
 
 function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::FlowTuple
     (;

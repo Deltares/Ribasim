@@ -152,6 +152,7 @@ const ScalarConstantInterpolation = ConstantInterpolation{
     Vector{Float64},
     Vector{Float64},
     Float64,
+    SearchProperties{Float64},
 }
 
 "LinearInterpolation from a Float64 to a Float64"
@@ -161,6 +162,7 @@ const ScalarLinearInterpolation = LinearInterpolation{
     Vector{Float64},
     Vector{Float64},
     Float64,
+    SearchProperties{Float64},
 }
 
 "SmoothedConstantInterpolation from a Float64 to a Float64"
@@ -172,6 +174,7 @@ const ScalarBlockInterpolation = SmoothedConstantInterpolation{
     Vector{Float64},
     Float64,
     Float64,
+    SearchProperties{Float64},
 }
 
 "PCHIPInterpolation (a special type of CubicHermiteSpline) from a Float64 to a Float64"
@@ -182,6 +185,7 @@ const ScalarPCHIPInterpolation = CubicHermiteSpline{
     Vector{Float64},
     Vector{Float64},
     Float64,
+    SearchProperties{Float64},
 }
 
 "ConstantInterpolation from a Float64 to an Int, used to look up indices over time"
@@ -190,6 +194,7 @@ const IndexLookup = ConstantInterpolation{
     Vector{Float64},
     Vector{Float64},
     Int64,
+    SearchProperties{Float64},
 }
 
 @enumx AllocationObjectiveType demand_flow demand_storage low_storage_factor route_priorities none
