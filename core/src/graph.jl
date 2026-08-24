@@ -42,15 +42,15 @@ function create_graph(db::DB, config::Config)::MetaGraph
         weight_function = Returns(1.0),
     )
 
-    default_route_priority = Dict(
-        "LevelBoundary" => config.allocation.default_route_priority.level_boundary,
-        "Basin" => config.allocation.default_route_priority.basin,
-        "LinearResistance" => config.allocation.default_route_priority.linear_resistance,
-        "ManningResistance" => config.allocation.default_route_priority.manning_resistance,
+    route_priority = Dict(
+        "LevelBoundary" => config.allocation.route_priority.level_boundary,
+        "Basin" => config.allocation.route_priority.basin,
+        "LinearResistance" => config.allocation.route_priority.linear_resistance,
+        "ManningResistance" => config.allocation.route_priority.manning_resistance,
         "TabulatedRatingCurve" =>
-            config.allocation.default_route_priority.tabulated_rating_curve,
-        "Outlet" => config.allocation.default_route_priority.outlet,
-        "Pump" => config.allocation.default_route_priority.pump,
+            config.allocation.route_priority.tabulated_rating_curve,
+        "Outlet" => config.allocation.route_priority.outlet,
+        "Pump" => config.allocation.route_priority.pump,
     )
 
     for row in node_rows
@@ -69,7 +69,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         push!(node_ids[subnetwork_id], node_id)
         # Process route priority
         route_priority =
-            coalesce(row.route_priority, get(default_route_priority, row.node_type, 0))
+            coalesce(row.route_priority, get(route_priority, row.node_type, 0))
         graph[node_id] =
             NodeMetadata(Symbol(snake_case(row.node_type)), subnetwork_id, route_priority)
     end

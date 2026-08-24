@@ -212,7 +212,7 @@ end
     verbosity::LogLevel = Info
 end
 
-@option struct DefaultRoutePriority <: TableOption
+@option struct RoutePriority <: TableOption
     level_boundary::Int32 = 1000
     basin::Int32 = 0
     manning_resistance::Int32 = 10
@@ -226,7 +226,7 @@ end
     dt::Union{Float64, Nothing} = nothing
     reltol_linearization::Float64 = 0.01
     dtmin::Float64 = 3600.0
-    default_route_priority::DefaultRoutePriority = DefaultRoutePriority()
+    route_priority::RoutePriority = RoutePriority()
 end
 
 @option struct Experimental <: TableOption
