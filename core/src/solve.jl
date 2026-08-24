@@ -500,7 +500,6 @@ function formulate_flow!(
         p::Parameters,
         t::Number,
     )::Nothing
-    (; p_mutable) = p
     for node_idx in eachindex(tabulated_rating_curve.node_id)
         id = tabulated_rating_curve.node_id[node_idx]
         inflow_link = tabulated_rating_curve.inflow_link[node_idx]

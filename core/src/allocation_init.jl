@@ -639,7 +639,6 @@ function add_demand_objectives!(
         node_ids_subnetwork_with_flow_demand,
         basin_ids_subnetwork_with_level_demand,
     ) = node_ids_in_subnetwork
-    (; objective_expressions_all, objective_metadata) = objectives
     (; allocation) = p_independent
     (; demand_priorities_all) = allocation
 
@@ -697,8 +696,6 @@ function add_demand_objectives!(
             end
         end
 
-        push!(objective_expressions_all, first_objective_expression)
-        push!(objective_expressions_all, second_objective_expression)
         first_objective_expressions[demand_priority] = first_objective_expression
 
         if has_flow_unit_demands && has_storage_unit_demands
@@ -718,13 +715,15 @@ function add_demand_objectives!(
                 AllocationObjectiveType.none
             end
             push!(
-                objective_metadata,
-                AllocationObjectiveMetadata(
+                objectives,
+                AllocationObjective(
                     objective_type,
                     demand_priority,
                     demand_priority_idx,
-                    first_objective_expression,
-                    second_objective_expression,
+                    [
+                        first_objective_expression,
+                        second_objective_expression,
+                    ],
                 ),
             )
         end
@@ -840,16 +839,13 @@ for this allocation model.
 """
 function add_low_storage_factor_objective!(allocation_model::AllocationModel)::Nothing
     (; problem, objectives) = allocation_model
-    (; objective_expressions_all, objective_metadata) = objectives
 
     expression = -variable_sum(problem[:low_storage_factor])
-
-    push!(objective_expressions_all, expression)
     push!(
-        objective_metadata,
-        AllocationObjectiveMetadata(;
+        objectives,
+        AllocationObjective(;
             type = AllocationObjectiveType.low_storage_factor,
-            expression_first = expression,
+            expressions = [expression],
         ),
     )
     return nothing
@@ -863,8 +859,9 @@ function add_route_priority_objective!(
         p_independent::ParametersIndependent,
     )::Nothing
     (; graph, allocation) = p_independent
-    (; problem, subnetwork_id, route_priority_expression) = allocation_model
+    (; problem, objectives, subnetwork_id) = allocation_model
     flow = problem[:flow]
+    expression = JuMP.AffExpr()
 
     # Add route priorities from primary network connections
     primary_network_connections =
@@ -874,26 +871,30 @@ function add_route_priority_objective!(
         upstream_node = link[1]
         route_priority = graph[upstream_node].route_priority
         if !iszero(route_priority)
-            JuMP.add_to_expression!(route_priority_expression, route_priority * flow[link])
+            JuMP.add_to_expression!(expression, route_priority * flow[link])
         end
     end
 
     # Sort node IDs for deterministic problem generation
     for node_id in sort!(collect(graph[].node_ids[subnetwork_id]))
-        if node_id.type == NodeType.Junction
-            continue
-        end
         (; route_priority) = graph[node_id]
         if !iszero(route_priority)
             for downstream_id in outflow_ids(graph, node_id)
                 JuMP.add_to_expression!(
-                    route_priority_expression,
+                    expression,
                     route_priority * flow[(node_id, downstream_id)],
                 )
             end
         end
     end
 
+    push!(
+        objectives,
+        AllocationObjective(;
+            type = AllocationObjectiveType.route_priorities,
+            expressions = [expression],
+        )
+    )
     return nothing
 end
 
@@ -969,16 +970,11 @@ function has_demand_priority_subnetwork(
     return has_demand_priority
 end
 
-function AllocationModel(
-        subnetwork_id::Int32,
-        p_independent::ParametersIndependent,
-        allocation_config::config.Allocation,
-    )
-    Δt_allocation = something(allocation_config.dt, 86400.0)
+function AllocationModel(subnetwork_id::Int32, p_independent::ParametersIndependent)
     problem = JuMP.Model()
     JuMP.set_optimizer(problem, get_optimizer())
     node_ids_in_subnetwork = NodeIDsInSubnetwork(p_independent, subnetwork_id)
-    scaling = ScalingFactors(p_independent, subnetwork_id, Δt_allocation)
+    scaling = ScalingFactors(p_independent, subnetwork_id)
     has_demand_priority =
         has_demand_priority_subnetwork(p_independent, node_ids_in_subnetwork)
 
@@ -1009,7 +1005,6 @@ function AllocationModel(
         subnetwork_id,
         node_ids_in_subnetwork,
         problem,
-        Δt_allocation,
         scaling,
         has_demand_priority,
         secondary_network_demand,
@@ -1051,7 +1046,6 @@ function AllocationModel(
     add_demand_objectives!(allocation_model, p_independent)
     add_low_storage_factor_objective!(allocation_model)
     add_route_priority_objective!(allocation_model, p_independent)
-    filter!(!iszero, allocation_model.objectives.objective_expressions_all)
 
     return allocation_model
 end

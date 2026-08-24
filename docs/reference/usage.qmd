@@ -289,7 +289,7 @@ subnetwork_id   | Int32    | (optional)
 route_priority | Int32    | (optional, does not have to be unique)
 cyclic_time     | Bool     | (optional, defaults to false)
 
-If not set, the `route_priority` is fixed per node type as explained in the [allocation settings](#sec-allocation-settings).
+If not set, `route_priority` defaults to the value configured for this node type in the `route_priority` section of the config; see the [allocation settings](#sec-allocation-settings).
 
 Adding a point geometry to the node table can be helpful to examine models in [QGIS](https://qgis.org/en/site/), as it will show the location of the nodes on the map.
 The geometry is not used by Ribasim.

@@ -191,31 +191,35 @@ const IndexLookup = ConstantInterpolation{
 @enumx AllocationObjectiveType demand_flow demand_storage low_storage_factor route_priorities none
 
 """
-TODO: Add docstring
+The data associated with a single objective. Only demand objectives have demand priorities.
+Some objectives have multiple expressions which are optimized for successively in goal programming fashion,
+like for demands where the first expression optimizes for the total allocated volume and the second optimizes
+for an equal distribution.
 """
-@kwdef struct AllocationObjectiveMetadata
+@kwdef struct AllocationObjective
     type::AllocationObjectiveType.T
     demand_priority::Int32 = 0
     demand_priority_idx::Int = 0
-    expression_first::JuMP.AffExpr
-    expression_second::JuMP.AffExpr = JuMP.AffExpr()
+    expressions::Vector{JuMP.AffExpr} = JuMP.AffExpr[]
+end
+
+function Base.show(io::IO, objective::AllocationObjective)::Nothing
+    (; type, demand_priority) = objective
+    print(io, "AllocationObjective of type $type")
+    if startswith(string(type), "demand")
+        print(io, " with demand priority $demand_priority")
+    end
+    return nothing
 end
 
 """
-The objectives corresponding to a subnetwork along with metadata
-objective_expressions_all: A vector of JuMP.AffExpr to be passed to the optimizer (HiGHS) and
-    optimized for in lexicographic fashion
-objective_metadata: Metadata per objective. Note that there are more objective expressions than objective data
-        instances, because some objective data instances have more than one objective expression.
+Factors with which the variables in the allocation optimization problem are scaled.
+This doesn't change the results, it just makes the problem easier for the optimizer.
 """
-@kwdef struct AllocationObjectives
-    objective_expressions_all::Vector{JuMP.AffExpr} = JuMP.AffExpr[]
-    objective_metadata::Vector{AllocationObjectiveMetadata} = AllocationObjectiveMetadata[]
-end
-
 @kwdef mutable struct ScalingFactors
-    flow::Float64 = 1.0e3
-    storage::Float64 = 1.0e6
+    flow::Float64 = 1.0e3  # Typical storage value (m³)
+    storage::Float64 = 1.0e6  # Typical flow rate (m³/s)
+    mean_half_storage::Float64 = 0.0  # Initialization-time reference storage (m³)
 end
 
 """
@@ -244,7 +248,6 @@ Store information for a subnetwork used for allocation.
 subnetwork_id: The ID of this subnetwork
 node_ids_in_subnetwork: Per node type a vector of the nodes of that type in the subnetwork
 problem: The JuMP.jl model for solving the allocation problem
-Δt_allocation: The time interval between consecutive allocation solves
 Δt_since_last_record: Time elapsed since the last saveat-aligned LP solve
     (i.e., since the last call that pushed records and reset cumulative_supplied_volume).
     Updated after every LP solve and reset to 0 when records are emitted;
@@ -252,19 +255,22 @@ problem: The JuMP.jl model for solving the allocation problem
 has_demand_priority: Per demand priority in the whole model whether a demand of this priority is present in this
     subnetwork
 objectives: The objectives (goals) in the order in which they will be optimized for
+explicit_positive_forcing_volume: The computable cumulative forcing over the coming allocation timestep
+implicit_negative_forcing_volume: The predicted cumulative forcing over the coming allocation timestep (assuming no reduction)
 cumulative_supplied_volume: The net volume of flow supplied to a demand node over the last Δt_allocation
 sources: The nodes in the subnetwork which can act as sources, sorted by route priority
 secondary_network_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
+flow_links_subnetwork: The physical layer flow links from which at least one node has this allocation model's subnetwork ID
 scaling: The flow and storage scaling factors to make the optimization problem more numerically stable
+temporary_constraints: Goal programming constraints; one is added after each optimization to retain their results
 """
 @kwdef mutable struct AllocationModel
     subnetwork_id::Int32
     node_ids_in_subnetwork::NodeIDsInSubnetwork
     problem::JuMP.Model
-    Δt_allocation::Float64
     Δt_since_last_record::Float64 = 0.0
     has_demand_priority::Vector{Bool}
-    objectives::AllocationObjectives = AllocationObjectives()
+    objectives::Vector{AllocationObjective} = AllocationObjective[]
     explicit_positive_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
     implicit_negative_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
     cumulative_supplied_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict()
@@ -274,7 +280,6 @@ scaling: The flow and storage scaling factors to make the optimization problem m
     flow_links_subnetwork::Vector{Tuple{NodeID, NodeID}} = Vector{Tuple{NodeID, NodeID}}()
     scaling::ScalingFactors = ScalingFactors()
     temporary_constraints::Vector{JuMP.ConstraintRef} = JuMP.ConstraintRef[]
-    route_priority_expression::JuMP.AffExpr = JuMP.AffExpr()
 end
 
 struct DemandRecordDatum
@@ -316,6 +321,8 @@ allocation_models: The allocation models for the primary network and subnetworks
 primary_network_connections: (from_id: pump or outlet in the primary network, to_id: node in the subnetwork, generally a basin)
     per subnetwork
 demand_priorities_all: All used demand priority values from all subnetworks
+dt_allocation: Used as the timestep if the timestepping is not adaptive
+adaptive: True for adaptive timestepping, false for fixed timestep of dt_allocation
 record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
@@ -327,6 +334,7 @@ record_control: A record of all flow rates assigned to pumps and outlets by allo
     primary_network_connections::OrderedDict{Int32, Vector{Tuple{NodeID, NodeID}}} =
         OrderedDict()
     demand_priorities_all::Vector{Int32} = []
+    dt_allocation::Union{Float64, Nothing} = nothing
     record_demand::Vector{DemandRecordDatum} = []
     record_flow::Vector{FlowRecordDatum} = []
     record_control::Vector{AllocationControlRecordDatum} = []

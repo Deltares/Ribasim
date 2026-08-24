@@ -285,46 +285,48 @@ Take Model timesteps until `t + dt` is reached exactly.
 function step!(model::Model, dt::Float64)::Model
     (; config, integrator) = model
     (; t) = integrator
-    # If we are at an allocation time, run allocation before the next physical
-    # layer timestep. This allows allocation over period (t, t + dt) to use variables
-    # set over BMI at time t before calling this function.
-    ntimes = t / something(config.allocation.dt, 86400.0)
-    if round(ntimes) ≈ ntimes
-        update_allocation!(model)
+    if config.experimental.allocation
+        dt_allocation = config.allocation.dt
+        if isnothing(dt_allocation)
+            error(
+                """
+                Ribasim was called with allocation active and adaptive timestepping from the BMI, which is currently not supported.
+                Supply a fixed allocation timestep in the Ribasim config.
+                """
+            )
+        end
+        ntimes = t / dt_allocation
+        if round(ntimes) ≈ ntimes
+            update_allocation!(model, dt_allocation)
+        end
     end
     SciMLBase.step!(integrator, dt, true)
     return model
 end
 
 """
-Compute adaptive Δt for all allocation models based on linearization error bounds,
-set each model's Δt_allocation, clamp to saveat/tspan boundaries, and return (Δt, on_saveat).
+Compute and return  the adaptive allocation Δt if the timestepping is adaptive, otherwise return
+the fixed timestep.
 """
-function compute_and_set_adaptive_Δt!(model, saveat, tspan_end)::Float64
+function compute_allocation_Δt(model, saveat, tspan_end)::Float64
     (; config, integrator) = model
     (; u, p, t) = integrator
-    (; p_independent) = p
-    (; allocation) = p_independent
-    du = get_du(integrator)
+    (; allocation) = p.p_independent
 
-    water_balance!(du, u, p, t)
+    if isnothing(allocation.dt_allocation)
+        du = get_du(integrator)
 
-    Δt = Inf
-    for am in allocation.allocation_models
-        Δt_sub = compute_adaptive_Δt(am, p, du, t, config.allocation)
-        am.Δt_allocation = Δt_sub
-        Δt = min(Δt, Δt_sub)
+        water_balance!(du, u, p, t)
+
+        Δt = time_to_next_saveat(t, saveat, tspan_end)
+        for am in allocation.allocation_models
+            Δt_sub = compute_adaptive_Δt(am, p, du, t, config.allocation)
+            Δt = min(Δt, Δt_sub)
+        end
+        return Δt
+    else
+        return allocation.dt_allocation
     end
-
-    Δt = min(Δt, time_to_next_saveat(t, saveat, tspan_end))
-    Δt = min(Δt, tspan_end - t)
-
-    # Clamp each model's Δt_allocation to the global bound so it is never Inf
-    for am in allocation.allocation_models
-        am.Δt_allocation = min(am.Δt_allocation, Δt)
-    end
-
-    return Δt
 end
 
 """
@@ -333,26 +335,12 @@ Step through the simulation with allocation, using either adaptive or fixed time
 function solve_with_allocation!(model::Model)::Nothing
     (; config, integrator) = model
     (; tspan::Tuple{Float64, Float64}) = integrator.sol.prob
-
-    if config.allocation.dt === nothing
-        saveat = config.solver.saveat
-        while integrator.t < tspan[end] - eps(tspan[end])
-            Δt = compute_and_set_adaptive_Δt!(model, saveat, tspan[end])
-            update_allocation!(model, Δt; record = is_saveat_time(integrator.t, saveat, tspan[end]))
-            SciMLBase.step!(integrator, Δt, true)
-        end
-    else
-        dt_alloc = config.allocation.dt
-        n_allocation_times = floor(Int, tspan[end] / dt_alloc)
-        for _ in 1:n_allocation_times
-            update_allocation!(model)
-            SciMLBase.step!(integrator, dt_alloc, true)
-        end
-        dt = tspan[end] - integrator.t
-        if dt > 0
-            update_allocation!(model)
-            SciMLBase.step!(integrator, dt, true)
-        end
+    (; saveat) = config.solver
+    t_end::Float64 = integrator.sol.prob.tspan[end]
+    while integrator.t < t_end - eps(t_end)
+        Δt = compute_allocation_Δt(model, saveat, t_end)
+        update_allocation!(model, Δt; record = is_saveat_time(integrator.t, saveat, t_end))
+        SciMLBase.step!(integrator, Δt, true)
     end
     return nothing
 end

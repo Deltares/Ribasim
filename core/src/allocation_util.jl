@@ -111,20 +111,6 @@ function collect_primary_network_connections!(
     return nothing
 end
 
-function get_minmax_level(p_independent::ParametersIndependent, node_id::NodeID)
-    (; basin, level_boundary) = p_independent
-
-    if node_id.type == NodeType.Basin
-        itp = basin.level_to_area[node_id.idx]
-        return itp.t[1], itp.t[end]
-    elseif node_id.type == NodeType.LevelBoundary
-        itp = level_boundary.level[node_id.idx]
-        return minimum(itp.u), maximum(itp.u)
-    else
-        error("Min and max level are not defined for nodes of type $(node_id.type).")
-    end
-end
-
 function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     low_storage_factor = problem[:low_storage_factor]
     return if node_id.type == NodeType.Basin
@@ -271,20 +257,28 @@ end
 function ScalingFactors(
         p_independent::ParametersIndependent,
         subnetwork_id::Int32,
-        Δt_allocation::Float64,
     )
     (; basin, graph) = p_independent
     max_storages = [
         basin.storage_to_level[node_id.idx].t[end] for
             node_id in basin.node_id if graph[node_id].subnetwork_id == subnetwork_id
     ]
-    mean_half_storage = sum(max_storages) / (2 * length(max_storages))
-    # Use the configured (max) timestep for scaling, not the adaptive timestep.
-    # This keeps scaling stable when Δt varies between solves.
-    return ScalingFactors(;
-        storage = mean_half_storage,
-        flow = mean_half_storage / Δt_allocation,
-    )
+    return ScalingFactors(; mean_half_storage = sum(max_storages) / (2 * length(max_storages)))
+end
+
+function update_scaling!(p::Parameters, Δt::Float64)
+    (; p_independent, state_and_time_dependent_cache) = p
+    (; allocation_models) = p_independent.allocation
+    (; current_storage) = state_and_time_dependent_cache
+    for allocation_model in allocation_models
+        (; node_ids_in_subnetwork, scaling) = allocation_model
+        (; basin_ids_subnetwork) = node_ids_in_subnetwork
+
+        storage_sum = sum(current_storage[id.idx] for id in basin_ids_subnetwork)
+        scaling.storage = (scaling.mean_half_storage + storage_sum / length(basin_ids_subnetwork)) / 2
+        scaling.flow = scaling.storage / Δt
+    end
+    return
 end
 
 function constraint_ref_from_index(problem::JuMP.Model, constraint_index)
@@ -305,9 +299,6 @@ function variable_ref_from_index(problem::JuMP.Model, variable_index)
     end
     return
 end
-
-get_Δt_allocation(allocation::Allocation) =
-    first(allocation.allocation_models).Δt_allocation
 
 """
 Compute the slope dA/dh of the basin profile at a given level.
@@ -521,15 +512,14 @@ function Base.iterate(
 end
 
 function get_objective_data_of_demand_priority(
-        objectives::AllocationObjectives,
+        objectives::Vector{AllocationObjective},
         demand_priority::Int32,
     )
-    (; objective_metadata) = objectives
     index = findfirst(
-        metadata -> metadata.demand_priority == demand_priority,
-        objective_metadata,
+        objective -> objective.demand_priority == demand_priority,
+        objectives,
     )
-    return objective_metadata[index]
+    return objectives[index]
 end
 
 # This method should only be used in initialization because it does a graph lookup

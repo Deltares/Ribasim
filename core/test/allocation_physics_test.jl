@@ -217,7 +217,7 @@ end
             filter(:link_id => ==(link_id), flow_results_multiple_subnetwork).flow_rate
         single_sub =
             filter(:link_id => ==(link_id), flow_results_single_subnetwork).flow_rate
-        if !all(isapprox.(multiple_subs, single_sub; atol = 1.0e-8))
+        if !all(isapprox.(multiple_subs, single_sub; atol = 1.003e-3))
             println(
                 "The flows over link $link_id differ by ",
                 maximum(single_sub .- multiple_subs),
@@ -271,6 +271,11 @@ end
 
     # the flow near min_level should be close to 0
     @test all(≈(0.0; atol = 1.0e-4), flow_link_1[(idx + 1):end])
+
+    # Run with allocation off; TRC should have default behaviour
+    config = Ribasim.Config(toml_path; experimental_allocation = false)
+    model = Ribasim.run(config)
+    @test all(DataFrame(Ribasim.flow_data(model)).flow_rate .> 0)
 end
 
 

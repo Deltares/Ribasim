@@ -103,7 +103,7 @@ class Allocation(ChildModel):
     dt: float | None = None
     reltol_linearization: float = 0.01
     dtmin: float = 3600.0
-    default_route_priority: RoutePriority = RoutePriority()
+    route_priority: RoutePriority = RoutePriority()
 
 
 class Results(ChildModel):

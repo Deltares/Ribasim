@@ -7,6 +7,7 @@ from ribasim.config import (
     Allocation,
     Experimental,
     Interpolation,
+    RoutePriority,
     Solver,
 )
 from ribasim.geometry.node import Node
@@ -368,7 +369,16 @@ def medium_primary_secondary_network_model() -> Model:
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2020, 1, 20),
         crs="EPSG:28992",
-        allocation=Allocation(),
+        allocation=Allocation(
+            route_priority=RoutePriority(
+                level_boundary=0,
+                manning_resistance=0,
+                linear_resistance=0,
+                tabulated_rating_curve=0,
+                outlet=0,
+                pump=0,
+            ),
+        ),
         experimental=Experimental(allocation=True),
     )
 
