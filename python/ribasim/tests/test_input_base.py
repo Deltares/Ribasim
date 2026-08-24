@@ -96,3 +96,12 @@ def test_filepath_appears_in_toml(tmp_path):
         assert "level" in ds.variables, "level should be in the dataset"
         assert "area" in ds.variables, "area should be in the dataset"
         assert len(ds["level"]) == 3, "Should have 3 profile points"
+
+    model.basin.profile.df = None
+    model.write(toml_path)
+
+    with Path.open(toml_path, "rb") as f:
+        toml_data = tomli.load(f)
+
+    assert "basin" not in toml_data, "basin section should be removed from TOML"
+    assert nc_path.exists(), "existing NetCDF file should not be deleted"
