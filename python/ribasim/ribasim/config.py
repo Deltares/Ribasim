@@ -54,7 +54,7 @@ from ribasim.schemas import (
 )
 
 
-class DefaultRoutePriority(ChildModel):
+class RoutePriority(ChildModel):
     """Specify per node type what its default route priority is."""
 
     level_boundary: int = 1000
@@ -103,7 +103,7 @@ class Allocation(ChildModel):
     dt: float | None = None
     reltol_linearization: float = 0.01
     dtmin: float = 3600.0
-    default_route_priority: DefaultRoutePriority = DefaultRoutePriority()
+    route_priority: RoutePriority = RoutePriority()
 
 
 class Results(ChildModel):
