@@ -503,6 +503,7 @@ const StorageToLevelType = LinearInterpolationIntInv{
     Vector{Float64},
     ScalarLinearInterpolation,
     Float64,
+    SearchProperties{Float64},
 }
 
 """
