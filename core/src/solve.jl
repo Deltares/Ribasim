@@ -500,7 +500,6 @@ function formulate_flow!(
         p::Parameters,
         t::Number,
     )::Nothing
-    allocation_active = is_active(p.p_independent.allocation)
     for node_idx in eachindex(tabulated_rating_curve.node_id)
         id = tabulated_rating_curve.node_id[node_idx]
         inflow_link = tabulated_rating_curve.inflow_link[node_idx]
@@ -511,7 +510,7 @@ function formulate_flow!(
         h_b = get_level(p, outflow_id, t)
 
         q_h = tabulated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p, t)
-        q = if allocation_active && tabulated_rating_curve.allocation_controlled[node_idx]
+        q = if tabulated_rating_curve.allocation_controlled[node_idx]
             # Ensure q is always >= to the Q(h) relationship, since errors in the linear approximations in allocation could lead to
             # a higher q at the current h than the user defined q(h) would allow
             q_alloc = allocated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p)

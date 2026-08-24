@@ -61,32 +61,32 @@ end
     A = Ribasim.basin_areas(basin, 1)[1]
     l_max = level_demand.max_level[1][1](0)
     min_storage = 1.0e3
-    Δt_allocation = allocation.dt_allocation
+    (; saveat) = model.config.solver
 
     # In this section the Basin leaves no supply for the UserDemand
-    stage_1 = t .≤ 2Δt_allocation
+    stage_1 = t .≤ 2saveat
     u_stage_1(τ) = storage[1] + (q + ϕ) * τ
     @test storage[stage_1] ≈ u_stage_1.(t[stage_1]) rtol = 1.0e-10
 
     # In this section the Basin gets exactly what it needs to get to the target min
     # level of 1 m (equivalent to 1000 m^3)
-    stage_2 = 2Δt_allocation .≤ t .≤ 3Δt_allocation
+    stage_2 = 2saveat .≤ t .≤ 3saveat
     u_stage_2(τ) =
-        (3Δt_allocation - τ) / Δt_allocation * u_stage_1(2Δt_allocation) +
-        min_storage * (τ - 2Δt_allocation) / Δt_allocation
+        (3saveat - τ) / saveat * u_stage_1(2saveat) +
+        min_storage * (τ - 2saveat) / saveat
     @test storage[stage_2] ≈ u_stage_2.(t[stage_2]) rtol = 1.0e-10
 
     # In this section (and following sections) the basin has no longer a (positive) demand,
     # since precipitation provides enough water to get the basin to its target level
     # The FlowBoundary flow gets fully allocated to the UserDemand
-    stage_3 = 3Δt_allocation .≤ t .≤ 15Δt_allocation
+    stage_3 = 3saveat .≤ t .≤ 15saveat
     stage_3_start_idx = findfirst(stage_3)
     u_stage_3(τ) = min_storage + (ϕ + q - d) * (τ - t[stage_3_start_idx])
     @test storage[stage_3] ≈ u_stage_3.(t[stage_3]) rtol = 1.0e-10
 
     # At the start of this section precipitation stops, and so the UserDemand
     # partly uses surplus water from the basin to fulfill its demand
-    stage_4 = 15Δt_allocation .≤ t .≤ 27Δt_allocation
+    stage_4 = 15saveat .≤ t .≤ 27saveat
     stage_4_start_idx = findfirst(stage_4)
     u_stage_4(τ) = storage[stage_4_start_idx] + (q - d) * (τ - t[stage_4_start_idx])
     @test storage[stage_4] ≈ u_stage_4.(t[stage_4]) rtol = 1.0e-10
@@ -94,7 +94,7 @@ end
     # From this point the basin is in a dynamical equilibrium,
     # since the basin has no supply so the UserDemand abstracts precisely
     # the flow from the level boundary
-    stage_5 = 27Δt_allocation .<= t
+    stage_5 = 27saveat .<= t
     stage_5_start_idx = findfirst(stage_5)
     u_stage_5(τ) = min_storage
     @test storage[stage_5] ≈ u_stage_5.(t[stage_5]) rtol = 1.0e-10
@@ -111,7 +111,7 @@ end
     itp_basin_2 = LinearInterpolation(storage, t)
     supplied_numeric =
         diff(itp_basin_2.(seconds_since.(df_basin_2.time, model.config.starttime))) /
-        Δt_allocation
+        saveat
     @test all(isapprox.(supplied_numeric, df_basin_2.supplied[1:(end - 1)], atol = 1.0e-10))
 
     # Supplied user demand
@@ -131,7 +131,7 @@ end
             Ref(itp_user_3),
             seconds_since.(df_user_3.time, model.config.starttime),
         ),
-    ) ./ Δt_allocation
+    ) ./ saveat
     @test all(isapprox.(supplied_numeric[3:end], df_user_3.supplied[4:end], atol = 1.0e-3))
 end
 

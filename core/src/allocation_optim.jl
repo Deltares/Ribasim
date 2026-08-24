@@ -811,7 +811,7 @@ function optimize_multi_objective!(
         model
 
     # Lexicographic goal programming: optimize objectives in sequence
-    # After optimizing objective i, add constraint: obj_i = optimal_i
+    # After optimizing objective i, add constraint: obj_i ≤ optimal_i
     # This ensures later objectives don't degrade earlier ones
 
     latest_optimized_expression = JuMP.AffExpr()
@@ -853,6 +853,10 @@ function optimize_multi_objective!(
     return nothing
 end
 
+"""
+Check the termination status of the optimizer. If no usable results was generated,
+give an error message that is as clear as possible.
+"""
 function parse_termination_status(
         model::AllocationModel,
         objective::AllocationObjective,
@@ -860,7 +864,7 @@ function parse_termination_status(
         latest_constraint,
         config::Config,
         t::Number
-    )
+    )::Nothing
     (; problem, subnetwork_id) = model
 
     termination_status = JuMP.termination_status(problem)
@@ -1270,7 +1274,7 @@ Solve the allocation problem for all demands and assign allocated abstractions.
 whether `cumulative_supplied_volume` is reset. Set `record = false` for
 intermediate (sub-saveat) adaptive LP solves
 """
-function update_allocation!(model, Δt::Union{Nothing, Float64} = nothing; record::Bool = true)::Nothing
+function update_allocation!(model, Δt::Float64; record::Bool = true)::Nothing
     (; integrator, config) = model
     (; u, p, t) = integrator
     (; p_independent) = p
@@ -1282,7 +1286,6 @@ function update_allocation!(model, Δt::Union{Nothing, Float64} = nothing; recor
 
     du = get_du(integrator)
     water_balance!(du, u, p, t)
-    Δt = isnothing(Δt) ? allocation.dt_allocation : Δt
     update_scaling!(p, Δt)
 
     for secondary_network in get_secondary_networks(allocation_models)

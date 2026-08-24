@@ -203,13 +203,13 @@ for an equal distribution.
     expressions::Vector{JuMP.AffExpr} = JuMP.AffExpr[]
 end
 
-function Base.show(io::IO, objective::AllocationObjective)
+function Base.show(io::IO, objective::AllocationObjective)::Nothing
     (; type, demand_priority) = objective
-    out = "AllocationObjective of type $type"
+    print(io, "AllocationObjective of type $type")
     if startswith(string(type), "demand")
-        out *= " with demand priority $demand_priority"
+        print(io, " with demand priority $demand_priority")
     end
-    return print(io, out)
+    return nothing
 end
 
 """
@@ -217,9 +217,9 @@ Factors with which the variables in the allocation optimization problem are scal
 This doesn't change the results, it just makes the problem easier for the optimizer.
 """
 @kwdef mutable struct ScalingFactors
-    flow::Float64 = 1.0e3
-    storage::Float64 = 1.0e6
-    mean_half_storage::Float64 = 0.0
+    flow::Float64 = 1.0e3  # Typical storage value (m³)
+    storage::Float64 = 1.0e6  # Typical flow rate (m³/s)
+    mean_half_storage::Float64 = 0.0  # Initialization-time reference storage (m³)
 end
 
 """
@@ -256,7 +256,7 @@ has_demand_priority: Per demand priority in the whole model whether a demand of 
     subnetwork
 objectives: The objectives (goals) in the order in which they will be optimized for
 explicit_positive_forcing_volume: The computable cumulative forcing over the coming allocation timestep
-implicit_negative_forcing_volume: The predicted cumuative forcing over the coming allocation timestep (assuming no reduction)
+implicit_negative_forcing_volume: The predicted cumulative forcing over the coming allocation timestep (assuming no reduction)
 cumulative_supplied_volume: The net volume of flow supplied to a demand node over the last Δt_allocation
 sources: The nodes in the subnetwork which can act as sources, sorted by route priority
 secondary_network_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
@@ -322,6 +322,7 @@ primary_network_connections: (from_id: pump or outlet in the primary network, to
     per subnetwork
 demand_priorities_all: All used demand priority values from all subnetworks
 dt_allocation: Used as the timestep if the timestepping is not adaptive
+adaptive: True for adaptive timestepping, false for fixed timestep of dt_allocation
 record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
@@ -333,8 +334,7 @@ record_control: A record of all flow rates assigned to pumps and outlets by allo
     primary_network_connections::OrderedDict{Int32, Vector{Tuple{NodeID, NodeID}}} =
         OrderedDict()
     demand_priorities_all::Vector{Int32} = []
-    dt_allocation::Float64 = 86400.0
-    adaptive::Bool = false
+    dt_allocation::Union{Float64, Nothing} = nothing
     record_demand::Vector{DemandRecordDatum} = []
     record_flow::Vector{FlowRecordDatum} = []
     record_control::Vector{AllocationControlRecordDatum} = []

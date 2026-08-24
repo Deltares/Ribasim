@@ -387,9 +387,9 @@ parse_control_states!(
     ::Symbol,
 ) = nothing
 
-function initialize_control_mapping!(node::AbstractParameterNode, static::StructVector)
+function initialize_control_mapping!(node::AbstractParameterNode, static::StructVector, config::Config)
     isempty(static) && return
-    has_alloc_controlled = hasproperty(first(static), :allocation_controlled)
+    has_alloc_controlled = hasproperty(first(static), :allocation_controlled) && config.experimental.allocation
     node_has_alloc_controlled = hasfield(typeof(node), :allocation_controlled)
     static_groups = IterTools.groupby(row -> row.node_id, static)
     static_group, static_idx = iterate(static_groups)
@@ -441,7 +441,7 @@ function LinearResistance(db, config, graph)
 
     linear_resistance = LinearResistance(; node_id)
 
-    initialize_control_mapping!(linear_resistance, static)
+    initialize_control_mapping!(linear_resistance, static, config)
     set_inoutflow_links!(linear_resistance, graph)
     set_external_flow_demand_nodes!(linear_resistance, graph)
     errors = parse_parameter!(linear_resistance, config, :resistance; static)
@@ -461,7 +461,7 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
 
     rating_curve = TabulatedRatingCurve(; node_id)
 
-    initialize_control_mapping!(rating_curve, static)
+    initialize_control_mapping!(rating_curve, static, config)
     set_inoutflow_links!(rating_curve, graph)
     set_external_flow_demand_nodes!(rating_curve, graph)
     errors = parse_parameter!(
@@ -580,7 +580,7 @@ function ManningResistance(db::DB, config::Config, graph::MetaGraph, basin::Basi
 
     manning_resistance = ManningResistance(; node_id)
 
-    initialize_control_mapping!(manning_resistance, static)
+    initialize_control_mapping!(manning_resistance, static, config)
     set_inoutflow_links!(manning_resistance, graph)
     set_external_flow_demand_nodes!(manning_resistance, graph)
     errors = parse_parameter!(manning_resistance, config, :length; static)
@@ -718,7 +718,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph)
 
     pump = Pump(; node_id)
 
-    initialize_control_mapping!(pump, static)
+    initialize_control_mapping!(pump, static, config)
     set_control_type!(pump, graph)
     set_inoutflow_links!(pump, graph)
     set_external_flow_demand_nodes!(pump, graph)
@@ -736,7 +736,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)
 
     outlet = Outlet(; node_id)
 
-    initialize_control_mapping!(outlet, static)
+    initialize_control_mapping!(outlet, static, config)
     set_control_type!(outlet, graph)
     set_inoutflow_links!(outlet, graph)
     set_external_flow_demand_nodes!(outlet, graph)
@@ -1240,7 +1240,7 @@ function PidControl(db::DB, config::Config)
 
     pid_control = PidControl(; node_id)
 
-    initialize_control_mapping!(pid_control, static)
+    initialize_control_mapping!(pid_control, static, config)
     errors = parse_parameter!(
         pid_control,
         config,
@@ -1683,13 +1683,10 @@ function Subgrid(db::DB, config::Config, basin::Basin)
 end
 
 function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
-    dt_allocation = config.allocation.dt
-    adaptive = isnothing(dt_allocation)
     return Allocation(;
         demand_priorities_all = get_all_demand_priorities(db, config),
         subnetwork_ids = sort(collect(keys(graph[].node_ids))),
-        dt_allocation = adaptive ? 86400.0 : dt_allocation,
-        adaptive
+        dt_allocation = config.allocation.dt,
     )
 end
 
