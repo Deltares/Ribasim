@@ -480,7 +480,7 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
 
     @model_serializer
     def _set_model(self) -> "str | None":
-        if self.is_external:
+        if self.is_external and self.df is not None:
             assert self.filepath is not None
             return self.filepath.as_posix()
         else:
