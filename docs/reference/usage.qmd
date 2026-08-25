@@ -233,6 +233,9 @@ To revert a table back to being stored in the GeoPackage database instead of an 
 model.basin.profile.filepath = None
 ```
 
+If a table is absent, its external filepath is omitted from the TOML.
+Existing external files are not deleted when overwriting a model, but Ribasim uses them only when they are referenced in the TOML.
+
 ### Using result files as initial conditions
 
 One common use case is to use the final state of a simulation as the initial condition for
