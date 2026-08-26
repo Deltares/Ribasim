@@ -335,7 +335,8 @@ function valid_flow_rates(
 
         push!(ids_controlled, id_controlled)
 
-        if !isassigned(flow_rate, id_controlled.idx) || isnan(flow_rate[id_controlled.idx])
+        if !isassigned(flow_rate, id_controlled.idx) ||
+                (flow_rate[id_controlled.idx] isa Float64 && isnan(flow_rate[id_controlled.idx]))
             continue
         end
 
