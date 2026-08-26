@@ -314,6 +314,19 @@ struct AllocationControlRecordDatum
 end
 
 """
+Data for the allocation timestepping
+"""
+@kwdef mutable struct AllocationTime
+    const adaptive::Bool = true
+    # The fixed timestep if applicable
+    const dt_fixed::Float64 = 0.0
+    # The time (s) when allocation is called next
+    t_allocation_next::Float64 = 0.0
+    # The output writing interval
+    const saveat::Float64 = 0.0
+end
+
+"""
 Object for all information about allocation
 subnetwork_ids: The unique sorted allocation network IDs
 allocation_models: The allocation models for the primary network and subnetworks corresponding to
@@ -321,7 +334,6 @@ allocation_models: The allocation models for the primary network and subnetworks
 primary_network_connections: (from_id: pump or outlet in the primary network, to_id: node in the subnetwork, generally a basin)
     per subnetwork
 demand_priorities_all: All used demand priority values from all subnetworks
-dt_allocation: Used as the timestep if the timestepping is not adaptive
 adaptive: True for adaptive timestepping, false for fixed timestep of dt_allocation
 record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
@@ -334,7 +346,8 @@ record_control: A record of all flow rates assigned to pumps and outlets by allo
     primary_network_connections::OrderedDict{Int32, Vector{Tuple{NodeID, NodeID}}} =
         OrderedDict()
     demand_priorities_all::Vector{Int32} = []
-    dt_allocation::Union{Float64, Nothing} = nothing
+    time::AllocationTime = AllocationTime(; adaptive = true)
+    config::Config
     record_demand::Vector{DemandRecordDatum} = []
     record_flow::Vector{FlowRecordDatum} = []
     record_control::Vector{AllocationControlRecordDatum} = []

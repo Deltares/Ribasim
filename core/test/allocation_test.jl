@@ -534,9 +534,9 @@ end
     @test all(>(0), nonlinear_curvatures)
 end
 
-@testitem "compute_adaptive_Δt" begin
+@testitem "compute_adaptive_allocation_Δt" begin
     import Ribasim
-    using Ribasim: compute_adaptive_Δt, water_balance!, get_du
+    using Ribasim: compute_adaptive_allocation_Δt, water_balance!, get_du
 
     toml_path = normpath(
         @__DIR__,
@@ -553,7 +553,7 @@ end
     water_balance!(du, u, p, t)
 
     for am in allocation.allocation_models
-        Δt = compute_adaptive_Δt(am, p, du, t, config.allocation)
+        Δt = compute_adaptive_allocation_Δt(am, p, du, t, config)
 
         # Result must be at least dtmin and positive
         @test Δt >= config.allocation.dtmin

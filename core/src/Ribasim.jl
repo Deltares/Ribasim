@@ -32,7 +32,7 @@ using DifferentiationInterface:
 using ForwardDiff: derivative as forward_diff
 
 # Algorithms for solving ODEs.
-using OrdinaryDiffEqCore: OrdinaryDiffEqCore
+using OrdinaryDiffEqCore: OrdinaryDiffEqCore, loopheader!
 using OrdinaryDiffEqDifferentiation:
     OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
 using SciMLOperators: WOperator, MatrixOperator
@@ -52,6 +52,7 @@ using SciMLBase:
     ODEProblem,
     get_du,
     get_proposed_dt,
+    add_tstop!,
     DEIntegrator,
     FullSpecialize,
     NoSpecialize,

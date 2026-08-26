@@ -357,12 +357,12 @@ The timestep is bounded by two linearization error sources:
 Both give a Δh_max. The global Δh_max is the minimum across all basins
 and connector nodes. Then Δt_i = A_i·Δh_max / |dS_i/dt| per basin.
 """
-function compute_adaptive_Δt(
+function compute_adaptive_allocation_Δt(
         allocation_model::AllocationModel,
         p::Parameters,
         du::CVector,
         t::Float64,
-        allocation_config,
+        config::Config,
     )::Float64
     (; node_ids_in_subnetwork) = allocation_model
     (;
@@ -374,8 +374,8 @@ function compute_adaptive_Δt(
     (; basin, tabulated_rating_curve, linear_resistance, manning_resistance) = p.p_independent
     (; current_storage) = p.state_and_time_dependent_cache
 
-    Δt_min = allocation_config.dtmin
-    ε_rel = allocation_config.reltol_linearization
+    Δt_min = config.allocation.dtmin
+    ε_rel = config.allocation.reltol_linearization
     overshoot_reduction = 0.8
 
     # Phase 1: compute global Δh_max from all linearization curvatures
