@@ -296,7 +296,7 @@ end
         ntime = length(ds["time"])
         nlink = length(ds["link_id"])
         @test ntime > 1
-        @test nlink == 9
+        @test nlink == 10
         @test size(ds["link_id"]) == (nlink,)
         @test size(ds["flow_rate"]) == (nlink, ntime)
         @test dimnames(ds["flow_rate"]) == ("link_id", "time")
