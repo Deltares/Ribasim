@@ -291,14 +291,20 @@ end
 
 @testitem "Allocation example model" begin
     using DataFrames: DataFrame
-    #TODO: See issue #2524
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/allocation_example/ribasim.toml")
     @test ispath(toml_path) skip = true
-    #     model = Ribasim.run(toml_path)
-    #     @test success(Ribasim.solve!(model))
-    #     @test model isa Ribasim.Model
-    #     @test success(model)
+    model = Ribasim.run(toml_path)
+    @test success(Ribasim.solve!(model))
+    @test model isa Ribasim.Model
+    @test success(model)
+
+    flow_data = Ribasim.flow_data(model) |> DataFrame
+    allocation_flow_data = Ribasim.allocation_flow_data(model) |> DataFrame
+
+    flow_data_links = Set((row.from_node_id, row.to_node_id) for row in eachrow(flow_data))
+    allocation_flow_data_links = Set((row.from_node_id, row.to_node_id) for row in eachrow(allocation_flow_data) if !iszero(row.link_id))
+    @test flow_data_links == allocation_flow_data_links
 end
 
 @testitem "sparse and AD/FDM jac solver options" begin

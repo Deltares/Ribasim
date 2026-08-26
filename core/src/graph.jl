@@ -66,7 +66,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         if !haskey(node_ids, subnetwork_id)
             node_ids[subnetwork_id] = OrderedSet{NodeID}()
         end
-        push!(node_ids[subnetwork_id], node_id)
+        (node_id.type != NodeType.Junction) && push!(node_ids[subnetwork_id], node_id)
         # Process route priority
         route_priority =
             coalesce(row.route_priority, get(route_priority_dict, row.node_type, 0))

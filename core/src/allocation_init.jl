@@ -47,8 +47,7 @@ function add_flow!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
     )::Nothing
-    (; problem, subnetwork_id, scaling, flow_links_subnetwork) = allocation_model
-    (; graph) = p_independent
+    (; problem, scaling, flow_links_subnetwork) = allocation_model
 
     # Define decision variables: flow over flow links (scaling.flow * m^3/s)
     problem[:flow] = JuMP.@variable(

@@ -293,14 +293,14 @@ struct DemandRecordDatum
     supplied::Float64
 end
 
-struct FlowRecordDatum
-    time::Float64
-    link_id::Int32
-    from_node_type::String
-    from_node_id::Int32
-    to_node_type::String
-    to_node_id::Int32
-    subnetwork_id::Int32
+mutable struct FlowRecordDatum
+    const time::Float64
+    const link_id::Int32
+    const from_node_type::String
+    const from_node_id::Int32
+    const to_node_type::String
+    const to_node_id::Int32
+    const subnetwork_id::Int32
     flow_rate::Float64
     lower_bound_hit::Bool
     upper_bound_hit::Bool
