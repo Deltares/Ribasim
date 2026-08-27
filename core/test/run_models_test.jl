@@ -126,7 +126,7 @@
 end
 
 @testitem "bucket model" begin
-    using OrdinaryDiffEqCore: get_du
+    using SciMLBase: get_du
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml")
     @test ispath(toml_path)
@@ -144,7 +144,7 @@ end
 end
 
 @testitem "leaky bucket model" begin
-    using OrdinaryDiffEqCore: get_du
+    using SciMLBase: get_du
     import BasicModelInterface as BMI
     using Ribasim: results_path
 
@@ -435,7 +435,7 @@ end
 end
 
 @testitem "ManningResistance" begin
-    using OrdinaryDiffEqCore: get_du
+    using SciMLBase: get_du
     using Ribasim: NodeID
 
     """
