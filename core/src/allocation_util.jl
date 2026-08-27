@@ -357,12 +357,12 @@ The timestep is bounded by two linearization error sources:
 Both give a Δh_max. The global Δh_max is the minimum across all basins
 and connector nodes. Then Δt_i = A_i·Δh_max / |dS_i/dt| per basin.
 """
-function compute_adaptive_Δt(
+function compute_adaptive_allocation_Δt(
         allocation_model::AllocationModel,
         p::Parameters,
         du::CVector,
         t::Float64,
-        allocation_config,
+        config::Config,
     )::Float64
     (; node_ids_in_subnetwork) = allocation_model
     (;
@@ -374,8 +374,8 @@ function compute_adaptive_Δt(
     (; basin, tabulated_rating_curve, linear_resistance, manning_resistance) = p.p_independent
     (; current_storage) = p.state_and_time_dependent_cache
 
-    Δt_min = allocation_config.dtmin
-    ε_rel = allocation_config.reltol_linearization
+    Δt_min = config.allocation.dtmin
+    ε_rel = config.allocation.reltol_linearization
     overshoot_reduction = 0.8
 
     # Phase 1: compute global Δh_max from all linearization curvatures
@@ -647,4 +647,29 @@ function delete_flow!(
     )::Nothing
     (; problem) = allocation_model
     return JuMP.delete(problem, problem[:flow])
+end
+
+function add_allocation_tstop!(time::AllocationTime, tstop_new::Float64)
+    return if tstop_new ∉ time.tstops
+        insert!(
+            time.tstops,
+            searchsortedfirst(time.tstops, tstop_new),
+            tstop_new
+        )
+        @assert issorted(time.tstops)
+    end
+end
+
+"""
+Whether `t` falls on a save boundary, i.e. a multiple of `saveat` or the end
+of the simulation horizon. The save grid is degenerate when `saveat` is 0 (every
+step) or `Inf` (only end), so both return `true`.
+"""
+function is_saveat_time(t::Float64, time::AllocationTime; atol::Float64 = 1.0e-9)::Bool
+    (; saveat, t_end) = time
+    iszero(saveat) && return true
+    isinf(saveat) && return true
+    isapprox(t, t_end; atol) && return true
+    rem = t % saveat
+    return isapprox(rem, 0.0; atol) || isapprox(rem, saveat; atol)
 end

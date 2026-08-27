@@ -314,6 +314,32 @@ struct AllocationControlRecordDatum
 end
 
 """
+Data for the allocation timestepping
+"""
+@kwdef mutable struct AllocationTime
+    const adaptive::Bool = true
+    # The fixed timestep if applicable
+    const dt_fixed::Float64 = 0.0
+    # The endtime of the simulation in se
+    const t_end::Float64 = 0.0
+    # The times (s) when allocation is called next
+    tstops::Vector{Float64} = [0.0]
+    # The output writing interval
+    const saveat::Float64 = 0.0
+
+    function AllocationTime(
+            adaptive::Bool,
+            dt_fixed::Float64,
+            t_end::Float64,
+            tstops::Vector{Float64},
+            saveat::Float64,
+        )
+        adaptive && !iszero(dt_fixed) && throw(ArgumentError("dt_fixed must be 0.0 when adaptive."))
+        return new(adaptive, dt_fixed, t_end, tstops, saveat)
+    end
+end
+
+"""
 Object for all information about allocation
 subnetwork_ids: The unique sorted allocation network IDs
 allocation_models: The allocation models for the primary network and subnetworks corresponding to
@@ -321,8 +347,8 @@ allocation_models: The allocation models for the primary network and subnetworks
 primary_network_connections: (from_id: pump or outlet in the primary network, to_id: node in the subnetwork, generally a basin)
     per subnetwork
 demand_priorities_all: All used demand priority values from all subnetworks
-dt_allocation: Used as the timestep if the timestepping is not adaptive
-adaptive: True for adaptive timestepping, false for fixed timestep of dt_allocation
+config: The Ribasim Model config
+time: The data needed to handle allocation timestepping
 record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
@@ -334,7 +360,8 @@ record_control: A record of all flow rates assigned to pumps and outlets by allo
     primary_network_connections::OrderedDict{Int32, Vector{Tuple{NodeID, NodeID}}} =
         OrderedDict()
     demand_priorities_all::Vector{Int32} = []
-    dt_allocation::Union{Float64, Nothing} = nothing
+    config::Config
+    time::AllocationTime = AllocationTime(config)
     record_demand::Vector{DemandRecordDatum} = []
     record_flow::Vector{FlowRecordDatum} = []
     record_control::Vector{AllocationControlRecordDatum} = []

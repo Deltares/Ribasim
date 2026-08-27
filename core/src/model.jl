@@ -278,71 +278,60 @@ function is_finished(model::Model)::Bool
 end
 
 """
-    step!(model::Model, dt::Float64)::Model
+Wrap the loopheader! call from the OrdinaryDiffEq.jl internals to inject the allocation call
+before a timestep when needed.
 
-Take Model timesteps until `t + dt` is reached exactly.
+Workaround for pre-step callbacks: https://github.com/SciML/OrdinaryDiffEq.jl/issues/3977
 """
-function step!(model::Model, dt::Float64)::Model
-    (; config, integrator) = model
-    (; t) = integrator
-    if config.experimental.allocation
-        dt_allocation = config.allocation.dt
-        if isnothing(dt_allocation)
-            error(
-                """
-                Ribasim was called with allocation active and adaptive timestepping from the BMI, which is currently not supported.
-                Supply a fixed allocation timestep in the Ribasim config.
-                """
-            )
-        end
-        ntimes = t / dt_allocation
-        if round(ntimes) ≈ ntimes
-            update_allocation!(model, dt_allocation)
+function OrdinaryDiffEqCore.loopheader!(integrator::DEIntegrator{<:Any, <:Any, RibasimCVectorType{Float64}})
+    (; p, t) = integrator
+    (; allocation) = p.p_independent
+    if is_active(allocation) && !isempty(allocation.time.tstops)
+        if (t == first(allocation.time.tstops))
+            popfirst!(allocation.time.tstops)
+            tstop_new = compute_next_allocation_tstop(integrator)
+            allocation_Δt = tstop_new - t
+            update_allocation!(integrator, allocation_Δt, record = is_saveat_time(t, allocation.time))
+            tstop_new = t + allocation_Δt
+            add_allocation_tstop!(allocation.time, tstop_new)
+            add_tstop!(integrator, tstop_new)
+        elseif (t > first(allocation.time.tstops))
+            error("Allocation has skipped a tstop, please make an issue.")
         end
     end
-    SciMLBase.step!(integrator, dt, true)
-    return model
+    return invoke(loopheader!, Tuple{DEIntegrator}, integrator)
 end
 
 """
 Compute and return  the adaptive allocation Δt if the timestepping is adaptive, otherwise return
 the fixed timestep.
 """
-function compute_allocation_Δt(model, saveat, tspan_end)::Float64
-    (; config, integrator) = model
+function compute_next_allocation_tstop(integrator)::Float64
     (; u, p, t) = integrator
     (; allocation) = p.p_independent
 
-    if isnothing(allocation.dt_allocation)
+    Δt = if allocation.time.adaptive
         du = get_du(integrator)
 
         water_balance!(du, u, p, t)
+        Δt = Inf
 
-        Δt = time_to_next_saveat(t, saveat, tspan_end)
         for am in allocation.allocation_models
-            Δt_sub = compute_adaptive_Δt(am, p, du, t, config.allocation)
+            Δt_sub = compute_adaptive_allocation_Δt(am, p, du, t, allocation.config)
             Δt = min(Δt, Δt_sub)
         end
-        return Δt
+        Δt
     else
-        return allocation.dt_allocation
+        allocation.time.dt_fixed
     end
-end
+    (Δt ≤ 0) && error("A non-positive allocation timestep was computed, please make an issue.")
 
-"""
-Step through the simulation with allocation, using either adaptive or fixed timesteps.
-"""
-function solve_with_allocation!(model::Model)::Nothing
-    (; config, integrator) = model
-    (; tspan::Tuple{Float64, Float64}) = integrator.sol.prob
-    (; saveat) = config.solver
-    t_end::Float64 = integrator.sol.prob.tspan[end]
-    while integrator.t < t_end - eps(t_end)
-        Δt = compute_allocation_Δt(model, saveat, t_end)
-        update_allocation!(model, Δt; record = is_saveat_time(integrator.t, saveat, t_end))
-        SciMLBase.step!(integrator, Δt, true)
+    tstop_next = t + Δt
+    return if tstop_next ≈ first(allocation.time.tstops)
+        first(allocation.time.tstops)
+    else
+        min(first(allocation.time.tstops), tstop_next)
     end
-    return nothing
 end
 
 """
@@ -351,13 +340,9 @@ end
 Solve a Model until the configured `endtime`.
 """
 function solve!(model::Model)::Model
-    (; config, integrator) = model
+    (; integrator) = model
 
-    comptime_s = @elapsed if config.experimental.allocation
-        solve_with_allocation!(model)
-    else
-        SciMLBase.solve!(integrator)
-    end
+    comptime_s = @elapsed SciMLBase.solve!(integrator)
     check_error!(integrator)
     comptime = canonicalize(Millisecond(round(Int, comptime_s * 1000)))
     @info "Computation time: $comptime"

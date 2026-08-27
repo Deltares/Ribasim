@@ -46,7 +46,8 @@ function BMI.update_until(model::Model, time::Float64)::Nothing
     elseif dt == 0
         return nothing
     else
-        step!(model, dt)
+        add_allocation_tstop!(model.integrator.p.p_independent.allocation.time, time)
+        SciMLBase.step!(model.integrator, dt, true)
     end
     return nothing
 end

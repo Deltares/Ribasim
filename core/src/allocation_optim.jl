@@ -1286,12 +1286,11 @@ Solve the allocation problem for all demands and assign allocated abstractions.
 whether `cumulative_supplied_volume` is reset. Set `record = false` for
 intermediate (sub-saveat) adaptive LP solves
 """
-function update_allocation!(model, Δt::Float64; record::Bool = true)::Nothing
-    (; integrator, config) = model
+function update_allocation!(integrator::DEIntegrator, Δt::Float64; record::Bool = true)::Nothing
     (; u, p, t) = integrator
     (; p_independent) = p
     (; allocation, pump, outlet, tabulated_rating_curve) = p_independent
-    (; allocation_models, primary_network_connections, demand_priorities_all) = allocation
+    (; allocation_models, primary_network_connections, demand_priorities_all, config) = allocation
 
     # Don't run the allocation algorithm if allocation is not active
     !is_active(allocation) && return nothing
