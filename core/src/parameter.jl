@@ -336,7 +336,8 @@ allocation_models: The allocation models for the primary network and subnetworks
 primary_network_connections: (from_id: pump or outlet in the primary network, to_id: node in the subnetwork, generally a basin)
     per subnetwork
 demand_priorities_all: All used demand priority values from all subnetworks
-adaptive: True for adaptive timestepping, false for fixed timestep of dt_allocation
+config: The Ribasim Model config
+time: The data needed to handle allocation timestepping
 record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
