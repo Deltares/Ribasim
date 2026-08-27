@@ -76,7 +76,7 @@ end
 
     graph[NodeID(:Basin, 1, 1), NodeID(:Basin, 2, 1)] = :yes
     graph[NodeID(:Basin, 1, 1), NodeID(:Basin, 3, 1)] = :yes
-    graph[4, 5] = :yes
+    graph[NodeID(:Basin, 4, 1), NodeID(:Basin, 5, 1)] = :yes
 
     logger = TestLogger()
 
