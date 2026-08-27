@@ -280,16 +280,24 @@ end
 """
 Wrap the loopheader! call from the OrdinaryDiffEq.jl internals to inject the allocation call
 before a timestep when needed.
+
+Workaround for pre-step callbacks: https://github.com/SciML/OrdinaryDiffEq.jl/issues/3977
 """
 function OrdinaryDiffEqCore.loopheader!(integrator::DEIntegrator{<:Any, <:Any, RibasimCVectorType{Float64}})
     (; p, t) = integrator
     (; allocation) = p.p_independent
-    t_end::Float64 = integrator.sol.prob.tspan[end]
-    if is_active(allocation) && (t == allocation.time.t_allocation_next)
-        allocation_Δt = compute_adaptive_allocation_Δt(integrator, t_end)
-        update_allocation!(integrator, allocation_Δt, record = is_saveat_time(t, allocation.time.saveat, t_end))
-        allocation.time.t_allocation_next += allocation_Δt
-        add_tstop!(integrator, t + allocation_Δt)
+    if is_active(allocation) && !isempty(allocation.time.tstops)
+        if (t == first(allocation.time.tstops))
+            popfirst!(allocation.time.tstops)
+            tstop_new = compute_next_allocation_tstop(integrator)
+            allocation_Δt = tstop_new - t
+            update_allocation!(integrator, allocation_Δt, record = is_saveat_time(t, allocation.time))
+            tstop_new = t + allocation_Δt
+            add_allocation_tstop!(allocation.time, tstop_new)
+            add_tstop!(integrator, tstop_new)
+        elseif (t > first(allocation.time.tstops))
+            error("Allocation has skipped a tstop, please make an issue.")
+        end
     end
     return invoke(loopheader!, Tuple{DEIntegrator}, integrator)
 end
@@ -298,23 +306,31 @@ end
 Compute and return  the adaptive allocation Δt if the timestepping is adaptive, otherwise return
 the fixed timestep.
 """
-function compute_adaptive_allocation_Δt(integrator, tspan_end)::Float64
+function compute_next_allocation_tstop(integrator)::Float64
     (; u, p, t) = integrator
     (; allocation) = p.p_independent
 
-    if allocation.time.adaptive
+    Δt = if allocation.time.adaptive
         du = get_du(integrator)
 
         water_balance!(du, u, p, t)
+        Δt = Inf
 
-        Δt = time_to_next_saveat(t, allocation.time.saveat, tspan_end)
         for am in allocation.allocation_models
             Δt_sub = compute_adaptive_allocation_Δt(am, p, du, t, allocation.config)
             Δt = min(Δt, Δt_sub)
         end
-        return Δt
+        Δt
     else
-        return allocation.time.dt_fixed
+        allocation.time.dt_fixed
+    end
+    (Δt ≤ 0) && error("A non-positive allocation timestep was computed, please make an issue.")
+
+    tstop_next = t + Δt
+    return if tstop_next ≈ first(allocation.time.tstops)
+        first(allocation.time.tstops)
+    else
+        min(first(allocation.time.tstops), tstop_next)
     end
 end
 

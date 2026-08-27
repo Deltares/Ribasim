@@ -1682,18 +1682,26 @@ function Subgrid(db::DB, config::Config, basin::Basin)
     return subgrid
 end
 
-function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
+function AllocationTime(config::Config)
+    (; saveat) = config.solver
     dt_fixed = config.allocation.dt
-    time = if isnothing(dt_fixed)
-        AllocationTime(; adaptive = true, config.solver.saveat)
-    else
-        AllocationTime(; adaptive = false, dt_fixed, config.solver.saveat)
-    end
+    t_end = seconds_since(config.endtime, config.starttime)
+    tstops = iszero(saveat) ? [0.0] : collect(range(0, t_end; step = saveat))
+
+    return AllocationTime(;
+        adaptive = isnothing(dt_fixed),
+        dt_fixed = something(dt_fixed, 0.0),
+        t_end,
+        tstops,
+        saveat,
+    )
+end
+
+function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
     return Allocation(;
         demand_priorities_all = get_all_demand_priorities(db, config),
         subnetwork_ids = sort(collect(keys(graph[].node_ids))),
-        config,
-        time,
+        config
     )
 end
 

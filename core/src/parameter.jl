@@ -320,8 +320,10 @@ Data for the allocation timestepping
     const adaptive::Bool = true
     # The fixed timestep if applicable
     const dt_fixed::Float64 = 0.0
-    # The time (s) when allocation is called next
-    t_allocation_next::Float64 = 0.0
+    # The endtime of the simulation in se
+    const t_end::Float64 = 0.0
+    # The times (s) when allocation is called next
+    tstops::Vector{Float64} = [0.0]
     # The output writing interval
     const saveat::Float64 = 0.0
 end
@@ -346,8 +348,8 @@ record_control: A record of all flow rates assigned to pumps and outlets by allo
     primary_network_connections::OrderedDict{Int32, Vector{Tuple{NodeID, NodeID}}} =
         OrderedDict()
     demand_priorities_all::Vector{Int32} = []
-    time::AllocationTime = AllocationTime(; adaptive = true)
     config::Config
+    time::AllocationTime = AllocationTime(config)
     record_demand::Vector{DemandRecordDatum} = []
     record_flow::Vector{FlowRecordDatum} = []
     record_control::Vector{AllocationControlRecordDatum} = []
