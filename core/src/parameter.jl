@@ -326,6 +326,17 @@ Data for the allocation timestepping
     tstops::Vector{Float64} = [0.0]
     # The output writing interval
     const saveat::Float64 = 0.0
+
+    function AllocationTime(
+            adaptive::Bool,
+            dt_fixed::Float64,
+            t_end::Float64,
+            tstops::Vector{Float64},
+            saveat::Float64,
+        )
+        adaptive && !iszero(dt_fixed) && throw(ArgumentError("dt_fixed must be 0.0 when adaptive."))
+        return new(adaptive, dt_fixed, t_end, tstops, saveat)
+    end
 end
 
 """
