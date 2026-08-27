@@ -320,7 +320,7 @@ Test whether static or discrete controlled flow rates are indeed non-negative.
 """
 function valid_flow_rates(
         node_id::Vector{NodeID},
-        flow_rate::Vector{T},
+        flow_rate_data::Vector{T},
         control_mapping::OrderedDict{Tuple{NodeID, String}, <:ControlStateUpdate},
     )::Bool where {T <: Union{Float64, ScalarConstantInterpolation}}
     errors = false
@@ -328,19 +328,28 @@ function valid_flow_rates(
     # if their initial value is also invalid.
     ids_controlled = NodeID[]
 
+    update_field = T == Float64 ? :scalar_update : :itp_update_constant
+
     for (key, control_state_update) in pairs(control_mapping)
         id_controlled = key[1]
+
         push!(ids_controlled, id_controlled)
 
+        # No checking required if the flow rate is not specified
+        if !isassigned(flow_rate_data, id_controlled.idx) ||
+                (flow_rate_data[id_controlled.idx] isa Float64 && isnan(flow_rate_data[id_controlled.idx]))
+            continue
+        end
+
+        control_state_update_field = getfield(control_state_update, update_field)
+
         # Get the appropriate update field based on type
-        update_field = T == Float64 ? :scalar_update : :itp_update_constant
         flow_rate_update_idx = findfirst(
             parameter_update -> parameter_update.name == :flow_rate,
-            getfield(control_state_update, update_field),
+            control_state_update_field,
         )
         @assert !isnothing(flow_rate_update_idx)
-        flow_rate_update =
-            getfield(control_state_update, update_field)[flow_rate_update_idx]
+        flow_rate_update = control_state_update_field[flow_rate_update_idx]
 
         # Check minimum flow rate value based on type
         flow_rate_min =
@@ -353,10 +362,11 @@ function valid_flow_rates(
         end
     end
 
-    for (id, flow_rate_) in zip(node_id, flow_rate)
-        if id in ids_controlled
+    for id in node_id
+        if (id in ids_controlled) || !isassigned(flow_rate_data, id.idx)
             continue
         end
+        flow_rate_ = flow_rate_data[id.idx]
 
         # Check minimum flow rate based on type
         flow_rate_min = T == Float64 ? flow_rate_ : minimum(flow_rate_.u)

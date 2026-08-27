@@ -123,6 +123,7 @@ end
 
 Base.Int32(id::NodeID) = id.value
 Base.convert(::Type{Int32}, id::NodeID) = id.value
+Base.convert(::Type{NodeID}, value::Integer) = NodeID(NodeType.Basin, value, 0)
 Base.broadcastable(id::NodeID) = Ref(id)
 Base.show(io::IO, id::NodeID) = print(io, id.type, " #", id.value)
 config.snake_case(id::NodeID) = config.snake_case(id.type)
@@ -132,6 +133,7 @@ Base.to_index(id::NodeID) = Int(id.value)
 Base.:(==)(id_1::NodeID, id_2::NodeID) = id_1.value == id_2.value
 Base.:(==)(id_1::Integer, id_2::NodeID) = id_1 == id_2.value
 Base.:(==)(id_1::NodeID, id_2::Integer) = id_1.value == id_2
+Base.hash(id::NodeID, h::UInt) = hash(Int(id.value), h)
 
 Base.isless(id_1::NodeID, id_2::NodeID)::Bool = id_1.value < id_2.value
 Base.isless(id_1::Integer, id_2::NodeID)::Bool = id_1 < id_2.value
@@ -747,7 +749,7 @@ flow_demand_id: connected flow demand node if applicable
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    flow_rate::Vector{Float64} = Vector{Float64}(undef, length(node_id))
+    flow_rate::Vector{Float64} = fill(NaN, length(node_id))
     time_dependent_flow_rate::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     min_flow_rate::Vector{ScalarConstantInterpolation} =
@@ -787,7 +789,7 @@ flow_demand_id: connected flow demand node if applicable
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    flow_rate::Vector{Float64} = Vector{Float64}(undef, length(node_id))
+    flow_rate::Vector{Float64} = fill(NaN, length(node_id))
     time_dependent_flow_rate::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     min_flow_rate::Vector{ScalarConstantInterpolation} =

@@ -1,4 +1,4 @@
-@testitem "jacobian has no garbage values" begin
+@testitem "Jacobian has no garbage values" begin
     using SparseArrays: nonzeros
 
     toml_path =

@@ -385,7 +385,9 @@ end
 
     t = Ribasim.tsaves(model)
     t_maximum_level = level.t[2]
-    level_basin = Ribasim.get_storages_and_levels(model).level[:]
+    storages_and_levels = Ribasim.get_storages_and_levels(model)
+    basin_index = findfirst(==(3), storages_and_levels.node_id)
+    level_basin = storages_and_levels.level[basin_index, :]
 
     # Basin level converges to stable level boundary level
     @test all(isapprox.(level_basin[t .>= level.t[3]], level.u[3], atol = 5.0e-2))
