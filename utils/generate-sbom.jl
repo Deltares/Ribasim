@@ -3,6 +3,7 @@ using UUIDs
 using Pkg
 
 function (@main)(_)::Cint
+    # only include the core dependencies, not the whole workspace
     Pkg.activate("core")
 
     ribasimLicense = SpdxLicenseExpressionV2("MIT")
@@ -15,12 +16,10 @@ function (@main)(_)::Cint
         name = "Ribasim",
     )
 
-    dependencies = Pkg.project().dependencies
     spdxData = spdxCreationData(;
         Name = "Ribasim.jl",
         Creators = [organization],
         NamespaceURL = "https://github.com/Deltares/Ribasim/Ribasim.spdx.json",
-        rootpackages = dependencies,
         find_artifactsource = true,
         packageInstructions = Dict{UUID, spdxPackageInstructions}(
             Pkg.project().uuid => packageInstructions,
