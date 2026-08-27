@@ -253,10 +253,10 @@ function parse_parameter!(
         # Find out where to get the data from for this node
         in_static =
             isnothing(static) || isempty(static) ? false :
-            (static_node_id[first(static_group)] == id.value)
+            (static_node_id[first(static_group)] == id)
         in_time =
             isnothing(time) || isempty(time) ? false :
-            (time_node_id[first(time_group)] == id.value)
+            (time_node_id[first(time_group)] == id)
         use_default = false
 
         if in_static && in_time
@@ -704,8 +704,8 @@ function parse_pump_or_outlet_parameters!(
         (isnothing(static) || isempty(static)) ? Set{Int32}() : Set(static.node_id)
     time_node_ids = (isnothing(time) || isempty(time)) ? Set{Int32}() : Set(time.node_id)
     for id in node_id
-        in_static = id.value in static_node_ids
-        in_time = id.value in time_node_ids
+        in_static = id in static_node_ids
+        in_time = id in time_node_ids
         if in_static && isnan(node.flow_rate[id.idx])
             @error "flow_rate for $id in the Static table is NaN; please provide a finite value."
             errors = true
@@ -2241,7 +2241,7 @@ function set_concentrations!(
             first_row = first(group)
             value = getproperty(first_row, concentration_column)
             ismissing(value) && continue
-            node_idx = findfirst(node_id -> node_id.value == first_row.node_id, node_ids)
+            node_idx = findfirst(node_id -> node_id == first_row.node_id, node_ids)
             concentration[node_idx, sub_idx] = value
         end
     end

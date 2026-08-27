@@ -132,6 +132,7 @@ Base.to_index(id::NodeID) = Int(id.value)
 Base.:(==)(id_1::NodeID, id_2::NodeID) = id_1.value == id_2.value
 Base.:(==)(id_1::Integer, id_2::NodeID) = id_1 == id_2.value
 Base.:(==)(id_1::NodeID, id_2::Integer) = id_1.value == id_2
+Base.hash(id::NodeID, h::UInt) = hash(id.value, h)
 
 Base.isless(id_1::NodeID, id_2::NodeID)::Bool = id_1.value < id_2.value
 Base.isless(id_1::Integer, id_2::NodeID)::Bool = id_1 < id_2.value

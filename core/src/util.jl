@@ -1313,7 +1313,7 @@ function get_concentration_itp(
     ]
 
     for (id, cyclic_time) in zip(node_id, cyclic_times)
-        data_id = filter(row -> row.node_id == id.value, concentration_time)
+        data_id = filter(row -> row.node_id == id, concentration_time)
         for group in IterTools.groupby(row -> row.substance, data_id)
             first_row = first(group)
             substance_idx = find_index(Symbol(first_row.substance), substances)
