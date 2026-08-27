@@ -1090,6 +1090,7 @@ function save_flows!(
     ) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
     (; graph, allocation) = p.p_independent
+    (; internal_flow_links, external_flow_links, flow_link_map) = graph[]
     (; record_flow) = allocation
     flow = problem[:flow]
 
@@ -1107,28 +1108,39 @@ function save_flows!(
     end
 
     # Horizontal flows
-    for link in valid_links
-        (id_from, id_to) = link
-        link_metadata = graph[link...]
-        flow_variable = flow[link]
+    horizontal_flow_record = OrderedDict{Tuple{NodeID, NodeID}, FlowRecordDatum}()
+    for internal_flow_link in valid_links
+        internal_flow_link_idx = findfirst(x -> x.link == internal_flow_link, internal_flow_links)
+
+        flow_variable = flow[internal_flow_link]
+        flow_value = JuMP.value(flow_variable) * scaling.flow
         hit_lower_bound, hit_upper_bound = get_bounds_hit(flow_variable)
 
-        push!(
-            record_flow,
-            FlowRecordDatum(
-                t,
-                link_metadata.id,
-                string(id_from.type),
-                Int32(id_from),
-                string(id_to.type),
-                Int32(id_to),
-                subnetwork_id,
-                JuMP.value(flow_variable) * scaling.flow,
-                hit_lower_bound,
-                hit_upper_bound,
-            ),
-        )
+        for external_flow_link_idx in rowvals(flow_link_map)[nzrange(flow_link_map, internal_flow_link_idx)]
+            external_flow_link = external_flow_links[external_flow_link_idx]
+            if haskey(horizontal_flow_record, external_flow_link.link)
+                datum = horizontal_flow_record[external_flow_link.link]
+                datum.flow_rate += flow_value
+                datum.lower_bound_hit |= hit_lower_bound
+                datum.upper_bound_hit |= hit_upper_bound
+            else
+                horizontal_flow_record[external_flow_link.link] = FlowRecordDatum(
+                    t,
+                    external_flow_link.id,
+                    string(external_flow_link.link[1].type),
+                    Int32(external_flow_link.link[1]),
+                    string(external_flow_link.link[2].type),
+                    Int32(external_flow_link.link[2]),
+                    subnetwork_id,
+                    flow_value,
+                    hit_lower_bound,
+                    hit_upper_bound,
+                )
+            end
+        end
     end
+
+    append!(record_flow, values(horizontal_flow_record))
 
     # Vertical flows
     for node_id in basin_ids_subnetwork

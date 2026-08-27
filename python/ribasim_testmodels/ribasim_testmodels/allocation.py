@@ -291,11 +291,13 @@ def allocation_example_model() -> Model:
         ],
     )
     model.terminal.add(Node(8, Point(5, 0), subnetwork_id=2))
+    model.junction.add(Node(node_id=9, geometry=Point(2, 1), subnetwork_id=2))
 
     model.link.add(model.flow_boundary[1], model.basin[2])
     model.link.add(model.basin[2], model.user_demand[3])
     model.link.add(model.basin[2], model.linear_resistance[4])
-    model.link.add(model.linear_resistance[4], model.basin[5])
+    model.link.add(model.linear_resistance[4], model.junction[9])
+    model.link.add(model.junction[9], model.basin[5])
     model.link.add(model.basin[5], model.user_demand[6])
     model.link.add(model.basin[5], model.tabulated_rating_curve[7])
     model.link.add(model.tabulated_rating_curve[7], model.terminal[8])
