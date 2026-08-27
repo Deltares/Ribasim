@@ -320,7 +320,7 @@ Test whether static or discrete controlled flow rates are indeed non-negative.
 """
 function valid_flow_rates(
         node_id::Vector{NodeID},
-        flow_rate::Vector{T},
+        flow_rate_data::Vector{T},
         control_mapping::OrderedDict{Tuple{NodeID, String}, <:ControlStateUpdate},
     )::Bool where {T <: Union{Float64, ScalarConstantInterpolation}}
     errors = false
@@ -335,8 +335,9 @@ function valid_flow_rates(
 
         push!(ids_controlled, id_controlled)
 
-        if !isassigned(flow_rate, id_controlled.idx) ||
-                (flow_rate[id_controlled.idx] isa Float64 && isnan(flow_rate[id_controlled.idx]))
+        # No checking required if the flow rate is not specified
+        if !isassigned(flow_rate_data, id_controlled.idx) ||
+                (flow_rate_data[id_controlled.idx] isa Float64 && isnan(flow_rate_data[id_controlled.idx]))
             continue
         end
 
@@ -362,10 +363,10 @@ function valid_flow_rates(
     end
 
     for id in node_id
-        if (id in ids_controlled) || !isassigned(flow_rate, id.idx)
+        if (id in ids_controlled) || !isassigned(flow_rate_data, id.idx)
             continue
         end
-        flow_rate_ = flow_rate[id.idx]
+        flow_rate_ = flow_rate_data[id.idx]
 
         # Check minimum flow rate based on type
         flow_rate_min = T == Float64 ? flow_rate_ : minimum(flow_rate_.u)
