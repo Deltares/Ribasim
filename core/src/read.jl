@@ -700,9 +700,16 @@ function parse_pump_or_outlet_parameters!(
 
     # Since flow_rate is parsed separately in the static and time case, we need to check whether
     # it was supplied in either but not in both afterwards (since it is not actually optional)
+    static_node_ids =
+        (isnothing(static) || isempty(static)) ? Set{Int32}() : Set(static.node_id)
+    time_node_ids = (isnothing(time) || isempty(time)) ? Set{Int32}() : Set(time.node_id)
     for id in node_id
-        in_static = !isnan(node.flow_rate[id.idx])
-        in_time = isassigned(node.time_dependent_flow_rate, id.idx)
+        in_static = id.value in static_node_ids
+        in_time = id.value in time_node_ids
+        if in_static && isnan(node.flow_rate[id.idx])
+            @error "flow_rate for $id in the Static table is NaN; please provide a finite value."
+            errors = true
+        end
         if in_static && in_time
             @error "flow_rate for $id was supplied in both Static and Time tables."
             errors = true

@@ -378,6 +378,13 @@ def outlet_model() -> Model:
             basin.State(level=[0.0]),
         ],
     )
+    model.basin.add(
+        Node(5, Point(0.0, 5.0), subnetwork_id=2),
+        [
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 10.0]),
+            basin.State(level=[0.0]),
+        ],
+    )
 
     # Set up the level boundary
     model.level_boundary.add(
@@ -394,15 +401,25 @@ def outlet_model() -> Model:
         ],
     )
 
-    # Setup the outlet
+    # Setup the outlets
     model.outlet.add(
         Node(2, Point(1.0, 0.0), subnetwork_id=2),
         [outlet.Static(flow_rate=[1e-3], min_upstream_level=[2.0])],
+    )
+    model.outlet.add(
+        Node(4, Point(1.0, 0.0), subnetwork_id=2),
+        [
+            outlet.Time(
+                time=["2020-01-01 00:00:00"], flow_rate=[1e-3], min_upstream_level=[2.0]
+            )
+        ],
     )
 
     # Setup the links
     model.link.add(model.level_boundary[1], model.outlet[2])
     model.link.add(model.outlet[2], model.basin[3])
+    model.link.add(model.level_boundary[1], model.outlet[4])
+    model.link.add(model.outlet[4], model.basin[5])
 
     return model
 
