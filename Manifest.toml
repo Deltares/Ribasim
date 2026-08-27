@@ -2,7 +2,7 @@
 
 julia_version = "1.12.7"
 manifest_format = "2.0"
-project_hash = "59f3296d9439e7973b95504a1c63dce6cf57c91a"
+project_hash = "4fba35c44bb2f2dab1995806f59d3d0de2cd9c04"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -1801,9 +1801,9 @@ weakdeps = ["REPL"]
 
 [[deps.PkgToSoftwareBOM]]
 deps = ["Artifacts", "Downloads", "LicenseCheck", "Logging", "Pkg", "Reexport", "RegistryInstances", "SPDX", "UUIDs"]
-git-tree-sha1 = "30a1cf0b8fac0400f7f9790b1ad8ad89db325b84"
+git-tree-sha1 = "5358d782f4d7c80d9398e304fedf8c2283edbbf5"
 uuid = "6254a0f9-6143-4104-aa2e-fd339a2830a6"
-version = "0.1.19"
+version = "0.2.0"
 
 [[deps.PlotThemes]]
 deps = ["PlotUtils", "Statistics"]
