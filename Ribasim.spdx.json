@@ -3,12 +3,12 @@
     "dataLicense": "CC0-1.0",
     "SPDXID": "SPDXRef-DOCUMENT",
     "name": "Ribasim.jl",
-    "documentNamespace": "https://github.com/Deltares/Ribasim/Ribasim.spdx.json-c11e285b-1de8-46b4-bce8-62fc0deeaeb7",
+    "documentNamespace": "https://github.com/Deltares/Ribasim/Ribasim.spdx.json-6d756371-c581-49e3-ab6c-fbc4f545703d",
     "creationInfo": {
         "creators": [
             "Organization:  Deltares  (software@deltares.nl)"
         ],
-        "created": "2026-08-27T11:10:39Z",
+        "created": "2026-08-27T12:59:45Z",
         "comment": "Target Platform: Platform(\"x86_64\", \"windows\"; libgfortran_version = \"5.0.0\", julia_version = \"1.12.7\", cxxstring_abi = \"cxx11\")"
     },
     "comment": "Registries used for populating Package data:\nGeneral registry: https://github.com/JuliaRegistries/General.git\nOfficial general Julia package registry where people can\nregister any package they want without too much debate about\nnaming and without enforced standards on documentation or\ntesting. We nevertheless encourage documentation, testing and\nsome amount of consideration when choosing package names.\n",
@@ -5925,15 +5925,15 @@
         {
             "name": "DataInterpolations",
             "SPDXID": "SPDXRef-DataInterpolations-82cc6244-b520-54b8-b5a6-8a565e85f1d0",
-            "versionInfo": "9.2.0",
+            "versionInfo": "9.4.1",
             "supplier": "NOASSERTION",
             "originator": "NOASSERTION",
-            "downloadLocation": "git+https://github.com/SciML/DataInterpolations.jl@fix_SCT_for_intinv_itps",
+            "downloadLocation": "git+https://github.com/SciML/DataInterpolations.jl.git@master",
             "filesAnalyzed": true,
             "packageVerificationCode": {
-                "packageVerificationCodeValue": "9d9b54a87e23f732cd5a9e82591459d5164f61ac"
+                "packageVerificationCodeValue": "17b810c35397d2f7aa9f42d1fe05610ddf6e0b80"
             },
-            "homepage": "https://github.com/SciML/DataInterpolations.jl",
+            "homepage": "https://github.com/SciML/DataInterpolations.jl.git",
             "sourceInfo": "DataInterpolations is directly tracking a git repository.",
             "licenseConcluded": "NOASSERTION",
             "licenseInfoFromFiles": [
@@ -5947,7 +5947,7 @@
                 {
                     "referenceCategory": "PACKAGE-MANAGER",
                     "referenceType": "purl",
-                    "referenceLocator": "pkg:julia/DataInterpolations@9.2.0?uuid=82cc6244-b520-54b8-b5a6-8a565e85f1d0"
+                    "referenceLocator": "pkg:julia/DataInterpolations@9.4.1?uuid=82cc6244-b520-54b8-b5a6-8a565e85f1d0"
                 }
             ]
         },
@@ -11965,7 +11965,7 @@
             "relatedSpdxElement": "SPDXRef-DataInterpolations-82cc6244-b520-54b8-b5a6-8a565e85f1d0"
         },
         {
-            "spdxElementId": "SPDXRef-RecipesBase-3cdcf5f2-1ef4-517c-9805-6587b60abb01",
+            "spdxElementId": "SPDXRef-PrecompileTools-aea7be01-6a6a-4083-8856-8a6e6704d82a",
             "relationshipType": "DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-DataInterpolations-82cc6244-b520-54b8-b5a6-8a565e85f1d0"
         },
@@ -11985,7 +11985,7 @@
             "relatedSpdxElement": "SPDXRef-DataInterpolations-82cc6244-b520-54b8-b5a6-8a565e85f1d0"
         },
         {
-            "spdxElementId": "SPDXRef-Test-8dfed614-e22c-5e08-85e1-65c5234f0b40",
+            "spdxElementId": "SPDXRef-RecipesBase-3cdcf5f2-1ef4-517c-9805-6587b60abb01",
             "relationshipType": "DEPENDENCY_OF",
             "relatedSpdxElement": "SPDXRef-DataInterpolations-82cc6244-b520-54b8-b5a6-8a565e85f1d0"
         },

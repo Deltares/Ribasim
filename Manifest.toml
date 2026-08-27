@@ -367,12 +367,12 @@ uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 version = "1.8.2"
 
 [[deps.DataInterpolations]]
-deps = ["EnumX", "FindFirstFunctions", "ForwardDiff", "LinearAlgebra", "PrettyTables", "RecipesBase", "Reexport", "StaticArrays", "Test"]
-git-tree-sha1 = "bdd0cdce84709e90f9e3fa1f999062c0fb1b1fc8"
-repo-rev = "fix_SCT_for_intinv_itps"
-repo-url = "https://github.com/SciML/DataInterpolations.jl"
+deps = ["EnumX", "FindFirstFunctions", "ForwardDiff", "LinearAlgebra", "PrecompileTools", "PrettyTables", "RecipesBase", "Reexport", "StaticArrays"]
+git-tree-sha1 = "c1c0c6c53a5bdf25fd74d1e4f52e70b382f4cd38"
+repo-rev = "master"
+repo-url = "https://github.com/SciML/DataInterpolations.jl.git"
 uuid = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
-version = "9.2.0"
+version = "9.4.1"
 
     [deps.DataInterpolations.extensions]
     DataInterpolationsChainRulesCoreExt = "ChainRulesCore"
@@ -1777,11 +1777,9 @@ version = "10.44.0+1"
 
 [[deps.PackageCompiler]]
 deps = ["Artifacts", "Glob", "LazyArtifacts", "Libdl", "Pkg", "Printf", "RelocatableFolders", "TOML", "UUIDs", "p7zip_jll"]
-git-tree-sha1 = "8579d35f16cd50da52477f9f80355c587f3f93bb"
-repo-rev = "ribasim_libdir"
-repo-url = "https://github.com/visr/PackageCompiler.jl"
+git-tree-sha1 = "9ca7f3bd9d704c9f78ed80400641b0a1472e6814"
 uuid = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
-version = "2.4.0"
+version = "2.4.1"
 
 [[deps.Pango_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "FriBidi_jll", "Glib_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl"]

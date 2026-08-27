@@ -81,8 +81,6 @@ TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 
 [sources]
-DataInterpolations = {rev = "fix_SCT_for_intinv_itps", url = "https://github.com/SciML/DataInterpolations.jl"}
-PackageCompiler = {rev = "ribasim_libdir", url = "https://github.com/visr/PackageCompiler.jl"}
 Ribasim = {path = "core"}
 
 [compat]
