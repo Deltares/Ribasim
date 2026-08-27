@@ -1,6 +1,6 @@
 @testitem "Pump discrete control" begin
     using Ribasim: NodeID, OrderedDict
-    using OrdinaryDiffEqCore: get_du
+    using SciMLBase: get_du
     using Dates: DateTime
     using NCDatasets: NCDataset
 
