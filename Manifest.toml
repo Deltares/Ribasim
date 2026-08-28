@@ -2,7 +2,7 @@
 
 julia_version = "1.12.7"
 manifest_format = "2.0"
-project_hash = "e32c1f80294fa64fd7cf7b94fd35f82dedfeff70"
+project_hash = "d60a677b05d169eba161f9f4011510ae54393ab2"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -150,6 +150,12 @@ git-tree-sha1 = "0adb6d8d0a4bae93a07d79c8d59eaf617f4c59da"
 uuid = "b2a6c25c-c996-4615-94ab-6e519ffb8690"
 version = "1.1.0"
 
+[[deps.BitTwiddlingConvenienceFunctions]]
+deps = ["Static"]
+git-tree-sha1 = "f21cfd4950cb9f0587d5067e69405ad2acd27b87"
+uuid = "62783981-4cbd-42fc-bca8-16325de8dc4b"
+version = "0.1.6"
+
 [[deps.Blosc_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Lz4_jll", "Zlib_jll", "Zstd_jll"]
 git-tree-sha1 = "535c80f1c0847a4c967ea945fca21becc9de1522"
@@ -181,6 +187,12 @@ deps = ["Dates", "Printf"]
 git-tree-sha1 = "fad2f199d1f1ae0c8e820ab68f81f6dbf62e60b2"
 uuid = "179af706-886a-5703-950a-314cd64e0468"
 version = "0.2.10"
+
+[[deps.CPUSummary]]
+deps = ["CpuId", "IfElse", "PrecompileTools", "Preferences", "Static"]
+git-tree-sha1 = "f3a21d7fc84ba618a779d1ed2fcca2e682865bab"
+uuid = "2a0fbf3d-bb9c-48f3-b0a9-814d99fd7ab9"
+version = "0.2.7"
 
 [[deps.CRC32c]]
 uuid = "8bf52ea8-c179-5cab-976a-9e18b702a9bc"
@@ -344,6 +356,12 @@ version = "1.6.0"
 git-tree-sha1 = "439e35b0b36e2e5881738abc8857bd92ad6ff9a8"
 uuid = "d38c429a-6771-53c6-b99e-75d170b6e991"
 version = "0.6.3"
+
+[[deps.CpuId]]
+deps = ["Markdown"]
+git-tree-sha1 = "fcbb72b032692610bfbdb15018ac16a36cf2e406"
+uuid = "adafc99b-e345-5852-983c-f28acb93d879"
+version = "0.3.1"
 
 [[deps.Crayons]]
 git-tree-sha1 = "54b76cbb40d9a0f5368c880725b2f141da77c94f"
@@ -632,14 +650,11 @@ deps = ["ArrayInterface", "LinearAlgebra", "PrecompileTools"]
 git-tree-sha1 = "c8f8eefadaa330d982bbf5e395c34e53a13ab668"
 uuid = "7034ab61-46d4-4ed7-9d0f-46aef9175898"
 version = "1.4.0"
+weakdeps = ["Polyester", "Static"]
 
     [deps.FastBroadcast.extensions]
     FastBroadcastPolyesterExt = "Polyester"
     FastBroadcastStaticExt = "Static"
-
-    [deps.FastBroadcast.weakdeps]
-    Polyester = "f517fe37-dbe3-4b94-8317-1923a5111588"
-    Static = "aedffcd0-7271-4cad-89d0-dc628f76c6d3"
 
 [[deps.FastClosures]]
 git-tree-sha1 = "acebe244d53ee1b461970f8910c235b259e772ef"
@@ -1073,15 +1088,11 @@ deps = ["LinearAlgebra", "PrecompileTools"]
 git-tree-sha1 = "7b40ce7fd1962d83f252252db61b85827b1d6d2f"
 uuid = "2faa5264-e118-4071-8864-e10559f68c7c"
 version = "2.2.0"
+weakdeps = ["Polyester", "PureKLU", "SparseArrays"]
 
     [deps.LHLFactorization.extensions]
     LHLFactorizationPolyesterExt = "Polyester"
     LHLFactorizationSparseExt = ["PureKLU", "SparseArrays"]
-
-    [deps.LHLFactorization.weakdeps]
-    Polyester = "f517fe37-dbe3-4b94-8317-1923a5111588"
-    PureKLU = "0c0d3e7f-3a8b-4f7e-b6f1-9a4d2e7c1f01"
-    SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[deps.LLVMOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1792,6 +1803,12 @@ git-tree-sha1 = "7126b66b721a605a2fec966a2874c5ed53258eb3"
 uuid = "36c8627f-9965-5494-a995-c6b170f724f3"
 version = "1.58.0+0"
 
+[[deps.Parameters]]
+deps = ["OrderedCollections", "UnPack"]
+git-tree-sha1 = "34c0e9ad262e5f7fc75b10a9952ca7692cfc5fbe"
+uuid = "d96e819e-fc66-5662-9728-84c9c7592b0a"
+version = "0.12.3"
+
 [[deps.Parsers]]
 deps = ["Dates", "PrecompileTools", "UUIDs"]
 git-tree-sha1 = "3de8f5e6e90ebfa8d6d1f86997d6cdcd6a912ff3"
@@ -1863,6 +1880,18 @@ version = "1.41.7"
     ImageInTerminal = "d8c32880-2388-543b-8c61-d9f865259254"
     Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
+[[deps.Polyester]]
+deps = ["ArrayInterface", "BitTwiddlingConvenienceFunctions", "CPUSummary", "IfElse", "ManualMemory", "PolyesterWeave", "Static", "StaticArrayInterface", "StrideArraysCore", "ThreadingUtilities"]
+git-tree-sha1 = "16bbc30b5ebea91e9ce1671adc03de2832cff552"
+uuid = "f517fe37-dbe3-4b94-8317-1923a5111588"
+version = "0.7.19"
+
+[[deps.PolyesterWeave]]
+deps = ["BitTwiddlingConvenienceFunctions", "CPUSummary", "IfElse", "Static", "ThreadingUtilities"]
+git-tree-sha1 = "645bed98cd47f72f67316fd42fc47dee771aefcd"
+uuid = "1d0040c9-8b98-4ee7-8388-3f51789ca0ad"
+version = "0.2.2"
+
 [[deps.PooledArrays]]
 deps = ["DataAPI", "Future"]
 git-tree-sha1 = "36d8b4b899628fb92c2749eb488d884a926614d3"
@@ -1921,6 +1950,11 @@ deps = ["Logging", "SHA", "UUIDs"]
 git-tree-sha1 = "f0803bc1171e455a04124affa9c21bba5ac4db32"
 uuid = "33c8b6b6-d38a-422a-b730-caa89a2f386c"
 version = "0.1.6"
+
+[[deps.PropertyDicts]]
+git-tree-sha1 = "a6b4c12d38387a4382fa53b8a6591f9c219add16"
+uuid = "f8a19df8-e894-5f55-a973-672c1158cbca"
+version = "0.2.1"
 
 [[deps.PtrArrays]]
 git-tree-sha1 = "4fbbafbc6251b883f4d2705356f3641f3652a7fe"
@@ -2593,6 +2627,11 @@ deps = ["Random", "SHA"]
 uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 version = "1.11.0"
 
+[[deps.UnPack]]
+git-tree-sha1 = "387c1f73762231e86e0c9c5443ce3b4a0a9a0c2b"
+uuid = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
+version = "1.0.2"
+
 [[deps.Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 version = "1.11.0"
@@ -2630,6 +2669,12 @@ deps = ["DataAPI", "InlineStrings", "Parsers"]
 git-tree-sha1 = "0716e01c3b40413de5dedbc9c5c69f27cddfddfc"
 uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
 version = "1.4.3"
+
+[[deps.Wflow]]
+deps = ["Accessors", "BasicModelInterface", "CFTime", "CompositionsBase", "Dates", "DelimitedFiles", "EnumX", "FillArrays", "Glob", "Graphs", "LoggingExtras", "NCDatasets", "OrderedCollections", "Parameters", "Polyester", "ProgressLogging", "PropertyDicts", "StaticArrays", "Statistics", "TOML", "TerminalLoggers"]
+path = "../Wflow/Wflow"
+uuid = "d48b7d99-76e7-47ae-b1d5-ff0c1cf9a818"
+version = "1.1.0-dev"
 
 [[deps.WorkerUtilities]]
 git-tree-sha1 = "cd1659ba0d57b71a464a29e64dbc67cfe83d54e7"
