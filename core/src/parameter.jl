@@ -21,12 +21,11 @@ const state_components = (
     :integral,
 )
 const n_components = length(state_components)
-const StateTuple{V} = NamedTuple{state_components, NTuple{n_components, V}}
+const StateTuple = NamedTuple{state_components, NTuple{n_components, UnitRange{Int}}}
 const RibasimCVectorType{T} =
-    Ribasim.CArrays.CArray{T, 1, Vector{T}, StateTuple{UnitRange{Int}}}
-const RibasimReducedCVectorType{T} = Ribasim.CArrays.CArray{
+    CVector{T, Vector{T}, StateTuple}
+const RibasimReducedCVectorType{T} = CVector{
     T,
-    1,
     Vector{T},
     @NamedTuple{combined_cumulative_flows::UnitRange{Int}, integral::UnitRange{Int}}
 }
@@ -1207,7 +1206,7 @@ the object itself is not.
     u_prev_saveat::Vector{Float64} = Float64[]
     # Node ID associated with each state
     node_id::Vector{NodeID} = NodeID[]
-    state_ranges::StateTuple{UnitRange{Int}}
+    state_ranges::StateTuple
     # Callback configurations
     do_concentration::Bool
     do_subgrid::Bool

@@ -464,7 +464,7 @@ Get the reference to a parameter
 function get_cache_ref(
         node_id::NodeID,
         variable::String,
-        state_ranges::StateTuple{UnitRange{Int}};
+        state_ranges::StateTuple;
         listen::Bool = true,
     )::Tuple{CacheRef, Bool}
     errors = false
@@ -600,7 +600,7 @@ function set_target_ref!(
         target_ref::Vector{CacheRef},
         node_id::Vector{NodeID},
         controlled_variable::Vector{String},
-        state_ranges::StateTuple{UnitRange{Int}},
+        state_ranges::StateTuple,
         graph::MetaGraph,
     )::Nothing
     errors = false
@@ -666,7 +666,7 @@ get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = 
 "Create a NamedTuple of the node IDs per state component in the state order"
 function state_node_ids(
         p::Union{ParametersIndependent, NamedTuple},
-    )::StateTuple{Vector{NodeID}}
+    )
     return (;
         tabulated_rating_curve = p.tabulated_rating_curve.node_id,
         pump = p.pump.node_id,
@@ -685,8 +685,8 @@ function state_node_ids(
 end
 
 "Create the axis of the state vector"
-function count_state_ranges(u_ids::StateTuple{Vector{NodeID}})::StateTuple{UnitRange{Int}}
-    return StateTuple{UnitRange{Int}}(ranges(map(length, collect(u_ids))))
+function count_state_ranges(u_ids::NamedTuple)::StateTuple
+    return StateTuple(ranges(map(length, collect(u_ids))))
 end
 
 function build_state_vector(p_independent::ParametersIndependent)
@@ -849,7 +849,7 @@ Use the inflow Boolean argument to disambiguite for node types that have multipl
 Can return nothing for node types that do not have a state, like Terminal.
 """
 function get_state_index(
-        state_ranges::StateTuple{UnitRange{Int}},
+        state_ranges::StateTuple,
         id::NodeID;
         inflow::Bool = true,
     )::Union{Int, Nothing}
@@ -875,7 +875,7 @@ source links), the per-link index must be resolved via `link_to_state_idx`. Othe
 this falls back to the to-node's (or from-node's) state.
 """
 function get_state_index(
-        state_ranges::StateTuple{UnitRange{Int}},
+        state_ranges::StateTuple,
         link_to_state_idx::Dict{Tuple{NodeID, NodeID}, Int},
         link::Tuple{NodeID, NodeID},
     )::Union{Int, Nothing}
