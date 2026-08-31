@@ -169,8 +169,8 @@ using Printf: @sprintf
 
 using Base.Threads: nthreads
 
-include("carrays.jl")
-using .CArrays: CVector, getaxes, getdata
+include("cvectors.jl")
+using .CVectors: CVector, getaxes, getdata
 include("schema.jl")
 include("config.jl")
 using .config

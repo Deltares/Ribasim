@@ -38,14 +38,14 @@ function get_models()
     """
     return [
         (
-                name = string(Ribasim.node_type(T), nameof(T)),
-                fields = zip(
-                    fieldnames(T),
-                    map(python_type, fieldtypes(T)),
-                    map(is_nullable, fieldtypes(T)),
-                ),
-                node_id_relation = string(Ribasim.node_id_relation(T)),
-            ) for T in subtypes(Ribasim.Table)
+            name = string(Ribasim.node_type(T), nameof(T)),
+            fields = zip(
+                fieldnames(T),
+                map(python_type, fieldtypes(T)),
+                map(is_nullable, fieldtypes(T)),
+            ),
+            node_id_relation = string(Ribasim.node_id_relation(T)),
+        ) for T in subtypes(Ribasim.Table)
     ]
 end
 
@@ -57,11 +57,11 @@ function get_connectivity()
 
     nodes = [
         (
-                name = T,
-                connectivity = OrderedSet(
-                    Ribasim.camel_case(x) for x in Ribasim.neighbortypes(T)
-                ),
-            ) for T in node_names
+            name = T,
+            connectivity = OrderedSet(
+                Ribasim.camel_case(x) for x in Ribasim.neighbortypes(T)
+            ),
+        ) for T in node_names
     ]
 
     bound_fns = [
@@ -73,9 +73,9 @@ function get_connectivity()
 
     link_types = [
         (
-                name = lt,
-                bounds = [(name = T, bound = fn(T)) for T in node_names],
-            ) for (lt, fn) in bound_fns
+            name = lt,
+            bounds = [(name = T, bound = fn(T)) for T in node_names],
+        ) for (lt, fn) in bound_fns
     ]
 
     return Dict(:nodes => nodes, :link_types => link_types)
