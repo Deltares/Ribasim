@@ -26,12 +26,10 @@ install = { depends-on = [
     "install-qgis-plugins",
     "install-prek",
     "instantiate-julia",
-    "install-runic",
 ] }
 # Julia
 update-manifest-julia = { cmd = "julia --project utils/update-manifest.jl" }
 instantiate-julia = { cmd = "julia --project --eval='using Pkg; Registry.update(); Pkg.instantiate()'" }
-install-runic = { cmd = "julia --eval='using Pkg; Pkg.Apps.add(\"Runic\")'" }
 initialize-julia-test = { cmd = "julia --project=core --eval 'using Pkg; Pkg.test(allow_reresolve=false, test_args=[\"skip\"])'", depends-on = [
     "instantiate-julia",
 ] }

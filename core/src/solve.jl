@@ -606,7 +606,7 @@ We assume velocity differences are negligible (v_a = v_b):
 
 The friction losses are approximated by the Gauckler-Manning formula:
 
-    Q = A * (1 / n) * R_h^(2/3) * S_f^(1/2)
+    Q = A * (1 / n) * R_h^(2 / 3) * S_f^(1 / 2)
 
 Where:
 

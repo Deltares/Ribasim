@@ -65,6 +65,7 @@ Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 Ribasim = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
+Runic = "62bfec6d-59d7-401d-8490-b29ee721c001"
 SQLite = "0aa819cd-b072-5ff4-a722-6bc24af294d9"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SciMLOperators = "c0aeaf25-5076-4817-a8d5-81caf7dfa961"
@@ -92,6 +93,7 @@ PkgToSoftwareBOM = "0.2"
 Plots = "1.41.4"
 PythonCall = "=0.9.35"
 Revise = "3.16.2"
+Runic = "1.10"
 
 [preferences.Revise]
 revise_structs = true
