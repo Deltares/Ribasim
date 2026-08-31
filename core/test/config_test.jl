@@ -31,7 +31,7 @@ end
     using Ribasim: convert_saveat, is_adaptive, Solver, algorithm
 
     solver = Solver()
-    @test solver.algorithm == "QNDF"
+    @test solver.algorithm == "NordsieckBDF"
     Solver(;
         algorithm = "Rosenbrock23",
         autodiff = true,

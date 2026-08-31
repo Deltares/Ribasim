@@ -121,7 +121,7 @@ class Solver(ChildModel):
     Attributes
     ----------
     algorithm : str
-        The used numerical time integration algorithm (Optional, defaults to QNDF)
+        The used numerical time integration algorithm (Optional, defaults to NordsieckBDF)
     saveat : float
         Time interval in seconds between saves of output data.
         0 saves every timestep, inf only saves at start- and endtime. (Optional, defaults to 86400)
@@ -154,7 +154,7 @@ class Solver(ChildModel):
         Trades initialization speed for simulation speed, useful for long-running simulations. (Optional, defaults to false)
     """
 
-    algorithm: str = "QNDF"
+    algorithm: str = "NordsieckBDF"
     saveat: float = 86400.0
     dt: float | None = None
     dtmin: float | None = None
