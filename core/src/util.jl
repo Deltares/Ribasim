@@ -1279,10 +1279,10 @@ function get_concentration_itp(
     )::Vector{Vector{ScalarConstantInterpolation}}
     concentration_itp = [
         initialize_concentration_itp(
-                length(substances),
-                substance_idx_node_type;
-                continuity_tracer,
-            ) for _ in node_id
+            length(substances),
+            substance_idx_node_type;
+            continuity_tracer,
+        ) for _ in node_id
     ]
 
     for (id, cyclic_time) in zip(node_id, cyclic_times)

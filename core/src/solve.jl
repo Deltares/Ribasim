@@ -924,9 +924,9 @@ function limit_flow!(
         else
             sum(
                 min(
-                        user_demand.demand[id.idx, demand_priority_idx],
-                        user_demand.allocated[id.idx, demand_priority_idx],
-                    ) for demand_priority_idx in eachindex(allocation.demand_priorities_all)
+                    user_demand.demand[id.idx, demand_priority_idx],
+                    user_demand.allocated[id.idx, demand_priority_idx],
+                ) for demand_priority_idx in eachindex(allocation.demand_priorities_all)
             )
         end
         equal_split = n_links == 0 ? 0.0 : allocated_total / n_links
