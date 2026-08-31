@@ -66,11 +66,6 @@ function create_callbacks(
     discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
     push!(callbacks, discrete_control_cb)
 
-    toltimes = get_log_tstops(config.starttime, config.endtime)
-    decrease_tol_cb =
-        FunctionCallingCallback(decrease_tolerance!; funcat = toltimes, func_start = false)
-    push!(callbacks, decrease_tol_cb)
-
     saved = SavedResults(
         saved_flow,
         saved_basin_states,
@@ -80,35 +75,6 @@ function create_callbacks(
     callback = CallbackSet(callbacks...)
 
     return callback, saved
-end
-
-"""
-Decrease the relative tolerance of the integrator over time,
-to compensate for the ever increasing cumulative flows.
-"""
-function decrease_tolerance!(u, t, integrator)::Nothing
-    (; p, t, opts) = integrator
-
-    for (i, state) in enumerate(u)
-        p.p_independent.relmask[i] || continue
-
-        # Use the internal norm to get the magnitude of the (cumulative) states,
-        # as used in calculate_residuals, and compare to an estimated average magnitude
-        cum_magnitude = opts.internalnorm(state, t)
-        iszero(cum_magnitude) && continue
-        avg_magnitude = max(opts.internalnorm(1.0e4, t), cum_magnitude / t)  # allow for 1e4 m3/s
-
-        # Decrease the relative tolerance based on their difference
-        diff_norm = max(0, log10(cum_magnitude / avg_magnitude))
-        # Limit new tolerance to floating point precision (~-14)
-        newtol = max(10.0^(log10(integrator.p.p_independent.reltol) - diff_norm), 1.0e-14)
-
-        if opts.reltol[i] > newtol
-            @debug "Relative tolerance changed at t = $t, state = $i to $(newtol)"
-            opts.reltol[i] = newtol
-        end
-    end
-    return
 end
 
 """
@@ -125,25 +91,11 @@ the Basin concentration(s) and then remove the mass that is being lost to the ou
 function update_cumulative_flows!(u, t, integrator)::Nothing
     (; cache, p) = integrator
     (; p_independent, p_mutable, time_dependent_cache) = p
-    (; basin, flow_boundary, allocation, temp_convergence, convergence, ncalls) =
+    (; basin, flow_boundary, allocation) =
         p_independent
 
     # Update tprev
     p_mutable.tprev = t
-
-    # Update convergence measure
-    if hasproperty(cache, :nlsolver)
-        @. temp_convergence = abs(cache.nlsolver.cache.atmp / u)
-        @inbounds for I in eachindex(temp_convergence)
-            if !isfinite(temp_convergence[I])
-                temp_convergence[I] = zero(eltype(temp_convergence))
-            end
-        end
-        convergence .+=
-            temp_convergence /
-            finitemaximum(temp_convergence; init = one(eltype(temp_convergence)))
-        ncalls[1] += 1
-    end
 
     # Update cumulative forcings which are integrated exactly
     @. basin.cumulative_drainage_saveat +=
@@ -396,7 +348,7 @@ function save_flow(u, t, integrator)
         flow_boundary,
         u_prev_saveat,
         convergence,
-        ncalls,
+        convergence_ncalls,
         node_id,
     ) = p.p_independent
     Δt = get_Δt(integrator)
@@ -453,7 +405,7 @@ function save_flow(u, t, integrator)
     @. basin.cumulative_drainage_saveat = 0.0
 
     if hasproperty(cache, :nlsolver)
-        flow_convergence = convergence ./ ncalls[1]
+        flow_convergence = convergence ./ convergence_ncalls[1]
         for (i, (evap, infil)) in
             enumerate(zip(flow_convergence.evaporation, flow_convergence.infiltration))
             if isnan(evap)
@@ -465,7 +417,7 @@ function save_flow(u, t, integrator)
             end
         end
         fill!(convergence, 0)
-        ncalls[1] = 0
+        convergence_ncalls[1] = 0
     end
 
     concentration = copy(basin.concentration_data.concentration_state)

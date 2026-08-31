@@ -1175,7 +1175,6 @@ the object itself is not.
 @kwdef struct ParametersIndependent{C1}
     starttime::DateTime
     reltol::Float64
-    relmask::Vector{Bool}
     graph::ModelGraph
     allocation::Allocation
     basin::Basin
@@ -1213,9 +1212,8 @@ the object itself is not.
     # Callback configurations
     do_concentration::Bool
     do_subgrid::Bool
-    temp_convergence::RibasimCVectorType{Float64}
     convergence::RibasimCVectorType{Float64}
-    ncalls::Vector{Int} = [0]
+    convergence_ncalls::Vector{Int} = [0]
     # Reduced state where the cumulative flows are combined into Basin
     # storages (without non-state cumulative_flows)
     u_reduced::RibasimReducedCVectorType{Float64}
