@@ -6,9 +6,13 @@
     @test id < NodeID(:Basin, 3, 1)
     @test id < NodeID(:Pump, 3, 1)
     @test 2 < NodeID(:Pump, 3, 1)
+    @test id == 2
+    @test !(id === 2)
     @test id < 3
     @test Int32(id) === Int32(2)
     @test convert(Int32, id) === Int32(2)
+    @test hash(id) === hash(id.value)
+    @test id in Set(Int32[2, 3])
 end
 
 @testitem "bottom" begin

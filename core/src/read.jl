@@ -250,26 +250,24 @@ function parse_parameter!(
     errors = false
 
     for (id, cyclic_time) in zip(node_id, cyclic_times)
-        error = false
-
         # Find out where to get the data from for this node
         in_static =
             isnothing(static) || isempty(static) ? false :
-            (static_node_id[first(static_group)] == id.value)
+            (static_node_id[first(static_group)] == id)
         in_time =
             isnothing(time) || isempty(time) ? false :
-            (time_node_id[first(time_group)] == id.value)
+            (time_node_id[first(time_group)] == id)
         use_default = false
 
         if in_static && in_time
             @error "Data for $id found in both Static and Time tables."
-            error = true
+            errors = true
         elseif !in_static && !in_time
             if is_optional
-                return true
+                continue
             elseif is_complete
                 @error "Data for $id found in neither Static nor Time table."
-                error = true
+                errors = true
             else
                 use_default = true
             end
@@ -285,7 +283,10 @@ function parse_parameter!(
         elseif in_static
             val, valid =
                 get_parameter_value(static_group, static_parameter, data_args...; data_kwargs...)
-            error |= !valid
+            if !valid
+                @error "Invalid static parameter value $parameter_name = $val for $id"
+                errors = true
+            end
             param_vec[id.idx] = val
             is_controllable &&
                 parse_control_states!(
@@ -307,7 +308,10 @@ function parse_parameter!(
                 time_column,
                 from_static = false,
             )
-            error |= !valid
+            if !valid
+                @error "Invalid time parameter value $parameter_name = $val for $id"
+                errors = true
+            end
             param_vec[id.idx] = val
         end
 
@@ -318,8 +322,6 @@ function parse_parameter!(
         if in_time && time_idx[1]
             time_group, time_idx = iterate(time_groups, time_idx)
         end
-
-        errors |= error
     end
 
     return errors
@@ -671,16 +673,23 @@ end
 function parse_pump_or_outlet_parameters!(
         node::Union{Pump, Outlet},
         config::Config,
+        graph,
         static,
         time,
         node_id,
     )::Bool
+
+    initialize_control_mapping!(node, static, config)
+    set_control_type!(node, graph)
+    set_inoutflow_links!(node, graph)
+    set_external_flow_demand_nodes!(node, graph)
+
     errors = false
     # flow_rate can come from either static or time, and ends up in a different cache.
     # that is why we parse it once from static and store error_static and once from time and store error_time
     # It may be in either of them, so we parse them as optional parameters.
-    errors_static = parse_parameter!(node, config, :flow_rate; static, is_optional = true)
-    errors_time = parse_parameter!(
+    errors |= parse_parameter!(node, config, :flow_rate; static, is_optional = true)
+    errors |= parse_parameter!(
         node,
         config,
         :flow_rate;
@@ -689,17 +698,28 @@ function parse_pump_or_outlet_parameters!(
         is_optional = true,
     )
 
-    # If there are no errors in parsing flow_rate from time, it was found there so we check if the flow rates are valid
-    if !errors_time
-        errors |=
-            !valid_flow_rates(node_id, node.time_dependent_flow_rate, node.control_mapping)
+    # Since flow_rate is parsed separately in the static and time case, we need to check whether
+    # it was supplied in either but not in both afterwards (since it is not actually optional)
+    static_node_ids = Set(static.node_id)
+    time_node_ids = Set(time.node_id)
+    for id in node_id
+        in_static = id in static_node_ids
+        in_time = id in time_node_ids
+        if in_static && isnan(node.flow_rate[id.idx])
+            @error "flow_rate for $id in the Static table is NaN; please provide a value."
+            errors = true
+        end
+        if in_static && in_time
+            @error "flow_rate for $id was supplied in both Static and Time tables."
+            errors = true
+        elseif !in_static && !in_time
+            @error "flow_rate for $id was supplied in neither Static nor Time table."
+            errors = true
+        end
     end
-    # same for static
-    if !errors_static
-        errors |= !valid_flow_rates(node_id, node.flow_rate, node.control_mapping)
-    end
-    # Only add error to errors, if both time and static had errors parsing flow_rate.
-    errors |= errors_time && errors_static
+
+    errors |= !valid_flow_rates(node_id, node.time_dependent_flow_rate, node.control_mapping)
+    errors |= !valid_flow_rates(node_id, node.flow_rate, node.control_mapping)
 
     errors |= parse_parameter!(node, config, :min_flow_rate; static, time, default = 0.0)
     errors |= parse_parameter!(node, config, :max_flow_rate; static, time, default = Inf)
@@ -717,13 +737,7 @@ function Pump(db::DB, config::Config, graph::MetaGraph)
     node_id = get_node_ids(db, NodeType.Pump)
 
     pump = Pump(; node_id)
-
-    initialize_control_mapping!(pump, static, config)
-    set_control_type!(pump, graph)
-    set_inoutflow_links!(pump, graph)
-    set_external_flow_demand_nodes!(pump, graph)
-
-    errors = parse_pump_or_outlet_parameters!(pump, config, static, time, node_id)
+    errors = parse_pump_or_outlet_parameters!(pump, config, graph, static, time, node_id)
     errors && error("Errors encountered when parsing Pump data.")
 
     return pump
@@ -735,13 +749,7 @@ function Outlet(db::DB, config::Config, graph::MetaGraph)
     node_id = get_node_ids(db, NodeType.Outlet)
 
     outlet = Outlet(; node_id)
-
-    initialize_control_mapping!(outlet, static, config)
-    set_control_type!(outlet, graph)
-    set_inoutflow_links!(outlet, graph)
-    set_external_flow_demand_nodes!(outlet, graph)
-
-    errors = parse_pump_or_outlet_parameters!(outlet, config, static, time, node_id)
+    errors = parse_pump_or_outlet_parameters!(outlet, config, graph, static, time, node_id)
     errors && error("Errors encountered when parsing Outlet data.")
 
     return outlet
@@ -2247,7 +2255,7 @@ function set_concentrations!(
             first_row = first(group)
             value = getproperty(first_row, concentration_column)
             ismissing(value) && continue
-            node_idx = findfirst(node_id -> node_id.value == first_row.node_id, node_ids)
+            node_idx = findfirst(node_id -> node_id == first_row.node_id, node_ids)
             concentration[node_idx, sub_idx] = value
         end
     end
