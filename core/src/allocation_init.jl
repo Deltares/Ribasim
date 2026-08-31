@@ -131,15 +131,15 @@ function add_conservation!(
     flow = problem[:flow]
     inflow_sum = OrderedDict(
         basin_id => sum(
-                flow[(other_id, basin_id)] for other_id in basin.inflow_ids[basin_id.idx];
-                init = 0,
-            ) for basin_id in basin_ids_subnetwork
+            flow[(other_id, basin_id)] for other_id in basin.inflow_ids[basin_id.idx];
+            init = 0,
+        ) for basin_id in basin_ids_subnetwork
     )
     outflow_sum = OrderedDict(
         basin_id => sum(
-                flow[(basin_id, other_id)] for other_id in basin.outflow_ids[basin_id.idx];
-                init = 0,
-            ) for basin_id in basin_ids_subnetwork
+            flow[(basin_id, other_id)] for other_id in basin.outflow_ids[basin_id.idx];
+            init = 0,
+        ) for basin_id in basin_ids_subnetwork
     )
     f_pos = 1.0 # Placeholder positive forcing (set in set_simulation_data!)
     f_neg = 1.0 # Placeholder negative forcing (set in set_simulation_data!)
