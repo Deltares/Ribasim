@@ -12,7 +12,6 @@
     "customizations": {
         "vscode": {
             "extensions": [
-                "aviatesk.jetls-client",
                 "charliermarsh.ruff",
                 "GitHub.copilot",
                 "julialang.language-julia",
