@@ -16,7 +16,7 @@ average_storage_unit_error_constraint_1,lower_: -1 level_demand_error_Basin_#5,1
 Bounds
 -0.001 <= basin_storage_change_Basin_#5_ <= 0.004
 0 <= low_storage_factor_Basin_#5_ <= 1
-0 <= flow_(Outlet_#4,_Basin_#5)_ <= 0.003
+0 <= flow_(Outlet_#4,_Basin_#5)_ <= 0.001
 0 <= flow_(Basin_#5,_UserDemand_#6)_ <= 500
 0 <= flow_(UserDemand_#6,_Basin_#5)_ <= 500
 0 <= user_demand_allocated_UserDemand_#6,2_ <= 2
