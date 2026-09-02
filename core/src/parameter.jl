@@ -202,6 +202,10 @@ for an equal distribution.
     demand_priority::Int32 = 0
     demand_priority_idx::Int = 0
     expressions::Vector{JuMP.AffExpr} = JuMP.AffExpr[]
+    # Whether each expression is retained as a constraint for later objectives.
+    # A secondary-network connection-flow tie-break is deliberately not retained:
+    # lower-priority demand may require additional flow through that connection.
+    retain_expressions::Vector{Bool} = fill(true, length(expressions))
 end
 
 function Base.show(io::IO, objective::AllocationObjective)::Nothing
@@ -263,6 +267,9 @@ sources: The nodes in the subnetwork which can act as sources, sorted by route p
 secondary_network_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
 flow_links_subnetwork: The physical layer flow links from which at least one node has this allocation model's subnetwork ID
 scaling: The flow and storage scaling factors to make the optimization problem more numerically stable
+level_demand_area_sum: The sum of current Basin areas per active LevelDemand priority
+level_demand_count: The number of Basins per active LevelDemand priority
+level_demand_area_scale: The mean current Basin area per active LevelDemand priority
 temporary_constraints: Goal programming constraints; one is added after each optimization to retain their results
 """
 @kwdef mutable struct AllocationModel
@@ -280,6 +287,9 @@ temporary_constraints: Goal programming constraints; one is added after each opt
         OrderedDict()
     flow_links_subnetwork::Vector{Tuple{NodeID, NodeID}} = Vector{Tuple{NodeID, NodeID}}()
     scaling::ScalingFactors = ScalingFactors()
+    level_demand_area_sum::Dict{Int32, Float64} = Dict()
+    level_demand_count::Dict{Int32, Int} = Dict()
+    level_demand_area_scale::Dict{Int32, Float64} = Dict()
     temporary_constraints::Vector{JuMP.ConstraintRef} = JuMP.ConstraintRef[]
 end
 

@@ -27,14 +27,14 @@ secondary_network_demand_fairness_error_constraint_(Outlet_#8,_Basin_#15),2_: -1
 secondary_network_demand_fairness_error_constraint_(Outlet_#8,_Basin_#15),3_: -1 secondary_network_error_(Outlet_#8,_Basin_#15),3,first_ + 1 secondary_network_error_(Outlet_#8,_Basin_#15),3,second_ + 1 average_flow_unit_error_3_ >= 0
 secondary_network_demand_fairness_error_constraint_(Pump_#11,_Basin_#15),2_: -1 secondary_network_error_(Pump_#11,_Basin_#15),2,first_ + 1 secondary_network_error_(Pump_#11,_Basin_#15),2,second_ + 1 average_flow_unit_error_2_ >= 0
 secondary_network_demand_fairness_error_constraint_(Pump_#11,_Basin_#15),3_: -1 secondary_network_error_(Pump_#11,_Basin_#15),3,first_ + 1 secondary_network_error_(Pump_#11,_Basin_#15),3,second_ + 1 average_flow_unit_error_3_ >= 0
-level_demand_fairness_error_constraint_Basin_#2,1,lower_: -0.001 level_demand_error_Basin_#2,1,lower,first_ + 1 level_demand_error_Basin_#2,1,lower,second_ + 1 average_storage_unit_error_1,lower_ >= 0
-level_demand_fairness_error_constraint_Basin_#2,1,upper_: -0.001 level_demand_error_Basin_#2,1,upper,first_ + 1 level_demand_error_Basin_#2,1,upper,second_ + 1 average_storage_unit_error_1,upper_ >= 0
-level_demand_fairness_error_constraint_Basin_#5,1,lower_: -0.001 level_demand_error_Basin_#5,1,lower,first_ + 1 level_demand_error_Basin_#5,1,lower,second_ + 1 average_storage_unit_error_1,lower_ >= 0
-level_demand_fairness_error_constraint_Basin_#5,1,upper_: -0.001 level_demand_error_Basin_#5,1,upper,first_ + 1 level_demand_error_Basin_#5,1,upper,second_ + 1 average_storage_unit_error_1,upper_ >= 0
-level_demand_fairness_error_constraint_Basin_#7,1,lower_: -0.001 level_demand_error_Basin_#7,1,lower,first_ + 1 level_demand_error_Basin_#7,1,lower,second_ + 1 average_storage_unit_error_1,lower_ >= 0
-level_demand_fairness_error_constraint_Basin_#7,1,upper_: -0.001 level_demand_error_Basin_#7,1,upper,first_ + 1 level_demand_error_Basin_#7,1,upper,second_ + 1 average_storage_unit_error_1,upper_ >= 0
-level_demand_fairness_error_constraint_Basin_#10,1,lower_: -0.001 level_demand_error_Basin_#10,1,lower,first_ + 1 level_demand_error_Basin_#10,1,lower,second_ + 1 average_storage_unit_error_1,lower_ >= 0
-level_demand_fairness_error_constraint_Basin_#10,1,upper_: -0.001 level_demand_error_Basin_#10,1,upper,first_ + 1 level_demand_error_Basin_#10,1,upper,second_ + 1 average_storage_unit_error_1,upper_ >= 0
+level_demand_fairness_error_constraint_Basin_#2,1,lower_: -1 level_demand_error_Basin_#2,1,lower,first_ + 1 level_demand_error_Basin_#2,1,lower,second_ + 1 average_storage_unit_error_1,lower_ >= 0
+level_demand_fairness_error_constraint_Basin_#2,1,upper_: -1 level_demand_error_Basin_#2,1,upper,first_ + 1 level_demand_error_Basin_#2,1,upper,second_ + 1 average_storage_unit_error_1,upper_ >= 0
+level_demand_fairness_error_constraint_Basin_#5,1,lower_: -1 level_demand_error_Basin_#5,1,lower,first_ + 1 level_demand_error_Basin_#5,1,lower,second_ + 1 average_storage_unit_error_1,lower_ >= 0
+level_demand_fairness_error_constraint_Basin_#5,1,upper_: -1 level_demand_error_Basin_#5,1,upper,first_ + 1 level_demand_error_Basin_#5,1,upper,second_ + 1 average_storage_unit_error_1,upper_ >= 0
+level_demand_fairness_error_constraint_Basin_#7,1,lower_: -1 level_demand_error_Basin_#7,1,lower,first_ + 1 level_demand_error_Basin_#7,1,lower,second_ + 1 average_storage_unit_error_1,lower_ >= 0
+level_demand_fairness_error_constraint_Basin_#7,1,upper_: -1 level_demand_error_Basin_#7,1,upper,first_ + 1 level_demand_error_Basin_#7,1,upper,second_ + 1 average_storage_unit_error_1,upper_ >= 0
+level_demand_fairness_error_constraint_Basin_#10,1,lower_: -1 level_demand_error_Basin_#10,1,lower,first_ + 1 level_demand_error_Basin_#10,1,lower,second_ + 1 average_storage_unit_error_1,lower_ >= 0
+level_demand_fairness_error_constraint_Basin_#10,1,upper_: -1 level_demand_error_Basin_#10,1,upper,first_ + 1 level_demand_error_Basin_#10,1,upper,second_ + 1 average_storage_unit_error_1,upper_ >= 0
 flow_conservation_pump_Pump_#6_: 1 flow_(Basin_#5,_Pump_#6)_ - 1 flow_(Pump_#6,_Basin_#13)_ = 0
 flow_conservation_pump_Pump_#11_: 1 flow_(Basin_#10,_Pump_#11)_ - 1 flow_(Pump_#11,_Basin_#15)_ = 0
 flow_conservation_outlet_Outlet_#3_: 1 flow_(Basin_#2,_Outlet_#3)_ - 1 flow_(Outlet_#3,_Basin_#13)_ = 0
@@ -55,8 +55,8 @@ secondary_network_allocated_sum_constraint_(Outlet_#8,_Basin_#15)_: 1 flow_(Outl
 secondary_network_allocated_sum_constraint_(Pump_#11,_Basin_#15)_: 1 flow_(Pump_#11,_Basin_#15)_ - 1 secondary_network_allocated_(Pump_#11,_Basin_#15),2_ - 1 secondary_network_allocated_(Pump_#11,_Basin_#15),3_ = 0
 average_flow_unit_error_constraint_2_: -1 secondary_network_error_(Outlet_#3,_Basin_#13),2,first_ - 1 secondary_network_error_(Pump_#6,_Basin_#13),2,first_ - 1 secondary_network_error_(Outlet_#8,_Basin_#15),2,first_ - 1 secondary_network_error_(Pump_#11,_Basin_#15),2,first_ + 1 average_flow_unit_error_2_ = 0
 average_flow_unit_error_constraint_3_: -1 user_demand_error_UserDemand_#12,3,first_ - 1 secondary_network_error_(Outlet_#3,_Basin_#13),3,first_ - 1 secondary_network_error_(Pump_#6,_Basin_#13),3,first_ - 1 secondary_network_error_(Outlet_#8,_Basin_#15),3,first_ - 1 secondary_network_error_(Pump_#11,_Basin_#15),3,first_ + 1 average_flow_unit_error_3_ = 0
-average_storage_unit_error_constraint_1,upper_: -1 level_demand_error_Basin_#2,1,upper,first_ - 1 level_demand_error_Basin_#5,1,upper,first_ - 1 level_demand_error_Basin_#7,1,upper,first_ - 1 level_demand_error_Basin_#10,1,upper,first_ + 1000 average_storage_unit_error_1,upper_ = 0
-average_storage_unit_error_constraint_1,lower_: -1 level_demand_error_Basin_#2,1,lower,first_ - 1 level_demand_error_Basin_#5,1,lower,first_ - 1 level_demand_error_Basin_#7,1,lower,first_ - 1 level_demand_error_Basin_#10,1,lower,first_ + 1000 average_storage_unit_error_1,lower_ = 0
+average_storage_unit_error_constraint_1,upper_: -1 level_demand_error_Basin_#2,1,upper,first_ - 1 level_demand_error_Basin_#5,1,upper,first_ - 1 level_demand_error_Basin_#7,1,upper,first_ - 1 level_demand_error_Basin_#10,1,upper,first_ + 1 average_storage_unit_error_1,upper_ = 0
+average_storage_unit_error_constraint_1,lower_: -1 level_demand_error_Basin_#2,1,lower,first_ - 1 level_demand_error_Basin_#5,1,lower,first_ - 1 level_demand_error_Basin_#7,1,lower,first_ - 1 level_demand_error_Basin_#10,1,lower,first_ + 1 average_storage_unit_error_1,lower_ = 0
 Bounds
 -0.001 <= basin_storage_change_Basin_#2_ <= 0.004
 -0.001 <= basin_storage_change_Basin_#5_ <= 0.004

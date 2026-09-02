@@ -346,7 +346,8 @@ function add_level_demand!(
     storage_change = problem[:basin_storage_change]
 
     # Define decision variables: Per Basin with a LevelDemand the allocation error per priority for
-    # which the UserDemand node has a demand, for both the first (scaling.storage * m^3) and second objective (scaling.storage * m)
+    # which the LevelDemand node has a demand. The first objective is a scaled storage
+    # error; the second objective is a dimensionless, area-normalized level error.
     level_demand_error =
         problem[:level_demand_error] = JuMP.@variable(
         problem,
@@ -713,16 +714,30 @@ function add_demand_objectives!(
                 # AllocationModel constructor
                 AllocationObjectiveType.none
             end
+            expressions = [first_objective_expression, second_objective_expression]
+            retain_expressions = Bool[true, true]
+            if !is_primary_network(subnetwork_id) &&
+                    objective_type != AllocationObjectiveType.none
+                # A secondary solve is first used to report each priority's
+                # primary-network demand. Resolve the remaining inlet-flow
+                # degeneracy deterministically, without retaining this tie-break
+                # for the next priority.
+                primary_network_connections =
+                    allocation.primary_network_connections[subnetwork_id]
+                push!(
+                    expressions,
+                    variable_sum(problem[:flow][link] for link in primary_network_connections),
+                )
+                push!(retain_expressions, false)
+            end
             push!(
                 objectives,
                 AllocationObjective(
                     objective_type,
                     demand_priority,
                     demand_priority_idx,
-                    [
-                        first_objective_expression,
-                        second_objective_expression,
-                    ],
+                    expressions,
+                    retain_expressions,
                 ),
             )
         end
@@ -792,19 +807,19 @@ function add_demand_objectives!(
         )
     end
 
-    # Define variables: average level error for storage unit demands (LevelDemand) per demand priority (m)
+    # Define variables: average normalized level error for LevelDemand per priority.
     average_storage_unit_error =
         problem[:average_storage_unit_error] = JuMP.@variable(
         problem,
         average_storage_unit_error[demand_priorities_storage_unit, [:lower, :upper]] ≥ 0
     )
 
-    # Define constraints: definition of the average level error per demand priority
-    ∑A = 1000.0 # Example area sum (m, to be filled in before optimization)
+    # Define constraints: definition of the average normalized level error per priority.
+    n = 1 # Example number of LevelDemand basins, to be filled in before optimization
     problem[:average_storage_unit_error_constraint] = JuMP.@constraint(
         problem,
         [demand_priority = demand_priorities_storage_unit, side = [:upper, :lower]],
-        ∑A * average_storage_unit_error[demand_priority, side] == variable_sum(
+        n * average_storage_unit_error[demand_priority, side] == variable_sum(
             [
                 level_demand_error[node_id, demand_priority, side, :first] for
                     node_id in basin_ids_subnetwork_with_level_demand if
@@ -814,8 +829,8 @@ function add_demand_objectives!(
         base_name = "average_storage_unit_error_constraint"
     )
 
-    # Define constraints: penalize level error being larger than average level error
-    A = 1000.0 # Example area (m, to be filled in before optimization)
+    # Define constraints: penalize normalized level error being larger than its average.
+    level_error_ratio = 1.0 # Area-scale / Basin-area, to be filled in before optimization
     problem[:level_demand_fairness_error_constraint] = JuMP.@constraint(
         problem,
         [
@@ -824,7 +839,7 @@ function add_demand_objectives!(
             side = [:lower, :upper],
         ],
         level_demand_error[node_id, demand_priority, side, :second] ≥
-            level_demand_error[node_id, demand_priority, side, :first] / A -
+            level_error_ratio * level_demand_error[node_id, demand_priority, side, :first] -
             average_storage_unit_error[demand_priority, side],
         base_name = "level_demand_fairness_error_constraint"
     )
@@ -845,6 +860,7 @@ function add_low_storage_factor_objective!(allocation_model::AllocationModel)::N
         AllocationObjective(;
             type = AllocationObjectiveType.low_storage_factor,
             expressions = [expression],
+            retain_expressions = [true],
         ),
     )
     return nothing
@@ -892,6 +908,7 @@ function add_route_priority_objective!(
         AllocationObjective(;
             type = AllocationObjectiveType.route_priorities,
             expressions = [expression],
+            retain_expressions = [true],
         )
     )
     return nothing
