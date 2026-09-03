@@ -1,0 +1,113 @@
+# Configuration file for `prek`, a git hook framework written in Rust.
+# See https://prek.j178.dev for more information.
+#:schema https://www.schemastore.org/prek.json
+
+exclude = "core/test/data/allocation_problems"
+
+[[repos]]
+repo = "builtin"
+hooks = [
+  {
+    id = "check-added-large-files",
+    exclude = 'ribasim_qgis/widgets/plotly-.*\.min\.js'
+  },
+  { id = "check-case-conflict" },
+  { id = "check-yaml" },
+  { id = "check-toml" },
+  { id = "check-json" },
+  { id = "check-xml" },
+  { id = "mixed-line-ending" },
+  { id = "fix-byte-order-marker" },
+  { id = "detect-private-key" },
+  { id = "check-symlinks" },
+  { id = "check-merge-conflict" },
+  {
+    id = "end-of-file-fixer",
+    exclude = ".teamcity"
+  },
+  { id = "trailing-whitespace" }
+]
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "ruff-check"
+name = "ruff check"
+description = "Lint Python code and auto-fix issues"
+entry = "pixi run ruff check --force-exclude"
+args = ["--fix"]
+language = "system"
+types_or = [
+  "python",
+  "pyi",
+  "jupyter"
+]
+require_serial = true
+
+[[repos.hooks]]
+id = "ruff-format"
+name = "ruff format"
+description = "Format Python code"
+entry = "pixi run ruff format --force-exclude"
+language = "system"
+types_or = [
+  "python",
+  "pyi",
+  "jupyter"
+]
+require_serial = true
+
+[[repos.hooks]]
+id = "yamlfmt"
+name = "yamlfmt"
+description = "Format YAML files"
+entry = "pixi run yamlfmt"
+language = "system"
+types = ["yaml"]
+
+[[repos.hooks]]
+id = "nbstripout"
+name = "nbstripout"
+description = "Strip Jupyter notebook outputs"
+entry = "pixi run nbstripout"
+language = "system"
+types = ["jupyter"]
+
+[[repos.hooks]]
+id = "typos"
+name = "typos"
+description = "Fix spelling mistakes"
+language = "system"
+entry = "pixi run typos"
+args = [
+  "--write-changes",
+  "--force-exclude"
+]
+types = ["text"]
+stages = [
+  "pre-commit",
+  "pre-merge-commit",
+  "pre-push",
+  "manual"
+]
+
+[[repos.hooks]]
+id = "typecheck"
+name = "typecheck"
+entry = "pixi run typecheck"
+pass_filenames = false
+language = "system"
+
+[[repos.hooks]]
+id = "runic"
+name = "runic"
+description = "Format Julia code"
+entry = "pixi run julia --project=utils/formatting --startup-file=no --module Runic"
+args = [
+  "--docstrings",
+  "--diff",
+  "--inplace"
+]
+language = "system"
+types = ["julia"]
