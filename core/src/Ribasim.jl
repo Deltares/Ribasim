@@ -32,7 +32,14 @@ using DifferentiationInterface:
 using ForwardDiff: derivative as forward_diff
 
 # Algorithms for solving ODEs.
-using OrdinaryDiffEqCore: OrdinaryDiffEqCore, loopheader!
+using OrdinaryDiffEqCore:
+    OrdinaryDiffEqCore,
+    loopheader!,
+    ODEIntegrator,
+    jacobian_analysis!,
+    get_EEst,
+    error_estimate_residuals,
+    residual_analysis!
 using OrdinaryDiffEqDifferentiation:
     OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
 using SciMLOperators: WOperator, MatrixOperator
@@ -45,6 +52,7 @@ import OrdinaryDiffEqBDF
 using SciMLBase:
     SciMLBase,
     init,
+    derivative_discontinuity!,
     check_error!,
     successful_retcode,
     CallbackSet,

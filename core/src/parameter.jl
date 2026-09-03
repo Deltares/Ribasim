@@ -1230,6 +1230,7 @@ the object itself is not.
     u_reduced::RibasimReducedCVectorType{Float64}
     # Solver constants
     level_difference_threshold::Float64
+    max_depth::Float64
 end
 
 """

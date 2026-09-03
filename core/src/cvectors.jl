@@ -102,6 +102,8 @@ function Base.iterate(x::CVector, state = 1)
 end
 Base.map(f, x::CVector) = CVector(map(f, getdata(x)), getaxes(x))
 
+Base.findall(f::Function, v::CVector) = findall(f, getdata(v))
+
 # Implement broadcasting such that `u - uprev` returns a CVector.
 # Based on https://docs.julialang.org/en/v1/manual/interfaces/#Selecting-an-appropriate-output-array
 find_cvec(bc::Broadcasted) = find_cvec(bc.args)

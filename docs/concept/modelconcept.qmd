@@ -34,7 +34,7 @@ For more details on this see [Equations](/concept/equations.qmd).
 
 The water balance equation can be applied on many timescales; years, weeks, days or hours.
 Depending on the application and available data any of these can be the best choice.
-In Ribasim, we make use of DifferentialEquations.jl and its [ODE solvers](https://diffeq.sciml.ai/stable/solvers/ode_solve/).
+In Ribasim, we make use of DifferentialEquations.jl and its [ODE solvers](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/).
 Many of these solvers are based on adaptive time stepping, which means the solver will decide how large the time steps can be depending on the state of the system.
 
 The forcing, like precipitation, is generally provided as a time series.
