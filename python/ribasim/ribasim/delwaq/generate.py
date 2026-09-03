@@ -35,7 +35,7 @@ from ribasim.utils import (
 try:
     import networkx as _nx
 except ImportError:
-    _nx = MissingOptionalModule("networkx", "delwaq")  # ty: ignore[invalid-assignment]
+    _nx = MissingOptionalModule("networkx", "delwaq")
 
 import numpy as np
 import pandas as pd
@@ -46,7 +46,7 @@ from ribasim.geometry.link import SPATIALCONTROLNODETYPES
 try:
     import jinja2 as _jinja2
 except ImportError:
-    _jinja2 = MissingOptionalModule("jinja2", "delwaq")  # ty: ignore[invalid-assignment]
+    _jinja2 = MissingOptionalModule("jinja2", "delwaq")
 
 import ribasim
 from ribasim.delwaq.util import (
@@ -421,7 +421,7 @@ def generate(
 
     flow_fn = model.results_path / "flow.nc"
     assert flow_fn.exists(), f"Missing results file {flow_fn}."
-    flows = xr.open_dataset(flow_fn).to_dataframe().reset_index()
+    flows = xr.open_dataset(flow_fn)["flow_rate"].to_dataframe().reset_index()
 
     assert len(basins) > 0, "Empty basin results file."
     assert len(flows) > 0, "Empty flows results file."
@@ -508,11 +508,6 @@ def generate(
     flows.dropna(subset=["link_id"], inplace=True)
     flows["link_id"] = flows["link_id"].astype("int32")
     nflows = flows.groupby(["time", "link_id"]).sum().reset_index()
-    nflows.drop(
-        columns=["from_node_id", "to_node_id", "convergence"],
-        inplace=True,
-        errors="ignore",
-    )
 
     # Add basin boundaries to flows
     # Map all boundary node_ids to link_ids (unique per boundary type)
