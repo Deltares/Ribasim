@@ -6,13 +6,17 @@ A self-contained Julia module that wraps Wflow's SBM land-surface components (so
 
 ```
 irrigation/
-├── Project.toml          # Julia environment (pinned Wflow source)
-├── Manifest.toml         # Exact dependency versions
+├── Project.toml               # Julia environment (pinned Wflow source)
+├── Manifest.toml              # Exact dependency versions
+├── README.md
 ├── src/
-│   ├── irrigation.jl     # Irrigation module (wraps Wflow components)
-│   └── irrigation_utils.jl  # Config structs, forcing, logger
+│   ├── irrigation.jl          # Irrigation module (wraps Wflow components)
+│   └── irrigation_utils.jl   # Config structs, forcing, logger
 └── example/
-    └── run_irrigation.jl # Runnable example with plots
+    ├── coupled_simulation.jl  # Coupled Ribasim + irrigation run
+    ├── run_irrigation_standalone.jl  # Standalone run with plots
+    ├── run_irrigation_coupled.py     # Python driver: generate model + run
+    └── plot_results.py        # Result visualisation
 ```
 
 ## Requirements
@@ -22,29 +26,29 @@ irrigation/
 
 ## Running the example
 
-From the Ribasim root in the Julia REPL:
-
-```julia
-include("irrigation/example/run_irrigation.jl")
-```
-
-Or from any terminal:
+### Standalone (no Ribasim)
 
 ```
-julia irrigation/example/run_irrigation.jl
+julia irrigation/example/run_irrigation_standalone.jl
 ```
 
-The script activates the `irrigation` environment and calls `Pkg.instantiate()` automatically. The first run downloads and precompiles dependencies (including Wflow from GitHub and CairoMakie) — this takes a few minutes. Subsequent runs are fast.
-
-This runs three simulations and writes PNG plots to the working directory:
+Activates the `irrigation` environment and runs three scenarios, writing PNG plots to the working directory:
 
 | Output file | Description |
 |---|---|
 | `single_column_no_allocation.png` | 30-day run, no irrigation |
-| `single_column_allocation.png` | 30-day run, 50% irrigation allocation |
+| `single_column_allocation.png` | 30-day run, 50% allocation |
 | `multi_column_allocation.png` | 4 cells with 100 / 75 / 25 / 0% allocation |
 
-Each plot shows daily water budget, water table depth, demand vs allocation, and cumulative fluxes.
+### Coupled (with Ribasim)
+
+```
+pixi run python irrigation/example/run_irrigation_coupled.py
+```
+
+Generates the Ribasim GeoPackage model and runs `coupled_simulation.jl`, writing results to `irrigation/example/irrigation_model/coupled_irrigation.nc`.
+
+The first run downloads and precompiles dependencies (including Wflow from GitHub and CairoMakie) — this takes a few minutes. Subsequent runs are fast.
 
 ## Wflow version
 
@@ -76,9 +80,11 @@ end
 | Function | Description |
 |---|---|
 | `Irrigation.init(; forcing, n, soil_cfg, veg_cfg, irr_cfg)` | Create model with `n` independent soil columns |
-| `Irrigation.get_demand(m)` | Compute irrigation demand [m/s] based on soil moisture deficit |
+| `Irrigation.get_demand!(m)` | Compute irrigation demand [m/s] from soil moisture deficit |
 | `Irrigation.set_allocated!(m, alloc)` | Set external irrigation supply [m/s] for next timestep |
-| `Irrigation.update_until!(m, t_end)` | Advance model to time `t_end` [s] |
+| `Irrigation.update!(m)` | Advance model one `dt` step |
+| `Irrigation.update_until!(m, t_end)` | Advance model to time `t_end` [s] (standalone use) |
+| `Irrigation.finalize!(m, path; ...)` | Flush logger to NetCDF |
 
 ### Configuration
 
@@ -101,25 +107,38 @@ Each timestep follows this update pattern:
 
 ```mermaid
 sequenceDiagram
-    participant R as Ribasim
     participant W as Irrigation module
-    Note over W: get_demand() — soil moisture @ t-1
-    W->>R: demand [m/s]
-    Note over R: update_until(t)
-    R->>W: allocated [m/s]
-    Note over W: set_allocated()
-    Note over W: update_until(t)
+    participant A as Allocation (LP)
+    participant P as Physical layer (ODE)
+
+    loop every allocation timestep
+        Note over W: get_demand!() — soil state @ t-1
+        W->>A: demand [m/s] → user_demand.demand
+
+        Note over A: update_allocation!()<br/>LP solve for t
+        A->>P: allocated flows [m³/s]
+
+        Note over P: SciMLBase.step!()<br/>ODE water balance solve for t
+
+        P->>W: realized volumes [m³] → m/s<br/>update_irrigation_supply!()
+        Note over W: update!() — advance soil to t
+    end
 ```
 
 ### Online coupling API
 
 ```julia
-m = Irrigation.init(; n = 4)           # n independent soil columns
+# initialise
+Irrigation.init()
 
-for step in 1:nsteps
-    demand = Irrigation.get_demand!(m)              # [m/s] — reads t-1 state
-    allocation = ribasim_route(demand)              # placeholder: Ribasim BMI
-    Irrigation.set_allocated!(m, allocation)
-    Irrigation.update_until!(m, step * m.dt)        # advance Wflow to t
-end
+# Ribasim.solve!(model)
+    for each allocation timestep
+        Irrigation.get_demand!()        # [m/s] — soil state @ t-1
+        → LP solve → ODE step
+        Irrigation.set_allocated!(realized)
+        Irrigation.update!()            # advance soil to t
+    end
+
+# finalize to flush logger
+Irrigation.finalize!()
 ```
