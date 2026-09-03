@@ -109,3 +109,7 @@ column         | type     | unit | restriction
 node_id        | Int32    | -    |
 truth_state    | String   | -    | Consists of the characters "T" (true), "F" (false) and "*" (any)
 control_state  | String   | -    | -
+
+::: {.callout-note}
+It is possible to configure a DiscreteControl node such that it very rapidly oscillates between control states. To make you aware of this, Ribasim will throw an error if successive control state changes of a DiscriteControl node in simulated time are closer than `minimal_discrete_control_update_dt`, which is configurable.
+:::

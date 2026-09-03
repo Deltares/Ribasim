@@ -1154,6 +1154,7 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
         compound_variables,
         truth_state,
         logic_mapping,
+        config.solver.minimal_discrete_control_update_dt,
     )
 end
 

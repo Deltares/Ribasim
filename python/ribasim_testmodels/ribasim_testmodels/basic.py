@@ -436,7 +436,7 @@ def cyclic_time_model() -> Model:
     bsn = model.basin.add(
         Node(1, Point(0, 0), cyclic_time=True),
         [
-            basin.Profile(level=[0.0, 1.0], area=100.0),
+            basin.Profile(level=[0.0, 1.0], area=10000.0),
             basin.Time(
                 time=[
                     "2020-01-01",
@@ -445,14 +445,14 @@ def cyclic_time_model() -> Model:
                     "2020-10-01",
                     "2021-01-01",
                 ],
-                precipitation=[10.0, 20.0, 10.0, 20.0, 10.0],
+                precipitation=[1.0, 2.0, 1.0, 2.0, 1.0],
             ),
             basin.State(level=[5.0]),
         ],
     )
 
     lr = model.linear_resistance.add(
-        Node(2, Point(1, 0)), [linear_resistance.Static(resistance=[1.0])]
+        Node(2, Point(1, 0)), [linear_resistance.Static(resistance=[10.0])]
     )
 
     lb = model.level_boundary.add(
@@ -471,7 +471,7 @@ def cyclic_time_model() -> Model:
         [
             flow_boundary.Time(
                 time=["2020-01-01", "2020-07-01", "2020-08-01"],
-                flow_rate=[10.0, 20.0, 10.0],
+                flow_rate=[1.0, 2.0, 1.0],
             ),
             flow_boundary.Area(
                 geometry=[MultiPolygon([flow_boundary_geometry.buffer(1.0)])]

@@ -444,8 +444,9 @@ def level_range_model() -> Model:
                 compound_variable_id=1,
             ),
             discrete_control.Condition(
-                # min, max
+                # min, max; retain control states within a 1 m hysteresis band
                 threshold_high=[5.0, 15.0],
+                threshold_low=[4.0, 14.0],
                 compound_variable_id=1,
                 condition_id=[1, 2],
             ),

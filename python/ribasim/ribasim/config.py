@@ -144,14 +144,16 @@ class Solver(ChildModel):
         Whether a sparse Jacobian matrix is used, which gives a significant speedup for models with >~10 basins.
     autodiff : bool
         Whether automatic differentiation instead of fine difference is used to compute the Jacobian. (Optional, defaults to true)
+    evaporate_mass : bool
+        Whether mass is lost due to evaporation in water quality calculations. (Optional, defaults to true)
     depth_threshold : float
         Universal depth at which the low storage factor kicks in
     max_depth : float
         Universal maximum Basin depth above which the Basin is flagged when the model becomes unstable
     level_difference_threshold : float
         Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes
-    evaporate_mass : bool
-        Whether mass is lost due to evaporation in water quality calculations. (Optional, defaults to true)
+    minimal_discrete_control_update_dt : float
+        The minimum time between control state updates, if the time is smaller an error will be thrown
     specialize : bool
         Trades initialization speed for simulation speed, useful for long-running simulations. (Optional, defaults to false)
     """
