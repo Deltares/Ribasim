@@ -504,6 +504,44 @@ function reset_demand_coefficients(allocation_model::AllocationModel)::Nothing
     return
 end
 
+"""
+Normalize each flow-demand priority's first objective and average-error constraint.
+
+Dividing by the total scaled demand preserves the lexicographic optimum while
+keeping coefficients near one when the subnetwork flow scale is much larger
+than its demands.
+"""
+function normalize_flow_demand_objectives!(allocation_model::AllocationModel)::Nothing
+    (; problem, objectives) = allocation_model
+    average_flow_unit_error = problem[:average_flow_unit_error]
+    average_flow_unit_error_constraint = problem[:average_flow_unit_error_constraint]
+
+    for objective in objectives
+        (; type, demand_priority, expressions) = objective
+        type == AllocationObjectiveType.demand_flow || continue
+
+        expression_first = expressions[1]
+        constraint = average_flow_unit_error_constraint[demand_priority]
+        total_demand = JuMP.normalized_coefficient(
+            constraint,
+            average_flow_unit_error[demand_priority],
+        )
+        iszero(total_demand) && continue
+
+        for (error_term, demand) in expression_first.terms
+            weight = demand / total_demand
+            expression_first.terms[error_term] = weight
+            JuMP.set_normalized_coefficient(constraint, error_term, -weight)
+        end
+        JuMP.set_normalized_coefficient(
+            constraint,
+            average_flow_unit_error[demand_priority],
+            1.0,
+        )
+    end
+    return nothing
+end
+
 function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrator, Δt_allocation)::Nothing
     (; problem, node_ids_in_subnetwork) = allocation_model
     (; user_demand, flow_demand, level_demand) = integrator.p.p_independent
@@ -1349,6 +1387,7 @@ function update_allocation!(integrator::DEIntegrator, Δt::Float64; record::Bool
         # Set demands for all priorities
         reset_demand_coefficients(secondary_network)
         set_demands!(secondary_network, integrator, Δt)
+        normalize_flow_demand_objectives!(secondary_network)
 
         # Use data from the physical layer to set the initial guess
         warm_start!(secondary_network, integrator, Δt)
@@ -1381,6 +1420,7 @@ function update_allocation!(integrator::DEIntegrator, Δt::Float64; record::Bool
         end
 
         set_demands!(primary_network, integrator, Δt)
+        normalize_flow_demand_objectives!(primary_network)
         warm_start!(primary_network, integrator, Δt)
     end
 
