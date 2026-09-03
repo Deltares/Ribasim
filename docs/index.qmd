@@ -2,6 +2,16 @@
 title: Ribasim
 ---
 
+```{julia}
+# | include: false
+import Pkg
+
+# avoid precompilation output; https://github.com/PumasAI/QuartoNotebookRunner.jl/issues/371
+for (name, uuid) in Pkg.project().dependencies
+    Base.require(Base.PkgId(uuid, name))
+end
+```
+
 Ribasim is a water resources model to simulate the physical behavior of a managed open water system based on a set of control rules and a prioritized water allocation strategy.
 
 Ribasim is written in the [Julia programming language](https://julialang.org/) and is built
