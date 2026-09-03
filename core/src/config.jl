@@ -195,6 +195,7 @@ end
     depth_threshold::Float64 = 0.1
     max_depth::Float64 = 2000.0
     level_difference_threshold::Float64 = 0.02
+    minimal_discrete_control_update_dt::Float64 = 1.0
     specialize::Bool = false
 end
 

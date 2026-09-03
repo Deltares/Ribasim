@@ -56,6 +56,7 @@ evaporate_mass = true  # optional, default true to simulate a correct mass balan
 depth_threshold = 0.1  # optional, default 0.1
 max_depth = 2000.0 # optional, default 2000.0
 level_difference_threshold = 0.02 # optional, default 0.02
+minimal_discrete_control_update_dt = 1.0 # optional, default 1.0
 specialize = false  # optional, default false
 
 [logging]
