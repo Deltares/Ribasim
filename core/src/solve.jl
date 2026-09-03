@@ -999,6 +999,68 @@ function limit_flow!(
     return nothing
 end
 
+# The norm applied to the residuals to obtain the final scalar solver error
+@kwdef struct InternalNorm{PI <: ParametersIndependent}
+    p_independent::PI
+end
+Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
+(norm::InternalNorm)(u, t) = ODE_DEFAULT_NORM(u, t)
+
+@inline function DiffEqBase.calculate_residuals!(
+        out,
+        ũ, u₀, u₁, abstol, reltol, internalnorm::InternalNorm, t
+    )
+    (; p_independent) = internalnorm
+
+    # All state components (flow, PID integral) are scaled by the magnitude
+    # of their change over the time step rather than by their absolute magnitude.
+    # The states are cumulative quantities whose absolute value carries no information
+    # about the local error: e.g. the storage of a large Basin with little throughflow
+    # would get a very loose tolerance.
+    # This is applied for both values of `reduced_implicit_solve`, so that `abstol` and
+    # `reltol` have the same meaning regardless of which solve path is taken.
+    for idx in eachindex(out)
+        abs_diff = abs(u₁[idx] - u₀[idx])
+        out[idx] = DiffEqBase.calculate_residuals(
+            ũ[idx],
+            abs_diff,
+            abs_diff,
+            abstol,
+            reltol,
+            internalnorm,
+            t
+        )
+    end
+
+    accumulate_residual!(p_independent.convergence, out)
+    p_independent.convergence_ncalls[1] += 1
+    return nothing
+end
+
+function accumulate_residual!(convergence, residual)
+    max_abs_residual = 0.0
+    for i in eachindex(residual)
+        a = abs(residual[i])
+        if isfinite(a)
+            max_abs_residual = max(max_abs_residual, a)
+        end
+    end
+    if iszero(max_abs_residual)
+        # If no finite residual exists, set maximum badness (1.0) for
+        # non finite residuals
+        for i in eachindex(residual)
+            !isfinite(residual[i]) && (convergence[i] += 1.0)
+        end
+    else
+        for i in eachindex(residual)
+            a = abs(residual[i])
+            contribution = isfinite(a) ? a / max_abs_residual : 1.0
+            convergence[i] += contribution
+        end
+    end
+    return nothing
+end
+
 # Modelled after SciMLBase.log_numerical_instability(integrator::ODEIntegrator; jacobian_logging = true)
 function SciMLBase.log_numerical_instability(
         integrator::ODEIntegrator{<:Any, <:Any, <:RibasimCVectorType};

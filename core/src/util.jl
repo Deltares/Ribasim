@@ -703,18 +703,6 @@ function build_state_vector(p_independent::ParametersIndependent)
     return u
 end
 
-function build_reltol_vector(u0::CVector, reltol::Float64)
-    reltolv = fill(reltol, length(u0))
-    mask = trues(length(u0))
-    # Mask the non-cumulative states
-    for (node, range) in pairs(getaxes(u0))
-        if node in (:integral,)
-            mask[range] .= false
-        end
-    end
-    return reltolv, mask
-end
-
 function reduce_state!(u_reduced, u, p_independent)::Nothing
     (; basin, link_to_state_idx) = p_independent
     (; inflow_ids, outflow_ids) = basin

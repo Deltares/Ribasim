@@ -177,8 +177,6 @@ function Model(config::Config)::Model
         error("Model has no state.")
     end
 
-    reltol, relmask = build_reltol_vector(u0, config.solver.reltol)
-    parameters.p_independent.relmask .= relmask
     du0 = zero(u0)
 
     # The Solver algorithm
@@ -227,12 +225,13 @@ function Model(config::Config)::Model
         tstops,
         isoutofdomain,
         adaptive,
+        internalnorm = InternalNorm(; parameters.p_independent),
         config.solver.dt,
         config.solver.dtmin,
         dtmax = something(config.solver.dtmax, t_end),
         config.solver.force_dtmin,
         config.solver.abstol,
-        reltol,
+        config.solver.reltol,
         config.solver.maxiters,
     )
     @debug "Setup integrator."

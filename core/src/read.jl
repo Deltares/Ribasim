@@ -1154,6 +1154,7 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
         compound_variables,
         truth_state,
         logic_mapping,
+        config.solver.minimal_discrete_control_update_dt,
     )
 end
 
@@ -1792,7 +1793,6 @@ function Parameters(db::DB, config::Config)::Parameters
     p_independent = ParametersIndependent(;
         config.starttime,
         config.solver.reltol,
-        relmask = collect(trues(n_states)),
         graph,
         allocation,
         nodes...,
@@ -1807,7 +1807,6 @@ function Parameters(db::DB, config::Config)::Parameters
         state_ranges,
         do_concentration = config.experimental.concentration,
         do_subgrid = config.results.subgrid,
-        temp_convergence = CVector(zeros(n_states), state_ranges),
         convergence = CVector(zeros(n_states), state_ranges),
         u_reduced,
         config.solver.level_difference_threshold,
