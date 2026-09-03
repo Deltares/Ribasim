@@ -60,7 +60,8 @@ end
 
 "Log the convergence bottlenecks."
 function log_bottlenecks(model; interrupt::Bool)
-    (; cache, p, u) = model.integrator
+    (; integrator, saved) = model
+    (; cache, p, u) = integrator
     (; p_independent) = p
 
     level = LoggingExtras.Warn
