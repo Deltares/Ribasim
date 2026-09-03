@@ -649,13 +649,15 @@ E_{b, \text{upper}}^p \ge 0 \quad \forall b \in B, \\; p \in P_b^\max
 <p><span class="math display">\[
     \min \sum_{b; p\in P^\min_b} E^p_{b, \text{lower}} + \sum_{b \in B \\; : \\; p\in P^\max_b} E^p_{b, \text{upper}}, \qquad \forall p \in P^\text{level}
 \]</span></p>
-<p>Now, just as in the previous section, we want to add a subsequent objective for fair distribution. Given the Basin area <span class="math inline">\(A_b\)</span> (which is assumed to be constant over the allocation timestep), we can define the average lower and upper level error</p>
+<p>Now, just as in the previous section, we add a subsequent objective for fair distribution. LevelDemand errors are storage volumes, whereas fairness must compare the corresponding level errors. For every priority <span class="math inline">\(p\)</span> and side <span class="math inline">\(s \in \{\text{lower}, \text{upper}\}\)</span>, let <span class="math inline">\(B_{p,s}\)</span> be the participating Basins and let <span class="math inline">\(n_{p,s} = |B_{p,s}|\)</span>. We calculate the current mean Basin area</p>
 <p><span class="math display">\[
-    \Delta H^p_\text{lower} = \frac{\sum_{b \in B \\; : \\; p\in P^\min_b} E^p_{b, \text{lower}}}{\sum_{b \in B \\; : \\; p\in P^\min_b} A_b}, \qquad \forall p \in P_\text{lower}^\text{level};
+\bar A_{p,s} = \frac{1}{n_{p,s}} \sum_{b \in B_{p,s}} A_b,
 \]</span></p>
+<p>and the mean storage error</p>
 <p><span class="math display">\[
-    \Delta H^p_\text{upper} = \frac{\sum_{b \in B \\; : \\; p\in P^\max_b} E^p_{b, \text{upper}}}{\sum_{b \in B \\; : \\; p\in P^\max_b} A_b}, \qquad \forall p \in P_\text{upper}^\text{level};
+\bar E_{p,s} = \frac{1}{n_{p,s}} \sum_{b \in B_{p,s}} E^p_{b,s}.
 \]</span></p>
+<p>The common area scale <span class="math inline">\(\bar A_{p,s}\)</span> converts every storage error to a proportionally scaled level error. It does not change the ordering of the fairness objective, while keeping LP coefficients close to one even for large Basin areas.</p>
 <p>Again we define new errors:</p>
 <p><span class="math display">\[
     \overline{E}_{b, \text{lower}}^p \ge 0, \quad \forall b \in B, \\; p \in P_b^\min;
@@ -665,10 +667,10 @@ E_{b, \text{upper}}^p \ge 0 \quad \forall b \in B, \\; p \in P_b^\max
 \]</span></p>
 <p>On these errors we define the following constraints:</p>
 <p><span class="math display">\[
-    \overline{E}^p_{b, \text{lower}} \ge \frac{E^p_{b, \text{lower}}}{A_b} - \Delta H^p_\text{lower}, \quad \forall b \in B, \\;p \in P_b^\text{min};
+    \overline{E}^p_{b, \text{lower}} \ge \frac{\bar A_{p,\text{lower}}}{A_b} E^p_{b, \text{lower}} - \bar E_{p,\text{lower}}, \quad \forall b \in B_{p,\text{lower}};
 \]</span></p>
 <p><span class="math display">\[
-    \overline{E}^p_{b, \text{upper}} \ge \frac{E^p_{b, \text{upper}}}{A_b} - \Delta H^p_\text{upper}, \quad \forall b \in B, \\;p \in P_b^\text{max},
+    \overline{E}^p_{b, \text{upper}} \ge \frac{\bar A_{p,\text{upper}}}{A_b} E^p_{b, \text{upper}} - \bar E_{p,\text{upper}}, \quad \forall b \in B_{p,\text{upper}},
 \]</span></p>
 <p>and the following objectives:</p>
 <p><span class="math display">\[
