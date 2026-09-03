@@ -146,6 +146,8 @@ class Solver(ChildModel):
         Whether automatic differentiation instead of fine difference is used to compute the Jacobian. (Optional, defaults to true)
     depth_threshold : float
         Universal depth at which the low storage factor kicks in
+    max_depth : float
+        Universal maximum Basin depth above which the Basin is flagged when the model becomes unstable
     level_difference_threshold : float
         Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes
     evaporate_mass : bool
@@ -167,6 +169,7 @@ class Solver(ChildModel):
     autodiff: bool = True
     evaporate_mass: bool = True
     depth_threshold: float = 0.1
+    max_depth: float = 2000.0
     level_difference_threshold: float = 0.02
     specialize: bool = False
 
