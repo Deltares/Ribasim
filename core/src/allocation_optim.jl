@@ -491,7 +491,7 @@ function reset_demand_coefficients(allocation_model::AllocationModel)::Nothing
                 0,
             )
         elseif type == AllocationObjectiveType.demand_storage
-            # Reset cumulative area coefficients
+            # Reset the number of participating LevelDemand basins.
             for side in (:lower, :upper)
                 JuMP.set_normalized_coefficient(
                     average_storage_unit_error_constraint[demand_priority, side],
@@ -680,7 +680,15 @@ function set_demands!(
     (; basin, allocation) = p_independent
     (; demand_priorities_all) = allocation
     (; has_demand_priority, min_level, max_level, storage_demand) = level_demand
-    (; problem, node_ids_in_subnetwork, scaling) = allocation_model
+    (
+        ;
+        problem,
+        node_ids_in_subnetwork,
+        scaling,
+        level_demand_area_sum,
+        level_demand_count,
+        level_demand_area_scale,
+    ) = allocation_model
     (; basin_ids_subnetwork_with_level_demand) = node_ids_in_subnetwork
 
     level_demand_error = problem[:level_demand_error]
@@ -700,6 +708,38 @@ function set_demands!(
     average_storage_unit_error_constraint = problem[:average_storage_unit_error_constraint]
     level_demand_fairness_error_constraint =
         problem[:level_demand_fairness_error_constraint]
+
+    # Normalize level errors with the mean current area of the basins participating
+    # in each priority. This preserves the fairness objective while keeping its
+    # coefficients near one for large basins.
+    empty!(level_demand_area_sum)
+    empty!(level_demand_count)
+    empty!(level_demand_area_scale)
+    for basin_id in basin_ids_subnetwork_with_level_demand
+        level_demand_id = basin.level_demand_id[basin_id.idx]
+        A = current_area[basin_id.idx]
+        for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
+            !has_demand_priority[level_demand_id.idx, demand_priority_idx] && continue
+            isfinite(A) && A > 0 || error(
+                "LevelDemand Basin $basin_id has invalid area $A for demand priority $demand_priority.",
+            )
+            level_demand_area_sum[demand_priority] =
+                get(level_demand_area_sum, demand_priority, 0.0) + A
+            level_demand_count[demand_priority] =
+                get(level_demand_count, demand_priority, 0) + 1
+        end
+    end
+    for (demand_priority, count) in level_demand_count
+        level_demand_area_scale[demand_priority] =
+            level_demand_area_sum[demand_priority] / count
+        for side in (:lower, :upper)
+            JuMP.set_normalized_coefficient(
+                average_storage_unit_error_constraint[demand_priority, side],
+                average_storage_unit_error[demand_priority, side],
+                count,
+            )
+        end
+    end
 
     for basin_id in basin_ids_subnetwork_with_level_demand
         level_demand_id = basin.level_demand_id[basin_id.idx]
@@ -749,17 +789,14 @@ function set_demands!(
                 (storage_now - target_storage_max) / scaling.storage,
             )
 
-            # Set area in definition of average level error
+            # Convert storage error to normalized level error for fairness.
+            # The common priority-specific area scale preserves the objective order.
+            A_scale = level_demand_area_scale[demand_priority]
             for side in (:lower, :upper)
-                add_to_coefficient!(
-                    average_storage_unit_error_constraint[demand_priority, side],
-                    average_storage_unit_error[demand_priority, side],
-                    A,
-                )
                 JuMP.set_normalized_coefficient(
                     level_demand_fairness_error_constraint[basin_id, demand_priority, side],
                     level_demand_error[basin_id, demand_priority, side, :first],
-                    -A,
+                    -A_scale / A,
                 )
             end
 
@@ -807,7 +844,7 @@ function optimize_multi_objective!(
         t::Number,
         primary_network_connections = [],
     )::Nothing
-    (; problem, objectives, temporary_constraints) =
+    (; problem, objectives, temporary_constraints, subnetwork_id) =
         model
 
     # Lexicographic goal programming: optimize objectives in sequence
@@ -816,24 +853,29 @@ function optimize_multi_objective!(
 
     latest_optimized_expression = JuMP.AffExpr()
     latest_bound = 0.0
+    latest_expression_is_constrained = false
 
     for objective in objectives
         (; expressions, type, demand_priority_idx) = objective
 
-        for expression in expressions
+        for (expression_idx, expression) in enumerate(expressions)
             iszero(expression) && continue
-            if !iszero(latest_optimized_expression)
+            if !iszero(latest_optimized_expression) && !latest_expression_is_constrained
                 # Only add a constraint from the latest expression if there is a new expression
                 # to optimize for, otherwise we get an error when trying to retrieve results
                 push!(temporary_constraints, JuMP.@constraint(problem, latest_optimized_expression ≤ latest_bound))
+                latest_expression_is_constrained = true
             end
             JuMP.@objective(problem, Min, expression)
             JuMP.optimize!(problem)
             @debug objective expression JuMP.solution_summary(problem)
             latest_constraint = isempty(temporary_constraints) ? nothing : last(temporary_constraints)
             parse_termination_status(model, objective, expression, latest_constraint, config, t)
-            latest_bound = JuMP.objective_value(problem)
-            latest_optimized_expression = expression
+            if objective.retain_expressions[expression_idx]
+                latest_bound = JuMP.objective_value(problem)
+                latest_optimized_expression = expression
+                latest_expression_is_constrained = false
+            end
         end
 
         # collect secondary network demands if primary network connections are given

@@ -536,6 +536,22 @@ objective_expression_fairness = sum(
 - Fairness errors (objective_type = 2) penalize being worse than average
 - Optimized after the primary objective is satisfied
 
+### LevelDemand Fairness Normalization
+
+LevelDemand first-objective errors represent storage volumes. For a priority $p$ and side $s$, the implementation derives the mean current area over participating Basins,
+
+$$
+\bar A_{p,s} = \frac{1}{n_{p,s}}\sum_{b \in B_{p,s}} A_b,
+$$
+
+then defines the mean storage error with $n_{p,s}\bar E_{p,s} = \sum_b E^p_{b,s}$. The second objective penalizes storage errors after converting them by the relative area scale:
+
+$$
+\overline E^p_{b,s} \ge \frac{\bar A_{p,s}}{A_b}E^p_{b,s} - \bar E_{p,s}.
+$$
+
+The ratios are recomputed for every allocation solve from current Basin areas. This gives the same relative level-error comparison as dividing each storage error by its area, but avoids mixing very large raw-area and very small reciprocal-area coefficients in the LP.
+
 ### Route Priority Objective
 
 **Mathematical formulation:**
@@ -764,9 +780,9 @@ function optimize_multi_objective!(
     latest_expression = JuMP.AffExpr()
     latest_bound = 0.0
     for objective in objectives
-        for expression in objective.expressions
+        for (expression_idx, expression) in enumerate(objective.expressions)
             iszero(expression) && continue
-            if !iszero(latest_expression)
+            if !iszero(latest_expression) && !latest_expression_is_constrained
                 push!(
                     temporary_constraints,
                     JuMP.@constraint(problem, latest_expression <= latest_bound),
@@ -779,8 +795,11 @@ function optimize_multi_objective!(
             parse_termination_status(
                 model, objective, expression, latest_constraint, config, t,
             )
-            latest_bound = JuMP.objective_value(problem)
-            latest_expression = expression
+            if objective.retain_expressions[expression_idx]
+                latest_bound = JuMP.objective_value(problem)
+                latest_expression = expression
+                latest_expression_is_constrained = false
+            end
         end
     end
 
@@ -795,6 +814,7 @@ end
 - **Lexicographic optimization**: Each objective is optimized in order
 - Before optimizing objective $i + 1$, add constraint: $\text{obj}_i \le \text{optimal}_i$
 - This ensures later objectives don't degrade earlier ones
+- An expression can be non-retained. It is optimized as a deterministic tie-break, but is not constrained for the next expression.
 - Temporary constraints are removed after all objectives are solved
 - The termination status is checked after every objective optimization; an infeasible or other non-optimal solve stops allocation immediately
 
@@ -942,6 +962,11 @@ struct AllocationModel
     # Optimization objectives
     objectives::Vector{AllocationObjective}
 
+    # Current LevelDemand fairness normalization by demand priority
+    level_demand_area_sum::Dict{Int32, Float64}
+    level_demand_count::Dict{Int32, Int}
+    level_demand_area_scale::Dict{Int32, Float64}
+
     # Temporary constraints for lexicographic optimization
     temporary_constraints::Vector{JuMP.ConstraintRef}
 
@@ -973,8 +998,11 @@ Secondary networks (subnetwork_id > 1):
 For each secondary network:
 
 1. Set inflow from primary network to unlimited (temporarily)
-2. Solve allocation to determine total unmet demand
-3. This demand becomes the secondary network's "request" to the primary network
+2. Solve the demand and fairness objectives for each priority
+3. Minimize total primary-to-secondary inlet flow as a non-retained tie-break
+4. Use that minimum inlet flow as the secondary network's request for the priority
+
+The tie-break removes solver-dependent excess flow from demand collection. It is non-retained because later priorities may legitimately need more inlet flow.
 
 ```julia
 function preprocess_demand_collection!(

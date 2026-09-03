@@ -189,8 +189,8 @@ end
     vlink3 = filter(:link_id => ==(3), verification_flow_table)
 
     # assert in both models is the same
-    @test all(isapprox.(link1.flow_rate, vlink1.flow_rate; atol = 1.0e-2))
-    @test all(isapprox.(link3.flow_rate, vlink3.flow_rate; atol = 1.0e-2))
+    @test all(isapprox.(link1.flow_rate, vlink1.flow_rate; atol = 2.0e-4))
+    @test all(isapprox.(link3.flow_rate, vlink3.flow_rate; atol = 2.0e-4))
 end
 
 @testitem "Primary Secondary Network Model" begin
@@ -217,7 +217,7 @@ end
             filter(:link_id => ==(link_id), flow_results_multiple_subnetwork).flow_rate
         single_sub =
             filter(:link_id => ==(link_id), flow_results_single_subnetwork).flow_rate
-        if !all(isapprox.(multiple_subs, single_sub; atol = 1.003e-3))
+        if !all(isapprox.(multiple_subs, single_sub; atol = 1.0e-8))
             println(
                 "The flows over link $link_id differ by ",
                 maximum(single_sub .- multiple_subs),
