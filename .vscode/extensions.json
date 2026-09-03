@@ -1,6 +1,5 @@
 {
     "recommendations": [
-        "aviatesk.jetls-client",
         "charliermarsh.ruff",
         "julialang.language-julia",
         "astral-sh.ty",

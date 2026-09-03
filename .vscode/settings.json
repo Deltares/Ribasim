@@ -1,7 +1,7 @@
 {
     "[julia]": {
         "editor.formatOnSave": true,
-        "editor.defaultFormatter": "aviatesk.jetls-client"
+        "editor.defaultFormatter": "julialang.language-julia"
     },
     "[python]": {
         "editor.codeActionsOnSave": {

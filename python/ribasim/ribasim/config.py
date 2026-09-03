@@ -121,7 +121,7 @@ class Solver(ChildModel):
     Attributes
     ----------
     algorithm : str
-        The used numerical time integration algorithm (Optional, defaults to QNDF)
+        The used numerical time integration algorithm (Optional, defaults to NordsieckBDF)
     saveat : float
         Time interval in seconds between saves of output data.
         0 saves every timestep, inf only saves at start- and endtime. (Optional, defaults to 86400)
@@ -146,6 +146,8 @@ class Solver(ChildModel):
         Whether automatic differentiation instead of fine difference is used to compute the Jacobian. (Optional, defaults to true)
     depth_threshold : float
         Universal depth at which the low storage factor kicks in
+    max_depth : float
+        Universal maximum Basin depth above which the Basin is flagged when the model becomes unstable
     level_difference_threshold : float
         Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes
     evaporate_mass : bool
@@ -154,7 +156,7 @@ class Solver(ChildModel):
         Trades initialization speed for simulation speed, useful for long-running simulations. (Optional, defaults to false)
     """
 
-    algorithm: str = "QNDF"
+    algorithm: str = "NordsieckBDF"
     saveat: float = 86400.0
     dt: float | None = None
     dtmin: float | None = None
@@ -167,6 +169,7 @@ class Solver(ChildModel):
     autodiff: bool = True
     evaporate_mass: bool = True
     depth_threshold: float = 0.1
+    max_depth: float = 2000.0
     level_difference_threshold: float = 0.02
     specialize: bool = False
 

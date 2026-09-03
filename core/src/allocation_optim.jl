@@ -1376,6 +1376,6 @@ function update_allocation!(integrator::DEIntegrator, Δt::Float64; record::Bool
 
     # Update storage_prev for level_demand
     update_storage_prev!(p)
-
+    derivative_discontinuity!(integrator, true)
     return nothing
 end

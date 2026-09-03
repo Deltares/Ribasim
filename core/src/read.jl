@@ -1809,6 +1809,7 @@ function Parameters(db::DB, config::Config)::Parameters
         convergence = CVector(zeros(n_states), state_ranges),
         u_reduced,
         config.solver.level_difference_threshold,
+        config.solver.max_depth,
     )
 
     collect_control_mappings!(p_independent)

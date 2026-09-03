@@ -299,13 +299,13 @@ end
 @testitem "Solver algorithm" begin
     using LinearSolve: KLUFactorization, LUFactorization
     using OrdinaryDiffEqNonlinearSolve: NLNewton
-    using OrdinaryDiffEqBDF: QNDF
+    using OrdinaryDiffEqBDF: NordsieckBDF
 
     model =
         Ribasim.Model(normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml"))
     (; alg) = model.integrator
 
-    @test alg isa QNDF
+    @test alg isa NordsieckBDF
     @test alg.step_limiter! == Ribasim.limit_flow!
     @test alg.nlsolve == NLNewton()
     @test alg.linsolve ==

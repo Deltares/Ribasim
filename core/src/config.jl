@@ -19,7 +19,7 @@ using OrdinaryDiffEqNonlinearSolve: NLNewton
 using OrdinaryDiffEqLowOrderRK: Euler, RK4
 using OrdinaryDiffEqTsit5: Tsit5
 using OrdinaryDiffEqSDIRK: ImplicitEuler, KenCarp4, TRBDF2
-using OrdinaryDiffEqBDF: FBDF, QNDF
+using OrdinaryDiffEqBDF: FBDF, QNDF, NordsieckBDF
 using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
 import OrdinaryDiffEqDifferentiation
 using LinearSolve:
@@ -178,7 +178,7 @@ for (node_type, kinds) in pairs(node_kinds)
 end
 
 @option struct Solver <: TableOption
-    algorithm::String = "QNDF"
+    algorithm::String = "NordsieckBDF"
     saveat::Float64 = 86400.0
     dt::Union{Float64, Nothing} = nothing
     dtmin::Float64 = 0.0
@@ -193,6 +193,7 @@ end
     autodiff::Bool = true
     evaporate_mass::Bool = true
     depth_threshold::Float64 = 0.1
+    max_depth::Float64 = 2000.0
     level_difference_threshold::Float64 = 0.02
     specialize::Bool = false
 end
@@ -353,6 +354,7 @@ Map from config string to a supported algorithm type from [OrdinaryDiffEq](https
 
 Supported algorithms:
 
+- `NordsieckBDF`
 - `QNDF`
 - `FBDF`
 - `Rosenbrock23`
@@ -366,6 +368,7 @@ Supported algorithms:
 - `Euler`
 """
 const algorithms = Dict{String, Type}(
+    "NordsieckBDF" => NordsieckBDF,
     "QNDF" => QNDF,
     "FBDF" => FBDF,
     "Rosenbrock23" => Rosenbrock23,

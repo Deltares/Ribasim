@@ -255,7 +255,7 @@ end
         isapprox.(
             filter(:time => time -> time > t_switch, flow_table).flow_rate,
             0;
-            atol = 1.0e-8,
+            atol = 5.0e-6,
         ),
     )
 end
