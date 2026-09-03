@@ -51,7 +51,7 @@ except ImportError:
             Compare as _Compare,
         )
     except ImportError:
-        _Compare = MissingOptionalModule("datacompy", "diff")  # ty: ignore[conflicting-declarations]
+        _Compare = MissingOptionalModule("datacompy", "diff")
 
 
 __all__ = ("TableModel",)
