@@ -349,7 +349,7 @@ window.Quarto = {
   </ul></li>
   <li><a href="#objectives" id="toc-objectives" class="nav-link" data-scroll-target="#objectives"><span class="header-section-number">3.3</span> Objectives</a>
   <ul class="collapse">
-  <li><a href="#primary-objective-minimize-absolute-error-sum" id="toc-primary-objective-minimize-absolute-error-sum" class="nav-link" data-scroll-target="#primary-objective-minimize-absolute-error-sum"><span class="header-section-number">3.3.1</span> Primary Objective: Minimize Absolute Error Sum</a></li>
+  <li><a href="#primary-objective-minimize-demand-weighted-error" id="toc-primary-objective-minimize-demand-weighted-error" class="nav-link" data-scroll-target="#primary-objective-minimize-demand-weighted-error"><span class="header-section-number">3.3.1</span> Primary Objective: Minimize Demand-Weighted Error</a></li>
   <li><a href="#secondary-objective-minimize-fairness-error" id="toc-secondary-objective-minimize-fairness-error" class="nav-link" data-scroll-target="#secondary-objective-minimize-fairness-error"><span class="header-section-number">3.3.2</span> Secondary Objective: Minimize Fairness Error</a></li>
   <li><a href="#leveldemand-fairness-normalization" id="toc-leveldemand-fairness-normalization" class="nav-link" data-scroll-target="#leveldemand-fairness-normalization"><span class="header-section-number">3.3.3</span> LevelDemand Fairness Normalization</a></li>
   <li><a href="#route-priority-objective" id="toc-route-priority-objective" class="nav-link" data-scroll-target="#route-priority-objective"><span class="header-section-number">3.3.4</span> Route Priority Objective</a></li>
@@ -750,9 +750,13 @@ window.Quarto = {
 <section id="objectives" class="level2" data-number="3.3">
 <h2 data-number="3.3" class="anchored" data-anchor-id="objectives"><span class="header-section-number">3.3</span> Objectives</h2>
 <p>The allocation optimization solves multiple objectives in sequence using <strong>lexicographic goal programming</strong>. Each objective is optimized; before the next non-empty objective is solved, the preceding result is constrained with an inequality in the direction of improvement.</p>
-<section id="primary-objective-minimize-absolute-error-sum" class="level3" data-number="3.3.1">
-<h3 data-number="3.3.1" class="anchored" data-anchor-id="primary-objective-minimize-absolute-error-sum"><span class="header-section-number">3.3.1</span> Primary Objective: Minimize Absolute Error Sum</h3>
-<p><strong>Mathematical formulation:</strong> For flow demands (UserDemand, FlowDemand) at priority <span class="math inline">\(p\)</span>: <span class="math display">\[\min \sum_{v,p} d_v^p \cdot E_v^p\]</span></p>
+<section id="primary-objective-minimize-demand-weighted-error" class="level3" data-number="3.3.1">
+<h3 data-number="3.3.1" class="anchored" data-anchor-id="primary-objective-minimize-demand-weighted-error"><span class="header-section-number">3.3.1</span> Primary Objective: Minimize Demand-Weighted Error</h3>
+<p><strong>Mathematical formulation:</strong> For flow demands (UserDemand, FlowDemand) at priority <span class="math inline">\(p\)</span>: <span class="math display">\[
+\min \sum_{v \in V_p} w_v^p E_v^p,
+\qquad
+w_v^p = \frac{d_v^p}{\sum_{u \in V_p} d_u^p}.
+\]</span></p>
 <p>For level demands at priority <span class="math inline">\(p\)</span>: <span class="math display">\[\min \sum_{b; p\in P^\min_b} E^p_{b, \text{lower}} + \sum_{b; p\in P^\max_b} E^p_{b, \text{upper}}\]</span></p>
 <p><strong>Code implementation:</strong></p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># From add_demand_objectives!</span></span>
@@ -779,13 +783,15 @@ window.Quarto = {
 <span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a>        [first_objective_expression, second_objective_expression],</span>
 <span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a>    )</span>
 <span id="cb17-24"><a href="#cb17-24" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Key points:</strong> - Error variables are weighted by demands (makes this absolute error minimization) - Separate objectives for each priority - Objectives are stored and optimized in order by <code>optimize_multi_objective!</code></p>
+<p><strong>Key points:</strong> - Error variables are weighted by their relative demand. This is equivalent to minimizing the total absolute unmet demand because the objective is the original demand-weighted error multiplied by the positive constant <span class="math inline">\(1 / \sum_{v \in V_p} d_v^p\)</span>. - The normalization is applied after all demand coefficients for a priority have been updated, including demands collected from secondary networks. It keeps each first objective and its retained lexicographic constraint numerically well scaled when the flow scale is much larger than the active demands. - Separate objectives for each priority - Objectives are stored and optimized in order by <code>optimize_multi_objective!</code></p>
 </section>
 <section id="secondary-objective-minimize-fairness-error" class="level3" data-number="3.3.2">
 <h3 data-number="3.3.2" class="anchored" data-anchor-id="secondary-objective-minimize-fairness-error"><span class="header-section-number">3.3.2</span> Secondary Objective: Minimize Fairness Error</h3>
 <p><strong>Mathematical formulation:</strong> After minimizing the total error, minimize deviations from the average allocation rate.</p>
 <p>For flow demands: <span class="math display">\[\min \sum_{v,p} \overline{E}_v^p\]</span></p>
-<p>where <span class="math inline">\(\overline{E}_v^p \ge E_v^p - G^p\)</span> and <span class="math inline">\(G^p\)</span> is the global average allocation rate.</p>
+<p>where <span class="math inline">\(\overline{E}_v^p \ge E_v^p - G^p\)</span> and <span class="math inline">\(G^p\)</span> is the demand-weighted mean relative error: <span class="math display">\[
+G^p = \sum_{v \in V_p} w_v^p E_v^p.
+\]</span></p>
 <p><strong>Code implementation:</strong></p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># From add_demand_objectives!</span></span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Compute average error (constraint on average error variable)</span></span>
@@ -793,19 +799,20 @@ window.Quarto = {
 <span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>    <span class="pp">@constraint</span>(</span>
 <span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>        problem,</span>
 <span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>        [demand_priority <span class="op">=</span> demand_priorities_all; <span class="op">...</span>],</span>
-<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>        sum_demands <span class="op">*</span> average_flow_unit_error[demand_priority] <span class="op">==</span></span>
-<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>            <span class="fu">sum</span>(d <span class="op">*</span> error[node_id, demand_priority, <span class="fl">1</span>] <span class="cf">for</span> node_id, d <span class="kw">in</span> demands),</span>
-<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>        base_name <span class="op">=</span> <span class="st">"average_flow_unit_error"</span></span>
-<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Fairness error: overline_E &gt;= E - G</span></span>
-<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a><span class="co"># (Implicitly defined through constraints)</span></span>
-<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Objective sums fairness errors</span></span>
-<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>objective_expression_fairness <span class="op">=</span> <span class="fu">sum</span>(</span>
-<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a>    user_demand_error[node_id, demand_priority, <span class="fl">2</span>]</span>
-<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> node_id <span class="kw">in</span> user_demand_ids_subnetwork <span class="cf">if</span> <span class="op">...</span></span>
-<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>        average_flow_unit_error[demand_priority] <span class="op">==</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>            <span class="fu">sum</span>(weight <span class="op">*</span> error[node_id, demand_priority, <span class="fl">1</span>]</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>                <span class="cf">for</span> node_id, weight <span class="kw">in</span> demand_weights),</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>        base_name <span class="op">=</span> <span class="st">"average_flow_unit_error"</span></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Fairness error: overline_E &gt;= E - G</span></span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a><span class="co"># (Implicitly defined through constraints)</span></span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Objective sums fairness errors</span></span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a>objective_expression_fairness <span class="op">=</span> <span class="fu">sum</span>(</span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a>    user_demand_error[node_id, demand_priority, <span class="fl">2</span>]</span>
+<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> node_id <span class="kw">in</span> user_demand_ids_subnetwork <span class="cf">if</span> <span class="op">...</span></span>
+<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><strong>Key points:</strong> - <code>average_flow_unit_error</code> represents <span class="math inline">\(G^p\)</span> - Fairness errors (objective_type = 2) penalize being worse than average - Optimized after the primary objective is satisfied</p>
 </section>
 <section id="leveldemand-fairness-normalization" class="level3" data-number="3.3.3">
@@ -1068,18 +1075,15 @@ window.Quarto = {
 <span id="cb25-24"><a href="#cb25-24" aria-hidden="true" tabindex="-1"></a>    (; allocation) <span class="op">=</span> p_independent</span>
 <span id="cb25-25"><a href="#cb25-25" aria-hidden="true" tabindex="-1"></a>    (; current_storage) <span class="op">=</span> state_and_time_dependent_cache</span>
 <span id="cb25-26"><a href="#cb25-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> allocation_model <span class="kw">in</span> allocation.allocation_models</span>
-<span id="cb25-27"><a href="#cb25-27" aria-hidden="true" tabindex="-1"></a>        (; node_ids_in_subnetwork, scaling, flow_links_subnetwork) <span class="op">=</span> allocation_model</span>
+<span id="cb25-27"><a href="#cb25-27" aria-hidden="true" tabindex="-1"></a>        (; node_ids_in_subnetwork, scaling) <span class="op">=</span> allocation_model</span>
 <span id="cb25-28"><a href="#cb25-28" aria-hidden="true" tabindex="-1"></a>        (; basin_ids_subnetwork) <span class="op">=</span> node_ids_in_subnetwork</span>
 <span id="cb25-29"><a href="#cb25-29" aria-hidden="true" tabindex="-1"></a>        mean_storage <span class="op">=</span> <span class="fu">sum</span>(current_storage[id.idx] <span class="cf">for</span> id <span class="kw">in</span> basin_ids_subnetwork) <span class="op">/</span></span>
 <span id="cb25-30"><a href="#cb25-30" aria-hidden="true" tabindex="-1"></a>            <span class="fu">length</span>(basin_ids_subnetwork)</span>
 <span id="cb25-31"><a href="#cb25-31" aria-hidden="true" tabindex="-1"></a>        scaling.storage <span class="op">=</span> (scaling.mean_half_storage <span class="op">+</span> mean_storage) <span class="op">/</span> <span class="fl">2</span></span>
-<span id="cb25-32"><a href="#cb25-32" aria-hidden="true" tabindex="-1"></a>        mean_flow <span class="op">=</span> <span class="fu">sum</span>(</span>
-<span id="cb25-33"><a href="#cb25-33" aria-hidden="true" tabindex="-1"></a>            <span class="fu">abs</span>(<span class="fu">get_flow</span>(du, p_independent, t, link)) <span class="cf">for</span> link <span class="kw">in</span> flow_links_subnetwork</span>
-<span id="cb25-34"><a href="#cb25-34" aria-hidden="true" tabindex="-1"></a>        ) <span class="op">/</span> <span class="fu">length</span>(flow_links_subnetwork)</span>
-<span id="cb25-35"><a href="#cb25-35" aria-hidden="true" tabindex="-1"></a>        scaling.flow <span class="op">=</span> (scaling.storage <span class="op">/</span> Δt <span class="op">+</span> mean_flow) <span class="op">/</span> <span class="fl">2</span></span>
-<span id="cb25-36"><a href="#cb25-36" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb25-37"><a href="#cb25-37" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Key concepts:</strong> - Storage variables are divided by <code>scaling.storage</code> - Flow variables are divided by <code>scaling.flow</code> - The storage scale is updated for each allocation solve from the current mean storage and the initialization-time mean half-storage - The flow scale is the average of the storage-derived flow scale and the mean magnitude of the current physical flows in the subnetwork - Typical values are O(1) in the scaled problem - Improves numerical stability and solver performance - Must scale/unscale when communicating with physical layer</p>
+<span id="cb25-32"><a href="#cb25-32" aria-hidden="true" tabindex="-1"></a>        scaling.flow <span class="op">=</span> scaling.storage <span class="op">/</span> Δt</span>
+<span id="cb25-33"><a href="#cb25-33" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb25-34"><a href="#cb25-34" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Key concepts:</strong> - Storage variables are divided by <code>scaling.storage</code> - Flow variables are divided by <code>scaling.flow</code> - The storage scale is updated for each allocation solve from the current mean storage and the initialization-time mean half-storage - The flow scale equals <code>scaling.storage / Δt</code>, so flow coefficients in the discretized volume-conservation equations are one - Per-priority flow-demand objectives are normalized independently, because a global flow scale can still make a small active demand numerically insignificant - Improves numerical stability and solver performance - Must scale/unscale when communicating with physical layer</p>
 <section id="example-scaled-volume-conservation" class="level2" data-number="6.1">
 <h2 data-number="6.1" class="anchored" data-anchor-id="example-scaled-volume-conservation"><span class="header-section-number">6.1</span> Example: Scaled Volume Conservation</h2>
 <p><strong>Unscaled formulation:</strong> <span class="math display">\[\Delta S \text{ [m³]} = \Delta t \text{ [s]} \cdot \left( Q_{\text{in}} - Q_{\text{out}} \text{ [m³/s]} \right)\]</span></p>
