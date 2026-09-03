@@ -221,7 +221,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td>algorithm</td>
 <td>str</td>
-<td>The used numerical time integration algorithm (Optional, defaults to QNDF)</td>
+<td>The used numerical time integration algorithm (Optional, defaults to NordsieckBDF)</td>
 </tr>
 <tr class="even">
 <td>saveat</td>
@@ -279,16 +279,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Universal depth at which the low storage factor kicks in</td>
 </tr>
 <tr class="odd">
+<td>max_depth</td>
+<td>float</td>
+<td>Universal maximum Basin depth above which the Basin is flagged when the model becomes unstable</td>
+</tr>
+<tr class="even">
 <td>level_difference_threshold</td>
 <td>float</td>
 <td>Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>evaporate_mass</td>
 <td>bool</td>
 <td>Whether mass is lost due to evaporation in water quality calculations. (Optional, defaults to true)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>specialize</td>
 <td>bool</td>
 <td>Trades initialization speed for simulation speed, useful for long-running simulations. (Optional, defaults to false)</td>
