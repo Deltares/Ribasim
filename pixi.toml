@@ -64,8 +64,10 @@ docs = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto preview docs/{
 ], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "yes", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
 # Lint
 typecheck = "ty check"
-prek-run = "prek run --all-files"
-lint = { depends-on = ["prek-run"] }
+check = "prek run --all-files"
+# First one can fix issues, second one is to check if all are fixed
+fix-check = "prek run --all-files || prek run --all-files"
+lint = { depends-on = ["check"] }
 # Build
 build = { "cmd" = "julia --project build/build.jl", depends-on = [
     "generate-testmodels",

@@ -76,7 +76,7 @@ from ribasim.validation import link_neighbor_amount
 try:
     import xugrid as _xugrid
 except ImportError:
-    _xugrid = MissingOptionalModule("xugrid")  # ty: ignore[invalid-assignment]
+    _xugrid = MissingOptionalModule("xugrid")
 
 
 logger = logging.getLogger(__name__)
