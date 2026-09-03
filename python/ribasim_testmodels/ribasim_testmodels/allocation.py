@@ -331,7 +331,7 @@ def small_primary_secondary_network_model() -> Model:
         ],
     )
     outlet_data = outlet.Static(
-        flow_rate=[3e-3], max_flow_rate=3.0, allocation_controlled=True
+        flow_rate=[3e-3], max_flow_rate=1.0, allocation_controlled=True
     )
 
     model.outlet.add(

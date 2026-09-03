@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+- Allocation: Normalize LevelDemand fairness constraints by the current mean Basin area per demand priority, improving numerical conditioning for large Basins.
+- Allocation: Use a deterministic minimum-inlet-flow tie-break when collecting secondary-network demands from the primary network.
+
 ## [v2026.1.2] - 2026-06-16
 
 This release brings several improvements to the QGIS plugin, most notably the ability to compare observed and simulated timeseries using Observation nodes.
