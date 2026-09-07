@@ -526,7 +526,7 @@ This result file contains statistics about the solver, which can give an insight
 
 The `computation_time` is the wall time in milliseconds spent on the given period.
 The first row tends to include compilation time as well.
-The `dt` is the size (in seconds) of the last calculation timestep (at the `saveat` timestep).
+The `dt` is the average size (in seconds) of the calculation timesteps in the given period.
 
 **NetCDF structure:**
 
