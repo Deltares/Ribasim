@@ -13,13 +13,6 @@ function is_current_module(log)::Bool
         log._module == OrdinaryDiffEqCore # for the progress bar
 end
 
-"""
-Pick the IOStream out of our composed LoggingExtras.jl logger,
-the FileLogger contains the file handle.
-This uses internal API, but our unit tests cover it.
-"""
-logger_stream(logger)::IOStream = logger.logger.loggers[1].logger.logger.stream
-
 function setup_logger(;
         verbosity::LogLevel,
         stream::IOStream,

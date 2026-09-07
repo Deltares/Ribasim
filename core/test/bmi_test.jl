@@ -162,17 +162,16 @@ end
 end
 
 @testitem "BMI logging" begin
-    using Ribasim: results_path, logger_stream
+    using Ribasim: results_path
     import BasicModelInterface as BMI
-    using LoggingExtras: global_logger, EarlyFilteredLogger
+    using LoggingExtras: EarlyFilteredLogger
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/invalid_unstable/ribasim.toml")
     @test ispath(toml_path)
     model = BMI.initialize(Ribasim.Model, toml_path)
-    logger = global_logger()
-    @test logger isa EarlyFilteredLogger
-    @test logger_stream(logger) isa IOStream
+    @test model.logger isa EarlyFilteredLogger
+    @test model.log_io isa IOStream
 
     BMI.update_until(model, 1.0)
     BMI.finalize(model)
@@ -185,4 +184,23 @@ end
         "Error: The model exited at model time 2020-01-01T00:00:00 with return code DtLessThanMin",
         log_str,
     )
+end
+
+@testitem "BMI logging of multiple models" begin
+    using Ribasim: results_path
+    import BasicModelInterface as BMI
+
+    toml_paths = [
+        normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml"),
+        normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml"),
+    ]
+    models = [BMI.initialize(Ribasim.Model, toml_path) for toml_path in toml_paths]
+    @test models[1].log_io !== models[2].log_io
+
+    for (model, toml_path) in zip(models, toml_paths)
+        BMI.update_until(model, 86400.0)
+        BMI.finalize(model)
+        log_str = read(results_path(model.config, "ribasim.log"), String)
+        @test occursin(toml_path, log_str)
+    end
 end
