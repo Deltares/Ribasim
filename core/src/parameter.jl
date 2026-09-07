@@ -5,7 +5,6 @@ const SolverStats = @NamedTuple{
     linear_solves::Int,
     accepted_timesteps::Int,
     rejected_timesteps::Int,
-    dt::Float64,
 }
 
 const state_components = (

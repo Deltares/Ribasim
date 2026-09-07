@@ -288,7 +288,7 @@ const CF = OrderedDict{String, OrderedDict{String, String}}(
         OrderedDict("units" => "1", "long_name" => "number of accepted timesteps"),
     "rejected_timesteps" =>
         OrderedDict("units" => "1", "long_name" => "number of rejected timesteps"),
-    "dt" => OrderedDict("units" => "s", "long_name" => "timestep size"),
+    "dt" => OrderedDict("units" => "s", "long_name" => "average timestep size"),
     "from_node_id" => OrderedDict("long_name" => "source node identifier"),
     "to_node_id" => OrderedDict("long_name" => "destination node identifier"),
     "substance" =>
@@ -436,6 +436,7 @@ end
 
 function solver_stats_data(model::Model; table::Bool = true)
     solver_stats = StructVector(model.saved.solver_stats.saveval)
+    accepted_timesteps = diff(solver_stats.accepted_timesteps)
     return (;
         time = datetime_since.(
             solver_stats.time[1:(end - 1)],
@@ -445,9 +446,9 @@ function solver_stats_data(model::Model; table::Bool = true)
         computation_time = diff(solver_stats.time_ns) .* 1.0e-6,
         rhs_calls = diff(solver_stats.rhs_calls),
         linear_solves = diff(solver_stats.linear_solves),
-        accepted_timesteps = diff(solver_stats.accepted_timesteps),
+        accepted_timesteps,
         rejected_timesteps = diff(solver_stats.rejected_timesteps),
-        dt = solver_stats.dt[2:end],
+        dt = diff(solver_stats.time) ./ accepted_timesteps,
     )
 end
 
