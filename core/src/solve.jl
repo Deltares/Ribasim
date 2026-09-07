@@ -85,14 +85,16 @@ end
 
 function formulate_flow_boundary!(p::Parameters, t::Number)::Nothing
     (; p_independent, time_dependent_cache, p_mutable) = p
-    (; node_id, flow_rate, cumulative_flow) = p_independent.flow_boundary
+    (; flow_boundary) = p_independent
+    (; node_id, cumulative_flow) = flow_boundary
     (; current_cumulative_boundary_flow) = time_dependent_cache.flow_boundary
     (; tprev, new_time_dependent_cache) = p_mutable
 
     if new_time_dependent_cache
         for id in node_id
             current_cumulative_boundary_flow[id.idx] =
-                cumulative_flow[id.idx] + integral(flow_rate[id.idx], tprev, t)
+                cumulative_flow[id.idx] +
+                boundary_flow_integral(flow_boundary, id.idx, tprev, t)
         end
     end
     return nothing

@@ -60,7 +60,7 @@ This uses a typeassert to ensure that the return type annotation doesn't create 
 function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
     (; u, p) = model.integrator
     (; p_independent, state_and_time_dependent_cache) = p
-    (; basin, user_demand, subgrid) = p_independent
+    (; basin, flow_boundary, user_demand, subgrid) = p_independent
 
     return if name == "basin.storage"
         state_and_time_dependent_cache.current_storage
@@ -80,6 +80,10 @@ function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
         basin.cumulative_surface_runoff::Vector{Float64}
     elseif name == "basin.subgrid_level"
         subgrid.level::Vector{Float64}
+    elseif name == "flow_boundary.flow_rate"
+        flow_boundary.flow_rate_bmi::Vector{Float64}
+    elseif name == "flow_boundary.cumulative_flow"
+        flow_boundary.cumulative_flow::Vector{Float64}
     elseif name == "user_demand.demand"
         vec(user_demand.demand)::Vector{Float64}
     elseif name == "user_demand.cumulative_inflow"

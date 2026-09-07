@@ -242,13 +242,9 @@ function update_concentrations!(u, t, integrator)::Nothing
     end
 
     # Exact boundary flow over time step
-    for (id, flow_rate, outflow_link) in zip(
-            flow_boundary.node_id,
-            flow_boundary.flow_rate,
-            flow_boundary.outflow_link,
-        )
+    for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
         outflow_id = outflow_link.link[2]
-        added_boundary_flow = integral(flow_rate, tprev, t)
+        added_boundary_flow = boundary_flow_integral(flow_boundary, id.idx, tprev, t)
         add_substance_mass!(
             mass[outflow_id.idx],
             flow_boundary.concentration_itp[id.idx],
@@ -367,7 +363,7 @@ function flow_update_on_link(
             "Cannot get flow update when from_id = to_id. For Basin forcing use `forcing_update`.",
         )
     elseif from_id.type == NodeType.FlowBoundary
-        integral(flow_boundary.flow_rate[from_id.idx], tprev, t)
+        boundary_flow_integral(flow_boundary, from_id.idx, tprev, t)
     else
         flow_idx = get_state_index(state_ranges, link_to_state_idx, link_src)
         u[flow_idx] - uprev[flow_idx]
@@ -735,7 +731,7 @@ function get_value(subvariable::SubVariable, p::Parameters, du::CVector, t::Floa
 
     elseif variable == "flow_rate"
         if listen_node_id.type == NodeType.FlowBoundary
-            value = flow_boundary.flow_rate[listen_node_id.idx](t + look_ahead)
+            value = boundary_flow_rate(flow_boundary, listen_node_id.idx, t + look_ahead)
         else
             error("Flow condition node $listen_node_id is not a FlowBoundary.")
         end
