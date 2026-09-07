@@ -268,7 +268,9 @@ ax.set_ylabel("flow [m³day⁻¹]");
 
 # Model with discrete control
 
-The model constructed below consists of a single basin which slowly drains through a `TabulatedRatingCurve`, but is held within a range by two connected pumps. These two pumps together behave like a reversible pump. When pumping can be done in only one direction, and the other direction is only possible under gravity, use an Outlet for that direction.
+The model constructed below consists of a single basin which slowly drains through a `TabulatedRatingCurve`, but is held within a range around a setpoint by two connected pumps. These two pumps together behave like a reversible pump. When pumping can be done in only one direction, and the other direction is only possible under gravity, use an Outlet for that direction.
+
+The controller uses a 1 m hysteresis band. It starts pumping water out when the level rises above 15 m and continues until the level drops below 14 m. It starts pumping water in when the level drops below 4 m and continues until the level rises above 5 m.
 
 Setup the basins:
 
@@ -304,10 +306,11 @@ model.discrete_control.add(
             variable=["level"],
         ),
         discrete_control.Condition(
+            # min, max; retain control states within a 1 m hysteresis band
+            threshold_high=[5.0, 15.0],
+            threshold_low=[4.0, 14.0],
             compound_variable_id=1,
             condition_id=[1, 2],
-            # min, max
-            threshold_high=[5.0, 15.0],
         ),
         discrete_control.Logic(
             truth_state=["FF", "TF", "TT"],
@@ -319,8 +322,8 @@ model.discrete_control.add(
 
 The above control logic can be summarized as follows:
 
-- If the level is above the maximum, activate the control state "out";
-- If the level is below the minimum, active the control state "in";
+- If the level rises above 15 m, activate the control state "out" and retain it until the level falls below 14 m;
+- If the level falls below 4 m, activate the control state "in" and retain it until the level rises above 5 m;
 - Otherwise activate the control state "none".
 
 Setup the pump:
@@ -410,7 +413,9 @@ df_basin_wide = df_basin.pivot_table(
 
 ax = df_basin_wide["level"].plot()
 
-threshold_high = model.discrete_control.condition.df.threshold_high
+thresholds = model.discrete_control.condition.df
+threshold_high = thresholds.threshold_high.to_numpy()
+threshold_low = thresholds.threshold_low.to_numpy()
 
 ax.hlines(
     threshold_high,
@@ -420,14 +425,21 @@ ax.hlines(
     ls="--",
     color="k",
 )
+ax.hlines(
+    threshold_low,
+    df_basin.time[0],
+    df_basin.time.max(),
+    lw=1,
+    ls=":",
+    color="k",
+)
 
-ax.set_yticks(threshold_high, ["min", "max"])
+ax.set_yticks([4.0, 5.0, 14.0, 15.0], ["start in", "stop in", "stop out", "start out"])
 ax.set_ylabel("level")
 plt.show()
 ```
 
-We see that in January the level of the basin is too high and thus water is pumped out until the maximum level of the desired range is reached. Then until May water flows out of the basin freely through the tabulated rating curve until the minimum level is reached. From
-this point until the start of July water is pumped into the basin in short bursts to stay within the desired range. At the start of July rain starts falling on the basin, which causes the basin level to rise until the maximum level. From this point onward water is pumped out of the basin in short bursts to stay within the desired range.
+We see that in January the Basin level is too high, so water is pumped out until the level falls below 14 m. Then, until May, water drains freely through the TabulatedRatingCurve until the level drops below 4 m. From this point until the start of July, water is pumped into the Basin in short bursts: each burst continues until the level rises above 5 m. At the start of July, rain starts falling on the Basin, causing its level to rise. Once it rises above 15 m, water is pumped out in short bursts until the level falls below 14 m.
 
 # Model with PID control
 
