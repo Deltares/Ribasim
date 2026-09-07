@@ -227,6 +227,7 @@ end
     dt::Union{Float64, Nothing} = nothing
     reltol_linearization::Float64 = 0.01
     dtmin::Float64 = 3600.0
+    dtmax::Float64 = 86400.0
     route_priority::RoutePriority = RoutePriority()
 end
 

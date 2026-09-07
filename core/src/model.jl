@@ -321,6 +321,7 @@ the fixed timestep.
 function compute_next_allocation_tstop(integrator)::Float64
     (; u, p, t) = integrator
     (; allocation) = p.p_independent
+    (; dtmin, dtmax) = allocation.config.allocation
 
     Δt = if allocation.time.adaptive
         du = get_du(integrator)
@@ -332,7 +333,7 @@ function compute_next_allocation_tstop(integrator)::Float64
             Δt_sub = compute_adaptive_allocation_Δt(am, p, du, t, allocation.config)
             Δt = min(Δt, Δt_sub)
         end
-        Δt
+        clamp(Δt, dtmin, dtmax)
     else
         allocation.time.dt_fixed
     end

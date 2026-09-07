@@ -374,7 +374,6 @@ function compute_adaptive_allocation_Δt(
     (; basin, tabulated_rating_curve, linear_resistance, manning_resistance) = p.p_independent
     (; current_storage) = p.state_and_time_dependent_cache
 
-    Δt_min = config.allocation.dtmin
     ε_rel = config.allocation.reltol_linearization
     overshoot_reduction = 0.8
 
@@ -442,7 +441,7 @@ function compute_adaptive_allocation_Δt(
     end
 
     # Upper bound is applied externally (saveat, tspan_end)
-    return max(Δt, Δt_min)
+    return Δt
 end
 
 # Custom iterator to iterate over the demand priorities for which a particular node has a demand
