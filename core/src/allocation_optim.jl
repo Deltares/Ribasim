@@ -152,7 +152,7 @@ function set_simulation_data!(
         link = flow_boundary.outflow_link[node_id.idx].link
         JuMP.fix(
             flow[link],
-            flow_boundary.flow_rate[link[1].idx](t) / scaling.flow;
+            boundary_flow_rate(flow_boundary, link[1].idx, t) / scaling.flow;
             force = true,
         )
     end
