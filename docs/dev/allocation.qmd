@@ -454,11 +454,15 @@ problem[Symbol(constraint_name)] = JuMP.@constraint(
 
 The allocation optimization solves multiple objectives in sequence using **lexicographic goal programming**. Each objective is optimized; before the next non-empty objective is solved, the preceding result is constrained with an inequality in the direction of improvement.
 
-### Primary Objective: Minimize Absolute Error Sum
+### Primary Objective: Minimize Demand-Weighted Error
 
 **Mathematical formulation:**
 For flow demands (UserDemand, FlowDemand) at priority $p$:
-$$\min \sum_{v,p} d_v^p \cdot E_v^p$$
+$$
+\min \sum_{v \in V_p} w_v^p E_v^p,
+\qquad
+w_v^p = \frac{d_v^p}{\sum_{u \in V_p} d_u^p}.
+$$
 
 For level demands at priority $p$:
 $$\min \sum_{b; p\in P^\min_b} E^p_{b, \text{lower}} + \sum_{b; p\in P^\max_b} E^p_{b, \text{upper}}$$
@@ -493,7 +497,8 @@ push!(
 ```
 
 **Key points:**
-- Error variables are weighted by demands (makes this absolute error minimization)
+- Error variables are weighted by their relative demand. This is equivalent to minimizing the total absolute unmet demand because the objective is the original demand-weighted error multiplied by the positive constant $1 / \sum_{v \in V_p} d_v^p$.
+- The normalization is applied after all demand coefficients for a priority have been updated, including demands collected from secondary networks. It keeps each first objective and its retained lexicographic constraint numerically well scaled when the flow scale is much larger than the active demands.
 - Separate objectives for each priority
 - Objectives are stored and optimized in order by `optimize_multi_objective!`
 
@@ -505,7 +510,10 @@ After minimizing the total error, minimize deviations from the average allocatio
 For flow demands:
 $$\min \sum_{v,p} \overline{E}_v^p$$
 
-where $\overline{E}_v^p \ge E_v^p - G^p$ and $G^p$ is the global average allocation rate.
+where $\overline{E}_v^p \ge E_v^p - G^p$ and $G^p$ is the demand-weighted mean relative error:
+$$
+G^p = \sum_{v \in V_p} w_v^p E_v^p.
+$$
 
 **Code implementation:**
 
@@ -516,8 +524,9 @@ average_flow_unit_error_constraint =
     @constraint(
         problem,
         [demand_priority = demand_priorities_all; ...],
-        sum_demands * average_flow_unit_error[demand_priority] ==
-            sum(d * error[node_id, demand_priority, 1] for node_id, d in demands),
+        average_flow_unit_error[demand_priority] ==
+            sum(weight * error[node_id, demand_priority, 1]
+                for node_id, weight in demand_weights),
         base_name = "average_flow_unit_error"
     )
 
@@ -849,15 +858,12 @@ function update_scaling!(p::Parameters, du::CVector, t::Float64, Δt::Float64)
     (; allocation) = p_independent
     (; current_storage) = state_and_time_dependent_cache
     for allocation_model in allocation.allocation_models
-        (; node_ids_in_subnetwork, scaling, flow_links_subnetwork) = allocation_model
+        (; node_ids_in_subnetwork, scaling) = allocation_model
         (; basin_ids_subnetwork) = node_ids_in_subnetwork
         mean_storage = sum(current_storage[id.idx] for id in basin_ids_subnetwork) /
             length(basin_ids_subnetwork)
         scaling.storage = (scaling.mean_half_storage + mean_storage) / 2
-        mean_flow = sum(
-            abs(get_flow(du, p_independent, t, link)) for link in flow_links_subnetwork
-        ) / length(flow_links_subnetwork)
-        scaling.flow = (scaling.storage / Δt + mean_flow) / 2
+        scaling.flow = scaling.storage / Δt
     end
 end
 ```
@@ -866,8 +872,8 @@ end
 - Storage variables are divided by `scaling.storage`
 - Flow variables are divided by `scaling.flow`
 - The storage scale is updated for each allocation solve from the current mean storage and the initialization-time mean half-storage
-- The flow scale is the average of the storage-derived flow scale and the mean magnitude of the current physical flows in the subnetwork
-- Typical values are O(1) in the scaled problem
+- The flow scale equals `scaling.storage / Δt`, so flow coefficients in the discretized volume-conservation equations are one
+- Per-priority flow-demand objectives are normalized independently, because a global flow scale can still make a small active demand numerically insignificant
 - Improves numerical stability and solver performance
 - Must scale/unscale when communicating with physical layer
 

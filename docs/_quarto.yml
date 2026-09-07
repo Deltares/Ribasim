@@ -1,5 +1,8 @@
 project:
   type: website
+  render:
+    - index.qmd
+    - "*.qmd"
   resources:
     - CNAME
 website:
