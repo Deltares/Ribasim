@@ -78,6 +78,8 @@ end
             "basin.cumulative_surface_runoff",
             "basin.cumulative_drainage",
             "basin.subgrid_level",
+            "flow_boundary.flow_rate",
+            "flow_boundary.cumulative_flow",
             "user_demand.demand",
             "user_demand.cumulative_inflow",
         ]
@@ -87,6 +89,41 @@ end
         # get_value_ptr does not copy
         @test value_first === value_second || pointer(value_first) == pointer(value_second)
     end
+end
+
+@testitem "FlowBoundary flow rate" begin
+    import BasicModelInterface as BMI
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    @test ispath(toml_path)
+    model = BMI.initialize(Ribasim.Model, toml_path)
+    (; flow_boundary) = model.integrator.p.p_independent
+
+    flow_rate = BMI.get_value_ptr(model, "flow_boundary.flow_rate")
+    cumulative_flow = BMI.get_value_ptr(model, "flow_boundary.cumulative_flow")
+    # NaN means that the flow rate from the model input is used
+    @test all(isnan, flow_rate)
+    @test length(flow_rate) == 2
+
+    day = 86400.0
+
+    # Set only the first boundary, the second keeps using the flow rate from the model input
+    flow_rate[1] = 2.0e-4
+    BMI.update_until(model, day)
+
+    cumulative_flow_input = Ribasim.integral(flow_boundary.flow_rate[2], 0.0, day)
+    @test flow_rate[1] == 2.0e-4
+    @test isnan(flow_rate[2])
+    @test cumulative_flow[1] ≈ day * 2.0e-4
+    @test cumulative_flow[2] ≈ cumulative_flow_input
+
+    # Now also set the second boundary
+    flow_rate[2] = 3.0e-4
+    BMI.update_until(model, 2day)
+
+    @test flow_rate == [2.0e-4, 3.0e-4]
+    @test cumulative_flow[1] ≈ 2day * 2.0e-4
+    @test cumulative_flow[2] ≈ cumulative_flow_input + day * 3.0e-4
 end
 
 @testitem "UserDemand inflow" begin

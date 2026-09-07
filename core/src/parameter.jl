@@ -727,6 +727,7 @@ outflow_link: The outgoing flow link metadata
 cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
 cumulative_flow_saveat: The exactly integrated cumulative boundary flow since the last saveat
 flow_rate: flow rate (exact)
+flow_rate_bmi: flow rate set externally via BMI, which takes precedence over `flow_rate`; `NaN` means unset
 concentration_itp: matrix with boundary concentrations per FlowBoundary per substance
 """
 @kwdef struct FlowBoundary{I} <: AbstractParameterNode
@@ -735,7 +736,39 @@ concentration_itp: matrix with boundary concentrations per FlowBoundary per subs
     cumulative_flow::Vector{Float64} = zeros(length(node_id))
     cumulative_flow_saveat::Vector{Float64} = zeros(length(node_id))
     flow_rate::Vector{I}
+    flow_rate_bmi::Vector{Float64} = fill(NaN, length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
+end
+
+"""
+The flow rate of the FlowBoundary with index `idx` at time `t`, which is the flow rate
+set via BMI if it is set, and the configured (time dependent) flow rate otherwise.
+"""
+function boundary_flow_rate(flow_boundary::FlowBoundary, idx::Int, t::Number)
+    flow_rate_bmi = flow_boundary.flow_rate_bmi[idx]
+    return if isnan(flow_rate_bmi)
+        flow_boundary.flow_rate[idx](t)
+    else
+        flow_rate_bmi
+    end
+end
+
+"""
+The exact integral of the flow rate of the FlowBoundary with index `idx` over `[t1, t2]`.
+A flow rate set via BMI is constant in time.
+"""
+function boundary_flow_integral(
+        flow_boundary::FlowBoundary,
+        idx::Int,
+        t1::Number,
+        t2::Number,
+    )
+    flow_rate_bmi = flow_boundary.flow_rate_bmi[idx]
+    return if isnan(flow_rate_bmi)
+        integral(flow_boundary.flow_rate[idx], t1, t2)
+    else
+        flow_rate_bmi * (t2 - t1)
+    end
 end
 
 """
