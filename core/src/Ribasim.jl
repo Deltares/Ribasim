@@ -119,7 +119,7 @@ using SQLite: SQLite, DB, Query, esc_id
 using DBInterface: execute, prepare
 
 # Logging to both the console and a file
-using Logging: with_logger, @logmsg, LogLevel, AbstractLogger, Debug, global_logger
+using Logging: with_logger, @logmsg, LogLevel, AbstractLogger, Debug, current_logger
 using LoggingExtras:
     LoggingExtras, FileLogger, TeeLogger, MinLevelLogger, EarlyFilteredLogger
 using TerminalLoggers: TerminalLogger

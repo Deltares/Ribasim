@@ -8,11 +8,10 @@ function BMI.initialize(::Type{Model}, config_path::AbstractString)::Model
     mkpath(results_path(config))
     io = open(results_path(config, "ribasim.log"), "w")
     logger, _ = setup_logger(; verbosity = config.logging.verbosity, stream = io)
-    # We rely on setting the global logger, if this causes issues
-    # we should store the logger in the Model.
-    global_logger(logger)
-    log_startup(config, config_path)
-    return Model(config_path)
+    return with_logger(logger) do
+        log_startup(config, config_path)
+        Model(config; logger, log_io = io)
+    end
 end
 
 """
@@ -21,33 +20,31 @@ end
 Write all results to the configured files.
 """
 function BMI.finalize(model::Model)::Nothing
-    write_results(model)
-    log_finalize(model)
-    logger = global_logger()
-    try
-        io = logger_stream(logger)
-        close(io)
-    catch
-        error("Could not close the log file.")
+    with_logger(model.logger) do
+        write_results(model)
+        log_finalize(model)
     end
+    isnothing(model.log_io) || close(model.log_io)
     return nothing
 end
 
 function BMI.update(model::Model)::Nothing
-    SciMLBase.step!(model.integrator)
+    with_logger(model.logger) do
+        SciMLBase.step!(model.integrator)
+    end
     return nothing
 end
 
 function BMI.update_until(model::Model, time::Float64)::Nothing
-    (; t) = model.integrator
-    dt = time - t
-    if dt < 0
-        error("The model has already passed the given timestamp.")
-    elseif dt == 0
-        return nothing
-    else
-        add_allocation_tstop!(model.integrator.p.p_independent.allocation.time, time)
-        SciMLBase.step!(model.integrator, dt, true)
+    with_logger(model.logger) do
+        (; t) = model.integrator
+        dt = time - t
+        if dt < 0
+            error("The model has already passed the given timestamp.")
+        elseif dt > 0
+            add_allocation_tstop!(model.integrator.p.p_independent.allocation.time, time)
+            SciMLBase.step!(model.integrator, dt, true)
+        end
     end
     return nothing
 end
@@ -58,38 +55,40 @@ end
 This uses a typeassert to ensure that the return type annotation doesn't create a copy.
 """
 function BMI.get_value_ptr(model::Model, name::String)::Vector{Float64}
-    (; u, p) = model.integrator
-    (; p_independent, state_and_time_dependent_cache) = p
-    (; basin, flow_boundary, user_demand, subgrid) = p_independent
+    return with_logger(model.logger) do
+        (; u, p) = model.integrator
+        (; p_independent, state_and_time_dependent_cache) = p
+        (; basin, flow_boundary, user_demand, subgrid) = p_independent
 
-    return if name == "basin.storage"
-        state_and_time_dependent_cache.current_storage
-    elseif name == "basin.level"
-        state_and_time_dependent_cache.current_level
-    elseif name == "basin.infiltration"
-        basin.vertical_flux.infiltration::Vector{Float64}
-    elseif name == "basin.drainage"
-        basin.vertical_flux.drainage::Vector{Float64}
-    elseif name == "basin.surface_runoff"
-        basin.vertical_flux.surface_runoff::Vector{Float64}
-    elseif name == "basin.cumulative_infiltration"
-        unsafe_array(u.infiltration)::Vector{Float64}
-    elseif name == "basin.cumulative_drainage"
-        basin.cumulative_drainage::Vector{Float64}
-    elseif name == "basin.cumulative_surface_runoff"
-        basin.cumulative_surface_runoff::Vector{Float64}
-    elseif name == "basin.subgrid_level"
-        subgrid.level::Vector{Float64}
-    elseif name == "flow_boundary.flow_rate"
-        flow_boundary.flow_rate_bmi::Vector{Float64}
-    elseif name == "flow_boundary.cumulative_flow"
-        flow_boundary.cumulative_flow::Vector{Float64}
-    elseif name == "user_demand.demand"
-        vec(user_demand.demand)::Vector{Float64}
-    elseif name == "user_demand.cumulative_inflow"
-        unsafe_array(u.user_demand_inflow)::Vector{Float64}
-    else
-        error("Unknown variable $name")
+        if name == "basin.storage"
+            state_and_time_dependent_cache.current_storage
+        elseif name == "basin.level"
+            state_and_time_dependent_cache.current_level
+        elseif name == "basin.infiltration"
+            basin.vertical_flux.infiltration::Vector{Float64}
+        elseif name == "basin.drainage"
+            basin.vertical_flux.drainage::Vector{Float64}
+        elseif name == "basin.surface_runoff"
+            basin.vertical_flux.surface_runoff::Vector{Float64}
+        elseif name == "basin.cumulative_infiltration"
+            unsafe_array(u.infiltration)::Vector{Float64}
+        elseif name == "basin.cumulative_drainage"
+            basin.cumulative_drainage::Vector{Float64}
+        elseif name == "basin.cumulative_surface_runoff"
+            basin.cumulative_surface_runoff::Vector{Float64}
+        elseif name == "basin.subgrid_level"
+            subgrid.level::Vector{Float64}
+        elseif name == "flow_boundary.flow_rate"
+            flow_boundary.flow_rate_bmi::Vector{Float64}
+        elseif name == "flow_boundary.cumulative_flow"
+            flow_boundary.cumulative_flow::Vector{Float64}
+        elseif name == "user_demand.demand"
+            vec(user_demand.demand)::Vector{Float64}
+        elseif name == "user_demand.cumulative_inflow"
+            unsafe_array(u.user_demand_inflow)::Vector{Float64}
+        else
+            error("Unknown variable $name")
+        end
     end
 end
 
