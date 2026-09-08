@@ -6,21 +6,29 @@ struct SavedResults
 end
 
 """
-    Model(config_path::AbstractString)
-    Model(config::Config)
+    Model(config_path::AbstractString; kwargs...)
+    Model(config::Config; logger, log_io)
 
-Initialize a Model.
+An initialized model, ready to be stepped through time with [`solve!`](@ref) or the
+Basic Model Interface ([BMI](https://github.com/Deltares/BasicModelInterface.jl)),
+which is implemented on the Model.
 
-The Model struct is an initialized model, combined with the [`Config`](@ref) used to create it and saved results.
-The Basic Model Interface ([BMI](https://github.com/Deltares/BasicModelInterface.jl)) is implemented on the Model.
-A Model can be created from the path to a TOML configuration file, or a Config object.
+A Model can be created from the path to a TOML configuration file, or a [`Config`](@ref) object.
+Both accept a `logger` to send log messages to, and the `log_io` stream it writes to, if any.
 """
 struct Model
+    "The SciML integrator holding the state, parameters and solver settings."
     integrator::SciMLBase.AbstractODEIntegrator
+    "The TOML configuration that this Model was built from."
     config::Config
+    "Results collected by the saving callbacks over the course of the simulation."
     saved::SavedResults
-    function Model(integrator, config, saved)
-        return new(integrator, config, saved)
+    "Logger that all Ribasim log messages of this Model are sent to."
+    logger::AbstractLogger
+    "Log file owned by the Model, closed in `BMI.finalize`."
+    log_io::Union{IOStream, Nothing}
+    function Model(integrator, config, saved, logger, log_io)
+        return new(integrator, config, saved, logger, log_io)
     end
 end
 
@@ -101,11 +109,15 @@ function get_diff_eval(du::CVector, u::CVector, p::Parameters, solver::Solver)
     return jac_prototype, jac, tgrad
 end
 
-function Model(config_path::AbstractString)::Model
-    return Model(Config(config_path))
+function Model(config_path::AbstractString; kwargs...)::Model
+    return Model(Config(config_path); kwargs...)
 end
 
-function Model(config::Config)::Model
+function Model(
+        config::Config;
+        logger::AbstractLogger = current_logger(),
+        log_io::Union{IOStream, Nothing} = nothing,
+    )::Model
     if !valid_config(config)
         error("Invalid configuration in TOML.")
     end
@@ -236,7 +248,7 @@ function Model(config::Config)::Model
     )
     @debug "Setup integrator."
 
-    model = Model(integrator, config, saved)
+    model = Model(integrator, config, saved, logger, log_io)
     return model
 end
 
@@ -308,6 +320,7 @@ the fixed timestep.
 function compute_next_allocation_tstop(integrator)::Float64
     (; u, p, t) = integrator
     (; allocation) = p.p_independent
+    (; dtmin, dtmax) = allocation.config.allocation
 
     Δt = if allocation.time.adaptive
         du = get_du(integrator)
@@ -319,7 +332,7 @@ function compute_next_allocation_tstop(integrator)::Float64
             Δt_sub = compute_adaptive_allocation_Δt(am, p, du, t, allocation.config)
             Δt = min(Δt, Δt_sub)
         end
-        Δt
+        clamp(Δt, dtmin, dtmax)
     else
         allocation.time.dt_fixed
     end

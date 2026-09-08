@@ -98,11 +98,16 @@ class Allocation(ChildModel):
         Relative tolerance for linearization errors of basin profiles and connector node Q(h) relationships (Optional, defaults to 0.01)
     dtmin : float
         Minimum allocation timestep in seconds for adaptive timestepping (Optional, defaults to 3600.0)
+    dtmax : float
+        Maximum allocation timestep in seconds for adaptive timestepping, typically the human intervention interval (Optional, defaults to 86400.0)
+    route_priority : RoutePriority
+        The default route priority per node type
     """
 
     dt: float | None = None
     reltol_linearization: float = 0.01
     dtmin: float = 3600.0
+    dtmax: float = 86400.0
     route_priority: RoutePriority = RoutePriority()
 
 

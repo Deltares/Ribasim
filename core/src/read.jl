@@ -1417,9 +1417,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
         take_first = (:demand_priority,),
     )
     errors |= parse_parameter!(user_demand, config, :min_level; static, time)
-
-    parse_demand!(user_demand, static, time, cyclic_times, demand_priorities, config)
-
+    errors |= parse_demand!(user_demand, static, time, cyclic_times, demand_priorities, config)
     errors |=
         !valid_demand(
         user_demand.node_id,
@@ -1428,7 +1426,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
     )
 
     user_demand.allocated[.!user_demand.has_demand_priority] .= 0
-    errors && error("Errors encountered when parsing LevelDemand data.")
+    errors && error("Errors encountered when parsing UserDemand data.")
     return user_demand
 end
 
@@ -1494,10 +1492,9 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
 
     level_demand = LevelDemand(; node_id, demand_priorities)
 
-    parse_demand!(level_demand, static, time, cyclic_times, demand_priorities, config)
+    errors = parse_demand!(level_demand, static, time, cyclic_times, demand_priorities, config)
 
     # Validate demands
-    errors = false
     for id in node_id
         ts = invalid_nested_interpolation_times(
             level_demand.min_level[id.idx];
@@ -1510,7 +1507,7 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
             @error "The minimum and maximum levels for subsequent LevelDemand demand priorities do not define nested windows" id times
         end
     end
-    errors && error("Invalid LevelDemand levels detected.")
+    errors && error("Errors encountered when parsing LevelDemand data.")
 
     for id in node_id
         basin_ids = collect(outneighbor_labels_type(graph, id, LinkType.control))

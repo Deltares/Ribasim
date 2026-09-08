@@ -1142,7 +1142,10 @@ function SciMLBase.log_numerical_instability(
     )
     all(isempty(msgs) for (_, msgs) in sections) && return ""
 
-    diagnostic = integrator.accept_step ? "\n\nDiagnostics:" : "\n\nDiagnostics (the last step failed):"
+    diagnostic = "\n\nPhysical layer diagnostics:"
+    if !integrator.accept_step
+        diagnostic = diagnostic[1:(end - 1)] * " (the last timestep failed):"
+    end
 
     for (title, msgs) in sections
         isempty(msgs) && continue

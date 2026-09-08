@@ -281,7 +281,7 @@ end
         log_numerical_instability(integrator),
         r"(  Basin #\d+): [^\n]+" => s"\1",
     )
-    @test diagnostics == "\n\nDiagnostics:\n\nNon-plausible depths (outside [0,2000.0]):\n  Basin #1\n  Basin #3\n  Basin #6\n  Basin #9\n\nNon-finite states:\n  TabulatedRatingCurve #4: Inf\n\nJacobian values:\n  row(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries (e.g. J[1,1] = NaN, J[1,2] = NaN, J[1,3] = NaN, J[1,4] = NaN, J[1,5] = NaN), suggesting a singularity in those equation(s)\n  column(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries, suggesting those state component(s) are diverging"
+    @test diagnostics == "\n\nPhysical layer diagnostics:\n\nNon-plausible depths (outside [0,2000.0]):\n  Basin #1\n  Basin #3\n  Basin #6\n  Basin #9\n\nNon-finite states:\n  TabulatedRatingCurve #4: Inf\n\nJacobian values:\n  row(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries (e.g. J[1,1] = NaN, J[1,2] = NaN, J[1,3] = NaN, J[1,4] = NaN, J[1,5] = NaN), suggesting a singularity in those equation(s)\n  column(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries, suggesting those state component(s) are diverging"
 end
 
 @testitem "basic transient model" begin

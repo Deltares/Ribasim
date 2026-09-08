@@ -506,7 +506,6 @@ function check_water_balance_error!(
 end
 
 function save_solver_stats(u, t, integrator)
-    (; dt) = integrator
     (; stats) = integrator.sol
     return (;
         time = t,
@@ -515,7 +514,6 @@ function save_solver_stats(u, t, integrator)
         linear_solves = stats.nsolve,
         accepted_timesteps = stats.naccept,
         rejected_timesteps = stats.nreject,
-        dt,
     )
 end
 
