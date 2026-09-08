@@ -615,7 +615,7 @@ function set_new_control_state!(
     (; p, t) = integrator
     (; p_independent) = p
     (; discrete_control, pump, outlet, tabulated_rating_curve) = p_independent
-    (; record, minimal_discrete_control_update_dt, last_update_time) = discrete_control
+    (; record, min_discrete_control_interval, last_update_time) = discrete_control
 
     # Get the control state corresponding to the new truth state,
     # if one is defined
@@ -638,8 +638,8 @@ function set_new_control_state!(
 
         # Check whether the control state update of this node came too quickly after the previous one
         update_dt = t - last_update_time[discrete_control_id.idx]
-        if update_dt < minimal_discrete_control_update_dt
-            @error lazy"$discrete_control_id changed control state with a smaller time interval than minimal_discrete_control_update_dt." update_dt minimal_discrete_control_update_dt
+        if update_dt < min_discrete_control_interval
+            @error lazy"$discrete_control_id changed control state with a smaller time interval than min_discrete_control_interval." update_dt min_discrete_control_interval
             return true
         else
             last_update_time[discrete_control_id.idx] = t
