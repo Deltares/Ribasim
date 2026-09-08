@@ -734,7 +734,10 @@ def continuous_concentration_condition_model() -> Model:
             ),
             # More than 20% of seawater (35 g/L)
             discrete_control.Condition(
-                threshold_high=[7], compound_variable_id=1, condition_id=1
+                threshold_low=[6.5],
+                threshold_high=[7],
+                compound_variable_id=1,
+                condition_id=1,
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["Off", "On"]),
         ],
