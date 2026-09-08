@@ -62,7 +62,7 @@ function log_bottlenecks(model; interrupt::Bool)
     flow_error = if p_independent.convergence_ncalls[1] > 0
         p_independent.convergence ./ p_independent.convergence_ncalls[1]
     elseif !isempty(saved.flow.saveval)
-        saved.flow.saveval[end].convergence.flow
+        saved.flow.saveval[end].flow_convergence
     else
         @logmsg level "No data available for logging convergence bottlenecks."
         return nothing
@@ -101,7 +101,7 @@ function log_finalize(model)::Cint
         t = datetime_since(model.integrator.t, model.config.starttime)
         (; retcode) = model.integrator.sol
         @error """The model exited at model time $t with return code $retcode at $(now()).
-        See https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes"""
+        See https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes""" is_finished(model)
         return 1
     end
 end
