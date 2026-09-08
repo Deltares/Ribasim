@@ -152,7 +152,7 @@ class Solver(ChildModel):
         Universal maximum Basin depth above which the Basin is flagged when the model becomes unstable
     level_difference_threshold : float
         Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes
-    minimal_discrete_control_update_dt : float
+    min_discrete_control_interval : float
         The minimum time between control state updates, if the time is smaller an error will be thrown
     specialize : bool
         Trades initialization speed for simulation speed, useful for long-running simulations. (Optional, defaults to false)
