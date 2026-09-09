@@ -214,7 +214,7 @@ function update_J_inner!(
     elseif row in state_ranges.user_demand_inflow
         inflow_link_meta = p_independent.state_inflow_link[row]
         inflow_id = inflow_link_meta.link[1]
-        if inflow_id.type == NodeType.Basin
+        if inflow_id.is_basin
             J_inner[inflow_id.idx, col_reduced] -= val
         end
     elseif row in state_ranges.user_demand_outflow
@@ -224,11 +224,11 @@ function update_J_inner!(
     elseif row in state_ranges.manning_resistance
         update_J_inner!(J_inner, val, node_id, col_reduced, manning_resistance)
     elseif row in state_ranges.evaporation
-        @assert node_id.type == NodeType.Basin
+        @assert node_id.is_basin
         @assert node_id.idx == col_reduced
         J_inner[node_id.idx, col_reduced] -= val
     elseif row in state_ranges.infiltration
-        @assert node_id.type == NodeType.Basin
+        @assert node_id.is_basin
         @assert node_id.idx == col_reduced
         J_inner[node_id.idx, col_reduced] -= val
     else
@@ -249,13 +249,13 @@ function update_J_inner!(
     )::Nothing
     if do_inflow
         inflow_id = node.inflow_link[node_id.idx].link[1]
-        if inflow_id.type == NodeType.Basin
+        if inflow_id.is_basin
             J_inner[inflow_id.idx, col_reduced] -= val
         end
     end
 
     outflow_id = node.outflow_link[node_id.idx].link[2]
-    if outflow_id.type == NodeType.Basin
+    if outflow_id.is_basin
         J_inner[outflow_id.idx, col_reduced] += val
     end
     return nothing

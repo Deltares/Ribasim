@@ -14,7 +14,7 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
 
         cumulative_user_demand_outflow = flow_update_on_link(integrator, outflow_link.link)
 
-        if to_node.type == NodeType.Basin
+        if to_node.is_basin
             # Mix concentrations of all inflow links weighted by each link's cumulative
             # flow. The return-flow concentration is a mass-weighted average of the
             # source basins' concentrations.
@@ -69,12 +69,12 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
             continue
         end
 
-        if from_node.type == NodeType.Basin
+        if from_node.is_basin
             cumulative_flow = flow_update_on_link(integrator, inflow_link.link)
             # Negative flow over the inflow link means flow into the from_node
             if cumulative_flow < 0
                 cumulative_in[from_node.idx] -= cumulative_flow
-                if to_node.type == NodeType.Basin
+                if to_node.is_basin
                     mass[from_node.idx] .-=
                         concentration_state[to_node.idx, :] .* cumulative_flow
                 elseif to_node.type == NodeType.LevelBoundary
@@ -94,11 +94,11 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
             end
         end
 
-        if to_node.type == NodeType.Basin
+        if to_node.is_basin
             cumulative_flow = flow_update_on_link(integrator, outflow_link.link)
             if cumulative_flow > 0
                 cumulative_in[to_node.idx] += cumulative_flow
-                if from_node.type == NodeType.Basin
+                if from_node.is_basin
                     mass[to_node.idx] .+=
                         concentration_state[from_node.idx, :] .* cumulative_flow
 
@@ -132,13 +132,13 @@ function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
         from_node = inflow_link.link[1]
         to_node = outflow_link.link[2]
 
-        if from_node.type == NodeType.Basin
+        if from_node.is_basin
             flow = flow_update_on_link(integrator, inflow_link.link)
             if flow > 0
                 mass[from_node.idx] .-= concentration_state[from_node.idx, :] .* flow
             end
         end
-        if to_node.type == NodeType.Basin
+        if to_node.is_basin
             flow = flow_update_on_link(integrator, outflow_link.link)
             if flow < 0
                 mass[to_node.idx] .+= concentration_state[to_node.idx, :] .* flow

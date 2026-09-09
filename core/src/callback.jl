@@ -328,7 +328,7 @@ function forcing_update(integrator::DEIntegrator, node_id::NodeID)::Tuple{Float6
     (; basin) = p.p_independent
     (; vertical_flux) = basin
 
-    @assert node_id.type == NodeType.Basin
+    @assert node_id.is_basin
 
     fixed_area = basin_areas(basin, node_id.idx)[end]
 
@@ -411,7 +411,7 @@ function save_flow(u, t, integrator)
     for (flow, inflow_link, outflow_link) in
         zip(flow_mean, state_inflow_link, state_outflow_link)
         inflow_id = inflow_link.link[1]
-        if inflow_id.type == NodeType.Basin
+        if inflow_id.is_basin
             if flow > 0
                 outflow_mean[inflow_id.idx] += flow
             else
@@ -420,7 +420,7 @@ function save_flow(u, t, integrator)
         end
 
         outflow_id = outflow_link.link[2]
-        if outflow_id.type == NodeType.Basin
+        if outflow_id.is_basin
             if flow > 0
                 inflow_mean[outflow_id.idx] += flow
             else
@@ -436,7 +436,7 @@ function save_flow(u, t, integrator)
     for (outflow_link, id) in zip(flow_boundary.outflow_link, flow_boundary.node_id)
         flow = flow_boundary_mean[id.idx]
         outflow_id = outflow_link.link[2]
-        if outflow_id.type == NodeType.Basin
+        if outflow_id.is_basin
             inflow_mean[outflow_id.idx] += flow
         end
     end
