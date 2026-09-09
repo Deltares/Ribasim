@@ -249,10 +249,10 @@ $$
 	0 \le F^p_v \le d_v^p, \quad \forall v \in (UD \cup FD),\\; p \in P_v.
 $$
 
-As indicated, each of these allocated flow variables is bounded between 0 and the corresponding demand (NOTE: in this text we assume that the demands are already expressed in the scaled flow unit). For UserDemand nodes we have that the sum of these allocated flow variables over the priorities is equal to the total flow into that node:
+As indicated, each of these allocated flow variables is bounded between 0 and the corresponding demand (NOTE: in this text we assume that the demands are already expressed in the scaled flow unit). A UserDemand node can have multiple inflow links; for UserDemand nodes we have that the sum of the flows over all inflow links is equal to the sum of the allocated flow variables over the priorities:
 
 $$
-	F_{(b_\text{upstream}, v)} = \sum_{p \in P_v} F^p_v, \quad \forall v
+	\sum_{b \in \text{in}(v)} F_{(b, v)} = \sum_{p \in P_v} F^p_v, \quad \forall v
 	\in UD.
 $$
 
@@ -260,10 +260,12 @@ Note that this means that we enforce that only allocated flow can enter a UserDe
 For FlowDemand we do allow that there is more flow through the node with the flow demand than the total demand (or even negative flow). To allow this freedom, we introduce a special 'demand priority 0' variable
 
 $$
-	0 \le F^0_v \le \frac{\text{MAX\_ABS\_FLOW}}{\text{scaling.flow}}, \quad \forall v \in FD
+	0 \le F^0_v \le \max\left(0, Q^\max_{(b_\text{upstream}, v)}\right), \quad \forall v \in FD
 $$
 
-We only let $F^0_v$ account for surplus flow, because if we allow that variable to be negative it can be used to allocate to demands. To make sure we still account for the possibility that the flow through the node with the flow demand is negative, we allow the allocated flow variable with the earliest priority to be negative, and account for this when writing the results.
+where $Q^\max_{(b_\text{upstream}, v)}$ is the upper flow capacity of the inflow link of $v$ (see @sec-flow-capacities).
+
+We only let $F^0_v$ account for surplus flow, because if we allow that variable to be negative it can be used to allocate to demands. To make sure we still account for the possibility that the flow through the node with the flow demand is negative, we allow the allocated flow variable with the earliest priority to be negative down to the lower flow capacity $\min\left(0, Q^\min_{(b_\text{upstream}, v)}\right)$ of that link, and account for this when writing the results.
 
 With this we formulate the constraints
 
@@ -417,7 +419,13 @@ $$
 
 ### Control by allocation
 
-When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must have `allocation_controlled` set to `true` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static). When a Pump or Outlet is allocation controlled, the flow through the node is only bounded by its capacity and Pump or Outlet specific constraints based on the difference between upstream and downstream level (see [Pump equations](/reference/node/pump.qmd#equations) or [Outlet equations](/reference/node/outlet.qmd#equations)).For a TabulatedRatingCurve, the allocation-determined flow is bounded by the maximum flow the rating curve can physically deliver at the current upstream level, i.e. $Q(h)$ evaluated at the expected level at the end of the allocation time step. In the physical layer, the allocated flow rate replaces the usual $Q(h)$ lookup while still applying the same reduction factors for low storage, level difference, and maximum downstream level (see [TabulatedRatingCurve equations](/reference/node/tabulated-rating-curve.qmd#equations)). After all goals have been optimized for, the flow rate through the allocation controllable node is communicated to the physical layer.
+When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must have `allocation_controlled` set to `true` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static). When a Pump or Outlet is allocation controlled, the flow through the node is only bounded by its capacity and Pump or Outlet specific constraints based on the difference between upstream and downstream level (see [Pump equations](/reference/node/pump.qmd#equations) or [Outlet equations](/reference/node/outlet.qmd#equations)).
+
+:::{.callout-important}
+Because the allocation problem must be bounded, an allocation controlled Pump or Outlet is required to have a finite `max_flow_rate`. This is validated at the start of the simulation, for the initial parameters as well as for all DiscreteControl states of the node. Note that Pumps and Outlets that connect the primary network to a secondary network are automatically made allocation controlled, so they also require a finite `max_flow_rate`.
+:::
+
+For a TabulatedRatingCurve, the allocation-determined flow is bounded by the maximum flow the rating curve can physically deliver at the highest upstream level reachable within the allocation time step, i.e. $Q(h)$ evaluated at that level. In the physical layer, the allocated flow rate replaces the usual $Q(h)$ lookup while still applying the same reduction factors for low storage, level difference, and maximum downstream level (see [TabulatedRatingCurve equations](/reference/node/tabulated-rating-curve.qmd#equations)). After all goals have been optimized for, the flow rate through the allocation controllable node is communicated to the physical layer.
 
 
 ### Interaction of allocation with other control systems
@@ -437,19 +445,17 @@ The following data of the parameters and state of a Ribasim model are relevant f
 
 ### The subnetwork
 
-The allocation problem is solved per subnetwork, which is given by a subset $S \subset V$ of node IDs. Different subnetworks are disjoint from each other. Nodes can also not be part of any subnetwork.
+The allocation problem is solved per subnetwork, which is given by a subset $S \subset V$ of node IDs. Different subnetworks are disjoint from each other. Nodes can also not be part of any subnetwork. The flow links of the problem are all links that have at least one of their two nodes in $S$, so links that connect the subnetwork to the primary network are included.
 
-### Source flows
+### Boundary flows
 
-Sources are indicated by a set of links in the subnetwork
+Links pointing out of a FlowBoundary node carry a known flow rate rather than a decision variable: the corresponding flow variable is fixed to the average flow over the last allocation interval $\Delta t_{\text{alloc}}$ in the physical layer,
+
 $$
-E_S^\text{source} \subset E,
+    \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^tQ_{ij}(t') dt'.
 $$
-which are automatically inferred as all links that point out of LevelBoundary or FlowBoundary nodes. That is, if $(i,j) \in E_S^\text{source}$, then the average over the last allocation interval $\Delta t_{\text{alloc}}$ of the flow over this link
-$$
-    \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^tQ_{ij}(t') dt'
-$$
- is treated as a source flow in the allocation problem. These links are either coming from a boundary/source node (e.g. a level or flow boundary) or connect the primary network to a subnetwork. For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description).
+
+For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description). LevelBoundary nodes instead enter the problem through their level, which is a fixed parameter of the optimization (see [Boundary nodes](#boundary-nodes)).
 
 ### User demands
 
@@ -476,40 +482,27 @@ for all $i \in FD_S$. Here $d^{p_{\text{df}}}$ is given by the original flow dem
 
 ## Simulation (physical layer) input
 
+### UserDemand return flows
+UserDemand nodes dictate proportional relationships between flows over links in the subnetwork. The return factor is given by $0 \le r_i(t) \le 1, i \in U_S$: the outflow of a UserDemand node is $r_i$ times the sum of the flows over all its inflow links.
 
-### Constraining factors
+## Flow capacities {#sec-flow-capacities}
 
-#### Flow magnitude and direction constraints
-Nodes in the Ribasim model that have a `max_flow_rate`, i.e. Pump, Outlet and LinearResistance, put a constraint on the flow through that node. Some nodes only allow flow in one direction, like Pump, Outlet and TabulatedRatingCurve.
+Every flow variable in the optimization problem needs bounds, both because unbounded variables make the problem numerically poorly behaved and because an unbounded problem cannot be solved at all. These bounds are recomputed before every optimization, because they depend on the current state of the physical layer and on the allocation timestep $\Delta t$.
 
-#### UserDemand return flows
-UserDemand nodes dictate proportional relationships between flows over links in the subnetwork. The return factor is given by $0 \le r_i(t) \le 1, i \in U_S$.
+For each flow link, the bounds are the intersection of the bounds imposed by the node at either end of the link. Per node type:
 
-## The subnetwork
-The subnetwork consists of a set of nodes $S \subset V$ and links
+- **FlowBoundary**: the flow variable is fixed to the prescribed boundary flow, so no bounds are needed.
+- **Pump and Outlet**: bounded by `min_flow_rate` and `max_flow_rate`. Since allocation assigns a single flow rate for the whole timestep, the tightest bounds over $[t, t + \Delta t]$ are used, i.e. the largest minimum and the smallest maximum of the two interpolated endpoints.
+- **UserDemand**: both the inflow links and the return flow link are bounded between $0$ and the total demand of the node summed over all its demand priorities. For the upper bound the return factor is conservatively assumed to be $1$.
+- **LinearResistance, ManningResistance and non-allocation-controlled TabulatedRatingCurve**: the flow of these nodes is given by the linearized relation
 
-$$
-    E_S = (S \times S) \cup E_S^\text{source},
-$$
+  $$Q \approx Q^n + \frac{\partial Q}{\partial h_a}\Delta h_a + \frac{\partial Q}{\partial h_b}\Delta h_b.$$
 
-i.e. the links that lie within the subnetwork together with the source links (which can be partially outside the subnetwork).
-The nodes in $S$ together with the connected nodes outside the subnetwork are called the extended subnetwork.
+  Evaluating this expression over the interval of level changes $\Delta h$ that the Basins at either end can reach within the timestep gives the tightest bounds consistent with the flow constraint itself. The reachable level change of a Basin follows from the bounds on its storage change decision variable $\Delta S$ using the same linearized profile the constraints use, $\Delta h = \Delta S / A^n$. Levels of LevelBoundary and Terminal nodes are fixed within one optimization, so they contribute no level change.
+- **Allocation controlled TabulatedRatingCurve**: bounded between $0$ and $Q(h_{a,\max})$, where $h_{a,\max}$ is the highest upstream level reachable within the timestep. Because $Q(h)$ is validated to be non-decreasing and all reduction factors applied in the physical layer are in $[0, 1]$, this is a valid upper bound.
+- **Allocation controlled Pump and Outlet**: bounded by `max_flow_rate`, which is [required to be finite](#control-by-allocation).
 
-### Capacities
-
-Each link in the subnetwork has an associated capacity. These capacities are collected in the sparse capacity matrix $C_S \in \overline{\mathbb{R}}_{\ge 0}^{n\times n}$ where $n$ is the number of nodes in the extended subnetwork. An link capacity is infinite if there is nothing in the model constraining the capacity.
-
-The capacities are determined in different ways:
-
-- If an link does not exist in the allocation network, i.e. $(i,j) \notin E_S$ for certain $1 \le i,j\le n'$, then $(C_S)_{i,j} = 0$;
-- The capacity of the link $e \in E_S$ is given by the smallest `max_flow_rate` of the nodes along the equivalent links in the subnetwork. If there are no nodes with a `max_flow_rate`, the link capacity is infinite. If the `max_flow_rate` is time-dependent, only the value at the starttime of the simulation is considered;
-- If the link is a source, the capacity of the link is given by the flow rate of that source;
-
-There are also capacities for special links:
-
-- $C^{LD}_S \in \mathbb{R}^b_{\ge 0}$ where $b = \# B_S$ is the number of basins, for the flow supplied by basins based on level demand (this capacity is 0 for basins that have no level demand).
-- $C^{FD}_S \in \mathbb{R}^c_{\ge 0}$ where $c = \# FD_S$ is the number of nodes with a flow demand, for the flow supplied by flow buffers at these nodes with a flow demand.
-- $C^{UD}_S \in \mathbb{R}^f_{\ge 0}$ where $f = \# U_S$, for the flow supplied by the user demand outflow source whose capacity is given by return flows.
+Because a bound derived this way follows directly from the flow constraint of the node, it can never make the problem infeasible: any flow that satisfies the constraints also satisfies the bound.
 
 ## Route priority
 
