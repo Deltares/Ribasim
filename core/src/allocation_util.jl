@@ -1,5 +1,3 @@
-const MAX_ABS_FLOW = 5.0e5 # m/s
-
 is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
 
 """
