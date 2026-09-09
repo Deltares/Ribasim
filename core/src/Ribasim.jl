@@ -75,7 +75,7 @@ using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
-using SparseArrays: SparseMatrixCSC, sparse, nzrange, rowvals
+using SparseArrays: SparseMatrixCSC, sparse, nzrange, rowvals, spzeros
 
 # Linear algebra
 using LinearAlgebra: LinearAlgebra, I, mul!, UniformScaling
@@ -177,12 +177,13 @@ using Printf: @sprintf
 using Base.Threads: nthreads
 
 include("cvectors.jl")
-using .CVectors: CVector, getaxes, getdata
+using .CVectors: CVector, getaxes, getdata, cvector_axes_type, cvector_axes_from_lengths
 include("schema.jl")
 include("config.jl")
 using .config
 include("parameter.jl")
 include("validation.jl")
+include("formulate_flows.jl")
 include("solve.jl")
 include("logo.jl")
 include("logging.jl")
@@ -191,7 +192,6 @@ include("allocation_init.jl")
 include("allocation_optim.jl")
 include("util.jl")
 include("graph.jl")
-include("differentiation.jl")
 include("model.jl")
 include("read.jl")
 include("write.jl")

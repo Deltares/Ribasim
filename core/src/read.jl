@@ -206,7 +206,7 @@ function parse_parameter!(
         is_complete::Bool = true,
         is_controllable::Bool = true,
         node_id = node.node_id,
-        cyclic_times = zeros(Bool, length(node.node_id)),
+        cyclic_times = zeros(Bool, length(node)),
         field_name::Symbol = parameter_name,
         take_first::NTuple{N, Symbol} where {N} = (),
         node_ids_all::Union{Vector{NodeID}, Nothing} = nothing,
@@ -1742,54 +1742,14 @@ function Parameters(db::DB, config::Config)::Parameters
     )
 
     subgrid = Subgrid(db, config, basin)
+    flow_ranges = count_flow_ranges(nodes)
+    state_ranges = count_state_ranges(nodes)
 
-    u_ids = state_node_ids(
-        (;
-            nodes.tabulated_rating_curve,
-            nodes.pump,
-            nodes.outlet,
-            nodes.user_demand,
-            nodes.linear_resistance,
-            nodes.manning_resistance,
-            nodes.basin,
-            nodes.pid_control,
-        )
-    )
-    node_id = reduce(vcat, u_ids)
-    n_states = length(node_id)
-    state_ranges = count_state_ranges(u_ids)
-    state_inflow_link, state_outflow_link = get_state_flow_links(graph, nodes)
-    link_to_state_idx = build_link_to_state_idx(state_inflow_link)
-
-    set_target_ref!(
-        nodes.pid_control.target_ref,
-        nodes.pid_control.node_id,
-        fill("flow_rate", length(node_id)),
-        state_ranges,
-        graph,
-    )
-    set_target_ref!(
-        nodes.continuous_control.target_ref,
-        nodes.continuous_control.node_id,
-        nodes.continuous_control.controlled_variable,
-        state_ranges,
-        graph,
-    )
-
-    n_basin = length(nodes.basin.node_id)
-    n_pid_control = length(nodes.pid_control.node_id)
-    u_reduced = CVector(
-        zeros(n_basin + n_pid_control),
-        (;
-            combined_cumulative_flows = 1:n_basin,
-            integral = (n_basin + 1):(n_basin + n_pid_control),
-        ),
-    )
+    inflow_id, outflow_id = get_flow_ids(nodes, flow_ranges)
+    incidence_matrix = get_incidence_matrix(inflow_id, outflow_id)
 
     p_independent = ParametersIndependent(;
         config.starttime,
-        config.solver.reltol,
-        relmask = collect(trues(n_states)),
         graph,
         allocation,
         nodes...,
