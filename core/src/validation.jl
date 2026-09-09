@@ -468,7 +468,7 @@ function valid_min_upstream_level!(
     errors = false
     for (id, min_upstream_level) in zip(node.node_id, node.min_upstream_level)
         id_in = inflow_id(graph, id)
-        if id_in.type == NodeType.Basin
+        if id_in.is_basin
             basin_bottom_level = basin_bottom(basin, id_in)[2]
             if all(==(-Inf), min_upstream_level.u)
                 min_upstream_level.u .= basin_bottom_level
@@ -492,7 +492,7 @@ function valid_tabulated_curve_level(
             tabulated_rating_curve.current_interpolation_index,
         )
         id_in = inflow_id(graph, id)
-        if id_in.type == NodeType.Basin
+        if id_in.is_basin
             basin_bottom_level = basin_bottom(basin, id_in)[2]
             # for the complete timeseries this needs to hold
             for interpolation_index in index_lookup.u

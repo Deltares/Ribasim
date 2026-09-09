@@ -170,7 +170,7 @@ du: tells ForwardDiff whether this call is for differentiation or not
 function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
     (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
 
-    return if node_id.type == NodeType.Basin
+    return if node_id.is_basin
         state_and_time_dependent_cache.current_level[node_id.idx]
     elseif node_id.type == NodeType.LevelBoundary
         itp = p_independent.level_boundary.level[node_id.idx]
@@ -198,7 +198,7 @@ end
 
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
 function basin_bottom(basin::Basin, node_id::NodeID)::Tuple{Bool, Float64}
-    return if node_id.type == NodeType.Basin
+    return if node_id.is_basin
         # get level(storage) interpolation function
         level_discrete = basin_levels(basin, node_id.idx)
         # and return the first level in this vector, representing the bottom
@@ -322,7 +322,7 @@ end
 
 function get_low_storage_factor(p::Parameters, id::NodeID)
     (; current_low_storage_factor) = p.state_and_time_dependent_cache
-    return if id.type == NodeType.Basin
+    return if id.is_basin
         current_low_storage_factor[id.idx]
     else
         one(eltype(current_low_storage_factor))
@@ -469,9 +469,9 @@ function get_cache_ref(
     )::Tuple{CacheRef, Bool}
     errors = false
 
-    ref = if node_id.type == NodeType.Basin && variable == "level"
+    ref = if node_id.is_basin && variable == "level"
         CacheRef(; type = CacheType.basin_level, node_id.idx)
-    elseif node_id.type == NodeType.Basin && variable == "storage"
+    elseif node_id.is_basin && variable == "storage"
         CacheRef(; type = CacheType.basin_storage, node_id.idx)
     elseif variable == "flow_rate" && node_id.type != NodeType.FlowBoundary
         if listen
@@ -905,7 +905,7 @@ function min_low_storage_factor(
         basin,
         id,
     ) where {T}
-    return if id.type == NodeType.Basin
+    return if id.is_basin
         low_storage_threshold = basin.low_storage_threshold[id.idx]
         reduction_factor(
             min(storage_now[id.idx], storage_prev[id.idx]) - 2low_storage_threshold,
@@ -930,7 +930,7 @@ function min_low_user_demand_level_factor(
         id_inflow,
         level_difference_threshold,
     ) where {T}
-    return if id_inflow.type == NodeType.Basin
+    return if id_inflow.is_basin
         reduction_factor(
             min(level_now[id_inflow.idx], level_prev[id_inflow.idx]) -
                 min_level[id_user_demand.idx] - 2 * level_difference_threshold,

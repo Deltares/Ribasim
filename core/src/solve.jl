@@ -198,7 +198,7 @@ function formulate_storages!(
             time_dependent_cache.flow_boundary.current_cumulative_boundary_flow,
         )
         outflow_id = outflow_link.link[2]
-        if outflow_id.type == NodeType.Basin
+        if outflow_id.is_basin
             current_storage[outflow_id.idx] += cumulative_flow
         end
     end
@@ -237,7 +237,7 @@ function set_error!(pid_control::PidControl, p::Parameters, t::Number)
 
     for i in eachindex(listen_node_id)
         listened_node_id = listen_node_id[i]
-        @assert listened_node_id.type == NodeType.Basin lazy"Listen node $listened_node_id is not a Basin."
+        @assert listened_node_id.is_basin lazy"Listen node $listened_node_id is not a Basin."
         current_error_pid_control[i] =
             eval_time_interpolation(target[i], current_target, i, p, t) -
             current_level[listened_node_id.idx]
@@ -328,7 +328,7 @@ function formulate_dstorage_wrt_time(
     )
     (; basin) = p_independent
     (; inflow_ids, outflow_ids, vertical_flux) = basin
-    @assert node_id.type == NodeType.Basin
+    @assert node_id.is_basin
     dstorage = 0.0
     for inflow_id in inflow_ids[node_id.idx]
         dstorage += get_flow(du, p_independent, t, (inflow_id, node_id))

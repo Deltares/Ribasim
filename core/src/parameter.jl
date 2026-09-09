@@ -91,8 +91,13 @@ This index can be passed directly, or calculated from the database or parameters
     type::NodeType.T
     "ID of node as given by users"
     value::Int32
-    "Index into the internal node type struct."
+    "Index into the internal node type struct"
     idx::Int
+    "Fast lookup of whether this node is a Basin"
+    is_basin::Bool
+    function NodeID(type, value, idx)
+        new(type, value, idx, type ∈ (NodeType.Basin, :Basin))
+    end
 end
 
 function NodeID(node_type, value::Integer, node_ids::Vector{NodeID})::NodeID
