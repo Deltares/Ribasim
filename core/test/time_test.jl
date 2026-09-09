@@ -31,7 +31,7 @@ end
     config = Ribasim.Config(toml_path; solver_saveat = 0)
     model = Ribasim.run(toml_path)
     (; basin) = model.integrator.p.p_independent
-    n_basin = length(basin.node_id)
+    n_basin = length(basin)
     basin_table = DataFrame(Ribasim.basin_data(model))
 
     seconds = Ribasim.seconds_since.(unique(basin_table.time), basin_table.time[1])

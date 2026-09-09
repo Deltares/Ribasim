@@ -353,7 +353,7 @@ function save_flow(u, t, integrator)
     # Current u is previous u in next computation
     u_prev_saveat .= u
 
-    n_basin = length(basin.node_id)
+    n_basin = length(basin)
     inflow_mean = zeros(n_basin)
     outflow_mean = zeros(n_basin)
     flow_convergence = fill(missing, length(u)) |> Vector{Union{Missing, Float64}}

@@ -7,27 +7,38 @@ const SolverStats = @NamedTuple{
     rejected_timesteps::Int,
 }
 
-const state_components = (
-    :tabulated_rating_curve,
+const state_components = (:flow, :pid_integral)
+const state_flow_components = (:horizontal, :vertical)
+const state_horizontal_flow_components = (
     :pump,
     :outlet,
-    :user_demand_inflow,
-    :user_demand_outflow,
+    :tabulated_rating_curve,
     :linear_resistance,
     :manning_resistance,
+    :user_demand_inflow,
+    :user_demand_outflow,
+)
+const state_vertical_flow_components = (
     :evaporation,
     :infiltration,
-    :integral,
 )
-const n_components = length(state_components)
-const StateTuple = NamedTuple{state_components, NTuple{n_components, UnitRange{Int}}}
-const RibasimCVectorType{T} =
-    CVector{T, Vector{T}, StateTuple}
-const RibasimReducedCVectorType{T} = CVector{
-    T,
-    Vector{T},
-    @NamedTuple{combined_cumulative_flows::UnitRange{Int}, integral::UnitRange{Int}}
-}
+
+exact_vertical_flow_components = (:precipitation, :drainage, :surface_runoff)
+
+const HorizontalFlowTuple = cvector_axes_type(state_horizontal_flow_components)
+const HorizontalFlowCVector{T} = CVector{T, Vector{T}, HorizontalFlowTuple}
+
+const VerticalFlowTuple = cvector_axes_type(state_vertical_flow_components)
+const VerticalFlowCVector{T} = CVector{T, Vector{T}, VerticalFlowTuple}
+
+const FlowTuple = NamedTuple{state_flow_components, Tuple{HorizontalFlowTuple, VerticalFlowTuple}}
+const FlowCVector{T} = CVector{T, Vector{T}, FlowTuple}
+
+const RibasimStateTuple = NamedTuple{state_components, Tuple{FlowTuple, UnitRange{Int}}}
+const RibasimStateCVector{T} = CVector{T, Vector{T}, RibasimStateTuple}
+
+const ExactVerticalFlowTuple = cvector_axes_type(exact_vertical_flow_components)
+const ExactVerticalFlowCVector{T} = CVector{T, Vector{T}, ExactVerticalFlowTuple}
 
 # LinkType.flow and NodeType.FlowBoundary
 @enumx LinkType flow control listen observation none
@@ -480,6 +491,8 @@ end
 abstract type AbstractParameterNode end
 
 abstract type AbstractDemandNode <: AbstractParameterNode end
+
+Base.length(node::AbstractParameterNode) = length(node.node_id)
 
 @kwdef struct ConcentrationData
     # Config setting to enable/disable evaporation of mass
@@ -1244,32 +1257,37 @@ the object itself is not.
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
-    # Per state the in- and outflow links associated with that state (if they exist)
-    state_inflow_link::Vector{LinkMetadata} = LinkMetadata[]
-    state_outflow_link::Vector{LinkMetadata} = LinkMetadata[]
-    # Map each flow link to its state index. Used for link→state lookups where the
-    # destination node can have multiple inflow-link states (currently only UserDemand).
-    link_to_state_idx::Dict{Tuple{NodeID, NodeID}, Int} =
-        Dict{Tuple{NodeID, NodeID}, Int}()
+    # Whether all specialized AD and linear solve code should be used
+    reduced_implicit_solve::Bool
+    # Matrix which aggregates flows into the basin storages
+    incidence_matrix::SparseMatrixCSC{Int, Int}
     # Water balance tolerances
     water_balance_abstol::Float64
     water_balance_reltol::Float64
-    # State at previous saveat
-    u_prev_saveat::Vector{Float64} = Float64[]
-    # Node ID associated with each state
-    node_id::Vector{NodeID} = NodeID[]
-    state_ranges::StateTuple
+    # Ranges of the state and flow vectors (flat NamedTuples)
+    state_ranges::RibasimStateTuple
+    flow_ranges::FlowTuple
     # Callback configurations
     do_concentration::Bool
     do_subgrid::Bool
-    convergence::RibasimCVectorType{Float64}
-    convergence_ncalls::Vector{Int} = [0]
-    # Reduced state where the cumulative flows are combined into Basin
-    # storages (without non-state cumulative_flows)
-    u_reduced::RibasimReducedCVectorType{Float64}
     # Solver constants
     level_difference_threshold::Float64
     max_depth::Float64
+    # Per state the in- and outflow id associated with that state (if they exist)
+    inflow_id::FlowCVector{NodeID}
+    outflow_id::FlowCVector{NodeID}
+    # The up- and downlink storage per flow
+    storage_uplink::FlowCVector{Float64} = similar(inflow_link, Float64)
+    storage_downlink::FlowCVector{Float64} = similar(inflow_link, Float64)
+    # Cumulative flow over last timestep
+    cumulative_flow_dt::FlowCVector{Float64} = zero(storage_uplink)
+    # State at previous saveat
+    u_prev_saveat::Vector{Float64} = Float64[]
+    # Cumulative flow over last allocation times
+    cumulative_flow_prev_allocation_dt::FlowCVector{Float64} = zero(storage_uplink)
+    # Convergence tracking: accumulated normalized Newton residual per saveat
+    convergence::RibasimStateCVector{Float64} = zero(u_prev_saveat)
+    convergence_ncalls::Vector{Int} = [0]
 end
 
 """

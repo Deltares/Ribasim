@@ -27,7 +27,7 @@ struct CVector{T, A <: DenseVector{T}, NT} <: DenseVector{T}
     function CVector(data::A, axes::NT) where {T, A <: DenseVector{T}, NT <: NamedTuple}
         range = flat_range(axes)
         len = component_length(axes)
-        @assert length(range) == len "Axes must be contiguous (no gaps or overlaps)"
+        @assert length(range) == len "Axes must be contiguous (no gaps or overlaps), got $axes"
         offset = first(range) - 1
         return new{T, A, NT}(data, axes, offset, len)
     end
@@ -194,5 +194,21 @@ end
 shift_axes(loc::AbstractUnitRange{<:Integer}, shift::Integer) = loc .+ shift
 shift_axes(loc::NamedTuple, shift::Integer) =
     NamedTuple{keys(loc)}(map(v -> shift_axes(v, shift), values(loc)))
+
+
+# Utilities
+cvector_axes_type(components::Tuple{Vararg{Symbol}}; range_type::Type = UnitRange{Int}) =
+    NamedTuple{components, NTuple{length(components), range_type}}
+
+function cvector_axes_from_lengths(components::Tuple{Vararg{Symbol}}, lengths::Vector{Int}; offset = 0)
+    range_bounds = pushfirst!(cumsum(lengths), 0)
+    range_bounds .+= offset
+    trivial_range = 1:0
+    ranges = ntuple(
+        i -> iszero(lengths[i]) ? trivial_range : (range_bounds[i] + 1):range_bounds[i + 1],
+        length(components)
+    )
+    return NamedTuple{components}(ranges)
+end
 
 end  # module CVectors

@@ -294,7 +294,7 @@ before a timestep when needed.
 
 Workaround for pre-step callbacks: https://github.com/SciML/OrdinaryDiffEq.jl/issues/3977
 """
-function OrdinaryDiffEqCore.loopheader!(integrator::DEIntegrator{<:Any, <:Any, RibasimCVectorType{Float64}})
+function OrdinaryDiffEqCore.loopheader!(integrator::DEIntegrator{<:Any, <:Any, RibasimStateCVector{Float64}})
     (; p, t) = integrator
     (; allocation) = p.p_independent
     if is_active(allocation) && !isempty(allocation.time.tstops)
