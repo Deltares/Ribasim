@@ -709,9 +709,7 @@ function add_demand_objectives!(
                 push!(demand_priorities_flow_unit, demand_priority)
                 AllocationObjectiveType.demand_flow
             else
-                # This is an edge case where there is no demand for this demand priority in this subnetwork
-                # This essentially adds a feasibility objective which is filtered out in the
-                # AllocationModel constructor
+                # No demand in this subnetwork uses this priority.
                 AllocationObjectiveType.none
             end
             expressions = [first_objective_expression, second_objective_expression]
@@ -730,16 +728,18 @@ function add_demand_objectives!(
                 )
                 push!(retain_expressions, false)
             end
-            push!(
-                objectives,
-                AllocationObjective(
-                    objective_type,
-                    demand_priority,
-                    demand_priority_idx,
-                    expressions,
-                    retain_expressions,
-                ),
-            )
+            if objective_type != AllocationObjectiveType.none
+                push!(
+                    objectives,
+                    AllocationObjective(
+                        objective_type,
+                        demand_priority,
+                        demand_priority_idx,
+                        expressions,
+                        retain_expressions,
+                    ),
+                )
+            end
         end
     end
 

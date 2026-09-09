@@ -526,7 +526,16 @@ function normalize_flow_demand_objectives!(allocation_model::AllocationModel)::N
             constraint,
             average_flow_unit_error[demand_priority],
         )
-        iszero(total_demand) && continue
+        if iszero(total_demand)
+            # Keep the constraint valid when this priority has no current demand.
+            # Its first and fairness objectives have no terms and are skipped.
+            JuMP.set_normalized_coefficient(
+                constraint,
+                average_flow_unit_error[demand_priority],
+                1.0,
+            )
+            continue
+        end
 
         for (error_term, demand) in expression_first.terms
             weight = demand / total_demand
@@ -588,8 +597,9 @@ function set_secondary_network_demands!(
             continue
         end
         # Objective metadata corresponding to this demand priority
-        expression_first =
-            get_objective_data_of_demand_priority(objectives, demand_priority).expressions[1]
+        objective = get_objective_data_of_demand_priority(objectives, demand_priority)
+        expression_first = objective.expressions[1]
+        expression_second = objective.expressions[2]
 
         for link in keys(secondary_model.secondary_network_demand)
             d =
@@ -607,6 +617,10 @@ function set_secondary_network_demands!(
 
             # Set demand in first objective expression
             expression_first.terms[error_term_first] = d
+
+            # A zero demand must not introduce a fairness-only objective.
+            error_term_second = node_error[link, demand_priority, :second]
+            expression_second.terms[error_term_second] = iszero(d) ? 0.0 : 1.0
 
             # Set demand in definition of average relative flow unit error
             JuMP.set_normalized_coefficient(
@@ -654,12 +668,17 @@ function set_demands!(
     average_flow_unit_error_constraint = problem[:average_flow_unit_error_constraint]
 
     for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
+        any(
+            has_demand_priority[node_id.idx, demand_priority_idx] for
+                node_id in demand_node_ids_subnetwork
+        ) || continue
 
         # Objective metadata corresponding to this demand priority
         objective =
             get_objective_data_of_demand_priority(objectives, demand_priority)
-        expression_first = objective.expressions[1]
         (objective.type != AllocationObjectiveType.demand_flow) && continue
+        expression_first = objective.expressions[1]
+        expression_second = objective.expressions[2]
 
         for node_id in demand_node_ids_subnetwork
             !has_demand_priority[node_id.idx, demand_priority_idx] && continue
@@ -688,6 +707,10 @@ function set_demands!(
 
             # Set demand in first objective expression
             expression_first.terms[error_term_first] = d
+
+            # A zero demand must not introduce a fairness-only objective.
+            error_term_second = node_error[node_id_with_demand, demand_priority, :second]
+            expression_second.terms[error_term_second] = iszero(d) ? 0.0 : 1.0
 
             # Set demand in definition of average relative flow unit error
             JuMP.set_normalized_coefficient(
@@ -970,10 +993,14 @@ function parse_termination_status(
         end
     else
         write_problem_to_file(problem, config)
+        analyze_scaling(model, t, config)
+        raw_status = JuMP.raw_status(problem)
         error(
             """
-            Allocation optimization for subnetwork $subnetwork_id at t = $t s failed with termination status $termination_status.
-            Ribasim doesn't have a way to handle this termination status; search for MathOptInterface.TerminationStatusCode or make an issue.
+            Allocation optimization for subnetwork $subnetwork_id at t = $t s failed with termination status $termination_status ($raw_status).
+            Ribasim doesn't have a way to resolve this termination status automatically. Consider tightening flow bounds (min_flow_rate, max_flow_rate)
+            for applicable nodes. Otherwise, search for one of the above error codes or make an issue.
+
             With:
             objective:         $objective
             latest constraint: $latest_constraint
@@ -1330,16 +1357,30 @@ function update_flow_demand_variable_bounds!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
     )::Nothing
-    (; problem, node_ids_in_subnetwork, scaling) = allocation_model
+    (; problem, node_ids_in_subnetwork) = allocation_model
     (; node_ids_subnetwork_with_flow_demand) = node_ids_in_subnetwork
+    (; graph) = p_independent
+    flow = problem[:flow]
     flow_demand_allocated = problem[:flow_demand_allocated]
     flow_demand_extra = problem[:flow_demand_extra]
-    bound = MAX_ABS_FLOW / scaling.flow
 
     for node_id in node_ids_subnetwork_with_flow_demand
+        flow_variable = flow[inflow_link(graph, node_id).link]
+        flow_lower_bound =
+            JuMP.is_fixed(flow_variable) ? JuMP.fix_value(flow_variable) :
+            JuMP.lower_bound(flow_variable)
+        flow_upper_bound =
+            JuMP.is_fixed(flow_variable) ? JuMP.fix_value(flow_variable) :
+            JuMP.upper_bound(flow_variable)
         earliest_priority = first(DemandPriorityIterator(node_id, p_independent))
-        JuMP.set_lower_bound(flow_demand_allocated[node_id, earliest_priority], -bound)
-        JuMP.set_upper_bound(flow_demand_extra[node_id], bound)
+        JuMP.set_lower_bound(
+            flow_demand_allocated[node_id, earliest_priority],
+            min(0.0, flow_lower_bound),
+        )
+        JuMP.set_upper_bound(
+            flow_demand_extra[node_id],
+            max(0.0, flow_upper_bound),
+        )
     end
     return nothing
 end
@@ -1355,7 +1396,6 @@ function update_control_states!(
     add_outlet!(allocation_model, p_independent)
     add_tabulated_rating_curve!(allocation_model, p_independent)
     update_flow_variable_bounds!(allocation_model, p_independent)
-    update_flow_demand_variable_bounds!(allocation_model, p_independent)
     return nothing
 end
 
@@ -1383,6 +1423,7 @@ function update_allocation!(integrator::DEIntegrator, Δt::Float64; record::Bool
         update_control_states!(secondary_network, p_independent)
         # Transfer data about physical processes from the simulation to the optimization
         set_simulation_data!(secondary_network, integrator, Δt)
+        update_flow_demand_variable_bounds!(secondary_network, p_independent)
 
         # Set demands for all priorities
         reset_demand_coefficients(secondary_network)
@@ -1400,6 +1441,7 @@ function update_allocation!(integrator::DEIntegrator, Δt::Float64; record::Bool
         update_control_states!(primary_network, p_independent)
         # Transfer data about physical processes from the simulation to the optimization
         set_simulation_data!(primary_network, integrator, Δt)
+        update_flow_demand_variable_bounds!(primary_network, p_independent)
 
         reset_demand_coefficients(primary_network)
         for secondary_network in
