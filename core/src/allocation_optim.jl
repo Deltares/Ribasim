@@ -970,10 +970,11 @@ function parse_termination_status(
         end
     else
         write_problem_to_file(problem, config)
+        raw_status = JuMP.raw_status(problem)
         error(
             """
-            Allocation optimization for subnetwork $subnetwork_id at t = $t s failed with termination status $termination_status.
-            Ribasim doesn't have a way to handle this termination status; search for MathOptInterface.TerminationStatusCode or make an issue.
+            Allocation optimization for subnetwork $subnetwork_id at t = $t s failed with termination status $termination_status ($raw_status).
+            Ribasim doesn't have a way to handle this termination status; search for one of the above error codes or make an issue.
             With:
             objective:         $objective
             latest constraint: $latest_constraint
