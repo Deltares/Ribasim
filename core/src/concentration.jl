@@ -147,3 +147,45 @@ function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
     end
     return nothing
 end
+
+function get_concentration_itp(
+        concentration_time,
+        node_id,
+        substances,
+        substance_idx_node_type,
+        cyclic_times,
+        config;
+        continuity_tracer = true,
+    )::Vector{Vector{ScalarConstantInterpolation}}
+    concentration_itp = [
+        initialize_concentration_itp(
+            length(substances),
+            substance_idx_node_type;
+            continuity_tracer,
+        ) for _ in node_id
+    ]
+
+    for (id, cyclic_time) in zip(node_id, cyclic_times)
+        data_id = filter(row -> row.node_id == id, concentration_time)
+        for group in IterTools.groupby(row -> row.substance, data_id)
+            first_row = first(group)
+            substance_idx = find_index(Symbol(first_row.substance), substances)
+            concentration_itp[id.idx][substance_idx] =
+                filtered_constant_interpolation(group, :concentration, cyclic_time, config; node_id = id)
+        end
+    end
+
+    return concentration_itp
+end
+
+function add_substance_mass!(
+        mass,
+        concentration_itp,
+        cumulative_flow::Float64, # m³
+        t::Float64,
+    )::Nothing
+    for (substance_idx, itp) in enumerate(concentration_itp)
+        mass[substance_idx] += cumulative_flow * itp(t)
+    end
+    return nothing
+end

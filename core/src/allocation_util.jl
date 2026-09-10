@@ -1,6 +1,6 @@
 const MAX_ABS_FLOW = 5.0e5 # m/s
 
-is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
+is_active(allocation::Allocation) = allocation.config.experimental.allocation
 
 function variable_sum(variables)
     return if isempty(variables)

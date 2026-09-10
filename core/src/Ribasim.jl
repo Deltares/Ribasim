@@ -34,6 +34,8 @@ using ForwardDiff: derivative as forward_diff
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore:
     OrdinaryDiffEqCore,
+    OrdinaryDiffEqAdaptiveImplicitAlgorithm,
+    OrdinaryDiffEqImplicitAlgorithm,
     loopheader!,
     ODEIntegrator,
     jacobian_analysis!,
@@ -69,6 +71,9 @@ using SciMLBase:
     AbstractSciMLOperator,
     LinearProblem,
     LinearSolution
+
+# Linear Solves
+using LinearSolve: AbstractDenseFactorization
 
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
@@ -178,7 +183,14 @@ using Printf: @sprintf
 using Base.Threads: nthreads
 
 include("cvectors.jl")
-using .CVectors: CVector, getaxes, getdata, cvector_axes_type, cvector_axes_from_lengths
+using .CVectors:
+    CVector,
+    getaxes,
+    getdata,
+    cvector_axes_type,
+    cvector_axes_from_lengths,
+    cvector_from_axes,
+    concatenate_axes
 include("schema.jl")
 include("config.jl")
 using .config

@@ -165,13 +165,29 @@ end
 """
 Get the current water level of a node ID.
 The ID can belong to either a Basin or a LevelBoundary.
-du: tells ForwardDiff whether this call is for differentiation or not
 """
-function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
-    (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
+function get_level(
+        storage::Number,
+        p::Parameters,
+        node_id::NodeID,
+        t::Number;
+        force_evaluation::Bool = false,
+    )::Number
+    (; p_independent, time_dependent_cache, p_mutable, current_basin_properties) = p
+    (; basin) = p_independent
+    (; storage_to_level) = basin
 
     return if node_id.is_basin
-        state_and_time_dependent_cache.current_level[node_id.idx]
+        if p_mutable.ad_active || force_evaluation
+            if storage ≥ 0
+                storage_to_level[node_id.idx](storage)
+            else
+                # For negative storage mirror the Basin profile in the bottom
+                2 * basin_bottom(basin, node_id)[2] - storage_to_level[node_id.idx](-storage)
+            end
+        else
+            current_basin_properties.current_level[node_id.idx]
+        end
     elseif node_id.type == NodeType.LevelBoundary
         itp = p_independent.level_boundary.level[node_id.idx]
         eval_time_interpolation(
@@ -190,10 +206,19 @@ function get_level(p::Parameters, node_id::NodeID, t::Number)::Number
     end
 end
 
-function get_storage(p::Parameters, node_id::NodeID, t::Number)::Float64
-    (; p_independent, state_and_time_dependent_cache, time_dependent_cache) = p
-
-    return state_and_time_dependent_cache.current_storage[node_id.idx]
+function get_area(
+        level::Number,
+        p::Parameters,
+        node_id::NodeID,
+    )
+    @assert node_id.is_basin
+    (; p_independent, current_basin_properties, p_mutable) = p
+    (; level_to_area) = p_independent.basin
+    return if p_mutable.ad_active
+        level_to_area[node_id.idx](level)
+    else
+        current_basin_properties.current_area[node_id.idx]
+    end
 end
 
 "Return the bottom elevation of the basin with index i, or nothing if it doesn't exist"
@@ -320,12 +345,21 @@ function reduction_factor(x::T, threshold::Real)::T where {T <: Real}
     end
 end
 
-function get_low_storage_factor(p::Parameters, id::NodeID)
-    (; current_low_storage_factor) = p.state_and_time_dependent_cache
+function get_low_storage_factor(
+        storage::Number,
+        p::Parameters,
+        id::NodeID,
+    )
+    (; p_mutable, p_independent, current_basin_properties) = p
+    (; low_storage_threshold) = p_independent.basin
     return if id.is_basin
-        current_low_storage_factor[id.idx]
+        if p_mutable.ad_active
+            reduction_factor(storage, low_storage_threshold[id.idx])
+        else
+            current_basin_properties.current_low_storage_factor[id.idx]
+        end
     else
-        one(eltype(current_low_storage_factor))
+        one(eltype(storage))
     end
 end
 
@@ -334,15 +368,17 @@ For resistance nodes, give a reduction factor based on the upstream node
 as defined by the flow direction.
 """
 function low_storage_factor_resistance_node(
+        s_a::Number,
+        s_b::Number,
         p::Parameters,
         q::Number,
         inflow_id::NodeID,
         outflow_id::NodeID,
     )
     return if q > 0
-        get_low_storage_factor(p, inflow_id)
+        get_low_storage_factor(s_a, p, inflow_id)
     else
-        get_low_storage_factor(p, outflow_id)
+        get_low_storage_factor(s_b, p, outflow_id)
     end
 end
 
@@ -861,6 +897,56 @@ function unsafe_array(
     return GC.@preserve A unsafe_wrap(Array, pointer(A), length(A))
 end
 
+function aggregate_flows!(
+        aggregate::AbstractVector,
+        flow::FlowCVector,
+        p_independent::ParametersIndependent;
+        do_inflows::Bool = true,
+        do_outflows::Bool = true,
+        do_horizontal_flows::Bool = true,
+        do_vertical_flows::Bool = true,
+        weight::Number = true,
+        from_zero::Bool = true,
+        positive_vertical_forcing::Union{ExactVerticalFlowCVector, Nothing} = nothing,
+        boundary_flow::Union{Vector{Float64}, Nothing} = nothing
+    )
+    (; flow_boundary, inflow_id, outflow_id) = p_independent
+
+    from_zero && (aggregate .= 0)
+
+    if do_horizontal_flows
+        for (flow_, id_in, id_out) in zip(flow.horizontal, inflow_id.horizontal, outflow_id.horizontal)
+            positive_flow = (flow_ > 0)
+
+            if id_in.is_basin && ((!positive_flow && do_inflows) || (positive_flow && do_outflows))
+                aggregate[id_in.idx] -= weight * flow_
+            end
+
+            if id_out.is_basin && ((positive_flow && do_inflows) || (!positive_flow && do_outflows))
+                aggregate[id_out.idx] += weight * flow_
+            end
+        end
+    end
+
+    if do_horizontal_flows && do_inflows && !isnothing(boundary_flow)
+        for idx in eachindex(flow_boundary.node_id)
+            outflow_id = flow_boundary.outflow_link[idx].link[2]
+            aggregate[outflow_id.idx] += boundary_flow[idx]
+        end
+    end
+
+    if do_vertical_flows
+        if do_inflows && !isnothing(positive_vertical_forcing)
+            (; precipitation, drainage, surface_runoff) = positive_vertical_forcing
+            @. aggregate += weight * (precipitation + drainage + surface_runoff)
+        end
+        if do_outflows
+            @. aggregate -= weight * (flow.vertical.evaporation + flow.vertical.infiltration)
+        end
+    end
+    return nothing
+end
+
 """
 Find the index of a symbol in an ordered set using iteration.
 
@@ -1037,13 +1123,8 @@ function get_interpolation_vec(
     return Vector{type}(undef, length(node_id))
 end
 
-"""
-Check whether the inputs u and t are different from the previous call of water_balance! and
-update the boolean flags in p_mutable. In several parts of the calculations in water_balance!,
-caches are only updated if the data they depend on is different from the previous water_balance! call.
-"""
-function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
-    (; state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
+function check_new_t!(p::Parameters, t::Number)::Nothing
+    (; time_dependent_cache, p_mutable) = p
 
     # Whether the time dependent cache must be renewed
     p_mutable.new_time_dependent_cache =
@@ -1053,31 +1134,6 @@ function check_new_input!(p::Parameters, u_reduced::CVector, t::Number)::Nothing
             ForwardDiff.partials(time_dependent_cache.t_prev_call[1])
     )
     time_dependent_cache.t_prev_call[1] = t
-
-    # Whether the state and time dependent cache must be renewed
-    new_t_state_and_time_dependent_cache =
-        !isassigned(state_and_time_dependent_cache.t_prev_call, 1) || (
-        t != state_and_time_dependent_cache.t_prev_call[1] &&
-            ForwardDiff.partials(t) ==
-            ForwardDiff.partials(state_and_time_dependent_cache.t_prev_call[1])
-    )
-    new_u_state_and_time_dependent_cache =
-        any(
-        i -> !isassigned(state_and_time_dependent_cache.u_reduced_prev_call, i),
-        eachindex(u_reduced),
-    ) || any(
-        i -> !(
-            u_reduced[i] == state_and_time_dependent_cache.u_reduced_prev_call[i] &&
-                ForwardDiff.partials(u_reduced[i]) == ForwardDiff.partials(
-                state_and_time_dependent_cache.u_reduced_prev_call[i],
-            )
-        ),
-        eachindex(u_reduced),
-    )
-    state_and_time_dependent_cache.u_reduced_prev_call .= u_reduced
-    state_and_time_dependent_cache.t_prev_call[1] = t
-    p_mutable.new_state_and_time_dependent_cache =
-        new_t_state_and_time_dependent_cache || new_u_state_and_time_dependent_cache
     return nothing
 end
 
@@ -1163,44 +1219,32 @@ function filtered_constant_interpolation(
     end
 end
 
-function get_concentration_itp(
-        concentration_time,
-        node_id,
-        substances,
-        substance_idx_node_type,
-        cyclic_times,
-        config;
-        continuity_tracer = true,
-    )::Vector{Vector{ScalarConstantInterpolation}}
-    concentration_itp = [
-        initialize_concentration_itp(
-            length(substances),
-            substance_idx_node_type;
-            continuity_tracer,
-        ) for _ in node_id
-    ]
+function build_state_vector(p_independent::ParametersIndependent)
+    return zero(p_independent.u_prev_saveat)
+end
 
-    for (id, cyclic_time) in zip(node_id, cyclic_times)
-        data_id = filter(row -> row.node_id == id, concentration_time)
-        for group in IterTools.groupby(row -> row.substance, data_id)
-            first_row = first(group)
-            substance_idx = find_index(Symbol(first_row.substance), substances)
-            concentration_itp[id.idx][substance_idx] =
-                filtered_constant_interpolation(group, :concentration, cyclic_time, config; node_id = id)
+function set_uplink_downlink_storage!(
+        storage_uplink::AbstractVector,
+        storage_downlink::AbstractVector,
+        storage::AbstractVector,
+        p_independent::ParametersIndependent,
+    )
+    (; inflow_id, outflow_id) = p_independent
+
+    storage_uplink .= 0.0
+    storage_downlink .= 0.0
+
+    for idx in eachindex(storage_uplink)
+        in_id = inflow_id[idx]
+        out_id = outflow_id[idx]
+
+        if in_id.is_basin
+            storage_uplink[idx] = storage[in_id.idx]
+        end
+        if out_id.is_basin
+            storage_downlink[idx] = storage[out_id.idx]
         end
     end
 
-    return concentration_itp
-end
-
-function add_substance_mass!(
-        mass,
-        concentration_itp,
-        cumulative_flow::Float64, # m³
-        t::Float64,
-    )::Nothing
-    for (substance_idx, itp) in enumerate(concentration_itp)
-        mass[substance_idx] += cumulative_flow * itp(t)
-    end
     return nothing
 end

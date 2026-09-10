@@ -1757,6 +1757,8 @@ function Parameters(db::DB, config::Config)::Parameters
         subgrid,
         inflow_id,
         outflow_id,
+        config.solver.water_balance_abstol,
+        config.solver.water_balance_reltol,
         flow_ranges,
         state_ranges,
         do_concentration = config.experimental.concentration,

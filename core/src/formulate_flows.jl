@@ -13,8 +13,8 @@ function water_balance!(
     )::Nothing
     (; p_independent) = p
 
-    # Check whether t or u is different from the last water_balance! call
-    check_new_input!(p, t)
+    # Check whether t is different from the last water_balance! call
+    check_new_t!(p, t)
 
     # Compute cumulative boundary flows up to the current t
     formulate_cumulative_boundary_flow!(p_independent.flow_boundary, p, t)
@@ -86,35 +86,20 @@ function water_balance!(
     return nothing
 end
 
-function formulate_flow_boundary!(p::Parameters, t::Number)::Nothing
-    (; p_independent, time_dependent_cache, p_mutable) = p
-    (; flow_boundary) = p_independent
-    (; node_id, cumulative_flow) = flow_boundary
+function formulate_cumulative_boundary_flow!(
+        flow_boundary::FlowBoundary,
+        p::Parameters,
+        t::Number,
+    )
+    (; p_mutable, time_dependent_cache) = p
+    (; flow_rate) = flow_boundary
     (; current_cumulative_boundary_flow) = time_dependent_cache.flow_boundary
-    (; tprev, new_time_dependent_cache) = p_mutable
-
-    if new_time_dependent_cache
-        for id in node_id
-            current_cumulative_boundary_flow[id.idx] =
-                cumulative_flow[id.idx] +
-                boundary_flow_integral(flow_boundary, id.idx, tprev, t)
+    if p_mutable.new_time_dependent_cache
+        for idx in eachindex(flow_boundary.node_id)
+            current_cumulative_boundary_flow[idx] = integral(flow_rate[idx], 0.0, t)
         end
     end
-    return nothing
-end
-
-function formulate_continuous_control!(du::CVector, p::Parameters, t::Number)::Nothing
-    (; compound_variable, target_ref, func) = p.p_independent.continuous_control
-
-    for i in eachindex(compound_variable)
-        cvar = compound_variable[i]
-        ref = target_ref[i]
-        func_ = func[i]
-        value = compound_variable_value(cvar, p, du, t)
-        set_value!(ref, p, func_(value))
-    end
-
-    return nothing
+    return
 end
 
 """
@@ -193,151 +178,209 @@ function set_current_storage!(
     return nothing
 end
 
-"""
-Smoothly let the evaporation and infiltration flux go to 0 when the storage is less than 10 m^3
-"""
-function update_vertical_flux!(du::RibasimStateCVector, p::Parameters)::Nothing
-    (; p_independent, state_and_time_dependent_cache) = p
-    (; basin) = p_independent
-    (; vertical_flux) = basin
-    (; current_area, current_low_storage_factor) = state_and_time_dependent_cache
-
-    for id in basin.node_id
-        area = current_area[id.idx]
-        factor = current_low_storage_factor[id.idx]
-
-        evaporation = area * factor * vertical_flux.potential_evaporation[id.idx]
-        infiltration = factor * vertical_flux.infiltration[id.idx]
-
-        du.evaporation[id.idx] = evaporation
-        du.infiltration[id.idx] = infiltration
-    end
-
-    return nothing
-end
-
-function set_error!(pid_control::PidControl, p::Parameters, t::Number)
-    (; state_and_time_dependent_cache, time_dependent_cache) = p
-    (; current_level, current_error_pid_control) = state_and_time_dependent_cache
-
-    (; current_target) = time_dependent_cache.pid_control
-    (; listen_node_id, target) = pid_control
-
-    for i in eachindex(listen_node_id)
-        listened_node_id = listen_node_id[i]
-        @assert listened_node_id.is_basin lazy"Listen node $listened_node_id is not a Basin."
-        current_error_pid_control[i] =
-            eval_time_interpolation(target[i], current_target, i, p, t) -
-            current_level[listened_node_id.idx]
-    end
-    return
-end
-
-function formulate_pid_control!(
-        du::CVector,
-        u_reduced::CVector,
+function formulate_vertical_flux!(
+        flow::FlowCVector,
+        storage_uplink::FlowCVector,
         p::Parameters,
         t::Number,
-    )::Nothing
-    (; p_independent, state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
-    (; current_proportional, current_integral, current_derivative) =
-        time_dependent_cache.pid_control
-    (; pid_control) = p_independent
-    (; current_error_pid_control, current_area) = state_and_time_dependent_cache
-    (; node_id, target, listen_node_id) = p_independent.pid_control
+    )
+    (;
+        node_id,
+        vertical_flux,
+    ) = p.p_independent.basin
 
+    # Outgoing
+    for id in node_id
+        # Evaporation and infiltration have the same 'uplink' storage,
+        # but they are separated here for AD purposes
 
-    set_error!(pid_control, p, t)
-    for i in eachindex(node_id)
+        # Evaporation
+        storage = storage_uplink.vertical.evaporation[id.idx]
+        level = get_level(storage, p, id, t)
+        area = get_area(level, p, id)
+        low_storage_factor = get_low_storage_factor(storage, p, id)
+        flow.vertical.evaporation[id.idx] =
+            vertical_flux.potential_evaporation[id.idx] * area * low_storage_factor
 
-        du.integral[i] = current_error_pid_control[i]
-
-        listened_node_id = listen_node_id[i]
-
-        flow_rate = zero(eltype(du))
-
-        K_p = eval_time_interpolation(
-            pid_control.proportional[i],
-            current_proportional,
-            i,
-            p,
-            t,
-        )
-        K_i = eval_time_interpolation(pid_control.integral[i], current_integral, i, p, t)
-        K_d =
-            eval_time_interpolation(pid_control.derivative[i], current_derivative, i, p, t)
-
-        if !iszero(K_d)
-            # dlevel/dstorage = 1/area
-            # TODO: replace by DataInterpolations.derivative(storage_to_level, storage)
-            area = current_area[listened_node_id.idx]
-            D = 1.0 - K_d / area
-        else
-            D = 1.0
-        end
-
-        if !iszero(K_p)
-            flow_rate += K_p * current_error_pid_control[i] / D
-        end
-
-        if !iszero(K_i)
-            flow_rate += K_i * u_reduced.integral[i] / D
-        end
-
-        if !iszero(K_d)
-            if target[i] isa ScalarConstantInterpolation
-                # derivative() of ScalarConstantInterpolation returns a NaN at discontinuities
-                dtarget = 0.0
-            else
-                dtarget = derivative(target[i], t)
-            end
-            dstorage_listened_basin_old =
-                formulate_dstorage_wrt_time(du, p_independent, t, listened_node_id)
-            # The expression below is the solution to an implicit equation for
-            # dstorage_listened_basin. This equation results from the fact that if the derivative
-            # term in the PID controller is used, the controlled pump flow rate depends on itself.
-            flow_rate += K_d * (dtarget - dstorage_listened_basin_old / area) / D
-        end
-
-        # Set flow_rate
-        set_value!(pid_control.target_ref[i], p, flow_rate)
+        # Infiltration
+        storage = storage_uplink.vertical.infiltration[id.idx]
+        low_storage_factor = get_low_storage_factor(storage, p, id)
+        flow.vertical.infiltration[id.idx] = vertical_flux.infiltration[id.idx] * low_storage_factor
     end
     return nothing
 end
 
-"""
-Formulate the time derivative of the storage in a single Basin.
-"""
-function formulate_dstorage_wrt_time(
-        du::CVector,
-        p_independent::ParametersIndependent,
-        t::Number,
-        node_id::NodeID,
+function compute_continuous_control_compound_variables!(
+        compound_variables::AbstractVector,
+        storage::AbstractVector,
+        flow::AbstractVector,
+        p::Parameters,
+        t::Number
     )
-    (; basin) = p_independent
-    (; inflow_ids, outflow_ids, vertical_flux) = basin
-    @assert node_id.is_basin
-    dstorage = 0.0
-    for inflow_id in inflow_ids[node_id.idx]
-        dstorage += get_flow(du, p_independent, t, (inflow_id, node_id))
+    (; compound_variable, func) = p.p_independent.continuous_control
+
+    for idx in eachindex(compound_variables)
+        cvar = compound_variable[idx]
+        f = func[idx]
+        value = compound_variable_value(cvar, storage, flow, p, t)
+        compound_variables[idx] = f(value)
     end
-    for outflow_id in outflow_ids[node_id.idx]
-        dstorage -= get_flow(du, p_independent, t, (node_id, outflow_id))
+    return nothing
+end
+
+function get_pid_error(
+        storage::Number,
+        p::Parameters,
+        idx::Integer,
+        t::Number,
+    )
+    (; time_dependent_cache, p_independent) = p
+    (; pid_control) = p_independent
+    (; listen_node_id, target) = pid_control
+    listened_node_id = listen_node_id[idx]
+    current_target = eval_time_interpolation(
+        target[idx],
+        time_dependent_cache.pid_control.current_target,
+        idx,
+        p,
+        t
+    )
+    current_level = get_level(storage, p, listened_node_id, t)
+    current_error = current_target - current_level
+    return current_error, current_level
+end
+
+# Get storage as the pump/outlet uplink/downlink storage
+function get_pid_controlled_storage(
+        p_independent::ParametersIndependent,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
+        idx::Integer,
+    )
+    (; pid_control, pump, outlet) = p_independent
+    controlled_node_id = pid_control.controlled_node_id[idx]
+    listen_node_id = pid_control.listen_node_id[idx]
+
+    return if controlled_node_id.type == NodeType.Pump
+        inflow_id = pump.inflow_link[controlled_node_id.idx].link[1]
+        # outflow_id = pump.outflow_link[controlled_node_id.idx].link[2]
+        if inflow_id == listen_node_id
+            storage_uplink.pump[controlled_node_id.idx]
+        else # outflow_id == listen_node_id
+            storage_downlink.pump[controlled_node_id.idx]
+        end
+    else # controlled_node_id.type == NodeType.Outlet
+        inflow_id = outlet.inflow_link[controlled_node_id.idx].link[1]
+        # outflow_id = outlet.outflow_link[controlled_node_id.idx].link[2]
+        if inflow_id == listen_node_id
+            storage_uplink.outlet[controlled_node_id.idx]
+        else # outflow_id == listen_node_id
+            storage_downlink.outlet[controlled_node_id.idx]
+        end
+    end
+end
+
+function formulate_PID_control!(
+        dpid_integral::AbstractVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
+        p::Parameters,
+        t::Number,
+    )
+    (; pid_control) = p.p_independent
+
+    for idx in eachindex(pid_control.node_id)
+        # Get storage as the pump/outlet uplink/downlink storage
+        storage = get_pid_controlled_storage(p.p_independent, storage_uplink, storage_downlink, idx)
+        dpid_integral[idx] = get_pid_error(storage, p, idx, t)[1]
+    end
+    return nothing
+end
+
+function get_pid_value(
+        du::RibasimStateCVector,
+        storage_uplink,
+        storage_downlink,
+        pid_integral::AbstractVector,
+        p::Parameters,
+        t::Number,
+        idx::Integer
+    )
+    (; p_independent, time_dependent_cache) = p
+    (; pid_control, basin) = p_independent
+    (; current_proportional, current_integral, current_derivative) =
+        time_dependent_cache.pid_control
+    (; listen_node_id, target) = pid_control
+    (; storage_to_level, level_to_area) = basin
+
+    listened_node_id = listen_node_id[idx]
+    value = 0.0
+
+    current_storage = get_pid_controlled_storage(p_independent, storage_uplink, storage_downlink, idx)
+    current_level = storage_to_level[listened_node_id.idx](current_storage)
+    current_error = du.pid_integral[idx]
+    current_area = level_to_area[listened_node_id.idx](current_level)
+
+    K_p = eval_time_interpolation(pid_control.proportional[idx], current_proportional, idx, p, t)
+    K_i = eval_time_interpolation(pid_control.integral[idx], current_integral, idx, p, t)
+    K_d = eval_time_interpolation(pid_control.derivative[idx], current_derivative, idx, p, t)
+
+    D = if !iszero(K_d)
+        # dlevel/dstorage = 1/area
+        1.0 - K_d / current_area
+    else
+        1.0
     end
 
-    fixed_area = basin_areas(basin, node_id.idx)[end]
-    dstorage += fixed_area * vertical_flux.precipitation[node_id.idx]
-    dstorage += vertical_flux.surface_runoff[node_id.idx]
-    dstorage += vertical_flux.drainage[node_id.idx]
-    dstorage -= du.evaporation[node_id.idx]
-    dstorage -= du.infiltration[node_id.idx]
+    if !iszero(K_p)
+        value += K_p * current_error / D
+    end
 
-    return dstorage
+    if !iszero(K_i)
+        value += K_i * pid_integral[idx] / D
+    end
+
+    if !iszero(K_d)
+        # derivative() of ScalarConstantInterpolation returns a NaN at discontinuities
+        dtarget = (target[idx] isa ScalarConstantInterpolation) ? 0.0 : derivative(target[idx], t)
+        dstorage_listened_basin_old = formulate_dstorage_single_basin(du.flow, p_independent, listened_node_id; t)
+        # The expression below is the solution to an implicit equation for
+        # dstorage_listened_basin. This equation results from the fact that if the derivative
+        # term in the PID controller is used, the controlled pump flow rate depends on itself.
+        value += K_d * (dtarget - dstorage_listened_basin_old / current_area) / D
+    end
+    return value
+end
+
+function formulate_dstorage_single_basin(
+        flow::FlowCVector,
+        p_independent::ParametersIndependent,
+        node_id::NodeID;
+        t::Union{Number, Nothing} = nothing,
+    )
+    (; incidence_matrix, basin, flow_boundary, basin) = p_independent
+    (; vertical_flux) = basin
+    result = dot(incidence_matrix[node_id.idx, :], flow) +
+        vertical_flux.precipitation[node_id.idx] +
+        vertical_flux.drainage[node_id.idx] +
+        vertical_flux.surface_runoff[node_id.idx]
+
+    if !isnothing(t)
+        for inflow_id in basin.inflow_ids[node_id.idx]
+            if inflow_id.type == NodeType.FlowBoundary
+                result += flow_boundary.flow_rate[inflow_id.idx](t)
+            end
+        end
+    end
+
+    return result
 end
 
 function formulate_flow!(
-        du::CVector,
+        flow::FlowCVector,
         user_demand::UserDemand,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
     )::Nothing
@@ -372,48 +415,52 @@ function formulate_flow!(
         equal_split = n_links == 0 ? 0.0 : q_total_demand / n_links
 
         q_total_actual = 0.0
-        for (k, link_meta) in enumerate(inflow_links)
+        for (inflow_idx, link_meta) in enumerate(inflow_links)
             src_id = link_meta.link[1]
-            f_low_storage = get_low_storage_factor(p, src_id)
-            source_level = get_level(p, src_id, t)
+            upstream_storage = storage_uplink.user_demand_inflow[inflow_idx]
+            f_low_storage = get_low_storage_factor(upstream_storage, p, src_id)
+            source_level = get_level(upstream_storage, p, src_id, t)
             f_reduction = reduction_factor(
                 source_level - min_level,
                 level_difference_threshold,
             )
-            q_k_target = isinf(link_alloc[k]) ? equal_split : link_alloc[k]
+            q_k_target = isinf(link_alloc[inflow_idx]) ? equal_split : link_alloc[inflow_idx]
             q_k = q_k_target * f_low_storage * f_reduction
-            du.user_demand_inflow[link_offset + k] = q_k
+            # Apply each inflow link's abstraction to the source basin
             q_total_actual += q_k
+            flow.user_demand_inflow[link_offset + inflow_idx] = q_k
         end
 
-        du.user_demand_outflow[id.idx] =
+        q_return =
             q_total_actual *
             eval_time_interpolation(return_factor, current_return_factor, id.idx, p, t)
+
+        flow.user_demand_outflow[id.idx] = q_return
     end
     return nothing
 end
 
 function formulate_flow!(
-        du::CVector,
+        flow::FlowCVector,
         linear_resistance::LinearResistance,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
     )::Nothing
-    (; p_mutable) = p
     (; node_id) = linear_resistance
 
     for node_idx in eachindex(linear_resistance.node_id)
         id = node_id[node_idx]
-        inflow_link = linear_resistance.inflow_link[node_idx]
-        outflow_link = linear_resistance.outflow_link[node_idx]
-
-        inflow_id = inflow_link.link[1]
-        outflow_id = outflow_link.link[2]
-
-        h_a = get_level(p, inflow_id, t)
-        h_b = get_level(p, outflow_id, t)
-        q = linear_resistance_flow(linear_resistance, id, h_a, h_b, p)
-        du.linear_resistance[node_idx] = q
+        q = linear_resistance_flow(
+            linear_resistance,
+            id,
+            storage_uplink.horizontal.linear_resistance[node_idx],
+            storage_downlink.horizontal.linear_resistance[node_idx],
+            p,
+            t
+        )
+        flow.horizontal.linear_resistance[node_idx] = q
     end
     return nothing
 end
@@ -421,10 +468,10 @@ end
 function linear_resistance_flow(
         linear_resistance::LinearResistance,
         node_id::NodeID,
-        h_a::Number,
-        h_b::Number,
+        s_a::Number,
+        s_b::Number,
         p::Parameters,
-        t::Number = 0.0,
+        t::Number,
     )::Number
     (; resistance, max_flow_rate) = linear_resistance
     inflow_link = linear_resistance.inflow_link[node_id.idx]
@@ -433,27 +480,34 @@ function linear_resistance_flow(
     inflow_id = inflow_link.link[1]
     outflow_id = outflow_link.link[2]
 
+    h_a = get_level(s_a, p, inflow_id, t)
+    h_b = get_level(s_b, p, outflow_id, t)
     Δh = h_a - h_b
     q_unlimited = Δh / resistance[node_id.idx]
     q = clamp(q_unlimited, -max_flow_rate[node_id.idx], max_flow_rate[node_id.idx])
-    return q * low_storage_factor_resistance_node(p, q_unlimited, inflow_id, outflow_id)
+    return q * low_storage_factor_resistance_node(s_a, s_b, p, q_unlimited, inflow_id, outflow_id)
 end
 
 function tabulated_rating_curve_flow(
         tabulated_rating_curve::TabulatedRatingCurve,
         node_id::NodeID,
-        h_a::Number,
-        h_b::Number,
+        s_a::Number,
+        s_b::Number,
         p::Parameters,
         t::Number,
     )::Number
     (; current_interpolation_index, interpolations) = tabulated_rating_curve
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
+    outflow_link = tabulated_rating_curve.outflow_link[node_id.idx]
     inflow_id = inflow_link.link[1]
+    outflow_id = outflow_link.link[2]
+
+    h_a = get_level(s_a, p, inflow_id, t)
+    h_b = get_level(s_b, p, outflow_id, t)
     Δh = h_a - h_b
 
-    factor = get_low_storage_factor(p, inflow_id)
+    factor = get_low_storage_factor(s_a, p, inflow_id)
     interpolation_index = current_interpolation_index[node_id.idx](t)
     qh = interpolations[interpolation_index]
     q = factor * qh(h_a)
@@ -466,16 +520,22 @@ end
 function allocated_rating_curve_flow(
         tabulated_rating_curve::TabulatedRatingCurve,
         node_id::NodeID,
-        h_a::Number,
-        h_b::Number,
+        s_a::Number,
+        s_b::Number,
         p::Parameters,
+        t::Number
     )::Number
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
+    outflow_link = tabulated_rating_curve.outflow_link[node_id.idx]
     inflow_id = inflow_link.link[1]
+    outflow_id = outflow_link.link[2]
+
+    h_a = get_level(s_a, p, inflow_id, t)
+    h_b = get_level(s_b, p, outflow_id, t)
     Δh = h_a - h_b
 
-    factor = get_low_storage_factor(p, inflow_id)
+    factor = get_low_storage_factor(s_a, p, inflow_id)
     q = tabulated_rating_curve.flow_rate[node_id.idx]
     q *= factor
     q *= reduction_factor(Δh, level_difference_threshold)
@@ -485,31 +545,27 @@ function allocated_rating_curve_flow(
 end
 
 function formulate_flow!(
-        du::CVector,
+        flow::FlowCVector,
         tabulated_rating_curve::TabulatedRatingCurve,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
     )::Nothing
     for node_idx in eachindex(tabulated_rating_curve.node_id)
         id = tabulated_rating_curve.node_id[node_idx]
-        inflow_link = tabulated_rating_curve.inflow_link[node_idx]
-        outflow_link = tabulated_rating_curve.outflow_link[node_idx]
-        inflow_id = inflow_link.link[1]
-        outflow_id = outflow_link.link[2]
-        h_a = get_level(p, inflow_id, t)
-        h_b = get_level(p, outflow_id, t)
+        s_a = storage_uplink.horizontal.tabulated_rating_curve[node_idx]
+        s_b = storage_downlink.horizontal.tabulated_rating_curve[node_idx]
 
-        q_h = tabulated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p, t)
+        q_h = tabulated_rating_curve_flow(tabulated_rating_curve, id, s_a, s_b, p, t)
         q = if tabulated_rating_curve.allocation_controlled[node_idx]
-            # Ensure q is always >= to the Q(h) relationship, since errors in the linear approximations in allocation could lead to
-            # a higher q at the current h than the user defined q(h) would allow
-            q_alloc = allocated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p)
+            q_alloc = allocated_rating_curve_flow(tabulated_rating_curve, id, s_a, s_b, p, t)
             min(q_alloc, q_h)
         else
             q_h
         end
 
-        du.tabulated_rating_curve[node_idx] = q
+        flow.horizontal.tabulated_rating_curve[node_idx] = q
     end
     return nothing
 end
@@ -517,10 +573,10 @@ end
 function manning_resistance_flow(
         manning_resistance::ManningResistance,
         node_id::NodeID,
-        h_a::Number,
-        h_b::Number,
+        s_a::Number,
+        s_b::Number,
         p::Parameters,
-        t::Number = 0.0,
+        t::Number
     )::Number
     (;
         length,
@@ -545,6 +601,9 @@ function manning_resistance_flow(
     L = length[node_id.idx]
 
     # Average d, A, R
+    h_a = get_level(s_a, p, inflow_id, t)
+    h_b = get_level(s_b, p, outflow_id, t)
+
     d_a = h_a - bottom_a
     d_b = h_b - bottom_b
     d = 0.5 * (d_a + d_b)
@@ -574,7 +633,7 @@ function manning_resistance_flow(
 
     q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, threshold)
 
-    return q * low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
+    return q * low_storage_factor_resistance_node(s_a, s_b, p, q, inflow_id, outflow_id)
 end
 
 """
@@ -617,39 +676,37 @@ hydraulic radius. This ensures that a basin can receive water after it has gone
 dry.
 """
 function formulate_flow!(
-        du::CVector,
+        flow::FlowCVector,
         manning_resistance::ManningResistance,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
     )::Nothing
-    (; p_mutable) = p
     (; node_id) = manning_resistance
 
     for node_idx in eachindex(manning_resistance.node_id)
         id = node_id[node_idx]
-        inflow_link = manning_resistance.inflow_link[node_idx]
-        outflow_link = manning_resistance.outflow_link[node_idx]
+        s_a = storage_uplink.horizontal.manning_resistance[node_idx]
+        s_b = storage_downlink.horizontal.manning_resistance[node_idx]
 
-        inflow_id = inflow_link.link[1]
-        outflow_id = outflow_link.link[2]
+        q = manning_resistance_flow(manning_resistance, id, s_a, s_b, p, t)
 
-        h_a = get_level(p, inflow_id, t)
-        h_b = get_level(p, outflow_id, t)
-
-        q = manning_resistance_flow(manning_resistance, id, h_a, h_b, p)
-
-        du.manning_resistance[node_idx] = q
+        flow.horizontal.manning_resistance[node_idx] = q
     end
     return nothing
 end
 
 function formulate_pump_or_outlet_flow!(
-        du_component::SubArray{<:Number},
+        du::RibasimStateCVector,
         node::Union{Pump, Outlet},
+        continuous_control_compound_variables::AbstractVector,
+        pid_integral::AbstractVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
         relevant_control_type::ContinuousControlType.T,
-        current_flow_rate::Vector{<:Number},
         component_cache::NamedTuple,
         reduce_Δlevel::Bool = false,
     )::Nothing
@@ -663,8 +720,8 @@ function formulate_pump_or_outlet_flow!(
 
     for node_idx in eachindex(node.node_id)
         id = node.node_id[node_idx]
-        inflow_link = node.inflow_link[node_idx]
-        outflow_link = node.outflow_link[node_idx]
+        inflow_id = node.inflow_link[node_idx].link[1]
+        outflow_id = node.outflow_link[node_idx].link[2]
         min_flow_rate = node.min_flow_rate[node_idx]
         max_flow_rate = node.max_flow_rate[node_idx]
         control_type = node.control_type[node_idx]
@@ -675,28 +732,39 @@ function formulate_pump_or_outlet_flow!(
             continue
         end
 
-        flow_rate = if control_type != ContinuousControlType.None
-            current_flow_rate[id.idx]
-        elseif isassigned(node.time_dependent_flow_rate, node_idx)
-            # get the time dependent flow rate from interpolation or cached value
-            eval_time_interpolation(
-                node.time_dependent_flow_rate[node_idx],
-                current_flow_rate,
-                id.idx,
-                p,
-                t,
-            )
-        else
-            # get the scalar flow rate from  (for DiscreteControl, Control by allocation or flows from the Static table)
-            node.flow_rate[id.idx]
+        flow_rate = if control_type == ContinuousControlType.None
+            # Not continuously controlled
+            if isassigned(node.time_dependent_flow_rate, node_idx)
+                eval_time_interpolation(
+                    node.time_dependent_flow_rate[node_idx],
+                    current_flow_rate_setpoint,
+                    id.idx,
+                    p,
+                    t
+                )
+            else
+                node.flow_rate[node_idx]
+            end
+        elseif control_type == ContinuousControlType.PID
+            idx = findfirst(==(id), pid_control.controlled_node_id)
+            get_pid_value(du, storage_uplink, storage_downlink, pid_integral, p, t, idx)
+        else # control_type == ContinuousControlType.Continuous
+            idx = findfirst(==(id), continuous_control.controlled_node_id)
+            continuous_control_compound_variables[idx]
         end
 
-        inflow_id = inflow_link.link[1]
-        outflow_id = outflow_link.link[2]
-        src_level = get_level(p, inflow_id, t)
-        dst_level = get_level(p, outflow_id, t)
+        if node isa Pump
+            s_a = storage_uplink.horizontal.pump[node_idx]
+            s_b = storage_downlink.horizontal.pump[node_idx]
+        else # node isa Outlet
+            s_a = storage_uplink.horizontal.outlet[node_idx]
+            s_b = storage_downlink.horizontal.outlet[node_idx]
+        end
 
-        q = flow_rate * get_low_storage_factor(p, inflow_id)
+        src_level = get_level(s_a, p, inflow_id, t)
+        dst_level = get_level(s_b, p, outflow_id, t)
+
+        q = flow_rate * get_low_storage_factor(s_a, p, inflow_id)
 
         lower_bound =
             eval_time_interpolation(min_flow_rate, current_min_flow_rate, node_idx, p, t)
@@ -753,7 +821,11 @@ function formulate_pump_or_outlet_flow!(
         )
         q *= reduction_factor(max_downstream_level_ - dst_level, level_difference_threshold)
 
-        du_component[node_idx] = q
+        if node isa Pump
+            du.flow.horizontal.pump[id.idx] = q
+        else # node isa Outlet
+            du.flow.horizontal.outlet[id.idx] = q
+        end
     end
     return nothing
 end
@@ -761,37 +833,51 @@ end
 function formulate_flow!(
         du::CVector,
         pump::Pump,
+        continuous_control_compound_variables::AbstractVector,
+        pid_integral::AbstractVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
         relevant_control_type::ContinuousControlType.T,
     )::Nothing
-    (; time_dependent_cache, state_and_time_dependent_cache) = p
+    (; time_dependent_cache) = p
     return formulate_pump_or_outlet_flow!(
-        du.pump,
+        du,
         pump,
+        continuous_control_compound_variables,
+        pid_integral,
+        storage_uplink,
+        storage_downlink,
         p,
         t,
         relevant_control_type,
-        state_and_time_dependent_cache.current_flow_rate_pump,
         time_dependent_cache.pump,
     )
 end
 
 function formulate_flow!(
-        du::CVector,
+        du::RibasimStateCVector,
         outlet::Outlet,
+        continuous_control_compound_variables::AbstractVector,
+        pid_integral::AbstractVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
         p::Parameters,
         t::Number,
         relevant_control_type::ContinuousControlType.T,
     )::Nothing
-    (; time_dependent_cache, state_and_time_dependent_cache) = p
+    (; time_dependent_cache) = p
     return formulate_pump_or_outlet_flow!(
-        du.outlet,
+        du,
         outlet,
+        continuous_control_compound_variables,
+        pid_integral,
+        storage_uplink,
+        storage_downlink,
         p,
         t,
         relevant_control_type,
-        state_and_time_dependent_cache.current_flow_rate_outlet,
         time_dependent_cache.outlet,
         true,
     )
@@ -799,6 +885,10 @@ end
 
 function formulate_flows!(
         du::RibasimStateCVector,
+        storage_uplink::FlowCVector,
+        storage_downlink::FlowCVector,
+        continuous_control_compound_variables::AbstractVector,
+        pid_integral::AbstractVector,
         p::Parameters,
         t::Number;
         control_type::ContinuousControlType.T = ContinuousControlType.None,
@@ -811,14 +901,21 @@ function formulate_flows!(
         outlet,
         user_demand,
     ) = p.p_independent
-    formulate_flow!(du, pump, p, t, control_type)
-    formulate_flow!(du, outlet, p, t, control_type)
+    common_args = (storage_uplink, storage_downlink, p, t)
+    pump_outlet_common_args = (
+        continuous_control_compound_variables,
+        pid_integral,
+        common_args...,
+        control_type,
+    )
+    formulate_flow!(du, pump, pump_outlet_common_args...)
+    formulate_flow!(du, outlet, pump_outlet_common_args...)
 
     return if control_type == ContinuousControlType.None
-        formulate_flow!(du, linear_resistance, p, t)
-        formulate_flow!(du, manning_resistance, p, t)
-        formulate_flow!(du, tabulated_rating_curve, p, t)
-        formulate_flow!(du, user_demand, p, t)
+        formulate_flow!(du.flow, linear_resistance, common_args...)
+        formulate_flow!(du.flow, manning_resistance, common_args...)
+        formulate_flow!(du.flow, tabulated_rating_curve, common_args...)
+        formulate_flow!(du.flow, user_demand, common_args...)
     end
 end
 

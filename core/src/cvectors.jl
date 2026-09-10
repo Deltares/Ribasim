@@ -183,6 +183,7 @@ _total_length(loc::NamedTuple) = _last_index(loc) - _first_index(loc) + 1
 Base.@constprop :aggressive @inline function Base.getproperty(x::CVector, name::Symbol)
     data = getdata(x)
     axes = getaxes(x)
+    hasproperty(axes, name) || error("CVector has no component named :$name, available components are $(keys(x))")
     loc = getproperty(axes, name)
     return component(data, loc)
 end
@@ -194,6 +195,28 @@ end
 shift_axes(loc::AbstractUnitRange{<:Integer}, shift::Integer) = loc .+ shift
 shift_axes(loc::NamedTuple, shift::Integer) =
     NamedTuple{keys(loc)}(map(v -> shift_axes(v, shift), values(loc)))
+
+"""
+    concatenate_axes(axes::NamedTuple...)
+
+Concatenate named component axes, shifting every axis after the first so that the
+combined axes form one contiguous range. Component names must be unique.
+"""
+function concatenate_axes(axes::NamedTuple...)
+    isempty(axes) && return NamedTuple()
+    component_names = reduce((names, axis) -> (names..., keys(axis)...), axes; init = ())
+    length(unique(component_names)) == length(component_names) ||
+        throw(ArgumentError("Component names must be unique when concatenating axes."))
+
+    result = NamedTuple()
+    offset = 0
+    for axes_part in axes, (name, axis) in pairs(axes_part)
+        shift = offset + 1 - first(flat_range(axis))
+        result = merge(result, NamedTuple{(name,)}((shift_axes(axis, shift),)))
+        offset += component_length(axis)
+    end
+    return result
+end
 
 
 # Utilities
@@ -209,6 +232,11 @@ function cvector_axes_from_lengths(components::Tuple{Vararg{Symbol}}, lengths::V
         length(components)
     )
     return NamedTuple{components}(ranges)
+end
+
+function cvector_from_axes(axes::NamedTuple; data_type::Type = Vector{Float64})
+    data = data_type(undef, last(flat_range(axes)))
+    return CVector(data, axes)
 end
 
 end  # module CVectors
