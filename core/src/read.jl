@@ -156,7 +156,7 @@ end
 """Create a lookup from node_id to grouped StructVector rows."""
 function group_lookup_by_node_id(sv::Union{StructVector, Nothing})
     groups = pregroup_by_node_id(sv)
-    lookup = Dict{Int32, StructVector}()
+    lookup = OrderedDict{Int32, StructVector}()
     isnothing(groups) && return lookup
     for group in groups
         lookup[first(group).node_id] = StructVector(group)
@@ -166,7 +166,7 @@ end
 
 """Create a lookup from compound_variable_id to grouped StructVector rows."""
 function group_lookup_by_compound_variable_id(sv::StructVector)
-    lookup = Dict{Int32, StructVector}()
+    lookup = OrderedDict{Int32, StructVector}()
     isempty(sv) && return lookup
     for group in IterTools.groupby(row -> row.compound_variable_id, sv)
         lookup[first(group).compound_variable_id] = StructVector(group)
@@ -853,7 +853,7 @@ function ConcentrationData(
     concentration_external_data =
         load_structvector(db, config, Schema.Basin.ConcentrationExternal)
 
-    concentration_external = [Dict{String, ScalarConstantInterpolation}() for _ in node_id]
+    concentration_external = [OrderedDict{String, ScalarConstantInterpolation}() for _ in node_id]
     for data_id in values(group_lookup_by_node_id(concentration_external_data))
         id_value = first(data_id).node_id
         id = get(node_id_lookup, id_value, nothing)
@@ -1125,7 +1125,7 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
 
     # Initialize the logic mappings
     logic = load_structvector(db, config, Schema.DiscreteControl.Logic)
-    logic_mapping = [Dict{String, String}() for _ in eachindex(node_id)]
+    logic_mapping = [OrderedDict{String, String}() for _ in eachindex(node_id)]
 
     for (node_id, truth_state, control_state_) in
         zip(logic.node_id, logic.truth_state, logic.control_state)
