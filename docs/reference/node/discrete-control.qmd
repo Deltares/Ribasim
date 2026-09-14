@@ -11,6 +11,7 @@ The table below shows which parameters are controllable for a given node type.
 using Ribasim
 using DataFrames: DataFrame
 using MarkdownTables
+using PythonCall
 
 node_names = Symbol[]
 controllable_parameters = String[]
