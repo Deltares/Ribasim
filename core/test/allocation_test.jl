@@ -322,7 +322,7 @@ end
     import JuMP
 
     # To update the reference files run `pixi run write-allocation-problems`
-    include(normpath(@__DIR__, "../../utils/utils.jl"))
+    include("../../utils/utils.jl")
     toml_paths = get_testmodels()
 
     for toml_path in toml_paths

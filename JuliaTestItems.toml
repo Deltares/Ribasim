@@ -1,2 +1,2 @@
 exclude = ["/.pixi/", "/build/ribasim/"]
-style = "runic"
+include = ["/core/*test/"]
