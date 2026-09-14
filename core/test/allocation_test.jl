@@ -564,8 +564,6 @@ end
 
     t = 0.0
 
-    # level_demand_with_rating_curve has a 2-point (linear) TabulatedRatingCurve,
-    # so the second derivative is zero everywhere.
     toml_path = normpath(
         @__DIR__,
         "../../generated_testmodels/level_demand_with_rating_curve/ribasim.toml",
@@ -576,12 +574,26 @@ end
     (; p_independent) = p
     (; allocation) = p_independent
 
+    # A flow function that is linear in both levels has zero curvature by construction
+    linear_flow(connector_node, node_id, h_a, h_b, p, t) = 2.0 * h_a - 3.0 * h_b
+
     linear_curvatures = Float64[]
+    rating_curve_curvatures = Float64[]
     for allocation_model in allocation.allocation_models
         (; tabulated_rating_curve_ids_subnetwork) = allocation_model.node_ids_in_subnetwork
         isempty(tabulated_rating_curve_ids_subnetwork) && continue
         push!(
             linear_curvatures,
+            get_max_flow_curvature(
+                p_independent.tabulated_rating_curve,
+                tabulated_rating_curve_ids_subnetwork,
+                linear_flow,
+                p,
+                t,
+            ),
+        )
+        push!(
+            rating_curve_curvatures,
             get_max_flow_curvature(
                 p_independent.tabulated_rating_curve,
                 tabulated_rating_curve_ids_subnetwork,
@@ -593,6 +605,9 @@ end
     end
     @test !isempty(linear_curvatures)
     @test all(iszero, linear_curvatures)
+    # `qh_interpolation` prepends a point below the first level and fits a PCHIP spline,
+    # so even a 2-point rating curve table has a nonzero curvature in general.
+    @test all(c -> isfinite(c) && c >= 0, rating_curve_curvatures)
 
     # allocation_training has 3-point rating curves (PCHIP interpolation),
     # which are nonlinear so the second derivative must be strictly positive.

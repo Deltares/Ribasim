@@ -286,9 +286,9 @@ temporary_constraints: Goal programming constraints; one is added after each opt
         OrderedDict()
     flow_links_subnetwork::Vector{Tuple{NodeID, NodeID}} = Vector{Tuple{NodeID, NodeID}}()
     scaling::ScalingFactors = ScalingFactors()
-    level_demand_area_sum::Dict{Int32, Float64} = Dict()
-    level_demand_count::Dict{Int32, Int} = Dict()
-    level_demand_area_scale::Dict{Int32, Float64} = Dict()
+    level_demand_area_sum::OrderedDict{Int32, Float64} = OrderedDict()
+    level_demand_count::OrderedDict{Int32, Int} = OrderedDict()
+    level_demand_area_scale::OrderedDict{Int32, Float64} = OrderedDict()
     temporary_constraints::Vector{JuMP.ConstraintRef} = JuMP.ConstraintRef[]
 end
 
@@ -496,7 +496,7 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
     # substances in use by the model (ordered like their axis in the concentration matrices)
     substances::OrderedSet{Symbol} = OrderedSet{Symbol}()
     # Data source for external concentrations (used in control)
-    concentration_external::Vector{Dict{String, ScalarConstantInterpolation}} =
+    concentration_external::Vector{OrderedDict{String, ScalarConstantInterpolation}} =
         OrderedDict{String, ScalarConstantInterpolation}[]
 end
 
@@ -1183,7 +1183,7 @@ const ModelGraph = MetaGraph{
     NodeMetadata,
     LinkMetadata,
     @NamedTuple{
-        node_ids::Dict{Int32, OrderedSet{NodeID}},
+        node_ids::OrderedDict{Int32, OrderedSet{NodeID}},
         saveat::Float64,
         internal_flow_links::Vector{LinkMetadata},
         external_flow_links::Vector{LinkMetadata},

@@ -213,7 +213,7 @@ Replace the truth states in the logic mapping which contain wildcards with
 all possible explicit truth states.
 """
 function expand_logic_mapping(
-        logic_mapping::Vector{Dict{String, String}},
+        logic_mapping::Vector{OrderedDict{String, String}},
         node_ids::Vector{NodeID},
     )::Vector{OrderedDict{Vector{Bool}, String}}
     logic_mapping_expanded =
@@ -385,7 +385,7 @@ function get_all_demand_priorities(db::DB, config::Config)::Vector{Int32}
     end
 end
 
-const control_type_mapping = Dict{NodeType.T, ContinuousControlType.T}(
+const control_type_mapping = OrderedDict{NodeType.T, ContinuousControlType.T}(
     NodeType.PidControl => ContinuousControlType.PID,
     NodeType.ContinuousControl => ContinuousControlType.Continuous,
 )

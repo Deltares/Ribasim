@@ -548,13 +548,13 @@ end
 
 function incomplete_subnetwork(
         graph::MetaGraph,
-        node_ids::Dict{Int32, OrderedSet{NodeID}},
+        node_ids::OrderedDict{Int32, OrderedSet{NodeID}},
         allocation_active::Bool,
     )::Bool
     errors = false
 
     # analyze the subnetwork without junctions
-    node_ids_without_junctions = Dict{Int32, OrderedSet{NodeID}}()
+    node_ids_without_junctions = OrderedDict{Int32, OrderedSet{NodeID}}()
     for (subnetwork_id, node_ids_in_subnetwork) in node_ids
         node_ids_without_junctions[subnetwork_id] =
             OrderedSet(filter(x -> x.type != NodeType.Junction, node_ids_in_subnetwork))
