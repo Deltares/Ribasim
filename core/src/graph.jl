@@ -27,7 +27,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         """,
     )
     # Node IDs per subnetwork
-    node_ids = Dict{Int32, OrderedSet{NodeID}}()
+    node_ids = OrderedDict{Int32, OrderedSet{NodeID}}()
 
     # The metadata of the flow links in the order in which they are in the input
     # and will be in the output
@@ -42,7 +42,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         weight_function = Returns(1.0),
     )
 
-    route_priority_dict = Dict(
+    route_priority_dict = OrderedDict(
         "LevelBoundary" => config.allocation.route_priority.level_boundary,
         "Basin" => config.allocation.route_priority.basin,
         "LinearResistance" => config.allocation.route_priority.linear_resistance,
@@ -157,7 +157,7 @@ function simplify_graph!(
     I, J = internal_flow_link_ids, copy(internal_flow_link_ids)
 
     # Map internal (simplified) link IDs to external (with junctions) link IDs
-    link_mapping = Dict{Int32, Vector{Int32}}()
+    link_mapping = OrderedDict{Int32, Vector{Int32}}()
     errors = false
 
     # Remove junctions by iteratively simplifying from IN--J--OUT to IN--OUT

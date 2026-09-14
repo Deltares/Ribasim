@@ -4,7 +4,7 @@
     using Logging
     using Ribasim: NodeID
     using Accessors: @set, @reset
-    using DataStructures: OrderedSet
+    using DataStructures: OrderedSet, OrderedDict
 
     graph = MetaGraph(
         DiGraph();
@@ -19,7 +19,7 @@
 
     graph[1, 2] = :yes
 
-    node_ids = Dict{Int32, OrderedSet{NodeID}}()
+    node_ids = OrderedDict{Int32, OrderedSet{NodeID}}()
     node_ids[0] = OrderedSet{NodeID}()
     node_ids[-1] = OrderedSet{NodeID}()
     push!(node_ids[0], NodeID(:Basin, 1, 1))
@@ -47,7 +47,7 @@ end
     using Graphs
     using Logging
     using Ribasim: NodeID
-    using DataStructures: OrderedSet
+    using DataStructures: OrderedSet, OrderedDict
 
     graph = MetaGraph(
         DiGraph();
@@ -57,7 +57,7 @@ end
         graph_data = Tuple,
     )
 
-    node_ids = Dict{Int32, OrderedSet{NodeID}}()
+    node_ids = OrderedDict{Int32, OrderedSet{NodeID}}()
     node_ids[1] = OrderedSet{NodeID}()
     push!(node_ids[1], NodeID(:Basin, 1, 1))
     push!(node_ids[1], NodeID(:Basin, 2, 1))
