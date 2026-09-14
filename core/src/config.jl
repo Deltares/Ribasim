@@ -350,7 +350,7 @@ function Base.show(io::IO, c::Config)
 end
 
 """
-    const algorithms::Dict{String, Type}
+    const algorithms::OrderedDict{String, Type}
 
 Map from config string to a supported algorithm type from [OrdinaryDiffEq](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/).
 
@@ -369,7 +369,7 @@ Supported algorithms:
 - `ImplicitEuler`
 - `Euler`
 """
-const algorithms = Dict{String, Type}(
+const algorithms = OrderedDict{String, Type}(
     "NordsieckBDF" => NordsieckBDF,
     "QNDF" => QNDF,
     "FBDF" => FBDF,
@@ -417,7 +417,7 @@ LinearSolve.needs_concrete_A(::RibasimLinearSolve) = false
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
-    kwargs = Dict{Symbol, Any}()
+    kwargs = OrderedDict{Symbol, Any}()
     algotype = algorithms[solver.algorithm]
 
     if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm

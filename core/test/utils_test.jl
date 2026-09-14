@@ -194,8 +194,9 @@ end
 
 @testitem "Expand logic_mapping" begin
     using Ribasim: NodeID
+    using DataStructures: OrderedDict
 
-    logic_mapping = [Dict{String, String}() for _ in 1:2]
+    logic_mapping = [OrderedDict{String, String}() for _ in 1:2]
     logic_mapping[1]["*T*"] = "foo"
     logic_mapping[2]["FF"] = "bar"
     node_id = NodeID.(:DiscreteControl, [1, 2], [1, 2])
