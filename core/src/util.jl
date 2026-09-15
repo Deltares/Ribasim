@@ -695,9 +695,9 @@ end
 
 # Overloads for SparseConnectivityTracer
 reduction_factor(x::GradientTracer, ::Real) = x
-low_storage_factor_resistance_node(::Parameters, q::GradientTracer, ::NodeID, ::NodeID) = q
+low_storage_factor_resistance_node(::Number, ::Number, ::Parameters, q::GradientTracer, ::NodeID, ::NodeID) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
-get_level_from_storage(basin::Basin, state_idx::Int, storage::GradientTracer) = storage
+get_level(storage::GradientTracer, p::Parameters, node_id::NodeID, t::Number; kwargs...) = storage
 
 function get_ns_flow_horizontal(nodes::NamedTuple)
     (;
@@ -820,11 +820,8 @@ end
 Check whether any storages are negative given the state u.
 """
 function isoutofdomain(u, p, t)
-    (; current_storage) = p.state_and_time_dependent_cache
-    (; u_reduced) = p.p_independent
-    reduce_state!(u_reduced, u, p.p_independent)
-    formulate_storages!(u_reduced, p, t)
-    return any(<(0), current_storage)
+    set_current_storage!(p, u.flow, t)
+    return any(<(0), p.current_basin_properties.current_storage)
 end
 
 function get_demand(user_demand, id, demand_priority_idx, t)::Float64

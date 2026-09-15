@@ -91,12 +91,17 @@ function formulate_cumulative_boundary_flow!(
         p::Parameters,
         t::Number,
     )
-    (; p_mutable, time_dependent_cache) = p
-    (; flow_rate) = flow_boundary
+    (; p_mutable, p_independent, time_dependent_cache) = p
+    (; cumulative_flow) = flow_boundary
     (; current_cumulative_boundary_flow) = time_dependent_cache.flow_boundary
     if p_mutable.new_time_dependent_cache
+        # Extrapolate from the last accepted step, since a flow rate set via BMI is only
+        # known from the moment it was set and cannot be integrated from t = 0
+        t_last_accepted = p_independent.basin.forcing.t_last_accepted[1]
         for idx in eachindex(flow_boundary.node_id)
-            current_cumulative_boundary_flow[idx] = integral(flow_rate[idx], 0.0, t)
+            current_cumulative_boundary_flow[idx] =
+                cumulative_flow[idx] +
+                boundary_flow_integral(flow_boundary, idx, t_last_accepted, t)
         end
     end
     return
@@ -917,171 +922,4 @@ function formulate_flows!(
         formulate_flow!(du.flow, tabulated_rating_curve, common_args...)
         formulate_flow!(du.flow, user_demand, common_args...)
     end
-end
-
-"""
-Clamp the cumulative flow states within the minimum and maximum
-flow rates for the last time step if these flow rate bounds are known.
-"""
-function limit_flow!(
-        u::CVector,
-        integrator::DEIntegrator,
-        p::Parameters,
-        t::Number,
-    )::Nothing
-    (; uprev, dt) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
-    (;
-        pump,
-        outlet,
-        linear_resistance,
-        user_demand,
-        tabulated_rating_curve,
-        basin,
-        allocation,
-        u_reduced,
-        level_difference_threshold,
-    ) = p_independent
-    (; current_storage, current_level) = state_and_time_dependent_cache
-
-    # The current storage and level based on the proposed u are used to estimate the lowest
-    # storage and level attained in the last time step to estimate whether there was an effect
-    # of reduction factors
-
-    reduce_state!(u_reduced, u, p_independent)
-    set_current_basin_properties!(u_reduced, p, t)
-
-    # TabulatedRatingCurve flow is in [0, ∞)
-    for id in tabulated_rating_curve.node_id
-        limit_flow!(
-            u.tabulated_rating_curve,
-            uprev.tabulated_rating_curve,
-            id,
-            0.0,
-            Inf,
-            dt,
-        )
-    end
-
-    # Pump flow is in [min_flow_rate, max_flow_rate]
-    for (id, min_flow_rate, max_flow_rate) in
-        zip(pump.node_id, pump.min_flow_rate, pump.max_flow_rate)
-        limit_flow!(u.pump, uprev.pump, id, min_flow_rate(t), max_flow_rate(t), dt)
-    end
-
-    # Outlet flow is in [min_flow_rate, max_flow_rate]
-    for (id, min_flow_rate, max_flow_rate) in
-        zip(outlet.node_id, outlet.min_flow_rate, outlet.max_flow_rate)
-        limit_flow!(
-            u.outlet,
-            uprev.outlet,
-            id,
-            min_flow_rate(t),
-            max_flow_rate(t),
-            dt,
-        )
-    end
-
-    # LinearResistance flow is in [-max_flow_rate, max_flow_rate]
-    for (id, max_flow_rate) in zip(
-            linear_resistance.node_id,
-            linear_resistance.max_flow_rate,
-        )
-        limit_flow!(
-            u.linear_resistance,
-            uprev.linear_resistance,
-            id,
-            -max_flow_rate,
-            max_flow_rate,
-            dt,
-        )
-    end
-
-    # UserDemand per inflow link bounds
-    for node_idx in eachindex(user_demand.node_id)
-        id = user_demand.node_id[node_idx]
-        inflow_links = user_demand.inflow_links[node_idx]
-        link_offset = user_demand.inflow_link_offsets[node_idx]
-        n_links = length(inflow_links)
-        demand_from_timeseries = user_demand.demand_from_timeseries[node_idx]
-        link_alloc = user_demand.inflow_link_allocated[node_idx]
-
-        allocated_total = if demand_from_timeseries
-            0.0
-        else
-            sum(
-                min(
-                    user_demand.demand[id.idx, demand_priority_idx],
-                    user_demand.allocated[id.idx, demand_priority_idx],
-                ) for demand_priority_idx in eachindex(allocation.demand_priorities_all)
-            )
-        end
-        equal_split = n_links == 0 ? 0.0 : allocated_total / n_links
-
-        for (k, link_meta) in enumerate(inflow_links)
-            state_idx = link_offset + k
-            q_k_max = isinf(link_alloc[k]) ? equal_split : link_alloc[k]
-            min_flow_rate, max_flow_rate = if demand_from_timeseries
-                0.0, Inf
-            else
-                src_id = link_meta.link[1]
-                factor_basin_min = min_low_storage_factor(
-                    current_storage,
-                    basin.storage_prev,
-                    basin,
-                    src_id,
-                )
-                factor_level_min = min_low_user_demand_level_factor(
-                    current_level,
-                    basin.level_prev,
-                    user_demand.min_level,
-                    id,
-                    src_id,
-                    level_difference_threshold,
-                )
-                factor_basin_min * factor_level_min * q_k_max, q_k_max
-            end
-            u_prev = uprev.user_demand_inflow[state_idx]
-            u.user_demand_inflow[state_idx] = clamp(
-                u.user_demand_inflow[state_idx],
-                u_prev + min_flow_rate * dt,
-                u_prev + max_flow_rate * dt,
-            )
-        end
-    end
-
-    # Evaporation is in [0, ∞) (stricter bounds would require also estimating the area)
-    # Infiltration is in [f * infiltration, infiltration] where f is a rough estimate of the smallest low storage factor
-    # reduction factor value that was attained over the last timestep
-    for (id, infiltration) in zip(basin.node_id, basin.vertical_flux.infiltration)
-        factor_min = min_low_storage_factor(current_storage, basin.storage_prev, basin, id)
-        limit_flow!(u.evaporation, uprev.evaporation, id, 0.0, Inf, dt)
-        limit_flow!(
-            u.infiltration,
-            uprev.infiltration,
-            id,
-            factor_min * infiltration,
-            infiltration,
-            dt,
-        )
-    end
-
-    return nothing
-end
-
-function limit_flow!(
-        u_component,
-        uprev_component,
-        id::NodeID,
-        min_flow_rate::Number,
-        max_flow_rate::Number,
-        dt::Number,
-    )::Nothing
-    u_prev = uprev_component[id.idx]
-    u_component[id.idx] = clamp(
-        u_component[id.idx],
-        u_prev + min_flow_rate * dt,
-        u_prev + max_flow_rate * dt,
-    )
-    return nothing
 end

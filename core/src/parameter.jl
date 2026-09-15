@@ -584,17 +584,12 @@ Requirements:
     vertical_flux::VerticalFlux = VerticalFlux(length(node_id))
     # Initial_storage
     storage0::Vector{Float64} = zeros(length(node_id))
+    # Storage at previous timestep
+    storage_prev_dt::Vector{Float64} = zeros(length(node_id))
+    # Storage at previous saveat
+    storage_prev_saveat::Vector{Float64} = zeros(length(node_id))
     # The storage rate for computing the minimum basin emptying_time
     dstorage::Vector{Float64} = zeros(length(node_id))
-    # Storage at previous saveat without storage0
-    Δstorage_prev_saveat::Vector{Float64} = zeros(length(node_id))
-    # Analytically integrated forcings
-    cumulative_precipitation::Vector{Float64} = zeros(length(node_id))
-    cumulative_surface_runoff::Vector{Float64} = zeros(length(node_id))
-    cumulative_drainage::Vector{Float64} = zeros(length(node_id))
-    cumulative_precipitation_saveat::Vector{Float64} = zeros(length(node_id))
-    cumulative_surface_runoff_saveat::Vector{Float64} = zeros(length(node_id))
-    cumulative_drainage_saveat::Vector{Float64} = zeros(length(node_id))
     # Basin profile interpolations
     storage_to_level::Vector{StorageToLevelType} =
         Vector{StorageToLevelType}(undef, length(node_id))
@@ -604,10 +599,6 @@ Requirements:
     demand::Vector{Float64} = zeros(length(node_id))
     allocated::Vector{Float64} = zeros(length(node_id))
     forcing::BasinForcing = BasinForcing(; n = length(node_id))
-    # Storage for each Basin at the previous time step
-    storage_prev::Vector{Float64} = zeros(length(node_id))
-    # Level for each Basin at the previous time step
-    level_prev::Vector{Float64} = zeros(length(node_id))
     # Concentrations
     concentration_data::ConcentrationData = ConcentrationData()
     # Connected level demand node if applicable
@@ -742,19 +733,21 @@ end
 """
 node_id: node ID of the FlowBoundary node
 outflow_link: The outgoing flow link metadata
-cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
-cumulative_flow_saveat: The exactly integrated cumulative boundary flow since the last saveat
 flow_rate: flow rate (exact)
 flow_rate_bmi: flow rate set externally via BMI, which takes precedence over `flow_rate`; `NaN` means unset
+cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
+cumulative_flow_prev_saveat: `cumulative_flow` at the previous saveat
+cumulative_flow_dt: The exact cumulative flow over the latest timestep
 concentration_itp: matrix with boundary concentrations per FlowBoundary per substance
 """
 @kwdef struct FlowBoundary{I} <: AbstractParameterNode
     node_id::Vector{NodeID}
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    cumulative_flow::Vector{Float64} = zeros(length(node_id))
-    cumulative_flow_saveat::Vector{Float64} = zeros(length(node_id))
     flow_rate::Vector{I}
     flow_rate_bmi::Vector{Float64} = fill(NaN, length(node_id))
+    cumulative_flow::Vector{Float64} = zeros(length(node_id))
+    cumulative_flow_prev_saveat::Vector{Float64} = zeros(length(node_id))
+    cumulative_flow_dt::Vector{Float64} = zeros(length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
 end
 
@@ -1223,8 +1216,33 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
 """
 @kwdef mutable struct ParametersMutable
     new_time_dependent_cache::Bool = true
-    refresh_jax::Bool = true
+    refresh_jac::Bool = true
     ad_active::Bool = false
+end
+
+"""
+    @ad_active p expr
+
+Evaluate `expr` with `p.p_mutable.ad_active` set to `true`, restoring the previous value
+afterwards (also when `expr` throws). Returns the value of `expr`.
+
+```julia
+@ad_active p begin
+    jacobian!(f!, du, J, prep, backend, x, Constant(t))
+end
+```
+"""
+macro ad_active(p, expr)
+    return quote
+        p_mutable = $(esc(p)).p_mutable
+        ad_active_prev = p_mutable.ad_active
+        p_mutable.ad_active = true
+        try
+            $(esc(expr))
+        finally
+            p_mutable.ad_active = ad_active_prev
+        end
+    end
 end
 
 """

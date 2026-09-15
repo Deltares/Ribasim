@@ -21,13 +21,14 @@ const FlowInputTuple = NamedTuple{
 const FlowInputCVector{T} = CVector{T, Vector{T}, FlowInputTuple}
 
 """
-Caches for evaluating the terms in the lazy Ribasim Jacobian. For more details
+Cache for evaluating the lazy Ribasim Jacobian. For more details
 see the RibasmimJacobian docstring.
 """
-struct RibasimJacobianEvaluationCache{E}
+@kwdef struct RibasimJacobianEvaluationCache{E}
     flow_input::FlowInputCVector{Float64}
+    flow_input_ranges::FlowInputCVector{Int} = CVector(collect(eachindex(flow_input)), getaxes(flow_input))
     ∂flow_∂flow_input::SparseMatrixCSC{Float64}
-    eval_∂flow_∂storage!::E
+    eval_∂flow_∂flow_input!::E
 end
 
 function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
@@ -49,7 +50,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
     )
     flow_input = cvector_from_axes(flow_input_axes)
 
-    function formulate_flows_closure!(du, flow_input, t, do_continuous_control_flows::Bool)
+    function formulate_flows_closure!(du, flow_input, t)
         check_new_t!(p, t)
 
         formulate_flows_args = (
@@ -61,27 +62,25 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
             p, t,
         )
 
-        if !do_continuous_control_flows
-            formulate_vertical_flux!(du.flow, flow_input.storage_uplink, p, t)
-            formulate_flows!(formulate_flows_args...)
-            formulate_PID_control!(du.pid_integral, flow_input.storage_uplink, flow_input.storage_downlink, p, t)
-            formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.PID)
-        else
-            formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.Continuous)
-        end
+
+        formulate_vertical_flux!(du.flow, flow_input.storage_uplink, p, t)
+        formulate_flows!(formulate_flows_args...)
+        formulate_PID_control!(du.pid_integral, flow_input.storage_uplink, flow_input.storage_downlink, p, t)
+        formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.PID)
+        formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.Continuous)
         return nothing
     end
 
-    ∂flow_∂flow_input_prep = prepare_jacobian(
+
+    ∂flow_∂flow_input_prep = @ad_active p prepare_jacobian(
         formulate_flows_closure!,
         du,
         backend_jac,
         flow_input,
         Constant(t),
-        Constant(false)
     )
-    ∂flow_∂flow_input = spzeros(length(du), length(flow_input))
-    eval_∂flow_∂flow_input!(t, do_continuous_control_flows) = jacobian!(
+    ∂flow_∂flow_input = ∂flow_∂flow_input_prep.sparsity * 1.0
+    eval_∂flow_∂flow_input!(t) = @ad_active p jacobian!(
         formulate_flows_closure!,
         du,
         ∂flow_∂flow_input,
@@ -89,22 +88,62 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
         backend_jac,
         flow_input,
         Constant(t),
-        Constant(do_continuous_control_flows)
     )
 
-    return RibasimJacobianEvaluationCache(flow_input, ∂flow_∂flow_input, eval_∂flow_∂flow_input!)
+    return RibasimJacobianEvaluationCache(; flow_input, ∂flow_∂flow_input, eval_∂flow_∂flow_input!)
 end
 
 ###
 ##### Jacobian
 ###
 
+"""
+Unraveled representation of the Ribasim Jacobian. More precisely:
+
+The rhs of the ODE problem is composed of:
+- Computing storages from cumulative flows: S = M * u (via the incidence matrix M)
+- Computing levels and areas from the storages
+- Computing flows from the levels and areas
+# TODO: Continuous Control, PID Control
+
+Within the solve, The Jacobian is formulated as a function of v = (storage_uplink, storage_downlink, pid_integral, continuous_control_compound), where:
+- storage_uplink is the storage uplink per cumulative flow state
+- storage_downlink is the storage downlink per cumulative flow state
+- pid_integral is the value of the PID error integral per PIDControl node
+- continuous_control_compound is the compound_variable value per ContinuousControl node
+
+This means that the computed Jacobian has the following structure:
+
+∂flow_∂flow_input = [ ∂q_∂storage_uplink ∂q_∂storage_downlink ∂q_∂pid_integral ∂q_∂continuous_control_compound ]
+
+This relates to the Jacobian of water_balance! as follows:
+
+ ∂water_balance!_∂Q = ∂q_∂v * ∂v_∂Q
+                    = ∂q_∂storage_uplink * ∂storage_uplink_∂Q +
+                      ∂q_∂storage_downlink * ∂storage_downlink_∂Q +
+                      ∂q_∂pid_integral * ∂pid_integral_∂Q +
+                      ∂q_∂continuous_control_compound * ∂continuous_control_compound_∂Q
+
+Here:
+- ∂q_∂storage_uplink and ∂q_∂storage_downlink are diagonal matrices
+- ∂q_∂pid_integral and ∂q_∂continuous_control_compound have a maximum of one nonzero per row for those flows which are PID controlled
+  or continuously controlled respectively
+- ∂storage_uplink_∂Q and ∂storage_downlink_∂Q are constant sparse matrices with non-zero entries -1, 1.
+
+The reason we do this is because of sparse matrix coloring (https://github.com/JuliaDiff/SparseMatrixColorings.jl);
+this formulation requires far fewer right hand side calls in the Jacobian computation than the standard way.
+"""
 @kwdef struct RibasimJacobian{
         C <: RibasimJacobianEvaluationCache,
         PI <: ParametersIndependent,
     } <: AbstractSciMLOperator{Float64}
+    # Cache for evaluating the Jacobian
     cache::C
     p_independent::PI
+    n_basin = length(p_independent.basin.node_id)
+    # J_inner_local represents the most expensive part of the inner linear solve,
+    # namely the local dependence of flows on storages
+    J_inner_local::SparseMatrixCSC{Float64, Int} = spzeros(n_basin, n_basin)
 end
 
 # SciMLOperators interface
@@ -125,17 +164,121 @@ function SciMLOperators.update_coefficients!(
         p::Parameters,
         t::Number,
     )
-    error()
+    (; cache) = J
+    (; flow_input, eval_∂flow_∂flow_input!) = cache
+    (; storage_uplink, storage_downlink) = flow_input
+    (; p_independent, p_mutable, current_basin_properties) = p
+
+    !p_mutable.refresh_jac && return nothing
+
+    # Prepare computing cumulative flow derivatives
+    set_current_storage!(p, u.flow, t)
+    set_uplink_downlink_storage!(
+        storage_uplink,
+        storage_downlink,
+        current_basin_properties.current_storage,
+        p_independent
+    )
+    check_new_t!(p, t)
+
+    # Compute derivatives
+    eval_∂flow_∂flow_input!(t)
+
+    # Compute local part of the reduced linear solve Jacobian
+    update_J_inner_local!(J)
+    return nothing
 end
 
-function update_J_inner_local!(J::RibasimJacobian; initialize = false)
+"""
+Compute J_inner_local = M * (diagonal(∂q_∂storage_uplink) - diagonal(∂q_∂storage_downlink))
+"""
+function update_J_inner_local!(
+        J::RibasimJacobian;
+        data_getter = (i, j) -> J.cache.∂flow_∂flow_input[i, j],
+    )
     (; p_independent, J_inner_local, cache) = J
-    (; ∂flow_∂flow_input) = cache
-
-    data_getter = initialize ? Returns(1.0) : (idx_flow, idx_in) -> ∂flow_∂flow_input[idx_flow, idx_in]
+    (; flow_input_ranges) = cache
+    (; inflow_id, outflow_id) = p_independent
 
     J_inner_local .= 0.0
+    for flow_idx in eachindex(inflow_id)
+        id_in = inflow_id[flow_idx]
+        id_out = outflow_id[flow_idx]
 
+        if id_in.is_basin
+            # The uplink Basin affecting itself
+            J_inner_local[id_in.idx, id_in.idx] -= data_getter(flow_idx, flow_input_ranges.storage_uplink[flow_idx])
+        end
+        if id_out.is_basin
+            # The downlink Basin affecting itself
+            J_inner_local[id_out.idx, id_out.idx] += data_getter(flow_idx, flow_input_ranges.storage_downlink[flow_idx])
+        end
+        if id_in.is_basin && id_out.is_basin
+            # The up- and downlink Basins affecting eachother
+            J_inner_local[id_in.idx, id_out.idx] -= data_getter(flow_idx, flow_input_ranges.storage_downlink[flow_idx])
+            J_inner_local[id_out.idx, id_in.idx] += data_getter(flow_idx, flow_input_ranges.storage_uplink[flow_idx])
+        end
+    end
+    return nothing
+end
+
+"""
+Compute v_out = ∂q_∂storage * v_in
+
+where
+
+∂q_∂storage = ∂q_∂storage_uplink * ∂storage_uplink_∂storage +
+              ∂q_∂storage_downlink * ∂storage_downlink_∂storage,
+
+where
+
+∂storage_uplink_∂storage and ∂storage_downlink_∂storage are sparse matrix
+with nonzero entries 1.0.
+"""
+function ∂flow_∂storage_mul!(
+        v_out::FlowCVector,
+        J::RibasimJacobian,
+        v_in::AbstractVector,
+    )
+    (; n_basin, p_independent, cache) = J
+    (; flow_input_ranges, ∂flow_∂flow_input) = cache
+    (; inflow_id, outflow_id) = p_independent
+
+    @assert length(v_in) == n_basin
+    v_out .= 0.0
+
+    for flow_idx in eachindex(v_out)
+        id_in = inflow_id[flow_idx]
+        id_out = outflow_id[flow_idx]
+
+        if id_in.is_basin
+            v_out[flow_idx] += ∂flow_∂flow_input[flow_idx, flow_input_ranges.storage_uplink[flow_idx]]
+        end
+        if id_out.is_basin
+            v_out[flow_idx] += ∂flow_∂flow_input[flow_idx, flow_input_ranges.storage_downlink[flow_idx]]
+        end
+    end
+
+    return nothing
+end
+
+function build_J_inner!(
+        J_inner::AbstractMatrix{Float64},
+        J::RibasimJacobian,
+        gamma::Number
+    )
+    (; p_independent, J_inner_local) = J
+
+    J_inner .= J_inner_local
+
+    # Continuous control contributions via storage
+    # TODO
+
+    # Continuous control contributions via flow
+    # TODO
+
+    # PID control contributions
+    # TODO
     return nothing
 end
 
@@ -162,14 +305,13 @@ function SciMLBase.init(
     )
     W = prob.A
     (; J, gamma) = W
-    n_basin = length(J.p_independent.basin)
+    (; n_basin) = J
 
     # The effective Jacobian for the inner linear solve
     J_inner = alg.algorithm isa AbstractDenseFactorization ? zeros(n_basin, n_basin) : spzeros(n_basin, n_basin)
 
-    # Make sure all derivatives are non-zero here so that the
-    # sparsity pattern is properly initialized
-    update_J_inner_local!(J)
+    # Make sure that the sparsity pattern is properly initialized
+    update_J_inner_local!(J; data_getter = Returns(1.0))
     build_J_inner!(J_inner, J, gamma)
 
     u_inner = zeros(n_basin)
@@ -182,44 +324,108 @@ function SciMLBase.init(
     return RibasimLinearSolveCache(cache_inner, W)
 end
 
+"""
+Performing the linear solve
+
+[-γ⁻¹A + J] * linu = b
+
+by solving
+
+W_inner * x_inner = b_inner
+
+where
+
+W_inner = [-γ⁻¹I_n + J_inner]
+J_inner as shown in the `build_J_inner` docstring
+b_inner = M(b.flow + γ * Jᵢ * b.pid_integral)
+
+and then computing
+
+linu.flow         = γ * [-b.flow + J_inner * M * v]
+linu.pid_integral = -γ * [b.pid_integral + S_pid * (linu.storage/area)]
+
+"""
+function OrdinaryDiffEqDifferentiation.dolinsolve(
+        integrator::DEIntegrator,
+        linsolve::RibasimLinearSolveCache;
+        b::Union{RibasimStateCVector, Nothing} = nothing,
+        linu::Union{RibasimStateCVector, Nothing} = nothing,
+        kwargs...,
+    )
+    @assert !isnothing(b)
+    @assert !isnothing(linu)
+
+    (; cache_inner, W) = linsolve
+    (; gamma, J) = W
+    (; p_independent) = J
+
+    W_inner = cache_inner.A
+    J_inner = W_inner.J
+    b_inner = cache_inner.b
+
+    # Set up inner (storage space) problem rhs
+    W_inner.gamma = gamma
+    aggregate_flows!(b_inner, b.flow, p_independent)
+
+    # Set up inner (storage space) problem matrix
+    build_J_inner!(J_inner, J, gamma)
+    jacobian2W!(W_inner._concrete_form, W_inner.mass_matrix, W_inner.gamma, W_inner.J)
+
+    # Solve inner (storage space) problem
+    cache_inner.isfresh = true # This is only false in the rare case that
+    #                          # The Jacobian and the timestep weren't updated
+    linres = dolinsolve(
+        integrator,
+        cache_inner;
+        kwargs...,
+        A = nothing,
+        linu = nothing,
+        b = nothing,
+    )
+
+    # Compute flow component solution
+    ∂flow_∂storage_mul!(linu.flow, J, cache_inner.u)
+    linu.flow .-= b.flow
+    linu.flow .*= gamma
+
+    return LinearSolution{
+        Float64,
+        1,
+        Vector{Float64},
+        typeof(linres.resid),
+        typeof(linres.alg),
+        typeof(linsolve),
+        typeof(linres.stats),
+    }(
+        linu,
+        linres.resid,
+        linres.alg,
+        linres.retcode,
+        linres.iters,
+        linsolve,
+        linres.stats,
+    )
+end
+
 ###
 ##### Other
 ###
 
-function get_diff_eval(
-        p::Parameters,
-        t::Number,
-        solver::Solver,
-        u::RibasimStateCVector,
-        du::RibasimStateCVector
+# Capture whether the Jacobian should be refreshed since it is not passed directly to
+# update_coefficients!
+function OrdinaryDiffEqDifferentiation.do_newJW(
+        integrator::OrdinaryDiffEqCore.ODEIntegrator{A, B, C, D, E, <:Parameters},
+        alg,
+        nlsolver,
+        repeat_step
+    ) where {A, B, C, D, E}
+    new_jac, new_W = invoke(
+        do_newJW,
+        Tuple{Any, Any, Any, Any},
+        integrator, alg, nlsolver, repeat_step,
     )
-    (; p_independent, current_basin_properties) = p
-    (; storage_uplink, storage_downlink, continuous_control) = p_independent
-
-    backend = get_ad_type(solver)
-
-    # In-place AD caches, only for:
-    # - solver.optimized.implicit_solve = false
-    # - algorithms which require tgrad (Rosenbrock methods)
-    ad_caches = (
-        Cache(storage_uplink),
-        Cache(storage_downlink),
-        Cache(continuous_control.continuous_control_compound_variables),
-        Cache(current_basin_properties.current_storage),
-    )
-
-    if solver.reduced_implicit_solve
-        cache = RibasimJacobianEvaluationCache(p, solver)
-        jac_prototype = RibasimJacobian(; p.p_independent, cache)
-        jac = nothing # Jacobian is updated via SciMLOperators.update_coefficients!
-    else
-        # TODO
-    end
-
-    # TODO
-    tgrad = nothing
-
-    return (; jac_prototype, jac, tgrad)
+    integrator.p.p_mutable.refresh_jac = new_jac
+    return new_jac, new_W
 end
 
 # The norm applied to the residuals to obtain the final scalar solver error
@@ -401,4 +607,44 @@ end
 function OrdinaryDiffEqCore.instability_jacobian(integrator::ODEIntegrator{<:Any, <:Any, <:RibasimStateCVector})
     (; J) = integrator.cache.nlsolver.cache
     return convert(AbstractMatrix, J)
+end
+
+###
+##### Initialization
+###
+
+function get_diff_eval(
+        p::Parameters,
+        t::Number,
+        solver::Solver,
+        u::RibasimStateCVector,
+        du::RibasimStateCVector
+    )
+    (; p_independent, current_basin_properties) = p
+    (; storage_uplink, storage_downlink, continuous_control) = p_independent
+
+    backend = get_ad_type(solver)
+
+    # In-place AD caches, only for:
+    # - solver.optimized.implicit_solve = false
+    # - algorithms which require tgrad (Rosenbrock methods)
+    ad_caches = (
+        Cache(storage_uplink),
+        Cache(storage_downlink),
+        Cache(continuous_control.continuous_control_compound_variables),
+        Cache(current_basin_properties.current_storage),
+    )
+
+    if solver.reduced_implicit_solve
+        cache = RibasimJacobianEvaluationCache(p, solver)
+        jac_prototype = RibasimJacobian(; p.p_independent, cache)
+        jac = nothing # Jacobian is updated via SciMLOperators.update_coefficients!
+    else
+        # TODO
+    end
+
+    # TODO
+    tgrad = nothing
+
+    return (; jac_prototype, jac, tgrad)
 end

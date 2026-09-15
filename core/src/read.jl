@@ -951,7 +951,8 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     storage0 = get_storages_from_levels(basin, state.level)
     basin.storage0 .= storage0
-    basin.storage_prev .= storage0
+    basin.storage_prev_dt .= storage0
+    basin.storage_prev_saveat .= storage0
     basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
 
     for id in node_id

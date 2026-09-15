@@ -44,7 +44,7 @@ using OrdinaryDiffEqCore:
     residual_analysis!
 using DiffEqBase: DiffEqBase, ODE_DEFAULT_NORM
 using OrdinaryDiffEqDifferentiation:
-    OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
+    OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!, do_newJW
 using SciMLOperators: WOperator, MatrixOperator
 import ADTypes
 using ADTypes: AutoForwardDiff
