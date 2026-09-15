@@ -233,7 +233,7 @@ function linearize_connector_node!(
         JuMP.set_normalized_rhs(constraint, q0 / scaling.flow)
 
         # Only linearize if the level comes from a Basin
-        if inflow_id.type == NodeType.Basin
+        if inflow_id.is_basin
             # partial derivative with respect to upstream level
             ∂q∂h_a = forward_diff(
                 level_a ->
@@ -249,7 +249,7 @@ function linearize_connector_node!(
             )
         end
 
-        if outflow_id.type == NodeType.Basin
+        if outflow_id.is_basin
             # partial derivative with respect to downstream level
             ∂q∂h_b = forward_diff(
                 level_b ->
@@ -371,7 +371,7 @@ function set_simulation_data!(
         constraint = pump_constraints[node_id]
         upstream_node_id = pump.inflow_link[node_id.idx].link[1]
         q = du.pump[node_id.idx]
-        if upstream_node_id.type == NodeType.Basin
+        if upstream_node_id.is_basin
             low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
             JuMP.set_normalized_coefficient(
                 constraint,
@@ -388,7 +388,7 @@ function set_simulation_data!(
         constraint = outlet_constraints[node_id]
         upstream_node_id = outlet.inflow_link[node_id.idx].link[1]
         q = du.outlet[node_id.idx]
-        if upstream_node_id.type == NodeType.Basin
+        if upstream_node_id.is_basin
             low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
             JuMP.set_normalized_coefficient(
                 constraint,
@@ -970,10 +970,11 @@ function parse_termination_status(
         end
     else
         write_problem_to_file(problem, config)
+        raw_status = JuMP.raw_status(problem)
         error(
             """
-            Allocation optimization for subnetwork $subnetwork_id at t = $t s failed with termination status $termination_status.
-            Ribasim doesn't have a way to handle this termination status; search for MathOptInterface.TerminationStatusCode or make an issue.
+            Allocation optimization for subnetwork $subnetwork_id at t = $t s failed with termination status $termination_status ($raw_status).
+            Ribasim doesn't have a way to handle this termination status; search for one of the above error codes or make an issue.
             With:
             objective:         $objective
             latest constraint: $latest_constraint

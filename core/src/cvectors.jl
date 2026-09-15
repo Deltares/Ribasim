@@ -27,7 +27,7 @@ struct CVector{T, A <: DenseVector{T}, NT} <: DenseVector{T}
     function CVector(data::A, axes::NT) where {T, A <: DenseVector{T}, NT <: NamedTuple}
         range = flat_range(axes)
         len = component_length(axes)
-        @assert length(range) == len "Axes must be contiguous (no gaps or overlaps)"
+        @assert length(range) == len "Axes must be contiguous (no gaps or overlaps), got $axes"
         offset = first(range) - 1
         return new{T, A, NT}(data, axes, offset, len)
     end
@@ -183,6 +183,7 @@ _total_length(loc::NamedTuple) = _last_index(loc) - _first_index(loc) + 1
 Base.@constprop :aggressive @inline function Base.getproperty(x::CVector, name::Symbol)
     data = getdata(x)
     axes = getaxes(x)
+    hasproperty(axes, name) || error("CVector has no component named :$name, available components are $(keys(x))")
     loc = getproperty(axes, name)
     return component(data, loc)
 end
@@ -194,5 +195,48 @@ end
 shift_axes(loc::AbstractUnitRange{<:Integer}, shift::Integer) = loc .+ shift
 shift_axes(loc::NamedTuple, shift::Integer) =
     NamedTuple{keys(loc)}(map(v -> shift_axes(v, shift), values(loc)))
+
+"""
+    concatenate_axes(axes::NamedTuple...)
+
+Concatenate named component axes, shifting every axis after the first so that the
+combined axes form one contiguous range. Component names must be unique.
+"""
+function concatenate_axes(axes::NamedTuple...)
+    isempty(axes) && return NamedTuple()
+    component_names = reduce((names, axis) -> (names..., keys(axis)...), axes; init = ())
+    length(unique(component_names)) == length(component_names) ||
+        throw(ArgumentError("Component names must be unique when concatenating axes."))
+
+    result = NamedTuple()
+    offset = 0
+    for axes_part in axes, (name, axis) in pairs(axes_part)
+        shift = offset + 1 - first(flat_range(axis))
+        result = merge(result, NamedTuple{(name,)}((shift_axes(axis, shift),)))
+        offset += component_length(axis)
+    end
+    return result
+end
+
+
+# Utilities
+cvector_axes_type(components::Tuple{Vararg{Symbol}}; range_type::Type = UnitRange{Int}) =
+    NamedTuple{components, NTuple{length(components), range_type}}
+
+function cvector_axes_from_lengths(components::Tuple{Vararg{Symbol}}, lengths::Vector{Int}; offset = 0)
+    range_bounds = pushfirst!(cumsum(lengths), 0)
+    range_bounds .+= offset
+    trivial_range = 1:0
+    ranges = ntuple(
+        i -> iszero(lengths[i]) ? trivial_range : (range_bounds[i] + 1):range_bounds[i + 1],
+        length(components)
+    )
+    return NamedTuple{components}(ranges)
+end
+
+function cvector_from_axes(axes::NamedTuple; data_type::Type = Vector{Float64})
+    data = data_type(undef, last(flat_range(axes)))
+    return CVector(data, axes)
+end
 
 end  # module CVectors

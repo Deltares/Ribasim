@@ -72,9 +72,9 @@ These variables can be listened to:
 The condition schema defines conditions of the form the `discrete_control` node with this `node_id` listens to whether the variable given by the `node_id` and `compound_variable_id` is greater than `threshold_high` (at time $t$) when the condition was false previously, or `threshold_low` when true previously. Using `threshold_low` is optional and defaults to `threshold_high`. When set to a different value---smaller than or equal to `threshold_high`---it defines a [deadband]("https://en.wikipedia.org/wiki/Deadband") and thus enables hysteresis. In equation form:
 
 $$
-condition=\begin{cases}
-    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots > \text{greater\_than}(t), !condition\_{prev} \\
-    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots >= \text{less\_than}(t), condition\_{prev}
+\text{condition}=\begin{cases}
+    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots > \text{greater_than}(t), !\text{condition_prev} \\
+    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots >= \text{less_than}(t), \text{condition_prev}
 \end{cases}
 $$
 
@@ -92,6 +92,50 @@ threshold_low        | Float64  | various | (optional), <= threshold_high
 time                 | DateTime | -       | (optional)
 
 When no (or only a single) `time` is supplied for a given `condition_id`, the `threshold_high` value of this condition is unchanging over time. When multiple times are supplied, in between the given times the `threshold_high` and `threshold_low` values are block interpolated (forward fill), and outside they are constant given by the nearest time value.
+It is possible to configure a DiscreteControl node such that it very rapidly oscillates between control states, which isn't realistic behavior. See the example model below.
+
+```{python}
+from ribasim import Model, Node
+from ribasim.nodes import basin, discrete_control, flow_boundary, pump
+from shapely.geometry import Point
+import matplotlib.pyplot as plt
+
+model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:4326")
+
+fb = model.flow_boundary.add(
+    Node(1, Point(0, 0)), [flow_boundary.Static(flow_rate=[1.0])]
+)
+
+bsn = model.basin.add(
+    Node(2, Point(1, 0)), [basin.Profile(area=[100.0, 100.0], level=[0.0, 1.0])]
+)
+
+pmp = model.pump.add(Node(3, Point(2, 0)), [pump.Static(flow_rate=[1.0])])
+
+t = model.terminal.add(Node(4, Point(3, 0)))
+
+dc = model.discrete_control.add(
+    Node(5, Point(1.5, -1)),
+    [
+        discrete_control.Variable(
+            compound_variable_id=[1], listen_node_id=[2], variable=["level"]
+        )
+    ],
+)
+
+model.link.add(fb, bsn)
+model.link.add(bsn, pmp)
+model.link.add(pmp, t)
+model.link.add(dc, pmp)
+
+model.plot()
+plt.tight_layout()
+plt.show()
+```
+
+Say there is constant inflow from the `FlowBoundary` node and there are no vertical forcings on the Basin. Say furthermore that the Pump is active only when the Basin level is above a reference value, with a flow greater than the boundary flow. In this case the Pump will rapidly turn on and off as the Basin level oscillates around the reference value.
+
+To make you aware of these oscillations, Ribasim will throw an error if successive control state changes of a DiscriteControl node in simulated time are closer than `min_discrete_control_interval`, which is configurable.
 
 ## Logic
 

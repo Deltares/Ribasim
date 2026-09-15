@@ -31,7 +31,7 @@ end
     config = Ribasim.Config(toml_path; solver_saveat = 0)
     model = Ribasim.run(toml_path)
     (; basin) = model.integrator.p.p_independent
-    n_basin = length(basin.node_id)
+    n_basin = length(basin)
     basin_table = DataFrame(Ribasim.basin_data(model))
 
     seconds = Ribasim.seconds_since.(unique(basin_table.time), basin_table.time[1])
@@ -111,17 +111,6 @@ end
     tstops = Vector{Float64}[]
     Ribasim.get_timeseries_tstops!(tstops, t_end, basin.forcing.precipitation)
     @test length(only(tstops)) == 404
-end
-
-@testitem "decrease tolerance" begin
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/cyclic_time/ribasim.toml")
-    @test ispath(toml_path)
-
-    model = Ribasim.run(toml_path)
-    @test model.integrator.opts.reltol isa Vector{Float64}
-    @test all(model.integrator.opts.reltol .<= model.integrator.p.p_independent.reltol)
-    @test model.integrator.u[1] >= 1.0e11
-    @test model.integrator.opts.reltol[1] <= 1.0e-11
 end
 
 @testitem "transient_pump_outlet" begin

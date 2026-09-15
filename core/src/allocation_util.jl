@@ -1,6 +1,6 @@
 const MAX_ABS_FLOW = 5.0e5 # m/s
 
-is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
+is_active(allocation::Allocation) = allocation.config.experimental.allocation
 
 function variable_sum(variables)
     return if isempty(variables)
@@ -113,7 +113,7 @@ end
 
 function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     low_storage_factor = problem[:low_storage_factor]
-    return if node_id.type == NodeType.Basin
+    return if node_id.is_basin
         low_storage_factor[node_id]
     else
         1.0
@@ -524,7 +524,7 @@ end
 # This method should only be used in initialization because it does a graph lookup
 function get_external_demand_id(graph::MetaGraph, node_id::NodeID)::Union{NodeID, Nothing}
     node_type =
-        (node_id.type == NodeType.Basin) ? NodeType.LevelDemand : NodeType.FlowDemand
+        (node_id.is_basin) ? NodeType.LevelDemand : NodeType.FlowDemand
 
     control_inneighbors = inneighbor_labels_type(graph, node_id, LinkType.control)
     for id in control_inneighbors
@@ -539,7 +539,7 @@ function get_external_demand_id(p_independent, node_id::NodeID)::Union{NodeID, N
     (; basin, tabulated_rating_curve, linear_resistance, manning_resistance, pump, outlet) =
         p_independent
 
-    external_demand_id = if node_id.type == NodeType.Basin
+    external_demand_id = if node_id.is_basin
         basin.level_demand_id[node_id.idx]
     elseif node_id.type == NodeType.TabulatedRatingCurve
         tabulated_rating_curve.flow_demand_id[node_id.idx]

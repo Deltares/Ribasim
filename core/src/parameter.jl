@@ -7,27 +7,38 @@ const SolverStats = @NamedTuple{
     rejected_timesteps::Int,
 }
 
-const state_components = (
-    :tabulated_rating_curve,
+const state_components = (:flow, :pid_integral)
+const state_flow_components = (:horizontal, :vertical)
+const state_horizontal_flow_components = (
     :pump,
     :outlet,
-    :user_demand_inflow,
-    :user_demand_outflow,
+    :tabulated_rating_curve,
     :linear_resistance,
     :manning_resistance,
+    :user_demand_inflow,
+    :user_demand_outflow,
+)
+const state_vertical_flow_components = (
     :evaporation,
     :infiltration,
-    :integral,
 )
-const n_components = length(state_components)
-const StateTuple = NamedTuple{state_components, NTuple{n_components, UnitRange{Int}}}
-const RibasimCVectorType{T} =
-    CVector{T, Vector{T}, StateTuple}
-const RibasimReducedCVectorType{T} = CVector{
-    T,
-    Vector{T},
-    @NamedTuple{combined_cumulative_flows::UnitRange{Int}, integral::UnitRange{Int}}
-}
+
+exact_vertical_flow_components = (:precipitation, :drainage, :surface_runoff)
+
+const HorizontalFlowTuple = cvector_axes_type(state_horizontal_flow_components)
+const HorizontalFlowCVector{T} = CVector{T, Vector{T}, HorizontalFlowTuple}
+
+const VerticalFlowTuple = cvector_axes_type(state_vertical_flow_components)
+const VerticalFlowCVector{T} = CVector{T, Vector{T}, VerticalFlowTuple}
+
+const FlowTuple = NamedTuple{state_flow_components, Tuple{HorizontalFlowTuple, VerticalFlowTuple}}
+const FlowCVector{T} = CVector{T, Vector{T}, FlowTuple}
+
+const RibasimStateTuple = NamedTuple{state_components, Tuple{FlowTuple, UnitRange{Int}}}
+const RibasimStateCVector{T} = CVector{T, Vector{T}, RibasimStateTuple}
+
+const ExactVerticalFlowTuple = cvector_axes_type(exact_vertical_flow_components)
+const ExactVerticalFlowCVector{T} = CVector{T, Vector{T}, ExactVerticalFlowTuple}
 
 # LinkType.flow and NodeType.FlowBoundary
 @enumx LinkType flow control listen observation none
@@ -91,8 +102,13 @@ This index can be passed directly, or calculated from the database or parameters
     type::NodeType.T
     "ID of node as given by users"
     value::Int32
-    "Index into the internal node type struct."
+    "Index into the internal node type struct"
     idx::Int
+    "Fast lookup of whether this node is a Basin"
+    is_basin::Bool
+    function NodeID(type, value, idx)
+        new(type, value, idx, type ∈ (NodeType.Basin, :Basin))
+    end
 end
 
 function NodeID(node_type, value::Integer, node_ids::Vector{NodeID})::NodeID
@@ -476,6 +492,8 @@ abstract type AbstractParameterNode end
 
 abstract type AbstractDemandNode <: AbstractParameterNode end
 
+Base.length(node::AbstractParameterNode) = length(node.node_id)
+
 @kwdef struct ConcentrationData
     # Config setting to enable/disable evaporation of mass
     evaporate_mass::Bool = true
@@ -507,22 +525,23 @@ This is used for both static and dynamic values,
 the length of each Vector is the number of Basins.
 """
 @kwdef struct BasinForcing
-    precipitation::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
-    surface_runoff::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+    n::Int
+    precipitation::Vector{ScalarConstantInterpolation} = Vector{ScalarConstantInterpolation}(undef, n)
+    surface_runoff::Vector{ScalarConstantInterpolation} = Vector{ScalarConstantInterpolation}(undef, n)
     potential_evaporation::Vector{ScalarConstantInterpolation} =
-        ScalarConstantInterpolation[]
-    drainage::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
-    infiltration::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
-end
-
-function BasinForcing(n::Integer)
-    return BasinForcing(
-        Vector{ScalarConstantInterpolation}(undef, n),
-        Vector{ScalarConstantInterpolation}(undef, n),
-        Vector{ScalarConstantInterpolation}(undef, n),
-        Vector{ScalarConstantInterpolation}(undef, n),
-        Vector{ScalarConstantInterpolation}(undef, n),
-    )
+        Vector{ScalarConstantInterpolation}(undef, n)
+    drainage::Vector{ScalarConstantInterpolation} = Vector{ScalarConstantInterpolation}(undef, n)
+    infiltration::Vector{ScalarConstantInterpolation} = Vector{ScalarConstantInterpolation}(undef, n)
+    # Integrated incoming forcings since simulation start (all but infiltration are exact)
+    cumulative_infiltration::Vector{Float64} = zeros(n)
+    exact_cumulative_forcing::ExactVerticalFlowCVector{Float64} =
+        CVector(zeros(3n), (; precipitation = 1:n, drainage = (n + 1):2n, surface_runoff = (2n + 1):3n))
+    # Exactly integrated incoming forcings since simulation start at previous saveat
+    exact_cumulative_forcing_prev_saveat::ExactVerticalFlowCVector{Float64} = zero(exact_cumulative_forcing)
+    # Per-dt increment of exact cumulative forcing (cache, non-allocating)
+    exact_cumulative_forcing_dt::ExactVerticalFlowCVector{Float64} = zero(exact_cumulative_forcing)
+    # Time of the last accepted step (used for exact forcing computation in RHS)
+    t_last_accepted::Vector{Float64} = [0.0]
 end
 
 """Current values of the vertical fluxes in a Basin, per node ID.
@@ -565,17 +584,12 @@ Requirements:
     vertical_flux::VerticalFlux = VerticalFlux(length(node_id))
     # Initial_storage
     storage0::Vector{Float64} = zeros(length(node_id))
+    # Storage at previous timestep
+    storage_prev_dt::Vector{Float64} = zeros(length(node_id))
+    # Storage at previous saveat
+    storage_prev_saveat::Vector{Float64} = zeros(length(node_id))
     # The storage rate for computing the minimum basin emptying_time
     dstorage::Vector{Float64} = zeros(length(node_id))
-    # Storage at previous saveat without storage0
-    Δstorage_prev_saveat::Vector{Float64} = zeros(length(node_id))
-    # Analytically integrated forcings
-    cumulative_precipitation::Vector{Float64} = zeros(length(node_id))
-    cumulative_surface_runoff::Vector{Float64} = zeros(length(node_id))
-    cumulative_drainage::Vector{Float64} = zeros(length(node_id))
-    cumulative_precipitation_saveat::Vector{Float64} = zeros(length(node_id))
-    cumulative_surface_runoff_saveat::Vector{Float64} = zeros(length(node_id))
-    cumulative_drainage_saveat::Vector{Float64} = zeros(length(node_id))
     # Basin profile interpolations
     storage_to_level::Vector{StorageToLevelType} =
         Vector{StorageToLevelType}(undef, length(node_id))
@@ -584,11 +598,7 @@ Requirements:
     # Values for allocation if applicable
     demand::Vector{Float64} = zeros(length(node_id))
     allocated::Vector{Float64} = zeros(length(node_id))
-    forcing::BasinForcing = BasinForcing(length(node_id))
-    # Storage for each Basin at the previous time step
-    storage_prev::Vector{Float64} = zeros(length(node_id))
-    # Level for each Basin at the previous time step
-    level_prev::Vector{Float64} = zeros(length(node_id))
+    forcing::BasinForcing = BasinForcing(; n = length(node_id))
     # Concentrations
     concentration_data::ConcentrationData = ConcentrationData()
     # Connected level demand node if applicable
@@ -723,19 +733,21 @@ end
 """
 node_id: node ID of the FlowBoundary node
 outflow_link: The outgoing flow link metadata
-cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
-cumulative_flow_saveat: The exactly integrated cumulative boundary flow since the last saveat
 flow_rate: flow rate (exact)
 flow_rate_bmi: flow rate set externally via BMI, which takes precedence over `flow_rate`; `NaN` means unset
+cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
+cumulative_flow_prev_saveat: `cumulative_flow` at the previous saveat
+cumulative_flow_dt: The exact cumulative flow over the latest timestep
 concentration_itp: matrix with boundary concentrations per FlowBoundary per substance
 """
 @kwdef struct FlowBoundary{I} <: AbstractParameterNode
     node_id::Vector{NodeID}
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    cumulative_flow::Vector{Float64} = zeros(length(node_id))
-    cumulative_flow_saveat::Vector{Float64} = zeros(length(node_id))
     flow_rate::Vector{I}
     flow_rate_bmi::Vector{Float64} = fill(NaN, length(node_id))
+    cumulative_flow::Vector{Float64} = zeros(length(node_id))
+    cumulative_flow_prev_saveat::Vector{Float64} = zeros(length(node_id))
+    cumulative_flow_dt::Vector{Float64} = zeros(length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
 end
 
@@ -888,13 +900,7 @@ this cache is required for automatic differentiation (for Rosenbrock methods), w
 to be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
 """
 const TimeDependentCache{T} = @NamedTuple{
-    basin::@NamedTuple{
-        current_cumulative_precipitation::Vector{T},
-        current_cumulative_surface_runoff::Vector{T},
-        current_cumulative_drainage::Vector{T},
-        current_potential_evaporation::Vector{T},
-        current_infiltration::Vector{T},
-    },
+    basin::ExactVerticalFlowCVector{T},
     level_boundary::@NamedTuple{current_level::Vector{T}},
     flow_boundary::@NamedTuple{current_cumulative_boundary_flow::Vector{T}},
     pump::@NamedTuple{
@@ -979,6 +985,8 @@ node_id: node ID of the DiscreteControl node
 controlled_nodes: The IDs of the nodes controlled by the DiscreteControl node
 compound_variables: The compound variables the DiscreteControl node listens to
 truth_state: Memory allocated for storing the truth state
+last_update_time: Per DiscreteControl node the last time there was a control state change
+min_discrete_control_interval: The minimum time between control state updates, if the time is smaller an error will be thrown
 control_state: The current control state of the DiscreteControl node
 control_state_start: The start time of the  current control state
 logic_mapping: Dictionary: truth state => control state for the DiscreteControl node
@@ -990,6 +998,8 @@ record: Namedtuple with discrete control information for results
     controlled_nodes::Vector{Vector{NodeID}}
     compound_variables::Vector{Vector{CompoundVariable}}
     truth_state::Vector{Vector{Bool}}
+    last_update_time::Vector{Float64} = fill(-Inf, length(node_id))
+    min_discrete_control_interval::Float64
     control_state::Vector{String} = fill("undefined_state", length(node_id))
     control_state_start::Vector{Float64} = zeros(length(node_id))
     logic_mapping::Vector{OrderedDict{Vector{Bool}, String}}
@@ -1016,6 +1026,7 @@ end
     controlled_variable::Vector{String}
     target_ref::Vector{CacheRef} = Vector{CacheRef}(undef, length(node_id))
     func::Vector{ScalarPCHIPInterpolation}
+    continuous_control_compound_variables::Vector{Float64} = zeros(length(node_id))
 end
 
 """
@@ -1197,14 +1208,41 @@ const ModelGraph = MetaGraph{
 The part of the parameters passed to the rhs and callbacks that are mutable.
 - `new_time_dependent_cache`: Whether the `t` with which `water_balance!` is called is considered new,
    and thus whether `time_dependent_cache` must be updated
-- `new_state_and_time_dependent_cache`: Whether the `t` and/or `u_reduced` with which `water_balance!` are called are
-   considered new, and thus whether caches that (only) depend on `u_reduced` must be updated
-- `tprev`: The previous `t` before the latest time step
+- `refresh_jac`: Whether the Jacobian needs to be re-evaluated for the current Newton iteration.
+   This flag doesn't get passed to `update_coefficients!` for `RibasimJacobian`, so we capture it by
+   wrapping do_newJW
+- `ad_active`: Whether (parts of) the rhs are called with automatic differentiation. If `true`, storage derived
+   quantities are not cached but computed on-demand, to maintain a differentiable computational pipeline
 """
 @kwdef mutable struct ParametersMutable
     new_time_dependent_cache::Bool = true
-    new_state_and_time_dependent_cache::Bool = true
-    tprev::Float64 = 0.0
+    refresh_jac::Bool = true
+    ad_active::Bool = false
+end
+
+"""
+    @ad_active p expr
+
+Evaluate `expr` with `p.p_mutable.ad_active` set to `true`, restoring the previous value
+afterwards (also when `expr` throws). Returns the value of `expr`.
+
+```julia
+@ad_active p begin
+    jacobian!(f!, du, J, prep, backend, x, Constant(t))
+end
+```
+"""
+macro ad_active(p, expr)
+    return quote
+        p_mutable = $(esc(p)).p_mutable
+        ad_active_prev = p_mutable.ad_active
+        p_mutable.ad_active = true
+        try
+            $(esc(expr))
+        finally
+            p_mutable.ad_active = ad_active_prev
+        end
+    end
 end
 
 """
@@ -1215,8 +1253,6 @@ the object itself is not.
 """
 @kwdef struct ParametersIndependent{C1}
     starttime::DateTime
-    reltol::Float64
-    relmask::Vector{Bool}
     graph::ModelGraph
     allocation::Allocation
     basin::Basin
@@ -1236,71 +1272,54 @@ the object itself is not.
     level_demand::LevelDemand
     flow_demand::FlowDemand
     subgrid::Subgrid
-    # Per state the in- and outflow links associated with that state (if they exist)
-    state_inflow_link::Vector{LinkMetadata} = LinkMetadata[]
-    state_outflow_link::Vector{LinkMetadata} = LinkMetadata[]
-    # Map each flow link to its state index. Used for link→state lookups where the
-    # destination node can have multiple inflow-link states (currently only UserDemand).
-    link_to_state_idx::Dict{Tuple{NodeID, NodeID}, Int} =
-        Dict{Tuple{NodeID, NodeID}, Int}()
+    # Whether all specialized AD and linear solve code should be used
+    reduced_implicit_solve::Bool
+    # Matrix which aggregates flows into the basin storages
+    incidence_matrix::SparseMatrixCSC{Int, Int}
     # Water balance tolerances
     water_balance_abstol::Float64
     water_balance_reltol::Float64
-    # State at previous saveat
-    u_prev_saveat::Vector{Float64} = Float64[]
-    # Node ID associated with each state
-    node_id::Vector{NodeID} = NodeID[]
-    state_ranges::StateTuple
+    # Ranges of the state and flow vectors (flat NamedTuples)
+    state_ranges::RibasimStateTuple
+    flow_ranges::FlowTuple
     # Callback configurations
     do_concentration::Bool
     do_subgrid::Bool
-    temp_convergence::RibasimCVectorType{Float64}
-    convergence::RibasimCVectorType{Float64}
-    ncalls::Vector{Int} = [0]
-    # Reduced state where the cumulative flows are combined into Basin
-    # storages (without non-state cumulative_flows)
-    u_reduced::RibasimReducedCVectorType{Float64}
     # Solver constants
     level_difference_threshold::Float64
     max_depth::Float64
+    # Per state the in- and outflow id associated with that state (if they exist)
+    inflow_id::FlowCVector{NodeID}
+    outflow_id::FlowCVector{NodeID}
+    # The up- and downlink storage per flow
+    storage_uplink::FlowCVector{Float64} = similar(inflow_id, Float64)
+    storage_downlink::FlowCVector{Float64} = similar(inflow_id, Float64)
+    # Cumulative flow over last timestep
+    cumulative_flow_dt::FlowCVector{Float64} = zero(storage_uplink)
+    # State at previous saveat
+    u_prev_saveat::RibasimStateCVector{Float64} = cvector_from_axes(state_ranges)
+    # Cumulative flow over last allocation times
+    cumulative_flow_prev_allocation_dt::FlowCVector{Float64} = zero(storage_uplink)
+    # Convergence tracking: accumulated normalized Newton residual per saveat
+    convergence::RibasimStateCVector{Float64} = zero(u_prev_saveat)
+    convergence_ncalls::Vector{Int} = [0]
 end
 
-"""
-All cache that depend on both the state vector `u` and time `t`.
-"""
-function StateAndTimeDependentCache(
-        p_independent::ParametersIndependent,
-    )::StateAndTimeDependentCache
-    n_basin = length(p_independent.basin.node_id)
-    n_pump = length(p_independent.pump.node_id)
-    n_outlet = length(p_independent.outlet.node_id)
-    n_pid_control = length(p_independent.pid_control.node_id)
-
-    return (;
-        current_storage = zeros(n_basin),
-        current_low_storage_factor = zeros(n_basin),
-        current_level = zeros(n_basin),
-        current_area = zeros(n_basin),
-        current_flow_rate_pump = zeros(n_pump),
-        current_flow_rate_outlet = zeros(n_outlet),
-        current_error_pid_control = zeros(n_pid_control),
-        u_reduced_prev_call = getdata(p_independent.u_reduced) .- 1.0,
-        t_prev_call = [-1.0],
-    )
+@kwdef struct CurrentBasinProperties
+    n::Int
+    storage_prev_call::Vector{Float64} = zeros(n)
+    current_storage::Vector{Float64} = zeros(n)
+    current_level::Vector{Float64} = zeros(n)
+    current_area::Vector{Float64} = zeros(n)
+    current_low_storage_factor::Vector{Float64} = zeros(n)
 end
+
 
 """
 All cached values that depend on time `t`.
 """
 function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependentCache
-    n_basin = length(p_independent.basin.node_id)
-    basin = (;
-        current_cumulative_precipitation = zeros(n_basin),
-        current_cumulative_surface_runoff = zeros(n_basin),
-        current_cumulative_drainage = zeros(n_basin),
-        current_potential_evaporation = zeros(n_basin),
-        current_infiltration = zeros(n_basin),
-    )
+    basin = zero(p_independent.basin.forcing.exact_cumulative_forcing)
 
     n_level_boundary = length(p_independent.level_boundary.node_id)
     level_boundary = (; current_level = zeros(n_level_boundary))
@@ -1353,11 +1372,11 @@ end
 """
 The collection of all parameters that are passed to the rhs (`water_balance!`) and callbacks.
 """
-@kwdef struct Parameters{C1, T1, T2}
-    p_independent::ParametersIndependent{C1}
-    state_and_time_dependent_cache::StateAndTimeDependentCache{T1} =
-        StateAndTimeDependentCache(p_independent)
-    time_dependent_cache::TimeDependentCache{T2} = TimeDependentCache(p_independent)
+@kwdef struct Parameters{C, T}
+    p_independent::ParametersIndependent{C}
+    time_dependent_cache::TimeDependentCache{T} = TimeDependentCache(p_independent)
+    current_basin_properties::CurrentBasinProperties =
+        CurrentBasinProperties(; n = length(p_independent.basin))
     p_mutable::ParametersMutable = ParametersMutable()
 end
 
