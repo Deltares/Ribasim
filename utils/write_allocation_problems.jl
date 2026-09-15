@@ -1,4 +1,5 @@
 import Ribasim
+import BasicModelInterface as BMI
 
 include("utils.jl")
 
@@ -34,6 +35,7 @@ function (@main)(ARGS)::Cint
                     if !isempty(allocation_models)
                         model_dir = normpath(results_path, model_name)
                         mkdir(model_dir)
+                        BMI.update(model, 86400.0)
                     end
 
                     for allocation_model in allocation_models

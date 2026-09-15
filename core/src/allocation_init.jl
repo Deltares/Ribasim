@@ -41,21 +41,14 @@ function add_basin!(allocation_model::AllocationModel)::Nothing
 end
 
 """
-Add flow variables with capacity constraints derived from connected nodes.
+Add flow variables. Flow capacities depend on the allocation timestep and are set in
+`update_flow_variable_bounds!` immediately before optimization.
 """
-function add_flow!(
-        allocation_model::AllocationModel,
-        p_independent::ParametersIndependent,
-    )::Nothing
-    (; problem, scaling, flow_links_subnetwork) = allocation_model
+function add_flow!(allocation_model::AllocationModel)::Nothing
+    (; problem, flow_links_subnetwork) = allocation_model
 
     # Define decision variables: flow over flow links (scaling.flow * m^3/s)
-    problem[:flow] = JuMP.@variable(
-        problem,
-        flow_capacity_lower_bound(link, p_independent) / scaling.flow ≤
-            flow[link = flow_links_subnetwork] ≤
-            flow_capacity_upper_bound(link, p_independent) / scaling.flow
-    )
+    problem[:flow] = JuMP.@variable(problem, flow[link = flow_links_subnetwork])
 
     return nothing
 end
@@ -124,7 +117,7 @@ function add_conservation!(
 
     # Define constraints: Basin water balance (volume conservation)
     # Mathematical formulation: dS/dt = Σ Q_in - Σ Q_out + f_pos - f_neg
-    # Discretized (backward Euler): ΔS = Δt * (Σ Q_in - α * Σ Q_out + f_pos - f_neg)
+    # Discretized (backward Euler): ΔS = Δt * (Σ Q_in - Σ Q_out + f_pos - α * f_neg)
     # where α (low_storage_factor) prevents negative storage by reducing outflows
     storage_change = problem[:basin_storage_change]
     low_storage_factor = problem[:low_storage_factor]
@@ -252,7 +245,7 @@ function add_flow_demand!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
     )::Nothing
-    (; problem, cumulative_supplied_volume, scaling, node_ids_in_subnetwork) =
+    (; problem, cumulative_supplied_volume, node_ids_in_subnetwork) =
         allocation_model
     (; node_ids_subnetwork_with_flow_demand, flow_demand_ids_subnetwork) =
         node_ids_in_subnetwork
@@ -274,18 +267,14 @@ function add_flow_demand!(
     )
 
     # Flow through a node with a flow demand can still be negative, so allow
-    # the allocated amount for the earliest priority to account for this
-    bound = MAX_ABS_FLOW / scaling.flow
-    for node_id in node_ids_subnetwork_with_flow_demand
-        earliest_priority = first(DemandPriorityIterator(node_id, p_independent))
-        JuMP.set_lower_bound(flow_demand_allocated[node_id, earliest_priority], -bound)
-    end
+    # the allocated amount for the earliest priority to account for this.
+    # The actual bounds are set in `update_flow_demand_variable_bounds!`.
 
     # Define decision variables: extra flow over the total demand
     flow_demand_extra =
         problem[:flow_demand_extra] = JuMP.@variable(
         problem,
-        0 ≤ flow_demand_extra[node_id = node_ids_subnetwork_with_flow_demand] ≤ bound
+        flow_demand_extra[node_id = node_ids_subnetwork_with_flow_demand] ≥ 0
     )
 
     # Define constraints: The sum of the flows per demand priority through the node with flow demand
@@ -709,9 +698,7 @@ function add_demand_objectives!(
                 push!(demand_priorities_flow_unit, demand_priority)
                 AllocationObjectiveType.demand_flow
             else
-                # This is an edge case where there is no demand for this demand priority in this subnetwork
-                # This essentially adds a feasibility objective which is filtered out in the
-                # AllocationModel constructor
+                # No demand in this subnetwork uses this priority.
                 AllocationObjectiveType.none
             end
             expressions = [first_objective_expression, second_objective_expression]
@@ -730,16 +717,18 @@ function add_demand_objectives!(
                 )
                 push!(retain_expressions, false)
             end
-            push!(
-                objectives,
-                AllocationObjective(
-                    objective_type,
-                    demand_priority,
-                    demand_priority_idx,
-                    expressions,
-                    retain_expressions,
-                ),
-            )
+            if objective_type != AllocationObjectiveType.none
+                push!(
+                    objectives,
+                    AllocationObjective(
+                        objective_type,
+                        demand_priority,
+                        demand_priority_idx,
+                        expressions,
+                        retain_expressions,
+                    ),
+                )
+            end
         end
     end
 
@@ -1029,7 +1018,7 @@ function AllocationModel(subnetwork_id::Int32, p_independent::ParametersIndepend
 
     # Volume and flow
     add_basin!(allocation_model)
-    add_flow!(allocation_model, p_independent)
+    add_flow!(allocation_model)
     add_conservation!(allocation_model, p_independent)
 
     # Boundary nodes
