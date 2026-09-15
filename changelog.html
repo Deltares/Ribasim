@@ -304,6 +304,8 @@ ul.task-list li input[type="checkbox"] {
 <h3 data-number="1.1.1" class="anchored" data-anchor-id="changed"><span class="header-section-number">1.1.1</span> Changed</h3>
 <ul>
 <li>The <code>dt</code> in <code>results/solver_stats.nc</code> is now the average timestep size over the <code>saveat</code> interval, instead of the size of the last timestep.</li>
+<li>Allocation: Allocation controlled Pump and Outlet nodes now require a finite <code>max_flow_rate</code>. Models that do not satisfy this are rejected with an error.</li>
+<li>Allocation: Pump and Outlet nodes that connect the primary network to a secondary network are no longer made allocation controlled automatically; they must have <code>allocation_controlled</code> set to <code>true</code>, otherwise an error is thrown.</li>
 </ul>
 </section>
 <section id="fixed" class="level3" data-number="1.1.2">
