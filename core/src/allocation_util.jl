@@ -45,13 +45,16 @@ function collect_primary_network_connections!(
                             primary_network_connections_subnetwork,
                             (upstream_id, node_id),
                         )
-                        # ensure node is allocation controlled
-                        if upstream_id.type == NodeType.Pump
-                            pump.allocation_controlled[upstream_id.idx] = true
-                        elseif upstream_id.type == NodeType.Outlet
-                            outlet.allocation_controlled[upstream_id.idx] = true
+                        # the node must be allocation controlled
+                        allocation_controlled = if upstream_id.type == NodeType.Pump
+                            pump.allocation_controlled[upstream_id.idx]
+                        else
+                            outlet.allocation_controlled[upstream_id.idx]
                         end
-
+                        if !allocation_controlled
+                            @error "This node connects the primary network to a subnetwork and therefore must have allocation_controlled set to true." upstream_id subnetwork_id
+                            errors = true
+                        end
                     else
                         @error "This node connects the primary network to a subnetwork but is not an outlet or pump." upstream_id subnetwork_id
                         errors = true

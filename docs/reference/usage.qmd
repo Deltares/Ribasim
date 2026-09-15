@@ -310,6 +310,8 @@ Nodes can only be controlled by allocation if they have a subnetwork_id. In the 
 
 When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, besides a subnetwork_id, they must have `allocation_controlled` set to `true` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static).
 
+Pumps and Outlets that connect the primary network to a secondary network must have `allocation_controlled` set to `true`; an error is thrown otherwise.
+
 # Link {#sec-link}
 
 Links define connections between nodes. The only thing that defines a link is the nodes it connects, and in what direction.

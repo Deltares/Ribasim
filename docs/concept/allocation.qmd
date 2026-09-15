@@ -35,7 +35,7 @@ Subnetworks are defined by grouping nodes that share the same subnetwork ID in t
 
 Secondary networks:
 
-- Can only connect to the primary network via Pump or Outlet nodes
+- Can only connect to the primary network via Pump or Outlet nodes, which must be allocation controlled
 - Cannot connect directly to other secondary networks
 - The demand of a subnetwork to the primary network is the sum of all unmet demands within the subnetwork
 - Must have a subnetwork greater than 1.
@@ -422,7 +422,7 @@ $$
 When Pumps and Outlets are part of a subnetwork, they can be controlled by allocation. To accomplish this, they must have `allocation_controlled` set to `true` in the static table for [Pump](/reference/node/pump.qmd#static) or [Outlet](/reference/node/outlet.qmd#static). When a Pump or Outlet is allocation controlled, the flow through the node is only bounded by its capacity and Pump or Outlet specific constraints based on the difference between upstream and downstream level (see [Pump equations](/reference/node/pump.qmd#equations) or [Outlet equations](/reference/node/outlet.qmd#equations)).
 
 :::{.callout-important}
-Because the allocation problem must be bounded, an allocation controlled Pump or Outlet is required to have a finite `max_flow_rate`. This is validated at the start of the simulation, for the initial parameters as well as for all DiscreteControl states of the node. Note that Pumps and Outlets that connect the primary network to a secondary network are automatically made allocation controlled, so they also require a finite `max_flow_rate`.
+Because the allocation problem must be bounded, an allocation controlled Pump or Outlet is required to have a finite `max_flow_rate`. This is validated at the start of the simulation, for the initial parameters as well as for all DiscreteControl states of the node. Note that Pumps and Outlets that connect the primary network to a secondary network are required to be allocation controlled; an error is thrown if `allocation_controlled` is not set to `true` for these nodes. Hence they also require a finite `max_flow_rate`.
 :::
 
 For a TabulatedRatingCurve, the allocation-determined flow is bounded by the maximum flow the rating curve can physically deliver at the highest upstream level reachable within the allocation time step, i.e. $Q(h)$ evaluated at that level. In the physical layer, the allocated flow rate replaces the usual $Q(h)$ lookup while still applying the same reduction factors for low storage, level difference, and maximum downstream level (see [TabulatedRatingCurve equations](/reference/node/tabulated-rating-curve.qmd#equations)). After all goals have been optimized for, the flow rate through the allocation controllable node is communicated to the physical layer.

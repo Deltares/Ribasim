@@ -117,7 +117,7 @@ function add_conservation!(
 
     # Define constraints: Basin water balance (volume conservation)
     # Mathematical formulation: dS/dt = Σ Q_in - Σ Q_out + f_pos - f_neg
-    # Discretized (backward Euler): ΔS = Δt * (Σ Q_in - α * Σ Q_out + f_pos - f_neg)
+    # Discretized (backward Euler): ΔS = Δt * (Σ Q_in - Σ Q_out + f_pos - α * f_neg)
     # where α (low_storage_factor) prevents negative storage by reducing outflows
     storage_change = problem[:basin_storage_change]
     low_storage_factor = problem[:low_storage_factor]
