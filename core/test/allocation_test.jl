@@ -318,8 +318,98 @@ end
     @test all(q -> isapprox(q, 1.0e-3; rtol = 1.0e-4), flow[1:100])
 end
 
+@testitem "Flow capacity bounds" begin
+    import JuMP
+    import BasicModelInterface as BMI
+    using Ribasim: NodeID
+
+    # UserDemand flows are bounded by the total demand of the UserDemand node,
+    # for each of its inflow links as well as for its return flow link
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/two_basin_user_demand/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    BMI.update(model)
+
+    (; p_independent) = model.integrator.p
+    (; allocation, user_demand, outlet) = p_independent
+    allocation_model = only(allocation.allocation_models)
+    (; problem, scaling) = allocation_model
+    flow = problem[:flow]
+
+    user_demand_id = NodeID(:UserDemand, 5, p_independent)
+    total_demand = sum(
+        JuMP.upper_bound(problem[:user_demand_allocated][user_demand_id, demand_priority]) for demand_priority in Ribasim.DemandPriorityIterator(user_demand_id, p_independent)
+    )
+    for link_metadata in user_demand.inflow_links[user_demand_id.idx]
+        @test JuMP.lower_bound(flow[link_metadata.link]) == 0
+        @test JuMP.upper_bound(flow[link_metadata.link]) ≈ total_demand
+    end
+    return_link = user_demand.outflow_link[user_demand_id.idx].link
+    @test JuMP.lower_bound(flow[return_link]) == 0
+    @test JuMP.upper_bound(flow[return_link]) ≈ total_demand
+
+    # Outlet flows are bounded by the Outlet max_flow_rate
+    outlet_id = NodeID(:Outlet, 7, p_independent)
+    outlet_link = outlet.inflow_link[outlet_id.idx].link
+    @test JuMP.lower_bound(flow[outlet_link]) == 0
+    @test JuMP.upper_bound(flow[outlet_link]) * scaling.flow ≈
+        outlet.max_flow_rate[outlet_id.idx](0.0)
+
+    # ManningResistance flows are bounded by the linearized flow over the
+    # storage change interval of the Basins it connects
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/polder_management/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    BMI.update(model)
+
+    (; p_independent) = model.integrator.p
+    (; allocation, manning_resistance) = p_independent
+    allocation_model = only(allocation.allocation_models)
+    (; problem) = allocation_model
+    flow = problem[:flow]
+    basin_storage_change = problem[:basin_storage_change]
+
+    manning_id = NodeID(:ManningResistance, 2, p_independent)
+    manning_link = manning_resistance.inflow_link[manning_id.idx].link
+    # The linearization is around zero flow, and the two Basins have mirrored
+    # storage change intervals, so the flow bounds are symmetric
+    @test JuMP.lower_bound(flow[manning_link]) ≈ -JuMP.upper_bound(flow[manning_link])
+    @test isfinite(JuMP.upper_bound(flow[manning_link]))
+
+    # All non-fixed flow variables have finite bounds
+    for allocation_model in allocation.allocation_models
+        for flow_variable in allocation_model.problem[:flow]
+            JuMP.is_fixed(flow_variable) && continue
+            @test JuMP.has_lower_bound(flow_variable)
+            @test JuMP.has_upper_bound(flow_variable)
+        end
+    end
+end
+
+@testitem "Allocation controlled node without capacity" begin
+    using Ribasim: valid_allocation_flow_capacity
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/polder_management/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    (; pump, outlet) = model.integrator.p.p_independent
+
+    @test valid_allocation_flow_capacity(pump)
+    @test valid_allocation_flow_capacity(outlet)
+
+    # Removing the capacity of an allocation controlled Pump invalidates the model
+    pump_idx = findfirst(pump.allocation_controlled)
+    pump.max_flow_rate[pump_idx].u .= Inf
+    @test !valid_allocation_flow_capacity(pump)
+end
+
 @testitem "Allocation problem consistency" begin
     import JuMP
+    import BasicModelInterface as BMI
 
     # To update the reference files run `pixi run write-allocation-problems`
     include(normpath(@__DIR__, "../../utils/utils.jl"))
@@ -340,6 +430,7 @@ end
 
         # Initialize the same model 5 times
         models = [Ribasim.Model(toml_path) for _ in 1:5]
+        BMI.update.(models)
 
         subnetwork_ids = [
             allocation_model.subnetwork_id for allocation_model in
