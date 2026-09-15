@@ -109,23 +109,30 @@ Negative storage needs to be avoided since it is not a real solution, and would 
 Another tool used to avoid negative storage is the [`isoutoutofdomain`](https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/) option, which Ribasim makes use of.
 This rejects timesteps that lead to negative storage, instead retrying with a smaller timestep.
 
-# Compensating for cumulative flows
+# Error control for cumulative flows
 
-As the cumulative flows in $\mathbf{u}$ grow over time, the error tolerance based on `reltol` grows as well. The error tolerance is roughly $\text{abstol} + \mathbf{u} * \text{reltol}$, see [Basic Stepsize Control](https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/). The error tolerance is thus based on the cumulative flow current $\mathbf{u}$, and not on the instantaneous flow over the current timestep $\mathbf{u}-\mathbf{u_{t-1}}$. Thus, after a thousand seconds with a flow of $1\text{ m}^3/\text{s}$, the error tolerance has increased from $10^{-5}$ to $10^{-2}$.
+The states in $\mathbf{u}$ are cumulative quantities that grow monotonically over time.
+With the default SciML error control the tolerance per state would be roughly
+$\text{abstol} + |\mathbf{u}| * \text{reltol}$, see
+[Basic Stepsize Control](https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/).
+That means the tolerance is based on the cumulative flow so far rather than on the flow over
+the current timestep, so it keeps loosening as the simulation progresses: after a thousand
+seconds at $1\text{ m}^3/\text{s}$ an effective `reltol` of $10^{-5}$ has degraded to $10^{-2}$.
+It also makes the tolerance depend on arbitrary offsets: a large Basin with little throughflow
+would get a very loose tolerance purely because of its storage.
 
-To compensate for this, we decrease the `reltol` per state over time. The formula for the new tolerance can be expressed as:
+Ribasim therefore overrides `calculate_residuals!` so that each state is scaled by the
+magnitude of its *change* over the timestep instead of its absolute magnitude:
 
 $$
-\text{reltol}' = \max\left(10^{\log_{10}(\text{reltol}) - \text{diff\_norm}}, 10^{-14}\right)
+\text{residual}_i = \frac{\tilde{u}_i}{\text{abstol} + |u_{1,i} - u_{0,i}| * \text{reltol}}
 $$
 
-Where:
+This keeps the meaning of `abstol` and `reltol` constant over the whole simulation, and makes
+them independent of the size of the Basin storages.
 
-- $\text{reltol}'$ is the new relative tolerance, and $\text{reltol}$ is the configured relative tolerance.
-- $\text{diff\_norm} = \max\left(0, \log_{10}\left(\frac{\text{cum\_magnitude}}{\text{avg\_magnitude}}\right)\right)$
-- $\text{cum\_magnitude}$ is the cumulative magnitude ($\text{internalnorm}$) of the state.
-- $\text{avg\_magnitude} = \max\left(\text{internalnorm}(10^4, t),\frac{\text{cum\_magnitude}}{t}\right)$ where $t$ is the current time.
-
-This formula ensures that the new tolerance decreases based on the difference between the cumulative magnitude and the average magnitude (once the cumulative magnitude exceeds $10^{4}$), with a lower bound of $10^{-14}$, roughly the floating point precision.
-
-The tolerance reduction is applied as a callback at fixed times---starting at an hour---that double in their interval afterwards (e.g. 1, 2, 4, 8 hours etc.). This doubling accounts for the order of difference between the average and cumulative flows over time, which decreases exponentially as well.
+Note that this changes the units in which the tolerances should be interpreted.
+`abstol` is an absolute tolerance on the volume passed by a state during a single timestep
+(in $\text{m}^3$), and `reltol` is relative to that same per-step volume.
+Consequently `abstol` does not scale with the size of the model, so it should not be raised
+far above its default without checking the effect on small models.
