@@ -64,10 +64,6 @@
         "Ribasim"
     ],
     "files.insertFinalNewline": true,
-    "julia.lint.disabledDirs": [
-        ".pixi"
-    ],
-    "julia.lint.run": true,
     "julia.numTestProcesses": 6,
     "notebook.codeActionsOnSave": {
         "notebook.source.fixAll": "explicit",
