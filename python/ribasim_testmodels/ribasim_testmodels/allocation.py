@@ -155,12 +155,20 @@ def two_basin_user_demand_model() -> Model:
     # less than their upstream FlowBoundary supplies.
     model.outlet.add(
         Node(7, Point(1, 1), subnetwork_id=1),
-        [outlet.Static(flow_rate=[0.0], allocation_controlled=True)],
+        [
+            outlet.Static(
+                flow_rate=[0.0], max_flow_rate=[1.0], allocation_controlled=True
+            )
+        ],
     )
     model.terminal.add(Node(8, Point(2, 1), subnetwork_id=1))
     model.outlet.add(
         Node(9, Point(1, -1), subnetwork_id=1),
-        [outlet.Static(flow_rate=[0.0], allocation_controlled=True)],
+        [
+            outlet.Static(
+                flow_rate=[0.0], max_flow_rate=[1.0], allocation_controlled=True
+            )
+        ],
     )
     model.terminal.add(Node(10, Point(2, -1), subnetwork_id=1))
 
@@ -1037,7 +1045,7 @@ def cyclic_demand_model():
 
     pmp = model.pump.add(
         Node(3, Point(2, 0), subnetwork_id=2),
-        [pump.Static(flow_rate=[1.0], allocation_controlled=True)],
+        [pump.Static(flow_rate=[1.0], max_flow_rate=[1.0], allocation_controlled=True)],
     )
 
     bsn2 = model.basin.add(
@@ -1248,7 +1256,7 @@ def multi_priority_flow_demand_model() -> Model:
 
     pmp = model.pump.add(
         Node(2, Point(3, 2), subnetwork_id=2),
-        [pump.Static(flow_rate=[1.0], allocation_controlled=True)],
+        [pump.Static(flow_rate=[1.0], max_flow_rate=[1.0], allocation_controlled=True)],
     )
 
     tmn = model.terminal.add(Node(3, Point(3, 1), subnetwork_id=2))

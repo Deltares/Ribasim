@@ -104,18 +104,24 @@ For a basin downstream: $h_b^{n+1} - h_b^n \approx \frac{1}{A_b}(S_b^{n+1} - S_b
 
 ```julia
 # From linearize_connector_node!
-# Evaluate flow and derivatives at current state
-h_a = get_level(p, upstream_id, t)
-h_b = get_level(p, downstream_id, t)
-Q_n = flow_function(p, upstream_id, downstream_id, t_after)
+t_after = t + Δt_allocation
 
-# Compute partial derivatives
-∂Q∂h_a = derivative_flow_wrt_level(p, upstream_id, downstream_id, t_after, :upstream)
-∂Q∂h_b = derivative_flow_wrt_level(p, upstream_id, downstream_id, t_after, :downstream)
+# Evaluate flow and derivatives at the linearization point
+h_a = get_level(p, inflow_id, t_after)
+h_b = get_level(p, outflow_id, t_after)
+q0 = flow_function(connector_node, node_id, h_a, h_b, p, t_after)
 
-# Update constraint: Q = Q^n + ∂Q/∂h_a * (h_a - h_a^n) + ∂Q/∂h_b * (h_b - h_b^n)
-# When h_b is a basin, substitute the linearized profile:
-# Q = Q^n + (∂Q/∂h_b / A_b) * ΔS_b + ...
+# Compute partial derivatives with automatic differentiation
+∂q∂h_a = forward_diff(
+    level_a -> flow_function(connector_node, node_id, level_a, h_b, p, t_after), h_a,
+)
+∂q∂h_b = forward_diff(
+    level_b -> flow_function(connector_node, node_id, h_a, level_b, p, t_after), h_b,
+)
+
+# Update constraint: Q = q0 + ∂q/∂h_a * Δh_a + ∂q/∂h_b * Δh_b
+# When h_b is a Basin level, substitute the linearized profile:
+# Q = q0 + (∂q/∂h_b / A_b) * ΔS_b + ...
 ```
 
 The function `set_partial_derivative_wrt_level!` handles converting level derivatives to storage derivatives:
@@ -131,12 +137,13 @@ function set_partial_derivative_wrt_level!(
     (; problem, scaling) = allocation_model
     (; current_area) = p.state_and_time_dependent_cache
 
-    # Convert ∂Q/∂h to ∂Q/∂S using ∂h/∂S = 1/A
+    # Convert ∂Q/∂h to ∂Q/∂S using ∂h/∂S = 1/A, and account for the fact that the
+    # flow and storage variables are scaled differently
     storage_change = problem[:basin_storage_change][node_id]
     JuMP.set_normalized_coefficient(
         constraint,
         storage_change,
-        ∂q∂h / (current_area[node_id.idx] * scaling.flow * Δt_allocation)
+        -∂q∂h * scaling.storage / (scaling.flow * current_area[node_id.idx]),
     )
     return nothing
 end
@@ -155,17 +162,12 @@ For each link $(i,j)$ in the network, a flow variable $Q_{ij}$ represents the vo
 
 ```julia
 # From add_flow!
-problem[:flow] = JuMP.@variable(
-    problem,
-    flow_capacity_lower_bound(link, p_independent) / scaling.flow ≤
-    flow[link = flow_links_subnetwork] ≤
-    flow_capacity_upper_bound(link, p_independent) / scaling.flow
-)
+problem[:flow] = JuMP.@variable(problem, flow[link = flow_links_subnetwork])
 ```
 
 **Key points:**
 - Indexed by `link::Tuple{NodeID, NodeID}` representing (source, destination)
-- Bounds determined by node capacities (pump max flow, etc.)
+- Declared without bounds; the capacities depend on the allocation timestep and the current physical state, and are therefore set before every optimization by `update_flow_variable_bounds!` (see [Flow capacity bounds](#flow-capacity-bounds))
 - Scaled by `scaling.flow` for numerical stability
 - Stored in sparse array for efficient access: `problem[:flow][link]`
 
@@ -204,19 +206,20 @@ $$0 \le F^p_v \le d_v^p$$
 # From add_user_demand!
 user_demand_allocated = JuMP.@variable(
     problem,
-    0 ≤ user_demand_allocated[
-        node_id = user_demand_ids_subnetwork,
-        demand_priority = demand_priorities_all;
-        has_demand_priority[node_id.idx, demand_priority_idx]
-    ] ≤ d / scaling.flow
+    0 ≤
+        user_demand_allocated[
+            node_id = user_demand_ids_subnetwork,
+            DemandPriorityIterator(node_id, p_independent),
+        ] ≤
+        d
 )
 ```
 
 **Key points:**
 - Doubly-indexed by `(node_id, demand_priority)`
-- Only created for priorities where `has_demand_priority` is true
-- Bounded by demand value (placeholder, updated before optimization)
-- Similar structures for FlowDemand and LevelDemand
+- `DemandPriorityIterator(node_id, p_independent)` yields only the priorities for which this node actually has a demand, so no variables are created for unused combinations
+- Bounded by the demand value (a placeholder `d`, updated before optimization by `set_demands!`)
+- Similar structures for FlowDemand and for secondary network connections
 
 ### Error Variables
 
@@ -230,20 +233,21 @@ $$E^p_v \ge 0, \quad \overline{E}^p_v \ge 0$$
 # From add_user_demand!
 user_demand_error = JuMP.@variable(
     problem,
-    user_demand_error[
-        node_id = user_demand_ids_subnetwork,
-        demand_priority = demand_priorities_all,
-        objective_type = 1:2;  # 1 = absolute error, 2 = fairness error
-        has_demand_priority[node_id.idx, demand_priority_idx]
-    ] ≥ 0
+    0 ≤
+        user_demand_error[
+            node_id = user_demand_ids_subnetwork,
+            DemandPriorityIterator(node_id, p_independent),
+            [:first, :second],
+        ] ≤
+        1
 )
 ```
 
 **Key points:**
-- Triple-indexed: (node_id, demand_priority, objective_type)
-- `objective_type = 1`: absolute error $E^p_v$
-- `objective_type = 2`: fairness error $\overline{E}^p_v$
-- Non-negative to represent error magnitude
+- Triple-indexed: `(node_id, demand_priority, objective_ord)`
+- `objective_ord = :first`: relative error $E^p_v$ used by the first (demand) objective
+- `objective_ord = :second`: fairness error $\overline{E}^p_v$ used by the second objective
+- Bounded between 0 and 1 because these are relative errors
 
 ## Constraints
 
@@ -289,30 +293,26 @@ problem[:volume_conservation] = JuMP.@constraint(
     problem,
     [node_id = basin_ids_subnetwork],
     storage_change[node_id] ==
-        Δt_allocation / scaling.storage * (
-            sum(flow[link] for link in inflow_links; init = 0.0) * scaling.flow -
-            sum(
-                low_storage_factor[node_id] * flow[link]
-                for link in outflow_links;
-                init = 0.0
-            ) * scaling.flow +
-            f_pos - f_neg  # Forcing terms (precipitation, evaporation, etc.)
-        ),
+        scaling.flow / scaling.storage *
+        (
+        f_pos - f_neg * low_storage_factor[node_id] + inflow_sum[node_id] -
+            outflow_sum[node_id]
+    ),
     base_name = "volume_conservation"
 )
 ```
 
 **Key points:**
-- The `low_storage_factor` multiplies outflows to prevent negative storage
-- Forcing terms (`f_pos`, `f_neg`) represent precipitation, evaporation, etc.
-- Careful scaling to maintain numerical stability
+- The `low_storage_factor` multiplies the implicit negative forcing (evaporation, infiltration) to prevent negative storage
+- Forcing terms (`f_pos`, `f_neg`) represent precipitation, drainage, surface runoff, evaporation and infiltration
+- The coefficient `scaling.flow / scaling.storage` converts the scaled flow rates to a scaled storage change over the allocation timestep
 - Updated each optimization with current forcing values
 
 ### UserDemand Allocated Sum
 
 **Mathematical formulation:**
-The sum of allocated flows over all priorities equals the total inflow:
-$$F_{(b_{\text{upstream}}, v)} = \sum_{p \in P_v} F^p_v$$
+The sum of allocated flows over all priorities equals the total inflow, summed over all inflow links of the UserDemand node:
+$$\sum_{b \in \text{in}(v)} F_{(b, v)} = \sum_{p \in P_v} F^p_v$$
 
 **Code implementation:**
 
@@ -321,22 +321,19 @@ $$F_{(b_{\text{upstream}}, v)} = \sum_{p \in P_v} F^p_v$$
 problem[:user_demand_allocated_sum_constraint] = JuMP.@constraint(
     problem,
     [node_id = user_demand_ids_subnetwork],
-    flow[inflow_link[node_id.idx].link] ==
-        sum(
-            user_demand_allocated[node_id, demand_priority]
-            for (demand_priority_idx, demand_priority) in
-            enumerate(demand_priorities_all) if
-            has_demand_priority[node_id.idx, demand_priority_idx];
-            init = JuMP.AffExpr(0.0)
-        ),
-    base_name = "user_demand_allocated_sum"
+    sum(flow[link_metadata.link] for link_metadata in inflow_links[node_id.idx]) == sum(
+        user_demand_allocated[node_id, demand_priority] for
+            demand_priority in DemandPriorityIterator(node_id, p_independent)
+    );
+    base_name = "user_demand_allocated_sum_constraint"
 )
 ```
 
 **Key points:**
 - Ensures only demanded water enters UserDemand nodes
-- Sum is over priorities where the node has a demand
-- Links the flow variable to allocated flow variables
+- A UserDemand node can have multiple inflow links, so the left-hand side is a sum
+- Sum on the right is over priorities where the node has a demand
+- Links the flow variables to the allocated flow variables
 
 ### Error Constraints
 
@@ -352,13 +349,11 @@ problem[:user_demand_relative_error_constraint] = JuMP.@constraint(
     problem,
     [
         node_id = user_demand_ids_subnetwork,
-        demand_priority = demand_priorities_all,
-        objective_type = 1:2;
-        has_demand_priority[node_id.idx, demand_priority_idx]
+        demand_priority = DemandPriorityIterator(node_id, p_independent),
     ],
-    d * user_demand_error[node_id, demand_priority, objective_type] ≥
+    d * user_demand_error[node_id, demand_priority, :first] ≥
         d - user_demand_allocated[node_id, demand_priority],
-    base_name = "user_demand_relative_error"
+    base_name = "user_demand_relative_error_constraint"
 )
 ```
 
@@ -380,26 +375,24 @@ problem[:storage_constraint_lower] = JuMP.@constraint(
     problem,
     [
         node_id = basin_ids_subnetwork_with_level_demand,
-        demand_priority = demand_priorities_all;
-        has_demand_priority[node_id.idx, demand_priority_idx]
+        demand_priority = DemandPriorityIterator(node_id, p_independent),
     ],
-    storage_change[node_id] +
-        level_demand_error[node_id, demand_priority, 1] * current_area[node_id.idx] ≥
-        (minimum_storage - starting_storage) / scaling.storage,
+    level_demand_error[node_id, demand_priority, :lower, :first] ≥
+        minimum_storage - (starting_storage + storage_change[node_id]),
     base_name = "storage_constraint_lower"
 )
 ```
 
 **Key points:**
-- Error represents storage deficit below minimum level
-- Multiplication by area converts level error to storage error
-- Separate constraints for upper and lower bounds
+- The error represents the storage deficit below the minimum level
+- `level_demand_error` is indexed by `(node_id, demand_priority, side, objective_ord)` with `side ∈ (:lower, :upper)`
+- Separate constraints exist for the upper side, and the demands themselves only appear as constraint constants (they are not decision variables)
 
 ### Return Flow Constraints
 
 **Mathematical formulation:**
 For UserDemand with return factor $r_i(t)$:
-$$Q_{\text{out}} = r_i \cdot Q_{\text{in}}$$
+$$Q_{\text{out}} = r_i \sum_{b \in \text{in}(v)} Q_{(b, v)}$$
 
 **Code implementation:**
 
@@ -409,15 +402,15 @@ problem[:user_demand_return_flow] = JuMP.@constraint(
     problem,
     [node_id = user_demand_ids_subnetwork],
     flow[outflow_link[node_id.idx].link] ==
-        return_factor * flow[inflow_link[node_id.idx].link],
+        return_factor * sum(flow[lm.link] for lm in inflow_links[node_id.idx]),
     base_name = "user_demand_return_flow"
 )
 ```
 
 **Key points:**
-- `return_factor` is a placeholder, updated before optimization
-- Links inflow and outflow of UserDemand node
-- Models consumptive use (when return factor < 1)
+- `return_factor` is a placeholder, updated before optimization with the value at the end of the allocation timestep
+- Links the total inflow and the outflow of a UserDemand node
+- Models consumptive use (when the return factor < 1)
 
 ### Linearized Connector Node Constraints
 
@@ -474,11 +467,11 @@ $$\min \sum_{b; p\in P^\min_b} E^p_{b, \text{lower}} + \sum_{b; p\in P^\max_b} E
 # For flow demands
 first_objective_expression = JuMP.AffExpr(0.0)
 for node_id in user_demand_ids_subnetwork
-    if has_demand_priority[node_id.idx, demand_priority_idx]
+    if demand_priority in DemandPriorityIterator(node_id, p_independent)
         demand = get_demand(user_demand, node_id, demand_priority, t)
         JuMP.add_to_expression!(
             first_objective_expression,
-            demand * user_demand_error[node_id, demand_priority, 1]
+            demand * user_demand_error[node_id, demand_priority, :first]
         )
     end
 end
@@ -525,7 +518,7 @@ average_flow_unit_error_constraint =
         problem,
         [demand_priority = demand_priorities_all; ...],
         average_flow_unit_error[demand_priority] ==
-            sum(weight * error[node_id, demand_priority, 1]
+            sum(weight * error[node_id, demand_priority, :first]
                 for node_id, weight in demand_weights),
         base_name = "average_flow_unit_error"
     )
@@ -535,14 +528,14 @@ average_flow_unit_error_constraint =
 
 # Objective sums fairness errors
 objective_expression_fairness = sum(
-    user_demand_error[node_id, demand_priority, 2]
+    user_demand_error[node_id, demand_priority, :second]
     for node_id in user_demand_ids_subnetwork if ...
 )
 ```
 
 **Key points:**
 - `average_flow_unit_error` represents $G^p$
-- Fairness errors (objective_type = 2) penalize being worse than average
+- Fairness errors (the `:second` error variables) penalize being worse than average
 - Optimized after the primary objective is satisfied
 
 ### LevelDemand Fairness Normalization
@@ -633,40 +626,41 @@ function set_simulation_data!(
     basin::Basin,
     p::Parameters,
     t::Float64,
+    Δt_allocation::Float64,
+    du::CVector,
 )::Bool
-    (; problem, node_ids_in_subnetwork, scaling) = allocation_model
-    (; basin_ids_subnetwork) = node_ids_in_subnetwork
-    storage_change = problem[:basin_storage_change]
+    # ... setup code ...
 
     for basin_id in basin_ids_subnetwork
-        basin_idx = basin_id.idx
+        idx = basin_id.idx
+        storage_now = current_storage[idx]
+        storage_max = storage_to_level[idx].t[end]
 
-        # Get current state from physical layer
-        current_storage_basin = current_storage[basin_idx]
-        max_storage_basin = basin.storage_to_level[basin_idx].t[end]
+        # Storage may never become negative
+        Δstorage = storage_change[basin_id]
+        JuMP.set_lower_bound(Δstorage, -storage_now / scaling.storage)
 
-        # Update bounds on storage change variable
-        JuMP.set_lower_bound(
-            storage_change[basin_id],
-            -current_storage_basin / scaling.storage
-        )
-        JuMP.set_upper_bound(
-            storage_change[basin_id],
-            (max_storage_basin - current_storage_basin) / scaling.storage
-        )
-
-        # Update volume conservation constraint with current forcing
-        # (precipitation, evaporation, etc.)
-        # ...
+        # The upper bound leaves room for the storage change predicted by the physical
+        # layer, so a Basin that is (nearly) full can still receive water
+        Δstorage_predicted =
+            formulate_dstorage_wrt_time(du, p.p_independent, t, basin_id) * Δt_allocation
+        Δstorage_upper = if storage_now > storage_max
+            max(2 * Δstorage_predicted, 0.0)
+        else
+            max(2 * Δstorage_predicted, storage_max - storage_now)
+        end
+        JuMP.set_upper_bound(Δstorage, Δstorage_upper / scaling.storage)
+        # ... rest of constraint updates ...
     end
     return errors
 end
 ```
 
 **Key concepts:**
-- Variable bounds are updated each timestep based on current basin storage
+- Variable bounds are updated each timestep based on the current Basin storage
+- The bounds are conservative: they describe the storage range the Basin can reach within this allocation timestep. The same interval is reused to derive the [flow capacity bounds](#flow-capacity-bounds) of connector nodes
 - Forcing terms (precipitation, evaporation) are computed and added to constraints
-- Errors are detected (e.g., storage outside valid range) and reported
+- Errors are detected (e.g. storage outside the valid range) and reported
 
 ## Connector Node Updates (Linearization)
 
@@ -678,57 +672,47 @@ function linearize_connector_node!(
     flow_function::Function,
     p::Parameters,
     t::Float64,
+    Δt_allocation,
 )
-    (; scaling, Δt_allocation) = allocation_model
+    (; scaling) = allocation_model
+    (; inflow_link, outflow_link) = connector_node
 
     # Evaluate at the end of the allocation timestep (backward Euler)
     t_after = t + Δt_allocation
 
     for node_id in only(flow_constraint.axes)
-        # Get upstream and downstream IDs
-        upstream_id = connector_node.inflow_link[node_id.idx].link[1]
-        downstream_id = connector_node.outflow_link[node_id.idx].link[2]
+        inflow_id = inflow_link[node_id.idx].link[1]
+        outflow_id = outflow_link[node_id.idx].link[2]
 
-        # Get levels at linearization point
-        h_a = get_level(p, upstream_id, t)
-        h_b = get_level(p, downstream_id, t)
+        # Levels at the linearization point
+        h_a = get_level(p, inflow_id, t_after)
+        h_b = get_level(p, outflow_id, t_after)
 
-        # Evaluate flow at linearization point
-        Q_n = flow_function(p, upstream_id, downstream_id, t_after)
+        # Flow at the linearization point becomes the constraint right-hand side
+        constraint = flow_constraint[node_id]
+        q0 = flow_function(connector_node, node_id, h_a, h_b, p, t_after)
+        JuMP.set_normalized_rhs(constraint, q0 / scaling.flow)
 
-        # Compute partial derivatives
-        ∂Q∂h_a = compute_derivative(p, upstream_id, downstream_id, t_after, :upstream)
-        ∂Q∂h_b = compute_derivative(p, upstream_id, downstream_id, t_after, :downstream)
-
-        # Update constraint with linearization
-        constraint_ref = flow_constraint[node_id]
-
-        # Set constant term (Q_n - ∂Q/∂h_a * h_a - ∂Q/∂h_b * h_b)
-        JuMP.set_normalized_rhs(
-            constraint_ref,
-            (Q_n - ∂Q∂h_a * h_a - ∂Q∂h_b * h_b) / scaling.flow
-        )
-
-        # Set coefficients for basin storage variables if applicable
-        if upstream_id.is_basin
+        # Only linearize if the level comes from a Basin, since only then it is a
+        # decision variable of the problem
+        if inflow_id.type == NodeType.Basin
+            ∂q∂h_a = forward_diff(
+                level_a -> flow_function(connector_node, node_id, level_a, h_b, p, t_after),
+                h_a,
+            )
             set_partial_derivative_wrt_level!(
-                allocation_model, upstream_id, ∂Q∂h_a, p, constraint_ref
+                allocation_model, inflow_id, ∂q∂h_a, p, constraint,
             )
         end
-        if downstream_id.is_basin
-            set_partial_derivative_wrt_level!(
-                allocation_model, downstream_id, ∂Q∂h_b, p, constraint_ref
-            )
-        end
+        # ... same for outflow_id ...
     end
 end
 ```
 
 **Key concepts:**
-- Linearization is performed at the current physical state
-- Derivatives are computed using physical layer functions
-- Constraint coefficients are updated to match the Taylor expansion
-- Backward Euler: evaluate at end of timestep ($t + \Delta t$)
+- Derivatives are computed with automatic differentiation (`forward_diff`) of the same flow functions the physical layer uses, so the allocation layer cannot drift from the physics
+- Only Basin levels are decision variables; LevelBoundary and Terminal levels enter through the constant term `q0`
+- Backward Euler: everything is evaluated at the end of the timestep ($t + \Delta t$). For Basins `get_level` returns the level at the start of the timestep, which is exactly the point we want to linearize around
 
 ## Demand Updates
 
@@ -738,30 +722,25 @@ function set_demands!(
     node::Union{UserDemand, FlowDemand},
     # ... other parameters
 )::Nothing
-    for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
-        for node_id in demand_node_ids_subnetwork
-            if !has_demand_priority[node_id.idx, demand_priority_idx]
-                continue
+    for node_id in demand_node_ids_subnetwork
+        for demand_priority in DemandPriorityIterator(node_id, p_independent)
+            # Get current demand from the physical layer, in scaled units
+            demand = get_demand(node, node_id, demand_priority, t) / scaling.flow
+
+            # Update error constraints with the current demand
+            for objective_ord in (:first, :second)
+                error_constraint =
+                    node_relative_error_constraint[node_id, demand_priority, objective_ord]
+                JuMP.set_normalized_coefficient(
+                    error_constraint,
+                    node_error[node_id, demand_priority, objective_ord],
+                    demand,
+                )
+                JuMP.set_normalized_rhs(error_constraint, demand)
             end
 
-            # Get current demand from physical layer
-            demand = get_demand(node, node_id, demand_priority, t)
-
-            # Update error constraint with current demand
-            error_constraint = node_relative_error_constraint[node_id, demand_priority, 1]
-            JuMP.set_normalized_coefficient(
-                error_constraint,
-                node_error[node_id, demand_priority, 1],
-                demand / scaling.flow
-            )
-
             # Update upper bound on allocated variable
-            JuMP.set_upper_bound(
-                node_allocated[node_id, demand_priority],
-                demand / scaling.flow
-            )
-
-            # Similar updates for fairness error constraints...
+            JuMP.set_upper_bound(node_allocated[node_id, demand_priority], demand)
         end
     end
     return nothing
@@ -771,9 +750,172 @@ end
 **Key concepts:**
 - Demands are time-varying and interpolated from input tables
 - Constraint coefficients are updated to reflect current demands
+- The demands are stored in the problem already divided by `scaling.flow`, so the bounds of the allocated variables are directly usable as scaled flow bounds elsewhere (see [Flow capacity bounds](#flow-capacity-bounds))
 - Upper bounds on allocation variables ensure allocated ≤ demanded
 
+## Flow capacity bounds {#flow-capacity-bounds}
+
+Flow variables are declared without bounds, because their capacities depend on the current state of the physical layer and on the allocation timestep. They are set before every optimization, in this order:
+
+1. `update_flow_variable_bounds!` sets the physical capacity of every non-fixed flow variable;
+2. `update_user_demand_flow_bounds!` tightens the bounds of the links around UserDemand nodes to their total demand;
+3. `update_flow_demand_variable_bounds!` derives the bounds of the FlowDemand helper variables from the now finalized flow bounds.
+
+All of these use the helper `set_variable_bounds!`, where an infinite bound means that no JuMP bound is set at all:
+
+```julia
+function set_variable_bounds!(
+    variable::JuMP.VariableRef,
+    lower::Float64,
+    upper::Float64,
+)::Nothing
+    JuMP.has_lower_bound(variable) && JuMP.delete_lower_bound(variable)
+    JuMP.has_upper_bound(variable) && JuMP.delete_upper_bound(variable)
+    isfinite(lower) && JuMP.set_lower_bound(variable, lower)
+    isfinite(upper) && JuMP.set_upper_bound(variable, upper)
+    return nothing
+end
+```
+
+### Physical capacities
+
+Each flow link is bounded by both of the nodes it connects, so the bounds are the intersection of the intervals returned by `connector_flow_capacity_bounds` for either node:
+
+```julia
+function update_flow_variable_bounds!(
+    allocation_model::AllocationModel,
+    integrator::DEIntegrator,
+    Δt_allocation::Float64,
+)::Nothing
+    (; p, t) = integrator
+    (; problem, scaling, flow_links_subnetwork) = allocation_model
+    flow = problem[:flow]
+
+    for flow_link in flow_links_subnetwork
+        flow_var = flow[flow_link]
+        # Flows out of FlowBoundary nodes are fixed to the boundary flow
+        JuMP.is_fixed(flow_var) && continue
+
+        lower, upper = -Inf, Inf
+        for node_id in flow_link
+            node_lower, node_upper = connector_flow_capacity_bounds(
+                allocation_model, node_id, p, t, Δt_allocation,
+            )
+            lower = max(lower, node_lower)
+            upper = min(upper, node_upper)
+        end
+        lower ≤ upper ||
+            error("Empty flow capacity interval [$lower, $upper] for $flow_link.")
+        set_variable_bounds!(flow_var, lower / scaling.flow, upper / scaling.flow)
+    end
+    return nothing
+end
+```
+
+`connector_flow_capacity_bounds` dispatches on the node type:
+
+- **Pump and Outlet**: the tightest `min_flow_rate` and `max_flow_rate` over $[t, t + \Delta t]$, since allocation assigns a single flow rate for the whole timestep;
+- **LinearResistance, ManningResistance and non-allocation-controlled TabulatedRatingCurve**: `linearized_flow_bounds`, see below;
+- **allocation controlled TabulatedRatingCurve**: $[0, Q(h_{a,\max})]$ where $h_{a,\max}$ is the highest reachable upstream level;
+- **UserDemand**: $[0, \infty)$, tightened afterwards by `update_user_demand_flow_bounds!`;
+- **anything else**: $(-\infty, \infty)$, i.e. no bound from this node.
+
+### Bounds from the linearized flow relation
+
+For nodes whose flow follows from a linearized flow-level relation, the tightest possible bounds follow from evaluating that same linearization over the reachable level changes:
+
+```julia
+function linearized_flow_bounds(
+    allocation_model, connector_node, flow_function, node_id, p, t, Δt_allocation,
+)::Tuple{Float64, Float64}
+    t_after = t + Δt_allocation
+    inflow_id = connector_node.inflow_link[node_id.idx].link[1]
+    outflow_id = connector_node.outflow_link[node_id.idx].link[2]
+
+    h_a = get_level(p, inflow_id, t_after)
+    h_b = get_level(p, outflow_id, t_after)
+    q0 = flow_function(connector_node, node_id, h_a, h_b, p, t_after)
+
+    lower, upper = q0, q0
+    ∂q∂h_a = forward_diff(
+        level_a -> flow_function(connector_node, node_id, level_a, h_b, p, t_after), h_a,
+    )
+    ∂q∂h_b = forward_diff(
+        level_b -> flow_function(connector_node, node_id, h_a, level_b, p, t_after), h_b,
+    )
+    for (∂q∂h, level_id) in ((∂q∂h_a, inflow_id), (∂q∂h_b, outflow_id))
+        iszero(∂q∂h) && continue
+        Δh_min, Δh_max = allocation_level_change_bounds(allocation_model, p, level_id)
+        Δq_min, Δq_max = minmax(∂q∂h * Δh_min, ∂q∂h * Δh_max)
+        lower += Δq_min
+        upper += Δq_max
+    end
+    return (lower, upper)
+end
+```
+
+The reachable level change follows from the bounds on the storage change decision variable, converted with the same linearized profile $\Delta h = \Delta S / A^n$ the constraints use:
+
+```julia
+function allocation_level_change_bounds(
+    allocation_model::AllocationModel, p::Parameters, node_id::NodeID,
+)::Tuple{Float64, Float64}
+    (; problem, scaling, node_ids_in_subnetwork) = allocation_model
+
+    # Levels of all other node types are data rather than decision variables,
+    # so they cannot change within one optimization
+    node_id.type == NodeType.Basin || return (0.0, 0.0)
+
+    # `flow_links_subnetwork` can contain links to Basins outside this subnetwork
+    (node_id ∈ node_ids_in_subnetwork.basin_ids_subnetwork) || return (-Inf, Inf)
+
+    storage_change = problem[:basin_storage_change][node_id]
+    level_per_storage =
+        scaling.storage / p.state_and_time_dependent_cache.current_area[node_id.idx]
+    return (
+        JuMP.lower_bound(storage_change) * level_per_storage,
+        JuMP.upper_bound(storage_change) * level_per_storage,
+    )
+end
+```
+
+Because these bounds are derived from the same linearization that appears in the flow constraint, they can never conflict with the constraint and therefore never make the problem infeasible.
+
+:::{.callout-important}
+For allocation controlled Pump and Outlet nodes there is no fallback bound, so a finite `max_flow_rate` is required. This is checked by `valid_allocation_flow_capacity` in `core/src/validation.jl`, both for the current parameters and for all DiscreteControl states, so a control state change cannot make the problem unbounded later in the simulation.
+:::
+
+### Demand-based bounds
+
+`update_user_demand_flow_bounds!` bounds all inflow links and the outflow link of a UserDemand node between zero and its total demand over all demand priorities. For the outflow the return factor is conservatively assumed to be 1. Since the demand values stored in the problem are already divided by `scaling.flow`, the upper bounds of the allocated variables can be used directly.
+
+`update_flow_demand_variable_bounds!` then takes the (now final) bounds of the flow variable of the node with a flow demand and transfers them to the helper variables: the allocated variable of the earliest demand priority may go down to $\min(0, Q^\min)$ to represent negative flow, and the 'demand priority 0' surplus variable is bounded above by $\max(0, Q^\max)$. If the flow variable has no bound on a side, the corresponding helper variable bound is deleted as well.
+
 # The Optimization Loop
+
+## Orchestration: `update_allocation!`
+
+`update_allocation!` is the entry point that is called every allocation timestep. It first refreshes the physical state (`water_balance!`) and the [scaling factors](#scaling-for-numerical-stability), and then per subnetwork performs the update sequence:
+
+```julia
+update_control_states!(allocation_model, p_independent)
+set_simulation_data!(allocation_model, integrator, Δt)
+reset_demand_coefficients(allocation_model)
+set_demands!(allocation_model, integrator, Δt)
+update_flow_variable_bounds!(allocation_model, integrator, Δt)
+update_user_demand_flow_bounds!(allocation_model, p_independent)
+update_flow_demand_variable_bounds!(allocation_model, p_independent)
+normalize_flow_demand_objectives!(allocation_model)
+warm_start!(allocation_model, integrator, Δt)
+```
+
+The order matters: `set_demands!` must run before the flow bounds are set, because `update_user_demand_flow_bounds!` reads the demands from the bounds of the allocated variables, and `update_flow_demand_variable_bounds!` in turn reads the finalized flow variable bounds.
+
+Secondary networks are updated first. If a primary network is present, its update sequence is interrupted after `reset_demand_coefficients` to run the [demand collection](#stage-1-demand-collection) for every secondary network.
+
+Afterwards, for every subnetwork in turn the problem is optimized (`optimize_multi_objective!`), the results are parsed and saved, the primary network allocation is distributed over the secondary networks (`allocate_flows_to_subnetwork`), and the results are applied to the physical layer with `apply_control_from_allocation!`.
+
+## Lexicographic optimization
 
 The main optimization loop in `optimize_multi_objective!` solves objectives in sequence:
 
@@ -832,47 +974,36 @@ end
 The optimization uses scaling factors to improve numerical conditioning:
 
 ```julia
-struct ScalingFactors
-    storage::Float64  # Typical storage value (m³)
-    flow::Float64     # Typical flow rate (m³/s)
-    mean_half_storage::Float64  # Initialization-time reference storage (m³)
+@kwdef mutable struct ScalingFactors
+    flow::Float64 = 1.0e3            # Typical flow rate (m³/s)
+    storage::Float64 = 1.0e6         # Typical storage value (m³)
+    mean_half_storage::Float64 = 0.0 # Initialization-time reference storage (m³)
 end
 
-function ScalingFactors(
-    p_independent::ParametersIndependent,
-    subnetwork_id::Int32,
-)
-    # Compute average half-storage across basins
-    max_storages = [
-        basin.storage_to_level[node_id.idx].t[end]
-        for node_id in basin.node_id
-        if graph[node_id].subnetwork_id == subnetwork_id
-    ]
-    return ScalingFactors(
-        mean_half_storage = sum(max_storages) / (2 * length(max_storages)),
-    )
-end
-
-function update_scaling!(p::Parameters, du::CVector, t::Float64, Δt::Float64)
+function update_scaling!(p::Parameters, Δt::Float64)
     (; p_independent, state_and_time_dependent_cache) = p
-    (; allocation) = p_independent
+    (; allocation_models) = p_independent.allocation
     (; current_storage) = state_and_time_dependent_cache
-    for allocation_model in allocation.allocation_models
+    for allocation_model in allocation_models
         (; node_ids_in_subnetwork, scaling) = allocation_model
         (; basin_ids_subnetwork) = node_ids_in_subnetwork
-        mean_storage = sum(current_storage[id.idx] for id in basin_ids_subnetwork) /
-            length(basin_ids_subnetwork)
-        scaling.storage = (scaling.mean_half_storage + mean_storage) / 2
+
+        storage_sum = sum(current_storage[id.idx] for id in basin_ids_subnetwork)
+        scaling.storage =
+            (scaling.mean_half_storage + storage_sum / length(basin_ids_subnetwork)) / 2
         scaling.flow = scaling.storage / Δt
     end
+    return
 end
 ```
+
+`mean_half_storage` is computed once when the allocation problem is built, as the mean over the Basins in the subnetwork of half their maximum storage.
 
 **Key concepts:**
 - Storage variables are divided by `scaling.storage`
 - Flow variables are divided by `scaling.flow`
 - The storage scale is updated for each allocation solve from the current mean storage and the initialization-time mean half-storage
-- The flow scale equals `scaling.storage / Δt`, so flow coefficients in the discretized volume-conservation equations are one
+- The flow scale equals `scaling.storage / Δt`, so that a typical flow over an allocation timestep amounts to a typical storage change
 - Per-priority flow-demand objectives are normalized independently, because a global flow scale can still make a small active demand numerically insignificant
 - Improves numerical stability and solver performance
 - Must scale/unscale when communicating with physical layer
@@ -893,10 +1024,14 @@ $$\tilde{\Delta S} = \frac{\Delta t \cdot Q_{\text{scale}}}{S_{\text{scale}}} \l
 In the code:
 ```julia
 storage_change[node_id] ==
-    Δt_allocation / scaling.storage * (
-        sum(flow[link] for link in inflow_links) * scaling.flow - ...
+    scaling.flow / scaling.storage * (
+        f_pos - f_neg * low_storage_factor[node_id] +
+        inflow_sum[node_id] - outflow_sum[node_id]
     )
 ```
+
+Since `scaling.flow = scaling.storage / Δt`, this single coefficient carries both the unit conversion from flow rate to volume over the allocation timestep and the ratio of the two scaling factors. It is updated together with the rest of the constraint in `set_simulation_data!`.
+
 
 # Data Structures and Indexing
 
@@ -939,12 +1074,12 @@ JuMP uses `SparseAxisArray` for multi-dimensional variables:
 user_demand_allocated[node_id, demand_priority]
 
 # Example: triply-indexed variable
-user_demand_error[node_id, demand_priority, objective_type]
+user_demand_error[node_id, demand_priority, objective_ord]  # objective_ord ∈ (:first, :second)
 ```
 
 **Key concepts:**
 - Only creates variables for valid index combinations
-- Filtered by conditions (e.g., `has_demand_priority[node_id.idx, demand_priority_idx]`)
+- Filtered by iterating over `DemandPriorityIterator(node_id, p_independent)`, which yields only the demand priorities the node actually has
 - Efficient for sparse problems (not all nodes have all priorities)
 
 ## AllocationModel Struct
@@ -952,32 +1087,38 @@ user_demand_error[node_id, demand_priority, objective_type]
 The main data structure:
 
 ```julia
-struct AllocationModel
+@kwdef mutable struct AllocationModel
     subnetwork_id::Int32
-    problem::JuMP.Model  # The JuMP optimization problem
     node_ids_in_subnetwork::NodeIDsInSubnetwork
-    scaling::ScalingFactors
-
-    # Cumulative tracking for output
-    cumulative_supplied_volume::Dict{Tuple{NodeID, NodeID}, Float64}
-
-    # Forcing volumes (precipitation, evaporation)
-    explicit_positive_forcing_volume::Dict{NodeID, Float64}
-    implicit_negative_forcing_volume::Dict{NodeID, Float64}
-
+    problem::JuMP.Model  # The JuMP optimization problem
+    # Time since the last time results were written
+    Δt_since_last_record::Float64 = 0.0
+    has_demand_priority::Vector{Bool}
     # Optimization objectives
-    objectives::Vector{AllocationObjective}
-
+    objectives::Vector{AllocationObjective} = AllocationObjective[]
+    # Forcing volumes (precipitation, drainage, evaporation, infiltration)
+    explicit_positive_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
+    implicit_negative_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
+    # Cumulative tracking for output
+    cumulative_supplied_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict()
+    sources::OrderedDict{Int32, NodeID} = OrderedDict()
+    secondary_network_demand::OrderedDict{Tuple{NodeID, NodeID}, Vector{Float64}} =
+        OrderedDict()
+    # All links with at least one node in this subnetwork
+    flow_links_subnetwork::Vector{Tuple{NodeID, NodeID}} = Tuple{NodeID, NodeID}[]
+    scaling::ScalingFactors = ScalingFactors()
     # Current LevelDemand fairness normalization by demand priority
-    level_demand_area_sum::Dict{Int32, Float64}
-    level_demand_count::Dict{Int32, Int}
-    level_demand_area_scale::Dict{Int32, Float64}
-
+    level_demand_area_sum::Dict{Int32, Float64} = Dict()
+    level_demand_count::Dict{Int32, Int} = Dict()
+    level_demand_area_scale::Dict{Int32, Float64} = Dict()
     # Temporary constraints for lexicographic optimization
-    temporary_constraints::Vector{JuMP.ConstraintRef}
-
+    temporary_constraints::Vector{JuMP.ConstraintRef} = JuMP.ConstraintRef[]
 end
 ```
+
+:::{.callout-note}
+The allocation timestep `Δt_allocation` is not a field of `AllocationModel`. Because the timestep is [adaptive](/concept/allocation.qmd#sec-adaptive-timestepping), it is passed as a function argument to all functions that need it. `Δt_since_last_record` is unrelated: it accumulates the time since results were last written.
+:::
 
 # Secondary Networks and Primary-Secondary Connections
 
@@ -1003,7 +1144,7 @@ Secondary networks (subnetwork_id > 1):
 
 For each secondary network:
 
-1. Set inflow from primary network to unlimited (temporarily)
+1. Allow inflow from the primary network up to the physical capacity of the connecting links
 2. Solve the demand and fairness objectives for each priority
 3. Minimize total primary-to-secondary inlet flow as a non-retained tie-break
 4. Use that minimum inlet flow as the secondary network's request for the priority
@@ -1015,16 +1156,25 @@ function preprocess_demand_collection!(
     allocation_model::AllocationModel,
     p_independent::ParametersIndependent,
 )::Nothing
-    # Allow unlimited inflow from primary network
-    for link in primary_network_connections[subnetwork_id]
-        flow_var = flow[link]
-        JuMP.set_upper_bound(flow_var, MAX_ABS_FLOW / scaling.flow)
-        JuMP.set_lower_bound(flow_var, 0)
+    (; problem, subnetwork_id) = allocation_model
+    @assert !is_primary_network(subnetwork_id)
+    flow = problem[:flow]
+
+    # The capacity bounds of the primary network connections were set from the current
+    # allocation data, so demands are collected up to the physical capacity. The primary
+    # network allocation will subsequently restrict these links to its result.
+    for link in p_independent.allocation.primary_network_connections[subnetwork_id]
+        flow_variable = flow[link]
+        lower_bound =
+            JuMP.has_lower_bound(flow_variable) ? JuMP.lower_bound(flow_variable) : 0.0
+        JuMP.set_lower_bound(flow_variable, max(0.0, lower_bound))
     end
 
-    # Solve to find total demand...
+    return nothing
 end
 ```
+
+Note that only the lower bound needs adjusting here: the upper bound already is the physical capacity of the link, set by `update_flow_variable_bounds!`. Since the connecting node is always an allocation controlled Pump or Outlet, that capacity is finite.
 
 ### Stage 2: Allocation
 
@@ -1069,24 +1219,37 @@ end
 To improve solver performance, the optimization can be warm-started with flow rates from the physical layer:
 
 ```julia
-function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator)::Nothing
-    (; problem, scaling, Δt_allocation) = allocation_model
+function warm_start!(
+    allocation_model::AllocationModel,
+    integrator::DEIntegrator,
+    Δt_allocation::Float64,
+)::Nothing
+    (; p, t) = integrator
+    (; problem, scaling, node_ids_in_subnetwork) = allocation_model
+    (; basin_ids_subnetwork) = node_ids_in_subnetwork
     flow = problem[:flow]
-    du = get_du(integrator)  # du/dt from physical layer
+    storage_change = problem[:basin_storage_change]
+    du = get_du(integrator)
+    (; link_to_state_idx) = p.p_independent
 
-    # Extrapolate current flow rates
+    # Extrapolate the current instantaneous flow rates from the physical layer
     for link in only(flow.axes)
-        # Get current flow from physical layer
-        current_flow = get_flow(du, p, link)
+        state_index = get_state_index(getaxes(du), link_to_state_idx, link)
+        if !isnothing(state_index)
+            JuMP.set_start_value(flow[link], du[state_index] / scaling.flow)
+        end
+    end
 
-        # Set as starting value for optimization
+    # Extrapolate the current instantaneous storage rates from the physical layer
+    for node_id in basin_ids_subnetwork
         JuMP.set_start_value(
-            flow[link],
-            current_flow / scaling.flow
+            storage_change[node_id],
+            formulate_dstorage_wrt_time(du, p.p_independent, t, node_id) * Δt_allocation /
+                scaling.storage,
         )
     end
 
-    # Similar for basin storage changes...
+    return nothing
 end
 ```
 
@@ -1094,71 +1257,55 @@ end
 - Starting values guide the solver to a good initial solution
 - Can significantly reduce solver iterations
 - Based on extrapolating current physical state forward
+- Not every flow link corresponds to a state of the physical layer, hence the `isnothing` check
 
 # Output and Communication with Physical Layer
 
 ## Parsing Results
 
-After optimization, results must be extracted and stored:
+After optimization, results must be extracted and stored. `parse_allocations!` has a dispatcher method plus one method for UserDemand and FlowDemand nodes and one for LevelDemand nodes:
 
 ```julia
 function parse_allocations!(
     integrator::DEIntegrator,
     allocation_model::AllocationModel,
+    Δt_allocation,
 )::Nothing
-    (; problem, subnetwork_id, scaling) = allocation_model
+    # Dispatches to the UserDemand, FlowDemand and LevelDemand methods
+end
 
-    # Extract allocated amounts per demand node per priority
-    for node_id in user_demand_ids_subnetwork
-        for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
-            if !has_demand_priority[node_id.idx, demand_priority_idx]
-                continue
-            end
+# For UserDemand and FlowDemand
+for node_id in demand_node_ids_subnetwork
+    for demand_priority in DemandPriorityIterator(node_id, p_independent)
+        # Get allocated amount from the optimization result and unscale it
+        allocated = JuMP.value(node_allocated[node_id, demand_priority]) * scaling.flow
 
-            # Get allocated amount from optimization result
-            allocated = JuMP.value(user_demand_allocated[node_id, demand_priority])
-            allocated_unscaled = allocated * scaling.flow
+        # Store on the node for use by the physical layer
+        node.allocated[node_id.idx, demand_priority_idx] = allocated
 
-            # Store for output
-            record_demand[subnetwork_id][demand_priority][node_id] = (
-                demand = current_demand,
-                allocated = allocated_unscaled,
-                supplied = 0.0  # To be filled in after physical layer runs
-            )
-        end
+        # Store for output in the demand results table
+        push!(record_demand, DemandRecordDatum(...))
     end
 end
 ```
+
+For LevelDemand nodes there is no allocated flow variable; instead the volume supplied to the Basin over the allocation timestep is derived from the optimized storage change and recorded.
 
 ## Applying Allocation Results
 
-Allocated amounts must be communicated to the physical layer:
+Allocated amounts must be communicated to the physical layer.
 
 ### UserDemand Nodes
 
-```julia
-# In the physical layer, UserDemand nodes have a max_flow_rate that limits extraction
-function update_user_demand!(user_demand::UserDemand, allocation_result)
-    for node_id in user_demand.node_id
-        # Get allocated amount summed over all priorities
-        total_allocated = sum(
-            allocation_result[node_id][priority].allocated
-            for priority in priorities
-        )
+The allocated flow rates per demand priority are written to `user_demand.allocated`. In the physical layer, the abstraction of a UserDemand node is limited by the sum of these allocated flow rates rather than by its demand, so that the node never takes more than it was allocated.
 
-        # Set as maximum extraction rate
-        user_demand.max_flow_rate[node_id.idx] = total_allocated
-    end
-end
-```
+### Pump, Outlet and TabulatedRatingCurve Control
 
-### Pump/Outlet Control
-
-When a Pump or Outlet has `allocation_controlled` set to `true`:
+When a Pump, Outlet or TabulatedRatingCurve has `allocation_controlled` set to `true`:
 
 ```julia
 function apply_control_from_allocation!(
-    node::Union{Pump, Outlet},
+    node::Union{Pump, Outlet, TabulatedRatingCurve},
     allocation_model::AllocationModel,
     integrator::DEIntegrator,
 )::Nothing
@@ -1175,6 +1322,8 @@ function apply_control_from_allocation!(
     end
 end
 ```
+
+The physical layer still applies the usual reduction factors (low storage, level difference, maximum downstream level) to this flow rate, so the realized flow can be lower than the allocated flow rate.
 
 # Handling Infeasibility
 
@@ -1264,11 +1413,10 @@ end
 
 ## Allocation Timestep Selection
 
-The allocation timestep $\Delta t_{\text{allocation}}$ must be chosen carefully:
+By default the allocation timestep $\Delta t_{\text{allocation}}$ is determined adaptively from bounds on the linearization errors, see [Adaptive timestepping](/concept/allocation.qmd#sec-adaptive-timestepping) and `compute_adaptive_allocation_Δt`. It can be overridden with a fixed value using the `allocation.dt` [configuration setting](/reference/usage.qmd#sec-allocation-settings). The trade-off is:
 
 - **Too small**: Frequent optimization overhead, linearization always valid
 - **Too large**: Linearization may be inaccurate, less responsive to changes
-- **Typical range**: 1 day to 1 week for water resources models
 
 # Debugging Tips
 
@@ -1344,11 +1492,12 @@ This technical reference provides the link between mathematical formulation and 
 1. **Two-phase approach**: Structure defined at initialization with placeholders, values updated before each optimization
 2. **Physical layer integration**: Linearization of basin profiles and connector nodes around current state
 3. **Decision variables**: Flows, storage changes, allocated amounts, errors
-4. **Constraints**: Flow conservation, volume conservation, demand relationships, linearized physics
-5. **Objectives**: Lexicographic goal programming for demands, fairness, route priorities
-6. **Scaling**: Improves numerical stability by keeping values O(1)
-7. **Data structures**: NodeID-based indexing, sparse JuMP arrays, link tuples
-8. **Primary-secondary networks**: Two-stage allocation process
+4. **Flow capacity bounds**: Derived before each optimization from the physical node properties and the reachable Basin levels
+5. **Constraints**: Flow conservation, volume conservation, demand relationships, linearized physics
+6. **Objectives**: Lexicographic goal programming for demands, fairness, route priorities
+7. **Scaling**: Improves numerical stability by keeping values O(1)
+8. **Data structures**: NodeID-based indexing, sparse JuMP arrays, link tuples
+9. **Primary-secondary networks**: Two-stage allocation process
 
 For user-facing documentation, see [Allocation Concept](/concept/allocation.qmd).
-For implementation code, see `core/src/allocation_init.jl`, `core/src/allocation_optim.jl`, and `core/src/allocation_util.jl`.
+For implementation code, see `core/src/allocation_init.jl`, `core/src/allocation_optim.jl`, `core/src/allocation_util.jl`, and `core/src/validation.jl`.

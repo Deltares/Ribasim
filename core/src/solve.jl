@@ -512,6 +512,10 @@ function DiffEqBase.prepare_alg(
     end
 end
 
+# The flow rate above which a (flow) rate is considered non-plausible,
+# used for diagnosing numerical instability
+const MAX_ABS_FLOW = 5.0e5 # m³/s
+
 # Modelled after SciMLBase.log_numerical_instability(integrator::ODEIntegrator; jacobian_logging = true)
 function SciMLBase.log_numerical_instability(
         integrator::ODEIntegrator{<:Any, <:Any, <:RibasimStateCVector};

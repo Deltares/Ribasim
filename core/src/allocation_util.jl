@@ -1,6 +1,20 @@
-const MAX_ABS_FLOW = 5.0e5 # m/s
-
 is_active(allocation::Allocation) = allocation.config.experimental.allocation
+
+"""
+Set the bounds of a variable, where infinite bounds mean no bound at all.
+Existing bounds are removed first, so this fully defines the variable bounds.
+"""
+function set_variable_bounds!(
+        variable::JuMP.VariableRef,
+        lower::Float64,
+        upper::Float64,
+    )::Nothing
+    JuMP.has_lower_bound(variable) && JuMP.delete_lower_bound(variable)
+    JuMP.has_upper_bound(variable) && JuMP.delete_upper_bound(variable)
+    isfinite(lower) && JuMP.set_lower_bound(variable, lower)
+    isfinite(upper) && JuMP.set_upper_bound(variable, upper)
+    return nothing
+end
 
 function variable_sum(variables)
     return if isempty(variables)
@@ -8,58 +22,6 @@ function variable_sum(variables)
     else
         sum(variables)
     end
-end
-
-function flow_capacity_lower_bound(
-        link::Tuple{NodeID, NodeID},
-        p_independent::ParametersIndependent,
-    )
-    lower_bound = -MAX_ABS_FLOW
-    for id in link
-        min_flow_rate_id = if id.type == NodeType.Pump
-            max(0.0, p_independent.pump.min_flow_rate[id.idx](0))
-        elseif id.type == NodeType.Outlet
-            max(0.0, p_independent.outlet.min_flow_rate[id.idx](0))
-        elseif id.type == NodeType.LinearResistance
-            -p_independent.linear_resistance.max_flow_rate[id.idx]
-        elseif id.type ∈ (
-                NodeType.UserDemand,
-                NodeType.FlowBoundary,
-                NodeType.TabulatedRatingCurve,
-            )
-            # Flow direction constraint
-            0.0
-        else
-            -MAX_ABS_FLOW
-        end
-
-        lower_bound = max(lower_bound, min_flow_rate_id)
-    end
-
-    return lower_bound
-end
-
-function flow_capacity_upper_bound(
-        link::Tuple{NodeID, NodeID},
-        p_independent::ParametersIndependent,
-    )
-    upper_bound = MAX_ABS_FLOW
-    for id in link
-        max_flow_rate_id = if id.type == NodeType.Pump
-            p_independent.pump.max_flow_rate[id.idx](0)
-        elseif id.type == NodeType.Outlet
-            p_independent.outlet.max_flow_rate[id.idx](0)
-        elseif id.type == NodeType.LinearResistance
-            p_independent.linear_resistance.max_flow_rate[id.idx]
-        else
-            # For tabulated rating curve, max flow will be updated based on Q(h)
-            MAX_ABS_FLOW
-        end
-
-        upper_bound = min(upper_bound, max_flow_rate_id)
-    end
-
-    return upper_bound
 end
 
 function collect_primary_network_connections!(
@@ -83,13 +45,16 @@ function collect_primary_network_connections!(
                             primary_network_connections_subnetwork,
                             (upstream_id, node_id),
                         )
-                        # ensure node is allocation controlled
-                        if upstream_id.type == NodeType.Pump
-                            pump.allocation_controlled[upstream_id.idx] = true
-                        elseif upstream_id.type == NodeType.Outlet
-                            outlet.allocation_controlled[upstream_id.idx] = true
+                        # the node must be allocation controlled
+                        allocation_controlled = if upstream_id.type == NodeType.Pump
+                            pump.allocation_controlled[upstream_id.idx]
+                        else
+                            outlet.allocation_controlled[upstream_id.idx]
                         end
-
+                        if !allocation_controlled
+                            @error "This node connects the primary network to a subnetwork and therefore must have allocation_controlled set to true." upstream_id subnetwork_id
+                            errors = true
+                        end
                     else
                         @error "This node connects the primary network to a subnetwork but is not an outlet or pump." upstream_id subnetwork_id
                         errors = true

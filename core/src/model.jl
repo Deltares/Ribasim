@@ -92,6 +92,10 @@ function Model(
             error("Invalid minimum upstream level of Pump.")
         end
 
+        if !valid_allocation_flow_capacity(pump) || !valid_allocation_flow_capacity(outlet)
+            error("Invalid allocation-controlled Pump or Outlet capacity.")
+        end
+
         if !valid_tabulated_curve_level(graph, tabulated_rating_curve, basin)
             error("Invalid level of TabulatedRatingCurve.")
         end

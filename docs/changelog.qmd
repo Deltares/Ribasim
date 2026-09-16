@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 - The `dt` in `results/solver_stats.nc` is now the average timestep size over the `saveat` interval, instead of the size of the last timestep.
+- Allocation: Allocation controlled Pump and Outlet nodes now require a finite `max_flow_rate`. Models that do not satisfy this are rejected with an error.
+- Allocation: Pump and Outlet nodes that connect the primary network to a secondary network are no longer made allocation controlled automatically; they must have `allocation_controlled` set to `true`, otherwise an error is thrown.
 
 ### Fixed
 - Allocation: Normalize LevelDemand fairness constraints by the current mean Basin area per demand priority, improving numerical conditioning for large Basins.

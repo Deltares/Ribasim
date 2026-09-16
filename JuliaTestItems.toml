@@ -1,2 +1,1 @@
 exclude = ["/.pixi/", "/build/ribasim/"]
-style = "runic"

@@ -481,6 +481,44 @@ function valid_min_upstream_level!(
     return !errors
 end
 
+"""
+Allocation-controlled pumps and outlets require a finite capacity, otherwise the
+allocation problem can be unbounded.
+
+Both the currently active `max_flow_rate` and the ones from all control states are
+checked, so a control state update cannot make the allocation problem unbounded
+later in the simulation.
+"""
+function valid_allocation_flow_capacity(node::Union{Outlet, Pump})::Bool
+    errors = false
+
+    function check_max_flow_rate(node_id, allocation_controlled, max_flow_rate)
+        allocation_controlled || return
+        if any(!isfinite, max_flow_rate.u)
+            @error "Allocation-controlled $node_id requires a finite max_flow_rate."
+            errors = true
+        end
+        return
+    end
+
+    for (node_id, allocation_controlled, max_flow_rate) in
+        zip(node.node_id, node.allocation_controlled, node.max_flow_rate)
+        check_max_flow_rate(node_id, allocation_controlled, max_flow_rate)
+    end
+
+    for ((node_id, _), control_state_update) in node.control_mapping
+        allocation_controlled =
+            control_state_update.allocation_controlled ||
+            node.allocation_controlled[node_id.idx]
+        for parameter_update in control_state_update.itp_update_constant
+            parameter_update.name == :max_flow_rate || continue
+            check_max_flow_rate(node_id, allocation_controlled, parameter_update.value)
+        end
+    end
+
+    return !errors
+end
+
 function valid_tabulated_curve_level(
         graph::MetaGraph,
         tabulated_rating_curve::TabulatedRatingCurve,
