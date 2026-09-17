@@ -502,163 +502,60 @@ function NodeID(type::Symbol, value::Integer, p_independent::ParametersIndepende
     return NodeID(node_type, value, idx)
 end
 
-"""
-Get the reference to a parameter
-"""
-function get_cache_ref(
-        node_id::NodeID,
-        variable::String,
-        state_ranges::RibasimStateTuple;
-        listen::Bool = true,
-    )::Tuple{CacheRef, Bool}
-    errors = false
-
-    ref = if node_id.is_basin && variable == "level"
-        CacheRef(; type = CacheType.basin_level, node_id.idx)
-    elseif node_id.is_basin && variable == "storage"
-        CacheRef(; type = CacheType.basin_storage, node_id.idx)
-    elseif variable == "flow_rate" && node_id.type != NodeType.FlowBoundary
-        if listen
-            if node_id.type ∉ conservative_nodetypes
-                errors = true
-                @error "Cannot listen to flow_rate of $node_id, the node type must be one of $conservative_nodetypes."
-                CacheRef()
-            else
-                # Index in the state vector (inflow)
-                idx = get_state_index(state_ranges, node_id)
-                CacheRef(; idx, from_du = true)
-            end
-        else
-            type = if node_id.type == NodeType.Pump
-                CacheType.flow_rate_pump
-            elseif node_id.type == NodeType.Outlet
-                CacheType.flow_rate_outlet
-            else
-                errors = true
-                @error "Cannot set the flow rate of $node_id."
-                CacheType.flow_rate_pump
-            end
-            CacheRef(; type, node_id.idx)
-        end
-    else
-        # Placeholder to obtain correct type
-        CacheRef()
-    end
-    return ref, errors
-end
-
-"""
-Set references to all variables that are listened to by discrete/continuous control
-"""
-function set_listen_cache_refs!(p_independent::ParametersIndependent)::Nothing
-    (; discrete_control, continuous_control, state_ranges) = p_independent
-    compound_variable_sets =
-        [discrete_control.compound_variables..., continuous_control.compound_variable]
-    errors = false
-
-    for compound_variables in compound_variable_sets
-        for compound_variable in compound_variables
-            (; subvariables) = compound_variable
-            for (j, subvariable) in enumerate(subvariables)
-                ref, error = get_cache_ref(
-                    subvariable.listen_node_id,
-                    subvariable.variable,
-                    state_ranges,
-                )
-                if !error
-                    subvariables[j] = @set subvariable.cache_ref = ref
-                end
-                errors |= error
-            end
-        end
-    end
-
-    if errors
-        error("Error(s) occurred when parsing listen variables.")
-    end
+function set_discrete_controlled_target_refs!(p_independent::ParametersIndependent)
+    (;
+        tabulated_rating_curve,
+        linear_resistance,
+        manning_resistance,
+        pump,
+        outlet,
+        pid_control,
+    ) = p_independent
+    set_discrete_controlled_target_refs!(tabulated_rating_curve)
+    set_discrete_controlled_target_refs!(linear_resistance)
+    set_discrete_controlled_target_refs!(manning_resistance)
+    set_discrete_controlled_target_refs!(pump)
+    set_discrete_controlled_target_refs!(outlet)
+    set_discrete_controlled_target_refs!(pid_control)
     return nothing
 end
 
-"""
-Set references to all variables that are controlled by discrete control
-"""
-function set_discrete_controlled_variable_refs!(
-        p_independent::ParametersIndependent,
-    )::Nothing
-    for nodetype in propertynames(p_independent)
-        node = getfield(p_independent, nodetype)
-        if node isa AbstractParameterNode && hasfield(typeof(node), :control_mapping)
-            control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
-                node.control_mapping
+function set_discrete_controlled_target_refs!(
+        node::AbstractParameterNode
+    )
+    (; control_mapping) = node
 
-            for ((node_id, control_state), control_state_update) in control_mapping
-                (; scalar_update, itp_update_constant, itp_update_linear, itp_update_lookup) =
-                    control_state_update
+    for ((node_id, _), control_state_update) in control_mapping
+        (; idx) = node_id
 
-                # References to scalar parameters
-                for (i, parameter_update) in enumerate(scalar_update)
-                    field = getfield(node, parameter_update.name)
-                    scalar_update[i] = ParameterUpdate(
-                        parameter_update.name,
-                        parameter_update.value,
-                        Ref(field, node_id.idx),
-                    )
-                end
+        (; scalar_update, itp_update_constant, itp_update_linear, itp_update_lookup) =
+            control_state_update
 
-                # References to constant interpolation parameters
-                for (i, parameter_update) in enumerate(itp_update_constant)
-                    field = getfield(node, parameter_update.name)
-                    itp_update_constant[i] = ParameterUpdate(
-                        parameter_update.name,
-                        parameter_update.value,
-                        Ref(field, node_id.idx),
-                    )
-                end
+        # References to scalar parameters
+        for (i, parameter_update) in enumerate(scalar_update)
+            field = getfield(node, parameter_update.name)
+            scalar_update[i] = @set parameter_update.ref = Ref(field, idx)
+        end
 
-                # References to linear interpolation parameters
-                for (i, parameter_update) in enumerate(itp_update_linear)
-                    field = getfield(node, parameter_update.name)
-                    itp_update_linear[i] = ParameterUpdate(
-                        parameter_update.name,
-                        parameter_update.value,
-                        Ref(field, node_id.idx),
-                    )
-                end
+        # References to constant interpolation parameters
+        for (i, parameter_update) in enumerate(itp_update_constant)
+            field = getfield(node, parameter_update.name)
+            itp_update_constant[i] = @set parameter_update.ref = Ref(field, idx)
+        end
 
-                # References to index interpolation parameters
-                for (i, parameter_update) in enumerate(itp_update_lookup)
-                    field = getfield(node, parameter_update.name)
-                    itp_update_lookup[i] = ParameterUpdate(
-                        parameter_update.name,
-                        parameter_update.value,
-                        Ref(field, node_id.idx),
-                    )
-                end
-            end
+        # References to linear interpolation parameters
+        for (i, parameter_update) in enumerate(itp_update_linear)
+            field = getfield(node, parameter_update.name)
+            itp_update_linear[i] = @set parameter_update.ref = Ref(field, idx)
+        end
+
+        # References to index interpolation parameters
+        for (i, parameter_update) in enumerate(itp_update_lookup)
+            field = getfield(node, parameter_update.name)
+            itp_update_lookup[i] = @set parameter_update.ref = Ref(field, idx)
         end
     end
-    return nothing
-end
 
-function set_target_ref!(
-        target_ref::Vector{CacheRef},
-        node_id::Vector{NodeID},
-        controlled_variable::Vector{String},
-        state_ranges::RibasimStateTuple,
-        graph::MetaGraph,
-    )::Nothing
-    errors = false
-    for (i, (id, variable)) in enumerate(zip(node_id, controlled_variable))
-        controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
-        ref, error =
-            get_cache_ref(controlled_node_id, variable, state_ranges; listen = false)
-        target_ref[i] = ref
-        errors |= error
-    end
-
-    if errors
-        error("Errors encountered when setting continuously controlled variable refs.")
-    end
     return nothing
 end
 
@@ -1260,4 +1157,19 @@ function get_link_index(
         flow_link_lookup::Dict{Tuple{NodeID, NodeID}, Int},
     )::Union{Int64, Nothing}
     return get(flow_link_lookup, link, nothing)
+end
+
+function set_controlled_node_ids!(p_independent, node::Union{PidControl, ContinuousControl})
+    (; graph, inflow_id, outflow_id, flow_ranges) = p_independent
+
+    for id in node.node_id
+        controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
+        node.controlled_node_id[id.idx] = controlled_node_id
+        component = node_type_map[controlled_node_id.type]
+        flow_idx = flow_ranges[component][controlled_node_id.idx]
+
+        node.inflow_id[id.idx] = inflow_id[flow_idx]
+        node.outflow_id[id.idx] = outflow_id[flow_idx]
+    end
+    return nothing
 end

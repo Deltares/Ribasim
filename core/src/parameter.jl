@@ -924,17 +924,6 @@ const TimeDependentCache{T} = @NamedTuple{
 } where {T}
 
 """
-A reference to an element of either the CurrentBasinProperties or the state derivative `du`.
-This is not a direct reference to the memory, because it depends on the type of call
-of `water_balance!` (AD versus 'normal') which version of these objects is passed.
-"""
-@kwdef struct CacheRef
-    type::CacheType.T = CacheType.flow_rate_pump
-    idx::Int = 0
-    from_du::Bool = false
-end
-
-"""
 Get one of the vectors of the CurrentBasinProperties based on the passed type.
 """
 function get_cache_vector(
@@ -956,7 +945,6 @@ end
 
 @kwdef struct SubVariable
     listen_node_id::NodeID
-    cache_ref::CacheRef
     variable::String
     weight::Float64
     look_ahead::Float64
@@ -1021,8 +1009,8 @@ end
 @kwdef struct ContinuousControl <: AbstractParameterNode
     node_id::Vector{NodeID}
     controlled_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
-    inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    inflow_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
+    outflow_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     compound_variable::Vector{CompoundVariable}
     controlled_variable::Vector{String}
     func::Vector{ScalarPCHIPInterpolation}
@@ -1035,6 +1023,8 @@ PID control currently only supports regulating basin levels.
 node_id: node ID of the PidControl node
 controlled_node_id: the id of the structure (pum/outlet) being controlled
 listen_node_id: the id of the basin being controlled
+inflow_id: the id of the node upstream of the controlled structure
+outflow_id: the id pf the node downstream of the controlled structure
 target: target level (possibly time dependent)
 target_ref: reference to the controlled flow_rate value
 proportional: proportionality coefficient error
@@ -1046,8 +1036,8 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
     node_id::Vector{NodeID}
     controlled_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     listen_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
-    inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    inflow_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
+    outflow_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     target::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     proportional::Vector{ScalarConstantInterpolation} =
@@ -1390,16 +1380,3 @@ end
 
 Base.show(io::IO, ::Parameters) = print(io, "Ribasim Parameters")
 Base.show(io::IO, ::MIME"text/plain", ::Parameters) = print(io, "Ribasim Parameters")
-
-function get_value(ref::CacheRef, p::Parameters, du::CVector)
-    return if ref.from_du
-        du[ref.idx]
-    else
-        get_cache_vector(p.current_basin_properties, ref.type)[ref.idx]
-    end
-end
-
-function set_value!(ref::CacheRef, p::Parameters, value)
-    @assert !ref.from_du
-    return get_cache_vector(p.current_basin_properties, ref.type)[ref.idx] = value
-end

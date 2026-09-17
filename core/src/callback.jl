@@ -422,6 +422,7 @@ Apply the discrete control logic. There's somewhat of a complex structure:
 function apply_discrete_control!(u, t, integrator)::Nothing
     (; p) = integrator
     (; discrete_control) = p.p_independent
+    (; current_storage) = p.current_basin_properties
     (; node_id, truth_state, compound_variables) = discrete_control
     du = get_du(integrator)
 
@@ -441,7 +442,7 @@ function apply_discrete_control!(u, t, integrator)::Nothing
 
         # Loop over the compound variables listened to by this discrete control node
         for compound_variable in compound_variables_node
-            value = compound_variable_value(compound_variable, p, du, t)
+            value = compound_variable_value(compound_variable, current_storage, du.flow, p, t)
 
             # Loop over the threshold interpolations associated with the current compound variable
             for (threshold_low, threshold_high) in
@@ -539,53 +540,62 @@ function set_new_control_state!(
     return false
 end
 
-"""
-Get a value for a condition. Currently supports getting levels from Basins and flows
-from FlowBoundaries.
-"""
-function get_value(subvariable::SubVariable, p::Parameters, du::CVector, t::Float64)
-    (; flow_boundary, level_boundary, basin) = p.p_independent
-    (; listen_node_id, look_ahead, variable, cache_ref) = subvariable
+function compound_variable_value(
+        compound_variable::CompoundVariable,
+        storage::AbstractVector,
+        flow::AbstractVector,
+        p::Parameters,
+        t::Number
+    )
+    (; level_boundary, flow_boundary, basin, user_demand) = p.p_independent
 
-    if !iszero(cache_ref.idx)
-        return get_value(cache_ref, p, du)
-    end
-
-    if variable == "level"
-        if listen_node_id.type == NodeType.LevelBoundary
-            level = level_boundary.level[listen_node_id.idx](t + look_ahead)
-        else
-            error(
-                "Level condition node '$listen_node_id' is neither a Basin nor a LevelBoundary.",
-            )
-        end
-        value = level
-
-    elseif variable == "flow_rate"
-        if listen_node_id.type == NodeType.FlowBoundary
-            value = boundary_flow_rate(flow_boundary, listen_node_id.idx, t + look_ahead)
-        else
-            error("Flow condition node $listen_node_id is not a FlowBoundary.")
-        end
-
-    elseif startswith(variable, "concentration_external.")
-        value =
-            basin.concentration_data.concentration_external[listen_node_id.idx][variable](t)
-    elseif startswith(variable, "concentration.")
-        substance = Symbol(last(split(variable, ".")))
-        var_idx = find_index(substance, basin.concentration_data.substances)
-        value = basin.concentration_data.concentration_state[listen_node_id.idx, var_idx]
-    else
-        error("Unsupported condition variable $variable.")
-    end
-
-    return value
-end
-
-function compound_variable_value(compound_variable::CompoundVariable, p, du, t)
-    value = zero(eltype(du))
+    value = zero(typeof(t))
     for subvariable in compound_variable.subvariables
-        value += subvariable.weight * get_value(subvariable, p, du, t)
+        (; listen_node_id, variable, weight, look_ahead) = subvariable
+
+        sub_value = if variable == "level"
+            if listen_node_id.is_basin
+                # Basin level
+                get_level(storage[listen_node_id.idx], p, listen_node_id, t)
+            elseif listen_node_id.type == NodeType.LevelBoundary
+                # Level boundary level
+                level_boundary.level[listen_node_id.idx](t + look_ahead)
+            else
+                error("Cannot obtain variable `$variable` from $listen_node_id.")
+            end
+        elseif variable == "storage"
+            storage[listen_node_id.idx]
+        elseif variable == "flow_rate"
+            if listen_node_id.type == NodeType.FlowBoundary
+                # Flow boundary flow rate
+                flow_boundary.flow_rate[listen_node_id.idx](t + look_ahead)
+            elseif listen_node_id.type == NodeType.Pump
+                # Connector node flow rate
+                flow.pump[listen_node_id.idx]
+            elseif listen_node_id.type == NodeType.Outlet
+                flow.outlet[listen_node_id.idx]
+            elseif listen_node_id.type == NodeType.TabulatedRatingCurve
+                flow.tabulated_rating_curve[listen_node_id.idx]
+            elseif listen_node_id.type == NodeType.LinearResistance
+                flow.linear_resistance[listen_node_id.idx]
+            elseif listen_node_id.type == NodeType.ManningResistance
+                flow.manning_resistance[listen_node_id.idx]
+            elseif listen_node_id.type == NodeType.UserDemand
+                sum(get_inflows(flow, user_demand, listen_node_id.idx))
+            else
+                error("Cannot obtain variable `$variable` from $listen_node_id.")
+            end
+        elseif startswith(variable, "concentration_external.")
+            basin.concentration_data.concentration_external[listen_node_id.idx][variable](t)
+        elseif startswith(variable, "concentration.")
+            substance = Symbol(last(split(variable, ".")))
+            var_idx = find_index(substance, basin.concentration_data.substances)
+            basin.concentration_data.concentration_state[listen_node_id.idx, var_idx]
+        else
+            error("Unsupported listen variable $variable.")
+        end
+
+        value += weight * sub_value
     end
     return value
 end
@@ -604,11 +614,7 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
 end
 
 function apply_parameter_update!(parameter_update)::Nothing
-    (; name, value, ref) = parameter_update
-
-    if ref.i == 0
-        return nothing
-    end
+    (; value, ref) = parameter_update
     ref[] = value
     return nothing
 end

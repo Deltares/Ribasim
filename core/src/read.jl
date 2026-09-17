@@ -1034,13 +1034,12 @@ function CompoundVariable(
             error("Invalid `listen_node_id`.")
         end
         # Placeholder until actual ref is known
-        cache_ref = CacheRef()
         variable = row.variable
         # Default to weight = 1.0 if not specified
         weight = coalesce(row.weight, 1.0)
         # Default to look_ahead = 0.0 if not specified
         look_ahead = coalesce(row.look_ahead, 0.0)
-        subvariable = SubVariable(listen_node_id, cache_ref, variable, weight, look_ahead)
+        subvariable = SubVariable(listen_node_id, variable, weight, look_ahead)
         push!(subvariables, subvariable)
     end
 
@@ -1771,9 +1770,10 @@ function Parameters(db::DB, config::Config)::Parameters
         config.solver.max_depth,
     )
 
+    set_discrete_controlled_target_refs!(p_independent)
     collect_control_mappings!(p_independent)
-    set_listen_cache_refs!(p_independent)
-    set_discrete_controlled_variable_refs!(p_independent)
+    set_controlled_node_ids!(p_independent, nodes.pid_control)
+    set_controlled_node_ids!(p_independent, nodes.continuous_control)
 
     # Allocation data structures
     if config.experimental.allocation

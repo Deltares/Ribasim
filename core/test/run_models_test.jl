@@ -1,8 +1,7 @@
 @testitem "trivial model" setup = [Teamcity] begin
     using NCDatasets: NCDataset, dimnames
     using Dates: DateTime
-    using Ribasim: tsaves
-    using Ribasim.CVectors: CVector, getaxes
+    using Ribasim: get_tstops, tsaves, RibasimStateCVector
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/trivial/ribasim.toml")
     @test ispath(toml_path)
@@ -14,8 +13,7 @@
     (; u, du) = model.integrator
     (; p_independent) = model.integrator.p
 
-    @test p_independent.node_id == [0, 6, 6]
-    @test u isa CVector
+    @test u isa RibasimStateCVector
     @test filter(!isempty, getaxes(u)) ==
         (; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
 
@@ -416,7 +414,7 @@ end
     (; integrator) = model
     (; p, t, sol) = integrator
     (; p_independent, current_basin_properties) = p
-    (; current + storage) = current_basin_properties
+    (; current_storage) = current_basin_properties
 
     day = 86400.0
 
