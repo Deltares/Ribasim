@@ -370,7 +370,7 @@ function set_simulation_data!(
     for node_id in only(outlet_constraints.axes)
         constraint = outlet_constraints[node_id]
         upstream_node_id = outlet.inflow_link[node_id.idx].link[1]
-        q = du.outlet[node_id.idx]
+        q = du.flow.horizontal.outlet[node_id.idx]
         if upstream_node_id.is_basin
             low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
             JuMP.set_normalized_coefficient(

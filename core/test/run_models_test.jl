@@ -138,8 +138,8 @@ end
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
-    @test du.evaporation == [0.0]
-    @test du.infiltration == [0.0]
+    @test du.flow.vertical.evaporation == [0.0]
+    @test du.flow.vertical.infiltration == [0.0]
     @test success(model)
 end
 
@@ -164,9 +164,9 @@ end
     Ribasim.water_balance!(du, u, p, t)
     stor = current_basin_properties.current_storage
     prec = basin.vertical_flux.precipitation
-    evap = du.flow.horizontal.evaporation
+    evap = du.flow.vertical.evaporation
     drng = basin.vertical_flux.drainage
-    infl = du.flow.horizontal.infiltration
+    infl = du.flow.vertical.infiltration
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
     @test evap == [0.0]
@@ -414,22 +414,22 @@ end
     model = Ribasim.Model(toml_path)
 
     (; integrator) = model
-    (; u, p, t, sol) = integrator
+    (; p, t, sol) = integrator
     (; p_independent, current_basin_properties) = p
+    (; current + storage) = current_basin_properties
 
     day = 86400.0
 
-    @test only(current_basin_properties.current_storage) ≈ 1000.0
+    @test only(current_storage) ≈ 1000.0
     # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
     BMI.update_until(model, 150day)
     (; u_reduced) = p.p_independent
     Ribasim.reduce_state!(u_reduced, u, p_independent)
     formulate_storages!(u_reduced, p, t)
-    @test only(current_basin_properties.current_storage) ≈ 900 atol = 5
+    @test only(current_storage) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
     BMI.update_until(model, 200day)
-    formulate_storages!(u_reduced, p, t)
-    @test only(current_basin_properties.current_storage) ≈ 500 atol = 2
+    @test only(current_storage) ≈ 500 atol = 2
 
     # Transient return factor
     flow = DataFrame(Ribasim.flow_data(model))

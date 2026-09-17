@@ -253,45 +253,38 @@ end
     import SQLite
     using SparseArrays: sparse, findnz
 
+    # Basic model; inner Jacobian
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    J_inner = model.integrator.cache.nlsolver.cache.linsolve.cache_inner.A.J
+    J_inner.nzval .= 1
+    rows_expected = [1, 2, 1, 2, 3, 4, 2, 3, 4, 2, 3, 4]
+    cols_expected = [1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 4]
+    J_inner_expected =
+        sparse(rows_expected, cols_expected, true, size(J_inner)...)
+    @test J_inner == J_inner_expected
 
-    config = Ribasim.Config(toml_path)
-    db_path = Ribasim.database_path(config)
-    db = SQLite.DB(db_path)
-
-    p = Ribasim.Parameters(db, config)
-    close(db)
-    t0 = 0.0
-    du0 = Ribasim.build_state_vector(p.p_independent)
-    jac_prototype =
-        Bool.(Ribasim.get_diff_eval(du0, p, config.solver).jac_prototype.J_intermediate)
-
+    # PID control; standard Jacobian
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
+    config = Ribasim.Config(toml_path; solver_reduced_implicit_solve = false)
+    model = Ribasim.Model(config)
+    (; jac_prototype) = model.integrator.f
+    jac_prototype.nzval .= 1
     # rows, cols, _ = findnz(jac_prototype)
-    #! format: off
-    rows_expected = [7, 8, 12, 1, 2, 3, 6, 7, 9, 13, 2, 4, 10, 14, 3, 4, 5, 11, 15]
-    cols_expected = [1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4]
-    #! format: on
+    rows_expected = [1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1]
+    cols_expected = [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4]
     jac_prototype_expected =
         sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
     @test jac_prototype == jac_prototype_expected
 
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
-
-    config = Ribasim.Config(toml_path)
-    db_path = Ribasim.database_path(config)
-    db = SQLite.DB(db_path)
-
-    p = Ribasim.Parameters(db, config)
-    (; p_independent) = p
-    close(db)
-    du0 = Ribasim.build_state_vector(p_independent)
-    jac_prototype =
-        Bool.(Ribasim.get_diff_eval(du0, p, config.solver).jac_prototype.J_intermediate)
-
-    #! format: off
-    rows_expected = [1, 2, 3, 4, 1]
-    cols_expected = [1, 1, 1, 1, 2]
-    #! format: on
+    # Continuous Control; standard_Jacobian
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/outlet_continuous_control/ribasim.toml")
+    config = Ribasim.Config(toml_path; solver_reduced_implicit_solve = false)
+    model = Ribasim.Model(config)
+    (; jac_prototype) = model.integrator.f
+    jac_prototype.nzval .= 1
+    rows_expected = [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5]
+    cols_expected = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5]
     jac_prototype_expected =
         sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
     @test jac_prototype == jac_prototype_expected
@@ -310,11 +303,11 @@ end
     @test alg.step_limiter! == Ribasim.limit_flow!
     @test alg.nlsolve == NLNewton()
     @test alg.linsolve ==
-        Ribasim.config.RibasimLinearSolve(KLUFactorization(; check_pattern = false))
+        Ribasim.config.RibasimLinearSolve(KLUFactorization(; check_pattern = false), true)
 
     dense_solver = Ribasim.config.Solver(; sparse = false)
     dense_alg = Ribasim.config.algorithm(dense_solver)
-    @test dense_alg.linsolve == Ribasim.config.RibasimLinearSolve(LUFactorization())
+    @test dense_alg.linsolve == Ribasim.config.RibasimLinearSolve(LUFactorization(), true)
 end
 
 @testitem "FlatVector" begin
