@@ -62,7 +62,7 @@ function log_bottlenecks(model; interrupt::Bool)
     flow_error = if p_independent.convergence_ncalls[1] > 0
         p_independent.convergence ./ p_independent.convergence_ncalls[1]
     elseif !isempty(saved.flow.saveval)
-        saved.flow.saveval[end].flow_convergence
+        saved.flow.saveval[end].convergence
     else
         @logmsg level "No data available for logging convergence bottlenecks."
         return nothing
@@ -73,7 +73,7 @@ function log_bottlenecks(model; interrupt::Bool)
     max_errors = 5
     # Iterate over the errors in descending order
     for i in sortperm(flow_error; rev = true)
-        node_id = Symbol(p_independent.node_id[i])
+        node_id = Symbol(p_independent.state_id[i])
         error = flow_error[i]
         isnan(error) && continue  # NaN are sorted as largest
         # Stop reporting errors if they are too small or too many

@@ -571,15 +571,15 @@ function compound_variable_value(
                 flow_boundary.flow_rate[listen_node_id.idx](t + look_ahead)
             elseif listen_node_id.type == NodeType.Pump
                 # Connector node flow rate
-                flow.pump[listen_node_id.idx]
+                flow.horizontal.pump[listen_node_id.idx]
             elseif listen_node_id.type == NodeType.Outlet
-                flow.outlet[listen_node_id.idx]
+                flow.horizontal.outlet[listen_node_id.idx]
             elseif listen_node_id.type == NodeType.TabulatedRatingCurve
-                flow.tabulated_rating_curve[listen_node_id.idx]
+                flow.horizontal.tabulated_rating_curve[listen_node_id.idx]
             elseif listen_node_id.type == NodeType.LinearResistance
-                flow.linear_resistance[listen_node_id.idx]
+                flow.horizontal.linear_resistance[listen_node_id.idx]
             elseif listen_node_id.type == NodeType.ManningResistance
-                flow.manning_resistance[listen_node_id.idx]
+                flow.horizontal.manning_resistance[listen_node_id.idx]
             elseif listen_node_id.type == NodeType.UserDemand
                 sum(get_inflows(flow, user_demand, listen_node_id.idx))
             else

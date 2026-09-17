@@ -186,9 +186,26 @@ _total_length(loc::NamedTuple) = _last_index(loc) - _first_index(loc) + 1
 Base.@constprop :aggressive @inline function Base.getproperty(x::CVector, name::Symbol)
     data = getdata(x)
     axes = getaxes(x)
-    hasproperty(axes, name) || error("CVector has no component named :$name, available components are $(keys(x))")
+    hasproperty(axes, name) || _component_not_found_error(x, axes, name)
     loc = getproperty(axes, name)
     return component(data, loc)
+end
+
+# Recursively search nested axes for `name`, returning the dotted access path if found.
+function _find_nested_path(axes::NamedTuple, name::Symbol)
+    for (key, loc) in pairs(axes)
+        loc isa NamedTuple || continue
+        hasproperty(loc, name) && return (key, name)
+        nested = _find_nested_path(loc, name)
+        nested === nothing || return (key, nested...)
+    end
+    return nothing
+end
+
+@noinline function _component_not_found_error(x::CVector, axes::NamedTuple, name::Symbol)
+    path = _find_nested_path(axes, name)
+    hint = path === nothing ? "" : ", but it exists at x.$(join(path, '.'))"
+    return error("CVector has no component named :$name, available components are $(keys(x))$hint")
 end
 
 # Needed for Polyester support

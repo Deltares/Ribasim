@@ -270,9 +270,9 @@ function get_pid_controlled_storage(
         inflow_id = pump.inflow_link[controlled_node_id.idx].link[1]
         # outflow_id = pump.outflow_link[controlled_node_id.idx].link[2]
         if inflow_id == listen_node_id
-            storage_uplink.pump[controlled_node_id.idx]
+            storage_uplink.horizontal.pump[controlled_node_id.idx]
         else # outflow_id == listen_node_id
-            storage_downlink.pump[controlled_node_id.idx]
+            storage_downlink.horizontal.pump[controlled_node_id.idx]
         end
     else # controlled_node_id.type == NodeType.Outlet
         inflow_id = outlet.inflow_link[controlled_node_id.idx].link[1]
@@ -715,7 +715,13 @@ function formulate_pump_or_outlet_flow!(
         component_cache::NamedTuple,
         reduce_Δlevel::Bool = false,
     )::Nothing
-    (; allocation, flow_demand, level_difference_threshold) = p.p_independent
+    (;
+        allocation,
+        flow_demand,
+        level_difference_threshold,
+        continuous_control,
+        pid_control,
+    ) = p.p_independent
     (;
         current_flow_rate_setpoint,
         current_min_flow_rate,

@@ -1166,7 +1166,7 @@ function set_controlled_node_ids!(p_independent, node::Union{PidControl, Continu
         controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
         node.controlled_node_id[id.idx] = controlled_node_id
         component = node_type_map[controlled_node_id.type]
-        flow_idx = flow_ranges[component][controlled_node_id.idx]
+        flow_idx = flow_ranges.horizontal[component][controlled_node_id.idx]
 
         node.inflow_id[id.idx] = inflow_id[flow_idx]
         node.outflow_id[id.idx] = outflow_id[flow_idx]

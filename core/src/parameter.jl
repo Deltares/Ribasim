@@ -884,7 +884,6 @@ const CurrentBasinProperties{T} = @NamedTuple{
     current_flow_rate_pump::Vector{T},
     current_flow_rate_outlet::Vector{T},
     current_error_pid_control::Vector{T},
-    u_reduced_prev_call::Vector{T},
     t_prev_call::Vector{T},
 } where {T}
 

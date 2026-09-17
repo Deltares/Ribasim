@@ -12,10 +12,14 @@
     @test success(model)
     (; u, du) = model.integrator
     (; p_independent) = model.integrator.p
+    (; state_ranges) = p_independent
 
     @test u isa RibasimStateCVector
-    @test filter(!isempty, getaxes(u)) ==
-        (; tabulated_rating_curve = 1:1, evaporation = 2:2, infiltration = 3:3)
+    @test filter(!isempty, state_ranges.flow) == (;
+        tabulated_rating_curve = 1:1,
+        evaporation = 2:2,
+        infiltration = 3:3,
+    )
 
     # Open NetCDF result files
     flow_path = normpath(dirname(toml_path), "results/flow.nc")
@@ -421,9 +425,6 @@ end
     @test only(current_storage) ≈ 1000.0
     # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
     BMI.update_until(model, 150day)
-    (; u_reduced) = p.p_independent
-    Ribasim.reduce_state!(u_reduced, u, p_independent)
-    formulate_storages!(u_reduced, p, t)
     @test only(current_storage) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
     BMI.update_until(model, 200day)

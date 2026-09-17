@@ -609,8 +609,8 @@ function SciMLBase.log_numerical_instability(
 end
 
 function OrdinaryDiffEqCore.instability_jacobian(integrator::ODEIntegrator{<:Any, <:Any, <:RibasimStateCVector})
-    (; J) = integrator.cache.nlsolver.cache
-    return convert(AbstractMatrix, J)
+    # Inner 'storage space' Jacobian
+    return integrator.cache.nlsolver.cache.linsolve.cache_inner.A.J
 end
 
 ###
