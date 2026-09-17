@@ -70,7 +70,7 @@ function Model(
     t0 = zero(t_end)
     timespan = (t0, t_end)
 
-    local parameters, p_independent, state_and_time_dependent_cache, tstops
+    local parameters, p_independent, tstops
     try
         parameters = Parameters(db, config)
         (; p_independent) = parameters

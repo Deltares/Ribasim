@@ -441,9 +441,9 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
         kwargs[:autodiff] = get_ad_type(solver)
     end
 
-    # if function_accepts_kwarg(algotype, :step_limiter!)
-    #     kwargs[:step_limiter!] = Ribasim.limit_flow!
-    # end
+    if function_accepts_kwarg(algotype, :step_limiter!)
+        kwargs[:step_limiter!] = Ribasim.limit_flow!
+    end
 
     return algotype(; kwargs...)
 end

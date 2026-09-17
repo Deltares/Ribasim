@@ -1747,7 +1747,7 @@ function Parameters(db::DB, config::Config)::Parameters
     flow_ranges = count_flow_ranges(nodes)
     state_ranges = count_state_ranges(nodes)
 
-    inflow_id, outflow_id = get_flow_ids(nodes, flow_ranges)
+    inflow_id, outflow_id, state_id = get_flow_ids(nodes, flow_ranges)
     incidence_matrix = get_incidence_matrix(inflow_id, outflow_id)
 
     p_independent = ParametersIndependent(;
@@ -1758,6 +1758,7 @@ function Parameters(db::DB, config::Config)::Parameters
         subgrid,
         inflow_id,
         outflow_id,
+        state_id,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
         flow_ranges,

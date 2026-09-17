@@ -35,7 +35,7 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
             add_substance_mass!(
                 mass[to_node.idx],
                 user_demand.concentration_itp[node_idx],
-                cumulative_flow_dt.user_demand_outflow[node_idx],
+                cumulative_flow_dt.horizontal.user_demand_outflow[node_idx],
                 t,
             )
         end
@@ -49,7 +49,7 @@ Process all mass inflows to basins
 function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
     (; p, t) = integrator
     (; basin, inflow_id, outflow_id, level_boundary, cumulative_flow_dt, flow_ranges) = p.p_independent
-    (; cumulative_in, concentration_state, mass) = basin.concentration_data
+    (; concentration_state, mass) = basin.concentration_data
 
     # Loop over connections that have state
     @views for (flow_idx, (from_node, to_node)) in enumerate(zip(inflow_id, outflow_id))
@@ -62,7 +62,6 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
         cumulative_flow = cumulative_flow_dt[flow_idx]
 
         if from_node.is_basin && cumulative_flow < 0
-            cumulative_in[from_node.idx] -= cumulative_flow
             if to_node.is_basin
                 mass[from_node.idx] .-=
                     concentration_state[to_node.idx, :] .* cumulative_flow
@@ -83,7 +82,6 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
         end
 
         if to_node.is_basin && cumulative_flow > 0
-            cumulative_in[to_node.idx] += cumulative_flow
             if from_node.is_basin
                 mass[to_node.idx] .+=
                     concentration_state[from_node.idx, :] .* cumulative_flow

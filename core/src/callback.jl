@@ -275,7 +275,7 @@ function save_flow(u, t, integrator)
     boundary_flow_mean =
         (flow_boundary.cumulative_flow - flow_boundary.cumulative_flow_prev_saveat) / Δt
 
-    n_basin = length(basin.node_id)
+    n_basin = length(basin)
     inflow_mean = zeros(n_basin)
     outflow_mean = zeros(n_basin)
     # Flow contributions from horizontal flow links
@@ -334,21 +334,12 @@ function check_water_balance_error!(
         integrator::DEIntegrator,
         Δt::Float64,
     )::Nothing
-    (; u, p, t) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
-    (; u_reduced, state_ranges) = p_independent
-    (; current_storage) = state_and_time_dependent_cache
+    (; p, t) = integrator
+    (; p_independent, current_basin_properties) = p
+    (; current_storage) = current_basin_properties
 
     (; basin, water_balance_abstol, water_balance_reltol, starttime) = p_independent
     errors = false
-
-    # The initial storage is irrelevant for the storage rate and can only cause
-    # floating point truncation errors
-    reduce_state!(u_reduced, u, p_independent)
-    formulate_storages!(u_reduced, p, t; add_initial_storage = false)
-
-    evaporation = view(saved_flow.flow, state_ranges.evaporation)
-    infiltration = view(saved_flow.flow, state_ranges.infiltration)
 
     for (
             inflow_rate,
@@ -364,13 +355,13 @@ function check_water_balance_error!(
         ) in zip(
             saved_flow.inflow,
             saved_flow.outflow,
-            saved_flow.precipitation,
-            saved_flow.surface_runoff,
-            saved_flow.drainage,
-            evaporation,
-            infiltration,
-            current_storage,
-            basin.Δstorage_prev_saveat,
+            saved_flow.exact_vertical_forcing.precipitation,
+            saved_flow.exact_vertical_forcing.surface_runoff,
+            saved_flow.exact_vertical_forcing.drainage,
+            saved_flow.flow.vertical.evaporation,
+            saved_flow.flow.vertical.infiltration,
+            current_basin_properties.current_storage,
+            basin.storage_prev_saveat,
             basin.node_id,
         )
         storage_rate = (s_now - s_prev) / Δt
@@ -394,9 +385,6 @@ function check_water_balance_error!(
         t = datetime_since(t, starttime)
         error("Too large water balance error(s) detected at t = $t")
     end
-
-    @. basin.Δstorage_prev_saveat = current_storage
-    current_storage .+= basin.storage0
     return nothing
 end
 
@@ -667,14 +655,16 @@ function set_flux!(
         fluxes::AbstractVector{Float64},
         interpolations::Vector{ScalarConstantInterpolation},
         i::Int,
-        t,
-    )::Nothing
+        t;
+        coefficient = 1.0,
+    )::Bool
     val = interpolations[i](t)
     # keep old value if new value is NaN
     if !isnan(val)
-        fluxes[i] = val
+        fluxes[i] = coefficient * val
+        return true
     end
-    return nothing
+    return false
 end
 
 """
@@ -687,22 +677,27 @@ function update_basin!(integrator)::Nothing
     (; p, t) = integrator
     (; basin) = p.p_independent
 
-    update_basin!(basin, t)
+    new_flux = update_basin!(basin, t)
+    # Forcing changed discontinuously; tell the integrator so it doesn't
+    # extrapolate across the jump using stale derivative history.
+    derivative_discontinuity!(integrator, new_flux)
     return nothing
 end
 
-function update_basin!(basin::Basin, t)::Nothing
+function update_basin!(basin::Basin, t)::Bool
     (; vertical_flux, forcing) = basin
+    new_flux = false
     for id in basin.node_id
         i = id.idx
-        set_flux!(vertical_flux.precipitation, forcing.precipitation, i, t)
-        set_flux!(vertical_flux.surface_runoff, forcing.surface_runoff, i, t)
-        set_flux!(vertical_flux.potential_evaporation, forcing.potential_evaporation, i, t)
-        set_flux!(vertical_flux.infiltration, forcing.infiltration, i, t)
-        set_flux!(vertical_flux.drainage, forcing.drainage, i, t)
+        fixed_area = get_fixed_area(basin, i)
+        new_flux |= set_flux!(vertical_flux.precipitation, forcing.precipitation, i, t; coefficient = fixed_area)
+        new_flux |= set_flux!(vertical_flux.surface_runoff, forcing.surface_runoff, i, t)
+        new_flux |= set_flux!(vertical_flux.potential_evaporation, forcing.potential_evaporation, i, t)
+        new_flux |= set_flux!(vertical_flux.infiltration, forcing.infiltration, i, t)
+        new_flux |= set_flux!(vertical_flux.drainage, forcing.drainage, i, t)
     end
 
-    return nothing
+    return new_flux
 end
 
 function update_subgrid_level(model::Model)::Model

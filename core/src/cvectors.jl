@@ -169,7 +169,10 @@ component(data, loc::AbstractUnitRange{<:Integer}) = view(data, loc)
     return CVector(data, loc, offset, len)
 end
 
-# Fast first/last index for nested NamedTuples without mapreduce overhead
+# Fast first/last index for nested NamedTuples without mapreduce overhead.
+# Relies on empty components having a positionally-correct (if empty) range, as
+# produced by `cvector_axes_from_lengths`, so the first/last named field is always
+# the true first/last index, even if that field itself happens to be empty.
 _first_index(loc::AbstractUnitRange{<:Integer}) = first(loc)
 _first_index(loc::NamedTuple) = _first_index(first(values(loc)))
 _first_index(loc::Int) = loc
@@ -226,9 +229,10 @@ cvector_axes_type(components::Tuple{Vararg{Symbol}}; range_type::Type = UnitRang
 function cvector_axes_from_lengths(components::Tuple{Vararg{Symbol}}, lengths::Vector{Int}; offset = 0)
     range_bounds = pushfirst!(cumsum(lengths), 0)
     range_bounds .+= offset
-    trivial_range = 1:0
+    # If lengths[i] is 0, this naturally gives a positionally-correct empty range
+    # (range_bounds[i]+1):range_bounds[i], instead of an arbitrary placeholder.
     ranges = ntuple(
-        i -> iszero(lengths[i]) ? trivial_range : (range_bounds[i] + 1):range_bounds[i + 1],
+        i -> (range_bounds[i] + 1):range_bounds[i + 1],
         length(components)
     )
     return NamedTuple{components}(ranges)

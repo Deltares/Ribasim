@@ -84,7 +84,7 @@ using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 using SparseArrays: SparseMatrixCSC, sparse, nzrange, rowvals, spzeros
 
 # Linear algebra
-using LinearAlgebra: LinearAlgebra, I, mul!, UniformScaling
+using LinearAlgebra: LinearAlgebra, I, mul!, UniformScaling, dot
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node
@@ -198,6 +198,7 @@ include("parameter.jl")
 include("validation.jl")
 include("formulate_flows.jl")
 include("solve.jl")
+include("limit_flow.jl")
 include("logo.jl")
 include("logging.jl")
 include("allocation_util.jl")

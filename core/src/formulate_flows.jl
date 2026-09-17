@@ -422,7 +422,7 @@ function formulate_flow!(
         q_total_actual = 0.0
         for (inflow_idx, link_meta) in enumerate(inflow_links)
             src_id = link_meta.link[1]
-            upstream_storage = storage_uplink.user_demand_inflow[inflow_idx]
+            upstream_storage = storage_uplink.horizontal.user_demand_inflow[inflow_idx]
             f_low_storage = get_low_storage_factor(upstream_storage, p, src_id)
             source_level = get_level(upstream_storage, p, src_id, t)
             f_reduction = reduction_factor(
@@ -433,14 +433,14 @@ function formulate_flow!(
             q_k = q_k_target * f_low_storage * f_reduction
             # Apply each inflow link's abstraction to the source basin
             q_total_actual += q_k
-            flow.user_demand_inflow[link_offset + inflow_idx] = q_k
+            flow.horizontal.user_demand_inflow[link_offset + inflow_idx] = q_k
         end
 
         q_return =
             q_total_actual *
             eval_time_interpolation(return_factor, current_return_factor, id.idx, p, t)
 
-        flow.user_demand_outflow[id.idx] = q_return
+        flow.horizontal.user_demand_outflow[id.idx] = q_return
     end
     return nothing
 end
@@ -717,6 +717,7 @@ function formulate_pump_or_outlet_flow!(
     )::Nothing
     (; allocation, flow_demand, level_difference_threshold) = p.p_independent
     (;
+        current_flow_rate_setpoint,
         current_min_flow_rate,
         current_max_flow_rate,
         current_min_upstream_level,

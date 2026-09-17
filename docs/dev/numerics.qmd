@@ -55,7 +55,7 @@ The `Parameters` struct (defined in `core/src/parameter.jl`) is split into four 
 | Component | Contents | AD role |
 |-----------|----------|---------|
 | `p_independent` | All node data, graph, interpolations, pre-allocated buffers | `Constant()` — shared, not copied |
-| `state_and_time_dependent_cache` | Cached values that depend on both state and time (current level, storage, flow rates) | `Cache()` — copied as dual-number arrays |
+| `current_basin_properties` | Cached values that depend on both state and time (current level, storage, flow rates) | `Cache()` — copied as dual-number arrays |
 | `time_dependent_cache` | Cached values that depend only on time (forcing interpolations) | `Constant()` — shared |
 | `p_mutable` | Flags controlling cache validity (`new_time_dependent_cache`, etc.) | `Constant()` — shared |
 
@@ -136,7 +136,7 @@ jac_prep = prepare_jacobian(
     water_balance!, du, backend_jac,
     u_reduced,
     Constant(p_independent),
-    Cache(state_and_time_dependent_cache),
+    Cache(current_basin_properties),
     Constant(time_dependent_cache),
     Constant(p_mutable),
     Constant(t);

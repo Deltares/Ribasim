@@ -252,10 +252,10 @@ function ∂flow_∂storage_mul!(
         id_out = outflow_id[flow_idx]
 
         if id_in.is_basin
-            v_out[flow_idx] += ∂flow_∂flow_input[flow_idx, flow_input_ranges.storage_uplink[flow_idx]]
+            v_out[flow_idx] += ∂flow_∂flow_input[flow_idx, flow_input_ranges.storage_uplink[flow_idx]] * v_in[id_in.idx]
         end
         if id_out.is_basin
-            v_out[flow_idx] += ∂flow_∂flow_input[flow_idx, flow_input_ranges.storage_downlink[flow_idx]]
+            v_out[flow_idx] += ∂flow_∂flow_input[flow_idx, flow_input_ranges.storage_downlink[flow_idx]] * v_in[id_out.idx]
         end
     end
 
@@ -524,8 +524,8 @@ function SciMLBase.log_numerical_instability(
     )::String
     (; u, p, t) = integrator
     du = get_du(integrator)
-    (; p_independent, state_and_time_dependent_cache) = p
-    (; state_inflow_link, max_depth, basin) = p_independent
+    (; p_independent, current_basin_properties) = p
+    (; state_id, max_depth, basin) = p_independent
 
     # Check whether any states are non-finite
     state_analysis = String[]
@@ -535,7 +535,7 @@ function SciMLBase.log_numerical_instability(
             push!(state_analysis, "More than $max_print_n states ($(length(non_finite_state_idxs))) are non-finite, output truncated.")
             break
         else
-            node_id = state_inflow_link[state_idx].link[2]
+            node_id = state_id[state_idx]
             value = u[state_idx]
             push!(state_analysis, "$node_id: $value")
         end
@@ -549,7 +549,7 @@ function SciMLBase.log_numerical_instability(
             push!(rate_analysis, "More than $max_print_n states ($(length(too_large_rate_idxs))) have non-plausible rate, output truncated.")
             break
         else
-            node_id = state_inflow_link[state_idx].link[2]
+            node_id = state_id[state_idx]
             value = du[state_idx]
             push!(rate_analysis, "$node_id: $value")
         end
@@ -569,7 +569,7 @@ function SciMLBase.log_numerical_instability(
     water_balance!(du, u, p, t)
 
     # Check whether any Basins have a too large water depth
-    depths = [state_and_time_dependent_cache.current_level[id.idx] - basin_bottom(basin, id)[2] for id in basin.node_id]
+    depths = [current_basin_properties.current_level[id.idx] - basin_bottom(basin, id)[2] for id in basin.node_id]
     too_large_depth_idxs = findall(d -> !(0 ≤ d ≤ max_depth), depths)
     depth_analysis = String[]
     for (i, basin_idx) in enumerate(too_large_depth_idxs)
@@ -644,7 +644,7 @@ function get_diff_eval(
         jac_prototype = RibasimJacobian(; p.p_independent, cache)
         jac = nothing # Jacobian is updated via SciMLOperators.update_coefficients!
     else
-        # TODO
+        error("solver.reduced_implicit_solve = false is not yet supported.")
     end
 
     # TODO

@@ -135,7 +135,7 @@ function set_partial_derivative_wrt_level!(
     constraint::JuMP.ConstraintRef,
 )::Nothing
     (; problem, scaling) = allocation_model
-    (; current_area) = p.state_and_time_dependent_cache
+    (; current_area) = p.current_basin_properties
 
     # Convert ∂Q/∂h to ∂Q/∂S using ∂h/∂S = 1/A, and account for the fact that the
     # flow and storage variables are scaled differently
@@ -871,7 +871,7 @@ function allocation_level_change_bounds(
 
     storage_change = problem[:basin_storage_change][node_id]
     level_per_storage =
-        scaling.storage / p.state_and_time_dependent_cache.current_area[node_id.idx]
+        scaling.storage / p.current_basin_properties.current_area[node_id.idx]
     return (
         JuMP.lower_bound(storage_change) * level_per_storage,
         JuMP.upper_bound(storage_change) * level_per_storage,
@@ -981,9 +981,9 @@ The optimization uses scaling factors to improve numerical conditioning:
 end
 
 function update_scaling!(p::Parameters, Δt::Float64)
-    (; p_independent, state_and_time_dependent_cache) = p
+    (; p_independent, current_basin_properties) = p
     (; allocation_models) = p_independent.allocation
-    (; current_storage) = state_and_time_dependent_cache
+    (; current_storage) = current_basin_properties
     for allocation_model in allocation_models
         (; node_ids_in_subnetwork, scaling) = allocation_model
         (; basin_ids_subnetwork) = node_ids_in_subnetwork

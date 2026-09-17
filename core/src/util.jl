@@ -302,8 +302,8 @@ Each inner vector is assumed to be of equal length.
 It is similar to `Iterators.flatten`, though that doesn't work with the `Tables.Column`
 interface, which needs `length` and `getindex` support.
 """
-struct FlatVector{T} <: AbstractVector{T}
-    v::Vector{Vector{T}}
+struct FlatVector{T, V <: AbstractVector{T}} <: AbstractVector{T}
+    v::Vector{V}
 end
 
 function Base.length(fv::FlatVector)
@@ -323,9 +323,17 @@ function Base.getindex(fv::FlatVector, i::Int)
     return v[r + 1]
 end
 
-"Construct a FlatVector from one of the fields of SavedFlow."
-function FlatVector(saveval::Vector{SavedFlow}, sym::Symbol)
-    v = isempty(saveval) ? Vector{Float64}[] : getfield.(saveval, sym)
+"Construct a FlatVector from one of the fields of SavedFlow, following a path of symbols."
+function FlatVector(saveval::Vector{SavedFlow}, syms::Symbol...)
+    v = if isempty(saveval)
+        Vector{Float64}[]
+    else
+        v_ = getfield.(saveval, first(syms))
+        for sym in syms[2:end]
+            v_ = getproperty.(v_, sym)
+        end
+        v_
+    end
     return FlatVector(v)
 end
 FlatVector(v::Vector{Matrix{Float64}}) = FlatVector(vec.(v))
@@ -680,6 +688,9 @@ function basin_areas(basin::Basin, state_idx::Int)
     return basin.level_to_area[state_idx].u
 end
 
+"Get the area at the top of the profile"
+get_fixed_area(basin::Basin, state_idx::Int) = basin_areas(basin, state_idx)[end]
+
 """
 The function f(x) = sign(x)*√(|x|) where for |x|<threshold a
 polynomial is used so that the function is still differentiable
@@ -789,6 +800,7 @@ function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
 
     inflow_id = CVector(fill(dummy_node, n_flows), flow_ranges)
     outflow_id = CVector(fill(dummy_node, n_flows), flow_ranges)
+    state_id = CVector(fill(dummy_node, n_flows), flow_ranges)
 
     set_flow_ids!(inflow_id.horizontal.pump, outflow_id.horizontal.pump, pump)
     set_flow_ids!(inflow_id.horizontal.outlet, outflow_id.horizontal.outlet, outlet)
@@ -798,7 +810,23 @@ function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
     set_flow_ids!(inflow_id.horizontal.user_demand_inflow, outflow_id.horizontal.user_demand_outflow, user_demand)
     set_flow_ids!(inflow_id.vertical, outflow_id.vertical, basin)
 
-    return inflow_id, outflow_id
+    # The UserDemand node itself is the outflow of its inflow state and the inflow of its outflow state
+    outflow_id.horizontal.user_demand_inflow .=
+        [node_id for (node_id, links) in zip(user_demand.node_id, user_demand.inflow_links) for _ in links]
+    inflow_id.horizontal.user_demand_outflow .= user_demand.node_id
+
+    state_id.horizontal.pump .= pump.node_id
+    state_id.horizontal.outlet .= outlet.node_id
+    state_id.horizontal.tabulated_rating_curve .= tabulated_rating_curve.node_id
+    state_id.horizontal.linear_resistance .= linear_resistance.node_id
+    state_id.horizontal.manning_resistance .= manning_resistance.node_id
+    state_id.horizontal.user_demand_inflow .=
+        [node_id for (node_id, links) in zip(user_demand.node_id, user_demand.inflow_links) for _ in links]
+    state_id.horizontal.user_demand_outflow .= user_demand.node_id
+    state_id.vertical.evaporation .= basin.node_id
+    state_id.vertical.infiltration .= basin.node_id
+
+    return inflow_id, outflow_id, state_id
 end
 
 function get_incidence_matrix(inflow_id::FlowCVector{NodeID}, outflow_id::FlowCVector{NodeID})::SparseMatrixCSC
@@ -850,31 +878,6 @@ function min_low_storage_factor(
         reduction_factor(
             min(storage_now[id.idx], storage_prev[id.idx]) - 2low_storage_threshold,
             low_storage_threshold,
-        )
-    else
-        one(T)
-    end
-end
-
-"""
-Estimate the minimum level reduction factor achieved over the last time step by
-estimating the lowest level achieved over the last time step. To make sure
-it is an underestimate of the minimum, 2 * level_difference_threshold is subtracted from this lowest level.
-This is done to not be too strict in clamping the flow in the limiter
-"""
-function min_low_user_demand_level_factor(
-        level_now::AbstractVector{T},
-        level_prev,
-        min_level,
-        id_user_demand,
-        id_inflow,
-        level_difference_threshold,
-    ) where {T}
-    return if id_inflow.is_basin
-        reduction_factor(
-            min(level_now[id_inflow.idx], level_prev[id_inflow.idx]) -
-                min_level[id_user_demand.idx] - 2 * level_difference_threshold,
-            level_difference_threshold,
         )
     else
         one(T)
@@ -1244,4 +1247,17 @@ function set_uplink_downlink_storage!(
     end
 
     return nothing
+end
+
+function get_inflows(flow::FlowCVector, user_demand::UserDemand, idx::Integer)
+    offset_1 = user_demand.inflow_link_offsets[idx]
+    offset_2 = user_demand.inflow_link_offsets[idx + 1]
+    return @view flow.horizontal.user_demand_inflow[(offset_1 + 1):offset_2]
+end
+
+function get_link_index(
+        link::Tuple{NodeID, NodeID},
+        flow_link_lookup::Dict{Tuple{NodeID, NodeID}, Int},
+    )::Union{Int64, Nothing}
+    return get(flow_link_lookup, link, nothing)
 end
