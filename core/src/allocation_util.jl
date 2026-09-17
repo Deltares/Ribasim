@@ -1,4 +1,4 @@
-is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
+is_active(allocation::Allocation) = allocation.config.experimental.allocation
 
 """
 Set the bounds of a variable, where infinite bounds mean no bound at all.
@@ -78,7 +78,7 @@ end
 
 function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     low_storage_factor = problem[:low_storage_factor]
-    return if node_id.type == NodeType.Basin
+    return if node_id.is_basin
         low_storage_factor[node_id]
     else
         1.0
@@ -232,9 +232,9 @@ function ScalingFactors(
 end
 
 function update_scaling!(p::Parameters, Δt::Float64)
-    (; p_independent, state_and_time_dependent_cache) = p
+    (; p_independent, current_basin_properties) = p
     (; allocation_models) = p_independent.allocation
-    (; current_storage) = state_and_time_dependent_cache
+    (; current_storage) = current_basin_properties
     for allocation_model in allocation_models
         (; node_ids_in_subnetwork, scaling) = allocation_model
         (; basin_ids_subnetwork) = node_ids_in_subnetwork
@@ -282,33 +282,44 @@ function get_max_flow_curvature(
         connector_ids::Vector{NodeID},
         flow_function::Function,
         p::Parameters,
+        storage::AbstractVector,
         t::Float64,
     )::Float64
     max_curvature = 0.0
     backend = AutoForwardDiff()
+    (; current_area) = p.current_basin_properties
 
-    for node_id in connector_ids
+    @ad_active p for node_id in connector_ids
         inflow_id = connector_node.inflow_link[node_id.idx].link[1]
         outflow_id = connector_node.outflow_link[node_id.idx].link[2]
 
-        h_a = get_level(p, inflow_id, t)
-        h_b = get_level(p, outflow_id, t)
+        s_a = inflow_id.is_basin ? storage[inflow_id.idx] : 0.0
+        s_b = outflow_id.is_basin ? storage[outflow_id.idx] : 0.0
 
-        d²Q_dh_a² = second_derivative(
-            h_ -> flow_function(connector_node, node_id, h_, h_b, p, t),
-            backend,
-            h_a,
-        )
-        max_curvature = max(max_curvature, abs(d²Q_dh_a²))
+        # d²Q/ds² is converted to d²Q/dh² via the chain rule, approximating the basin
+        # area as locally constant (dh/ds = 1/A), consistent with the linearization
+        # in `linearize_connector_node!`. Only basins have a storage state to
+        # linearize against, so non-basin (e.g. LevelBoundary) sides are skipped.
+        if inflow_id.is_basin
+            d²Q_ds_a² = second_derivative(
+                s_ -> flow_function(connector_node, node_id, s_, s_b, p, t),
+                backend,
+                s_a,
+            )
+            d²Q_dh_a² = d²Q_ds_a² * current_area[inflow_id.idx]^2
+            max_curvature = max(max_curvature, abs(d²Q_dh_a²))
+        end
 
-        d²Q_dh_b² = second_derivative(
-            h_ -> flow_function(connector_node, node_id, h_a, h_, p, t),
-            backend,
-            h_b,
-        )
-        max_curvature = max(max_curvature, abs(d²Q_dh_b²))
+        if outflow_id.is_basin
+            d²Q_ds_b² = second_derivative(
+                s_ -> flow_function(connector_node, node_id, s_a, s_, p, t),
+                backend,
+                s_b,
+            )
+            d²Q_dh_b² = d²Q_ds_b² * current_area[outflow_id.idx]^2
+            max_curvature = max(max_curvature, abs(d²Q_dh_b²))
+        end
     end
-
     return max_curvature
 end
 
@@ -337,7 +348,7 @@ function compute_adaptive_allocation_Δt(
         manning_resistance_ids_subnetwork,
     ) = node_ids_in_subnetwork
     (; basin, tabulated_rating_curve, linear_resistance, manning_resistance) = p.p_independent
-    (; current_storage) = p.state_and_time_dependent_cache
+    (; current_storage) = p.current_basin_properties
 
     ε_rel = config.allocation.reltol_linearization
     overshoot_reduction = 0.8
@@ -371,7 +382,7 @@ function compute_adaptive_allocation_Δt(
 
     for (connector, ids, flow_fn) in connector_types
         isempty(ids) && continue
-        curvature = get_max_flow_curvature(connector, ids, flow_fn, p, t)
+        curvature = get_max_flow_curvature(connector, ids, flow_fn, p, current_storage, t)
         if curvature > eps()
             # Use 1.0 m³/s as absolute flow error tolerance
             # (relative tolerance would require knowing Q, which varies per node)
@@ -395,7 +406,7 @@ function compute_adaptive_allocation_Δt(
             continue
         end
 
-        dstorage = formulate_dstorage_wrt_time(du, p.p_independent, t, basin_id)
+        dstorage = formulate_dstorage_single_basin(du.flow, p.p_independent, basin_id; t)
 
         if abs(dstorage) < eps()
             continue
@@ -489,7 +500,7 @@ end
 # This method should only be used in initialization because it does a graph lookup
 function get_external_demand_id(graph::MetaGraph, node_id::NodeID)::Union{NodeID, Nothing}
     node_type =
-        (node_id.type == NodeType.Basin) ? NodeType.LevelDemand : NodeType.FlowDemand
+        (node_id.is_basin) ? NodeType.LevelDemand : NodeType.FlowDemand
 
     control_inneighbors = inneighbor_labels_type(graph, node_id, LinkType.control)
     for id in control_inneighbors
@@ -504,7 +515,7 @@ function get_external_demand_id(p_independent, node_id::NodeID)::Union{NodeID, N
     (; basin, tabulated_rating_curve, linear_resistance, manning_resistance, pump, outlet) =
         p_independent
 
-    external_demand_id = if node_id.type == NodeType.Basin
+    external_demand_id = if node_id.is_basin
         basin.level_demand_id[node_id.idx]
     elseif node_id.type == NodeType.TabulatedRatingCurve
         tabulated_rating_curve.flow_demand_id[node_id.idx]
@@ -564,8 +575,8 @@ function add_to_coefficient!(
 end
 
 function update_storage_prev!(p::Parameters)::Nothing
-    (; p_independent, state_and_time_dependent_cache) = p
-    (; current_storage) = state_and_time_dependent_cache
+    (; p_independent, current_basin_properties) = p
+    (; current_storage) = current_basin_properties
     (; storage_prev) = p_independent.level_demand
 
     for node_id in keys(storage_prev)

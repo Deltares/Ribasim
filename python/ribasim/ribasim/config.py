@@ -145,18 +145,23 @@ class Solver(ChildModel):
         The relative tolerance for adaptive timestepping (Optional, defaults to 1e-7)
     maxiters : int
         The total number of linear iterations over the whole simulation. (Defaults to 1e9, only needs to be increased for extremely long simulations)
+    reduced_implicit_solve : bool
+        Whether to use the implicit solve optimized for Ribasim. Setting this to false bypasses much of the custom numerical code,
+        using a less optimized but potentially more robust algorithm. (Optional, defaults to true)
     sparse : bool
         Whether a sparse Jacobian matrix is used, which gives a significant speedup for models with >~10 basins.
     autodiff : bool
         Whether automatic differentiation instead of fine difference is used to compute the Jacobian. (Optional, defaults to true)
+    evaporate_mass : bool
+        Whether mass is lost due to evaporation in water quality calculations. (Optional, defaults to true)
     depth_threshold : float
         Universal depth at which the low storage factor kicks in
     max_depth : float
         Universal maximum Basin depth above which the Basin is flagged when the model becomes unstable
     level_difference_threshold : float
         Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes
-    evaporate_mass : bool
-        Whether mass is lost due to evaporation in water quality calculations. (Optional, defaults to true)
+    min_discrete_control_interval : float
+        The minimum time between control state updates, if the time is smaller an error will be thrown
     specialize : bool
         Trades initialization speed for simulation speed, useful for long-running simulations. (Optional, defaults to false)
     """
@@ -170,6 +175,7 @@ class Solver(ChildModel):
     abstol: float = 1e-06
     reltol: float = 1e-05
     maxiters: int = 1000000000
+    reduced_implicit_solve: bool = True
     sparse: bool = True
     autodiff: bool = True
     evaporate_mass: bool = True

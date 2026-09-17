@@ -206,7 +206,7 @@ function parse_parameter!(
         is_complete::Bool = true,
         is_controllable::Bool = true,
         node_id = node.node_id,
-        cyclic_times = zeros(Bool, length(node.node_id)),
+        cyclic_times = zeros(Bool, length(node)),
         field_name::Symbol = parameter_name,
         take_first::NTuple{N, Symbol} where {N} = (),
         node_ids_all::Union{Vector{NodeID}, Nothing} = nothing,
@@ -724,7 +724,7 @@ function parse_pump_or_outlet_parameters!(
     errors |= parse_parameter!(node, config, :min_flow_rate; static, time, default = 0.0)
     errors |= parse_parameter!(node, config, :max_flow_rate; static, time, default = Inf)
     errors |=
-        parse_parameter!(node, config, :min_upstream_level; static, time, default = -Inf)
+        parse_parameter!(node, config, :min_upstream_level; static, time, default = (-Inf))
     errors |=
         parse_parameter!(node, config, :max_downstream_level; static, time, default = Inf)
 
@@ -951,7 +951,8 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     storage0 = get_storages_from_levels(basin, state.level)
     basin.storage0 .= storage0
-    basin.storage_prev .= storage0
+    basin.storage_prev_dt .= storage0
+    basin.storage_prev_saveat .= storage0
     basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
 
     for id in node_id
@@ -1154,6 +1155,7 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
         compound_variables,
         truth_state,
         logic_mapping,
+        config.solver.min_discrete_control_interval,
     )
 end
 
@@ -1464,7 +1466,7 @@ function parse_time_demand_data!(
             StructVector(time_priority_group),
             id,
             :min_level;
-            default_value = -Inf,
+            default_value = (-Inf),
             cyclic_time,
         )
         level_demand.min_level[id.idx][demand_priority_idx] = min_level
@@ -1742,71 +1744,29 @@ function Parameters(db::DB, config::Config)::Parameters
     )
 
     subgrid = Subgrid(db, config, basin)
+    flow_ranges = count_flow_ranges(nodes)
+    state_ranges = count_state_ranges(nodes)
 
-    u_ids = state_node_ids(
-        (;
-            nodes.tabulated_rating_curve,
-            nodes.pump,
-            nodes.outlet,
-            nodes.user_demand,
-            nodes.linear_resistance,
-            nodes.manning_resistance,
-            nodes.basin,
-            nodes.pid_control,
-        )
-    )
-    node_id = reduce(vcat, u_ids)
-    n_states = length(node_id)
-    state_ranges = count_state_ranges(u_ids)
-    state_inflow_link, state_outflow_link = get_state_flow_links(graph, nodes)
-    link_to_state_idx = build_link_to_state_idx(state_inflow_link)
-
-    set_target_ref!(
-        nodes.pid_control.target_ref,
-        nodes.pid_control.node_id,
-        fill("flow_rate", length(node_id)),
-        state_ranges,
-        graph,
-    )
-    set_target_ref!(
-        nodes.continuous_control.target_ref,
-        nodes.continuous_control.node_id,
-        nodes.continuous_control.controlled_variable,
-        state_ranges,
-        graph,
-    )
-
-    n_basin = length(nodes.basin.node_id)
-    n_pid_control = length(nodes.pid_control.node_id)
-    u_reduced = CVector(
-        zeros(n_basin + n_pid_control),
-        (;
-            combined_cumulative_flows = 1:n_basin,
-            integral = (n_basin + 1):(n_basin + n_pid_control),
-        ),
-    )
+    inflow_id, outflow_id, state_id = get_flow_ids(nodes, flow_ranges)
+    incidence_matrix = get_incidence_matrix(inflow_id, outflow_id)
 
     p_independent = ParametersIndependent(;
         config.starttime,
-        config.solver.reltol,
-        relmask = collect(trues(n_states)),
         graph,
         allocation,
         nodes...,
         subgrid,
-        state_inflow_link,
-        state_outflow_link,
-        link_to_state_idx,
+        inflow_id,
+        outflow_id,
+        state_id,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
-        u_prev_saveat = zeros(n_states),
-        node_id,
+        flow_ranges,
         state_ranges,
         do_concentration = config.experimental.concentration,
         do_subgrid = config.results.subgrid,
-        temp_convergence = CVector(zeros(n_states), state_ranges),
-        convergence = CVector(zeros(n_states), state_ranges),
-        u_reduced,
+        incidence_matrix,
+        config.solver.reduced_implicit_solve,
         config.solver.level_difference_threshold,
         config.solver.max_depth,
     )

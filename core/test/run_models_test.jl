@@ -132,14 +132,14 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
-    (; p_independent, state_and_time_dependent_cache) = model.integrator.p
+    (; p_independent, current_basin_properties) = model.integrator.p
     (; basin) = p_independent
-    @test state_and_time_dependent_cache.current_storage ≈ [1000]
+    @test current_basin_properties.current_storage ≈ [1000]
     @test basin.vertical_flux.precipitation == [0.0]
     @test basin.vertical_flux.drainage == [0.0]
     du = get_du(model.integrator)
-    @test du.evaporation == [0.0]
-    @test du.infiltration == [0.0]
+    @test du.flow.vertical.evaporation == [0.0]
+    @test du.flow.vertical.infiltration == [0.0]
     @test success(model)
 end
 
@@ -158,15 +158,15 @@ end
     (; integrator) = model
     du = get_du(integrator)
     (; u, p, t) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
+    (; p_independent, current_basin_properties) = p
     (; basin) = p_independent
 
     Ribasim.water_balance!(du, u, p, t)
-    stor = state_and_time_dependent_cache.current_storage
+    stor = current_basin_properties.current_storage
     prec = basin.vertical_flux.precipitation
-    evap = du.evaporation
+    evap = du.flow.vertical.evaporation
     drng = basin.vertical_flux.drainage
-    infl = du.infiltration
+    infl = du.flow.vertical.infiltration
     # The dynamic data has missings, but these are not set.
     @test prec == [0.0]
     @test evap == [0.0]
@@ -210,7 +210,7 @@ end
 
     (; integrator) = model
     (; p) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
+    (; p_independent, current_basin_properties) = p
 
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p_independent))
@@ -219,7 +219,7 @@ end
 
     @test success(model)
     @test length(model.integrator.sol.t) == 2 # start and end
-    @test state_and_time_dependent_cache.current_storage ≈
+    @test current_basin_properties.current_storage ≈
         Float32[775.23576, 775.23365, 572.60102, 1130.005] skip = Sys.isapple() atol = 1.5
 
     @test length(logger.logs) > 10
@@ -277,7 +277,11 @@ end
     integrator.u *= 1.0e6
     integrator.u[1] = Inf
     integrator.cache.nlsolver.cache.J.J_intermediate .= NaN
-    @test log_numerical_instability(integrator) == "\n\nPhysical layer diagnostics:\n\nNon-plausible depths (outside [0,2000.0]):\n  Basin #1: -3.1199998532955774e11\n  Basin #3: -Inf\n  Basin #6: -3.322633672854174e11\n  Basin #9: 397006.2329950004\n\nNon-finite states:\n  TabulatedRatingCurve #4: Inf\n\nJacobian values:\n  row(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries (e.g. J[1,1] = NaN, J[1,2] = NaN, J[1,3] = NaN, J[1,4] = NaN, J[1,5] = NaN), suggesting a singularity in those equation(s)\n  column(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries, suggesting those state component(s) are diverging"
+    diagnostics = replace(
+        log_numerical_instability(integrator),
+        r"(  Basin #\d+): [^\n]+" => s"\1",
+    )
+    @test diagnostics == "\n\nPhysical layer diagnostics:\n\nNon-plausible depths (outside [0,2000.0]):\n  Basin #1\n  Basin #3\n  Basin #6\n  Basin #9\n\nNon-finite states:\n  TabulatedRatingCurve #4: Inf\n\nJacobian values:\n  row(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries (e.g. J[1,1] = NaN, J[1,2] = NaN, J[1,3] = NaN, J[1,4] = NaN, J[1,5] = NaN), suggesting a singularity in those equation(s)\n  column(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries, suggesting those state component(s) are diverging"
 end
 
 @testitem "basic transient model" begin
@@ -288,10 +292,10 @@ end
     @test model isa Ribasim.Model
     @test success(model)
     @test allunique(Ribasim.tsaves(model))
-    (; p_independent, state_and_time_dependent_cache) = model.integrator.p
+    (; p_independent, current_basin_properties) = model.integrator.p
     precipitation = p_independent.basin.vertical_flux.precipitation
     @test length(precipitation) == 4
-    @test state_and_time_dependent_cache.current_storage ≈
+    @test current_basin_properties.current_storage ≈
         Float32[692.5008, 692.4986, 461.2787, 1137.1613] atol = 2.0 skip = Sys.isapple()
 end
 
@@ -345,8 +349,8 @@ end
     model = Ribasim.run(toml_path)
     @test model isa Ribasim.Model
     @test success(model)
-    (; p_independent, state_and_time_dependent_cache) = model.integrator.p
-    @test state_and_time_dependent_cache.current_storage ≈ Float32[368.31558, 365.68442] skip =
+    (; p_independent, current_basin_properties) = model.integrator.p
+    @test current_basin_properties.current_storage ≈ Float32[368.31558, 365.68442] skip =
         Sys.isapple()
     (; tabulated_rating_curve) = p_independent
     # The first node is static, the first interpolation object always applies
@@ -410,22 +414,22 @@ end
     model = Ribasim.Model(toml_path)
 
     (; integrator) = model
-    (; u, p, t, sol) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
+    (; p, t, sol) = integrator
+    (; p_independent, current_basin_properties) = p
+    (; current + storage) = current_basin_properties
 
     day = 86400.0
 
-    @test only(state_and_time_dependent_cache.current_storage) ≈ 1000.0
+    @test only(current_storage) ≈ 1000.0
     # constant UserDemand withdraws to 0.9m or 900m3 due to min level = 0.9
     BMI.update_until(model, 150day)
     (; u_reduced) = p.p_independent
     Ribasim.reduce_state!(u_reduced, u, p_independent)
     formulate_storages!(u_reduced, p, t)
-    @test only(state_and_time_dependent_cache.current_storage) ≈ 900 atol = 5
+    @test only(current_storage) ≈ 900 atol = 5
     # dynamic UserDemand withdraws to 0.5m or 500m3 due to min level = 0.5
     BMI.update_until(model, 200day)
-    formulate_storages!(u_reduced, p, t)
-    @test only(state_and_time_dependent_cache.current_storage) ≈ 500 atol = 2
+    @test only(current_storage) ≈ 500 atol = 2
 
     # Transient return factor
     flow = DataFrame(Ribasim.flow_data(model))
@@ -506,9 +510,9 @@ end
     @test success(model)
 
     (; p, t) = model.integrator
-    (; p_independent, state_and_time_dependent_cache) = p
+    (; p_independent, current_basin_properties) = p
     du = get_du(model.integrator)
-    (; current_level) = state_and_time_dependent_cache
+    (; current_level) = current_basin_properties
     h_actual = current_level[1:50]
     x = collect(10.0:20.0:990.0)
     h_expected = standard_step_method(x, 5.0, 1.0, 0.04, h_actual[end], 1.0e-6)

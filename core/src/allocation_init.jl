@@ -422,7 +422,7 @@ function add_linearized_connector_node!(
 
             # Only linearize if the level comes from a Basin
             upstream_node = inflow_link[node_id.idx].link[1]
-            if upstream_node.type == NodeType.Basin
+            if upstream_node.is_basin
                 JuMP.add_to_expression!(
                     linearization,
                     ∂q∂h_upstream * storage_change[upstream_node] / A,
@@ -430,7 +430,7 @@ function add_linearized_connector_node!(
             end
 
             downstream_node = outflow_link[node_id.idx].link[2]
-            if downstream_node.type == NodeType.Basin
+            if downstream_node.is_basin
                 JuMP.add_to_expression!(
                     linearization,
                     ∂q∂h_downstream * storage_change[downstream_node] / A,
@@ -932,13 +932,13 @@ function NodeIDsInSubnetwork(
         # basin_ids_subnetwork_with_level_demand
         get_nodes(
             node_id ->
-            node_id.type == NodeType.Basin &&
+            node_id.is_basin &&
                 !isnothing(get_external_demand_id(p_independent, node_id)),
         ),
         # node_ids_subnetwork_with_flow_demand
         get_nodes(
             node_id ->
-            node_id.type != NodeType.Basin &&
+            !node_id.is_basin &&
                 !isnothing(get_external_demand_id(p_independent, node_id)),
         ),
     )

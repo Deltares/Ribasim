@@ -50,7 +50,8 @@ end
     @test length(xa) == 3
     @test getdata(xa) === data
     @test getaxes(xa) === axes.a
-    @test_throws ErrorException x.b
+    error = @test_throws ErrorException x.b
+    @test sprint(showerror, error) == "CVector has no component named :b"
     @test x.a.b === 1.0
     @test x.a.c isa SubArray
     @test x.a.c == [2.0, 3.0]
@@ -85,4 +86,28 @@ end
     @test_throws AssertionError CVector(data, (; a = 1:2, b = 4:5))
     # Overlap between 1:3 and 3:5
     @test_throws AssertionError CVector(data, (; a = 1:3, b = 3:5))
+end
+
+@testitem "Construct from axes" begin
+    using Ribasim.CVectors: cvector_from_axes, getdata
+
+    axes = (; a = 2:3, b = 4:5)
+    x = cvector_from_axes(axes; data_type = Vector{Int})
+
+    @test getdata(x) isa Vector{Int}
+    @test length(getdata(x)) == 5
+    @test length(x) == 4
+end
+
+@testitem "Concatenate axes" begin
+    using Ribasim.CVectors: concatenate_axes
+
+    axes = concatenate_axes(
+        (; a = 3:4, nested = (; b = 5:6)),
+        (; c = 1:2, d = 3:5),
+    )
+
+    @test axes == (; a = 1:2, nested = (; b = 3:4), c = 5:6, d = 7:9)
+    @test_throws ArgumentError concatenate_axes((; a = 1:2), (; a = 1:3))
+    @test concatenate_axes() == NamedTuple()
 end
