@@ -1012,8 +1012,6 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
         out,
         ũ, u₀, u₁, abstol, reltol, internalnorm::InternalNorm, t
     )
-    (; p_independent) = internalnorm
-
     # All state components (flow, PID integral) are scaled by the magnitude
     # of their change over the time step rather than by their absolute magnitude.
     # The states are cumulative quantities whose absolute value carries no information
@@ -1033,9 +1031,6 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
             t
         )
     end
-
-    accumulate_residual!(p_independent.convergence, out)
-    p_independent.convergence_ncalls[1] += 1
     return nothing
 end
 
@@ -1051,6 +1046,12 @@ end
     return out
 end
 
+"""
+Credit each state with its share of the local error estimate of a single step, normalized
+so that the worst state of every step contributes 1.0. This ranks the states by how much
+they hold back the timestep; it is not a magnitude, and a high value does not mean the state
+is wrong.
+"""
 function accumulate_residual!(convergence, residual)
     max_abs_residual = 0.0
     for i in eachindex(residual)
