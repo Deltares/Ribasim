@@ -56,8 +56,9 @@ At the end of every run, whether it succeeded, failed or was interrupted, Ribasi
 The value is a severity score: the share of the local error estimate that Ribasim attributes to that node, averaged over time and normalized so that the worst node of every timestep scores 1.
 It *ranks* the nodes, it does not measure how wrong they are.
 A high value does not mean the node is misconfigured or that its results are inaccurate; it means the node is the one holding the solver back.
-The top entry is therefore always at or near 1, and it is the node to look at first: a single bad node routinely costs an order of magnitude in run time.
-In the example above, capping an unphysical `flow_rate = 99999.0` on `Outlet #2310` and increasing the roughness of `ManningResistance #2383` made the model about 15 times faster.
+The top entry is therefore always at or near 1, and it is the node to look at first.
+Because the solver uses one timestep for the whole model, a single node that is hard to solve slows down everything else with it.
+Unphysical parameters are a common cause: in the example above, `Outlet #2310` had a `flow_rate` of 99999.0, and `ManningResistance #2383` a roughness low enough to make the flow react almost instantly to a level change.
 
 ### 2. Find out when and where, using the results
 
