@@ -11,7 +11,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Allocation: Pump and Outlet nodes that connect the primary network to a secondary network are no longer made allocation controlled automatically; they must have `allocation_controlled` set to `true`, otherwise an error is thrown.
 
 ### Fixed
-- Logging a numerical instability no longer errors for models whose evaporation, infiltration or PID integral states are involved.
 - Allocation: Normalize LevelDemand fairness constraints by the current mean Basin area per demand priority, improving numerical conditioning for large Basins.
 - Allocation: Use a deterministic minimum-inlet-flow tie-break when collecting secondary-network demands from the primary network.
 
