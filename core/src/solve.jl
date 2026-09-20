@@ -1005,6 +1005,19 @@ end
 # used for diagnosing numerical instability
 const MAX_ABS_FLOW = 5.0e5 # m³/s
 
+"""
+Describe the state at the given index for logging. Only the horizontal flow states, which
+come first, are associated with a link; the remaining states are named after their component.
+"""
+function state_label(u::CVector, state_inflow_link, state_idx::Int)::String
+    state_idx <= length(state_inflow_link) &&
+        return string(state_inflow_link[state_idx].link[2])
+    for (name, range) in pairs(getaxes(u))
+        state_idx in range && return "$name $(state_idx - first(range) + 1)"
+    end
+    return "state $state_idx"
+end
+
 # Modelled after SciMLBase.log_numerical_instability(integrator::ODEIntegrator; jacobian_logging = true)
 function SciMLBase.log_numerical_instability(
         integrator::ODEIntegrator{<:Any, <:Any, <:RibasimCVectorType};
@@ -1024,7 +1037,7 @@ function SciMLBase.log_numerical_instability(
             push!(state_analysis, "More than $max_print_n states ($(length(non_finite_state_idxs))) are non-finite, output truncated.")
             break
         else
-            node_id = state_inflow_link[state_idx].link[2]
+            node_id = state_label(u, state_inflow_link, state_idx)
             value = u[state_idx]
             push!(state_analysis, "$node_id: $value")
         end
@@ -1038,7 +1051,7 @@ function SciMLBase.log_numerical_instability(
             push!(rate_analysis, "More than $max_print_n states ($(length(too_large_rate_idxs))) have non-plausible rate, output truncated.")
             break
         else
-            node_id = state_inflow_link[state_idx].link[2]
+            node_id = state_label(u, state_inflow_link, state_idx)
             value = du[state_idx]
             push!(rate_analysis, "$node_id: $value")
         end
