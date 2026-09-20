@@ -410,7 +410,7 @@ end
     end
 
     @test occursin(
-        "Warning: Convergence bottlenecks in descending order of severity:",
+        "Warning: Convergence bottlenecks in descending order of severity",
         output,
     )
     @test occursin("Pump #12 = ", output)
