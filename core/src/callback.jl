@@ -63,7 +63,14 @@ function create_callbacks(
         SavingCallback(save_subgrid_level, saved_subgrid_level; saveat, save_start = true)
     push!(callbacks, export_cb)
 
-    discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
+    # Not a FunctionCallingCallback, because that reports the derivative as continuous,
+    # which hides the right hand side discontinuity of a control state change
+    discrete_control_cb = DiscreteCallback(
+        discrete_control_condition,
+        apply_discrete_control!;
+        initialize = discrete_control_initialize,
+        save_positions = (false, false),
+    )
     push!(callbacks, discrete_control_cb)
 
     saved = SavedResults(
@@ -559,13 +566,16 @@ Apply the discrete control logic. There's somewhat of a complex structure:
 - The nodes that are controlled by this DiscreteControl node must have the same control state, for which they have
     parameter values associated with that control state defined in their control_mapping
 """
-function apply_discrete_control!(u, t, integrator)::Nothing
-    (; p) = integrator
+function apply_discrete_control!(integrator; initialize::Bool = false)::Nothing
+    (; p, t) = integrator
     (; discrete_control) = p.p_independent
     (; node_id, truth_state, compound_variables) = discrete_control
     du = get_du(integrator)
 
     errors = false
+
+    # Whether any node changed control state, and thus whether the right hand side changed
+    control_state_changed = false
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes
@@ -588,9 +598,14 @@ function apply_discrete_control!(u, t, integrator)::Nothing
                 zip(compound_variable.threshold_low, compound_variable.threshold_high)
                 truth_value_old = truth_state_node[truth_state_idx]
 
-                # Hysteresis deadband: if the condition was true before, only switch to false
+                # Hysteresis: if the condition was true before, only switch to false
                 # when below threshold_low, otherwise only switch to true when above threshold_high
-                if truth_value_old
+                if initialize
+                    # No threshold has been crossed yet, so the initial value decides, where a
+                    # value between the thresholds falls to the side it is closest to. Without
+                    # hysteresis this reduces to the same strict inequality as below.
+                    truth_value_new = (value > (threshold_low(t) + threshold_high(t)) / 2)
+                elseif truth_value_old
                     truth_value_new = (value >= threshold_low(t))
                 else
                     truth_value_new = (value > threshold_high(t))
@@ -606,20 +621,33 @@ function apply_discrete_control!(u, t, integrator)::Nothing
         end
 
         # Set a new control state if applicable
-        if (t == 0) || truth_state_change
-            errors |= set_new_control_state!(integrator, node_id, truth_state_node)
+        if initialize || truth_state_change
+            node_errors, node_changed =
+                set_new_control_state!(integrator, node_id, truth_state_node)
+            errors |= node_errors
+            control_state_changed |= node_changed
         end
     end
 
     errors && error("Errors encountered when applying DiscreteControl at t = $t s.")
+
+    # A control state change alters the parameters, and so the right hand side, meaning the
+    # integrator has to discard the derivative it cached for the equations as they were
+    derivative_discontinuity!(integrator, control_state_changed)
     return nothing
+end
+
+discrete_control_condition(u, t, integrator)::Bool = true
+
+function discrete_control_initialize(c, u, t, integrator)::Nothing
+    return apply_discrete_control!(integrator; initialize = true)
 end
 
 function set_new_control_state!(
         integrator,
         discrete_control_id::NodeID,
         truth_state::Vector{Bool},
-    )::Bool
+    )::Tuple{Bool, Bool}
     (; p, t) = integrator
     (; p_independent) = p
     (; discrete_control, pump, outlet, tabulated_rating_curve) = p_independent
@@ -632,7 +660,7 @@ function set_new_control_state!(
 
     if isnothing(control_state_new)
         @error lazy"No control state specified for $discrete_control_id for truth state $truth_state."
-        return true
+        return true, false
     end
 
     # Check the new control state against the current control state
@@ -648,7 +676,7 @@ function set_new_control_state!(
         update_dt = t - last_update_time[discrete_control_id.idx]
         if update_dt < min_discrete_control_interval
             @error lazy"$discrete_control_id changed control state with a smaller time interval than min_discrete_control_interval." update_dt min_discrete_control_interval
-            return true
+            return true, false
         elseif !iszero(t)
             # The control state is initialized at t = 0, which is not a change to measure
             # the interval from, so the first timestep is exempt from the check above.
@@ -677,8 +705,9 @@ function set_new_control_state!(
 
         discrete_control.control_state[discrete_control_id.idx] = control_state_new
         discrete_control.control_state_start[discrete_control_id.idx] = integrator.t
+        return false, true
     end
-    return false
+    return false, false
 end
 
 """

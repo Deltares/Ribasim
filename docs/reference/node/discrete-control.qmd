@@ -70,18 +70,20 @@ These variables can be listened to:
 
 ## Condition
 
-The condition schema defines conditions of the form the `discrete_control` node with this `node_id` listens to whether the variable given by the `node_id` and `compound_variable_id` is greater than `threshold_high` (at time $t$) when the condition was false previously, or `threshold_low` when true previously. Using `threshold_low` is optional and defaults to `threshold_high`. When set to a different value---smaller than or equal to `threshold_high`---it defines a [deadband]("https://en.wikipedia.org/wiki/Deadband") and thus enables hysteresis. In equation form:
+The condition schema defines conditions of the form the `discrete_control` node with this `node_id` listens to whether the variable given by the `node_id` and `compound_variable_id` is greater than `threshold_high` (at time $t$) when the condition was false previously, or `threshold_low` when true previously. Using `threshold_low` is optional and defaults to `threshold_high`. When set to a smaller value, the threshold to switch on differs from the threshold to switch off, which is [hysteresis](https://en.wikipedia.org/wiki/Hysteresis). This is how a thermostat or a [Schmitt trigger](https://en.wikipedia.org/wiki/Schmitt_trigger) works, and it keeps the condition from switching back and forth on small fluctuations of the variable. In equation form:
 
 $$
 \text{condition}=\begin{cases}
-    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots > \text{greater_than}(t), !\text{condition_prev} \\
-    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots >= \text{less_than}(t), \text{condition_prev}
+    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots > \text{threshold\_high}(t), !\text{condition_prev} \\
+    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots >= \text{threshold\_low}(t), \text{condition_prev}
 \end{cases}
 $$
 
 Multiple conditions with different `threshold_high` and/or `threshold_low` values can be defined on the same compound_variable, each with their own unique `condition_id`.
 
-Note the strict inequality '$>$' in the equation above. This means for instance that if a simulation starts with a compound variable exactly at the `threshold_high` value, the condition is false. The same holds for the `threshold_low` value, using '$>=$', so the deadband is *inclusive* of the thresholds.
+Note the strict inequality '$>$' in the equation above. This means for instance that if a simulation starts with a compound variable exactly at the `threshold_high` value, the condition is false. The same holds for the `threshold_low` value, using '$>=$', so the range between the thresholds is *inclusive* of the thresholds.
+
+At the start of the simulation there is no previous condition value to apply hysteresis to, so neither case above applies. Instead the initial value of the variable is compared to the middle of the two thresholds, meaning a variable that starts between them takes the side it is closest to. Without hysteresis the middle is `threshold_high`, so this is the same comparison as the first case above. Note that this matters if your initial state sits at the value the control is meant to maintain, which is a common way to set up a model: the variable then starts halfway between the thresholds, and without this rule every such condition would start out false and only respond after first crossing `threshold_high`.
 
 column               | type     | unit    | restriction
 -------------------- | -------- | ------- | -----------
