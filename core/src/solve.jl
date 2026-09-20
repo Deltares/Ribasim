@@ -1039,6 +1039,18 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
     return nothing
 end
 
+# The out-of-place method is used by the nonlinear solver to weigh its Newton increment.
+# Without this the generic DiffEqBase fallback broadcasts the scalar method over our
+# CVector, bypassing the scaling above, so the nonlinear solver and the error estimate
+# would apply different tolerances to the same states.
+@inline function DiffEqBase.calculate_residuals(
+        ũ::CVector, u₀::CVector, u₁::CVector, abstol, reltol, internalnorm::InternalNorm, t
+    )
+    out = similar(ũ)
+    DiffEqBase.calculate_residuals!(out, ũ, u₀, u₁, abstol, reltol, internalnorm, t)
+    return out
+end
+
 function accumulate_residual!(convergence, residual)
     max_abs_residual = 0.0
     for i in eachindex(residual)
