@@ -10,7 +10,8 @@ function is_current_module(log)::Bool
     isnothing(log._module) && return false
     return (log._module == @__MODULE__) ||
         (parentmodule(log._module) == @__MODULE__) ||
-        log._module == OrdinaryDiffEqCore # for the progress bar
+        log._module == OrdinaryDiffEqCore || # for the progress bar
+        log._module == DiffEqBase # for solver failure diagnostics
 end
 
 function setup_logger(;
