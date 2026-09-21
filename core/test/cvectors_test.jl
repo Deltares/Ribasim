@@ -86,3 +86,13 @@ end
     # Overlap between 1:3 and 3:5
     @test_throws AssertionError CVector(data, (; a = 1:3, b = 3:5))
 end
+
+@testitem "State label" begin
+    using Ribasim.CVectors: CVector
+
+    u = CVector(zeros(3), (; flow = 1:1, pid_control = 2:3))
+    state_inflow_link = [(; link = (nothing, 42))]
+
+    @test Ribasim.state_label(u, state_inflow_link, 1) == "42"
+    @test Ribasim.state_label(u, state_inflow_link, 2) == "pid_control 1"
+end
