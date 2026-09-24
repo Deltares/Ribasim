@@ -1,9 +1,9 @@
 import argparse
+import os
 from pathlib import Path
 
 from minio import Minio
 from minio.error import S3Error
-from s3_settings import settings
 
 MINIO_SERVER = "s3.deltares.nl"
 BUCKET_NAME = "ribasim"
@@ -12,12 +12,10 @@ BUCKET_NAME = "ribasim"
 def upload_file(
     source: Path,
     destination: str,
-    access_key: str = "",
-    secret_key: str = "",
 ) -> None:
     """Upload a single file to the Ribasim MinIO bucket."""
-    access_key = access_key or settings.minio_access_key
-    secret_key = secret_key or settings.minio_secret_key
+    access_key = os.getenv("AWS_ACCESS_KEY_ID", "")
+    secret_key = os.getenv("AWS_SECRET_ACCESS_KEY", "")
 
     if not source.is_file():
         raise ValueError(f"The source file does not exist: {source}")
@@ -35,20 +33,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Upload a file to the MinIO server")
     parser.add_argument("source", type=Path, help="The source file to upload")
     parser.add_argument("destination", help="The destination file in the MinIO server")
-    parser.add_argument(
-        "--accesskey",
-        help="The access key to access the MinIO server",
-        default="",
-    )
-    parser.add_argument(
-        "--secretkey",
-        help="The secret key to access the MinIO server",
-        default="",
-    )
     args = parser.parse_args()
-    upload_file(
-        args.source,
-        args.destination,
-        access_key=args.accesskey,
-        secret_key=args.secretkey,
-    )
+    upload_file(args.source, args.destination)
