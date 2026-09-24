@@ -1106,6 +1106,7 @@ def allocation_control_model() -> Model:
         endtime=datetime(2023, 1, 1),
         crs="EPSG:28992",
         experimental=Experimental(allocation=True),
+        solver=Solver(abstol=1e-5, reltol=1e-5),
     )
 
     lb = model.level_boundary.add(

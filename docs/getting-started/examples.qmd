@@ -16,6 +16,7 @@ os.environ["USE_PYGEOS"] = "0"
 
 ```{python}
 import shutil
+from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -276,18 +277,19 @@ Setup the basins:
 
 ```{python}
 model = Model(
-    starttime="2020-01-01",
-    endtime="2021-01-01",
-    crs="EPSG:4326",
+    starttime=datetime(2020, 1, 1),
+    endtime=datetime(2021, 1, 1),
+    crs="EPSG:28992",
     solver=Solver(abstol=1e-6, reltol=1e-5),
+    experimental=Experimental(concentration=True),
 )
 ```
 
 ```{python}
 model.basin.add(
-    Node(1, Point(0.0, 0.0)),
+    Node(1, Point(0, 0)),
     [
-        basin.Profile(area=[1000.0, 1000.0], level=[0.0, 1.0]),
+        basin.Profile(area=1000.0, level=[0.0, 1.0]),
         basin.State(level=[20.0]),
         basin.Time(time=["2020-01-01", "2020-07-01"], precipitation=[0.0, 3e-6]),
     ],
@@ -298,12 +300,12 @@ Setup the discrete control:
 
 ```{python}
 model.discrete_control.add(
-    Node(7, Point(1.0, 0.0)),
+    Node(7, Point(1, 0)),
     [
         discrete_control.Variable(
+            listen_node_id=[1],
+            variable="level",
             compound_variable_id=1,
-            listen_node_id=1,
-            variable=["level"],
         ),
         discrete_control.Condition(
             # min, max; retain control states within a 1 m hysteresis band
@@ -330,11 +332,11 @@ Setup the pump:
 
 ```{python}
 model.pump.add(
-    Node(2, Point(1.0, 1.0)),
+    Node(2, Point(1, 1)),
     [pump.Static(control_state=["none", "in", "out"], flow_rate=[0.0, 2e-3, 0.0])],
 )
 model.pump.add(
-    Node(3, Point(1.0, -1.0)),
+    Node(3, Point(1, -1)),
     [pump.Static(control_state=["none", "in", "out"], flow_rate=[0.0, 0.0, 2e-3])],
 )
 ```
@@ -351,7 +353,7 @@ Setup the level boundary:
 
 ```{python}
 model.level_boundary.add(
-    Node(4, Point(2.0, 0.0)), [level_boundary.Static(level=[10.0])]
+    Node(4, Point(2, 0)), [level_boundary.Static(level=[10.0])]
 )
 ```
 
@@ -359,7 +361,7 @@ Setup the rating curve:
 
 ```{python}
 model.tabulated_rating_curve.add(
-    Node(5, Point(-1.0, 0.0)),
+    Node(5, Point(-1, 0)),
     [tabulated_rating_curve.Static(level=[2.0, 15.0], flow_rate=[0.0, 2e-3])],
 )
 ```
@@ -367,7 +369,7 @@ model.tabulated_rating_curve.add(
 Setup the terminal:
 
 ```{python}
-model.terminal.add(Node(6, Point(-2.0, 0.0)))
+model.terminal.add(Node(6, Point(-2, 0)))
 ```
 
 Setup links:

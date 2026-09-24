@@ -40,6 +40,7 @@ using OrdinaryDiffEqCore:
     get_EEst,
     error_estimate_residuals,
     residual_analysis!
+using DiffEqBase: DiffEqBase, ODE_DEFAULT_NORM
 using OrdinaryDiffEqDifferentiation:
     OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
 using SciMLOperators: WOperator, MatrixOperator

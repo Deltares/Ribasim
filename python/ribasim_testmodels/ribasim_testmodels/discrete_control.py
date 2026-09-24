@@ -444,8 +444,9 @@ def level_range_model() -> Model:
                 compound_variable_id=1,
             ),
             discrete_control.Condition(
-                # min, max
+                # min, max; retain control states within a 1 m hysteresis band
                 threshold_high=[5.0, 15.0],
+                threshold_low=[4.0, 14.0],
                 compound_variable_id=1,
                 condition_id=[1, 2],
             ),
@@ -733,7 +734,10 @@ def continuous_concentration_condition_model() -> Model:
             ),
             # More than 20% of seawater (35 g/L)
             discrete_control.Condition(
-                threshold_high=[7], compound_variable_id=1, condition_id=1
+                threshold_low=[6.5],
+                threshold_high=[7],
+                compound_variable_id=1,
+                condition_id=1,
             ),
             discrete_control.Logic(truth_state=["T", "F"], control_state=["Off", "On"]),
         ],
