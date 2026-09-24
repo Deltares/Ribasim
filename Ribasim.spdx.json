@@ -3,12 +3,12 @@
     "dataLicense": "CC0-1.0",
     "SPDXID": "SPDXRef-DOCUMENT",
     "name": "Ribasim.jl",
-    "documentNamespace": "https://github.com/Deltares/Ribasim/Ribasim.spdx.json-93872527-44db-4558-9906-160d9c6274d3",
+    "documentNamespace": "https://github.com/Deltares/Ribasim/Ribasim.spdx.json-983de5b4-fc0f-4ad6-b4ec-e5aa6af818e2",
     "creationInfo": {
         "creators": [
             "Organization:  Deltares  (software@deltares.nl)"
         ],
-        "created": "2026-09-10T19:15:07Z",
+        "created": "2026-09-24T11:46:27Z",
         "comment": "Target Platform: Platform(\"x86_64\", \"windows\"; libgfortran_version = \"5.0.0\", cxxstring_abi = \"cxx11\", julia_version = \"1.13.0\")"
     },
     "comment": "Registries used for populating Package data:\nGeneral registry: https://github.com/JuliaRegistries/General.git\nOfficial general Julia package registry where people can\nregister any package they want without too much debate about\nnaming and without enforced standards on documentation or\ntesting. We nevertheless encourage documentation, testing and\nsome amount of consideration when choosing package names.\n",

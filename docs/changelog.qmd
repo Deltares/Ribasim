@@ -6,24 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
-- Add `rejected_nonlinear_solve`, `rejected_local_error` and `rejected_out_of_domain` to `results/solver_stats.nc`, which split the rejected timesteps by cause.
-- Add `mean_order` to `results/solver_stats.nc`, the average order of the accepted timesteps.
-- Python: `solver.min_discrete_control_interval` is now settable; it was documented but missing from the `Solver` class.
+- BMI: Set FlowBoundary flow rates during a simulation and read cumulative flow for online coupling. [#3251](https://github.com/Deltares/Ribasim/pull/3251)
+- Error on rapidly oscillating DiscreteControl states with the configurable `solver.min_discrete_control_interval`. [#3237](https://github.com/Deltares/Ribasim/pull/3237)
+- Report rejected timesteps by cause and the mean solver order in `results/solver_stats.nc`. [#3269](https://github.com/Deltares/Ribasim/pull/3269)
 
 ### Changed
-- `rejected_timesteps` in `results/solver_stats.nc` now also counts timesteps that were rejected because the nonlinear solver did not converge, so it is the sum of the three causes above. These were previously left out, making it report fewer rejections than actually took place.
-- Convergence bottlenecks are now also logged for models that finish successfully, not only for failed or interrupted runs.
-- The `dt` in `results/solver_stats.nc` is now the average timestep size over the `saveat` interval, instead of the size of the last timestep.
-- Allocation: Allocation controlled Pump and Outlet nodes now require a finite `max_flow_rate`. Models that do not satisfy this are rejected with an error.
-- Allocation: Pump and Outlet nodes that connect the primary network to a secondary network are no longer made allocation controlled automatically; they must have `allocation_controlled` set to `true`, otherwise an error is thrown.
+- The default solver is now NordsieckBDF. [#3236](https://github.com/Deltares/Ribasim/pull/3236)
+- Solver tolerances now apply to changes over each timestep, including the nonlinear solver. [#3237](https://github.com/Deltares/Ribasim/pull/3237) [#3268](https://github.com/Deltares/Ribasim/pull/3268)
+- The default absolute and relative solver tolerances are now both `1e-4`. [#3237](https://github.com/Deltares/Ribasim/pull/3237)
+- In `results/solver_stats.nc`, `dt` is now the average timestep size over the output interval, and `rejected_timesteps` includes nonlinear solver failures. Convergence scores are now calculated per timestep, with bottlenecks logged after successful runs too. [#3253](https://github.com/Deltares/Ribasim/pull/3253) [#3269](https://github.com/Deltares/Ribasim/pull/3269)
+- Allocation-controlled Pumps and Outlets require a finite `max_flow_rate`; those linking primary and secondary networks must explicitly set `allocation_controlled = true`. [#3259](https://github.com/Deltares/Ribasim/pull/3259)
+- Large models initialize faster. [#3180](https://github.com/Deltares/Ribasim/pull/3180)
 
 ### Fixed
-- A DiscreteControl state change is now reported to the integrator as a discontinuity of the right hand side. It previously changed the parameters silently, so the integrator carried a derivative that no longer matched the equations, which showed up as rejected timesteps.
-- The initial DiscreteControl state is now based on the initial value of each condition, instead of always starting from `false`. A condition with hysteresis that starts between `threshold_low` and `threshold_high` now takes the side it is closest to, rather than always starting below both and having to cross `threshold_high` before it responds. Models without hysteresis are unaffected.
-- The nonlinear solver now scales its increment by the change of each state over the timestep, like the error estimate does. It previously fell back to scaling by the cumulative magnitude of the states, which made its convergence check increasingly lenient over a simulation.
-- The first timestep is now exempt from the `solver.min_discrete_control_interval` check. Setting the initial control state at $t = 0$ no longer counts as a control state change, which made any change on the first timestep fail.
-- Allocation: Normalize LevelDemand fairness constraints by the current mean Basin area per demand priority, improving numerical conditioning for large Basins.
-- Allocation: Use a deterministic minimum-inlet-flow tie-break when collecting secondary-network demands from the primary network.
+- Allocation: Fix route priorities, flow through controlled TabulatedRatingCurves when allocation is off, and several Junction and demand issues. [#3206](https://github.com/Deltares/Ribasim/pull/3206) [#3221](https://github.com/Deltares/Ribasim/pull/3221) [#3250](https://github.com/Deltares/Ribasim/pull/3250)
+- Allocation: Improve LevelDemand stability for large Basins and consistency between single and multiple subnetworks. [#3246](https://github.com/Deltares/Ribasim/pull/3246)
+- Provide actionable error diagnostics for unstable models, identifying affected nodes and physical flow rates. [#3242](https://github.com/Deltares/Ribasim/pull/3242) [#3267](https://github.com/Deltares/Ribasim/pull/3267) [#3272](https://github.com/Deltares/Ribasim/pull/3272) [#3273](https://github.com/Deltares/Ribasim/pull/3273)
+- Invalid Pump, Outlet, and demand inputs now report parsing errors instead of failing silently or with misleading messages. [#3219](https://github.com/Deltares/Ribasim/pull/3219) [#3254](https://github.com/Deltares/Ribasim/pull/3254)
+- Python: Removing an external table no longer leaves a missing-file reference in the model configuration. [#3214](https://github.com/Deltares/Ribasim/pull/3214)
+- Delwaq: Reduce memory use when generating and parsing large results. [#3132](https://github.com/Deltares/Ribasim/pull/3132) [#3248](https://github.com/Deltares/Ribasim/pull/3248)
 
 ## [v2026.1.2] - 2026-06-16
 
