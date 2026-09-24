@@ -6,9 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Add `rejected_nonlinear_solve`, `rejected_local_error` and `rejected_out_of_domain` to `results/solver_stats.nc`, which split the rejected timesteps by cause.
+- Add `mean_order` to `results/solver_stats.nc`, the average order of the accepted timesteps.
 - Python: `solver.min_discrete_control_interval` is now settable; it was documented but missing from the `Solver` class.
 
 ### Changed
+- `rejected_timesteps` in `results/solver_stats.nc` now also counts timesteps that were rejected because the nonlinear solver did not converge, so it is the sum of the three causes above. These were previously left out, making it report fewer rejections than actually took place.
+- Convergence bottlenecks are now also logged for models that finish successfully, not only for failed or interrupted runs.
 - The `dt` in `results/solver_stats.nc` is now the average timestep size over the `saveat` interval, instead of the size of the last timestep.
 - Allocation: Allocation controlled Pump and Outlet nodes now require a finite `max_flow_rate`. Models that do not satisfy this are rejected with an error.
 - Allocation: Pump and Outlet nodes that connect the primary network to a secondary network are no longer made allocation controlled automatically; they must have `allocation_controlled` set to `true`, otherwise an error is thrown.

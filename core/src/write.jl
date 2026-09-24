@@ -274,8 +274,10 @@ const CF = OrderedDict{String, OrderedDict{String, String}}(
         OrderedDict("units" => "m3 s-1", "long_name" => "water balance error"),
     "relative_error" =>
         OrderedDict("units" => "1", "long_name" => "relative water balance error"),
-    "convergence" =>
-        OrderedDict("units" => "1", "long_name" => "convergence indicator"),
+    "convergence" => OrderedDict(
+        "units" => "1",
+        "long_name" => "share of the solver error attributed to this node or link",
+    ),
     "computation_time" =>
         OrderedDict("units" => "ms", "long_name" => "computation time"),
     "rhs_calls" => OrderedDict(
@@ -288,6 +290,22 @@ const CF = OrderedDict{String, OrderedDict{String, String}}(
         OrderedDict("units" => "1", "long_name" => "number of accepted timesteps"),
     "rejected_timesteps" =>
         OrderedDict("units" => "1", "long_name" => "number of rejected timesteps"),
+    "rejected_nonlinear_solve" => OrderedDict(
+        "units" => "1",
+        "long_name" => "number of timesteps rejected because the nonlinear solver did not converge",
+    ),
+    "rejected_local_error" => OrderedDict(
+        "units" => "1",
+        "long_name" => "number of timesteps rejected because the estimated error was too large",
+    ),
+    "rejected_out_of_domain" => OrderedDict(
+        "units" => "1",
+        "long_name" => "number of timesteps rejected because the step left the valid domain",
+    ),
+    "mean_order" => OrderedDict(
+        "units" => "1",
+        "long_name" => "average order of the accepted timesteps",
+    ),
     "dt" => OrderedDict("units" => "s", "long_name" => "average timestep size"),
     "from_node_id" => OrderedDict("long_name" => "source node identifier"),
     "to_node_id" => OrderedDict("long_name" => "destination node identifier"),
@@ -448,6 +466,10 @@ function solver_stats_data(model::Model; table::Bool = true)
         linear_solves = diff(solver_stats.linear_solves),
         accepted_timesteps,
         rejected_timesteps = diff(solver_stats.rejected_timesteps),
+        rejected_nonlinear_solve = diff(solver_stats.rejected_nonlinear_solve),
+        rejected_local_error = diff(solver_stats.rejected_local_error),
+        rejected_out_of_domain = diff(solver_stats.rejected_out_of_domain),
+        mean_order = diff(solver_stats.order_sum) ./ accepted_timesteps,
         dt = diff(solver_stats.time) ./ accepted_timesteps,
     )
 end

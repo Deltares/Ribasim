@@ -36,6 +36,7 @@ using OrdinaryDiffEqCore:
     OrdinaryDiffEqCore,
     loopheader!,
     ODEIntegrator,
+    OrdinaryDiffEqCache,
     jacobian_analysis!,
     get_EEst,
     error_estimate_residuals,
@@ -173,8 +174,6 @@ using NCDatasets: NCDatasets, NCDataset, defDim, defVar, dimnames, CFVariable
 
 using Dates: Second
 
-using Printf: @sprintf
-
 using Base.Threads: nthreads
 
 include("cvectors.jl")
@@ -194,6 +193,7 @@ include("util.jl")
 include("graph.jl")
 include("differentiation.jl")
 include("model.jl")
+include("timestepping.jl")
 include("read.jl")
 include("write.jl")
 include("bmi.jl")

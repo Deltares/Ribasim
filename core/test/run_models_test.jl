@@ -70,7 +70,15 @@
             @test haskey(ds, "linear_solves")
             @test haskey(ds, "accepted_timesteps")
             @test haskey(ds, "rejected_timesteps")
+            @test haskey(ds, "rejected_nonlinear_solve")
+            @test haskey(ds, "rejected_local_error")
+            @test haskey(ds, "rejected_out_of_domain")
+            @test haskey(ds, "mean_order")
             @test haskey(ds, "dt")
+
+            @test ds["rejected_timesteps"][:] ==
+                ds["rejected_nonlinear_solve"][:] .+ ds["rejected_local_error"][:] .+
+                ds["rejected_out_of_domain"][:]
         end
     end
 
