@@ -276,7 +276,7 @@ plotly = "*"
 prek = "*"
 pyarrow = ">=17.0"
 pydantic = ">=2.0"
-pydantic-settings = "*"
+python-dotenv = "*"
 pyogrio = ">=0.8"
 pyqt-stubs = "*"
 pytest = "*"
@@ -330,6 +330,12 @@ quarto = "*"
 
 [target.osx-arm64.dependencies]
 quarto = "*"
+
+[target.unix.activation]
+scripts = ["scripts/load-env.sh"]
+
+[target.win.activation]
+scripts = ["scripts/load-env.bat"]
 
 [environments]
 default = ["py313"]
