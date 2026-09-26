@@ -1208,5 +1208,6 @@ end
 
 function OrdinaryDiffEqCore.instability_jacobian(integrator::ODEIntegrator{<:Any, <:Any, <:RibasimCVectorType})
     (; J) = integrator.cache.nlsolver.cache
-    return convert(AbstractMatrix, J)
+    # The Jacobian the solver used, not one re-evaluated at the failed state
+    return dense_jacobian(J)
 end

@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - In `results/solver_stats.nc`, `dt` is now the average timestep size over the output interval, and `rejected_timesteps` includes nonlinear solver failures. Convergence scores are now calculated per timestep, with bottlenecks logged after successful runs too. [#3253](https://github.com/Deltares/Ribasim/pull/3253) [#3269](https://github.com/Deltares/Ribasim/pull/3269)
 - Allocation-controlled Pumps and Outlets require a finite `max_flow_rate`; those linking primary and secondary networks must explicitly set `allocation_controlled = true`. [#3259](https://github.com/Deltares/Ribasim/pull/3259)
 - Large models initialize faster. [#3180](https://github.com/Deltares/Ribasim/pull/3180)
+- Large models run 2-4x faster: the Jacobian is reused across Newton iterations and timesteps instead of being recomputed in every iteration, and Basin levels are computed from storage in closed form.
 
 ### Fixed
 - Allocation: Fix route priorities, flow through controlled TabulatedRatingCurves when allocation is off, and several Junction and demand issues. [#3206](https://github.com/Deltares/Ribasim/pull/3206) [#3221](https://github.com/Deltares/Ribasim/pull/3221) [#3250](https://github.com/Deltares/Ribasim/pull/3250)

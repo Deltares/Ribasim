@@ -1761,6 +1761,8 @@ function Parameters(db::DB, config::Config)::Parameters
     state_ranges = count_state_ranges(u_ids)
     state_inflow_link, state_outflow_link = get_state_flow_links(graph, nodes)
     link_to_state_idx = build_link_to_state_idx(state_inflow_link)
+    basin_state_incidence =
+        build_basin_state_incidence(nodes.basin, state_ranges, link_to_state_idx)
 
     set_target_ref!(
         nodes.pid_control.target_ref,
@@ -1797,6 +1799,7 @@ function Parameters(db::DB, config::Config)::Parameters
         state_inflow_link,
         state_outflow_link,
         link_to_state_idx,
+        basin_state_incidence,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
         u_prev_saveat = zeros(n_states),

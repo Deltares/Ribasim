@@ -98,3 +98,30 @@ end
         @test norm(collect(x) - x_expected) <= 1.0e-8 * norm(x_expected)
     end
 end
+
+@testitem "Jacobian is only evaluated when requested" begin
+    using Ribasim: SciMLBase, evaluate_jacobian!
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    (; integrator) = model
+    J = integrator.cache.nlsolver.cache.W.J
+
+    # OrdinaryDiffEq calls this every Newton iteration, it must not evaluate the Jacobian
+    version = J.version[]
+    SciMLBase.update_coefficients!(J, integrator.u, integrator.p, integrator.t)
+    @test J.version[] == version
+    @test J.stale[]
+
+    evaluate_jacobian!(J)
+    @test J.version[] == version + 1
+    @test !J.stale[]
+    # Evaluating again at the same point is a no-op
+    evaluate_jacobian!(J)
+    @test J.version[] == version + 1
+
+    # Over a simulation the Jacobian is reused across Newton iterations and steps
+    SciMLBase.solve!(integrator)
+    @test success(model)
+    @test J.version[] < integrator.stats.nsolve / 2
+end

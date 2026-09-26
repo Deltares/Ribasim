@@ -359,10 +359,11 @@ end
         @test control_truth_states[1] == "F"
         @test level6[findfirst(>=(t0), basin_times)] <= 0.9 + 1.0e-10
 
-        # Switches on when level exceeds 0.95
+        # Switches on when level exceeds 0.95. At the next saved time the pump can
+        # already have lowered the level a bit, as for the switch off below.
         t1 = control_times[2]
         @test control_truth_states[2] == "T"
-        @test level6[findfirst(>=(t1), basin_times)] > 0.95
+        @test level6[findfirst(>=(t1), basin_times)] > 0.95 - 1.0e-2
 
         # And only switches off when level goes below 0.9 again
         t2 = control_times[3]
