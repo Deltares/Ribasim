@@ -131,3 +131,26 @@ end
     flow_4 = filter(:link_id => ==(4), flow_data).flow_rate
     @test all(isapprox.(flow_4[230:end], 1.0e-5, rtol = 1.0e-6))
 end
+
+@testitem "NordsieckBDF history restored after out of domain rejection" begin
+    using Ribasim: OrdinaryDiffEqCore, SciMLBase
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    (; integrator) = model
+    (; cache) = integrator
+    while cache.order < 2
+        SciMLBase.step!(integrator)
+    end
+
+    # A step attempt shifts the Nordsieck history array to predict the next step
+    zn_before = deepcopy(cache.zn)
+    OrdinaryDiffEqCore.perform_step!(integrator, cache)
+    @test any(j -> !(cache.zn[j] ≈ zn_before[j]), eachindex(zn_before))
+
+    # When that step is rejected for negative storage, the shift must be undone,
+    # otherwise the retry shifts it again and the predictor is off by a whole step
+    integrator.isout = true
+    OrdinaryDiffEqCore.post_step_reject!(integrator)
+    @test all(j -> cache.zn[j] ≈ zn_before[j], eachindex(zn_before))
+end

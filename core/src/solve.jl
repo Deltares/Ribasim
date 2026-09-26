@@ -1187,6 +1187,25 @@ function SciMLBase.log_numerical_instability(
     return diagnostic
 end
 
+"""
+Restore the Nordsieck history array after a step rejected by `isoutofdomain`.
+
+A step with negative storage is rejected by `isoutofdomain`. For such a rejection
+OrdinaryDiffEqCore only shrinks the timestep, and skips `step_reject_controller!`, which is
+where NordsieckBDF undoes the Pascal shift of its predictor. The retry then shifts the history
+array a second time, the predictor is off by the size of a whole step, and every subsequent step
+fails the error test until the timestep collapses. This undoes the shift, so the retry
+predicts from the last accepted step again.
+"""
+function OrdinaryDiffEqCore.post_step_reject!(
+        integrator::ODEIntegrator{<:OrdinaryDiffEqBDF.NordsieckBDF, <:Any, <:RibasimCVectorType}
+    )::Nothing
+    if integrator.isout
+        OrdinaryDiffEqBDF.nordsieck_restore!(integrator.cache, Val(true))
+    end
+    return nothing
+end
+
 function OrdinaryDiffEqCore.instability_jacobian(integrator::ODEIntegrator{<:Any, <:Any, <:RibasimCVectorType})
     (; J) = integrator.cache.nlsolver.cache
     return convert(AbstractMatrix, J)
