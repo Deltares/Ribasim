@@ -975,6 +975,23 @@ function limit_flow!(
         )
     end
 
+    # Where evaporation and infiltration would make a storage negative, reduce them so the
+    # storage becomes zero. In the ODE the low storage factor switches them off before the
+    # Basin is empty, but multistep methods extrapolate the cumulative states from their
+    # history and can overshoot. These states only affect their own Basin.
+    reduce_state!(u_reduced, u, p_independent)
+    formulate_storages!(u_reduced, p, t)
+    for i in eachindex(basin.node_id)
+        deficit = -current_storage[i]
+        deficit > 0 || continue
+        for (u_component, uprev_component) in
+            ((u.infiltration, uprev.infiltration), (u.evaporation, uprev.evaporation))
+            reduction = clamp(deficit, 0.0, max(u_component[i] - uprev_component[i], 0.0))
+            u_component[i] -= reduction
+            deficit -= reduction
+        end
+    end
+
     return nothing
 end
 

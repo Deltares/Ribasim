@@ -541,7 +541,8 @@ function check_negative_storage(u, t, integrator)::Nothing
 
     errors = false
     for id in basin.node_id
-        if state_and_time_dependent_cache.current_storage[id.idx] < 0
+        storage = state_and_time_dependent_cache.current_storage[id.idx]
+        if storage < 0 && storage < -storage_rounding_error(u, p, id.idx)
             @error "Negative storage detected in $id"
             errors = true
         end

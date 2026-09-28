@@ -918,13 +918,61 @@ end
 
 """
 Check whether any storages are negative given the state u.
+
+A storage is only considered negative if it is below zero by more than the rounding error of
+the sum it is computed from, see `storage_rounding_error`. `check_negative_storage` uses the
+same tolerance.
 """
 function isoutofdomain(u, p, t)
     (; current_storage) = p.state_and_time_dependent_cache
     (; u_reduced) = p.p_independent
     reduce_state!(u_reduced, u, p.p_independent)
     formulate_storages!(u_reduced, p, t)
-    return any(<(0), current_storage)
+    for (i, storage) in enumerate(current_storage)
+        if storage < 0 && storage < -storage_rounding_error(u, p, i)
+            return true
+        end
+    end
+    return false
+end
+
+"""
+An upper bound of the rounding error in the storage of Basin `i` as computed by
+`formulate_storages!`. The storage is the sum of the initial storage and cumulative flows,
+which keep growing over the simulation. Once these reach 1e6 m³, an empty Basin can have a
+computed storage of -1e-10 m³, and no timestep is small enough to avoid that.
+"""
+function storage_rounding_error(u, p::Parameters, i::Int)::Float64
+    (; basin, basin_state_incidence, flow_boundary) = p.p_independent
+    (;
+        current_cumulative_precipitation,
+        current_cumulative_surface_runoff,
+        current_cumulative_drainage,
+    ) = p.time_dependent_cache.basin
+
+    magnitude =
+        abs(basin.storage0[i]) +
+        abs(current_cumulative_precipitation[i]) +
+        abs(current_cumulative_surface_runoff[i]) +
+        abs(current_cumulative_drainage[i]) +
+        abs(u.evaporation[i]) +
+        abs(u.infiltration[i])
+    n_terms = 6
+    for (state_idx, _) in basin_state_incidence[i]
+        magnitude += abs(u[state_idx])
+        n_terms += 1
+    end
+    for (outflow_link, cumulative_flow) in zip(
+            flow_boundary.outflow_link,
+            p.time_dependent_cache.flow_boundary.current_cumulative_boundary_flow,
+        )
+        outflow_id = outflow_link.link[2]
+        if outflow_id.type == NodeType.Basin && outflow_id.idx == i
+            magnitude += abs(cumulative_flow)
+            n_terms += 1
+        end
+    end
+    return n_terms * eps(magnitude)
 end
 
 function get_demand(user_demand, id, demand_priority_idx, t)::Float64

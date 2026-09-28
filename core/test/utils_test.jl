@@ -342,6 +342,59 @@ end
     @test u.pump[1] == uprev.pump[1]
 end
 
+@testitem "Negative storage within rounding error is in the domain" begin
+    model = Ribasim.Model(normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml"))
+    (; integrator) = model
+    (; p, t) = integrator
+    u = copy(integrator.u)
+    (; current_storage) = p.state_and_time_dependent_cache
+
+    # Cumulative flows of 1e6 m³ that cancel out, as after a long simulation
+    u.evaporation[1] += 1.0e6
+    u.infiltration[1] -= 1.0e6
+    @test !Ribasim.isoutofdomain(u, p, t)
+    @test 0 < Ribasim.storage_rounding_error(u, p, 1) < 1.0e-8
+
+    # Empty the Basin up to rounding: its storage may come out just below zero
+    u.infiltration[1] += current_storage[1] + 1.0e-10
+    @test !Ribasim.isoutofdomain(u, p, t)
+    @test -Ribasim.storage_rounding_error(u, p, 1) < current_storage[1] < 0
+
+    # A storage that is negative beyond rounding is out of the domain
+    u.infiltration[1] += 1.0e-6
+    @test Ribasim.isoutofdomain(u, p, t)
+end
+
+@testitem "Step limiter keeps storage non-negative with evaporation and infiltration" begin
+    using SciMLBase: step!
+
+    model = Ribasim.Model(normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml"))
+    (; integrator) = model
+    (; p) = integrator
+    step!(integrator)
+    (; uprev, t) = integrator
+    # The limiter bounds flows over the step that was just taken
+    integrator.dt = t - integrator.tprev
+    (; current_storage) = p.state_and_time_dependent_cache
+
+    # Evaporate 1 m³ more than the storage of Basin 1 over the last timestep
+    u = copy(integrator.u)
+    Ribasim.isoutofdomain(u, p, t)
+    u.evaporation[1] += current_storage[1] + 1.0
+    @test Ribasim.isoutofdomain(u, p, t)
+
+    # The limiter reduces infiltration and evaporation over the step to empty the Basin
+    infiltration_before = u.infiltration[1]
+    evaporation_before = u.evaporation[1]
+    Ribasim.limit_flow!(u, integrator, p, t)
+    @test !Ribasim.isoutofdomain(u, p, t)
+    @test current_storage[1] ≈ 0 atol = 1.0e-9
+    removed = (infiltration_before - u.infiltration[1]) + (evaporation_before - u.evaporation[1])
+    @test removed ≈ 1.0
+    @test u.infiltration[1] >= uprev.infiltration[1]
+    @test u.evaporation[1] >= uprev.evaporation[1]
+end
+
 @testitem "Residual scaling" begin
     using Ribasim.DiffEqBase: calculate_residuals, calculate_residuals!
 
