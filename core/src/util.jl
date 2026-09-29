@@ -361,6 +361,26 @@ function get_low_storage_factor(p::Parameters, id::NodeID)
 end
 
 """
+The depth of water that an empty Basin keeps: 1% of `depth_threshold`, so 1 mm by default.
+
+The low storage factor reaches 0 at this depth rather than at the bottom, so a Basin that
+empties levels off at a small positive storage instead of approaching zero. Otherwise the
+floating point rounding of the storage, which is computed from cumulative flows, can make an
+empty Basin slightly negative, which the solver has to reject.
+"""
+low_storage_reserve_depth(depth_threshold::Real) = 0.01 * depth_threshold
+
+"""
+The factor with which outflows of Basin `i` are reduced at the given storage. It goes
+smoothly from 0 at the reserve storage to 1 at the low storage threshold, see
+`low_storage_reserve_depth` and `depth_threshold`.
+"""
+function low_storage_factor(storage::T, basin::Basin, i::Int)::T where {T <: Real}
+    reserve = basin.low_storage_reserve[i]
+    return reduction_factor(storage - reserve, basin.low_storage_threshold[i] - reserve)
+end
+
+"""
 For resistance nodes, give a reduction factor based on the upstream node
 as defined by the flow direction.
 """
@@ -918,61 +938,13 @@ end
 
 """
 Check whether any storages are negative given the state u.
-
-A storage is only considered negative if it is below zero by more than the rounding error of
-the sum it is computed from, see `storage_rounding_error`. `check_negative_storage` uses the
-same tolerance.
 """
 function isoutofdomain(u, p, t)
     (; current_storage) = p.state_and_time_dependent_cache
     (; u_reduced) = p.p_independent
     reduce_state!(u_reduced, u, p.p_independent)
     formulate_storages!(u_reduced, p, t)
-    for (i, storage) in enumerate(current_storage)
-        if storage < 0 && storage < -storage_rounding_error(u, p, i)
-            return true
-        end
-    end
-    return false
-end
-
-"""
-An upper bound of the rounding error in the storage of Basin `i` as computed by
-`formulate_storages!`. The storage is the sum of the initial storage and cumulative flows,
-which keep growing over the simulation. Once these reach 1e6 m³, an empty Basin can have a
-computed storage of -1e-10 m³, and no timestep is small enough to avoid that.
-"""
-function storage_rounding_error(u, p::Parameters, i::Int)::Float64
-    (; basin, basin_state_incidence, flow_boundary) = p.p_independent
-    (;
-        current_cumulative_precipitation,
-        current_cumulative_surface_runoff,
-        current_cumulative_drainage,
-    ) = p.time_dependent_cache.basin
-
-    magnitude =
-        abs(basin.storage0[i]) +
-        abs(current_cumulative_precipitation[i]) +
-        abs(current_cumulative_surface_runoff[i]) +
-        abs(current_cumulative_drainage[i]) +
-        abs(u.evaporation[i]) +
-        abs(u.infiltration[i])
-    n_terms = 6
-    for (state_idx, _) in basin_state_incidence[i]
-        magnitude += abs(u[state_idx])
-        n_terms += 1
-    end
-    for (outflow_link, cumulative_flow) in zip(
-            flow_boundary.outflow_link,
-            p.time_dependent_cache.flow_boundary.current_cumulative_boundary_flow,
-        )
-        outflow_id = outflow_link.link[2]
-        if outflow_id.type == NodeType.Basin && outflow_id.idx == i
-            magnitude += abs(cumulative_flow)
-            n_terms += 1
-        end
-    end
-    return n_terms * eps(magnitude)
+    return any(<(0), current_storage)
 end
 
 function get_demand(user_demand, id, demand_priority_idx, t)::Float64
@@ -998,9 +970,10 @@ function min_low_storage_factor(
     ) where {T}
     return if id.type == NodeType.Basin
         low_storage_threshold = basin.low_storage_threshold[id.idx]
-        reduction_factor(
+        low_storage_factor(
             min(storage_now[id.idx], storage_prev[id.idx]) - 2low_storage_threshold,
-            low_storage_threshold,
+            basin,
+            id.idx,
         )
     else
         one(T)

@@ -342,30 +342,27 @@ end
     @test u.pump[1] == uprev.pump[1]
 end
 
-@testitem "Negative storage within rounding error is in the domain" begin
+@testitem "Low storage reserve" begin
     model = Ribasim.Model(normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml"))
-    (; integrator) = model
-    (; p, t) = integrator
-    u = copy(integrator.u)
-    (; current_storage) = p.state_and_time_dependent_cache
+    (; basin) = model.integrator.p.p_independent
+    (; depth_threshold) = model.config.solver
 
-    # Cumulative flows of 1e6 m³ that cancel out, as after a long simulation
-    u.evaporation[1] += 1.0e6
-    u.infiltration[1] -= 1.0e6
-    @test !Ribasim.isoutofdomain(u, p, t)
-    @test 0 < Ribasim.storage_rounding_error(u, p, 1) < 1.0e-8
-
-    # Empty the Basin up to rounding: its storage may come out just below zero
-    u.infiltration[1] += current_storage[1] + 1.0e-10
-    @test !Ribasim.isoutofdomain(u, p, t)
-    @test -Ribasim.storage_rounding_error(u, p, 1) < current_storage[1] < 0
-
-    # A storage that is negative beyond rounding is out of the domain
-    u.infiltration[1] += 1.0e-6
-    @test Ribasim.isoutofdomain(u, p, t)
+    # An empty Basin keeps a depth of 1% of depth_threshold
+    reserve_depth = Ribasim.low_storage_reserve_depth(depth_threshold)
+    @test reserve_depth ≈ 0.001
+    for i in eachindex(basin.node_id)
+        bottom = Ribasim.basin_bottom(basin, basin.node_id[i])[2]
+        reserve = basin.low_storage_reserve[i]
+        @test Ribasim.get_level_from_storage(basin, i, reserve) ≈ bottom + reserve_depth
+        # Outflows are switched off at the reserve, not at zero storage
+        @test Ribasim.low_storage_factor(0.0, basin, i) == 0
+        @test Ribasim.low_storage_factor(reserve, basin, i) == 0
+        @test 0 < Ribasim.low_storage_factor(2reserve, basin, i) < 1
+        @test Ribasim.low_storage_factor(basin.low_storage_threshold[i], basin, i) == 1
+    end
 end
 
-@testitem "Step limiter keeps storage non-negative with evaporation and infiltration" begin
+@testitem "Step limiter keeps evaporation and infiltration above the low storage reserve" begin
     using SciMLBase: step!
 
     model = Ribasim.Model(normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml"))
@@ -376,6 +373,7 @@ end
     # The limiter bounds flows over the step that was just taken
     integrator.dt = t - integrator.tprev
     (; current_storage) = p.state_and_time_dependent_cache
+    reserve = p.p_independent.basin.low_storage_reserve[1]
 
     # Evaporate 1 m³ more than the storage of Basin 1 over the last timestep
     u = copy(integrator.u)
@@ -383,14 +381,14 @@ end
     u.evaporation[1] += current_storage[1] + 1.0
     @test Ribasim.isoutofdomain(u, p, t)
 
-    # The limiter reduces infiltration and evaporation over the step to empty the Basin
+    # The limiter reduces infiltration and evaporation over the step to keep the reserve
     infiltration_before = u.infiltration[1]
     evaporation_before = u.evaporation[1]
     Ribasim.limit_flow!(u, integrator, p, t)
     @test !Ribasim.isoutofdomain(u, p, t)
-    @test current_storage[1] ≈ 0 atol = 1.0e-9
+    @test current_storage[1] ≈ reserve
     removed = (infiltration_before - u.infiltration[1]) + (evaporation_before - u.evaporation[1])
-    @test removed ≈ 1.0
+    @test removed ≈ 1.0 + reserve
     @test u.infiltration[1] >= uprev.infiltration[1]
     @test u.evaporation[1] >= uprev.evaporation[1]
 end
