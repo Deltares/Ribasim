@@ -179,3 +179,24 @@ end
     # Cover order transitions between saved rows
     @test length(unique(mean_order)) > 1
 end
+
+@testitem "Block time series are left-continuous within a timestep" begin
+    using DataInterpolations: ConstantInterpolation, LinearInterpolation
+
+    model = Ribasim.Model(normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml"))
+    (; p) = model.integrator
+    block = ConstantInterpolation([1.0, 2.0], [0.0, 10.0])
+    linear = LinearInterpolation([1.0, 2.0], [0.0, 10.0])
+
+    # A timestep from 5 to 10 integrates the value before the jump at 10, also at its end
+    p.p_mutable.tprev = 5.0
+    @test block(Ribasim.interpolation_time(block, p, 10.0)) == 1.0
+    @test block(Ribasim.interpolation_time(block, p, 7.0)) == 1.0
+    # The next timestep starts at the jump, and sees the value after it
+    p.p_mutable.tprev = 10.0
+    @test block(Ribasim.interpolation_time(block, p, 10.0)) == 2.0
+    @test block(Ribasim.interpolation_time(block, p, 12.0)) == 2.0
+    # Continuous time series are evaluated as is
+    p.p_mutable.tprev = 5.0
+    @test Ribasim.interpolation_time(linear, p, 10.0) == 10.0
+end
