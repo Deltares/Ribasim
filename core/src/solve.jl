@@ -1021,7 +1021,10 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
 
 @inline function DiffEqBase.calculate_residuals!(
         out,
-        ũ, u₀, u₁, abstol, reltol, internalnorm::InternalNorm, t
+        ũ, u₀, u₁, abstol, reltol, internalnorm::InternalNorm, t,
+        # Some algorithms such as Tsit5 always pass this explicitly, which would otherwise
+        # dispatch to the generic DiffEqBase method. We always compute serially.
+        thread::Union{Serial, Threaded} = Serial()
     )
     # All state components (flow, PID integral) are scaled by the magnitude
     # of their change over the time step rather than by their absolute magnitude.

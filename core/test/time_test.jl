@@ -154,3 +154,28 @@ end
     OrdinaryDiffEqCore.post_step_reject!(integrator)
     @test all(j -> cache.zn[j] ≈ zn_before[j], eachindex(zn_before))
 end
+
+@testitem "Saved mean order covers the saved accepted steps" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    # Save after every accepted step, so that each row holds the order of a single step
+    config = Ribasim.Config(toml_path; solver_saveat = 0.0)
+    model = Ribasim.Model(config)
+    Ribasim.solve!(model)
+    (; step_stats) = model.integrator.p.p_independent
+    saved = model.saved.solver_stats.saveval
+
+    # The statistics are saved from within the upstream _loopfooter!, so the order of the
+    # step that was just accepted must already be included when they are sampled,
+    # including the final step.
+    @test last(saved).accepted_timesteps == model.integrator.sol.stats.naccept
+    @test last(saved).order_sum == step_stats.order_sum
+
+    (; accepted_timesteps, mean_order) = Ribasim.solver_stats_data(model)
+    @test all(==(1), accepted_timesteps)
+    # The first step of a BDF method is always first order
+    @test first(mean_order) == 1
+    @test all(>=(1), mean_order)
+    @test sum(mean_order) == step_stats.order_sum
+    # Cover order transitions between saved rows
+    @test length(unique(mean_order)) > 1
+end

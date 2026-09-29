@@ -419,6 +419,61 @@ end
     @test out_of_place ≈ in_place
     # Scaling is by the change over the step, not by the magnitude of the state.
     @test all(≈(1.0 / (abstol + 2.0 * reltol)), out_of_place)
+
+    # Some algorithms such as Tsit5 pass the threading mode explicitly, which must not
+    # fall back to the generic DiffEqBase method that scales by the state magnitude.
+    for thread in (Ribasim.Serial(), Ribasim.Threaded())
+        with_thread = similar(ũ)
+        calculate_residuals!(with_thread, ũ, u₀, u₁, abstol, reltol, internalnorm, t, thread)
+        @test with_thread ≈ in_place
+    end
+
+    # Since only the change over the step matters, a large offset of the cumulative states
+    # must not change the residuals, whichever entry point is used.
+    offset = 1.0e9
+    shifted_in_place = similar(ũ)
+    shifted_threaded = similar(ũ)
+    calculate_residuals!(
+        shifted_in_place, ũ, u₀ .+ offset, u₁ .+ offset, abstol, reltol, internalnorm, t
+    )
+    calculate_residuals!(
+        shifted_threaded, ũ, u₀ .+ offset, u₁ .+ offset, abstol, reltol, internalnorm, t,
+        Ribasim.Serial(),
+    )
+    shifted_out_of_place = calculate_residuals(
+        ũ, u₀ .+ offset, u₁ .+ offset, abstol, reltol, internalnorm, t
+    )
+    @test shifted_in_place ≈ in_place
+    @test shifted_threaded ≈ in_place
+    @test shifted_out_of_place ≈ in_place
+end
+
+@testitem "Residual scaling Tsit5" begin
+    using Ribasim: OrdinaryDiffEqCore, SciMLBase
+    using Ribasim.DiffEqBase: calculate_residuals!
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    config = Ribasim.Config(toml_path; solver_algorithm = "Tsit5")
+    model = Ribasim.Model(config)
+    (; integrator) = model
+    (; cache) = integrator
+    (; abstol, reltol, internalnorm) = integrator.opts
+
+    # Let the cumulative states grow well beyond their change over a single step, so that
+    # scaling by the change and scaling by the magnitude give different residuals.
+    for _ in 1:10
+        SciMLBase.step!(integrator)
+    end
+    OrdinaryDiffEqCore.perform_step!(integrator, cache)
+    (; uprev, u, t) = integrator
+    (; utilde, atmp) = cache
+
+    expected = similar(atmp)
+    calculate_residuals!(expected, utilde, uprev, u, abstol, reltol, internalnorm, t)
+    by_magnitude = @. utilde / (abstol + max(abs(uprev), abs(u)) * reltol)
+    @test !(expected ≈ by_magnitude)
+    # The error estimate that Tsit5 computed itself must use our scaling
+    @test atmp ≈ expected
 end
 
 @testitem "FlatVector" begin
