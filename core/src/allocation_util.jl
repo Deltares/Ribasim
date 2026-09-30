@@ -145,17 +145,22 @@ function analyze_infeasibility(
     JuMP.optimize!(problem)
 
     for irreducible_infeasible_subset in data_infeasibility.iis
-        constraint_violations = OrderedDict{JuMP.ConstraintRef, Float64}()
+        # Pre-render into a single plain string, embedded directly in the log message:
+        # the default logger elides long *values* (kwargs) but prints the message text
+        # itself in full.
+        lines = String[]
         for constraint_index in irreducible_infeasible_subset.constraint
             constraint_ref = constraint_ref_from_index(problem, constraint_index)
             if constraint_ref === nothing
                 continue
             elseif !isempty(JuMP.name(constraint_ref))
-                constraint_violations[constraint_ref] =
-                    JuMP.value(constraint_to_slack[constraint_ref])
+                constraint_text = sprint(show, constraint_ref; context = :limit => false)
+                slack = JuMP.value(constraint_to_slack[constraint_ref])
+                push!(lines, "$constraint_text => $slack")
             end
         end
-        @error "Set of incompatible constraints found" constraint_violations
+        constraint_violations = join(lines, '\n')
+        @error "Set of incompatible constraints found:\n$constraint_violations"
         status = JuMP.INFEASIBLE
     end
     return status

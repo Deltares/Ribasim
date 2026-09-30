@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 - Allocation: Normalize LevelDemand fairness constraints by the current mean Basin area per demand priority, improving numerical conditioning for large Basins.
 - Allocation: Use a deterministic minimum-inlet-flow tie-break when collecting secondary-network demands from the primary network.
+- Allocation: Fix the `low_storage_factor` being applied twice for non-allocation-controlled Pump and Outlet nodes (once via the physical layer's flow rate, once via the allocation `low_storage_factor` decision variable), which made their flows overly conservative during low storage. Pump and Outlet now go through the same linearized-connector-node mechanism as LinearResistance, ManningResistance and TabulatedRatingCurve, so `low_storage_factor` uniformly governs the low-storage reduction of every connector node type instead of being partly baked into a stale physical-layer scalar.
 
 ## [v2026.1.2] - 2026-06-16
 

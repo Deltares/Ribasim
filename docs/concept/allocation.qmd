@@ -21,7 +21,7 @@ sequenceDiagram
 ```
 
 ## Allocation Networks
-Allocation is the process of assigning an optimized allocated flow rate to demand nodes in the physical layer of the model based on information about sources and their route priorities, the different demand nodes over various demand priorities, constraints introduced by nodes, local water availability and graph topology. It solves a linearized version of the problem formulated for the [physical layer](/concept/modelconcept.qmd#physical-layer) a period of time ahead of the physical layer, while simultaneously optimizing allocated flows and steering certain structures to get the water from (preferred) source to demand. The physics is implemented in an implicit manner, rather like the [implicit Euler](https://en.wikipedia.org/wiki/Backward_Euler_method) numerical method.
+Allocation is the process of assigning an optimized allocated flow rate to demand nodes in the physical layer of the model based on information about sources and their route priorities, the different demand nodes over various demand priorities, constraints introduced by nodes, local water availability and graph topology. It solves a linearized version of the problem formulated for the [physical layer](/concept/modelconcept.qmd#physical-layer) a period of time ahead of the physical layer, while simultaneously optimizing allocated flows and steering certain structures to get the water from (preferred) source to demand. The physics is implemented using a semi-implicit, linearized discretization: nonlinear flow-level relationships are linearized using derivative information from the start of the allocation timestep, while the storage and level unknowns being solved for are the values predicted at its end. This is a cheaper approximation of a fully implicit method, not an exact (nonlinear) implicit solve.
 
 The allocation problem is solved per subnetwork of the Ribasim model. A subnetwork is defined by all nodes that have the same subnetwork ID in the [Node table](/reference/usage.qmd#node). By default, all nodes get a subnetwork ID of 1. Each subnetwork is used to formulate a linear optimization problem with the [JuMP](https://jump.dev/JuMP.jl/stable/) package, which is solved using the [HiGHS solver](https://highs.dev/). For more in-depth information see also the example of solving the maximum flow problem with `JuMP.jl` [here](https://jump.dev/JuMP.jl/stable/tutorials/linear/network_flows/#The-max-flow-problem).
 
@@ -77,14 +77,15 @@ In the optimization problem, the water balance must be discretized over the allo
 
 $$\Delta t = t^{n+1} - t^{n}$$
 
-Where the superscript $^n$ denotes evaluation at the beginning of the timestep and $^{n+1}$ at the end. We then use a backward Euler approximation:
+Where the superscript $^n$ denotes evaluation at the beginning of the timestep and $^{n+1}$ at the end. We then use a semi-implicit (linearized backward Euler) approximation:
 
 $$\frac{dS}{dt} \approx \frac{S^{n+1} - S^{n}}{\Delta t} = \sum_{k=1}^{N_l} Q_{k}^{n+1} $$
 
 Under the assumption that
 
 - flows are constant over $\Delta t$
-- coefficients in linearized equations are evaluated at the beginning of the timestep
+- nonlinear flow-level relationships are linearized (see below), not exactly resolved at $t^{n+1}$: the partial derivatives are evaluated at the beginning of the timestep, and only the level/storage unknowns are the end-of-timestep values
+- forcing terms that do not depend on the state (e.g. precipitation) are treated fully explicitly, independent of $t^{n+1}$
 - The allocation timestep $\Delta t$ is short enough that linearization remains valid
 
 ## Linearization

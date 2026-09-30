@@ -436,7 +436,8 @@ function linear_resistance_flow(
         h_a::Number,
         h_b::Number,
         p::Parameters,
-        t::Number = 0.0,
+        t::Number = 0.0;
+        apply_low_storage_factor::Bool = true,
     )::Number
     (; resistance, max_flow_rate) = linear_resistance
     inflow_link = linear_resistance.inflow_link[node_id.idx]
@@ -448,6 +449,7 @@ function linear_resistance_flow(
     Δh = h_a - h_b
     q_unlimited = Δh / resistance[node_id.idx]
     q = clamp(q_unlimited, -max_flow_rate[node_id.idx], max_flow_rate[node_id.idx])
+    apply_low_storage_factor || return q
     return q * low_storage_factor_resistance_node(p, q_unlimited, inflow_id, outflow_id)
 end
 
@@ -457,7 +459,8 @@ function tabulated_rating_curve_flow(
         h_a::Number,
         h_b::Number,
         p::Parameters,
-        t::Number,
+        t::Number;
+        apply_low_storage_factor::Bool = true,
     )::Number
     (; current_interpolation_index, interpolations) = tabulated_rating_curve
     (; level_difference_threshold) = p.p_independent
@@ -465,7 +468,7 @@ function tabulated_rating_curve_flow(
     inflow_id = inflow_link.link[1]
     Δh = h_a - h_b
 
-    factor = get_low_storage_factor(p, inflow_id)
+    factor = apply_low_storage_factor ? get_low_storage_factor(p, inflow_id) : 1.0
     interpolation_index = current_interpolation_index[node_id.idx](t)
     qh = interpolations[interpolation_index]
     q = factor * qh(h_a)
@@ -532,7 +535,8 @@ function manning_resistance_flow(
         h_a::Number,
         h_b::Number,
         p::Parameters,
-        t::Number = 0.0,
+        t::Number = 0.0;
+        apply_low_storage_factor::Bool = true,
     )::Number
     (;
         length,
@@ -586,6 +590,7 @@ function manning_resistance_flow(
 
     q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, threshold)
 
+    apply_low_storage_factor || return q
     return q * low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
 end
 
@@ -655,6 +660,117 @@ function formulate_flow!(
     return nothing
 end
 
+"""
+Per-node pump/outlet flow, evaluated at given upstream/downstream levels so it can also
+serve as a `flow_function` for allocation's linearization (see `linearize_connector_node!`).
+"""
+function pump_or_outlet_flow(
+        node::Union{Pump, Outlet},
+        node_id::NodeID,
+        h_a::Number,
+        h_b::Number,
+        p::Parameters,
+        t::Number,
+        current_flow_rate::Vector{<:Number},
+        component_cache::NamedTuple,
+        reduce_Δlevel::Bool = false;
+        apply_low_storage_factor::Bool = true,
+    )::Number
+    (; allocation, flow_demand, level_difference_threshold) = p.p_independent
+    (;
+        current_min_flow_rate,
+        current_max_flow_rate,
+        current_min_upstream_level,
+        current_max_downstream_level,
+    ) = component_cache
+
+    node_idx = node_id.idx
+    inflow_link = node.inflow_link[node_idx]
+    min_flow_rate = node.min_flow_rate[node_idx]
+    max_flow_rate = node.max_flow_rate[node_idx]
+    control_type = node.control_type[node_idx]
+    min_upstream_level = node.min_upstream_level[node_idx]
+    max_downstream_level = node.max_downstream_level[node_idx]
+
+    flow_rate = if control_type != ContinuousControlType.None
+        current_flow_rate[node_idx]
+    elseif isassigned(node.time_dependent_flow_rate, node_idx)
+        # get the time dependent flow rate from interpolation or cached value
+        eval_time_interpolation(
+            node.time_dependent_flow_rate[node_idx],
+            current_flow_rate,
+            node_idx,
+            p,
+            t,
+        )
+    else
+        # get the scalar flow rate from  (for DiscreteControl, Control by allocation or flows from the Static table)
+        node.flow_rate[node_idx]
+    end
+
+    inflow_id = inflow_link.link[1]
+
+    q = flow_rate
+    apply_low_storage_factor && (q *= get_low_storage_factor(p, inflow_id))
+
+    lower_bound =
+        eval_time_interpolation(min_flow_rate, current_min_flow_rate, node_idx, p, t)
+    upper_bound =
+        eval_time_interpolation(max_flow_rate, current_max_flow_rate, node_idx, p, t)
+
+    # When allocation is not active, set the flow demand directly as a lower bound on the
+    # pump or outlet flow rate
+    if !is_active(allocation)
+        has_demand, flow_demand_id = has_external_demand(node, node_id)
+        if has_demand
+            total_demand = 0.0
+            has_any_demand_priority = false
+            demand_interpolations = flow_demand.demand_interpolation[flow_demand_id.idx]
+            for (demand_priority_idx, demand_interpolation) in
+                enumerate(demand_interpolations)
+                if flow_demand.has_demand_priority[
+                        flow_demand_id.idx,
+                        demand_priority_idx,
+                    ]
+                    has_any_demand_priority = true
+                    total_demand += demand_interpolation(t)
+                end
+            end
+
+            if has_any_demand_priority
+                lower_bound = clamp(total_demand, lower_bound, upper_bound)
+            end
+        end
+    end
+    q = clamp(q, lower_bound, upper_bound)
+
+    # Special case for outlet: check level difference
+    if reduce_Δlevel
+        Δlevel = h_a - h_b
+        q *= reduction_factor(Δlevel, level_difference_threshold)
+    end
+
+    min_upstream_level_ = eval_time_interpolation(
+        min_upstream_level,
+        current_min_upstream_level,
+        node_idx,
+        p,
+        t,
+    )
+    q *= reduction_factor(h_a - min_upstream_level_, level_difference_threshold)
+
+    max_downstream_level_ = eval_time_interpolation(
+        max_downstream_level,
+        current_max_downstream_level,
+        node_idx,
+        p,
+        t,
+    )
+    q *= reduction_factor(max_downstream_level_ - h_b, level_difference_threshold)
+
+    return q
+end
+
 function formulate_pump_or_outlet_flow!(
         du_component::SubArray{<:Number},
         node::Union{Pump, Outlet},
@@ -665,107 +781,26 @@ function formulate_pump_or_outlet_flow!(
         component_cache::NamedTuple,
         reduce_Δlevel::Bool = false,
     )::Nothing
-    (; allocation, flow_demand, level_difference_threshold) = p.p_independent
-    (;
-        current_min_flow_rate,
-        current_max_flow_rate,
-        current_min_upstream_level,
-        current_max_downstream_level,
-    ) = component_cache
-
     for node_idx in eachindex(node.node_id)
+        node.control_type[node_idx] != relevant_control_type && continue
+
         id = node.node_id[node_idx]
-        inflow_link = node.inflow_link[node_idx]
-        outflow_link = node.outflow_link[node_idx]
-        min_flow_rate = node.min_flow_rate[node_idx]
-        max_flow_rate = node.max_flow_rate[node_idx]
-        control_type = node.control_type[node_idx]
-        min_upstream_level = node.min_upstream_level[node_idx]
-        max_downstream_level = node.max_downstream_level[node_idx]
+        inflow_id = node.inflow_link[node_idx].link[1]
+        outflow_id = node.outflow_link[node_idx].link[2]
+        h_a = get_level(p, inflow_id, t)
+        h_b = get_level(p, outflow_id, t)
 
-        if control_type != relevant_control_type
-            continue
-        end
-
-        flow_rate = if control_type != ContinuousControlType.None
-            current_flow_rate[id.idx]
-        elseif isassigned(node.time_dependent_flow_rate, node_idx)
-            # get the time dependent flow rate from interpolation or cached value
-            eval_time_interpolation(
-                node.time_dependent_flow_rate[node_idx],
-                current_flow_rate,
-                id.idx,
-                p,
-                t,
-            )
-        else
-            # get the scalar flow rate from  (for DiscreteControl, Control by allocation or flows from the Static table)
-            node.flow_rate[id.idx]
-        end
-
-        inflow_id = inflow_link.link[1]
-        outflow_id = outflow_link.link[2]
-        src_level = get_level(p, inflow_id, t)
-        dst_level = get_level(p, outflow_id, t)
-
-        q = flow_rate * get_low_storage_factor(p, inflow_id)
-
-        lower_bound =
-            eval_time_interpolation(min_flow_rate, current_min_flow_rate, node_idx, p, t)
-        upper_bound =
-            eval_time_interpolation(max_flow_rate, current_max_flow_rate, node_idx, p, t)
-
-        # When allocation is not active, set the flow demand directly as a lower bound on the
-        # pump or outlet flow rate
-        if !is_active(allocation)
-            has_demand, flow_demand_id = has_external_demand(node, id)
-            if has_demand
-                total_demand = 0.0
-                has_any_demand_priority = false
-                demand_interpolations = flow_demand.demand_interpolation[flow_demand_id.idx]
-                for (demand_priority_idx, demand_interpolation) in
-                    enumerate(demand_interpolations)
-                    if flow_demand.has_demand_priority[
-                            flow_demand_id.idx,
-                            demand_priority_idx,
-                        ]
-                        has_any_demand_priority = true
-                        total_demand += demand_interpolation(t)
-                    end
-                end
-
-                if has_any_demand_priority
-                    lower_bound = clamp(total_demand, lower_bound, upper_bound)
-                end
-            end
-        end
-        q = clamp(q, lower_bound, upper_bound)
-
-        # Special case for outlet: check level difference
-        if reduce_Δlevel
-            Δlevel = src_level - dst_level
-            q *= reduction_factor(Δlevel, level_difference_threshold)
-        end
-
-        min_upstream_level_ = eval_time_interpolation(
-            min_upstream_level,
-            current_min_upstream_level,
-            node_idx,
+        du_component[node_idx] = pump_or_outlet_flow(
+            node,
+            id,
+            h_a,
+            h_b,
             p,
             t,
+            current_flow_rate,
+            component_cache,
+            reduce_Δlevel,
         )
-        q *= reduction_factor(src_level - min_upstream_level_, level_difference_threshold)
-
-        max_downstream_level_ = eval_time_interpolation(
-            max_downstream_level,
-            current_max_downstream_level,
-            node_idx,
-            p,
-            t,
-        )
-        q *= reduction_factor(max_downstream_level_ - dst_level, level_difference_threshold)
-
-        du_component[node_idx] = q
     end
     return nothing
 end

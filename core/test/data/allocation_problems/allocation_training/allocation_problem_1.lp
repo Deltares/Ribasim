@@ -9,10 +9,10 @@ c5: 1 user_demand_error_UserDemand_#9,3,first_ <= 0
 c6: 1 user_demand_error_UserDemand_#9,3,second_ <= 0
 c7: -1 low_storage_factor_Basin_#3_ - 1 low_storage_factor_Basin_#7_ <= -2
 user_demand_relative_error_constraint_UserDemand_#6,4_: 1 user_demand_allocated_UserDemand_#6,4_ >= 0
-user_demand_relative_error_constraint_UserDemand_#9,3_: 1 user_demand_allocated_UserDemand_#9,3_ + 0.00015082153221759146 user_demand_error_UserDemand_#9,3,first_ >= 0.00015082153221759146
-user_demand_relative_error_constraint_UserDemand_#10,2_: 1 user_demand_allocated_UserDemand_#10,2_ + 0.0003016430644351829 user_demand_error_UserDemand_#10,2,first_ >= 0.0003016430644351829
-storage_constraint_lower_Basin_#7,1_: 1 basin_storage_change_Basin_#7_ + 1 level_demand_error_Basin_#7,1,lower,first_ >= -0.780254548741751
-storage_constraint_upper_Basin_#7,1_: -1 basin_storage_change_Basin_#7_ + 1 level_demand_error_Basin_#7,1,upper,first_ >= -0.8630717293790889
+user_demand_relative_error_constraint_UserDemand_#9,3_: 1 user_demand_allocated_UserDemand_#9,3_ + 0.00015527603707128453 user_demand_error_UserDemand_#9,3,first_ >= 0.00015527603707128453
+user_demand_relative_error_constraint_UserDemand_#10,2_: 1 user_demand_allocated_UserDemand_#10,2_ + 0.00031055207414256906 user_demand_error_UserDemand_#10,2,first_ >= 0.00031055207414256906
+storage_constraint_lower_Basin_#7,1_: 1 basin_storage_change_Basin_#7_ + 1 level_demand_error_Basin_#7,1,lower,first_ >= -0.7357445061378537
+storage_constraint_upper_Basin_#7,1_: -1 basin_storage_change_Basin_#7_ + 1 level_demand_error_Basin_#7,1,upper,first_ >= -0.9561173144513503
 user_demand_fairness_error_constraint_UserDemand_#6,4_: -1 user_demand_error_UserDemand_#6,4,first_ + 1 user_demand_error_UserDemand_#6,4,second_ + 1 average_flow_unit_error_4_ >= 0
 user_demand_fairness_error_constraint_UserDemand_#9,3_: -1 user_demand_error_UserDemand_#9,3,first_ + 1 user_demand_error_UserDemand_#9,3,second_ + 1 average_flow_unit_error_3_ >= 0
 user_demand_fairness_error_constraint_UserDemand_#10,2_: -1 user_demand_error_UserDemand_#10,2,first_ + 1 user_demand_error_UserDemand_#10,2,second_ + 1 average_flow_unit_error_2_ >= 0
@@ -33,28 +33,28 @@ average_flow_unit_error_constraint_3_: -1 user_demand_error_UserDemand_#9,3,firs
 average_flow_unit_error_constraint_4_: 1 average_flow_unit_error_4_ = 0
 average_storage_unit_error_constraint_1,upper_: -1 level_demand_error_Basin_#7,1,upper,first_ + 1 average_storage_unit_error_1,upper_ = 0
 average_storage_unit_error_constraint_1,lower_: -1 level_demand_error_Basin_#7,1,lower,first_ + 1 average_storage_unit_error_1,lower_ = 0
-tabulated_rating_curve_constraint_TabulatedRatingCurve_#4_: -0.05075881870385562 basin_storage_change_Basin_#3_ + 1 flow_(Basin_#3,_TabulatedRatingCurve_#4)_ = 0.010517433901260545
-tabulated_rating_curve_constraint_TabulatedRatingCurve_#8_: 1 flow_(Basin_#7,_TabulatedRatingCurve_#8)_ = 0
+tabulated_rating_curve_constraint_TabulatedRatingCurve_#4_: -0.051473262974439826 basin_storage_change_Basin_#3_ - 0.008241002601379261 low_storage_factor_Basin_#3_ + 1 flow_(Basin_#3,_TabulatedRatingCurve_#4)_ = 0
+tabulated_rating_curve_constraint_TabulatedRatingCurve_#8_: 7.7359871502232 basin_storage_change_Basin_#3_ - 1.029784983568574 basin_storage_change_Basin_#7_ - 0.007418118139974176 low_storage_factor_Basin_#7_ + 1 flow_(Basin_#7,_TabulatedRatingCurve_#8)_ = 0
 Bounds
--0.1939453184664732 <= basin_storage_change_Basin_#3_ <= 0.20020161906216583
--1.6917672216282265 <= basin_storage_change_Basin_#7_ <= 2.1426607606537345
+-0.14908853672077696 <= basin_storage_change_Basin_#3_ <= 0.25669950682551324
+-1.6741786508186727 <= basin_storage_change_Basin_#7_ <= 2.2734989305561375
 0 <= low_storage_factor_Basin_#3_ <= 1
 0 <= low_storage_factor_Basin_#7_ <= 1
-flow_(FlowBoundary_#1,_Basin_#7)_ = 0.003566929236946038
-flow_(FlowBoundary_#2,_Basin_#3)_ = 1.5082153221759147e-5
+flow_(FlowBoundary_#1,_Basin_#7)_ = 0.003934849220606018
+flow_(FlowBoundary_#2,_Basin_#3)_ = 8.297041470119512e-5
 flow_(Basin_#7,_UserDemand_#6)_ = 0
 flow_(UserDemand_#6,_Basin_#3)_ = 0
-0 <= flow_(Basin_#7,_UserDemand_#9)_ <= 0.00015082153221759146
-0 <= flow_(UserDemand_#9,_Basin_#3)_ <= 0.00015082153221759146
-flow_(Basin_#7,_TabulatedRatingCurve_#8)_ = 0
-flow_(TabulatedRatingCurve_#8,_Basin_#3)_ = 0
-0.0006729986427592901 <= flow_(Basin_#3,_TabulatedRatingCurve_#4)_ <= 0.02067943158745538
-0 <= flow_(Basin_#7,_UserDemand_#10)_ <= 0.0003016430644351829
-0 <= flow_(UserDemand_#10,_Basin_#3)_ <= 0.0003016430644351829
-0.0006729986427592901 <= flow_(TabulatedRatingCurve_#4,_Terminal_#5)_ <= 0.02067943158745538
+0 <= flow_(Basin_#7,_UserDemand_#9)_ <= 0.00015527603707128453
+0 <= flow_(UserDemand_#9,_Basin_#3)_ <= 0.00015527603707128453
+-3.702450002554993 <= flow_(Basin_#7,_TabulatedRatingCurve_#8)_ <= 3.501980181303407
+-3.702450002554993 <= flow_(TabulatedRatingCurve_#8,_Basin_#3)_ <= 3.501980181303407
+0.0005669291442762797 <= flow_(Basin_#3,_TabulatedRatingCurve_#4)_ <= 0.021454163821617914
+0 <= flow_(Basin_#7,_UserDemand_#10)_ <= 0.00031055207414256906
+0 <= flow_(UserDemand_#10,_Basin_#3)_ <= 0.00031055207414256906
+0.0005669291442762797 <= flow_(TabulatedRatingCurve_#4,_Terminal_#5)_ <= 0.021454163821617914
 user_demand_allocated_UserDemand_#6,4_ = 0
-0 <= user_demand_allocated_UserDemand_#9,3_ <= 0.00015082153221759146
-0 <= user_demand_allocated_UserDemand_#10,2_ <= 0.0003016430644351829
+0 <= user_demand_allocated_UserDemand_#9,3_ <= 0.00015527603707128453
+0 <= user_demand_allocated_UserDemand_#10,2_ <= 0.00031055207414256906
 0 <= user_demand_error_UserDemand_#6,4,first_ <= 1
 0 <= user_demand_error_UserDemand_#6,4,second_ <= 1
 0 <= user_demand_error_UserDemand_#9,3,first_ <= 1
