@@ -184,8 +184,8 @@ end
     dtmin::Float64 = 0.0
     dtmax::Union{Float64, Nothing} = nothing
     force_dtmin::Bool = false
-    abstol::Float64 = 1.0e-5
-    reltol::Float64 = 1.0e-5
+    abstol::Float64 = 1.0e-4
+    reltol::Float64 = 1.0e-4
     water_balance_abstol::Float64 = 1.0e-3
     water_balance_reltol::Float64 = 1.0e-2
     maxiters::Int = 1.0e9
@@ -195,6 +195,7 @@ end
     depth_threshold::Float64 = 0.1
     max_depth::Float64 = 2000.0
     level_difference_threshold::Float64 = 0.02
+    min_discrete_control_interval::Float64 = 1.0
     specialize::Bool = false
 end
 
