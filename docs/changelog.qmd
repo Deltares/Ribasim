@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Allocation: Pump and Outlet nodes that connect the primary network to a secondary network are no longer made allocation controlled automatically; they must have `allocation_controlled` set to `true`, otherwise an error is thrown.
 
 ### Fixed
+- A DiscreteControl state change is now reported to the integrator as a discontinuity of the right hand side. It previously changed the parameters silently, so the integrator carried a derivative that no longer matched the equations, which showed up as rejected timesteps.
+- The initial DiscreteControl state is now based on the initial value of each condition, instead of always starting from `false`. A condition with hysteresis that starts between `threshold_low` and `threshold_high` now takes the side it is closest to, rather than always starting below both and having to cross `threshold_high` before it responds. Models without hysteresis are unaffected.
 - The nonlinear solver now scales its increment by the change of each state over the timestep, like the error estimate does. It previously fell back to scaling by the cumulative magnitude of the states, which made its convergence check increasingly lenient over a simulation.
 - The first timestep is now exempt from the `solver.min_discrete_control_interval` check. Setting the initial control state at $t = 0$ no longer counts as a control state change, which made any change on the first timestep fail.
 - Allocation: Normalize LevelDemand fairness constraints by the current mean Basin area per demand priority, improving numerical conditioning for large Basins.

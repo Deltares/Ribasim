@@ -58,6 +58,7 @@ using SciMLBase:
     check_error!,
     successful_retcode,
     CallbackSet,
+    DiscreteCallback,
     ODEFunction,
     ODEProblem,
     get_du,
