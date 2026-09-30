@@ -643,6 +643,11 @@ function discrete_control_initialize(c, u, t, integrator)::Nothing
     return apply_discrete_control!(integrator; initialize = true)
 end
 
+"""
+Set the control state for a DiscreteControl node from its truth state.
+Returns `(node_errors, node_changed)`, indicating whether an error occurred and whether
+the control state changed.
+"""
 function set_new_control_state!(
         integrator,
         discrete_control_id::NodeID,

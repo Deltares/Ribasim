@@ -58,13 +58,12 @@ It *ranks* the nodes, it does not measure how wrong they are.
 A high value does not mean the node is misconfigured or that its results are inaccurate; it means the node is the one holding the solver back.
 The top entry is therefore always at or near 1, and it is the node to look at first.
 Because the solver uses one timestep for the whole model, a single node that is hard to solve slows down everything else with it.
-Unphysical parameters are a common cause: in the example above, `Outlet #2310` had a `flow_rate` of 99999.0, and `ManningResistance #2383` a roughness low enough to make the flow react almost instantly to a level change.
+Unphysical parameters are a common cause: in the example above, `Outlet #2310` had a `flow_rate` of 99999.0, and `ManningResistance #2383` a roughness low enough to hardly have any friction.
 
 ### 2. Find out when and where, using the results
 
 The same measure is written per node and per `saveat` interval as the `convergence` variable in `basin.nc` and `flow.nc`, see the [output files](/reference/usage.qmd#sec-results).
 Plot it over time to see whether a node is always problematic or only during, for example, a dry spell or a control switch.
-Because the model geometry is in the results as well, you can also map it to see if the problem is localised in one part of the network.
 
 ### 3. Find out why, using the solver statistics
 
@@ -93,15 +92,15 @@ A `mean_order` that is stuck around 1 or 2 while the solver can go up to 5 is a 
 
 Once you know the node, the usual causes are:
 
-- **Unphysical parameter values**, often placeholders such as `9999` or `99999` for `flow_rate` or `max_flow_rate`.
+- **Unphysical parameter values**, often placeholders such as `9999` for `flow_rate`.
   These are not harmless: the flow rate multiplies the slope of the flow-versus-level relation, and that slope is what sets the timestep.
-- **A very small Basin** next to a large one, so a small flow changes its level quickly.
-  Consider merging it into its neighbour.
+- **A small Basin bottom area**, so even a modest flow changes its level quickly.
+  Start its profile with an area of at least 10 m².
 - **A `ManningResistance` between two Basins at almost the same level**, which sits on the steep part of its equation.
   Check its `profile_width`, `length` and `manning_n`, or merge the two Basins.
-- **Thresholds that coincide**, for example an `Outlet` whose `min_upstream_level` equals the level of the downstream `LevelBoundary`.
 
-Loosening `reltol` in the [solver settings](/reference/usage.qmd#sec-solver-settings) trades accuracy for speed and can help, but it treats the symptom rather than the cause.
+Loosening `abstol` and `reltol` in the [solver settings](/reference/usage.qmd#sec-solver-settings) can speed up a model at the cost of accuracy.
+Compare the results with a run using stricter tolerances to check whether the differences are acceptable.
 
 ## Unstable models
 

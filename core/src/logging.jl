@@ -74,7 +74,7 @@ function log_bottlenecks(model; interrupt::Bool, level = LoggingExtras.Warn)
     for i in sortperm(flow_error; rev = true)
         node_id = Symbol(p_independent.node_id[i])
         error = flow_error[i]
-        isnan(error) && continue  # NaN are sorted as largest
+        (ismissing(error) || isnan(error)) && continue
         # Stop reporting errors if they are too small or too many
         if error < 1 / length(flow_error) || error_count >= max_errors
             break

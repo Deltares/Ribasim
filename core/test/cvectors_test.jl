@@ -90,9 +90,16 @@ end
 @testitem "State label" begin
     using Ribasim.CVectors: CVector
 
-    u = CVector(zeros(3), (; flow = 1:1, pid_control = 2:3))
-    state_inflow_link = [(; link = (nothing, 42))]
+    u = CVector(zeros(4), (; pump = 1:1, evaporation = 2:3, integral = 4:4))
+    node_id = [
+        Ribasim.NodeID(:Pump, 42, 1),
+        Ribasim.NodeID(:Basin, 7, 1),
+        Ribasim.NodeID(:Basin, 8, 2),
+        Ribasim.NodeID(:PidControl, 9, 1),
+    ]
 
-    @test Ribasim.state_label(u, state_inflow_link, 1) == "42"
-    @test Ribasim.state_label(u, state_inflow_link, 2) == "pid_control 1"
+    @test Ribasim.state_label(u, node_id, 1) == "Pump #42"
+    @test Ribasim.state_label(u, node_id, 3) == "Basin #8 (evaporation)"
+    @test Ribasim.state_label(u, node_id, 4) == "PidControl #9 (integral)"
+    @test Ribasim.state_label(u, node_id, 5) == "state 5"
 end
