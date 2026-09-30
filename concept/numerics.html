@@ -44,7 +44,7 @@ ul.task-list li input[type="checkbox"] {
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-1a244954d5b0f38d497e8f737258600d.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-c4c5be523477798eee25f778810fffa4.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -262,7 +262,7 @@ window.Quarto = {
   <li><a href="#qh-relations" id="toc-qh-relations" class="nav-link" data-scroll-target="#qh-relations"><span class="header-section-number">4.2</span> Q(h) relations</a></li>
   <li><a href="#empty-basins" id="toc-empty-basins" class="nav-link" data-scroll-target="#empty-basins"><span class="header-section-number">4.3</span> Empty basins</a></li>
   </ul></li>
-  <li><a href="#compensating-for-cumulative-flows" id="toc-compensating-for-cumulative-flows" class="nav-link" data-scroll-target="#compensating-for-cumulative-flows"><span class="header-section-number">5</span> Compensating for cumulative flows</a></li>
+  <li><a href="#error-control-for-cumulative-flows" id="toc-error-control-for-cumulative-flows" class="nav-link" data-scroll-target="#error-control-for-cumulative-flows"><span class="header-section-number">5</span> Error control for cumulative flows</a></li>
   </ul>
 </nav>
     </div>
@@ -382,22 +382,16 @@ Note
 <p><a href="../reference/node/basin.html#sec-reduction-factor">Reduction factors</a> are introduced at several points in the definition of <span class="math inline">\(\mathbf{f}\)</span> to smooth out otherwise discontinuous transitions (e.g.&nbsp;the flow rate of a pump going to zero when the source basin dries out). If flows are not too large with respect to basin storage, this will prevent basins from reaching 0. Rather, the basin gets a very small storage. The reduction factors help with performance, but are also an important tool to avoid getting negative storage in basins. Negative storage needs to be avoided since it is not a real solution, and would introduce water into the model that doesn’t exist. Another tool used to avoid negative storage is the <a href="https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/"><code>isoutoutofdomain</code></a> option, which Ribasim makes use of. This rejects timesteps that lead to negative storage, instead retrying with a smaller timestep.</p>
 </section>
 </section>
-<section id="compensating-for-cumulative-flows" class="level1" data-number="5">
-<h1 data-number="5"><span class="header-section-number">5</span> Compensating for cumulative flows</h1>
-<p>As the cumulative flows in <span class="math inline">\(\mathbf{u}\)</span> grow over time, the error tolerance based on <code>reltol</code> grows as well. The error tolerance is roughly <span class="math inline">\(\text{abstol} + \mathbf{u} * \text{reltol}\)</span>, see <a href="https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/">Basic Stepsize Control</a>. The error tolerance is thus based on the cumulative flow current <span class="math inline">\(\mathbf{u}\)</span>, and not on the instantaneous flow over the current timestep <span class="math inline">\(\mathbf{u}-\mathbf{u_{t-1}}\)</span>. Thus, after a thousand seconds with a flow of <span class="math inline">\(1\text{ m}^3/\text{s}\)</span>, the error tolerance has increased from <span class="math inline">\(10^{-5}\)</span> to <span class="math inline">\(10^{-2}\)</span>.</p>
-<p>To compensate for this, we decrease the <code>reltol</code> per state over time. The formula for the new tolerance can be expressed as:</p>
+<section id="error-control-for-cumulative-flows" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Error control for cumulative flows</h1>
+<p>The states in <span class="math inline">\(\mathbf{u}\)</span> are cumulative quantities that grow monotonically over time. With the default SciML error control the tolerance per state would be roughly <span class="math inline">\(\text{abstol} + |\mathbf{u}| * \text{reltol}\)</span>, see <a href="https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/">Basic Stepsize Control</a>. That means the tolerance is based on the cumulative flow so far rather than on the flow over the current timestep, so it keeps loosening as the simulation progresses: after a thousand seconds at <span class="math inline">\(1\text{ m}^3/\text{s}\)</span> an effective <code>reltol</code> of <span class="math inline">\(10^{-5}\)</span> has degraded to <span class="math inline">\(10^{-2}\)</span>. It also makes the tolerance depend on arbitrary offsets: a large Basin with little throughflow would get a very loose tolerance purely because of its storage.</p>
+<p>Ribasim therefore overrides <code>calculate_residuals</code> so that each state is scaled by the magnitude of its <em>change</em> over the timestep instead of its absolute magnitude:</p>
 <p><span class="math display">\[
-\text{reltol}' = \max\left(10^{\log_{10}(\text{reltol}) - \text{diff\_norm}}, 10^{-14}\right)
+\text{residual}_i = \frac{\tilde{u}_i}{\text{abstol} + |u_{1,i} - u_{0,i}| * \text{reltol}}
 \]</span></p>
-<p>Where:</p>
-<ul>
-<li><span class="math inline">\(\text{reltol}'\)</span> is the new relative tolerance, and <span class="math inline">\(\text{reltol}\)</span> is the configured relative tolerance.</li>
-<li><span class="math inline">\(\text{diff\_norm} = \max\left(0, \log_{10}\left(\frac{\text{cum\_magnitude}}{\text{avg\_magnitude}}\right)\right)\)</span></li>
-<li><span class="math inline">\(\text{cum\_magnitude}\)</span> is the cumulative magnitude (<span class="math inline">\(\text{internalnorm}\)</span>) of the state.</li>
-<li><span class="math inline">\(\text{avg\_magnitude} = \max\left(\text{internalnorm}(10^4, t),\frac{\text{cum\_magnitude}}{t}\right)\)</span> where <span class="math inline">\(t\)</span> is the current time.</li>
-</ul>
-<p>This formula ensures that the new tolerance decreases based on the difference between the cumulative magnitude and the average magnitude (once the cumulative magnitude exceeds <span class="math inline">\(10^{4}\)</span>), with a lower bound of <span class="math inline">\(10^{-14}\)</span>, roughly the floating point precision.</p>
-<p>The tolerance reduction is applied as a callback at fixed times—starting at an hour—that double in their interval afterwards (e.g.&nbsp;1, 2, 4, 8 hours etc.). This doubling accounts for the order of difference between the average and cumulative flows over time, which decreases exponentially as well.</p>
+<p>This keeps the meaning of <code>abstol</code> and <code>reltol</code> constant over the whole simulation, and makes them independent of the size of the Basin storages. The same scaling is applied to the increment of the nonlinear solver, so that the nonlinear solve and the error estimate weigh the states in the same way.</p>
+<p>Note that this changes the units in which the tolerances should be interpreted. <code>abstol</code> is an absolute tolerance on the volume passed by a state during a single timestep (in <span class="math inline">\(\text{m}^3\)</span>), and <code>reltol</code> is relative to that same per-step volume. It acts as a floor for states that carry almost no flow during a timestep, where the <code>reltol</code> term vanishes; setting it too low makes such states dictate the timestep for the whole model. Since it is a volume per timestep and not a rate, <code>abstol</code> should not be scaled with <code>dt</code>.</p>
+<p>The default of <span class="math inline">\(10^{-4}\ \text{m}^3\)</span> is the largest value that is accurate across model scales, from a handful of Basins up to a national model. Because it is an absolute volume it does not scale with the model, so a large model can often raise it to <span class="math inline">\(10^{-2}\ \text{m}^3\)</span> for a substantial speedup at no measurable loss of accuracy, while the same setting on a small model is roughly two orders of magnitude less accurate. If you raise it, verify against a run with a tighter tolerance.</p>
 
 
 </section>

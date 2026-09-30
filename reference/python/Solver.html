@@ -77,7 +77,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-1a244954d5b0f38d497e8f737258600d.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-c4c5be523477798eee25f778810fffa4.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -206,9 +206,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-attributes anchored" data-number="1.1" data-anchor-id="attributes"><span class="header-section-number">1.1</span> Attributes</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 15%">
+<col style="width: 16%">
 <col style="width: 4%">
-<col style="width: 80%">
+<col style="width: 79%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -251,12 +251,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td>abstol</td>
 <td>float</td>
-<td>The absolute tolerance for adaptive timestepping (Optional, defaults to 1e-7)</td>
+<td>The absolute tolerance for adaptive timestepping, applied to the change of each state over a time step, in m3 (Optional, defaults to 1e-4)</td>
 </tr>
 <tr class="even">
 <td>reltol</td>
 <td>float</td>
-<td>The relative tolerance for adaptive timestepping (Optional, defaults to 1e-7)</td>
+<td>The relative tolerance for adaptive timestepping, applied to the change of each state over a time step (Optional, defaults to 1e-4)</td>
 </tr>
 <tr class="odd">
 <td>maxiters</td>
@@ -274,26 +274,31 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Whether automatic differentiation instead of fine difference is used to compute the Jacobian. (Optional, defaults to true)</td>
 </tr>
 <tr class="even">
-<td>depth_threshold</td>
-<td>float</td>
-<td>Universal depth at which the low storage factor kicks in</td>
-</tr>
-<tr class="odd">
-<td>max_depth</td>
-<td>float</td>
-<td>Universal maximum Basin depth above which the Basin is flagged when the model becomes unstable</td>
-</tr>
-<tr class="even">
-<td>level_difference_threshold</td>
-<td>float</td>
-<td>Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes</td>
-</tr>
-<tr class="odd">
 <td>evaporate_mass</td>
 <td>bool</td>
 <td>Whether mass is lost due to evaporation in water quality calculations. (Optional, defaults to true)</td>
 </tr>
+<tr class="odd">
+<td>depth_threshold</td>
+<td>float</td>
+<td>Universal depth at which the low storage factor kicks in</td>
+</tr>
 <tr class="even">
+<td>max_depth</td>
+<td>float</td>
+<td>Universal maximum Basin depth above which the Basin is flagged when the model becomes unstable</td>
+</tr>
+<tr class="odd">
+<td>level_difference_threshold</td>
+<td>float</td>
+<td>Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes</td>
+</tr>
+<tr class="even">
+<td>min_discrete_control_interval</td>
+<td>float</td>
+<td>The minimum time between control state updates, if the time is smaller an error will be thrown</td>
+</tr>
+<tr class="odd">
 <td>specialize</td>
 <td>bool</td>
 <td>Trades initialization speed for simulation speed, useful for long-running simulations. (Optional, defaults to false)</td>
