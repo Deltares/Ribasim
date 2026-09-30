@@ -342,6 +342,25 @@ end
     @test u.pump[1] == uprev.pump[1]
 end
 
+@testitem "Previous storage and level are tracked without concentration" begin
+    using SciMLBase: step!
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    config = Ribasim.Config(toml_path; experimental_concentration = false)
+    model = Ribasim.Model(config)
+    (; integrator) = model
+    (; basin) = integrator.p.p_independent
+    (; current_storage, current_level) = integrator.p.state_and_time_dependent_cache
+
+    # The step limiter estimates the lowest storage and level over a time step from these.
+    # The storage is recomputed at the same time after the update, up to round-off.
+    for _ in 1:3
+        step!(integrator)
+        @test basin.storage_prev ≈ current_storage
+        @test basin.level_prev == current_level
+    end
+end
+
 @testitem "Low storage reserve" begin
     model = Ribasim.Model(normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml"))
     (; basin) = model.integrator.p.p_independent

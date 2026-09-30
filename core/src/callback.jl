@@ -85,48 +85,52 @@ function create_callbacks(
 end
 
 """
+Add the forcings which are integrated exactly (precipitation, surface runoff, drainage and
+FlowBoundary flows) over the time step that ended at `t` to their cumulative values, and make
+`t` the start of the next time step by setting `p_mutable.tprev`.
+"""
+function update_cumulative_forcing!(p::Parameters, t::Float64)::Nothing
+    (; p_independent, p_mutable) = p
+    (; basin, flow_boundary) = p_independent
+    (; vertical_flux) = basin
+    tprev = p_mutable.tprev
+    dt = t - tprev
+
+    for id in basin.node_id
+        i = id.idx
+        fixed_area = basin_areas(basin, i)[end]
+        precipitation = fixed_area * vertical_flux.precipitation[i] * dt
+        basin.cumulative_precipitation[i] += precipitation
+        basin.cumulative_precipitation_saveat[i] += precipitation
+        surface_runoff = dt * vertical_flux.surface_runoff[i]
+        basin.cumulative_surface_runoff[i] += surface_runoff
+        basin.cumulative_surface_runoff_saveat[i] += surface_runoff
+        drainage = dt * vertical_flux.drainage[i]
+        basin.cumulative_drainage[i] += drainage
+        basin.cumulative_drainage_saveat[i] += drainage
+    end
+
+    for id in flow_boundary.node_id
+        boundary_flow = boundary_flow_integral(flow_boundary, id.idx, tprev, t)
+        flow_boundary.cumulative_flow[id.idx] += boundary_flow
+        flow_boundary.cumulative_flow_saveat[id.idx] += boundary_flow
+    end
+
+    p_mutable.tprev = t
+    return nothing
+end
+
+"""
 Update with the latest timestep:
-- Cumulative flows/forcings which are integrated exactly
 - Cumulative flows/forcings which are input for the allocation algorithm
 - Cumulative flows/forcings which are supplied demands in the allocation context
 
-During these cumulative flow updates, we can also update the mass balance of the system,
-as each flow carries mass, based on the concentrations of the flow source.
-Specifically, we first use all the inflows to update the mass of the Basins, recalculate
-the Basin concentration(s) and then remove the mass that is being lost to the outflows.
+The forcings which are integrated exactly are updated in `check_negative_storage`, see
+`update_cumulative_forcing!`.
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
-    (; cache, p) = integrator
-    (; p_independent, p_mutable, time_dependent_cache) = p
-    (; basin, flow_boundary, allocation) =
-        p_independent
-
-    # Update tprev
-    p_mutable.tprev = t
-
-    # Update cumulative forcings which are integrated exactly
-    @. basin.cumulative_drainage_saveat +=
-        time_dependent_cache.basin.current_cumulative_drainage - basin.cumulative_drainage
-    @. basin.cumulative_drainage = time_dependent_cache.basin.current_cumulative_drainage
-
-    @. basin.cumulative_precipitation_saveat +=
-        time_dependent_cache.basin.current_cumulative_precipitation -
-        basin.cumulative_precipitation
-    @. basin.cumulative_precipitation =
-        time_dependent_cache.basin.current_cumulative_precipitation
-
-    @. basin.cumulative_surface_runoff_saveat +=
-        time_dependent_cache.basin.current_cumulative_surface_runoff -
-        basin.cumulative_surface_runoff
-    @. basin.cumulative_surface_runoff =
-        time_dependent_cache.basin.current_cumulative_surface_runoff
-
-    # Update cumulative boundary flow which is integrated exactly
-    @. flow_boundary.cumulative_flow_saveat +=
-        time_dependent_cache.flow_boundary.current_cumulative_boundary_flow -
-        flow_boundary.cumulative_flow
-    @. flow_boundary.cumulative_flow =
-        time_dependent_cache.flow_boundary.current_cumulative_boundary_flow
+    (; p) = integrator
+    (; allocation) = p.p_independent
 
     # Update supplied flows for allocation input and output
     for allocation_model in allocation.allocation_models
@@ -157,7 +161,12 @@ function update_concentrations!(u, t, integrator)::Nothing
         mass,
     ) = concentration_data
 
-    !do_concentration && return nothing
+    if !do_concentration
+        # The step limiter also uses these, see `min_low_storage_factor`
+        basin.storage_prev .= current_storage
+        basin.level_prev .= current_level
+        return nothing
+    end
 
     # Reset cumulative flows, used to calculate the concentration
     cumulative_in .= vertical_flux.drainage * dt
@@ -538,11 +547,12 @@ function check_negative_storage(u, t, integrator)::Nothing
     (; basin) = p_independent
     du = get_du(integrator)
 
-    # The accepted time step ends at t, which is the start of the next one. From here on,
-    # piecewise constant time series take their value after a possible jump at t, see
+    # The accepted time step ends at t, which is the start of the next one. Integrate the
+    # forcings over the time step and set p_mutable.tprev to t. From here on, piecewise
+    # constant time series take their value after a possible jump at t, see
     # `interpolation_time`. The time dependent cache still holds the values from before the
     # jump, as the last evaluation at t was part of the time step, so it is renewed.
-    p.p_mutable.t_step_start = t
+    update_cumulative_forcing!(p, t)
     p.time_dependent_cache.t_prev_call[1] = -1.0
     water_balance!(du, u, p, t)
 

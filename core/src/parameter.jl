@@ -1227,15 +1227,13 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
    and thus whether `time_dependent_cache` must be updated
 - `new_state_and_time_dependent_cache`: Whether the `t` and/or `u_reduced` with which `water_balance!` are called are
    considered new, and thus whether caches that (only) depend on `u_reduced` must be updated
-- `tprev`: The previous `t` before the latest time step
-- `t_step_start`: The start of the current time step, set as soon as a time step is accepted,
-   see [`interpolation_time`](@ref)
+- `tprev`: The start of the current time step, set as soon as a time step is accepted, see
+   [`update_cumulative_forcing!`](@ref) and [`interpolation_time`](@ref)
 """
 @kwdef mutable struct ParametersMutable
     new_time_dependent_cache::Bool = true
     new_state_and_time_dependent_cache::Bool = true
     tprev::Float64 = 0.0
-    t_step_start::Float64 = 0.0
 end
 
 """
