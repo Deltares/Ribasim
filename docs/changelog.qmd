@@ -5,12 +5,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Python: `solver.min_discrete_control_interval` is now settable; it was documented but missing from the `Solver` class.
+
 ### Changed
 - The `dt` in `results/solver_stats.nc` is now the average timestep size over the `saveat` interval, instead of the size of the last timestep.
 - Allocation: Allocation controlled Pump and Outlet nodes now require a finite `max_flow_rate`. Models that do not satisfy this are rejected with an error.
 - Allocation: Pump and Outlet nodes that connect the primary network to a secondary network are no longer made allocation controlled automatically; they must have `allocation_controlled` set to `true`, otherwise an error is thrown.
 
 ### Fixed
+- The nonlinear solver now scales its increment by the change of each state over the timestep, like the error estimate does. It previously fell back to scaling by the cumulative magnitude of the states, which made its convergence check increasingly lenient over a simulation.
+- The first timestep is now exempt from the `solver.min_discrete_control_interval` check. Setting the initial control state at $t = 0$ no longer counts as a control state change, which made any change on the first timestep fail.
 - Allocation: Normalize LevelDemand fairness constraints by the current mean Basin area per demand priority, improving numerical conditioning for large Basins.
 - Allocation: Use a deterministic minimum-inlet-flow tie-break when collecting secondary-network demands from the primary network.
 

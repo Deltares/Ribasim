@@ -641,7 +641,9 @@ function set_new_control_state!(
         if update_dt < min_discrete_control_interval
             @error lazy"$discrete_control_id changed control state with a smaller time interval than min_discrete_control_interval." update_dt min_discrete_control_interval
             return true
-        else
+        elseif !iszero(t)
+            # The control state is initialized at t = 0, which is not a change to measure
+            # the interval from, so the first timestep is exempt from the check above.
             last_update_time[discrete_control_id.idx] = t
         end
 

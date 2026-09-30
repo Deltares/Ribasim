@@ -317,6 +317,32 @@ end
     @test dense_alg.linsolve == Ribasim.config.RibasimLinearSolve(LUFactorization())
 end
 
+@testitem "Residual scaling" begin
+    using Ribasim.DiffEqBase: calculate_residuals, calculate_residuals!
+
+    model =
+        Ribasim.Model(normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml"))
+    internalnorm = model.integrator.opts.internalnorm
+    @test internalnorm isa Ribasim.InternalNorm
+
+    # The states are cumulative, so give them a large magnitude with a small change
+    # over the step; this is where the two possible scalings differ most.
+    u₀ = fill!(similar(model.integrator.u), 1.0e6)
+    u₁ = u₀ .+ 2.0
+    ũ = fill!(similar(u₀), 1.0)
+    abstol, reltol, t = 1.0, 1.0e-4, 0.0
+
+    in_place = similar(ũ)
+    calculate_residuals!(in_place, ũ, u₀, u₁, abstol, reltol, internalnorm, t)
+    out_of_place = calculate_residuals(ũ, u₀, u₁, abstol, reltol, internalnorm, t)
+
+    # The nonlinear solver uses the out-of-place method to weigh its Newton increment,
+    # so it must scale identically to the error estimate, which uses the in-place one.
+    @test out_of_place ≈ in_place
+    # Scaling is by the change over the step, not by the magnitude of the state.
+    @test all(≈(1.0 / (abstol + 2.0 * reltol)), out_of_place)
+end
+
 @testitem "FlatVector" begin
     vv = [[2.2, 3.2], [4.3, 5.3], [6.4, 7.4]]
     fv = Ribasim.FlatVector(vv)

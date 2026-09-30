@@ -121,7 +121,7 @@ seconds at $1\text{ m}^3/\text{s}$ an effective `reltol` of $10^{-5}$ has degrad
 It also makes the tolerance depend on arbitrary offsets: a large Basin with little throughflow
 would get a very loose tolerance purely because of its storage.
 
-Ribasim therefore overrides `calculate_residuals!` so that each state is scaled by the
+Ribasim therefore overrides `calculate_residuals` so that each state is scaled by the
 magnitude of its *change* over the timestep instead of its absolute magnitude:
 
 $$
@@ -130,9 +130,19 @@ $$
 
 This keeps the meaning of `abstol` and `reltol` constant over the whole simulation, and makes
 them independent of the size of the Basin storages.
+The same scaling is applied to the increment of the nonlinear solver, so that the nonlinear
+solve and the error estimate weigh the states in the same way.
 
 Note that this changes the units in which the tolerances should be interpreted.
 `abstol` is an absolute tolerance on the volume passed by a state during a single timestep
 (in $\text{m}^3$), and `reltol` is relative to that same per-step volume.
-Consequently `abstol` does not scale with the size of the model, so it should not be raised
-far above its default without checking the effect on small models.
+It acts as a floor for states that carry almost no flow during a timestep, where the `reltol`
+term vanishes; setting it too low makes such states dictate the timestep for the whole model.
+Since it is a volume per timestep and not a rate, `abstol` should not be scaled with `dt`.
+
+The default of $10^{-4}\ \text{m}^3$ is the largest value that is accurate across model scales,
+from a handful of Basins up to a national model.
+Because it is an absolute volume it does not scale with the model, so a large model can often
+raise it to $10^{-2}\ \text{m}^3$ for a substantial speedup at no measurable loss of accuracy,
+while the same setting on a small model is roughly two orders of magnitude less accurate.
+If you raise it, verify against a run with a tighter tolerance.

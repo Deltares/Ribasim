@@ -141,7 +141,7 @@ class Solver(ChildModel):
         (Optional, defaults to False)
     abstol : float
         The absolute tolerance for adaptive timestepping, applied to the change of
-        each state over a time step (Optional, defaults to 1e-4)
+        each state over a time step, in m3 (Optional, defaults to 1e-4)
     reltol : float
         The relative tolerance for adaptive timestepping, applied to the change of
         each state over a time step (Optional, defaults to 1e-4)
@@ -180,6 +180,7 @@ class Solver(ChildModel):
     depth_threshold: float = 0.1
     max_depth: float = 2000.0
     level_difference_threshold: float = 0.02
+    min_discrete_control_interval: float = 1.0
     specialize: bool = False
 
 
