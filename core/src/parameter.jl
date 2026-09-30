@@ -5,7 +5,29 @@ const SolverStats = @NamedTuple{
     linear_solves::Int,
     accepted_timesteps::Int,
     rejected_timesteps::Int,
+    rejected_nonlinear_solve::Int,
+    rejected_local_error::Int,
+    rejected_out_of_domain::Int,
+    order_sum::Int,
 }
+
+"""
+Statistics of the attempted timesteps, filled in by our `loopfooter!` override.
+
+The rejection causes are:
+
+- `nonlinear_solve`: the nonlinear solver did not converge within the tolerance.
+- `local_error`: the estimated error over the step was too large.
+- `out_of_domain`: the step left the physically valid domain, see [`isoutofdomain`](@ref).
+
+`order_sum` is the sum of the algorithm order over the accepted steps, to report the mean.
+"""
+@kwdef mutable struct StepStats
+    rejected_nonlinear_solve::Int = 0
+    rejected_local_error::Int = 0
+    rejected_out_of_domain::Int = 0
+    order_sum::Int = 0
+end
 
 const state_components = (
     :tabulated_rating_curve,
@@ -1257,8 +1279,10 @@ the object itself is not.
     # Callback configurations
     do_concentration::Bool
     do_subgrid::Bool
+    "How much of the solver error is attributed to each state, see [`accumulate_residual!`](@ref)."
     convergence::RibasimCVectorType{Float64}
     convergence_ncalls::Vector{Int} = [0]
+    step_stats::StepStats = StepStats()
     # Reduced state where the cumulative flows are combined into Basin
     # storages (without non-state cumulative_flows)
     u_reduced::RibasimReducedCVectorType{Float64}

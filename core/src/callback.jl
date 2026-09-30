@@ -507,13 +507,21 @@ end
 
 function save_solver_stats(u, t, integrator)
     (; stats) = integrator.sol
+    (; step_stats) = integrator.p.p_independent
     return (;
         time = t,
         time_ns = time_ns(),
         rhs_calls = stats.nf,
         linear_solves = stats.nsolve,
         accepted_timesteps = stats.naccept,
-        rejected_timesteps = stats.nreject,
+        # Not stats.nreject, which counts only the local error and out of domain rejections
+        rejected_timesteps = step_stats.rejected_nonlinear_solve +
+            step_stats.rejected_local_error +
+            step_stats.rejected_out_of_domain,
+        rejected_nonlinear_solve = step_stats.rejected_nonlinear_solve,
+        rejected_local_error = step_stats.rejected_local_error,
+        rejected_out_of_domain = step_stats.rejected_out_of_domain,
+        order_sum = step_stats.order_sum,
     )
 end
 

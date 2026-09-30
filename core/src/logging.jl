@@ -52,12 +52,10 @@ function log_startup(config, toml_path::AbstractString)::Nothing
 end
 
 "Log the convergence bottlenecks."
-function log_bottlenecks(model; interrupt::Bool)
+function log_bottlenecks(model; interrupt::Bool, level = LoggingExtras.Warn)
     (; integrator, saved) = model
     (; cache, p, u) = integrator
     (; p_independent) = p
-
-    level = LoggingExtras.Warn
 
     flow_error = if p_independent.convergence_ncalls[1] > 0
         p_independent.convergence ./ p_independent.convergence_ncalls[1]
@@ -68,7 +66,7 @@ function log_bottlenecks(model; interrupt::Bool)
         return nothing
     end
 
-    errors = Pair{Symbol, String}[]
+    errors = Pair{Symbol, Float64}[]
     error_count = 0
     max_errors = 5
     # Iterate over the errors in descending order
@@ -80,11 +78,11 @@ function log_bottlenecks(model; interrupt::Bool)
         if error < 1 / length(flow_error) || error_count >= max_errors
             break
         end
-        push!(errors, node_id => @sprintf("%.2f", error * 100) * "%")
+        push!(errors, node_id => round(error; digits = 2))
         error_count += 1
     end
     if !isempty(errors)
-        @logmsg level "Convergence bottlenecks in descending order of severity:" errors...
+        @logmsg level "Convergence bottlenecks in descending order of severity (1.0 is the worst):" errors...
     end
     return nothing
 end
@@ -92,6 +90,7 @@ end
 "Log messages after the computation."
 function log_finalize(model)::Cint
     if success(model)
+        log_bottlenecks(model; interrupt = false, level = LoggingExtras.Info)
         @info "The model finished successfully at $(now())."
         return 0
     else

@@ -37,20 +37,71 @@ In all these cases the reduction factors still apply, and may be the reason allo
 
 ## Slow models
 
-When your model is slow, it's often only a handful of nodes that are hard to solve. If the model finishes or is interrupted, convergence bottlenecks are shown like so:
+When your model is slow, it is usually only a handful of nodes that are hard to solve.
+Ribasim points them out in three places, from coarse to detailed.
+
+### 1. Read the convergence bottlenecks in the log
+
+At the end of every run, whether it succeeded, failed or was interrupted, Ribasim lists the nodes that were hardest to solve:
 
 ```julia
-┌ Info: Convergence bottlenecks in descending order of severity:
-│   ManningResistance #251242 = 0.09023997405863035
-│   ManningResistance #70523 = 0.006218636603583534
-│   ManningResistance #251181 = 0.004716432403226626
-│   ManningResistance #251182 = 0.0035319514660666165
-└   ManningResistance #591558 = 0.003284110004804508
+┌ Info: Convergence bottlenecks in descending order of severity (1.0 is the worst):
+│   Outlet #2310 = 1.0
+│   Pump #10720 = 0.65
+│   ManningResistance #2383 = 0.61
+│   ManningResistance #5494 = 0.36
+└   TabulatedRatingCurve #7185 = 0.36
 ```
 
-It's best to inspect these nodes, and try to adjust the parametrization, or merge smaller nodes. You can find the convergence measure per node over time in the `flow.nc` and `basin.nc` [output files](/reference/usage.qmd#sec-results).
+The value is a severity score: the share of the local error estimate that Ribasim attributes to that node, averaged over time and normalized so that the worst node of every timestep scores 1.
+It *ranks* the nodes, it does not measure how wrong they are.
+A high value does not mean the node is misconfigured or that its results are inaccurate; it means the node is the one holding the solver back.
+The top entry is therefore always at or near 1, and it is the node to look at first.
+Because the solver uses one timestep for the whole model, a single node that is hard to solve slows down everything else with it.
+Unphysical parameters are a common cause: in the example above, `Outlet #2310` had a `flow_rate` of 99999.0, and `ManningResistance #2383` a roughness low enough to make the flow react almost instantly to a level change.
 
-To gain further insight into model performance, one can inspect the `solver_stats.nc` output file, which gives the number of computations, number of rejected and accepted solutions, and the size of each calculation timestep.
+### 2. Find out when and where, using the results
+
+The same measure is written per node and per `saveat` interval as the `convergence` variable in `basin.nc` and `flow.nc`, see the [output files](/reference/usage.qmd#sec-results).
+Plot it over time to see whether a node is always problematic or only during, for example, a dry spell or a control switch.
+Because the model geometry is in the results as well, you can also map it to see if the problem is localised in one part of the network.
+
+### 3. Find out why, using the solver statistics
+
+`solver_stats.nc` records per `saveat` interval how much work the solver did and why it had to redo it:
+
+| variable | meaning |
+| --- | --- |
+| `dt` | average calculation timestep size in seconds; this is the number to grow |
+| `accepted_timesteps` | timesteps that were kept |
+| `rejected_timesteps` | timesteps that were thrown away and retried with a smaller step |
+| `rejected_local_error` | rejected because the estimated error over the step was too large |
+| `rejected_nonlinear_solve` | rejected because the solver could not solve the equations to the required accuracy |
+| `rejected_out_of_domain` | rejected because a Basin would have run dry within the step |
+| `mean_order` | average order of the accepted timesteps |
+| `rhs_calls`, `linear_solves` | raw solver work |
+| `computation_time` | wall time in milliseconds spent on the interval |
+
+A high `rejected_local_error` means the model is *stiff*: some node reacts far faster than the timestep you would like to take.
+Combine it with the convergence bottlenecks above to find which node, then look at its parametrization.
+
+A high `rejected_nonlinear_solve` or `rejected_out_of_domain` instead points at a Basin that is (nearly) empty, or at a discontinuity such as a control switch.
+
+A `mean_order` that is stuck around 1 or 2 while the solver can go up to 5 is a second sign of stiffness or of a discontinuity that keeps resetting the solver.
+
+### What to change
+
+Once you know the node, the usual causes are:
+
+- **Unphysical parameter values**, often placeholders such as `9999` or `99999` for `flow_rate` or `max_flow_rate`.
+  These are not harmless: the flow rate multiplies the slope of the flow-versus-level relation, and that slope is what sets the timestep.
+- **A very small Basin** next to a large one, so a small flow changes its level quickly.
+  Consider merging it into its neighbour.
+- **A `ManningResistance` between two Basins at almost the same level**, which sits on the steep part of its equation.
+  Check its `profile_width`, `length` and `manning_n`, or merge the two Basins.
+- **Thresholds that coincide**, for example an `Outlet` whose `min_upstream_level` equals the level of the downstream `LevelBoundary`.
+
+Loosening `reltol` in the [solver settings](/reference/usage.qmd#sec-solver-settings) trades accuracy for speed and can help, but it treats the symptom rather than the cause.
 
 ## Unstable models
 
@@ -59,7 +110,12 @@ When your model exits with a message like so:
 ┌ Error: The model exited at model time 2024-01-27T14:46:17.791 with return code Unstable. See https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes
 ```
 
-it's best to rerun the model with `saveat = 0` in the [solver](/reference/usage.qmd#sec-solver-settings) settings. The model might then instead exit with
+the solver kept shrinking the timestep until it gave up.
+The convergence bottlenecks are logged in this case as well, and they name the node to start with.
+
+To see what happened just before the model gave up, rerun with `saveat = 0` in the [solver](/reference/usage.qmd#sec-solver-settings) settings.
+All output up to the moment of the error is written, so the last few rows of `basin.nc`, `flow.nc` and `solver_stats.nc` show the state of the model as it went unstable.
+The model might then instead exit with
 
 ```julia
 ┌ Error: Too large water balance error
@@ -69,4 +125,10 @@ it's best to rerun the model with `saveat = 0` in the [solver](/reference/usage.
 ```
 
 which helps you pin down the problematic node(s).
-The normal output for every calculation timestep is written until the moment of error, so one can use this information to understand the problem.
+
+The `rejected_*` variables in `solver_stats.nc` tell you which wall the solver ran into:
+
+- `rejected_out_of_domain` rising means a Basin is being drained faster than it can supply.
+  Check the outgoing connector nodes and the Basin profile.
+- `rejected_nonlinear_solve` rising means the equations themselves became hard to solve, typically around a discontinuity such as a control switch or a `TabulatedRatingCurve` with a sharp kink.
+- `rejected_local_error` rising means the model is stiff rather than truly unstable; see [slow models](#slow-models).
