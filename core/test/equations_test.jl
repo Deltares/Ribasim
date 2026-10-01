@@ -254,7 +254,8 @@ end
 end
 
 @testitem "ManningResistance derivatives are finite at an empty Basin" setup = [ManningSetup] begin
-    using ForwardDiff: gradient
+    using Ribasim: ForwardDiff
+    gradient = ForwardDiff.gradient
     make, flow = ManningSetup.manning_test_setup()
     w, s = 10.0, 1.0
     # Empty upstream Basin that lies higher than its neighbour, both Basins empty, and an
