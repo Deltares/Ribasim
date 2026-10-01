@@ -117,8 +117,11 @@ function add_conservation!(
 
     # Define constraints: Basin water balance (volume conservation)
     # Mathematical formulation: dS/dt = Σ Q_in - Σ Q_out + f_pos - f_neg
-    # Discretized (backward Euler): ΔS = Δt * (Σ Q_in - Σ Q_out + f_pos - α * f_neg)
-    # where α (low_storage_factor) prevents negative storage by reducing outflows
+    # Discretized with a semi-implicit (linearized) scheme, not a fully implicit Euler step:
+    # ΔS = Δt * (Σ Q_in - Σ Q_out + f_pos - α * f_neg)
+    # f_pos is explicit (state-independent); α (low_storage_factor) is the decision variable
+    # that linearizes the state-dependent reduction of f_neg and of Q_in/Q_out, preventing
+    # negative storage without needing a nonlinear (fully implicit) solve
     storage_change = problem[:basin_storage_change]
     low_storage_factor = problem[:low_storage_factor]
     flow = problem[:flow]
@@ -493,25 +496,17 @@ end
 
 function add_pump_or_outlet!(
         allocation_model::AllocationModel,
-        node_type::NodeType.T,
         node_data::Union{Pump, Outlet},
         node_id::Vector{NodeID},
     )::Nothing
-    (; problem) = allocation_model
-    flow = problem[:flow]
-
     # Get the IDs of nodes in the subnetwork which are not controlled by allocation
     node_ids_not_allocation_controlled =
         filter(id -> !node_data.allocation_controlled[id.idx], node_id)
 
-    q = 1.0 # Example value (scaling.flow * m^3/s, to be filled in before optimizing)
-    constraint_name = Symbol(lowercase(string(node_type)))
-    problem[constraint_name] = JuMP.@constraint(
-        problem,
-        [node_id = node_ids_not_allocation_controlled],
-        flow[node_data.inflow_link[node_id.idx].link] ==
-            q * get_low_storage_factor(problem, node_data.inflow_link[node_id.idx].link[1]),
-        base_name = "$(constraint_name)_constraint"
+    add_linearized_connector_node!(
+        allocation_model,
+        node_data,
+        node_ids_not_allocation_controlled,
     )
     return nothing
 end
@@ -522,7 +517,6 @@ function add_pump!(
     )::Nothing
     add_pump_or_outlet!(
         allocation_model,
-        NodeType.Pump,
         p_independent.pump,
         allocation_model.node_ids_in_subnetwork.pump_ids_subnetwork,
     )
@@ -535,7 +529,6 @@ function add_outlet!(
     )::Nothing
     add_pump_or_outlet!(
         allocation_model,
-        NodeType.Outlet,
         p_independent.outlet,
         allocation_model.node_ids_in_subnetwork.outlet_ids_subnetwork,
     )

@@ -279,11 +279,14 @@ problem[Symbol(constraint_name)] = JuMP.@constraint(
 **Mathematical formulation:**
 $$\frac{dS}{dt} = \sum_{k=1}^{N_l} Q_k + f_{\text{pos}} - f_{\text{neg}}$$
 
-Discretized with backward Euler:
-$$\frac{S^{n+1} - S^n}{\Delta t} = \sum_{k} Q_k^{n+1} + f^{n+1}_{\text{pos}} - f^{n+1}_{\text{neg}}$$
+Discretized with a semi-implicit (linearized) scheme, not a fully implicit Euler step.
+$f_{\text{pos}}$ (precipitation, drainage) is state-independent and thus explicit; $Q_k$ and
+$f_{\text{neg}}$ (evaporation, infiltration) depend on the state and are linearized around
+their end-of-step values via the `low_storage_factor` decision variable:
+$$\frac{S^{n+1} - S^n}{\Delta t} = \sum_{k} Q_k^{n+1} + f_{\text{pos}} - f^{n+1}_{\text{neg}}$$
 
 Or in terms of storage change $\Delta S = S^{n+1} - S^n$:
-$$\Delta S = \Delta t \left(\sum_{k} Q_k^{n+1} + f^{n+1}_{\text{pos}} - f^{n+1}_{\text{neg}}\right)$$
+$$\Delta S = \Delta t \left(\sum_{k} Q_k^{n+1} + f_{\text{pos}} - f^{n+1}_{\text{neg}}\right)$$
 
 **Code implementation:**
 
@@ -303,7 +306,7 @@ problem[:volume_conservation] = JuMP.@constraint(
 ```
 
 **Key points:**
-- The `low_storage_factor` multiplies the implicit negative forcing (evaporation, infiltration) to prevent negative storage
+- The `low_storage_factor` linearizes the state-dependent negative forcing (evaporation, infiltration) to prevent negative storage, without requiring a nonlinear (fully implicit) solve
 - Forcing terms (`f_pos`, `f_neg`) represent precipitation, drainage, surface runoff, evaporation and infiltration
 - The coefficient `scaling.flow / scaling.storage` converts the scaled flow rates to a scaled storage change over the allocation timestep
 - Updated each optimization with current forcing values
@@ -674,10 +677,12 @@ function linearize_connector_node!(
     t::Float64,
     Δt_allocation,
 )
-    (; scaling) = allocation_model
+    (; problem, scaling) = allocation_model
     (; inflow_link, outflow_link) = connector_node
 
-    # Evaluate at the end of the allocation timestep (backward Euler)
+    # Evaluate at the end of the allocation timestep. This is semi-implicit, not a fully
+    # implicit Euler step: the partial derivatives below are frozen at the start of the
+    # timestep, only the level unknowns being solved for are the end-of-step values.
     t_after = t + Δt_allocation
 
     for node_id in only(flow_constraint.axes)
@@ -688,13 +693,42 @@ function linearize_connector_node!(
         h_a = get_level(p, inflow_id, t_after)
         h_b = get_level(p, outflow_id, t_after)
 
-        # Flow at the linearization point becomes the constraint right-hand side
         constraint = flow_constraint[node_id]
-        q0 = flow_function(connector_node, node_id, h_a, h_b, p, t_after)
-        JuMP.set_normalized_rhs(constraint, q0 / scaling.flow)
+
+        # Raw (unreduced) flow: the physical low-storage scalar must not be baked in here,
+        # otherwise it would be double-applied on top of the `low_storage_factor` variable
+        # set below. This raw value becomes the coefficient of that variable (or, when
+        # neither side of the connector is a Basin, the plain constraint right-hand side).
+        q0_raw = flow_function(
+            connector_node, node_id, h_a, h_b, p, t_after;
+            apply_low_storage_factor = false,
+        )
+
+        # The basin whose low_storage_factor governs this flow, matching the
+        # upstream/downstream selection used in the physical layer's
+        # low_storage_factor_resistance_node.
+        relevant_id = q0_raw > 0 ? inflow_id : outflow_id
+        lsf = get_low_storage_factor(problem, relevant_id)
+
+        # Reset both candidate coefficients every call: flow direction (and hence which
+        # basin's low_storage_factor applies) can flip between allocation steps.
+        for basin_id in (inflow_id, outflow_id)
+            basin_id.type == NodeType.Basin || continue
+            JuMP.set_normalized_coefficient(constraint, get_low_storage_factor(problem, basin_id), 0.0)
+        end
+
+        if lsf isa JuMP.VariableRef
+            JuMP.set_normalized_coefficient(constraint, lsf, -q0_raw / scaling.flow)
+            JuMP.set_normalized_rhs(constraint, 0.0)
+        else
+            JuMP.set_normalized_rhs(constraint, q0_raw / scaling.flow)
+        end
 
         # Only linearize if the level comes from a Basin, since only then it is a
-        # decision variable of the problem
+        # decision variable of the problem. The derivatives keep using the
+        # factor-included flow function (default `apply_low_storage_factor = true`):
+        # since the physical low-storage scalar is a constant w.r.t. level at the
+        # linearization point, this yields the correctly-scaled ∂q/∂h for free.
         if inflow_id.type == NodeType.Basin
             ∂q∂h_a = forward_diff(
                 level_a -> flow_function(connector_node, node_id, level_a, h_b, p, t_after),
@@ -711,8 +745,9 @@ end
 
 **Key concepts:**
 - Derivatives are computed with automatic differentiation (`forward_diff`) of the same flow functions the physical layer uses, so the allocation layer cannot drift from the physics
-- Only Basin levels are decision variables; LevelBoundary and Terminal levels enter through the constant term `q0`
-- Backward Euler: everything is evaluated at the end of the timestep ($t + \Delta t$). For Basins `get_level` returns the level at the start of the timestep, which is exactly the point we want to linearize around
+- Only Basin levels are decision variables; LevelBoundary and Terminal levels enter through the `low_storage_factor` coefficient or the constant right-hand side
+- Semi-implicit, not fully implicit: everything is evaluated at the end of the timestep ($t + \Delta t$), but the linearization coefficients (∂q/∂h, and the `q0_raw` used for the `low_storage_factor` coefficient) are all computed from state known at the start of the timestep — no nonlinear solve is performed. For Basins `get_level` returns the level at the start of the timestep, which is exactly the point we want to linearize around
+- This same mechanism is used for LinearResistance, ManningResistance, TabulatedRatingCurve, Pump and Outlet, so the `low_storage_factor` variable uniformly governs the low-storage reduction of every connector node type instead of being baked into a stale physical-layer scalar
 
 ## Demand Updates
 
