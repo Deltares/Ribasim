@@ -520,6 +520,18 @@ fig.tight_layout()
 plt.show()
 ```
 
+### The low storage factor
+
+Outflows from a Basin, including evaporation and infiltration, are multiplied by the low storage factor
+
+$$
+    \phi_\text{low}(S) = \phi(S - S_\text{reserve}; S_\text{threshold} - S_\text{reserve}),
+$$
+
+where $S$ is the storage, $S_\text{threshold}$ is the storage at a depth of `depth_threshold` (default $10 \;\text{cm}$), and $S_\text{reserve}$ is the storage at a depth of 1% of `depth_threshold` (default $1 \;\text{mm}$).
+So outflows stop before the Basin is completely empty, and an empty Basin keeps a depth of 1% of `depth_threshold`.
+This keeps the storage clear of zero.
+
 ## Precipitation
 
 The precipitation term is given by
@@ -543,8 +555,8 @@ $$
 $$ {#eq-evap}
 
 Here $E_\text{pot} = E_\text{pot}(t)$ is the potential evaporation rate and $A$ is the wetted area.
-$\phi$ is the [reduction factor](/reference/node/basin.qmd#sec-reduction-factor) which depends on the depth $d$.
-It provides a smooth gradient as $u \rightarrow 0$.
+$\phi$ is the [low storage factor](/reference/node/basin.qmd#sec-reduction-factor) which depends on the depth $d$.
+It provides a smooth gradient as the Basin empties, and stops evaporation at a depth of 1% of `depth_threshold`.
 
 A straightforward formulation $Q_E = \mathrm{max}(E_\text{pot} A(u), 0)$ is unsuitable, as $\frac{\mathrm{d}Q_E}{\mathrm{d}u}(u=0)$ is not well-defined.
 
