@@ -277,7 +277,7 @@ end
     integrator.u *= 1.0e6
     integrator.u[1] = Inf
     integrator.cache.nlsolver.cache.J.J_intermediate .= NaN
-    @test log_numerical_instability(integrator) == "\n\nPhysical layer diagnostics:\n\nNon-plausible depths (outside [0,2000.0]):\n  Basin #1: -3.1199998532955774e11\n  Basin #3: -Inf\n  Basin #6: -3.322633672854174e11\n  Basin #9: 397006.2329950004\n\nNon-finite states:\n  TabulatedRatingCurve #4: Inf\n\nJacobian values:\n  row(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries (e.g. J[1,1] = NaN, J[1,2] = NaN, J[1,3] = NaN, J[1,4] = NaN, J[1,5] = NaN), suggesting a singularity in those equation(s)\n  column(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries, suggesting those state component(s) are diverging"
+    @test log_numerical_instability(integrator) == "\n\nPhysical layer diagnostics:\n\nNon-plausible depths (outside [0,2000.0]):\n  Basin #1: -3.119999860177799e11\n  Basin #3: -Inf\n  Basin #6: -3.322633736392294e11\n  Basin #9: 397006.2329949945\n\nNon-finite states:\n  TabulatedRatingCurve #4: Inf\n\nJacobian values:\n  row(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries (e.g. J[1,1] = NaN, J[1,2] = NaN, J[1,3] = NaN, J[1,4] = NaN, J[1,5] = NaN), suggesting a singularity in those equation(s)\n  column(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries, suggesting those state component(s) are diverging"
 end
 
 @testitem "basic transient model" begin
@@ -734,10 +734,14 @@ end
         basin_table,
     )
 
-    # Check that Basin #2189 is running dry and thus the infiltration and storage rate are close to 0
-    @test all(x -> abs(x) < 0.03, basin_table.storage)
-    @test all(x -> abs(x) < 1.0e-8, basin_table.storage_rate)
-    @test all(x -> abs(x) < 1.0e-8, basin_table.infiltration)
+    # Check that Basin #2189 is running dry and thus the infiltration and storage rate are
+    # close to 0. The ManningResistance flow out of this Basin vanishes like the weir flow
+    # over its sill, and the low storage factor on top of that lets the last few
+    # millimetres drain asymptotically, so test the depth rather than the exact storage.
+    bottom = 22.4
+    @test all(x -> x - bottom < 0.01, basin_table.level)
+    @test all(x -> abs(x) < 1.0e-5, basin_table.storage_rate)
+    @test all(x -> abs(x) < 1.0e-5, basin_table.infiltration)
 end
 
 @testitem "FlowBoundary interpolation type" begin

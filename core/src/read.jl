@@ -590,6 +590,13 @@ function ManningResistance(db::DB, config::Config, graph::MetaGraph, basin::Basi
     errors |= parse_parameter!(manning_resistance, config, :profile_width; static)
     errors |= parse_parameter!(manning_resistance, config, :profile_slope; static)
 
+    errors |= !valid_manning_profile(
+        node_id,
+        manning_resistance.profile_width,
+        manning_resistance.profile_slope,
+        manning_resistance.control_mapping,
+    )
+
     map!(
         id -> basin_bottom(basin, inflow_id(graph, id))[2],
         manning_resistance.upstream_bottom,

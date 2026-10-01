@@ -179,3 +179,114 @@ end
     @test storage_both[1, :] ≈ @. storage_both[1, 1] + t * (q_boundary - q_pump)
     @test storage_both[2, :] ≈ @. storage_both[2, 1] + t * q_pump
 end
+
+@testmodule ManningSetup begin
+    using Ribasim
+    function manning_test_setup()
+        toml_path =
+            normpath(@__DIR__, "../../generated_testmodels/manning_resistance/ribasim.toml")
+        model = Ribasim.Model(toml_path)
+        p = model.integrator.p
+        (; manning_resistance) = p.p_independent
+        # Both Basins are far above the low storage threshold, so no reduction factor applies
+        @assert all(==(1.0), p.state_and_time_dependent_cache.current_low_storage_factor)
+        make(; L, n, w, s, bottom_a, bottom_b) = Ribasim.ManningResistance(;
+            node_id = manning_resistance.node_id,
+            inflow_link = manning_resistance.inflow_link,
+            outflow_link = manning_resistance.outflow_link,
+            length = [L],
+            manning_n = [n],
+            profile_width = [w],
+            profile_slope = [s],
+            upstream_bottom = [bottom_a],
+            downstream_bottom = [bottom_b],
+        )
+        flow(mr, h_a, h_b) =
+            Ribasim.manning_resistance_flow(mr, manning_resistance.node_id[1], h_a, h_b, p)
+        return make, flow
+    end
+end
+
+# Critical depth for specific energy E in a trapezoidal profile with bottom width w
+# and side slope s (horizontal per vertical): d_c + A / (2T) = E, which for a trapezoid
+# is the positive root of 5 s d_c² + (3 w - 4 s E) d_c - 2 w E = 0. Written out here
+# independently of the implementation so the flow cap can be checked against it.
+@testitem "ManningResistance free fall is capped at critical flow" setup = [ManningSetup] begin
+    make, flow = ManningSetup.manning_test_setup()
+    w, s, g = 10.0, 1.0, 9.81
+    critical_depth(E) = (-(3w - 4s * E) + sqrt((3w - 4s * E)^2 + 40s * w * E)) / (10s)
+    critical_flow(E) = begin
+        d_c = critical_depth(E)
+        A = w * d_c + s * d_c^2
+        T = w + 2s * d_c
+        A * sqrt(g * A / T)
+    end
+    # 1 m of water upstream, downstream Basin bottom 5 m lower, short steep reach
+    mr = make(; L = 100.0, n = 0.03, w, s, bottom_a = 0.0, bottom_b = -5.0)
+    h_a = 1.0
+    Q_c = critical_flow(h_a)
+    @test Q_c ≈ 18.2 rtol = 0.01
+    # For every downstream level below the upstream bed the flow is the critical flow
+    # over the upstream sill, not a supercritical Manning flow down the bed drop
+    for h_b in -5.0:0.5:0.0
+        @test flow(mr, h_a, h_b) ≈ Q_c rtol = 0.01
+    end
+    # Reversed: flow from the deep Basin over the sill into the shallow one is negative
+    # and capped by the critical flow for the head above the sill
+    for h_b in (1.1, 2.0, 3.0)
+        q = flow(mr, h_a, h_b)
+        @test q < 0
+        @test abs(q) ≈ critical_flow(h_b - 0.0) rtol = 0.01
+    end
+    # Continuous through Δh = 0 even with unequal beds. Exact antisymmetry only holds
+    # at Δh = 0, since the two orientations average different depths.
+    @test flow(mr, 1.0, 1.001) ≈ -flow(mr, 1.001, 1.0) rtol = 1.0e-3
+    @test flow(mr, 1.0, 1.0 + 1.0e-6) < 0
+    @test abs(flow(mr, 1.0, 1.0 + 1.0e-6)) < 0.1
+    @test abs(flow(mr, 1.0, 1.0)) < 1.0e-12
+    # Closed form critical depth for the three profile shapes
+    @test Ribasim.critical_depth(1.5, 10.0, 0.0) ≈ 1.0
+    @test Ribasim.critical_depth(1.5, 0.0, 1.0) ≈ 1.2
+    @test Ribasim.critical_depth(1.0, w, s) ≈ critical_depth(1.0)
+    @test Ribasim.critical_depth(0.0, 0.0, 1.0) == 0.0
+end
+
+@testitem "ManningResistance derivatives are finite at an empty Basin" setup = [ManningSetup] begin
+    using ForwardDiff: gradient
+    make, flow = ManningSetup.manning_test_setup()
+    w, s = 10.0, 1.0
+    # Empty upstream Basin that lies higher than its neighbour, both Basins empty, and an
+    # empty downstream Basin: the derivatives must be finite, not NaN
+    mr = make(; L = 100.0, n = 0.03, w, s, bottom_a = 0.0, bottom_b = -5.0)
+    for (h_a, h_b) in ((0.0, -5.0), (0.0, -3.0), (0.5, -5.0))
+        g = gradient(h -> flow(mr, h[1], h[2]), [h_a, h_b])
+        @test all(isfinite, g)
+    end
+    mr = make(; L = 100.0, n = 0.03, w, s, bottom_a = 0.0, bottom_b = 0.0)
+    g = gradient(h -> flow(mr, h[1], h[2]), [0.0, 0.0])
+    @test all(isfinite, g)
+    @test flow(mr, 0.0, 0.0) == 0.0
+end
+
+@testitem "ManningResistance flow is non-increasing in downstream level" setup = [ManningSetup] begin
+    make, flow = ManningSetup.manning_test_setup()
+    w, s, n, L = 10.0, 1.0, 0.03, 1000.0
+    h_a = 2.0
+    # Equal beds: the flow must not increase as the downstream Basin fills
+    mr = make(; L, n, w, s, bottom_a = 0.0, bottom_b = 0.0)
+    q = [flow(mr, h_a, h_b) for h_b in 0.0:0.01:1.999]
+    @test all(diff(q) .<= 1.0e-9)
+    @test q[end] > 0
+    # Subcritical regime with a small head difference is unchanged from before
+    @test flow(mr, 2.0, 1.9) ≈ 10.19 rtol = 0.01
+    # With a 5 m bed drop the flow sits at the critical flow cap while the downstream
+    # Basin fills, and must not increase
+    mr = make(; L, n, w, s, bottom_a = 0.0, bottom_b = -5.0)
+    h_a = 1.0
+    q = [flow(mr, h_a, h_b) for h_b in -5.0:0.01:0.999]
+    @test all(diff(q) .<= 1.0e-9)
+    @test maximum(q) ≈ 18.2 rtol = 0.01
+    # Flat until the downstream level reaches the brink level, which for a rectangle lies
+    # (h_up - bottom_dn) / 3 below the upstream level and for this trapezoid about a quarter
+    @test flow(mr, h_a, -1.5) ≈ flow(mr, h_a, -5.0) rtol = 1.0e-3
+end
