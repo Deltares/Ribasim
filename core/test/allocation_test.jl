@@ -430,7 +430,7 @@ end
 
         # Initialize the same model 5 times
         models = [Ribasim.Model(toml_path) for _ in 1:5]
-        BMI.update.(models)
+        BMI.update_until.(models, 86400.0)
 
         subnetwork_ids = [
             allocation_model.subnetwork_id for allocation_model in
