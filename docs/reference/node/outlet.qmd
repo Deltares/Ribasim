@@ -44,14 +44,16 @@ max_downstream_level  | Float64 | $\text{m}$            | (optional)
 The Outlet is very similar to the Pump, but it has an extra [reduction factor](/reference/node/basin.qmd#sec-reduction-factor) for physical constraints:
 
 $$
-Q = \mathrm{clamp}(\phi Q_\text{set}, Q_{\min}, Q_{\max})
+Q = \phi_\text{level} \, \mathrm{clamp}(\phi_\text{storage} Q_\text{set}, Q_{\min}, Q_{\max})
 $$
 
 - $Q$ is the actual Outlet flow rate.
 - $Q_\text{set}$ is the Outlet's target `flow_rate`.
 - $Q_{\min}$ and $Q_{\max}$ are the Outlet `min_flow_rate` and `max_flow_rate`.
-- $\phi$ is the reduction factor, which smoothly reduces flow based on all of these criteria:
-  - The upstream volume is below the equivalent of a water depth of $10 \;\text{cm}$ (change with solver setting `depth_threshold`, the others below with `level_difference_threshold`).
+- $\phi_\text{storage}$ is the reduction factor that smoothly reduces flow when the upstream volume is below the equivalent of a water depth of $10 \;\text{cm}$ (change with solver setting `depth_threshold`).
+- $\phi_\text{level}$ is the product of the reduction factors that smoothly reduce flow based on these criteria (change the $0.02 \;\text{m}$ with solver setting `level_difference_threshold`):
   - The upstream level is less than $0.02 \;\text{m}$ above the downstream level.
   - The upstream level is below `min_upstream_level` + $0.02 \;\text{m}$
   - The downstream level is above `max_downstream_level` - $0.02 \;\text{m}$
+
+Since $\phi_\text{level}$ is applied after the clamp, `min_flow_rate` is not a strict minimum: the level criteria can still reduce the flow to zero.
