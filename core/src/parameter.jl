@@ -12,7 +12,7 @@ const SolverStats = @NamedTuple{
 }
 
 """
-Statistics of the attempted timesteps, filled in by our `loopfooter!` override.
+Statistics of the attempted timesteps, filled in by our `_loopfooter!` override.
 
 The rejection causes are:
 

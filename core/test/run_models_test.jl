@@ -230,14 +230,19 @@ end
     @test state_and_time_dependent_cache.current_storage ≈
         Float32[775.23576, 775.23365, 572.60102, 1130.005] skip = Sys.isapple() atol = 1.5
 
-    @test length(logger.logs) > 10
     @test logger.logs[1].level == Debug
     @test logger.logs[1].message == "Read database into memory."
+    # The debug messages of each stage of a run are captured
+    debug_messages = [log.message for log in logger.logs if log.level == Debug]
+    @test debug_messages ==
+        ["Read database into memory.", "Setup ODEProblem.", "Created callbacks.", "Setup integrator.", "Wrote results."]
 
     table = Ribasim.flow_data(model)
 
     # flows are recorded at the end of each period, and are undefined at the start
-    @test unique(table.time) == Ribasim.datetimes(model)[1:(end - 1)]
+    # Not unique(table.time): with saveat = 0 the first timestep is shorter than the
+    # millisecond resolution of DateTime, so the first two periods have the same timestamp
+    @test Ribasim.flow_data(model; table = false).time == Ribasim.datetimes(model)[1:(end - 1)]
 
     concentration_path = joinpath(dirname(toml_path), "results/concentration.nc")
     @test isfile(concentration_path)
