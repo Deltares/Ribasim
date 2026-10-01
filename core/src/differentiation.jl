@@ -82,6 +82,34 @@ struct HalfLazyJacobian{M <: AbstractMatrix{Float64}} <: AbstractSciMLOperator{F
     du::CVector
     prep::Any
     backend::Any
+    # The point at which the Jacobian should be evaluated, set by `update_coefficients!`.
+    # The (expensive) AD evaluation itself is deferred until the Jacobian is used, see
+    # `evaluate_jacobian!`.
+    u::CVector
+    t::Base.RefValue{Float64}
+    p::Base.RefValue{Any}
+    # Whether `J_intermediate` is out of date with respect to (u, p, t)
+    stale::Base.RefValue{Bool}
+    # Incremented on every evaluation, so a factorization can tell whether it is outdated
+    version::Base.RefValue{Int}
+end
+
+function HalfLazyJacobian(J_intermediate, p_independent, du, prep, backend)
+    return HalfLazyJacobian(
+        J_intermediate, p_independent, du, prep, backend,
+        zero(du), Ref(0.0), Ref{Any}(nothing), Ref(true), Ref(0),
+    )
+end
+
+"""
+Evaluate the Jacobian at the point last passed to `update_coefficients!`, if it has not
+been evaluated there yet.
+"""
+function evaluate_jacobian!(J::HalfLazyJacobian)::Nothing
+    if J.stale[] && !isnothing(J.p[])
+        get_jacobian!(J, J.du, J.u, J.p[], J.t[], J.prep, J.backend)
+    end
+    return nothing
 end
 
 Base.deepcopy(J::HalfLazyJacobian) = J # Deepcopy is slow and never needed
@@ -93,6 +121,13 @@ function LinearAlgebra.mul!(
         J::HalfLazyJacobian,
         _v::RibasimCVectorType,
     )
+    evaluate_jacobian!(J)
+    mul_evaluated!(_u, J, _v)
+    return nothing
+end
+
+# The product with the Jacobian as last evaluated, without evaluating it at a newer point
+function mul_evaluated!(_u::RibasimCVectorType, J::HalfLazyJacobian, _v::RibasimCVectorType)
     (; J_intermediate, p_independent) = J
     (; u_reduced, state_ranges) = p_independent
     # The input vectors are rewrapped because somewhere
@@ -108,6 +143,15 @@ end
 # regardless of `isconvertible` (e.g. https://github.com/SciML/SciMLOperators.jl/pull/408)
 # get a correct, if expensive, dense matrix instead of a MethodError.
 function Base.convert(::Type{AbstractMatrix}, J::HalfLazyJacobian)
+    evaluate_jacobian!(J)
+    return dense_jacobian(J)
+end
+
+"""
+The Jacobian as last evaluated as a dense matrix. Unlike `convert` this does not evaluate it
+at a newer point first, so diagnostics see the Jacobian the solver actually used.
+"""
+function dense_jacobian(J::HalfLazyJacobian)::Matrix{Float64}
     (; state_ranges) = J.p_independent
     n = length(J.du)
     mat = zeros(n, n)
@@ -115,7 +159,7 @@ function Base.convert(::Type{AbstractMatrix}, J::HalfLazyJacobian)
     u = CVector(zeros(n), state_ranges)
     for i in 1:n
         v[i] = 1.0
-        mul!(u, J, v)
+        mul_evaluated!(u, J, v)
         mat[:, i] .= getdata(u)
         v[i] = 0.0
     end
@@ -129,8 +173,21 @@ SciMLOperators.islinear(::HalfLazyJacobian) = true
 SciMLOperators.isconvertible(::HalfLazyJacobian) = false
 SciMLOperators.has_mul!(::HalfLazyJacobian) = true
 
-SciMLBase.update_coefficients!(J::HalfLazyJacobian, u, p, t) =
-    get_jacobian!(J, J.du, u, p, t, J.prep, J.backend)
+"""
+OrdinaryDiffEq treats a Jacobian that is an `AbstractSciMLOperator` as lazy: it calls
+`update_coefficients!` with the current iterate in every Newton iteration and skips its own
+decision on when a new Jacobian is needed. Evaluating the AD Jacobian here would therefore
+recompute it every iteration. Instead only the point is recorded; the Jacobian is evaluated
+when it is used, and the Ribasim linear solve only does so when OrdinaryDiffEq asks for a new
+Jacobian (see `dolinsolve`).
+"""
+function SciMLBase.update_coefficients!(J::HalfLazyJacobian, u, p, t)
+    copyto!(J.u, u)
+    J.t[] = t
+    J.p[] = p
+    J.stale[] = true
+    return nothing
+end
 
 # Overloads to make OrdinaryDiffEq happy
 Base.size(J::HalfLazyJacobian) = (length(J.du), length(J.du))
@@ -144,31 +201,84 @@ struct RibasimLinearSolveCache{C, WType, M}
     cache_inner::C
     W::WType
     J_inner::M
+    # The time of the last Jacobian OrdinaryDiffEq asked for (`nlsolver.cache.J_t`)
+    J_t::Base.RefValue{Float64}
+    # The number of accepted steps at the last Jacobian evaluation
+    J_naccept::Base.RefValue{Int}
+    # The Jacobian version and gamma the current factorization of W_inner was computed for
+    J_version::Base.RefValue{Int}
+    gamma::Base.RefValue{Float64}
 end
+
+RibasimLinearSolveCache(cache_inner, W, J_inner) =
+    RibasimLinearSolveCache(cache_inner, W, J_inner, Ref(NaN), Ref(0), Ref(-1), Ref(NaN))
+
+"""
+The maximum number of accepted steps a Jacobian is reused for, following CVODE's `MSBJ`.
+OrdinaryDiffEq only asks for a new Jacobian after a Newton failure, so without a bound a
+Jacobian from a different flow regime (e.g. before a pump switched) can be kept for a very
+long time, which can lock the integrator into tiny, oscillating steps.
+"""
+const MAX_JACOBIAN_AGE = 50
 
 """
 Compute the product `J_inner = A * J_intermediate`, where `A` is implicitly defined
 by the structure of the Ribasim model.
 """
+calc_J_inner!(J_inner::AbstractMatrix, J::HalfLazyJacobian)::Nothing =
+    calc_J_inner!(J_inner, J.J_intermediate, J.p_independent)
+
 function calc_J_inner!(
         J_inner::AbstractMatrix,
-        J::HalfLazyJacobian
+        J_intermediate::AbstractMatrix,
+        p_independent::ParametersIndependent,
     )::Nothing
     J_inner .= 0
     n_states_reduced = size(J_inner)[1]
 
     for col_reduced in 1:n_states_reduced
-        update_J_inner!(J_inner, J, col_reduced)
+        update_J_inner!(J_inner, J_intermediate, p_independent, col_reduced)
     end
     return nothing
 end
 
+"""
+Allocate `J_inner` with the structural sparsity pattern of `A * J_intermediate` plus the
+diagonal, independent of the current values in `J_intermediate`.
+
+`setindex!` on a `SparseMatrixCSC` does not store a zero, so deriving the pattern from the
+values would miss every entry that happens to be zero at initialization, for instance the
+derivatives of a Pump that DiscreteControl has switched off. Such an entry would be inserted
+once it becomes nonzero, changing the pattern of `W_inner` during the simulation. A constant
+pattern is what `KLUFactorization(; check_pattern = false)` assumes when it reuses the symbolic
+factorization. The diagonal is included so that `jacobian2W!` does not insert it into
+`W_inner` either.
+"""
+function allocate_J_inner(J::HalfLazyJacobian{<:SparseMatrixCSC})::SparseMatrixCSC{Float64, Int}
+    (; J_intermediate, p_independent) = J
+    n_states_reduced = length(p_independent.u_reduced)
+    J_structural = copy(J_intermediate)
+    fill!(nonzeros(J_structural), 1.0)
+    J_inner = spzeros(n_states_reduced, n_states_reduced)
+    # The first contribution to each entry is ±1, so every entry is stored,
+    # and stays stored if later contributions cancel it out
+    calc_J_inner!(J_inner, J_structural, p_independent)
+    for i in 1:n_states_reduced
+        J_inner[i, i] += 1.0
+    end
+    fill!(nonzeros(J_inner), 0.0)
+    return J_inner
+end
+
+allocate_J_inner(J::HalfLazyJacobian{<:Matrix}) =
+    zeros(length(J.p_independent.u_reduced), length(J.p_independent.u_reduced))
+
 function update_J_inner!(
         J_inner::SparseMatrixCSC,
-        J::HalfLazyJacobian,
+        J_intermediate::SparseMatrixCSC,
+        p_independent::ParametersIndependent,
         col_reduced::Int,
     )::Nothing
-    (; J_intermediate, p_independent) = J
     for nz_idx in nzrange(J_intermediate, col_reduced)
         row = J_intermediate.rowval[nz_idx]
         val = J_intermediate.nzval[nz_idx]
@@ -177,8 +287,12 @@ function update_J_inner!(
     return
 end
 
-function update_J_inner!(J_inner::Matrix, J::HalfLazyJacobian, col_reduced::Int)::Nothing
-    (; J_intermediate, p_independent) = J
+function update_J_inner!(
+        J_inner::Matrix,
+        J_intermediate::Matrix,
+        p_independent::ParametersIndependent,
+        col_reduced::Int,
+    )::Nothing
     for row in axes(J_intermediate, 1)
         val = J_intermediate[row, col_reduced]
         !iszero(val) && update_J_inner!(J_inner, p_independent, row, col_reduced, val)
@@ -284,17 +398,19 @@ function SciMLBase.init(
     W = prob.A
     (; J) = W
     (; u_reduced) = J.p_independent
-    n_states_reduced = length(u_reduced)
-    J_inner = similar(J.J_intermediate, (n_states_reduced, n_states_reduced))
-
-    # These first calls allocate the nonzeros, including the diagonal, in the sparse case.
+    J_inner = allocate_J_inner(J)
     calc_J_inner!(J_inner, J)
     W_inner = copy(J_inner)
     jacobian2W!(W_inner, I, 1.0, J_inner)
 
     b_inner = copy(u_reduced)
     prob_inner = LinearProblem(W_inner, b_inner)
-    cache_inner = init(prob_inner, alg.algorithm, args...; kwargs...)
+    # The pattern of W_inner is structural and constant (see `allocate_J_inner`).
+    # Tell LinearSolve not to drop the stored zeros: that reduction changes the pattern
+    # handed to the factorization between solves, which the KLU symbolic factorization
+    # reuse (`check_pattern = false`) does not detect, giving wrong solutions.
+    assumptions = OperatorAssumptions(true; nonstructural_zeros = NonstructuralZeros.None)
+    cache_inner = init(prob_inner, alg.algorithm, args...; kwargs..., assumptions)
 
     return RibasimLinearSolveCache(cache_inner, W, J_inner)
 end
@@ -320,8 +436,34 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
 
     # Translate the problem to the reduced state space
     reduce_state!(cache_inner.b, b, p_independent)
-    calc_W_inner!(cache_inner.A, J_inner, J, γ)
-    cache_inner.isfresh = true
+
+    # Only evaluate a new Jacobian when OrdinaryDiffEq asks for one, which it signals by
+    # moving `J_t` (the first step, a Newton failure with a stale Jacobian), and at the start
+    # of a Newton solve when the Jacobian has been reused for `MAX_JACOBIAN_AGE` accepted
+    # steps, or when the previous attempt at this step failed to converge. OrdinaryDiffEq
+    # considers a Jacobian requested at the same time current and only shrinks the step,
+    # so without the latter the retries would keep failing on the same Jacobian until the
+    # step size collapses. Otherwise the Newton iteration continues with the current
+    # Jacobian (modified Newton). Evaluating only at the start of a solve means the
+    # Jacobian is taken at the predictor, never at a diverging iterate.
+    J_t = get_requested_jacobian_time(integrator)
+    naccept = integrator.stats.naccept
+    (; iter, nfails) = integrator.cache.nlsolver
+    if isnothing(J_t) || J_t != linsolve.J_t[] || isnothing(J.p[]) ||
+            iter <= 1 && (naccept - linsolve.J_naccept[] >= MAX_JACOBIAN_AGE || nfails > 0)
+        isnothing(J.p[]) &&
+            SciMLBase.update_coefficients!(J, integrator.uprev, integrator.p, integrator.t)
+        evaluate_jacobian!(J)
+        linsolve.J_t[] = something(J_t, NaN)
+        linsolve.J_naccept[] = naccept
+    end
+    # Refactorize only if the Jacobian or gamma changed since the last factorization
+    if J.version[] != linsolve.J_version[] || γ != linsolve.gamma[]
+        calc_W_inner!(cache_inner.A, J_inner, J, γ)
+        cache_inner.isfresh = true
+        linsolve.J_version[] = J.version[]
+        linsolve.gamma[] = γ
+    end
 
     # Solve the problem in the reduced state space
     linres = dolinsolve(
@@ -363,7 +505,6 @@ function get_jacobian!(J::HalfLazyJacobian, du, u, p, t, prep, backend)
     (; u_reduced) = p.p_independent
     reduce_state!(u_reduced, u, p.p_independent)
 
-    saved_td_t_prev = p.time_dependent_cache.t_prev_call[1]
     # Invalidate t_prev_call so the first AD call's check_new_input! always sees t != -1,
     # Otherwise, it would read garbage values from p.state_and_time_dependent_cache,
     # since it is marked as Cache(), which means it starts as uninitialised dual number arrays.
@@ -383,10 +524,24 @@ function get_jacobian!(J::HalfLazyJacobian, du, u, p, t, prep, backend)
         Constant(t),
     )
 
-    # Restore shared state so next real RHS call works correctly
-    p.time_dependent_cache.t_prev_call[1] = saved_td_t_prev
+    # The AD call recomputed the time dependent cache at t, so label it with t. Restoring the
+    # previous label would mark values computed at t as valid for another time, e.g. the
+    # cumulative forcings the water balance check reads for the time of the last RHS call.
+    p.time_dependent_cache.t_prev_call[1] = t
 
+    J.stale[] = false
+    J.version[] += 1
     return J
+end
+
+"""
+The time at which OrdinaryDiffEq last decided a new Jacobian is needed, or `nothing` if the
+nonlinear solver does not expose this. The Ribasim linear solve is only used by algorithms
+with a Newton nonlinear solver.
+"""
+function get_requested_jacobian_time(integrator)::Union{Float64, Nothing}
+    nlcache = integrator.cache.nlsolver.cache
+    return hasproperty(nlcache, :J_t) ? Float64(nlcache.J_t) : nothing
 end
 
 """

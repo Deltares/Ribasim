@@ -41,7 +41,7 @@ using OrdinaryDiffEqCore:
     get_EEst,
     error_estimate_residuals,
     residual_analysis!
-using DiffEqBase: DiffEqBase, ODE_DEFAULT_NORM
+using DiffEqBase: DiffEqBase, ODE_DEFAULT_NORM, Serial, Threaded
 using OrdinaryDiffEqDifferentiation:
     OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
 using SciMLOperators: WOperator, MatrixOperator
@@ -78,10 +78,11 @@ using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
-using SparseArrays: SparseMatrixCSC, sparse, nzrange, rowvals
+using SparseArrays: SparseMatrixCSC, sparse, spzeros, nonzeros, nzrange, rowvals
 
 # Linear algebra
 using LinearAlgebra: LinearAlgebra, I, mul!, UniformScaling
+using LinearSolve: OperatorAssumptions, NonstructuralZeros
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node

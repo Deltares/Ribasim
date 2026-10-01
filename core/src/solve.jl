@@ -133,7 +133,6 @@ function set_current_basin_properties!(
         cumulative_surface_runoff,
         cumulative_drainage,
         vertical_flux,
-        low_storage_threshold,
     ) = basin
 
     # The exact cumulative precipitation and drainage up to the t of this water_balance call
@@ -158,7 +157,7 @@ function set_current_basin_properties!(
             s = state_and_time_dependent_cache.current_storage[i]
             i = id.idx
             state_and_time_dependent_cache.current_low_storage_factor[i] =
-                reduction_factor(s, low_storage_threshold[i])
+                low_storage_factor(s, basin, i)
             @inbounds state_and_time_dependent_cache.current_level[i] =
                 get_level_from_storage(basin, i, s)
             state_and_time_dependent_cache.current_area[i] =
@@ -878,23 +877,17 @@ function limit_flow!(
         )
     end
 
-    # Pump flow is in [min_flow_rate, max_flow_rate]
-    for (id, min_flow_rate, max_flow_rate) in
-        zip(pump.node_id, pump.min_flow_rate, pump.max_flow_rate)
-        limit_flow!(u.pump, uprev.pump, id, min_flow_rate(t), max_flow_rate(t), dt)
+    # Pump and Outlet flow is in [0, max_flow_rate]. The min_flow_rate is not a lower bound
+    # of the flow, since the reduction factors (low storage, min_upstream_level,
+    # max_downstream_level) are applied after it and can bring the flow down to 0.
+    # Clamping to min_flow_rate would force a flow that formulate_flow! has switched off,
+    # which the solver then fights on every timestep.
+    for (id, max_flow_rate) in zip(pump.node_id, pump.max_flow_rate)
+        limit_flow!(u.pump, uprev.pump, id, 0.0, max_flow_rate(t), dt)
     end
 
-    # Outlet flow is in [min_flow_rate, max_flow_rate]
-    for (id, min_flow_rate, max_flow_rate) in
-        zip(outlet.node_id, outlet.min_flow_rate, outlet.max_flow_rate)
-        limit_flow!(
-            u.outlet,
-            uprev.outlet,
-            id,
-            min_flow_rate(t),
-            max_flow_rate(t),
-            dt,
-        )
+    for (id, max_flow_rate) in zip(outlet.node_id, outlet.max_flow_rate)
+        limit_flow!(u.outlet, uprev.outlet, id, 0.0, max_flow_rate(t), dt)
     end
 
     # LinearResistance flow is in [-max_flow_rate, max_flow_rate]
@@ -981,6 +974,23 @@ function limit_flow!(
         )
     end
 
+    # Where evaporation and infiltration would bring a storage below the low storage reserve,
+    # reduce them so the storage becomes the reserve. In the ODE the low storage factor
+    # switches them off at the reserve, but multistep methods extrapolate the cumulative
+    # states from their history and can overshoot. These states only affect their own Basin.
+    reduce_state!(u_reduced, u, p_independent)
+    formulate_storages!(u_reduced, p, t)
+    for i in eachindex(basin.node_id)
+        deficit = basin.low_storage_reserve[i] - current_storage[i]
+        deficit > 0 || continue
+        for (u_component, uprev_component) in
+            ((u.infiltration, uprev.infiltration), (u.evaporation, uprev.evaporation))
+            reduction = clamp(deficit, 0.0, max(u_component[i] - uprev_component[i], 0.0))
+            u_component[i] -= reduction
+            deficit -= reduction
+        end
+    end
+
     return nothing
 end
 
@@ -1010,7 +1020,10 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
 
 @inline function DiffEqBase.calculate_residuals!(
         out,
-        ũ, u₀, u₁, abstol, reltol, internalnorm::InternalNorm, t
+        ũ, u₀, u₁, abstol, reltol, internalnorm::InternalNorm, t,
+        # Some algorithms such as Tsit5 always pass this explicitly, which would otherwise
+        # dispatch to the generic DiffEqBase method. We always compute serially.
+        thread::Union{Serial, Threaded} = Serial()
     )
     # All state components (flow, PID integral) are scaled by the magnitude
     # of their change over the time step rather than by their absolute magnitude.
@@ -1187,7 +1200,27 @@ function SciMLBase.log_numerical_instability(
     return diagnostic
 end
 
+"""
+Restore the Nordsieck history array after a step rejected by `isoutofdomain`.
+
+A step with negative storage is rejected by `isoutofdomain`. For such a rejection
+OrdinaryDiffEqCore only shrinks the timestep, and skips `step_reject_controller!`, which is
+where NordsieckBDF undoes the Pascal shift of its predictor. The retry then shifts the history
+array a second time, the predictor is off by the size of a whole step, and every subsequent step
+fails the error test until the timestep collapses. This undoes the shift, so the retry
+predicts from the last accepted step again.
+"""
+function OrdinaryDiffEqCore.post_step_reject!(
+        integrator::ODEIntegrator{<:OrdinaryDiffEqBDF.NordsieckBDF, <:Any, <:RibasimCVectorType}
+    )::Nothing
+    if integrator.isout
+        OrdinaryDiffEqBDF.nordsieck_restore!(integrator.cache, Val(true))
+    end
+    return nothing
+end
+
 function OrdinaryDiffEqCore.instability_jacobian(integrator::ODEIntegrator{<:Any, <:Any, <:RibasimCVectorType})
     (; J) = integrator.cache.nlsolver.cache
-    return convert(AbstractMatrix, J)
+    # The Jacobian the solver used, not one re-evaluated at the failed state
+    return dense_jacobian(J)
 end

@@ -12,7 +12,7 @@ const SolverStats = @NamedTuple{
 }
 
 """
-Statistics of the attempted timesteps, filled in by our `loopfooter!` override.
+Statistics of the attempted timesteps, filled in by our `_loopfooter!` override.
 
 The rejection causes are:
 
@@ -583,6 +583,8 @@ Requirements:
     outflow_ids::Vector{Vector{NodeID}} = fill(NodeID[], length(node_id))
     # Storage below which outflows are reduced
     low_storage_threshold::Vector{Float64} = zeros(length(node_id))
+    # The storage a Basin keeps when it is empty, see `low_storage_reserve_depth`
+    low_storage_reserve::Vector{Float64} = zeros(length(node_id))
     # Vertical fluxes
     vertical_flux::VerticalFlux = VerticalFlux(length(node_id))
     # Initial_storage
@@ -1225,7 +1227,8 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
    and thus whether `time_dependent_cache` must be updated
 - `new_state_and_time_dependent_cache`: Whether the `t` and/or `u_reduced` with which `water_balance!` are called are
    considered new, and thus whether caches that (only) depend on `u_reduced` must be updated
-- `tprev`: The previous `t` before the latest time step
+- `tprev`: The start of the current time step, set as soon as a time step is accepted, see
+   [`update_cumulative_forcing!`](@ref) and [`interpolation_time`](@ref)
 """
 @kwdef mutable struct ParametersMutable
     new_time_dependent_cache::Bool = true
@@ -1268,6 +1271,9 @@ the object itself is not.
     # destination node can have multiple inflow-link states (currently only UserDemand).
     link_to_state_idx::Dict{Tuple{NodeID, NodeID}, Int} =
         Dict{Tuple{NodeID, NodeID}, Int}()
+    # Per Basin the (state index, is inflow) of the flow states that change its storage,
+    # precomputed from the graph for `reduce_state!`, which runs in every RHS evaluation
+    basin_state_incidence::Vector{Vector{Tuple{Int, Bool}}} = Vector{Tuple{Int, Bool}}[]
     # Water balance tolerances
     water_balance_abstol::Float64
     water_balance_reltol::Float64
