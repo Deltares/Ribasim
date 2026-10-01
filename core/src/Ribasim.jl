@@ -36,10 +36,12 @@ using OrdinaryDiffEqCore:
     OrdinaryDiffEqCore,
     loopheader!,
     ODEIntegrator,
+    OrdinaryDiffEqCache,
     jacobian_analysis!,
     get_EEst,
     error_estimate_residuals,
     residual_analysis!
+using DiffEqBase: DiffEqBase, ODE_DEFAULT_NORM
 using OrdinaryDiffEqDifferentiation:
     OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
 using SciMLOperators: WOperator, MatrixOperator
@@ -56,6 +58,7 @@ using SciMLBase:
     check_error!,
     successful_retcode,
     CallbackSet,
+    DiscreteCallback,
     ODEFunction,
     ODEProblem,
     get_du,
@@ -172,8 +175,6 @@ using NCDatasets: NCDatasets, NCDataset, defDim, defVar, dimnames, CFVariable
 
 using Dates: Second
 
-using Printf: @sprintf
-
 using Base.Threads: nthreads
 
 include("cvectors.jl")
@@ -193,6 +194,7 @@ include("util.jl")
 include("graph.jl")
 include("differentiation.jl")
 include("model.jl")
+include("timestepping.jl")
 include("read.jl")
 include("write.jl")
 include("bmi.jl")

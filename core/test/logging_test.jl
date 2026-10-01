@@ -1,4 +1,5 @@
 @testitem "setup_logger defaults to level info-1" begin
+    using DiffEqBase: DiffEqBase
     using Logging
     mktempdir() do dir
         cp(
@@ -15,6 +16,14 @@
             @test Logging.shouldlog(logger, Logging.Info, Ribasim, :group, :message)
             @test Logging.shouldlog(logger, Logging.Info - 1, Ribasim, :group, :message) # progress bar
             @test !Logging.shouldlog(logger, Logging.Debug, Ribasim, :group, :message)
+            @test Logging.shouldlog(
+                logger,
+                Logging.Warn,
+                DiffEqBase,
+                :group,
+                :solver_failure,
+            )
+            @test !Logging.shouldlog(logger, Logging.Warn, Base, :group, :message)
         end
     end
 end

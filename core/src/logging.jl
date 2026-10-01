@@ -10,7 +10,8 @@ function is_current_module(log)::Bool
     isnothing(log._module) && return false
     return (log._module == @__MODULE__) ||
         (parentmodule(log._module) == @__MODULE__) ||
-        log._module == OrdinaryDiffEqCore # for the progress bar
+        log._module == OrdinaryDiffEqCore || # for the progress bar
+        log._module == DiffEqBase # for solver failure diagnostics
 end
 
 function setup_logger(;
@@ -52,48 +53,45 @@ function log_startup(config, toml_path::AbstractString)::Nothing
 end
 
 "Log the convergence bottlenecks."
-function log_bottlenecks(model; interrupt::Bool)
-    (; cache, p, u) = model.integrator
+function log_bottlenecks(model; interrupt::Bool, level = LoggingExtras.Warn)
+    (; integrator, saved) = model
+    (; cache, p, u) = integrator
     (; p_independent) = p
 
-    level = LoggingExtras.Warn
-
-    # Indicate convergence bottlenecks if possible with the current algorithm
-    return if hasproperty(cache, :nlsolver)
-        flow_error = if interrupt && p.p_independent.ncalls[1] > 0
-            flow_error = p.p_independent.convergence ./ p.p_independent.ncalls[1]
-        else
-            temp_convergence = @. abs(cache.nlsolver.cache.atmp / u)
-            temp_convergence / finitemaximum(temp_convergence)
-        end
-
-        errors = Pair{Symbol, String}[]
-        error_count = 0
-        max_errors = 5
-        # Iterate over the errors in descending order
-        for i in sortperm(flow_error; rev = true)
-            node_id = Symbol(p_independent.node_id[i])
-            error = flow_error[i]
-            isnan(error) && continue  # NaN are sorted as largest
-            # Stop reporting errors if they are too small or too many
-            if error < 1 / length(flow_error) || error_count >= max_errors
-                break
-            end
-            push!(errors, node_id => @sprintf("%.2f", error * 100) * "%")
-            error_count += 1
-        end
-        if !isempty(errors)
-            @logmsg level "Convergence bottlenecks in descending order of severity:" errors...
-        end
+    flow_error = if p_independent.convergence_ncalls[1] > 0
+        p_independent.convergence ./ p_independent.convergence_ncalls[1]
+    elseif !isempty(saved.flow.saveval)
+        saved.flow.saveval[end].flow_convergence
     else
-        algorithm = model.config.solver.algorithm
-        @logmsg level "Convergence bottlenecks are not shown for the chosen solver algorithm." algorithm
+        @logmsg level "No data available for logging convergence bottlenecks."
+        return nothing
     end
+
+    errors = Pair{Symbol, Float64}[]
+    error_count = 0
+    max_errors = 5
+    # Iterate over the errors in descending order
+    for i in sortperm(flow_error; rev = true)
+        node_id = Symbol(p_independent.node_id[i])
+        error = flow_error[i]
+        (ismissing(error) || isnan(error)) && continue
+        # Stop reporting errors if they are too small or too many
+        if error < 1 / length(flow_error) || error_count >= max_errors
+            break
+        end
+        push!(errors, node_id => round(error; digits = 2))
+        error_count += 1
+    end
+    if !isempty(errors)
+        @logmsg level "Convergence bottlenecks in descending order of severity (1.0 is the worst):" errors...
+    end
+    return nothing
 end
 
 "Log messages after the computation."
 function log_finalize(model)::Cint
     if success(model)
+        log_bottlenecks(model; interrupt = false, level = LoggingExtras.Info)
         @info "The model finished successfully at $(now())."
         return 0
     else
@@ -103,7 +101,7 @@ function log_finalize(model)::Cint
         t = datetime_since(model.integrator.t, model.config.starttime)
         (; retcode) = model.integrator.sol
         @error """The model exited at model time $t with return code $retcode at $(now()).
-        See https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes"""
+        See https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes""" is_finished(model)
         return 1
     end
 end

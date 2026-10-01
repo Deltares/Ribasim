@@ -5,7 +5,29 @@ const SolverStats = @NamedTuple{
     linear_solves::Int,
     accepted_timesteps::Int,
     rejected_timesteps::Int,
+    rejected_nonlinear_solve::Int,
+    rejected_local_error::Int,
+    rejected_out_of_domain::Int,
+    order_sum::Int,
 }
+
+"""
+Statistics of the attempted timesteps, filled in by our `loopfooter!` override.
+
+The rejection causes are:
+
+- `nonlinear_solve`: the nonlinear solver did not converge within the tolerance.
+- `local_error`: the estimated error over the step was too large.
+- `out_of_domain`: the step left the physically valid domain, see [`isoutofdomain`](@ref).
+
+`order_sum` is the sum of the algorithm order over the accepted steps, to report the mean.
+"""
+@kwdef mutable struct StepStats
+    rejected_nonlinear_solve::Int = 0
+    rejected_local_error::Int = 0
+    rejected_out_of_domain::Int = 0
+    order_sum::Int = 0
+end
 
 const state_components = (
     :tabulated_rating_curve,
@@ -979,6 +1001,8 @@ node_id: node ID of the DiscreteControl node
 controlled_nodes: The IDs of the nodes controlled by the DiscreteControl node
 compound_variables: The compound variables the DiscreteControl node listens to
 truth_state: Memory allocated for storing the truth state
+last_update_time: Per DiscreteControl node the last time there was a control state change
+min_discrete_control_interval: The minimum time between control state updates, if the time is smaller an error will be thrown
 control_state: The current control state of the DiscreteControl node
 control_state_start: The start time of the  current control state
 logic_mapping: Dictionary: truth state => control state for the DiscreteControl node
@@ -990,6 +1014,8 @@ record: Namedtuple with discrete control information for results
     controlled_nodes::Vector{Vector{NodeID}}
     compound_variables::Vector{Vector{CompoundVariable}}
     truth_state::Vector{Vector{Bool}}
+    last_update_time::Vector{Float64} = fill(-Inf, length(node_id))
+    min_discrete_control_interval::Float64
     control_state::Vector{String} = fill("undefined_state", length(node_id))
     control_state_start::Vector{Float64} = zeros(length(node_id))
     logic_mapping::Vector{OrderedDict{Vector{Bool}, String}}
@@ -1216,7 +1242,6 @@ the object itself is not.
 @kwdef struct ParametersIndependent{C1}
     starttime::DateTime
     reltol::Float64
-    relmask::Vector{Bool}
     graph::ModelGraph
     allocation::Allocation
     basin::Basin
@@ -1254,9 +1279,10 @@ the object itself is not.
     # Callback configurations
     do_concentration::Bool
     do_subgrid::Bool
-    temp_convergence::RibasimCVectorType{Float64}
+    "How much of the solver error is attributed to each state, see [`accumulate_residual!`](@ref)."
     convergence::RibasimCVectorType{Float64}
-    ncalls::Vector{Int} = [0]
+    convergence_ncalls::Vector{Int} = [0]
+    step_stats::StepStats = StepStats()
     # Reduced state where the cumulative flows are combined into Basin
     # storages (without non-state cumulative_flows)
     u_reduced::RibasimReducedCVectorType{Float64}
