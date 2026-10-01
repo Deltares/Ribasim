@@ -40,7 +40,38 @@ end
 Compute the level of a basin given its storage.
 """
 function get_level_from_storage(basin::Basin, state_idx::Int, storage::T)::T where {T}
-    return basin.storage_to_level[state_idx](storage)
+    itp = basin.storage_to_level[state_idx]
+    storages = itp.t
+    # Outside the profile the interpolation's own extrapolation applies
+    if storage < first(storages) || storage > last(storages)
+        return itp(storage)
+    end
+    return level_from_storage(storages, itp.u, itp.itp.u, storage)
+end
+
+"""
+Invert S(h) = ∫ A(h) dh within the profile, where the area A is linear between the profile
+levels, in closed form. This is the same function as the `LinearInterpolationIntInv` it is
+read from, but avoids its generic evaluation, which dominated the cost of the right hand side
+for models with many Basins.
+
+Between profile levels j and j+1, with a = A(h_j) and m = dA/dh on that segment,
+S - S_j = a Δh + m Δh² / 2, of which the non-negative root is written in the form that is
+stable for m → 0: Δh = 2 ΔS / (a + √(a² + 2 m ΔS)).
+"""
+function level_from_storage(
+        storages::AbstractVector,
+        levels::AbstractVector,
+        areas::AbstractVector,
+        storage::T,
+    )::T where {T}
+    n = length(storages)
+    j = clamp(searchsortedlast(storages, storage), 1, n - 1)
+    ΔS = storage - storages[j]
+    a = areas[j]
+    m = (areas[j + 1] - a) / (levels[j + 1] - levels[j])
+    denominator = a + sqrt(a^2 + 2 * m * ΔS)
+    return iszero(denominator) ? T(levels[j]) : levels[j] + 2 * ΔS / denominator
 end
 
 """
@@ -704,51 +735,63 @@ function build_state_vector(p_independent::ParametersIndependent)
 end
 
 function reduce_state!(u_reduced, u, p_independent)::Nothing
-    (; basin, link_to_state_idx) = p_independent
-    (; inflow_ids, outflow_ids) = basin
+    (; basin, basin_state_incidence) = p_independent
     (; combined_cumulative_flows) = u_reduced
-    state_ranges = getaxes(u)
     u_reduced .= 0
 
     for i in eachindex(basin.node_id)
-        basin_id = basin.node_id[i]
-        for inflow_id in inflow_ids[i]
-            # Flow on the link (inflow_id → basin). For UserDemand outflow this is
-            # the single user_demand_outflow state (1:1 per node). Link-based lookup
-            # correctly resolves per-link states if we ever get them upstream too.
-            state_idx = get_state_index(
-                state_ranges,
-                link_to_state_idx,
-                (inflow_id, basin_id),
-            )
-            if isnothing(state_idx)
-                state_idx = get_state_index(state_ranges, inflow_id; inflow = false)
+        for (state_idx, is_inflow) in basin_state_incidence[i]
+            if is_inflow
+                combined_cumulative_flows[i] += u[state_idx]
+            else
+                combined_cumulative_flows[i] -= u[state_idx]
             end
-            isnothing(state_idx) && continue
-            combined_cumulative_flows[i] += u[state_idx]
         end
-
-        for outflow_id in outflow_ids[i]
-            # Flow on the link (basin → outflow_id). Must be link-based because a
-            # UserDemand can have multiple inflow-link states, one per source basin.
-            state_idx = get_state_index(
-                state_ranges,
-                link_to_state_idx,
-                (basin_id, outflow_id),
-            )
-            if isnothing(state_idx)
-                state_idx = get_state_index(state_ranges, outflow_id; inflow = true)
-            end
-            isnothing(state_idx) && continue
-            combined_cumulative_flows[i] -= u[state_idx]
-        end
-
         combined_cumulative_flows[i] -= u.evaporation[i]
         combined_cumulative_flows[i] -= u.infiltration[i]
     end
 
     u_reduced.integral .= u.integral
     return nothing
+end
+
+"""
+For each Basin, the (state index, is inflow) of the flow states that change its storage,
+in the order `reduce_state!` accumulates them. This resolves the links to states once,
+instead of in every RHS evaluation.
+"""
+function build_basin_state_incidence(
+        basin::Basin,
+        state_ranges::StateTuple,
+        link_to_state_idx::Dict{Tuple{NodeID, NodeID}, Int},
+    )::Vector{Vector{Tuple{Int, Bool}}}
+    (; inflow_ids, outflow_ids) = basin
+    incidence = [Tuple{Int, Bool}[] for _ in basin.node_id]
+    for (i, basin_id) in enumerate(basin.node_id)
+        for inflow_id in inflow_ids[i]
+            # Flow on the link (inflow_id → basin). For UserDemand outflow this is
+            # the single user_demand_outflow state (1:1 per node). Link-based lookup
+            # correctly resolves per-link states if we ever get them upstream too.
+            state_idx =
+                get_state_index(state_ranges, link_to_state_idx, (inflow_id, basin_id))
+            if isnothing(state_idx)
+                state_idx = get_state_index(state_ranges, inflow_id; inflow = false)
+            end
+            isnothing(state_idx) || push!(incidence[i], (state_idx, true))
+        end
+
+        for outflow_id in outflow_ids[i]
+            # Flow on the link (basin → outflow_id). Must be link-based because a
+            # UserDemand can have multiple inflow-link states, one per source basin.
+            state_idx =
+                get_state_index(state_ranges, link_to_state_idx, (basin_id, outflow_id))
+            if isnothing(state_idx)
+                state_idx = get_state_index(state_ranges, outflow_id; inflow = true)
+            end
+            isnothing(state_idx) || push!(incidence[i], (state_idx, false))
+        end
+    end
+    return incidence
 end
 
 """

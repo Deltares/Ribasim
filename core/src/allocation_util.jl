@@ -524,14 +524,19 @@ function get_external_demand_id(p_independent, node_id::NodeID)::Union{NodeID, N
 end
 
 function get_bounds_hit(variable::JuMP.VariableRef)::Tuple{Bool, Bool}
+    # The solver can end a few ulps inside a bound it is at, so allow for round-off
+    tolerance(bound) = 1.0e-9 * max(1.0, abs(bound))
+
     hit_lower_bound = if JuMP.has_lower_bound(variable)
-        JuMP.value(variable) ≤ JuMP.lower_bound(variable)
+        lower_bound = JuMP.lower_bound(variable)
+        JuMP.value(variable) ≤ lower_bound + tolerance(lower_bound)
     else
         false
     end
 
     hit_upper_bound = if JuMP.has_upper_bound(variable)
-        JuMP.value(variable) ≥ JuMP.upper_bound(variable)
+        upper_bound = JuMP.upper_bound(variable)
+        JuMP.value(variable) ≥ upper_bound - tolerance(upper_bound)
     else
         false
     end

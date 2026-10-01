@@ -1268,6 +1268,9 @@ the object itself is not.
     # destination node can have multiple inflow-link states (currently only UserDemand).
     link_to_state_idx::Dict{Tuple{NodeID, NodeID}, Int} =
         Dict{Tuple{NodeID, NodeID}, Int}()
+    # Per Basin the (state index, is inflow) of the flow states that change its storage,
+    # precomputed from the graph for `reduce_state!`, which runs in every RHS evaluation
+    basin_state_incidence::Vector{Vector{Tuple{Int, Bool}}} = Vector{Tuple{Int, Bool}}[]
     # Water balance tolerances
     water_balance_abstol::Float64
     water_balance_reltol::Float64
