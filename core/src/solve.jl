@@ -1,3 +1,7 @@
+"Gravitational acceleration [m/s²]"
+const gravity = 9.81
+
+
 """
 The right hand side function of the system of ODEs set up by Ribasim.
 """
@@ -526,6 +530,56 @@ function formulate_flow!(
     return nothing
 end
 
+"""
+Wet area, wetted perimeter and water surface width of a trapezoidal profile at depth d.
+"""
+function trapezoid_geometry(d, width, slope)
+    A = width * d + slope * d^2
+    P = width + 2 * d * sqrt(slope^2 + 1)
+    T = width + 2 * slope * d
+    return A, P, T
+end
+
+"""
+The factor A / n * R_h^(2/3) in the Gauckler-Manning formula for a trapezoidal profile at depth d.
+Written as A^(5/3) / P^(2/3) so that the derivative stays finite when the profile is dry.
+"""
+function manning_factor(d, width, slope, n)
+    A, P, _ = trapezoid_geometry(max(d, 0), width, slope)
+    return A^(5 / 3) / (n * cbrt(max(P, eps(Float64))^2))
+end
+
+"""
+Critical depth of a trapezoidal profile for a specific energy E, i.e. the depth where
+d + A / (2T) = E and the flow for that energy is maximal. This is the positive root of
+
+    5 s d^2 + (3 w - 4 s E) d - 2 w E = 0
+
+which is 2E/3 for a rectangle (s = 0) and 4E/5 for a triangle (w = 0).
+The two root forms are used on either side of b = 0 to avoid cancellation.
+"""
+function critical_depth(E, width, slope)
+    E = max(E, 0)
+    b = 3 * width - 4 * slope * E
+    r = sqrt(b^2 + 40 * slope * width * E)
+    return ifelse(b >= 0, 4 * width * E / max(b + r, eps(Float64)), (r - b) / (10 * slope))
+end
+
+"""
+Critical flow of a trapezoidal profile for a specific energy E, the largest flow that can
+pass the profile: A sqrt(g A / T) at the critical depth.
+Written as sqrt(g) A^(3/2) / sqrt(T) so that the derivative stays finite when the profile is dry.
+"""
+function critical_flow(E, width, slope)
+    d_c = critical_depth(E, width, slope)
+    A, _, T = trapezoid_geometry(d_c, width, slope)
+    return sqrt(gravity) * A^(3 / 2) / sqrt(max(T, eps(Float64)))
+end
+
+"""
+Flow through a ManningResistance node for the levels h_a and h_b of the Basins on either side,
+positive in the direction of the link. See `formulate_flow!` for the equations.
+"""
 function manning_resistance_flow(
         manning_resistance::ManningResistance,
         node_id::NodeID,
@@ -543,11 +597,8 @@ function manning_resistance_flow(
         downstream_bottom,
     ) = manning_resistance
 
-    inflow_link = manning_resistance.inflow_link[node_id.idx]
-    outflow_link = manning_resistance.outflow_link[node_id.idx]
-
-    inflow_id = inflow_link.link[1]
-    outflow_id = outflow_link.link[2]
+    inflow_id = manning_resistance.inflow_link[node_id.idx].link[1]
+    outflow_id = manning_resistance.outflow_link[node_id.idx].link[2]
 
     bottom_a = upstream_bottom[node_id.idx]
     bottom_b = downstream_bottom[node_id.idx]
@@ -556,35 +607,31 @@ function manning_resistance_flow(
     n = manning_n[node_id.idx]
     L = length[node_id.idx]
 
-    # Average d, A, R
-    d_a = h_a - bottom_a
-    d_b = h_b - bottom_b
-    d = 0.5 * (d_a + d_b)
+    # Upstream and downstream Basin as given by the flow direction.
+    # ifelse instead of a branch keeps this usable for sparsity detection.
+    forward = h_a >= h_b
+    h_upstream = ifelse(forward, h_a, h_b)
+    h_downstream = ifelse(forward, h_b, h_a)
+    bottom_upstream = ifelse(forward, bottom_a, bottom_b)
+    bottom_downstream = ifelse(forward, bottom_b, bottom_a)
 
-    A_a = width * d + slope * d_a^2
-    A_b = width * d + slope * d_b^2
-    A = 0.5 * (A_a + A_b)
+    # The downstream water level cannot drop below the critical depth above the downstream
+    # bottom, so 0 ≤ Δh ≤ |h_a - h_b|
+    d_upstream = h_upstream - bottom_upstream
+    d_downstream = max(h_downstream - bottom_downstream, critical_depth(h_upstream - bottom_downstream, width, slope))
+    Δh = h_upstream - (bottom_downstream + d_downstream)
 
-    slope_unit_length = sqrt(slope^2 + 1.0)
-    P_a = width + 2.0 * d_a * slope_unit_length
-    P_b = width + 2.0 * d_b * slope_unit_length
-    R_h_a = A_a / P_a
-    R_h_b = A_b / P_b
-    R_h = 0.5 * (R_h_a + R_h_b)
+    factor = 0.5 * (manning_factor(d_upstream, width, slope, n) + manning_factor(d_downstream, width, slope, n))
+    q_manning = factor * relaxed_root(Δh / L, 1.0e-5)
 
-    Δh = h_a - h_b
-
-    # Calculate Reynolds number for open channel flow
-    # Re = V * A / ( R_h * ν )
-    # V: average velocity, R_h: hydraulic radius, ν: kinematic viscosity of water
-
-    # Kinematic viscosity of water (ν), typical value at 20°C [m²/s]
-    ν = 1.004e-6
-    Re_laminar = 2000
-    threshold = (Re_laminar * ν * n * ∛R_h / A)^2
-    threshold = max(threshold, 1.0e-5) # Avoid too small thresholds
-
-    q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, threshold)
+    # The flow cannot exceed the critical flow for the head above the higher of the two bottoms.
+    # The smooth minimum is sharp enough to leave subcritical flow untouched, and is written
+    # with the ratio of the smaller to the larger flow so that it cannot overflow.
+    q_critical = critical_flow(h_upstream - max(bottom_upstream, bottom_downstream), width, slope)
+    q_low = min(q_manning, q_critical)
+    q_high = max(q_manning, q_critical, eps(Float64))
+    q = q_low / (1 + (q_low / q_high)^16)^(1 / 16)
+    q = ifelse(forward, q, -q)
 
     return q * low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
 end
@@ -624,9 +671,40 @@ The hydraulic radius is defined as:
 
 Where P is the wetted perimeter.
 
-The average of the upstream and downstream water depth is used to compute cross-sectional area and
-hydraulic radius. This ensures that a basin can receive water after it has gone
-dry.
+A and R_h are evaluated at both ends of the reach and the resulting factors A / n * R_h^(2/3)
+are averaged. The upstream end is the Basin the water comes from, so a Basin can receive
+water after it has gone dry.
+
+Two limits from open channel hydraulics are added to this. The downstream water level cannot
+drop below the critical depth for the head above the downstream bottom: at a free overfall the
+water surface sits at critical depth, not at the level of the Basin below. And the flow cannot
+exceed the critical flow for the head above the higher of the two bottoms, which is where the
+flow is controlled. Without these a Basin that lies far below its upstream neighbour receives
+a supercritical flow that keeps growing as it fills.
+
+Side view of a reach with a free overfall into a lower downstream Basin, with levels h,
+bottoms z and depths d:
+
+    h_upstream ▽~~~~~~~~~~~~~~~~~~~~~~~_
+                                       ~~~~~_
+    upstream                                 ~~~~~_        Δh = h_upstream - (z_downstream + d_downstream)
+    Basin                                          ~~~~~_
+    z_upstream ________________                          ~~~▽ z_downstream + d_downstream
+                               \\                             |
+                                \\   reach, length L          | d_downstream = max(h_downstream - z_downstream, d_c)
+                                 \\                           |         h_downstream ▽
+                                  \\                          |         ~~~~~~~~~~~~~~~
+                                   \\_________________________|_______________________ z_downstream
+                                                                 downstream Basin
+
+Here the downstream Basin is below the brink, so d_downstream is the critical depth d_c for
+the head h_upstream - z_downstream, and the head difference driving the flow is Δh rather than
+h_upstream - h_downstream. As the downstream Basin fills above z_downstream + d_c,
+d_downstream follows its level and Δh becomes h_upstream - h_downstream again.
+The flow is also capped at the critical flow for the head above the higher bottom, here
+h_upstream - z_upstream, which is the most that can leave the upstream Basin over its sill.
+
+The square root of the friction slope is relaxed around zero to keep the derivative finite.
 """
 function formulate_flow!(
         du::CVector,

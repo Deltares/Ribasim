@@ -749,10 +749,14 @@ end
         basin_table,
     )
 
-    # Check that Basin #2189 is running dry and thus the infiltration and storage rate are close to 0
-    @test all(x -> abs(x) < 0.03, basin_table.storage)
-    @test all(x -> abs(x) < 1.0e-8, basin_table.storage_rate)
-    @test all(x -> abs(x) < 1.0e-8, basin_table.infiltration)
+    # Check that Basin #2189 is running dry and thus the infiltration and storage rate are
+    # close to 0. The ManningResistance flow out of this Basin vanishes like the weir flow
+    # over its sill, and the low storage factor on top of that lets the last few
+    # millimetres drain asymptotically, so test the depth rather than the exact storage.
+    bottom = 22.4
+    @test all(x -> x - bottom < 0.01, basin_table.level)
+    @test all(x -> abs(x) < 1.0e-5, basin_table.storage_rate)
+    @test all(x -> abs(x) < 1.0e-5, basin_table.infiltration)
 end
 
 @testitem "FlowBoundary interpolation type" begin

@@ -713,7 +713,7 @@ Requirements:
 * manning_n > 0
 * profile_width >= 0
 * profile_slope >= 0
-* (profile_width == 0) xor (profile_slope == 0)
+* not both profile_width == 0 and profile_slope == 0
 """
 @kwdef struct ManningResistance <: AbstractParameterNode
     node_id::Vector{NodeID}

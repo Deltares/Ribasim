@@ -380,6 +380,45 @@ function valid_flow_rates(
     return !errors
 end
 
+"""
+Test whether the ManningResistance profiles are valid: profile_width and profile_slope
+cannot both be zero, also not after a control state update.
+"""
+function valid_manning_profile(
+        node_id::Vector{NodeID},
+        profile_width::Vector{Float64},
+        profile_slope::Vector{Float64},
+        control_mapping::OrderedDict{Tuple{NodeID, String}, <:ControlStateUpdate},
+    )::Bool
+    errors = false
+
+    for (key, control_state_update) in pairs(control_mapping)
+        id, control_state = key
+        width = profile_width[id.idx]
+        slope = profile_slope[id.idx]
+        for parameter_update in control_state_update.scalar_update
+            if parameter_update.name == :profile_width
+                width = parameter_update.value
+            elseif parameter_update.name == :profile_slope
+                slope = parameter_update.value
+            end
+        end
+        if width == 0 && slope == 0
+            errors = true
+            @error "profile_width and profile_slope cannot both be zero." node_id = id control_state
+        end
+    end
+
+    for id in node_id
+        if profile_width[id.idx] == 0 && profile_slope[id.idx] == 0
+            errors = true
+            @error "profile_width and profile_slope cannot both be zero for $id."
+        end
+    end
+
+    return !errors
+end
+
 function valid_pid_connectivity(
         pid_control_node_id::Vector{NodeID},
         pid_control_listen_node_id::Vector{NodeID},
