@@ -330,6 +330,26 @@ function get_low_storage_factor(p::Parameters, id::NodeID)
 end
 
 """
+The depth of water that an empty Basin keeps: 1% of `depth_threshold`, so 1 mm by default.
+
+The low storage factor reaches 0 at this depth rather than at the bottom, so a Basin that
+empties levels off at a small positive storage instead of approaching zero. Otherwise the
+floating point rounding of the storage, which is computed from cumulative flows, can make an
+empty Basin slightly negative, which the solver has to reject.
+"""
+low_storage_reserve_depth(depth_threshold::Real) = 0.01 * depth_threshold
+
+"""
+The factor with which outflows of Basin `i` are reduced at the given storage. It goes
+smoothly from 0 at the reserve storage to 1 at the low storage threshold, see
+`low_storage_reserve_depth` and `depth_threshold`.
+"""
+function low_storage_factor(storage::T, basin::Basin, i::Int)::T where {T <: Real}
+    reserve = basin.low_storage_reserve[i]
+    return reduction_factor(storage - reserve, basin.low_storage_threshold[i] - reserve)
+end
+
+"""
 For resistance nodes, give a reduction factor based on the upstream node
 as defined by the flow direction.
 """
@@ -907,9 +927,10 @@ function min_low_storage_factor(
     ) where {T}
     return if id.type == NodeType.Basin
         low_storage_threshold = basin.low_storage_threshold[id.idx]
-        reduction_factor(
+        low_storage_factor(
             min(storage_now[id.idx], storage_prev[id.idx]) - 2low_storage_threshold,
-            low_storage_threshold,
+            basin,
+            id.idx,
         )
     else
         one(T)
