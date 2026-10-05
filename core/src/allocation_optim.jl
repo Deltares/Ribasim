@@ -219,7 +219,8 @@ function linearize_connector_node!(
     # which is the point at which we want to linearize.
     t_after = t + Δt_allocation
 
-    for node_id in only(flow_constraint.axes)
+    # Without ad_active, get_level ignores the storage argument, giving zero derivatives
+    @ad_active p for node_id in only(flow_constraint.axes)
         inflow_id = inflow_link[node_id.idx].link[1]
         outflow_id = outflow_link[node_id.idx].link[2]
 
@@ -1374,7 +1375,8 @@ function linearized_flow_bounds(
     q0 = flow_function(connector_node, node_id, s_a, s_b, p, t_after)
     lower, upper = q0, q0
 
-    for (storage, other_storage, other_id, is_inflow) in (
+    # Without ad_active, get_level ignores the storage argument, giving zero derivatives
+    @ad_active p for (storage, other_storage, other_id, is_inflow) in (
             (s_a, s_b, inflow_id, true),
             (s_b, s_a, outflow_id, false),
         )

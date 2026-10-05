@@ -15,11 +15,9 @@
     (; state_ranges) = p_independent
 
     @test u isa RibasimStateCVector
-    @test filter(!isempty, state_ranges.flow) == (;
-        tabulated_rating_curve = 1:1,
-        evaporation = 2:2,
-        infiltration = 3:3,
-    )
+    @test filter(!isempty, state_ranges.flow.horizontal) == (; tabulated_rating_curve = 1:1)
+    @test filter(!isempty, state_ranges.flow.vertical) == (evaporation = 2:2, infiltration = 3:3)
+
 
     # Open NetCDF result files
     flow_path = normpath(dirname(toml_path), "results/flow.nc")
@@ -72,7 +70,15 @@
             @test haskey(ds, "linear_solves")
             @test haskey(ds, "accepted_timesteps")
             @test haskey(ds, "rejected_timesteps")
+            @test haskey(ds, "rejected_nonlinear_solve")
+            @test haskey(ds, "rejected_local_error")
+            @test haskey(ds, "rejected_out_of_domain")
+            @test haskey(ds, "mean_order")
             @test haskey(ds, "dt")
+
+            @test ds["rejected_timesteps"][:] ==
+                ds["rejected_nonlinear_solve"][:] .+ ds["rejected_local_error"][:] .+
+                ds["rejected_out_of_domain"][:]
         end
     end
 
@@ -217,7 +223,7 @@ end
     @test p isa Ribasim.Parameters
     @test isconcretetype(typeof(p_independent))
     @test all(isconcretetype, fieldtypes(typeof(p_independent)))
-    @test p_independent.node_id == [4, 5, 8, 7, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
+    @test p_independent.state_id == [7, 4, 5, 8, 10, 12, 2, 1, 3, 6, 9, 1, 3, 6, 9]
 
     @test success(model)
     @test length(model.integrator.sol.t) == 2 # start and end
@@ -278,12 +284,15 @@ end
 
     integrator.u *= 1.0e6
     integrator.u[1] = Inf
-    integrator.cache.nlsolver.cache.J.J_intermediate .= NaN
-    diagnostics = replace(
-        log_numerical_instability(integrator),
-        r"(  Basin #\d+): [^\n]+" => s"\1",
-    )
-    @test diagnostics == "\n\nPhysical layer diagnostics:\n\nNon-plausible depths (outside [0,2000.0]):\n  Basin #1\n  Basin #3\n  Basin #6\n  Basin #9\n\nNon-finite states:\n  TabulatedRatingCurve #4: Inf\n\nJacobian values:\n  row(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries (e.g. J[1,1] = NaN, J[1,2] = NaN, J[1,3] = NaN, J[1,4] = NaN, J[1,5] = NaN), suggesting a singularity in those equation(s)\n  column(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries, suggesting those state component(s) are diverging"
+    integrator.cache.nlsolver.cache.linsolve.cache_inner.A.J .= NaN
+    diagnostic = log_numerical_instability(integrator)
+    for (basin_id, expected_depth) in ((1, -3.1199998532955774e11), (6, -3.322633672854174e11), (9, 397006.2329950004))
+        depth_match = match(Regex("Basin #$basin_id: ([-+0-9.e]+)"), diagnostic)
+        @test !isnothing(depth_match)
+        @test parse(Float64, depth_match[1]) ≈ expected_depth rtol = 1.0e-6
+    end
+    normalized = replace(diagnostic, r"(Basin #(?:1|6|9): )[-+0-9.e]+" => s"\1<finite depth>")
+    @test normalized == "\n\nPhysical layer diagnostics:\n\nNon-plausible (flow) rates (outside [-500000.0, 500000.0]):\n  LinearResistance #12: Inf\n\nNon-plausible depths (outside [0,2000.0]):\n  Basin #1: <finite depth>\n  Basin #3: -Inf\n  Basin #6: <finite depth>\n  Basin #9: <finite depth>\n\nNon-finite states:\n  TabulatedRatingCurve #4: Inf\n\nJacobian values:\n  row(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries (e.g. J[1,1] = NaN, J[1,2] = NaN, J[1,3] = NaN, J[1,4] = NaN, J[1,5] = NaN), suggesting a singularity in those equation(s)\n  column(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries, suggesting those state component(s) are diverging"
 end
 
 @testitem "basic transient model" begin
@@ -523,19 +532,19 @@ end
     @test all(isapprox.(h_expected, h_actual; atol = 0.02))
     # Test for conservation of mass, flow at the beginning == flow at the end
     @test Ribasim.get_flow(
-        du,
-        p_independent,
-        t,
+        du.flow,
         (NodeID(:FlowBoundary, 1, p_independent), NodeID(:Basin, 2, p_independent)),
+        p;
+        t,
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
     @test Ribasim.get_flow(
-        du,
-        p_independent,
-        t,
+        du.flow,
         (
             NodeID(:ManningResistance, 101, p_independent),
             NodeID(:Basin, 102, p_independent),
         ),
+        p;
+        t,
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
 
@@ -777,7 +786,7 @@ end
     @test flow_rate isa Vector{<:LinearInterpolation}
 end
 
-@testitem "init_basin_only_storage" begin
+@testitem "Init basin only storage" begin
     toml_path = normpath(
         @__DIR__,
         "../../generated_testmodels/basic_basin_only_storage/ribasim.toml",

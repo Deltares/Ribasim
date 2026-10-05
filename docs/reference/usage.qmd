@@ -383,7 +383,7 @@ The Basin results contain:
 - The `balance_error` is the difference between the `storage_rate` on one side and the total inflow and outflow on the other side: `storage_rate` - (total inflow - total outflow).
   It can be used to check if the numerical error when solving the water balance is sufficiently small.
 - The `relative_error` is the fraction of the `balance_error` over the mean of the `total_inflow` and `total_outflow`.
-- The `convergence` is the scaled residual of the solver, giving an indication of which nodes converge the worst (are hardest to solve). A higher value indicates a node that is harder to solve.
+- The `convergence` is a severity score for this node: the share of the local error estimate attributed to it, averaged over the `saveat` interval and normalized such that the worst node of every timestep scores 1. It ranks the nodes by how much they hold the solver back, so a high value does not mean the node is wrong; it means it is a bottleneck, and therefore a good candidate for reparameterization when the model is slow. See [debugging slow models](/guide/debug.qmd#slow-models).
 
 For a more in-depth explanation of the water balance error see [here](/concept/equations.qmd#the-water-balance-error).
 
@@ -416,7 +416,7 @@ ds
 
 The `link_id` value is the same as the `fid` written to the Link table, and can be used to directly look up the Link geometry.
 Flows from the "from" to the "to" node have a positive sign, and if the flow is reversed it will be negative.
-- The `convergence` is the scaled residual of the solver, giving an indication of which nodes converge the worst (are hardest to solve).
+- The `convergence` is a severity score for this link: the share of the local error estimate attributed to it, averaged over the `saveat` interval and normalized such that the worst state of every timestep scores 1. A high value does not mean the link is wrong; it means it is a bottleneck for the solver. See [debugging slow models](/guide/debug.qmd#slow-models).
 
 ## State - `basin_state.nc` {#sec-state}
 
@@ -530,6 +530,18 @@ This result file contains statistics about the solver, which can give an insight
 The `computation_time` is the wall time in milliseconds spent on the given period.
 The first row tends to include compilation time as well.
 The `dt` is the average size (in seconds) of the calculation timesteps in the given period.
+
+A timestep that is rejected is thrown away and retried with a smaller step, so rejections are pure overhead.
+`rejected_timesteps` is split out by cause:
+
+- `rejected_local_error`: the estimated error over the step was too large. This is the signature of a stiff model, where some node reacts much faster than the rest.
+- `rejected_nonlinear_solve`: the solver could not solve the equations to the required accuracy.
+- `rejected_out_of_domain`: the step left the physically valid domain. Currently this means it would have given a Basin a negative storage.
+
+The `mean_order` is the average order of the accepted timesteps in the given period.
+The default solver adapts its order up to 5; a value that stays near 1 or 2 indicates a stiff model or a discontinuity that keeps resetting the solver.
+
+See [debugging slow models](/guide/debug.qmd#slow-models) for how to use these.
 
 **NetCDF structure:**
 

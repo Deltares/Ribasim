@@ -52,6 +52,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
 
     function formulate_flows_closure!(du, flow_input, t)
         check_new_t!(p, t)
+        du .= 0.0
 
         formulate_flows_args = (
             du,
@@ -61,7 +62,6 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
             flow_input.pid_integral,
             p, t,
         )
-
 
         formulate_vertical_flux!(du.flow, flow_input.storage_uplink, p, t)
         formulate_flows!(formulate_flows_args...)
@@ -104,7 +104,7 @@ The rhs of the ODE problem is composed of:
 - Computing storages from cumulative flows: S = M * u (via the incidence matrix M)
 - Computing levels and areas from the storages
 - Computing flows from the levels and areas
-# TODO: Continuous Control, PID Control
+- Computing continuously controlled variables via ContinuousControl and PidControl
 
 Within the solve, The Jacobian is formulated as a function of v = (storage_uplink, storage_downlink, pid_integral, continuous_control_compound), where:
 - storage_uplink is the storage uplink per cumulative flow state
@@ -141,9 +141,12 @@ this formulation requires far fewer right hand side calls in the Jacobian comput
     cache::C
     p_independent::PI
     n_basin = length(p_independent.basin.node_id)
+    n_pid = length(p_independent.pid_control.node_id)
     # J_inner_local represents the most expensive part of the inner linear solve,
     # namely the local dependence of flows on storages
     J_inner_local::SparseMatrixCSC{Float64, Int} = spzeros(n_basin, n_basin)
+    # The area of PID controlled Basins
+    area_pid_controlled::Vector{Float64} = zeros(n_pid)
 end
 
 # SciMLOperators interface
@@ -164,10 +167,11 @@ function SciMLOperators.update_coefficients!(
         p::Parameters,
         t::Number,
     )
-    (; cache) = J
+    (; cache, area_pid_controlled, n_pid) = J
     (; flow_input, eval_∂flow_∂flow_input!) = cache
     (; storage_uplink, storage_downlink) = flow_input
     (; p_independent, p_mutable, current_basin_properties) = p
+    (; pid_control, basin) = p_independent
 
     !p_mutable.refresh_jac && return nothing
 
@@ -180,9 +184,21 @@ function SciMLOperators.update_coefficients!(
         p_independent
     )
     check_new_t!(p, t)
+    flow_input.pid_integral .= u.pid_integral
+    # Cached by the last water_balance! call
+    flow_input.continuous_control_compound .=
+        p_independent.continuous_control.continuous_control_compound_variables
 
     # Compute derivatives
     eval_∂flow_∂flow_input!(t)
+
+    # Area of PID controlled Basins
+    for pid_idx in 1:n_pid
+        listen_node_id = pid_control.listen_node_id[pid_idx]
+        storage = current_basin_properties.current_storage[listen_node_id.idx]
+        level = basin.storage_to_level[listen_node_id.idx](storage)
+        area_pid_controlled[pid_idx] = basin.level_to_area[listen_node_id.idx](level)
+    end
 
     # Compute local part of the reduced linear solve Jacobian
     update_J_inner_local!(J)
@@ -267,18 +283,41 @@ function build_J_inner!(
         J::RibasimJacobian,
         gamma::Number
     )
-    (; p_independent, J_inner_local) = J
+    (; p_independent, J_inner_local, area_pid_controlled, cache) = J
+    (; ∂flow_∂flow_input, flow_input_ranges) = cache
+    (; pid_control) = p_independent
 
     J_inner .= J_inner_local
 
-    # Continuous control contributions via storage
-    # TODO
+    for (flow_idx, flow_input_idx, val) in zip(findnz(∂flow_∂flow_input)...)
 
-    # Continuous control contributions via flow
-    # TODO
+        if (flow_input_idx in flow_input_ranges.storage_uplink) || (flow_input_idx in flow_input_ranges.storage_downlink)
+            nothing # Handled in update_J_inner_local!
+        elseif flow_input_idx in flow_input_ranges.pid_integral
+            # PID control contributions
+            pid_id = pid_control.node_id[flow_input_idx - flow_input_ranges.pid_integral[1] + 1]
+            listen_node_id = pid_control.listen_node_id[pid_id.idx]
+            contribution = gamma * val / area_pid_controlled[pid_id.idx]
 
-    # PID control contributions
-    # TODO
+            inflow_id = pid_control.inflow_id[pid_id.idx]
+            outflow_id = pid_control.outflow_id[pid_id.idx]
+
+            if inflow_id.is_basin
+                J_inner[inflow_id.idx, listen_node_id.idx] += contribution
+            end
+            if outflow_id.is_basin
+                J_inner[outflow_id.idx, listen_node_id.idx] -= contribution
+            end
+
+
+        elseif flow_input_idx in flow_input_ranges.continuous_control_compound
+            # Continuous control contributions
+            # TODO
+            error()
+        else
+            error()
+        end
+    end
     return nothing
 end
 
@@ -357,7 +396,9 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
 
     (; cache_inner, W) = linsolve
     (; gamma, J) = W
-    (; p_independent) = J
+    (; p_independent, area_pid_controlled, n_pid, cache) = J
+    (; flow_input_ranges, ∂flow_∂flow_input) = cache
+    (; pid_control, flow_ranges) = p_independent
 
     W_inner = cache_inner.A
     J_inner = W_inner.J
@@ -366,6 +407,21 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
     # Set up inner (storage space) problem rhs
     W_inner.gamma = gamma
     aggregate_flows!(b_inner, b.flow, p_independent)
+    for pid_idx in 1:n_pid
+        inflow_id = pid_control.inflow_id[pid_idx]
+        outflow_id = pid_control.outflow_id[pid_idx]
+        controlled_node_id = pid_control.controlled_node_id[pid_idx]
+        flow_idx = controlled_node_id.type == NodeType.Pump ?
+            flow_ranges.horizontal.pump[controlled_node_id.idx] :
+            flow_ranges.horizontal.outlet[controlled_node_id.idx]
+        contribution = gamma * ∂flow_∂flow_input[flow_idx, flow_input_ranges.pid_integral[pid_idx]] * b.pid_integral[pid_idx]
+        if inflow_id.is_basin
+            b_inner[inflow_id.idx] -= contribution
+        end
+        if outflow_id.is_basin
+            b_inner[outflow_id.idx] += contribution
+        end
+    end
 
     # Set up inner (storage space) problem matrix
     build_J_inner!(J_inner, J, gamma)
@@ -386,6 +442,18 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
     # Compute flow component solution
     ∂flow_∂storage_mul!(linu.flow, J, cache_inner.u)
     linu.flow .-= b.flow
+    for pid_idx in 1:n_pid
+        listen_node_id = pid_control.listen_node_id[pid_idx]
+        controlled_node_id = pid_control.controlled_node_id[pid_idx]
+        flow_idx = controlled_node_id.type == NodeType.Pump ?
+            flow_ranges.horizontal.pump[controlled_node_id.idx] :
+            flow_ranges.horizontal.outlet[controlled_node_id.idx]
+        linu.pid_integral[pid_idx] = -gamma * (
+            b.pid_integral[pid_idx] +
+                cache_inner.u[listen_node_id.idx] / area_pid_controlled[pid_idx]
+        )
+        linu.flow[flow_idx] += ∂flow_∂flow_input[flow_idx, flow_input_ranges.pid_integral[pid_idx]] * linu.pid_integral[pid_idx]
+    end
     linu.flow .*= gamma
 
     return LinearSolution{
@@ -466,6 +534,24 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
     return nothing
 end
 
+# The out-of-place method is used by the nonlinear solver to weigh its Newton increment.
+# Without this the generic DiffEqBase fallback broadcasts the scalar method over our
+# CVector, bypassing the scaling above, so the nonlinear solver and the error estimate
+# would apply different tolerances to the same states.
+@inline function DiffEqBase.calculate_residuals(
+        ũ::CVector, u₀::CVector, u₁::CVector, abstol, reltol, internalnorm::InternalNorm, t
+    )
+    out = similar(ũ)
+    DiffEqBase.calculate_residuals!(out, ũ, u₀, u₁, abstol, reltol, internalnorm, t)
+    return out
+end
+
+"""
+Credit each state with its share of the local error estimate of a single step, normalized
+so that the worst state of every step contributes 1.0. This ranks the states by how much
+they hold back the timestep; it is not a magnitude, and a high value does not mean the state
+is wrong.
+"""
 function accumulate_residual!(convergence, residual)
     max_abs_residual = 0.0
     for i in eachindex(residual)
@@ -516,6 +602,22 @@ end
 # used for diagnosing numerical instability
 const MAX_ABS_FLOW = 5.0e5 # m³/s
 
+"""
+Describe the state at the given index for logging. `p_independent.node_id` holds the node a
+state belongs to for every state. A node can own more than one state, e.g. a Basin owns both
+an evaporation and an infiltration state, so the state component is named as well unless it
+is the node itself.
+"""
+function state_label(u::CVector, node_id::AbstractVector{NodeID}, state_idx::Int)::String
+    checkbounds(Bool, node_id, state_idx) || return "state $state_idx"
+    id = node_id[state_idx]
+    for (name, range) in pairs(getaxes(u))
+        state_idx in range || continue
+        return name === snake_case(id) ? string(id) : "$id ($name)"
+    end
+    return string(id)
+end
+
 # Modelled after SciMLBase.log_numerical_instability(integrator::ODEIntegrator; jacobian_logging = true)
 function SciMLBase.log_numerical_instability(
         integrator::ODEIntegrator{<:Any, <:Any, <:RibasimStateCVector};
@@ -523,9 +625,13 @@ function SciMLBase.log_numerical_instability(
         max_print_n::Int = 20
     )::String
     (; u, p, t) = integrator
-    du = get_du(integrator)
     (; p_independent, current_basin_properties) = p
     (; state_id, max_depth, basin) = p_independent
+
+    # The physical rates, not `get_du(integrator)`, which is the integrator's own derivative
+    # estimate and is meaningless once a step has diverged
+    du = get_du(integrator)
+    water_balance!(du, u, p, t)
 
     # Check whether any states are non-finite
     state_analysis = String[]
@@ -535,9 +641,8 @@ function SciMLBase.log_numerical_instability(
             push!(state_analysis, "More than $max_print_n states ($(length(non_finite_state_idxs))) are non-finite, output truncated.")
             break
         else
-            node_id = state_id[state_idx]
             value = u[state_idx]
-            push!(state_analysis, "$node_id: $value")
+            push!(state_analysis, "$(state_label(u, state_id, state_idx)): $value")
         end
     end
 
@@ -549,9 +654,8 @@ function SciMLBase.log_numerical_instability(
             push!(rate_analysis, "More than $max_print_n states ($(length(too_large_rate_idxs))) have non-plausible rate, output truncated.")
             break
         else
-            node_id = state_id[state_idx]
             value = du[state_idx]
-            push!(rate_analysis, "$node_id: $value")
+            push!(rate_analysis, "$(state_label(u, state_id, state_idx)): $value")
         end
     end
 
@@ -565,8 +669,6 @@ function SciMLBase.log_numerical_instability(
         atmp = error_estimate_residuals(integrator.cache)
         residual_analysis!(error_analysis, atmp, u, integrator.uprev)
     end
-
-    water_balance!(du, u, p, t)
 
     # Check whether any Basins have a too large water depth
     depths = [current_basin_properties.current_level[id.idx] - basin_bottom(basin, id)[2] for id in basin.node_id]

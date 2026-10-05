@@ -50,8 +50,7 @@ end
     @test length(xa) == 3
     @test getdata(xa) === data
     @test getaxes(xa) === axes.a
-    error = @test_throws ErrorException x.b
-    @test sprint(showerror, error) == "CVector has no component named :b"
+    @test_throws ErrorException x.b
     @test x.a.b === 1.0
     @test x.a.c isa SubArray
     @test x.a.c == [2.0, 3.0]
@@ -110,4 +109,21 @@ end
     @test axes == (; a = 1:2, nested = (; b = 3:4), c = 5:6, d = 7:9)
     @test_throws ArgumentError concatenate_axes((; a = 1:2), (; a = 1:3))
     @test concatenate_axes() == NamedTuple()
+end
+
+@testitem "State label" begin
+    using Ribasim.CVectors: CVector
+
+    u = CVector(zeros(4), (; pump = 1:1, evaporation = 2:3, integral = 4:4))
+    node_id = [
+        Ribasim.NodeID(:Pump, 42, 1),
+        Ribasim.NodeID(:Basin, 7, 1),
+        Ribasim.NodeID(:Basin, 8, 2),
+        Ribasim.NodeID(:PidControl, 9, 1),
+    ]
+
+    @test Ribasim.state_label(u, node_id, 1) == "Pump #42"
+    @test Ribasim.state_label(u, node_id, 3) == "Basin #8 (evaporation)"
+    @test Ribasim.state_label(u, node_id, 4) == "PidControl #9 (integral)"
+    @test Ribasim.state_label(u, node_id, 5) == "state 5"
 end

@@ -115,6 +115,9 @@ function Model(
         @error "Models without states are unsupported, please add a Basin node."
         error("Model has no state.")
     end
+    # u_prev_saveat starts undefined; it must match u0 so save_flow computes correct
+    # mean flows (otherwise garbage values leak into the first saveat interval).
+    p_independent.u_prev_saveat .= u0
 
     du0 = zero(u0)
 

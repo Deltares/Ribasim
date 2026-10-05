@@ -5,7 +5,29 @@ const SolverStats = @NamedTuple{
     linear_solves::Int,
     accepted_timesteps::Int,
     rejected_timesteps::Int,
+    rejected_nonlinear_solve::Int,
+    rejected_local_error::Int,
+    rejected_out_of_domain::Int,
+    order_sum::Int,
 }
+
+"""
+Statistics of the attempted timesteps, filled in by our `loopfooter!` override.
+
+The rejection causes are:
+
+- `nonlinear_solve`: the nonlinear solver did not converge within the tolerance.
+- `local_error`: the estimated error over the step was too large.
+- `out_of_domain`: the step left the physically valid domain, see [`isoutofdomain`](@ref).
+
+`order_sum` is the sum of the algorithm order over the accepted steps, to report the mean.
+"""
+@kwdef mutable struct StepStats
+    rejected_nonlinear_solve::Int = 0
+    rejected_local_error::Int = 0
+    rejected_out_of_domain::Int = 0
+    order_sum::Int = 0
+end
 
 const state_components = (:flow, :pid_integral)
 const state_flow_components = (:horizontal, :vertical)
@@ -1247,6 +1269,7 @@ the object itself is not.
 """
 @kwdef struct ParametersIndependent{C1}
     starttime::DateTime
+    reltol::Float64
     graph::ModelGraph
     allocation::Allocation
     basin::Basin
@@ -1295,9 +1318,10 @@ the object itself is not.
     u_prev_saveat::RibasimStateCVector{Float64} = cvector_from_axes(state_ranges)
     # Cumulative flow over last allocation times
     cumulative_flow_prev_allocation_dt::FlowCVector{Float64} = zero(storage_uplink)
-    # Convergence tracking: accumulated normalized Newton residual per saveat
+    # How much of the solver error is attributed to each state, see [`accumulate_residual!`](@ref).
     convergence::RibasimStateCVector{Float64} = zero(u_prev_saveat)
     convergence_ncalls::Vector{Int} = [0]
+    step_stats::StepStats = StepStats()
 end
 
 @kwdef struct CurrentBasinProperties

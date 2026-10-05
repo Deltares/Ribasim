@@ -278,9 +278,9 @@ function get_pid_controlled_storage(
         inflow_id = outlet.inflow_link[controlled_node_id.idx].link[1]
         # outflow_id = outlet.outflow_link[controlled_node_id.idx].link[2]
         if inflow_id == listen_node_id
-            storage_uplink.outlet[controlled_node_id.idx]
+            storage_uplink.horizontal.outlet[controlled_node_id.idx]
         else # outflow_id == listen_node_id
-            storage_downlink.outlet[controlled_node_id.idx]
+            storage_downlink.horizontal.outlet[controlled_node_id.idx]
         end
     end
 end

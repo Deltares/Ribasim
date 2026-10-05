@@ -38,6 +38,7 @@ using OrdinaryDiffEqCore:
     OrdinaryDiffEqImplicitAlgorithm,
     loopheader!,
     ODEIntegrator,
+    OrdinaryDiffEqCache,
     jacobian_analysis!,
     get_EEst,
     error_estimate_residuals,
@@ -59,6 +60,7 @@ using SciMLBase:
     check_error!,
     successful_retcode,
     CallbackSet,
+    DiscreteCallback,
     ODEFunction,
     ODEProblem,
     get_du,
@@ -81,7 +83,7 @@ using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
-using SparseArrays: SparseMatrixCSC, sparse, nzrange, rowvals, spzeros
+using SparseArrays: SparseMatrixCSC, sparse, nzrange, rowvals, spzeros, findnz
 
 # Linear algebra
 using LinearAlgebra: LinearAlgebra, I, mul!, UniformScaling, dot
@@ -178,8 +180,6 @@ using NCDatasets: NCDatasets, NCDataset, defDim, defVar, dimnames, CFVariable
 
 using Dates: Second
 
-using Printf: @sprintf
-
 using Base.Threads: nthreads
 
 include("cvectors.jl")
@@ -207,6 +207,7 @@ include("allocation_optim.jl")
 include("util.jl")
 include("graph.jl")
 include("model.jl")
+include("timestepping.jl")
 include("read.jl")
 include("write.jl")
 include("bmi.jl")
