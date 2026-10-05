@@ -301,7 +301,7 @@ xugrid = "*"
 yamlfmt = "*"
 
 [pypi-dependencies]
-juliacall = "==0.9.35"
+juliacall = "==0.9.36"
 pytest-qgis = ">=4.0.1, <5"
 python-magic = ">=0.4.27"
 qgis-plugin-manager = ">=1.7.2"
