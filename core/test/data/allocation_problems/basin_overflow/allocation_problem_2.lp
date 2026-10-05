@@ -10,7 +10,7 @@ user_demand_allocated_sum_constraint_UserDemand_#3_: 1 flow_(Basin_#2,_UserDeman
 user_demand_return_flow_UserDemand_#3_: 1 flow_(UserDemand_#3,_Basin_#2)_ = 0
 average_flow_unit_error_constraint_1_: -1 user_demand_error_UserDemand_#3,1,first_ + 1 average_flow_unit_error_1_ = 0
 Bounds
--1 <= basin_storage_change_Basin_#2_ <= 34.56
+-1 <= basin_storage_change_Basin_#2_ <= 31.104000000000003
 0 <= low_storage_factor_Basin_#2_ <= 1
 flow_(FlowBoundary_#1,_Basin_#2)_ = 17.28
 0 <= flow_(Basin_#2,_UserDemand_#3)_ <= 1.7280000000000002

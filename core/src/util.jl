@@ -40,7 +40,38 @@ end
 Compute the level of a basin given its storage.
 """
 function get_level_from_storage(basin::Basin, state_idx::Int, storage::T)::T where {T}
-    return basin.storage_to_level[state_idx](storage)
+    itp = basin.storage_to_level[state_idx]
+    storages = itp.t
+    # Outside the profile the interpolation's own extrapolation applies
+    if storage < first(storages) || storage > last(storages)
+        return itp(storage)
+    end
+    return level_from_storage(storages, itp.u, itp.itp.u, storage)
+end
+
+"""
+Invert S(h) = ∫ A(h) dh within the profile, where the area A is linear between the profile
+levels, in closed form. This is the same function as the `LinearInterpolationIntInv` it is
+read from, but avoids its generic evaluation, which dominated the cost of the right hand side
+for models with many Basins.
+
+Between profile levels j and j+1, with a = A(h_j) and m = dA/dh on that segment,
+S - S_j = a Δh + m Δh² / 2, of which the non-negative root is written in the form that is
+stable for m → 0: Δh = 2 ΔS / (a + √(a² + 2 m ΔS)).
+"""
+function level_from_storage(
+        storages::AbstractVector,
+        levels::AbstractVector,
+        areas::AbstractVector,
+        storage::T,
+    )::T where {T}
+    n = length(storages)
+    j = clamp(searchsortedlast(storages, storage), 1, n - 1)
+    ΔS = storage - storages[j]
+    a = areas[j]
+    m = (areas[j + 1] - a) / (levels[j + 1] - levels[j])
+    denominator = a + sqrt(a^2 + 2 * m * ΔS)
+    return iszero(denominator) ? T(levels[j]) : levels[j] + 2 * ΔS / denominator
 end
 
 """
@@ -327,6 +358,26 @@ function get_low_storage_factor(p::Parameters, id::NodeID)
     else
         one(eltype(current_low_storage_factor))
     end
+end
+
+"""
+The depth of water that an empty Basin keeps: 1% of `depth_threshold`, so 1 mm by default.
+
+The low storage factor reaches 0 at this depth rather than at the bottom, so a Basin that
+empties levels off at a small positive storage instead of approaching zero. Otherwise the
+floating point rounding of the storage, which is computed from cumulative flows, can make an
+empty Basin slightly negative, which the solver has to reject.
+"""
+low_storage_reserve_depth(depth_threshold::Real) = 0.01 * depth_threshold
+
+"""
+The factor with which outflows of Basin `i` are reduced at the given storage. It goes
+smoothly from 0 at the reserve storage to 1 at the low storage threshold, see
+`low_storage_reserve_depth` and `depth_threshold`.
+"""
+function low_storage_factor(storage::T, basin::Basin, i::Int)::T where {T <: Real}
+    reserve = basin.low_storage_reserve[i]
+    return reduction_factor(storage - reserve, basin.low_storage_threshold[i] - reserve)
 end
 
 """
@@ -704,51 +755,63 @@ function build_state_vector(p_independent::ParametersIndependent)
 end
 
 function reduce_state!(u_reduced, u, p_independent)::Nothing
-    (; basin, link_to_state_idx) = p_independent
-    (; inflow_ids, outflow_ids) = basin
+    (; basin, basin_state_incidence) = p_independent
     (; combined_cumulative_flows) = u_reduced
-    state_ranges = getaxes(u)
     u_reduced .= 0
 
     for i in eachindex(basin.node_id)
-        basin_id = basin.node_id[i]
-        for inflow_id in inflow_ids[i]
-            # Flow on the link (inflow_id → basin). For UserDemand outflow this is
-            # the single user_demand_outflow state (1:1 per node). Link-based lookup
-            # correctly resolves per-link states if we ever get them upstream too.
-            state_idx = get_state_index(
-                state_ranges,
-                link_to_state_idx,
-                (inflow_id, basin_id),
-            )
-            if isnothing(state_idx)
-                state_idx = get_state_index(state_ranges, inflow_id; inflow = false)
+        for (state_idx, is_inflow) in basin_state_incidence[i]
+            if is_inflow
+                combined_cumulative_flows[i] += u[state_idx]
+            else
+                combined_cumulative_flows[i] -= u[state_idx]
             end
-            isnothing(state_idx) && continue
-            combined_cumulative_flows[i] += u[state_idx]
         end
-
-        for outflow_id in outflow_ids[i]
-            # Flow on the link (basin → outflow_id). Must be link-based because a
-            # UserDemand can have multiple inflow-link states, one per source basin.
-            state_idx = get_state_index(
-                state_ranges,
-                link_to_state_idx,
-                (basin_id, outflow_id),
-            )
-            if isnothing(state_idx)
-                state_idx = get_state_index(state_ranges, outflow_id; inflow = true)
-            end
-            isnothing(state_idx) && continue
-            combined_cumulative_flows[i] -= u[state_idx]
-        end
-
         combined_cumulative_flows[i] -= u.evaporation[i]
         combined_cumulative_flows[i] -= u.infiltration[i]
     end
 
     u_reduced.integral .= u.integral
     return nothing
+end
+
+"""
+For each Basin, the (state index, is inflow) of the flow states that change its storage,
+in the order `reduce_state!` accumulates them. This resolves the links to states once,
+instead of in every RHS evaluation.
+"""
+function build_basin_state_incidence(
+        basin::Basin,
+        state_ranges::StateTuple,
+        link_to_state_idx::Dict{Tuple{NodeID, NodeID}, Int},
+    )::Vector{Vector{Tuple{Int, Bool}}}
+    (; inflow_ids, outflow_ids) = basin
+    incidence = [Tuple{Int, Bool}[] for _ in basin.node_id]
+    for (i, basin_id) in enumerate(basin.node_id)
+        for inflow_id in inflow_ids[i]
+            # Flow on the link (inflow_id → basin). For UserDemand outflow this is
+            # the single user_demand_outflow state (1:1 per node). Link-based lookup
+            # correctly resolves per-link states if we ever get them upstream too.
+            state_idx =
+                get_state_index(state_ranges, link_to_state_idx, (inflow_id, basin_id))
+            if isnothing(state_idx)
+                state_idx = get_state_index(state_ranges, inflow_id; inflow = false)
+            end
+            isnothing(state_idx) || push!(incidence[i], (state_idx, true))
+        end
+
+        for outflow_id in outflow_ids[i]
+            # Flow on the link (basin → outflow_id). Must be link-based because a
+            # UserDemand can have multiple inflow-link states, one per source basin.
+            state_idx =
+                get_state_index(state_ranges, link_to_state_idx, (basin_id, outflow_id))
+            if isnothing(state_idx)
+                state_idx = get_state_index(state_ranges, outflow_id; inflow = true)
+            end
+            isnothing(state_idx) || push!(incidence[i], (state_idx, false))
+        end
+    end
+    return incidence
 end
 
 """
@@ -907,9 +970,10 @@ function min_low_storage_factor(
     ) where {T}
     return if id.type == NodeType.Basin
         low_storage_threshold = basin.low_storage_threshold[id.idx]
-        reduction_factor(
+        low_storage_factor(
             min(storage_now[id.idx], storage_prev[id.idx]) - 2low_storage_threshold,
-            low_storage_threshold,
+            basin,
+            id.idx,
         )
     else
         one(T)
@@ -1183,12 +1247,29 @@ function eval_time_interpolation(
     )
     (; new_time_dependent_cache) = p.p_mutable
     if new_time_dependent_cache
-        @inbounds val = itp(t)
+        @inbounds val = itp(interpolation_time(itp, p, t))
         cache[idx] = val
         return val
     else
         return cache[idx]
     end
+end
+
+"""
+The time at which to evaluate a time series in the right hand side at time `t`.
+
+A piecewise constant (block) time series jumps at its data points, which are tstops. The
+timestep that ends at such a jump integrates the value from before it, but evaluating the
+series at exactly the end of that step would give the value after it. An implicit solver
+evaluates the right hand side at the end of the step, so it would see flows that change
+abruptly within the step, which the error control cannot resolve by shrinking the timestep.
+Therefore within a timestep, so after its start at `p_mutable.tprev`, these series
+are evaluated left-continuously. Once the timestep is accepted, its end is the start of the
+next one, so callbacks see the value after the jump.
+"""
+interpolation_time(::AbstractInterpolation, p::Parameters, t::Number) = t
+function interpolation_time(::ConstantInterpolation, p::Parameters, t::Float64)::Float64
+    return t > p.p_mutable.tprev ? prevfloat(t) : t
 end
 
 function trivial_constant_itp(; val = 0.0)
