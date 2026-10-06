@@ -571,6 +571,8 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
 
     # Set up inner (storage space) problem matrix
     build_J_inner!(J_inner, J, gamma)
+    # LHLFactorization only re-reduces J_inner when told its contents changed
+    SciMLOperators.mark_jacobian_updated!(W_inner)
     jacobian2W!(W_inner._concrete_form, W_inner.mass_matrix, W_inner.gamma, W_inner.J)
 
     # Solve inner (storage space) problem
