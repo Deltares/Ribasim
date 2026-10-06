@@ -328,7 +328,7 @@ end
     @test flow_data_links == allocation_flow_data_links
 end
 
-@testitem "sparse and AD/FDM jac solver options" begin
+@testitem "Sparse and AD/FDM jac solver options" begin
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
 

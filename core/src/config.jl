@@ -23,8 +23,9 @@ using OrdinaryDiffEqBDF: FBDF, QNDF, NordsieckBDF
 using OrdinaryDiffEqRosenbrock: Rosenbrock23, Rodas4P, Rodas5P
 import OrdinaryDiffEqDifferentiation
 using LinearSolve:
+    needs_concrete_A,
     KLUFactorization,
-    LUFactorization,
+    LHLFactorization,
     SciMLLinearSolveAlgorithm,
     LinearSolve,
     SciMLLinearSolveAlgorithm
@@ -178,7 +179,7 @@ for (node_type, kinds) in pairs(node_kinds)
 end
 
 @option struct Solver <: TableOption
-    algorithm::String = "NordsieckBDF"
+    algorithm::String = "QNDF"
     saveat::Float64 = 86400.0
     dt::Union{Float64, Nothing} = nothing
     dtmin::Float64 = 0.0
@@ -415,7 +416,7 @@ struct RibasimLinearSolve{AType <: SciMLLinearSolveAlgorithm} <: SciMLLinearSolv
     reduced_implicit_solve::Bool
 end
 
-LinearSolve.needs_concrete_A(::RibasimLinearSolve) = false
+LinearSolve.needs_concrete_A(alg::RibasimLinearSolve) = alg.reduced_implicit_solve ? false : needs_concrete_A(alg.algorithm)
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
 function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
@@ -431,7 +432,7 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
             )
         else
             kwargs[:linsolve] = RibasimLinearSolve(
-                LUFactorization(),
+                LHLFactorization(),
                 solver.reduced_implicit_solve,
             )
         end

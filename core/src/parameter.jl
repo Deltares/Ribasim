@@ -493,7 +493,8 @@ In-memory storage of saved mean flows for writing to results.
     storage_rate::Vector{Float64} = zero(inflow)
     balance_error::Vector{Float64} = zero(inflow)
     relative_error::Vector{Float64} = zero(inflow)
-    convergence::RibasimStateCVector{Union{Missing, Float64}}
+    flow_convergence::RibasimStateCVector{Union{Missing, Float64}}
+    basin_convergence::Vector{Union{Missing, Float64}}
     t::Float64
 end
 
@@ -898,16 +899,14 @@ A cache for intermediate results in `water_balance!` which can depend on both th
 this cache is required for automatic differentiation, where e.g. ForwardDiff requires these vectors to
 be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
 """
-const CurrentBasinProperties{T} = @NamedTuple{
-    current_storage::Vector{T},
-    current_low_storage_factor::Vector{T},
-    current_level::Vector{T},
-    current_area::Vector{T},
-    current_flow_rate_pump::Vector{T},
-    current_flow_rate_outlet::Vector{T},
-    current_error_pid_control::Vector{T},
-    t_prev_call::Vector{T},
-} where {T}
+@kwdef struct CurrentBasinProperties
+    n::Int
+    storage_prev_call::Vector{Float64} = zeros(n)
+    current_storage::Vector{Float64} = zeros(n)
+    current_level::Vector{Float64} = zeros(n)
+    current_area::Vector{Float64} = zeros(n)
+    current_low_storage_factor::Vector{Float64} = zeros(n)
+end
 
 @enumx CacheType flow_rate_pump flow_rate_outlet basin_level basin_storage
 
@@ -1323,16 +1322,6 @@ the object itself is not.
     convergence_ncalls::Vector{Int} = [0]
     step_stats::StepStats = StepStats()
 end
-
-@kwdef struct CurrentBasinProperties
-    n::Int
-    storage_prev_call::Vector{Float64} = zeros(n)
-    current_storage::Vector{Float64} = zeros(n)
-    current_level::Vector{Float64} = zeros(n)
-    current_area::Vector{Float64} = zeros(n)
-    current_low_storage_factor::Vector{Float64} = zeros(n)
-end
-
 
 """
 All cached values that depend on time `t`.

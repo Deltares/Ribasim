@@ -324,10 +324,28 @@ function save_flow(u, t, integrator)
     concentration = copy(basin.concentration_data.concentration_state)
 
     # Compute mean convergence over the saveat interval (missing if no nlsolver calls)
-    convergence = CVector(fill(missing, length(u)) |> Vector{Union{Missing, Float64}}, state_ranges)
+    flow_convergence = CVector(fill(missing, length(u)) |> Vector{Union{Missing, Float64}}, state_ranges)
+    basin_convergence = fill(missing, n_basin) |> Vector{Union{Missing, Float64}}
     ncalls = p_independent.convergence_ncalls[1]
     if ncalls > 0
-        @. convergence = p_independent.convergence / ncalls
+        @. flow_convergence = p_independent.convergence / ncalls
+
+        for (i, (evap, infil)) in
+            enumerate(
+                zip(
+                    flow_convergence.flow.vertical.evaporation,
+                    flow_convergence.flow.vertical.infiltration
+                )
+            )
+            if isnan(evap)
+                basin_convergence[i] = infil
+            elseif isnan(infil)
+                basin_convergence[i] = evap
+            else
+                basin_convergence[i] = max(evap, infil)
+            end
+        end
+
         fill!(p_independent.convergence, 0.0)
         p_independent.convergence_ncalls[1] = 0
     end
@@ -339,7 +357,8 @@ function save_flow(u, t, integrator)
         inflow = inflow_mean,
         outflow = outflow_mean,
         concentration,
-        convergence,
+        flow_convergence,
+        basin_convergence,
         t,
     )
     check_water_balance_error!(saved_flow, integrator, Δt)

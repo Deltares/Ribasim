@@ -20,25 +20,41 @@ const FlowInputTuple = NamedTuple{
 }
 const FlowInputCVector{T} = CVector{T, Vector{T}, FlowInputTuple}
 
+const continuous_control_input_components = (:storage, :flow)
+const ContinuousControlInputTuple = NamedTuple{continuous_control_input_components, Tuple{UnitRange{Int}, FlowTuple}}
+const ContinuousControlInputCVector{T} = CVector{T, Vector{T}, ContinuousControlInputTuple}
+
 """
 Cache for evaluating the lazy Ribasim Jacobian. For more details
 see the RibasmimJacobian docstring.
 """
-@kwdef struct RibasimJacobianEvaluationCache{E}
+@kwdef struct RibasimJacobianEvaluationCache{E1, E2, M <: AbstractMatrix{Float64}}
+    # Jacobian of mapping (storage_uplink, storage_downlink, pid_integral, continuous_control_compound) -> (flow, pid_error)
     flow_input::FlowInputCVector{Float64}
     flow_input_ranges::FlowInputCVector{Int} = CVector(collect(eachindex(flow_input)), getaxes(flow_input))
-    ∂flow_∂flow_input::SparseMatrixCSC{Float64}
-    eval_∂flow_∂flow_input!::E
+    ∂flow_∂flow_input::M
+    eval_∂flow_∂flow_input!::E1
+    # Cached flows used for continuous control input
+    du_cache::RibasimStateCVector{Float64}
+    # Jacobian of mapping (storage, flow) -> continuous_control_compound
+    continuous_control_input::ContinuousControlInputCVector{Float64}
+    continuous_control_input_ranges::ContinuousControlInputCVector{Int} = CVector(collect(eachindex(continuous_control_input)), getaxes(continuous_control_input))
+    ∂continuous_control_compound_∂continuous_control_input::M
+    eval_∂continuous_control_compound_∂continuous_control_input!::E2
 end
 
 function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
     (; p_independent) = p
-    (; flow_ranges, pid_control, continuous_control, u_prev_saveat) = p_independent
+    (; flow_ranges, basin, pid_control, continuous_control, u_prev_saveat) = p_independent
     du = zero(u_prev_saveat)
 
     backend = get_ad_type(solver)
     backend_jac = solver.sparse ? AutoSparse(backend; sparsity_detector = TracerSparsityDetector()) : backend
     t = 0.0
+
+    ###
+    #### Jacobian of mapping (storage_uplink, storage_downlink, pid_integral, continuous_control_compound) -> (flow, pid_error)
+    ###
 
     flow_input_axes = concatenate_axes(
         (
@@ -79,8 +95,12 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
         flow_input,
         Constant(t),
     )
-    ∂flow_∂flow_input = ∂flow_∂flow_input_prep.sparsity * 1.0
-    eval_∂flow_∂flow_input!(t) = @ad_active p jacobian!(
+    ∂flow_∂flow_input = solver.sparse ?
+        ∂flow_∂flow_input_prep.sparsity * 1.0 :
+        zeros(length(du), length(flow_input))
+
+    # Also compute value to cache flows for continuous control input
+    eval_∂flow_∂flow_input!(t) = @ad_active p value_and_jacobian!(
         formulate_flows_closure!,
         du,
         ∂flow_∂flow_input,
@@ -90,7 +110,57 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
         Constant(t),
     )
 
-    return RibasimJacobianEvaluationCache(; flow_input, ∂flow_∂flow_input, eval_∂flow_∂flow_input!)
+    ###
+    #### Jacobian of mapping (storage, flow) -> continuous_control_compound
+    ###
+
+    continuous_control_input_axes = concatenate_axes((; storage = 1:length(basin), flow = flow_ranges))
+    continuous_control_input = cvector_from_axes(continuous_control_input_axes)
+    # Separate buffer so the compound variables cached by water_balance! are not overwritten
+    continuous_control_compound = zeros(length(continuous_control))
+
+    function continuous_control_closure!(compound_variables, continuous_control_input, t)
+        compute_continuous_control_compound_variables!(
+            compound_variables,
+            continuous_control_input.storage,
+            continuous_control_input.flow,
+            p,
+            t
+        )
+        return nothing
+    end
+
+    ∂continuous_control_compound_∂continuous_control_input_prep = @ad_active p prepare_jacobian(
+        continuous_control_closure!,
+        continuous_control_compound,
+        backend_jac,
+        continuous_control_input,
+        Constant(t),
+    )
+
+    ∂continuous_control_compound_∂continuous_control_input = solver.sparse ?
+        ∂continuous_control_compound_∂continuous_control_input_prep.sparsity * 1.0 :
+        zeros(length(continuous_control), length(continuous_control_input))
+
+    eval_∂continuous_control_compound_∂continuous_control_input!(t) = @ad_active p jacobian!(
+        continuous_control_closure!,
+        continuous_control_compound,
+        ∂continuous_control_compound_∂continuous_control_input,
+        ∂continuous_control_compound_∂continuous_control_input_prep,
+        backend_jac,
+        continuous_control_input,
+        Constant(t),
+    )
+
+    return RibasimJacobianEvaluationCache(;
+        flow_input,
+        ∂flow_∂flow_input,
+        eval_∂flow_∂flow_input!,
+        du_cache = du,
+        continuous_control_input,
+        ∂continuous_control_compound_∂continuous_control_input,
+        eval_∂continuous_control_compound_∂continuous_control_input!,
+    )
 end
 
 ###
@@ -168,7 +238,13 @@ function SciMLOperators.update_coefficients!(
         t::Number,
     )
     (; cache, area_pid_controlled, n_pid) = J
-    (; flow_input, eval_∂flow_∂flow_input!) = cache
+    (;
+        flow_input,
+        eval_∂flow_∂flow_input!,
+        continuous_control_input,
+        eval_∂continuous_control_compound_∂continuous_control_input!,
+        du_cache,
+    ) = cache
     (; storage_uplink, storage_downlink) = flow_input
     (; p_independent, p_mutable, current_basin_properties) = p
     (; pid_control, basin) = p_independent
@@ -202,6 +278,12 @@ function SciMLOperators.update_coefficients!(
 
     # Compute local part of the reduced linear solve Jacobian
     update_J_inner_local!(J)
+
+    # Compute Jacobian of the ContinuousControl output w.r.t. the input
+    continuous_control_input.storage .= current_basin_properties.current_storage
+    continuous_control_input.flow .= du_cache.flow
+    eval_∂continuous_control_compound_∂continuous_control_input!(t)
+
     return nothing
 end
 
@@ -284,12 +366,19 @@ function build_J_inner!(
         gamma::Number
     )
     (; p_independent, J_inner_local, area_pid_controlled, cache) = J
-    (; ∂flow_∂flow_input, flow_input_ranges) = cache
-    (; pid_control) = p_independent
+    (;
+        ∂flow_∂flow_input,
+        flow_input_ranges,
+        continuous_control_input_ranges,
+        ∂continuous_control_compound_∂continuous_control_input,
+    ) = cache
+    (; pid_control, inflow_id, outflow_id) = p_independent
 
     J_inner .= J_inner_local
 
-    for (flow_idx, flow_input_idx, val) in zip(findnz(∂flow_∂flow_input)...)
+    cc_entries = nonzero_entries(∂continuous_control_compound_∂continuous_control_input)
+
+    for (flow_idx, flow_input_idx, val) in nonzero_entries(∂flow_∂flow_input)
 
         if (flow_input_idx in flow_input_ranges.storage_uplink) || (flow_input_idx in flow_input_ranges.storage_downlink)
             nothing # Handled in update_J_inner_local!
@@ -299,25 +388,72 @@ function build_J_inner!(
             listen_node_id = pid_control.listen_node_id[pid_id.idx]
             contribution = gamma * val / area_pid_controlled[pid_id.idx]
 
-            inflow_id = pid_control.inflow_id[pid_id.idx]
-            outflow_id = pid_control.outflow_id[pid_id.idx]
+            pid_inflow_id = pid_control.inflow_id[pid_id.idx]
+            pid_outflow_id = pid_control.outflow_id[pid_id.idx]
 
-            if inflow_id.is_basin
-                J_inner[inflow_id.idx, listen_node_id.idx] += contribution
+            if pid_inflow_id.is_basin
+                J_inner[pid_inflow_id.idx, listen_node_id.idx] += contribution
             end
-            if outflow_id.is_basin
-                J_inner[outflow_id.idx, listen_node_id.idx] -= contribution
+            if pid_outflow_id.is_basin
+                J_inner[pid_outflow_id.idx, listen_node_id.idx] -= contribution
             end
-
 
         elseif flow_input_idx in flow_input_ranges.continuous_control_compound
-            # Continuous control contributions
-            # TODO
-            error()
+            # Continuous control contributions: ∂q_∂compound * ∂compound_∂storage
+            cc_idx = flow_input_idx - flow_input_ranges.continuous_control_compound[1] + 1
+            id_in_controlled = inflow_id[flow_idx]
+            id_out_controlled = outflow_id[flow_idx]
+
+            for (cc_row, cc_input_idx, cc_val) in cc_entries
+                cc_row == cc_idx || continue
+                if cc_input_idx in continuous_control_input_ranges.storage
+                    basin_idx = cc_input_idx - continuous_control_input_ranges.storage[1] + 1
+                    add_controlled_flow_contribution!(
+                        J_inner, id_in_controlled, id_out_controlled, basin_idx, val * cc_val
+                    )
+                else
+                    # Compound depends on a listened flow; only its local storage dependence is included
+                    listen_flow_idx = cc_input_idx - continuous_control_input_ranges.flow[1] + 1
+                    id_in_listen = inflow_id[listen_flow_idx]
+                    id_out_listen = outflow_id[listen_flow_idx]
+                    if id_in_listen.is_basin
+                        ∂q_∂storage = ∂flow_∂flow_input[listen_flow_idx, flow_input_ranges.storage_uplink[listen_flow_idx]]
+                        add_controlled_flow_contribution!(
+                            J_inner, id_in_controlled, id_out_controlled, id_in_listen.idx, val * cc_val * ∂q_∂storage
+                        )
+                    end
+                    if id_out_listen.is_basin
+                        ∂q_∂storage = ∂flow_∂flow_input[listen_flow_idx, flow_input_ranges.storage_downlink[listen_flow_idx]]
+                        add_controlled_flow_contribution!(
+                            J_inner, id_in_controlled, id_out_controlled, id_out_listen.idx, val * cc_val * ∂q_∂storage
+                        )
+                    end
+                end
+            end
         else
-            error()
+            error("Some component of the Jacobian is not taken into account when building the linear system. If you see this, please make an issue.")
         end
     end
+    return nothing
+end
+
+"""
+Lazy iterator over (row, column, value) of the structural nonzeros of a sparse matrix,
+or the nonzero entries of a dense matrix.
+"""
+nonzero_entries(A::SparseMatrixCSC) = zip(findnz(A)...)
+nonzero_entries(A::AbstractMatrix) =
+    ((I[1], I[2], A[I]) for I in CartesianIndices(A) if !iszero(A[I]))
+
+function add_controlled_flow_contribution!(
+        J_inner::AbstractMatrix{Float64},
+        id_in::NodeID,
+        id_out::NodeID,
+        basin_idx::Int,
+        ∂q_∂storage::Float64,
+    )
+    id_in.is_basin && (J_inner[id_in.idx, basin_idx] -= ∂q_∂storage)
+    id_out.is_basin && (J_inner[id_out.idx, basin_idx] += ∂q_∂storage)
     return nothing
 end
 
@@ -361,6 +497,16 @@ function SciMLBase.init(
     cache_inner = init(prob_inner, alg.algorithm, args...; kwargs...)
 
     return RibasimLinearSolveCache(cache_inner, W)
+end
+
+# Fallback for non-specialized solve
+function SciMLBase.init(
+        prob::LinearProblem{<:Any, <:Any, F},
+        alg::config.RibasimLinearSolve,
+        args...;
+        kwargs...,
+    ) where {F <: AbstractMatrix}
+    return init(prob, alg.algorithm, args...; kwargs...)
 end
 
 """
@@ -746,11 +892,77 @@ function get_diff_eval(
         jac_prototype = RibasimJacobian(; p.p_independent, cache)
         jac = nothing # Jacobian is updated via SciMLOperators.update_coefficients!
     else
-        error("solver.reduced_implicit_solve = false is not yet supported.")
+        backend_jac = if solver.sparse
+            AutoSparse(
+                backend;
+                sparsity_detector = TracerSparsityDetector(),
+                coloring_algorithm = GreedyColoringAlgorithm()
+            )
+        else
+            backend
+        end
+
+        # water_balance! wrapper for DifferentiationInterface without kwargs
+        function water_balance!_(du, u, p, t, storage_uplink, storage_downlink, compound_variables, storage)
+            set_current_storage!(p, u.flow, t; storage, with_incidence_matrix = true)
+            water_balance!(du, u, p, t; storage_uplink, storage_downlink, compound_variables, storage)
+            return nothing
+        end
+
+        jac_prep = @ad_active p prepare_jacobian(
+            water_balance!_,
+            du,
+            backend_jac,
+            u,
+            Constant(p),
+            Constant(t),
+            ad_caches...
+        )
+
+        jac_prototype = solver.sparse ? Float64.(sparsity_pattern(jac_prep)) : zeros(length(du), length(du))
+        jac(J, u, p, t) = @ad_active p jacobian!(
+            water_balance!_,
+            du,
+            J,
+            jac_prep,
+            backend_jac,
+            u,
+            Constant(p),
+            Constant(t),
+            ad_caches...,
+        )
     end
 
-    # TODO
-    tgrad = nothing
+    # water_balance! wrapper for DifferentiationInterface without kwargs and with
+    # t as second argument
+    function water_balance!__(du, t, u, p, storage_uplink, storage_downlink, compound_variables, storage)
+        set_current_storage!(p, u.flow, t; storage, with_incidence_matrix = true)
+        water_balance!(du, u, p, t; storage_uplink, storage_downlink, compound_variables, storage)
+        return nothing
+    end
+
+    # ∂rhs/∂t always with FiniteDiff
+    tgrad_prep = @ad_active p prepare_derivative(
+        water_balance!__,
+        du,
+        backend,
+        t,
+        Constant(u),
+        Constant(p),
+        ad_caches...,
+    )
+
+    tgrad(dT, u, p, t) = @ad_active p derivative!(
+        water_balance!__,
+        du,
+        dT,
+        tgrad_prep,
+        backend,
+        t,
+        Constant(u),
+        Constant(p),
+        ad_caches...,
+    )
 
     return (; jac_prototype, jac, tgrad)
 end
