@@ -566,19 +566,20 @@ window.Quarto = {
 <h1 data-number="2"><span class="header-section-number">2</span> Equations</h1>
 <p>The behavior of a Pump is simple if these nodes are not PID controlled. Their flow is given by a fixed flow rate <span class="math inline">\(q\)</span>, multiplied by reduction factors:</p>
 <p><span class="math display">\[
-Q = \mathrm{clamp}(\phi Q_\text{set}, Q_{\min}, Q_{\max})
+Q = \phi_\text{level} \, \mathrm{clamp}(\phi_\text{storage} Q_\text{set}, Q_{\min}, Q_{\max})
 \]</span></p>
 <ul>
 <li><span class="math inline">\(Q\)</span> is the actual Pump flow rate.</li>
 <li><span class="math inline">\(Q_\text{set}\)</span> is the Pump’s target <code>flow_rate</code>.</li>
 <li><span class="math inline">\(Q_{\min}\)</span> and <span class="math inline">\(Q_{\max}\)</span> are the Pump <code>min_flow_rate</code> and <code>max_flow_rate</code>.</li>
-<li><span class="math inline">\(\phi\)</span> is the reduction factor, which smoothly reduces flow based on all of these criteria:
+<li><span class="math inline">\(\phi_\text{storage}\)</span> is the reduction factor that smoothly reduces flow when the upstream volume is below the equivalent of a water depth of <span class="math inline">\(10 \;\text{cm}\)</span> (change with solver setting <code>depth_threshold</code>).</li>
+<li><span class="math inline">\(\phi_\text{level}\)</span> is the product of the reduction factors that smoothly reduce flow based on these criteria (change the <span class="math inline">\(0.02 \;\text{m}\)</span> with solver setting <code>level_difference_threshold</code>):
 <ul>
-<li>The upstream volume is below the equivalent of a water depth of <span class="math inline">\(10 \;\text{cm}\)</span> (change with solver setting <code>depth_threshold</code>, the others below with <code>level_difference_threshold</code>).</li>
 <li>The upstream level is below <code>min_upstream_level</code> + <span class="math inline">\(0.02 \;\text{m}\)</span></li>
 <li>The downstream level is above <code>max_downstream_level</code> - <span class="math inline">\(0.02 \;\text{m}\)</span></li>
 </ul></li>
 </ul>
+<p>Since <span class="math inline">\(\phi_\text{level}\)</span> is applied after the clamp, <code>min_flow_rate</code> is not a strict minimum: the level criteria can still reduce the flow to zero.</p>
 
 
 </section>
