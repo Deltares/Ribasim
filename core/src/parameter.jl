@@ -555,6 +555,7 @@ the length of each Vector is the number of Basins.
     cumulative_infiltration::Vector{Float64} = zeros(n)
     exact_cumulative_forcing::ExactVerticalFlowCVector{Float64} =
         CVector(zeros(3n), (; precipitation = 1:n, drainage = (n + 1):2n, surface_runoff = (2n + 1):3n))
+    exact_cumulative_forcing_since_reset::ExactVerticalFlowCVector{Float64} = zero(exact_cumulative_forcing)
     # Exactly integrated incoming forcings since simulation start at previous saveat
     exact_cumulative_forcing_prev_saveat::ExactVerticalFlowCVector{Float64} = zero(exact_cumulative_forcing)
     # Per-dt increment of exact cumulative forcing (cache, non-allocating)
@@ -767,6 +768,7 @@ concentration_itp: matrix with boundary concentrations per FlowBoundary per subs
     flow_rate::Vector{I}
     flow_rate_bmi::Vector{Float64} = fill(NaN, length(node_id))
     cumulative_flow::Vector{Float64} = zeros(length(node_id))
+    cumulative_flow_since_reset::Vector{Float64} = zeros(length(node_id))
     cumulative_flow_prev_saveat::Vector{Float64} = zeros(length(node_id))
     cumulative_flow_dt::Vector{Float64} = zeros(length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
