@@ -1228,11 +1228,14 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
    wrapping do_newJW
 - `ad_active`: Whether (parts of) the rhs are called with automatic differentiation. If `true`, storage derived
    quantities are not cached but computed on-demand, to maintain a differentiable computational pipeline
+- `tprev`: The start of the current time step, set as soon as a time step is accepted, see
+   [`update_cumulative_forcing!`](@ref) and [`interpolation_time`](@ref)
 """
 @kwdef mutable struct ParametersMutable
     new_time_dependent_cache::Bool = true
     refresh_jac::Bool = true
     ad_active::Bool = false
+    tprev::Float64 = 0.0
 end
 
 """

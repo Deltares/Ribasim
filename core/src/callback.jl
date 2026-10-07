@@ -12,9 +12,11 @@ function create_callbacks(
     (; basin) = p_independent
     callbacks = SciMLBase.DECallback[]
 
-    # Call set_current_basin_properties! and formulate_cumulative_boundary_flow! so that these are up to date in the subsequent callbacks
-    basin_properties_cb = FunctionCallingCallback(set_current_basin_properties!)
-    push!(callbacks, basin_properties_cb)
+    # Check for negative storage
+    # As the first callback that is always applied, this callback also calls water_balance!
+    # to make sure all parameter data is up to date with the state
+    negative_storage_cb = FunctionCallingCallback(check_negative_storage)
+    push!(callbacks, negative_storage_cb)
 
     # Save storages and levels
     saved_basin_states = SavedValues(Float64, SavedBasinState)
@@ -83,25 +85,16 @@ function create_callbacks(
 end
 
 """
-Update with the latest timestep:
-- Cumulative flows/forcings which are integrated exactly
-- Cumulative flows/forcings which are supplied demands in the allocation context
+Add the forcings which are integrated exactly (precipitation, surface runoff, drainage and
+FlowBoundary flows) over the time step that ended at `t` to their cumulative values, and make
+`t` the start of the next time step by setting `p_mutable.tprev`.
 """
-function update_cumulative_flows!(u, t, integrator)::Nothing
-    (; uprev, p, tprev) = integrator
-    (; p_independent) = p
-    (;
-        basin,
-        user_demand,
-        cumulative_flow_dt,
-        flow_boundary,
-        allocation,
-    ) = p_independent
+function update_cumulative_forcing!(p::Parameters, t::Float64)::Nothing
+    (; p_independent, p_mutable) = p
+    (; basin, flow_boundary) = p_independent
     (; forcing, vertical_flux) = basin
+    tprev = p_mutable.tprev
     dt = t - tprev
-    iszero(dt) && return nothing
-
-    @. cumulative_flow_dt = u.flow - uprev.flow
 
     # Compute per-dt increment of exact cumulative forcing
     @. forcing.exact_cumulative_forcing_dt.precipitation = vertical_flux.precipitation * dt
@@ -120,7 +113,26 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     @. forcing.exact_cumulative_forcing.drainage += forcing.exact_cumulative_forcing_dt.drainage
     forcing.t_last_accepted[1] = t
 
-    forcing.cumulative_infiltration .+= cumulative_flow_dt.vertical.infiltration
+    p_mutable.tprev = t
+    return nothing
+end
+
+"""
+Update with the latest timestep:
+- Cumulative flows/forcings which are integrated exactly
+- Cumulative flows/forcings which are supplied demands in the allocation context
+
+The forcings which are integrated exactly are updates in `check_negative_storage`, see `update_cumulative_forcing!`
+"""
+function update_cumulative_flows!(u, t, integrator)::Nothing
+    (; uprev, p, tprev) = integrator
+    (; p_independent) = p
+    (; basin, user_demand, cumulative_flow_dt, allocation) = p_independent
+    dt = t - tprev
+    iszero(dt) && return nothing
+
+    @. cumulative_flow_dt = u.flow - uprev.flow
+    basin.forcing.cumulative_infiltration .+= cumulative_flow_dt.vertical.infiltration
 
     for node_id in user_demand.node_id
         user_demand.cumulative_inflow[node_id.idx] += sum(
@@ -447,10 +459,33 @@ function save_solver_stats(u, t, integrator)
     )
 end
 
-function set_current_basin_properties!(u::RibasimStateCVector, t::Number, integrator::DEIntegrator)
+function check_negative_storage(u, t, integrator)::Nothing
     (; p) = integrator
-    formulate_cumulative_boundary_flow!(p.p_independent.flow_boundary, p, t)
-    set_current_basin_properties!(u.flow, p, t)
+    (; p_independent, current_basin_properties) = p
+    (; basin) = p_independent
+    du = get_du(integrator)
+
+    # The accepted time step ends at t, which is the start of the next one. Integrate the
+    # forcings over the time step and set p_mutable.tprev to t. From here on, piecewise
+    # constant time series take their value after a possible jump at t, see
+    # `interpolation_time`. The time dependent cache still holds the values from before the
+    # jump, as the last evaluation at t was part of the time step, so it is renewed.
+    update_cumulative_forcing!(p, t)
+    p.time_dependent_cache.t_prev_call[1] = -1.0
+    water_balance!(du, u, p, t)
+
+    errors = false
+    for id in basin.node_id
+        if current_basin_properties.current_storage[id.idx] < 0
+            @error "Negative storage detected in $id"
+            errors = true
+        end
+    end
+
+    if errors
+        t_datetime = datetime_since(integrator.t, p_independent.starttime)
+        error("Negative storages found at $t_datetime.")
+    end
     return nothing
 end
 

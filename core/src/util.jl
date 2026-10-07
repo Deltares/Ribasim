@@ -1043,12 +1043,29 @@ function eval_time_interpolation(
     )
     (; new_time_dependent_cache) = p.p_mutable
     if new_time_dependent_cache
-        @inbounds val = itp(t)
+        @inbounds val = itp(interpolation_time(itp, p, t))
         cache[idx] = val
         return val
     else
         return cache[idx]
     end
+end
+
+"""
+The time at which to evaluate a time series in the right hand side at time `t`.
+
+A piecewise constant (block) time series jumps at its data points, which are tstops. The
+timestep that ends at such a jump integrates the value from before it, but evaluating the
+series at exactly the end of that step would give the value after it. An implicit solver
+evaluates the right hand side at the end of the step, so it would see flows that change
+abruptly within the step, which the error control cannot resolve by shrinking the timestep.
+Therefore within a timestep, so after its start at `p_mutable.tprev`, these series
+are evaluated left-continuously. Once the timestep is accepted, its end is the start of the
+next one, so callbacks see the value after the jump.
+"""
+interpolation_time(::AbstractInterpolation, p::Parameters, t::Number) = t
+function interpolation_time(::ConstantInterpolation, p::Parameters, t::Float64)::Float64
+    return t > p.p_mutable.tprev ? prevfloat(t) : t
 end
 
 function trivial_constant_itp(; val = 0.0)

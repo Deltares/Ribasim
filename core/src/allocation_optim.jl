@@ -1,7 +1,14 @@
+"""
+Transfer data about physical processes from the simulation to the optimization. `du` holds
+the physical rates at the current time, as computed by `water_balance!`. This is not
+`get_du(integrator)`, which returns a new array holding the derivative estimated by the
+integrator, and that describes the timestep that ended at the current time.
+"""
 function set_simulation_data!(
         allocation_model::AllocationModel,
         integrator::DEIntegrator,
-        Δt_allocation
+        Δt_allocation,
+        du,
     )::Nothing
     (; p, t) = integrator
     (;
@@ -15,7 +22,6 @@ function set_simulation_data!(
         user_demand,
         tabulated_rating_curve,
     ) = p.p_independent
-    du = get_du(integrator)
 
     errors = false
 
@@ -854,7 +860,12 @@ function set_demands!(
     return nothing
 end
 
-function warm_start!(allocation_model::AllocationModel, integrator::DEIntegrator, Δt_allocation::Float64)::Nothing
+function warm_start!(
+        allocation_model::AllocationModel,
+        integrator::DEIntegrator,
+        Δt_allocation::Float64,
+        du,
+    )::Nothing
     (; p, t) = integrator
     (; problem, scaling, node_ids_in_subnetwork) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
@@ -1605,7 +1616,7 @@ function update_allocation!(integrator::DEIntegrator, Δt::Float64; record::Bool
     for secondary_network in get_secondary_networks(allocation_models)
         update_control_states!(secondary_network, p_independent)
         # Transfer data about physical processes from the simulation to the optimization
-        set_simulation_data!(secondary_network, integrator, Δt)
+        set_simulation_data!(secondary_network, integrator, Δt, du)
 
         # Set demands for all priorities
         reset_demand_coefficients(secondary_network)
@@ -1616,7 +1627,7 @@ function update_allocation!(integrator::DEIntegrator, Δt::Float64; record::Bool
         normalize_flow_demand_objectives!(secondary_network)
 
         # Use data from the physical layer to set the initial guess
-        warm_start!(secondary_network, integrator, Δt)
+        warm_start!(secondary_network, integrator, Δt, du)
     end
 
     if has_primary_network(allocation)
@@ -1625,7 +1636,7 @@ function update_allocation!(integrator::DEIntegrator, Δt::Float64; record::Bool
 
         update_control_states!(primary_network, p_independent)
         # Transfer data about physical processes from the simulation to the optimization
-        set_simulation_data!(primary_network, integrator, Δt)
+        set_simulation_data!(primary_network, integrator, Δt, du)
 
         reset_demand_coefficients(primary_network)
         for secondary_network in
@@ -1650,7 +1661,7 @@ function update_allocation!(integrator::DEIntegrator, Δt::Float64; record::Bool
         update_user_demand_flow_bounds!(primary_network, p_independent)
         update_flow_demand_variable_bounds!(primary_network, p_independent)
         normalize_flow_demand_objectives!(primary_network)
-        warm_start!(primary_network, integrator, Δt)
+        warm_start!(primary_network, integrator, Δt, du)
     end
 
     # Allocate in all networks, starting with the primary network if it exists

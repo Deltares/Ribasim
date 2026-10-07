@@ -21,21 +21,21 @@ user_demand_return_flow_UserDemand_#3_: 1 flow_(UserDemand_#3,_Basin_#2)_ = 0
 user_demand_return_flow_UserDemand_#6_: 1 flow_(UserDemand_#6,_Basin_#5)_ = 0
 average_flow_unit_error_constraint_1_: -1 user_demand_error_UserDemand_#3,1,first_ + 1 average_flow_unit_error_1_ = 0
 average_flow_unit_error_constraint_3_: -1 user_demand_error_UserDemand_#6,3,first_ + 1 average_flow_unit_error_3_ = 0
-tabulated_rating_curve_constraint_TabulatedRatingCurve_#7_: -1.728 basin_storage_change_Basin_#5_ + 1 flow_(Basin_#5,_TabulatedRatingCurve_#7)_ = 0.768
+tabulated_rating_curve_constraint_TabulatedRatingCurve_#7_: -1.7279999999999998 basin_storage_change_Basin_#5_ + 1 flow_(Basin_#5,_TabulatedRatingCurve_#7)_ = 0.768
 Bounds
--1.3333333333333333 <= basin_storage_change_Basin_#2_ <= 1.536
+-1.3333333333333333 <= basin_storage_change_Basin_#2_ <= 0.384
 -1.3333333333333333 <= basin_storage_change_Basin_#5_ <= 0
 0 <= low_storage_factor_Basin_#2_ <= 1
 0 <= low_storage_factor_Basin_#5_ <= 1
 flow_(FlowBoundary_#1,_Basin_#2)_ = 0.768
 0 <= flow_(Basin_#2,_UserDemand_#3)_ <= 0.5760000000000001
--6.400000000000001 <= flow_(Basin_#2,_LinearResistance_#4)_ <= 13.772800000000004
+-6.400000000000001 <= flow_(Basin_#2,_LinearResistance_#4)_ <= 8.243200000000002
 0 <= flow_(Basin_#5,_UserDemand_#6)_ <= 0.384
--1.536 <= flow_(Basin_#5,_TabulatedRatingCurve_#7)_ <= 0.768
--1.536 <= flow_(TabulatedRatingCurve_#7,_Terminal_#8)_ <= 0.768
+-1.5359999999999998 <= flow_(Basin_#5,_TabulatedRatingCurve_#7)_ <= 0.768
+-1.5359999999999998 <= flow_(TabulatedRatingCurve_#7,_Terminal_#8)_ <= 0.768
 0 <= flow_(UserDemand_#3,_Basin_#2)_ <= 0.5760000000000001
 0 <= flow_(UserDemand_#6,_Basin_#5)_ <= 0.384
--6.400000000000001 <= flow_(LinearResistance_#4,_Basin_#5)_ <= 13.772800000000004
+-6.400000000000001 <= flow_(LinearResistance_#4,_Basin_#5)_ <= 8.243200000000002
 0 <= user_demand_allocated_UserDemand_#3,1_ <= 0.5760000000000001
 0 <= user_demand_allocated_UserDemand_#6,3_ <= 0.384
 0 <= user_demand_error_UserDemand_#3,1,first_ <= 1
