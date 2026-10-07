@@ -11,6 +11,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Report rejected timesteps by cause and the mean solver order in `results/solver_stats.nc`. [#3269](https://github.com/Deltares/Ribasim/pull/3269)
 
 ### Changed
+- ManningResistance: the flow is now bounded by critical flow. The downstream water level cannot drop below critical depth and the flow cannot exceed the critical flow for the head above the higher of the two Basin bottoms, so a Basin that lies far below its upstream neighbour no longer receives a supercritical flow that grows as it fills, and for a fixed upstream level the flow no longer increases with the downstream level. Subcritical flow between Basins of similar depth is unchanged. Models with such reaches will see lower flows there, and a Basin draining over its sill into a much lower Basin now empties like a weir, so its last millimetres drain more slowly.
+- ManningResistance: the Reynolds number based threshold of the relaxed square root is replaced by a fixed threshold of `1e-5`, which in practice it already was.
+- ManningResistance: `profile_width` and `profile_slope` can no longer both be zero.
 - The default solver is now NordsieckBDF. [#3236](https://github.com/Deltares/Ribasim/pull/3236)
 - Solver tolerances now apply to changes over each timestep, including the nonlinear solver. [#3237](https://github.com/Deltares/Ribasim/pull/3237) [#3268](https://github.com/Deltares/Ribasim/pull/3268)
 - The default absolute and relative solver tolerances are now both `1e-4`. [#3237](https://github.com/Deltares/Ribasim/pull/3237)
