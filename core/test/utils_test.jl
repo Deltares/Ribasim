@@ -317,6 +317,31 @@ end
     @test dense_alg.linsolve == Ribasim.config.RibasimLinearSolve(LUFactorization())
 end
 
+@testitem "Step limiter does not enforce Pump min_flow_rate" begin
+    using SciMLBase: step!
+
+    model = Ribasim.Model(
+        normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml"),
+    )
+    (; integrator) = model
+    (; p, uprev) = integrator
+    step!(integrator)
+
+    # The level reduction factors are applied after clamping to min_flow_rate, so they can
+    # bring the flow below it, down to 0. The step limiter must allow that, otherwise it
+    # forces a flow that the physics has switched off.
+    p.p_independent.pump.min_flow_rate[1].u .= 1.0
+    u = copy(integrator.u)
+    u.pump[1] = uprev.pump[1]
+    Ribasim.limit_flow!(u, integrator, p, integrator.t)
+    @test u.pump[1] == uprev.pump[1]
+
+    # Negative flow is still clamped
+    u.pump[1] = uprev.pump[1] - 1.0
+    Ribasim.limit_flow!(u, integrator, p, integrator.t)
+    @test u.pump[1] == uprev.pump[1]
+end
+
 @testitem "Residual scaling" begin
     using Ribasim.DiffEqBase: calculate_residuals, calculate_residuals!
 
