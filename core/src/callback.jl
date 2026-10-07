@@ -73,6 +73,13 @@ function create_callbacks(
     )
     push!(callbacks, discrete_control_cb)
 
+    reset_cb = DiscreteCallback(
+        cumulative_flow_reset_condition,
+        reset_cumulative_flows!;
+        save_positions = (false, false),
+    )
+    push!(callbacks, reset_cb)
+
     saved = SavedResults(
         saved_flow,
         saved_basin_states,
@@ -106,11 +113,13 @@ function update_cumulative_forcing!(p::Parameters, t::Float64)::Nothing
             boundary_flow_integral(flow_boundary, idx, tprev, t)
     end
     flow_boundary.cumulative_flow .+= flow_boundary.cumulative_flow_dt
+    flow_boundary.cumulative_flow_since_reset .+= flow_boundary.cumulative_flow_dt
 
     # Update total cumulative forcing
     @. forcing.exact_cumulative_forcing.precipitation += forcing.exact_cumulative_forcing_dt.precipitation
     @. forcing.exact_cumulative_forcing.surface_runoff += forcing.exact_cumulative_forcing_dt.surface_runoff
     @. forcing.exact_cumulative_forcing.drainage += forcing.exact_cumulative_forcing_dt.drainage
+    forcing.exact_cumulative_forcing_since_reset .+= forcing.exact_cumulative_forcing_dt
     forcing.t_last_accepted[1] = t
 
     p_mutable.tprev = t
@@ -146,6 +155,37 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
             cumulative_supplied_volume[link] += get_flow(cumulative_flow_dt, link, p)
         end
     end
+    return nothing
+end
+
+const CUMULATIVE_FLOW_RESET_THRESHOLD = 1.0e8 # m³s⁻¹
+
+function cumulative_flow_reset_condition(u, t, integrator)::Bool
+    (; basin, flow_boundary) = integrator.p.p_independent
+    return any(volume -> abs(volume) >= CUMULATIVE_FLOW_RESET_THRESHOLD, u.flow) ||
+        any(volume -> abs(volume) >= CUMULATIVE_FLOW_RESET_THRESHOLD, basin.forcing.exact_cumulative_forcing_since_reset) ||
+        any(volume -> abs(volume) >= CUMULATIVE_FLOW_RESET_THRESHOLD, flow_boundary.cumulative_flow_since_reset)
+end
+
+function reset_cumulative_flows!(integrator)::Nothing
+    (; u, p) = integrator
+    (; p_independent, current_basin_properties, time_dependent_cache) = p
+    (; basin, flow_boundary, u_prev_saveat, cumulative_flow_prev_allocation_dt) = p_independent
+    (; forcing) = basin
+
+    basin.storage0 .= current_basin_properties.current_storage
+    u_prev_saveat.flow .-= u.flow
+    cumulative_flow_prev_allocation_dt .-= u.flow
+    forcing.exact_cumulative_forcing_prev_saveat .-= forcing.exact_cumulative_forcing_since_reset
+    flow_boundary.cumulative_flow_prev_saveat .-= flow_boundary.cumulative_flow_since_reset
+
+    fill!(u.flow, 0.0)
+    fill!(forcing.exact_cumulative_forcing_since_reset, 0.0)
+    fill!(flow_boundary.cumulative_flow_since_reset, 0.0)
+    fill!(time_dependent_cache.basin, 0.0)
+    fill!(time_dependent_cache.flow_boundary.current_cumulative_boundary_flow, 0.0)
+    p.p_mutable.new_time_dependent_cache = true
+    derivative_discontinuity!(integrator, true)
     return nothing
 end
 
@@ -309,7 +349,7 @@ function save_flow(u, t, integrator)
 
     # FlowBoundary
     boundary_flow_mean =
-        (flow_boundary.cumulative_flow - flow_boundary.cumulative_flow_prev_saveat) / Δt
+        (flow_boundary.cumulative_flow_since_reset - flow_boundary.cumulative_flow_prev_saveat) / Δt
 
     n_basin = length(basin)
     inflow_mean = zeros(n_basin)
@@ -333,7 +373,7 @@ function save_flow(u, t, integrator)
     )
 
     exact_vertical_forcing_mean = (
-        basin.forcing.exact_cumulative_forcing -
+        basin.forcing.exact_cumulative_forcing_since_reset -
             basin.forcing.exact_cumulative_forcing_prev_saveat
     ) / Δt
 
@@ -380,8 +420,8 @@ function save_flow(u, t, integrator)
     check_water_balance_error!(saved_flow, integrator, Δt)
     u_prev_saveat .= u
     basin.storage_prev_saveat .= current_basin_properties.current_storage
-    basin.forcing.exact_cumulative_forcing_prev_saveat .= basin.forcing.exact_cumulative_forcing
-    flow_boundary.cumulative_flow_prev_saveat .= flow_boundary.cumulative_flow
+    basin.forcing.exact_cumulative_forcing_prev_saveat .= basin.forcing.exact_cumulative_forcing_since_reset
+    flow_boundary.cumulative_flow_prev_saveat .= flow_boundary.cumulative_flow_since_reset
     return saved_flow
 end
 function check_water_balance_error!(
