@@ -44,7 +44,7 @@ using OrdinaryDiffEqCore:
     get_EEst,
     error_estimate_residuals,
     residual_analysis!
-using DiffEqBase: DiffEqBase, prepare_alg, ODE_DEFAULT_NORM
+using DiffEqBase: DiffEqBase, ODE_DEFAULT_NORM, Serial, Threaded, prepare_alg
 using OrdinaryDiffEqDifferentiation:
     OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!, do_newJW
 using SciMLOperators: WOperator, MatrixOperator

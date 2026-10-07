@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Allocation: Improve LevelDemand stability for large Basins and consistency between single and multiple subnetworks. [#3246](https://github.com/Deltares/Ribasim/pull/3246)
 - Provide actionable error diagnostics for unstable models, identifying affected nodes and physical flow rates. [#3242](https://github.com/Deltares/Ribasim/pull/3242) [#3267](https://github.com/Deltares/Ribasim/pull/3267) [#3272](https://github.com/Deltares/Ribasim/pull/3272) [#3273](https://github.com/Deltares/Ribasim/pull/3273)
 - Invalid Pump, Outlet, and demand inputs now report parsing errors instead of failing silently or with misleading messages. [#3219](https://github.com/Deltares/Ribasim/pull/3219) [#3254](https://github.com/Deltares/Ribasim/pull/3254)
+- Pumps and Outlets with a `min_flow_rate` that are switched off by `min_upstream_level`, `max_downstream_level` or a small level difference no longer slow down the solver by orders of magnitude. The documented Pump and Outlet equations now match the implementation, in which these level criteria can reduce the flow below `min_flow_rate`.
 - Python: Removing an external table no longer leaves a missing-file reference in the model configuration. [#3214](https://github.com/Deltares/Ribasim/pull/3214)
 - Delwaq: Reduce memory use when generating and parsing large results. [#3132](https://github.com/Deltares/Ribasim/pull/3132) [#3248](https://github.com/Deltares/Ribasim/pull/3248)
 
