@@ -325,14 +325,14 @@ end
     # forces a flow that the physics has switched off.
     p.p_independent.pump.min_flow_rate[1].u .= 1.0
     u = copy(integrator.u)
-    u.pump[1] = uprev.pump[1]
+    u.flow.horizontal.pump[1] = uprev.flow.horizontal.pump[1]
     Ribasim.limit_flow!(u, integrator, p, integrator.t)
-    @test u.pump[1] == uprev.pump[1]
+    @test u.flow.horizontal.pump[1] == uprev.flow.horizontal.pump[1]
 
     # Negative flow is still clamped
-    u.pump[1] = uprev.pump[1] - 1.0
+    u.flow.horizontal.pump[1] = uprev.flow.horizontal.pump[1] - 1.0
     Ribasim.limit_flow!(u, integrator, p, integrator.t)
-    @test u.pump[1] == uprev.pump[1]
+    @test u.flow.horizontal.pump[1] == uprev.flow.horizontal.pump[1]
 end
 
 @testitem "Residual scaling" begin
