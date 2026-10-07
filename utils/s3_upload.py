@@ -1,4 +1,5 @@
 import argparse
+import mimetypes
 from pathlib import Path
 
 from minio import Minio
@@ -25,8 +26,12 @@ def upload_file(
         raise ValueError("No MinIO access key or secret key provided")
 
     client = Minio(MINIO_SERVER, access_key=access_key, secret_key=secret_key)
+    # Without a content type MinIO serves application/octet-stream, which browsers do not render as SVG
+    content_type = mimetypes.guess_type(source.name)[0] or "application/octet-stream"
     try:
-        client.fput_object(BUCKET_NAME, destination, str(source))
+        client.fput_object(
+            BUCKET_NAME, destination, str(source), content_type=content_type
+        )
     except S3Error as e:
         print(f"Error occurred: {e}")
 
