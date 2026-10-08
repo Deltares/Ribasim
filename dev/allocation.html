@@ -649,8 +649,8 @@ window.Quarto = {
 <section id="volume-conservation-basin-water-balance" class="level3" data-number="3.2.2">
 <h3 data-number="3.2.2" class="anchored" data-anchor-id="volume-conservation-basin-water-balance"><span class="header-section-number">3.2.2</span> Volume Conservation (Basin Water Balance)</h3>
 <p><strong>Mathematical formulation:</strong> <span class="math display">\[\frac{dS}{dt} = \sum_{k=1}^{N_l} Q_k + f_{\text{pos}} - f_{\text{neg}}\]</span></p>
-<p>Discretized with backward Euler: <span class="math display">\[\frac{S^{n+1} - S^n}{\Delta t} = \sum_{k} Q_k^{n+1} + f^{n+1}_{\text{pos}} - f^{n+1}_{\text{neg}}\]</span></p>
-<p>Or in terms of storage change <span class="math inline">\(\Delta S = S^{n+1} - S^n\)</span>: <span class="math display">\[\Delta S = \Delta t \left(\sum_{k} Q_k^{n+1} + f^{n+1}_{\text{pos}} - f^{n+1}_{\text{neg}}\right)\]</span></p>
+<p>Discretized with a semi-implicit (linearized) scheme, not a fully implicit Euler step. <span class="math inline">\(f_{\text{pos}}\)</span> (precipitation, drainage) is state-independent and thus explicit; <span class="math inline">\(Q_k\)</span> and <span class="math inline">\(f_{\text{neg}}\)</span> (evaporation, infiltration) depend on the state and are linearized around their end-of-step values via the <code>low_storage_factor</code> decision variable: <span class="math display">\[\frac{S^{n+1} - S^n}{\Delta t} = \sum_{k} Q_k^{n+1} + f_{\text{pos}} - f^{n+1}_{\text{neg}}\]</span></p>
+<p>Or in terms of storage change <span class="math inline">\(\Delta S = S^{n+1} - S^n\)</span>: <span class="math display">\[\Delta S = \Delta t \left(\sum_{k} Q_k^{n+1} + f_{\text{pos}} - f^{n+1}_{\text{neg}}\right)\]</span></p>
 <p><strong>Code implementation:</strong></p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># From add_conservation!</span></span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>problem[<span class="op">:</span>volume_conservation] <span class="op">=</span> JuMP.<span class="pp">@constraint</span>(</span>
@@ -664,7 +664,7 @@ window.Quarto = {
 <span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>    ),</span>
 <span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>    base_name <span class="op">=</span> <span class="st">"volume_conservation"</span></span>
 <span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Key points:</strong> - The <code>low_storage_factor</code> multiplies the implicit negative forcing (evaporation, infiltration) to prevent negative storage - Forcing terms (<code>f_pos</code>, <code>f_neg</code>) represent precipitation, drainage, surface runoff, evaporation and infiltration - The coefficient <code>scaling.flow / scaling.storage</code> converts the scaled flow rates to a scaled storage change over the allocation timestep - Updated each optimization with current forcing values</p>
+<p><strong>Key points:</strong> - The <code>low_storage_factor</code> linearizes the state-dependent negative forcing (evaporation, infiltration) to prevent negative storage, without requiring a nonlinear (fully implicit) solve - Forcing terms (<code>f_pos</code>, <code>f_neg</code>) represent precipitation, drainage, surface runoff, evaporation and infiltration - The coefficient <code>scaling.flow / scaling.storage</code> converts the scaled flow rates to a scaled storage change over the allocation timestep - Updated each optimization with current forcing values</p>
 </section>
 <section id="userdemand-allocated-sum" class="level3" data-number="3.2.3">
 <h3 data-number="3.2.3" class="anchored" data-anchor-id="userdemand-allocated-sum"><span class="header-section-number">3.2.3</span> UserDemand Allocated Sum</h3>
@@ -922,40 +922,71 @@ G^p = \sum_{v \in V_p} w_v^p E_v^p.
 <span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>    t<span class="op">::</span><span class="dt">Float64</span>,</span>
 <span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>    Δt_allocation,</span>
 <span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>    (; scaling) <span class="op">=</span> allocation_model</span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>    (; problem, scaling) <span class="op">=</span> allocation_model</span>
 <span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>    (; inflow_link, outflow_link) <span class="op">=</span> connector_node</span>
 <span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Evaluate at the end of the allocation timestep (backward Euler)</span></span>
-<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a>    t_after <span class="op">=</span> t <span class="op">+</span> Δt_allocation</span>
-<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-16"><a href="#cb22-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> node_id <span class="kw">in</span> <span class="fu">only</span>(flow_constraint.axes)</span>
-<span id="cb22-17"><a href="#cb22-17" aria-hidden="true" tabindex="-1"></a>        inflow_id <span class="op">=</span> inflow_link[node_id.idx].link[<span class="fl">1</span>]</span>
-<span id="cb22-18"><a href="#cb22-18" aria-hidden="true" tabindex="-1"></a>        outflow_id <span class="op">=</span> outflow_link[node_id.idx].link[<span class="fl">2</span>]</span>
-<span id="cb22-19"><a href="#cb22-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-20"><a href="#cb22-20" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Levels at the linearization point</span></span>
-<span id="cb22-21"><a href="#cb22-21" aria-hidden="true" tabindex="-1"></a>        h_a <span class="op">=</span> <span class="fu">get_level</span>(p, inflow_id, t_after)</span>
-<span id="cb22-22"><a href="#cb22-22" aria-hidden="true" tabindex="-1"></a>        h_b <span class="op">=</span> <span class="fu">get_level</span>(p, outflow_id, t_after)</span>
-<span id="cb22-23"><a href="#cb22-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-24"><a href="#cb22-24" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Flow at the linearization point becomes the constraint right-hand side</span></span>
-<span id="cb22-25"><a href="#cb22-25" aria-hidden="true" tabindex="-1"></a>        constraint <span class="op">=</span> flow_constraint[node_id]</span>
-<span id="cb22-26"><a href="#cb22-26" aria-hidden="true" tabindex="-1"></a>        q0 <span class="op">=</span> <span class="fu">flow_function</span>(connector_node, node_id, h_a, h_b, p, t_after)</span>
-<span id="cb22-27"><a href="#cb22-27" aria-hidden="true" tabindex="-1"></a>        JuMP.<span class="fu">set_normalized_rhs</span>(constraint, q0 <span class="op">/</span> scaling.flow)</span>
-<span id="cb22-28"><a href="#cb22-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-29"><a href="#cb22-29" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Only linearize if the level comes from a Basin, since only then it is a</span></span>
-<span id="cb22-30"><a href="#cb22-30" aria-hidden="true" tabindex="-1"></a>        <span class="co"># decision variable of the problem</span></span>
-<span id="cb22-31"><a href="#cb22-31" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> inflow_id.<span class="kw">type</span> <span class="op">==</span> NodeType.Basin</span>
-<span id="cb22-32"><a href="#cb22-32" aria-hidden="true" tabindex="-1"></a>            ∂q∂h_a <span class="op">=</span> <span class="fu">forward_diff</span>(</span>
-<span id="cb22-33"><a href="#cb22-33" aria-hidden="true" tabindex="-1"></a>                level_a <span class="op">-&gt;</span> <span class="fu">flow_function</span>(connector_node, node_id, level_a, h_b, p, t_after),</span>
-<span id="cb22-34"><a href="#cb22-34" aria-hidden="true" tabindex="-1"></a>                h_a,</span>
-<span id="cb22-35"><a href="#cb22-35" aria-hidden="true" tabindex="-1"></a>            )</span>
-<span id="cb22-36"><a href="#cb22-36" aria-hidden="true" tabindex="-1"></a>            <span class="fu">set_partial_derivative_wrt_level!</span>(</span>
-<span id="cb22-37"><a href="#cb22-37" aria-hidden="true" tabindex="-1"></a>                allocation_model, inflow_id, ∂q∂h_a, p, constraint,</span>
-<span id="cb22-38"><a href="#cb22-38" aria-hidden="true" tabindex="-1"></a>            )</span>
-<span id="cb22-39"><a href="#cb22-39" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
-<span id="cb22-40"><a href="#cb22-40" aria-hidden="true" tabindex="-1"></a>        <span class="co"># ... same for outflow_id ...</span></span>
-<span id="cb22-41"><a href="#cb22-41" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb22-42"><a href="#cb22-42" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Key concepts:</strong> - Derivatives are computed with automatic differentiation (<code>forward_diff</code>) of the same flow functions the physical layer uses, so the allocation layer cannot drift from the physics - Only Basin levels are decision variables; LevelBoundary and Terminal levels enter through the constant term <code>q0</code> - Backward Euler: everything is evaluated at the end of the timestep (<span class="math inline">\(t + \Delta t\)</span>). For Basins <code>get_level</code> returns the level at the start of the timestep, which is exactly the point we want to linearize around</p>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Evaluate at the end of the allocation timestep. This is semi-implicit, not a fully</span></span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a>    <span class="co"># implicit Euler step: the partial derivatives below are frozen at the start of the</span></span>
+<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a>    <span class="co"># timestep, only the level unknowns being solved for are the end-of-step values.</span></span>
+<span id="cb22-16"><a href="#cb22-16" aria-hidden="true" tabindex="-1"></a>    t_after <span class="op">=</span> t <span class="op">+</span> Δt_allocation</span>
+<span id="cb22-17"><a href="#cb22-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-18"><a href="#cb22-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> node_id <span class="kw">in</span> <span class="fu">only</span>(flow_constraint.axes)</span>
+<span id="cb22-19"><a href="#cb22-19" aria-hidden="true" tabindex="-1"></a>        inflow_id <span class="op">=</span> inflow_link[node_id.idx].link[<span class="fl">1</span>]</span>
+<span id="cb22-20"><a href="#cb22-20" aria-hidden="true" tabindex="-1"></a>        outflow_id <span class="op">=</span> outflow_link[node_id.idx].link[<span class="fl">2</span>]</span>
+<span id="cb22-21"><a href="#cb22-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-22"><a href="#cb22-22" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Levels at the linearization point</span></span>
+<span id="cb22-23"><a href="#cb22-23" aria-hidden="true" tabindex="-1"></a>        h_a <span class="op">=</span> <span class="fu">get_level</span>(p, inflow_id, t_after)</span>
+<span id="cb22-24"><a href="#cb22-24" aria-hidden="true" tabindex="-1"></a>        h_b <span class="op">=</span> <span class="fu">get_level</span>(p, outflow_id, t_after)</span>
+<span id="cb22-25"><a href="#cb22-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-26"><a href="#cb22-26" aria-hidden="true" tabindex="-1"></a>        constraint <span class="op">=</span> flow_constraint[node_id]</span>
+<span id="cb22-27"><a href="#cb22-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-28"><a href="#cb22-28" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Raw (unreduced) flow: the physical low-storage scalar must not be baked in here,</span></span>
+<span id="cb22-29"><a href="#cb22-29" aria-hidden="true" tabindex="-1"></a>        <span class="co"># otherwise it would be double-applied on top of the `low_storage_factor` variable</span></span>
+<span id="cb22-30"><a href="#cb22-30" aria-hidden="true" tabindex="-1"></a>        <span class="co"># set below. This raw value becomes the coefficient of that variable (or, when</span></span>
+<span id="cb22-31"><a href="#cb22-31" aria-hidden="true" tabindex="-1"></a>        <span class="co"># neither side of the connector is a Basin, the plain constraint right-hand side).</span></span>
+<span id="cb22-32"><a href="#cb22-32" aria-hidden="true" tabindex="-1"></a>        q0_raw <span class="op">=</span> <span class="fu">flow_function</span>(</span>
+<span id="cb22-33"><a href="#cb22-33" aria-hidden="true" tabindex="-1"></a>            connector_node, node_id, h_a, h_b, p, t_after;</span>
+<span id="cb22-34"><a href="#cb22-34" aria-hidden="true" tabindex="-1"></a>            apply_low_storage_factor <span class="op">=</span> <span class="cn">false</span>,</span>
+<span id="cb22-35"><a href="#cb22-35" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb22-36"><a href="#cb22-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-37"><a href="#cb22-37" aria-hidden="true" tabindex="-1"></a>        <span class="co"># The basin whose low_storage_factor governs this flow, matching the</span></span>
+<span id="cb22-38"><a href="#cb22-38" aria-hidden="true" tabindex="-1"></a>        <span class="co"># upstream/downstream selection used in the physical layer's</span></span>
+<span id="cb22-39"><a href="#cb22-39" aria-hidden="true" tabindex="-1"></a>        <span class="co"># low_storage_factor_resistance_node.</span></span>
+<span id="cb22-40"><a href="#cb22-40" aria-hidden="true" tabindex="-1"></a>        relevant_id <span class="op">=</span> q0_raw <span class="op">&gt;</span> <span class="fl">0</span> ? inflow_id <span class="op">:</span> outflow_id</span>
+<span id="cb22-41"><a href="#cb22-41" aria-hidden="true" tabindex="-1"></a>        lsf <span class="op">=</span> <span class="fu">get_low_storage_factor</span>(problem, relevant_id)</span>
+<span id="cb22-42"><a href="#cb22-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-43"><a href="#cb22-43" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Reset both candidate coefficients every call: flow direction (and hence which</span></span>
+<span id="cb22-44"><a href="#cb22-44" aria-hidden="true" tabindex="-1"></a>        <span class="co"># basin's low_storage_factor applies) can flip between allocation steps.</span></span>
+<span id="cb22-45"><a href="#cb22-45" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> basin_id <span class="kw">in</span> (inflow_id, outflow_id)</span>
+<span id="cb22-46"><a href="#cb22-46" aria-hidden="true" tabindex="-1"></a>            basin_id.<span class="kw">type</span> <span class="op">==</span> NodeType.Basin <span class="op">||</span> <span class="cf">continue</span></span>
+<span id="cb22-47"><a href="#cb22-47" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_normalized_coefficient</span>(constraint, <span class="fu">get_low_storage_factor</span>(problem, basin_id), <span class="fl">0.0</span>)</span>
+<span id="cb22-48"><a href="#cb22-48" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
+<span id="cb22-49"><a href="#cb22-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-50"><a href="#cb22-50" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> lsf isa JuMP.VariableRef</span>
+<span id="cb22-51"><a href="#cb22-51" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_normalized_coefficient</span>(constraint, lsf, <span class="op">-</span>q0_raw <span class="op">/</span> scaling.flow)</span>
+<span id="cb22-52"><a href="#cb22-52" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_normalized_rhs</span>(constraint, <span class="fl">0.0</span>)</span>
+<span id="cb22-53"><a href="#cb22-53" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span></span>
+<span id="cb22-54"><a href="#cb22-54" aria-hidden="true" tabindex="-1"></a>            JuMP.<span class="fu">set_normalized_rhs</span>(constraint, q0_raw <span class="op">/</span> scaling.flow)</span>
+<span id="cb22-55"><a href="#cb22-55" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
+<span id="cb22-56"><a href="#cb22-56" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-57"><a href="#cb22-57" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Only linearize if the level comes from a Basin, since only then it is a</span></span>
+<span id="cb22-58"><a href="#cb22-58" aria-hidden="true" tabindex="-1"></a>        <span class="co"># decision variable of the problem. The derivatives keep using the</span></span>
+<span id="cb22-59"><a href="#cb22-59" aria-hidden="true" tabindex="-1"></a>        <span class="co"># factor-included flow function (default `apply_low_storage_factor = true`):</span></span>
+<span id="cb22-60"><a href="#cb22-60" aria-hidden="true" tabindex="-1"></a>        <span class="co"># since the physical low-storage scalar is a constant w.r.t. level at the</span></span>
+<span id="cb22-61"><a href="#cb22-61" aria-hidden="true" tabindex="-1"></a>        <span class="co"># linearization point, this yields the correctly-scaled ∂q/∂h for free.</span></span>
+<span id="cb22-62"><a href="#cb22-62" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> inflow_id.<span class="kw">type</span> <span class="op">==</span> NodeType.Basin</span>
+<span id="cb22-63"><a href="#cb22-63" aria-hidden="true" tabindex="-1"></a>            ∂q∂h_a <span class="op">=</span> <span class="fu">forward_diff</span>(</span>
+<span id="cb22-64"><a href="#cb22-64" aria-hidden="true" tabindex="-1"></a>                level_a <span class="op">-&gt;</span> <span class="fu">flow_function</span>(connector_node, node_id, level_a, h_b, p, t_after),</span>
+<span id="cb22-65"><a href="#cb22-65" aria-hidden="true" tabindex="-1"></a>                h_a,</span>
+<span id="cb22-66"><a href="#cb22-66" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="cb22-67"><a href="#cb22-67" aria-hidden="true" tabindex="-1"></a>            <span class="fu">set_partial_derivative_wrt_level!</span>(</span>
+<span id="cb22-68"><a href="#cb22-68" aria-hidden="true" tabindex="-1"></a>                allocation_model, inflow_id, ∂q∂h_a, p, constraint,</span>
+<span id="cb22-69"><a href="#cb22-69" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="cb22-70"><a href="#cb22-70" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
+<span id="cb22-71"><a href="#cb22-71" aria-hidden="true" tabindex="-1"></a>        <span class="co"># ... same for outflow_id ...</span></span>
+<span id="cb22-72"><a href="#cb22-72" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb22-73"><a href="#cb22-73" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Key concepts:</strong> - Derivatives are computed with automatic differentiation (<code>forward_diff</code>) of the same flow functions the physical layer uses, so the allocation layer cannot drift from the physics - Only Basin levels are decision variables; LevelBoundary and Terminal levels enter through the <code>low_storage_factor</code> coefficient or the constant right-hand side - Semi-implicit, not fully implicit: everything is evaluated at the end of the timestep (<span class="math inline">\(t + \Delta t\)</span>), but the linearization coefficients (∂q/∂h, and the <code>q0_raw</code> used for the <code>low_storage_factor</code> coefficient) are all computed from state known at the start of the timestep — no nonlinear solve is performed. For Basins <code>get_level</code> returns the level at the start of the timestep, which is exactly the point we want to linearize around - This same mechanism is used for LinearResistance, ManningResistance, TabulatedRatingCurve, Pump and Outlet, so the <code>low_storage_factor</code> variable uniformly governs the low-storage reduction of every connector node type instead of being baked into a stale physical-layer scalar</p>
 </section>
 <section id="demand-updates" class="level2" data-number="4.3">
 <h2 data-number="4.3" class="anchored" data-anchor-id="demand-updates"><span class="header-section-number">4.3</span> Demand Updates</h2>

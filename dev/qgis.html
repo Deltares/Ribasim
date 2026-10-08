@@ -384,7 +384,7 @@ Note
 </ul>
 <p>To also upload the icons to the S3 bucket (under <code>doc-image/node-icons/</code>) for use in the documentation, run:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run upload-node-icons</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This requires MinIO credentials (<code>MINIO_ACCESS_KEY</code> / <code>MINIO_SECRET_KEY</code>) via environment variables or a <code>.env</code> file. The uploaded icons are publicly available at <code>https://s3.deltares.nl/ribasim/doc-image/node-icons/</code>.</p>
+<p>This requires MinIO credentials (<code>AWS_ACCESS_KEY_ID</code> / <code>AWS_SECRET_ACCESS_KEY</code>) via environment variables or a <code>.env</code> file. The uploaded icons are publicly available at <code>https://s3.deltares.nl/ribasim/doc-image/node-icons/</code>.</p>
 <p>When changing icons, rerun <code>write-node-icons</code> and include the resulting QML and icon changes in your PR. Once you are happy with the changes locally, run <code>upload-node-icons</code> to update the S3 copies used in the documentation.</p>
 <p>You can also modify the QML files by making changes in QGIS. For <code>NodeStyle.qml</code> it is best to run <code>write_node_icons.py</code> afterwards so the formatting stays the same.</p>
 </section>

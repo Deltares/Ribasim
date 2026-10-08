@@ -323,6 +323,9 @@ ul.task-list li input[type="checkbox"] {
 <section id="fixed" class="level3" data-number="1.1.3">
 <h3 data-number="1.1.3" class="anchored" data-anchor-id="fixed"><span class="header-section-number">1.1.3</span> Fixed</h3>
 <ul>
+<li>Allocation: Normalize LevelDemand fairness constraints by the current mean Basin area per demand priority, improving numerical conditioning for large Basins.</li>
+<li>Allocation: Use a deterministic minimum-inlet-flow tie-break when collecting secondary-network demands from the primary network.</li>
+<li>Allocation: Fix the <code>low_storage_factor</code> being applied twice for non-allocation-controlled Pump and Outlet nodes (once via the physical layer’s flow rate, once via the allocation <code>low_storage_factor</code> decision variable), which made their flows overly conservative during low storage. Pump and Outlet now go through the same linearized-connector-node mechanism as LinearResistance, ManningResistance and TabulatedRatingCurve, so <code>low_storage_factor</code> uniformly governs the low-storage reduction of every connector node type instead of being partly baked into a stale physical-layer scalar.</li>
 <li>Allocation: Fix route priorities, flow through controlled TabulatedRatingCurves when allocation is off, and several Junction and demand issues. <a href="https://github.com/Deltares/Ribasim/pull/3206">#3206</a> <a href="https://github.com/Deltares/Ribasim/pull/3221">#3221</a> <a href="https://github.com/Deltares/Ribasim/pull/3250">#3250</a></li>
 <li>Allocation: Improve LevelDemand stability for large Basins and consistency between single and multiple subnetworks. <a href="https://github.com/Deltares/Ribasim/pull/3246">#3246</a></li>
 <li>Allocation: Use the physical flow rates at the time of allocation, rather than the solver’s estimate of the derivative over the last timestep.</li>
