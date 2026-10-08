@@ -63,13 +63,15 @@ function create_callbacks(
         SavingCallback(save_subgrid_level, saved_subgrid_level; saveat, save_start = true)
     push!(callbacks, export_cb)
 
-    discrete_control_cb = FunctionCallingCallback(apply_discrete_control!)
+    # Not a FunctionCallingCallback, because that reports the derivative as continuous,
+    # which hides the right hand side discontinuity of a control state change
+    discrete_control_cb = DiscreteCallback(
+        discrete_control_condition,
+        apply_discrete_control!;
+        initialize = discrete_control_initialize,
+        save_positions = (false, false),
+    )
     push!(callbacks, discrete_control_cb)
-
-    toltimes = get_log_tstops(config.starttime, config.endtime)
-    decrease_tol_cb =
-        FunctionCallingCallback(decrease_tolerance!; funcat = toltimes, func_start = false)
-    push!(callbacks, decrease_tol_cb)
 
     saved = SavedResults(
         saved_flow,
@@ -83,91 +85,52 @@ function create_callbacks(
 end
 
 """
-Decrease the relative tolerance of the integrator over time,
-to compensate for the ever increasing cumulative flows.
+Add the forcings which are integrated exactly (precipitation, surface runoff, drainage and
+FlowBoundary flows) over the time step that ended at `t` to their cumulative values, and make
+`t` the start of the next time step by setting `p_mutable.tprev`.
 """
-function decrease_tolerance!(u, t, integrator)::Nothing
-    (; p, t, opts) = integrator
+function update_cumulative_forcing!(p::Parameters, t::Float64)::Nothing
+    (; p_independent, p_mutable) = p
+    (; basin, flow_boundary) = p_independent
+    (; vertical_flux) = basin
+    tprev = p_mutable.tprev
+    dt = t - tprev
 
-    for (i, state) in enumerate(u)
-        p.p_independent.relmask[i] || continue
-
-        # Use the internal norm to get the magnitude of the (cumulative) states,
-        # as used in calculate_residuals, and compare to an estimated average magnitude
-        cum_magnitude = opts.internalnorm(state, t)
-        iszero(cum_magnitude) && continue
-        avg_magnitude = max(opts.internalnorm(1.0e4, t), cum_magnitude / t)  # allow for 1e4 m3/s
-
-        # Decrease the relative tolerance based on their difference
-        diff_norm = max(0, log10(cum_magnitude / avg_magnitude))
-        # Limit new tolerance to floating point precision (~-14)
-        newtol = max(10.0^(log10(integrator.p.p_independent.reltol) - diff_norm), 1.0e-14)
-
-        if opts.reltol[i] > newtol
-            @debug "Relative tolerance changed at t = $t, state = $i to $(newtol)"
-            opts.reltol[i] = newtol
-        end
+    for id in basin.node_id
+        i = id.idx
+        fixed_area = basin_areas(basin, i)[end]
+        precipitation = fixed_area * vertical_flux.precipitation[i] * dt
+        basin.cumulative_precipitation[i] += precipitation
+        basin.cumulative_precipitation_saveat[i] += precipitation
+        surface_runoff = dt * vertical_flux.surface_runoff[i]
+        basin.cumulative_surface_runoff[i] += surface_runoff
+        basin.cumulative_surface_runoff_saveat[i] += surface_runoff
+        drainage = dt * vertical_flux.drainage[i]
+        basin.cumulative_drainage[i] += drainage
+        basin.cumulative_drainage_saveat[i] += drainage
     end
-    return
+
+    for id in flow_boundary.node_id
+        boundary_flow = boundary_flow_integral(flow_boundary, id.idx, tprev, t)
+        flow_boundary.cumulative_flow[id.idx] += boundary_flow
+        flow_boundary.cumulative_flow_saveat[id.idx] += boundary_flow
+    end
+
+    p_mutable.tprev = t
+    return nothing
 end
 
 """
 Update with the latest timestep:
-- Cumulative flows/forcings which are integrated exactly
 - Cumulative flows/forcings which are input for the allocation algorithm
 - Cumulative flows/forcings which are supplied demands in the allocation context
 
-During these cumulative flow updates, we can also update the mass balance of the system,
-as each flow carries mass, based on the concentrations of the flow source.
-Specifically, we first use all the inflows to update the mass of the Basins, recalculate
-the Basin concentration(s) and then remove the mass that is being lost to the outflows.
+The forcings which are integrated exactly are updated in `check_negative_storage`, see
+`update_cumulative_forcing!`.
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
-    (; cache, p) = integrator
-    (; p_independent, p_mutable, time_dependent_cache) = p
-    (; basin, flow_boundary, allocation, temp_convergence, convergence, ncalls) =
-        p_independent
-
-    # Update tprev
-    p_mutable.tprev = t
-
-    # Update convergence measure
-    if hasproperty(cache, :nlsolver)
-        @. temp_convergence = abs(cache.nlsolver.cache.atmp / u)
-        @inbounds for I in eachindex(temp_convergence)
-            if !isfinite(temp_convergence[I])
-                temp_convergence[I] = zero(eltype(temp_convergence))
-            end
-        end
-        convergence .+=
-            temp_convergence /
-            finitemaximum(temp_convergence; init = one(eltype(temp_convergence)))
-        ncalls[1] += 1
-    end
-
-    # Update cumulative forcings which are integrated exactly
-    @. basin.cumulative_drainage_saveat +=
-        time_dependent_cache.basin.current_cumulative_drainage - basin.cumulative_drainage
-    @. basin.cumulative_drainage = time_dependent_cache.basin.current_cumulative_drainage
-
-    @. basin.cumulative_precipitation_saveat +=
-        time_dependent_cache.basin.current_cumulative_precipitation -
-        basin.cumulative_precipitation
-    @. basin.cumulative_precipitation =
-        time_dependent_cache.basin.current_cumulative_precipitation
-
-    @. basin.cumulative_surface_runoff_saveat +=
-        time_dependent_cache.basin.current_cumulative_surface_runoff -
-        basin.cumulative_surface_runoff
-    @. basin.cumulative_surface_runoff =
-        time_dependent_cache.basin.current_cumulative_surface_runoff
-
-    # Update cumulative boundary flow which is integrated exactly
-    @. flow_boundary.cumulative_flow_saveat +=
-        time_dependent_cache.flow_boundary.current_cumulative_boundary_flow -
-        flow_boundary.cumulative_flow
-    @. flow_boundary.cumulative_flow =
-        time_dependent_cache.flow_boundary.current_cumulative_boundary_flow
+    (; p) = integrator
+    (; allocation) = p.p_independent
 
     # Update supplied flows for allocation input and output
     for allocation_model in allocation.allocation_models
@@ -198,7 +161,12 @@ function update_concentrations!(u, t, integrator)::Nothing
         mass,
     ) = concentration_data
 
-    !do_concentration && return nothing
+    if !do_concentration
+        # The step limiter also uses these, see `min_low_storage_factor`
+        basin.storage_prev .= current_storage
+        basin.level_prev .= current_level
+        return nothing
+    end
 
     # Reset cumulative flows, used to calculate the concentration
     cumulative_in .= vertical_flux.drainage * dt
@@ -392,7 +360,7 @@ function save_flow(u, t, integrator)
         flow_boundary,
         u_prev_saveat,
         convergence,
-        ncalls,
+        convergence_ncalls,
         node_id,
     ) = p.p_independent
     Δt = get_Δt(integrator)
@@ -449,7 +417,7 @@ function save_flow(u, t, integrator)
     @. basin.cumulative_drainage_saveat = 0.0
 
     if hasproperty(cache, :nlsolver)
-        flow_convergence = convergence ./ ncalls[1]
+        flow_convergence = convergence ./ convergence_ncalls[1]
         for (i, (evap, infil)) in
             enumerate(zip(flow_convergence.evaporation, flow_convergence.infiltration))
             if isnan(evap)
@@ -461,7 +429,7 @@ function save_flow(u, t, integrator)
             end
         end
         fill!(convergence, 0)
-        ncalls[1] = 0
+        convergence_ncalls[1] = 0
     end
 
     concentration = copy(basin.concentration_data.concentration_state)
@@ -555,13 +523,21 @@ end
 
 function save_solver_stats(u, t, integrator)
     (; stats) = integrator.sol
+    (; step_stats) = integrator.p.p_independent
     return (;
         time = t,
         time_ns = time_ns(),
         rhs_calls = stats.nf,
         linear_solves = stats.nsolve,
         accepted_timesteps = stats.naccept,
-        rejected_timesteps = stats.nreject,
+        # Not stats.nreject, which counts only the local error and out of domain rejections
+        rejected_timesteps = step_stats.rejected_nonlinear_solve +
+            step_stats.rejected_local_error +
+            step_stats.rejected_out_of_domain,
+        rejected_nonlinear_solve = step_stats.rejected_nonlinear_solve,
+        rejected_local_error = step_stats.rejected_local_error,
+        rejected_out_of_domain = step_stats.rejected_out_of_domain,
+        order_sum = step_stats.order_sum,
     )
 end
 
@@ -570,6 +546,14 @@ function check_negative_storage(u, t, integrator)::Nothing
     (; p_independent, state_and_time_dependent_cache) = p
     (; basin) = p_independent
     du = get_du(integrator)
+
+    # The accepted time step ends at t, which is the start of the next one. Integrate the
+    # forcings over the time step and set p_mutable.tprev to t. From here on, piecewise
+    # constant time series take their value after a possible jump at t, see
+    # `interpolation_time`. The time dependent cache still holds the values from before the
+    # jump, as the last evaluation at t was part of the time step, so it is renewed.
+    update_cumulative_forcing!(p, t)
+    p.time_dependent_cache.t_prev_call[1] = -1.0
     water_balance!(du, u, p, t)
 
     errors = false
@@ -599,11 +583,16 @@ Apply the discrete control logic. There's somewhat of a complex structure:
 - The nodes that are controlled by this DiscreteControl node must have the same control state, for which they have
     parameter values associated with that control state defined in their control_mapping
 """
-function apply_discrete_control!(u, t, integrator)::Nothing
-    (; p) = integrator
+function apply_discrete_control!(integrator; initialize::Bool = false)::Nothing
+    (; p, t) = integrator
     (; discrete_control) = p.p_independent
     (; node_id, truth_state, compound_variables) = discrete_control
     du = get_du(integrator)
+
+    errors = false
+
+    # Whether any node changed control state, and thus whether the right hand side changed
+    control_state_changed = false
 
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes
@@ -626,9 +615,14 @@ function apply_discrete_control!(u, t, integrator)::Nothing
                 zip(compound_variable.threshold_low, compound_variable.threshold_high)
                 truth_value_old = truth_state_node[truth_state_idx]
 
-                # Hysteresis deadband: if the condition was true before, only switch to false
+                # Hysteresis: if the condition was true before, only switch to false
                 # when below threshold_low, otherwise only switch to true when above threshold_high
-                if truth_value_old
+                if initialize
+                    # No threshold has been crossed yet, so the initial value decides, where a
+                    # value between the thresholds falls to the side it is closest to. Without
+                    # hysteresis this reduces to the same strict inequality as below.
+                    truth_value_new = (value > (threshold_low(t) + threshold_high(t)) / 2)
+                elseif truth_value_old
                     truth_value_new = (value >= threshold_low(t))
                 else
                     truth_value_new = (value > threshold_high(t))
@@ -644,40 +638,72 @@ function apply_discrete_control!(u, t, integrator)::Nothing
         end
 
         # Set a new control state if applicable
-        if (t == 0) || truth_state_change
-            set_new_control_state!(integrator, node_id, truth_state_node)
+        if initialize || truth_state_change
+            node_errors, node_changed =
+                set_new_control_state!(integrator, node_id, truth_state_node)
+            errors |= node_errors
+            control_state_changed |= node_changed
         end
     end
+
+    errors && error("Errors encountered when applying DiscreteControl at t = $t s.")
+
+    # A control state change alters the parameters, and so the right hand side, meaning the
+    # integrator has to discard the derivative it cached for the equations as they were
+    derivative_discontinuity!(integrator, control_state_changed)
     return nothing
 end
 
+discrete_control_condition(u, t, integrator)::Bool = true
+
+function discrete_control_initialize(c, u, t, integrator)::Nothing
+    return apply_discrete_control!(integrator; initialize = true)
+end
+
+"""
+Set the control state for a DiscreteControl node from its truth state.
+Returns `(node_errors, node_changed)`, indicating whether an error occurred and whether
+the control state changed.
+"""
 function set_new_control_state!(
         integrator,
         discrete_control_id::NodeID,
         truth_state::Vector{Bool},
-    )::Nothing
-    (; p) = integrator
+    )::Tuple{Bool, Bool}
+    (; p, t) = integrator
     (; p_independent) = p
     (; discrete_control, pump, outlet, tabulated_rating_curve) = p_independent
+    (; record, min_discrete_control_interval, last_update_time) = discrete_control
 
     # Get the control state corresponding to the new truth state,
     # if one is defined
     control_state_new =
         get(discrete_control.logic_mapping[discrete_control_id.idx], truth_state, nothing)
-    isnothing(control_state_new) && error(
-        lazy"No control state specified for $discrete_control_id for truth state $truth_state.",
-    )
+
+    if isnothing(control_state_new)
+        @error lazy"No control state specified for $discrete_control_id for truth state $truth_state."
+        return true, false
+    end
 
     # Check the new control state against the current control state
     # If there is a change, update parameters and the discrete control record
     control_state_now = discrete_control.control_state[discrete_control_id.idx]
     if control_state_now != control_state_new
-        record = discrete_control.record
-
         push!(record.time, integrator.t)
         push!(record.control_node_id, Int32(discrete_control_id))
         push!(record.truth_state, convert_truth_state(truth_state))
         push!(record.control_state, control_state_new)
+
+        # Check whether the control state update of this node came too quickly after the previous one
+        update_dt = t - last_update_time[discrete_control_id.idx]
+        if update_dt < min_discrete_control_interval
+            @error lazy"$discrete_control_id changed control state with a smaller time interval than min_discrete_control_interval." update_dt min_discrete_control_interval
+            return true, false
+        elseif !iszero(t)
+            # The control state is initialized at t = 0, which is not a change to measure
+            # the interval from, so the first timestep is exempt from the check above.
+            last_update_time[discrete_control_id.idx] = t
+        end
 
         # Loop over nodes which are under control of this control node
         for target_node_id in discrete_control.controlled_nodes[discrete_control_id.idx]
@@ -701,8 +727,9 @@ function set_new_control_state!(
 
         discrete_control.control_state[discrete_control_id.idx] = control_state_new
         discrete_control.control_state_start[discrete_control_id.idx] = integrator.t
+        return false, true
     end
-    return nothing
+    return false, false
 end
 
 """

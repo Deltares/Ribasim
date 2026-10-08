@@ -150,25 +150,60 @@ end
 Compute the product `J_inner = A * J_intermediate`, where `A` is implicitly defined
 by the structure of the Ribasim model.
 """
+calc_J_inner!(J_inner::AbstractMatrix, J::HalfLazyJacobian)::Nothing =
+    calc_J_inner!(J_inner, J.J_intermediate, J.p_independent)
+
 function calc_J_inner!(
         J_inner::AbstractMatrix,
-        J::HalfLazyJacobian
+        J_intermediate::AbstractMatrix,
+        p_independent::ParametersIndependent,
     )::Nothing
     J_inner .= 0
     n_states_reduced = size(J_inner)[1]
 
     for col_reduced in 1:n_states_reduced
-        update_J_inner!(J_inner, J, col_reduced)
+        update_J_inner!(J_inner, J_intermediate, p_independent, col_reduced)
     end
     return nothing
 end
 
+"""
+Allocate `J_inner` with the structural sparsity pattern of `A * J_intermediate` plus the
+diagonal, independent of the current values in `J_intermediate`.
+
+`setindex!` on a `SparseMatrixCSC` does not store a zero, so deriving the pattern from the
+values would miss every entry that happens to be zero at initialization, for instance the
+derivatives of a Pump that DiscreteControl has switched off. Such an entry would be inserted
+once it becomes nonzero, changing the pattern of `W_inner` during the simulation. A constant
+pattern is what `KLUFactorization(; check_pattern = false)` assumes when it reuses the symbolic
+factorization. The diagonal is included so that `jacobian2W!` does not insert it into
+`W_inner` either.
+"""
+function allocate_J_inner(J::HalfLazyJacobian{<:SparseMatrixCSC})::SparseMatrixCSC{Float64, Int}
+    (; J_intermediate, p_independent) = J
+    n_states_reduced = length(p_independent.u_reduced)
+    J_structural = copy(J_intermediate)
+    fill!(nonzeros(J_structural), 1.0)
+    J_inner = spzeros(n_states_reduced, n_states_reduced)
+    # The first contribution to each entry is ±1, so every entry is stored,
+    # and stays stored if later contributions cancel it out
+    calc_J_inner!(J_inner, J_structural, p_independent)
+    for i in 1:n_states_reduced
+        J_inner[i, i] += 1.0
+    end
+    fill!(nonzeros(J_inner), 0.0)
+    return J_inner
+end
+
+allocate_J_inner(J::HalfLazyJacobian{<:Matrix}) =
+    zeros(length(J.p_independent.u_reduced), length(J.p_independent.u_reduced))
+
 function update_J_inner!(
         J_inner::SparseMatrixCSC,
-        J::HalfLazyJacobian,
+        J_intermediate::SparseMatrixCSC,
+        p_independent::ParametersIndependent,
         col_reduced::Int,
     )::Nothing
-    (; J_intermediate, p_independent) = J
     for nz_idx in nzrange(J_intermediate, col_reduced)
         row = J_intermediate.rowval[nz_idx]
         val = J_intermediate.nzval[nz_idx]
@@ -177,8 +212,12 @@ function update_J_inner!(
     return
 end
 
-function update_J_inner!(J_inner::Matrix, J::HalfLazyJacobian, col_reduced::Int)::Nothing
-    (; J_intermediate, p_independent) = J
+function update_J_inner!(
+        J_inner::Matrix,
+        J_intermediate::Matrix,
+        p_independent::ParametersIndependent,
+        col_reduced::Int,
+    )::Nothing
     for row in axes(J_intermediate, 1)
         val = J_intermediate[row, col_reduced]
         !iszero(val) && update_J_inner!(J_inner, p_independent, row, col_reduced, val)
@@ -284,17 +323,19 @@ function SciMLBase.init(
     W = prob.A
     (; J) = W
     (; u_reduced) = J.p_independent
-    n_states_reduced = length(u_reduced)
-    J_inner = similar(J.J_intermediate, (n_states_reduced, n_states_reduced))
-
-    # These first calls allocate the nonzeros, including the diagonal, in the sparse case.
+    J_inner = allocate_J_inner(J)
     calc_J_inner!(J_inner, J)
     W_inner = copy(J_inner)
     jacobian2W!(W_inner, I, 1.0, J_inner)
 
     b_inner = copy(u_reduced)
     prob_inner = LinearProblem(W_inner, b_inner)
-    cache_inner = init(prob_inner, alg.algorithm, args...; kwargs...)
+    # The pattern of W_inner is structural and constant (see `allocate_J_inner`).
+    # Tell LinearSolve not to drop the stored zeros: that reduction changes the pattern
+    # handed to the factorization between solves, which the KLU symbolic factorization
+    # reuse (`check_pattern = false`) does not detect, giving wrong solutions.
+    assumptions = OperatorAssumptions(true; nonstructural_zeros = NonstructuralZeros.None)
+    cache_inner = init(prob_inner, alg.algorithm, args...; kwargs..., assumptions)
 
     return RibasimLinearSolveCache(cache_inner, W, J_inner)
 end

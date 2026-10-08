@@ -70,7 +70,15 @@
             @test haskey(ds, "linear_solves")
             @test haskey(ds, "accepted_timesteps")
             @test haskey(ds, "rejected_timesteps")
+            @test haskey(ds, "rejected_nonlinear_solve")
+            @test haskey(ds, "rejected_local_error")
+            @test haskey(ds, "rejected_out_of_domain")
+            @test haskey(ds, "mean_order")
             @test haskey(ds, "dt")
+
+            @test ds["rejected_timesteps"][:] ==
+                ds["rejected_nonlinear_solve"][:] .+ ds["rejected_local_error"][:] .+
+                ds["rejected_out_of_domain"][:]
         end
     end
 
@@ -222,14 +230,19 @@ end
     @test state_and_time_dependent_cache.current_storage ≈
         Float32[775.23576, 775.23365, 572.60102, 1130.005] skip = Sys.isapple() atol = 1.5
 
-    @test length(logger.logs) > 10
     @test logger.logs[1].level == Debug
     @test logger.logs[1].message == "Read database into memory."
+    # The debug messages of each stage of a run are captured
+    debug_messages = [log.message for log in logger.logs if log.level == Debug]
+    @test debug_messages ==
+        ["Read database into memory.", "Setup ODEProblem.", "Created callbacks.", "Setup integrator.", "Wrote results."]
 
     table = Ribasim.flow_data(model)
 
     # flows are recorded at the end of each period, and are undefined at the start
-    @test unique(table.time) == Ribasim.datetimes(model)[1:(end - 1)]
+    # Not unique(table.time): with saveat = 0 the first timestep is shorter than the
+    # millisecond resolution of DateTime, so the first two periods have the same timestamp
+    @test Ribasim.flow_data(model; table = false).time == Ribasim.datetimes(model)[1:(end - 1)]
 
     concentration_path = joinpath(dirname(toml_path), "results/concentration.nc")
     @test isfile(concentration_path)
@@ -277,7 +290,14 @@ end
     integrator.u *= 1.0e6
     integrator.u[1] = Inf
     integrator.cache.nlsolver.cache.J.J_intermediate .= NaN
-    @test log_numerical_instability(integrator) == "\n\nPhysical layer diagnostics:\n\nNon-plausible depths (outside [0,2000.0]):\n  Basin #1: -3.1199998532955774e11\n  Basin #3: -Inf\n  Basin #6: -3.322633672854174e11\n  Basin #9: 397006.2329950004\n\nNon-finite states:\n  TabulatedRatingCurve #4: Inf\n\nJacobian values:\n  row(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries (e.g. J[1,1] = NaN, J[1,2] = NaN, J[1,3] = NaN, J[1,4] = NaN, J[1,5] = NaN), suggesting a singularity in those equation(s)\n  column(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries, suggesting those state component(s) are diverging"
+    diagnostic = log_numerical_instability(integrator)
+    for (basin_id, expected_depth) in ((1, -3.1199998532955774e11), (6, -3.322633672854174e11), (9, 397006.2329950004))
+        depth_match = match(Regex("Basin #$basin_id: ([-+0-9.e]+)"), diagnostic)
+        @test !isnothing(depth_match)
+        @test parse(Float64, depth_match[1]) ≈ expected_depth rtol = 1.0e-6
+    end
+    normalized = replace(diagnostic, r"(Basin #(?:1|6|9): )[-+0-9.e]+" => s"\1<finite depth>")
+    @test normalized == "\n\nPhysical layer diagnostics:\n\nNon-plausible (flow) rates (outside [-500000.0, 500000.0]):\n  LinearResistance #12: Inf\n\nNon-plausible depths (outside [0,2000.0]):\n  Basin #1: <finite depth>\n  Basin #3: -Inf\n  Basin #6: <finite depth>\n  Basin #9: <finite depth>\n\nNon-finite states:\n  TabulatedRatingCurve #4: Inf\n\nJacobian values:\n  row(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries (e.g. J[1,1] = NaN, J[1,2] = NaN, J[1,3] = NaN, J[1,4] = NaN, J[1,5] = NaN), suggesting a singularity in those equation(s)\n  column(s) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, and 5 more] have non-finite entries, suggesting those state component(s) are diverging"
 end
 
 @testitem "basic transient model" begin
@@ -734,8 +754,11 @@ end
         basin_table,
     )
 
-    # Check that Basin #2189 is running dry and thus the infiltration and storage rate are close to 0
-    @test all(x -> abs(x) < 0.03, basin_table.storage)
+    # Check that Basin #2189 is running dry, down to the storage an empty Basin keeps, and thus
+    # the infiltration and storage rate are close to 0
+    (; basin) = model.integrator.p.p_independent
+    reserve = basin.low_storage_reserve[findfirst(==(2189), getfield.(basin.node_id, :value))]
+    @test all(x -> 0 <= x - reserve < 0.03, basin_table.storage)
     @test all(x -> abs(x) < 1.0e-8, basin_table.storage_rate)
     @test all(x -> abs(x) < 1.0e-8, basin_table.infiltration)
 end

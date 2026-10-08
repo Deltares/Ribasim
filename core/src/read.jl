@@ -724,7 +724,7 @@ function parse_pump_or_outlet_parameters!(
     errors |= parse_parameter!(node, config, :min_flow_rate; static, time, default = 0.0)
     errors |= parse_parameter!(node, config, :max_flow_rate; static, time, default = Inf)
     errors |=
-        parse_parameter!(node, config, :min_upstream_level; static, time, default = -Inf)
+        parse_parameter!(node, config, :min_upstream_level; static, time, default = (-Inf))
     errors |=
         parse_parameter!(node, config, :max_downstream_level; static, time, default = Inf)
 
@@ -960,6 +960,11 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         bottom = basin_bottom(basin, id)[2]
         basin.low_storage_threshold[id.idx] =
             get_storage_from_level(basin, id.idx, bottom + config.solver.depth_threshold)
+        basin.low_storage_reserve[id.idx] = get_storage_from_level(
+            basin,
+            id.idx,
+            bottom + low_storage_reserve_depth(config.solver.depth_threshold),
+        )
 
         # Cache the connected LevelDemand node if applicable
         level_demand_id = get_external_demand_id(graph, id)
@@ -1154,6 +1159,7 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
         compound_variables,
         truth_state,
         logic_mapping,
+        config.solver.min_discrete_control_interval,
     )
 end
 
@@ -1464,7 +1470,7 @@ function parse_time_demand_data!(
             StructVector(time_priority_group),
             id,
             :min_level;
-            default_value = -Inf,
+            default_value = (-Inf),
             cyclic_time,
         )
         level_demand.min_level[id.idx][demand_priority_idx] = min_level
@@ -1789,7 +1795,6 @@ function Parameters(db::DB, config::Config)::Parameters
     p_independent = ParametersIndependent(;
         config.starttime,
         config.solver.reltol,
-        relmask = collect(trues(n_states)),
         graph,
         allocation,
         nodes...,
@@ -1804,7 +1809,6 @@ function Parameters(db::DB, config::Config)::Parameters
         state_ranges,
         do_concentration = config.experimental.concentration,
         do_subgrid = config.results.subgrid,
-        temp_convergence = CVector(zeros(n_states), state_ranges),
         convergence = CVector(zeros(n_states), state_ranges),
         u_reduced,
         config.solver.level_difference_threshold,

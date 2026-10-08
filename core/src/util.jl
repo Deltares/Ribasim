@@ -330,6 +330,26 @@ function get_low_storage_factor(p::Parameters, id::NodeID)
 end
 
 """
+The depth of water that an empty Basin keeps: 1% of `depth_threshold`, so 1 mm by default.
+
+The low storage factor reaches 0 at this depth rather than at the bottom, so a Basin that
+empties levels off at a small positive storage instead of approaching zero. Otherwise the
+floating point rounding of the storage, which is computed from cumulative flows, can make an
+empty Basin slightly negative, which the solver has to reject.
+"""
+low_storage_reserve_depth(depth_threshold::Real) = 0.01 * depth_threshold
+
+"""
+The factor with which outflows of Basin `i` are reduced at the given storage. It goes
+smoothly from 0 at the reserve storage to 1 at the low storage threshold, see
+`low_storage_reserve_depth` and `depth_threshold`.
+"""
+function low_storage_factor(storage::T, basin::Basin, i::Int)::T where {T <: Real}
+    reserve = basin.low_storage_reserve[i]
+    return reduction_factor(storage - reserve, basin.low_storage_threshold[i] - reserve)
+end
+
+"""
 For resistance nodes, give a reduction factor based on the upstream node
 as defined by the flow direction.
 """
@@ -703,18 +723,6 @@ function build_state_vector(p_independent::ParametersIndependent)
     return u
 end
 
-function build_reltol_vector(u0::CVector, reltol::Float64)
-    reltolv = fill(reltol, length(u0))
-    mask = trues(length(u0))
-    # Mask the non-cumulative states
-    for (node, range) in pairs(getaxes(u0))
-        if node in (:integral,)
-            mask[range] .= false
-        end
-    end
-    return reltolv, mask
-end
-
 function reduce_state!(u_reduced, u, p_independent)::Nothing
     (; basin, link_to_state_idx) = p_independent
     (; inflow_ids, outflow_ids) = basin
@@ -919,9 +927,10 @@ function min_low_storage_factor(
     ) where {T}
     return if id.type == NodeType.Basin
         low_storage_threshold = basin.low_storage_threshold[id.idx]
-        reduction_factor(
+        low_storage_factor(
             min(storage_now[id.idx], storage_prev[id.idx]) - 2low_storage_threshold,
-            low_storage_threshold,
+            basin,
+            id.idx,
         )
     else
         one(T)
@@ -1195,12 +1204,29 @@ function eval_time_interpolation(
     )
     (; new_time_dependent_cache) = p.p_mutable
     if new_time_dependent_cache
-        @inbounds val = itp(t)
+        @inbounds val = itp(interpolation_time(itp, p, t))
         cache[idx] = val
         return val
     else
         return cache[idx]
     end
+end
+
+"""
+The time at which to evaluate a time series in the right hand side at time `t`.
+
+A piecewise constant (block) time series jumps at its data points, which are tstops. The
+timestep that ends at such a jump integrates the value from before it, but evaluating the
+series at exactly the end of that step would give the value after it. An implicit solver
+evaluates the right hand side at the end of the step, so it would see flows that change
+abruptly within the step, which the error control cannot resolve by shrinking the timestep.
+Therefore within a timestep, so after its start at `p_mutable.tprev`, these series
+are evaluated left-continuously. Once the timestep is accepted, its end is the start of the
+next one, so callbacks see the value after the jump.
+"""
+interpolation_time(::AbstractInterpolation, p::Parameters, t::Number) = t
+function interpolation_time(::ConstantInterpolation, p::Parameters, t::Float64)::Float64
+    return t > p.p_mutable.tprev ? prevfloat(t) : t
 end
 
 function trivial_constant_itp(; val = 0.0)

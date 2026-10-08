@@ -133,7 +133,6 @@ function set_current_basin_properties!(
         cumulative_surface_runoff,
         cumulative_drainage,
         vertical_flux,
-        low_storage_threshold,
     ) = basin
 
     # The exact cumulative precipitation and drainage up to the t of this water_balance call
@@ -158,7 +157,7 @@ function set_current_basin_properties!(
             s = state_and_time_dependent_cache.current_storage[i]
             i = id.idx
             state_and_time_dependent_cache.current_low_storage_factor[i] =
-                reduction_factor(s, low_storage_threshold[i])
+                low_storage_factor(s, basin, i)
             @inbounds state_and_time_dependent_cache.current_level[i] =
                 get_level_from_storage(basin, i, s)
             state_and_time_dependent_cache.current_area[i] =
@@ -878,23 +877,17 @@ function limit_flow!(
         )
     end
 
-    # Pump flow is in [min_flow_rate, max_flow_rate]
-    for (id, min_flow_rate, max_flow_rate) in
-        zip(pump.node_id, pump.min_flow_rate, pump.max_flow_rate)
-        limit_flow!(u.pump, uprev.pump, id, min_flow_rate(t), max_flow_rate(t), dt)
+    # Pump and Outlet flow is in [0, max_flow_rate]. The min_flow_rate is not a lower bound
+    # of the flow, since the reduction factors (low storage, min_upstream_level,
+    # max_downstream_level) are applied after it and can bring the flow down to 0.
+    # Clamping to min_flow_rate would force a flow that formulate_flow! has switched off,
+    # which the solver then fights on every timestep.
+    for (id, max_flow_rate) in zip(pump.node_id, pump.max_flow_rate)
+        limit_flow!(u.pump, uprev.pump, id, 0.0, max_flow_rate(t), dt)
     end
 
-    # Outlet flow is in [min_flow_rate, max_flow_rate]
-    for (id, min_flow_rate, max_flow_rate) in
-        zip(outlet.node_id, outlet.min_flow_rate, outlet.max_flow_rate)
-        limit_flow!(
-            u.outlet,
-            uprev.outlet,
-            id,
-            min_flow_rate(t),
-            max_flow_rate(t),
-            dt,
-        )
+    for (id, max_flow_rate) in zip(outlet.node_id, outlet.max_flow_rate)
+        limit_flow!(u.outlet, uprev.outlet, id, 0.0, max_flow_rate(t), dt)
     end
 
     # LinearResistance flow is in [-max_flow_rate, max_flow_rate]
@@ -981,6 +974,23 @@ function limit_flow!(
         )
     end
 
+    # Where evaporation and infiltration would bring a storage below the low storage reserve,
+    # reduce them so the storage becomes the reserve. In the ODE the low storage factor
+    # switches them off at the reserve, but multistep methods extrapolate the cumulative
+    # states from their history and can overshoot. These states only affect their own Basin.
+    reduce_state!(u_reduced, u, p_independent)
+    formulate_storages!(u_reduced, p, t)
+    for i in eachindex(basin.node_id)
+        deficit = basin.low_storage_reserve[i] - current_storage[i]
+        deficit > 0 || continue
+        for (u_component, uprev_component) in
+            ((u.infiltration, uprev.infiltration), (u.evaporation, uprev.evaporation))
+            reduction = clamp(deficit, 0.0, max(u_component[i] - uprev_component[i], 0.0))
+            u_component[i] -= reduction
+            deficit -= reduction
+        end
+    end
+
     return nothing
 end
 
@@ -1001,21 +1011,101 @@ function limit_flow!(
     return nothing
 end
 
+# The norm applied to the residuals to obtain the final scalar solver error
+@kwdef struct InternalNorm{PI <: ParametersIndependent}
+    p_independent::PI
+end
+Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
+(norm::InternalNorm)(u, t) = ODE_DEFAULT_NORM(u, t)
+
+@inline function DiffEqBase.calculate_residuals!(
+        out,
+        ũ, u₀, u₁, abstol, reltol, internalnorm::InternalNorm, t,
+        # Some algorithms such as Tsit5 always pass this explicitly, which would otherwise
+        # dispatch to the generic DiffEqBase method. We always compute serially.
+        thread::Union{Serial, Threaded} = Serial()
+    )
+    # All state components (flow, PID integral) are scaled by the magnitude
+    # of their change over the time step rather than by their absolute magnitude.
+    # The states are cumulative quantities whose absolute value carries no information
+    # about the local error: e.g. the storage of a large Basin with little throughflow
+    # would get a very loose tolerance.
+    # This is applied for both values of `reduced_implicit_solve`, so that `abstol` and
+    # `reltol` have the same meaning regardless of which solve path is taken.
+    for idx in eachindex(out)
+        abs_diff = abs(u₁[idx] - u₀[idx])
+        out[idx] = DiffEqBase.calculate_residuals(
+            ũ[idx],
+            abs_diff,
+            abs_diff,
+            abstol,
+            reltol,
+            internalnorm,
+            t
+        )
+    end
+    return nothing
+end
+
+# The out-of-place method is used by the nonlinear solver to weigh its Newton increment.
+# Without this the generic DiffEqBase fallback broadcasts the scalar method over our
+# CVector, bypassing the scaling above, so the nonlinear solver and the error estimate
+# would apply different tolerances to the same states.
+@inline function DiffEqBase.calculate_residuals(
+        ũ::CVector, u₀::CVector, u₁::CVector, abstol, reltol, internalnorm::InternalNorm, t
+    )
+    out = similar(ũ)
+    DiffEqBase.calculate_residuals!(out, ũ, u₀, u₁, abstol, reltol, internalnorm, t)
+    return out
+end
+
+"""
+Credit each state with its share of the local error estimate of a single step, normalized
+so that the worst state of every step contributes 1.0. This ranks the states by how much
+they hold back the timestep; it is not a magnitude, and a high value does not mean the state
+is wrong.
+"""
+function accumulate_residual!(convergence, residual)
+    max_abs_residual = 0.0
+    for i in eachindex(residual)
+        a = abs(residual[i])
+        if isfinite(a)
+            max_abs_residual = max(max_abs_residual, a)
+        end
+    end
+    if iszero(max_abs_residual)
+        # If no finite residual exists, set maximum badness (1.0) for
+        # non finite residuals
+        for i in eachindex(residual)
+            !isfinite(residual[i]) && (convergence[i] += 1.0)
+        end
+    else
+        for i in eachindex(residual)
+            a = abs(residual[i])
+            contribution = isfinite(a) ? a / max_abs_residual : 1.0
+            convergence[i] += contribution
+        end
+    end
+    return nothing
+end
 # The flow rate above which a (flow) rate is considered non-plausible,
 # used for diagnosing numerical instability
 const MAX_ABS_FLOW = 5.0e5 # m³/s
 
 """
-Describe the state at the given index for logging. Only the horizontal flow states, which
-come first, are associated with a link; the remaining states are named after their component.
+Describe the state at the given index for logging. `p_independent.node_id` holds the node a
+state belongs to for every state. A node can own more than one state, e.g. a Basin owns both
+an evaporation and an infiltration state, so the state component is named as well unless it
+is the node itself.
 """
-function state_label(u::CVector, state_inflow_link, state_idx::Int)::String
-    state_idx <= length(state_inflow_link) &&
-        return string(state_inflow_link[state_idx].link[2])
+function state_label(u::CVector, node_id::AbstractVector{NodeID}, state_idx::Int)::String
+    checkbounds(Bool, node_id, state_idx) || return "state $state_idx"
+    id = node_id[state_idx]
     for (name, range) in pairs(getaxes(u))
-        state_idx in range && return "$name $(state_idx - first(range) + 1)"
+        state_idx in range || continue
+        return name === snake_case(id) ? string(id) : "$id ($name)"
     end
-    return "state $state_idx"
+    return string(id)
 end
 
 # Modelled after SciMLBase.log_numerical_instability(integrator::ODEIntegrator; jacobian_logging = true)
@@ -1025,9 +1115,13 @@ function SciMLBase.log_numerical_instability(
         max_print_n::Int = 20
     )::String
     (; u, p, t) = integrator
-    du = get_du(integrator)
     (; p_independent, state_and_time_dependent_cache) = p
-    (; state_inflow_link, max_depth, basin) = p_independent
+    (; node_id, max_depth, basin) = p_independent
+
+    # The physical rates, not `get_du(integrator)`, which is the integrator's own derivative
+    # estimate and is meaningless once a step has diverged
+    du = get_du(integrator)
+    water_balance!(du, u, p, t)
 
     # Check whether any states are non-finite
     state_analysis = String[]
@@ -1037,9 +1131,8 @@ function SciMLBase.log_numerical_instability(
             push!(state_analysis, "More than $max_print_n states ($(length(non_finite_state_idxs))) are non-finite, output truncated.")
             break
         else
-            node_id = state_label(u, state_inflow_link, state_idx)
             value = u[state_idx]
-            push!(state_analysis, "$node_id: $value")
+            push!(state_analysis, "$(state_label(u, node_id, state_idx)): $value")
         end
     end
 
@@ -1051,9 +1144,8 @@ function SciMLBase.log_numerical_instability(
             push!(rate_analysis, "More than $max_print_n states ($(length(too_large_rate_idxs))) have non-plausible rate, output truncated.")
             break
         else
-            node_id = state_label(u, state_inflow_link, state_idx)
             value = du[state_idx]
-            push!(rate_analysis, "$node_id: $value")
+            push!(rate_analysis, "$(state_label(u, node_id, state_idx)): $value")
         end
     end
 
@@ -1067,8 +1159,6 @@ function SciMLBase.log_numerical_instability(
         atmp = error_estimate_residuals(integrator.cache)
         residual_analysis!(error_analysis, atmp, u, integrator.uprev)
     end
-
-    water_balance!(du, u, p, t)
 
     # Check whether any Basins have a too large water depth
     depths = [state_and_time_dependent_cache.current_level[id.idx] - basin_bottom(basin, id)[2] for id in basin.node_id]
@@ -1108,6 +1198,25 @@ function SciMLBase.log_numerical_instability(
         diagnostic *= "\n\n$title:\n$body"
     end
     return diagnostic
+end
+
+"""
+Restore the Nordsieck history array after a step rejected by `isoutofdomain`.
+
+A step with negative storage is rejected by `isoutofdomain`. For such a rejection
+OrdinaryDiffEqCore only shrinks the timestep, and skips `step_reject_controller!`, which is
+where NordsieckBDF undoes the Pascal shift of its predictor. The retry then shifts the history
+array a second time, the predictor is off by the size of a whole step, and every subsequent step
+fails the error test until the timestep collapses. This undoes the shift, so the retry
+predicts from the last accepted step again.
+"""
+function OrdinaryDiffEqCore.post_step_reject!(
+        integrator::ODEIntegrator{<:OrdinaryDiffEqBDF.NordsieckBDF, <:Any, <:RibasimCVectorType}
+    )::Nothing
+    if integrator.isout
+        OrdinaryDiffEqBDF.nordsieck_restore!(integrator.cache, Val(true))
+    end
+    return nothing
 end
 
 function OrdinaryDiffEqCore.instability_jacobian(integrator::ODEIntegrator{<:Any, <:Any, <:RibasimCVectorType})

@@ -26,6 +26,29 @@
     @test success(model)
 end
 
+@testitem "BMI steps like a normal run" begin
+    import BasicModelInterface as BMI
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    # Save after every accepted step, to compare the statistics of each step
+    config = Ribasim.Config(toml_path; solver_saveat = 0.0)
+
+    solved = Ribasim.Model(config)
+    Ribasim.solve!(solved)
+    stepped = Ribasim.Model(config)
+    BMI.update_until(stepped, BMI.get_end_time(stepped))
+
+    # SciMLBase.step! bypasses loopfooter!, but must still record the step statistics
+    fields(x) = getfield.(Ref(x), fieldnames(typeof(x)))
+    step_stats = stepped.integrator.p.p_independent.step_stats
+    @test step_stats.order_sum > 0
+    @test fields(step_stats) == fields(solved.integrator.p.p_independent.step_stats)
+    without_time_ns(model) =
+        [Base.structdiff(s, (; time_ns = 0)) for s in model.saved.solver_stats.saveval]
+    @test without_time_ns(stepped) == without_time_ns(solved)
+    @test stepped.integrator.u == solved.integrator.u
+end
+
 @testitem "fixed timestepping" begin
     import BasicModelInterface as BMI
     using SciMLBase: successful_retcode

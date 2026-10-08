@@ -22,6 +22,27 @@
     @test isapprox(flow_1_to_2.flow_rate, flow_expected, rtol = 0.005)
 end
 
+@testitem "Block time series are left-continuous within a timestep" begin
+    using DataInterpolations: ConstantInterpolation, LinearInterpolation
+
+    model = Ribasim.Model(normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml"))
+    (; p) = model.integrator
+    block = ConstantInterpolation([1.0, 2.0, 2.0], [0.0, 10.0, 20.0])
+    linear = LinearInterpolation([1.0, 2.0, 2.0], [0.0, 10.0, 20.0])
+
+    # A timestep from 5 to 10 integrates the value before the jump at 10, also at its end
+    p.p_mutable.tprev = 5.0
+    @test block(Ribasim.interpolation_time(block, p, 10.0)) == 1.0
+    @test block(Ribasim.interpolation_time(block, p, 7.0)) == 1.0
+    # The next timestep starts at the jump, and sees the value after it
+    p.p_mutable.tprev = 10.0
+    @test block(Ribasim.interpolation_time(block, p, 10.0)) == 2.0
+    @test block(Ribasim.interpolation_time(block, p, 12.0)) == 2.0
+    # Continuous time series are evaluated as is
+    p.p_mutable.tprev = 5.0
+    @test Ribasim.interpolation_time(linear, p, 10.0) == 10.0
+end
+
 @testitem "vertical_flux_means" begin
     using DataFrames: DataFrame, groupby
 
@@ -74,6 +95,31 @@ end
     @test mean_precipitation ≈ 3 / 4 * starting_precipitation
 end
 
+@testitem "Saved mean order covers the saved accepted steps" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    # Save after every accepted step, so that each row holds the order of a single step
+    config = Ribasim.Config(toml_path; solver_saveat = 0.0)
+    model = Ribasim.Model(config)
+    Ribasim.solve!(model)
+    (; step_stats) = model.integrator.p.p_independent
+    saved = model.saved.solver_stats.saveval
+
+    # The statistics are saved from within the upstream _loopfooter!, so the order of the
+    # step that was just accepted must already be included when they are sampled,
+    # including the final step.
+    @test last(saved).accepted_timesteps == model.integrator.sol.stats.naccept
+    @test last(saved).order_sum == step_stats.order_sum
+
+    (; accepted_timesteps, mean_order) = Ribasim.solver_stats_data(model)
+    @test all(==(1), accepted_timesteps)
+    # The first step of a BDF method is always first order
+    @test first(mean_order) == 1
+    @test all(>=(1), mean_order)
+    @test sum(mean_order) == step_stats.order_sum
+    # Cover order transitions between saved rows
+    @test length(unique(mean_order)) > 1
+end
+
 @testitem "get_cyclic_tstops" begin
     using Ribasim: get_timeseries_tstops
     using DataInterpolations: LinearInterpolation, ConstantInterpolation
@@ -113,17 +159,6 @@ end
     @test length(only(tstops)) == 404
 end
 
-@testitem "decrease tolerance" begin
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/cyclic_time/ribasim.toml")
-    @test ispath(toml_path)
-
-    model = Ribasim.run(toml_path)
-    @test model.integrator.opts.reltol isa Vector{Float64}
-    @test all(model.integrator.opts.reltol .<= model.integrator.p.p_independent.reltol)
-    @test model.integrator.u[1] >= 1.0e11
-    @test model.integrator.opts.reltol[1] <= 1.0e-11
-end
-
 @testitem "transient_pump_outlet" begin
     using DataFrames: DataFrame
 
@@ -141,4 +176,27 @@ end
     flow_data = DataFrame(Ribasim.flow_data(model))
     flow_4 = filter(:link_id => ==(4), flow_data).flow_rate
     @test all(isapprox.(flow_4[230:end], 1.0e-5, rtol = 1.0e-6))
+end
+
+@testitem "NordsieckBDF history restored after out of domain rejection" begin
+    using Ribasim: OrdinaryDiffEqCore, SciMLBase
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    (; integrator) = model
+    (; cache) = integrator
+    while cache.order < 2
+        SciMLBase.step!(integrator)
+    end
+
+    # A step attempt shifts the Nordsieck history array to predict the next step
+    zn_before = deepcopy(cache.zn)
+    OrdinaryDiffEqCore.perform_step!(integrator, cache)
+    @test any(j -> !(cache.zn[j] ≈ zn_before[j]), eachindex(zn_before))
+
+    # When that step is rejected for negative storage, the shift must be undone,
+    # otherwise the retry shifts it again and the predictor is off by a whole step
+    integrator.isout = true
+    OrdinaryDiffEqCore.post_step_reject!(integrator)
+    @test all(j -> cache.zn[j] ≈ zn_before[j], eachindex(zn_before))
 end

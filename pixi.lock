@@ -736,12 +736,12 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zc.lockfile-4.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zict-3.0.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
-      - conda: https://prefix.dev/julia-forge/linux-64/julia-1.13.0-hb0f4dca_0.conda
+      - conda: https://prefix.dev/julia-forge/linux-64/julia-1.13.1-hb0f4dca_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
-      - pypi: https://files.pythonhosted.org/packages/10/3b/ce7b39f8572f78f8946380e7cf53477f8cffbb8085e49fc54ad34124cc62/juliacall-0.9.35-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/30/5b1a619941bb458d1d3768377254d5d9e9965405daa2bd75f4317eae86f0/qgis_plugin_manager-1.7.5.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/34/f4/a3b1e086a91ecfe6ac8d5617963d594714e9a5cfa824128f238eb4110f3d/juliacall-0.9.36-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/42/b0/b709cc33ccb0288f41f2d92dfd754d2ccf925cb9277a66effbc132cd004c/elementpath-5.1.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/5c/fb/8be39dc47b0ed9bbc80f384906eed87fa974c9b377a7a430118c3b405550/xmlschema-4.3.2-py3-none-any.whl
@@ -1352,12 +1352,12 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zc.lockfile-4.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zict-3.0.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
-      - conda: https://prefix.dev/julia-forge/linux-aarch64/julia-1.13.0-he8cfe8b_0.conda
+      - conda: https://prefix.dev/julia-forge/linux-aarch64/julia-1.13.1-he8cfe8b_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
-      - pypi: https://files.pythonhosted.org/packages/10/3b/ce7b39f8572f78f8946380e7cf53477f8cffbb8085e49fc54ad34124cc62/juliacall-0.9.35-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/30/5b1a619941bb458d1d3768377254d5d9e9965405daa2bd75f4317eae86f0/qgis_plugin_manager-1.7.5.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/34/f4/a3b1e086a91ecfe6ac8d5617963d594714e9a5cfa824128f238eb4110f3d/juliacall-0.9.36-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/42/b0/b709cc33ccb0288f41f2d92dfd754d2ccf925cb9277a66effbc132cd004c/elementpath-5.1.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/5c/fb/8be39dc47b0ed9bbc80f384906eed87fa974c9b377a7a430118c3b405550/xmlschema-4.3.2-py3-none-any.whl
@@ -1913,12 +1913,12 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-1.3.2-h8088a28_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.3.3-h31dac16_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hf451053_7.conda
-      - conda: https://prefix.dev/julia-forge/osx-arm64/julia-1.13.0-h60d57d3_0.conda
+      - conda: https://prefix.dev/julia-forge/osx-arm64/julia-1.13.1-h60d57d3_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
-      - pypi: https://files.pythonhosted.org/packages/10/3b/ce7b39f8572f78f8946380e7cf53477f8cffbb8085e49fc54ad34124cc62/juliacall-0.9.35-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/30/5b1a619941bb458d1d3768377254d5d9e9965405daa2bd75f4317eae86f0/qgis_plugin_manager-1.7.5.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/34/f4/a3b1e086a91ecfe6ac8d5617963d594714e9a5cfa824128f238eb4110f3d/juliacall-0.9.36-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/42/b0/b709cc33ccb0288f41f2d92dfd754d2ccf925cb9277a66effbc132cd004c/elementpath-5.1.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/5c/fb/8be39dc47b0ed9bbc80f384906eed87fa974c9b377a7a430118c3b405550/xmlschema-4.3.2-py3-none-any.whl
@@ -2547,13 +2547,13 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-1.3.2-hfd05255_3.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_7.conda
-      - conda: https://prefix.dev/julia-forge/win-64/julia-1.13.0-h9490d1a_0.conda
+      - conda: https://prefix.dev/julia-forge/win-64/julia-1.13.1-h9490d1a_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
       - pypi: https://files.pythonhosted.org/packages/07/c2/094e3d62b906d952537196603a23aec4bcd7c6126bf80eb14e6f9f4be3a2/python_magic_bin-0.4.14-py2.py3-none-win_amd64.whl
-      - pypi: https://files.pythonhosted.org/packages/10/3b/ce7b39f8572f78f8946380e7cf53477f8cffbb8085e49fc54ad34124cc62/juliacall-0.9.35-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/30/5b1a619941bb458d1d3768377254d5d9e9965405daa2bd75f4317eae86f0/qgis_plugin_manager-1.7.5.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/34/f4/a3b1e086a91ecfe6ac8d5617963d594714e9a5cfa824128f238eb4110f3d/juliacall-0.9.36-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/42/b0/b709cc33ccb0288f41f2d92dfd754d2ccf925cb9277a66effbc132cd004c/elementpath-5.1.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/5c/fb/8be39dc47b0ed9bbc80f384906eed87fa974c9b377a7a430118c3b405550/xmlschema-4.3.2-py3-none-any.whl
@@ -3280,12 +3280,12 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zc.lockfile-4.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zict-3.0.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
-      - conda: https://prefix.dev/julia-forge/linux-64/julia-1.13.0-hb0f4dca_0.conda
+      - conda: https://prefix.dev/julia-forge/linux-64/julia-1.13.1-hb0f4dca_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
-      - pypi: https://files.pythonhosted.org/packages/10/3b/ce7b39f8572f78f8946380e7cf53477f8cffbb8085e49fc54ad34124cc62/juliacall-0.9.35-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/30/5b1a619941bb458d1d3768377254d5d9e9965405daa2bd75f4317eae86f0/qgis_plugin_manager-1.7.5.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/34/f4/a3b1e086a91ecfe6ac8d5617963d594714e9a5cfa824128f238eb4110f3d/juliacall-0.9.36-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/42/b0/b709cc33ccb0288f41f2d92dfd754d2ccf925cb9277a66effbc132cd004c/elementpath-5.1.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/5c/fb/8be39dc47b0ed9bbc80f384906eed87fa974c9b377a7a430118c3b405550/xmlschema-4.3.2-py3-none-any.whl
@@ -3897,12 +3897,12 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zc.lockfile-4.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zict-3.0.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
-      - conda: https://prefix.dev/julia-forge/linux-aarch64/julia-1.13.0-he8cfe8b_0.conda
+      - conda: https://prefix.dev/julia-forge/linux-aarch64/julia-1.13.1-he8cfe8b_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
-      - pypi: https://files.pythonhosted.org/packages/10/3b/ce7b39f8572f78f8946380e7cf53477f8cffbb8085e49fc54ad34124cc62/juliacall-0.9.35-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/30/5b1a619941bb458d1d3768377254d5d9e9965405daa2bd75f4317eae86f0/qgis_plugin_manager-1.7.5.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/34/f4/a3b1e086a91ecfe6ac8d5617963d594714e9a5cfa824128f238eb4110f3d/juliacall-0.9.36-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/42/b0/b709cc33ccb0288f41f2d92dfd754d2ccf925cb9277a66effbc132cd004c/elementpath-5.1.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/5c/fb/8be39dc47b0ed9bbc80f384906eed87fa974c9b377a7a430118c3b405550/xmlschema-4.3.2-py3-none-any.whl
@@ -4459,12 +4459,12 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-1.3.2-h8088a28_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.3.3-h31dac16_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hf451053_7.conda
-      - conda: https://prefix.dev/julia-forge/osx-arm64/julia-1.13.0-h60d57d3_0.conda
+      - conda: https://prefix.dev/julia-forge/osx-arm64/julia-1.13.1-h60d57d3_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
-      - pypi: https://files.pythonhosted.org/packages/10/3b/ce7b39f8572f78f8946380e7cf53477f8cffbb8085e49fc54ad34124cc62/juliacall-0.9.35-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/30/5b1a619941bb458d1d3768377254d5d9e9965405daa2bd75f4317eae86f0/qgis_plugin_manager-1.7.5.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/34/f4/a3b1e086a91ecfe6ac8d5617963d594714e9a5cfa824128f238eb4110f3d/juliacall-0.9.36-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/42/b0/b709cc33ccb0288f41f2d92dfd754d2ccf925cb9277a66effbc132cd004c/elementpath-5.1.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/5c/fb/8be39dc47b0ed9bbc80f384906eed87fa974c9b377a7a430118c3b405550/xmlschema-4.3.2-py3-none-any.whl
@@ -5093,13 +5093,13 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-1.3.2-hfd05255_3.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_7.conda
-      - conda: https://prefix.dev/julia-forge/win-64/julia-1.13.0-h9490d1a_0.conda
+      - conda: https://prefix.dev/julia-forge/win-64/julia-1.13.1-h9490d1a_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
       - pypi: https://files.pythonhosted.org/packages/07/c2/094e3d62b906d952537196603a23aec4bcd7c6126bf80eb14e6f9f4be3a2/python_magic_bin-0.4.14-py2.py3-none-win_amd64.whl
-      - pypi: https://files.pythonhosted.org/packages/10/3b/ce7b39f8572f78f8946380e7cf53477f8cffbb8085e49fc54ad34124cc62/juliacall-0.9.35-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/30/5b1a619941bb458d1d3768377254d5d9e9965405daa2bd75f4317eae86f0/qgis_plugin_manager-1.7.5.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/34/f4/a3b1e086a91ecfe6ac8d5617963d594714e9a5cfa824128f238eb4110f3d/juliacall-0.9.36-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/42/b0/b709cc33ccb0288f41f2d92dfd754d2ccf925cb9277a66effbc132cd004c/elementpath-5.1.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/5c/fb/8be39dc47b0ed9bbc80f384906eed87fa974c9b377a7a430118c3b405550/xmlschema-4.3.2-py3-none-any.whl
@@ -5826,12 +5826,12 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zc.lockfile-4.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zict-3.0.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
-      - conda: https://prefix.dev/julia-forge/linux-64/julia-1.13.0-hb0f4dca_0.conda
+      - conda: https://prefix.dev/julia-forge/linux-64/julia-1.13.1-hb0f4dca_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
-      - pypi: https://files.pythonhosted.org/packages/10/3b/ce7b39f8572f78f8946380e7cf53477f8cffbb8085e49fc54ad34124cc62/juliacall-0.9.35-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/30/5b1a619941bb458d1d3768377254d5d9e9965405daa2bd75f4317eae86f0/qgis_plugin_manager-1.7.5.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/34/f4/a3b1e086a91ecfe6ac8d5617963d594714e9a5cfa824128f238eb4110f3d/juliacall-0.9.36-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/42/b0/b709cc33ccb0288f41f2d92dfd754d2ccf925cb9277a66effbc132cd004c/elementpath-5.1.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/5c/fb/8be39dc47b0ed9bbc80f384906eed87fa974c9b377a7a430118c3b405550/xmlschema-4.3.2-py3-none-any.whl
@@ -6442,12 +6442,12 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zc.lockfile-4.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zict-3.0.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
-      - conda: https://prefix.dev/julia-forge/linux-aarch64/julia-1.13.0-he8cfe8b_0.conda
+      - conda: https://prefix.dev/julia-forge/linux-aarch64/julia-1.13.1-he8cfe8b_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
-      - pypi: https://files.pythonhosted.org/packages/10/3b/ce7b39f8572f78f8946380e7cf53477f8cffbb8085e49fc54ad34124cc62/juliacall-0.9.35-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/30/5b1a619941bb458d1d3768377254d5d9e9965405daa2bd75f4317eae86f0/qgis_plugin_manager-1.7.5.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/34/f4/a3b1e086a91ecfe6ac8d5617963d594714e9a5cfa824128f238eb4110f3d/juliacall-0.9.36-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/42/b0/b709cc33ccb0288f41f2d92dfd754d2ccf925cb9277a66effbc132cd004c/elementpath-5.1.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/5c/fb/8be39dc47b0ed9bbc80f384906eed87fa974c9b377a7a430118c3b405550/xmlschema-4.3.2-py3-none-any.whl
@@ -7002,12 +7002,12 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-1.3.2-h8088a28_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.3.3-h31dac16_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hf451053_7.conda
-      - conda: https://prefix.dev/julia-forge/osx-arm64/julia-1.13.0-h60d57d3_0.conda
+      - conda: https://prefix.dev/julia-forge/osx-arm64/julia-1.13.1-h60d57d3_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
-      - pypi: https://files.pythonhosted.org/packages/10/3b/ce7b39f8572f78f8946380e7cf53477f8cffbb8085e49fc54ad34124cc62/juliacall-0.9.35-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/30/5b1a619941bb458d1d3768377254d5d9e9965405daa2bd75f4317eae86f0/qgis_plugin_manager-1.7.5.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/34/f4/a3b1e086a91ecfe6ac8d5617963d594714e9a5cfa824128f238eb4110f3d/juliacall-0.9.36-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/42/b0/b709cc33ccb0288f41f2d92dfd754d2ccf925cb9277a66effbc132cd004c/elementpath-5.1.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/5c/fb/8be39dc47b0ed9bbc80f384906eed87fa974c9b377a7a430118c3b405550/xmlschema-4.3.2-py3-none-any.whl
@@ -7636,13 +7636,13 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-1.3.2-hfd05255_3.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_7.conda
-      - conda: https://prefix.dev/julia-forge/win-64/julia-1.13.0-h9490d1a_0.conda
+      - conda: https://prefix.dev/julia-forge/win-64/julia-1.13.1-h9490d1a_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
       - pypi: https://files.pythonhosted.org/packages/07/c2/094e3d62b906d952537196603a23aec4bcd7c6126bf80eb14e6f9f4be3a2/python_magic_bin-0.4.14-py2.py3-none-win_amd64.whl
-      - pypi: https://files.pythonhosted.org/packages/10/3b/ce7b39f8572f78f8946380e7cf53477f8cffbb8085e49fc54ad34124cc62/juliacall-0.9.35-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/30/5b1a619941bb458d1d3768377254d5d9e9965405daa2bd75f4317eae86f0/qgis_plugin_manager-1.7.5.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/34/f4/a3b1e086a91ecfe6ac8d5617963d594714e9a5cfa824128f238eb4110f3d/juliacall-0.9.36-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/42/b0/b709cc33ccb0288f41f2d92dfd754d2ccf925cb9277a66effbc132cd004c/elementpath-5.1.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/5c/fb/8be39dc47b0ed9bbc80f384906eed87fa974c9b377a7a430118c3b405550/xmlschema-4.3.2-py3-none-any.whl
@@ -8616,7 +8616,7 @@ packages:
   license: Apache-2.0 AND BSD-3-Clause AND PSF-2.0 AND MIT
   license_family: BSD
   purls:
-  - pkg:pypi/cryptography?source=compressed-mapping
+  - pkg:pypi/cryptography?source=hash-mapping
   run_exports: {}
   size: 1896245
   timestamp: 1788356239006
@@ -8635,7 +8635,7 @@ packages:
   license: Apache-2.0 AND BSD-3-Clause AND PSF-2.0 AND MIT
   license_family: BSD
   purls:
-  - pkg:pypi/cryptography?source=compressed-mapping
+  - pkg:pypi/cryptography?source=hash-mapping
   run_exports: {}
   size: 1897221
   timestamp: 1788356286125
@@ -9653,7 +9653,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/kiwisolver?source=compressed-mapping
+  - pkg:pypi/kiwisolver?source=hash-mapping
   run_exports: {}
   size: 75073
   timestamp: 1787938396652
@@ -9669,7 +9669,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/kiwisolver?source=compressed-mapping
+  - pkg:pypi/kiwisolver?source=hash-mapping
   run_exports: {}
   size: 75003
   timestamp: 1787938399572
@@ -12998,7 +12998,7 @@ packages:
   license: BSD-2-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/llvmlite?source=compressed-mapping
+  - pkg:pypi/llvmlite?source=hash-mapping
   run_exports: {}
   size: 40829032
   timestamp: 1788013772362
@@ -13034,7 +13034,7 @@ packages:
   - python_abi 3.12.* *_cp312
   license: BSD-3-Clause and MIT-CMU
   purls:
-  - pkg:pypi/lxml?source=compressed-mapping
+  - pkg:pypi/lxml?source=hash-mapping
   run_exports: {}
   size: 1593892
   timestamp: 1787133195108
@@ -13325,7 +13325,7 @@ packages:
   license: Apache-2.0
   license_family: APACHE
   purls:
-  - pkg:pypi/msgpack?source=compressed-mapping
+  - pkg:pypi/msgpack?source=hash-mapping
   run_exports: {}
   size: 114260
   timestamp: 1788170252387
@@ -13576,7 +13576,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/numpy?source=compressed-mapping
+  - pkg:pypi/numpy?source=hash-mapping
   run_exports:
     weak:
     - numpy >=1.25,<3
@@ -13599,7 +13599,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/numpy?source=compressed-mapping
+  - pkg:pypi/numpy?source=hash-mapping
   run_exports:
     weak:
     - numpy >=1.25,<3
@@ -14038,7 +14038,7 @@ packages:
   - libxcb >=1.17.0,<2.0a0
   license: HPND
   purls:
-  - pkg:pypi/pillow?source=compressed-mapping
+  - pkg:pypi/pillow?source=hash-mapping
   run_exports: {}
   size: 1059991
   timestamp: 1788263909512
@@ -14276,7 +14276,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/psutil?source=compressed-mapping
+  - pkg:pypi/psutil?source=hash-mapping
   run_exports: {}
   size: 228664
   timestamp: 1788189989243
@@ -15586,7 +15586,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/rpds-py?source=compressed-mapping
+  - pkg:pypi/rpds-py?source=hash-mapping
   run_exports: {}
   size: 300752
   timestamp: 1788228344574
@@ -15650,7 +15650,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/ruff?source=compressed-mapping
+  - pkg:pypi/ruff?source=hash-mapping
   run_exports: {}
   size: 8955205
   timestamp: 1787865273472
@@ -15793,7 +15793,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/secretstorage?source=compressed-mapping
+  - pkg:pypi/secretstorage?source=hash-mapping
   run_exports: {}
   size: 33006
   timestamp: 1788230825196
@@ -16080,7 +16080,7 @@ packages:
   - __glibc >=2.17
   license: MIT
   purls:
-  - pkg:pypi/ty?source=compressed-mapping
+  - pkg:pypi/ty?source=hash-mapping
   run_exports: {}
   size: 11520379
   timestamp: 1788398096040
@@ -16264,7 +16264,7 @@ packages:
   license: BSD-2-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/wrapt?source=compressed-mapping
+  - pkg:pypi/wrapt?source=hash-mapping
   run_exports: {}
   size: 141669
   timestamp: 1788174911031
@@ -16279,7 +16279,7 @@ packages:
   license: BSD-2-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/wrapt?source=compressed-mapping
+  - pkg:pypi/wrapt?source=hash-mapping
   run_exports: {}
   size: 144411
   timestamp: 1788174910718
@@ -20629,7 +20629,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/nh3?source=compressed-mapping
+  - pkg:pypi/nh3?source=hash-mapping
   run_exports: {}
   size: 686516
   timestamp: 1787526821204
@@ -23150,7 +23150,7 @@ packages:
   license: Apache-2.0
   license_family: APACHE
   purls:
-  - pkg:pypi/aiobotocore?source=compressed-mapping
+  - pkg:pypi/aiobotocore?source=hash-mapping
   run_exports: {}
   size: 93162
   timestamp: 1787053079193
@@ -23533,7 +23533,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/bokeh?source=compressed-mapping
+  - pkg:pypi/bokeh?source=hash-mapping
   run_exports: {}
   size: 4454345
   timestamp: 1787144786949
@@ -24474,7 +24474,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/gitpython?source=compressed-mapping
+  - pkg:pypi/gitpython?source=hash-mapping
   run_exports: {}
   size: 178174
   timestamp: 1787936103205
@@ -24603,7 +24603,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/hatchling?source=compressed-mapping
+  - pkg:pypi/hatchling?source=hash-mapping
   run_exports: {}
   size: 62794
   timestamp: 1786711084570
@@ -25797,7 +25797,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/narwhals?source=compressed-mapping
+  - pkg:pypi/narwhals?source=hash-mapping
   run_exports: {}
   size: 293989
   timestamp: 1787261063562
@@ -26574,7 +26574,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/python-discovery?source=compressed-mapping
+  - pkg:pypi/python-discovery?source=hash-mapping
   run_exports: {}
   size: 38928
   timestamp: 1787953569064
@@ -27722,7 +27722,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/virtualenv?source=compressed-mapping
+  - pkg:pypi/virtualenv?source=hash-mapping
   run_exports: {}
   size: 3895299
   timestamp: 1788296993944
@@ -28462,7 +28462,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/brotli?source=compressed-mapping
+  - pkg:pypi/brotli?source=hash-mapping
   run_exports: {}
   size: 364943
   timestamp: 1786622957275
@@ -28479,7 +28479,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/brotli?source=compressed-mapping
+  - pkg:pypi/brotli?source=hash-mapping
   run_exports: {}
   size: 365183
   timestamp: 1786623042491
@@ -28705,7 +28705,7 @@ packages:
   license: Apache-2.0 AND BSD-3-Clause AND PSF-2.0 AND MIT
   license_family: BSD
   purls:
-  - pkg:pypi/cryptography?source=compressed-mapping
+  - pkg:pypi/cryptography?source=hash-mapping
   run_exports: {}
   size: 1826168
   timestamp: 1788356120075
@@ -31430,7 +31430,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/numpy?source=compressed-mapping
+  - pkg:pypi/numpy?source=hash-mapping
   run_exports:
     weak:
     - numpy >=1.25,<3
@@ -32228,7 +32228,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/pyobjc-framework-cocoa?source=compressed-mapping
+  - pkg:pypi/pyobjc-framework-cocoa?source=hash-mapping
   run_exports: {}
   size: 385117
   timestamp: 1786682054070
@@ -32564,7 +32564,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/pyzmq?source=compressed-mapping
+  - pkg:pypi/pyzmq?source=hash-mapping
   run_exports: {}
   size: 195379
   timestamp: 1787301084171
@@ -32986,7 +32986,7 @@ packages:
   license: Apache-2.0
   license_family: Apache
   purls:
-  - pkg:pypi/tornado?source=compressed-mapping
+  - pkg:pypi/tornado?source=hash-mapping
   run_exports: {}
   size: 869700
   timestamp: 1786375852841
@@ -33018,7 +33018,7 @@ packages:
   - __osx >=11.0
   license: MIT
   purls:
-  - pkg:pypi/ty?source=compressed-mapping
+  - pkg:pypi/ty?source=hash-mapping
   run_exports: {}
   size: 10409035
   timestamp: 1788398090213
@@ -33735,7 +33735,7 @@ packages:
   - zstd >=1.5.7,<1.6.0a0
   license: BSD-3-Clause AND MIT AND EPL-2.0
   purls:
-  - pkg:pypi/backports-zstd?source=compressed-mapping
+  - pkg:pypi/backports-zstd?source=hash-mapping
   run_exports: {}
   size: 239485
   timestamp: 1786861404460
@@ -33855,7 +33855,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/brotli?source=compressed-mapping
+  - pkg:pypi/brotli?source=hash-mapping
   run_exports: {}
   size: 336846
   timestamp: 1786622959392
@@ -33873,7 +33873,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/brotli?source=compressed-mapping
+  - pkg:pypi/brotli?source=hash-mapping
   run_exports: {}
   size: 336988
   timestamp: 1786623013239
@@ -38195,7 +38195,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/numpy?source=compressed-mapping
+  - pkg:pypi/numpy?source=hash-mapping
   run_exports:
     weak:
     - numpy >=1.25,<3
@@ -38218,7 +38218,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/numpy?source=compressed-mapping
+  - pkg:pypi/numpy?source=hash-mapping
   run_exports:
     weak:
     - numpy >=1.25,<3
@@ -38597,7 +38597,7 @@ packages:
   - openjpeg >=2.5.4,<3.0a0
   license: HPND
   purls:
-  - pkg:pypi/pillow?source=compressed-mapping
+  - pkg:pypi/pillow?source=hash-mapping
   run_exports: {}
   size: 949306
   timestamp: 1788263901855
@@ -38622,7 +38622,7 @@ packages:
   - python_abi 3.13.* *_cp313
   license: HPND
   purls:
-  - pkg:pypi/pillow?source=compressed-mapping
+  - pkg:pypi/pillow?source=hash-mapping
   run_exports: {}
   size: 962462
   timestamp: 1788263901855
@@ -38810,7 +38810,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/psutil?source=compressed-mapping
+  - pkg:pypi/psutil?source=hash-mapping
   run_exports: {}
   size: 242819
   timestamp: 1788190000655
@@ -38826,7 +38826,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/psutil?source=compressed-mapping
+  - pkg:pypi/psutil?source=hash-mapping
   run_exports: {}
   size: 246124
   timestamp: 1788190001566
@@ -39114,7 +39114,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/pyproj?source=compressed-mapping
+  - pkg:pypi/pyproj?source=hash-mapping
   run_exports: {}
   size: 862249
   timestamp: 1786351861743
@@ -39440,7 +39440,7 @@ packages:
   license: PSF-2.0
   license_family: PSF
   purls:
-  - pkg:pypi/pywin32?source=compressed-mapping
+  - pkg:pypi/pywin32?source=hash-mapping
   run_exports: {}
   size: 4460094
   timestamp: 1787374336080
@@ -40396,7 +40396,7 @@ packages:
   license: Apache-2.0
   license_family: Apache
   purls:
-  - pkg:pypi/tornado?source=compressed-mapping
+  - pkg:pypi/tornado?source=hash-mapping
   run_exports: {}
   size: 869273
   timestamp: 1786226848377
@@ -40412,7 +40412,7 @@ packages:
   license: Apache-2.0
   license_family: Apache
   purls:
-  - pkg:pypi/tornado?source=compressed-mapping
+  - pkg:pypi/tornado?source=hash-mapping
   run_exports: {}
   size: 894576
   timestamp: 1786226856347
@@ -40907,34 +40907,34 @@ packages:
     - zstd >=1.5.7,<1.6.0a0
   size: 387535
   timestamp: 1786599623274
-- conda: https://prefix.dev/julia-forge/linux-64/julia-1.13.0-hb0f4dca_0.conda
-  sha256: a52a4279a646ef30545bf5feb31add7093498206a237451ed5720dc3da892811
-  md5: bae69516fc974738895ba72191dba95f
+- conda: https://prefix.dev/julia-forge/linux-64/julia-1.13.1-hb0f4dca_0.conda
+  sha256: 2022baef9fb2e345f3a0a6967a6b2eaa91bcfb4a078b17db97a9e3f9749cb2c7
+  md5: 2e9b9a27549ff4bb406894e17d9b5f49
   license: MIT
   run_exports: {}
-  size: 230898355
-  timestamp: 1789056135112
-- conda: https://prefix.dev/julia-forge/linux-aarch64/julia-1.13.0-he8cfe8b_0.conda
-  sha256: a800eadb1c9927c6743ac99084159dec2ffea114bbe4468ded848595ea0503dd
-  md5: 4ec847fbd4a0f0ca2576bfe5d0165a7a
+  size: 230274242
+  timestamp: 1790515279487
+- conda: https://prefix.dev/julia-forge/linux-aarch64/julia-1.13.1-he8cfe8b_0.conda
+  sha256: bad330d65d7fe12cccbb673102b9ce295f3dabcfc9bee622e48b01e4f284c1d4
+  md5: 934f83b7ae6e31d09e03fca8adc6105f
   license: MIT
   run_exports: {}
-  size: 255732554
-  timestamp: 1789056140757
-- conda: https://prefix.dev/julia-forge/osx-arm64/julia-1.13.0-h60d57d3_0.conda
-  sha256: 33dcc8d113b7cce34b38b1dcdddf3249ccf3292aaf49e69d7d73e96b30ac04d5
-  md5: 5ea008dca49678837d0efa55022ecae3
+  size: 255311342
+  timestamp: 1790515285295
+- conda: https://prefix.dev/julia-forge/osx-arm64/julia-1.13.1-h60d57d3_0.conda
+  sha256: 17a7e6dbf2b6230dc06ca168a25b4e827827ee54e816e1984efcd7f4ae2d4ca3
+  md5: 49a4e967159a08af623d00ebaf3f1903
   license: MIT
   run_exports: {}
-  size: 205811504
-  timestamp: 1789056144163
-- conda: https://prefix.dev/julia-forge/win-64/julia-1.13.0-h9490d1a_0.conda
-  sha256: 9db74e0d704926a496b26c08d2471cc897832c1594f8127c296f434f207be2e8
-  md5: b8c93202b7105a40bc2a7be3aa43d637
+  size: 205585525
+  timestamp: 1790515287053
+- conda: https://prefix.dev/julia-forge/win-64/julia-1.13.1-h9490d1a_0.conda
+  sha256: cd48f90a1e3ed285871723e21a2bbf95f8f41dbcb5fa58c70f8c812b104d180c
+  md5: a16a3a15b979360e23d5dbbe2d37eec2
   license: MIT
   run_exports: {}
-  size: 230489783
-  timestamp: 1789056151857
+  size: 229921017
+  timestamp: 1790515300396
 - pypi: ./python/ribasim
   name: ribasim
   requires_dist:
@@ -40993,13 +40993,6 @@ packages:
   name: python-magic-bin
   version: 0.4.14
   sha256: 90be6206ad31071a36065a2fc169c5afb5e0355cbe6030e87641c6c62edc2b69
-- pypi: https://files.pythonhosted.org/packages/10/3b/ce7b39f8572f78f8946380e7cf53477f8cffbb8085e49fc54ad34124cc62/juliacall-0.9.35-py3-none-any.whl
-  name: juliacall
-  version: 0.9.35
-  sha256: fd58e7858b12a8e1aa44f9f9eeaea05ff8029dd9a19d98521a5451ca94f2f81a
-  requires_dist:
-  - juliapkg>=0.1.24,<0.2
-  requires_python: '>=3.10,<4'
 - pypi: https://files.pythonhosted.org/packages/26/30/5b1a619941bb458d1d3768377254d5d9e9965405daa2bd75f4317eae86f0/qgis_plugin_manager-1.7.5.tar.gz
   name: qgis-plugin-manager
   version: 1.7.5
@@ -41007,6 +41000,13 @@ packages:
   requires_dist:
   - semver==3.0.4
   requires_python: '>=3.9'
+- pypi: https://files.pythonhosted.org/packages/34/f4/a3b1e086a91ecfe6ac8d5617963d594714e9a5cfa824128f238eb4110f3d/juliacall-0.9.36-py3-none-any.whl
+  name: juliacall
+  version: 0.9.36
+  sha256: 9dc27dbe9da5a78e8d402ffebe0470708ebca4b5fcf7890017819e7dc1a2b85b
+  requires_dist:
+  - juliapkg>=0.1.26,<0.2
+  requires_python: '>=3.10,<4'
 - pypi: https://files.pythonhosted.org/packages/3a/fd/e5dae179943e631ae1d2b1903d73d7060ea9a82242e922abc685e33b6679/sbom2dot-0.3.2-py2.py3-none-any.whl
   name: sbom2dot
   version: 0.3.2

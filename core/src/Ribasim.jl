@@ -36,10 +36,12 @@ using OrdinaryDiffEqCore:
     OrdinaryDiffEqCore,
     loopheader!,
     ODEIntegrator,
+    OrdinaryDiffEqCache,
     jacobian_analysis!,
     get_EEst,
     error_estimate_residuals,
     residual_analysis!
+using DiffEqBase: DiffEqBase, ODE_DEFAULT_NORM, Serial, Threaded
 using OrdinaryDiffEqDifferentiation:
     OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
 using SciMLOperators: WOperator, MatrixOperator
@@ -56,6 +58,7 @@ using SciMLBase:
     check_error!,
     successful_retcode,
     CallbackSet,
+    DiscreteCallback,
     ODEFunction,
     ODEProblem,
     get_du,
@@ -75,10 +78,11 @@ using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
-using SparseArrays: SparseMatrixCSC, sparse, nzrange, rowvals
+using SparseArrays: SparseMatrixCSC, sparse, spzeros, nonzeros, nzrange, rowvals
 
 # Linear algebra
 using LinearAlgebra: LinearAlgebra, I, mul!, UniformScaling
+using LinearSolve: OperatorAssumptions, NonstructuralZeros
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node
@@ -172,8 +176,6 @@ using NCDatasets: NCDatasets, NCDataset, defDim, defVar, dimnames, CFVariable
 
 using Dates: Second
 
-using Printf: @sprintf
-
 using Base.Threads: nthreads
 
 include("cvectors.jl")
@@ -193,6 +195,7 @@ include("util.jl")
 include("graph.jl")
 include("differentiation.jl")
 include("model.jl")
+include("timestepping.jl")
 include("read.jl")
 include("write.jl")
 include("bmi.jl")

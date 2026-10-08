@@ -317,6 +317,112 @@ end
     @test dense_alg.linsolve == Ribasim.config.RibasimLinearSolve(LUFactorization())
 end
 
+@testitem "Step limiter does not enforce Pump min_flow_rate" begin
+    using SciMLBase: step!
+
+    model = Ribasim.Model(
+        normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml"),
+    )
+    (; integrator) = model
+    (; p, uprev) = integrator
+    step!(integrator)
+
+    # The level reduction factors are applied after clamping to min_flow_rate, so they can
+    # bring the flow below it, down to 0. The step limiter must allow that, otherwise it
+    # forces a flow that the physics has switched off.
+    p.p_independent.pump.min_flow_rate[1].u .= 1.0
+    u = copy(integrator.u)
+    u.pump[1] = uprev.pump[1]
+    Ribasim.limit_flow!(u, integrator, p, integrator.t)
+    @test u.pump[1] == uprev.pump[1]
+
+    # Negative flow is still clamped
+    u.pump[1] = uprev.pump[1] - 1.0
+    Ribasim.limit_flow!(u, integrator, p, integrator.t)
+    @test u.pump[1] == uprev.pump[1]
+end
+
+@testitem "Residual scaling" begin
+    using Ribasim.DiffEqBase: calculate_residuals, calculate_residuals!
+
+    model =
+        Ribasim.Model(normpath(@__DIR__, "../../generated_testmodels/bucket/ribasim.toml"))
+    internalnorm = model.integrator.opts.internalnorm
+    @test internalnorm isa Ribasim.InternalNorm
+
+    # The states are cumulative, so give them a large magnitude with a small change
+    # over the step; this is where the two possible scalings differ most.
+    u₀ = fill!(similar(model.integrator.u), 1.0e6)
+    u₁ = u₀ .+ 2.0
+    ũ = fill!(similar(u₀), 1.0)
+    abstol, reltol, t = 1.0, 1.0e-4, 0.0
+
+    in_place = similar(ũ)
+    calculate_residuals!(in_place, ũ, u₀, u₁, abstol, reltol, internalnorm, t)
+    out_of_place = calculate_residuals(ũ, u₀, u₁, abstol, reltol, internalnorm, t)
+
+    # The nonlinear solver uses the out-of-place method to weigh its Newton increment,
+    # so it must scale identically to the error estimate, which uses the in-place one.
+    @test out_of_place ≈ in_place
+    # Scaling is by the change over the step, not by the magnitude of the state.
+    @test all(≈(1.0 / (abstol + 2.0 * reltol)), out_of_place)
+
+    # Some algorithms such as Tsit5 pass the threading mode explicitly, which must not
+    # fall back to the generic DiffEqBase method that scales by the state magnitude.
+    for thread in (Ribasim.Serial(), Ribasim.Threaded())
+        with_thread = similar(ũ)
+        calculate_residuals!(with_thread, ũ, u₀, u₁, abstol, reltol, internalnorm, t, thread)
+        @test with_thread ≈ in_place
+    end
+
+    # Since only the change over the step matters, a large offset of the cumulative states
+    # must not change the residuals, whichever entry point is used.
+    offset = 1.0e9
+    shifted_in_place = similar(ũ)
+    shifted_threaded = similar(ũ)
+    calculate_residuals!(
+        shifted_in_place, ũ, u₀ .+ offset, u₁ .+ offset, abstol, reltol, internalnorm, t
+    )
+    calculate_residuals!(
+        shifted_threaded, ũ, u₀ .+ offset, u₁ .+ offset, abstol, reltol, internalnorm, t,
+        Ribasim.Serial(),
+    )
+    shifted_out_of_place = calculate_residuals(
+        ũ, u₀ .+ offset, u₁ .+ offset, abstol, reltol, internalnorm, t
+    )
+    @test shifted_in_place ≈ in_place
+    @test shifted_threaded ≈ in_place
+    @test shifted_out_of_place ≈ in_place
+end
+
+@testitem "Residual scaling Tsit5" begin
+    using Ribasim: OrdinaryDiffEqCore, SciMLBase
+    using Ribasim.DiffEqBase: calculate_residuals!
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    config = Ribasim.Config(toml_path; solver_algorithm = "Tsit5")
+    model = Ribasim.Model(config)
+    (; integrator) = model
+    (; cache) = integrator
+    (; abstol, reltol, internalnorm) = integrator.opts
+
+    # Let the cumulative states grow well beyond their change over a single step, so that
+    # scaling by the change and scaling by the magnitude give different residuals.
+    for _ in 1:10
+        SciMLBase.step!(integrator)
+    end
+    OrdinaryDiffEqCore.perform_step!(integrator, cache)
+    (; uprev, u, t) = integrator
+    (; utilde, atmp) = cache
+
+    expected = similar(atmp)
+    calculate_residuals!(expected, utilde, uprev, u, abstol, reltol, internalnorm, t)
+    by_magnitude = @. utilde / (abstol + max(abs(uprev), abs(u)) * reltol)
+    @test !(expected ≈ by_magnitude)
+    # The error estimate that Tsit5 computed itself must use our scaling
+    @test atmp ≈ expected
+end
+
 @testitem "FlatVector" begin
     vv = [[2.2, 3.2], [4.3, 5.3], [6.4, 7.4]]
     fv = Ribasim.FlatVector(vv)
@@ -344,6 +450,76 @@ end
     @test reduction_factor(3.0, 2.0) === 1.0
     @test reduction_factor(Inf, 2.0) === 1.0
     @test reduction_factor(-Inf, 2.0) === 0.0
+end
+
+@testitem "Previous storage and level are tracked without concentration" begin
+    using SciMLBase: step!
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    config = Ribasim.Config(toml_path; experimental_concentration = false)
+    model = Ribasim.Model(config)
+    (; integrator) = model
+    (; basin) = integrator.p.p_independent
+    (; current_storage, current_level) = integrator.p.state_and_time_dependent_cache
+
+    # The step limiter estimates the lowest storage and level over a time step from these.
+    # The storage is recomputed at the same time after the update, up to round-off.
+    for _ in 1:3
+        step!(integrator)
+        @test basin.storage_prev ≈ current_storage
+        @test basin.level_prev == current_level
+    end
+end
+
+@testitem "Low storage reserve" begin
+    model = Ribasim.Model(normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml"))
+    (; basin) = model.integrator.p.p_independent
+    (; depth_threshold) = model.config.solver
+
+    # An empty Basin keeps a depth of 1% of depth_threshold
+    reserve_depth = Ribasim.low_storage_reserve_depth(depth_threshold)
+    @test reserve_depth ≈ 0.001
+    for i in eachindex(basin.node_id)
+        bottom = Ribasim.basin_bottom(basin, basin.node_id[i])[2]
+        reserve = basin.low_storage_reserve[i]
+        @test Ribasim.get_level_from_storage(basin, i, reserve) ≈ bottom + reserve_depth
+        # Outflows are switched off at the reserve, not at zero storage
+        @test Ribasim.low_storage_factor(0.0, basin, i) == 0
+        @test Ribasim.low_storage_factor(reserve, basin, i) == 0
+        @test 0 < Ribasim.low_storage_factor(2reserve, basin, i) < 1
+        @test Ribasim.low_storage_factor(basin.low_storage_threshold[i], basin, i) == 1
+    end
+end
+
+@testitem "Step limiter keeps evaporation and infiltration above the low storage reserve" begin
+    using SciMLBase: step!
+
+    model = Ribasim.Model(normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml"))
+    (; integrator) = model
+    (; p) = integrator
+    step!(integrator)
+    (; uprev, t) = integrator
+    # The limiter bounds flows over the step that was just taken
+    integrator.dt = t - integrator.tprev
+    (; current_storage) = p.state_and_time_dependent_cache
+    reserve = p.p_independent.basin.low_storage_reserve[1]
+
+    # Evaporate 1 m³ more than the storage of Basin 1 over the last timestep
+    u = copy(integrator.u)
+    Ribasim.isoutofdomain(u, p, t)
+    u.evaporation[1] += current_storage[1] + 1.0
+    @test Ribasim.isoutofdomain(u, p, t)
+
+    # The limiter reduces infiltration and evaporation over the step to keep the reserve
+    infiltration_before = u.infiltration[1]
+    evaporation_before = u.evaporation[1]
+    Ribasim.limit_flow!(u, integrator, p, t)
+    @test !Ribasim.isoutofdomain(u, p, t)
+    @test current_storage[1] ≈ reserve
+    removed = (infiltration_before - u.infiltration[1]) + (evaporation_before - u.evaporation[1])
+    @test removed ≈ 1.0 + reserve
+    @test u.infiltration[1] >= uprev.infiltration[1]
+    @test u.evaporation[1] >= uprev.evaporation[1]
 end
 
 @testitem "Node types" begin
