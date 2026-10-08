@@ -250,7 +250,6 @@ end
 end
 
 @testitem "Jacobian sparsity" begin
-    import SQLite
     using SparseArrays: sparse, findnz
 
     # Basic model; inner Jacobian
@@ -283,8 +282,8 @@ end
     model = Ribasim.Model(config)
     (; jac_prototype) = model.integrator.f
     jac_prototype.nzval .= 1
-    rows_expected = [1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3]
-    cols_expected = [1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5]
+    rows_expected = repeat(1:5, 5)
+    cols_expected = repeat(1:5; inner = 5)
     jac_prototype_expected =
         sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
     @test jac_prototype == jac_prototype_expected

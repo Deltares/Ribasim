@@ -156,9 +156,7 @@ end
 
     # The flag is only set when the flow is at the maximum
     @test all(at_max_flow_rate[allocation_flow_table.upper_bound_hit])
-    # `upper_bound_hit` compares the unscaled optimization variable to its bound exactly,
-    # so at the bound the solver value can be a few ulps short of it
-    @test count(at_max_flow_rate .!= allocation_flow_table.upper_bound_hit) <= 5
+    @test at_max_flow_rate == allocation_flow_table.upper_bound_hit
 end
 
 @testitem "Small Primary Secondary Network Model" begin

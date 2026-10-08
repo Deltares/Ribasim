@@ -695,9 +695,9 @@ end
 
 function set_flow_ids!(inflow_id, outflow_id, basin::Basin)
     (; node_id) = basin
-    inflow_id .= NodeID(NodeType.Terminal, 0, 0)
-    outflow_id.evaporation .= node_id
-    outflow_id.infiltration .= node_id
+    inflow_id.evaporation .= node_id
+    inflow_id.infiltration .= node_id
+    outflow_id .= NodeID(NodeType.Terminal, 0, 0)
     return nothing
 end
 
