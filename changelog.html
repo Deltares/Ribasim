@@ -325,11 +325,14 @@ ul.task-list li input[type="checkbox"] {
 <ul>
 <li>Allocation: Fix route priorities, flow through controlled TabulatedRatingCurves when allocation is off, and several Junction and demand issues. <a href="https://github.com/Deltares/Ribasim/pull/3206">#3206</a> <a href="https://github.com/Deltares/Ribasim/pull/3221">#3221</a> <a href="https://github.com/Deltares/Ribasim/pull/3250">#3250</a></li>
 <li>Allocation: Improve LevelDemand stability for large Basins and consistency between single and multiple subnetworks. <a href="https://github.com/Deltares/Ribasim/pull/3246">#3246</a></li>
+<li>Allocation: Use the physical flow rates at the time of allocation, rather than the solver’s estimate of the derivative over the last timestep.</li>
 <li>Provide actionable error diagnostics for unstable models, identifying affected nodes and physical flow rates. <a href="https://github.com/Deltares/Ribasim/pull/3242">#3242</a> <a href="https://github.com/Deltares/Ribasim/pull/3267">#3267</a> <a href="https://github.com/Deltares/Ribasim/pull/3272">#3272</a> <a href="https://github.com/Deltares/Ribasim/pull/3273">#3273</a></li>
+<li>Simulations no longer stall at a jump in a block interpolated time series, such as a step change in a LevelBoundary level.</li>
 <li>Invalid Pump, Outlet, and demand inputs now report parsing errors instead of failing silently or with misleading messages. <a href="https://github.com/Deltares/Ribasim/pull/3219">#3219</a> <a href="https://github.com/Deltares/Ribasim/pull/3254">#3254</a></li>
 <li>Pumps and Outlets with a <code>min_flow_rate</code> that are switched off by <code>min_upstream_level</code>, <code>max_downstream_level</code> or a small level difference no longer slow down the solver by orders of magnitude. The documented Pump and Outlet equations now match the implementation, in which these level criteria can reduce the flow below <code>min_flow_rate</code>.</li>
 <li>Python: Removing an external table no longer leaves a missing-file reference in the model configuration. <a href="https://github.com/Deltares/Ribasim/pull/3214">#3214</a></li>
 <li>Delwaq: Reduce memory use when generating and parsing large results. <a href="https://github.com/Deltares/Ribasim/pull/3132">#3132</a> <a href="https://github.com/Deltares/Ribasim/pull/3248">#3248</a></li>
+<li>Simulations no longer abort with a tiny timestep when a Basin empties. Outflows now stop at a depth of 1% of <code>solver.depth_threshold</code> (1 mm by default), so an empty Basin keeps a small positive storage that floating point rounding cannot make negative, and the step limiter keeps evaporation and infiltration from overshooting it.</li>
 </ul>
 </section>
 </section>
