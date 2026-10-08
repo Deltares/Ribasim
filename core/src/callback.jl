@@ -166,7 +166,11 @@ function update_concentrations!(u, t, integrator)::Nothing
         mass,
     ) = concentration_data
 
-    !do_concentration && return nothing
+    if !do_concentration
+        # The step limiter also uses this, see `min_low_storage_factor`
+        storage_prev_dt .= current_storage
+        return nothing
+    end
 
     dt = t - tprev
 

@@ -374,7 +374,14 @@ function build_J_inner!(
     ) = cache
     (; pid_control, inflow_id, outflow_id) = p_independent
 
-    J_inner .= J_inner_local
+    # Add J_inner_local into J_inner rather than copying it, which would reset the sparsity
+    # pattern of J_inner and drop the entries that are only structurally nonzero
+    J_inner .= 0.0
+    J_local_rows = rowvals(J_inner_local)
+    J_local_vals = nonzeros(J_inner_local)
+    for col in axes(J_inner_local, 2), k in nzrange(J_inner_local, col)
+        J_inner[J_local_rows[k], col] += J_local_vals[k]
+    end
 
     cc_entries = nonzero_entries(∂continuous_control_compound_∂continuous_control_input)
 
@@ -494,7 +501,12 @@ function SciMLBase.init(
     b_inner = zeros(n_basin)
 
     prob_inner = LinearProblem(W_inner, b_inner)
-    cache_inner = init(prob_inner, alg.algorithm, args...; kwargs...)
+    # The pattern of J_inner is structural and constant (see `build_J_inner!`).
+    # Tell LinearSolve not to drop the stored zeros: that reduction changes the pattern
+    # handed to the factorization between solves, which the KLU symbolic factorization
+    # reuse (`check_pattern = false`) does not detect, giving wrong solutions.
+    assumptions = OperatorAssumptions(true; nonstructural_zeros = NonstructuralZeros.None)
+    cache_inner = init(prob_inner, alg.algorithm, args...; kwargs..., assumptions)
 
     return RibasimLinearSolveCache(cache_inner, W)
 end
@@ -864,6 +876,25 @@ end
 function OrdinaryDiffEqCore.instability_jacobian(integrator::ODEIntegrator{<:Any, <:Any, <:RibasimStateCVector})
     # Inner 'storage space' Jacobian
     return integrator.cache.nlsolver.cache.linsolve.cache_inner.A.J
+end
+
+"""
+Restore the Nordsieck history array after a step rejected by `isoutofdomain`.
+
+A step with negative storage is rejected by `isoutofdomain`. For such a rejection
+OrdinaryDiffEqCore only shrinks the timestep, and skips `step_reject_controller!`, which is
+where NordsieckBDF undoes the Pascal shift of its predictor. The retry then shifts the history
+array a second time, the predictor is off by the size of a whole step, and every subsequent step
+fails the error test until the timestep collapses. This undoes the shift, so the retry
+predicts from the last accepted step again.
+"""
+function OrdinaryDiffEqCore.post_step_reject!(
+        integrator::ODEIntegrator{<:OrdinaryDiffEqBDF.NordsieckBDF, <:Any, <:RibasimStateCVector}
+    )::Nothing
+    if integrator.isout
+        OrdinaryDiffEqBDF.nordsieck_restore!(integrator.cache, Val(true))
+    end
+    return nothing
 end
 
 ###

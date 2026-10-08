@@ -114,7 +114,8 @@ state u and the time t.
 function set_current_basin_properties!(flow::FlowCVector, p::Parameters, t::Number)
     (; p_independent, p_mutable, current_basin_properties) = p
     (; storage_prev_call, current_storage, current_level, current_area, current_low_storage_factor) = current_basin_properties
-    (; node_id, level_to_area, low_storage_threshold) = p_independent.basin
+    (; basin) = p_independent
+    (; node_id, level_to_area) = basin
 
     p_mutable.ad_active && return nothing
 
@@ -127,7 +128,7 @@ function set_current_basin_properties!(flow::FlowCVector, p::Parameters, t::Numb
         h = get_level(s, p, id, t; force_evaluation = true)
         Ah = level_to_area[idx]
         A = Ah(h)
-        ϕ = reduction_factor(s, low_storage_threshold[idx])
+        ϕ = low_storage_factor(s, basin, idx)
 
         current_level[idx] = h
         current_area[idx] = A

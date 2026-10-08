@@ -599,6 +599,8 @@ Requirements:
     outflow_ids::Vector{Vector{NodeID}} = fill(NodeID[], length(node_id))
     # Storage below which outflows are reduced
     low_storage_threshold::Vector{Float64} = zeros(length(node_id))
+    # The storage a Basin keeps when it is empty, see `low_storage_reserve_depth`
+    low_storage_reserve::Vector{Float64} = zeros(length(node_id))
     # Vertical fluxes
     vertical_flux::VerticalFlux = VerticalFlux(length(node_id))
     # Initial_storage

@@ -751,8 +751,11 @@ end
         basin_table,
     )
 
-    # Check that Basin #2189 is running dry and thus the infiltration and storage rate are close to 0
-    @test all(x -> abs(x) < 0.03, basin_table.storage)
+    # Check that Basin #2189 is running dry, down to the storage an empty Basin keeps, and thus
+    # the infiltration and storage rate are close to 0
+    (; basin) = model.integrator.p.p_independent
+    reserve = basin.low_storage_reserve[findfirst(==(2189), getfield.(basin.node_id, :value))]
+    @test all(x -> 0 <= x - reserve < 0.03, basin_table.storage)
     @test all(x -> abs(x) < 1.0e-8, basin_table.storage_rate)
     @test all(x -> abs(x) < 1.0e-8, basin_table.infiltration)
 end

@@ -143,6 +143,24 @@ function limit_flow!(integrator, flow, flow_prev, t, basin::Basin)
 
         limit_flow!(flow.vertical.infiltration, flow_prev.vertical.infiltration, low_storage_factor * inf, inf, dt, idx)
     end
+
+    # Where evaporation and infiltration would bring a storage below the low storage reserve,
+    # reduce them so the storage becomes the reserve. In the ODE the low storage factor
+    # switches them off at the reserve, but multistep methods extrapolate the cumulative
+    # states from their history and can overshoot. These states only affect their own Basin.
+    set_current_storage!(p, flow, t)
+    for idx in eachindex(node_id)
+        deficit = basin.low_storage_reserve[idx] - current_storage[idx]
+        deficit > 0 || continue
+        for (flow_component, flow_prev_component) in (
+                (flow.vertical.infiltration, flow_prev.vertical.infiltration),
+                (flow.vertical.evaporation, flow_prev.vertical.evaporation),
+            )
+            reduction = clamp(deficit, 0.0, max(flow_component[idx] - flow_prev_component[idx], 0.0))
+            flow_component[idx] -= reduction
+            deficit -= reduction
+        end
+    end
     return nothing
 end
 

@@ -445,6 +445,76 @@ end
     @test reduction_factor(-Inf, 2.0) === 0.0
 end
 
+@testitem "Previous storage is tracked without concentration" begin
+    using SciMLBase: step!
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    config = Ribasim.Config(toml_path; experimental_concentration = false)
+    model = Ribasim.Model(config)
+    (; integrator) = model
+    (; basin) = integrator.p.p_independent
+    (; current_storage) = integrator.p.current_basin_properties
+
+    # The step limiter estimates the lowest storage over a time step from this.
+    # The storage is recomputed at the same time after the update, up to round-off.
+    for _ in 1:3
+        step!(integrator)
+        @test basin.storage_prev_dt ≈ current_storage
+    end
+end
+
+@testitem "Low storage reserve" begin
+    model = Ribasim.Model(normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml"))
+    (; basin) = model.integrator.p.p_independent
+    (; depth_threshold) = model.config.solver
+
+    # An empty Basin keeps a depth of 1% of depth_threshold
+    reserve_depth = Ribasim.low_storage_reserve_depth(depth_threshold)
+    @test reserve_depth ≈ 0.001
+    for i in eachindex(basin.node_id)
+        bottom = Ribasim.basin_bottom(basin, basin.node_id[i])[2]
+        reserve = basin.low_storage_reserve[i]
+        @test Ribasim.get_level_from_storage(basin, i, reserve) ≈ bottom + reserve_depth
+        # Outflows are switched off at the reserve, not at zero storage
+        @test Ribasim.low_storage_factor(0.0, basin, i) == 0
+        @test Ribasim.low_storage_factor(reserve, basin, i) == 0
+        @test 0 < Ribasim.low_storage_factor(2reserve, basin, i) < 1
+        @test Ribasim.low_storage_factor(basin.low_storage_threshold[i], basin, i) == 1
+    end
+end
+
+@testitem "Step limiter keeps evaporation and infiltration above the low storage reserve" begin
+    using SciMLBase: step!
+
+    model = Ribasim.Model(normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml"))
+    (; integrator) = model
+    (; p) = integrator
+    step!(integrator)
+    (; uprev, t) = integrator
+    # The limiter bounds flows over the step that was just taken
+    integrator.dt = t - integrator.tprev
+    (; current_storage) = p.current_basin_properties
+    reserve = p.p_independent.basin.low_storage_reserve[1]
+
+    # Evaporate 1 m³ more than the storage of Basin 1 over the last timestep
+    u = copy(integrator.u)
+    (; vertical) = u.flow
+    Ribasim.isoutofdomain(u, p, t)
+    vertical.evaporation[1] += current_storage[1] + 1.0
+    @test Ribasim.isoutofdomain(u, p, t)
+
+    # The limiter reduces infiltration and evaporation over the step to keep the reserve
+    infiltration_before = vertical.infiltration[1]
+    evaporation_before = vertical.evaporation[1]
+    Ribasim.limit_flow!(u, integrator, p, t)
+    @test !Ribasim.isoutofdomain(u, p, t)
+    @test current_storage[1] ≈ reserve
+    removed = (infiltration_before - vertical.infiltration[1]) + (evaporation_before - vertical.evaporation[1])
+    @test removed ≈ 1.0 + reserve
+    @test vertical.infiltration[1] >= uprev.flow.vertical.infiltration[1]
+    @test vertical.evaporation[1] >= uprev.flow.vertical.evaporation[1]
+end
+
 @testitem "Node types" begin
     using Ribasim:
         node_types,
