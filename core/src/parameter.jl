@@ -903,7 +903,8 @@ be of `ForwardDiff.Dual` type. This second version of the cache is created by Di
 """
 @kwdef struct CurrentBasinProperties
     n::Int
-    storage_prev_call::Vector{Float64} = zeros(n)
+    # NaN so that the first call always computes the properties, also for an initial storage of 0
+    storage_prev_call::Vector{Float64} = fill(NaN, n)
     current_storage::Vector{Float64} = zeros(n)
     current_level::Vector{Float64} = zeros(n)
     current_area::Vector{Float64} = zeros(n)
