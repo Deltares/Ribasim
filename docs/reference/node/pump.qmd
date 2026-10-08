@@ -46,13 +46,15 @@ The behavior of a Pump is simple if these nodes are not PID controlled.
 Their flow is given by a fixed flow rate $q$, multiplied by reduction factors:
 
 $$
-Q = \mathrm{clamp}(\phi Q_\text{set}, Q_{\min}, Q_{\max})
+Q = \phi_\text{level} \, \mathrm{clamp}(\phi_\text{storage} Q_\text{set}, Q_{\min}, Q_{\max})
 $$
 
 - $Q$ is the actual Pump flow rate.
 - $Q_\text{set}$ is the Pump's target `flow_rate`.
 - $Q_{\min}$ and $Q_{\max}$ are the Pump `min_flow_rate` and `max_flow_rate`.
-- $\phi$ is the reduction factor, which smoothly reduces flow based on all of these criteria:
-  - The upstream volume is below the equivalent of a water depth of $10 \;\text{cm}$ (change with solver setting `depth_threshold`, the others below with `level_difference_threshold`).
+- $\phi_\text{storage}$ is the reduction factor that smoothly reduces flow when the upstream volume is below the equivalent of a water depth of $10 \;\text{cm}$ (change with solver setting `depth_threshold`).
+- $\phi_\text{level}$ is the product of the reduction factors that smoothly reduce flow based on these criteria (change the $0.02 \;\text{m}$ with solver setting `level_difference_threshold`):
   - The upstream level is below `min_upstream_level` + $0.02 \;\text{m}$
   - The downstream level is above `max_downstream_level` - $0.02 \;\text{m}$
+
+Since $\phi_\text{level}$ is applied after the clamp, `min_flow_rate` is not a strict minimum: the level criteria can still reduce the flow to zero.

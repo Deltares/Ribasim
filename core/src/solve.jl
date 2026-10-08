@@ -913,23 +913,17 @@ function limit_flow!(
         )
     end
 
-    # Pump flow is in [min_flow_rate, max_flow_rate]
-    for (id, min_flow_rate, max_flow_rate) in
-        zip(pump.node_id, pump.min_flow_rate, pump.max_flow_rate)
-        limit_flow!(u.pump, uprev.pump, id, min_flow_rate(t), max_flow_rate(t), dt)
+    # Pump and Outlet flow is in [0, max_flow_rate]. The min_flow_rate is not a lower bound
+    # of the flow, since the reduction factors (low storage, min_upstream_level,
+    # max_downstream_level) are applied after it and can bring the flow down to 0.
+    # Clamping to min_flow_rate would force a flow that formulate_flow! has switched off,
+    # which the solver then fights on every timestep.
+    for (id, max_flow_rate) in zip(pump.node_id, pump.max_flow_rate)
+        limit_flow!(u.pump, uprev.pump, id, 0.0, max_flow_rate(t), dt)
     end
 
-    # Outlet flow is in [min_flow_rate, max_flow_rate]
-    for (id, min_flow_rate, max_flow_rate) in
-        zip(outlet.node_id, outlet.min_flow_rate, outlet.max_flow_rate)
-        limit_flow!(
-            u.outlet,
-            uprev.outlet,
-            id,
-            min_flow_rate(t),
-            max_flow_rate(t),
-            dt,
-        )
+    for (id, max_flow_rate) in zip(outlet.node_id, outlet.max_flow_rate)
+        limit_flow!(u.outlet, uprev.outlet, id, 0.0, max_flow_rate(t), dt)
     end
 
     # LinearResistance flow is in [-max_flow_rate, max_flow_rate]
@@ -1045,7 +1039,10 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
 
 @inline function DiffEqBase.calculate_residuals!(
         out,
-        ũ, u₀, u₁, abstol, reltol, internalnorm::InternalNorm, t
+        ũ, u₀, u₁, abstol, reltol, internalnorm::InternalNorm, t,
+        # Some algorithms such as Tsit5 always pass this explicitly, which would otherwise
+        # dispatch to the generic DiffEqBase method. We always compute serially.
+        thread::Union{Serial, Threaded} = Serial()
     )
     # All state components (flow, PID integral) are scaled by the magnitude
     # of their change over the time step rather than by their absolute magnitude.
