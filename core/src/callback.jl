@@ -161,7 +161,12 @@ function update_concentrations!(u, t, integrator)::Nothing
         mass,
     ) = concentration_data
 
-    !do_concentration && return nothing
+    if !do_concentration
+        # The step limiter also uses these, see `min_low_storage_factor`
+        basin.storage_prev .= current_storage
+        basin.level_prev .= current_level
+        return nothing
+    end
 
     # Reset cumulative flows, used to calculate the concentration
     cumulative_in .= vertical_flux.drainage * dt

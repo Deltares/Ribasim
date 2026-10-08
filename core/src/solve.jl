@@ -133,7 +133,6 @@ function set_current_basin_properties!(
         cumulative_surface_runoff,
         cumulative_drainage,
         vertical_flux,
-        low_storage_threshold,
     ) = basin
 
     # The exact cumulative precipitation and drainage up to the t of this water_balance call
@@ -158,7 +157,7 @@ function set_current_basin_properties!(
             s = state_and_time_dependent_cache.current_storage[i]
             i = id.idx
             state_and_time_dependent_cache.current_low_storage_factor[i] =
-                reduction_factor(s, low_storage_threshold[i])
+                low_storage_factor(s, basin, i)
             @inbounds state_and_time_dependent_cache.current_level[i] =
                 get_level_from_storage(basin, i, s)
             state_and_time_dependent_cache.current_area[i] =
@@ -973,6 +972,23 @@ function limit_flow!(
             infiltration,
             dt,
         )
+    end
+
+    # Where evaporation and infiltration would bring a storage below the low storage reserve,
+    # reduce them so the storage becomes the reserve. In the ODE the low storage factor
+    # switches them off at the reserve, but multistep methods extrapolate the cumulative
+    # states from their history and can overshoot. These states only affect their own Basin.
+    reduce_state!(u_reduced, u, p_independent)
+    formulate_storages!(u_reduced, p, t)
+    for i in eachindex(basin.node_id)
+        deficit = basin.low_storage_reserve[i] - current_storage[i]
+        deficit > 0 || continue
+        for (u_component, uprev_component) in
+            ((u.infiltration, uprev.infiltration), (u.evaporation, uprev.evaporation))
+            reduction = clamp(deficit, 0.0, max(u_component[i] - uprev_component[i], 0.0))
+            u_component[i] -= reduction
+            deficit -= reduction
+        end
     end
 
     return nothing

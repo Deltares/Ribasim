@@ -960,6 +960,11 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
         bottom = basin_bottom(basin, id)[2]
         basin.low_storage_threshold[id.idx] =
             get_storage_from_level(basin, id.idx, bottom + config.solver.depth_threshold)
+        basin.low_storage_reserve[id.idx] = get_storage_from_level(
+            basin,
+            id.idx,
+            bottom + low_storage_reserve_depth(config.solver.depth_threshold),
+        )
 
         # Cache the connected LevelDemand node if applicable
         level_demand_id = get_external_demand_id(graph, id)
