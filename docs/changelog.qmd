@@ -31,6 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Pumps and Outlets with a `min_flow_rate` that are switched off by `min_upstream_level`, `max_downstream_level` or a small level difference no longer slow down the solver by orders of magnitude. The documented Pump and Outlet equations now match the implementation, in which these level criteria can reduce the flow below `min_flow_rate`.
 - Python: Removing an external table no longer leaves a missing-file reference in the model configuration. [#3214](https://github.com/Deltares/Ribasim/pull/3214)
 - Delwaq: Reduce memory use when generating and parsing large results. [#3132](https://github.com/Deltares/Ribasim/pull/3132) [#3248](https://github.com/Deltares/Ribasim/pull/3248)
+- Simulations no longer abort with a tiny timestep when a Basin empties. Outflows now stop at a depth of 1% of `solver.depth_threshold` (1 mm by default), so an empty Basin keeps a small positive storage that floating point rounding cannot make negative, and the step limiter keeps evaporation and infiltration from overshooting it.
 
 ## [v2026.1.2] - 2026-06-16
 
