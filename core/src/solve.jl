@@ -195,7 +195,8 @@ This relates to the Jacobian of water_balance! as follows:
                       ∂q_∂continuous_control_compound * ∂continuous_control_compound_∂Q
 
 Here:
-- ∂q_∂storage_uplink and ∂q_∂storage_downlink are diagonal matrices
+- ∂q_∂storage_uplink and ∂q_∂storage_downlink are diagonal matrices, except for the rows of flows
+  controlled by PidControl with a derivative term, which depend on all flows of the listened Basin
 - ∂q_∂pid_integral and ∂q_∂continuous_control_compound have a maximum of one nonzero per row for those flows which are PID controlled
   or continuously controlled respectively
 - ∂storage_uplink_∂Q and ∂storage_downlink_∂Q are constant sparse matrices with non-zero entries -1, 1.
@@ -276,102 +277,170 @@ function SciMLOperators.update_coefficients!(
         area_pid_controlled[pid_idx] = basin.level_to_area[listen_node_id.idx](level)
     end
 
-    # Compute local part of the reduced linear solve Jacobian
-    update_J_inner_local!(J)
-
     # Compute Jacobian of the ContinuousControl output w.r.t. the input
     continuous_control_input.storage .= current_basin_properties.current_storage
     continuous_control_input.flow .= du_cache.flow
     eval_∂continuous_control_compound_∂continuous_control_input!(t)
 
+    # Compute local part of the reduced linear solve Jacobian
+    update_J_inner_local!(J)
+
     return nothing
 end
 
 """
-Compute J_inner_local = M * (diagonal(∂q_∂storage_uplink) - diagonal(∂q_∂storage_downlink))
+Call `f(row, val)` for the structural nonzeros of a sparse matrix column,
+or the nonzero entries of a dense matrix column.
 """
-function update_J_inner_local!(
-        J::RibasimJacobian;
-        data_getter = (i, j) -> J.cache.∂flow_∂flow_input[i, j],
-    )
-    (; p_independent, J_inner_local, cache) = J
-    (; flow_input_ranges) = cache
+function foreach_column_entry(f::F, A::SparseMatrixCSC, col::Int) where {F}
+    rows = rowvals(A)
+    vals = nonzeros(A)
+    for k in nzrange(A, col)
+        f(rows[k], vals[k])
+    end
+    return nothing
+end
+
+function foreach_column_entry(f::F, A::AbstractMatrix, col::Int) where {F}
+    for row in axes(A, 1)
+        val = A[row, col]
+        iszero(val) || f(row, val)
+    end
+    return nothing
+end
+
+"""
+Call `f(flow_idx, basin_idx, ∂q_∂storage)` for each contribution to ∂q_∂storage, the dependence of the
+flows on the Basin storages (excluding the dependence via the PID integral states):
+
+∂q_∂storage = ∂q_∂storage_uplink * ∂storage_uplink_∂storage +
+              ∂q_∂storage_downlink * ∂storage_downlink_∂storage +
+              ∂q_∂continuous_control_compound * ∂continuous_control_compound_∂storage
+
+∂q_∂storage_uplink and ∂q_∂storage_downlink are not necessarily diagonal, e.g. the derivative term of PID control
+depends on all flows of the listened Basin. For ∂continuous_control_compound_∂storage only the dependence of
+listened flows on their own up- and downlink storage is taken into account, as chained control is not supported.
+"""
+function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
+    (; p_independent, cache) = J
+    (;
+        flow_input_ranges,
+        ∂flow_∂flow_input,
+        continuous_control_input_ranges,
+        ∂continuous_control_compound_∂continuous_control_input,
+    ) = cache
     (; inflow_id, outflow_id) = p_independent
+    n_flow = length(inflow_id)
 
-    J_inner_local .= 0.0
-    for flow_idx in eachindex(inflow_id)
-        id_in = inflow_id[flow_idx]
-        id_out = outflow_id[flow_idx]
+    # Dependence via the up- and downlink storages
+    for (storage_input_range, storage_node_id) in (
+            (flow_input_ranges.storage_uplink, inflow_id),
+            (flow_input_ranges.storage_downlink, outflow_id),
+        )
+        for (storage_flow_idx, col) in enumerate(storage_input_range)
+            basin_id = storage_node_id[storage_flow_idx]
+            basin_id.is_basin || continue
+            foreach_column_entry(∂flow_∂flow_input, col) do flow_idx, val
+                flow_idx <= n_flow && f(flow_idx, basin_id.idx, val)
+            end
+        end
+    end
 
-        if id_in.is_basin
-            # The uplink Basin affecting itself
-            J_inner_local[id_in.idx, id_in.idx] -= data_getter(flow_idx, flow_input_ranges.storage_uplink[flow_idx])
-        end
-        if id_out.is_basin
-            # The downlink Basin affecting itself
-            J_inner_local[id_out.idx, id_out.idx] += data_getter(flow_idx, flow_input_ranges.storage_downlink[flow_idx])
-        end
-        if id_in.is_basin && id_out.is_basin
-            # The up- and downlink Basins affecting eachother
-            J_inner_local[id_in.idx, id_out.idx] -= data_getter(flow_idx, flow_input_ranges.storage_downlink[flow_idx])
-            J_inner_local[id_out.idx, id_in.idx] += data_getter(flow_idx, flow_input_ranges.storage_uplink[flow_idx])
+    # Dependence via the ContinuousControl compound variables
+    storage_offset = first(continuous_control_input_ranges.storage) - 1
+    n_storage_input = length(continuous_control_input_ranges.storage)
+    flow_offset = first(continuous_control_input_ranges.flow) - 1
+    for input_idx in axes(∂continuous_control_compound_∂continuous_control_input, 2)
+        foreach_column_entry(∂continuous_control_compound_∂continuous_control_input, input_idx) do cc_idx, cc_val
+            col = flow_input_ranges.continuous_control_compound[cc_idx]
+            foreach_column_entry(∂flow_∂flow_input, col) do flow_idx, val
+                flow_idx <= n_flow || return
+                basin_idx = input_idx - storage_offset
+                if basin_idx <= n_storage_input
+                    f(flow_idx, basin_idx, val * cc_val)
+                else
+                    listen_flow_idx = input_idx - flow_offset
+                    id_in_listen = inflow_id[listen_flow_idx]
+                    id_out_listen = outflow_id[listen_flow_idx]
+                    if id_in_listen.is_basin
+                        ∂q_listen_∂storage = ∂flow_∂flow_input[listen_flow_idx, flow_input_ranges.storage_uplink[listen_flow_idx]]
+                        f(flow_idx, id_in_listen.idx, val * cc_val * ∂q_listen_∂storage)
+                    end
+                    if id_out_listen.is_basin
+                        ∂q_listen_∂storage = ∂flow_∂flow_input[listen_flow_idx, flow_input_ranges.storage_downlink[listen_flow_idx]]
+                        f(flow_idx, id_out_listen.idx, val * cc_val * ∂q_listen_∂storage)
+                    end
+                end
+            end
         end
     end
     return nothing
 end
 
 """
-Compute v_out = ∂q_∂storage * v_in
+Call `f(flow_idx, pid_idx, ∂q_∂pid_integral)` for each dependence of a flow on a PID integral state.
+"""
+function foreach_∂flow_∂pid_integral(f::F, J::RibasimJacobian) where {F}
+    (; p_independent, cache) = J
+    (; flow_input_ranges, ∂flow_∂flow_input) = cache
+    n_flow = length(p_independent.inflow_id)
 
-where
+    for (pid_idx, col) in enumerate(flow_input_ranges.pid_integral)
+        foreach_column_entry(∂flow_∂flow_input, col) do flow_idx, val
+            flow_idx <= n_flow && f(flow_idx, pid_idx, val)
+        end
+    end
+    return nothing
+end
 
-∂q_∂storage = ∂q_∂storage_uplink * ∂storage_uplink_∂storage +
-              ∂q_∂storage_downlink * ∂storage_downlink_∂storage,
+"""
+Compute J_inner_local = M * ∂q_∂storage, see `foreach_∂flow_∂storage`.
+If `structural`, all contributions are set to 1.0 to initialize the sparsity pattern.
+"""
+function update_J_inner_local!(J::RibasimJacobian; structural::Bool = false)
+    (; p_independent, J_inner_local) = J
+    (; inflow_id, outflow_id) = p_independent
 
-where
+    J_inner_local .= 0.0
+    foreach_∂flow_∂storage(J) do flow_idx, basin_idx, ∂q_∂storage
+        add_flow_contribution!(
+            J_inner_local,
+            inflow_id[flow_idx],
+            outflow_id[flow_idx],
+            basin_idx,
+            structural ? 1.0 : ∂q_∂storage,
+        )
+    end
+    return nothing
+end
 
-∂storage_uplink_∂storage and ∂storage_downlink_∂storage are sparse matrix
-with nonzero entries 1.0.
+"""
+Compute v_out = ∂q_∂storage * v_in, see `foreach_∂flow_∂storage`.
 """
 function ∂flow_∂storage_mul!(
         v_out::FlowCVector,
         J::RibasimJacobian,
         v_in::AbstractVector,
     )
-    (; n_basin, p_independent, cache) = J
-    (; flow_input_ranges, ∂flow_∂flow_input) = cache
-    (; inflow_id, outflow_id) = p_independent
-
-    @assert length(v_in) == n_basin
+    @assert length(v_in) == J.n_basin
     v_out .= 0.0
-
-    for flow_idx in eachindex(v_out)
-        id_in = inflow_id[flow_idx]
-        id_out = outflow_id[flow_idx]
-
-        if id_in.is_basin
-            v_out[flow_idx] += ∂flow_∂flow_input[flow_idx, flow_input_ranges.storage_uplink[flow_idx]] * v_in[id_in.idx]
-        end
-        if id_out.is_basin
-            v_out[flow_idx] += ∂flow_∂flow_input[flow_idx, flow_input_ranges.storage_downlink[flow_idx]] * v_in[id_out.idx]
-        end
+    foreach_∂flow_∂storage(J) do flow_idx, basin_idx, ∂q_∂storage
+        v_out[flow_idx] += ∂q_∂storage * v_in[basin_idx]
     end
-
     return nothing
 end
 
+"""
+Compute J_inner = J_inner_local - γ * M * ∂q_∂pid_integral * ∂pid_integral_∂storage.
+If `structural`, all PID contributions are set to 1.0 to initialize the sparsity pattern.
+"""
 function build_J_inner!(
         J_inner::AbstractMatrix{Float64},
         J::RibasimJacobian,
-        gamma::Number
+        gamma::Number;
+        structural::Bool = false,
     )
-    (; p_independent, J_inner_local, area_pid_controlled, cache) = J
-    (;
-        ∂flow_∂flow_input,
-        flow_input_ranges,
-        continuous_control_input_ranges,
-        ∂continuous_control_compound_∂continuous_control_input,
-    ) = cache
+    (; p_independent, J_inner_local, area_pid_controlled) = J
     (; pid_control, inflow_id, outflow_id) = p_independent
 
     # Add J_inner_local into J_inner rather than copying it, which would reset the sparsity
@@ -380,79 +449,19 @@ function build_J_inner!(
     J_local_rows = rowvals(J_inner_local)
     J_local_vals = nonzeros(J_inner_local)
     for col in axes(J_inner_local, 2), k in nzrange(J_inner_local, col)
-        J_inner[J_local_rows[k], col] += J_local_vals[k]
+        # Contributions to J_inner_local can cancel, but the entry is still structurally nonzero
+        J_inner[J_local_rows[k], col] += structural ? 1.0 : J_local_vals[k]
     end
 
-    cc_entries = nonzero_entries(∂continuous_control_compound_∂continuous_control_input)
-
-    for (flow_idx, flow_input_idx, val) in nonzero_entries(∂flow_∂flow_input)
-
-        if (flow_input_idx in flow_input_ranges.storage_uplink) || (flow_input_idx in flow_input_ranges.storage_downlink)
-            nothing # Handled in update_J_inner_local!
-        elseif flow_input_idx in flow_input_ranges.pid_integral
-            # PID control contributions
-            pid_id = pid_control.node_id[flow_input_idx - flow_input_ranges.pid_integral[1] + 1]
-            listen_node_id = pid_control.listen_node_id[pid_id.idx]
-            contribution = gamma * val / area_pid_controlled[pid_id.idx]
-
-            pid_inflow_id = pid_control.inflow_id[pid_id.idx]
-            pid_outflow_id = pid_control.outflow_id[pid_id.idx]
-
-            if pid_inflow_id.is_basin
-                J_inner[pid_inflow_id.idx, listen_node_id.idx] += contribution
-            end
-            if pid_outflow_id.is_basin
-                J_inner[pid_outflow_id.idx, listen_node_id.idx] -= contribution
-            end
-
-        elseif flow_input_idx in flow_input_ranges.continuous_control_compound
-            # Continuous control contributions: ∂q_∂compound * ∂compound_∂storage
-            cc_idx = flow_input_idx - flow_input_ranges.continuous_control_compound[1] + 1
-            id_in_controlled = inflow_id[flow_idx]
-            id_out_controlled = outflow_id[flow_idx]
-
-            for (cc_row, cc_input_idx, cc_val) in cc_entries
-                cc_row == cc_idx || continue
-                if cc_input_idx in continuous_control_input_ranges.storage
-                    basin_idx = cc_input_idx - continuous_control_input_ranges.storage[1] + 1
-                    add_controlled_flow_contribution!(
-                        J_inner, id_in_controlled, id_out_controlled, basin_idx, val * cc_val
-                    )
-                else
-                    # Compound depends on a listened flow; only its local storage dependence is included
-                    listen_flow_idx = cc_input_idx - continuous_control_input_ranges.flow[1] + 1
-                    id_in_listen = inflow_id[listen_flow_idx]
-                    id_out_listen = outflow_id[listen_flow_idx]
-                    if id_in_listen.is_basin
-                        ∂q_∂storage = ∂flow_∂flow_input[listen_flow_idx, flow_input_ranges.storage_uplink[listen_flow_idx]]
-                        add_controlled_flow_contribution!(
-                            J_inner, id_in_controlled, id_out_controlled, id_in_listen.idx, val * cc_val * ∂q_∂storage
-                        )
-                    end
-                    if id_out_listen.is_basin
-                        ∂q_∂storage = ∂flow_∂flow_input[listen_flow_idx, flow_input_ranges.storage_downlink[listen_flow_idx]]
-                        add_controlled_flow_contribution!(
-                            J_inner, id_in_controlled, id_out_controlled, id_out_listen.idx, val * cc_val * ∂q_∂storage
-                        )
-                    end
-                end
-            end
-        else
-            error("Some component of the Jacobian is not taken into account when building the linear system. If you see this, please make an issue.")
-        end
+    foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, ∂q_∂pid_integral
+        listen_node_id = pid_control.listen_node_id[pid_idx]
+        contribution = structural ? 1.0 : -gamma * ∂q_∂pid_integral / area_pid_controlled[pid_idx]
+        add_flow_contribution!(J_inner, inflow_id[flow_idx], outflow_id[flow_idx], listen_node_id.idx, contribution)
     end
     return nothing
 end
 
-"""
-Lazy iterator over (row, column, value) of the structural nonzeros of a sparse matrix,
-or the nonzero entries of a dense matrix.
-"""
-nonzero_entries(A::SparseMatrixCSC) = zip(findnz(A)...)
-nonzero_entries(A::AbstractMatrix) =
-    ((I[1], I[2], A[I]) for I in CartesianIndices(A) if !iszero(A[I]))
-
-function add_controlled_flow_contribution!(
+function add_flow_contribution!(
         J_inner::AbstractMatrix{Float64},
         id_in::NodeID,
         id_out::NodeID,
@@ -493,8 +502,8 @@ function SciMLBase.init(
     J_inner = alg.algorithm isa AbstractDenseFactorization ? zeros(n_basin, n_basin) : spzeros(n_basin, n_basin)
 
     # Make sure that the sparsity pattern is properly initialized
-    update_J_inner_local!(J; data_getter = Returns(1.0))
-    build_J_inner!(J_inner, J, gamma)
+    update_J_inner_local!(J; structural = true)
+    build_J_inner!(J_inner, J, gamma; structural = true)
 
     u_inner = zeros(n_basin)
     W_inner = WOperator{true}(I, gamma, J_inner, u_inner)
@@ -533,13 +542,13 @@ W_inner * x_inner = b_inner
 where
 
 W_inner = [-γ⁻¹I_n + J_inner]
-J_inner as shown in the `build_J_inner` docstring
-b_inner = M(b.flow + γ * Jᵢ * b.pid_integral)
+J_inner as shown in the `build_J_inner!` docstring
+b_inner = M(b.flow + γ * ∂q_∂pid_integral * b.pid_integral)
 
 and then computing
 
-linu.flow         = γ * [-b.flow + J_inner * M * v]
-linu.pid_integral = -γ * [b.pid_integral + S_pid * (linu.storage/area)]
+linu.pid_integral = -γ * [b.pid_integral + x_inner[listen_node_id] / area]
+linu.flow         = γ * [∂q_∂storage * x_inner + ∂q_∂pid_integral * linu.pid_integral - b.flow]
 
 """
 function OrdinaryDiffEqDifferentiation.dolinsolve(
@@ -554,31 +563,25 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
 
     (; cache_inner, W) = linsolve
     (; gamma, J) = W
-    (; p_independent, area_pid_controlled, n_pid, cache) = J
-    (; flow_input_ranges, ∂flow_∂flow_input) = cache
-    (; pid_control, flow_ranges) = p_independent
+    (; p_independent, area_pid_controlled, n_pid) = J
+    (; pid_control, inflow_id, outflow_id) = p_independent
 
     W_inner = cache_inner.A
     J_inner = W_inner.J
     b_inner = cache_inner.b
+    b_pid_integral = b.pid_integral
+    linu_flow = linu.flow
+    linu_pid_integral = linu.pid_integral
 
     # Set up inner (storage space) problem rhs
     W_inner.gamma = gamma
     aggregate_flows!(b_inner, b.flow, p_independent)
-    for pid_idx in 1:n_pid
-        inflow_id = pid_control.inflow_id[pid_idx]
-        outflow_id = pid_control.outflow_id[pid_idx]
-        controlled_node_id = pid_control.controlled_node_id[pid_idx]
-        flow_idx = controlled_node_id.type == NodeType.Pump ?
-            flow_ranges.horizontal.pump[controlled_node_id.idx] :
-            flow_ranges.horizontal.outlet[controlled_node_id.idx]
-        contribution = gamma * ∂flow_∂flow_input[flow_idx, flow_input_ranges.pid_integral[pid_idx]] * b.pid_integral[pid_idx]
-        if inflow_id.is_basin
-            b_inner[inflow_id.idx] -= contribution
-        end
-        if outflow_id.is_basin
-            b_inner[outflow_id.idx] += contribution
-        end
+    foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, ∂q_∂pid_integral
+        contribution = gamma * ∂q_∂pid_integral * b_pid_integral[pid_idx]
+        id_in = inflow_id[flow_idx]
+        id_out = outflow_id[flow_idx]
+        id_in.is_basin && (b_inner[id_in.idx] -= contribution)
+        id_out.is_basin && (b_inner[id_out.idx] += contribution)
     end
 
     # Set up inner (storage space) problem matrix
@@ -599,22 +602,22 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
         b = nothing,
     )
 
-    # Compute flow component solution
-    ∂flow_∂storage_mul!(linu.flow, J, cache_inner.u)
-    linu.flow .-= b.flow
+    # Compute PID integral component solution
     for pid_idx in 1:n_pid
         listen_node_id = pid_control.listen_node_id[pid_idx]
-        controlled_node_id = pid_control.controlled_node_id[pid_idx]
-        flow_idx = controlled_node_id.type == NodeType.Pump ?
-            flow_ranges.horizontal.pump[controlled_node_id.idx] :
-            flow_ranges.horizontal.outlet[controlled_node_id.idx]
-        linu.pid_integral[pid_idx] = -gamma * (
-            b.pid_integral[pid_idx] +
+        linu_pid_integral[pid_idx] = -gamma * (
+            b_pid_integral[pid_idx] +
                 cache_inner.u[listen_node_id.idx] / area_pid_controlled[pid_idx]
         )
-        linu.flow[flow_idx] += ∂flow_∂flow_input[flow_idx, flow_input_ranges.pid_integral[pid_idx]] * linu.pid_integral[pid_idx]
     end
-    linu.flow .*= gamma
+
+    # Compute flow component solution
+    ∂flow_∂storage_mul!(linu_flow, J, cache_inner.u)
+    linu_flow .-= b.flow
+    foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, ∂q_∂pid_integral
+        linu_flow[flow_idx] += ∂q_∂pid_integral * linu_pid_integral[pid_idx]
+    end
+    linu_flow .*= gamma
 
     return LinearSolution{
         Float64,
