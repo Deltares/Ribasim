@@ -31,7 +31,8 @@ function set_simulation_data!(
     set_simulation_data!(allocation_model, linear_resistance, p, t, Δt_allocation)
     set_simulation_data!(allocation_model, manning_resistance, p, t, Δt_allocation)
     set_simulation_data!(allocation_model, tabulated_rating_curve, p, t, Δt_allocation)
-    set_simulation_data!(allocation_model, pump, outlet, du)
+    set_simulation_data!(allocation_model, pump, p, t, Δt_allocation)
+    set_simulation_data!(allocation_model, outlet, p, t, Δt_allocation)
     set_simulation_data!(allocation_model, user_demand, t, Δt_allocation)
 
     if errors
@@ -125,13 +126,14 @@ function set_simulation_data!(
             )
         end
 
-        ### This is an euler-backward discretization in disguise:
-        # where the positive forcing is independent on the state so it can be calculated explicitly and ends up in the rhs of Ax = b
+        ### This is a semi-implicit (linearized) discretization, not a fully implicit Euler step:
+        # the positive forcing is independent of the state so it is calculated explicitly and ends up in the rhs of Ax = b
         JuMP.set_normalized_rhs(
             volume_conservation_constraint,
             explicit_positive_forcing_volume[basin_id] / scaling.storage,
         )
-        # The negative forcing depends on the state through the low storage factor, it is thus evaluated implicitly and ends up in the coefficient matrix A
+        # The negative forcing depends on the state through the low_storage_factor variable, which makes it
+        # a decision variable ending up in the coefficient matrix A rather than an exactly-resolved implicit term
         JuMP.set_normalized_coefficient(
             volume_conservation_constraint,
             low_storage_factor[basin_id],
@@ -214,13 +216,15 @@ function linearize_connector_node!(
         t::Float64,
         Δt_allocation,
     )
-    (; scaling) = allocation_model
+    (; problem, scaling) = allocation_model
     (; inflow_link, outflow_link) = connector_node
 
     # Mathematical formulation: Taylor series linearization around current state
     # Q^{n+1} ≈ Q^n + (∂Q/∂h_a)(h_a^{n+1} - h_a^n) + (∂Q/∂h_b)(h_b^{n+1} - h_b^n)
     #
-    # Evaluate at the end of the allocation time step because of the implicit Euler formulation of the physics.
+    # This is a semi-implicit (linearized) scheme, not a fully implicit Euler step: the partial
+    # derivatives are frozen at the start of the allocation time step, while the level unknowns
+    # (h_a^{n+1}, h_b^{n+1}) being solved for are those predicted at its end.
     # For levels that come from a Basin `get_level` yields the level at the beginning of the time step,
     # which is the point at which we want to linearize.
     t_after = t + Δt_allocation
@@ -233,10 +237,43 @@ function linearize_connector_node!(
         h_a = get_level(p, inflow_id, t_after)
         h_b = get_level(p, outflow_id, t_after)
 
-        # Set the right-hand side of the constraint
         constraint = flow_constraint[node_id]
-        q0 = flow_function(connector_node, node_id, h_a, h_b, p, t_after)
-        JuMP.set_normalized_rhs(constraint, q0 / scaling.flow)
+
+        # Raw (unreduced) flow: the physical low-storage scalar must not be baked in
+        # here too, otherwise it would be double-applied on top of the `low_storage_factor`
+        # JuMP variable below.
+        q0_raw = flow_function(
+            connector_node,
+            node_id,
+            h_a,
+            h_b,
+            p,
+            t_after;
+            apply_low_storage_factor = false,
+        )
+
+        # The basin whose low_storage_factor governs this flow, matching the
+        # upstream/downstream selection in low_storage_factor_resistance_node.
+        relevant_id = q0_raw > 0 ? inflow_id : outflow_id
+        lsf = get_low_storage_factor(problem, relevant_id)
+
+        # Reset both candidate coefficients every call: flow direction (and hence
+        # which basin's low_storage_factor applies) can flip between allocation steps.
+        for basin_id in (inflow_id, outflow_id)
+            basin_id.type == NodeType.Basin || continue
+            JuMP.set_normalized_coefficient(
+                constraint,
+                get_low_storage_factor(problem, basin_id),
+                0.0,
+            )
+        end
+
+        if lsf isa JuMP.VariableRef
+            JuMP.set_normalized_coefficient(constraint, lsf, -q0_raw / scaling.flow)
+            JuMP.set_normalized_rhs(constraint, 0.0)
+        else
+            JuMP.set_normalized_rhs(constraint, q0_raw / scaling.flow)
+        end
 
         # Only linearize if the level comes from a Basin
         if inflow_id.type == NodeType.Basin
@@ -346,47 +383,73 @@ end
 function set_simulation_data!(
         allocation_model::AllocationModel,
         pump::Pump,
-        outlet::Outlet,
-        du::CVector,
+        p::Parameters,
+        t::Float64,
+        Δt_allocation,
     )::Nothing
-    (; problem, scaling) = allocation_model
-    pump_constraints = problem[:pump]
-    outlet_constraints = problem[:outlet]
+    (; problem) = allocation_model
+    (; state_and_time_dependent_cache, time_dependent_cache) = p
+    current_flow_rate = state_and_time_dependent_cache.current_flow_rate_pump
+    component_cache = time_dependent_cache.pump
 
-    # Set the flows of pumps to the flows formulated in the physical layer at the current t
-    for node_id in only(pump_constraints.axes)
-        constraint = pump_constraints[node_id]
-        upstream_node_id = pump.inflow_link[node_id.idx].link[1]
-        q = du.pump[node_id.idx]
-        if upstream_node_id.type == NodeType.Basin
-            low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
-            JuMP.set_normalized_coefficient(
-                constraint,
-                low_storage_factor,
-                -q / scaling.flow,
-            )
-        else
-            JuMP.set_normalized_rhs(constraint, q / scaling.flow)
-        end
-    end
+    linearize_connector_node!(
+        allocation_model,
+        pump,
+        problem[:pump_constraint],
+        (node, node_id, h_a, h_b, p_, t_; apply_low_storage_factor = true) ->
+        pump_or_outlet_flow(
+            node,
+            node_id,
+            h_a,
+            h_b,
+            p_,
+            t_,
+            current_flow_rate,
+            component_cache,
+            false;
+            apply_low_storage_factor,
+        ),
+        p,
+        t,
+        Δt_allocation,
+    )
+    return nothing
+end
 
-    # Set the flows of outlets to the flows formulated in the physical layer at the current t
-    for node_id in only(outlet_constraints.axes)
-        constraint = outlet_constraints[node_id]
-        upstream_node_id = outlet.inflow_link[node_id.idx].link[1]
-        q = du.outlet[node_id.idx]
-        if upstream_node_id.type == NodeType.Basin
-            low_storage_factor = get_low_storage_factor(problem, upstream_node_id)
-            JuMP.set_normalized_coefficient(
-                constraint,
-                low_storage_factor,
-                -q / scaling.flow,
-            )
-        else
-            JuMP.set_normalized_rhs(constraint, q / scaling.flow)
-        end
-    end
-    return
+function set_simulation_data!(
+        allocation_model::AllocationModel,
+        outlet::Outlet,
+        p::Parameters,
+        t::Float64,
+        Δt_allocation,
+    )::Nothing
+    (; problem) = allocation_model
+    (; state_and_time_dependent_cache, time_dependent_cache) = p
+    current_flow_rate = state_and_time_dependent_cache.current_flow_rate_outlet
+    component_cache = time_dependent_cache.outlet
+
+    linearize_connector_node!(
+        allocation_model,
+        outlet,
+        problem[:outlet_constraint],
+        (node, node_id, h_a, h_b, p_, t_; apply_low_storage_factor = true) ->
+        pump_or_outlet_flow(
+            node,
+            node_id,
+            h_a,
+            h_b,
+            p_,
+            t_,
+            current_flow_rate,
+            component_cache,
+            true;
+            apply_low_storage_factor,
+        ),
+        p,
+        t,
+        Δt_allocation,
+    )
+    return nothing
 end
 
 function set_simulation_data!(
@@ -1371,7 +1434,18 @@ function linearized_flow_bounds(
 
     h_a = get_level(p, inflow_id, t_after)
     h_b = get_level(p, outflow_id, t_after)
-    q0 = flow_function(connector_node, node_id, h_a, h_b, p, t_after)
+    # Raw (unreduced) base value: the equality constraint (linearize_connector_node!)
+    # is the sole authority on the low-storage reduction, so these box bounds must not
+    # apply it a second time.
+    q0 = flow_function(
+        connector_node,
+        node_id,
+        h_a,
+        h_b,
+        p,
+        t_after;
+        apply_low_storage_factor = false,
+    )
     lower, upper = q0, q0
 
     ∂q∂h_a = forward_diff(
@@ -1569,8 +1643,8 @@ function update_control_states!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
     )::Nothing
-    delete_control_constraints!(allocation_model, :pump)
-    delete_control_constraints!(allocation_model, :outlet)
+    delete_control_constraints!(allocation_model, :pump_constraint)
+    delete_control_constraints!(allocation_model, :outlet_constraint)
     delete_control_constraints!(allocation_model, :tabulated_rating_curve_constraint)
     add_pump!(allocation_model, p_independent)
     add_outlet!(allocation_model, p_independent)
