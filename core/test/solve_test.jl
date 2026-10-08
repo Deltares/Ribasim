@@ -56,7 +56,7 @@ end
 
 @testitem "Reduced linear solve matches full Jacobian" begin
     using LinearAlgebra: I, norm
-    using SciMLOperators: update_coefficients!
+    using Ribasim.SciMLOperators: update_coefficients!
     using Ribasim.OrdinaryDiffEqDifferentiation: dolinsolve
 
     # PID control with derivative term, continuous control and a model without control
