@@ -10,6 +10,7 @@ build/ribasim/
 build/cli/target
 
 LocalPreferences.toml
+.env
 .ipynb_checkpoints
 # Byte-compiled / optimized / DLL files
 __pycache__/

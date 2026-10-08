@@ -62,7 +62,7 @@ To also upload the icons to the S3 bucket (under `doc-image/node-icons/`) for us
 pixi run upload-node-icons
 ```
 
-This requires MinIO credentials (`MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`) via environment variables or a `.env` file.
+This requires MinIO credentials (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`) via environment variables or a `.env` file.
 The uploaded icons are publicly available at `https://s3.deltares.nl/ribasim/doc-image/node-icons/`.
 
 When changing icons, rerun `write-node-icons` and include the resulting QML and icon changes in your PR.

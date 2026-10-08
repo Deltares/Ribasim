@@ -40,8 +40,8 @@ open class IntegrationTest (platformOs: String) : Template() {
 
         val depot_path = generateJuliaDepotPath(platformOs)
         params {
-            param("env.MINIO_ACCESS_KEY", "KwKRzscudy3GvRB8BN1Z")
-            password("env.MINIO_SECRET_KEY", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
+            param("env.AWS_ACCESS_KEY_ID", "KwKRzscudy3GvRB8BN1Z")
+            password("env.AWS_SECRET_ACCESS_KEY", "credentialsJSON:86cbf3e5-724c-437d-9962-7a3f429b0aa2")
             param("env.JULIA_DEPOT_PATH", depot_path)
         }
 
