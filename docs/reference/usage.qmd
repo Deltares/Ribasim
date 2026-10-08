@@ -47,13 +47,17 @@ A too large error generally indicates an error in the code or floating point tru
 The Jacobian matrix provides information about the local sensitivity of the model with respect to changes in the states.
 For implicit solvers it must be calculated often, which can be expensive to do.
 There are several methods to do this.
-By default Ribasim uses a Jacobian derived automatically using [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/) with memory management provided by [PreallocationTools.jl](https://docs.sciml.ai/PreallocationTools/stable/).
+By default Ribasim uses a Jacobian derived automatically using [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/).
 If this is not used by setting `autodiff = false`, the Jacobian is calculated with a finite difference method, which can be less accurate and more expensive.
 
 By default the Jacobian matrix is a sparse matrix (`sparse = true`).
 Since each state typically only depends on a small number of other states, this is generally more efficient, especially for larger models.
-The sparsity structure is calculated from the network and provided as a Jacobian prototype to the solver.
+The sparsity structure is detected automatically and exploited both in the Jacobian computation and in the linear solves.
 For small or highly connected models it could be faster to use a dense Jacobian matrix instead by setting `sparse = false`.
+
+By default `reduced_implicit_solve = true`, which means that the Jacobian is evaluated in a form that is particularly cheap to compute, and the linear systems of the implicit solver are reduced to systems with the size of the number of Basins.
+For more details see [numerical considerations](/concept/numerics.qmd#sec-jacobian).
+Setting `reduced_implicit_solve = false` computes the full Jacobian and solves the full linear systems, which is slower and mainly useful for verification.
 
 The total maximum number of iterations `maxiters = 1e9`, can normally stay as-is unless doing extremely long simulations.
 
