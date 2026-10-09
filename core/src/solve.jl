@@ -27,20 +27,26 @@ const ContinuousControlInputCVector{T} = CVector{T, Vector{T}, ContinuousControl
 """
 Cache for evaluating the lazy Ribasim Jacobian. For more details
 see the RibasmimJacobian docstring.
+
+The `eval_*` closures are deliberately stored as `Function` rather than as type parameters.
+They capture `Parameters` and the DifferentiationInterface preparation, so their types are
+huge, and since this cache ends up in the `jac_prototype` of the `ODEFunction`, that would
+make the integrator type ~10x larger and every method specialized on it take far longer to
+compile. They are called once per Jacobian evaluation, so the dynamic dispatch is negligible.
 """
-@kwdef struct RibasimJacobianEvaluationCache{E1, E2, M <: AbstractMatrix{Float64}}
+@kwdef struct RibasimJacobianEvaluationCache{M <: AbstractMatrix{Float64}}
     # Jacobian of mapping (storage_uplink, storage_downlink, pid_integral, continuous_control_compound) -> (flow, pid_error)
     flow_input::FlowInputCVector{Float64}
     flow_input_ranges::FlowInputCVector{Int} = CVector(collect(eachindex(flow_input)), getaxes(flow_input))
     ∂flow_∂flow_input::M
-    eval_∂flow_∂flow_input!::E1
+    eval_∂flow_∂flow_input!::Function
     # Cached flows used for continuous control input
     du_cache::RibasimStateCVector{Float64}
     # Jacobian of mapping (storage, flow) -> continuous_control_compound
     continuous_control_input::ContinuousControlInputCVector{Float64}
     continuous_control_input_ranges::ContinuousControlInputCVector{Int} = CVector(collect(eachindex(continuous_control_input)), getaxes(continuous_control_input))
     ∂continuous_control_compound_∂continuous_control_input::M
-    eval_∂continuous_control_compound_∂continuous_control_input!::E2
+    eval_∂continuous_control_compound_∂continuous_control_input!::Function
 end
 
 function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
