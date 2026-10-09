@@ -172,6 +172,8 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
+    # The PID integral states are not in `state_id`, logging them used to throw a BoundsError
+    @test isnothing(Ribasim.log_bottlenecks(model))
     (; p_independent) = model.integrator.p
     (; discrete_control, pid_control) = p_independent
 

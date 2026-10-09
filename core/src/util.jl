@@ -745,6 +745,19 @@ function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
     return inflow_id, outflow_id, state_id
 end
 
+"""
+The node a state belongs to. `state_id` only covers the flow states, the PID integral
+states that follow them belong to the PidControl nodes.
+"""
+function get_state_node_id(p_independent::ParametersIndependent, state_idx::Int)::NodeID
+    (; state_id, state_ranges, pid_control) = p_independent
+    return if state_idx in state_ranges.pid_integral
+        pid_control.node_id[state_idx - first(state_ranges.pid_integral) + 1]
+    else
+        state_id[state_idx]
+    end
+end
+
 function get_incidence_matrix(inflow_id::FlowCVector{NodeID}, outflow_id::FlowCVector{NodeID})::SparseMatrixCSC
     n_flow = length(inflow_id)
     n_basin = length(inflow_id.vertical.evaporation)

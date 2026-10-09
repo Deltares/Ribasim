@@ -71,13 +71,13 @@ function log_bottlenecks(model; level = LoggingExtras.Warn)
     max_errors = 5
     # Iterate over the errors in descending order
     for i in sortperm(flow_error; rev = true)
-        node_id = Symbol(p_independent.state_id[i])
         error = flow_error[i]
         (ismissing(error) || isnan(error)) && continue
         # Stop reporting errors if they are too small or too many
         if error < 1 / length(flow_error) || error_count >= max_errors
             break
         end
+        node_id = Symbol(get_state_node_id(p_independent, i))
         push!(errors, node_id => round(error; digits = 2))
         error_count += 1
     end
