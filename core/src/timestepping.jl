@@ -30,7 +30,7 @@ We wrap `_loopfooter!` rather than `loopfooter!`, since `SciMLBase.solve!` reach
 statistics and convergence are tracked the same for a normal run and a BMI run.
 """
 function OrdinaryDiffEqCore._loopfooter!(
-        integrator::ODEIntegrator{<:Any, <:Any, <:RibasimCVectorType},
+        integrator::ODEIntegrator{<:Any, <:Any, <:RibasimStateCVector},
     )::Nothing
     (; convergence, convergence_ncalls, step_stats) = integrator.p.p_independent
 

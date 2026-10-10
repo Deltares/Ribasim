@@ -52,7 +52,7 @@ end
     config = Ribasim.Config(toml_path; solver_saveat = 0)
     model = Ribasim.run(toml_path)
     (; basin) = model.integrator.p.p_independent
-    n_basin = length(basin.node_id)
+    n_basin = length(basin)
     basin_table = DataFrame(Ribasim.basin_data(model))
 
     seconds = Ribasim.seconds_since.(unique(basin_table.time), basin_table.time[1])
@@ -70,7 +70,6 @@ end
 
 @testitem "Integrate over discontinuity" begin
     import BasicModelInterface as BMI
-    using Dates: DateTime
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand/ribasim.toml")
     @test ispath(toml_path)
@@ -79,7 +78,6 @@ end
     saveat = 20day
     config = Ribasim.Config(
         toml_path;
-        endtime = DateTime("2020-01-21"),
         solver_saveat = saveat,
         solver_dt = 5day,
         solver_algorithm = "Euler",
@@ -87,9 +85,9 @@ end
     model = Ribasim.Model(config)
     (; basin) = model.integrator.p.p_independent
     starting_precipitation =
-        basin.vertical_flux.precipitation[1] * Ribasim.basin_areas(basin, 1)[end]
-    Ribasim.solve!(model)
-    mean_precipitation = only(model.saved.flow.saveval).precipitation[1]
+        basin.vertical_flux.precipitation[1]
+    BMI.update_until(model, saveat)
+    mean_precipitation = only(model.saved.flow.saveval).exact_vertical_forcing.precipitation[1]
 
     # Given that precipitation stops after 15 of the 20 days
     @test mean_precipitation ≈ 3 / 4 * starting_precipitation

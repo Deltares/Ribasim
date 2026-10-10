@@ -59,8 +59,8 @@
         discrete_control.compound_variables[1][2].threshold_high[1](0)
 
     du = get_du(model.integrator)
-    @test all(x -> isapprox(x, 0; atol = 1.0e-10), du.linear_resistance)
-    @test all(x -> isapprox(x, 0; atol = 1.0e-10), du.pump)
+    @test all(x -> isapprox(x, 0; atol = 1.0e-10), du.flow.horizontal.linear_resistance)
+    @test all(x -> isapprox(x, 0; atol = 1.0e-10), du.flow.horizontal.pump)
 end
 
 @testitem "Flow condition control" begin
@@ -172,6 +172,8 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
+    # The PID integral states are not in `state_id`, logging them used to throw a BoundsError
+    @test isnothing(Ribasim.log_bottlenecks(model))
     (; p_independent) = model.integrator.p
     (; discrete_control, pid_control) = p_independent
 
@@ -215,14 +217,12 @@ end
 
     @test compound_variable.subvariables[1] == SubVariable(;
         listen_node_id = NodeID(:FlowBoundary, 2, p_independent),
-        cache_ref = compound_variable.subvariables[1].cache_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,
     )
     @test compound_variable.subvariables[2] == SubVariable(;
         listen_node_id = NodeID(:FlowBoundary, 3, p_independent),
-        cache_ref = compound_variable.subvariables[2].cache_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,

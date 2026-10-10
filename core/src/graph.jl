@@ -131,6 +131,9 @@ function create_graph(db::DB, config::Config)::MetaGraph
         internal_flow_links,
         external_flow_links,
         flow_link_map,
+        flow_link_lookup = Dict{Tuple{NodeID, NodeID}, Int}(
+            link_meta.link => i for (i, link_meta) in enumerate(internal_flow_links)
+        ),
     )
     @reset graph.graph_data = graph_data
 
@@ -341,30 +344,54 @@ function inflow_id(graph::MetaGraph, id::NodeID)::NodeID
     return only(inflow_ids(graph, id))
 end
 
-"""
-Get the specific q from the input vector `flow` which has the same components as
-the state vector, given an link (inflow_id, outflow_id).
-`flow` can be either instantaneous or integrated/averaged. Instantaneous FlowBoundary flows can be obtained
-from the parameters, but integrated/averaged FlowBoundary flows must be provided via `boundary_flow`.
-"""
 function get_flow(
-        flow::CVector,
-        p_independent::ParametersIndependent,
-        t::Number,
-        link::Tuple{NodeID, NodeID};
-        boundary_flow = nothing,
+        flow::FlowCVector,
+        link::Tuple{NodeID, NodeID},
+        p::Parameters;
+        boundary_flow::Union{Nothing, Vector{Float64}} = nothing,
+        t::Union{Number, Nothing} = nothing
     )
-    (; flow_boundary, state_ranges, link_to_state_idx) = p_independent
-    from_id = link[1]
-    return if from_id.type == NodeType.FlowBoundary
-        if boundary_flow === nothing
-            boundary_flow_rate(flow_boundary, from_id.idx, t)
+    (; user_demand, flow_boundary) = p.p_independent
+
+    from_id, to_id = link
+
+    # Connector node flows
+    for (flow_component_data, node_type) in (
+            (flow.horizontal.pump, NodeType.Pump),
+            (flow.horizontal.outlet, NodeType.Outlet),
+            (flow.horizontal.tabulated_rating_curve, NodeType.TabulatedRatingCurve),
+            (flow.horizontal.linear_resistance, NodeType.LinearResistance),
+            (flow.horizontal.manning_resistance, NodeType.ManningResistance),
+        )
+        if from_id.type == node_type
+            return flow_component_data[from_id.idx]
+        elseif to_id.type == node_type
+            return flow_component_data[to_id.idx]
+        end
+    end
+
+    # FlowBoundary
+    if from_id.type == NodeType.FlowBoundary
+        return if isnothing(boundary_flow)
+            @assert !isnothing(t) "Cannot evaluate flow rate for $from_id since t is not provided."
+            flow_boundary.flow_rate[from_id.idx](t)
         else
             boundary_flow[from_id.idx]
         end
-    else
-        flow[get_state_index(state_ranges, link_to_state_idx, link)]
     end
+
+    # UserDemand
+    if from_id.type == NodeType.UserDemand
+        return flow.horizontal.user_demand_outflow[from_id.idx]
+    elseif to_id.type == NodeType.UserDemand
+        # Find the index of the UserDemand inflow
+        node_inflow_idx = findfirst(lm -> lm.link[1] == from_id, user_demand.inflow_links[to_id.idx])
+        offset = user_demand.inflow_link_offsets[to_id.idx]
+        return flow.horizontal.user_demand_inflow[offset + node_inflow_idx]
+    end
+
+    error("Couldn't obtain flow for link $link.")
+    return 0.0
 end
 
 """

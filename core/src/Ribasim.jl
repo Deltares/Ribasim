@@ -25,6 +25,7 @@ using DifferentiationInterface:
     Cache,
     prepare_jacobian,
     jacobian!,
+    value_and_jacobian!,
     prepare_derivative,
     derivative!,
     second_derivative
@@ -34,6 +35,8 @@ using ForwardDiff: derivative as forward_diff
 # Algorithms for solving ODEs.
 using OrdinaryDiffEqCore:
     OrdinaryDiffEqCore,
+    OrdinaryDiffEqAdaptiveImplicitAlgorithm,
+    OrdinaryDiffEqImplicitAlgorithm,
     loopheader!,
     ODEIntegrator,
     OrdinaryDiffEqCache,
@@ -41,9 +44,9 @@ using OrdinaryDiffEqCore:
     get_EEst,
     error_estimate_residuals,
     residual_analysis!
-using DiffEqBase: DiffEqBase, ODE_DEFAULT_NORM, Serial, Threaded
+using DiffEqBase: DiffEqBase, ODE_DEFAULT_NORM, Serial, Threaded, prepare_alg
 using OrdinaryDiffEqDifferentiation:
-    OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!
+    OrdinaryDiffEqDifferentiation, dolinsolve, jacobian2W!, do_newJW
 using SciMLOperators: WOperator, MatrixOperator
 import ADTypes
 using ADTypes: AutoForwardDiff
@@ -72,16 +75,19 @@ using SciMLBase:
     LinearProblem,
     LinearSolution
 
+# Linear Solves
+using LinearSolve: AbstractDenseFactorization
+
 # Automatically detecting the sparsity pattern of the Jacobian of water_balance!
 # through operator overloading
 using SparseConnectivityTracer: GradientTracer, TracerSparsityDetector
 using SparseMatrixColorings: GreedyColoringAlgorithm, sparsity_pattern
 
 # For efficient sparse computations
-using SparseArrays: SparseMatrixCSC, sparse, spzeros, nonzeros, nzrange, rowvals
+using SparseArrays: SparseMatrixCSC, sparse, spzeros, nonzeros, nzrange, rowvals, findnz
 
 # Linear algebra
-using LinearAlgebra: LinearAlgebra, I, mul!, UniformScaling
+using LinearAlgebra: LinearAlgebra, I, mul!, UniformScaling, dot
 using LinearSolve: OperatorAssumptions, NonstructuralZeros
 
 # Interpolation functionality, used for e.g.
@@ -179,13 +185,22 @@ using Dates: Second
 using Base.Threads: nthreads
 
 include("cvectors.jl")
-using .CVectors: CVector, getaxes, getdata
+using .CVectors:
+    CVector,
+    getaxes,
+    getdata,
+    cvector_axes_type,
+    cvector_axes_from_lengths,
+    cvector_from_axes,
+    concatenate_axes
 include("schema.jl")
 include("config.jl")
 using .config
 include("parameter.jl")
 include("validation.jl")
+include("formulate_flows.jl")
 include("solve.jl")
+include("limit_flow.jl")
 include("logo.jl")
 include("logging.jl")
 include("allocation_util.jl")
@@ -193,7 +208,6 @@ include("allocation_init.jl")
 include("allocation_optim.jl")
 include("util.jl")
 include("graph.jl")
-include("differentiation.jl")
 include("model.jl")
 include("timestepping.jl")
 include("read.jl")

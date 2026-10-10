@@ -1,1049 +1,702 @@
-"""
-The right hand side function of the system of ODEs set up by Ribasim.
-"""
-water_balance!(du::CVector, u::CVector, p::Parameters, t::Number)::Nothing = water_balance!(
-    du::RibasimCVectorType,
-    u::RibasimCVectorType,
-    p.p_independent,
-    p.state_and_time_dependent_cache,
-    p.time_dependent_cache,
-    p.p_mutable,
-    t,
+###
+##### Jacobian evaluation cache
+###
+
+# DifferentiationInterface requires a single input vector for Jacobian computation
+const flow_input_components = (
+    :storage_uplink,
+    :storage_downlink,
+    :pid_integral,
+    :continuous_control_compound,
 )
+const FlowInputTuple = NamedTuple{
+    flow_input_components,
+    Tuple{
+        FlowTuple,
+        FlowTuple,
+        UnitRange{Int},
+        UnitRange{Int},
+    },
+}
+const FlowInputCVector{T} = CVector{T, Vector{T}, FlowInputTuple}
 
-# Method with `t` as second argument parsable by DifferentiationInterface.jl for time derivative computation
-water_balance!(
-    du::CVector,
-    t::Number,
-    u::CVector,
-    p_independent::ParametersIndependent,
-    state_and_time_dependent_cache::StateAndTimeDependentCache,
-    time_dependent_cache::TimeDependentCache,
-    p_mutable::ParametersMutable,
-) = water_balance!(
-    du,
-    u,
-    p_independent,
-    state_and_time_dependent_cache,
-    time_dependent_cache,
-    p_mutable,
-    t,
-)
+const continuous_control_input_components = (:storage, :flow)
+const ContinuousControlInputTuple = NamedTuple{continuous_control_input_components, Tuple{UnitRange{Int}, FlowTuple}}
+const ContinuousControlInputCVector{T} = CVector{T, Vector{T}, ContinuousControlInputTuple}
 
-# Method where u is already parsed to u_reduced so this part is skipped in AD Jacobian computation
+"""
+Cache for evaluating the lazy Ribasim Jacobian. For more details
+see the RibasmimJacobian docstring.
+"""
+@kwdef struct RibasimJacobianEvaluationCache{M <: AbstractMatrix{Float64}}
+    # Jacobian of mapping (storage_uplink, storage_downlink, pid_integral, continuous_control_compound) -> (flow, pid_error)
+    flow_input::FlowInputCVector{Float64}
+    flow_input_ranges::FlowInputCVector{Int} = CVector(collect(eachindex(flow_input)), getaxes(flow_input))
+    ∂flow_∂flow_input::M
+    # Closures stored as Function to keep their large types out of the integrator type
+    eval_∂flow_∂flow_input!::Function
+    # Cached flows used for continuous control input
+    du_cache::RibasimStateCVector{Float64}
+    # Jacobian of mapping (storage, flow) -> continuous_control_compound
+    continuous_control_input::ContinuousControlInputCVector{Float64}
+    continuous_control_input_ranges::ContinuousControlInputCVector{Int} = CVector(collect(eachindex(continuous_control_input)), getaxes(continuous_control_input))
+    ∂continuous_control_compound_∂continuous_control_input::M
+    eval_∂continuous_control_compound_∂continuous_control_input!::Function
+end
 
-function water_balance!(
-        du::RibasimCVectorType,
-        u_reduced::RibasimReducedCVectorType,
-        p_independent::ParametersIndependent,
-        state_and_time_dependent_cache::StateAndTimeDependentCache,
-        time_dependent_cache::TimeDependentCache,
-        p_mutable::ParametersMutable,
-        t::Number,
-    )::Nothing
-    p = Parameters(
-        p_independent,
-        state_and_time_dependent_cache,
-        time_dependent_cache,
-        p_mutable,
+function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
+    (; p_independent) = p
+    (; flow_ranges, basin, pid_control, continuous_control, u_prev_saveat) = p_independent
+    du = zero(u_prev_saveat)
+
+    backend = get_ad_type(solver)
+    # The default NoColoringAlgorithm gives each column its own color
+    backend_jac = solver.sparse ?
+        AutoSparse(
+            backend;
+            sparsity_detector = TracerSparsityDetector(),
+            coloring_algorithm = GreedyColoringAlgorithm(),
+        ) : backend
+    t = 0.0
+
+    ###
+    #### Jacobian of mapping (storage_uplink, storage_downlink, pid_integral, continuous_control_compound) -> (flow, pid_error)
+    ###
+
+    flow_input_axes = concatenate_axes(
+        (
+            storage_uplink = flow_ranges,
+            storage_downlink = flow_ranges,
+            pid_integral = 1:length(pid_control),
+            continuous_control_compound = 1:length(continuous_control),
+        )
+    )
+    flow_input = cvector_from_axes(flow_input_axes)
+
+    function formulate_flows_closure!(du, flow_input, t)
+        check_new_t!(p, t)
+        du .= 0.0
+
+        formulate_flows_args = (
+            du,
+            flow_input.storage_uplink,
+            flow_input.storage_downlink,
+            flow_input.continuous_control_compound,
+            flow_input.pid_integral,
+            p, t,
+        )
+
+        formulate_vertical_flux!(du.flow, flow_input.storage_uplink, p, t)
+        formulate_flows!(formulate_flows_args...)
+        formulate_PID_control!(du.pid_integral, flow_input.storage_uplink, flow_input.storage_downlink, p, t)
+        formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.PID)
+        formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.Continuous)
+        return nothing
+    end
+
+
+    ∂flow_∂flow_input_prep = @ad_active p prepare_jacobian(
+        formulate_flows_closure!,
+        du,
+        backend_jac,
+        flow_input,
+        Constant(t),
+    )
+    ∂flow_∂flow_input = solver.sparse ?
+        ∂flow_∂flow_input_prep.sparsity * 1.0 :
+        zeros(length(du), length(flow_input))
+
+    # Also compute value to cache flows for continuous control input
+    eval_∂flow_∂flow_input!(t) = @ad_active p value_and_jacobian!(
+        formulate_flows_closure!,
+        du,
+        ∂flow_∂flow_input,
+        ∂flow_∂flow_input_prep,
+        backend_jac,
+        flow_input,
+        Constant(t),
     )
 
-    # Check whether t or u is different from the last water_balance! call
-    check_new_input!(p, u_reduced, t)
+    ###
+    #### Jacobian of mapping (storage, flow) -> continuous_control_compound
+    ###
 
-    du .= 0.0
+    continuous_control_input_axes = concatenate_axes((; storage = 1:length(basin), flow = flow_ranges))
+    continuous_control_input = cvector_from_axes(continuous_control_input_axes)
+    # Separate buffer so the compound variables cached by water_balance! are not overwritten
+    continuous_control_compound = zeros(length(continuous_control))
 
-    # Ensures current_* vectors are current
-    set_current_basin_properties!(u_reduced, p, t)
-
-    # Notes on the ordering of these formulations:
-    # - Continuous control can depend on flows (which are not continuously controlled themselves),
-    #   so these flows have to be formulated first.
-    # - Pid control can depend on the du of basins and subsequently change them
-    #   because of the error derivative term.
-
-    # Basin forcings
-    update_vertical_flux!(du, p)
-
-    # Formulate intermediate flows (non continuously controlled)
-    formulate_flows!(du, p, t)
-
-    # Compute continuous control
-    formulate_continuous_control!(du, p, t)
-
-    # Formulate intermediate flows (controlled by ContinuousControl)
-    formulate_flows!(du, p, t; control_type = ContinuousControlType.Continuous)
-
-    # Compute PID control
-    formulate_pid_control!(du, u_reduced, p, t)
-
-    # Formulate intermediate flow (controlled by PID control)
-    formulate_flows!(du, p, t; control_type = ContinuousControlType.PID)
-
-    return nothing
-end
-
-function formulate_flow_boundary!(p::Parameters, t::Number)::Nothing
-    (; p_independent, time_dependent_cache, p_mutable) = p
-    (; flow_boundary) = p_independent
-    (; node_id, cumulative_flow) = flow_boundary
-    (; current_cumulative_boundary_flow) = time_dependent_cache.flow_boundary
-    (; tprev, new_time_dependent_cache) = p_mutable
-
-    if new_time_dependent_cache
-        for id in node_id
-            current_cumulative_boundary_flow[id.idx] =
-                cumulative_flow[id.idx] +
-                boundary_flow_integral(flow_boundary, id.idx, tprev, t)
-        end
-    end
-    return nothing
-end
-
-function formulate_continuous_control!(du::CVector, p::Parameters, t::Number)::Nothing
-    (; compound_variable, target_ref, func) = p.p_independent.continuous_control
-
-    for i in eachindex(compound_variable)
-        cvar = compound_variable[i]
-        ref = target_ref[i]
-        func_ = func[i]
-        value = compound_variable_value(cvar, p, du, t)
-        set_value!(ref, p, func_(value))
-    end
-
-    return nothing
-end
-
-"""
-Compute the storages, levels and areas of all Basins given the
-state u and the time t.
-"""
-
-function set_current_basin_properties!(
-        u_reduced::RibasimReducedCVectorType,
-        p::Parameters,
-        t::Number,
-    )::Nothing
-    (; p_independent, state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
-
-    (; basin) = p_independent
-    (;
-        node_id,
-        cumulative_precipitation,
-        cumulative_surface_runoff,
-        cumulative_drainage,
-        vertical_flux,
-    ) = basin
-
-    # The exact cumulative precipitation and drainage up to the t of this water_balance call
-    if p_mutable.new_time_dependent_cache
-        dt = t - p_mutable.tprev
-        for id in node_id
-            fixed_area = basin_areas(basin, id.idx)[end]
-            time_dependent_cache.basin.current_cumulative_precipitation[id.idx] =
-                cumulative_precipitation[id.idx] +
-                fixed_area * vertical_flux.precipitation[id.idx] * dt
-        end
-        @. time_dependent_cache.basin.current_cumulative_surface_runoff =
-            cumulative_surface_runoff + dt * vertical_flux.surface_runoff
-        @. time_dependent_cache.basin.current_cumulative_drainage =
-            cumulative_drainage + dt * vertical_flux.drainage
-    end
-
-    return if p_mutable.new_state_and_time_dependent_cache
-        formulate_storages!(u_reduced, p, t)
-        for i in eachindex(basin.node_id)
-            id = basin.node_id[i]
-            s = state_and_time_dependent_cache.current_storage[i]
-            i = id.idx
-            state_and_time_dependent_cache.current_low_storage_factor[i] =
-                low_storage_factor(s, basin, i)
-            @inbounds state_and_time_dependent_cache.current_level[i] =
-                get_level_from_storage(basin, i, s)
-            state_and_time_dependent_cache.current_area[i] =
-                basin.level_to_area[i](state_and_time_dependent_cache.current_level[i])
-        end
-    end
-end
-
-function formulate_storages!(
-        u_reduced::RibasimReducedCVectorType,
-        p::Parameters,
-        t::Number;
-        add_initial_storage::Bool = true,
-    )::Nothing
-    (; p_independent, state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
-    (; basin, flow_boundary) = p_independent
-    (; current_storage) = state_and_time_dependent_cache
-
-    # Current storage: initial condition +
-    # total inflows and outflows since the start
-    # of the simulation
-    if add_initial_storage
-        current_storage .= basin.storage0
-    else
-        current_storage .= 0.0
-    end
-
-    current_storage .+= u_reduced.combined_cumulative_flows
-    current_storage .+= time_dependent_cache.basin.current_cumulative_precipitation
-    current_storage .+= time_dependent_cache.basin.current_cumulative_surface_runoff
-    current_storage .+= time_dependent_cache.basin.current_cumulative_drainage
-
-    # Formulate storage contributions of flow boundaries
-    formulate_flow_boundary!(p, t)
-    for (outflow_link, cumulative_flow) in zip(
-            flow_boundary.outflow_link,
-            time_dependent_cache.flow_boundary.current_cumulative_boundary_flow,
-        )
-        outflow_id = outflow_link.link[2]
-        if outflow_id.type == NodeType.Basin
-            current_storage[outflow_id.idx] += cumulative_flow
-        end
-    end
-    return nothing
-end
-
-"""
-Smoothly let the evaporation and infiltration flux go to 0 when the storage is less than 10 m^3
-"""
-function update_vertical_flux!(du::CVector, p::Parameters)::Nothing
-    (; p_independent, state_and_time_dependent_cache) = p
-    (; basin) = p_independent
-    (; vertical_flux) = basin
-    (; current_area, current_low_storage_factor) = state_and_time_dependent_cache
-
-    for id in basin.node_id
-        area = current_area[id.idx]
-        factor = current_low_storage_factor[id.idx]
-
-        evaporation = area * factor * vertical_flux.potential_evaporation[id.idx]
-        infiltration = factor * vertical_flux.infiltration[id.idx]
-
-        du.evaporation[id.idx] = evaporation
-        du.infiltration[id.idx] = infiltration
-    end
-
-    return nothing
-end
-
-function set_error!(pid_control::PidControl, p::Parameters, t::Number)
-    (; state_and_time_dependent_cache, time_dependent_cache) = p
-    (; current_level, current_error_pid_control) = state_and_time_dependent_cache
-
-    (; current_target) = time_dependent_cache.pid_control
-    (; listen_node_id, target) = pid_control
-
-    for i in eachindex(listen_node_id)
-        listened_node_id = listen_node_id[i]
-        @assert listened_node_id.type == NodeType.Basin lazy"Listen node $listened_node_id is not a Basin."
-        current_error_pid_control[i] =
-            eval_time_interpolation(target[i], current_target, i, p, t) -
-            current_level[listened_node_id.idx]
-    end
-    return
-end
-
-function formulate_pid_control!(
-        du::CVector,
-        u_reduced::CVector,
-        p::Parameters,
-        t::Number,
-    )::Nothing
-    (; p_independent, state_and_time_dependent_cache, time_dependent_cache, p_mutable) = p
-    (; current_proportional, current_integral, current_derivative) =
-        time_dependent_cache.pid_control
-    (; pid_control) = p_independent
-    (; current_error_pid_control, current_area) = state_and_time_dependent_cache
-    (; node_id, target, listen_node_id) = p_independent.pid_control
-
-
-    set_error!(pid_control, p, t)
-    for i in eachindex(node_id)
-
-        du.integral[i] = current_error_pid_control[i]
-
-        listened_node_id = listen_node_id[i]
-
-        flow_rate = zero(eltype(du))
-
-        K_p = eval_time_interpolation(
-            pid_control.proportional[i],
-            current_proportional,
-            i,
+    function continuous_control_closure!(compound_variables, continuous_control_input, t)
+        compute_continuous_control_compound_variables!(
+            compound_variables,
+            continuous_control_input.storage,
+            continuous_control_input.flow,
             p,
-            t,
+            t
         )
-        K_i = eval_time_interpolation(pid_control.integral[i], current_integral, i, p, t)
-        K_d =
-            eval_time_interpolation(pid_control.derivative[i], current_derivative, i, p, t)
+        return nothing
+    end
 
-        if !iszero(K_d)
-            # dlevel/dstorage = 1/area
-            # TODO: replace by DataInterpolations.derivative(storage_to_level, storage)
-            area = current_area[listened_node_id.idx]
-            D = 1.0 - K_d / area
-        else
-            D = 1.0
-        end
+    ∂continuous_control_compound_∂continuous_control_input_prep = @ad_active p prepare_jacobian(
+        continuous_control_closure!,
+        continuous_control_compound,
+        backend_jac,
+        continuous_control_input,
+        Constant(t),
+    )
 
-        if !iszero(K_p)
-            flow_rate += K_p * current_error_pid_control[i] / D
-        end
+    ∂continuous_control_compound_∂continuous_control_input = solver.sparse ?
+        ∂continuous_control_compound_∂continuous_control_input_prep.sparsity * 1.0 :
+        zeros(length(continuous_control), length(continuous_control_input))
 
-        if !iszero(K_i)
-            flow_rate += K_i * u_reduced.integral[i] / D
-        end
+    eval_∂continuous_control_compound_∂continuous_control_input!(t) = @ad_active p jacobian!(
+        continuous_control_closure!,
+        continuous_control_compound,
+        ∂continuous_control_compound_∂continuous_control_input,
+        ∂continuous_control_compound_∂continuous_control_input_prep,
+        backend_jac,
+        continuous_control_input,
+        Constant(t),
+    )
 
-        if !iszero(K_d)
-            if target[i] isa ScalarConstantInterpolation
-                # derivative() of ScalarConstantInterpolation returns a NaN at discontinuities
-                dtarget = 0.0
-            else
-                dtarget = derivative(target[i], t)
+    return RibasimJacobianEvaluationCache(;
+        flow_input,
+        ∂flow_∂flow_input,
+        eval_∂flow_∂flow_input!,
+        du_cache = du,
+        continuous_control_input,
+        ∂continuous_control_compound_∂continuous_control_input,
+        eval_∂continuous_control_compound_∂continuous_control_input!,
+    )
+end
+
+###
+##### Jacobian
+###
+
+"""
+Unraveled representation of the Ribasim Jacobian. More precisely:
+
+The rhs of the ODE problem is composed of:
+- Computing storages from cumulative flows: S = M * u (via the incidence matrix M)
+- Computing levels and areas from the storages
+- Computing flows from the levels and areas
+- Computing continuously controlled variables via ContinuousControl and PidControl
+
+Within the solve, The Jacobian is formulated as a function of v = (storage_uplink, storage_downlink, pid_integral, continuous_control_compound), where:
+- storage_uplink is the storage uplink per cumulative flow state
+- storage_downlink is the storage downlink per cumulative flow state
+- pid_integral is the value of the PID error integral per PIDControl node
+- continuous_control_compound is the compound_variable value per ContinuousControl node
+
+This means that the computed Jacobian has the following structure:
+
+∂flow_∂flow_input = [ ∂q_∂storage_uplink ∂q_∂storage_downlink ∂q_∂pid_integral ∂q_∂continuous_control_compound ]
+
+This relates to the Jacobian of water_balance! as follows:
+
+ ∂water_balance!_∂Q = ∂q_∂v * ∂v_∂Q
+                    = ∂q_∂storage_uplink * ∂storage_uplink_∂Q +
+                      ∂q_∂storage_downlink * ∂storage_downlink_∂Q +
+                      ∂q_∂pid_integral * ∂pid_integral_∂Q +
+                      ∂q_∂continuous_control_compound * ∂continuous_control_compound_∂Q
+
+Here:
+- ∂q_∂storage_uplink and ∂q_∂storage_downlink are diagonal matrices, except for the rows of flows
+  controlled by PidControl with a derivative term, which depend on all flows of the listened Basin
+- ∂q_∂pid_integral and ∂q_∂continuous_control_compound have a maximum of one nonzero per row for those flows which are PID controlled
+  or continuously controlled respectively
+- ∂storage_uplink_∂Q and ∂storage_downlink_∂Q are constant sparse matrices with non-zero entries -1, 1.
+
+The reason we do this is because of sparse matrix coloring (https://github.com/JuliaDiff/SparseMatrixColorings.jl);
+this formulation requires far fewer right hand side calls in the Jacobian computation than the standard way.
+"""
+@kwdef struct RibasimJacobian{
+        C <: RibasimJacobianEvaluationCache,
+        PI <: ParametersIndependent,
+    } <: AbstractSciMLOperator{Float64}
+    # Cache for evaluating the Jacobian
+    cache::C
+    p_independent::PI
+    n_basin = length(p_independent.basin.node_id)
+    n_pid = length(p_independent.pid_control.node_id)
+    # J_inner_local represents the most expensive part of the inner linear solve,
+    # namely the local dependence of flows on storages
+    J_inner_local::SparseMatrixCSC{Float64, Int} = spzeros(n_basin, n_basin)
+    # The area of PID controlled Basins
+    area_pid_controlled::Vector{Float64} = zeros(n_pid)
+end
+
+# SciMLOperators interface
+SciMLOperators.isconstant(::RibasimJacobian) = false
+SciMLOperators.issquare(::RibasimJacobian) = true
+SciMLOperators.islinear(::RibasimJacobian) = true
+SciMLOperators.isconvertible(::RibasimJacobian) = false
+SciMLOperators.has_mul!(::RibasimJacobian) = true
+
+Base.size(J::RibasimJacobian, ::Integer) = length(J.p_independent.u_prev_saveat)
+Base.size(J::RibasimJacobian) = (size(J, 1), size(J, 2))
+Base.deepcopy(J::RibasimJacobian) = J # Copying is never needed and is slow
+
+
+function SciMLOperators.update_coefficients!(
+        J::RibasimJacobian,
+        u::RibasimStateCVector,
+        p::Parameters,
+        t::Number,
+    )
+    (; cache, area_pid_controlled, n_pid) = J
+    (;
+        flow_input,
+        eval_∂flow_∂flow_input!,
+        continuous_control_input,
+        eval_∂continuous_control_compound_∂continuous_control_input!,
+        du_cache,
+    ) = cache
+    (; storage_uplink, storage_downlink) = flow_input
+    (; p_independent, p_mutable, current_basin_properties) = p
+    (; pid_control, basin) = p_independent
+
+    !p_mutable.refresh_jac && return nothing
+
+    # Prepare computing cumulative flow derivatives
+    set_current_storage!(p, u.flow, t)
+    set_uplink_downlink_storage!(
+        storage_uplink,
+        storage_downlink,
+        current_basin_properties.current_storage,
+        p_independent
+    )
+    check_new_t!(p, t)
+    flow_input.pid_integral .= u.pid_integral
+    # Cached by the last water_balance! call
+    flow_input.continuous_control_compound .=
+        p_independent.continuous_control.continuous_control_compound_variables
+
+    # Compute derivatives
+    eval_∂flow_∂flow_input!(t)
+
+    # Area of PID controlled Basins
+    for pid_idx in 1:n_pid
+        listen_node_id = pid_control.listen_node_id[pid_idx]
+        storage = current_basin_properties.current_storage[listen_node_id.idx]
+        level = basin.storage_to_level[listen_node_id.idx](storage)
+        area_pid_controlled[pid_idx] = basin.level_to_area[listen_node_id.idx](level)
+    end
+
+    # Compute Jacobian of the ContinuousControl output w.r.t. the input
+    continuous_control_input.storage .= current_basin_properties.current_storage
+    continuous_control_input.flow .= du_cache.flow
+    eval_∂continuous_control_compound_∂continuous_control_input!(t)
+
+    # Compute local part of the reduced linear solve Jacobian
+    update_J_inner_local!(J)
+
+    # Evaluate only once per Newton solve, at the predictor, never at a diverging iterate
+    p_mutable.refresh_jac = false
+    p_mutable.jac_version += 1
+
+    return nothing
+end
+
+"""
+Call `f(row, val)` for the structural nonzeros of a sparse matrix column,
+or the nonzero entries of a dense matrix column.
+"""
+function foreach_column_entry(f::F, A::SparseMatrixCSC, col::Int) where {F}
+    rows = rowvals(A)
+    vals = nonzeros(A)
+    for k in nzrange(A, col)
+        f(rows[k], vals[k])
+    end
+    return nothing
+end
+
+function foreach_column_entry(f::F, A::AbstractMatrix, col::Int) where {F}
+    for row in axes(A, 1)
+        val = A[row, col]
+        iszero(val) || f(row, val)
+    end
+    return nothing
+end
+
+"""
+Call `f(flow_idx, basin_idx, ∂q_∂storage)` for each contribution to ∂q_∂storage, the dependence of the
+flows on the Basin storages (excluding the dependence via the PID integral states):
+
+∂q_∂storage = ∂q_∂storage_uplink * ∂storage_uplink_∂storage +
+              ∂q_∂storage_downlink * ∂storage_downlink_∂storage +
+              ∂q_∂continuous_control_compound * ∂continuous_control_compound_∂storage
+
+∂q_∂storage_uplink and ∂q_∂storage_downlink are not necessarily diagonal, e.g. the derivative term of PID control
+depends on all flows of the listened Basin. For ∂continuous_control_compound_∂storage only the dependence of
+listened flows on their own up- and downlink storage is taken into account, as chained control is not supported.
+"""
+function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
+    (; p_independent, cache) = J
+    (;
+        flow_input_ranges,
+        ∂flow_∂flow_input,
+        continuous_control_input_ranges,
+        ∂continuous_control_compound_∂continuous_control_input,
+    ) = cache
+    (; inflow_id, outflow_id) = p_independent
+    n_flow = length(inflow_id)
+
+    # Dependence via the up- and downlink storages
+    for (storage_input_range, storage_node_id) in (
+            (flow_input_ranges.storage_uplink, inflow_id),
+            (flow_input_ranges.storage_downlink, outflow_id),
+        )
+        for (storage_flow_idx, col) in enumerate(storage_input_range)
+            basin_id = storage_node_id[storage_flow_idx]
+            basin_id.is_basin || continue
+            foreach_column_entry(∂flow_∂flow_input, col) do flow_idx, val
+                flow_idx <= n_flow && f(flow_idx, basin_id.idx, val)
             end
-            dstorage_listened_basin_old =
-                formulate_dstorage_wrt_time(du, p_independent, t, listened_node_id)
-            # The expression below is the solution to an implicit equation for
-            # dstorage_listened_basin. This equation results from the fact that if the derivative
-            # term in the PID controller is used, the controlled pump flow rate depends on itself.
-            flow_rate += K_d * (dtarget - dstorage_listened_basin_old / area) / D
         end
-
-        # Set flow_rate
-        set_value!(pid_control.target_ref[i], p, flow_rate)
-    end
-    return nothing
-end
-
-"""
-Formulate the time derivative of the storage in a single Basin.
-"""
-function formulate_dstorage_wrt_time(
-        du::CVector,
-        p_independent::ParametersIndependent,
-        t::Number,
-        node_id::NodeID,
-    )
-    (; basin) = p_independent
-    (; inflow_ids, outflow_ids, vertical_flux) = basin
-    @assert node_id.type == NodeType.Basin
-    dstorage = 0.0
-    for inflow_id in inflow_ids[node_id.idx]
-        dstorage += get_flow(du, p_independent, t, (inflow_id, node_id))
-    end
-    for outflow_id in outflow_ids[node_id.idx]
-        dstorage -= get_flow(du, p_independent, t, (node_id, outflow_id))
     end
 
-    fixed_area = basin_areas(basin, node_id.idx)[end]
-    dstorage += fixed_area * vertical_flux.precipitation[node_id.idx]
-    dstorage += vertical_flux.surface_runoff[node_id.idx]
-    dstorage += vertical_flux.drainage[node_id.idx]
-    dstorage -= du.evaporation[node_id.idx]
-    dstorage -= du.infiltration[node_id.idx]
-
-    return dstorage
-end
-
-function formulate_flow!(
-        du::CVector,
-        user_demand::UserDemand,
-        p::Parameters,
-        t::Number,
-    )::Nothing
-    (; p_independent, time_dependent_cache) = p
-    (; current_return_factor) = time_dependent_cache.user_demand
-    (; allocation, level_difference_threshold) = p_independent
-
-    for node_idx in eachindex(user_demand.node_id)
-        id = user_demand.node_id[node_idx]
-        inflow_links = user_demand.inflow_links[node_idx]
-        link_offset = user_demand.inflow_link_offsets[node_idx]
-        has_demand_priority = view(user_demand.has_demand_priority, node_idx, :)
-        allocated = view(user_demand.allocated, node_idx, :)
-        return_factor = user_demand.return_factor[node_idx]
-        min_level = user_demand.min_level[node_idx]
-
-        # Total effective demand = min(allocated, demand) summed over priorities.
-        # When allocation is not running, allocated = Inf and this becomes the demand.
-        q_total_demand = 0.0
-        for demand_priority_idx in eachindex(allocation.demand_priorities_all)
-            !has_demand_priority[demand_priority_idx] && continue
-            q_total_demand += min(
-                allocated[demand_priority_idx],
-                get_demand(user_demand, id, demand_priority_idx, t),
-            )
-        end
-
-        # With allocation disabled, fall back to an equal split of the total demand.
-        # Each link then applies its own source basin reduction factors.
-        link_alloc = user_demand.inflow_link_allocated[node_idx]
-        n_links = length(inflow_links)
-        equal_split = n_links == 0 ? 0.0 : q_total_demand / n_links
-
-        q_total_actual = 0.0
-        for (k, link_meta) in enumerate(inflow_links)
-            src_id = link_meta.link[1]
-            f_low_storage = get_low_storage_factor(p, src_id)
-            source_level = get_level(p, src_id, t)
-            f_reduction = reduction_factor(
-                source_level - min_level,
-                level_difference_threshold,
-            )
-            q_k_target = isinf(link_alloc[k]) ? equal_split : link_alloc[k]
-            q_k = q_k_target * f_low_storage * f_reduction
-            du.user_demand_inflow[link_offset + k] = q_k
-            q_total_actual += q_k
-        end
-
-        du.user_demand_outflow[id.idx] =
-            q_total_actual *
-            eval_time_interpolation(return_factor, current_return_factor, id.idx, p, t)
-    end
-    return nothing
-end
-
-function formulate_flow!(
-        du::CVector,
-        linear_resistance::LinearResistance,
-        p::Parameters,
-        t::Number,
-    )::Nothing
-    (; p_mutable) = p
-    (; node_id) = linear_resistance
-
-    for node_idx in eachindex(linear_resistance.node_id)
-        id = node_id[node_idx]
-        inflow_link = linear_resistance.inflow_link[node_idx]
-        outflow_link = linear_resistance.outflow_link[node_idx]
-
-        inflow_id = inflow_link.link[1]
-        outflow_id = outflow_link.link[2]
-
-        h_a = get_level(p, inflow_id, t)
-        h_b = get_level(p, outflow_id, t)
-        q = linear_resistance_flow(linear_resistance, id, h_a, h_b, p)
-        du.linear_resistance[node_idx] = q
-    end
-    return nothing
-end
-
-function linear_resistance_flow(
-        linear_resistance::LinearResistance,
-        node_id::NodeID,
-        h_a::Number,
-        h_b::Number,
-        p::Parameters,
-        t::Number = 0.0;
-        apply_low_storage_factor::Bool = true,
-    )::Number
-    (; resistance, max_flow_rate) = linear_resistance
-    inflow_link = linear_resistance.inflow_link[node_id.idx]
-    outflow_link = linear_resistance.outflow_link[node_id.idx]
-
-    inflow_id = inflow_link.link[1]
-    outflow_id = outflow_link.link[2]
-
-    Δh = h_a - h_b
-    q_unlimited = Δh / resistance[node_id.idx]
-    q = clamp(q_unlimited, -max_flow_rate[node_id.idx], max_flow_rate[node_id.idx])
-    apply_low_storage_factor || return q
-    return q * low_storage_factor_resistance_node(p, q_unlimited, inflow_id, outflow_id)
-end
-
-function tabulated_rating_curve_flow(
-        tabulated_rating_curve::TabulatedRatingCurve,
-        node_id::NodeID,
-        h_a::Number,
-        h_b::Number,
-        p::Parameters,
-        t::Number;
-        apply_low_storage_factor::Bool = true,
-    )::Number
-    (; current_interpolation_index, interpolations) = tabulated_rating_curve
-    (; level_difference_threshold) = p.p_independent
-    inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
-    inflow_id = inflow_link.link[1]
-    Δh = h_a - h_b
-
-    factor = apply_low_storage_factor ? get_low_storage_factor(p, inflow_id) : 1.0
-    interpolation_index = current_interpolation_index[node_id.idx](t)
-    qh = interpolations[interpolation_index]
-    q = factor * qh(h_a)
-    q *= reduction_factor(Δh, level_difference_threshold)
-    max_downstream_level = tabulated_rating_curve.max_downstream_level[node_id.idx]
-    q *= reduction_factor(max_downstream_level - h_b, level_difference_threshold)
-    return q
-end
-
-function allocated_rating_curve_flow(
-        tabulated_rating_curve::TabulatedRatingCurve,
-        node_id::NodeID,
-        h_a::Number,
-        h_b::Number,
-        p::Parameters,
-    )::Number
-    (; level_difference_threshold) = p.p_independent
-    inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
-    inflow_id = inflow_link.link[1]
-    Δh = h_a - h_b
-
-    factor = get_low_storage_factor(p, inflow_id)
-    q = tabulated_rating_curve.flow_rate[node_id.idx]
-    q *= factor
-    q *= reduction_factor(Δh, level_difference_threshold)
-    max_downstream_level = tabulated_rating_curve.max_downstream_level[node_id.idx]
-    q *= reduction_factor(max_downstream_level - h_b, level_difference_threshold)
-    return q
-end
-
-function formulate_flow!(
-        du::CVector,
-        tabulated_rating_curve::TabulatedRatingCurve,
-        p::Parameters,
-        t::Number,
-    )::Nothing
-    for node_idx in eachindex(tabulated_rating_curve.node_id)
-        id = tabulated_rating_curve.node_id[node_idx]
-        inflow_link = tabulated_rating_curve.inflow_link[node_idx]
-        outflow_link = tabulated_rating_curve.outflow_link[node_idx]
-        inflow_id = inflow_link.link[1]
-        outflow_id = outflow_link.link[2]
-        h_a = get_level(p, inflow_id, t)
-        h_b = get_level(p, outflow_id, t)
-
-        q_h = tabulated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p, t)
-        q = if tabulated_rating_curve.allocation_controlled[node_idx]
-            # Ensure q is always >= to the Q(h) relationship, since errors in the linear approximations in allocation could lead to
-            # a higher q at the current h than the user defined q(h) would allow
-            q_alloc = allocated_rating_curve_flow(tabulated_rating_curve, id, h_a, h_b, p)
-            min(q_alloc, q_h)
-        else
-            q_h
-        end
-
-        du.tabulated_rating_curve[node_idx] = q
-    end
-    return nothing
-end
-
-function manning_resistance_flow(
-        manning_resistance::ManningResistance,
-        node_id::NodeID,
-        h_a::Number,
-        h_b::Number,
-        p::Parameters,
-        t::Number = 0.0;
-        apply_low_storage_factor::Bool = true,
-    )::Number
-    (;
-        length,
-        manning_n,
-        profile_width,
-        profile_slope,
-        upstream_bottom,
-        downstream_bottom,
-    ) = manning_resistance
-
-    inflow_link = manning_resistance.inflow_link[node_id.idx]
-    outflow_link = manning_resistance.outflow_link[node_id.idx]
-
-    inflow_id = inflow_link.link[1]
-    outflow_id = outflow_link.link[2]
-
-    bottom_a = upstream_bottom[node_id.idx]
-    bottom_b = downstream_bottom[node_id.idx]
-    slope = profile_slope[node_id.idx]
-    width = profile_width[node_id.idx]
-    n = manning_n[node_id.idx]
-    L = length[node_id.idx]
-
-    # Average d, A, R
-    d_a = h_a - bottom_a
-    d_b = h_b - bottom_b
-    d = 0.5 * (d_a + d_b)
-
-    A_a = width * d + slope * d_a^2
-    A_b = width * d + slope * d_b^2
-    A = 0.5 * (A_a + A_b)
-
-    slope_unit_length = sqrt(slope^2 + 1.0)
-    P_a = width + 2.0 * d_a * slope_unit_length
-    P_b = width + 2.0 * d_b * slope_unit_length
-    R_h_a = A_a / P_a
-    R_h_b = A_b / P_b
-    R_h = 0.5 * (R_h_a + R_h_b)
-
-    Δh = h_a - h_b
-
-    # Calculate Reynolds number for open channel flow
-    # Re = V * A / ( R_h * ν )
-    # V: average velocity, R_h: hydraulic radius, ν: kinematic viscosity of water
-
-    # Kinematic viscosity of water (ν), typical value at 20°C [m²/s]
-    ν = 1.004e-6
-    Re_laminar = 2000
-    threshold = (Re_laminar * ν * n * ∛R_h / A)^2
-    threshold = max(threshold, 1.0e-5) # Avoid too small thresholds
-
-    q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, threshold)
-
-    apply_low_storage_factor || return q
-    return q * low_storage_factor_resistance_node(p, q, inflow_id, outflow_id)
-end
-
-"""
-Conservation of energy for two basins, a and b:
-
-    h_a + v_a^2 / (2 * g) = h_b + v_b^2 / (2 * g) + S_f * L + C / 2 * g * (v_b^2 - v_a^2)
-
-Where:
-
-* h_a, h_b are the heads at basin a and b.
-* v_a, v_b are the velocities at basin a and b.
-* g is the gravitational constant.
-* S_f is the friction slope.
-* C is an expansion or extraction coefficient.
-
-We assume velocity differences are negligible (v_a = v_b):
-
-    h_a = h_b + S_f * L
-
-The friction losses are approximated by the Gauckler-Manning formula:
-
-    Q = A * (1 / n) * R_h^(2 / 3) * S_f^(1 / 2)
-
-Where:
-
-* Where A is the cross-sectional area.
-* V is the cross-sectional average velocity.
-* n is the Gauckler-Manning coefficient.
-* R_h is the hydraulic radius.
-* S_f is the friction slope.
-
-The hydraulic radius is defined as:
-
-    R_h = A / P
-
-Where P is the wetted perimeter.
-
-The average of the upstream and downstream water depth is used to compute cross-sectional area and
-hydraulic radius. This ensures that a basin can receive water after it has gone
-dry.
-"""
-function formulate_flow!(
-        du::CVector,
-        manning_resistance::ManningResistance,
-        p::Parameters,
-        t::Number,
-    )::Nothing
-    (; p_mutable) = p
-    (; node_id) = manning_resistance
-
-    for node_idx in eachindex(manning_resistance.node_id)
-        id = node_id[node_idx]
-        inflow_link = manning_resistance.inflow_link[node_idx]
-        outflow_link = manning_resistance.outflow_link[node_idx]
-
-        inflow_id = inflow_link.link[1]
-        outflow_id = outflow_link.link[2]
-
-        h_a = get_level(p, inflow_id, t)
-        h_b = get_level(p, outflow_id, t)
-
-        q = manning_resistance_flow(manning_resistance, id, h_a, h_b, p)
-
-        du.manning_resistance[node_idx] = q
-    end
-    return nothing
-end
-
-"""
-Per-node pump/outlet flow, evaluated at given upstream/downstream levels so it can also
-serve as a `flow_function` for allocation's linearization (see `linearize_connector_node!`).
-"""
-function pump_or_outlet_flow(
-        node::Union{Pump, Outlet},
-        node_id::NodeID,
-        h_a::Number,
-        h_b::Number,
-        p::Parameters,
-        t::Number,
-        current_flow_rate::Vector{<:Number},
-        component_cache::NamedTuple,
-        reduce_Δlevel::Bool = false;
-        apply_low_storage_factor::Bool = true,
-    )::Number
-    (; allocation, flow_demand, level_difference_threshold) = p.p_independent
-    (;
-        current_min_flow_rate,
-        current_max_flow_rate,
-        current_min_upstream_level,
-        current_max_downstream_level,
-    ) = component_cache
-
-    node_idx = node_id.idx
-    inflow_link = node.inflow_link[node_idx]
-    min_flow_rate = node.min_flow_rate[node_idx]
-    max_flow_rate = node.max_flow_rate[node_idx]
-    control_type = node.control_type[node_idx]
-    min_upstream_level = node.min_upstream_level[node_idx]
-    max_downstream_level = node.max_downstream_level[node_idx]
-
-    flow_rate = if control_type != ContinuousControlType.None
-        current_flow_rate[node_idx]
-    elseif isassigned(node.time_dependent_flow_rate, node_idx)
-        # get the time dependent flow rate from interpolation or cached value
-        eval_time_interpolation(
-            node.time_dependent_flow_rate[node_idx],
-            current_flow_rate,
-            node_idx,
-            p,
-            t,
-        )
-    else
-        # get the scalar flow rate from  (for DiscreteControl, Control by allocation or flows from the Static table)
-        node.flow_rate[node_idx]
-    end
-
-    inflow_id = inflow_link.link[1]
-
-    q = flow_rate
-    apply_low_storage_factor && (q *= get_low_storage_factor(p, inflow_id))
-
-    lower_bound =
-        eval_time_interpolation(min_flow_rate, current_min_flow_rate, node_idx, p, t)
-    upper_bound =
-        eval_time_interpolation(max_flow_rate, current_max_flow_rate, node_idx, p, t)
-
-    # When allocation is not active, set the flow demand directly as a lower bound on the
-    # pump or outlet flow rate
-    if !is_active(allocation)
-        has_demand, flow_demand_id = has_external_demand(node, node_id)
-        if has_demand
-            total_demand = 0.0
-            has_any_demand_priority = false
-            demand_interpolations = flow_demand.demand_interpolation[flow_demand_id.idx]
-            for (demand_priority_idx, demand_interpolation) in
-                enumerate(demand_interpolations)
-                if flow_demand.has_demand_priority[
-                        flow_demand_id.idx,
-                        demand_priority_idx,
-                    ]
-                    has_any_demand_priority = true
-                    total_demand += demand_interpolation(t)
+    # Dependence via the ContinuousControl compound variables
+    storage_offset = first(continuous_control_input_ranges.storage) - 1
+    n_storage_input = length(continuous_control_input_ranges.storage)
+    flow_offset = first(continuous_control_input_ranges.flow) - 1
+    for input_idx in axes(∂continuous_control_compound_∂continuous_control_input, 2)
+        foreach_column_entry(∂continuous_control_compound_∂continuous_control_input, input_idx) do cc_idx, cc_val
+            col = flow_input_ranges.continuous_control_compound[cc_idx]
+            foreach_column_entry(∂flow_∂flow_input, col) do flow_idx, val
+                flow_idx <= n_flow || return
+                basin_idx = input_idx - storage_offset
+                if basin_idx <= n_storage_input
+                    f(flow_idx, basin_idx, val * cc_val)
+                else
+                    listen_flow_idx = input_idx - flow_offset
+                    id_in_listen = inflow_id[listen_flow_idx]
+                    id_out_listen = outflow_id[listen_flow_idx]
+                    if id_in_listen.is_basin
+                        ∂q_listen_∂storage = ∂flow_∂flow_input[listen_flow_idx, flow_input_ranges.storage_uplink[listen_flow_idx]]
+                        f(flow_idx, id_in_listen.idx, val * cc_val * ∂q_listen_∂storage)
+                    end
+                    if id_out_listen.is_basin
+                        ∂q_listen_∂storage = ∂flow_∂flow_input[listen_flow_idx, flow_input_ranges.storage_downlink[listen_flow_idx]]
+                        f(flow_idx, id_out_listen.idx, val * cc_val * ∂q_listen_∂storage)
+                    end
                 end
             end
-
-            if has_any_demand_priority
-                lower_bound = clamp(total_demand, lower_bound, upper_bound)
-            end
         end
     end
-    q = clamp(q, lower_bound, upper_bound)
-
-    # Special case for outlet: check level difference
-    if reduce_Δlevel
-        Δlevel = h_a - h_b
-        q *= reduction_factor(Δlevel, level_difference_threshold)
-    end
-
-    min_upstream_level_ = eval_time_interpolation(
-        min_upstream_level,
-        current_min_upstream_level,
-        node_idx,
-        p,
-        t,
-    )
-    q *= reduction_factor(h_a - min_upstream_level_, level_difference_threshold)
-
-    max_downstream_level_ = eval_time_interpolation(
-        max_downstream_level,
-        current_max_downstream_level,
-        node_idx,
-        p,
-        t,
-    )
-    q *= reduction_factor(max_downstream_level_ - h_b, level_difference_threshold)
-
-    return q
+    return nothing
 end
 
-function formulate_pump_or_outlet_flow!(
-        du_component::SubArray{<:Number},
-        node::Union{Pump, Outlet},
-        p::Parameters,
-        t::Number,
-        relevant_control_type::ContinuousControlType.T,
-        current_flow_rate::Vector{<:Number},
-        component_cache::NamedTuple,
-        reduce_Δlevel::Bool = false,
-    )::Nothing
-    for node_idx in eachindex(node.node_id)
-        node.control_type[node_idx] != relevant_control_type && continue
+"""
+Call `f(flow_idx, pid_idx, ∂q_∂pid_integral)` for each dependence of a flow on a PID integral state.
+"""
+function foreach_∂flow_∂pid_integral(f::F, J::RibasimJacobian) where {F}
+    (; p_independent, cache) = J
+    (; flow_input_ranges, ∂flow_∂flow_input) = cache
+    n_flow = length(p_independent.inflow_id)
 
-        id = node.node_id[node_idx]
-        inflow_id = node.inflow_link[node_idx].link[1]
-        outflow_id = node.outflow_link[node_idx].link[2]
-        h_a = get_level(p, inflow_id, t)
-        h_b = get_level(p, outflow_id, t)
+    for (pid_idx, col) in enumerate(flow_input_ranges.pid_integral)
+        foreach_column_entry(∂flow_∂flow_input, col) do flow_idx, val
+            flow_idx <= n_flow && f(flow_idx, pid_idx, val)
+        end
+    end
+    return nothing
+end
 
-        du_component[node_idx] = pump_or_outlet_flow(
-            node,
-            id,
-            h_a,
-            h_b,
-            p,
-            t,
-            current_flow_rate,
-            component_cache,
-            reduce_Δlevel,
+"""
+Compute J_inner_local = M * ∂q_∂storage, see `foreach_∂flow_∂storage`.
+If `structural`, all contributions are set to 1.0 to initialize the sparsity pattern.
+"""
+function update_J_inner_local!(J::RibasimJacobian; structural::Bool = false)
+    (; p_independent, J_inner_local) = J
+    (; inflow_id, outflow_id) = p_independent
+
+    J_inner_local .= 0.0
+    foreach_∂flow_∂storage(J) do flow_idx, basin_idx, ∂q_∂storage
+        add_flow_contribution!(
+            J_inner_local,
+            inflow_id[flow_idx],
+            outflow_id[flow_idx],
+            basin_idx,
+            structural ? 1.0 : ∂q_∂storage,
         )
     end
     return nothing
 end
 
-function formulate_flow!(
-        du::CVector,
-        pump::Pump,
-        p::Parameters,
-        t::Number,
-        relevant_control_type::ContinuousControlType.T,
-    )::Nothing
-    (; time_dependent_cache, state_and_time_dependent_cache) = p
-    return formulate_pump_or_outlet_flow!(
-        du.pump,
-        pump,
-        p,
-        t,
-        relevant_control_type,
-        state_and_time_dependent_cache.current_flow_rate_pump,
-        time_dependent_cache.pump,
+"""
+Compute v_out = ∂q_∂storage * v_in, see `foreach_∂flow_∂storage`.
+"""
+function ∂flow_∂storage_mul!(
+        v_out::FlowCVector,
+        J::RibasimJacobian,
+        v_in::AbstractVector,
     )
-end
-
-function formulate_flow!(
-        du::CVector,
-        outlet::Outlet,
-        p::Parameters,
-        t::Number,
-        relevant_control_type::ContinuousControlType.T,
-    )::Nothing
-    (; time_dependent_cache, state_and_time_dependent_cache) = p
-    return formulate_pump_or_outlet_flow!(
-        du.outlet,
-        outlet,
-        p,
-        t,
-        relevant_control_type,
-        state_and_time_dependent_cache.current_flow_rate_outlet,
-        time_dependent_cache.outlet,
-        true,
-    )
-end
-
-function formulate_flows!(
-        du::RibasimCVectorType,
-        p::Parameters,
-        t::Number;
-        control_type::ContinuousControlType.T = ContinuousControlType.None,
-    )
-    (;
-        linear_resistance,
-        manning_resistance,
-        tabulated_rating_curve,
-        pump,
-        outlet,
-        user_demand,
-    ) = p.p_independent
-    formulate_flow!(du, pump, p, t, control_type)
-    formulate_flow!(du, outlet, p, t, control_type)
-
-    return if control_type == ContinuousControlType.None
-        formulate_flow!(du, linear_resistance, p, t)
-        formulate_flow!(du, manning_resistance, p, t)
-        formulate_flow!(du, tabulated_rating_curve, p, t)
-        formulate_flow!(du, user_demand, p, t)
+    @assert length(v_in) == J.n_basin
+    v_out .= 0.0
+    foreach_∂flow_∂storage(J) do flow_idx, basin_idx, ∂q_∂storage
+        v_out[flow_idx] += ∂q_∂storage * v_in[basin_idx]
     end
+    return nothing
 end
 
 """
-Clamp the cumulative flow states within the minimum and maximum
-flow rates for the last time step if these flow rate bounds are known.
+Compute J_inner = J_inner_local - γ * M * ∂q_∂pid_integral * ∂pid_integral_∂storage.
+If `structural`, all PID contributions are set to 1.0 to initialize the sparsity pattern.
 """
-function limit_flow!(
-        u::CVector,
+function build_J_inner!(
+        J_inner::AbstractMatrix{Float64},
+        J::RibasimJacobian,
+        gamma::Number;
+        structural::Bool = false,
+    )
+    (; p_independent, J_inner_local, area_pid_controlled) = J
+    (; pid_control, inflow_id, outflow_id) = p_independent
+
+    # Add J_inner_local into J_inner rather than copying it, which would reset the sparsity
+    # pattern of J_inner and drop the entries that are only structurally nonzero
+    J_inner .= 0.0
+    J_local_rows = rowvals(J_inner_local)
+    J_local_vals = nonzeros(J_inner_local)
+    for col in axes(J_inner_local, 2), k in nzrange(J_inner_local, col)
+        # Contributions to J_inner_local can cancel, but the entry is still structurally nonzero
+        J_inner[J_local_rows[k], col] += structural ? 1.0 : J_local_vals[k]
+    end
+
+    foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, ∂q_∂pid_integral
+        listen_node_id = pid_control.listen_node_id[pid_idx]
+        contribution = structural ? 1.0 : -gamma * ∂q_∂pid_integral / area_pid_controlled[pid_idx]
+        add_flow_contribution!(J_inner, inflow_id[flow_idx], outflow_id[flow_idx], listen_node_id.idx, contribution)
+    end
+    return nothing
+end
+
+function add_flow_contribution!(
+        J_inner::AbstractMatrix{Float64},
+        id_in::NodeID,
+        id_out::NodeID,
+        basin_idx::Int,
+        ∂q_∂storage::Float64,
+    )
+    id_in.is_basin && (J_inner[id_in.idx, basin_idx] -= ∂q_∂storage)
+    id_out.is_basin && (J_inner[id_out.idx, basin_idx] += ∂q_∂storage)
+    return nothing
+end
+
+###
+##### Linear solve
+###
+
+"""
+Wrapper of the cache for the actual (inner) linear solve
+"""
+struct RibasimLinearSolveCache{C, WType}
+    # Cache for the inner storage space linear solve
+    cache_inner::C
+    # Full linear solve matrix (lazy)
+    W::WType
+    # The Jacobian version and gamma of the current factorization
+    jac_version::Base.RefValue{Int}
+    gamma::Base.RefValue{Float64}
+end
+
+RibasimLinearSolveCache(cache_inner, W) =
+    RibasimLinearSolveCache(cache_inner, W, Ref(-1), Ref(NaN))
+
+# Initialize linear solve cache for optimized implicit solve
+function SciMLBase.init(
+        prob::LinearProblem,
+        alg::config.RibasimLinearSolve,
+        args...;
+        kwargs...,
+    )
+    W = prob.A
+    (; J, gamma) = W
+    (; n_basin) = J
+
+    # The effective Jacobian for the inner linear solve
+    J_inner = alg.algorithm isa AbstractDenseFactorization ? zeros(n_basin, n_basin) : spzeros(n_basin, n_basin)
+
+    # Make sure that the sparsity pattern is properly initialized
+    update_J_inner_local!(J; structural = true)
+    build_J_inner!(J_inner, J, gamma; structural = true)
+
+    u_inner = zeros(n_basin)
+    W_inner = WOperator{true}(I, gamma, J_inner, u_inner)
+    b_inner = zeros(n_basin)
+
+    prob_inner = LinearProblem(W_inner, b_inner)
+    # The pattern of J_inner is structural and constant (see `build_J_inner!`).
+    # Tell LinearSolve not to drop the stored zeros: that reduction changes the pattern
+    # handed to the factorization between solves, which the KLU symbolic factorization
+    # reuse (`check_pattern = false`) does not detect, giving wrong solutions.
+    assumptions = OperatorAssumptions(true; nonstructural_zeros = NonstructuralZeros.None)
+    cache_inner = init(prob_inner, alg.algorithm, args...; kwargs..., assumptions)
+
+    return RibasimLinearSolveCache(cache_inner, W)
+end
+
+# Fallback for non-specialized solve
+function SciMLBase.init(
+        prob::LinearProblem{<:Any, <:Any, F},
+        alg::config.RibasimLinearSolve,
+        args...;
+        kwargs...,
+    ) where {F <: AbstractMatrix}
+    return init(prob, alg.algorithm, args...; kwargs...)
+end
+
+"""
+Performing the linear solve
+
+[-γ⁻¹A + J] * linu = b
+
+by solving
+
+W_inner * x_inner = b_inner
+
+where
+
+W_inner = [-γ⁻¹I_n + J_inner]
+J_inner as shown in the `build_J_inner!` docstring
+b_inner = M(b.flow + γ * ∂q_∂pid_integral * b.pid_integral)
+
+and then computing
+
+linu.pid_integral = -γ * [b.pid_integral + x_inner[listen_node_id] / area]
+linu.flow         = γ * [∂q_∂storage * x_inner + ∂q_∂pid_integral * linu.pid_integral - b.flow]
+
+"""
+function OrdinaryDiffEqDifferentiation.dolinsolve(
         integrator::DEIntegrator,
-        p::Parameters,
-        t::Number,
-    )::Nothing
-    (; uprev, dt) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
-    (;
-        pump,
-        outlet,
-        linear_resistance,
-        user_demand,
-        tabulated_rating_curve,
-        basin,
-        allocation,
-        u_reduced,
-        level_difference_threshold,
-    ) = p_independent
-    (; current_storage, current_level) = state_and_time_dependent_cache
+        linsolve::RibasimLinearSolveCache;
+        b::Union{RibasimStateCVector, Nothing} = nothing,
+        linu::Union{RibasimStateCVector, Nothing} = nothing,
+        kwargs...,
+    )
+    @assert !isnothing(b)
+    @assert !isnothing(linu)
 
-    # The current storage and level based on the proposed u are used to estimate the lowest
-    # storage and level attained in the last time step to estimate whether there was an effect
-    # of reduction factors
+    (; cache_inner, W) = linsolve
+    (; gamma, J) = W
+    (; p_independent, area_pid_controlled, n_pid) = J
+    (; pid_control, inflow_id, outflow_id) = p_independent
 
-    reduce_state!(u_reduced, u, p_independent)
-    set_current_basin_properties!(u_reduced, p, t)
+    W_inner = cache_inner.A
+    J_inner = W_inner.J
+    b_inner = cache_inner.b
+    b_pid_integral = b.pid_integral
+    linu_flow = linu.flow
+    linu_pid_integral = linu.pid_integral
 
-    # TabulatedRatingCurve flow is in [0, ∞)
-    for id in tabulated_rating_curve.node_id
-        limit_flow!(
-            u.tabulated_rating_curve,
-            uprev.tabulated_rating_curve,
-            id,
-            0.0,
-            Inf,
-            dt,
+    # Set up inner (storage space) problem rhs
+    W_inner.gamma = gamma
+    aggregate_flows!(b_inner, b.flow, p_independent)
+    foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, ∂q_∂pid_integral
+        contribution = gamma * ∂q_∂pid_integral * b_pid_integral[pid_idx]
+        id_in = inflow_id[flow_idx]
+        id_out = outflow_id[flow_idx]
+        id_in.is_basin && (b_inner[id_in.idx] -= contribution)
+        id_out.is_basin && (b_inner[id_out.idx] += contribution)
+    end
+
+    # Set up inner (storage space) problem matrix, and refactorize it only if the Jacobian
+    # or gamma changed since the last factorization
+    (; jac_version) = integrator.p.p_mutable
+    if jac_version != linsolve.jac_version[] || gamma != linsolve.gamma[]
+        build_J_inner!(J_inner, J, gamma)
+        # LHLFactorization only re-reduces J_inner when told its contents changed
+        SciMLOperators.mark_jacobian_updated!(W_inner)
+        jacobian2W!(W_inner._concrete_form, W_inner.mass_matrix, W_inner.gamma, W_inner.J)
+        cache_inner.isfresh = true
+        linsolve.jac_version[] = jac_version
+        linsolve.gamma[] = gamma
+    end
+
+    # Solve inner (storage space) problem
+    linres = dolinsolve(
+        integrator,
+        cache_inner;
+        kwargs...,
+        A = nothing,
+        linu = nothing,
+        b = nothing,
+    )
+
+    # Compute PID integral component solution
+    for pid_idx in 1:n_pid
+        listen_node_id = pid_control.listen_node_id[pid_idx]
+        linu_pid_integral[pid_idx] = -gamma * (
+            b_pid_integral[pid_idx] +
+                cache_inner.u[listen_node_id.idx] / area_pid_controlled[pid_idx]
         )
     end
 
-    # Pump and Outlet flow is in [0, max_flow_rate]. The min_flow_rate is not a lower bound
-    # of the flow, since the reduction factors (low storage, min_upstream_level,
-    # max_downstream_level) are applied after it and can bring the flow down to 0.
-    # Clamping to min_flow_rate would force a flow that formulate_flow! has switched off,
-    # which the solver then fights on every timestep.
-    for (id, max_flow_rate) in zip(pump.node_id, pump.max_flow_rate)
-        limit_flow!(u.pump, uprev.pump, id, 0.0, max_flow_rate(t), dt)
+    # Compute flow component solution
+    ∂flow_∂storage_mul!(linu_flow, J, cache_inner.u)
+    linu_flow .-= b.flow
+    foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, ∂q_∂pid_integral
+        linu_flow[flow_idx] += ∂q_∂pid_integral * linu_pid_integral[pid_idx]
     end
+    linu_flow .*= gamma
 
-    for (id, max_flow_rate) in zip(outlet.node_id, outlet.max_flow_rate)
-        limit_flow!(u.outlet, uprev.outlet, id, 0.0, max_flow_rate(t), dt)
-    end
-
-    # LinearResistance flow is in [-max_flow_rate, max_flow_rate]
-    for (id, max_flow_rate) in zip(
-            linear_resistance.node_id,
-            linear_resistance.max_flow_rate,
-        )
-        limit_flow!(
-            u.linear_resistance,
-            uprev.linear_resistance,
-            id,
-            -max_flow_rate,
-            max_flow_rate,
-            dt,
-        )
-    end
-
-    # UserDemand per inflow link bounds
-    for node_idx in eachindex(user_demand.node_id)
-        id = user_demand.node_id[node_idx]
-        inflow_links = user_demand.inflow_links[node_idx]
-        link_offset = user_demand.inflow_link_offsets[node_idx]
-        n_links = length(inflow_links)
-        demand_from_timeseries = user_demand.demand_from_timeseries[node_idx]
-        link_alloc = user_demand.inflow_link_allocated[node_idx]
-
-        allocated_total = if demand_from_timeseries
-            0.0
-        else
-            sum(
-                min(
-                    user_demand.demand[id.idx, demand_priority_idx],
-                    user_demand.allocated[id.idx, demand_priority_idx],
-                ) for demand_priority_idx in eachindex(allocation.demand_priorities_all)
-            )
-        end
-        equal_split = n_links == 0 ? 0.0 : allocated_total / n_links
-
-        for (k, link_meta) in enumerate(inflow_links)
-            state_idx = link_offset + k
-            q_k_max = isinf(link_alloc[k]) ? equal_split : link_alloc[k]
-            min_flow_rate, max_flow_rate = if demand_from_timeseries
-                0.0, Inf
-            else
-                src_id = link_meta.link[1]
-                factor_basin_min = min_low_storage_factor(
-                    current_storage,
-                    basin.storage_prev,
-                    basin,
-                    src_id,
-                )
-                factor_level_min = min_low_user_demand_level_factor(
-                    current_level,
-                    basin.level_prev,
-                    user_demand.min_level,
-                    id,
-                    src_id,
-                    level_difference_threshold,
-                )
-                factor_basin_min * factor_level_min * q_k_max, q_k_max
-            end
-            u_prev = uprev.user_demand_inflow[state_idx]
-            u.user_demand_inflow[state_idx] = clamp(
-                u.user_demand_inflow[state_idx],
-                u_prev + min_flow_rate * dt,
-                u_prev + max_flow_rate * dt,
-            )
-        end
-    end
-
-    # Evaporation is in [0, ∞) (stricter bounds would require also estimating the area)
-    # Infiltration is in [f * infiltration, infiltration] where f is a rough estimate of the smallest low storage factor
-    # reduction factor value that was attained over the last timestep
-    for (id, infiltration) in zip(basin.node_id, basin.vertical_flux.infiltration)
-        factor_min = min_low_storage_factor(current_storage, basin.storage_prev, basin, id)
-        limit_flow!(u.evaporation, uprev.evaporation, id, 0.0, Inf, dt)
-        limit_flow!(
-            u.infiltration,
-            uprev.infiltration,
-            id,
-            factor_min * infiltration,
-            infiltration,
-            dt,
-        )
-    end
-
-    # Where evaporation and infiltration would bring a storage below the low storage reserve,
-    # reduce them so the storage becomes the reserve. In the ODE the low storage factor
-    # switches them off at the reserve, but multistep methods extrapolate the cumulative
-    # states from their history and can overshoot. These states only affect their own Basin.
-    reduce_state!(u_reduced, u, p_independent)
-    formulate_storages!(u_reduced, p, t)
-    for i in eachindex(basin.node_id)
-        deficit = basin.low_storage_reserve[i] - current_storage[i]
-        deficit > 0 || continue
-        for (u_component, uprev_component) in
-            ((u.infiltration, uprev.infiltration), (u.evaporation, uprev.evaporation))
-            reduction = clamp(deficit, 0.0, max(u_component[i] - uprev_component[i], 0.0))
-            u_component[i] -= reduction
-            deficit -= reduction
-        end
-    end
-
-    return nothing
+    return LinearSolution{
+        Float64,
+        1,
+        Vector{Float64},
+        typeof(linres.resid),
+        typeof(linres.alg),
+        typeof(linsolve),
+        typeof(linres.stats),
+    }(
+        linu,
+        linres.resid,
+        linres.alg,
+        linres.retcode,
+        linres.iters,
+        linsolve,
+        linres.stats,
+    )
 end
 
-function limit_flow!(
-        u_component,
-        uprev_component,
-        id::NodeID,
-        min_flow_rate::Number,
-        max_flow_rate::Number,
-        dt::Number,
-    )::Nothing
-    u_prev = uprev_component[id.idx]
-    u_component[id.idx] = clamp(
-        u_component[id.idx],
-        u_prev + min_flow_rate * dt,
-        u_prev + max_flow_rate * dt,
+###
+##### Other
+###
+
+"""
+The maximum number of accepted steps a Jacobian is reused for, following CVODE's `MSBJ`.
+OrdinaryDiffEq only asks for a new Jacobian after a Newton failure, so without a bound a
+Jacobian from a different flow regime (e.g. before a pump switched) can be kept for a very
+long time.
+"""
+const MAX_JACOBIAN_AGE = 50
+
+# Capture whether the Jacobian should be refreshed since it is not passed directly to
+# update_coefficients!. Also refresh it when it is too old, or when the previous attempt at
+# this step failed to converge: OrdinaryDiffEq considers a Jacobian requested at the same time
+# current and only shrinks the step, so the retries would keep failing on the same Jacobian.
+function OrdinaryDiffEqDifferentiation.do_newJW(
+        integrator::OrdinaryDiffEqCore.ODEIntegrator{A, B, C, D, E, <:Parameters},
+        alg,
+        nlsolver,
+        repeat_step
+    ) where {A, B, C, D, E}
+    new_jac, new_W = invoke(
+        do_newJW,
+        Tuple{Any, Any, Any, Any},
+        integrator, alg, nlsolver, repeat_step,
     )
-    return nothing
+    (; p_mutable) = integrator.p
+    (; naccept) = integrator.stats
+    if naccept - p_mutable.jac_naccept >= MAX_JACOBIAN_AGE || nlsolver.nfails > 0
+        new_jac = new_W = true
+    end
+    if new_jac
+        p_mutable.jac_naccept = naccept
+    end
+    p_mutable.refresh_jac = new_jac
+    return new_jac, new_W
 end
 
 # The norm applied to the residuals to obtain the final scalar solver error
@@ -1060,6 +713,8 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
         # dispatch to the generic DiffEqBase method. We always compute serially.
         thread::Union{Serial, Threaded} = Serial()
     )
+    (; p_independent) = internalnorm
+
     # All state components (flow, PID integral) are scaled by the magnitude
     # of their change over the time step rather than by their absolute magnitude.
     # The states are cumulative quantities whose absolute value carries no information
@@ -1079,6 +734,9 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
             t
         )
     end
+
+    accumulate_residual!(p_independent.convergence, out)
+    p_independent.convergence_ncalls[1] += 1
     return nothing
 end
 
@@ -1123,6 +781,29 @@ function accumulate_residual!(convergence, residual)
     end
     return nothing
 end
+
+# Bypass default AD preparation when needed
+function DiffEqBase.prepare_alg(
+        alg::Union{OrdinaryDiffEqAdaptiveImplicitAlgorithm, OrdinaryDiffEqImplicitAlgorithm},
+        u0::RibasimStateCVector,
+        p::Parameters,
+        prob::ODEProblem,
+    )
+    return if p.p_independent.reduced_implicit_solve
+        alg
+    else
+        invoke(
+            prepare_alg,
+            Tuple{
+                typeof(alg),
+                typeof(u0),
+                Any,
+                typeof(prob),
+            }, alg, u0, p, prob
+        )
+    end
+end
+
 # The flow rate above which a (flow) rate is considered non-plausible,
 # used for diagnosing numerical instability
 const MAX_ABS_FLOW = 5.0e5 # m³/s
@@ -1145,13 +826,13 @@ end
 
 # Modelled after SciMLBase.log_numerical_instability(integrator::ODEIntegrator; jacobian_logging = true)
 function SciMLBase.log_numerical_instability(
-        integrator::ODEIntegrator{<:Any, <:Any, <:RibasimCVectorType};
+        integrator::ODEIntegrator{<:Any, <:Any, <:RibasimStateCVector};
         jacobian_logging = true,
         max_print_n::Int = 20
     )::String
     (; u, p, t) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
-    (; node_id, max_depth, basin) = p_independent
+    (; p_independent, current_basin_properties) = p
+    (; state_id, max_depth, basin) = p_independent
 
     # The physical rates, not `get_du(integrator)`, which is the integrator's own derivative
     # estimate and is meaningless once a step has diverged
@@ -1167,7 +848,7 @@ function SciMLBase.log_numerical_instability(
             break
         else
             value = u[state_idx]
-            push!(state_analysis, "$(state_label(u, node_id, state_idx)): $value")
+            push!(state_analysis, "$(state_label(u, state_id, state_idx)): $value")
         end
     end
 
@@ -1180,7 +861,7 @@ function SciMLBase.log_numerical_instability(
             break
         else
             value = du[state_idx]
-            push!(rate_analysis, "$(state_label(u, node_id, state_idx)): $value")
+            push!(rate_analysis, "$(state_label(u, state_id, state_idx)): $value")
         end
     end
 
@@ -1196,7 +877,7 @@ function SciMLBase.log_numerical_instability(
     end
 
     # Check whether any Basins have a too large water depth
-    depths = [state_and_time_dependent_cache.current_level[id.idx] - basin_bottom(basin, id)[2] for id in basin.node_id]
+    depths = [current_basin_properties.current_level[id.idx] - basin_bottom(basin, id)[2] for id in basin.node_id]
     too_large_depth_idxs = findall(d -> !(0 ≤ d ≤ max_depth), depths)
     depth_analysis = String[]
     for (i, basin_idx) in enumerate(too_large_depth_idxs)
@@ -1235,6 +916,11 @@ function SciMLBase.log_numerical_instability(
     return diagnostic
 end
 
+function OrdinaryDiffEqCore.instability_jacobian(integrator::ODEIntegrator{<:Any, <:Any, <:RibasimStateCVector})
+    # Inner 'storage space' Jacobian
+    return integrator.cache.nlsolver.cache.linsolve.cache_inner.A.J
+end
+
 """
 Restore the Nordsieck history array after a step rejected by `isoutofdomain`.
 
@@ -1246,7 +932,7 @@ fails the error test until the timestep collapses. This undoes the shift, so the
 predicts from the last accepted step again.
 """
 function OrdinaryDiffEqCore.post_step_reject!(
-        integrator::ODEIntegrator{<:OrdinaryDiffEqBDF.NordsieckBDF, <:Any, <:RibasimCVectorType}
+        integrator::ODEIntegrator{<:OrdinaryDiffEqBDF.NordsieckBDF, <:Any, <:RibasimStateCVector}
     )::Nothing
     if integrator.isout
         OrdinaryDiffEqBDF.nordsieck_restore!(integrator.cache, Val(true))
@@ -1254,7 +940,108 @@ function OrdinaryDiffEqCore.post_step_reject!(
     return nothing
 end
 
-function OrdinaryDiffEqCore.instability_jacobian(integrator::ODEIntegrator{<:Any, <:Any, <:RibasimCVectorType})
-    (; J) = integrator.cache.nlsolver.cache
-    return convert(AbstractMatrix, J)
+###
+##### Initialization
+###
+
+function get_diff_eval(
+        p::Parameters,
+        t::Number,
+        solver::Solver,
+        u::RibasimStateCVector,
+        du::RibasimStateCVector
+    )
+    (; p_independent, current_basin_properties) = p
+    (; storage_uplink, storage_downlink, continuous_control) = p_independent
+
+    backend = get_ad_type(solver)
+
+    # In-place AD caches, only for:
+    # - solver.optimized.implicit_solve = false
+    # - algorithms which require tgrad (Rosenbrock methods)
+    ad_caches = (
+        Cache(storage_uplink),
+        Cache(storage_downlink),
+        Cache(continuous_control.continuous_control_compound_variables),
+        Cache(current_basin_properties.current_storage),
+    )
+
+    if solver.reduced_implicit_solve
+        cache = RibasimJacobianEvaluationCache(p, solver)
+        jac_prototype = RibasimJacobian(; p.p_independent, cache)
+        jac = nothing # Jacobian is updated via SciMLOperators.update_coefficients!
+    else
+        backend_jac = if solver.sparse
+            AutoSparse(
+                backend;
+                sparsity_detector = TracerSparsityDetector(),
+                coloring_algorithm = GreedyColoringAlgorithm()
+            )
+        else
+            backend
+        end
+
+        # water_balance! wrapper for DifferentiationInterface without kwargs
+        function water_balance!_(du, u, p, t, storage_uplink, storage_downlink, compound_variables, storage)
+            set_current_storage!(p, u.flow, t; storage, with_incidence_matrix = true)
+            water_balance!(du, u, p, t; storage_uplink, storage_downlink, compound_variables, storage)
+            return nothing
+        end
+
+        jac_prep = @ad_active p prepare_jacobian(
+            water_balance!_,
+            du,
+            backend_jac,
+            u,
+            Constant(p),
+            Constant(t),
+            ad_caches...
+        )
+
+        jac_prototype = solver.sparse ? Float64.(sparsity_pattern(jac_prep)) : zeros(length(du), length(du))
+        jac(J, u, p, t) = @ad_active p jacobian!(
+            water_balance!_,
+            du,
+            J,
+            jac_prep,
+            backend_jac,
+            u,
+            Constant(p),
+            Constant(t),
+            ad_caches...,
+        )
+    end
+
+    # water_balance! wrapper for DifferentiationInterface without kwargs and with
+    # t as second argument
+    function water_balance!__(du, t, u, p, storage_uplink, storage_downlink, compound_variables, storage)
+        set_current_storage!(p, u.flow, t; storage, with_incidence_matrix = true)
+        water_balance!(du, u, p, t; storage_uplink, storage_downlink, compound_variables, storage)
+        return nothing
+    end
+
+    # ∂rhs/∂t always with FiniteDiff
+    tgrad_prep = @ad_active p prepare_derivative(
+        water_balance!__,
+        du,
+        backend,
+        t,
+        Constant(u),
+        Constant(p),
+        ad_caches...,
+    )
+
+    tgrad(dT, u, p, t) = @ad_active p derivative!(
+        water_balance!__,
+        du,
+        dT,
+        tgrad_prep,
+        backend,
+        t,
+        Constant(u),
+        Constant(p),
+        ad_caches...,
+    )
+
+    return (; jac_prototype, jac, tgrad)
 end

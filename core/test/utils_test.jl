@@ -250,55 +250,47 @@ end
 end
 
 @testitem "Jacobian sparsity" begin
-    import SQLite
     using SparseArrays: sparse, findnz
 
+    # Basic model; inner Jacobian
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    J_inner = model.integrator.cache.nlsolver.cache.linsolve.cache_inner.A.J
+    J_inner.nzval .= 1
+    rows_expected = [1, 2, 1, 2, 3, 4, 2, 3, 4, 2, 3, 4]
+    cols_expected = [1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 4]
+    J_inner_expected =
+        sparse(rows_expected, cols_expected, true, size(J_inner)...)
+    @test J_inner == J_inner_expected
 
-    config = Ribasim.Config(toml_path)
-    db_path = Ribasim.database_path(config)
-    db = SQLite.DB(db_path)
-
-    p = Ribasim.Parameters(db, config)
-    close(db)
-    t0 = 0.0
-    du0 = Ribasim.build_state_vector(p.p_independent)
-    jac_prototype =
-        Bool.(Ribasim.get_diff_eval(du0, p, config.solver).jac_prototype.J_intermediate)
-
+    # PID control; standard Jacobian
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
+    config = Ribasim.Config(toml_path; solver_reduced_implicit_solve = false)
+    model = Ribasim.Model(config)
+    (; jac_prototype) = model.integrator.f
+    jac_prototype.nzval .= 1
     # rows, cols, _ = findnz(jac_prototype)
-    #! format: off
-    rows_expected = [7, 8, 12, 1, 2, 3, 6, 7, 9, 13, 2, 4, 10, 14, 3, 4, 5, 11, 15]
-    cols_expected = [1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4]
-    #! format: on
+    rows_expected = [1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1]
+    cols_expected = [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4]
     jac_prototype_expected =
         sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
     @test jac_prototype == jac_prototype_expected
 
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
-
-    config = Ribasim.Config(toml_path)
-    db_path = Ribasim.database_path(config)
-    db = SQLite.DB(db_path)
-
-    p = Ribasim.Parameters(db, config)
-    (; p_independent) = p
-    close(db)
-    du0 = Ribasim.build_state_vector(p_independent)
-    jac_prototype =
-        Bool.(Ribasim.get_diff_eval(du0, p, config.solver).jac_prototype.J_intermediate)
-
-    #! format: off
-    rows_expected = [1, 2, 3, 4, 1]
-    cols_expected = [1, 1, 1, 1, 2]
-    #! format: on
+    # Continuous Control; standard_Jacobian
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/outlet_continuous_control/ribasim.toml")
+    config = Ribasim.Config(toml_path; solver_reduced_implicit_solve = false)
+    model = Ribasim.Model(config)
+    (; jac_prototype) = model.integrator.f
+    jac_prototype.nzval .= 1
+    rows_expected = repeat(1:5, 5)
+    cols_expected = repeat(1:5; inner = 5)
     jac_prototype_expected =
         sparse(rows_expected, cols_expected, true, size(jac_prototype)...)
     @test jac_prototype == jac_prototype_expected
 end
 
 @testitem "Solver algorithm" begin
-    using LinearSolve: KLUFactorization, LUFactorization
+    using LinearSolve: KLUFactorization, LHLFactorization
     using OrdinaryDiffEqNonlinearSolve: NLNewton
     using OrdinaryDiffEqBDF: NordsieckBDF
 
@@ -310,11 +302,11 @@ end
     @test alg.step_limiter! == Ribasim.limit_flow!
     @test alg.nlsolve == NLNewton()
     @test alg.linsolve ==
-        Ribasim.config.RibasimLinearSolve(KLUFactorization(; check_pattern = false))
+        Ribasim.config.RibasimLinearSolve(KLUFactorization(; check_pattern = false), true)
 
     dense_solver = Ribasim.config.Solver(; sparse = false)
     dense_alg = Ribasim.config.algorithm(dense_solver)
-    @test dense_alg.linsolve == Ribasim.config.RibasimLinearSolve(LUFactorization())
+    @test dense_alg.linsolve == Ribasim.config.RibasimLinearSolve(LHLFactorization(), true)
 end
 
 @testitem "Step limiter does not enforce Pump min_flow_rate" begin
@@ -332,14 +324,14 @@ end
     # forces a flow that the physics has switched off.
     p.p_independent.pump.min_flow_rate[1].u .= 1.0
     u = copy(integrator.u)
-    u.pump[1] = uprev.pump[1]
+    u.flow.horizontal.pump[1] = uprev.flow.horizontal.pump[1]
     Ribasim.limit_flow!(u, integrator, p, integrator.t)
-    @test u.pump[1] == uprev.pump[1]
+    @test u.flow.horizontal.pump[1] == uprev.flow.horizontal.pump[1]
 
     # Negative flow is still clamped
-    u.pump[1] = uprev.pump[1] - 1.0
+    u.flow.horizontal.pump[1] = uprev.flow.horizontal.pump[1] - 1.0
     Ribasim.limit_flow!(u, integrator, p, integrator.t)
-    @test u.pump[1] == uprev.pump[1]
+    @test u.flow.horizontal.pump[1] == uprev.flow.horizontal.pump[1]
 end
 
 @testitem "Residual scaling" begin
@@ -452,7 +444,7 @@ end
     @test reduction_factor(-Inf, 2.0) === 0.0
 end
 
-@testitem "Previous storage and level are tracked without concentration" begin
+@testitem "Previous storage is tracked without concentration" begin
     using SciMLBase: step!
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
@@ -460,14 +452,13 @@ end
     model = Ribasim.Model(config)
     (; integrator) = model
     (; basin) = integrator.p.p_independent
-    (; current_storage, current_level) = integrator.p.state_and_time_dependent_cache
+    (; current_storage) = integrator.p.current_basin_properties
 
-    # The step limiter estimates the lowest storage and level over a time step from these.
+    # The step limiter estimates the lowest storage over a time step from this.
     # The storage is recomputed at the same time after the update, up to round-off.
     for _ in 1:3
         step!(integrator)
-        @test basin.storage_prev ≈ current_storage
-        @test basin.level_prev == current_level
+        @test basin.storage_prev_dt ≈ current_storage
     end
 end
 
@@ -501,25 +492,26 @@ end
     (; uprev, t) = integrator
     # The limiter bounds flows over the step that was just taken
     integrator.dt = t - integrator.tprev
-    (; current_storage) = p.state_and_time_dependent_cache
+    (; current_storage) = p.current_basin_properties
     reserve = p.p_independent.basin.low_storage_reserve[1]
 
     # Evaporate 1 m³ more than the storage of Basin 1 over the last timestep
     u = copy(integrator.u)
+    (; vertical) = u.flow
     Ribasim.isoutofdomain(u, p, t)
-    u.evaporation[1] += current_storage[1] + 1.0
+    vertical.evaporation[1] += current_storage[1] + 1.0
     @test Ribasim.isoutofdomain(u, p, t)
 
     # The limiter reduces infiltration and evaporation over the step to keep the reserve
-    infiltration_before = u.infiltration[1]
-    evaporation_before = u.evaporation[1]
+    infiltration_before = vertical.infiltration[1]
+    evaporation_before = vertical.evaporation[1]
     Ribasim.limit_flow!(u, integrator, p, t)
     @test !Ribasim.isoutofdomain(u, p, t)
     @test current_storage[1] ≈ reserve
-    removed = (infiltration_before - u.infiltration[1]) + (evaporation_before - u.evaporation[1])
+    removed = (infiltration_before - vertical.infiltration[1]) + (evaporation_before - vertical.evaporation[1])
     @test removed ≈ 1.0 + reserve
-    @test u.infiltration[1] >= uprev.infiltration[1]
-    @test u.evaporation[1] >= uprev.evaporation[1]
+    @test vertical.infiltration[1] >= uprev.flow.vertical.infiltration[1]
+    @test vertical.evaporation[1] >= uprev.flow.vertical.evaporation[1]
 end
 
 @testitem "Node types" begin
@@ -565,78 +557,6 @@ end
         @test T <: AbstractParameterNode
         @test hasfield(ParametersIndependent, snake_case(node_type))
     end
-end
-
-@testitem "Reduce state" begin
-    using Ribasim: reduce_state!, calc_J_inner!
-    using SparseArrays: spzeros, sparse
-
-    function get_concrete_A(model)
-        (; u, p) = model.integrator
-        (; p_independent) = p
-        (; u_reduced) = p_independent
-
-        n_states = length(u)
-        n_states_reduced = length(u_reduced)
-
-        A = spzeros(n_states_reduced, n_states)
-        unit_vector = copy(u)
-
-        for i in 1:n_states
-            unit_vector .= 0
-            unit_vector[i] = 1
-            reduce_state!(u_reduced, unit_vector, p_independent)
-            A[:, i] .= u_reduced
-        end
-        return A
-    end
-
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
-    @test ispath(toml_path)
-    model = Ribasim.Model(toml_path)
-    (; cache) = model.integrator.cache.nlsolver
-    (; J_intermediate) = cache.J
-    J_inner = cache.linsolve.J_inner
-    A = get_concrete_A(model)
-
-    # rows, cols, vals = findnz(A)
-    #! format: off
-    rows_expected = [2, 2, 3, 2, 4, 3, 4, 4, 2, 1, 2, 1, 2, 3, 4, 1, 2, 3, 4]
-    cols_expected = [1, 2, 2, 3, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-    vals_expected = [-1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]
-    #! format: on
-    A_expected = sparse(rows_expected, cols_expected, vals_expected)
-    @test A == A_expected
-
-    #! format: off
-    J_intermediate.nzval .= [0.020047016741082002, 0.8755256160248737, 0.36909649531559285, 0.7632298275012108, 0.9240314657308235, 0.49544793385910524, 0.10528087709131306, 0.020608175445295474, 0.9691738934605421, 0.4218954216679456, 0.5058554068921941, 0.2896077753195684, 0.8694315735708924, 0.8458965765906646, 0.7966585871607135, 0.2581915440964345, 0.6505806124461845, 0.8411882038236067, 0.8067685192045705]
-    #! format: on
-    J_inner_expected = A * J_intermediate
-    calc_J_inner!(J_inner, cache.J)
-    @test J_inner ≈ J_inner_expected
-
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/pid_control/ribasim.toml")
-    @test ispath(toml_path)
-    model = Ribasim.Model(toml_path)
-    (; cache) = model.integrator.cache.nlsolver
-    (; J_intermediate) = cache.J
-    J_inner = cache.linsolve.J_inner
-    A = get_concrete_A(model)
-    #! format: off
-    rows_expected = [1, 1, 1, 2]
-    cols_expected = [1, 2, 3, 4]
-    vals_expected = [-1.0, -1.0, -1.0, 1.0]
-    #! format: on
-    A_expected = sparse(rows_expected, cols_expected, vals_expected)
-    @test A == A_expected
-
-    #! format: off
-    # These values are arbitrary :')
-    J_intermediate.nzval .= [0.449381314574683, 0.4542317082538514, 0.599934409205972, 0.30717602583409154, 0.9795352040440034]
-    #! format: on
-    J_inner_expected = A * J_intermediate
-    calc_J_inner!(J_inner, cache.J)
-    @test J_inner ≈ J_inner_expected
 end
 
 @testitem "unsafe_array" begin

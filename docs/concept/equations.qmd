@@ -66,19 +66,6 @@ Therefore we want to minimize the number of states.
 Flows do not have to be states when they can be integrated over time exactly because they do not depend on the other states.
 This is true for FlowBoundary nodes, and Basin precipitation (which uses a fixed basin area) and drainage.
 
-## The Jacobian
-
-The Jacobian is an $N \times N$ matrix where $N$ is the number of states in the simulation.
-It is computed as part of implicit time stepping methods.
-There are 2 different methods available for computing this matrix: finite difference or automatic differentiation.
-For more details on the computation of the Jacobian and how it is used in the solvers see [numerical considerations](/concept/numerics.qmd).
-
-The entries of the Jacobian $J$ are given by
-$$
-	J_{i,j} = \frac{\partial f_j}{\partial u_i},
-$$
-i.e. $J_{i,j}$ quantifies how $f_j$, the time derivative of state $j$, changes with respect to changes in state $i$. Most of these entries are $0$, because flows in distant parts of the model do not depend on each other.
-
 ## The water balance error
 
 The water balance error quantifies how well the water volume in the model is conserved for each Basin over an output save period, i.e. whether no water erroneously appears or disappears. It looks at the storage rate
