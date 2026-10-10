@@ -164,6 +164,8 @@ class Solver(ChildModel):
         Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes
     min_discrete_control_interval : float
         The minimum time between control state updates, if the time is smaller an error will be thrown
+    discrete_control_interval : float
+        The interval in seconds at which DiscreteControl logic is evaluated, or after every timestep if 0. (Optional, defaults to 0)
     specialize : bool
         Trades initialization speed for simulation speed, useful for long-running simulations. (Optional, defaults to false)
     """
@@ -185,6 +187,7 @@ class Solver(ChildModel):
     max_depth: float = 2000.0
     level_difference_threshold: float = 0.02
     min_discrete_control_interval: float = 1.0
+    discrete_control_interval: float = 0.0
     specialize: bool = False
 
 
