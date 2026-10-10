@@ -1226,9 +1226,12 @@ const ModelGraph = MetaGraph{
 The part of the parameters passed to the rhs and callbacks that are mutable.
 - `new_time_dependent_cache`: Whether the `t` with which `water_balance!` is called is considered new,
    and thus whether `time_dependent_cache` must be updated
-- `refresh_jac`: Whether the Jacobian needs to be re-evaluated for the current Newton iteration.
+- `refresh_jac`: Whether the Jacobian needs to be re-evaluated for the current Newton solve.
    This flag doesn't get passed to `update_coefficients!` for `RibasimJacobian`, so we capture it by
-   wrapping do_newJW
+   wrapping do_newJW. It is reset after the evaluation, so that the Jacobian is only evaluated at the
+   start of a Newton solve.
+- `jac_naccept`: The number of accepted steps at the last Jacobian evaluation, to limit its age
+- `jac_version`: Incremented on every Jacobian evaluation, so the linear solve knows when to refactorize
 - `ad_active`: Whether (parts of) the rhs are called with automatic differentiation. If `true`, storage derived
    quantities are not cached but computed on-demand, to maintain a differentiable computational pipeline
 - `tprev`: The start of the current time step, set as soon as a time step is accepted, see
@@ -1237,6 +1240,8 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
 @kwdef mutable struct ParametersMutable
     new_time_dependent_cache::Bool = true
     refresh_jac::Bool = true
+    jac_naccept::Int = 0
+    jac_version::Int = 0
     ad_active::Bool = false
     tprev::Float64 = 0.0
 end

@@ -50,7 +50,13 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
     du = zero(u_prev_saveat)
 
     backend = get_ad_type(solver)
-    backend_jac = solver.sparse ? AutoSparse(backend; sparsity_detector = TracerSparsityDetector()) : backend
+    # The default NoColoringAlgorithm gives each column its own color
+    backend_jac = solver.sparse ?
+        AutoSparse(
+            backend;
+            sparsity_detector = TracerSparsityDetector(),
+            coloring_algorithm = GreedyColoringAlgorithm(),
+        ) : backend
     t = 0.0
 
     ###
@@ -286,6 +292,10 @@ function SciMLOperators.update_coefficients!(
     # Compute local part of the reduced linear solve Jacobian
     update_J_inner_local!(J)
 
+    # Evaluate only once per Newton solve, at the predictor, never at a diverging iterate
+    p_mutable.refresh_jac = false
+    p_mutable.jac_version += 1
+
     return nothing
 end
 
@@ -486,7 +496,13 @@ struct RibasimLinearSolveCache{C, WType}
     cache_inner::C
     # Full linear solve matrix (lazy)
     W::WType
+    # The Jacobian version and gamma of the current factorization
+    jac_version::Base.RefValue{Int}
+    gamma::Base.RefValue{Float64}
 end
+
+RibasimLinearSolveCache(cache_inner, W) =
+    RibasimLinearSolveCache(cache_inner, W, Ref(-1), Ref(NaN))
 
 # Initialize linear solve cache for optimized implicit solve
 function SciMLBase.init(
@@ -585,15 +601,20 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
         id_out.is_basin && (b_inner[id_out.idx] += contribution)
     end
 
-    # Set up inner (storage space) problem matrix
-    build_J_inner!(J_inner, J, gamma)
-    # LHLFactorization only re-reduces J_inner when told its contents changed
-    SciMLOperators.mark_jacobian_updated!(W_inner)
-    jacobian2W!(W_inner._concrete_form, W_inner.mass_matrix, W_inner.gamma, W_inner.J)
+    # Set up inner (storage space) problem matrix, and refactorize it only if the Jacobian
+    # or gamma changed since the last factorization
+    (; jac_version) = integrator.p.p_mutable
+    if jac_version != linsolve.jac_version[] || gamma != linsolve.gamma[]
+        build_J_inner!(J_inner, J, gamma)
+        # LHLFactorization only re-reduces J_inner when told its contents changed
+        SciMLOperators.mark_jacobian_updated!(W_inner)
+        jacobian2W!(W_inner._concrete_form, W_inner.mass_matrix, W_inner.gamma, W_inner.J)
+        cache_inner.isfresh = true
+        linsolve.jac_version[] = jac_version
+        linsolve.gamma[] = gamma
+    end
 
     # Solve inner (storage space) problem
-    cache_inner.isfresh = true # This is only false in the rare case that
-    #                          # The Jacobian and the timestep weren't updated
     linres = dolinsolve(
         integrator,
         cache_inner;
@@ -643,8 +664,18 @@ end
 ##### Other
 ###
 
+"""
+The maximum number of accepted steps a Jacobian is reused for, following CVODE's `MSBJ`.
+OrdinaryDiffEq only asks for a new Jacobian after a Newton failure, so without a bound a
+Jacobian from a different flow regime (e.g. before a pump switched) can be kept for a very
+long time.
+"""
+const MAX_JACOBIAN_AGE = 50
+
 # Capture whether the Jacobian should be refreshed since it is not passed directly to
-# update_coefficients!
+# update_coefficients!. Also refresh it when it is too old, or when the previous attempt at
+# this step failed to converge: OrdinaryDiffEq considers a Jacobian requested at the same time
+# current and only shrinks the step, so the retries would keep failing on the same Jacobian.
 function OrdinaryDiffEqDifferentiation.do_newJW(
         integrator::OrdinaryDiffEqCore.ODEIntegrator{A, B, C, D, E, <:Parameters},
         alg,
@@ -656,7 +687,15 @@ function OrdinaryDiffEqDifferentiation.do_newJW(
         Tuple{Any, Any, Any, Any},
         integrator, alg, nlsolver, repeat_step,
     )
-    integrator.p.p_mutable.refresh_jac = new_jac
+    (; p_mutable) = integrator.p
+    (; naccept) = integrator.stats
+    if naccept - p_mutable.jac_naccept >= MAX_JACOBIAN_AGE || nlsolver.nfails > 0
+        new_jac = new_W = true
+    end
+    if new_jac
+        p_mutable.jac_naccept = naccept
+    end
+    p_mutable.refresh_jac = new_jac
     return new_jac, new_W
 end
 
