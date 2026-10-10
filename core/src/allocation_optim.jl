@@ -945,6 +945,9 @@ function warm_start!(
     return nothing
 end
 
+"Relative slack to relax the constraints on previous objectives with when a problem fails to solve"
+const LEXICOGRAPHIC_SLACK = 1.0e-6
+
 function optimize_multi_objective!(
         model::AllocationModel,
         config::Config,
@@ -975,11 +978,22 @@ function optimize_multi_objective!(
             end
             JuMP.@objective(problem, Min, expression)
             JuMP.optimize!(problem)
+            if JuMP.termination_status(problem) != JuMP.OPTIMAL && !isempty(temporary_constraints)
+                # The constraints on the previous objectives hold at their optimum only up to
+                # the solver tolerance, which can make this problem infeasible, so relax them
+                for constraint in temporary_constraints
+                    bound = JuMP.normalized_rhs(constraint)
+                    JuMP.set_normalized_rhs(constraint, bound + LEXICOGRAPHIC_SLACK * max(1.0, abs(bound)))
+                end
+                JuMP.optimize!(problem)
+            end
             @debug objective expression JuMP.solution_summary(problem)
             latest_constraint = isempty(temporary_constraints) ? nothing : last(temporary_constraints)
             parse_termination_status(model, objective, expression, latest_constraint, config, t)
             if objective.retain_expressions[expression_idx]
-                latest_bound = JuMP.objective_value(problem)
+                # Not the objective value, which belongs to the feasibility objective
+                # if the problem was only found feasible by the infeasibility analysis
+                latest_bound = JuMP.value(expression)
                 latest_optimized_expression = expression
                 latest_expression_is_constrained = false
             end
