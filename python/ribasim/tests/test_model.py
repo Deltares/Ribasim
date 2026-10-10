@@ -51,6 +51,10 @@ def test_solver():
     solver = Solver(saveat=0)
     assert solver.saveat == 0
 
+    assert Solver().discrete_control_interval == 0.0
+    solver = Solver(discrete_control_interval=86400.0)
+    assert solver.discrete_control_interval == 86400.0
+
     with pytest.raises(ValidationError):
         Solver(saveat="a")
 

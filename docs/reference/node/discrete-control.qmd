@@ -138,6 +138,9 @@ Say there is constant inflow from the `FlowBoundary` node and there are no verti
 
 To make you aware of these oscillations, Ribasim will throw an error if successive control state changes of a DiscriteControl node in simulated time are closer than `min_discrete_control_interval`, which is configurable.
 
+By default the conditions are evaluated after every timestep.
+To evaluate them only at fixed times, for instance daily, set the solver setting `discrete_control_interval`, see [usage](/reference/usage.qmd#sec-solver-settings).
+
 ## Logic
 
 The logic schema defines which control states are triggered based on the truth of the conditions a DiscreteControl node listens to.

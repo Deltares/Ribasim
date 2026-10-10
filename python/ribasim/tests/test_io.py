@@ -35,6 +35,7 @@ def __assert_equal(a: DataFrame, b: DataFrame) -> None:
 
 def test_basic(basic, tmp_path):
     model_orig = basic
+    model_orig.solver.discrete_control_interval = 3600.0
     toml_path = tmp_path / "basic/ribasim.toml"
     assert model_orig.filepath is None
     model_orig.write(toml_path)
@@ -47,6 +48,8 @@ def test_basic(basic, tmp_path):
         toml_dict = tomli.load(f)
 
     assert toml_dict["ribasim_version"] == ribasim.__version__
+    assert toml_dict["solver"]["discrete_control_interval"] == 3600.0
+    assert model_loaded.solver.discrete_control_interval == 3600.0
 
     __assert_equal(model_orig.link.df, model_loaded.link.df)
     __assert_equal(model_orig.node.df, model_loaded.node.df)

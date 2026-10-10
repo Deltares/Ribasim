@@ -198,6 +198,7 @@ end
     max_depth::Float64 = 2000.0
     level_difference_threshold::Float64 = 0.02
     min_discrete_control_interval::Float64 = 1.0
+    discrete_control_interval::Float64 = 0.0
     specialize::Bool = false
 end
 
@@ -301,6 +302,11 @@ function validate_config(toml::Toml)::Nothing
         options = join(keys(algorithms), ", ")
         @error("Given solver algorithm $(toml.solver.algorithm) not supported.\n\
             Available options are: ($(options)).")
+        is_valid = false
+    end
+
+    if toml.solver.discrete_control_interval < 0
+        @error "The discrete_control_interval cannot be negative." toml.solver.discrete_control_interval
         is_valid = false
     end
 
