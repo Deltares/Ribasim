@@ -74,6 +74,11 @@ Note that these are global settings, and cannot be set for individual nodes.
 `level_difference_threshold = 0.02` is the level difference below which several flows are reduced. Examples are approaching `min_upstream_level` from above and `max_downstream_level` from below, level difference across TabulatedRatingCurve and Outlet nodes, and UserDemand approaching the `min_level` from above. For details see the equations on the node reference pages, and the section on [reduction factors](/reference/node/basin.qmd#sec-reduction-factor).
 When the model is found to be unstable, `max_depth` gives an upper bound for the Basin depth above which the Basin will be flagged as behaving implausibly.
 
+By default DiscreteControl logic is evaluated after every timestep, so a control state can change at any time.
+Each control state change makes the solver restart with small timesteps, which for models with many DiscreteControl nodes can dominate the runtime.
+Setting `discrete_control_interval`, for instance to `86400` for daily, evaluates the logic of all DiscreteControl nodes only at multiples of this interval in seconds since the start of the simulation, which are added as solver timesteps.
+This makes control state changes coincide and can make simulations much faster, at the cost of reacting later to crossed thresholds.
+
 ## Interpolation settings
 There are the following interpolation settings:
 

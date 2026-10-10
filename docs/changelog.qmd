@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - BMI: Set FlowBoundary flow rates during a simulation and read cumulative flow for online coupling. [#3251](https://github.com/Deltares/Ribasim/pull/3251)
 - Error on rapidly oscillating DiscreteControl states with the configurable `solver.min_discrete_control_interval`. [#3237](https://github.com/Deltares/Ribasim/pull/3237)
 - Report rejected timesteps by cause and the mean solver order in `results/solver_stats.nc`. [#3269](https://github.com/Deltares/Ribasim/pull/3269)
+- Evaluate DiscreteControl only at a fixed interval with `solver.discrete_control_interval`, which can make models with many DiscreteControl nodes much faster.
 
 ### Changed
 - The default solver is now NordsieckBDF. [#3236](https://github.com/Deltares/Ribasim/pull/3236)

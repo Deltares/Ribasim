@@ -998,6 +998,7 @@ compound_variables: The compound variables the DiscreteControl node listens to
 truth_state: Memory allocated for storing the truth state
 last_update_time: Per DiscreteControl node the last time there was a control state change
 min_discrete_control_interval: The minimum time between control state updates, if the time is smaller an error will be thrown
+interval: The control logic is only evaluated at multiples of this interval, or after every timestep if zero
 control_state: The current control state of the DiscreteControl node
 control_state_start: The start time of the  current control state
 logic_mapping: Dictionary: truth state => control state for the DiscreteControl node
@@ -1011,6 +1012,8 @@ record: Namedtuple with discrete control information for results
     truth_state::Vector{Vector{Bool}}
     last_update_time::Vector{Float64} = fill(-Inf, length(node_id))
     min_discrete_control_interval::Float64
+    interval::Float64
+    last_evaluation::Base.RefValue{Float64} = Ref(0.0)
     control_state::Vector{String} = fill("undefined_state", length(node_id))
     control_state_start::Vector{Float64} = zeros(length(node_id))
     logic_mapping::Vector{OrderedDict{Vector{Bool}, String}}

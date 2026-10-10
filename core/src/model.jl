@@ -131,6 +131,10 @@ function Model(
 
     saveat = convert_saveat(config.solver.saveat, t_end)
     saveat isa Float64 && push!(tstops, range(0, t_end; step = saveat))
+    (; discrete_control_interval) = config.solver
+    if !iszero(discrete_control_interval) && !isempty(p_independent.discrete_control.node_id)
+        push!(tstops, range(0, t_end; step = discrete_control_interval))
+    end
     tstops = sort(unique(reduce(vcat, tstops)))
     adaptive = is_adaptive(config.solver.dt)
 
