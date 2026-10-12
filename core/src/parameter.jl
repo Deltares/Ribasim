@@ -290,16 +290,12 @@ Store information for a subnetwork used for allocation.
 subnetwork_id: The ID of this subnetwork
 node_ids_in_subnetwork: Per node type a vector of the nodes of that type in the subnetwork
 problem: The JuMP.jl model for solving the allocation problem
-Δt_since_last_record: Time elapsed since the last saveat-aligned LP solve
-    (i.e., since the last call that pushed records and reset cumulative_supplied_volume).
-    Updated after every LP solve and reset to 0 when records are emitted;
-    used to divide cumulative_supplied_volume into a rate for the records.
 has_demand_priority: Per demand priority in the whole model whether a demand of this priority is present in this
     subnetwork
 objectives: The objectives (goals) in the order in which they will be optimized for
 explicit_positive_forcing_volume: The computable cumulative forcing over the coming allocation timestep
 implicit_negative_forcing_volume: The predicted cumulative forcing over the coming allocation timestep (assuming no reduction)
-cumulative_supplied_volume: The net volume of flow supplied to a demand node over the last Δt_allocation
+cumulative_supplied_volume: The net volume of flow supplied to a demand node since the latest intervention
 sources: The nodes in the subnetwork which can act as sources, sorted by route priority
 secondary_network_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
 flow_links_subnetwork: The physical layer flow links from which at least one node has this allocation model's subnetwork ID
@@ -313,7 +309,6 @@ temporary_constraints: Goal programming constraints; one is added after each opt
     subnetwork_id::Int32
     node_ids_in_subnetwork::NodeIDsInSubnetwork
     problem::JuMP.Model
-    Δt_since_last_record::Float64 = 0.0
     has_demand_priority::Vector{Bool}
     objectives::Vector{AllocationObjective} = AllocationObjective[]
     explicit_positive_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
@@ -366,25 +361,35 @@ Data for the allocation timestepping
 """
 @kwdef mutable struct AllocationTime
     const adaptive::Bool = true
-    # The fixed timestep if applicable
+    # The fixed allocation timestep (s) if not adaptive
     const dt_fixed::Float64 = 0.0
-    # The endtime of the simulation in se
+    # The current allocation timestep (s), adapted by the controller
+    dt::Float64 = 0.0
+    # The endtime of the simulation in seconds
     const t_end::Float64 = 0.0
-    # The times (s) when allocation is called next
-    tstops::Vector{Float64} = [0.0]
+    # The interval (s) between intervention times when not coupled
+    const intervention_interval::Float64 = 0.0
     # The output writing interval
     const saveat::Float64 = 0.0
+    # The start (s) of the latest intervention interval
+    t_intervention::Float64 = 0.0
+    # The end (s) of the latest intervention interval
+    t_intervention_end::Float64 = 0.0
+end
 
-    function AllocationTime(
-            adaptive::Bool,
-            dt_fixed::Float64,
-            t_end::Float64,
-            tstops::Vector{Float64},
-            saveat::Float64,
-        )
-        adaptive && !iszero(dt_fixed) && throw(ArgumentError("dt_fixed must be 0.0 when adaptive."))
-        return new(adaptive, dt_fixed, t_end, tstops, saveat)
-    end
+"""
+A cache for intermediate results in `water_balance!` which can depend on both the state vector `u` and time `t`. A second version of
+this cache is required for automatic differentiation, where e.g. ForwardDiff requires these vectors to
+be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
+"""
+@kwdef struct CurrentBasinProperties
+    n::Int
+    # NaN so that the first call always computes the properties, also for an initial storage of 0
+    storage_prev_call::Vector{Float64} = fill(NaN, n)
+    current_storage::Vector{Float64} = zeros(n)
+    current_level::Vector{Float64} = zeros(n)
+    current_area::Vector{Float64} = zeros(n)
+    current_low_storage_factor::Vector{Float64} = zeros(n)
 end
 
 """
@@ -397,6 +402,7 @@ primary_network_connections: (from_id: pump or outlet in the primary network, to
 demand_priorities_all: All used demand priority values from all subnetworks
 config: The Ribasim Model config
 time: The data needed to handle allocation timestepping
+current_basin_properties: The Basin properties as predicted by allocation within an intervention interval
 record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
@@ -410,6 +416,7 @@ record_control: A record of all flow rates assigned to pumps and outlets by allo
     demand_priorities_all::Vector{Int32} = []
     config::Config
     time::AllocationTime = AllocationTime(config)
+    current_basin_properties::CurrentBasinProperties = CurrentBasinProperties(; n = 0)
     record_demand::Vector{DemandRecordDatum} = []
     record_flow::Vector{FlowRecordDatum} = []
     record_control::Vector{AllocationControlRecordDatum} = []
@@ -896,21 +903,6 @@ node_id: node ID of the Junction node
 """
 @kwdef struct Junction <: AbstractParameterNode
     node_id::Vector{NodeID}
-end
-
-"""
-A cache for intermediate results in `water_balance!` which can depend on both the state vector `u` and time `t`. A second version of
-this cache is required for automatic differentiation, where e.g. ForwardDiff requires these vectors to
-be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
-"""
-@kwdef struct CurrentBasinProperties
-    n::Int
-    # NaN so that the first call always computes the properties, also for an initial storage of 0
-    storage_prev_call::Vector{Float64} = fill(NaN, n)
-    current_storage::Vector{Float64} = zeros(n)
-    current_level::Vector{Float64} = zeros(n)
-    current_area::Vector{Float64} = zeros(n)
-    current_low_storage_factor::Vector{Float64} = zeros(n)
 end
 
 @enumx CacheType flow_rate_pump flow_rate_outlet basin_level basin_storage
