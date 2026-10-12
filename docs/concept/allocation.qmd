@@ -97,71 +97,21 @@ $$Q(x_1,x_2) \approx Q(x_1^n,x_2^n) + \frac{\partial Q}{\partial x_1}(x_1^n,x_2^
 
 This yields a linear programming problem that can be solved efficiently while maintaining acceptable accuracy for small changes around the operating point.
 
-## Adaptive timestepping {#sec-adaptive-timestepping}
+## Intervention interval and adaptive timestepping {#sec-adaptive-timestepping}
 
-The allocation LP linearizes two types of relationships, both of which are only valid for small level changes $\Delta h$. By bounding the linearization errors, we can derive an adaptive timestep that keeps all approximations accurate while taking large steps when possible.
+Allocation exchanges data with the physical layer at fixed intervention times, which represent human intervention. These are a multiple of `intervention_interval` from the start of the simulation, and when coupled through BMI also every time passed to `update_until`. At each intervention time allocation takes the state of the physical layer, and computes the allocation over the intervention interval up to the next intervention time. The physical layer then uses the time-averaged allocated flows over that interval.
 
-### Basin profile linearization error
+Within an intervention interval allocation takes timesteps of its own. Each timestep starts from the Basin storages computed by the previous one rather than from the physical layer.
 
-The basin profile has a piecewise-linear area $A(h)$, so the storage $S(h) = \int_0^h A(h')\,dh'$ is piecewise quadratic. Within a profile segment where the area varies linearly with slope $m = \frac{dA}{dh}$:
+The allocation LP linearizes the Basin profiles and the flow-level relationships of connector nodes around the current state, which is only valid for small level changes. A large allocation timestep can therefore lead to an infeasible optimization problem. Unless a fixed timestep `dt` is configured, the allocation timestep $\Delta t$ is adapted with a simple controller based on the outcome of the optimization:
 
-$$A(h) = A^n + m\,(h - h^n)$$
+- If the optimization fails and $\Delta t > \Delta t_{\min}$, it is retried at the same time with $\Delta t \leftarrow \max(\Delta t / 2, \Delta t_{\min})$.
+- If the optimization succeeds, the next allocation timestep uses $\Delta t \leftarrow \min(2\,\Delta t, \Delta t_{\max})$.
+- If the optimization fails at $\Delta t_{\min}$, the infeasibility is analyzed and the simulation stops with an error.
 
-The linearization approximates the storage with a tangent line:
+The simulation starts with $\Delta t = \Delta t_{\min}$, the configured `dtmin`, and $\Delta t_{\max}$ is the configured `dtmax`. Allocation timesteps are shortened to end at the next intervention time.
 
-$$S^*(h) = S^n + A^n\,(h - h^n)$$
-
-The true storage is obtained by integrating the area:
-
-$$S(h) = S^n + \int_{h^n}^{h} A(h')\,dh' = S^n + A^n\,(h - h^n) + \tfrac{1}{2}\,m\,(h - h^n)^2$$
-
-so the linearization error is
-
-$$|S(h) - S^*(h)| = \tfrac{1}{2}|m|\,(\Delta h)^2$$
-
-Setting this to be at most a fraction $\varepsilon$ of the maximum basin storage capacity $S_{\max}$:
-
-$$\tfrac{1}{2}|m|\,(\Delta h)^2 \leq \varepsilon\, S_{\max}$$
-
-gives a maximum level change
-
-$$\Delta h_{\max}^{\text{basin}} = \sqrt{\frac{2\,\varepsilon\, S_{\max}}{|m|}}$$
-
-When $|m| \approx 0$ (basin with constant area), the linearization is exact and imposes no constraint.
-
-### Connector node linearization error
-
-Connector nodes ([LinearResistance](/reference/node/linear-resistance.qmd), [ManningResistance](/reference/node/manning-resistance.qmd) and [TabulatedRatingCurve](/reference/node/tabulated-rating-curve.qmd)) have nonlinear flow-level relationships $Q(h)$ that are also linearized:
-
-$$Q^{n+1} \approx Q^{n} + \frac{\partial Q}{\partial h}(h^n)\,(h^{n+1} - h^{n})$$
-
-The second-order error of this Taylor expansion is
-
-$$|Q(h) - Q^*(h)| = \tfrac{1}{2}\left|\frac{d^2 Q}{d h^2}\right|\,(\Delta h)^2$$
-
-Bounding this by a flow error tolerance $\varepsilon_Q$:
-
-$$\Delta h_{\max}^{\text{connector}} = \sqrt{\frac{2\,\varepsilon_Q}{\left|\frac{d^2 Q}{d h^2}\right|}}$$
-
-The second derivative $\frac{d^2 Q}{d h^2}$ is computed numerically via nested automatic differentiation. This handles all connector types uniformly, including the PCHIP interpolation of tabulated rating curves and the nonlinear Manning equation.
-
-### Global maximum level change
-
-The adaptive timestep is governed by whichever linearization is most sensitive to level changes:
-
-$$\Delta h_{\max} = \min\left(\min_i \Delta h_{\max,i}^{\text{basin}},\; \min_j \Delta h_{\max,j}^{\text{connector}}\right)$$
-
-### Adaptive timestep
-
-Converting the level change bound to a time bound using $\Delta S \approx A^n \,\Delta h$ and the current net storage rate $\dot{S}$:
-
-$$\Delta t_i = \frac{A_i^n \cdot \Delta h_{\max}}{|\dot{S}_i|}$$
-
-The adaptive timestep for the subnetwork is:
-
-$$\Delta t_{\text{adaptive}} = \max\left(\min_i \Delta t_i,\; \Delta t_{\min}\right)$$
-
-bounded below by the configured minimum `dtmin`, and above by the time to the next save point or the end of the simulation.
+The allocation output contains the time-averaged results per intervention interval. If `solver.saveat` is 0, the results of every allocation timestep are written instead.
 
 ## The high level algorithm {#sec-high-level-algorithm}
 The allocation algorithm contains 2 types of optimization:

@@ -42,7 +42,9 @@ function BMI.update_until(model::Model, time::Float64)::Nothing
         if dt < 0
             error("The model has already passed the given timestamp.")
         elseif dt > 0
-            add_allocation_tstop!(model.integrator.p.p_independent.allocation.time, time)
+            if is_active(model.integrator.p.p_independent.allocation)
+                update_allocation_until!(model.integrator, time)
+            end
             SciMLBase.step!(model.integrator, dt, true)
         end
     end

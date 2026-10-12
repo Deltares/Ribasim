@@ -526,115 +526,10 @@ end
     @test !isempty(low_level_flows)
 end
 
-@testitem "get_area_slope" begin
+@testitem "allocation timestep controller" begin
     import Ribasim
-    using Ribasim: get_area_slope
-
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
-    @test ispath(toml_path)
-    model = Ribasim.Model(toml_path)
-    (; basin) = model.integrator.p.p_independent
-
-    # The basic model has a piecewise-linear A(h) profile. Pick basin index 1.
-    # get_area_slope returns dA/dh, which equals the slope of the linear segment.
-    itp = basin.level_to_area[1]
-    h_mid = (itp.t[1] + itp.t[2]) / 2
-    expected_slope = (itp.u[2] - itp.u[1]) / (itp.t[2] - itp.t[1])
-
-    @test get_area_slope(basin, 1, h_mid) ≈ expected_slope
-
-    # At a level beyond the last breakpoint the slope should equal the last segment slope
-    h_last_segment = (itp.t[end - 1] + itp.t[end]) / 2
-    expected_last_slope = (itp.u[end] - itp.u[end - 1]) / (itp.t[end] - itp.t[end - 1])
-    @test get_area_slope(basin, 1, h_last_segment) ≈ expected_last_slope
-end
-
-@testitem "get_max_flow_curvature" begin
-    import Ribasim
-    using Ribasim: get_max_flow_curvature, tabulated_rating_curve_flow
-
-    t = 0.0
-
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/level_demand_with_rating_curve/ribasim.toml",
-    )
-    @test ispath(toml_path)
-    model = Ribasim.Model(toml_path)
-    (; p) = model.integrator
-    (; p_independent) = p
-    (; allocation) = p_independent
-
-    # A flow function that is linear in both levels has zero curvature by construction
-    linear_flow(connector_node, node_id, h_a, h_b, p, t) = 2.0 * h_a - 3.0 * h_b
-
-    linear_curvatures = Float64[]
-    rating_curve_curvatures = Float64[]
-    for allocation_model in allocation.allocation_models
-        (; tabulated_rating_curve_ids_subnetwork) = allocation_model.node_ids_in_subnetwork
-        isempty(tabulated_rating_curve_ids_subnetwork) && continue
-        push!(
-            linear_curvatures,
-            get_max_flow_curvature(
-                p_independent.tabulated_rating_curve,
-                tabulated_rating_curve_ids_subnetwork,
-                linear_flow,
-                p,
-                t,
-            ),
-        )
-        push!(
-            rating_curve_curvatures,
-            get_max_flow_curvature(
-                p_independent.tabulated_rating_curve,
-                tabulated_rating_curve_ids_subnetwork,
-                tabulated_rating_curve_flow,
-                p,
-                t,
-            ),
-        )
-    end
-    @test !isempty(linear_curvatures)
-    @test all(iszero, linear_curvatures)
-    # `qh_interpolation` prepends a point below the first level and fits a PCHIP spline,
-    # so even a 2-point rating curve table has a nonzero curvature in general.
-    @test all(c -> isfinite(c) && c >= 0, rating_curve_curvatures)
-
-    # allocation_training has 3-point rating curves (PCHIP interpolation),
-    # which are nonlinear so the second derivative must be strictly positive.
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/allocation_training/ribasim.toml",
-    )
-    @test ispath(toml_path)
-    model = Ribasim.Model(toml_path)
-    (; p) = model.integrator
-    (; p_independent) = p
-    (; allocation) = p_independent
-
-    nonlinear_curvatures = Float64[]
-    for allocation_model in allocation.allocation_models
-        (; tabulated_rating_curve_ids_subnetwork) = allocation_model.node_ids_in_subnetwork
-        isempty(tabulated_rating_curve_ids_subnetwork) && continue
-        push!(
-            nonlinear_curvatures,
-            get_max_flow_curvature(
-                p_independent.tabulated_rating_curve,
-                tabulated_rating_curve_ids_subnetwork,
-                tabulated_rating_curve_flow,
-                p,
-                t,
-            ),
-        )
-    end
-    @test !isempty(nonlinear_curvatures)
-    @test all(>(0), nonlinear_curvatures)
-end
-
-@testitem "compute_adaptive_allocation_Δt" begin
-    import Ribasim
-    using Ribasim: compute_adaptive_allocation_Δt, water_balance!, get_du
+    import JuMP
+    using Ribasim: update_allocation_until!
 
     toml_path = normpath(
         @__DIR__,
@@ -643,18 +538,43 @@ end
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
     (; config, integrator) = model
-    (; u, p, t) = integrator
-    (; p_independent) = p
-    (; allocation) = p_independent
+    (; allocation) = integrator.p.p_independent
+    (; time, allocation_models) = allocation
+    (; dtmin, dtmax) = config.allocation
 
-    du = get_du(integrator)
-    water_balance!(du, u, p, t)
+    @test time.adaptive
+    @test time.dt == dtmin
 
-    for am in allocation.allocation_models
-        Δt = compute_adaptive_allocation_Δt(am, p, du, t, config)
+    # Timesteps of 1, 2, 4 and 8 hours, and the 9 hours left
+    update_allocation_until!(integrator, 86400.0)
+    @test time.dt == dtmax
+    @test time.t_intervention == 0.0
+    @test time.t_intervention_end == 86400.0
+    # Records are averaged over the intervention interval
+    @test all(datum -> datum.time == 0.0, allocation.record_flow)
 
-        # Result must be at least dtmin and positive
-        @test Δt >= config.allocation.dtmin
-        @test isfinite(Δt) || isinf(Δt)  # Inf is allowed when no curvature constraint applies
-    end
+    # A failing optimization is retried with halved timesteps, and errors at dtmin
+    time.dt = dtmax
+    (; problem) = first(allocation_models)
+    JuMP.@constraint(problem, first(problem[:low_storage_factor]) ≥ 2)
+    @test_throws ErrorException update_allocation_until!(integrator, 86400.0)
+    @test time.dt == dtmin
+end
+
+@testitem "allocation output per timestep for saveat = 0" begin
+    import Ribasim
+    using Ribasim: update_allocation_until!
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/basin_overflow/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    config = Ribasim.Config(toml_path; solver_saveat = 0.0)
+    model = Ribasim.Model(config)
+    (; allocation) = model.integrator.p.p_independent
+
+    update_allocation_until!(model.integrator, 86400.0)
+    times = unique(datum.time for datum in allocation.record_flow)
+    @test times == [0.0, 3600.0, 10800.0, 25200.0, 54000.0]
 end

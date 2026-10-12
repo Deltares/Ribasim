@@ -271,6 +271,16 @@ function valid_config(config::Config)::Bool
         @error "The model starttime must be before the endtime."
     end
 
+    (; intervention_interval, dt, dtmin, dtmax) = config.allocation
+    if !(0 < dtmin ≤ dtmax ≤ intervention_interval < Inf)
+        errors = true
+        @error "The allocation timesteps must satisfy 0 < dtmin ≤ dtmax ≤ intervention_interval < Inf." dtmin dtmax intervention_interval
+    end
+    if !isnothing(dt) && !(0 < dt ≤ intervention_interval)
+        errors = true
+        @error "The fixed allocation timestep must satisfy 0 < dt ≤ intervention_interval." dt intervention_interval
+    end
+
     return !errors
 end
 

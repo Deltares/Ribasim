@@ -233,12 +233,12 @@ end
 end
 
 @testitem "Allocation polder level management" begin
-    using Ribasim
     using DataFrames: DataFrame
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/polder_management/ribasim.toml")
-    model = Ribasim.run(toml_path)
+    config = Ribasim.Config(toml_path; allocation_dt = 86400.0)
+    model = Ribasim.run(config)
 
     basin_results = DataFrame(Ribasim.basin_data(model))
     level_polder_4 = filter(:node_id => ==(4), basin_results).level

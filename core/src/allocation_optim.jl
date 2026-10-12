@@ -1,16 +1,14 @@
 """
 Transfer data about physical processes from the simulation to the optimization. `du` holds
-the physical rates at the current time, as computed by `water_balance!`. This is not
-`get_du(integrator)`, which returns a new array holding the derivative estimated by the
-integrator, and that describes the timestep that ended at the current time.
+the physical rates at the latest intervention, as computed by `water_balance!`.
 """
 function set_simulation_data!(
         allocation_model::AllocationModel,
-        integrator::DEIntegrator,
+        p::Parameters,
+        t::Float64,
         Δt_allocation,
         du,
     )::Nothing
-    (; p, t) = integrator
     (;
         basin,
         level_boundary,
@@ -618,9 +616,14 @@ function normalize_flow_demand_objectives!(allocation_model::AllocationModel)::N
     return nothing
 end
 
-function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrator, Δt_allocation)::Nothing
+function set_demands!(
+        allocation_model::AllocationModel,
+        p::Parameters,
+        t::Float64,
+        Δt_allocation,
+    )::Nothing
     (; problem, node_ids_in_subnetwork) = allocation_model
-    (; user_demand, flow_demand, level_demand) = integrator.p.p_independent
+    (; user_demand, flow_demand, level_demand) = p.p_independent
 
     # Set demands for all priorities
     set_demands!(
@@ -630,7 +633,8 @@ function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrato
         problem[:user_demand_allocated],
         problem[:user_demand_error],
         problem[:user_demand_relative_error_constraint],
-        integrator,
+        p,
+        t,
     )
     set_demands!(
         allocation_model,
@@ -639,9 +643,10 @@ function set_demands!(allocation_model::AllocationModel, integrator::DEIntegrato
         problem[:flow_demand_allocated],
         problem[:flow_demand_error],
         problem[:flow_demand_relative_error_constraint],
-        integrator,
+        p,
+        t,
     )
-    set_demands!(allocation_model, level_demand, integrator, Δt_allocation)
+    set_demands!(allocation_model, level_demand, p, t, Δt_allocation)
 
     return nothing
 end
@@ -712,9 +717,9 @@ function set_demands!(
         node_allocated::JuMP.Containers.SparseAxisArray,
         node_error::JuMP.Containers.SparseAxisArray,
         node_relative_error_constraint::JuMP.Containers.SparseAxisArray,
-        integrator::DEIntegrator,
+        p::Parameters,
+        t::Float64,
     )::Nothing
-    (; p, t) = integrator
     (; demand_priorities_all) = p.p_independent.allocation
     (; has_demand_priority, demand, demand_interpolation) = node
     (; problem, objectives, scaling) = allocation_model
@@ -799,10 +804,10 @@ end
 function set_demands!(
         allocation_model::AllocationModel,
         level_demand::LevelDemand,
-        integrator::DEIntegrator,
+        p::Parameters,
+        t::Float64,
         Δt_allocation,
     )::Nothing
-    (; p, t) = integrator
     (; p_independent, state_and_time_dependent_cache) = p
     (; current_level, current_area, current_storage) = state_and_time_dependent_cache
     (; basin, allocation) = p_independent
@@ -939,11 +944,11 @@ end
 
 function warm_start!(
         allocation_model::AllocationModel,
-        integrator::DEIntegrator,
+        p::Parameters,
+        t::Float64,
         Δt_allocation::Float64,
         du,
     )::Nothing
-    (; p, t) = integrator
     (; problem, scaling, node_ids_in_subnetwork) = allocation_model
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
     flow = problem[:flow]
@@ -974,7 +979,8 @@ function optimize_multi_objective!(
         model::AllocationModel,
         config::Config,
         t::Number,
-        primary_network_connections = [],
+        primary_network_connections = [];
+        can_retry::Bool = false,
     )::Nothing
     (; problem, objectives, temporary_constraints, subnetwork_id) =
         model
@@ -1002,7 +1008,7 @@ function optimize_multi_objective!(
             JuMP.optimize!(problem)
             @debug objective expression JuMP.solution_summary(problem)
             latest_constraint = isempty(temporary_constraints) ? nothing : last(temporary_constraints)
-            parse_termination_status(model, objective, expression, latest_constraint, config, t)
+            parse_termination_status(model, objective, expression, latest_constraint, config, t; can_retry)
             if objective.retain_expressions[expression_idx]
                 latest_bound = JuMP.objective_value(problem)
                 latest_optimized_expression = expression
@@ -1028,8 +1034,17 @@ function optimize_multi_objective!(
 end
 
 """
+Thrown when an allocation optimization fails and can be retried with a smaller timestep.
+"""
+struct AllocationFailure <: Exception
+    subnetwork_id::Int32
+    t::Float64
+    termination_status::JuMP.TerminationStatusCode
+end
+
+"""
 Check the termination status of the optimizer. If no usable results was generated,
-give an error message that is as clear as possible.
+throw an `AllocationFailure` if `can_retry`, otherwise give an error message that is as clear as possible.
 """
 function parse_termination_status(
         model::AllocationModel,
@@ -1037,7 +1052,8 @@ function parse_termination_status(
         expression::JuMP.AffExpr,
         latest_constraint,
         config::Config,
-        t::Number
+        t::Number;
+        can_retry::Bool = false,
     )::Nothing
     (; problem, subnetwork_id) = model
 
@@ -1045,23 +1061,27 @@ function parse_termination_status(
 
     if termination_status == JuMP.OPTIMAL
         return nothing
+    elseif can_retry
+        throw(AllocationFailure(subnetwork_id, t, termination_status))
     elseif termination_status == JuMP.INFEASIBLE
         write_problem_to_file(problem, config)
         set_feasibility_objective!(problem)
         status = analyze_infeasibility(model, t, config)
         analyze_scaling(model, t, config)
-        if status == JuMP.OPTIMAL
-            @info "Allocation optimization for subnetwork $subnetwork_id at t = $t s is feasible after infeasibility analysis, continuing with solution."
+        # The feasibility objective ignores all demands, so its solution can't be used
+        feasibility_note = if status == JuMP.OPTIMAL
+            "The problem is feasible without the objective, which points to numerical issues.\n"
         else
-            error(
-                """
-                Allocation optimization for subnetwork $subnetwork_id at t = $t s is infeasible, with:
-                objective:         $objective
-                latest constraint: $latest_constraint
-                expression:        $expression
-                """,
-            )
+            ""
         end
+        error(
+            """
+            Allocation optimization for subnetwork $subnetwork_id at t = $t s is infeasible, with:
+            objective:         $objective
+            latest constraint: $latest_constraint
+            expression:        $expression
+            $feasibility_note""",
+        )
     else
         write_problem_to_file(problem, config)
         analyze_scaling(model, t, config)
@@ -1083,30 +1103,43 @@ function parse_termination_status(
 end
 
 function parse_allocations!(
-        integrator::DEIntegrator,
+        p::Parameters,
+        t::Float64,
         allocation_model::AllocationModel,
         Δt_allocation,
+        Δt_supplied::Union{Float64, Nothing},
     )::Nothing
-    (; user_demand, flow_demand, level_demand) = integrator.p.p_independent
+    (; user_demand, flow_demand, level_demand) = p.p_independent
     (; problem, node_ids_in_subnetwork) = allocation_model
     parse_allocations!(
-        integrator,
+        p,
+        t,
         user_demand,
         node_ids_in_subnetwork.user_demand_ids_subnetwork,
         problem[:user_demand_allocated],
         allocation_model,
-        Δt_allocation,
+        Δt_supplied,
     )
     parse_allocations!(
-        integrator,
+        p,
+        t,
         flow_demand,
         node_ids_in_subnetwork.node_ids_subnetwork_with_flow_demand,
         problem[:flow_demand_allocated],
         allocation_model,
-        Δt_allocation,
+        Δt_supplied,
     )
-    parse_allocations!(integrator, level_demand, allocation_model, Δt_allocation)
+    parse_allocations!(p, t, level_demand, allocation_model, Δt_allocation, Δt_supplied)
     return nothing
+end
+
+"""
+The supplied flow rate over the previous intervention interval, which is only known for the
+first allocation timestep of an intervention interval.
+"""
+function supplied_flow_rate(volume::Float64, Δt_supplied::Union{Float64, Nothing})::Float64
+    isnothing(Δt_supplied) && return NaN
+    return iszero(Δt_supplied) ? 0.0 : volume / Δt_supplied
 end
 
 function get_supplied_volume(
@@ -1128,18 +1161,17 @@ function get_supplied_volume(
 end
 
 function parse_allocations!(
-        integrator::DEIntegrator,
+        p::Parameters,
+        t::Float64,
         node::Union{UserDemand, FlowDemand},
         node_ids_subnetwork::Vector{NodeID},
         node_allocated,
         allocation_model::AllocationModel,
-        Δt_allocation::Float64,
+        Δt_supplied::Union{Float64, Nothing},
     )::Nothing
-    (; p, t) = integrator
     (; p_independent) = p
     (;
         subnetwork_id,
-        Δt_since_last_record,
         cumulative_supplied_volume,
         scaling,
     ) = allocation_model
@@ -1163,11 +1195,6 @@ function parse_allocations!(
         end
     end
 
-    # Use Δt_since_last_record (which equals Δt_allocation when the LP runs once
-    # per saveat, or the sum of multiple sub-saveat steps when adaptive timestepping
-    # produces several solves per saveat) to convert cumulative volume to a rate.
-    Δt_record = iszero(Δt_since_last_record) ? Δt_allocation : Δt_since_last_record
-
     for node_id in node_ids_subnetwork
         demand_id =
             is_user_demand ? node_id : get_external_demand_id(p_independent, node_id)
@@ -1186,9 +1213,11 @@ function parse_allocations!(
                     demand_priority,
                     demand[demand_id.idx, demand_priority_idx],
                     allocated_flow,
-                    # NOTE: The supplied amount lags one allocation period behind
-                    get_supplied_volume(node, demand_id, cumulative_supplied_volume) /
-                        Δt_record,
+                    # NOTE: The supplied amount lags one intervention interval behind
+                    supplied_flow_rate(
+                        get_supplied_volume(node, demand_id, cumulative_supplied_volume),
+                        Δt_supplied,
+                    ),
                 ),
             )
             if is_user_demand
@@ -1201,12 +1230,13 @@ function parse_allocations!(
 end
 
 function parse_allocations!(
-        integrator::DEIntegrator,
+        p::Parameters,
+        t::Float64,
         level_demand::LevelDemand,
         allocation_model::AllocationModel,
         Δt_allocation::Float64,
+        Δt_supplied::Union{Float64, Nothing},
     )::Nothing
-    (; p, t) = integrator
     (; p_independent, state_and_time_dependent_cache) = p
     (; current_storage) = state_and_time_dependent_cache
     (; allocation, basin) = p_independent
@@ -1224,12 +1254,12 @@ function parse_allocations!(
         for (demand_priority_idx, demand_priority) in enumerate(demand_priorities_all)
             level_demand_id = basin.level_demand_id[node_id.idx]
             !has_demand_priority[level_demand_id.idx, demand_priority_idx] && continue
-            demand = storage_demand[node_id][demand_priority_idx] / Δt_allocation
-            allocated_basin_volume =
-                scaling.storage * if demand > 0
-                min(storage_change_basin, demand)
+            demand_volume = storage_demand[node_id][demand_priority_idx]
+            demand = demand_volume / Δt_allocation
+            allocated_basin_volume = if demand_volume > 0
+                min(storage_change_basin, demand_volume)
             else
-                max(storage_change_basin, demand)
+                max(storage_change_basin, demand_volume)
             end
             storage_change_basin -= allocated_basin_volume
             push!(
@@ -1242,8 +1272,8 @@ function parse_allocations!(
                     demand_priority,
                     demand,
                     allocated_basin_volume / Δt_allocation,
-                    # NOTE: The supplied amount lags one allocation period behind
-                    supplied_basin_volume / Δt_allocation,
+                    # NOTE: The supplied amount lags one intervention interval behind
+                    supplied_flow_rate(supplied_basin_volume, Δt_supplied),
                 ),
             )
         end
@@ -1254,10 +1284,11 @@ end
 # After all goals have been optimized for, save
 # the resulting flows for output
 function save_flows!(
-        integrator::DEIntegrator,
+        p::Parameters,
+        t::Float64,
         allocation_model::AllocationModel,
+        Δt_allocation::Float64,
     )::Nothing
-    (; p, t) = integrator
     (;
         problem,
         subnetwork_id,
@@ -1334,9 +1365,11 @@ function save_flows!(
                 string(NodeType.Basin),
                 Int32(node_id),
                 subnetwork_id,
-                explicit_positive_forcing_volume[node_id] -
-                    implicit_negative_forcing_volume[node_id] *
-                    JuMP.value(low_storage_factor_variable),
+                (
+                    explicit_positive_forcing_volume[node_id] -
+                        implicit_negative_forcing_volume[node_id] *
+                        JuMP.value(low_storage_factor_variable)
+                ) / Δt_allocation,
                 hit_lower_bound,
                 hit_upper_bound,
             ),
@@ -1351,9 +1384,9 @@ end
 function apply_control_from_allocation!(
         node::Union{Pump, Outlet, TabulatedRatingCurve},
         allocation_model::AllocationModel,
-        integrator::DEIntegrator,
+        p::Parameters,
+        t::Float64,
     )::Nothing
-    (; p, t) = integrator
     (; graph, allocation) = p.p_independent
     (; record_control) = allocation
     (; problem, subnetwork_id, scaling) = allocation_model
@@ -1440,10 +1473,10 @@ end
 
 function update_flow_variable_bounds!(
         allocation_model::AllocationModel,
-        integrator::DEIntegrator,
+        p::Parameters,
+        t::Float64,
         Δt_allocation::Float64,
     )::Nothing
-    (; p, t) = integrator
     (; problem, scaling, flow_links_subnetwork) = allocation_model
     flow = problem[:flow]
     for flow_link in flow_links_subnetwork
@@ -1547,14 +1580,24 @@ function update_control_states!(
 end
 
 """
-Solve the allocation problem for all demands and assign allocated abstractions.
+Solve the allocation problem of one allocation timestep from `t` to `t + Δt` for all
+demands, starting from the state in the cache of `p`. `du` holds the physical rates at the
+latest intervention, used as initial guess.
 
-`record` controls whether allocation results are pushed to output records and
-whether `cumulative_supplied_volume` is reset. Set `record = false` for
-intermediate (sub-saveat) adaptive LP solves
+`Δt_supplied` is the length of the previous intervention interval for the first allocation
+timestep of an intervention interval, and `nothing` otherwise.
+
+If `can_retry`, a failed optimization throws an `AllocationFailure` before any
+results are written.
 """
-function update_allocation!(integrator::DEIntegrator, Δt::Float64; record::Bool = true)::Nothing
-    (; u, p, t) = integrator
+function update_allocation!(
+        p::Parameters,
+        t::Float64,
+        Δt::Float64,
+        du::CVector;
+        Δt_supplied::Union{Float64, Nothing} = nothing,
+        can_retry::Bool = false,
+    )::Nothing
     (; p_independent) = p
     (; allocation, pump, outlet, tabulated_rating_curve) = p_independent
     (; allocation_models, primary_network_connections, demand_priorities_all, config) = allocation
@@ -1562,25 +1605,23 @@ function update_allocation!(integrator::DEIntegrator, Δt::Float64; record::Bool
     # Don't run the allocation algorithm if allocation is not active
     !is_active(allocation) && return nothing
 
-    du = get_du(integrator)
-    water_balance!(du, u, p, t)
     update_scaling!(p, Δt)
 
     for secondary_network in get_secondary_networks(allocation_models)
         update_control_states!(secondary_network, p_independent)
         # Transfer data about physical processes from the simulation to the optimization
-        set_simulation_data!(secondary_network, integrator, Δt, du)
+        set_simulation_data!(secondary_network, p, t, Δt, du)
 
         # Set demands for all priorities
         reset_demand_coefficients(secondary_network)
-        set_demands!(secondary_network, integrator, Δt)
-        update_flow_variable_bounds!(secondary_network, integrator, Δt)
+        set_demands!(secondary_network, p, t, Δt)
+        update_flow_variable_bounds!(secondary_network, p, t, Δt)
         update_user_demand_flow_bounds!(secondary_network, p_independent)
         update_flow_demand_variable_bounds!(secondary_network, p_independent)
         normalize_flow_demand_objectives!(secondary_network)
 
         # Use data from the physical layer to set the initial guess
-        warm_start!(secondary_network, integrator, Δt, du)
+        warm_start!(secondary_network, p, t, Δt, du)
     end
 
     if has_primary_network(allocation)
@@ -1589,7 +1630,7 @@ function update_allocation!(integrator::DEIntegrator, Δt::Float64; record::Bool
 
         update_control_states!(primary_network, p_independent)
         # Transfer data about physical processes from the simulation to the optimization
-        set_simulation_data!(primary_network, integrator, Δt, du)
+        set_simulation_data!(primary_network, p, t, Δt, du)
 
         reset_demand_coefficients(primary_network)
         for secondary_network in
@@ -1600,7 +1641,8 @@ function update_allocation!(integrator::DEIntegrator, Δt::Float64; record::Bool
                 secondary_network,
                 config,
                 t,
-                primary_network_connections[secondary_network.subnetwork_id],
+                primary_network_connections[secondary_network.subnetwork_id];
+                can_retry,
             )
             set_secondary_network_demands!(
                 primary_network,
@@ -1609,48 +1651,30 @@ function update_allocation!(integrator::DEIntegrator, Δt::Float64; record::Bool
             )
         end
 
-        set_demands!(primary_network, integrator, Δt)
-        update_flow_variable_bounds!(primary_network, integrator, Δt)
+        set_demands!(primary_network, p, t, Δt)
+        update_flow_variable_bounds!(primary_network, p, t, Δt)
         update_user_demand_flow_bounds!(primary_network, p_independent)
         update_flow_demand_variable_bounds!(primary_network, p_independent)
         normalize_flow_demand_objectives!(primary_network)
-        warm_start!(primary_network, integrator, Δt, du)
+        warm_start!(primary_network, p, t, Δt, du)
     end
 
     # Allocate in all networks, starting with the primary network if it exists
     for allocation_model in allocation_models
-        # Track time since the last saveat-aligned record. parse_allocations!
-        # divides cumulative_supplied_volume by this, so it must be the elapsed
-        # interval since the last reset rather than just the most recent Δt.
-        allocation_model.Δt_since_last_record += Δt
-
         delete_temporary_constraints!(allocation_model)
-        optimize_multi_objective!(allocation_model, config, t)
-        if record
-            parse_allocations!(integrator, allocation_model, Δt)
-        end
+        optimize_multi_objective!(allocation_model, config, t; can_retry)
         # allocate flows optimized from the primary network to the secondary networks
         if is_primary_network(allocation_model.subnetwork_id)
             allocate_flows_to_subnetwork(allocation_models, primary_network_connections)
         end
-
-        if record
-            save_flows!(integrator, allocation_model)
-        end
-        apply_control_from_allocation!(pump, allocation_model, integrator)
-        apply_control_from_allocation!(outlet, allocation_model, integrator)
-        apply_control_from_allocation!(tabulated_rating_curve, allocation_model, integrator)
-
-        # Reset cumulative data only on saveat-aligned solves; intermediate solves
-        # let cumulative_supplied_volume keep accumulating until the next record.
-        if record
-            reset_cumulative!(allocation_model)
-            allocation_model.Δt_since_last_record = 0.0
-        end
     end
 
-    # Update storage_prev for level_demand
-    update_storage_prev!(p)
-    derivative_discontinuity!(integrator, true)
+    for allocation_model in allocation_models
+        parse_allocations!(p, t, allocation_model, Δt, Δt_supplied)
+        save_flows!(p, t, allocation_model, Δt)
+        apply_control_from_allocation!(pump, allocation_model, p, t)
+        apply_control_from_allocation!(outlet, allocation_model, p, t)
+        apply_control_from_allocation!(tabulated_rating_curve, allocation_model, p, t)
+    end
     return nothing
 end
