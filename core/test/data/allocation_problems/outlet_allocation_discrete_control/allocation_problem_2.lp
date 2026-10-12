@@ -13,7 +13,7 @@ volume_conservation_Basin_#4_: 1 basin_storage_change_Basin_#4_ - 1 flow_(Outlet
 average_storage_unit_error_constraint_1,upper_: -1 level_demand_error_Basin_#4,1,upper,first_ + 1 average_storage_unit_error_1,upper_ = 0
 average_storage_unit_error_constraint_1,lower_: -1 level_demand_error_Basin_#4,1,lower,first_ + 1 average_storage_unit_error_1,lower_ = 0
 Bounds
--0.18181818181818182 <= basin_storage_change_Basin_#4_ <= 3.4545454545454546
+basin_storage_change_Basin_#4_ >= -0.18181818181818182
 0 <= low_storage_factor_Basin_#4_ <= 1
 0 <= flow_(LevelBoundary_#1,_Outlet_#3)_ <= 0.06283636363636365
 0 <= flow_(Outlet_#3,_Basin_#4)_ <= 0.06283636363636365

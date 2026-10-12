@@ -26,8 +26,8 @@ average_flow_unit_error_constraint_2_: -1 user_demand_error_UserDemand_#5,2,firs
 average_storage_unit_error_constraint_1,upper_: -1 level_demand_error_Basin_#3,1,upper,first_ - 1 level_demand_error_Basin_#4,1,upper,first_ + 2 average_storage_unit_error_1,upper_ = 0
 average_storage_unit_error_constraint_1,lower_: -1 level_demand_error_Basin_#3,1,lower,first_ - 1 level_demand_error_Basin_#4,1,lower,first_ + 2 average_storage_unit_error_1,lower_ = 0
 Bounds
--1 <= basin_storage_change_Basin_#3_ <= 1
--1 <= basin_storage_change_Basin_#4_ <= 1
+basin_storage_change_Basin_#3_ >= -1
+basin_storage_change_Basin_#4_ >= -1
 0 <= low_storage_factor_Basin_#3_ <= 1
 0 <= low_storage_factor_Basin_#4_ <= 1
 flow_(FlowBoundary_#1,_Basin_#3)_ = 0.0864

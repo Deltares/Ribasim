@@ -34,12 +34,12 @@ average_flow_unit_error_constraint_3_: -1 user_demand_error_UserDemand_#4,3,firs
 average_flow_unit_error_constraint_4_: -1 user_demand_error_UserDemand_#8,4,first_ + 1 average_flow_unit_error_4_ = 0
 tabulated_rating_curve_constraint_TabulatedRatingCurve_#2_: 1 flow_(LevelBoundary_#1,_TabulatedRatingCurve_#2)_ = 0.00576
 Bounds
--0.3333333333333333 <= basin_storage_change_Basin_#3_ <= 3
--0.3333333333333333 <= basin_storage_change_Basin_#7_ <= 3
+basin_storage_change_Basin_#3_ >= -0.3333333333333333
+basin_storage_change_Basin_#7_ >= -0.3333333333333333
 0 <= low_storage_factor_Basin_#3_ <= 1
 0 <= low_storage_factor_Basin_#7_ <= 1
-flow_(LevelBoundary_#1,_TabulatedRatingCurve_#2)_ = 0.00576
-flow_(TabulatedRatingCurve_#2,_Basin_#3)_ = 0.00576
+flow_(LevelBoundary_#1,_TabulatedRatingCurve_#2)_ free
+flow_(TabulatedRatingCurve_#2,_Basin_#3)_ free
 0 <= flow_(Basin_#3,_UserDemand_#4)_ <= 0.00288
 0 <= flow_(UserDemand_#4,_Basin_#7)_ <= 0.00288
 0 <= flow_(Basin_#7,_UserDemand_#8)_ <= 0.00576
@@ -56,8 +56,8 @@ boundary_level_LevelBoundary_#1_ = 2
 0 <= user_demand_error_UserDemand_#6,1,second_ <= 1
 0 <= user_demand_error_UserDemand_#8,4,first_ <= 1
 0 <= user_demand_error_UserDemand_#8,4,second_ <= 1
-0 <= flow_demand_allocated_TabulatedRatingCurve_#2,2_ <= 0.00576
-0 <= flow_demand_extra_TabulatedRatingCurve_#2_ <= 0.00576
+-infinity <= flow_demand_allocated_TabulatedRatingCurve_#2,2_ <= 0.00576
+flow_demand_extra_TabulatedRatingCurve_#2_ >= 0
 0 <= flow_demand_error_TabulatedRatingCurve_#2,2,first_ <= 1
 0 <= flow_demand_error_TabulatedRatingCurve_#2,2,second_ <= 1
 0 <= average_flow_unit_error_1_ <= 1

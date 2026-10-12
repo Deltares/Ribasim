@@ -63,12 +63,12 @@ average_storage_unit_error_constraint_2,upper_: -1 level_demand_error_Basin_#13,
 average_storage_unit_error_constraint_1,lower_: -1 level_demand_error_Basin_#2,1,lower,first_ - 1 level_demand_error_Basin_#5,1,lower,first_ - 1 level_demand_error_Basin_#7,1,lower,first_ - 1 level_demand_error_Basin_#10,1,lower,first_ + 4 average_storage_unit_error_1,lower_ = 0
 average_storage_unit_error_constraint_2,lower_: -1 level_demand_error_Basin_#13,2,lower,first_ - 1 level_demand_error_Basin_#15,2,lower,first_ + 2 average_storage_unit_error_2,lower_ = 0
 Bounds
--1 <= basin_storage_change_Basin_#2_ <= 1
--1 <= basin_storage_change_Basin_#5_ <= 1
--1 <= basin_storage_change_Basin_#7_ <= 1
--1 <= basin_storage_change_Basin_#10_ <= 1
--1 <= basin_storage_change_Basin_#13_ <= 1
--1 <= basin_storage_change_Basin_#15_ <= 1
+basin_storage_change_Basin_#2_ >= -1
+basin_storage_change_Basin_#5_ >= -1
+basin_storage_change_Basin_#7_ >= -1
+basin_storage_change_Basin_#10_ >= -1
+basin_storage_change_Basin_#13_ >= -1
+basin_storage_change_Basin_#15_ >= -1
 0 <= low_storage_factor_Basin_#2_ <= 1
 0 <= low_storage_factor_Basin_#5_ <= 1
 0 <= low_storage_factor_Basin_#7_ <= 1

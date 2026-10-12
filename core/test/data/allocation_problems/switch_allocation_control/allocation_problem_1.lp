@@ -16,7 +16,7 @@ average_storage_unit_error_constraint_1,lower_: -1 level_demand_error_Basin_#1,1
 outlet_constraint_Outlet_#3_: -0.00032914285714285717 low_storage_factor_Basin_#1_ + 1 flow_(Basin_#1,_Outlet_#3)_ = 0
 outlet_constraint_Outlet_#4_: 1 flow_(LevelBoundary_#5,_Outlet_#4)_ = 0
 Bounds
--0.8571428571428571 <= basin_storage_change_Basin_#1_ <= 1.4285714285714286
+basin_storage_change_Basin_#1_ >= -0.8571428571428571
 0 <= low_storage_factor_Basin_#1_ <= 1
 flow_(LevelBoundary_#5,_Outlet_#4)_ = 0
 flow_(Outlet_#4,_Basin_#1)_ = 0
