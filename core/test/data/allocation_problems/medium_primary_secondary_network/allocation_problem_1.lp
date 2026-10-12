@@ -62,10 +62,10 @@ average_flow_unit_error_constraint_3_: -0.3333333333333333 user_demand_error_Use
 average_storage_unit_error_constraint_1,upper_: -1 level_demand_error_Basin_#2,1,upper,first_ - 1 level_demand_error_Basin_#5,1,upper,first_ - 1 level_demand_error_Basin_#7,1,upper,first_ - 1 level_demand_error_Basin_#10,1,upper,first_ + 4 average_storage_unit_error_1,upper_ = 0
 average_storage_unit_error_constraint_1,lower_: -1 level_demand_error_Basin_#2,1,lower,first_ - 1 level_demand_error_Basin_#5,1,lower,first_ - 1 level_demand_error_Basin_#7,1,lower,first_ - 1 level_demand_error_Basin_#10,1,lower,first_ + 4 average_storage_unit_error_1,lower_ = 0
 Bounds
--1 <= basin_storage_change_Basin_#2_ <= 1
--1 <= basin_storage_change_Basin_#5_ <= 1
--1 <= basin_storage_change_Basin_#7_ <= 1
--1 <= basin_storage_change_Basin_#10_ <= 1
+basin_storage_change_Basin_#2_ >= -1
+basin_storage_change_Basin_#5_ >= -1
+basin_storage_change_Basin_#7_ >= -1
+basin_storage_change_Basin_#10_ >= -1
 0 <= low_storage_factor_Basin_#2_ <= 1
 0 <= low_storage_factor_Basin_#5_ <= 1
 0 <= low_storage_factor_Basin_#7_ <= 1

@@ -36,8 +36,8 @@ average_storage_unit_error_constraint_1,lower_: -1 level_demand_error_Basin_#7,1
 tabulated_rating_curve_constraint_TabulatedRatingCurve_#4_: -0.05147324500452337 basin_storage_change_Basin_#3_ - 0.008241061360967165 low_storage_factor_Basin_#3_ + 1 flow_(Basin_#3,_TabulatedRatingCurve_#4)_ = 0
 tabulated_rating_curve_constraint_TabulatedRatingCurve_#8_: 7.735987330737718 basin_storage_change_Basin_#3_ - 1.0297891366747431 basin_storage_change_Basin_#7_ - 0.007418173423513412 low_storage_factor_Basin_#7_ + 1 flow_(Basin_#7,_TabulatedRatingCurve_#8)_ = 0
 Bounds
--0.14908971919601977 <= basin_storage_change_Basin_#3_ <= 0.25669681676619543
--1.6741855553429759 <= basin_storage_change_Basin_#7_ <= 2.2734773596168183
+basin_storage_change_Basin_#3_ >= -0.14908971919601977
+basin_storage_change_Basin_#7_ >= -1.6741855553429759
 0 <= low_storage_factor_Basin_#3_ <= 1
 0 <= low_storage_factor_Basin_#7_ <= 1
 flow_(FlowBoundary_#1,_Basin_#7)_ = 0.003934834601850938
@@ -46,12 +46,12 @@ flow_(Basin_#7,_UserDemand_#6)_ = 0
 flow_(UserDemand_#6,_Basin_#3)_ = 0
 0 <= flow_(Basin_#7,_UserDemand_#9)_ <= 0.00015527546018962316
 0 <= flow_(UserDemand_#9,_Basin_#3)_ <= 0.00015527546018962316
--3.7024432465904447 <= flow_(Basin_#7,_TabulatedRatingCurve_#8)_ <= 3.5019766396765437
--3.7024432465904447 <= flow_(TabulatedRatingCurve_#8,_Basin_#3)_ <= 3.5019766396765437
-0.0005669297171348481 <= flow_(Basin_#3,_TabulatedRatingCurve_#4)_ <= 0.021454079502254787
+flow_(Basin_#7,_TabulatedRatingCurve_#8)_ free
+flow_(TabulatedRatingCurve_#8,_Basin_#3)_ free
+flow_(Basin_#3,_TabulatedRatingCurve_#4)_ free
 0 <= flow_(Basin_#7,_UserDemand_#10)_ <= 0.0003105509203792463
 0 <= flow_(UserDemand_#10,_Basin_#3)_ <= 0.0003105509203792463
-0.0005669297171348481 <= flow_(TabulatedRatingCurve_#4,_Terminal_#5)_ <= 0.021454079502254787
+flow_(TabulatedRatingCurve_#4,_Terminal_#5)_ free
 user_demand_allocated_UserDemand_#6,4_ = 0
 0 <= user_demand_allocated_UserDemand_#9,3_ <= 0.00015527546018962316
 0 <= user_demand_allocated_UserDemand_#10,2_ <= 0.0003105509203792463

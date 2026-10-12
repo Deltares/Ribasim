@@ -76,18 +76,8 @@ function set_simulation_data!(
         storage_now = current_storage[idx]
         storage_max = storage_to_level[idx].t[end]
 
-        # Set bounds on the storage change based on the current storage and the Basin minimum, maximum, and a delta_storage prediction
-        Δstorage = storage_change[basin_id]
-        JuMP.set_lower_bound(Δstorage, -storage_now / scaling.storage)
-        Δstorage_predicted =
-            formulate_dstorage_wrt_time(du, p.p_independent, t, basin_id) * Δt_allocation
-
-        Δstorage_upper = if storage_now > storage_max
-            max(2 * Δstorage_predicted, 0.0)
-        else
-            max(2 * Δstorage_predicted, storage_max - storage_now)
-        end
-        JuMP.set_upper_bound(Δstorage, Δstorage_upper / scaling.storage)
+        # No upper bound: Basin profiles extrapolate above their top
+        JuMP.set_lower_bound(storage_change[basin_id], -storage_now / scaling.storage)
 
         A = get_area_from_storage(basin, idx, storage_now)
         A_max = get_area_from_storage(basin, idx, storage_max)
@@ -376,6 +366,33 @@ function set_simulation_data!(
         t,
         Δt_allocation,
     )
+
+    # Allocation controlled: Q(h_a) linearized around the current upstream level.
+    # All factors that reduce the flow are in [0, 1], so they are left out.
+    (; scaling) = allocation_model
+    (; interpolations, current_interpolation_index) = tabulated_rating_curve
+    capacity_constraint = problem[:tabulated_rating_curve_capacity_constraint]
+    t_after = t + Δt_allocation
+    for node_id in only(capacity_constraint.axes)
+        inflow_id = tabulated_rating_curve.inflow_link[node_id.idx].link[1]
+        h_a = get_level(p, inflow_id, t_after)
+        qh = argmax(
+            qh -> qh(h_a),
+            interpolations[current_interpolation_index[node_id.idx](t_eval)] for
+                t_eval in (t, t_after)
+        )
+        constraint = capacity_constraint[node_id]
+        JuMP.set_normalized_rhs(constraint, qh(h_a) / scaling.flow)
+        if inflow_id.type == NodeType.Basin
+            set_partial_derivative_wrt_level!(
+                allocation_model,
+                inflow_id,
+                forward_diff(qh, h_a),
+                p,
+                constraint,
+            )
+        end
+    end
 
     return nothing
 end
@@ -1387,99 +1404,17 @@ function delete_control_constraints!(
 end
 
 """
-Level change interval of `node_id` over this allocation time step.
-
-For Basins this is the storage change interval converted with the same linearization
-`Δh = ΔS / A` that the allocation constraints use, so bounds derived from it are
-consistent with the optimization problem. Levels of all other node types are data
-rather than decision variables, so they cannot change within one optimization.
-"""
-function allocation_level_change_bounds(
-        allocation_model::AllocationModel,
-        p::Parameters,
-        node_id::NodeID,
-    )::Tuple{Float64, Float64}
-    (; problem, scaling, node_ids_in_subnetwork) = allocation_model
-
-    node_id.type == NodeType.Basin || return (0.0, 0.0)
-    # Basins outside this subnetwork have no storage change variable here
-    (node_id ∈ node_ids_in_subnetwork.basin_ids_subnetwork) || return (-Inf, Inf)
-
-    storage_change = problem[:basin_storage_change][node_id]
-    level_per_storage =
-        scaling.storage / p.state_and_time_dependent_cache.current_area[node_id.idx]
-    return (
-        JuMP.lower_bound(storage_change) * level_per_storage,
-        JuMP.upper_bound(storage_change) * level_per_storage,
-    )
-end
-
-"""
-Bounds on the flow through a connector node whose flow is set by a linearized
-flow-level relation. Evaluating that linearization over the reachable level changes
-gives the tightest bounds that the flow constraint can attain.
-"""
-function linearized_flow_bounds(
-        allocation_model::AllocationModel,
-        connector_node::AbstractParameterNode,
-        flow_function::Function,
-        node_id::NodeID,
-        p::Parameters,
-        t::Float64,
-        Δt_allocation::Float64,
-    )::Tuple{Float64, Float64}
-    t_after = t + Δt_allocation
-    inflow_id = connector_node.inflow_link[node_id.idx].link[1]
-    outflow_id = connector_node.outflow_link[node_id.idx].link[2]
-
-    h_a = get_level(p, inflow_id, t_after)
-    h_b = get_level(p, outflow_id, t_after)
-    # Raw (unreduced) base value: the equality constraint (linearize_connector_node!)
-    # is the sole authority on the low-storage reduction, so these box bounds must not
-    # apply it a second time.
-    q0 = flow_function(
-        connector_node,
-        node_id,
-        h_a,
-        h_b,
-        p,
-        t_after;
-        apply_low_storage_factor = false,
-    )
-    lower, upper = q0, q0
-
-    ∂q∂h_a = forward_diff(
-        level_a -> flow_function(connector_node, node_id, level_a, h_b, p, t_after),
-        h_a,
-    )
-    ∂q∂h_b = forward_diff(
-        level_b -> flow_function(connector_node, node_id, h_a, level_b, p, t_after),
-        h_b,
-    )
-
-    for (∂q∂h, level_id) in ((∂q∂h_a, inflow_id), (∂q∂h_b, outflow_id))
-        iszero(∂q∂h) && continue
-        Δh_min, Δh_max = allocation_level_change_bounds(allocation_model, p, level_id)
-        Δq_min, Δq_max = minmax(∂q∂h * Δh_min, ∂q∂h * Δh_max)
-        lower += Δq_min
-        upper += Δq_max
-    end
-
-    return (lower, upper)
-end
-
-"""
 Flow capacity imposed on a link by one of the nodes it connects.
+Flows set by a linearized flow-level relation get no bounds, since these would only
+follow from the same linearization.
 """
 function connector_flow_capacity_bounds(
-        allocation_model::AllocationModel,
         node_id::NodeID,
         p::Parameters,
         t::Float64,
         Δt_allocation::Float64,
     )::Tuple{Float64, Float64}
-    (; linear_resistance, manning_resistance, tabulated_rating_curve, pump, outlet) =
-        p.p_independent
+    (; tabulated_rating_curve, pump, outlet) = p.p_independent
 
     if node_id.type ∈ (NodeType.Pump, NodeType.Outlet)
         node = (node_id.type == NodeType.Pump) ? pump : outlet
@@ -1491,52 +1426,10 @@ function connector_flow_capacity_bounds(
             max(0.0, min_flow_rate(t), min_flow_rate(t + Δt_allocation)),
             min(max_flow_rate(t), max_flow_rate(t + Δt_allocation)),
         )
-    elseif node_id.type == NodeType.LinearResistance
-        return linearized_flow_bounds(
-            allocation_model,
-            linear_resistance,
-            linear_resistance_flow,
-            node_id,
-            p,
-            t,
-            Δt_allocation,
-        )
-    elseif node_id.type == NodeType.ManningResistance
-        return linearized_flow_bounds(
-            allocation_model,
-            manning_resistance,
-            manning_resistance_flow,
-            node_id,
-            p,
-            t,
-            Δt_allocation,
-        )
-    elseif node_id.type == NodeType.TabulatedRatingCurve
-        if !tabulated_rating_curve.allocation_controlled[node_id.idx]
-            return linearized_flow_bounds(
-                allocation_model,
-                tabulated_rating_curve,
-                tabulated_rating_curve_flow,
-                node_id,
-                p,
-                t,
-                Δt_allocation,
-            )
-        end
-        # An allocation controlled rating curve can deliver at most the flow of its
-        # Q(h) relation at the highest upstream level reachable in this time step.
-        # All factors that reduce that flow are in [0, 1].
-        inflow_id = tabulated_rating_curve.inflow_link[node_id.idx].link[1]
-        h_a_max =
-            get_level(p, inflow_id, t + Δt_allocation) +
-            last(allocation_level_change_bounds(allocation_model, p, inflow_id))
-        isfinite(h_a_max) || return (0.0, Inf)
-        q_max = maximum(
-            tabulated_rating_curve.interpolations[
-                tabulated_rating_curve.current_interpolation_index[node_id.idx](t_eval),
-            ](h_a_max) for t_eval in (t, t + Δt_allocation)
-        )
-        return (0.0, max(0.0, q_max))
+    elseif node_id.type == NodeType.TabulatedRatingCurve &&
+            tabulated_rating_curve.allocation_controlled[node_id.idx]
+        # The upper bound is the tabulated_rating_curve_capacity_constraint
+        return (0.0, Inf)
     elseif node_id.type == NodeType.UserDemand
         # The actual upper bound follows from the demands, see update_user_demand_flow_bounds!
         return (0.0, Inf)
@@ -1560,7 +1453,7 @@ function update_flow_variable_bounds!(
         lower, upper = -Inf, Inf
         for node_id in flow_link
             node_lower, node_upper =
-                connector_flow_capacity_bounds(allocation_model, node_id, p, t, Δt_allocation)
+                connector_flow_capacity_bounds(node_id, p, t, Δt_allocation)
             lower = max(lower, node_lower)
             upper = min(upper, node_upper)
         end
@@ -1646,6 +1539,7 @@ function update_control_states!(
     delete_control_constraints!(allocation_model, :pump_constraint)
     delete_control_constraints!(allocation_model, :outlet_constraint)
     delete_control_constraints!(allocation_model, :tabulated_rating_curve_constraint)
+    delete_control_constraints!(allocation_model, :tabulated_rating_curve_capacity_constraint)
     add_pump!(allocation_model, p_independent)
     add_outlet!(allocation_model, p_independent)
     add_tabulated_rating_curve!(allocation_model, p_independent)

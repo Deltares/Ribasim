@@ -250,15 +250,11 @@ end
 end
 
 @testitem "Allocation controlled rating curve" begin
-    using Ribasim: tabulated_rating_curve_flow
     using DataFrames: DataFrame
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/level_demand_with_rating_curve/ribasim.toml")
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
-
-    p = model.integrator.p
-    tbr = model.integrator.p.p_independent.tabulated_rating_curve
 
     flow_results = DataFrame(Ribasim.flow_data(model))
     flow_link_1 = filter(:link_id => ==(1), flow_results).flow_rate
@@ -269,18 +265,19 @@ end
     # find index of first level close to min_level demand of 3 m
     idx = findfirst(e -> abs(e - min_level) <= 1.0e-1, level_basin_1)
 
-    tbr_flow(h_a, h_b) = tabulated_rating_curve_flow(tbr, tbr.node_id[1], h_a, h_b, p, 0)
+    # Run with allocation off; TRC should have default behaviour
+    config = Ribasim.Config(toml_path; experimental_allocation = false)
+    model_uncontrolled = Ribasim.run(config)
+    flow_uncontrolled = DataFrame(Ribasim.flow_data(model_uncontrolled)).flow_rate
+    @test all(flow_uncontrolled .> 0)
 
     # the flow up to that level should behave as an uncontrolled TBR:
-    @test tbr_flow.(level_basin_1[1:idx], zero(idx)) ≈ flow_link_1[1:idx] atol = 1.0e-5
+    flow_link_1_uncontrolled =
+        filter(:link_id => ==(1), DataFrame(Ribasim.flow_data(model_uncontrolled))).flow_rate
+    @test flow_link_1_uncontrolled[1:idx] ≈ flow_link_1[1:idx] atol = 1.0e-5
 
     # the flow near min_level should be close to 0
     @test all(≈(0.0; atol = 1.0e-4), flow_link_1[(idx + 1):end])
-
-    # Run with allocation off; TRC should have default behaviour
-    config = Ribasim.Config(toml_path; experimental_allocation = false)
-    model = Ribasim.run(config)
-    @test all(DataFrame(Ribasim.flow_data(model)).flow_rate .> 0)
 end
 
 

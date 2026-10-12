@@ -13,17 +13,14 @@ function add_basin!(allocation_model::AllocationModel)::Nothing
 
     # Define decision variables: storage change ΔS = S^{n+1} - S^n (scaled by scaling.storage)
     # Represents the change in basin storage over the allocation timestep Δt
-    # Mathematical formulation: ΔS ∈ [-S^n, S_max - S^n]
-    # Lower bound prevents storage from going negative
-    # Upper bound prevents exceeding maximum basin capacity
-    # Note: placeholder values are used during initialization, actual bounds set in set_simulation_data!
+    # Mathematical formulation: ΔS ≥ -S^n, which prevents storage from going negative.
+    # There is no upper bound since Basin profiles extrapolate above their top.
+    # Note: a placeholder value is used during initialization, the actual bound is set in set_simulation_data!
     current_storage = 1000.0 # Example current_storage (m^3, to be filled in before optimizing)
-    max_storage = 5000.0 # Example maximum storage (m^3, to be filled in before optimizing)
     problem[:basin_storage_change] = JuMP.@variable(
         problem,
-        -current_storage / scaling.storage ≤
-            basin_storage_change[node_id = basin_ids_subnetwork] ≤
-            (max_storage - current_storage) / scaling.storage
+        basin_storage_change[node_id = basin_ids_subnetwork] ≥
+            -current_storage / scaling.storage
     )
 
     # Add decision variables: Low storage factor (unitless)
@@ -462,6 +459,19 @@ function add_tabulated_rating_curve!(
         allocation_model,
         tabulated_rating_curve,
         node_ids_not_allocation_controlled,
+    )
+
+    # The flow of allocation controlled nodes is bounded by the linearized Q(h) relation:
+    # Q ≤ Q(h_a^n) + (∂Q/∂h_a)(ΔS_a / A_a), coefficients are set in set_simulation_data!
+    (; problem) = allocation_model
+    flow = problem[:flow]
+    node_ids_allocation_controlled =
+        filter(id -> tabulated_rating_curve.allocation_controlled[id.idx], tabulated_rating_curve_ids_subnetwork)
+    problem[:tabulated_rating_curve_capacity_constraint] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids_allocation_controlled],
+        flow[tabulated_rating_curve.inflow_link[node_id.idx].link] ≤ 0.0,
+        base_name = "tabulated_rating_curve_capacity_constraint"
     )
     return nothing
 end

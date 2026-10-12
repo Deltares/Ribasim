@@ -254,10 +254,9 @@ end
     # Switch to scalar feasibility objective (as done in optimize! when INFEASIBLE is detected)
     Ribasim.set_feasibility_objective!(problem)
 
-    # Add a contradictory constraint to force INFEASIBLE
-    flow = problem[:flow]
-    first_link = first(only(flow.axes))
-    JuMP.@constraint(problem, flow[first_link] >= 1.0e10)
+    # Add a constraint contradicting the non-negative storage to force INFEASIBLE
+    storage_change = problem[:basin_storage_change]
+    JuMP.@constraint(problem, first(storage_change) <= -1.0e10)
     JuMP.optimize!(problem)
     @test JuMP.termination_status(problem) == JuMP.INFEASIBLE
 
@@ -358,8 +357,8 @@ end
     @test JuMP.upper_bound(flow[outlet_link]) * scaling.flow ≈
         outlet.max_flow_rate[outlet_id.idx](0.0)
 
-    # ManningResistance flows are bounded by the linearized flow over the
-    # storage change interval of the Basins it connects
+    # ManningResistance flows are only constrained by their linearized flow-level relation,
+    # and Basin storage changes only by the storage that is available
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/polder_management/ribasim.toml")
     @test ispath(toml_path)
@@ -371,22 +370,15 @@ end
     allocation_model = only(allocation.allocation_models)
     (; problem) = allocation_model
     flow = problem[:flow]
-    basin_storage_change = problem[:basin_storage_change]
 
     manning_id = NodeID(:ManningResistance, 2, p_independent)
     manning_link = manning_resistance.inflow_link[manning_id.idx].link
-    # The linearization is around zero flow, and the two Basins have mirrored
-    # storage change intervals, so the flow bounds are symmetric
-    @test JuMP.lower_bound(flow[manning_link]) ≈ -JuMP.upper_bound(flow[manning_link])
-    @test isfinite(JuMP.upper_bound(flow[manning_link]))
+    @test !JuMP.has_lower_bound(flow[manning_link])
+    @test !JuMP.has_upper_bound(flow[manning_link])
 
-    # All non-fixed flow variables have finite bounds
-    for allocation_model in allocation.allocation_models
-        for flow_variable in allocation_model.problem[:flow]
-            JuMP.is_fixed(flow_variable) && continue
-            @test JuMP.has_lower_bound(flow_variable)
-            @test JuMP.has_upper_bound(flow_variable)
-        end
+    for storage_change in problem[:basin_storage_change]
+        @test JuMP.has_lower_bound(storage_change)
+        @test !JuMP.has_upper_bound(storage_change)
     end
 end
 

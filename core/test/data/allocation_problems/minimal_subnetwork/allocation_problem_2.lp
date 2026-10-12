@@ -18,8 +18,8 @@ user_demand_return_flow_UserDemand_#6_: -0.9 flow_(Basin_#4,_UserDemand_#6)_ + 1
 average_flow_unit_error_constraint_1_: -0.5 user_demand_error_UserDemand_#5,1,first_ - 0.5 user_demand_error_UserDemand_#6,1,first_ + 1 average_flow_unit_error_1_ = 0
 pump_constraint_Pump_#3_: -0.0013796407185628745 low_storage_factor_Basin_#2_ + 1 flow_(Basin_#2,_Pump_#3)_ = 0
 Bounds
--0.003992015968063872 <= basin_storage_change_Basin_#2_ <= 3.9880239520958085
--0.003992015968063872 <= basin_storage_change_Basin_#4_ <= 3.9880239520958085
+basin_storage_change_Basin_#2_ >= -0.003992015968063872
+basin_storage_change_Basin_#4_ >= -0.003992015968063872
 0 <= low_storage_factor_Basin_#2_ <= 1
 0 <= low_storage_factor_Basin_#4_ <= 1
 flow_(FlowBoundary_#1,_Basin_#2)_ = 0.0006898203592814372

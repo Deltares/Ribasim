@@ -28,23 +28,23 @@ volume_conservation_Basin_#3_: 1 basin_storage_change_Basin_#3_ + 1.000000000000
 volume_conservation_Basin_#4_: 1 basin_storage_change_Basin_#4_ - 1.0000000000000002 flow_(Outlet_#5,_Basin_#4)_ + 1.0000000000000002 flow_(Basin_#4,_Outlet_#13)_ = 0.004602724404401445
 volume_conservation_Basin_#6_: 1 basin_storage_change_Basin_#6_ - 1.0000000000000002 flow_(Outlet_#13,_Basin_#6)_ + 1.0000000000000002 flow_(Basin_#6,_Pump_#7)_ = 0.004602724404401445
 volume_conservation_Basin_#9_: 1 basin_storage_change_Basin_#9_ - 1.0000000000000002 flow_(ManningResistance_#2,_Basin_#9)_ - 1.0000000000000002 flow_(Pump_#7,_Basin_#9)_ + 1.0000000000000002 flow_(Basin_#9,_Outlet_#10)_ = 0.004602724404401445
-manning_resistance_constraint_ManningResistance_#2_: -462.51158494973936 basin_storage_change_Basin_#3_ + 462.5050857884488 basin_storage_change_Basin_#9_ - 0.004602724960046153 low_storage_factor_Basin_#3_ + 1 flow_(Basin_#3,_ManningResistance_#2)_ = 0
+manning_resistance_constraint_ManningResistance_#2_: -462.511584949739 basin_storage_change_Basin_#3_ + 462.5050857884483 basin_storage_change_Basin_#9_ - 0.004602724960110213 low_storage_factor_Basin_#3_ + 1 flow_(Basin_#3,_ManningResistance_#2)_ = 0
 flow_demand_allocated_sum_constraint_Pump_#7_: 1 flow_(Basin_#6,_Pump_#7)_ - 1 flow_demand_allocated_Pump_#7,2_ - 1 flow_demand_extra_Pump_#7_ = 0
 average_flow_unit_error_constraint_2_: 1 average_flow_unit_error_2_ = 0
 average_storage_unit_error_constraint_1,upper_: -1 level_demand_error_Basin_#3,1,upper,first_ - 1 level_demand_error_Basin_#4,1,upper,first_ - 1 level_demand_error_Basin_#6,1,upper,first_ + 3 average_storage_unit_error_1,upper_ = 0
 average_storage_unit_error_constraint_1,lower_: -1 level_demand_error_Basin_#3,1,lower,first_ - 1 level_demand_error_Basin_#4,1,lower,first_ - 1 level_demand_error_Basin_#6,1,lower,first_ + 3 average_storage_unit_error_1,lower_ = 0
 Bounds
--0.8888821214130761 <= basin_storage_change_Basin_#3_ <= 1.372309227100411
--0.8576932754494191 <= basin_storage_change_Basin_#4_ <= 1.4034980730640678
--0.8421697361557247 <= basin_storage_change_Basin_#6_ <= 1.4190216123577621
--0.8888721699548062 <= basin_storage_change_Basin_#9_ <= 1.3723191785586808
+basin_storage_change_Basin_#3_ >= -0.8888821214130761
+basin_storage_change_Basin_#4_ >= -0.8576932754494191
+basin_storage_change_Basin_#6_ >= -0.8421697361557247
+basin_storage_change_Basin_#9_ >= -0.8888721699548061
 0 <= low_storage_factor_Basin_#3_ <= 1
 0 <= low_storage_factor_Basin_#4_ <= 1
 0 <= low_storage_factor_Basin_#6_ <= 1
 0 <= low_storage_factor_Basin_#9_ <= 1
--1045.8182754917045 <= flow_(ManningResistance_#2,_Basin_#9)_ <= 1045.821417612235
+flow_(ManningResistance_#2,_Basin_#9)_ free
 0 <= flow_(Basin_#3,_Outlet_#5)_ <= 0.023013622022007223
--1045.8182754917045 <= flow_(Basin_#3,_ManningResistance_#2)_ <= 1045.821417612235
+flow_(Basin_#3,_ManningResistance_#2)_ free
 0 <= flow_(Outlet_#5,_Basin_#4)_ <= 0.023013622022007223
 0 <= flow_(Basin_#4,_Outlet_#13)_ <= 0.023013622022007223
 0 <= flow_(Outlet_#13,_Basin_#6)_ <= 0.023013622022007223
