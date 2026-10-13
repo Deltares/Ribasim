@@ -104,14 +104,15 @@ If you are using cmd.exe type `ribasim --help`, or for PowerShell `./ribasim --h
 
 This will give the following message if it is installed correctly:
 ```
-Usage: ribasim.exe <TOML_PATH>
+Usage: ribasim.exe [OPTIONS] <TOML_PATH>
 
 Arguments:
   <TOML_PATH>  Path to the TOML file
 
 Options:
-  -h, --help     Print help
-  -V, --version  Print version
+  -t, --threads <#THREADS>  Number of threads to use. [default: 1]
+  -h, --help                Print help
+  -V, --version             Print version
 ```
 
 ## Adding Ribasim to Path on Windows
