@@ -66,14 +66,135 @@ Note that this thus requires an evaluation of the Jacobian of $\mathbf{f}$ and s
 
 The implicit method @eq-eulerbackward is a coupled system of equations for $\mathbf{w}_{n+1}$, while the explicit @eq-eulerforward is fully decoupled. This means in general that in a time integration step with an implicit method the basins communicate information with eachother, while in an explicit method this does not happen. A consequence of this is that local events (e.g. a pump turns on) propagate slowly through the model using an explicit method but quickly using an implicit method, making implicit methods more stable.
 
-# Jacobian computations
-The Newton iterations above require an evaluation of the Jacobian of $\mathbf{f}$. The Jacobian of `water_balance!` is discussed [here](/concept/equations.qmd#the-jacobian).
+# The Jacobian {#sec-jacobian}
+
+The Newton iterations above require the Jacobian of $\mathbf{f}$, an $N \times N$ matrix where $N$ is the number of states.
+Its entries are given by
+$$
+	J_{i,j} = \frac{\partial f_i}{\partial u_j},
+$$
+i.e. $J_{i,j}$ quantifies how $f_i$, the time derivative of state $i$, changes with respect to changes in state $j$.
+Most of these entries are $0$, because flows in distant parts of the model do not depend on each other.
 
 There are several ways to compute the Jacobian:
 
 - Using [finite difference methods](https://en.wikipedia.org/wiki/Numerical_differentiation#Finite_differences); however these are relatively expensive to compute and introduce truncation errors.
 - Hardcoding analytical expressions for the partial derivatives; these have the advantages over finite difference methods that they are cheaper to compute and don't introduce truncation errors. However, computing and coding these partial derivatives is complex and thus error prone, and requires maintenance for every adjustment of $\mathbf{f}$.
-- Using [automatic differentiation](https://juliadiff.org/ForwardDiff.jl/stable/dev/how_it_works/); this has the advantages of being fast to compute and not requiring much extra implementation other than implementing $\mathbf{f}$ in a way that is compatible with an automatic differentiation package, in the case of Ribasim that is `ForwardDiff.jl`. What remains is supplying the sparsity structure of the Jacobian of $\mathbf{f}$, to make the computation of the Jacobian efficient in terms of usage of memory and computation time.
+- Using [automatic differentiation](https://juliadiff.org/ForwardDiff.jl/stable/dev/how_it_works/); this has the advantages of being fast to compute and not requiring much extra implementation other than implementing $\mathbf{f}$ in a way that is compatible with an automatic differentiation package, in the case of Ribasim that is `ForwardDiff.jl`.
+
+Ribasim uses automatic differentiation by default.
+With forward mode automatic differentiation, one evaluation of $\mathbf{f}$ yields one column of the Jacobian, or more precisely the Jacobian applied to one chosen direction.
+A naive computation of the Jacobian thus costs $N$ evaluations of $\mathbf{f}$, which is prohibitively expensive for large models.
+
+## Sparse matrix coloring
+
+If two columns of the Jacobian have no nonzero entries in the same row, they can be computed in a single evaluation of $\mathbf{f}$ by perturbing both corresponding states at once: the contributions can be told apart afterwards based on the sparsity pattern.
+The columns of a sparse Jacobian can be partitioned into groups (colors) of such structurally orthogonal columns, and only one evaluation per color is needed.
+Ribasim detects the sparsity pattern automatically with [SparseConnectivityTracer.jl](https://github.com/adrhill/SparseConnectivityTracer.jl) and computes the coloring with [SparseMatrixColorings.jl](https://github.com/JuliaDiff/SparseMatrixColorings.jl).
+
+The number of colors depends on the structure of the Jacobian.
+For the Jacobian of $\mathbf{f}$ this structure is unfavorable: a perturbation of a cumulative flow state changes the storage of the Basins it connects, and that affects all flows connected to these Basins.
+Hence all flow states connected to the same Basin end up in different colors, and the number of colors is at least the number of connections of the most connected Basin.
+Therefore Ribasim does not compute the Jacobian of $\mathbf{f}$ directly, but the Jacobian of an intermediate function which can be colored with very few colors, as explained below.
+
+## Structure of the right hand side
+
+We split the state vector into the cumulative flows $\mathbf{u}^\text{flow}$ and the PID integrals $\mathbf{u}^\text{pid}$.
+The Basin storages depend linearly on the cumulative flows (see [the equations](/concept/equations.qmd)):
+$$
+	\mathbf{S} = \mathbf{S}_0(t) + M\mathbf{u}^\text{flow},
+$$
+where $M$ is the $n_\text{basin} \times n_\text{flow}$ signed incidence matrix: $M_{b,k} = -1$ if Basin $b$ is upstream of flow $k$, $M_{b,k} = 1$ if Basin $b$ is downstream of flow $k$ and $M_{b,k} = 0$ otherwise.
+Evaporation and infiltration are flows with their Basin upstream and nothing downstream.
+
+For every flow $k$ we then take a copy of the storage of its upstream Basin $S^\text{up}_k$ and its downstream Basin $S^\text{down}_k$:
+$$
+	\mathbf{S}^\text{up} = P^\text{up}\mathbf{S}, \quad \mathbf{S}^\text{down} = P^\text{down}\mathbf{S},
+$$
+where $P^\text{up}$ and $P^\text{down}$ are constant selection matrices (note that $M = (P^\text{down} - P^\text{up})^T$).
+The flows are computed from these storage copies, the PID integrals $\mathbf{u}^\text{pid}$ and the compound variables $\mathbf{c}$ of the [ContinuousControl](/reference/node/continuous-control.qmd) nodes:
+$$
+	\mathbf{f}^\text{flow} = \mathbf{q}(\mathbf{v}), \quad \mathbf{v} = \left(\mathbf{S}^\text{up}, \mathbf{S}^\text{down}, \mathbf{u}^\text{pid}, \mathbf{c}\right).
+$$
+
+The Jacobian $\partial\mathbf{q}/\partial\mathbf{v}$ is what Ribasim computes with automatic differentiation.
+It is not the Jacobian of $\mathbf{f}$, but it is very cheap to compute:
+
+- $\partial\mathbf{q}/\partial\mathbf{S}^\text{up}$ and $\partial\mathbf{q}/\partial\mathbf{S}^\text{down}$ are diagonal, since flow $k$ only depends on its own storage copies $S^\text{up}_k$ and $S^\text{down}_k$. The exception are flows controlled by a PidControl node with a derivative term, which depend on all flows of the listened Basin;
+- $\partial\mathbf{q}/\partial\mathbf{u}^\text{pid}$ and $\partial\mathbf{q}/\partial\mathbf{c}$ have at most one nonzero per row, for the flows that are PID controlled or continuously controlled respectively.
+
+These blocks can be colored with only a handful of colors, independent of the size of the model.
+The Jacobian of $\mathbf{f}$ follows from the chain rule, where only the multiplications with the constant matrices $P^\text{up}M$ and $P^\text{down}M$ remain:
+$$
+	\frac{\partial \mathbf{f}^\text{flow}}{\partial \mathbf{u}^\text{flow}} = Q_S M, \quad Q_S = \frac{\partial\mathbf{q}}{\partial\mathbf{S}^\text{up}}P^\text{up} + \frac{\partial\mathbf{q}}{\partial\mathbf{S}^\text{down}}P^\text{down},
+$$
+(ignoring control for now), where $Q_S = \partial\mathbf{q}/\partial\mathbf{S}$ is the $n_\text{flow} \times n_\text{basin}$ matrix with the dependence of the flows on the Basin storages.
+This matrix is never assembled; instead the structure is exploited directly in the linear solve.
+
+## The linear solve
+
+Every Newton iteration of an implicit method requires solving a linear system of the form
+$$
+	\left(J - \gamma^{-1}I\right)\mathbf{x} = \mathbf{b},
+$$
+where $\gamma$ is proportional to the timestep (compare the Euler backward iteration above, where $\gamma = t_{n+1} - t_n$).
+This system has a dimension equal to the number of states, which is much larger than the number of Basins.
+Using $J = Q_S M$ and defining $\mathbf{s} = M\mathbf{x}$, the system reads
+$$
+	-\gamma^{-1}\mathbf{x} + Q_S\mathbf{s} = \mathbf{b} \quad \Rightarrow \quad \mathbf{x} = \gamma\left(Q_S\mathbf{s} - \mathbf{b}\right).
+$$ {#eq-back-substitution}
+Multiplying the left equation by $M$ gives a system in terms of $\mathbf{s}$ only:
+$$
+	\left(J_\text{inner} - \gamma^{-1}I_{n_\text{basin}}\right)\mathbf{s} = M\mathbf{b}, \quad J_\text{inner} = M Q_S.
+$$ {#eq-inner-system}
+Hence the linear solve is done in two steps:
+
+1. Solve the $n_\text{basin} \times n_\text{basin}$ system @eq-inner-system for the storage changes $\mathbf{s}$. The sparsity pattern of $J_\text{inner}$ is that of the adjacency matrix of the Basins, which is very sparse; by default this system is solved with a sparse LU factorization.
+2. Compute the solution in terms of the states $\mathbf{x}$ with @eq-back-substitution, which is just a cheap matrix-vector product.
+
+### PID control
+
+The PID integral state of a PidControl node $j$ evolves with the error $f^\text{pid}_j = e_j = h^\text{target}_j - h(S_{l_j})$, where $l_j$ is the listened Basin, so
+$$
+	\frac{\partial f^\text{pid}_j}{\partial \mathbf{u}^\text{flow}} = -\frac{1}{A_{l_j}}M_{l_j,:},
+$$
+where $A_{l_j}$ is the area of the listened Basin.
+The listened Basin is directly up- or downstream of the controlled Pump or Outlet, so the dependence of the controlled flow on the listened Basin storage through the proportional term is already included in $Q_S$.
+Let $G = \partial\mathbf{q}/\partial\mathbf{u}^\text{pid}$ and let $E$ be the matrix that selects the listened Basin per PidControl node and divides by its area.
+The PID rows of the linear system then give
+$$
+	\mathbf{x}^\text{pid} = -\gamma\left(\mathbf{b}^\text{pid} + E\mathbf{s}\right),
+$$
+and substituting this into the flow rows leads to
+$$
+	\mathbf{x}^\text{flow} = \gamma\left(Q_S\mathbf{s} + G\mathbf{x}^\text{pid} - \mathbf{b}^\text{flow}\right),
+$$
+with the inner system
+$$
+	\left(M Q_S - \gamma M G E - \gamma^{-1}I_{n_\text{basin}}\right)\mathbf{s} = M\mathbf{b}^\text{flow} + \gamma M G \mathbf{b}^\text{pid}.
+$$
+So the PID integral states are eliminated in the same way as the flow states, and the dimension of the inner system remains the number of Basins.
+
+### Continuous control
+
+The compound variable $c_m$ of a ContinuousControl node depends on Basin storages and on (listened) flows.
+Their derivatives $\partial\mathbf{c}/\partial\mathbf{S}$ and $\partial\mathbf{c}/\partial\mathbf{q}$ are also computed with automatic differentiation.
+For a continuously controlled flow this adds the term
+$$
+	\frac{\partial\mathbf{q}}{\partial\mathbf{c}}\left(\frac{\partial\mathbf{c}}{\partial\mathbf{S}} + \frac{\partial\mathbf{c}}{\partial\mathbf{q}}Q_S\right)
+$$
+to $Q_S$, and thus $M$ times this term to $J_\text{inner}$.
+Here only the direct dependence of listened flows on their own Basin storages is taken into account, since chaining control (listening to a flow that is itself controlled by PidControl or ContinuousControl) is not supported.
+
+### Exactness
+
+The linear solve above is equivalent to solving the full linear system with the Jacobian of $\mathbf{f}$, as long as control is not chained.
+If it is, the Jacobian used in the linear solve is approximate.
+An approximate Jacobian only affects the convergence speed of the Newton iterations, not the accuracy of the converged solution, since the latter is determined by $\mathbf{f}$ itself.
+
+The reduced linear solve can be disabled with the solver setting `reduced_implicit_solve = false`, see the [solver settings](/reference/usage.qmd#sec-solver-settings).
+In that case the (sparse) Jacobian of $\mathbf{f}$ is computed directly with automatic differentiation and sparse matrix coloring, and the full linear system is solved.
+This is mainly useful for verification, as it is considerably slower for larger models.
 
 # Continuity considerations
 

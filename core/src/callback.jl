@@ -20,7 +20,7 @@ function create_callbacks(
 
     # Save storages and levels
     saved_basin_states = SavedValues(Float64, SavedBasinState)
-    save_basin_state_cb = SavingCallback(save_basin_state, saved_basin_states; saveat)
+    save_basin_state_cb = SavingCallback(save_basin_state!, saved_basin_states; saveat)
     push!(callbacks, save_basin_state_cb)
 
     # Update cumulative flows (exact integration and for allocation)
@@ -92,29 +92,26 @@ FlowBoundary flows) over the time step that ended at `t` to their cumulative val
 function update_cumulative_forcing!(p::Parameters, t::Float64)::Nothing
     (; p_independent, p_mutable) = p
     (; basin, flow_boundary) = p_independent
-    (; vertical_flux) = basin
+    (; forcing, vertical_flux) = basin
     tprev = p_mutable.tprev
     dt = t - tprev
 
-    for id in basin.node_id
-        i = id.idx
-        fixed_area = basin_areas(basin, i)[end]
-        precipitation = fixed_area * vertical_flux.precipitation[i] * dt
-        basin.cumulative_precipitation[i] += precipitation
-        basin.cumulative_precipitation_saveat[i] += precipitation
-        surface_runoff = dt * vertical_flux.surface_runoff[i]
-        basin.cumulative_surface_runoff[i] += surface_runoff
-        basin.cumulative_surface_runoff_saveat[i] += surface_runoff
-        drainage = dt * vertical_flux.drainage[i]
-        basin.cumulative_drainage[i] += drainage
-        basin.cumulative_drainage_saveat[i] += drainage
-    end
+    # Compute per-dt increment of exact cumulative forcing
+    @. forcing.exact_cumulative_forcing_dt.precipitation = vertical_flux.precipitation * dt
+    @. forcing.exact_cumulative_forcing_dt.surface_runoff = vertical_flux.surface_runoff * dt
+    @. forcing.exact_cumulative_forcing_dt.drainage = vertical_flux.drainage * dt
 
-    for id in flow_boundary.node_id
-        boundary_flow = boundary_flow_integral(flow_boundary, id.idx, tprev, t)
-        flow_boundary.cumulative_flow[id.idx] += boundary_flow
-        flow_boundary.cumulative_flow_saveat[id.idx] += boundary_flow
+    for idx in eachindex(flow_boundary.node_id)
+        flow_boundary.cumulative_flow_dt[idx] =
+            boundary_flow_integral(flow_boundary, idx, tprev, t)
     end
+    flow_boundary.cumulative_flow .+= flow_boundary.cumulative_flow_dt
+
+    # Update total cumulative forcing
+    @. forcing.exact_cumulative_forcing.precipitation += forcing.exact_cumulative_forcing_dt.precipitation
+    @. forcing.exact_cumulative_forcing.surface_runoff += forcing.exact_cumulative_forcing_dt.surface_runoff
+    @. forcing.exact_cumulative_forcing.drainage += forcing.exact_cumulative_forcing_dt.drainage
+    forcing.t_last_accepted[1] = t
 
     p_mutable.tprev = t
     return nothing
@@ -122,34 +119,42 @@ end
 
 """
 Update with the latest timestep:
-- Cumulative flows/forcings which are input for the allocation algorithm
+- Cumulative flows/forcings which are integrated exactly
 - Cumulative flows/forcings which are supplied demands in the allocation context
 
-The forcings which are integrated exactly are updated in `check_negative_storage`, see
-`update_cumulative_forcing!`.
+The forcings which are integrated exactly are updates in `check_negative_storage`, see `update_cumulative_forcing!`
 """
 function update_cumulative_flows!(u, t, integrator)::Nothing
-    (; p) = integrator
-    (; allocation) = p.p_independent
+    (; uprev, p, tprev) = integrator
+    (; p_independent) = p
+    (; basin, user_demand, cumulative_flow_dt, allocation) = p_independent
+    dt = t - tprev
+    iszero(dt) && return nothing
 
-    # Update supplied flows for allocation input and output
+    @. cumulative_flow_dt = u.flow - uprev.flow
+    basin.forcing.cumulative_infiltration .+= cumulative_flow_dt.vertical.infiltration
+
+    for node_id in user_demand.node_id
+        user_demand.cumulative_inflow[node_id.idx] += sum(
+            get_inflows(cumulative_flow_dt, user_demand, node_id.idx)
+        )
+    end
+
     for allocation_model in allocation.allocation_models
         (; cumulative_supplied_volume) = allocation_model
-
-        # Update supplied flows for allocation output
         for link in keys(cumulative_supplied_volume)
-            cumulative_supplied_volume[link] += flow_update_on_link(integrator, link)
+            cumulative_supplied_volume[link] += get_flow(cumulative_flow_dt, link, p)
         end
     end
     return nothing
 end
 
 function update_concentrations!(u, t, integrator)::Nothing
-    (; uprev, p, tprev, dt) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
-    (; current_storage, current_level) = state_and_time_dependent_cache
-    (; basin, flow_boundary, do_concentration) = p_independent
-    (; vertical_flux, concentration_data) = basin
+    (; p, tprev) = integrator
+    (; p_independent, current_basin_properties) = p
+    (; current_storage) = current_basin_properties
+    (; basin, flow_boundary, do_concentration, cumulative_flow_dt) = p_independent
+    (; storage_prev_dt, concentration_data, forcing) = basin
     (;
         evaporate_mass,
         cumulative_in,
@@ -162,15 +167,12 @@ function update_concentrations!(u, t, integrator)::Nothing
     ) = concentration_data
 
     if !do_concentration
-        # The step limiter also uses these, see `min_low_storage_factor`
-        basin.storage_prev .= current_storage
-        basin.level_prev .= current_level
+        # The step limiter also uses this, see `min_low_storage_factor`
+        storage_prev_dt .= current_storage
         return nothing
     end
 
-    # Reset cumulative flows, used to calculate the concentration
-    cumulative_in .= vertical_flux.drainage * dt
-    cumulative_in .+= vertical_flux.surface_runoff * dt
+    dt = t - tprev
 
     # Basin forcings
     for node_id in basin.node_id
@@ -179,25 +181,21 @@ function update_concentrations!(u, t, integrator)::Nothing
         add_substance_mass!(
             mass_node,
             concentration_itp_drainage[node_id.idx],
-            vertical_flux.drainage[node_id.idx] * dt,
+            forcing.exact_cumulative_forcing_dt.drainage[node_id.idx],
             t,
         )
 
-        # Precipitation depends on fixed area
-        fixed_area = basin_areas(basin, node_id.idx)[end]
-        added_precipitation = fixed_area * vertical_flux.precipitation[node_id.idx] * dt
         add_substance_mass!(
             mass_node,
             concentration_itp_precipitation[node_id.idx],
-            added_precipitation,
+            forcing.exact_cumulative_forcing_dt.precipitation[node_id.idx],
             t,
         )
-        cumulative_in[node_id.idx] += added_precipitation
 
         add_substance_mass!(
             mass_node,
             concentration_itp_surface_runoff[node_id.idx],
-            vertical_flux.surface_runoff[node_id.idx] * dt,
+            forcing.exact_cumulative_forcing_dt.surface_runoff[node_id.idx],
             t,
         )
 
@@ -212,25 +210,31 @@ function update_concentrations!(u, t, integrator)::Nothing
     # Exact boundary flow over time step
     for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
         outflow_id = outflow_link.link[2]
-        added_boundary_flow = boundary_flow_integral(flow_boundary, id.idx, tprev, t)
         add_substance_mass!(
             mass[outflow_id.idx],
             flow_boundary.concentration_itp[id.idx],
-            added_boundary_flow,
+            flow_boundary.cumulative_flow_dt[id.idx],
             t,
         )
-        cumulative_in[outflow_id.idx] += added_boundary_flow
     end
 
     mass_inflows_from_user_demand!(integrator)
     mass_inflows_basin!(integrator)
+    aggregate_flows!(
+        cumulative_in,
+        cumulative_flow_dt,
+        p_independent;
+        do_outflows = false,
+        positive_vertical_forcing = forcing.exact_cumulative_forcing_dt,
+        boundary_flow = flow_boundary.cumulative_flow_dt,
+    )
 
     # Update the Basin concentrations based on the added mass and flows
     for node_id in basin.node_id
-        storage_only_in = basin.storage_prev[node_id.idx] + cumulative_in[node_id.idx]
+        storage_only_in = storage_prev_dt[node_id.idx] + cumulative_in[node_id.idx]
 
         # The residence time tracer gets older
-        mass[node_id.idx][Substance.ResidenceTime] += dt * basin.storage_prev[node_id.idx]
+        mass[node_id.idx][Substance.ResidenceTime] += dt * storage_prev_dt[node_id.idx]
         if iszero(storage_only_in)
             concentration_state[node_id.idx, :] .= 0
         else
@@ -247,14 +251,11 @@ function update_concentrations!(u, t, integrator)::Nothing
 
         # Evaporate mass to keep the mass balance, if enabled in model config
         if evaporate_mass
-            evaporated_volume = u.evaporation[node_id.idx] - uprev.evaporation[node_id.idx]
+            evaporated_volume = cumulative_flow_dt.vertical.evaporation[node_id.idx]
             mass_node .-= concentration_state[node_id.idx, :] .* evaporated_volume
         end
 
-        infiltrated_volume = u.infiltration[node_id.idx] - uprev.infiltration[node_id.idx]
-        mass_node .-= concentration_state[node_id.idx, :] .* infiltrated_volume
-
-        # Take care of infinitely small masses, possibly becoming negative due to truncation.
+        # Take care of too small masses, possibly becoming negative due to truncation.
         for I in eachindex(mass_node)
             if (-eps(Float64)) < mass_node[I] < (eps(Float64))
                 mass_node[I] = 0.0
@@ -277,149 +278,81 @@ function update_concentrations!(u, t, integrator)::Nothing
             concentration_state[node_id.idx, :] .= 0
         else
             concentration_state[node_id.idx, :] .=
-                mass[node_id.idx] ./ current_storage[node_id.idx]
+                mass[node_id.idx] ./ s
         end
     end
 
+    storage_prev_dt .= current_storage
     errors && error("Negative mass(es) detected at t = $t s")
-
-    basin.storage_prev .= current_storage
-    basin.level_prev .= current_level
     return nothing
-end
-
-"""
-Compute the forcing volume entering and leaving the Basin over the last time step
-"""
-function forcing_update(integrator::DEIntegrator, node_id::NodeID)::Tuple{Float64, Float64}
-    (; u, uprev, p, dt) = integrator
-    (; basin) = p.p_independent
-    (; vertical_flux) = basin
-
-    @assert node_id.type == NodeType.Basin
-
-    fixed_area = basin_areas(basin, node_id.idx)[end]
-
-    inflow_update =
-        (
-        fixed_area * vertical_flux.precipitation[node_id.idx] +
-            vertical_flux.drainage[node_id.idx] +
-            vertical_flux.surface_runoff[node_id.idx]
-    ) * dt
-
-    outflow_update =
-        (u.evaporation[node_id.idx] - uprev.evaporation[node_id.idx]) +
-        (u.infiltration[node_id.idx] - uprev.infiltration[node_id.idx])
-
-    return inflow_update, outflow_update
-end
-
-"""
-Given an link (from_id, to_id), compute the cumulative flow over that
-link over the latest time step.
-"""
-function flow_update_on_link(
-        integrator::DEIntegrator,
-        link_src::Tuple{NodeID, NodeID},
-    )::Float64
-    (; u, uprev, p, t, tprev) = integrator
-    (; flow_boundary, state_ranges, link_to_state_idx) = p.p_independent
-
-    from_id, to_id = link_src
-    return if from_id == to_id
-        error(
-            "Cannot get flow update when from_id = to_id. For Basin forcing use `forcing_update`.",
-        )
-    elseif from_id.type == NodeType.FlowBoundary
-        boundary_flow_integral(flow_boundary, from_id.idx, tprev, t)
-    else
-        flow_idx = get_state_index(state_ranges, link_to_state_idx, link_src)
-        u[flow_idx] - uprev[flow_idx]
-    end
 end
 
 """
 Save the storages and levels at the latest t.
 """
-function save_basin_state(u, t, integrator)
-    (; current_storage, current_level) = integrator.p.state_and_time_dependent_cache
+function save_basin_state!(u, t, integrator)
+    (; current_storage, current_level) = integrator.p.current_basin_properties
     return SavedBasinState(; storage = copy(current_storage), level = copy(current_level), t)
 end
 
 """
-Save all cumulative forcings and flows over links over the latest timestep,
-Both computed by the solver and integrated exactly. Also computes the total horizontal
-inflow and outflow per Basin.
+Save all flow rates (averaged over the saveat interval) and vertical fluxes.
 """
 function save_flow(u, t, integrator)
-    (; cache, p) = integrator
-    (;
-        basin,
-        state_inflow_link,
-        state_outflow_link,
-        flow_boundary,
-        u_prev_saveat,
-        convergence,
-        convergence_ncalls,
-        node_id,
-    ) = p.p_independent
+    (; p_independent, current_basin_properties) = integrator.p
+    (; basin, flow_boundary, u_prev_saveat, cumulative_flow_dt, state_ranges) = p_independent
     Δt = get_Δt(integrator)
-    flow_mean = (u - u_prev_saveat) / Δt
 
-    # Current u is previous u in next computation
-    u_prev_saveat .= u
+    # Compute mean flow rate per internal link from cumulative flows
+    flow_mean = similar(cumulative_flow_dt)
+    @. flow_mean = (u.flow - u_prev_saveat.flow) / Δt
 
-    n_basin = length(basin.node_id)
+    # FlowBoundary
+    boundary_flow_mean =
+        (flow_boundary.cumulative_flow - flow_boundary.cumulative_flow_prev_saveat) / Δt
+
+    n_basin = length(basin)
     inflow_mean = zeros(n_basin)
     outflow_mean = zeros(n_basin)
-    flow_convergence = fill(missing, length(u)) |> Vector{Union{Missing, Float64}}
+    # Flow contributions from horizontal flow links
+    aggregate_flows!(
+        inflow_mean,
+        flow_mean,
+        p_independent;
+        do_vertical_flows = false,
+        do_outflows = false,
+        boundary_flow = boundary_flow_mean,
+    )
+    aggregate_flows!(
+        outflow_mean,
+        flow_mean,
+        p_independent;
+        do_vertical_flows = false,
+        do_inflows = false,
+        weight = -1,
+    )
+
+    exact_vertical_forcing_mean = (
+        basin.forcing.exact_cumulative_forcing -
+            basin.forcing.exact_cumulative_forcing_prev_saveat
+    ) / Δt
+
+    concentration = copy(basin.concentration_data.concentration_state)
+
+    # Compute mean convergence over the saveat interval (missing if no nlsolver calls)
+    flow_convergence = CVector(fill(missing, length(u)) |> Vector{Union{Missing, Float64}}, state_ranges)
     basin_convergence = fill(missing, n_basin) |> Vector{Union{Missing, Float64}}
+    ncalls = p_independent.convergence_ncalls[1]
+    if ncalls > 0
+        @. flow_convergence = p_independent.convergence / ncalls
 
-    # Flow contributions from horizontal flow states
-    for (flow, inflow_link, outflow_link) in
-        zip(flow_mean, state_inflow_link, state_outflow_link)
-        inflow_id = inflow_link.link[1]
-        if inflow_id.type == NodeType.Basin
-            if flow > 0
-                outflow_mean[inflow_id.idx] += flow
-            else
-                inflow_mean[inflow_id.idx] -= flow
-            end
-        end
-
-        outflow_id = outflow_link.link[2]
-        if outflow_id.type == NodeType.Basin
-            if flow > 0
-                inflow_mean[outflow_id.idx] += flow
-            else
-                outflow_mean[outflow_id.idx] -= flow
-            end
-        end
-    end
-
-    # Flow contributions from flow boundaries
-    flow_boundary_mean = copy(flow_boundary.cumulative_flow_saveat) ./ Δt
-    flow_boundary.cumulative_flow_saveat .= 0.0
-
-    for (outflow_link, id) in zip(flow_boundary.outflow_link, flow_boundary.node_id)
-        flow = flow_boundary_mean[id.idx]
-        outflow_id = outflow_link.link[2]
-        if outflow_id.type == NodeType.Basin
-            inflow_mean[outflow_id.idx] += flow
-        end
-    end
-
-    precipitation = copy(basin.cumulative_precipitation_saveat) ./ Δt
-    surface_runoff = copy(basin.cumulative_surface_runoff_saveat) ./ Δt
-    drainage = copy(basin.cumulative_drainage_saveat) ./ Δt
-    @. basin.cumulative_precipitation_saveat = 0.0
-    @. basin.cumulative_surface_runoff_saveat = 0.0
-    @. basin.cumulative_drainage_saveat = 0.0
-
-    if hasproperty(cache, :nlsolver)
-        flow_convergence = convergence ./ convergence_ncalls[1]
         for (i, (evap, infil)) in
-            enumerate(zip(flow_convergence.evaporation, flow_convergence.infiltration))
+            enumerate(
+                zip(
+                    flow_convergence.flow.vertical.evaporation,
+                    flow_convergence.flow.vertical.infiltration
+                )
+            )
             if isnan(evap)
                 basin_convergence[i] = infil
             elseif isnan(infil)
@@ -428,48 +361,40 @@ function save_flow(u, t, integrator)
                 basin_convergence[i] = max(evap, infil)
             end
         end
-        fill!(convergence, 0)
-        convergence_ncalls[1] = 0
+
+        fill!(p_independent.convergence, 0.0)
+        p_independent.convergence_ncalls[1] = 0
     end
 
-    concentration = copy(basin.concentration_data.concentration_state)
     saved_flow = SavedFlow(;
         flow = flow_mean,
+        exact_vertical_forcing = exact_vertical_forcing_mean,
+        boundary_flow = boundary_flow_mean,
         inflow = inflow_mean,
         outflow = outflow_mean,
-        flow_boundary = flow_boundary_mean,
-        precipitation,
-        surface_runoff,
-        drainage,
         concentration,
         flow_convergence,
         basin_convergence,
         t,
     )
     check_water_balance_error!(saved_flow, integrator, Δt)
+    u_prev_saveat .= u
+    basin.storage_prev_saveat .= current_basin_properties.current_storage
+    basin.forcing.exact_cumulative_forcing_prev_saveat .= basin.forcing.exact_cumulative_forcing
+    flow_boundary.cumulative_flow_prev_saveat .= flow_boundary.cumulative_flow
     return saved_flow
 end
-
 function check_water_balance_error!(
         saved_flow::SavedFlow,
         integrator::DEIntegrator,
         Δt::Float64,
     )::Nothing
-    (; u, p, t) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
-    (; u_reduced, state_ranges) = p_independent
-    (; current_storage) = state_and_time_dependent_cache
+    (; p, t) = integrator
+    (; p_independent, current_basin_properties) = p
+    (; current_storage) = current_basin_properties
 
     (; basin, water_balance_abstol, water_balance_reltol, starttime) = p_independent
     errors = false
-
-    # The initial storage is irrelevant for the storage rate and can only cause
-    # floating point truncation errors
-    reduce_state!(u_reduced, u, p_independent)
-    formulate_storages!(u_reduced, p, t; add_initial_storage = false)
-
-    evaporation = view(saved_flow.flow, state_ranges.evaporation)
-    infiltration = view(saved_flow.flow, state_ranges.infiltration)
 
     for (
             inflow_rate,
@@ -485,13 +410,13 @@ function check_water_balance_error!(
         ) in zip(
             saved_flow.inflow,
             saved_flow.outflow,
-            saved_flow.precipitation,
-            saved_flow.surface_runoff,
-            saved_flow.drainage,
-            evaporation,
-            infiltration,
+            saved_flow.exact_vertical_forcing.precipitation,
+            saved_flow.exact_vertical_forcing.surface_runoff,
+            saved_flow.exact_vertical_forcing.drainage,
+            saved_flow.flow.vertical.evaporation,
+            saved_flow.flow.vertical.infiltration,
             current_storage,
-            basin.Δstorage_prev_saveat,
+            basin.storage_prev_saveat,
             basin.node_id,
         )
         storage_rate = (s_now - s_prev) / Δt
@@ -504,7 +429,7 @@ function check_water_balance_error!(
         if abs(balance_error) > water_balance_abstol &&
                 abs(relative_error) > water_balance_reltol
             errors = true
-            @error "Too large water balance error" id balance_error relative_error
+            @error "Too large water balance error" id balance_error relative_error storage_rate total_in outflow_rate evaporation infiltration mean_flow_rate
         end
 
         saved_flow.storage_rate[id.idx] = storage_rate
@@ -515,9 +440,6 @@ function check_water_balance_error!(
         t = datetime_since(t, starttime)
         error("Too large water balance error(s) detected at t = $t")
     end
-
-    @. basin.Δstorage_prev_saveat = current_storage
-    current_storage .+= basin.storage0
     return nothing
 end
 
@@ -543,7 +465,7 @@ end
 
 function check_negative_storage(u, t, integrator)::Nothing
     (; p) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
+    (; p_independent, current_basin_properties) = p
     (; basin) = p_independent
     du = get_du(integrator)
 
@@ -558,7 +480,7 @@ function check_negative_storage(u, t, integrator)::Nothing
 
     errors = false
     for id in basin.node_id
-        if state_and_time_dependent_cache.current_storage[id.idx] < 0
+        if current_basin_properties.current_storage[id.idx] < 0
             @error "Negative storage detected in $id"
             errors = true
         end
@@ -586,6 +508,7 @@ Apply the discrete control logic. There's somewhat of a complex structure:
 function apply_discrete_control!(integrator; initialize::Bool = false)::Nothing
     (; p, t) = integrator
     (; discrete_control) = p.p_independent
+    (; current_storage) = p.current_basin_properties
     (; node_id, truth_state, compound_variables) = discrete_control
     du = get_du(integrator)
 
@@ -608,7 +531,7 @@ function apply_discrete_control!(integrator; initialize::Bool = false)::Nothing
 
         # Loop over the compound variables listened to by this discrete control node
         for compound_variable in compound_variables_node
-            value = compound_variable_value(compound_variable, p, du, t)
+            value = compound_variable_value(compound_variable, current_storage, du.flow, p, t)
 
             # Loop over the threshold interpolations associated with the current compound variable
             for (threshold_low, threshold_high) in
@@ -732,53 +655,62 @@ function set_new_control_state!(
     return false, false
 end
 
-"""
-Get a value for a condition. Currently supports getting levels from Basins and flows
-from FlowBoundaries.
-"""
-function get_value(subvariable::SubVariable, p::Parameters, du::CVector, t::Float64)
-    (; flow_boundary, level_boundary, basin) = p.p_independent
-    (; listen_node_id, look_ahead, variable, cache_ref) = subvariable
+function compound_variable_value(
+        compound_variable::CompoundVariable,
+        storage::AbstractVector,
+        flow::AbstractVector,
+        p::Parameters,
+        t::Number
+    )
+    (; level_boundary, flow_boundary, basin, user_demand) = p.p_independent
 
-    if !iszero(cache_ref.idx)
-        return get_value(cache_ref, p, du)
-    end
-
-    if variable == "level"
-        if listen_node_id.type == NodeType.LevelBoundary
-            level = level_boundary.level[listen_node_id.idx](t + look_ahead)
-        else
-            error(
-                "Level condition node '$listen_node_id' is neither a Basin nor a LevelBoundary.",
-            )
-        end
-        value = level
-
-    elseif variable == "flow_rate"
-        if listen_node_id.type == NodeType.FlowBoundary
-            value = boundary_flow_rate(flow_boundary, listen_node_id.idx, t + look_ahead)
-        else
-            error("Flow condition node $listen_node_id is not a FlowBoundary.")
-        end
-
-    elseif startswith(variable, "concentration_external.")
-        value =
-            basin.concentration_data.concentration_external[listen_node_id.idx][variable](t)
-    elseif startswith(variable, "concentration.")
-        substance = Symbol(last(split(variable, ".")))
-        var_idx = find_index(substance, basin.concentration_data.substances)
-        value = basin.concentration_data.concentration_state[listen_node_id.idx, var_idx]
-    else
-        error("Unsupported condition variable $variable.")
-    end
-
-    return value
-end
-
-function compound_variable_value(compound_variable::CompoundVariable, p, du, t)
-    value = zero(eltype(du))
+    value = zero(typeof(t))
     for subvariable in compound_variable.subvariables
-        value += subvariable.weight * get_value(subvariable, p, du, t)
+        (; listen_node_id, variable, weight, look_ahead) = subvariable
+
+        sub_value = if variable == "level"
+            if listen_node_id.is_basin
+                # Basin level
+                get_level(storage[listen_node_id.idx], p, listen_node_id, t)
+            elseif listen_node_id.type == NodeType.LevelBoundary
+                # Level boundary level
+                level_boundary.level[listen_node_id.idx](t + look_ahead)
+            else
+                error("Cannot obtain variable `$variable` from $listen_node_id.")
+            end
+        elseif variable == "storage"
+            storage[listen_node_id.idx]
+        elseif variable == "flow_rate"
+            if listen_node_id.type == NodeType.FlowBoundary
+                # Flow boundary flow rate
+                flow_boundary.flow_rate[listen_node_id.idx](t + look_ahead)
+            elseif listen_node_id.type == NodeType.Pump
+                # Connector node flow rate
+                flow.horizontal.pump[listen_node_id.idx]
+            elseif listen_node_id.type == NodeType.Outlet
+                flow.horizontal.outlet[listen_node_id.idx]
+            elseif listen_node_id.type == NodeType.TabulatedRatingCurve
+                flow.horizontal.tabulated_rating_curve[listen_node_id.idx]
+            elseif listen_node_id.type == NodeType.LinearResistance
+                flow.horizontal.linear_resistance[listen_node_id.idx]
+            elseif listen_node_id.type == NodeType.ManningResistance
+                flow.horizontal.manning_resistance[listen_node_id.idx]
+            elseif listen_node_id.type == NodeType.UserDemand
+                sum(get_inflows(flow, user_demand, listen_node_id.idx))
+            else
+                error("Cannot obtain variable `$variable` from $listen_node_id.")
+            end
+        elseif startswith(variable, "concentration_external.")
+            basin.concentration_data.concentration_external[listen_node_id.idx][variable](t)
+        elseif startswith(variable, "concentration.")
+            substance = Symbol(last(split(variable, ".")))
+            var_idx = find_index(substance, basin.concentration_data.substances)
+            basin.concentration_data.concentration_state[listen_node_id.idx, var_idx]
+        else
+            error("Unsupported listen variable $variable.")
+        end
+
+        value += weight * sub_value
     end
     return value
 end
@@ -797,19 +729,15 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
 end
 
 function apply_parameter_update!(parameter_update)::Nothing
-    (; name, value, ref) = parameter_update
-
-    if ref.i == 0
-        return nothing
-    end
+    (; value, ref) = parameter_update
     ref[] = value
     return nothing
 end
 
 function update_subgrid_level!(integrator)::Nothing
     (; p, t) = integrator
-    (; p_independent, state_and_time_dependent_cache) = p
-    (; current_level) = state_and_time_dependent_cache
+    (; p_independent, current_basin_properties) = p
+    (; current_level) = current_basin_properties
     subgrid = p_independent.subgrid
 
     # First update the all the subgrids with static h(h) relations
@@ -848,14 +776,16 @@ function set_flux!(
         fluxes::AbstractVector{Float64},
         interpolations::Vector{ScalarConstantInterpolation},
         i::Int,
-        t,
-    )::Nothing
+        t;
+        coefficient = 1.0,
+    )::Bool
     val = interpolations[i](t)
     # keep old value if new value is NaN
     if !isnan(val)
-        fluxes[i] = val
+        fluxes[i] = coefficient * val
+        return true
     end
-    return nothing
+    return false
 end
 
 """
@@ -868,22 +798,27 @@ function update_basin!(integrator)::Nothing
     (; p, t) = integrator
     (; basin) = p.p_independent
 
-    update_basin!(basin, t)
+    new_flux = update_basin!(basin, t)
+    # Forcing changed discontinuously; tell the integrator so it doesn't
+    # extrapolate across the jump using stale derivative history.
+    derivative_discontinuity!(integrator, new_flux)
     return nothing
 end
 
-function update_basin!(basin::Basin, t)::Nothing
+function update_basin!(basin::Basin, t)::Bool
     (; vertical_flux, forcing) = basin
+    new_flux = false
     for id in basin.node_id
         i = id.idx
-        set_flux!(vertical_flux.precipitation, forcing.precipitation, i, t)
-        set_flux!(vertical_flux.surface_runoff, forcing.surface_runoff, i, t)
-        set_flux!(vertical_flux.potential_evaporation, forcing.potential_evaporation, i, t)
-        set_flux!(vertical_flux.infiltration, forcing.infiltration, i, t)
-        set_flux!(vertical_flux.drainage, forcing.drainage, i, t)
+        fixed_area = get_fixed_area(basin, i)
+        new_flux |= set_flux!(vertical_flux.precipitation, forcing.precipitation, i, t; coefficient = fixed_area)
+        new_flux |= set_flux!(vertical_flux.surface_runoff, forcing.surface_runoff, i, t)
+        new_flux |= set_flux!(vertical_flux.potential_evaporation, forcing.potential_evaporation, i, t)
+        new_flux |= set_flux!(vertical_flux.infiltration, forcing.infiltration, i, t)
+        new_flux |= set_flux!(vertical_flux.drainage, forcing.drainage, i, t)
     end
 
-    return nothing
+    return new_flux
 end
 
 function update_subgrid_level(model::Model)::Model

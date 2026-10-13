@@ -74,8 +74,8 @@ The condition schema defines conditions of the form the `discrete_control` node 
 
 $$
 \text{condition}=\begin{cases}
-    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots > \text{threshold\_high}(t), !\text{condition_prev} \\
-    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots >= \text{threshold\_low}(t), \text{condition_prev}
+    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots > \text{greater_than}(t), !\text{condition_prev} \\
+    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots >= \text{less_than}(t), \text{condition_prev}
 \end{cases}
 $$
 

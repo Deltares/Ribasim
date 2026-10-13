@@ -571,7 +571,8 @@ end
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
     (; p) = model.integrator
-    (; p_independent) = p
+    (; p_independent, current_basin_properties) = p
+    (; current_storage) = current_basin_properties
     (; allocation) = p_independent
 
     # A flow function that is linear in both levels has zero curvature by construction
@@ -589,6 +590,7 @@ end
                 tabulated_rating_curve_ids_subnetwork,
                 linear_flow,
                 p,
+                current_storage,
                 t,
             ),
         )
@@ -599,6 +601,7 @@ end
                 tabulated_rating_curve_ids_subnetwork,
                 tabulated_rating_curve_flow,
                 p,
+                current_storage,
                 t,
             ),
         )
@@ -618,7 +621,8 @@ end
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
     (; p) = model.integrator
-    (; p_independent) = p
+    (; p_independent, current_basin_properties) = p
+    (; current_storage) = current_basin_properties
     (; allocation) = p_independent
 
     nonlinear_curvatures = Float64[]
@@ -632,6 +636,7 @@ end
                 tabulated_rating_curve_ids_subnetwork,
                 tabulated_rating_curve_flow,
                 p,
+                current_storage,
                 t,
             ),
         )
