@@ -531,19 +531,28 @@ function check_negative_storage(u, t, integrator)::Nothing
     p.time_dependent_cache.t_prev_call[1] = -1.0
     water_balance!(du, u, p, t)
 
-    errors = false
-    for id in basin.node_id
-        if current_basin_properties.current_storage[id.idx] < 0
-            @error "Negative storage detected in $id"
-            errors = true
-        end
-    end
-
-    if errors
+    if log_negative_storage(basin, current_basin_properties.current_storage)
         t_datetime = datetime_since(integrator.t, p_independent.starttime)
         error("Negative storages found at $t_datetime.")
     end
     return nothing
+end
+
+"""
+Log an error for each Basin with a negative storage, and return whether there are any.
+
+This is a separate function because the try/catch of `@error` makes a loop very slow
+when it is in the same function as the destructured integrator, about 1.5 μs per iteration.
+"""
+function log_negative_storage(basin::Basin, current_storage::Vector{Float64})::Bool
+    errors = false
+    for id in basin.node_id
+        if current_storage[id.idx] < 0
+            @error "Negative storage detected in $id"
+            errors = true
+        end
+    end
+    return errors
 end
 
 """

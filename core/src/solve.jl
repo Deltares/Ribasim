@@ -303,7 +303,7 @@ end
 Call `f(row, val)` for the structural nonzeros of a sparse matrix column,
 or the nonzero entries of a dense matrix column.
 """
-function foreach_column_entry(f::F, A::SparseMatrixCSC, col::Int) where {F}
+@inline function foreach_column_entry(f::F, A::SparseMatrixCSC, col::Int) where {F}
     rows = rowvals(A)
     vals = nonzeros(A)
     for k in nzrange(A, col)
@@ -312,7 +312,7 @@ function foreach_column_entry(f::F, A::SparseMatrixCSC, col::Int) where {F}
     return nothing
 end
 
-function foreach_column_entry(f::F, A::AbstractMatrix, col::Int) where {F}
+@inline function foreach_column_entry(f::F, A::AbstractMatrix, col::Int) where {F}
     for row in axes(A, 1)
         val = A[row, col]
         iszero(val) || f(row, val)
