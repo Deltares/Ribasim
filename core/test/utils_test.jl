@@ -289,6 +289,30 @@ end
     @test jac_prototype == jac_prototype_expected
 end
 
+@testitem "UserDemand inflow depends on the storage of its own source Basin" begin
+    using SparseArrays: nzrange, rowvals
+
+    # The UserDemands take water from different Basins
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/small_primary_secondary_network/ribasim.toml",
+    )
+    model = Ribasim.Model(toml_path)
+    (; flow_ranges) = model.integrator.p.p_independent
+    (; flow_input_ranges, ∂flow_∂flow_input) = model.integrator.cache.nlsolver.cache.W.J.cache
+    rows = rowvals(∂flow_∂flow_input)
+
+    inflow_flow_idxs = flow_ranges.horizontal.user_demand_inflow
+    @test length(inflow_flow_idxs) == 2
+    for flow_idx in inflow_flow_idxs
+        # The uplink storage inputs this inflow depends on
+        storage_cols = filter(flow_input_ranges.storage_uplink) do col
+            flow_idx in view(rows, nzrange(∂flow_∂flow_input, col))
+        end
+        @test storage_cols == [flow_input_ranges.storage_uplink[flow_idx]]
+    end
+end
+
 @testitem "Solver algorithm" begin
     using LinearSolve: KLUFactorization, LHLFactorization
     using OrdinaryDiffEqNonlinearSolve: NLNewton

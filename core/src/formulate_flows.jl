@@ -423,7 +423,7 @@ function formulate_flow!(
         q_total_actual = 0.0
         for (inflow_idx, link_meta) in enumerate(inflow_links)
             src_id = link_meta.link[1]
-            upstream_storage = storage_uplink.horizontal.user_demand_inflow[inflow_idx]
+            upstream_storage = storage_uplink.horizontal.user_demand_inflow[link_offset + inflow_idx]
             f_low_storage = get_low_storage_factor(upstream_storage, p, src_id)
             source_level = get_level(upstream_storage, p, src_id, t)
             f_reduction = reduction_factor(
