@@ -65,12 +65,25 @@ function create_callbacks(
 
     # Not a FunctionCallingCallback, because that reports the derivative as continuous,
     # which hides the right hand side discontinuity of a control state change
-    discrete_control_cb = DiscreteCallback(
-        discrete_control_condition,
-        apply_discrete_control!;
-        initialize = discrete_control_initialize,
-        save_positions = (false, false),
-    )
+    (; discrete_control_interval) = config.solver
+    discrete_control_cb = if iszero(discrete_control_interval) ||
+            isempty(p_independent.discrete_control.node_id)
+        DiscreteCallback(
+            discrete_control_condition,
+            apply_discrete_control!;
+            initialize = discrete_control_initialize,
+            save_positions = (false, false),
+        )
+    else
+        # Evaluating all DiscreteControl nodes at the same times makes the control state
+        # changes coincide, so the integrator restarts less often
+        PresetTimeCallback(
+            range(discrete_control_interval, t_end; step = discrete_control_interval),
+            apply_discrete_control!;
+            initialize = discrete_control_initialize,
+            save_positions = (false, false),
+        )
+    end
     push!(callbacks, discrete_control_cb)
 
     reset_cb = DiscreteCallback(
@@ -617,21 +630,7 @@ function apply_discrete_control!(integrator; initialize::Bool = false)::Nothing
     return nothing
 end
 
-"""
-Whether to evaluate the DiscreteControl logic at `t`: after every timestep, or only at
-multiples of the interval, which are tstops. Evaluating all nodes at the same times makes
-the control state changes coincide, so the integrator restarts less often.
-"""
-function discrete_control_condition(u, t, integrator)::Bool
-    (; interval, last_evaluation) = integrator.p.p_independent.discrete_control
-    iszero(interval) && return true
-    # Evaluate at the end of the first timestep that reaches a new multiple of the interval
-    if fld(t, interval) > fld(last_evaluation[], interval)
-        last_evaluation[] = t
-        return true
-    end
-    return false
-end
+discrete_control_condition(u, t, integrator)::Bool = true
 
 function discrete_control_initialize(c, u, t, integrator)::Nothing
     return apply_discrete_control!(integrator; initialize = true)

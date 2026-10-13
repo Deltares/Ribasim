@@ -1160,7 +1160,6 @@ function DiscreteControl(db::DB, config::Config, graph::MetaGraph)::DiscreteCont
         truth_state,
         logic_mapping,
         config.solver.min_discrete_control_interval,
-        interval = config.solver.discrete_control_interval,
     )
 end
 
