@@ -307,6 +307,7 @@ ul.task-list li input[type="checkbox"] {
 <li>BMI: Set FlowBoundary flow rates during a simulation and read cumulative flow for online coupling. <a href="https://github.com/Deltares/Ribasim/pull/3251">#3251</a></li>
 <li>Error on rapidly oscillating DiscreteControl states with the configurable <code>solver.min_discrete_control_interval</code>. <a href="https://github.com/Deltares/Ribasim/pull/3237">#3237</a></li>
 <li>Report rejected timesteps by cause and the mean solver order in <code>results/solver_stats.nc</code>. <a href="https://github.com/Deltares/Ribasim/pull/3269">#3269</a></li>
+<li>Evaluate DiscreteControl only at a fixed interval with <code>solver.discrete_control_interval</code>, which can make models with many DiscreteControl nodes much faster.</li>
 </ul>
 </section>
 <section id="changed" class="level3" data-number="1.1.2">

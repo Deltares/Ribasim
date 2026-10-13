@@ -557,7 +557,7 @@ window.Quarto = {
 <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    constraint<span class="op">::</span><span class="dt">JuMP.ConstraintRef</span>,</span>
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>)<span class="op">::</span><span class="dt">Nothing</span></span>
 <span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    (; problem, scaling) <span class="op">=</span> allocation_model</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    (; current_area) <span class="op">=</span> p.state_and_time_dependent_cache</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    (; current_area) <span class="op">=</span> p.current_basin_properties</span>
 <span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Convert ∂Q/∂h to ∂Q/∂S using ∂h/∂S = 1/A, and account for the fact that the</span></span>
 <span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    <span class="co"># flow and storage variables are scaled differently</span></span>
@@ -1125,7 +1125,7 @@ G^p = \sum_{v \in V_p} w_v^p E_v^p.
 <span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a>    storage_change <span class="op">=</span> problem[<span class="op">:</span>basin_storage_change][node_id]</span>
 <span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a>    level_per_storage <span class="op">=</span></span>
-<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a>        scaling.storage <span class="op">/</span> p.state_and_time_dependent_cache.current_area[node_id.idx]</span>
+<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a>        scaling.storage <span class="op">/</span> p.current_basin_properties.current_area[node_id.idx]</span>
 <span id="cb27-16"><a href="#cb27-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> (</span>
 <span id="cb27-17"><a href="#cb27-17" aria-hidden="true" tabindex="-1"></a>        JuMP.<span class="fu">lower_bound</span>(storage_change) <span class="op">*</span> level_per_storage,</span>
 <span id="cb27-18"><a href="#cb27-18" aria-hidden="true" tabindex="-1"></a>        JuMP.<span class="fu">upper_bound</span>(storage_change) <span class="op">*</span> level_per_storage,</span>
@@ -1226,9 +1226,9 @@ Important
 <span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
 <span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">update_scaling!</span>(p<span class="op">::</span><span class="dt">Parameters</span>, Δt<span class="op">::</span><span class="dt">Float64</span>)</span>
-<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>    (; p_independent, state_and_time_dependent_cache) <span class="op">=</span> p</span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>    (; p_independent, current_basin_properties) <span class="op">=</span> p</span>
 <span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>    (; allocation_models) <span class="op">=</span> p_independent.allocation</span>
-<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>    (; current_storage) <span class="op">=</span> state_and_time_dependent_cache</span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>    (; current_storage) <span class="op">=</span> current_basin_properties</span>
 <span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> allocation_model <span class="kw">in</span> allocation_models</span>
 <span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a>        (; node_ids_in_subnetwork, scaling) <span class="op">=</span> allocation_model</span>
 <span id="cb30-13"><a href="#cb30-13" aria-hidden="true" tabindex="-1"></a>        (; basin_ids_subnetwork) <span class="op">=</span> node_ids_in_subnetwork</span>

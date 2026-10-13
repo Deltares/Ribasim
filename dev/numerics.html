@@ -325,17 +325,16 @@ window.Quarto = {
   <ul class="collapse">
   <li><a href="#the-jacobian" id="toc-the-jacobian" class="nav-link" data-scroll-target="#the-jacobian"><span class="header-section-number">4.1</span> The Jacobian</a></li>
   </ul></li>
-  <li><a href="#sec-state-reduction" id="toc-sec-state-reduction" class="nav-link" data-scroll-target="#sec-state-reduction"><span class="header-section-number">5</span> State reduction</a></li>
-  <li><a href="#jacobian-computation" id="toc-jacobian-computation" class="nav-link" data-scroll-target="#jacobian-computation"><span class="header-section-number">6</span> Jacobian computation</a>
+  <li><a href="#jacobian-computation" id="toc-jacobian-computation" class="nav-link" data-scroll-target="#jacobian-computation"><span class="header-section-number">5</span> Jacobian computation</a>
   <ul class="collapse">
-  <li><a href="#forward-mode-automatic-differentiation" id="toc-forward-mode-automatic-differentiation" class="nav-link" data-scroll-target="#forward-mode-automatic-differentiation"><span class="header-section-number">6.1</span> Forward-mode automatic differentiation</a></li>
-  <li><a href="#exploiting-sparsity-graph-coloring" id="toc-exploiting-sparsity-graph-coloring" class="nav-link" data-scroll-target="#exploiting-sparsity-graph-coloring"><span class="header-section-number">6.2</span> Exploiting sparsity: graph coloring</a></li>
-  <li><a href="#preparation-phase" id="toc-preparation-phase" class="nav-link" data-scroll-target="#preparation-phase"><span class="header-section-number">6.3</span> Preparation phase</a></li>
-  <li><a href="#cache-vs-constant-in-differentiationinterface" id="toc-cache-vs-constant-in-differentiationinterface" class="nav-link" data-scroll-target="#cache-vs-constant-in-differentiationinterface"><span class="header-section-number">6.4</span> <code>Cache()</code> vs <code>Constant()</code> in DifferentiationInterface</a></li>
-  <li><a href="#the-halflazyjacobian-operator" id="toc-the-halflazyjacobian-operator" class="nav-link" data-scroll-target="#the-halflazyjacobian-operator"><span class="header-section-number">6.5</span> The <code>HalfLazyJacobian</code> operator</a></li>
+  <li><a href="#forward-mode-automatic-differentiation" id="toc-forward-mode-automatic-differentiation" class="nav-link" data-scroll-target="#forward-mode-automatic-differentiation"><span class="header-section-number">5.1</span> Forward-mode automatic differentiation</a></li>
+  <li><a href="#exploiting-sparsity-graph-coloring" id="toc-exploiting-sparsity-graph-coloring" class="nav-link" data-scroll-target="#exploiting-sparsity-graph-coloring"><span class="header-section-number">5.2</span> Exploiting sparsity: graph coloring</a></li>
+  <li><a href="#preparation-phase" id="toc-preparation-phase" class="nav-link" data-scroll-target="#preparation-phase"><span class="header-section-number">5.3</span> Preparation phase</a></li>
+  <li><a href="#cache-vs-constant-in-differentiationinterface" id="toc-cache-vs-constant-in-differentiationinterface" class="nav-link" data-scroll-target="#cache-vs-constant-in-differentiationinterface"><span class="header-section-number">5.4</span> <code>Cache()</code> vs <code>Constant()</code> in DifferentiationInterface</a></li>
+  <li><a href="#the-ribasimjacobian-operator" id="toc-the-ribasimjacobian-operator" class="nav-link" data-scroll-target="#the-ribasimjacobian-operator"><span class="header-section-number">5.5</span> The <code>RibasimJacobian</code> operator</a></li>
   </ul></li>
-  <li><a href="#custom-linear-solver" id="toc-custom-linear-solver" class="nav-link" data-scroll-target="#custom-linear-solver"><span class="header-section-number">7</span> Custom linear solver</a></li>
-  <li><a href="#callbacks" id="toc-callbacks" class="nav-link" data-scroll-target="#callbacks"><span class="header-section-number">8</span> Callbacks</a></li>
+  <li><a href="#custom-linear-solver" id="toc-custom-linear-solver" class="nav-link" data-scroll-target="#custom-linear-solver"><span class="header-section-number">6</span> Custom linear solver</a></li>
+  <li><a href="#callbacks" id="toc-callbacks" class="nav-link" data-scroll-target="#callbacks"><span class="header-section-number">7</span> Callbacks</a></li>
   </ul>
 </nav>
     </div>
@@ -409,7 +408,7 @@ window.Quarto = {
 <p>The ODE problem is assembled in <code>core/src/model.jl</code>. The key steps are:</p>
 <ol type="1">
 <li>Build the <code>Parameters</code> struct containing all model data</li>
-<li>Construct an in-place <code>ODEFunction</code> wrapping <code>water_balance!</code>, with a custom <code>HalfLazyJacobian</code> operator and the analytic Jacobian update routine <code>get_jacobian!</code></li>
+<li>Construct an in-place <code>ODEFunction</code> wrapping <code>water_balance!</code>, with the Jacobian (prototype) and time derivative set up by <code>get_diff_eval</code> (<code>core/src/solve.jl</code>); by default the Jacobian prototype is the lazy <code>RibasimJacobian</code> operator</li>
 <li>Wrap it in an <code>ODEProblem</code> and create the integrator with <code>init</code>, registering all callbacks</li>
 </ol>
 <p>OrdinaryDiffEq’s specialization level is also chosen here: <code>FullSpecialize</code> produces the fastest code but compiles on every type change, while <code>NoSpecialize</code> reduces compilation time at the cost of some runtime performance.</p>
@@ -447,37 +446,31 @@ Note
 <p>The <code>Parameters</code> struct (defined in <code>core/src/parameter.jl</code>) is split into four components that play distinct roles during Jacobian computation:</p>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 36%">
-<col style="width: 33%">
-<col style="width: 30%">
+<col style="width: 52%">
+<col style="width: 47%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>Component</th>
 <th>Contents</th>
-<th>AD role</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td><code>p_independent</code></td>
 <td>All node data, graph, interpolations, pre-allocated buffers</td>
-<td><code>Constant()</code> — shared, not copied</td>
 </tr>
 <tr class="even">
-<td><code>state_and_time_dependent_cache</code></td>
-<td>Cached values that depend on both state and time (current level, storage, flow rates)</td>
-<td><code>Cache()</code> — copied as dual-number arrays</td>
+<td><code>current_basin_properties</code></td>
+<td>Cached values that depend on both state and time (current storage, level, area, low storage factor)</td>
 </tr>
 <tr class="odd">
 <td><code>time_dependent_cache</code></td>
 <td>Cached values that depend only on time (forcing interpolations)</td>
-<td><code>Constant()</code> — shared</td>
 </tr>
 <tr class="even">
 <td><code>p_mutable</code></td>
-<td>Flags controlling cache validity (<code>new_time_dependent_cache</code>, etc.)</td>
-<td><code>Constant()</code> — shared</td>
+<td>Flags controlling cache validity (<code>new_time_dependent_cache</code>), Jacobian refreshing (<code>refresh_jac</code>) and AD (<code>ad_active</code>)</td>
 </tr>
 </tbody>
 </table>
@@ -487,109 +480,106 @@ Note
 <section id="implicit-time-integration" class="level1" data-number="4">
 <h1 data-number="4"><span class="header-section-number">4</span> Implicit time integration</h1>
 <p>Water systems can be <strong>stiff</strong> — some processes change on timescales of seconds (a pump switching on), while others evolve over days (a reservoir slowly filling). Explicit methods like forward Euler would need extremely small timesteps to remain stable, making them impractical. Implicit methods avoid this by solving an equation at each step that accounts for the system’s coupled dynamics, allowing much larger steps.</p>
-<p>The default solver is <strong>QNDF</strong> (quasi-Newton backward differentiation formula), an implicit multi-step method from <code>OrdinaryDiffEq.jl</code> well-suited for stiff problems. The trade-off is that each implicit step requires solving a nonlinear system, which in turn requires the <strong>Jacobian</strong> — a matrix of partial derivatives of the RHS.</p>
+<p>The default solver is <strong>NordsieckBDF</strong> (backward differentiation formula), an implicit multi-step method from <code>OrdinaryDiffEq.jl</code> well-suited for stiff problems. The trade-off is that each implicit step requires solving a nonlinear system, which in turn requires the <strong>Jacobian</strong> — a matrix of partial derivatives of the RHS.</p>
 <section id="the-jacobian" class="level2" data-number="4.1">
 <h2 data-number="4.1" class="anchored" data-anchor-id="the-jacobian"><span class="header-section-number">4.1</span> The Jacobian</h2>
 <p>The Jacobian <span class="math inline">\(J\)</span> is an <span class="math inline">\(N \times N\)</span> matrix where entry <span class="math inline">\(J_{i,j}\)</span> describes how a small change in state component <span class="math inline">\(j\)</span> affects the rate of change of component <span class="math inline">\(i\)</span>. The solver uses this sensitivity information to take stable, accurate steps through stiff regions. The components of the state vector <span class="math inline">\(\mathbf{u}\)</span> — and therefore the size of <span class="math inline">\(J\)</span> — are assembled in <code>state_node_ids</code> (<code>core/src/util.jl</code>):</p>
 <ul>
 <li>one cumulative horizontal flow for each TabulatedRatingCurve, Pump, Outlet, LinearResistance, and ManningResistance node;</li>
 <li>two cumulative horizontal flows per UserDemand (inflow and outflow tracked separately);</li>
-<li>two cumulative vertical fluxes per Basin (evaporation and infiltration);</li>
+<li>two cumulative vertical fluxes per Basin (evaporation and infiltration), which have their Basin as inflow node (<code>inflow_id</code>) and no outflow node, so they depend on the Basin storage through <code>storage_uplink</code>;</li>
 <li>one integral term per PID control node.</li>
 </ul>
 <p>Precipitation and drainage are deliberately <em>not</em> states — they are state-independent forcings and are integrated outside the ODE solver.</p>
 <p>In practice, most entries of <span class="math inline">\(J\)</span> are zero — a pump in one part of the network does not affect a weir in a distant part. This <strong>sparsity</strong> is the key to making implicit solves affordable, as both the Jacobian computation and the linear solves can exploit it.</p>
+<p>The mathematics of how Ribasim evaluates the Jacobian and performs the linear solve is described in <a href="../concept/numerics.html#sec-jacobian">numerical considerations</a>. This page describes the implementation, which lives in <code>core/src/solve.jl</code>.</p>
 </section>
 </section>
-<section id="sec-state-reduction" class="level1" data-number="5">
-<h1 data-number="5"><span class="header-section-number">5</span> State reduction</h1>
-<p>Not every component of the state vector <span class="math inline">\(\mathbf{u}\)</span> influences every flow independently. Many flow states depend on basin levels, which in turn depend on basin storages. Ribasim exploits this by working with a <strong>reduced state</strong> <span class="math inline">\(\mathbf{u}_\text{reduced}\)</span> that contains only the basin storages and PID integral terms.</p>
-<p>The relationship is: <span class="math display">\[
-\mathbf{u}_\text{reduced} = A \mathbf{u}
-\]</span></p>
-<p>where <span class="math inline">\(A\)</span> is a linear operator implemented by <code>reduce_state!</code> in <code>core/src/util.jl</code>. All of its entries lie in <span class="math inline">\(\{-1, 0, +1\}\)</span>, and each Basin row simply sums the cumulative flow states that change that Basin’s storage:</p>
-<ul>
-<li><span class="math inline">\(+1\)</span> for every horizontal flow state whose link enters the Basin,</li>
-<li><span class="math inline">\(-1\)</span> for every horizontal flow state whose link leaves the Basin,</li>
-<li><span class="math inline">\(-1\)</span> on the Basin’s own evaporation and infiltration columns.</li>
-</ul>
-<p>UserDemand is the one node type that contributes two separate flow states (inflow and outflow); each enters the appropriate Basin row with the corresponding sign. The PID rows form an identity block on the integral states. Because each non-Basin node is constrained to have at most one upstream and one downstream Basin, every flow column has at most one <span class="math inline">\(+1\)</span> and one <span class="math inline">\(-1\)</span> — i.e.&nbsp;<span class="math inline">\(A\)</span> is the signed incidence matrix of the model graph as seen by the Basins, augmented with the vertical-flux and PID-integral columns. This means the Jacobian of the full RHS can be decomposed as: <span class="math display">\[
-J_f(\mathbf{u}) = J_g(\mathbf{u}_\text{reduced}) \cdot A
-\]</span></p>
-<p>where <span class="math inline">\(g\)</span> is <code>water_balance!</code> as a function of <span class="math inline">\(\mathbf{u}_\text{reduced}\)</span>. AD only needs to differentiate <span class="math inline">\(g\)</span> (smaller matrix), and the multiplication by <span class="math inline">\(A\)</span> is handled analytically. This decomposition is central to the <code>HalfLazyJacobian</code> operator and the custom linear solver.</p>
-</section>
-<section id="jacobian-computation" class="level1" data-number="6">
-<h1 data-number="6"><span class="header-section-number">6</span> Jacobian computation</h1>
-<p>The Jacobian computation pipeline lives in <code>core/src/differentiation.jl</code>.</p>
-<section id="forward-mode-automatic-differentiation" class="level2" data-number="6.1">
-<h2 data-number="6.1" class="anchored" data-anchor-id="forward-mode-automatic-differentiation"><span class="header-section-number">6.1</span> Forward-mode automatic differentiation</h2>
+<section id="jacobian-computation" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Jacobian computation</h1>
+<p>The Jacobian computation pipeline lives in <code>core/src/solve.jl</code>.</p>
+<section id="forward-mode-automatic-differentiation" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="forward-mode-automatic-differentiation"><span class="header-section-number">5.1</span> Forward-mode automatic differentiation</h2>
 <p>There are three common ways to obtain a Jacobian: finite differences (simple but slow and imprecise), hand-coded derivatives (exact but hard to maintain), and automatic differentiation (AD). Ribasim uses <strong>forward-mode AD</strong> via <a href="https://juliadiff.org/ForwardDiff.jl/stable/"><code>ForwardDiff.jl</code></a>, which propagates derivatives by replacing floating-point numbers with dual numbers — see the <a href="https://juliadiff.org/ForwardDiff.jl/stable/dev/how_it_works/">ForwardDiff documentation</a> for the underlying theory. By running <code>water_balance!</code> with dual-number inputs seeded with a unit perturbation in one state direction, the derivative part of the output gives one column of the Jacobian; repeating for each direction yields the full matrix.</p>
 </section>
-<section id="exploiting-sparsity-graph-coloring" class="level2" data-number="6.2">
-<h2 data-number="6.2" class="anchored" data-anchor-id="exploiting-sparsity-graph-coloring"><span class="header-section-number">6.2</span> Exploiting sparsity: graph coloring</h2>
+<section id="exploiting-sparsity-graph-coloring" class="level2" data-number="5.2">
+<h2 data-number="5.2" class="anchored" data-anchor-id="exploiting-sparsity-graph-coloring"><span class="header-section-number">5.2</span> Exploiting sparsity: graph coloring</h2>
 <p>Computing each Jacobian column requires a full evaluation of <code>water_balance!</code> with dual numbers. With <span class="math inline">\(N\)</span> states, that would mean <span class="math inline">\(N\)</span> evaluations — prohibitively expensive for large models.</p>
 <p>However, since the Jacobian is sparse, many columns have no overlapping nonzero rows. If columns <span class="math inline">\(i\)</span> and <span class="math inline">\(j\)</span> never have a nonzero in the same row, their perturbations can be seeded simultaneously in a single evaluation without interfering. This observation leads to <strong>graph coloring</strong>: columns are partitioned into groups (colors) such that all columns within a group are structurally independent. One evaluation per color suffices, reducing the cost from <span class="math inline">\(N\)</span> evaluations to the number of colors — typically a small constant for network-structured problems.</p>
 </section>
-<section id="preparation-phase" class="level2" data-number="6.3">
-<h2 data-number="6.3" class="anchored" data-anchor-id="preparation-phase"><span class="header-section-number">6.3</span> Preparation phase</h2>
-<p>At model initialization, <code>get_diff_eval</code> prepares everything the solver will need:</p>
+<section id="preparation-phase" class="level2" data-number="5.3">
+<h2 data-number="5.3" class="anchored" data-anchor-id="preparation-phase"><span class="header-section-number">5.3</span> Preparation phase</h2>
+<p>At model initialization, <code>get_diff_eval</code> prepares everything the solver will need. What is prepared depends on the solver setting <code>reduced_implicit_solve</code>.</p>
+<p>With <code>reduced_implicit_solve = true</code> (default), <code>RibasimJacobianEvaluationCache</code> prepares two Jacobians:</p>
+<ul>
+<li><code>∂flow_∂flow_input</code>: the Jacobian of the flow formulation (<code>formulate_flows_closure!</code>) with respect to the input vector <code>flow_input = (storage_uplink, storage_downlink, pid_integral, continuous_control_compound)</code>. Its output is the flow rates and the PID errors. This is <span class="math inline">\(\partial\mathbf{q}/\partial\mathbf{v}\)</span> from the <a href="../concept/numerics.html#structure-of-the-right-hand-side">concept documentation</a>;</li>
+<li><code>∂continuous_control_compound_∂continuous_control_input</code>: the Jacobian of the ContinuousControl compound variables with respect to <code>(storage, flow)</code>.</li>
+</ul>
+<p>With <code>reduced_implicit_solve = false</code>, the Jacobian of <code>water_balance!</code> with respect to the full state <span class="math inline">\(\mathbf{u}\)</span> is prepared, and the result is a regular (sparse) matrix that OrdinaryDiffEq uses as is.</p>
+<p>In both cases the preparation consists of:</p>
 <ol type="1">
-<li><p><strong>Sparsity detection</strong> — <code>TracerSparsityDetector</code> from SparseConnectivityTracer runs <code>water_balance!</code> with tracer inputs to determine which outputs depend on which inputs, producing a sparse boolean matrix.</p></li>
-<li><p><strong>Graph coloring</strong> — <code>GreedyColoringAlgorithm</code> from SparseMatrixColorings partitions the columns of the Jacobian into groups (colors) such that columns in the same group have no overlapping nonzero rows. This allows multiple columns to be computed in a single ForwardDiff pass by seeding multiple perturbation directions simultaneously.</p></li>
+<li><p><strong>Sparsity detection</strong> — <code>TracerSparsityDetector</code> from SparseConnectivityTracer runs the function with tracer inputs to determine which outputs depend on which inputs, producing a sparse boolean matrix.</p></li>
+<li><p><strong>Graph coloring</strong> — SparseMatrixColorings partitions the columns of the Jacobian into groups (colors) such that columns in the same group have no overlapping nonzero rows. This allows multiple columns to be computed in a single ForwardDiff pass by seeding multiple perturbation directions simultaneously. For <code>∂flow_∂flow_input</code> the number of colors is small and independent of the model size, since its storage blocks are diagonal (except for flows controlled by PidControl with a derivative term).</p></li>
 <li><p><strong>AD preparation</strong> — <code>DifferentiationInterface.prepare_jacobian</code> pre-allocates all working arrays (dual-number buffers, etc.) based on the sparsity pattern and coloring.</p></li>
 </ol>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>backend_jac <span class="op">=</span> <span class="fu">AutoSparse</span>(</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">AutoForwardDiff</span>(; tag <span class="op">=</span> <span class="op">:</span>Ribasim),</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">AutoForwardDiff</span>(; chunksize, tag <span class="op">=</span> <span class="op">:</span>Ribasim);</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    sparsity_detector <span class="op">=</span> <span class="fu">TracerSparsityDetector</span>(),</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    coloring_algorithm <span class="op">=</span> <span class="fu">GreedyColoringAlgorithm</span>(),</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>jac_prep <span class="op">=</span> <span class="fu">prepare_jacobian</span>(</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    water_balance!, du, backend_jac,</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    u_reduced,</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">Constant</span>(p_independent),</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">Cache</span>(state_and_time_dependent_cache),</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">Constant</span>(time_dependent_cache),</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">Constant</span>(p_mutable),</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">Constant</span>(t);</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    strict <span class="op">=</span> <span class="fu">Val</span>(<span class="cn">true</span>),</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>∂flow_∂flow_input_prep <span class="op">=</span> <span class="pp">@ad_active</span> p <span class="fu">prepare_jacobian</span>(</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    formulate_flows_closure!,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    du,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    backend_jac,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    flow_input,</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">Constant</span>(t),</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The closures capture the <code>Parameters</code> <code>p</code>. The <code>@ad_active</code> macro sets <code>p.p_mutable.ad_active = true</code> during AD calls, so that storage derived quantities are computed on demand instead of read from caches that would break the differentiable computational pipeline.</p>
+<p>When <code>sparse = false</code> the AD backend is not wrapped in <code>AutoSparse</code>, and the Jacobians are dense matrices.</p>
 </section>
-<section id="cache-vs-constant-in-differentiationinterface" class="level2" data-number="6.4">
-<h2 data-number="6.4" class="anchored" data-anchor-id="cache-vs-constant-in-differentiationinterface"><span class="header-section-number">6.4</span> <code>Cache()</code> vs <code>Constant()</code> in DifferentiationInterface</h2>
+<section id="cache-vs-constant-in-differentiationinterface" class="level2" data-number="5.4">
+<h2 data-number="5.4" class="anchored" data-anchor-id="cache-vs-constant-in-differentiationinterface"><span class="header-section-number">5.4</span> <code>Cache()</code> vs <code>Constant()</code> in DifferentiationInterface</h2>
 <p>When <code>DifferentiationInterface.jacobian!</code> calls the RHS, it needs to know how to handle each argument:</p>
 <ul>
 <li><strong><code>Cache(x)</code></strong> — “this depends on the differentiation variable; make a copy promoted to dual numbers.” The copy is allocated with the right dual-number element type but is <strong>not initialized</strong> with the original values. The RHS must write meaningful values into it before reading.</li>
 <li><strong><code>Constant(x)</code></strong> — “this is independent of the differentiation variable; pass the original object directly.” No copy, no promotion. But this means AD calls can <strong>mutate shared state</strong>.</li>
 </ul>
-<p>This distinction is a performance optimization (fewer allocations), but it introduces a subtle invariant: any cached value in a <code>Cache()</code> argument must be freshly computed during the AD call, because the copy starts uninitialized.</p>
+<p>This distinction is a performance optimization (fewer allocations), but it introduces a subtle invariant: any cached value in a <code>Cache()</code> argument must be freshly computed during the AD call, because the copy starts uninitialized. In the <code>reduced_implicit_solve = false</code> path and for the time derivative <code>tgrad</code>, <code>storage_uplink</code>, <code>storage_downlink</code>, the ContinuousControl compound variables and the current Basin storage are passed as <code>Cache()</code>.</p>
 </section>
-<section id="the-halflazyjacobian-operator" class="level2" data-number="6.5">
-<h2 data-number="6.5" class="anchored" data-anchor-id="the-halflazyjacobian-operator"><span class="header-section-number">6.5</span> The <code>HalfLazyJacobian</code> operator</h2>
-<p>Rather than materializing the full <span class="math inline">\(N \times N\)</span> Jacobian, Ribasim uses a custom <code>AbstractSciMLOperator</code> called <code>HalfLazyJacobian</code>. It stores:</p>
+<section id="the-ribasimjacobian-operator" class="level2" data-number="5.5">
+<h2 data-number="5.5" class="anchored" data-anchor-id="the-ribasimjacobian-operator"><span class="header-section-number">5.5</span> The <code>RibasimJacobian</code> operator</h2>
+<p>With <code>reduced_implicit_solve = true</code>, the Jacobian is never materialized. Instead the Jacobian prototype passed to the <code>ODEFunction</code> is a <code>RibasimJacobian</code>, a custom <code>AbstractSciMLOperator</code> which stores:</p>
 <ul>
-<li><code>J_intermediate</code> — the sparse Jacobian <span class="math inline">\(J_g\)</span> of the RHS with respect to <span class="math inline">\(\mathbf{u}_\text{reduced}\)</span> (computed by AD)</li>
-<li>References to the parameters and AD preparation objects</li>
+<li><code>cache</code> — the <code>RibasimJacobianEvaluationCache</code> with the AD preparation and the Jacobians described above;</li>
+<li><code>J_inner_local</code> — the <span class="math inline">\(n_\text{basin} \times n_\text{basin}\)</span> matrix <span class="math inline">\(M Q_S\)</span>, the dependence of the Basin storage rates on the Basin storages via the flows (including via ContinuousControl);</li>
+<li><code>area_pid_controlled</code> — the area of the Basin listened to by each PidControl node.</li>
 </ul>
-<p>When the solver needs a matrix-vector product <span class="math inline">\(J \cdot v\)</span>, it computes:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>u_reduced <span class="op">=</span> A <span class="op">*</span> v          <span class="co"># reduce_state!</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>result <span class="op">=</span> J_intermediate <span class="op">*</span> u_reduced  <span class="co"># sparse matvec</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>When the solver needs to update the Jacobian (via <code>update_coefficients!</code>), it calls <code>get_jacobian!</code> which invokes <code>DifferentiationInterface.jacobian!</code> to fill <code>J_intermediate</code>.</p>
-</section>
-</section>
-<section id="custom-linear-solver" class="level1" data-number="7">
-<h1 data-number="7"><span class="header-section-number">7</span> Custom linear solver</h1>
-<p>At each Newton iteration the solver must solve a linear system involving the Jacobian. Ribasim provides a custom <code>RibasimLinearSolve</code> wrapper (in <code>core/src/differentiation.jl</code>) that exploits the state reduction structure.</p>
-<p>Instead of solving the full system, it:</p>
+<p>The entries of <span class="math inline">\(Q_S\)</span> (<code>∂q_∂storage</code>) are never stored, but iterated over by <code>foreach_∂flow_∂storage</code>, and similarly the dependence of the flows on the PID integrals by <code>foreach_∂flow_∂pid_integral</code>. These are used both to build the inner linear system and to expand its solution, which keeps the two consistent.</p>
+<p>OrdinaryDiffEq calls <code>update_coefficients!</code> on the operator whenever the Jacobian may need updating. Whether the Jacobian should actually be re-evaluated is not passed to <code>update_coefficients!</code>, so Ribasim captures it from <code>do_newJW</code> in the <code>p_mutable.refresh_jac</code> flag. When refreshing, <code>update_coefficients!</code>:</p>
 <ol type="1">
-<li><strong>Reduces</strong> the right-hand side: <span class="math inline">\(\mathbf{b}_\text{reduced} = A \cdot \mathbf{b}\)</span></li>
-<li><strong>Builds</strong> the reduced system matrix: <span class="math inline">\(W_\text{inner} = -\gamma^{-1}I - A \cdot J_\text{intermediate}\)</span></li>
-<li><strong>Solves</strong> the smaller system using KLU factorization (efficient for sparse matrices)</li>
-<li><strong>Expands</strong> the solution back to the full state space</li>
+<li>Computes the current Basin storages and from those <code>storage_uplink</code> and <code>storage_downlink</code> (<code>set_uplink_downlink_storage!</code>);</li>
+<li>Evaluates <code>∂flow_∂flow_input</code>, which also caches the flows that ContinuousControl listens to;</li>
+<li>Computes <code>area_pid_controlled</code>;</li>
+<li>Evaluates <code>∂continuous_control_compound_∂continuous_control_input</code>;</li>
+<li>Computes <code>J_inner_local</code> (<code>update_J_inner_local!</code>).</li>
 </ol>
-<p>This is significantly cheaper than solving in the full state space, since the reduced system only has dimension equal to the number of basins plus PID integral terms.</p>
 </section>
-<section id="callbacks" class="level1" data-number="8">
-<h1 data-number="8"><span class="header-section-number">8</span> Callbacks</h1>
+</section>
+<section id="custom-linear-solver" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> Custom linear solver</h1>
+<p>At each Newton iteration the solver must solve a linear system involving the Jacobian. Ribasim provides a custom <code>RibasimLinearSolve</code> wrapper (in <code>core/src/config.jl</code>) around the actual factorization algorithm: <code>KLUFactorization</code> when <code>sparse = true</code> and <code>LHLFactorization</code> when <code>sparse = false</code>. With <code>reduced_implicit_solve = false</code> it falls back to the wrapped algorithm.</p>
+<p>Otherwise <code>SciMLBase.init</code> sets up a <code>RibasimLinearSolveCache</code>, which contains an inner linear solve cache for the <span class="math inline">\(n_\text{basin} \times n_\text{basin}\)</span> system in storage space, with an inner <code>WOperator</code> built from <code>J_inner</code>. The sparsity pattern of <code>J_inner</code> is determined once at initialization (with all contributions set to 1.0, so that entries where contributions cancel are kept) and kept constant, so the symbolic KLU factorization can be reused.</p>
+<p>The linear solve itself is done in <code>dolinsolve</code>, following the <a href="../concept/numerics.html#the-linear-solve">concept documentation</a>:</p>
+<ol type="1">
+<li><strong>Reduce</strong> the right-hand side to storage space with <code>aggregate_flows!</code> (<span class="math inline">\(M\mathbf{b}^\text{flow}\)</span>) plus the PID contribution;</li>
+<li><strong>Build</strong> <code>J_inner</code> with <code>build_J_inner!</code>: <code>J_inner_local</code> plus the PidControl contributions, which depend on <span class="math inline">\(\gamma\)</span>;</li>
+<li><strong>Solve</strong> the inner system <span class="math inline">\((J_\text{inner} - \gamma^{-1}I)\mathbf{s} = \mathbf{b}_\text{inner}\)</span>;</li>
+<li><strong>Expand</strong> the solution back to the full state space: the PID integral components follow from the change of the listened Basin storage, and the flow components from <code>∂flow_∂storage_mul!</code> (<span class="math inline">\(Q_S\mathbf{s}\)</span>).</li>
+</ol>
+<p>This is significantly cheaper than solving in the full state space, since the inner system only has dimension equal to the number of Basins.</p>
+<p><code>OrdinaryDiffEqCore.instability_jacobian</code> returns <code>J_inner</code> for diagnostics when a simulation becomes unstable.</p>
+</section>
+<section id="callbacks" class="level1" data-number="7">
+<h1 data-number="7"><span class="header-section-number">7</span> Callbacks</h1>
 <p>Ribasim uses SciML’s <a href="https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/">callback mechanism</a> to handle events that occur during simulation. These are set up in <code>core/src/callback.jl</code>:</p>
 <table class="caption-top table">
 <thead>

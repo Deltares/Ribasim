@@ -272,13 +272,12 @@ window.Quarto = {
   <ul class="collapse">
   <li><a href="#the-pid-control-integral-state" id="toc-the-pid-control-integral-state" class="nav-link" data-scroll-target="#the-pid-control-integral-state"><span class="header-section-number">1.1</span> The PID control integral state</a></li>
   <li><a href="#exactly-integrating-flows-to-minimize-the-number-of-states" id="toc-exactly-integrating-flows-to-minimize-the-number-of-states" class="nav-link" data-scroll-target="#exactly-integrating-flows-to-minimize-the-number-of-states"><span class="header-section-number">1.2</span> Exactly integrating flows to minimize the number of states</a></li>
-  <li><a href="#the-jacobian" id="toc-the-jacobian" class="nav-link" data-scroll-target="#the-jacobian"><span class="header-section-number">1.3</span> The Jacobian</a></li>
-  <li><a href="#the-water-balance-error" id="toc-the-water-balance-error" class="nav-link" data-scroll-target="#the-water-balance-error"><span class="header-section-number">1.4</span> The water balance error</a>
+  <li><a href="#the-water-balance-error" id="toc-the-water-balance-error" class="nav-link" data-scroll-target="#the-water-balance-error"><span class="header-section-number">1.3</span> The water balance error</a>
   <ul class="collapse">
-  <li><a href="#example-calculation" id="toc-example-calculation" class="nav-link" data-scroll-target="#example-calculation"><span class="header-section-number">1.4.1</span> Example calculation</a></li>
+  <li><a href="#example-calculation" id="toc-example-calculation" class="nav-link" data-scroll-target="#example-calculation"><span class="header-section-number">1.3.1</span> Example calculation</a></li>
   </ul></li>
-  <li><a href="#why-this-formulation" id="toc-why-this-formulation" class="nav-link" data-scroll-target="#why-this-formulation"><span class="header-section-number">1.5</span> Why this formulation</a></li>
-  <li><a href="#numerical-solution" id="toc-numerical-solution" class="nav-link" data-scroll-target="#numerical-solution"><span class="header-section-number">1.6</span> Numerical solution</a></li>
+  <li><a href="#why-this-formulation" id="toc-why-this-formulation" class="nav-link" data-scroll-target="#why-this-formulation"><span class="header-section-number">1.4</span> Why this formulation</a></li>
+  <li><a href="#numerical-solution" id="toc-numerical-solution" class="nav-link" data-scroll-target="#numerical-solution"><span class="header-section-number">1.5</span> Numerical solution</a></li>
   </ul></li>
   <li><a href="#performance" id="toc-performance" class="nav-link" data-scroll-target="#performance"><span class="header-section-number">2</span> Performance</a></li>
   </ul>
@@ -347,15 +346,8 @@ window.Quarto = {
 <h2 data-number="1.2" class="anchored" data-anchor-id="exactly-integrating-flows-to-minimize-the-number-of-states"><span class="header-section-number">1.2</span> Exactly integrating flows to minimize the number of states</h2>
 <p>The more states the problem has, the more time it takes to solve it. Therefore we want to minimize the number of states. Flows do not have to be states when they can be integrated over time exactly because they do not depend on the other states. This is true for FlowBoundary nodes, and Basin precipitation (which uses a fixed basin area) and drainage.</p>
 </section>
-<section id="the-jacobian" class="level2" data-number="1.3">
-<h2 data-number="1.3" class="anchored" data-anchor-id="the-jacobian"><span class="header-section-number">1.3</span> The Jacobian</h2>
-<p>The Jacobian is an <span class="math inline">\(N \times N\)</span> matrix where <span class="math inline">\(N\)</span> is the number of states in the simulation. It is computed as part of implicit time stepping methods. There are 2 different methods available for computing this matrix: finite difference or automatic differentiation. For more details on the computation of the Jacobian and how it is used in the solvers see <a href="../concept/numerics.html">numerical considerations</a>.</p>
-<p>The entries of the Jacobian <span class="math inline">\(J\)</span> are given by <span class="math display">\[
-    J_{i,j} = \frac{\partial f_j}{\partial u_i},
-\]</span> i.e.&nbsp;<span class="math inline">\(J_{i,j}\)</span> quantifies how <span class="math inline">\(f_j\)</span>, the time derivative of state <span class="math inline">\(j\)</span>, changes with respect to changes in state <span class="math inline">\(i\)</span>. Most of these entries are <span class="math inline">\(0\)</span>, because flows in distant parts of the model do not depend on each other.</p>
-</section>
-<section id="the-water-balance-error" class="level2" data-number="1.4">
-<h2 data-number="1.4" class="anchored" data-anchor-id="the-water-balance-error"><span class="header-section-number">1.4</span> The water balance error</h2>
+<section id="the-water-balance-error" class="level2" data-number="1.3">
+<h2 data-number="1.3" class="anchored" data-anchor-id="the-water-balance-error"><span class="header-section-number">1.3</span> The water balance error</h2>
 <p>The water balance error quantifies how well the water volume in the model is conserved for each Basin over an output save period, i.e.&nbsp;whether no water erroneously appears or disappears. It looks at the storage rate <span class="math display">\[
     \text{storage rate} = \frac{\Delta S_b}{\Delta t}
 \]</span></p>
@@ -374,8 +366,8 @@ window.Quarto = {
 \]</span> Hence the reference used for computing the relative error is the average of the total inflow and total outflow of the Basin (which are both non-negative).</p>
 <p>The default tolerances are <span class="math inline">\(0.001 \text{ m}^3\)</span> for the balance error and <span class="math inline">\(0.01\)</span> for the relative error, which should not be exceeded for realistic models.</p>
 <p>In extreme cases where the storage rate is many orders of magnitude smaller than the storage itself, these computations can have floating point truncation errors which can lead to large relative errors. This is however only when the storage is roughly <span class="math inline">\(\geq 10^{15}\)</span> times bigger than the storage rate.</p>
-<section id="example-calculation" class="level3" data-number="1.4.1">
-<h3 data-number="1.4.1" class="anchored" data-anchor-id="example-calculation"><span class="header-section-number">1.4.1</span> Example calculation</h3>
+<section id="example-calculation" class="level3" data-number="1.3.1">
+<h3 data-number="1.3.1" class="anchored" data-anchor-id="example-calculation"><span class="header-section-number">1.3.1</span> Example calculation</h3>
 <p>Say we have the following model:</p>
 <div class="quarto-figure quarto-figure-left">
 <figure class="figure">
@@ -404,13 +396,13 @@ window.Quarto = {
 \]</span> Note that the balance error and relative error are negative, but we use their absolute value to compare to the respective tolerances.</p>
 </section>
 </section>
-<section id="why-this-formulation" class="level2" data-number="1.5">
-<h2 data-number="1.5" class="anchored" data-anchor-id="why-this-formulation"><span class="header-section-number">1.5</span> Why this formulation</h2>
+<section id="why-this-formulation" class="level2" data-number="1.4">
+<h2 data-number="1.4" class="anchored" data-anchor-id="why-this-formulation"><span class="header-section-number">1.4</span> Why this formulation</h2>
 <p>You might wonder why in the above explanation the states are given by the cumulative flows and not by the Basin storages, which is arguably conceptually simpler. The reason is that we do not just want to model the storages in the Basins over time, but we also want accurate output of each individual flow, e.g.&nbsp;to model the spread of pollutants.</p>
 <p>When the states are given by the storages, generally the individual flows can not accurately be computed from that as a post processing step, because there are more flows than storages. Also, we can only compute flows at individual points in time explicitly, not over a whole interval. When the states are given by the cumulative flows however, the output of the problem solve gives these flows directly, and from those the storage over time can be computed accurately. Hence in short, the formulation above gives more information than a formulation with Basin storages as states.</p>
 </section>
-<section id="numerical-solution" class="level2" data-number="1.6">
-<h2 data-number="1.6" class="anchored" data-anchor-id="numerical-solution"><span class="header-section-number">1.6</span> Numerical solution</h2>
+<section id="numerical-solution" class="level2" data-number="1.5">
+<h2 data-number="1.5" class="anchored" data-anchor-id="numerical-solution"><span class="header-section-number">1.5</span> Numerical solution</h2>
 <p>Ribasim uses <a href="https://github.com/SciML/OrdinaryDiffEq.jl/">OrdinaryDiffEq.jl</a> to provide a numerical solution to the water balance equations. Changes to forcings or parameters such as precipitation, but also the allocated water abstraction is managed through the use of callback functions <span class="citation" data-cites="callbacks">(<a href="#ref-callbacks" role="doc-biblioref">SciML Development Team 2022</a>)</span>. In a coupled run, the exchanges with MODFLOW 6 are also managed via the use of a callback function. For a more in-depth discussion of numerical computations see <a href="../concept/numerics.html">Numerical considerations</a>.</p>
 </section>
 </section>

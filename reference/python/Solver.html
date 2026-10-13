@@ -206,9 +206,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-attributes anchored" data-number="1.1" data-anchor-id="attributes"><span class="header-section-number">1.1</span> Attributes</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 16%">
-<col style="width: 4%">
-<col style="width: 79%">
+<col style="width: 12%">
+<col style="width: 3%">
+<col style="width: 84%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -264,39 +264,49 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>The total number of linear iterations over the whole simulation. (Defaults to 1e9, only needs to be increased for extremely long simulations)</td>
 </tr>
 <tr class="even">
+<td>reduced_implicit_solve</td>
+<td>bool</td>
+<td>Whether to use the implicit solve optimized for Ribasim. Setting this to false bypasses much of the custom numerical code, using a less optimized but potentially more robust algorithm. (Optional, defaults to true)</td>
+</tr>
+<tr class="odd">
 <td>sparse</td>
 <td>bool</td>
 <td>Whether a sparse Jacobian matrix is used, which gives a significant speedup for models with &gt;~10 basins.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>autodiff</td>
 <td>bool</td>
 <td>Whether automatic differentiation instead of fine difference is used to compute the Jacobian. (Optional, defaults to true)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>evaporate_mass</td>
 <td>bool</td>
 <td>Whether mass is lost due to evaporation in water quality calculations. (Optional, defaults to true)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>depth_threshold</td>
 <td>float</td>
 <td>Universal depth at which the low storage factor kicks in</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>max_depth</td>
 <td>float</td>
 <td>Universal maximum Basin depth above which the Basin is flagged when the model becomes unstable</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>level_difference_threshold</td>
 <td>float</td>
 <td>Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>min_discrete_control_interval</td>
 <td>float</td>
 <td>The minimum time between control state updates, if the time is smaller an error will be thrown</td>
+</tr>
+<tr class="even">
+<td>discrete_control_interval</td>
+<td>float</td>
+<td>The interval in seconds at which DiscreteControl logic is evaluated, or after every timestep if 0. (Optional, defaults to 0)</td>
 </tr>
 <tr class="odd">
 <td>specialize</td>

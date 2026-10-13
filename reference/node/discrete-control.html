@@ -617,8 +617,8 @@ window.Quarto = {
 <p>The condition schema defines conditions of the form the <code>discrete_control</code> node with this <code>node_id</code> listens to whether the variable given by the <code>node_id</code> and <code>compound_variable_id</code> is greater than <code>threshold_high</code> (at time <span class="math inline">\(t\)</span>) when the condition was false previously, or <code>threshold_low</code> when true previously, adding hysteresis. Using <code>threshold_low</code> is optional and defaults to <code>threshold_high</code>. We recommend setting <code>threshold_low</code> below <code>threshold_high</code> to create a range that avoids frequent control state changes from small fluctuations and improves model performance. In equation form:</p>
 <p><span class="math display">\[
 \text{condition}=\begin{cases}
-    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots &gt; \text{threshold\_high}(t), !\text{condition_prev} \\
-    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots &gt;= \text{threshold\_low}(t), \text{condition_prev}
+    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots &gt; \text{greater_than}(t), !\text{condition_prev} \\
+    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots &gt;= \text{less_than}(t), \text{condition_prev}
 \end{cases}
 \]</span></p>
 <p>Multiple conditions with different <code>threshold_high</code> and/or <code>threshold_low</code> values can be defined on the same compound_variable, each with their own unique <code>condition_id</code>.</p>
@@ -716,6 +716,7 @@ window.Quarto = {
 <span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Say there is constant inflow from the <code>FlowBoundary</code> node and there are no vertical forcings on the Basin. Say furthermore that the Pump is active only when the Basin level is above a reference value, with a flow greater than the boundary flow. In this case the Pump will rapidly turn on and off as the Basin level oscillates around the reference value.</p>
 <p>To make you aware of these oscillations, Ribasim will throw an error if successive control state changes of a DiscriteControl node in simulated time are closer than <code>min_discrete_control_interval</code>, which is configurable.</p>
+<p>By default the conditions are evaluated after every timestep. To evaluate them only at fixed times, for instance daily, set the solver setting <code>discrete_control_interval</code>, see <a href="../../reference/usage.html#sec-solver-settings">usage</a>.</p>
 </section>
 <section id="logic" class="level2" data-number="1.3">
 <h2 data-number="1.3" class="anchored" data-anchor-id="logic"><span class="header-section-number">1.3</span> Logic</h2>
