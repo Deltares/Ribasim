@@ -92,7 +92,7 @@ function formulate_cumulative_boundary_flow!(
         t::Number,
     )
     (; p_mutable, p_independent, time_dependent_cache) = p
-    (; cumulative_flow) = flow_boundary
+    (; cumulative_flow_since_reset) = flow_boundary
     (; current_cumulative_boundary_flow) = time_dependent_cache.flow_boundary
     if p_mutable.new_time_dependent_cache
         # Extrapolate from the last accepted step, since a flow rate set via BMI is only
@@ -100,7 +100,7 @@ function formulate_cumulative_boundary_flow!(
         t_last_accepted = p_independent.basin.forcing.t_last_accepted[1]
         for idx in eachindex(flow_boundary.node_id)
             current_cumulative_boundary_flow[idx] =
-                cumulative_flow[idx] +
+                cumulative_flow_since_reset[idx] +
                 boundary_flow_integral(flow_boundary, idx, t_last_accepted, t)
         end
     end
@@ -153,11 +153,11 @@ function set_current_storage!(
     if p_mutable.new_time_dependent_cache
         dt = t - forcing.t_last_accepted[1]
         @. time_dependent_cache.basin.precipitation =
-            forcing.exact_cumulative_forcing.precipitation + vertical_flux.precipitation * dt
+            forcing.exact_cumulative_forcing_since_reset.precipitation + vertical_flux.precipitation * dt
         @. time_dependent_cache.basin.drainage =
-            forcing.exact_cumulative_forcing.drainage + vertical_flux.drainage * dt
+            forcing.exact_cumulative_forcing_since_reset.drainage + vertical_flux.drainage * dt
         @. time_dependent_cache.basin.surface_runoff =
-            forcing.exact_cumulative_forcing.surface_runoff + vertical_flux.surface_runoff * dt
+            forcing.exact_cumulative_forcing_since_reset.surface_runoff + vertical_flux.surface_runoff * dt
     end
 
     if with_incidence_matrix

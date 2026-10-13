@@ -155,6 +155,11 @@ end
     tstops = Vector{Float64}[]
     Ribasim.get_timeseries_tstops!(tstops, t_end, basin.forcing.precipitation)
     @test length(only(tstops)) == 404
+
+    initial_storage0 = copy(basin.storage0)
+    Ribasim.solve!(model)
+    @test success(model)
+    @test basin.storage0 != initial_storage0
 end
 
 @testitem "transient_pump_outlet" begin
