@@ -196,6 +196,7 @@ using .CVectors:
 include("schema.jl")
 include("config.jl")
 using .config
+include("threading.jl")
 include("parameter.jl")
 include("validation.jl")
 include("formulate_flows.jl")
