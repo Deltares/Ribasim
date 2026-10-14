@@ -615,7 +615,7 @@ end
         @test visits == [i in indices ? 1 : 0 for i in 1:1000]
     end
 
-    # `continue` skips to the next index, both in a plain loop and in parallel tasks
+    # `continue` skips to the next index, both in a plain loop and in parallel chunks
     for min_chunk_size in (1, 1000)
         visits = zeros(Int, 100)
         @threaded min_chunk_size for i in 1:100
@@ -629,20 +629,26 @@ end
         @test visits == [isodd(i) ? 1 : 0 for i in 1:100]
     end
 
-    # An error in the first chunk, which runs on the calling task, is only thrown once the
-    # other chunks have finished
-    finished = zeros(Bool, 100)
+    # An error in the first chunk, which runs on the calling task, is only thrown once no other
+    # chunk is still running. Chunks that did not start yet are skipped.
+    running = Threads.Atomic{Int}(0)
     @test_throws "error in first chunk" parallel_foreach(1:100, 4) do i
         i == 1 && error("error in first chunk")
+        Threads.atomic_add!(running, 1)
         sleep(0.001)
-        finished[i] = true
+        Threads.atomic_sub!(running, 1)
     end
-    @test all(finished[26:100])
+    @test running[] == 0
 
     # An error in another chunk is thrown as well
     @test_throws "error in last chunk" parallel_foreach(1:100, 4) do i
         i == 100 && error("error in last chunk")
     end
+
+    # The workers can be used again after an error
+    visits = zeros(Int, 100)
+    parallel_foreach(i -> visits[i] += 1, 1:100, 4)
+    @test all(==(1), visits)
 end
 
 @testitem "relaxed_root basic behavior" begin

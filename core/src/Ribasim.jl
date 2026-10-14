@@ -183,6 +183,8 @@ using NCDatasets: NCDatasets, NCDataset, defDim, defVar, dimnames, CFVariable
 using Dates: Second
 
 using Base.Threads: nthreads
+# Parallel loops on a pool of persistent worker tasks
+using ParkedWorkers: pforeach
 
 include("cvectors.jl")
 using .CVectors:
