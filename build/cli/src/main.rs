@@ -20,8 +20,7 @@ struct Cli {
         long = "threads",
         value_name = "#THREADS",
         help = "Number of threads to use.",
-        default_value = "1",
-        hide = true
+        default_value = "1"
     )]
     threads: i32,
 }

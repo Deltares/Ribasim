@@ -121,7 +121,7 @@ function set_current_basin_properties!(flow::FlowCVector, p::Parameters, t::Numb
 
     set_current_storage!(p, flow, t)
 
-    for idx in eachindex(node_id)
+    @threaded 1024 for idx in eachindex(node_id)
         id = node_id[idx]
         s = current_storage[idx]
         (s == storage_prev_call[idx]) && continue
@@ -196,7 +196,8 @@ function formulate_vertical_flux!(
     ) = p.p_independent.basin
 
     # Outgoing
-    for id in node_id
+    @threaded 1024 for idx in eachindex(node_id)
+        id = node_id[idx]
         # Evaporation and infiltration have the same 'uplink' storage,
         # but they are separated here for AD purposes
 
@@ -456,7 +457,7 @@ function formulate_flow!(
     )::Nothing
     (; node_id) = linear_resistance
 
-    for node_idx in eachindex(linear_resistance.node_id)
+    @threaded for node_idx in eachindex(linear_resistance.node_id)
         id = node_id[node_idx]
         q = linear_resistance_flow(
             linear_resistance,
@@ -561,7 +562,7 @@ function formulate_flow!(
         p::Parameters,
         t::Number,
     )::Nothing
-    for node_idx in eachindex(tabulated_rating_curve.node_id)
+    @threaded for node_idx in eachindex(tabulated_rating_curve.node_id)
         id = tabulated_rating_curve.node_id[node_idx]
         s_a = storage_uplink.horizontal.tabulated_rating_curve[node_idx]
         s_b = storage_downlink.horizontal.tabulated_rating_curve[node_idx]
@@ -696,7 +697,7 @@ function formulate_flow!(
     )::Nothing
     (; node_id) = manning_resistance
 
-    for node_idx in eachindex(manning_resistance.node_id)
+    @threaded for node_idx in eachindex(manning_resistance.node_id)
         id = node_id[node_idx]
         s_a = storage_uplink.horizontal.manning_resistance[node_idx]
         s_b = storage_downlink.horizontal.manning_resistance[node_idx]
@@ -857,7 +858,9 @@ function formulate_pump_or_outlet_flow!(
         component_cache::NamedTuple,
         reduce_Δlevel::Bool = false,
     )::Nothing
-    for node_idx in eachindex(node.node_id)
+    # Flows controlled by PidControl can depend on other flows, so these are formulated in order
+    min_chunk_size = relevant_control_type == ContinuousControlType.None ? 256 : typemax(Int)
+    @threaded min_chunk_size for node_idx in eachindex(node.node_id)
         node.control_type[node_idx] != relevant_control_type && continue
 
         id = node.node_id[node_idx]

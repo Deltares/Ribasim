@@ -173,7 +173,7 @@ function get_level(
         t::Number;
         force_evaluation::Bool = false,
     )::Number
-    (; p_independent, time_dependent_cache, p_mutable, current_basin_properties) = p
+    (; p_independent, p_mutable, current_basin_properties) = p
     (; basin) = p_independent
     (; storage_to_level) = basin
 
@@ -189,14 +189,10 @@ function get_level(
             current_basin_properties.current_level[node_id.idx]
         end
     elseif node_id.type == NodeType.LevelBoundary
+        # Not cached, since multiple flows can evaluate the level of the same LevelBoundary
+        # in parallel
         itp = p_independent.level_boundary.level[node_id.idx]
-        eval_time_interpolation(
-            itp,
-            time_dependent_cache.level_boundary.current_level,
-            node_id.idx,
-            p,
-            t,
-        )
+        itp(interpolation_time(itp, p, t))
     elseif node_id.type == NodeType.Terminal
         # Terminal is like a bottomless pit.
         # A level at -Inf ensures we don't hit `max_downstream_level` reduction factors.
@@ -1178,19 +1174,11 @@ function set_uplink_downlink_storage!(
     )
     (; inflow_id, outflow_id) = p_independent
 
-    storage_uplink .= 0.0
-    storage_downlink .= 0.0
-
-    for idx in eachindex(storage_uplink)
+    @threaded CHEAP_LOOP_MIN_CHUNK_SIZE for idx in eachindex(storage_uplink)
         in_id = inflow_id[idx]
         out_id = outflow_id[idx]
-
-        if in_id.is_basin
-            storage_uplink[idx] = storage[in_id.idx]
-        end
-        if out_id.is_basin
-            storage_downlink[idx] = storage[out_id.idx]
-        end
+        storage_uplink[idx] = in_id.is_basin ? storage[in_id.idx] : zero(eltype(storage_uplink))
+        storage_downlink[idx] = out_id.is_basin ? storage[out_id.idx] : zero(eltype(storage_downlink))
     end
 
     return nothing
