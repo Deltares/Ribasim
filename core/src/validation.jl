@@ -267,6 +267,43 @@ function sorted_table!(table::StructVector{T})::StructVector{T} where {T <: Tabl
     return table
 end
 
+"""
+The columns that must uniquely identify a row of a table, or `nothing` if not validated.
+"""
+unique_key(::Type{<:Table}) = nothing
+unique_key(::Type{Schema.Basin.Static}) = (:node_id,)
+unique_key(::Type{Schema.FlowBoundary.Static}) = (:node_id,)
+unique_key(::Type{Schema.LevelBoundary.Static}) = (:node_id,)
+unique_key(::Type{Schema.LinearResistance.Static}) = (:node_id, :control_state)
+unique_key(::Type{Schema.ManningResistance.Static}) = (:node_id, :control_state)
+unique_key(::Type{Schema.Outlet.Static}) = (:node_id, :control_state)
+unique_key(::Type{Schema.PidControl.Static}) = (:node_id, :control_state)
+unique_key(::Type{Schema.Pump.Static}) = (:node_id, :control_state)
+unique_key(::Type{Schema.UserDemand.Static}) = (:node_id, :demand_priority)
+unique_key(::Type{Schema.LevelDemand.Static}) = (:node_id, :demand_priority)
+unique_key(::Type{Schema.FlowDemand.Static}) = (:node_id, :demand_priority)
+
+"""
+Check that the rows of a sorted table are unique by `unique_key`, logging each duplicated key once.
+"""
+function valid_unique_rows(table::StructVector{T})::Bool where {T <: Table}
+    key_columns = unique_key(T)
+    isnothing(key_columns) && return true
+    row_keys = map(
+        i -> NamedTuple{key_columns}(map(k -> getproperty(table, k)[i], key_columns)),
+        eachindex(table),
+    )
+    errors = false
+    for i in 2:length(row_keys)
+        if isequal(row_keys[i], row_keys[i - 1]) &&
+                (i == 2 || !isequal(row_keys[i - 1], row_keys[i - 2]))
+            @error "Duplicate rows found in $(sql_table_name(T)) for $(row_keys[i])."
+            errors = true
+        end
+    end
+    return !errors
+end
+
 function valid_config(config::Config)::Bool
     errors = false
 

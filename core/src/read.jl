@@ -2209,8 +2209,9 @@ function load_structvector(
         return StructVector{T}(undef, 0)
     end
 
-    table = StructVector{T}(nt)
-    return sorted_table!(table)
+    table = sorted_table!(StructVector{T}(nt))
+    valid_unique_rows(table) || error("Invalid $(sql_table_name(T)) table.")
+    return table
 end
 
 """
