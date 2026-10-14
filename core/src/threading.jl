@@ -6,7 +6,7 @@
         ...
     end
 
-Run a `for` loop over a range of indices in parallel chunks, at most one per thread, each
+Run a `for` loop over a range of indices in parallel tasks, at most one per thread, each
 with a contiguous chunk of at least `min_chunk_size` (default 256) indices. With a single
 thread, or too few indices for two chunks, it runs as a plain loop, so small models don't pay
 for task overhead. Cheap iterations need a larger `min_chunk_size` to benefit.
@@ -55,10 +55,8 @@ vectors, which only benefit from multiple threads for the largest models.
 const CHEAP_LOOP_MIN_CHUNK_SIZE = 8192
 
 """
-Call `f(i)` for each `i` in `indices`, divided into `n_chunks` contiguous chunks that run in
-parallel, see `@threaded`. The chunks run on the persistent workers of ParkedWorkers.jl, which
-start a loop with much less overhead than `Threads.@spawn`. A loop inside another
-`@threaded` loop runs serially.
+Call `f(i)` for each `i` in `indices`, divided into `n_chunks` contiguous chunks that run as
+parallel tasks, see `@threaded`.
 """
 function parallel_foreach(
         f::F,
@@ -68,6 +66,12 @@ function parallel_foreach(
     n = length(indices)
     offset = first(indices) - 1
     chunk(k) = (offset + ((k - 1) * n) ÷ n_chunks + 1):(offset + (k * n) ÷ n_chunks)
-    pforeach(k -> foreach(f, chunk(k)), 1:n_chunks)
+    tasks = [Threads.@spawn foreach(f, chunk(k)) for k in 2:n_chunks]
+    try
+        foreach(f, chunk(1))
+    finally
+        # Wait for all tasks, also when a chunk throws, since the others may still be writing
+        waitall(tasks; failfast = false)
+    end
     return nothing
 end
