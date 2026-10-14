@@ -186,7 +186,7 @@ class Solver(ChildModel):
     depth_threshold: float = 0.1
     max_depth: float = 2000.0
     level_difference_threshold: float = 0.02
-    min_discrete_control_interval: float = 1.0
+    min_discrete_control_interval: float = 0.0
     discrete_control_interval: float = 0.0
     specialize: bool = False
 
