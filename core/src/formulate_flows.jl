@@ -584,22 +584,24 @@ end
 const gravity = 9.81
 
 """
-Wet area, wetted perimeter and water surface width of a trapezoidal profile at depth d.
+Wet area A, wetted perimeter P and water surface width T of a trapezoidal profile at a depth.
 """
-function trapezoid_geometry(d, width, slope)
-    A = width * d + slope * d^2
-    P = width + 2 * d * sqrt(slope^2 + 1)
-    T = width + 2 * slope * d
-    return A, P, T
+function trapezoid_geometry(depth, width, slope)
+    wet_area = width * depth + slope * depth^2
+    wetted_perimeter = width + 2 * depth * sqrt(slope^2 + 1)
+    surface_width = width + 2 * slope * depth
+    return wet_area, wetted_perimeter, surface_width
 end
 
 """
-The factor A / n * R_h^(2/3) in the Gauckler-Manning formula for a trapezoidal profile at depth d.
-Written as A^(5/3) / P^(2/3) so that the derivative stays finite when the profile is dry.
+The factor A / n * R_h^(2/3) in the Gauckler-Manning formula for a trapezoidal profile at a depth.
+Written as A * cbrt((A / P)^2) / n, which avoids a generic power. The area inside the cube root
+is bounded away from zero so that the derivative stays finite when the profile is dry.
 """
-function manning_factor(d, width, slope, n)
-    A, P, _ = trapezoid_geometry(max(d, 0), width, slope)
-    return A^(5 / 3) / (n * cbrt(max(P, eps(Float64))^2))
+function manning_factor(depth, width, slope, n)
+    wet_area, wetted_perimeter, _ = trapezoid_geometry(max(depth, 0), width, slope)
+    hydraulic_radius = max(wet_area, eps(Float64)) / max(wetted_perimeter, eps(Float64))
+    return wet_area * cbrt(hydraulic_radius^2) / n
 end
 
 """
@@ -609,7 +611,8 @@ d + A / (2T) = E and the flow for that energy is maximal. This is the positive r
     5 s d^2 + (3 w - 4 s E) d - 2 w E = 0
 
 which is 2E/3 for a rectangle (s = 0) and 4E/5 for a triangle (w = 0).
-The two root forms are used on either side of b = 0 to avoid cancellation.
+The two root forms are used on either side of b = 0 to avoid cancellation. They are
+algebraically equal, since (r - b)(r + b) = 40 s w E, so switching between them is continuous.
 """
 function critical_depth(E, width, slope)
     E = max(E, 0)
@@ -620,13 +623,14 @@ end
 
 """
 Critical flow of a trapezoidal profile for a specific energy E, the largest flow that can
-pass the profile: A sqrt(g A / T) at the critical depth.
-Written as sqrt(g) A^(3/2) / sqrt(T) so that the derivative stays finite when the profile is dry.
+pass the profile: A sqrt(g A / T) at the critical depth. The area inside the square root
+is bounded away from zero so that the derivative stays finite when the profile is dry.
 """
 function critical_flow(E, width, slope)
     d_c = critical_depth(E, width, slope)
-    A, _, T = trapezoid_geometry(d_c, width, slope)
-    return sqrt(gravity) * A^(3 / 2) / sqrt(max(T, eps(Float64)))
+    wet_area, _, surface_width = trapezoid_geometry(d_c, width, slope)
+    return wet_area *
+        sqrt(gravity * max(wet_area, eps(Float64)) / max(surface_width, eps(Float64)))
 end
 
 """
@@ -664,7 +668,8 @@ function manning_flow(
     bottom_downstream = ifelse(forward, bottom_b, bottom_a)
 
     # The downstream water level cannot drop below the critical depth above the downstream
-    # bottom, so 0 ≤ Δh ≤ |h_a - h_b|
+    # bottom, so 0 ≤ Δh ≤ |h_a - h_b|. This max is continuous, but its derivative jumps
+    # when the downstream level passes the brink level.
     d_upstream = h_upstream - bottom_upstream
     d_downstream = max(h_downstream - bottom_downstream, critical_depth(h_upstream - bottom_downstream, width, slope))
     Δh = h_upstream - (bottom_downstream + d_downstream)
@@ -673,8 +678,9 @@ function manning_flow(
     q_manning = factor * relaxed_root(Δh / L, 1.0e-5)
 
     # The flow cannot exceed the critical flow for the head above the higher of the two bottoms.
-    # The smooth minimum is sharp enough to leave subcritical flow untouched, and is written
-    # with the ratio of the smaller to the larger flow so that it cannot overflow.
+    # The smooth minimum is sharp enough to leave subcritical flow untouched: with power 16 it
+    # lowers a flow of 80% of the critical flow by less than 0.2%, where power 8 would give 2%.
+    # It is written with the ratio of the smaller to the larger flow so that it cannot overflow.
     q_critical = critical_flow(h_upstream - max(bottom_upstream, bottom_downstream), width, slope)
     q_low = min(q_manning, q_critical)
     q_high = max(q_manning, q_critical, eps(Float64))
