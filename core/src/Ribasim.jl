@@ -27,8 +27,7 @@ using DifferentiationInterface:
     jacobian!,
     value_and_jacobian!,
     prepare_derivative,
-    derivative!,
-    second_derivative
+    derivative!
 
 using ForwardDiff: derivative as forward_diff
 

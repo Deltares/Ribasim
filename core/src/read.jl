@@ -1695,15 +1695,14 @@ end
 
 function AllocationTime(config::Config)
     (; saveat) = config.solver
-    dt_fixed = config.allocation.dt
-    t_end = seconds_since(config.endtime, config.starttime)
-    tstops = iszero(saveat) ? [0.0] : collect(range(0, t_end; step = saveat))
+    (; dt, dtmin, intervention_interval) = config.allocation
 
     return AllocationTime(;
-        adaptive = isnothing(dt_fixed),
-        dt_fixed = something(dt_fixed, 0.0),
-        t_end,
-        tstops,
+        adaptive = isnothing(dt),
+        dt_fixed = something(dt, 0.0),
+        dt = dtmin,
+        t_end = seconds_since(config.endtime, config.starttime),
+        intervention_interval,
         saveat,
     )
 end
@@ -1712,6 +1711,7 @@ function Allocation(db::DB, config::Config, graph::MetaGraph)::Allocation
     return Allocation(;
         demand_priorities_all = get_all_demand_priorities(db, config),
         subnetwork_ids = sort(collect(keys(graph[].node_ids))),
+        current_basin_properties = CurrentBasinProperties(; n = 0),
         config
     )
 end

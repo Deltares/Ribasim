@@ -91,21 +91,21 @@ class Allocation(ChildModel):
 
     Attributes
     ----------
+    intervention_interval : float
+        Interval in seconds at which allocation results are passed to the physical layer, representing human intervention (Optional, defaults to 86400.0)
     dt : float, optional
-        The simulated time in seconds between successive allocation calls.
-        If not provided, adaptive timestepping is used. When provided, this acts as a fixed timestep.
-    reltol_linearization : float
-        Relative tolerance for linearization errors of basin profiles and connector node Q(h) relationships (Optional, defaults to 0.01)
+        Fixed allocation timestep in seconds within an intervention interval.
+        If not provided, adaptive timestepping is used.
     dtmin : float
         Minimum allocation timestep in seconds for adaptive timestepping (Optional, defaults to 3600.0)
     dtmax : float
-        Maximum allocation timestep in seconds for adaptive timestepping, typically the human intervention interval (Optional, defaults to 86400.0)
+        Maximum allocation timestep in seconds for adaptive timestepping (Optional, defaults to 86400.0)
     route_priority : RoutePriority
         The default route priority per node type
     """
 
+    intervention_interval: float = 86400.0
     dt: float | None = None
-    reltol_linearization: float = 0.01
     dtmin: float = 3600.0
     dtmax: float = 86400.0
     route_priority: RoutePriority = RoutePriority()
