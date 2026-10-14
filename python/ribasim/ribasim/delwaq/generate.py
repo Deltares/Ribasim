@@ -432,6 +432,9 @@ def generate(
         output_path = model.filepath.parent / "delwaq"
     output_path.mkdir(exist_ok=True)
 
+    # Create include subdirectory
+    include_path = output_path / "include"
+    include_path.mkdir(parents=True, exist_ok=True)
     # Setup flow network
     G, merge_links, node_mapping, link_mapping, basin_mapping = _setup_graph(
         model.node, model.link, evaporate_mass=evaporate_mass
@@ -648,7 +651,7 @@ def generate(
     assert bnd["fid"].is_unique
 
     bnd.to_csv(
-        output_path / "ribasim_bndlist.inc",
+        include_path / "B5_bndlist.inc",
         index=False,
         header=False,
         sep=" ",
@@ -677,20 +680,44 @@ def generate(
                 timestep=strfdelta(timestep),
                 nsegments=total_segments,
                 nexchanges=total_exchanges,
-                substances=sorted(substances),
                 ribasim_version=ribasim.__version__,
                 loglevel=loglevel(model.logging.verbosity),
             )
         )
 
+    template = env.get_template("B1_substances.inc.j2")
+    with (include_path / "B1_substances.inc").open(mode="w") as f:
+        f.write(
+            template.render(
+                substances=sorted(substances),
+            )
+        )
+
     template = env.get_template("B8_initials.inc.j2")
-    with (output_path / "B8_initials.inc").open(mode="w") as f:
+    with (include_path / "B8_initials.inc").open(mode="w") as f:
         f.write(
             template.render(
                 substances=sorted(substances),
                 initial_concentrations=initial_concentrations,
             )
         )
+
+    # generate a set of empty files. This is for ease of use.
+    # water quality model simulations can then be setup by replacing these files, instead of directly modifying the delwaq.inp
+    with (include_path / "B7_processes.inc").open(mode="w") as f:
+        pass
+
+    with (include_path / "B7_constants.inc").open(mode="w") as f:
+        pass
+
+    with (include_path / "B7_functions.inc").open(mode="w") as f:
+        pass
+
+    with (include_path / "B7_parameters.inc").open(mode="w") as f:
+        pass
+
+    with (include_path / "B7_segfunctions.inc").open(mode="w") as f:
+        pass
 
     # Return the model so the results can be parsed back. The graph mapping and
     # substances needed by parse() are stored in output_path / "ribasim.nc".
