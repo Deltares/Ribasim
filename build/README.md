@@ -15,8 +15,7 @@ In order to find out about it's usage call `ribasim --help`
 ## Libribasim
 
 Libribasim is a shared library that exposes Ribasim functionality to external (non-Julian)
-programs. It can be compiled using [PackageCompiler's
-create_lib](https://julialang.github.io/PackageCompiler.jl/stable/libs.html), which is set
+programs. It can be compiled using [JuliaC.jl](https://github.com/JuliaLang/JuliaC.jl), which is set
 up in this directory. The C API that is offered to control Ribasim is the C API of the
 [Basic Model Interface](https://bmi.readthedocs.io/en/latest/), also known as BMI.
 

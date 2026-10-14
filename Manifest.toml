@@ -2,7 +2,7 @@
 
 julia_version = "1.13.1"
 manifest_format = "2.1"
-project_hash = "9f98ee563545c492176ba316a950435b7408e211"
+project_hash = "1005ed6c5090448875ac0fb4b86b9637e5ef7854"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -1149,10 +1149,10 @@ version = "1.32.0"
 
 [[deps.JuliaC]]
 deps = ["LIEF_Patchelf_jll", "LazyArtifacts", "Libdl", "Mmap", "ObjectFile", "PackageCompiler", "Pkg", "Preferences", "RelocatableFolders", "SHA", "StructIO", "TOML"]
-git-tree-sha1 = "b23c19d50a0f47d4cab16299c760ca842cd47599"
+git-tree-sha1 = "155f519c898eafb607815bb3e896eae4e1d95b71"
 registries = "General"
 uuid = "acedd4c2-ced6-4a15-accc-2607eb759ba2"
-version = "0.3.10"
+version = "0.3.11"
 
 [[deps.JuliaInterpreter]]
 deps = ["CodeTracking", "InteractiveUtils", "Random"]
