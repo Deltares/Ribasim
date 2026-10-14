@@ -14,7 +14,7 @@ column        | type    | unit                               | restriction
 node_id       | Int32   | -                                  |
 length        | Float64 | $\text{m}$                         | positive
 manning_n     | Float64 | $\text{s} \text{m}^{-\frac{1}{3}}$ | positive
-profile_width | Float64 | $\text{m}$                         | positive
+profile_width | Float64 | $\text{m}$                         | non-negative, not zero together with profile_slope
 profile_slope | Float64 | -                                  | -
 control_state | String  | -                                  | (optional)
 
@@ -93,9 +93,9 @@ $$
 
 Where:
 
-* $A$ is the **representative** area.
-* $R_h$ is the **representative** wetted radius.
-* $S_f$ is the **representative** friction slope.
+* $A$ is the cross-sectional area.
+* $R_h$ is the hydraulic radius $A / P$, with $P$ the wetted perimeter.
+* $S_f$ is the friction slope.
 * $n$ is Manning's roughness coefficient.
 
 We can rewrite to express $S_f$ in terms of Q:
@@ -124,11 +124,63 @@ $$
 
 The $\textrm{sign}(\Delta h)$ term causes the direction of the flow to reverse
 if the head in basin $b$ is larger than in basin $a$.
+Below we call the Basin the water comes from the upstream Basin, with level $h_\text{up}$ and bottom $z_\text{up}$, and the other one the downstream Basin, with level $h_\text{dn}$ and bottom $z_\text{dn}$.
 
-This expression however has a derivative which tends to $\infty$ as $\Delta h$ tends to $0$, which can lead to instabilities in simulation. Therefore we use the modified expression
+The factor $\frac{A}{n} R_h^{2/3}$ is evaluated at the water depth of each end of the reach, and the two values are averaged.
+Since the upstream depth is always included, a Basin can receive water after it has gone dry.
+
+## Critical flow
+
+The Gauckler-Manning formula describes uniform flow in a channel. On its own it has no upper bound: when the downstream Basin lies far below the upstream one, it gives a supercritical flow that keeps growing as the downstream Basin fills.
+Two limits from open channel hydraulics are therefore added, both based on the critical depth.
+
+For a specific energy $E$ the critical depth $d_c$ is the depth at which the flow is maximal, where
 
 $$
-Q = \phi\frac{A}{n} R_h^{2/3}s\left(\frac{\Delta h}{L}; x_0\right),
+d_c + \frac{A(d_c)}{2 T(d_c)} = E
+$$
+
+with $T$ the width of the water surface. For the trapezoidal profile this is the positive root of
+
+$$
+5 s\, d_c^2 + (3 w - 4 s E)\, d_c - 2 w E = 0,
+$$
+
+which is $\frac{2}{3}E$ for a rectangle and $\frac{4}{5}E$ for a triangle. The corresponding critical flow is
+
+$$
+Q_c = A(d_c) \sqrt{\frac{g A(d_c)}{T(d_c)}}.
+$$
+
+The first limit is on the downstream water level. At a free overfall the water surface sits at critical depth, not at the level of whatever Basin lies below, so the downstream depth used in the formula is
+
+$$
+d_\text{dn} = \max\left(h_\text{dn} - z_\text{dn},\; d_c(h_\text{up} - z_\text{dn})\right)
+$$
+
+and the head difference that drives the flow is $\Delta h = h_\text{up} - (z_\text{dn} + d_\text{dn})$, which lies between $0$ and $h_\text{up} - h_\text{dn}$.
+As a result the flow into an empty or nearly empty downstream Basin does not depend on how far below the reach that Basin is.
+
+The second limit is on the flow itself. The flow cannot exceed the critical flow $Q_c(E)$ for the head above the higher of the two bottoms, which is where the flow is controlled:
+
+$$
+E = h_\text{up} - \max(z_\text{up}, z_\text{dn})
+$$
+
+The Manning flow $Q_m$ and the critical flow $Q_c$ are combined with a smooth minimum
+
+$$
+Q = \frac{Q_\text{lo}}{\left(1 + (Q_\text{lo} / Q_\text{hi})^{16}\right)^{1/16}},
+$$
+
+with $Q_\text{lo}$ and $Q_\text{hi}$ the smaller and larger of the two. The exponent is large enough that the reduction is below $0.2\%$ as long as $Q_m / Q_c \le 0.8$, so subcritical flow is unaffected.
+
+## Relaxation around zero
+
+The expression $\sqrt{\Delta h}$ has a derivative which tends to $\infty$ as $\Delta h$ tends to $0$, which can lead to instabilities in simulation. Therefore we use the modified expression
+
+$$
+Q_m = \overline{\frac{A}{n} R_h^{2/3}}\; s\left(\frac{\Delta h}{L}; x_0\right),
 $$
 
 where $s$ is a relaxed square root function:
@@ -138,24 +190,14 @@ s(x; x_0)
 =
 \begin{align}
   \begin{cases}
-    \frac{x}{4\sqrt{p}}\left(5 - (\frac{x}{p})^2\right) &\text{ if } |x| < x_0 \\
+    \frac{x}{4\sqrt{x_0}}\left(5 - (\frac{x}{x_0})^2\right) &\text{ if } |x| < x_0 \\
     \textrm{sign}(x)\sqrt{|x|} &\text{ if } |x| \ge x_0
   \end{cases}
 \end{align}
 $$
 
-And $x_0$ is calculated based on the Reynolds number, such that the smooth relaxation starts when the velocity of the flow starts to leave the fully turbulent regime ($\text{Re}<2000$):
-
-$$
-\text{Re} = \frac{Q}{\nu R_h} = \frac{A \sqrt{\Delta h / L}}{n \nu \sqrt[3]{R_h}}
-$$
-
-Which can be rewritten:
-
-$$
-x_0 = \left( \text{Re}_0 \frac{ n \nu \sqrt[3]{R_h}}{A} \right)^2
-$$
-
+with $x_0 = 10^{-5}$. This is a numerical regularisation, not a physical laminar transition: for real channels the transition to laminar flow lies many orders of magnitude lower.
+Note that for a reach of length $L$ the relaxation is active for head differences below $x_0 L$, so for a 1 km reach below 1 cm, and in that region the flow is smaller than the Gauckler-Manning formula gives.
 
 ```{python}
 # | code-fold: true
@@ -170,9 +212,7 @@ def s(x, threshold):
     return np.sign(x)*np.sqrt(np.abs(x))
 
 threshold = 1e-5
-x = np.linspace(-0.0025, 0.0025, 100)
 x = np.linspace(-2.5*threshold, 2.5*threshold, 100)
-
 
 fig, ax = plt.subplots()
 
@@ -184,13 +224,10 @@ ax.plot(x, y_s, color = "C0", label = r"$s\left(x; 10^{-5} \right)$")
 ax.legend();
 ```
 
-and $\phi$ is the reduction factor which makes the flow go smoothly to $0$ as the upstream storage (as determined by the flow direction) becomes smaller than the equivalent of a water depth of $10 \;\text{cm}$ (change with solver setting `depth_threshold`).
+Finally the flow $Q$ is multiplied by the reduction factor $\phi$, which makes the flow go smoothly to $0$ as the upstream storage (as determined by the flow direction) becomes smaller than the equivalent of a water depth of $10 \;\text{cm}$ (change with solver setting `depth_threshold`).
 
 :::{.callout-note}
-The computation of $S_f$ is not exact: we base it on a representative area and hydraulic radius, rather than integrating $S_f$ along the length of a reach.
-Direct analytic solutions exist for e.g. parabolic profiles (Tolkmitt), but other profiles requires relatively complicated approaches (such as approximating the profile with a polynomial).
-
-We use the average value of the cross-sectional area, the average value of the water depth, and the average value of the hydraulic radius to compute a friction slope.
+The computation of $S_f$ is not exact: we base it on the average of the two ends of the reach rather than integrating $S_f$ along the length of a reach, as in the standard step method with a single step.
 The size of the resulting error will depend on the water depth difference between the upstream and downstream Basin.
 :::
 
@@ -210,5 +247,11 @@ Where
 Accordingly, the wetted perimeter is:
 
 $$
-B = w + 2 d \sqrt{\left(\frac{\Delta y}{\Delta z}\right)^2 + 1}
+P = w + 2 d \sqrt{\left(\frac{\Delta y}{\Delta z}\right)^2 + 1}
+$$
+
+and the width of the water surface is:
+
+$$
+T = w + 2 d \frac{\Delta y}{\Delta z}
 $$
