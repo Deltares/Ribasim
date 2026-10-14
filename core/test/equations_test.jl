@@ -157,7 +157,7 @@ end
 # storage1 = storage1(t0) + (t-t0)*(q_boundary - q_pump)
 # storage2 = storage2(t0) + (t-t0)*q_pump
 # Note: uses Euler algorithm
-@testitem "MiscellaneousNodes" begin
+@testitem "Miscellaneous nodes" begin
     using Ribasim: tsaves, get_storages_and_levels
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/misc_nodes/ribasim.toml")
@@ -168,7 +168,7 @@ end
     Ribasim.solve!(model)
     @test success(model)
     @test any(ismissing, model.saved.flow.saveval[end].flow_convergence)
-    @test isnothing(Ribasim.log_bottlenecks(model; interrupt = false))
+    @test isnothing(Ribasim.log_bottlenecks(model))
     (; p_independent) = model.integrator.p
     (; flow_boundary, pump) = p_independent
 

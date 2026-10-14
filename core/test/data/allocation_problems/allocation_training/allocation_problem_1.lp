@@ -33,10 +33,10 @@ average_flow_unit_error_constraint_3_: -1 user_demand_error_UserDemand_#9,3,firs
 average_flow_unit_error_constraint_4_: 1 average_flow_unit_error_4_ = 0
 average_storage_unit_error_constraint_1,upper_: -1 level_demand_error_Basin_#7,1,upper,first_ + 1 average_storage_unit_error_1,upper_ = 0
 average_storage_unit_error_constraint_1,lower_: -1 level_demand_error_Basin_#7,1,lower,first_ + 1 average_storage_unit_error_1,lower_ = 0
-tabulated_rating_curve_constraint_TabulatedRatingCurve_#4_: -0.4629640560205406 basin_storage_change_Basin_#3_ - 0.07478840656581913 low_storage_factor_Basin_#3_ + 1 flow_(Basin_#3,_TabulatedRatingCurve_#4)_ = 0
+tabulated_rating_curve_constraint_TabulatedRatingCurve_#4_: -0.4629640560205407 basin_storage_change_Basin_#3_ - 0.07478840656581916 low_storage_factor_Basin_#3_ + 1 flow_(Basin_#3,_TabulatedRatingCurve_#4)_ = 0
 tabulated_rating_curve_constraint_TabulatedRatingCurve_#8_: -0.056261880260628894 basin_storage_change_Basin_#7_ - 0.08502802709937102 low_storage_factor_Basin_#7_ + 1 flow_(Basin_#7,_TabulatedRatingCurve_#8)_ = 0
 Bounds
-basin_storage_change_Basin_#3_ >= -0.1505440304180075
+basin_storage_change_Basin_#3_ >= -0.15054403041800754
 basin_storage_change_Basin_#7_ >= -1.6959489858868222
 0 <= low_storage_factor_Basin_#3_ <= 1
 0 <= low_storage_factor_Basin_#7_ <= 1

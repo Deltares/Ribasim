@@ -97,19 +97,15 @@ This is done by storing it on the diagonal of the `flow[from, to]` matrix, e.g. 
 
 ## The Jacobian
 
-See [Equations](/concept/equations.qmd#the-jacobian) for a mathematical description of the Jacobian.
+See [numerical considerations](/concept/numerics.qmd#sec-jacobian) for a mathematical description of the Jacobian and how it is evaluated, and [numerical implementation](/dev/numerics.qmd#jacobian-computation) for the implementation.
 
-Before the Julia core runs its simulation, the sparsity structure `jac_prototype` of $J$ is determined with `get_jac_prototype` in `sparsity.jl`. This function runs through all node types and looks for nodes that create dependencies between states. It creates a sparse matrix of zeros and ones, where the ones denote locations of possible non-zeros in $J$. Note that only nodes that set flows in the physical layer (or have their own state like `PidControl`) affect the sparsity structure.
+The sparsity structure of the Jacobian is detected automatically with SparseConnectivityTracer.jl, and the Jacobian is computed with automatic differentiation using [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/). Hence no Jacobian specific code is needed for a new node type, as long as `formulate_flow!` for `NewNodeType` adheres to the following:
 
-We divide the various node types in groups based on what type of state dependencies they yield, and these groups are discussed below. Each group has its own method `update_jac_prototype!` in `utils.jl` for the sparsity structure induced by nodes of that group. `NewNodeType` should be added to the signature of one these methods, or to the list of node types that do not contribute to the Jacobian in the method of `update_jac_prototype!` whose signature contains `node::AbstractParameterNode`. Of course it is also possible that a new method of `update_jac_prototype!` has to be introduced.
+- The code must be compatible with dual numbers (e.g. no hardcoded `Float64` buffers for intermediate results that depend on the state);
+- Basin storages and levels may only be obtained from the `storage_uplink` and `storage_downlink` arguments, i.e. the flow of a node may only depend on the storages of its direct upstream and downstream Basin;
+- Flows that are controlled by PidControl or ContinuousControl must obtain the controlled value from the PID integral or the ContinuousControl compound variable respectively.
 
-The current dependency groups are:
-
-- Out-neighbor dependencies: examples are `TabulatedRatingCurve`, `Pump` (the latter only in the reduction factor regime and not PID controlled). If the in-neighbor of a node of this group is a basin, then the storage of this basin affects itself and the storage of the outneighbor if that is also a basin;
-- Either-neighbor dependencies: examples are `LinearResistance`, `ManningResistance`. If either the in-neighbor or out-neighbor of a node of this group is a basin, the storage of this basin depends on itself. If both the in-neighbor and the out-neighbor are basins, their storages also depend on eachother.
-- The `PidControl` node is a special case which is discussed in [the PID equations](/reference/node/pid-control.qmd#equations).
-
-Using `jac_prototype` the Jacobian of `water_balance!` is computed automatically using [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/) with memory management provided by [PreallocationTools.jl](https://docs.sciml.ai/PreallocationTools/stable/). These computations make use of `DiffCache` and dual numbers.
+Otherwise the dependency of the flow on the state is missed in the reduced linear solve (`build_J_inner!`), or an error is thrown.
 
 # Python I/O
 

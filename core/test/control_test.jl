@@ -59,8 +59,8 @@
         discrete_control.compound_variables[1][2].threshold_high[1](0)
 
     du = get_du(model.integrator)
-    @test all(x -> isapprox(x, 0; atol = 1.0e-10), du.linear_resistance)
-    @test all(x -> isapprox(x, 0; atol = 1.0e-10), du.pump)
+    @test all(x -> isapprox(x, 0; atol = 1.0e-10), du.flow.horizontal.linear_resistance)
+    @test all(x -> isapprox(x, 0; atol = 1.0e-10), du.flow.horizontal.pump)
 end
 
 @testitem "Flow condition control" begin
@@ -172,6 +172,8 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
+    # The PID integral states are not in `state_id`, logging them used to throw a BoundsError
+    @test isnothing(Ribasim.log_bottlenecks(model))
     (; p_independent) = model.integrator.p
     (; discrete_control, pid_control) = p_independent
 
@@ -215,14 +217,12 @@ end
 
     @test compound_variable.subvariables[1] == SubVariable(;
         listen_node_id = NodeID(:FlowBoundary, 2, p_independent),
-        cache_ref = compound_variable.subvariables[1].cache_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,
     )
     @test compound_variable.subvariables[2] == SubVariable(;
         listen_node_id = NodeID(:FlowBoundary, 3, p_independent),
-        cache_ref = compound_variable.subvariables[2].cache_ref,
         variable = "flow_rate",
         weight = 0.5,
         look_ahead = 0.0,
@@ -369,6 +369,32 @@ end
         @test control_truth_states[3] == "F"
         @test level6[findfirst(>=(t2), basin_times)] <= 0.9 + 1.0e-2
     end
+end
+
+@testitem "DiscreteControl interval" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/circular_flow/ribasim.toml")
+    @test ispath(toml_path)
+
+    function control_times(interval)
+        config = Ribasim.Config(toml_path; solver_discrete_control_interval = interval)
+        model = Ribasim.run(config)
+        @test success(model)
+        return model.integrator.p.p_independent.discrete_control.record.time
+    end
+
+    times = control_times(0.0)
+    @test !all(t -> isinteger(t / 86400.0), times)
+
+    # Control state changes only happen at multiples of the interval
+    times_daily = control_times(86400.0)
+    @test length(times_daily) > 2
+    @test all(t -> isinteger(t / 86400.0), times_daily)
+    @test length(times_daily) < length(times)
+
+    @test_throws "Invalid TOML config." Ribasim.Config(
+        toml_path;
+        solver_discrete_control_interval = -1.0,
+    )
 end
 
 @testitem "Storage condition" begin

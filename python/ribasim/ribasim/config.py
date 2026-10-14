@@ -147,6 +147,9 @@ class Solver(ChildModel):
         each state over a time step (Optional, defaults to 1e-4)
     maxiters : int
         The total number of linear iterations over the whole simulation. (Defaults to 1e9, only needs to be increased for extremely long simulations)
+    reduced_implicit_solve : bool
+        Whether to use the implicit solve optimized for Ribasim. Setting this to false bypasses much of the custom numerical code,
+        using a less optimized but potentially more robust algorithm. (Optional, defaults to true)
     sparse : bool
         Whether a sparse Jacobian matrix is used, which gives a significant speedup for models with >~10 basins.
     autodiff : bool
@@ -161,6 +164,8 @@ class Solver(ChildModel):
         Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes
     min_discrete_control_interval : float
         The minimum time between control state updates, if the time is smaller an error will be thrown
+    discrete_control_interval : float
+        The interval in seconds at which DiscreteControl logic is evaluated, or after every timestep if 0. (Optional, defaults to 0)
     specialize : bool
         Trades initialization speed for simulation speed, useful for long-running simulations. (Optional, defaults to false)
     """
@@ -174,6 +179,7 @@ class Solver(ChildModel):
     abstol: float = 1e-04
     reltol: float = 1e-04
     maxiters: int = 1000000000
+    reduced_implicit_solve: bool = True
     sparse: bool = True
     autodiff: bool = True
     evaporate_mass: bool = True
@@ -181,6 +187,7 @@ class Solver(ChildModel):
     max_depth: float = 2000.0
     level_difference_threshold: float = 0.02
     min_discrete_control_interval: float = 1.0
+    discrete_control_interval: float = 0.0
     specialize: bool = False
 
 

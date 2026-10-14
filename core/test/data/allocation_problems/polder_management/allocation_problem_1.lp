@@ -28,7 +28,7 @@ volume_conservation_Basin_#3_: 1 basin_storage_change_Basin_#3_ + 1 flow_(Basin_
 volume_conservation_Basin_#4_: 1 basin_storage_change_Basin_#4_ - 1 flow_(Outlet_#5,_Basin_#4)_ + 1 flow_(Basin_#4,_Outlet_#13)_ = 0.005052593062787829
 volume_conservation_Basin_#6_: 1 basin_storage_change_Basin_#6_ - 1 flow_(Outlet_#13,_Basin_#6)_ + 1 flow_(Basin_#6,_Pump_#7)_ = 0.005052593062787829
 volume_conservation_Basin_#9_: 1 basin_storage_change_Basin_#9_ - 1 flow_(ManningResistance_#2,_Basin_#9)_ - 1 flow_(Pump_#7,_Basin_#9)_ + 1 flow_(Basin_#9,_Outlet_#10)_ = 0.005052593062787829
-manning_resistance_constraint_ManningResistance_#2_: -507.717304622006 basin_storage_change_Basin_#3_ + 507.7101703608663 basin_storage_change_Basin_#9_ - 0.005052504523649472 low_storage_factor_Basin_#3_ + 1 flow_(Basin_#3,_ManningResistance_#2)_ = 0
+manning_resistance_constraint_ManningResistance_#2_: -507.71730462200605 basin_storage_change_Basin_#3_ + 507.7101703608664 basin_storage_change_Basin_#9_ - 0.005052504523649472 low_storage_factor_Basin_#3_ + 1 flow_(Basin_#3,_ManningResistance_#2)_ = 0
 flow_demand_allocated_sum_constraint_Pump_#7_: 1 flow_(Basin_#6,_Pump_#7)_ - 1 flow_demand_allocated_Pump_#7,2_ - 1 flow_demand_extra_Pump_#7_ = 0
 average_flow_unit_error_constraint_2_: 1 average_flow_unit_error_2_ = 0
 average_storage_unit_error_constraint_1,upper_: -1 level_demand_error_Basin_#3,1,upper,first_ - 1 level_demand_error_Basin_#4,1,upper,first_ - 1 level_demand_error_Basin_#6,1,upper,first_ + 3 average_storage_unit_error_1,upper_ = 0

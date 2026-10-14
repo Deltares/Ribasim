@@ -406,6 +406,7 @@ end
     # To update the reference files run `pixi run write-allocation-problems`
     include("../../utils/utils.jl")
     toml_paths = get_testmodels()
+    failure_reasons = Dict{String, String}()
 
     for toml_path in toml_paths
         model_name = basename(dirname(toml_path))
@@ -414,28 +415,29 @@ end
             continue
         end
 
-        config = Ribasim.Config(toml_path)
+        try
+            config = Ribasim.Config(toml_path)
+            !config.experimental.allocation && continue
 
-        if !config.experimental.allocation
-            continue
-        end
+            # Initialize the same model 5 times
+            models = [Ribasim.Model(toml_path) for _ in 1:5]
+            BMI.update_until.(models, 86400.0)
 
-        # Initialize the same model 5 times
-        models = [Ribasim.Model(toml_path) for _ in 1:5]
-        BMI.update_until.(models, 86400.0)
+            subnetwork_ids = [
+                allocation_model.subnetwork_id for allocation_model in
+                    first(models).integrator.p.p_independent.allocation.allocation_models
+            ]
 
-        subnetwork_ids = [
-            allocation_model.subnetwork_id for allocation_model in
-                first(models).integrator.p.p_independent.allocation.allocation_models
-        ]
-
-        for (i, subnetwork_id) in enumerate(subnetwork_ids)
-            @testset "$(model_name)_subnetwork_id_$subnetwork_id" begin
+            for (i, subnetwork_id) in enumerate(subnetwork_ids)
                 written_problem_path = normpath(
                     @__DIR__,
                     "data/allocation_problems/$model_name/allocation_problem_$subnetwork_id.lp",
                 )
-                @test ispath(written_problem_path)
+                if !ispath(written_problem_path)
+                    failure_reasons[model_name] =
+                        "Missing reference allocation problem: $written_problem_path"
+                    break
+                end
                 written_problem = read(written_problem_path, String)
 
                 current_problem_path = normpath(
@@ -449,14 +451,21 @@ end
 
                     JuMP.write_to_file(problem, current_problem_path)
                     current_problem = read(current_problem_path, String)
-
-                    problem_equality = (current_problem == written_problem)
-                    @test problem_equality
-                    !problem_equality && break
+                    if current_problem != written_problem
+                        failure_reasons[model_name] =
+                            "Allocation problem differs for subnetwork $subnetwork_id"
+                        break
+                    end
                 end
+                haskey(failure_reasons, model_name) && break
             end
+        catch exception
+            failure_reasons[model_name] = sprint(showerror, exception, catch_backtrace())
         end
+
     end
+
+    @test isempty(failure_reasons)
 end
 
 @testitem "Route priorities" begin

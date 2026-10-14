@@ -1,4 +1,4 @@
-is_active(allocation::Allocation) = !isempty(allocation.allocation_models)
+is_active(allocation::Allocation) = allocation.config.experimental.allocation
 
 """
 Set the bounds of a variable, where infinite bounds mean no bound at all.
@@ -78,7 +78,7 @@ end
 
 function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     low_storage_factor = problem[:low_storage_factor]
-    return if node_id.type == NodeType.Basin
+    return if node_id.is_basin
         low_storage_factor[node_id]
     else
         1.0
@@ -237,9 +237,9 @@ function ScalingFactors(
 end
 
 function update_scaling!(p::Parameters, Δt::Float64)
-    (; p_independent, state_and_time_dependent_cache) = p
+    (; p_independent, current_basin_properties) = p
     (; allocation_models) = p_independent.allocation
-    (; current_storage) = state_and_time_dependent_cache
+    (; current_storage) = current_basin_properties
     for allocation_model in allocation_models
         (; node_ids_in_subnetwork, scaling) = allocation_model
         (; basin_ids_subnetwork) = node_ids_in_subnetwork
@@ -350,7 +350,7 @@ end
 # This method should only be used in initialization because it does a graph lookup
 function get_external_demand_id(graph::MetaGraph, node_id::NodeID)::Union{NodeID, Nothing}
     node_type =
-        (node_id.type == NodeType.Basin) ? NodeType.LevelDemand : NodeType.FlowDemand
+        (node_id.is_basin) ? NodeType.LevelDemand : NodeType.FlowDemand
 
     control_inneighbors = inneighbor_labels_type(graph, node_id, LinkType.control)
     for id in control_inneighbors
@@ -365,7 +365,7 @@ function get_external_demand_id(p_independent, node_id::NodeID)::Union{NodeID, N
     (; basin, tabulated_rating_curve, linear_resistance, manning_resistance, pump, outlet) =
         p_independent
 
-    external_demand_id = if node_id.type == NodeType.Basin
+    external_demand_id = if node_id.is_basin
         basin.level_demand_id[node_id.idx]
     elseif node_id.type == NodeType.TabulatedRatingCurve
         tabulated_rating_curve.flow_demand_id[node_id.idx]
@@ -385,14 +385,19 @@ function get_external_demand_id(p_independent, node_id::NodeID)::Union{NodeID, N
 end
 
 function get_bounds_hit(variable::JuMP.VariableRef)::Tuple{Bool, Bool}
+    # The solver can return a value a few ulps short of an active bound
+    tol(bound) = 1.0e-9 * max(1.0, abs(bound))
+
     hit_lower_bound = if JuMP.has_lower_bound(variable)
-        JuMP.value(variable) ≤ JuMP.lower_bound(variable)
+        bound = JuMP.lower_bound(variable)
+        JuMP.value(variable) ≤ bound + tol(bound)
     else
         false
     end
 
     hit_upper_bound = if JuMP.has_upper_bound(variable)
-        JuMP.value(variable) ≥ JuMP.upper_bound(variable)
+        bound = JuMP.upper_bound(variable)
+        JuMP.value(variable) ≥ bound - tol(bound)
     else
         false
     end
@@ -425,8 +430,8 @@ function add_to_coefficient!(
 end
 
 function update_storage_prev!(p::Parameters)::Nothing
-    (; p_independent, state_and_time_dependent_cache) = p
-    (; current_storage) = state_and_time_dependent_cache
+    (; p_independent, current_basin_properties) = p
+    (; current_storage) = current_basin_properties
     (; storage_prev) = p_independent.level_demand
 
     for node_id in keys(storage_prev)
@@ -547,10 +552,13 @@ function set_allocation_results!(
 end
 
 function copy_cache!(
-        destination::StateAndTimeDependentCache{Float64},
-        source::StateAndTimeDependentCache{Float64},
+        destination::CurrentBasinProperties,
+        source::CurrentBasinProperties,
     )::Nothing
-    for (destination_vector, source_vector) in zip(destination, source)
+    for field_name in fieldnames(CurrentBasinProperties)
+        field_name == :n && continue
+        destination_vector = getfield(destination, field_name)
+        source_vector = getfield(source, field_name)
         resize!(destination_vector, length(source_vector))
         copyto!(destination_vector, source_vector)
     end
@@ -563,7 +571,7 @@ Set the Basin levels, areas and low storage factors in the cache from its storag
 function set_basin_properties!(p::Parameters)::Nothing
     (; basin) = p.p_independent
     (; current_storage, current_level, current_area, current_low_storage_factor) =
-        p.state_and_time_dependent_cache
+        p.current_basin_properties
     for (i, s) in enumerate(current_storage)
         current_low_storage_factor[i] = low_storage_factor(s, basin, i)
         current_level[i] = get_level_from_storage(basin, i, s)

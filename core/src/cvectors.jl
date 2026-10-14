@@ -27,7 +27,7 @@ struct CVector{T, A <: DenseVector{T}, NT} <: DenseVector{T}
     function CVector(data::A, axes::NT) where {T, A <: DenseVector{T}, NT <: NamedTuple}
         range = flat_range(axes)
         len = component_length(axes)
-        @assert length(range) == len "Axes must be contiguous (no gaps or overlaps)"
+        @assert length(range) == len "Axes must be contiguous (no gaps or overlaps), got $axes"
         offset = first(range) - 1
         return new{T, A, NT}(data, axes, offset, len)
     end
@@ -169,7 +169,10 @@ component(data, loc::AbstractUnitRange{<:Integer}) = view(data, loc)
     return CVector(data, loc, offset, len)
 end
 
-# Fast first/last index for nested NamedTuples without mapreduce overhead
+# Fast first/last index for nested NamedTuples without mapreduce overhead.
+# Relies on empty components having a positionally-correct (if empty) range, as
+# produced by `cvector_axes_from_lengths`, so the first/last named field is always
+# the true first/last index, even if that field itself happens to be empty.
 _first_index(loc::AbstractUnitRange{<:Integer}) = first(loc)
 _first_index(loc::NamedTuple) = _first_index(first(values(loc)))
 _first_index(loc::Int) = loc
@@ -183,8 +186,26 @@ _total_length(loc::NamedTuple) = _last_index(loc) - _first_index(loc) + 1
 Base.@constprop :aggressive @inline function Base.getproperty(x::CVector, name::Symbol)
     data = getdata(x)
     axes = getaxes(x)
+    hasproperty(axes, name) || _component_not_found_error(x, axes, name)
     loc = getproperty(axes, name)
     return component(data, loc)
+end
+
+# Recursively search nested axes for `name`, returning the dotted access path if found.
+function _find_nested_path(axes::NamedTuple, name::Symbol)
+    for (key, loc) in pairs(axes)
+        loc isa NamedTuple || continue
+        hasproperty(loc, name) && return (key, name)
+        nested = _find_nested_path(loc, name)
+        nested === nothing || return (key, nested...)
+    end
+    return nothing
+end
+
+@noinline function _component_not_found_error(x::CVector, axes::NamedTuple, name::Symbol)
+    path = _find_nested_path(axes, name)
+    hint = path === nothing ? "" : ", but it exists at x.$(join(path, '.'))"
+    return error("CVector has no component named :$name, available components are $(keys(x))$hint")
 end
 
 # Needed for Polyester support
@@ -194,5 +215,49 @@ end
 shift_axes(loc::AbstractUnitRange{<:Integer}, shift::Integer) = loc .+ shift
 shift_axes(loc::NamedTuple, shift::Integer) =
     NamedTuple{keys(loc)}(map(v -> shift_axes(v, shift), values(loc)))
+
+"""
+    concatenate_axes(axes::NamedTuple...)
+
+Concatenate named component axes, shifting every axis after the first so that the
+combined axes form one contiguous range. Component names must be unique.
+"""
+function concatenate_axes(axes::NamedTuple...)
+    isempty(axes) && return NamedTuple()
+    component_names = reduce((names, axis) -> (names..., keys(axis)...), axes; init = ())
+    length(unique(component_names)) == length(component_names) ||
+        throw(ArgumentError("Component names must be unique when concatenating axes."))
+
+    result = NamedTuple()
+    offset = 0
+    for axes_part in axes, (name, axis) in pairs(axes_part)
+        shift = offset + 1 - first(flat_range(axis))
+        result = merge(result, NamedTuple{(name,)}((shift_axes(axis, shift),)))
+        offset += component_length(axis)
+    end
+    return result
+end
+
+
+# Utilities
+cvector_axes_type(components::Tuple{Vararg{Symbol}}; range_type::Type = UnitRange{Int}) =
+    NamedTuple{components, NTuple{length(components), range_type}}
+
+function cvector_axes_from_lengths(components::Tuple{Vararg{Symbol}}, lengths::Vector{Int}; offset = 0)
+    range_bounds = pushfirst!(cumsum(lengths), 0)
+    range_bounds .+= offset
+    # If lengths[i] is 0, this naturally gives a positionally-correct empty range
+    # (range_bounds[i]+1):range_bounds[i], instead of an arbitrary placeholder.
+    ranges = ntuple(
+        i -> (range_bounds[i] + 1):range_bounds[i + 1],
+        length(components)
+    )
+    return NamedTuple{components}(ranges)
+end
+
+function cvector_from_axes(axes::NamedTuple; data_type::Type = Vector{Float64})
+    data = data_type(undef, last(flat_range(axes)))
+    return CVector(data, axes)
+end
 
 end  # module CVectors
