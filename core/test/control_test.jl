@@ -407,3 +407,60 @@ end
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
     @test all(storage .< 7500 + 6)
 end
+
+@testitem "Basin in- and outflow based control" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/basin_inoutflow_based_control/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    flow_data = DataFrame(Ribasim.flow_data(model))
+    pump_flow = filter([:from_node_id, :to_node_id] => (a, b) -> (a, b) == (5, 6), flow_data)
+    t_end = Ribasim.seconds_since(model.config.endtime, model.config.starttime)
+    t0 = Ribasim.seconds_since.(pump_flow.time, model.config.starttime)
+    t1 = [t0[2:end]; t_end]
+
+    # The level difference d = h1 - h3 between Basin #1 and Basin #3 satisfies
+    # A dd/dt = -2d/R - q, and the Pump flow is k times the inflow d/R + q of Basin #3
+    A = 1000.0
+    R = 5.0e4
+    q = 1.0e-3
+    k = 0.04
+    τ = A * R / 2
+    d_inf = -q * R / 2
+    d0 = 5.0 - 1.0
+
+    # Saved flows are means over the saveat interval
+    d_mean = @. d_inf + (d0 - d_inf) * τ / (t1 - t0) * (exp(-t0 / τ) - exp(-t1 / τ))
+    @test pump_flow.flow_rate ≈ k .* (d_mean ./ R .+ q) rtol = 1.0e-4
+
+    # DiscreteControl based on the Basin #5 outflow
+    (; record, compound_variables) = model.integrator.p.p_independent.discrete_control
+    @test record.truth_state == ["T", "F"]
+    @test record.control_state == ["foo", "bar"]
+
+    get_link_flow(from, to) =
+        filter([:from_node_id, :to_node_id] => (a, b) -> (a, b) == (from, to), flow_data).flow_rate
+
+    # Basin #5 outflow through the Pump and the TabulatedRatingCurve
+    outflow = get_link_flow(5, 6) .+ get_link_flow(5, 8)
+    threshold = compound_variables[1][1].threshold_high[1](0)
+    t_switch = record.time[2]
+    Δt = t1[1] - t0[1]
+
+    # The switch is at the end of a timestep, so the saveat interval with the
+    # threshold crossing can be on either side of the threshold on average
+    before = t1 .<= t_switch - Δt
+    after = t0 .>= t_switch
+    @test all(outflow[before] .> threshold)
+    @test all(outflow[after] .< threshold)
+
+    outlet_flow = get_link_flow(11, 12)
+    @test all(iszero, outlet_flow[t1 .<= t_switch])
+    @test all(outlet_flow[after] .≈ 1.0e-5)
+end

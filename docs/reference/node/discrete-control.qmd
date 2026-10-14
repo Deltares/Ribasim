@@ -56,7 +56,7 @@ column               | type     | unit       | restriction
 node_id              | Int32    | -          |
 compound_variable_id | Int32    | -          |
 listen_node_id       | Int32    | -          | cannot be a Junction
-variable             | String   | -          | must be "level", "storage" or "flow_rate"
+variable             | String   | -          | must be "level", "storage", "flow_rate", "inflow_rate" or "outflow_rate"
 weight               | Float64  | -          | (optional, default 1.0)
 look_ahead           | Float64  | $\text{s}$ | Only on transient boundary conditions, non-negative (optional, default 0.0).
 
@@ -64,9 +64,13 @@ These variables can be listened to:
 
 - The storage of a Basin
 - The level of a Basin
+- The inflow rate or outflow rate of a Basin: the summed flows over the links pointing into and out of the Basin respectively, regardless of the flow direction, so they can be negative. Vertical fluxes are excluded; the inflow rate includes FlowBoundary inflow
 - The level of a LevelBoundary (supports look ahead)
 - The flow rate through one of these node types: Pump, Outlet, TabulatedRatingCurve, LinearResistance, ManningResistance
+- The flow rate of a UserDemand, which is the sum of its inflows
 - The flow rate of a FlowBoundary (supports look ahead)
+
+Note that `look_ahead` is not applied to `inflow_rate` and `outflow_rate`, also not to the FlowBoundary inflow included in `inflow_rate`. To look ahead at the flow of a FlowBoundary, listen to its `flow_rate`.
 
 ## Condition
 
