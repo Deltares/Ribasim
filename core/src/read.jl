@@ -63,7 +63,7 @@ function get_parameter_value(
         from_static = true,
         kwargs...,
     )::Tuple{Union{Missing, T}, Bool}
-    val = coalesce(parameter[from_static ? only(data_group) : last(data_group)], default)
+    val = coalesce(parameter[last(data_group)], default)
     return val, true
 end
 
@@ -74,12 +74,10 @@ function get_parameter_value(
         ::Type{NodeID},
         args...;
         node_ids_all,
-        from_static = true,
         kwargs...,
     )
     @assert !isnothing(node_ids_all) "Setting a NodeID parameter requires passing node_ids_all to parse_parameter!."
-    i = from_static ? only(data_group) : last(data_group)
-    return NodeID(parameter[i], node_ids_all), true
+    return NodeID(parameter[last(data_group)], node_ids_all), true
 end
 
 # Map interpolation type -> constructor
@@ -118,7 +116,7 @@ function get_parameter_value(
         kwargs...,
     )::Tuple{T, Bool} where {T <: AbstractInterpolation}
     u, t = if from_static
-        val = coalesce(parameter[only(data_group)], default)
+        val = coalesce(parameter[first(data_group)], default)
         [val, val], [0.0, prevfloat(Inf)]
     else
         if !isempty(take_first)
@@ -283,12 +281,8 @@ function parse_parameter!(
             @assert has_default
             param_vec[id.idx] = is_itp ? itp_default : default
         elseif in_static
-            val, valid = get_parameter_value(
-                (initial_static_row(static_group, static),),
-                static_parameter,
-                data_args...;
-                data_kwargs...,
-            )
+            val, valid =
+                get_parameter_value(static_group, static_parameter, data_args...; data_kwargs...)
             if !valid
                 @error "Invalid static parameter value $parameter_name = $val for $id"
                 errors = true
@@ -333,33 +327,6 @@ function parse_parameter!(
     return errors
 end
 
-"""
-Select the static row of a node that determines the initial value of its parameters.
-
-This is the row with missing control_state if present (it sorts last), otherwise the
-last control state. The choice matters: DiscreteControl conditions at initialization
-can depend on the initial parameters of the controlled node.
-"""
-function initial_static_row(static_group::Vector, static::StructVector)::Int
-    group = if hasproperty(static, :control_state)
-        control_state = static.control_state
-        last(collect(IterTools.groupby(i -> coalesce(control_state[i], nothing), static_group)))
-    elseif hasproperty(static, :demand_priority)
-        demand_priority = static.demand_priority
-        first(IterTools.groupby(i -> coalesce(demand_priority[i], nothing), static_group))
-    else
-        static_group
-    end
-    return static_row(group, static)
-end
-
-"""
-The single row (or row index) of a group of static rows with the same key.
-Tables without a unique key, like TabulatedRatingCurve, repeat parameters on every row.
-"""
-static_row(group::Vector, static::StructVector) =
-    isnothing(unique_key(eltype(static))) ? first(group) : only(group)
-
 function parse_control_states!(
         node::AbstractParameterNode,
         ::Type{T},
@@ -373,9 +340,8 @@ function parse_control_states!(
     control_state = static.control_state
     for group in
         IterTools.groupby(i -> coalesce(control_state[i], nothing), static_group)
-        i = static_row(group, static)
-        control_state_group = control_state[i]
-        val = parameter[i]
+        control_state_group = control_state[first(group)]
+        val = parameter[first(group)]
         (ismissing(control_state_group) || ismissing(val)) && continue
         if T <: ConstantInterpolation
             push!(
@@ -434,12 +400,12 @@ function initialize_control_mapping!(node::AbstractParameterNode, static::Struct
         if in_static
             for control_state_group in
                 IterTools.groupby(row -> coalesce(row.control_state, nothing), static_group)
-                row = static_row(control_state_group, static)
-                control_state = row.control_state
+                first_row = first(control_state_group)
+                control_state = first_row.control_state
 
                 # Read allocation_controlled from static data if available
                 alloc_controlled = if has_alloc_controlled
-                    coalesce(row.allocation_controlled, false)
+                    coalesce(first_row.allocation_controlled, false)
                 else
                     false
                 end
@@ -2176,9 +2142,8 @@ function load_structvector(
         return StructVector{T}(undef, 0)
     end
 
-    table = sorted_table!(StructVector{T}(nt))
-    valid_unique_rows(table) || error("Invalid $(sql_table_name(T)) table.")
-    return table
+    table = StructVector{T}(nt)
+    return sorted_table!(table)
 end
 
 """
