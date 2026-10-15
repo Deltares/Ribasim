@@ -1,0 +1,90 @@
+name: Wflow coupled
+on:
+  push:
+    branches: [main]
+    paths:
+      - "core/**"
+      - "python/ribasim/**"
+      - "wflow-coupled/**"
+      - "pixi.toml"
+      - "pixi.lock"
+      - "Project.toml"
+      - "Manifest.toml"
+      - ".github/workflows/wflow_coupled.yml"
+  pull_request:
+    paths:
+      - "core/**"
+      - "python/ribasim/**"
+      - "wflow-coupled/**"
+      - "pixi.toml"
+      - "pixi.lock"
+      - "Project.toml"
+      - "Manifest.toml"
+      - ".github/workflows/wflow_coupled.yml"
+  merge_group:
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+# needed to allow julia-actions/cache to delete old caches that it has created
+permissions:
+  actions: write
+  contents: read
+jobs:
+  # hydromt_ribasim is not yet public, so it needs a token with read access.
+  # Skip rather than fail when the token is not available, e.g. on forks.
+  # TODO: remove this job and the token once hydromt_ribasim is public.
+  check-access:
+    runs-on: ubuntu-latest
+    outputs:
+      available: ${{ steps.check.outputs.available }}
+    steps:
+      - name: Check for hydromt_ribasim token
+        id: check
+        env:
+          HYDROMT_RIBASIM_TOKEN: ${{ secrets.HYDROMT_RIBASIM_TOKEN }}
+        run: |
+          if [ -n "$HYDROMT_RIBASIM_TOKEN" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::HYDROMT_RIBASIM_TOKEN is not available, skipping the Wflow coupled workflow."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+  test:
+    name: Wflow coupled workflow
+    needs: check-access
+    if: needs.check-access.outputs.available == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Configure access to hydromt_ribasim
+        env:
+          HYDROMT_RIBASIM_TOKEN: ${{ secrets.HYDROMT_RIBASIM_TOKEN }}
+        run: |
+          git config --global \
+            url."https://x-access-token:${HYDROMT_RIBASIM_TOKEN}@github.com/Deltares-research/hydromt_ribasim".insteadOf \
+            "https://github.com/Deltares-research/hydromt_ribasim"
+      - uses: julia-actions/cache@a7bed9df697e5d7309d68afe7542a87621a8b6c8 # v3.3.0
+      - uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: "latest"
+          environments: wflow-coupled
+      - name: Cache HydroMT artifact data
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.hydromt/artifact_data
+          key: hydromt-artifact-data-v1.0.0
+      - name: Build Wflow and Ribasim models and the mapping between them
+        run: pixi run --environment wflow-coupled wflow-coupled-prepare
+      - name: Run online coupling
+        run: pixi run --environment wflow-coupled wflow-coupled-run
+      - name: Upload coupling results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: wflow-coupled-${{ github.run_id }}
+          path: |
+            wflow-coupled/coupling_diagnostics.csv
+            wflow-coupled/models/ribasim_piave/results/
+          retention-days: 7
+          if-no-files-found: ignore
