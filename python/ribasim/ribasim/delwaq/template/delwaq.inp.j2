@@ -109,15 +109,15 @@ INCLUDE 'include/B6_wasteloads.inc'      ; From Ribasim: Loads data
 
 CONSTANTS  'ONLY_ACTIVE' 	DATA	0               ; Only active processes
 
-INCLUDE 'include/B7_processes.inc'      ; From UI: Processes
-INCLUDE 'include/B7_constants.inc'      ; From UI: Constants
-INCLUDE 'include/B7_functions.inc'      ; From UI: Functions
-INCLUDE 'include/B7_parameters.inc'     ; From UI: Parameters
-;INCLUDE 'include/B7_dispersion.inc'     ; FROM UI: Spatial dispersion
-;INCLUDE 'include/B7_vdiffusion.inc'     ; FROM UI: Vertical diffusion
+INCLUDE 'include/B7_processes.inc'      ; Processes, empty by default
+INCLUDE 'include/B7_constants.inc'      ; Constants, empty by default
+INCLUDE 'include/B7_functions.inc'      ; Functions, empty by default
+INCLUDE 'include/B7_parameters.inc'     ; Parameters, empty by default
+;INCLUDE 'include/B7_dispersion.inc'     ; Spatial dispersion, not generated
+;INCLUDE 'include/B7_vdiffusion.inc'     ; Vertical diffusion, not generated
 
-INCLUDE 'include/B7_segfunctions.inc'   ; FROM UI: SEG_FUNCTION blocks
-;INCLUDE 'include/B7_numerical_options.inc'   ; FROM UI: numerical options
+INCLUDE 'include/B7_segfunctions.inc'   ; SEG_FUNCTION blocks, empty by default
+;INCLUDE 'include/B7_numerical_options.inc'   ; Numerical options, not generated
 
 #7
 ;###############################################################################

@@ -408,7 +408,18 @@ def generate(
     model: Path | Model,
     output_path: Path | None = None,
 ) -> Model:
-    """Generate a Delwaq model from a Ribasim model and results."""
+    """Generate a Delwaq model from a Ribasim model and results.
+
+    Substance and process specific input is written to the ``include`` subfolder
+    of ``output_path``, so other water quality simulations can be set up by
+    replacing these files rather than editing ``delwaq.inp``.
+    Only the empty ``B7_*.inc`` process files can be replaced independently;
+    ``B1_substances.inc``, ``B5_bounddata.inc``, ``B6_wasteloads.inc`` and
+    ``B8_initials.inc`` all depend on the substances found in the Ribasim model,
+    and must be kept consistent when substances are added.
+
+    Every call overwrites all generated files, including those in ``include``.
+    """
     # Read in model and results
     if not isinstance(model, Model):
         model = Model.read(model)
@@ -432,9 +443,9 @@ def generate(
         output_path = model.filepath.parent / "delwaq"
     output_path.mkdir(exist_ok=True)
 
-    # Create include subdirectory
     include_path = output_path / "include"
-    include_path.mkdir(parents=True, exist_ok=True)
+    include_path.mkdir(exist_ok=True)
+
     # Setup flow network
     G, merge_links, node_mapping, link_mapping, basin_mapping = _setup_graph(
         model.node, model.link, evaporate_mass=evaporate_mass
@@ -702,22 +713,15 @@ def generate(
             )
         )
 
-    # generate a set of empty files. This is for ease of use.
-    # water quality model simulations can then be setup by replacing these files, instead of directly modifying the delwaq.inp
-    with (include_path / "B7_processes.inc").open(mode="w") as f:
-        pass
-
-    with (include_path / "B7_constants.inc").open(mode="w") as f:
-        pass
-
-    with (include_path / "B7_functions.inc").open(mode="w") as f:
-        pass
-
-    with (include_path / "B7_parameters.inc").open(mode="w") as f:
-        pass
-
-    with (include_path / "B7_segfunctions.inc").open(mode="w") as f:
-        pass
+    # Empty process input files, to be replaced for other water quality simulations
+    for name in (
+        "B7_processes.inc",
+        "B7_constants.inc",
+        "B7_functions.inc",
+        "B7_parameters.inc",
+        "B7_segfunctions.inc",
+    ):
+        (include_path / name).write_text("")
 
     # Return the model so the results can be parsed back. The graph mapping and
     # substances needed by parse() are stored in output_path / "ribasim.nc".
