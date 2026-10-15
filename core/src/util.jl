@@ -164,13 +164,14 @@ end
 
 """
 Get the current water level of a node ID.
-The ID can belong to either a Basin or a LevelBoundary.
+The ID can belong to either a Basin, PassDown or a LevelBoundary.
 """
 function get_level(
         storage::Number,
         p::Parameters,
         node_id::NodeID,
-        t::Number;
+        t::Number,
+        upstream::Bool;
         force_evaluation::Bool = false,
     )::Number
     (; p_independent, p_mutable, current_basin_properties) = p
@@ -188,6 +189,8 @@ function get_level(
         else
             current_basin_properties.current_level[node_id.idx]
         end
+    elseif node_id.type == NodeType.PassDown
+        upstream ? Inf : -Inf
     elseif node_id.type == NodeType.LevelBoundary
         # Not cached, since multiple flows can evaluate the level of the same LevelBoundary
         # in parallel
@@ -201,6 +204,10 @@ function get_level(
         error("Node ID $node_id is not a Basin, LevelBoundary or Terminal.")
     end
 end
+
+get_upstream_level(args...; kwargs...) = get_level(args..., true; kwargs...)
+get_downstream_level(args...; kwargs...) = get_level(args..., false; kwargs...)
+get_level(args...; kwargs...) = get_upstream_level(args...; kwargs...)
 
 function get_area(
         level::Number,
@@ -620,7 +627,9 @@ end
 reduction_factor(x::GradientTracer, ::Real) = x
 low_storage_factor_resistance_node(::Number, ::Number, ::Parameters, q::GradientTracer, ::NodeID, ::NodeID) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
-get_level(storage::GradientTracer, p::Parameters, node_id::NodeID, t::Number; kwargs...) = storage
+get_level(storage::GradientTracer, args...; kwargs...) = storage
+get_upstream_level(storage::GradientTracer, args...; kwargs...) = storage
+get_downstream_level(storage::GradientTracer, args...; kwargs...) = storage
 
 function get_ns_flow_horizontal(nodes::NamedTuple)
     (;
@@ -630,6 +639,7 @@ function get_ns_flow_horizontal(nodes::NamedTuple)
         linear_resistance,
         manning_resistance,
         user_demand,
+        pass_down,
     ) = nodes
     return [
         length(pump),
@@ -639,6 +649,7 @@ function get_ns_flow_horizontal(nodes::NamedTuple)
         length(manning_resistance),
         mapreduce(length, +, user_demand.inflow_links; init = 0), # user_demand inflow
         length(user_demand), # user_demand outflow
+        length(pass_down),
     ]
 end
 
@@ -1208,6 +1219,16 @@ function set_controlled_node_ids!(p_independent, node::Union{PidControl, Continu
 
         node.inflow_id[id.idx] = inflow_id[flow_idx]
         node.outflow_id[id.idx] = outflow_id[flow_idx]
+    end
+    return nothing
+end
+
+"Mark the UserDemand nodes that are part of a PassDown subgraph."
+function set_in_pass_down_subgraph!(user_demand::UserDemand, pass_down::PassDown)::Nothing
+    for subgraph in pass_down.pass_down_subgraphs, id in subgraph
+        if id.type == NodeType.UserDemand
+            user_demand.in_pass_down_subgraph[id.idx] = true
+        end
     end
     return nothing
 end

@@ -1547,6 +1547,106 @@ function FlowDemand(db::DB, config::Config, graph::MetaGraph)
     return flow_demand
 end
 
+"""
+Find the disjoint trees of PassDown and UserDemand nodes connected by flow links.
+UserDemand nodes without a PassDown inneighbor (i.e. at the start of a tree) are excluded.
+"""
+function get_pass_down_subgraphs(
+        graph::ModelGraph,
+        pass_down_ids::Vector{NodeID},
+    )::Vector{Vector{NodeID}}
+    in_subgraph(id::NodeID) =
+        id.type == NodeType.PassDown || (
+        id.type == NodeType.UserDemand && any(
+            inneighbor_id -> inneighbor_id.type == NodeType.PassDown,
+            inneighbor_labels_type(graph, id, LinkType.flow),
+        )
+    )
+
+    visited = Set{NodeID}()
+    subgraphs = Vector{NodeID}[]
+    # Every subgraph contains a PassDown node, so starting from those finds all subgraphs
+    for start_id in pass_down_ids
+        start_id in visited && continue
+        subgraph = NodeID[]
+        stack = [start_id]
+        push!(visited, start_id)
+        while !isempty(stack)
+            id = pop!(stack)
+            push!(subgraph, id)
+            for neighbor_id in Iterators.flatten(
+                    (
+                        inneighbor_labels_type(graph, id, LinkType.flow),
+                        outneighbor_labels_type(graph, id, LinkType.flow),
+                    )
+                )
+                if neighbor_id ∉ visited && in_subgraph(neighbor_id)
+                    push!(visited, neighbor_id)
+                    push!(stack, neighbor_id)
+                end
+            end
+        end
+        push!(subgraphs, sort!(subgraph))
+    end
+    return subgraphs
+end
+
+function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
+    static = load_structvector(db, config, Schema.PassDown.Static)
+    node_id = get_node_ids(db, NodeType.PassDown)
+    pass_down =
+        PassDown(; node_id, pass_down_subgraphs = get_pass_down_subgraphs(graph, node_id))
+    (; fraction) = pass_down
+    has_fraction = falses(length(node_id))
+
+    invalid_fraction_ids = Int32[]
+    for row in static
+        ismissing(row.fraction) && continue
+        if !(0 <= row.fraction <= 1)
+            push!(invalid_fraction_ids, row.node_id)
+            continue
+        end
+        id = NodeID(NodeType.PassDown, row.node_id, node_id)
+        fraction[id.idx] = row.fraction
+        has_fraction[id.idx] = true
+    end
+    if !isempty(invalid_fraction_ids)
+        @error "PassDown fractions must be between 0 and 1 (inclusive)." node_ids =
+            invalid_fraction_ids
+        error("Invalid PassDown fractions.")
+    end
+
+    errors = false
+    for upstream_id in labels(graph)
+        pass_down_ids = filter(
+            id -> id.type == NodeType.PassDown,
+            collect(outneighbor_labels_type(graph, upstream_id, LinkType.flow)),
+        )
+        isempty(pass_down_ids) && continue
+
+        missing_ids = filter(id -> !has_fraction[id.idx], pass_down_ids)
+        fraction_sum = sum(id -> has_fraction[id.idx] ? fraction[id.idx] : 0.0, pass_down_ids)
+
+        if isempty(missing_ids)
+            if !isapprox(fraction_sum, 1.0)
+                @error "The fractions of the PassDown nodes downstream of $upstream_id must sum to 1 (got $fraction_sum)." pass_down_ids
+                errors = true
+            end
+        elseif length(missing_ids) > 1
+            @error "At most one PassDown node downstream of $upstream_id can have an unspecified fraction." missing_ids
+            errors = true
+        elseif fraction_sum > 1
+            @error "The fractions of the PassDown nodes downstream of $upstream_id must sum to at most 1 when one fraction is unspecified (got $fraction_sum)." pass_down_ids
+            errors = true
+        else
+            fraction[only(missing_ids).idx] = 1.0 - fraction_sum
+        end
+    end
+    errors && error("Errors encountered when parsing PassDown data.")
+
+    return pass_down
+end
+
 "Create and push a ConstantInterpolation to the constant_interpolations."
 function push_constant_interpolation!(
         constant_interpolations::Vector{<:ConstantInterpolation{uType, tType}},
@@ -1730,6 +1830,7 @@ function Parameters(db::DB, config::Config)::Parameters
     basin = Basin(db, config, graph)
     nodes = (;
         basin,
+        pass_down = PassDown(db, config, graph),
         linear_resistance = LinearResistance(db, config, graph),
         manning_resistance = ManningResistance(db, config, graph, basin),
         tabulated_rating_curve = TabulatedRatingCurve(db, config, graph),
@@ -1746,6 +1847,8 @@ function Parameters(db::DB, config::Config)::Parameters
         level_demand = LevelDemand(db, config, graph),
         flow_demand = FlowDemand(db, config, graph),
     )
+
+    set_in_pass_down_subgraph!(nodes.user_demand, nodes.pass_down)
 
     subgrid = Subgrid(db, config, basin)
     flow_ranges = count_flow_ranges(nodes)

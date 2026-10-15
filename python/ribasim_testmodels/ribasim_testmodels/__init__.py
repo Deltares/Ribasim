@@ -43,6 +43,7 @@ from ribasim_testmodels.basic import (
     drought_model,
     flow_boundary_interpolation_model,
     outlet_model,
+    pass_down_model,
     tabulated_rating_curve_model,
 )
 from ribasim_testmodels.bucket import bucket_model, leaky_bucket_model
@@ -150,6 +151,7 @@ __all__ = [
     "outlet_allocation_discrete_control_model",
     "outlet_continuous_control_model",
     "outlet_model",
+    "pass_down_model",
     "pid_control_equation_model",
     "pid_control_model",
     "polder_management_model",

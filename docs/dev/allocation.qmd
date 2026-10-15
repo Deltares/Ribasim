@@ -107,8 +107,8 @@ For a basin downstream: $h_b^{n+1} - h_b^n \approx \frac{1}{A_b}(S_b^{n+1} - S_b
 t_after = t + Δt_allocation
 
 # Evaluate flow and derivatives at the linearization point
-h_a = get_level(p, inflow_id, t_after)
-h_b = get_level(p, outflow_id, t_after)
+h_a = get_upstream_level(p, inflow_id, t_after)
+h_b = get_downstream_level(p, outflow_id, t_after)
 q0 = flow_function(connector_node, node_id, h_a, h_b, p, t_after)
 
 # Compute partial derivatives with automatic differentiation
@@ -690,8 +690,8 @@ function linearize_connector_node!(
         outflow_id = outflow_link[node_id.idx].link[2]
 
         # Levels at the linearization point
-        h_a = get_level(p, inflow_id, t_after)
-        h_b = get_level(p, outflow_id, t_after)
+        h_a = get_upstream_level(p, inflow_id, t_after)
+        h_b = get_downstream_level(p, outflow_id, t_after)
 
         constraint = flow_constraint[node_id]
 
@@ -867,8 +867,8 @@ function linearized_flow_bounds(
     inflow_id = connector_node.inflow_link[node_id.idx].link[1]
     outflow_id = connector_node.outflow_link[node_id.idx].link[2]
 
-    h_a = get_level(p, inflow_id, t_after)
-    h_b = get_level(p, outflow_id, t_after)
+    h_a = get_upstream_level(p, inflow_id, t_after)
+    h_b = get_downstream_level(p, outflow_id, t_after)
     q0 = flow_function(connector_node, node_id, h_a, h_b, p, t_after)
 
     lower, upper = q0, q0
