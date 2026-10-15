@@ -521,7 +521,7 @@ def generate(
     ):
         if boundary_type is None:
             continue
-        lookups[boundary_type][node_id] = link_id
+        lookups[boundary_type][node_id] = link_id 
 
     for boundary_type in lookups:
         df = basins[basins.node_id.isin(lookups[boundary_type].keys())][
