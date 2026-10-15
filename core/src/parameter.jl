@@ -1304,6 +1304,8 @@ the object itself is not.
     reduced_implicit_solve::Bool
     # Matrix which aggregates flows into the basin storages
     incidence_matrix::SparseMatrixCSC{Int, Int}
+    # Transpose of the incidence matrix, for efficient access to the flows of a single basin
+    incidence_matrix_transpose::SparseMatrixCSC{Int, Int} = permutedims(incidence_matrix)
     # Water balance tolerances
     water_balance_abstol::Float64
     water_balance_reltol::Float64

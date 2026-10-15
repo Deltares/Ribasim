@@ -741,7 +741,11 @@ function compound_variable_value(
                 error("Cannot obtain variable `$variable` from $listen_node_id.")
             end
         elseif variable == "storage"
-            storage[listen_node_id.idx]
+            if listen_node_id.is_basin
+                storage[listen_node_id.idx]
+            else
+                error("Cannot obtain variable `$variable` from $listen_node_id.")
+            end
         elseif variable == "flow_rate"
             if listen_node_id.type == NodeType.FlowBoundary
                 # Flow boundary flow rate
@@ -759,6 +763,42 @@ function compound_variable_value(
                 flow.horizontal.manning_resistance[listen_node_id.idx]
             elseif listen_node_id.type == NodeType.UserDemand
                 sum(get_inflows(flow, user_demand, listen_node_id.idx))
+            else
+                error("Cannot obtain variable `$variable` from $listen_node_id.")
+            end
+        elseif variable == "inflow_rate"
+            if listen_node_id.is_basin
+                (; incidence_matrix_transpose) = p.p_independent
+                rows = rowvals(incidence_matrix_transpose)
+                signs = nonzeros(incidence_matrix_transpose)
+                inflow_rate = zero(eltype(flow))
+                # By link direction rather than flow sign, to avoid a kink at zero flow
+                for i in nzrange(incidence_matrix_transpose, listen_node_id.idx)
+                    signs[i] > 0 && (inflow_rate += flow[rows[i]])
+                end
+                for inflow_id in basin.inflow_ids[listen_node_id.idx]
+                    if inflow_id.type == NodeType.FlowBoundary
+                        inflow_rate += flow_boundary.flow_rate[inflow_id.idx](t)
+                    end
+                end
+                inflow_rate
+            else
+                error("Cannot obtain variable `$variable` from $listen_node_id.")
+            end
+        elseif variable == "outflow_rate"
+            if listen_node_id.is_basin
+                (; incidence_matrix_transpose) = p.p_independent
+                rows = rowvals(incidence_matrix_transpose)
+                signs = nonzeros(incidence_matrix_transpose)
+                n_horizontal = length(flow.horizontal)
+                outflow_rate = zero(eltype(flow))
+                # By link direction rather than flow sign, to avoid a kink at zero flow
+                for i in nzrange(incidence_matrix_transpose, listen_node_id.idx)
+                    # Exclude evaporation and infiltration, consistent with the Basin results
+                    rows[i] > n_horizontal && continue
+                    signs[i] < 0 && (outflow_rate += flow[rows[i]])
+                end
+                outflow_rate
             else
                 error("Cannot obtain variable `$variable` from $listen_node_id.")
             end

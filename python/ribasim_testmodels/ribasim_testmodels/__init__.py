@@ -46,7 +46,10 @@ from ribasim_testmodels.basic import (
     tabulated_rating_curve_model,
 )
 from ribasim_testmodels.bucket import bucket_model, leaky_bucket_model
-from ribasim_testmodels.continuous_control import outlet_continuous_control_model
+from ribasim_testmodels.continuous_control import (
+    basin_inoutflow_based_control,
+    outlet_continuous_control_model,
+)
 from ribasim_testmodels.discrete_control import (
     circular_flow_model,
     compound_variable_condition_model,
@@ -105,6 +108,7 @@ __all__ = [
     "basic_basin_only_storage_model",
     "basic_model",
     "basic_transient_model",
+    "basin_inoutflow_based_control",
     "basin_overflow_model",
     "bucket_model",
     "circular_flow_model",

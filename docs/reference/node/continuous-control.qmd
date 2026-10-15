@@ -28,9 +28,11 @@ column               | type     | unit       | restriction
 -------------------- | -------- | ---------- | -----------
 node_id              | Int32    | -          |
 listen_node_id       | Int32    | -          | cannot be a Junction
-variable             | String   | -          | must be "level" or "flow_rate"
+variable             | String   | -          | must be "level", "flow_rate", "inflow_rate" or "outflow_rate"
 weight               | Float64  | -          | (optional, default 1.0)
 look_ahead           | Float64  | $\text{s}$ | Only on transient boundary conditions, non-negative (optional, default 0.0).
+
+The `inflow_rate` and `outflow_rate` of a Basin are the summed flows over the links pointing into and out of the Basin respectively, regardless of the flow direction, so they can be negative. They exclude vertical fluxes; the `inflow_rate` includes FlowBoundary inflow. Note that `look_ahead` is not applied to `inflow_rate` and `outflow_rate`, also not to the FlowBoundary inflow included in `inflow_rate`. To look ahead at the flow of a FlowBoundary, listen to its `flow_rate`.
 
 ## Function
 
