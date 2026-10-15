@@ -87,6 +87,10 @@ from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
     pid_control_model,
 )
+from ribasim_testmodels.precompile_workload import (
+    precompile_workload_allocation_model,
+    precompile_workload_model,
+)
 from ribasim_testmodels.time import (
     flow_boundary_time_model,
     transient_pump_outlet_model,
@@ -153,6 +157,8 @@ __all__ = [
     "pid_control_equation_model",
     "pid_control_model",
     "polder_management_model",
+    "precompile_workload_allocation_model",
+    "precompile_workload_model",
     "pump_discrete_control_model",
     "rating_curve_between_basins_model",
     "rating_curve_model",

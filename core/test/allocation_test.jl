@@ -418,7 +418,8 @@ end
     for toml_path in toml_paths
         model_name = basename(dirname(toml_path))
 
-        if startswith(model_name, "invalid_")
+        # The precompile workload models combine other test models
+        if startswith(model_name, "invalid_") || startswith(model_name, "precompile_workload")
             continue
         end
 

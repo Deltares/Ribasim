@@ -218,20 +218,36 @@ include("callback.jl")
 include("concentration.jl")
 include("main.jl")
 
+"""
+The test models that run in the precompile workload. Code compiled while running them is
+cached, and reused for other models. The first two combine many test models, to cover all
+node types, input tables and allocation demand types.
+"""
+const PRECOMPILE_WORKLOAD_MODELS = (
+    "precompile_workload",
+    "precompile_workload_allocation",
+    "medium_primary_secondary_network",
+)
+
 @setup_workload begin
-    # Binary builds set this to require the workload; regular package use keeps it optional.
-    precompile_workload = get(ENV, "RIBASIM_PRECOMPILE_WORKLOAD", nothing)
-    toml_path = if isnothing(precompile_workload)
-        normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
-    else
-        isfile(precompile_workload) || error(
-            "Ribasim precompile workload not found at $precompile_workload",
-        )
-        precompile_workload
+    # Binary builds set this to the directory with the test models, to require the workload;
+    # regular package use keeps it optional.
+    testmodels_dir = get(ENV, "RIBASIM_PRECOMPILE_WORKLOAD", nothing)
+    required = !isnothing(testmodels_dir)
+    if !required
+        testmodels_dir = normpath(@__DIR__, "../../generated_testmodels")
     end
-    isfile(toml_path) || return
+    toml_paths = [
+        joinpath(testmodels_dir, name, "ribasim.toml") for name in PRECOMPILE_WORKLOAD_MODELS
+    ]
+    missing_paths = filter(!isfile, toml_paths)
+    if required && !isempty(missing_paths)
+        error("Ribasim precompile workload not found at $missing_paths")
+    end
     @compile_workload begin
-        main(toml_path)
+        for toml_path in setdiff(toml_paths, missing_paths)
+            main(toml_path)
+        end
     end
 end
 
