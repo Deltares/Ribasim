@@ -136,7 +136,7 @@ plt.show()
 
 Say there is constant inflow from the `FlowBoundary` node and there are no vertical forcings on the Basin. Say furthermore that the Pump is active only when the Basin level is above a reference value, with a flow greater than the boundary flow. In this case the Pump will rapidly turn on and off as the Basin level oscillates around the reference value.
 
-To make you aware of these oscillations, Ribasim will throw an error if successive control state changes of a DiscriteControl node in simulated time are closer than `min_discrete_control_interval`, which is configurable.
+To make you aware of these oscillations, Ribasim will throw an error if successive control state changes of a DiscriteControl node in simulated time are closer than `min_discrete_control_interval`, which is configurable. It has a default of `0.0`, which never throws an error.
 
 By default the conditions are evaluated after every timestep.
 To evaluate them only at fixed times, for instance daily, set the solver setting `discrete_control_interval`, see [usage](/reference/usage.qmd#sec-solver-settings).
