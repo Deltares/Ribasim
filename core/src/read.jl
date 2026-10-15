@@ -1547,10 +1547,55 @@ function FlowDemand(db::DB, config::Config, graph::MetaGraph)
     return flow_demand
 end
 
+"""
+Find the disjoint trees of PassDown and UserDemand nodes connected by flow links.
+UserDemand nodes without a PassDown inneighbor (i.e. at the start of a tree) are excluded.
+"""
+function get_pass_down_subgraphs(
+        graph::ModelGraph,
+        pass_down_ids::Vector{NodeID},
+    )::Vector{Vector{NodeID}}
+    in_subgraph(id::NodeID) =
+        id.type == NodeType.PassDown || (
+        id.type == NodeType.UserDemand && any(
+            inneighbor_id -> inneighbor_id.type == NodeType.PassDown,
+            inneighbor_labels_type(graph, id, LinkType.flow),
+        )
+    )
+
+    visited = Set{NodeID}()
+    subgraphs = Vector{NodeID}[]
+    # Every subgraph contains a PassDown node, so starting from those finds all subgraphs
+    for start_id in pass_down_ids
+        start_id in visited && continue
+        subgraph = NodeID[]
+        stack = [start_id]
+        push!(visited, start_id)
+        while !isempty(stack)
+            id = pop!(stack)
+            push!(subgraph, id)
+            for neighbor_id in Iterators.flatten(
+                    (
+                        inneighbor_labels_type(graph, id, LinkType.flow),
+                        outneighbor_labels_type(graph, id, LinkType.flow),
+                    )
+                )
+                if neighbor_id ∉ visited && in_subgraph(neighbor_id)
+                    push!(visited, neighbor_id)
+                    push!(stack, neighbor_id)
+                end
+            end
+        end
+        push!(subgraphs, sort!(subgraph))
+    end
+    return subgraphs
+end
+
 function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
     static = load_structvector(db, config, Schema.PassDown.Static)
     node_id = get_node_ids(db, NodeType.PassDown)
-    pass_down = PassDown(; node_id)
+    pass_down =
+        PassDown(; node_id, pass_down_subgraphs = get_pass_down_subgraphs(graph, node_id))
     (; fraction) = pass_down
     has_fraction = falses(length(node_id))
 
@@ -1802,6 +1847,8 @@ function Parameters(db::DB, config::Config)::Parameters
         level_demand = LevelDemand(db, config, graph),
         flow_demand = FlowDemand(db, config, graph),
     )
+
+    set_in_pass_down_subgraph!(nodes.user_demand, nodes.pass_down)
 
     subgrid = Subgrid(db, config, basin)
     flow_ranges = count_flow_ranges(nodes)

@@ -39,6 +39,7 @@ const state_horizontal_flow_components = (
     :manning_resistance,
     :user_demand_inflow,
     :user_demand_outflow,
+    :pass_down,
 )
 const state_vertical_flow_components = (
     :evaporation,
@@ -1075,9 +1076,16 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
         OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
 end
 
+"""
+node_id: node IDs of the PassDown nodes
+fraction: the fraction of the upstream flow that goes through each PassDown node
+pass_down_subgraphs: disjoint trees of flow-connected PassDown and UserDemand nodes,
+    excluding UserDemand nodes without a PassDown inneighbor
+"""
 @kwdef struct PassDown <: AbstractParameterNode
     node_id::Vector{NodeID}
     fraction::Vector{Float64} = zeros(length(node_id))
+    pass_down_subgraphs::Vector{Vector{NodeID}} = Vector{NodeID}[]
 end
 
 """
@@ -1106,6 +1114,7 @@ return_factor: the factor in [0,1] of how much of the abstracted water is given 
 min_level: The level of the source Basin below which the UserDemand does not abstract
 cumulative_inflow: The summed inflow since the start of the simulation
 concentration_itp: matrix with timeseries interpolations of concentrations per LevelBoundary per substance
+in_pass_down_subgraph: whether the UserDemand node is part of one of the PassDown subgraphs
 """
 @kwdef struct UserDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
@@ -1126,6 +1135,7 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
     min_level::Vector{Float64} = zeros(length(node_id))
     cumulative_inflow::Vector{Float64} = zeros(length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
+    in_pass_down_subgraph::Vector{Bool} = fill(false, length(node_id))
 end
 
 """

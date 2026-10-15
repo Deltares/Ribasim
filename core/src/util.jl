@@ -639,6 +639,7 @@ function get_ns_flow_horizontal(nodes::NamedTuple)
         linear_resistance,
         manning_resistance,
         user_demand,
+        pass_down,
     ) = nodes
     return [
         length(pump),
@@ -648,6 +649,7 @@ function get_ns_flow_horizontal(nodes::NamedTuple)
         length(manning_resistance),
         mapreduce(length, +, user_demand.inflow_links; init = 0), # user_demand inflow
         length(user_demand), # user_demand outflow
+        length(pass_down),
     ]
 end
 
@@ -1217,6 +1219,16 @@ function set_controlled_node_ids!(p_independent, node::Union{PidControl, Continu
 
         node.inflow_id[id.idx] = inflow_id[flow_idx]
         node.outflow_id[id.idx] = outflow_id[flow_idx]
+    end
+    return nothing
+end
+
+"Mark the UserDemand nodes that are part of a PassDown subgraph."
+function set_in_pass_down_subgraph!(user_demand::UserDemand, pass_down::PassDown)::Nothing
+    for subgraph in pass_down.pass_down_subgraphs, id in subgraph
+        if id.type == NodeType.UserDemand
+            user_demand.in_pass_down_subgraph[id.idx] = true
+        end
     end
     return nothing
 end
