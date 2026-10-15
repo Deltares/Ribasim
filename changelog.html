@@ -319,6 +319,7 @@ ul.task-list li input[type="checkbox"] {
 <li>In <code>results/solver_stats.nc</code>, <code>dt</code> is now the average timestep size over the output interval, and <code>rejected_timesteps</code> includes nonlinear solver failures. Convergence scores are now calculated per timestep, with bottlenecks logged after successful runs too. <a href="https://github.com/Deltares/Ribasim/pull/3253">#3253</a> <a href="https://github.com/Deltares/Ribasim/pull/3269">#3269</a></li>
 <li>Allocation-controlled Pumps and Outlets require a finite <code>max_flow_rate</code>; those linking primary and secondary networks must explicitly set <code>allocation_controlled = true</code>. <a href="https://github.com/Deltares/Ribasim/pull/3259">#3259</a></li>
 <li>Large models initialize faster. <a href="https://github.com/Deltares/Ribasim/pull/3180">#3180</a></li>
+<li>Delwaq: <code>generate</code> now writes the substance and process specific input files to an <code>include</code> subfolder, so other water quality simulations can be set up by replacing these files. The boundary list <code>ribasim_bndlist.inc</code> is renamed to <code>include/B5_bndlist.inc</code>. <a href="https://github.com/Deltares/Ribasim/pull/3321">#3321</a></li>
 <li>Simulations are faster, especially for models with many Basins, and large models use multiple threads if Julia is started with them.</li>
 </ul>
 </section>
