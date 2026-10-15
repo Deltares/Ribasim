@@ -44,6 +44,7 @@ from ribasim.config import (
     ManningResistance,
     Observation,
     Outlet,
+    PassDown,
     PidControl,
     Pump,
     Results,
@@ -106,6 +107,7 @@ class Model(FileModel, ParentModel):
     experimental: Experimental = Field(default_factory=Experimental)
 
     basin: Basin = Field(default_factory=Basin)
+    pass_down: PassDown = Field(default_factory=PassDown)
     junction: Junction = Field(default_factory=Junction)
     continuous_control: ContinuousControl = Field(default_factory=ContinuousControl)
     discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)

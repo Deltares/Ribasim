@@ -72,6 +72,7 @@ Base.to_index(id::Substance.T) = Int(id)  # used to index into concentration mat
 
 const node_type_map::Dict{NodeType.T, Symbol} = Dict(
     NodeType.Basin => :basin,
+    NodeType.PassDown => :pass_down,
     NodeType.TabulatedRatingCurve => :tabulated_rating_curve,
     NodeType.Pump => :pump,
     NodeType.Outlet => :outlet,
@@ -1074,6 +1075,11 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
         OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
 end
 
+@kwdef struct PassDown <: AbstractParameterNode
+    node_id::Vector{NodeID}
+    fraction::Vector{Float64} = zeros(length(node_id))
+end
+
 """
 node_id: node ID of the UserDemand node
 demand_priorities: All demand priorities that exist in the model (not just by UserDemand) sorted
@@ -1299,6 +1305,7 @@ the object itself is not.
     user_demand::UserDemand
     level_demand::LevelDemand
     flow_demand::FlowDemand
+    pass_down::PassDown
     subgrid::Subgrid
     # Whether all specialized AD and linear solve code should be used
     reduced_implicit_solve::Bool

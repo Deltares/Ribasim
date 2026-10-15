@@ -426,7 +426,7 @@ function formulate_flow!(
             src_id = link_meta.link[1]
             upstream_storage = storage_uplink.horizontal.user_demand_inflow[link_offset + inflow_idx]
             f_low_storage = get_low_storage_factor(upstream_storage, p, src_id)
-            source_level = get_level(upstream_storage, p, src_id, t)
+            source_level = get_upstream_level(upstream_storage, p, src_id, t)
             f_reduction = reduction_factor(
                 source_level - min_level,
                 level_difference_threshold,
@@ -488,8 +488,8 @@ function linear_resistance_flow(
     inflow_id = inflow_link.link[1]
     outflow_id = outflow_link.link[2]
 
-    h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_id, t)
+    h_a = get_upstream_level(s_a, p, inflow_id, t)
+    h_b = get_downstream_level(s_b, p, outflow_id, t)
     Δh = h_a - h_b
     q_unlimited = Δh / resistance[node_id.idx]
     q = clamp(q_unlimited, -max_flow_rate[node_id.idx], max_flow_rate[node_id.idx])
@@ -513,8 +513,8 @@ function tabulated_rating_curve_flow(
     inflow_id = inflow_link.link[1]
     outflow_id = outflow_link.link[2]
 
-    h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_id, t)
+    h_a = get_upstream_level(s_a, p, inflow_id, t)
+    h_b = get_downstream_level(s_b, p, outflow_id, t)
     Δh = h_a - h_b
 
     factor = apply_low_storage_factor ? get_low_storage_factor(s_a, p, inflow_id) : 1.0
@@ -541,8 +541,8 @@ function allocated_rating_curve_flow(
     inflow_id = inflow_link.link[1]
     outflow_id = outflow_link.link[2]
 
-    h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_id, t)
+    h_a = get_upstream_level(s_a, p, inflow_id, t)
+    h_b = get_downstream_level(s_b, p, outflow_id, t)
     Δh = h_a - h_b
 
     factor = get_low_storage_factor(s_a, p, inflow_id)
@@ -612,8 +612,8 @@ function manning_resistance_flow(
     L = length[node_id.idx]
 
     # Average d, A, R
-    h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_id, t)
+    h_a = get_upstream_level(s_a, p, inflow_id, t)
+    h_b = get_downstream_level(s_b, p, outflow_id, t)
 
     d_a = h_a - bottom_a
     d_b = h_b - bottom_b
@@ -781,8 +781,8 @@ function pump_or_outlet_flow(
     min_upstream_level = node.min_upstream_level[node_idx]
     max_downstream_level = node.max_downstream_level[node_idx]
 
-    src_level = get_level(s_a, p, inflow_id, t)
-    dst_level = get_level(s_b, p, outflow_id, t)
+    src_level = get_upstream_level(s_a, p, inflow_id, t)
+    dst_level = get_downstream_level(s_b, p, outflow_id, t)
 
     q = flow_rate
     apply_low_storage_factor && (q *= get_low_storage_factor(s_a, p, inflow_id))
