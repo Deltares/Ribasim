@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 
 import numpy as np
@@ -31,6 +32,14 @@ def test_offline_delwaq_coupling(tmp_path):
     # With evaporation of mass disabled
     model.solver.evaporate_mass = False
     generate(model, model_dir)
+
+    # All files included by delwaq.inp are generated
+    inp = (model_dir / "delwaq.inp").read_text()
+    includes = re.findall(r"^INCLUDE '(.+?)'", inp, flags=re.MULTILINE)
+    assert "include/B1_substances.inc" in includes
+    for include in includes:
+        assert (model_dir / include).is_file(), include
+
     run_delwaq(model_dir)
     model = parse(model, model_dir, to_input=True)
 

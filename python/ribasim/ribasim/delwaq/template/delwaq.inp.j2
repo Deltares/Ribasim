@@ -9,14 +9,7 @@
 ' '
 'T0: {{startime.strftime("%Y.%m.%d %H:%M:%S")}}  (scu=       1s)'
 
-; Hard coded Substances for mass balance check:
-; number of active and inactive substances
-{{substances|length}}             0
-        ; active substances
-{% for substance in substances -%}
-{{ loop.index }} "{{substance}}"
-{% endfor -%}
-        ; passive substances
+INCLUDE 'include/B1_substances.inc'
 
 #1;
 
@@ -97,18 +90,18 @@ INCLUDE 'ribasim.atr'     ; From Ribasim: attributes file
 
 ; Boundary list
 ;'NodeID' 'Comment field' 'Boundary name used for data grouping'
-INCLUDE 'ribasim_bndlist.inc'      ; From Ribasim: Boundary data
+INCLUDE 'include/B5_bndlist.inc'      ; From Ribasim: Boundary data
 
 0                                                   ; No Tatcher-Harleman time lags
 ; Boundary data:
-INCLUDE 'B5_bounddata.inc'      ; From Ribasim: Boundary data
+INCLUDE 'include/B5_bounddata.inc'      ; From Ribasim: Boundary data
 
 
 #5;
 ;###############################################################################
 ; Sixth input block, Dry Waste Loads block
 
-INCLUDE 'B6_wasteloads.inc'      ; From Ribasim: Loads data
+INCLUDE 'include/B6_wasteloads.inc'      ; From Ribasim: Loads data
 
 #6;
 ;###############################################################################
@@ -116,21 +109,21 @@ INCLUDE 'B6_wasteloads.inc'      ; From Ribasim: Loads data
 
 CONSTANTS  'ONLY_ACTIVE' 	DATA	0               ; Only active processes
 
-;INCLUDE 'includes_deltashell/B7_processes.inc'      ; From UI: Processes
-;INCLUDE 'includes_deltashell/B7_constants.inc'      ; From UI: Constants
-;INCLUDE 'includes_deltashell/B7_functions.inc'      ; From UI: Functions
-;INCLUDE 'includes_deltashell/B7_parameters.inc'     ; From UI: Parameters
-;INCLUDE 'includes_deltashell/B7_dispersion.inc'     ; FROM UI: Spatial dispersion
-;INCLUDE 'includes_deltashell/B7_vdiffusion.inc'     ; FROM UI: Vertical diffusion
+INCLUDE 'include/B7_processes.inc'      ; Processes, empty by default
+INCLUDE 'include/B7_constants.inc'      ; Constants, empty by default
+INCLUDE 'include/B7_functions.inc'      ; Functions, empty by default
+INCLUDE 'include/B7_parameters.inc'     ; Parameters, empty by default
+;INCLUDE 'include/B7_dispersion.inc'     ; Spatial dispersion, not generated
+;INCLUDE 'include/B7_vdiffusion.inc'     ; Vertical diffusion, not generated
 
-;INCLUDE 'includes_deltashell/B7_segfunctions.inc'   ; FROM UI: SEG_FUNCTION blocks
-;INCLUDE 'includes_deltashell/B7_numerical_options.inc'   ; FROM UI: numerical options
+INCLUDE 'include/B7_segfunctions.inc'   ; SEG_FUNCTION blocks, empty by default
+;INCLUDE 'include/B7_numerical_options.inc'   ; Numerical options, not generated
 
 #7
 ;###############################################################################
 ; Eighth input block
 
-INCLUDE 'B8_initials.inc'       ; From Ribasim: Initial concentrations
+INCLUDE 'include/B8_initials.inc'       ; From Ribasim: Initial concentrations
 
 #8
 ;###############################################################################

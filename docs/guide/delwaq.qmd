@@ -77,6 +77,12 @@ list(output_path.iterdir())
 
 These files form a complete Delwaq simulation, and can be run by either pointing DIMR to the `dimr_config.xml` file or pointing Delwaq to the `delwaq.inp` file.
 
+The substance and process specific input is written to the `include` subfolder.
+To set up a different water quality simulation than the default tracer simulation, you can replace the empty `B7_*.inc` files (processes, constants, functions, parameters and segment functions) instead of editing `delwaq.inp`.
+Note that `B1_substances.inc`, `B5_bounddata.inc`, `B6_wasteloads.inc` and `B8_initials.inc` all depend on the substances found in the Ribasim model, so these must be kept consistent when adding substances.
+Settings such as the simulation period, time step, integration method and output variables are still set in `delwaq.inp`.
+Every call to `generate` overwrites all these files, so keep a copy of any files you changed.
+
 The call to `generate` also writes a `ribasim.nc` file in the output folder. Besides the Delwaq network mesh, it stores the mapping between Delwaq and Ribasim node IDs and the list of substances. These are everything `parse` needs to map the Delwaq results back to the original Ribasim model, so no extra variables have to be passed between `generate` and `parse`.
 
 The substances stored are a combination of user input (`Cl` and `Tracer` in the input tables), a `Continuity` tracer, and tracers for all nodetypes in the Ribasim model. The latter tracers allow for deeper inspection of the Ribasim model, such as debugging the mass balance by plotting fraction graphs.
