@@ -521,7 +521,7 @@ def generate(
     ):
         if boundary_type is None:
             continue
-        lookups[boundary_type][node_id] = link_id 
+        lookups[boundary_type][node_id] = link_id
 
     for boundary_type in lookups:
         df = basins[basins.node_id.isin(lookups[boundary_type].keys())][
@@ -571,7 +571,7 @@ def generate(
     boundaries, substances, loads = _setup_boundaries(model, node_mapping)
     # Write boundary data with substances and concentrations
     template = env.get_template("B5_bounddata.inc.j2")
-    with (output_path / "B5_bounddata.inc").open(mode="w") as f:
+    with (include_path / "B5_bounddata.inc").open(mode="w") as f:
         f.write(
             template.render(
                 boundaries=boundaries,
@@ -580,7 +580,7 @@ def generate(
 
     # Write load data with substances and masses
     template = env.get_template("B6_wasteloads.inc.j2")
-    with (output_path / "B6_wasteloads.inc").open(mode="w") as f:
+    with (include_path / "B6_wasteloads.inc").open(mode="w") as f:
         f.write(
             template.render(
                 loads=loads,
