@@ -263,7 +263,7 @@ function sorted_table!(table::StructVector{T})::StructVector{T} where {T <: Tabl
     # Sort a permutation of the keys and apply it to each column, rather than sorting the
     # rows, so the sorting code is compiled per key type instead of per table type
     perm = sortperm(map(by, LazyRows(table)))
-    foreachfield(column -> copyto!(column, column[perm]), table)
+    foreachfield(column -> permute!(column, perm), table)
     return table
 end
 

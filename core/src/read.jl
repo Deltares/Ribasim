@@ -119,9 +119,10 @@ function get_parameter_value(
         [val, val], [0.0, prevfloat(Inf)]
     else
         if !isempty(take_first_columns)
-            data_group = first(
+            group = first(
                 IterTools.groupby(i -> map(column -> column[i], take_first_columns), data_group),
             )
+            data_group = first(group):last(group)
         end
         @assert !isnothing(time_column)
         parameter_values = map(i -> coalesce(parameter[i], default), data_group)
@@ -190,15 +191,15 @@ Keyword arguments:
 - is_controllable: Whether the parameter value can be updated by DiscreteControl
 - node_id: The node IDs associated with the node. Defaults to node.node_id
 - cyclic_times: A boolean per node whether the timeseries should be extrapolated periodically. Defaults to all false
-- field_name_val: The `Val` of the name of the field of node if it differs from the parameter name in the input.
-- take_first_val: The `Val` of a tuple of column names. If a certain parameter has to be duplicated because of the
+- field_name: The `Val` of the name of the field of node if it differs from the parameter name in the input.
+- take_first: The `Val` of a tuple of column names. If a certain parameter has to be duplicated because of the
    long input table format even though it cannot depend on other parameters that cause the need for repeating, list them here.
 - node_ids_all: A vector of all node IDs in the model, need to convert Int32 node IDs to NodeID
 """
 function parse_parameter!(
         node::Union{<:AbstractParameterNode, BasinForcing},
         config::Config,
-        parameter_name_val::Val;
+        ::Val{parameter_name};
         static::Union{StructVector, Nothing} = nothing,
         time::Union{StructVector, Nothing} = nothing,
         default = nothing,
@@ -206,16 +207,12 @@ function parse_parameter!(
         is_controllable::Bool = true,
         node_id = node.node_id,
         cyclic_times = zeros(Bool, length(node)),
-        field_name_val::Val = parameter_name_val,
-        take_first_val::Val = Val(()),
+        field_name::Val = Val(parameter_name),
+        take_first::Val = Val(()),
         node_ids_all::Union{Vector{NodeID}, Nothing} = nothing,
         is_optional::Bool = false,
-    )::Bool
+    )::Bool where {parameter_name}
     # The names are type parameters, so the field and column lookups are type-stable
-    parameter_name = val_value(parameter_name_val)::Symbol
-    field_name = val_value(field_name_val)::Symbol
-    take_first = val_value(take_first_val)
-
     # Pass only the columns that are used, so the loop over the nodes below is compiled
     # for few combinations of types, instead of for each table type
     static_columns = if isnothing(static) || isempty(static)
@@ -230,7 +227,7 @@ function parse_parameter!(
             time.node_id,
             time.time,
             getproperty(time, parameter_name),
-            map(name -> getproperty(time, name), take_first),
+            map(name -> getproperty(time, name), val_value(take_first)),
         )
     end
     control_states = if is_controllable && node isa AbstractParameterNode &&
@@ -241,7 +238,7 @@ function parse_parameter!(
     end
 
     return parse_parameter_values!(
-        getfield(node, field_name),
+        getfield(node, val_value(field_name)),
         node_id,
         cyclic_times,
         static_columns,
@@ -251,7 +248,7 @@ function parse_parameter!(
         config,
         node_ids_all,
         parameter_name,
-        field_name,
+        val_value(field_name),
         is_complete,
         is_optional,
     )
@@ -757,7 +754,7 @@ function parse_pump_or_outlet_parameters!(
         config,
         Val(:flow_rate);
         time,
-        field_name_val = Val(:time_dependent_flow_rate),
+        field_name = Val(:time_dependent_flow_rate),
         is_optional = true,
     )
 
@@ -975,10 +972,10 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
 
     basin = Basin(; node_id, concentration_data)
 
-    parse_forcing!(parameter_name_val) = parse_parameter!(
+    parse_forcing!(parameter_name) = parse_parameter!(
         basin.forcing,
         config,
-        parameter_name_val;
+        parameter_name;
         static,
         time,
         node_id,
@@ -1482,7 +1479,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
         static,
         time,
         cyclic_times,
-        take_first_val = Val((:demand_priority,)),
+        take_first = Val((:demand_priority,)),
     )
     errors |= parse_parameter!(user_demand, config, Val(:min_level); static, time)
     errors |= parse_demand!(user_demand, static, time, cyclic_times, demand_priorities, config)
