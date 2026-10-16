@@ -260,7 +260,11 @@ Note that Ribasim-Python also sorts tables in the required order on write.
 """
 function sorted_table!(table::StructVector{T})::StructVector{T} where {T <: Table}
     by = sort_by(table)
-    return sort!(table; by)
+    # Sort a permutation of the keys and apply it to each column, rather than sorting the
+    # rows, so the sorting code is compiled per key type instead of per table type
+    perm = sortperm(map(by, LazyRows(table)))
+    foreachfield(column -> copyto!(column, column[perm]), table)
+    return table
 end
 
 function valid_config(config::Config)::Bool
