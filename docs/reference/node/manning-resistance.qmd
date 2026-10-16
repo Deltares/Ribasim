@@ -161,19 +161,27 @@ $$
 and the head difference that drives the flow is $\Delta h = h_\text{up} - (z_\text{dn} + d_\text{dn})$, which lies between $0$ and $h_\text{up} - h_\text{dn}$.
 As a result the flow into an empty or nearly empty downstream Basin does not depend on how far below the reach that Basin is.
 
-The second limit is on the flow itself. The flow cannot exceed the critical flow $Q_c(E)$ for the head above the higher of the two bottoms, which is where the flow is controlled:
+The second limit is on the flow itself. The flow is controlled at the sill, the cross-section at the higher of the two bottoms $z_\text{sill} = \max(z_\text{up}, z_\text{dn})$, with the head $E = h_\text{up} - z_\text{sill}$ above it.
+With a depth $d$ over the sill and the velocity head there fully lost, the most that can pass the sill is
 
 $$
-E = h_\text{up} - \max(z_\text{up}, z_\text{dn})
+Q_s = A(d) \sqrt{2 g \left(E - d\right)}, \qquad d = \max\left(h_\text{dn} - z_\text{sill},\; d_c(E)\right).
 $$
 
-The Manning flow $Q_m$ and the critical flow $Q_c$ are combined with a smooth minimum
+While the downstream level is below $z_\text{sill} + d_c$ the sill is free, $d = d_c$, and $Q_s$ is the critical flow $Q_c(E)$, since $E - d_c = A / (2T)$.
+When the downstream level rises above it the sill is drowned, and $Q_s = A(d) \sqrt{2 g (h_\text{up} - h_\text{dn})}$ goes to zero as the levels meet.
+The critical depth is the depth at which $A(d)\sqrt{2g(E - d)}$ is maximal, so $Q_s$ and its derivative are continuous where the sill drowns.
+
+A cap that does not go to zero with the level difference, such as the critical flow alone, would make the flow jump between $+Q_c$ and $-Q_c$ when the levels cross. That happens when the Manning flow is large for a tiny level difference, for instance next to a Basin whose profile reaches far below the sill.
+
+The Manning flow $Q_m$ and the sill flow $Q_s$ are combined with a smooth minimum
 
 $$
 Q = \frac{Q_\text{lo}}{\left(1 + (Q_\text{lo} / Q_\text{hi})^{16}\right)^{1/16}},
 $$
 
-with $Q_\text{lo}$ and $Q_\text{hi}$ the smaller and larger of the two. The exponent is large enough that the reduction is below $0.2\%$ as long as $Q_m / Q_c \le 0.8$, so subcritical flow is unaffected.
+with $Q_\text{lo}$ and $Q_\text{hi}$ the smaller and larger of the two. The exponent is large enough that the reduction is below $0.2\%$ as long as $Q_m / Q_s \le 0.8$, so the Manning flow is unaffected where friction controls the flow.
+For short reaches and wide, deep profiles the sill flow can be the smaller of the two also for subcritical flow; then the level difference needed to pass a flow $Q$ is at least the velocity head $Q^2 / (2 g A^2)$ at the sill.
 
 ## Relaxation around zero
 
@@ -198,6 +206,7 @@ $$
 
 with $x_0 = 10^{-5}$. This is a numerical regularisation, not a physical laminar transition: for real channels the transition to laminar flow lies many orders of magnitude lower.
 Note that for a reach of length $L$ the relaxation is active for head differences below $x_0 L$, so for a 1 km reach below 1 cm, and in that region the flow is smaller than the Gauckler-Manning formula gives.
+The square root in the sill flow is relaxed in the same way, as $\sqrt{2 g L}\, s\left(\frac{E - d}{L}; x_0\right)$, so that for nearly equal levels the Manning flow and the sill flow are both proportional to $s(\Delta h / L; x_0)$ and their minimum is as smooth as each of them.
 
 ```{python}
 # | code-fold: true

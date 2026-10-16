@@ -622,15 +622,27 @@ function critical_depth(E, width, slope)
 end
 
 """
-Critical flow of a trapezoidal profile for a specific energy E, the largest flow that can
-pass the profile: A sqrt(g A / T) at the critical depth. The area inside the square root
-is bounded away from zero so that the derivative stays finite when the profile is dry.
+Flow over the sill of a ManningResistance reach, the most that can pass the cross-section
+at the higher of the two Basin bottoms for the upstream and downstream levels. With the
+depth d over the sill, the velocity head h_upstream - (z_sill + d) is fully lost, so
+
+    Q = A(d) sqrt(2 g (h_upstream - z_sill - d)),  d = max(h_downstream - z_sill, d_c)
+
+with d_c the critical depth for the head E = h_upstream - z_sill. For a free flow, d = d_c
+and this is the critical flow A sqrt(g A / T). For a drowned sill it goes to zero as the
+levels meet, like the Manning flow, so that capping by it does not make the flow jump when
+the levels cross. Since d_c is the depth where this Q is maximal for the given head, Q and
+its derivative are continuous where the sill drowns.
+
+The square root is relaxed in the same way as the friction slope in the Manning flow, so
+that for nearly equal levels both are proportional to the same function of the level
+difference.
 """
-function critical_flow(E, width, slope)
-    d_c = critical_depth(E, width, slope)
-    wet_area, _, surface_width = trapezoid_geometry(d_c, width, slope)
-    return wet_area *
-        sqrt(gravity * max(wet_area, eps(Float64)) / max(surface_width, eps(Float64)))
+function sill_flow(h_upstream, h_downstream, z_sill, width, slope, L)
+    E = h_upstream - z_sill
+    d = max(h_downstream - z_sill, critical_depth(E, width, slope))
+    wet_area, _, _ = trapezoid_geometry(d, width, slope)
+    return wet_area * sqrt(2 * gravity * L) * relaxed_root(max(E - d, 0) / L, 1.0e-5)
 end
 
 """
@@ -677,13 +689,15 @@ function manning_flow(
     factor = 0.5 * (manning_factor(d_upstream, width, slope, n) + manning_factor(d_downstream, width, slope, n))
     q_manning = factor * relaxed_root(Δh / L, 1.0e-5)
 
-    # The flow cannot exceed the critical flow for the head above the higher of the two bottoms.
-    # The smooth minimum is sharp enough to leave subcritical flow untouched: with power 16 it
-    # lowers a flow of 80% of the critical flow by less than 0.2%, where power 8 would give 2%.
-    # It is written with the ratio of the smaller to the larger flow so that it cannot overflow.
-    q_critical = critical_flow(h_upstream - max(bottom_upstream, bottom_downstream), width, slope)
-    q_low = min(q_manning, q_critical)
-    q_high = max(q_manning, q_critical, eps(Float64))
+    # The flow cannot exceed the flow over the sill, at the higher of the two bottoms. For a
+    # free flow this is the critical flow. The smooth minimum is sharp enough to leave
+    # subcritical flow untouched: with power 16 it lowers a flow of 80% of the cap by less
+    # than 0.2%, where power 8 would give 2%. It is written with the ratio of the smaller to
+    # the larger flow so that it cannot overflow.
+    z_sill = max(bottom_upstream, bottom_downstream)
+    q_sill = sill_flow(h_upstream, h_downstream, z_sill, width, slope, L)
+    q_low = min(q_manning, q_sill)
+    q_high = max(q_manning, q_sill, eps(Float64))
     q = q_low / (1 + (q_low / q_high)^16)^(1 / 16)
     return ifelse(forward, q, -q)
 end
@@ -754,9 +768,11 @@ water after it has gone dry.
 Two limits from open channel hydraulics are added to this. The downstream water level cannot
 drop below the critical depth for the head above the downstream bottom: at a free overfall the
 water surface sits at critical depth, not at the level of the Basin below. And the flow cannot
-exceed the critical flow for the head above the higher of the two bottoms, which is where the
-flow is controlled. Without these a Basin that lies far below its upstream neighbour receives
-a supercritical flow that keeps growing as it fills.
+exceed the flow over the sill, the cross-section at the higher of the two bottoms, which is
+where the flow is controlled. For a free flow over the sill this is the critical flow, and for
+a drowned sill it goes to zero as the levels meet, see `sill_flow`. Without these a Basin that
+lies far below its upstream neighbour receives a supercritical flow that keeps growing as it
+fills.
 
 Side view of a reach with a free overfall into a lower downstream Basin, with levels h,
 bottoms z and depths d:
@@ -777,8 +793,9 @@ Here the downstream Basin is below the brink, so d_downstream is the critical de
 the head h_upstream - z_downstream, and the head difference driving the flow is Δh rather than
 h_upstream - h_downstream. As the downstream Basin fills above z_downstream + d_c,
 d_downstream follows its level and Δh becomes h_upstream - h_downstream again.
-The flow is also capped at the critical flow for the head above the higher bottom, here
-h_upstream - z_upstream, which is the most that can leave the upstream Basin over its sill.
+The flow is also capped at the flow over the sill at the higher bottom, here z_upstream. While
+the downstream level is below the sill this is the critical flow for the head
+h_upstream - z_upstream, the most that can leave the upstream Basin.
 
 The square root of the friction slope is relaxed around zero to keep the derivative finite.
 """

@@ -554,6 +554,28 @@ end
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
 
+@testitem "ManningResistance next to a deep Basin" begin
+    using DataFrames: DataFrame
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/manning_resistance_deep_basin/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # The ManningResistance couples the two Basins tightly, so their levels stay together
+    # while the flow through it changes direction every 6 hours. A flow cap that does not
+    # vanish at equal levels instead lets the flow jump between plus and minus the critical
+    # flow, and the levels drift apart by more than a metre.
+    basin_table = DataFrame(Ribasim.basin_data(model))
+    level_2 = basin_table.level[basin_table.node_id .== 2]
+    level_4 = basin_table.level[basin_table.node_id .== 4]
+    @test all(x -> abs(x) < 1.0e-3, level_2 .- level_4)
+    @test all(x -> abs(x - 0.4) < 1.0e-3, level_2)
+    @test maximum(abs, basin_table.balance_error) < 1.0e-6
+end
+
 @testitem "mean_flow" begin
     using DataFrames: DataFrame
 
