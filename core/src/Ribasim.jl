@@ -171,7 +171,7 @@ import IterTools
 using Tables: Tables, AbstractRow, columntable
 
 # Wrapper around a vector of structs to easily retrieve the same field from all elements.
-using StructArrays: StructVector
+using StructArrays: StructVector, LazyRows, foreachfield
 
 # OrderedSet is used to store the order of the substances in the network.
 # OrderedDict is used to store the order of the sources in a subnetwork.
