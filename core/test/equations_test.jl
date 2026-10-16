@@ -230,17 +230,26 @@ end
         @test flow(mr, h_a, h_b) ≈ Q_c rtol = 0.01
     end
     # Reversed: flow from the deep Basin over the sill into the shallow one is negative
-    # and capped by the critical flow for the head above the sill
-    for h_b in (1.1, 2.0, 3.0)
+    # and capped by the critical flow for the head above the sill, as long as the level on
+    # the other side is below the critical depth over the sill
+    for h_b in (2.0, 3.0)
+        @test critical_depth(h_b) > h_a
         q = flow(mr, h_a, h_b)
         @test q < 0
         @test abs(q) ≈ critical_flow(h_b - 0.0) rtol = 0.01
     end
+    # When the sill is drowned the cap is the flow through the sill section at the
+    # downstream depth, with the full velocity head lost: A(d) sqrt(2 g (h_up - h_dn))
+    h_b = 1.1
+    @test critical_depth(h_b) < h_a
+    A = w * h_a + s * h_a^2
+    @test flow(mr, h_a, h_b) ≈ -A * sqrt(2g * (h_b - h_a)) rtol = 0.01
+    @test abs(flow(mr, h_a, h_b)) < critical_flow(h_b)
     # Continuous through Δh = 0 even with unequal beds. Exact antisymmetry only holds
     # at Δh = 0, since the two orientations average different depths.
     @test flow(mr, 1.0, 1.001) ≈ -flow(mr, 1.001, 1.0) rtol = 1.0e-3
     @test flow(mr, 1.0, 1.0 + 1.0e-6) < 0
-    @test abs(flow(mr, 1.0, 1.0 + 1.0e-6)) < 0.1
+    @test abs(flow(mr, 1.0, 1.0 + 1.0e-6)) < 0.01
     @test abs(flow(mr, 1.0, 1.0)) < 1.0e-12
     # Closed form critical depth for the three profile shapes
     @test Ribasim.critical_depth(1.5, 10.0, 0.0) ≈ 1.0
@@ -288,4 +297,33 @@ end
     # Flat until the downstream level reaches the brink level, which for a rectangle lies
     # (h_up - bottom_dn) / 3 below the upstream level and for this trapezoid about a quarter
     @test flow(mr, h_a, -1.5) ≈ flow(mr, h_a, -5.0) rtol = 1.0e-3
+end
+
+@testitem "ManningResistance flow vanishes at equal levels next to a deep Basin" setup = [ManningSetup] begin
+    using Ribasim: ForwardDiff
+    make, flow = ManningSetup.manning_test_setup()
+    # From the LHM: the downstream Basin profile reaches 116 m below the sill, so the
+    # Manning flow exceeds the critical flow already for a level difference of 1e-5 m.
+    # The cap must then go to zero with the level difference, otherwise the flow jumps
+    # between plus and minus the critical flow when the levels cross.
+    mr = make(; L = 500.0, n = 0.03, w = 3.4, s = 6.8, bottom_a = 0.0, bottom_b = -116.0)
+    h = 0.4
+    # Below 5 mm the relaxed square root makes the flow over the drowned sill linear in δ,
+    # with a slope of A sqrt(2 g L) 5 / (4 L sqrt(1e-5)) ≈ 190 m²/s
+    for δ in (1.0e-7, 1.0e-6, 1.0e-5, 1.0e-4)
+        @test 0 < flow(mr, h + δ, h) < 300δ
+        @test 0 > flow(mr, h, h + δ) > -300δ
+    end
+    # Bounded derivative through Δh = 0
+    for δ in (-1.0e-6, 0.0, 1.0e-6)
+        g = ForwardDiff.gradient(x -> flow(mr, x[1], x[2]), [h + δ, h])
+        @test all(isfinite, g)
+        @test abs(g[1]) < 1.0e3
+    end
+    # The drowned sill cap meets the critical flow where the sill becomes free
+    w, s, g = 3.4, 6.8, 9.81
+    d_c = Ribasim.critical_depth(h, w, s)
+    q_free = flow(mr, h, -1.0)
+    @test flow(mr, h, d_c - 1.0e-6) ≈ q_free rtol = 1.0e-4
+    @test flow(mr, h, d_c + 1.0e-6) ≈ q_free rtol = 1.0e-4
 end
