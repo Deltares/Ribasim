@@ -174,6 +174,24 @@ The critical depth is the depth at which $A(d)\sqrt{2g(E - d)}$ is maximal, so $
 
 A cap that does not go to zero with the level difference, such as the critical flow alone, would make the flow jump between $+Q_c$ and $-Q_c$ when the levels cross. That happens when the Manning flow is large for a tiny level difference, for instance next to a Basin whose profile reaches far below the sill.
 
+The diagram below shows how the two flows are computed and combined.
+
+```{mermaid}
+flowchart TD
+    L["Basin levels h_up, h_dn"] --> M
+    L --> S
+    subgraph M["Manning flow Q_m"]
+        M1["downstream depth at least the critical depth"] --> M2["Q_m from the Gauckler-Manning formula"]
+    end
+    subgraph S["Sill flow Q_s at the higher bottom"]
+        S0{"h_dn below z_sill + d_c?"}
+        S0 -- "yes: free sill" --> S1["Q_s = critical flow"]
+        S0 -- "no: drowned sill" --> S2["Q_s = A(d) √(2 g Δh), zero at equal levels"]
+    end
+    M --> Q["Q = smooth minimum of Q_m and Q_s"]
+    S --> Q
+```
+
 The Manning flow $Q_m$ and the sill flow $Q_s$ are combined with a smooth minimum
 
 $$
