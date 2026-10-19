@@ -716,7 +716,7 @@ window.Quarto = {
 <span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
 <span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Say there is constant inflow from the <code>FlowBoundary</code> node and there are no vertical forcings on the Basin. Say furthermore that the Pump is active only when the Basin level is above a reference value, with a flow greater than the boundary flow. In this case the Pump will rapidly turn on and off as the Basin level oscillates around the reference value.</p>
-<p>To make you aware of these oscillations, Ribasim will throw an error if successive control state changes of a DiscriteControl node in simulated time are closer than <code>min_discrete_control_interval</code>, which is configurable.</p>
+<p>To make you aware of these oscillations, Ribasim will give a warning if successive control state changes of a DiscreteControl node in simulated time are closer than <code>min_discrete_control_interval</code>, which is configurable and defaults to 1 second. The warning is given once per DiscreteControl node, for at most 10 nodes. Set <code>min_discrete_control_interval</code> to <code>0.0</code> to disable these warnings.</p>
 <p>By default the conditions are evaluated after every timestep. To evaluate them only at fixed times, for instance daily, set the solver setting <code>discrete_control_interval</code>, see <a href="../../reference/usage.html#sec-solver-settings">usage</a>.</p>
 </section>
 <section id="logic" class="level2" data-number="1.3">
