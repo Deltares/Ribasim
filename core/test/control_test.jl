@@ -372,6 +372,8 @@ end
 end
 
 @testitem "DiscreteControl interval" begin
+    using Logging: Warn, with_logger
+
     toml_path = normpath(@__DIR__, "../../generated_testmodels/circular_flow/ribasim.toml")
     @test ispath(toml_path)
 
@@ -395,6 +397,22 @@ end
         toml_path;
         solver_discrete_control_interval = -1.0,
     )
+
+    # Rapid control state changes give a single warning per node, and don't stop the run
+    function oscillation_warnings(min_interval)
+        config = Ribasim.Config(toml_path; solver_min_discrete_control_interval = min_interval)
+        logger = TestLogger()
+        model = with_logger(logger) do
+            Ribasim.run(config)
+        end
+        @test success(model)
+        return filter(log -> contains(log.message, "min_discrete_control_interval"), logger.logs)
+    end
+
+    @test isempty(oscillation_warnings(0.0))
+    logs = oscillation_warnings(1.0e9)
+    @test length(logs) == 1
+    @test only(logs).level == Warn
 end
 
 @testitem "Storage condition" begin
