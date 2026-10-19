@@ -554,6 +554,28 @@ end
     ) ≈ 5.0 atol = 0.001 skip = Sys.isapple()
 end
 
+@testitem "ManningResistance next to a deep Basin" begin
+    using DataFrames: DataFrame
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/manning_resistance_deep_basin/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # The ManningResistance couples the two Basins tightly, so their levels stay together
+    # while the flow through it changes direction every 6 hours. A flow cap that does not
+    # vanish at equal levels instead lets the flow jump between plus and minus the critical
+    # flow, and the levels drift apart by more than a metre.
+    basin_table = DataFrame(Ribasim.basin_data(model))
+    level_2 = basin_table.level[basin_table.node_id .== 2]
+    level_4 = basin_table.level[basin_table.node_id .== 4]
+    @test all(x -> abs(x) < 1.0e-3, level_2 .- level_4)
+    @test all(x -> abs(x - 0.4) < 1.0e-3, level_2)
+    @test maximum(abs, basin_table.balance_error) < 1.0e-6
+end
+
 @testitem "mean_flow" begin
     using DataFrames: DataFrame
 
@@ -752,13 +774,19 @@ end
         basin_table,
     )
 
-    # Check that Basin #2189 is running dry, down to the storage an empty Basin keeps, and thus
-    # the infiltration and storage rate are close to 0
+    # Check that Basin #2189 is running dry, but not below the storage an empty Basin keeps,
+    # and thus the infiltration and storage rate are close to 0. The ManningResistance flow
+    # out of this Basin vanishes like the weir flow over its sill, and the low storage factor
+    # on top of that lets the last few millimetres drain asymptotically, so test the depth
+    # rather than the exact storage.
     (; basin) = model.integrator.p.p_independent
-    reserve = basin.low_storage_reserve[findfirst(==(2189), getfield.(basin.node_id, :value))]
-    @test all(x -> 0 <= x - reserve < 0.03, basin_table.storage)
-    @test all(x -> abs(x) < 1.0e-8, basin_table.storage_rate)
-    @test all(x -> abs(x) < 1.0e-8, basin_table.infiltration)
+    idx = findfirst(==(2189), getfield.(basin.node_id, :value))
+    reserve = basin.low_storage_reserve[idx]
+    _, bottom = Ribasim.basin_bottom(basin, basin.node_id[idx])
+    @test all(>=(reserve), basin_table.storage)
+    @test all(x -> x - bottom < 0.01, basin_table.level)
+    @test all(x -> abs(x) < 1.0e-5, basin_table.storage_rate)
+    @test all(x -> abs(x) < 1.0e-5, basin_table.infiltration)
 end
 
 @testitem "FlowBoundary interpolation type" begin

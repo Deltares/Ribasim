@@ -187,6 +187,67 @@ def manning_resistance_model() -> Model:
     return model
 
 
+def manning_resistance_deep_basin_model() -> Model:
+    """Set up two Basins at equal levels joined by a ManningResistance, one profile far below the sill.
+
+    The Manning flow is then large for a tiny level difference, and the flow through the
+    node changes direction every few hours. Taken from the national LHM model, where
+    capping such a flow by a critical flow that does not vanish at equal levels made the
+    flow jump between plus and minus the critical flow and stalled the solver.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 11),
+        crs="EPSG:28992",
+    )
+
+    model.flow_boundary.add(
+        Node(1, Point(0, 0)),
+        [
+            flow_boundary.Time(
+                time=[
+                    f"2020-01-{day:02d} {hour:02d}:00"
+                    for day in range(1, 11)
+                    for hour in (0, 6, 12, 18)
+                ],
+                flow_rate=[0.0, 0.2] * 20,
+            )
+        ],
+    )
+    model.basin.add(
+        Node(2, Point(1, 0)),
+        [
+            basin.Profile(area=[25640.0, 26896.0], level=[0.0, 0.5]),
+            basin.State(level=[0.4]),
+        ],
+    )
+    model.manning_resistance.add(
+        Node(3, Point(2, 0)),
+        [
+            manning_resistance.Static(
+                manning_n=[0.03], profile_width=3.4, profile_slope=6.8, length=500.0
+            )
+        ],
+    )
+    model.basin.add(
+        Node(4, Point(3, 0)),
+        [
+            basin.Profile(area=[10.0, 42862.0], level=[-116.0, 0.5]),
+            basin.State(level=[0.4]),
+        ],
+    )
+    model.pump.add(Node(5, Point(1, 1)), [pump.Static(flow_rate=[0.1])])
+    model.terminal.add(Node(6, Point(1, 2)))
+
+    model.link.add(model.flow_boundary[1], model.basin[2])
+    model.link.add(model.basin[2], model.manning_resistance[3])
+    model.link.add(model.manning_resistance[3], model.basin[4])
+    model.link.add(model.basin[2], model.pump[5])
+    model.link.add(model.pump[5], model.terminal[6])
+
+    return model
+
+
 def misc_nodes_model() -> Model:
     """Set up a minimal model using flow_boundary and pump nodes."""
     model = Model(

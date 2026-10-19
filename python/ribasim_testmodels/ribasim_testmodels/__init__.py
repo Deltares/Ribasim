@@ -64,6 +64,7 @@ from ribasim_testmodels.discrete_control import (
 from ribasim_testmodels.doc_example import local_pidcontrolled_cascade_model
 from ribasim_testmodels.equations import (
     linear_resistance_model,
+    manning_resistance_deep_basin_model,
     manning_resistance_model,
     misc_nodes_model,
     pid_control_equation_model,
@@ -142,6 +143,7 @@ __all__ = [
     "linear_resistance_demand_model",
     "linear_resistance_model",
     "local_pidcontrolled_cascade_model",
+    "manning_resistance_deep_basin_model",
     "manning_resistance_model",
     "medium_primary_secondary_network_model",
     "medium_primary_secondary_network_verification_model",
