@@ -179,76 +179,83 @@ controllablefields(::Val{:PidControl}) =
     OrderedSet((:target, :proportional, :integral, :derivative))
 controllablefields(nodetype) = OrderedSet{Symbol}()
 
-"Get the right sort by function (by in `sort(x; by)`) given the Schema"
-function sort_by end
+"""
+The columns by which a table is sorted, see `sorted_table!`.
+
+Unless `unique_rows` opts out, these columns also uniquely identify a row of the table.
+"""
+function sort_key end
 # Not using any fallbacks to avoid forgetting to add the correct sorting.
 
-sort_by(::StructVector{Schema.Basin.Concentration}) = x -> (x.node_id, x.substance, x.time)
-sort_by(::StructVector{Schema.Basin.ConcentrationExternal}) =
-    x -> (x.node_id, x.substance, x.time)
-sort_by(::StructVector{Schema.Basin.ConcentrationState}) = x -> (x.node_id, x.substance)
-sort_by(::StructVector{Schema.Basin.MassLoad}) = x -> (x.node_id, x.substance, x.time)
-sort_by(::StructVector{Schema.Basin.Profile}) = x -> (x.node_id, x.level)
-sort_by(::StructVector{Schema.Basin.State}) = x -> (x.node_id)
-sort_by(::StructVector{Schema.Basin.Static}) = x -> (x.node_id)
-sort_by(::StructVector{Schema.Basin.Subgrid}) = x -> (x.subgrid_id, x.basin_level)
-sort_by(::StructVector{Schema.Basin.SubgridTime}) =
-    x -> (x.subgrid_id, x.time, x.basin_level)
-sort_by(::StructVector{Schema.Basin.Time}) = x -> (x.node_id, x.time)
+sort_key(::Type{Schema.Basin.Concentration}) = (:node_id, :substance, :time)
+sort_key(::Type{Schema.Basin.ConcentrationExternal}) = (:node_id, :substance, :time)
+sort_key(::Type{Schema.Basin.ConcentrationState}) = (:node_id, :substance)
+sort_key(::Type{Schema.Basin.MassLoad}) = (:node_id, :substance, :time)
+sort_key(::Type{Schema.Basin.Profile}) = (:node_id, :level)
+sort_key(::Type{Schema.Basin.State}) = (:node_id,)
+sort_key(::Type{Schema.Basin.Static}) = (:node_id,)
+sort_key(::Type{Schema.Basin.Subgrid}) = (:subgrid_id, :basin_level)
+sort_key(::Type{Schema.Basin.SubgridTime}) = (:subgrid_id, :time, :basin_level)
+sort_key(::Type{Schema.Basin.Time}) = (:node_id, :time)
 
-sort_by(::StructVector{Schema.ContinuousControl.Function}) = x -> (x.node_id, x.input)
-sort_by(::StructVector{Schema.ContinuousControl.Variable}) =
-    x -> (x.node_id, x.listen_node_id, x.variable)
+sort_key(::Type{Schema.ContinuousControl.Function}) = (:node_id, :input)
+sort_key(::Type{Schema.ContinuousControl.Variable}) = (:node_id, :listen_node_id, :variable)
 
-sort_by(::StructVector{Schema.DiscreteControl.Condition}) =
-    x -> (x.node_id, x.compound_variable_id, x.condition_id)
-sort_by(::StructVector{Schema.DiscreteControl.Logic}) = x -> (x.node_id, x.truth_state)
-sort_by(::StructVector{Schema.DiscreteControl.Variable}) =
-    x -> (x.node_id, x.compound_variable_id, x.listen_node_id, x.variable)
+sort_key(::Type{Schema.DiscreteControl.Condition}) =
+    (:node_id, :compound_variable_id, :condition_id, :time)
+sort_key(::Type{Schema.DiscreteControl.Logic}) = (:node_id, :truth_state)
+sort_key(::Type{Schema.DiscreteControl.Variable}) =
+    (:node_id, :compound_variable_id, :listen_node_id, :variable)
 
-sort_by(::StructVector{Schema.FlowBoundary.Concentration}) =
-    x -> (x.node_id, x.substance, x.time)
-sort_by(::StructVector{Schema.FlowBoundary.Static}) = x -> (x.node_id)
-sort_by(::StructVector{Schema.FlowBoundary.Time}) = x -> (x.node_id, x.time)
+sort_key(::Type{Schema.FlowBoundary.Concentration}) = (:node_id, :substance, :time)
+sort_key(::Type{Schema.FlowBoundary.Static}) = (:node_id,)
+sort_key(::Type{Schema.FlowBoundary.Time}) = (:node_id, :time)
 
-sort_by(::StructVector{Schema.FlowDemand.Static}) = x -> (x.node_id, x.demand_priority)
-sort_by(::StructVector{Schema.FlowDemand.Time}) =
-    x -> (x.node_id, x.demand_priority, x.time)
+sort_key(::Type{Schema.FlowDemand.Static}) = (:node_id, :demand_priority)
+sort_key(::Type{Schema.FlowDemand.Time}) = (:node_id, :demand_priority, :time)
 
-sort_by(::StructVector{Schema.LevelBoundary.Concentration}) =
-    x -> (x.node_id, x.substance, x.time)
-sort_by(::StructVector{Schema.LevelBoundary.Static}) = x -> (x.node_id)
-sort_by(::StructVector{Schema.LevelBoundary.Time}) = x -> (x.node_id, x.time)
+sort_key(::Type{Schema.LevelBoundary.Concentration}) = (:node_id, :substance, :time)
+sort_key(::Type{Schema.LevelBoundary.Static}) = (:node_id,)
+sort_key(::Type{Schema.LevelBoundary.Time}) = (:node_id, :time)
 
-sort_by(::StructVector{Schema.LevelDemand.Static}) = x -> (x.node_id, x.demand_priority)
-sort_by(::StructVector{Schema.LevelDemand.Time}) =
-    x -> (x.node_id, x.demand_priority, x.time)
+sort_key(::Type{Schema.LevelDemand.Static}) = (:node_id, :demand_priority)
+sort_key(::Type{Schema.LevelDemand.Time}) = (:node_id, :demand_priority, :time)
 
-sort_by(::StructVector{Schema.LinearResistance.Static}) = x -> (x.node_id, x.control_state)
+sort_key(::Type{Schema.LinearResistance.Static}) = (:node_id, :control_state)
 
-sort_by(::StructVector{Schema.ManningResistance.Static}) = x -> (x.node_id, x.control_state)
+sort_key(::Type{Schema.ManningResistance.Static}) = (:node_id, :control_state)
 
-sort_by(::StructVector{Schema.Outlet.Static}) = x -> (x.node_id, x.control_state)
-sort_by(::StructVector{Schema.Outlet.Time}) = x -> (x.node_id, x.time)
+sort_key(::Type{Schema.Outlet.Static}) = (:node_id, :control_state)
+sort_key(::Type{Schema.Outlet.Time}) = (:node_id, :time)
 
-sort_by(::StructVector{Schema.PidControl.Static}) = x -> (x.node_id, x.control_state)
-sort_by(::StructVector{Schema.PidControl.Time}) = x -> (x.node_id, x.time)
+sort_key(::Type{Schema.PidControl.Static}) = (:node_id, :control_state)
+sort_key(::Type{Schema.PidControl.Time}) = (:node_id, :time)
 
-sort_by(::StructVector{Schema.Pump.Static}) = x -> (x.node_id, x.control_state)
-sort_by(::StructVector{Schema.Pump.Time}) = x -> (x.node_id, x.time)
+sort_key(::Type{Schema.Pump.Static}) = (:node_id, :control_state)
+sort_key(::Type{Schema.Pump.Time}) = (:node_id, :time)
 
-sort_by(::StructVector{Schema.TabulatedRatingCurve.Static}) =
-    x -> (x.node_id, x.control_state, x.level)
-sort_by(::StructVector{Schema.TabulatedRatingCurve.Time}) =
-    x -> (x.node_id, x.time, x.level)
+sort_key(::Type{Schema.TabulatedRatingCurve.Static}) = (:node_id, :control_state, :level)
+sort_key(::Type{Schema.TabulatedRatingCurve.Time}) = (:node_id, :time, :level)
 
-sort_by(::StructVector{Schema.UserDemand.Concentration}) =
-    x -> (x.node_id, x.substance, x.time)
-sort_by(::StructVector{Schema.UserDemand.Static}) = x -> (x.node_id, x.demand_priority)
-sort_by(::StructVector{Schema.UserDemand.Time}) =
-    x -> (x.node_id, x.demand_priority, x.time)
+sort_key(::Type{Schema.UserDemand.Concentration}) = (:node_id, :substance, :time)
+sort_key(::Type{Schema.UserDemand.Static}) = (:node_id, :demand_priority)
+sort_key(::Type{Schema.UserDemand.Time}) = (:node_id, :demand_priority, :time)
 
-sort_by(::StructVector{Schema.Observation.Time}) = x -> (x.node_id, x.variable, x.time)
+sort_key(::Type{Schema.Observation.Time}) = (:node_id, :variable, :time)
+
+"Get the right sort by function (by in `sort(x; by)`) given the Schema"
+sort_by(::StructVector{T}) where {T <: Table} =
+    row -> map(k -> getproperty(row, k), sort_key(T))
+
+"""
+Whether the rows of a table must be unique by their `sort_key`.
+
+The control variable tables are exempt, since the same variable can be listened to
+multiple times, for instance with a different `look_ahead`.
+"""
+unique_rows(::Type{<:Table}) = true
+unique_rows(::Type{Schema.ContinuousControl.Variable}) = false
+unique_rows(::Type{Schema.DiscreteControl.Variable}) = false
 
 """
 Sort a table in place in the required order.
@@ -265,6 +272,47 @@ function sorted_table!(table::StructVector{T})::StructVector{T} where {T <: Tabl
     perm = sortperm(map(by, LazyRows(table)))
     foreachfield(column -> permute!(column, perm), table)
     return table
+end
+
+"""
+Check that the rows of a sorted table are unique by their `sort_key`, logging each duplicated key once.
+"""
+function valid_unique_rows(table::StructVector{T})::Bool where {T <: Table}
+    unique_rows(T) || return true
+    key = sort_key(T)
+    row_key(i) = NamedTuple{key}(map(k -> getproperty(table, k)[i], key))
+    errors = false
+    for i in 2:length(table)
+        if isequal(row_key(i), row_key(i - 1)) &&
+                (i == 2 || !isequal(row_key(i - 1), row_key(i - 2)))
+            @error "Duplicate rows found in $(sql_table_name(T)) for $(row_key(i))."
+            errors = true
+        end
+    end
+    return !errors
+end
+
+"""
+Check that the return_factor and min_level of each UserDemand node are the same for all its
+demand priorities (at the same time), since they cannot differ per demand priority.
+"""
+function valid_user_demand_parameters(
+        table::StructVector{T},
+    )::Bool where {T <: Union{Schema.UserDemand.Static, Schema.UserDemand.Time}}
+    errors = false
+    for node_group in IterTools.groupby(row -> row.node_id, table)
+        parameters = Dict{Union{Nothing, DateTime}, Tuple{Float64, Float64}}()
+        for row in node_group
+            time = T <: Schema.UserDemand.Time ? row.time : nothing
+            row_parameters = (row.return_factor, row.min_level)
+            if !isequal(get!(parameters, time, row_parameters), row_parameters)
+                @error "The return_factor and min_level of UserDemand #$(row.node_id) must be the same for all demand priorities."
+                errors = true
+                break
+            end
+        end
+    end
+    return !errors
 end
 
 function valid_config(config::Config)::Bool
@@ -467,11 +515,6 @@ function valid_subgrid(
     if !(node_id in keys(node_to_basin))
         errors = true
         @error "The node_id of the Basin / subgrid does not exist." node_id subgrid_id
-    end
-
-    if !allunique(basin_level)
-        errors = true
-        @error "Basin / subgrid subgrid_id $(subgrid_id) has repeated basin levels, this cannot be interpolated."
     end
 
     if !allunique(subgrid_level)

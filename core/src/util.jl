@@ -115,11 +115,6 @@ function qh_interpolation(
         errors = true
     end
 
-    if !allunique(level)
-        @error "The `level` cannot be repeated." node_id
-        errors = true
-    end
-
     if any(diff(flow_rate) .< 0.0)
         @error "The `flow_rate` cannot decrease with increasing `level`." node_id
         errors = true
