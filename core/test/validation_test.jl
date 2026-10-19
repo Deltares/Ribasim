@@ -33,13 +33,11 @@
     end
     close(db)
 
-    @test length(logger.logs) == 3
+    @test length(logger.logs) == 2
     @test logger.logs[1].level == Error
     @test logger.logs[1].message == "The `flow_rate` must start at 0."
     @test logger.logs[2].level == Error
-    @test logger.logs[2].message == "The `level` cannot be repeated."
-    @test logger.logs[3].level == Error
-    @test logger.logs[3].message ==
+    @test logger.logs[2].message ==
         "The `flow_rate` cannot decrease with increasing `level`."
 end
 
@@ -284,17 +282,14 @@ end
             Int32(1),
             Int32(9),
             node_to_basin,
-            [-1.0, 0.0, 0.0],
+            [-1.0, 0.0, 1.0],
             [-1.0, 0.0, 0.0],
         )
     end
 
-    @test length(logger.logs) == 2
+    @test length(logger.logs) == 1
     @test logger.logs[1].level == Error
     @test logger.logs[1].message ==
-        "Basin / subgrid subgrid_id 1 has repeated basin levels, this cannot be interpolated."
-    @test logger.logs[2].level == Error
-    @test logger.logs[2].message ==
         "Basin / subgrid subgrid_id 1 has repeated element levels, this cannot be interpolated."
 end
 
@@ -416,6 +411,24 @@ end
     @test occursin("Pump #12 = ", output)
     @test occursin("Pump #32 = ", output)
     @test occursin("Pump #52 = ", output)
+end
+
+@testitem "Multiple control states without DiscreteControl" begin
+    using Ribasim
+    using Logging
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/invalid_control_states/ribasim.toml")
+    @test ispath(toml_path)
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test_throws "Errors encountered when parsing Pump data." Ribasim.Model(toml_path)
+    end
+    @test length(logger.logs) == 1
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+        "Pump #2 has multiple control states but is not controlled by DiscreteControl, add a row without control_state to define its parameters."
 end
 
 @testitem "Missing demand priority when allocation is active" begin
@@ -585,8 +598,9 @@ end
     @test logger.logs[1].kwargs[:control_state] == "flat"
 end
 
-@testitem "Static table uniqueness" begin
+@testitem "Table row uniqueness" begin
     using Logging
+    using Dates: DateTime
     using StructArrays: StructVector
     using Ribasim: Schema, valid_unique_rows, sorted_table!
 
@@ -651,4 +665,101 @@ end
     end
     @test only(logger.logs).message ==
         "Duplicate rows found in Basin / static for (node_id = 1,)."
+
+    # Tables other than static tables are validated too
+    rating_curve = sorted_table!(
+        StructVector(
+            [
+                Schema.TabulatedRatingCurve.Static(1, 0.0, 0.0, missing, missing, missing),
+                Schema.TabulatedRatingCurve.Static(1, 0.0, 1.0, missing, missing, missing),
+                Schema.TabulatedRatingCurve.Static(1, 1.0, 2.0, missing, missing, missing),
+            ]
+        ),
+    )
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !valid_unique_rows(rating_curve)
+    end
+    @test only(logger.logs).message ==
+        "Duplicate rows found in TabulatedRatingCurve / static for (node_id = 1, control_state = missing, level = 0.0)."
+
+    time = DateTime(2020)
+    condition = sorted_table!(
+        StructVector(
+            [
+                Schema.DiscreteControl.Condition(1, 1, 1, 0.0, missing, time),
+                Schema.DiscreteControl.Condition(1, 1, 1, 1.0, missing, time),
+                Schema.DiscreteControl.Condition(1, 1, 2, 1.0, missing, missing),
+            ]
+        ),
+    )
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !valid_unique_rows(condition)
+    end
+    @test only(logger.logs).message ==
+        "Duplicate rows found in DiscreteControl / condition for (node_id = 1, compound_variable_id = 1, condition_id = 1, time = $(repr(time)))."
+
+    # The same variable can be listened to multiple times
+    variable = sorted_table!(
+        StructVector(
+            [
+                Schema.DiscreteControl.Variable(1, 1, 2, "level", missing, 0.0),
+                Schema.DiscreteControl.Variable(1, 1, 2, "level", missing, 1.0),
+            ]
+        ),
+    )
+    @test valid_unique_rows(variable)
+end
+
+@testitem "UserDemand parameters equal per demand priority" begin
+    using Logging
+    using Dates: DateTime
+    using StructArrays: StructVector
+    using Ribasim: Schema, valid_user_demand_parameters
+
+    static = StructVector(
+        [
+            Schema.UserDemand.Static(1, 1.0, 0.5, 0.0, Int32(1)),
+            Schema.UserDemand.Static(1, 2.0, 0.5, 0.0, Int32(2)),
+            Schema.UserDemand.Static(2, 1.0, 0.5, 0.0, Int32(1)),
+            Schema.UserDemand.Static(2, 2.0, 0.6, 0.0, Int32(2)),
+            Schema.UserDemand.Static(3, 1.0, 0.5, 0.0, Int32(1)),
+            Schema.UserDemand.Static(3, 2.0, 0.5, 1.0, Int32(2)),
+        ]
+    )
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !valid_user_demand_parameters(static)
+    end
+    @test length(logger.logs) == 2
+    @test logger.logs[1].message ==
+        "The return_factor and min_level of UserDemand #2 must be the same for all demand priorities."
+    @test logger.logs[2].message ==
+        "The return_factor and min_level of UserDemand #3 must be the same for all demand priorities."
+
+    # Values can change over time, as long as they are the same per time
+    t1, t2 = DateTime(2020), DateTime(2021)
+    time = StructVector(
+        [
+            Schema.UserDemand.Time(1, t1, 1.0, 0.5, 0.0, Int32(1)),
+            Schema.UserDemand.Time(1, t2, 1.0, 0.6, 0.0, Int32(1)),
+            Schema.UserDemand.Time(1, t1, 2.0, 0.5, 0.0, Int32(2)),
+            Schema.UserDemand.Time(1, t2, 2.0, 0.6, 0.0, Int32(2)),
+        ]
+    )
+    @test valid_user_demand_parameters(time)
+
+    time = StructVector(
+        [
+            Schema.UserDemand.Time(1, t1, 1.0, 0.5, 0.0, Int32(1)),
+            Schema.UserDemand.Time(1, t1, 2.0, 0.6, 0.0, Int32(2)),
+        ]
+    )
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !valid_user_demand_parameters(time)
+    end
+    @test only(logger.logs).message ==
+        "The return_factor and min_level of UserDemand #1 must be the same for all demand priorities."
 end

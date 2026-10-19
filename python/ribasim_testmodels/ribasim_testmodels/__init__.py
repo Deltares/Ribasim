@@ -72,6 +72,7 @@ from ribasim_testmodels.equations import (
     rating_curve_model,
 )
 from ribasim_testmodels.invalid import (
+    invalid_control_states_model,
     invalid_discrete_control_model,
     invalid_link_types_model,
     invalid_no_basin_model,
@@ -127,6 +128,7 @@ __all__ = [
     "flow_boundary_time_model",
     "flow_condition_model",
     "flow_demand_model",
+    "invalid_control_states_model",
     "invalid_discrete_control_model",
     "invalid_link_types_model",
     "invalid_no_basin_model",

@@ -413,7 +413,7 @@ class DiscreteControl(NodeModel):
     condition: TableModel[DiscreteControlConditionSchema] = Field(
         default_factory=TableModel[DiscreteControlConditionSchema],
         json_schema_extra={
-            "sort_keys": ["node_id", "compound_variable_id", "condition_id"]
+            "sort_keys": ["node_id", "compound_variable_id", "condition_id", "time"]
         },
     )
     logic: TableModel[DiscreteControlLogicSchema] = Field(

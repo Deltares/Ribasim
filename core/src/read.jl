@@ -115,7 +115,7 @@ function get_parameter_value(
         kwargs...,
     )::Tuple{T, Bool} where {T <: AbstractInterpolation}
     u, t = if from_static
-        val = coalesce(parameter[first(data_group)], default)
+        val = coalesce(parameter[last(data_group)], default)
         [val, val], [0.0, prevfloat(Inf)]
     else
         if !isempty(take_first_columns)
@@ -350,6 +350,9 @@ function parse_parameter_values!(
             @assert has_default
             param_vec[id.idx] = is_itp ? itp_default : default
         elseif in_static
+            # The initial value comes from the last row of the node, which is the row
+            # without control_state if present (missing sorts last), otherwise the row of
+            # the last control_state, see `valid_control_states`.
             val, valid =
                 get_parameter_value(static_group, static_parameter, data_args...; data_kwargs...)
             if !valid
@@ -451,8 +454,21 @@ parse_control_states!(
     ::Symbol,
 ) = nothing
 
-function initialize_control_mapping!(node::AbstractParameterNode, static::StructVector, config::Config)
-    isempty(static) && return
+"""
+Add the control states of each node to its control mapping. Returns whether errors were found.
+
+A node with multiple control states that is not controlled by DiscreteControl must have a
+static row without control_state, which sets its parameters. Otherwise the initial parameters
+come from the last control state.
+"""
+function initialize_control_mapping!(
+        node::AbstractParameterNode,
+        static::StructVector,
+        config::Config,
+        graph::MetaGraph,
+    )::Bool
+    isempty(static) && return false
+    errors = false
     has_alloc_controlled = hasproperty(first(static), :allocation_controlled) && config.experimental.allocation
     node_has_alloc_controlled = hasfield(typeof(node), :allocation_controlled)
     static_groups = IterTools.groupby(row -> row.node_id, static)
@@ -460,10 +476,14 @@ function initialize_control_mapping!(node::AbstractParameterNode, static::Struct
     for node_id in node.node_id
         in_static = isempty(static) ? false : (first(static_group).node_id == node_id)
         if in_static
+            n_control_states = 0
+            has_missing_control_state = false
             for control_state_group in
                 IterTools.groupby(row -> coalesce(row.control_state, nothing), static_group)
                 first_row = first(control_state_group)
                 control_state = first_row.control_state
+                n_control_states += 1
+                has_missing_control_state |= ismissing(control_state)
 
                 # Read allocation_controlled from static data if available
                 alloc_controlled = if has_alloc_controlled
@@ -482,13 +502,25 @@ function initialize_control_mapping!(node::AbstractParameterNode, static::Struct
                 node.control_mapping[(node_id, control_state)] =
                     ControlStateUpdate(; allocation_controlled = alloc_controlled)
             end
+            if n_control_states > 1 && !has_missing_control_state &&
+                    !is_discrete_controlled(graph, node_id)
+                @error "$node_id has multiple control states but is not controlled by DiscreteControl, add a row without control_state to define its parameters."
+                errors = true
+            end
             if static_idx[1]
                 static_group, static_idx = iterate(static_groups, static_idx)
             end
         end
     end
-    return
+    return errors
 end
+
+"Whether the node has a DiscreteControl node that sets its control state."
+is_discrete_controlled(graph::MetaGraph, node_id::NodeID)::Bool =
+    any(
+    id -> id.type == NodeType.DiscreteControl,
+    inneighbor_labels_type(graph, node_id, LinkType.control),
+)
 
 function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inflow = true)
     if inflow
@@ -503,10 +535,10 @@ function LinearResistance(db, config, graph)
 
     linear_resistance = LinearResistance(; node_id)
 
-    initialize_control_mapping!(linear_resistance, static, config)
+    errors = initialize_control_mapping!(linear_resistance, static, config, graph)
     set_inoutflow_links!(linear_resistance, graph)
     set_external_flow_demand_nodes!(linear_resistance, graph)
-    errors = parse_parameter!(linear_resistance, config, Val(:resistance); static)
+    errors |= parse_parameter!(linear_resistance, config, Val(:resistance); static)
     errors |=
         parse_parameter!(linear_resistance, config, Val(:max_flow_rate); static, default = Inf)
 
@@ -523,10 +555,10 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
 
     rating_curve = TabulatedRatingCurve(; node_id)
 
-    initialize_control_mapping!(rating_curve, static, config)
+    errors = initialize_control_mapping!(rating_curve, static, config, graph)
     set_inoutflow_links!(rating_curve, graph)
     set_external_flow_demand_nodes!(rating_curve, graph)
-    errors = parse_parameter!(
+    errors |= parse_parameter!(
         rating_curve,
         config,
         Val(:max_downstream_level);
@@ -642,10 +674,10 @@ function ManningResistance(db::DB, config::Config, graph::MetaGraph, basin::Basi
 
     manning_resistance = ManningResistance(; node_id)
 
-    initialize_control_mapping!(manning_resistance, static, config)
+    errors = initialize_control_mapping!(manning_resistance, static, config, graph)
     set_inoutflow_links!(manning_resistance, graph)
     set_external_flow_demand_nodes!(manning_resistance, graph)
-    errors = parse_parameter!(manning_resistance, config, Val(:length); static)
+    errors |= parse_parameter!(manning_resistance, config, Val(:length); static)
     errors |= parse_parameter!(manning_resistance, config, Val(:manning_n); static)
     errors |= parse_parameter!(manning_resistance, config, Val(:profile_width); static)
     errors |= parse_parameter!(manning_resistance, config, Val(:profile_slope); static)
@@ -746,12 +778,11 @@ function parse_pump_or_outlet_parameters!(
         node_id,
     )::Bool
 
-    initialize_control_mapping!(node, static, config)
+    errors = initialize_control_mapping!(node, static, config, graph)
     set_control_type!(node, graph)
     set_inoutflow_links!(node, graph)
     set_external_flow_demand_nodes!(node, graph)
 
-    errors = false
     # flow_rate can come from either static or time, and ends up in a different cache.
     # that is why we parse it once from static and store error_static and once from time and store error_time
     # It may be in either of them, so we parse them as optional parameters.
@@ -1050,33 +1081,20 @@ function get_threshold!(
         field = :threshold_high,
     )::Nothing
     (; node_id) = first(conditions_compound_variable)
-    errors = false
 
     for condition_group in
         IterTools.groupby(row -> row.condition_id, conditions_compound_variable)
         condition_group = StructVector(condition_group)
-
-        if !allunique(condition_group.time)
-            (; condition_id) = first(condition_group)
-            @error(
-                "Condition $condition_id for $node_id has multiple input rows with the same (possibly unspecified) timestamp."
-            )
-            errors = true
-        else
-            push_constant_interpolation!(
-                threshold,
-                field == :threshold_high ? condition_group.threshold_high :
-                    coalesce.(condition_group.threshold_low, condition_group.threshold_high),
-                seconds_since.(condition_group.time, starttime),
-                NodeID(:UserDemand, node_id, 0);
-                cyclic_time,
-            )
-        end
+        push_constant_interpolation!(
+            threshold,
+            field == :threshold_high ? condition_group.threshold_high :
+                coalesce.(condition_group.threshold_low, condition_group.threshold_high),
+            seconds_since.(condition_group.time, starttime),
+            NodeID(:UserDemand, node_id, 0);
+            cyclic_time,
+        )
     end
-
-    return if errors
-        error("Invalid conditions encountered for $node_id.")
-    end
+    return nothing
 end
 
 """
@@ -1313,7 +1331,7 @@ function ContinuousControl(db::DB, config::Config)::ContinuousControl
     return ContinuousControl(; node_id, compound_variable, controlled_variable, func)
 end
 
-function PidControl(db::DB, config::Config)
+function PidControl(db::DB, config::Config, graph::MetaGraph)
     static = load_structvector(db, config, Schema.PidControl.Static)
     time = load_structvector(db, config, Schema.PidControl.Time)
     node_id = get_node_ids(db, NodeType.PidControl)
@@ -1321,8 +1339,8 @@ function PidControl(db::DB, config::Config)
 
     pid_control = PidControl(; node_id)
 
-    initialize_control_mapping!(pid_control, static, config)
-    errors = parse_parameter!(
+    errors = initialize_control_mapping!(pid_control, static, config, graph)
+    errors |= parse_parameter!(
         pid_control,
         config,
         Val(:listen_node_id);
@@ -1479,7 +1497,9 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
         user_demand.inflow_link_allocated[i] = fill(Inf, n_links)
     end
     map!(id -> outflow_link(graph, id), user_demand.outflow_link, user_demand.node_id)
-    errors = parse_parameter!(
+    errors = !valid_user_demand_parameters(static)
+    errors |= !valid_user_demand_parameters(time)
+    errors |= parse_parameter!(
         user_demand,
         config,
         Val(:return_factor);
@@ -1808,7 +1828,7 @@ function Parameters(db::DB, config::Config)::Parameters
         junction = Junction(db),
         discrete_control = DiscreteControl(db, config, graph),
         continuous_control = ContinuousControl(db, config),
-        pid_control = PidControl(db, config),
+        pid_control = PidControl(db, config, graph),
         user_demand = UserDemand(db, config, graph),
         level_demand = LevelDemand(db, config, graph),
         flow_demand = FlowDemand(db, config, graph),
