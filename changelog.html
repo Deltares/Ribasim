@@ -325,6 +325,9 @@ ul.task-list li input[type="checkbox"] {
 <li>Large models initialize faster. <a href="https://github.com/Deltares/Ribasim/pull/3180">#3180</a></li>
 <li>Delwaq: <code>generate</code> now writes the substance and process specific input files to an <code>include</code> subfolder, so other water quality simulations can be set up by replacing these files. The boundary list <code>ribasim_bndlist.inc</code> is renamed to <code>include/B5_bndlist.inc</code>. <a href="https://github.com/Deltares/Ribasim/pull/3321">#3321</a></li>
 <li>Simulations are faster, especially for models with many Basins, and large models use multiple threads if Julia is started with them.</li>
+<li>Duplicate rows in input tables are now an error, for instance two rows for the same node and control state in a static table. <a href="https://github.com/Deltares/Ribasim/pull/3316">#3316</a></li>
+<li>A node with multiple control states that is not controlled by DiscreteControl needs a row without <code>control_state</code>, which defines its parameters. Nodes with multiple control states get their initial parameter values from the row without <code>control_state</code>, or else from the last control state. Before, time-interpolated parameters like Pump <code>min_flow_rate</code> used the first control state. <a href="https://github.com/Deltares/Ribasim/pull/3316">#3316</a></li>
+<li>UserDemand <code>return_factor</code> and <code>min_level</code> must be the same for all demand priorities of a node (at the same time). <a href="https://github.com/Deltares/Ribasim/pull/3316">#3316</a></li>
 </ul>
 </section>
 <section id="fixed" class="level3" data-number="1.1.3">
