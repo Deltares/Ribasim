@@ -1,10 +1,18 @@
 """Build a runnable Wflow Piave model from the HydroMT artifact data catalog."""
 
 from pathlib import Path
+from urllib.request import urlretrieve
 
 from hydromt_wflow import WflowSbmModel
 
 MODEL_ROOT = Path("models/wflow_piave")
+DATA_DIR = Path("models/data")
+
+# The artifact data catalog has no irrigated area map, so we use the one from the
+# hydromt_wflow water demand example, which covers the Piave (1 = irrigated).
+IRRIGATED_AREA_URL = "https://raw.githubusercontent.com/Deltares/hydromt_wflow/v1.1.0/examples/data/demand/irrigated_area.tif"
+# GlobCover 2009 classes containing cropland, see globcover_mapping_default.
+GLOBCOVER_CROPLAND_CLASSES = [11, 14, 20, 30]
 REGION = {
     "subbasin": [12.2051, 45.8331],
     "strord": 4,
@@ -28,6 +36,7 @@ CONSTANT_PARAMETERS = {
 
 def main() -> None:
     """Build and write the complete Wflow SBM model."""
+    irrigated_area_path = download(IRRIGATED_AREA_URL, DATA_DIR)
     model = WflowSbmModel(root=str(MODEL_ROOT), mode="w+", data_libs=["artifact_data"])
     model.build(
         steps=[
@@ -92,9 +101,26 @@ def main() -> None:
                 }
             },
             {"setup_constant_pars": CONSTANT_PARAMETERS},
+            {"setup_allocation_areas": {"waterareas_fn": "gadm_level2"}},
+            {
+                "setup_irrigation": {
+                    "irrigated_area_fn": str(irrigated_area_path),
+                    "irrigation_value": [1],
+                    "cropland_class": GLOBCOVER_CROPLAND_CLASSES,
+                }
+            },
         ]
     )
     migrate_config(MODEL_ROOT / "wflow_sbm.toml")
+
+
+def download(url: str, directory: Path) -> Path:
+    """Download a file to a directory, unless it is already there."""
+    path = directory / url.rsplit("/", 1)[-1]
+    if not path.exists():
+        directory.mkdir(parents=True, exist_ok=True)
+        urlretrieve(url, path)  # noqa: S310, only called with a fixed https URL
+    return path
 
 
 # hydromt_wflow 1.1.0 writes standard names that were changed on Wflow main.
