@@ -21,7 +21,6 @@ def invalid_qh_model() -> Model:
     """
     Invalid TabulatedRatingCurve Q(h) table.
 
-    - levels must be unique
     - flow_rate must start at 0
     - flow_rate must not be decreasing
     """
@@ -42,13 +41,41 @@ def invalid_qh_model() -> Model:
 
     trc = model.tabulated_rating_curve.add(
         Node(2, Point(1, 0)),
-        [tabulated_rating_curve.Static(level=[0, 0, 1], flow_rate=[1, 2, 1.5])],
+        [tabulated_rating_curve.Static(level=[0, 0.5, 1], flow_rate=[1, 2, 1.5])],
     )
 
     trm = model.terminal.add(Node(3, Point(3, 0)))
 
     model.link.add(bsn, trc)
     model.link.add(trc, trm)
+
+    return model
+
+
+def invalid_control_states_model() -> Model:
+    """Pump with multiple control states, without DiscreteControl or a row without control_state."""
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 12, 1),
+        crs="EPSG:28992",
+        use_validation=False,
+    )
+
+    bsn = model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.State(level=[1.0]),
+            basin.Profile(level=[0.0, 2.0], area=[100.0, 200.0]),
+        ],
+    )
+    pmp = model.pump.add(
+        Node(2, Point(1, 0)),
+        [pump.Static(flow_rate=[0.0, 1e-3], control_state=["off", "on"])],
+    )
+    trm = model.terminal.add(Node(3, Point(2, 0)))
+
+    model.link.add(bsn, pmp)
+    model.link.add(pmp, trm)
 
     return model
 

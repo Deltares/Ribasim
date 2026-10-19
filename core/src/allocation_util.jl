@@ -16,6 +16,19 @@ function set_variable_bounds!(
     return nothing
 end
 
+"""
+Give a container of variables with indices of type `K` a concrete type, also when it is empty.
+JuMP infers the types from the elements, so an empty container gets `Any` types. Then the code
+compiled for a model with for instance FlowDemand nodes can't be reused for a model without.
+"""
+function typed_variables(
+        variables::JuMP.Containers.SparseAxisArray,
+        ::Type{K},
+    )::JuMP.Containers.SparseAxisArray{JuMP.VariableRef} where {K <: Tuple}
+    data = OrderedDict{K, JuMP.VariableRef}(variables.data)
+    return JuMP.Containers.SparseAxisArray(data, variables.names)
+end
+
 function variable_sum(variables)
     return if isempty(variables)
         JuMP.AffExpr()

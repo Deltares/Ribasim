@@ -353,6 +353,7 @@ def test_sort(level_range, tmp_path):
         "node_id",
         "compound_variable_id",
         "condition_id",
+        "time",
     ]
     table.sort()
     assert table.df.iloc[0]["threshold_high"] == 5.0

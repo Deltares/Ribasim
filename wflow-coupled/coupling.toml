@@ -1,0 +1,5 @@
+# Paths are relative to this file.
+wflow_toml = "models/wflow_piave/wflow_sbm.toml"
+ribasim_toml = "models/ribasim_piave/ribasim.toml"
+mapping = "coupling.gpkg"
+diagnostics = "coupling_diagnostics.csv"

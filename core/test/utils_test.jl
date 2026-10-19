@@ -605,6 +605,46 @@ end
     @test_throws "not found" find_index(:d, s)
 end
 
+@testitem "@threaded" begin
+    using Ribasim: @threaded, parallel_foreach
+
+    # Each index is visited exactly once, also with more chunks than threads
+    for indices in (1:1, 1:7, 5:104, 1:1000), n_chunks in (1, 3, 16)
+        visits = zeros(Int, 1000)
+        parallel_foreach(i -> visits[i] += 1, indices, n_chunks)
+        @test visits == [i in indices ? 1 : 0 for i in 1:1000]
+    end
+
+    # `continue` skips to the next index, both in a plain loop and in parallel tasks
+    for min_chunk_size in (1, 1000)
+        visits = zeros(Int, 100)
+        @threaded min_chunk_size for i in 1:100
+            iseven(i) && continue
+            for j in 1:2
+                # A nested loop keeps its own `continue`
+                j == 1 && continue
+                visits[i] += 1
+            end
+        end
+        @test visits == [isodd(i) ? 1 : 0 for i in 1:100]
+    end
+
+    # An error in the first chunk, which runs on the calling task, is only thrown once the
+    # other chunks have finished
+    finished = zeros(Bool, 100)
+    @test_throws "error in first chunk" parallel_foreach(1:100, 4) do i
+        i == 1 && error("error in first chunk")
+        sleep(0.001)
+        finished[i] = true
+    end
+    @test all(finished[26:100])
+
+    # An error in another chunk is thrown as well
+    @test_throws "error in last chunk" parallel_foreach(1:100, 4) do i
+        i == 100 && error("error in last chunk")
+    end
+end
+
 @testitem "relaxed_root basic behavior" begin
     using Ribasim: relaxed_root
 
