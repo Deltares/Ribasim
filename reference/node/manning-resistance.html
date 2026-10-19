@@ -108,6 +108,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
+<script src="../../site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="../../site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="../../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
   <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
   <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
@@ -440,7 +443,11 @@ window.Quarto = {
   <ul class="collapse">
   <li><a href="#static" id="toc-static" class="nav-link" data-scroll-target="#static"><span class="header-section-number">1.1</span> Static</a></li>
   </ul></li>
-  <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">2</span> Equations</a></li>
+  <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">2</span> Equations</a>
+  <ul class="collapse">
+  <li><a href="#critical-flow" id="toc-critical-flow" class="nav-link" data-scroll-target="#critical-flow"><span class="header-section-number">2.1</span> Critical flow</a></li>
+  <li><a href="#relaxation-around-zero" id="toc-relaxation-around-zero" class="nav-link" data-scroll-target="#relaxation-around-zero"><span class="header-section-number">2.2</span> Relaxation around zero</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -509,7 +516,7 @@ window.Quarto = {
 <td>profile_width</td>
 <td>Float64</td>
 <td><span class="math inline">\(\text{m}\)</span></td>
-<td>positive</td>
+<td>non-negative, not zero together with profile_slope</td>
 </tr>
 <tr class="odd">
 <td>profile_slope</td>
@@ -582,9 +589,9 @@ Q = \frac{A}{n} R_h^\frac{2}{3} \sqrt{S_f}
 \]</span></p>
 <p>Where:</p>
 <ul>
-<li><span class="math inline">\(A\)</span> is the <strong>representative</strong> area.</li>
-<li><span class="math inline">\(R_h\)</span> is the <strong>representative</strong> wetted radius.</li>
-<li><span class="math inline">\(S_f\)</span> is the <strong>representative</strong> friction slope.</li>
+<li><span class="math inline">\(A\)</span> is the cross-sectional area.</li>
+<li><span class="math inline">\(R_h\)</span> is the hydraulic radius <span class="math inline">\(A / P\)</span>, with <span class="math inline">\(P\)</span> the wetted perimeter.</li>
+<li><span class="math inline">\(S_f\)</span> is the friction slope.</li>
 <li><span class="math inline">\(n\)</span> is Manning’s roughness coefficient.</li>
 </ul>
 <p>We can rewrite to express <span class="math inline">\(S_f\)</span> in terms of Q:</p>
@@ -603,10 +610,70 @@ h_a = h_b + Q^2 \frac{n^2}{A^2 R_h^{4/3}} L
 <p><span class="math display">\[
 Q = \textrm{sign}(\Delta h) \frac{A}{n} R_h^{2/3}\sqrt{\frac{|\Delta h|}{L} }
 \]</span></p>
-<p>The <span class="math inline">\(\textrm{sign}(\Delta h)\)</span> term causes the direction of the flow to reverse if the head in basin <span class="math inline">\(b\)</span> is larger than in basin <span class="math inline">\(a\)</span>.</p>
-<p>This expression however has a derivative which tends to <span class="math inline">\(\infty\)</span> as <span class="math inline">\(\Delta h\)</span> tends to <span class="math inline">\(0\)</span>, which can lead to instabilities in simulation. Therefore we use the modified expression</p>
+<p>The <span class="math inline">\(\textrm{sign}(\Delta h)\)</span> term causes the direction of the flow to reverse if the head in basin <span class="math inline">\(b\)</span> is larger than in basin <span class="math inline">\(a\)</span>. Below we call the Basin the water comes from the upstream Basin, with level <span class="math inline">\(h_\text{up}\)</span> and bottom <span class="math inline">\(z_\text{up}\)</span>, and the other one the downstream Basin, with level <span class="math inline">\(h_\text{dn}\)</span> and bottom <span class="math inline">\(z_\text{dn}\)</span>.</p>
+<p>The factor <span class="math inline">\(\frac{A}{n} R_h^{2/3}\)</span> is evaluated at the water depth of each end of the reach, and the two values are averaged. Since the upstream depth is always included, a Basin can receive water after it has gone dry.</p>
+<section id="critical-flow" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="critical-flow"><span class="header-section-number">2.1</span> Critical flow</h2>
+<p>The Gauckler-Manning formula describes uniform flow in a channel. On its own it has no upper bound: when the downstream Basin lies far below the upstream one, it gives a supercritical flow that keeps growing as the downstream Basin fills. Two limits from open channel hydraulics are therefore added, both based on the critical depth.</p>
+<p>For a specific energy <span class="math inline">\(E\)</span> the critical depth <span class="math inline">\(d_c\)</span> is the depth at which the flow is maximal, where</p>
 <p><span class="math display">\[
-Q = \phi\frac{A}{n} R_h^{2/3}s\left(\frac{\Delta h}{L}; x_0\right),
+d_c + \frac{A(d_c)}{2 T(d_c)} = E
+\]</span></p>
+<p>with <span class="math inline">\(T\)</span> the width of the water surface. For the trapezoidal profile this is the positive root of</p>
+<p><span class="math display">\[
+5 s\, d_c^2 + (3 w - 4 s E)\, d_c - 2 w E = 0,
+\]</span></p>
+<p>which is <span class="math inline">\(\frac{2}{3}E\)</span> for a rectangle and <span class="math inline">\(\frac{4}{5}E\)</span> for a triangle. The corresponding critical flow is</p>
+<p><span class="math display">\[
+Q_c = A(d_c) \sqrt{\frac{g A(d_c)}{T(d_c)}}.
+\]</span></p>
+<p>The first limit is on the downstream water level. At a free overfall the water surface sits at critical depth, not at the level of whatever Basin lies below, so the downstream depth used in the formula is</p>
+<p><span class="math display">\[
+d_\text{dn} = \max\left(h_\text{dn} - z_\text{dn},\; d_c(h_\text{up} - z_\text{dn})\right)
+\]</span></p>
+<p>and the head difference that drives the flow is <span class="math inline">\(\Delta h = h_\text{up} - (z_\text{dn} + d_\text{dn})\)</span>, which lies between <span class="math inline">\(0\)</span> and <span class="math inline">\(h_\text{up} - h_\text{dn}\)</span>. As a result the flow into an empty or nearly empty downstream Basin does not depend on how far below the reach that Basin is.</p>
+<p>The second limit is on the flow itself. The flow is controlled at the sill, the cross-section at the higher of the two bottoms <span class="math inline">\(z_\text{sill} = \max(z_\text{up}, z_\text{dn})\)</span>, with the head <span class="math inline">\(E = h_\text{up} - z_\text{sill}\)</span> above it. With a depth <span class="math inline">\(d\)</span> over the sill and the velocity head there fully lost, the most that can pass the sill is</p>
+<p><span class="math display">\[
+Q_s = A(d) \sqrt{2 g \left(E - d\right)}, \qquad d = \max\left(h_\text{dn} - z_\text{sill},\; d_c(E)\right).
+\]</span></p>
+<p>While the downstream level is below <span class="math inline">\(z_\text{sill} + d_c\)</span> the sill is free, <span class="math inline">\(d = d_c\)</span>, and <span class="math inline">\(Q_s\)</span> is the critical flow <span class="math inline">\(Q_c(E)\)</span>, since <span class="math inline">\(E - d_c = A / (2T)\)</span>. When the downstream level rises above it the sill is drowned, and <span class="math inline">\(Q_s = A(d) \sqrt{2 g (h_\text{up} - h_\text{dn})}\)</span> goes to zero as the levels meet. The critical depth is the depth at which <span class="math inline">\(A(d)\sqrt{2g(E - d)}\)</span> is maximal, so <span class="math inline">\(Q_s\)</span> and its derivative are continuous where the sill drowns.</p>
+<p>A cap that does not go to zero with the level difference, such as the critical flow alone, would make the flow jump between <span class="math inline">\(+Q_c\)</span> and <span class="math inline">\(-Q_c\)</span> when the levels cross. That happens when the Manning flow is large for a tiny level difference, for instance next to a Basin whose profile reaches far below the sill.</p>
+<p>The diagram below shows how the two flows are computed and combined.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart TD
+    L["Basin levels h_up, h_dn"] --&gt; M
+    L --&gt; S
+    subgraph M["Manning flow Q_m"]
+        M1["downstream depth at least the critical depth"] --&gt; M2["Q_m from the Gauckler-Manning formula"]
+    end
+    subgraph S["Sill flow Q_s at the higher bottom"]
+        S0{"h_dn below z_sill + d_c?"}
+        S0 -- "yes: free sill" --&gt; S1["Q_s = critical flow"]
+        S0 -- "no: drowned sill" --&gt; S2["Q_s = A(d) √(2 g Δh), zero at equal levels"]
+    end
+    M --&gt; Q["Q = smooth minimum of Q_m and Q_s"]
+    S --&gt; Q
+</pre>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<p>The Manning flow <span class="math inline">\(Q_m\)</span> and the sill flow <span class="math inline">\(Q_s\)</span> are combined with a smooth minimum</p>
+<p><span class="math display">\[
+Q = \frac{Q_\text{lo}}{\left(1 + (Q_\text{lo} / Q_\text{hi})^{16}\right)^{1/16}},
+\]</span></p>
+<p>with <span class="math inline">\(Q_\text{lo}\)</span> and <span class="math inline">\(Q_\text{hi}\)</span> the smaller and larger of the two. The exponent is large enough that the reduction is below <span class="math inline">\(0.2\%\)</span> as long as <span class="math inline">\(Q_m / Q_s \le 0.8\)</span>, so the Manning flow is unaffected where friction controls the flow. For short reaches and wide, deep profiles the sill flow can be the smaller of the two also for subcritical flow; then the level difference needed to pass a flow <span class="math inline">\(Q\)</span> is at least the velocity head <span class="math inline">\(Q^2 / (2 g A^2)\)</span> at the sill.</p>
+</section>
+<section id="relaxation-around-zero" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="relaxation-around-zero"><span class="header-section-number">2.2</span> Relaxation around zero</h2>
+<p>The expression <span class="math inline">\(\sqrt{\Delta h}\)</span> has a derivative which tends to <span class="math inline">\(\infty\)</span> as <span class="math inline">\(\Delta h\)</span> tends to <span class="math inline">\(0\)</span>, which can lead to instabilities in simulation. Therefore we use the modified expression</p>
+<p><span class="math display">\[
+Q_m = \overline{\frac{A}{n} R_h^{2/3}}\; s\left(\frac{\Delta h}{L}; x_0\right),
 \]</span></p>
 <p>where <span class="math inline">\(s\)</span> is a relaxed square root function:</p>
 <p><span class="math display">\[
@@ -614,20 +681,13 @@ s(x; x_0)
 =
 \begin{align}
   \begin{cases}
-    \frac{x}{4\sqrt{p}}\left(5 - (\frac{x}{p})^2\right) &amp;\text{ if } |x| &lt; x_0 \\
+    \frac{x}{4\sqrt{x_0}}\left(5 - (\frac{x}{x_0})^2\right) &amp;\text{ if } |x| &lt; x_0 \\
     \textrm{sign}(x)\sqrt{|x|} &amp;\text{ if } |x| \ge x_0
   \end{cases}
 \end{align}
 \]</span></p>
-<p>And <span class="math inline">\(x_0\)</span> is calculated based on the Reynolds number, such that the smooth relaxation starts when the velocity of the flow starts to leave the fully turbulent regime (<span class="math inline">\(\text{Re}&lt;2000\)</span>):</p>
-<p><span class="math display">\[
-\text{Re} = \frac{Q}{\nu R_h} = \frac{A \sqrt{\Delta h / L}}{n \nu \sqrt[3]{R_h}}
-\]</span></p>
-<p>Which can be rewritten:</p>
-<p><span class="math display">\[
-x_0 = \left( \text{Re}_0 \frac{ n \nu \sqrt[3]{R_h}}{A} \right)^2
-\]</span></p>
-<div id="d96daa02" class="cell" data-execution_count="1">
+<p>with <span class="math inline">\(x_0 = 10^{-5}\)</span>. This is a numerical regularisation, not a physical laminar transition: for real channels the transition to laminar flow lies many orders of magnitude lower. Note that for a reach of length <span class="math inline">\(L\)</span> the relaxation is active for head differences below <span class="math inline">\(x_0 L\)</span>, so for a 1 km reach below 1 cm, and in that region the flow is smaller than the Gauckler-Manning formula gives. The square root in the sill flow is relaxed in the same way, as <span class="math inline">\(\sqrt{2 g L}\, s\left(\frac{E - d}{L}; x_0\right)\)</span>, so that for nearly equal levels the Manning flow and the sill flow are both proportional to <span class="math inline">\(s(\Delta h / L; x_0)\)</span> and their minimum is as smooth as each of them.</p>
+<div id="1d5bc2f0" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
@@ -641,18 +701,16 @@ x_0 = \left( \text{Re}_0 \frac{ n \nu \sqrt[3]{R_h}}{A} \right)^2
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.sign(x)<span class="op">*</span>np.sqrt(np.<span class="bu">abs</span>(x))</span>
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>threshold <span class="op">=</span> <span class="fl">1e-5</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> np.linspace(<span class="op">-</span><span class="fl">0.0025</span>, <span class="fl">0.0025</span>, <span class="dv">100</span>)</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> np.linspace(<span class="op">-</span><span class="fl">2.5</span><span class="op">*</span>threshold, <span class="fl">2.5</span><span class="op">*</span>threshold, <span class="dv">100</span>)</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> np.linspace(<span class="op">-</span><span class="fl">2.5</span><span class="op">*</span>threshold, <span class="fl">2.5</span><span class="op">*</span>threshold, <span class="dv">100</span>)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots()</span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots()</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>y_o <span class="op">=</span> np.sign(x)<span class="op">*</span>np.sqrt(np.<span class="bu">abs</span>(x))</span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>y_s <span class="op">=</span> [s(x_, threshold) <span class="cf">for</span> x_ <span class="kw">in</span> x]</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>ax.plot(x, y_o, ls <span class="op">=</span> <span class="st">":"</span>, label <span class="op">=</span> <span class="vs">r"sign</span><span class="dv">$</span><span class="kw">(</span><span class="vs">x</span><span class="kw">)</span><span class="dv">\s</span><span class="vs">qrt{</span><span class="cf">|</span><span class="vs">x</span><span class="cf">|</span><span class="vs">}</span><span class="dv">$</span><span class="vs">"</span>)</span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>ax.plot(x, y_s, color <span class="op">=</span> <span class="st">"C0"</span>, label <span class="op">=</span> <span class="vs">r"</span><span class="dv">$</span><span class="vs">s</span><span class="er">\</span><span class="vs">left</span><span class="kw">(</span><span class="vs">x; 10</span><span class="dv">^</span><span class="vs">{-5} </span><span class="ch">\r</span><span class="vs">ight</span><span class="kw">)</span><span class="dv">$</span><span class="vs">"</span>)</span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>ax.legend()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>y_o <span class="op">=</span> np.sign(x)<span class="op">*</span>np.sqrt(np.<span class="bu">abs</span>(x))</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>y_s <span class="op">=</span> [s(x_, threshold) <span class="cf">for</span> x_ <span class="kw">in</span> x]</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>ax.plot(x, y_o, ls <span class="op">=</span> <span class="st">":"</span>, label <span class="op">=</span> <span class="vs">r"sign</span><span class="dv">$</span><span class="kw">(</span><span class="vs">x</span><span class="kw">)</span><span class="dv">\s</span><span class="vs">qrt{</span><span class="cf">|</span><span class="vs">x</span><span class="cf">|</span><span class="vs">}</span><span class="dv">$</span><span class="vs">"</span>)</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>ax.plot(x, y_s, color <span class="op">=</span> <span class="st">"C0"</span>, label <span class="op">=</span> <span class="vs">r"</span><span class="dv">$</span><span class="vs">s</span><span class="er">\</span><span class="vs">left</span><span class="kw">(</span><span class="vs">x; 10</span><span class="dv">^</span><span class="vs">{-5} </span><span class="ch">\r</span><span class="vs">ight</span><span class="kw">)</span><span class="dv">$</span><span class="vs">"</span>)</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>ax.legend()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-display">
 <div>
@@ -662,7 +720,7 @@ x_0 = \left( \text{Re}_0 \frac{ n \nu \sqrt[3]{R_h}}{A} \right)^2
 </div>
 </div>
 </div>
-<p>and <span class="math inline">\(\phi\)</span> is the reduction factor which makes the flow go smoothly to <span class="math inline">\(0\)</span> as the upstream storage (as determined by the flow direction) becomes smaller than the equivalent of a water depth of <span class="math inline">\(10 \;\text{cm}\)</span> (change with solver setting <code>depth_threshold</code>).</p>
+<p>Finally the flow <span class="math inline">\(Q\)</span> is multiplied by the reduction factor <span class="math inline">\(\phi\)</span>, which makes the flow go smoothly to <span class="math inline">\(0\)</span> as the upstream storage (as determined by the flow direction) becomes smaller than the equivalent of a water depth of <span class="math inline">\(10 \;\text{cm}\)</span> (change with solver setting <code>depth_threshold</code>).</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -673,8 +731,7 @@ Note
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>The computation of <span class="math inline">\(S_f\)</span> is not exact: we base it on a representative area and hydraulic radius, rather than integrating <span class="math inline">\(S_f\)</span> along the length of a reach. Direct analytic solutions exist for e.g.&nbsp;parabolic profiles (Tolkmitt), but other profiles requires relatively complicated approaches (such as approximating the profile with a polynomial).</p>
-<p>We use the average value of the cross-sectional area, the average value of the water depth, and the average value of the hydraulic radius to compute a friction slope. The size of the resulting error will depend on the water depth difference between the upstream and downstream Basin.</p>
+<p>The computation of <span class="math inline">\(S_f\)</span> is not exact: we base it on the average of the two ends of the reach rather than integrating <span class="math inline">\(S_f\)</span> along the length of a reach, as in the standard step method with a single step. The size of the resulting error will depend on the water depth difference between the upstream and downstream Basin.</p>
 </div>
 </div>
 <p>The cross sectional area for a trapezoidal or rectangular profile:</p>
@@ -688,10 +745,15 @@ A = w d + \frac{\Delta y}{\Delta z} d^2
 </ul>
 <p>Accordingly, the wetted perimeter is:</p>
 <p><span class="math display">\[
-B = w + 2 d \sqrt{\left(\frac{\Delta y}{\Delta z}\right)^2 + 1}
+P = w + 2 d \sqrt{\left(\frac{\Delta y}{\Delta z}\right)^2 + 1}
+\]</span></p>
+<p>and the width of the water surface is:</p>
+<p><span class="math display">\[
+T = w + 2 d \frac{\Delta y}{\Delta z}
 \]</span></p>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->
