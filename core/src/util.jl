@@ -690,13 +690,23 @@ end
 
 function set_flow_ids!(inflow_id, outflow_id, node::AbstractParameterNode)
     inflow_id .= [link.link[1] for link in node.inflow_link]
-    outflow_id .= [link.link[2] for link in node.outflow_link]
+    set_outflow_ids!(outflow_id, node.outflow_link)
+    return nothing
+end
+
+function set_outflow_ids!(outflow_id, outflow_link::Vector{LinkMetadata})
+    map!(link -> OutflowData(; outflow_link = link), outflow_id, outflow_link)
+    return nothing
+end
+
+function set_outflow_ids!(outflow_id, outflow_link::Vector{OutflowData})
+    outflow_id .= outflow_link
     return nothing
 end
 
 function set_flow_ids!(inflow_id, outflow_id, user_demand::UserDemand)
     inflow_id .= [link.link[1] for link in vcat(user_demand.inflow_links...)]
-    outflow_id .= [link.link[2] for link in user_demand.outflow_link]
+    set_outflow_ids!(outflow_id, user_demand.outflow_link)
     return nothing
 end
 
@@ -704,7 +714,7 @@ function set_flow_ids!(inflow_id, outflow_id, basin::Basin)
     (; node_id) = basin
     inflow_id.evaporation .= node_id
     inflow_id.infiltration .= node_id
-    outflow_id .= NodeID(NodeType.Terminal, 0, 0)
+    fill!(outflow_id, OutflowData())
     return nothing
 end
 

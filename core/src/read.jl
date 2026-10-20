@@ -431,10 +431,34 @@ end
 parse_control_states!(::BasinForcing, args...) = nothing
 
 function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inflow = true)
-    if inflow
-        map!(node_id -> inflow_link(graph, node_id), node.inflow_link, node.node_id)
+    inflow && map!(node_id -> inflow_link(graph, node_id), node.inflow_link, node.node_id)
+    set_outflow_links!(node, node.outflow_link, graph)
+    return nothing
+end
+
+function set_outflow_links!(
+        node::AbstractParameterNode,
+        outflow_link_::Vector{LinkMetadata},
+        graph::MetaGraph
+    )
+    map!(node_id -> outflow_link(graph, node_id), outflow_link_, node.node_id)
+    return nothing
+end
+
+function set_outflow_links!(
+        node::AbstractParameterNode,
+        outflow_link::Vector{OutflowData},
+        graph::MetaGraph
+    )
+    for id in node.node_id
+        outflow_links = get_outflow_links(graph, id)
+        outflow_link[id.idx] = if any(link.link[2].type == NodeType.PassDown for link in outflow_links)
+            OutflowData(; outflow_links, to_passdown = true)
+        else
+            OutflowData(; outflow_link = only(outflow_links))
+        end
     end
-    return map!(node_id -> outflow_link(graph, node_id), node.outflow_link, node.node_id)
+    return nothing
 end
 
 function LinearResistance(db, config, graph)
@@ -1411,7 +1435,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
             user_demand.inflow_link_offsets[i] + n_links
         user_demand.inflow_link_allocated[i] = fill(Inf, n_links)
     end
-    map!(id -> outflow_link(graph, id), user_demand.outflow_link, user_demand.node_id)
+    set_inoutflow_links!(user_demand, graph; inflow = false)
     errors = parse_parameter!(
         user_demand,
         config,

@@ -441,6 +441,12 @@ link: (from node ID, to node ID)
     link::Tuple{NodeID, NodeID}
 end
 
+@kwdef struct OutflowData
+    to_passdown::Bool = false
+    outflow_link::LinkMetadata = LinkMetadata(0, LinkType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
+    outflow_links::Vector{LinkMetadata} = []
+end
+
 Base.length(::LinkMetadata) = 1
 Base.isless(link_1::LinkMetadata, link_2::LinkMetadata) = link_1.id < link_2.id
 
@@ -652,7 +658,7 @@ allocation_controlled: whether this TabulatedRatingCurve is controlled by alloca
 @kwdef struct TabulatedRatingCurve <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    outflow_link::Vector{OutflowData} = Vector{OutflowData}(undef, length(node_id))
     max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
     interpolations::Vector{ScalarPCHIPInterpolation} = ScalarLinearInterpolation[]
     current_interpolation_index::Vector{IndexLookup} = IndexLookup[]
@@ -826,7 +832,7 @@ flow_demand_id: connected flow demand node if applicable
 @kwdef struct Pump <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    outflow_link::Vector{OutflowData} = Vector{OutflowData}(undef, length(node_id))
     flow_rate::Vector{Float64} = fill(NaN, length(node_id))
     time_dependent_flow_rate::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
@@ -866,7 +872,7 @@ flow_demand_id: connected flow demand node if applicable
 @kwdef struct Outlet <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    outflow_link::Vector{OutflowData} = Vector{OutflowData}(undef, length(node_id))
     flow_rate::Vector{Float64} = fill(NaN, length(node_id))
     time_dependent_flow_rate::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
@@ -1122,7 +1128,7 @@ in_pass_down_subgraph: whether the UserDemand node is part of one of the PassDow
     inflow_links::Vector{Vector{LinkMetadata}} = [LinkMetadata[] for _ in node_id]
     inflow_link_offsets::Vector{Int} = zeros(Int, length(node_id) + 1)
     inflow_link_allocated::Vector{Vector{Float64}} = [Float64[] for _ in node_id]
-    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    outflow_link::Vector{OutflowData} = Vector{OutflowData}(undef, length(node_id))
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
     demand::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
@@ -1335,7 +1341,7 @@ the object itself is not.
     max_depth::Float64
     # Per state the inflow, outflow and self id associated with that state (if they exist)
     inflow_id::FlowCVector{NodeID}
-    outflow_id::FlowCVector{NodeID}
+    outflow_id::FlowCVector{OutflowData}
     state_id::FlowCVector{NodeID}
     # The up- and downlink storage per flow
     storage_uplink::FlowCVector{Float64} = similar(inflow_id, Float64)
