@@ -80,7 +80,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-c4c5be523477798eee25f778810fffa4.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-3d5ac159a77d1826e09626a1d1105a20.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -1595,7 +1595,7 @@ Note
 </section>
 <section id="allocation-timestep-selection" class="level2" data-number="12.3">
 <h2 data-number="12.3" class="anchored" data-anchor-id="allocation-timestep-selection"><span class="header-section-number">12.3</span> Allocation Timestep Selection</h2>
-<p>By default the allocation timestep <span class="math inline">\(\Delta t_{\text{allocation}}\)</span> is determined adaptively from bounds on the linearization errors, see <a href="../concept/allocation.html#sec-adaptive-timestepping">Adaptive timestepping</a> and <code>compute_adaptive_allocation_Δt</code>. It can be overridden with a fixed value using the <code>allocation.dt</code> <a href="../reference/usage.html#sec-allocation-settings">configuration setting</a>. The trade-off is:</p>
+<p>By default the allocation timestep <span class="math inline">\(\Delta t_{\text{allocation}}\)</span> within an intervention interval is adapted to the success of the optimization, see <a href="../concept/allocation.html#sec-adaptive-timestepping">Adaptive timestepping</a> and <code>update_allocation_until!</code>. It can be overridden with a fixed value using the <code>allocation.dt</code> <a href="../reference/usage.html#sec-allocation-settings">configuration setting</a>. The trade-off is:</p>
 <ul>
 <li><strong>Too small</strong>: Frequent optimization overhead, linearization always valid</li>
 <li><strong>Too large</strong>: Linearization may be inaccurate, less responsive to changes</li>

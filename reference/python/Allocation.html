@@ -78,7 +78,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-c4c5be523477798eee25f778810fffa4.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-3d5ac159a77d1826e09626a1d1105a20.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -207,8 +207,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <table class="caption-top table">
 <colgroup>
 <col style="width: 10%">
-<col style="width: 9%">
-<col style="width: 79%">
+<col style="width: 8%">
+<col style="width: 80%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -219,24 +219,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td>dt</td>
-<td>(float, optional)</td>
-<td>The simulated time in seconds between successive allocation calls. If not provided, adaptive timestepping is used. When provided, this acts as a fixed timestep.</td>
+<td>intervention_interval</td>
+<td>float</td>
+<td>Interval in seconds at which allocation results are passed to the physical layer, representing human intervention (Optional, defaults to 86400.0)</td>
 </tr>
 <tr class="even">
-<td>reltol_linearization</td>
-<td>float</td>
-<td>Relative tolerance for linearization errors of basin profiles and connector node Q(h) relationships (Optional, defaults to 0.01)</td>
+<td>dt</td>
+<td>(float, optional)</td>
+<td>Fixed allocation timestep in seconds within an intervention interval. If not provided, adaptive timestepping is used. Values above <code>intervention_interval</code> are reduced to it.</td>
 </tr>
 <tr class="odd">
 <td>dtmin</td>
 <td>float</td>
-<td>Minimum allocation timestep in seconds for adaptive timestepping (Optional, defaults to 3600.0)</td>
+<td>Minimum allocation timestep in seconds for adaptive timestepping (Optional, defaults to 3600.0). Values above <code>intervention_interval</code> are reduced to it.</td>
 </tr>
 <tr class="even">
 <td>dtmax</td>
 <td>float</td>
-<td>Maximum allocation timestep in seconds for adaptive timestepping, typically the human intervention interval (Optional, defaults to 86400.0)</td>
+<td>Maximum allocation timestep in seconds for adaptive timestepping (Optional, defaults to 86400.0). Values above <code>intervention_interval</code> are reduced to it.</td>
 </tr>
 <tr class="odd">
 <td>route_priority</td>

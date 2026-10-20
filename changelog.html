@@ -45,7 +45,7 @@ ul.task-list li input[type="checkbox"] {
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-c4c5be523477798eee25f778810fffa4.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-3d5ac159a77d1826e09626a1d1105a20.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -194,6 +194,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#added" id="toc-added" class="nav-link" data-scroll-target="#added"><span class="header-section-number">1.1.1</span> Added</a></li>
   <li><a href="#changed" id="toc-changed" class="nav-link" data-scroll-target="#changed"><span class="header-section-number">1.1.2</span> Changed</a></li>
   <li><a href="#fixed" id="toc-fixed" class="nav-link" data-scroll-target="#fixed"><span class="header-section-number">1.1.3</span> Fixed</a></li>
+  <li><a href="#deprecated" id="toc-deprecated" class="nav-link" data-scroll-target="#deprecated"><span class="header-section-number">1.1.4</span> Deprecated</a></li>
   </ul></li>
   <li><a href="#v2026.1.2---2026-06-16" id="toc-v2026.1.2---2026-06-16" class="nav-link" data-scroll-target="#v2026.1.2---2026-06-16"><span class="header-section-number">1.2</span> [v2026.1.2] - 2026-06-16</a>
   <ul class="collapse">
@@ -325,6 +326,10 @@ ul.task-list li input[type="checkbox"] {
 <li>Large models initialize faster. <a href="https://github.com/Deltares/Ribasim/pull/3180">#3180</a></li>
 <li>Delwaq: <code>generate</code> now writes the substance and process specific input files to an <code>include</code> subfolder, so other water quality simulations can be set up by replacing these files. The boundary list <code>ribasim_bndlist.inc</code> is renamed to <code>include/B5_bndlist.inc</code>. <a href="https://github.com/Deltares/Ribasim/pull/3321">#3321</a></li>
 <li>Simulations are faster, especially for models with many Basins, and large models use multiple threads if Julia is started with them.</li>
+<li>Allocation: The adaptive timestep is now controlled by the success of the optimization. A failed optimization is retried with half the timestep down to <code>allocation.dtmin</code>, and every successful one doubles the timestep up to <code>allocation.dtmax</code>.</li>
+<li>Allocation: Allocation passes its results to the physical layer at a fixed <code>allocation.intervention_interval</code>, representing human intervention, or at every BMI <code>update_until</code> call. Within an intervention interval allocation takes timesteps of its own, and the physical layer uses the time-averaged results. <code>allocation.dt</code> now sets a fixed allocation timestep within the intervention interval. The allocation output is written per intervention interval, or per allocation timestep if <code>solver.saveat</code> is 0.</li>
+<li>Allocation: <code>allocation.dt</code>, <code>allocation.dtmin</code> and <code>allocation.dtmax</code> are limited to <code>allocation.intervention_interval</code> (default 86400 s). Larger values, such as a multi-day <code>dt</code> or <code>dtmin</code> from earlier versions, are reduced to it with a warning; increase <code>intervention_interval</code> to keep a longer allocation timestep.</li>
+<li>Allocation: The simulation now stops when the allocation problem is infeasible, also when the infeasibility analysis finds the problem feasible without its objectives.</li>
 <li>Duplicate rows in input tables are now an error, for instance two rows for the same node and control state in a static table. <a href="https://github.com/Deltares/Ribasim/pull/3316">#3316</a></li>
 <li>A node with multiple control states that is not controlled by DiscreteControl needs a row without <code>control_state</code>, which defines its parameters. Nodes with multiple control states get their initial parameter values from the row without <code>control_state</code>, or else from the last control state. Before, time-interpolated parameters like Pump <code>min_flow_rate</code> used the first control state. <a href="https://github.com/Deltares/Ribasim/pull/3316">#3316</a></li>
 <li>UserDemand <code>return_factor</code> and <code>min_level</code> must be the same for all demand priorities of a node (at the same time). <a href="https://github.com/Deltares/Ribasim/pull/3316">#3316</a></li>
@@ -333,6 +338,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="fixed" class="level3" data-number="1.1.3">
 <h3 data-number="1.1.3" class="anchored" data-anchor-id="fixed"><span class="header-section-number">1.1.3</span> Fixed</h3>
 <ul>
+<li>Allocation: Remove the Basin storage change upper bound and the flow bounds derived from it, which only existed for numerical reasons and could make the optimization problem infeasible. The flow of allocation controlled TabulatedRatingCurves is now bounded by its linearized Q(h) relation instead.</li>
 <li>Allocation: Normalize LevelDemand fairness constraints by the current mean Basin area per demand priority, improving numerical conditioning for large Basins.</li>
 <li>Allocation: Use a deterministic minimum-inlet-flow tie-break when collecting secondary-network demands from the primary network.</li>
 <li>Allocation: Fix the <code>low_storage_factor</code> being applied twice for non-allocation-controlled Pump and Outlet nodes (once via the physical layer’s flow rate, once via the allocation <code>low_storage_factor</code> decision variable), which made their flows overly conservative during low storage. Pump and Outlet now go through the same linearized-connector-node mechanism as LinearResistance, ManningResistance and TabulatedRatingCurve, so <code>low_storage_factor</code> uniformly governs the low-storage reduction of every connector node type instead of being partly baked into a stale physical-layer scalar.</li>
@@ -346,6 +352,12 @@ ul.task-list li input[type="checkbox"] {
 <li>Python: Removing an external table no longer leaves a missing-file reference in the model configuration. <a href="https://github.com/Deltares/Ribasim/pull/3214">#3214</a></li>
 <li>Delwaq: Reduce memory use when generating and parsing large results. <a href="https://github.com/Deltares/Ribasim/pull/3132">#3132</a> <a href="https://github.com/Deltares/Ribasim/pull/3248">#3248</a></li>
 <li>Simulations no longer abort with a tiny timestep when a Basin empties. Outflows now stop at a depth of 1% of <code>solver.depth_threshold</code> (1 mm by default), so an empty Basin keeps a small positive storage that floating point rounding cannot make negative, and the step limiter keeps evaporation and infiltration from overshooting it.</li>
+</ul>
+</section>
+<section id="deprecated" class="level3" data-number="1.1.4">
+<h3 data-number="1.1.4" class="anchored" data-anchor-id="deprecated"><span class="header-section-number">1.1.4</span> Deprecated</h3>
+<ul>
+<li>Allocation: The <code>allocation.reltol_linearization</code> setting is no longer used by the adaptive timestepping. It is still accepted in the TOML for compatibility, but ignored with a warning, and will be removed in a future release.</li>
 </ul>
 </section>
 </section>
