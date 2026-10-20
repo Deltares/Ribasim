@@ -121,7 +121,7 @@ function set_current_basin_properties!(flow::FlowCVector, p::Parameters, t::Numb
 
     set_current_storage!(p, flow, t)
 
-    for idx in eachindex(node_id)
+    @threaded 1024 for idx in eachindex(node_id)
         id = node_id[idx]
         s = current_storage[idx]
         (s == storage_prev_call[idx]) && continue
@@ -196,7 +196,8 @@ function formulate_vertical_flux!(
     ) = p.p_independent.basin
 
     # Outgoing
-    for id in node_id
+    @threaded 1024 for idx in eachindex(node_id)
+        id = node_id[idx]
         # Evaporation and infiltration have the same 'uplink' storage,
         # but they are separated here for AD purposes
 
@@ -456,7 +457,7 @@ function formulate_flow!(
     )::Nothing
     (; node_id) = linear_resistance
 
-    for node_idx in eachindex(linear_resistance.node_id)
+    @threaded for node_idx in eachindex(linear_resistance.node_id)
         id = node_id[node_idx]
         q = linear_resistance_flow(
             linear_resistance,
@@ -561,7 +562,7 @@ function formulate_flow!(
         p::Parameters,
         t::Number,
     )::Nothing
-    for node_idx in eachindex(tabulated_rating_curve.node_id)
+    @threaded for node_idx in eachindex(tabulated_rating_curve.node_id)
         id = tabulated_rating_curve.node_id[node_idx]
         s_a = storage_uplink.horizontal.tabulated_rating_curve[node_idx]
         s_b = storage_downlink.horizontal.tabulated_rating_curve[node_idx]
@@ -579,14 +580,80 @@ function formulate_flow!(
     return nothing
 end
 
-function manning_resistance_flow(
+"Gravitational acceleration [m/s²]"
+const gravity = 9.81
+
+"""
+Wet area A, wetted perimeter P and water surface width T of a trapezoidal profile at a depth.
+"""
+function trapezoid_geometry(depth, width, slope)
+    wet_area = width * depth + slope * depth^2
+    wetted_perimeter = width + 2 * depth * sqrt(slope^2 + 1)
+    surface_width = width + 2 * slope * depth
+    return wet_area, wetted_perimeter, surface_width
+end
+
+"""
+The factor A / n * R_h^(2/3) in the Gauckler-Manning formula for a trapezoidal profile at a depth.
+Written as A * cbrt((A / P)^2) / n, which avoids a generic power. The area inside the cube root
+is bounded away from zero so that the derivative stays finite when the profile is dry.
+"""
+function manning_factor(depth, width, slope, n)
+    wet_area, wetted_perimeter, _ = trapezoid_geometry(max(depth, 0), width, slope)
+    hydraulic_radius = max(wet_area, eps(Float64)) / max(wetted_perimeter, eps(Float64))
+    return wet_area * cbrt(hydraulic_radius^2) / n
+end
+
+"""
+Critical depth of a trapezoidal profile for a specific energy E, i.e. the depth where
+d + A / (2T) = E and the flow for that energy is maximal. This is the positive root of
+
+    5 s d^2 + (3 w - 4 s E) d - 2 w E = 0
+
+which is 2E/3 for a rectangle (s = 0) and 4E/5 for a triangle (w = 0).
+The two root forms are used on either side of b = 0 to avoid cancellation. They are
+algebraically equal, since (r - b)(r + b) = 40 s w E, so switching between them is continuous.
+"""
+function critical_depth(E, width, slope)
+    E = max(E, 0)
+    b = 3 * width - 4 * slope * E
+    r = sqrt(b^2 + 40 * slope * width * E)
+    return ifelse(b >= 0, 4 * width * E / max(b + r, eps(Float64)), (r - b) / (10 * slope))
+end
+
+"""
+Flow over the sill of a ManningResistance reach, the most that can pass the cross-section
+at the higher of the two Basin bottoms for the upstream and downstream levels. With the
+depth d over the sill, the velocity head h_upstream - (z_sill + d) is fully lost, so
+
+    Q = A(d) sqrt(2 g (h_upstream - z_sill - d)),  d = max(h_downstream - z_sill, d_c)
+
+with d_c the critical depth for the head E = h_upstream - z_sill. For a free flow, d = d_c
+and this is the critical flow A sqrt(g A / T). For a drowned sill it goes to zero as the
+levels meet, like the Manning flow, so that capping by it does not make the flow jump when
+the levels cross. Since d_c is the depth where this Q is maximal for the given head, Q and
+its derivative are continuous where the sill drowns.
+
+The square root is relaxed in the same way as the friction slope in the Manning flow, so
+that for nearly equal levels both are proportional to the same function of the level
+difference.
+"""
+function sill_flow(h_upstream, h_downstream, z_sill, width, slope, L)
+    E = h_upstream - z_sill
+    d = max(h_downstream - z_sill, critical_depth(E, width, slope))
+    wet_area, _, _ = trapezoid_geometry(d, width, slope)
+    return wet_area * sqrt(2 * gravity * L) * relaxed_root(max(E - d, 0) / L, 1.0e-5)
+end
+
+"""
+Flow through a ManningResistance node for the levels h_a and h_b of the Basins on either side,
+positive in the direction of the link. See `formulate_flow!` for the equations.
+"""
+function manning_flow(
         manning_resistance::ManningResistance,
         node_id::NodeID,
-        s_a::Number,
-        s_b::Number,
-        p::Parameters,
-        t::Number;
-        apply_low_storage_factor::Bool = true,
+        h_a::Number,
+        h_b::Number,
     )::Number
     (;
         length,
@@ -597,12 +664,6 @@ function manning_resistance_flow(
         downstream_bottom,
     ) = manning_resistance
 
-    inflow_link = manning_resistance.inflow_link[node_id.idx]
-    outflow_link = manning_resistance.outflow_link[node_id.idx]
-
-    inflow_id = inflow_link.link[1]
-    outflow_id = outflow_link.link[2]
-
     bottom_a = upstream_bottom[node_id.idx]
     bottom_b = downstream_bottom[node_id.idx]
     slope = profile_slope[node_id.idx]
@@ -610,38 +671,56 @@ function manning_resistance_flow(
     n = manning_n[node_id.idx]
     L = length[node_id.idx]
 
-    # Average d, A, R
+    # Upstream and downstream Basin as given by the flow direction.
+    # ifelse instead of a branch keeps this usable for sparsity detection.
+    forward = h_a >= h_b
+    h_upstream = ifelse(forward, h_a, h_b)
+    h_downstream = ifelse(forward, h_b, h_a)
+    bottom_upstream = ifelse(forward, bottom_a, bottom_b)
+    bottom_downstream = ifelse(forward, bottom_b, bottom_a)
+
+    # The downstream water level cannot drop below the critical depth above the downstream
+    # bottom, so 0 ≤ Δh ≤ |h_a - h_b|. This max is continuous, but its derivative jumps
+    # when the downstream level passes the brink level.
+    d_upstream = h_upstream - bottom_upstream
+    d_downstream = max(h_downstream - bottom_downstream, critical_depth(h_upstream - bottom_downstream, width, slope))
+    Δh = h_upstream - (bottom_downstream + d_downstream)
+
+    factor = 0.5 * (manning_factor(d_upstream, width, slope, n) + manning_factor(d_downstream, width, slope, n))
+    q_manning = factor * relaxed_root(Δh / L, 1.0e-5)
+
+    # The flow cannot exceed the flow over the sill, at the higher of the two bottoms. For a
+    # free flow this is the critical flow. The smooth minimum is sharp enough to leave
+    # subcritical flow untouched: with power 16 it lowers a flow of 80% of the cap by less
+    # than 0.2%, where power 8 would give 2%. It is written with the ratio of the smaller to
+    # the larger flow so that it cannot overflow.
+    z_sill = max(bottom_upstream, bottom_downstream)
+    q_sill = sill_flow(h_upstream, h_downstream, z_sill, width, slope, L)
+    q_low = min(q_manning, q_sill)
+    q_high = max(q_manning, q_sill, eps(Float64))
+    q = q_low / (1 + (q_low / q_high)^16)^(1 / 16)
+    return ifelse(forward, q, -q)
+end
+
+"""
+Flow through a ManningResistance node for the storages s_a and s_b of the Basins on either side,
+positive in the direction of the link.
+"""
+function manning_resistance_flow(
+        manning_resistance::ManningResistance,
+        node_id::NodeID,
+        s_a::Number,
+        s_b::Number,
+        p::Parameters,
+        t::Number;
+        apply_low_storage_factor::Bool = true,
+    )::Number
+    inflow_id = manning_resistance.inflow_link[node_id.idx].link[1]
+    outflow_id = manning_resistance.outflow_link[node_id.idx].link[2]
+
     h_a = get_level(s_a, p, inflow_id, t)
     h_b = get_level(s_b, p, outflow_id, t)
-
-    d_a = h_a - bottom_a
-    d_b = h_b - bottom_b
-    d = 0.5 * (d_a + d_b)
-
-    A_a = width * d + slope * d_a^2
-    A_b = width * d + slope * d_b^2
-    A = 0.5 * (A_a + A_b)
-
-    slope_unit_length = sqrt(slope^2 + 1.0)
-    P_a = width + 2.0 * d_a * slope_unit_length
-    P_b = width + 2.0 * d_b * slope_unit_length
-    R_h_a = A_a / P_a
-    R_h_b = A_b / P_b
-    R_h = 0.5 * (R_h_a + R_h_b)
-
-    Δh = h_a - h_b
-
-    # Calculate Reynolds number for open channel flow
-    # Re = V * A / ( R_h * ν )
-    # V: average velocity, R_h: hydraulic radius, ν: kinematic viscosity of water
-
-    # Kinematic viscosity of water (ν), typical value at 20°C [m²/s]
-    ν = 1.004e-6
-    Re_laminar = 2000
-    threshold = (Re_laminar * ν * n * ∛R_h / A)^2
-    threshold = max(threshold, 1.0e-5) # Avoid too small thresholds
-
-    q = A / n * ∛(R_h^2) * relaxed_root(Δh / L, threshold)
+    q = manning_flow(manning_resistance, node_id, h_a, h_b)
 
     apply_low_storage_factor || return q
     return q * low_storage_factor_resistance_node(s_a, s_b, p, q, inflow_id, outflow_id)
@@ -682,9 +761,43 @@ The hydraulic radius is defined as:
 
 Where P is the wetted perimeter.
 
-The average of the upstream and downstream water depth is used to compute cross-sectional area and
-hydraulic radius. This ensures that a basin can receive water after it has gone
-dry.
+A and R_h are evaluated at both ends of the reach and the resulting factors A / n * R_h^(2/3)
+are averaged. The upstream end is the Basin the water comes from, so a Basin can receive
+water after it has gone dry.
+
+Two limits from open channel hydraulics are added to this. The downstream water level cannot
+drop below the critical depth for the head above the downstream bottom: at a free overfall the
+water surface sits at critical depth, not at the level of the Basin below. And the flow cannot
+exceed the flow over the sill, the cross-section at the higher of the two bottoms, which is
+where the flow is controlled. For a free flow over the sill this is the critical flow, and for
+a drowned sill it goes to zero as the levels meet, see `sill_flow`. Without these a Basin that
+lies far below its upstream neighbour receives a supercritical flow that keeps growing as it
+fills.
+
+Side view of a reach with a free overfall into a lower downstream Basin, with levels h,
+bottoms z and depths d:
+
+    h_upstream ▽~~~~~~~~~~~~~~~~~~~~~~~_
+                                       ~~~~~_
+    upstream                                 ~~~~~_        Δh = h_upstream - (z_downstream + d_downstream)
+    Basin                                          ~~~~~_
+    z_upstream ________________                          ~~~▽ z_downstream + d_downstream
+                               \\                             |
+                                \\   reach, length L          | d_downstream = max(h_downstream - z_downstream, d_c)
+                                 \\                           |         h_downstream ▽
+                                  \\                          |         ~~~~~~~~~~~~~~~
+                                   \\_________________________|_______________________ z_downstream
+                                                                 downstream Basin
+
+Here the downstream Basin is below the brink, so d_downstream is the critical depth d_c for
+the head h_upstream - z_downstream, and the head difference driving the flow is Δh rather than
+h_upstream - h_downstream. As the downstream Basin fills above z_downstream + d_c,
+d_downstream follows its level and Δh becomes h_upstream - h_downstream again.
+The flow is also capped at the flow over the sill at the higher bottom, here z_upstream. While
+the downstream level is below the sill this is the critical flow for the head
+h_upstream - z_upstream, the most that can leave the upstream Basin.
+
+The square root of the friction slope is relaxed around zero to keep the derivative finite.
 """
 function formulate_flow!(
         flow::FlowCVector,
@@ -696,7 +809,7 @@ function formulate_flow!(
     )::Nothing
     (; node_id) = manning_resistance
 
-    for node_idx in eachindex(manning_resistance.node_id)
+    @threaded for node_idx in eachindex(manning_resistance.node_id)
         id = node_id[node_idx]
         s_a = storage_uplink.horizontal.manning_resistance[node_idx]
         s_b = storage_downlink.horizontal.manning_resistance[node_idx]
@@ -857,7 +970,9 @@ function formulate_pump_or_outlet_flow!(
         component_cache::NamedTuple,
         reduce_Δlevel::Bool = false,
     )::Nothing
-    for node_idx in eachindex(node.node_id)
+    # Flows controlled by PidControl can depend on other flows, so these are formulated in order
+    min_chunk_size = relevant_control_type == ContinuousControlType.None ? 256 : typemax(Int)
+    @threaded min_chunk_size for node_idx in eachindex(node.node_id)
         node.control_type[node_idx] != relevant_control_type && continue
 
         id = node.node_id[node_idx]

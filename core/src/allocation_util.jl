@@ -16,6 +16,19 @@ function set_variable_bounds!(
     return nothing
 end
 
+"""
+Give a container of variables with indices of type `K` a concrete type, also when it is empty.
+JuMP infers the types from the elements, so an empty container gets `Any` types. Then the code
+compiled for a model with for instance FlowDemand nodes can't be reused for a model without.
+"""
+function typed_variables(
+        variables::JuMP.Containers.SparseAxisArray,
+        ::Type{K},
+    )::JuMP.Containers.SparseAxisArray{JuMP.VariableRef} where {K <: Tuple}
+    data = OrderedDict{K, JuMP.VariableRef}(variables.data)
+    return JuMP.Containers.SparseAxisArray(data, variables.names)
+end
+
 function variable_sum(variables)
     return if isempty(variables)
         JuMP.AffExpr()
@@ -551,14 +564,19 @@ function set_allocation_results!(
     return nothing
 end
 
-function copy_cache!(
+function copy_basin_properties!(
         destination::CurrentBasinProperties,
         source::CurrentBasinProperties,
     )::Nothing
-    for field_name in fieldnames(CurrentBasinProperties)
-        field_name == :n && continue
-        destination_vector = getfield(destination, field_name)
-        source_vector = getfield(source, field_name)
+    for name in (
+            :storage_prev_call,
+            :current_storage,
+            :current_level,
+            :current_area,
+            :current_low_storage_factor,
+        )
+        destination_vector = getfield(destination, name)
+        source_vector = getfield(source, name)
         resize!(destination_vector, length(source_vector))
         copyto!(destination_vector, source_vector)
     end
@@ -570,12 +588,18 @@ Set the Basin levels, areas and low storage factors in the cache from its storag
 """
 function set_basin_properties!(p::Parameters)::Nothing
     (; basin) = p.p_independent
-    (; current_storage, current_level, current_area, current_low_storage_factor) =
-        p.current_basin_properties
+    (;
+        storage_prev_call,
+        current_storage,
+        current_level,
+        current_area,
+        current_low_storage_factor,
+    ) = p.current_basin_properties
     for (i, s) in enumerate(current_storage)
         current_low_storage_factor[i] = low_storage_factor(s, basin, i)
         current_level[i] = get_level_from_storage(basin, i, s)
         current_area[i] = basin.level_to_area[i](current_level[i])
+        storage_prev_call[i] = s
     end
     return nothing
 end

@@ -64,6 +64,7 @@ from ribasim_testmodels.discrete_control import (
 from ribasim_testmodels.doc_example import local_pidcontrolled_cascade_model
 from ribasim_testmodels.equations import (
     linear_resistance_model,
+    manning_resistance_deep_basin_model,
     manning_resistance_model,
     misc_nodes_model,
     pid_control_equation_model,
@@ -86,6 +87,10 @@ from ribasim_testmodels.observation import observation_model
 from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
     pid_control_model,
+)
+from ribasim_testmodels.precompile_workload import (
+    precompile_workload_allocation_model,
+    precompile_workload_model,
 )
 from ribasim_testmodels.time import (
     flow_boundary_time_model,
@@ -138,6 +143,7 @@ __all__ = [
     "linear_resistance_demand_model",
     "linear_resistance_model",
     "local_pidcontrolled_cascade_model",
+    "manning_resistance_deep_basin_model",
     "manning_resistance_model",
     "medium_primary_secondary_network_model",
     "medium_primary_secondary_network_verification_model",
@@ -153,6 +159,8 @@ __all__ = [
     "pid_control_equation_model",
     "pid_control_model",
     "polder_management_model",
+    "precompile_workload_allocation_model",
+    "precompile_workload_model",
     "pump_discrete_control_model",
     "rating_curve_between_basins_model",
     "rating_curve_model",

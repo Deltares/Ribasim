@@ -122,16 +122,16 @@ function add_conservation!(
     storage_change = problem[:basin_storage_change]
     low_storage_factor = problem[:low_storage_factor]
     flow = problem[:flow]
-    inflow_sum = OrderedDict(
+    inflow_sum = OrderedDict{NodeID, JuMP.AffExpr}(
         basin_id => sum(
             flow[(other_id, basin_id)] for other_id in basin.inflow_ids[basin_id.idx];
-            init = 0,
+            init = zero(JuMP.AffExpr),
         ) for basin_id in basin_ids_subnetwork
     )
-    outflow_sum = OrderedDict(
+    outflow_sum = OrderedDict{NodeID, JuMP.AffExpr}(
         basin_id => sum(
             flow[(basin_id, other_id)] for other_id in basin.outflow_ids[basin_id.idx];
-            init = 0,
+            init = zero(JuMP.AffExpr),
         ) for basin_id in basin_ids_subnetwork
     )
     f_pos = 1.0 # Placeholder positive forcing (set in set_simulation_data!)
@@ -169,14 +169,17 @@ function add_user_demand!(
     # per demand priority for which that node has a demand (scaling.flow * m^3/s)
     d = 2.0 # Example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
     user_demand_allocated =
-        problem[:user_demand_allocated] = JuMP.@variable(
-        problem,
-        0 ≤
-            user_demand_allocated[
-                node_id = user_demand_ids_subnetwork,
-                DemandPriorityIterator(node_id, p_independent),
-            ] ≤
-            d
+        problem[:user_demand_allocated] = typed_variables(
+        JuMP.@variable(
+            problem,
+            0 ≤
+                user_demand_allocated[
+                    node_id = user_demand_ids_subnetwork,
+                    DemandPriorityIterator(node_id, p_independent),
+                ] ≤
+                d
+        ),
+        Tuple{NodeID, Int32},
     )
 
     # Define constraints: the total flow over all inflow links equals the sum of
@@ -194,15 +197,18 @@ function add_user_demand!(
     # Define decision variables: Per UserDemand node the allocation error per priority for
     # which the UserDemand node has a demand, for both the first and second objective (unitless)
     user_demand_error =
-        problem[:user_demand_error] = JuMP.@variable(
-        problem,
-        0 ≤
-            user_demand_error[
-                node_id = user_demand_ids_subnetwork,
-                DemandPriorityIterator(node_id, p_independent),
-                [:first, :second],
-            ] ≤
-            1
+        problem[:user_demand_error] = typed_variables(
+        JuMP.@variable(
+            problem,
+            0 ≤
+                user_demand_error[
+                    node_id = user_demand_ids_subnetwork,
+                    DemandPriorityIterator(node_id, p_independent),
+                    [:first, :second],
+                ] ≤
+                1
+        ),
+        Tuple{NodeID, Int32, Symbol},
     )
 
     # Define constraints: error terms
@@ -256,14 +262,17 @@ function add_flow_demand!(
     # for which the node has a flow demand
     d = 2.0 # Example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
     flow_demand_allocated =
-        problem[:flow_demand_allocated] = JuMP.@variable(
-        problem,
-        0 ≤
-            flow_demand_allocated[
-                node_id = node_ids_subnetwork_with_flow_demand,
-                DemandPriorityIterator(node_id, p_independent),
-            ] ≤
-            d
+        problem[:flow_demand_allocated] = typed_variables(
+        JuMP.@variable(
+            problem,
+            0 ≤
+                flow_demand_allocated[
+                    node_id = node_ids_subnetwork_with_flow_demand,
+                    DemandPriorityIterator(node_id, p_independent),
+                ] ≤
+                d
+        ),
+        Tuple{NodeID, Int32},
     )
 
     # Flow through a node with a flow demand can still be negative, so allow
@@ -293,15 +302,18 @@ function add_flow_demand!(
     # Define decision variables: Per FlowDemand node the allocation error per priority for
     # which the UserDemand node has a demand, for both the first and second objective (unitless)
     flow_demand_error =
-        problem[:flow_demand_error] = JuMP.@variable(
-        problem,
-        0 ≤
-            flow_demand_error[
-                node_id = node_ids_subnetwork_with_flow_demand,
-                DemandPriorityIterator(node_id, p_independent),
-                [:first, :second],
-            ] ≤
-            1,
+        problem[:flow_demand_error] = typed_variables(
+        JuMP.@variable(
+            problem,
+            0 ≤
+                flow_demand_error[
+                    node_id = node_ids_subnetwork_with_flow_demand,
+                    DemandPriorityIterator(node_id, p_independent),
+                    [:first, :second],
+                ] ≤
+                1,
+        ),
+        Tuple{NodeID, Int32, Symbol},
     )
 
     # Define constraints: error terms
@@ -338,14 +350,17 @@ function add_level_demand!(
     # which the LevelDemand node has a demand. The first objective is a scaled storage
     # error; the second objective is a dimensionless, area-normalized level error.
     level_demand_error =
-        problem[:level_demand_error] = JuMP.@variable(
-        problem,
-        level_demand_error[
-            node_id = basin_ids_subnetwork_with_level_demand,
-            DemandPriorityIterator(node_id, p_independent),
-            [:lower, :upper],
-            [:first, :second],
-        ] ≥ 0
+        problem[:level_demand_error] = typed_variables(
+        JuMP.@variable(
+            problem,
+            level_demand_error[
+                node_id = basin_ids_subnetwork_with_level_demand,
+                DemandPriorityIterator(node_id, p_independent),
+                [:lower, :upper],
+                [:first, :second],
+            ] ≥ 0
+        ),
+        Tuple{NodeID, Int32, Symbol, Symbol},
     )
 
     # Define constraints: error terms below minimum storage
@@ -566,14 +581,17 @@ function add_secondary_network_demand!(
     # (scaling.flow * m^3/s, values to be filled in before optimizing)
     d = 2.0 # Example demand (scaling.flow * m^3/s, values to be filled in before optimizing)
     secondary_network_allocated =
-        problem[:secondary_network_allocated] = JuMP.@variable(
-        problem,
-        0 ≤
-            secondary_network_allocated[
-                link = connecting_links,
-                DemandPriorityIterator(link, p_independent),
-            ] ≤
-            d
+        problem[:secondary_network_allocated] = typed_variables(
+        JuMP.@variable(
+            problem,
+            0 ≤
+                secondary_network_allocated[
+                    link = connecting_links,
+                    DemandPriorityIterator(link, p_independent),
+                ] ≤
+                d
+        ),
+        Tuple{Tuple{NodeID, NodeID}, Int32},
     )
 
     # Define constraints: The sum of the flows allocated to the secondary network is equal to the total flow into the secondary network
@@ -590,16 +608,19 @@ function add_secondary_network_demand!(
     # Define decision variables: Per secondary network connection, the allocation error per priority for
     # which the secondary network has a demand, for both the first and second objective (unitless)
     secondary_network_error =
-        problem[:secondary_network_error] = JuMP.@variable(
-        problem,
-        0 ≤
-            secondary_network_error[
-                link = connecting_links,
-                DemandPriorityIterator(link, p_independent),
-                objective_ord = [:first, :second],
-            ] ≤
-            1,
-        base_name = "secondary_network_error",
+        problem[:secondary_network_error] = typed_variables(
+        JuMP.@variable(
+            problem,
+            0 ≤
+                secondary_network_error[
+                    link = connecting_links,
+                    DemandPriorityIterator(link, p_independent),
+                    objective_ord = [:first, :second],
+                ] ≤
+                1,
+            base_name = "secondary_network_error",
+        ),
+        Tuple{Tuple{NodeID, NodeID}, Int32, Symbol},
     )
 
     # Define constraints: error terms
@@ -656,10 +677,12 @@ function add_demand_objectives!(
         second_objective_expression = JuMP.AffExpr()
 
         # Add UserDemand, FlowDemand and secondary network errors
-        error_collections = [user_demand_error, flow_demand_error]
+        # A Tuple, since the secondary network errors are indexed by link instead of node
+        error_collections =
         if is_primary_network(subnetwork_id) && haskey(problem, :secondary_network_error)
-            secondary_network_error = problem[:secondary_network_error]
-            push!(error_collections, secondary_network_error)
+            (user_demand_error, flow_demand_error, problem[:secondary_network_error])
+        else
+            (user_demand_error, flow_demand_error)
         end
 
         for error_collection in error_collections

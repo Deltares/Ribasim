@@ -1,14 +1,15 @@
 """
-Transfer data about physical processes from the simulation to the optimization. `du` holds
-the physical rates at the latest intervention, as computed by `water_balance!`.
+Transfer data about physical processes from the simulation to the optimization. `u` is the
+physical state and `du` holds the physical rates at the latest intervention, as computed by
+`water_balance!`.
 """
 function set_simulation_data!(
         allocation_model::AllocationModel,
         p::Parameters,
         t::Float64,
         Δt_allocation,
-        u::CVector,
-        du::CVector,
+        u,
+        du,
     )::Nothing
     (;
         basin,
@@ -377,7 +378,7 @@ function set_simulation_data!(
     t_after = t + Δt_allocation
     for node_id in only(capacity_constraint.axes)
         inflow_id = tabulated_rating_curve.inflow_link[node_id.idx].link[1]
-        h_a = get_level(0.0, p, inflow_id, t_after)
+        h_a = get_level(NaN, p, inflow_id, t_after)
         qh = argmax(
             qh -> qh(h_a),
             interpolations[current_interpolation_index[node_id.idx](t_eval)] for
@@ -1587,8 +1588,8 @@ end
 
 """
 Solve the allocation problem of one allocation timestep from `t` to `t + Δt` for all
-demands, starting from the state in the cache of `p`. `du` holds the physical rates at the
-latest intervention, used as initial guess.
+demands, starting from the state in the cache of `p`. `u` and `du` hold the physical state
+and rates at the latest intervention.
 
 `Δt_supplied` is the length of the previous intervention interval for the first allocation
 timestep of an intervention interval, and `nothing` otherwise.

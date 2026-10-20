@@ -263,6 +263,8 @@ end
     # find index of first level close to min_level demand of 3 m
     idx = findfirst(e -> abs(e - min_level) <= 1.0e-1, level_basin_1)
 
+    @test !isnothing(idx)
+
     # Run with allocation off; TRC should have default behaviour
     config = Ribasim.Config(toml_path; experimental_allocation = false)
     model_uncontrolled = Ribasim.run(config)

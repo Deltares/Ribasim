@@ -546,3 +546,41 @@ end
         invalid_nested_interpolation_times(interpolations_min; interpolations_max),
     )
 end
+
+@testitem "ManningResistance profile validation" begin
+    using Logging
+    using Ribasim:
+        NodeID, ControlStateUpdate, ParameterUpdate, valid_manning_profile, OrderedDict
+
+    node_id = [NodeID(:ManningResistance, 1, 1), NodeID(:ManningResistance, 2, 2)]
+    no_control = OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
+
+    # A rectangle and a triangle are fine
+    @test valid_manning_profile(node_id, [10.0, 0.0], [0.0, 1.0], no_control)
+
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !valid_manning_profile(node_id, [10.0, 0.0], [0.0, 0.0], no_control)
+    end
+    @test length(logger.logs) == 1
+    @test logger.logs[1].level == Error
+    @test logger.logs[1].message ==
+        "profile_width and profile_slope cannot both be zero for ManningResistance #2."
+
+    # A control state that sets both to zero is also caught
+    control_mapping = OrderedDict(
+        (node_id[1], "flat") => ControlStateUpdate(;
+            scalar_update = [
+                ParameterUpdate(:profile_width, 0.0),
+                ParameterUpdate(:profile_slope, 0.0),
+            ],
+        ),
+    )
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !valid_manning_profile(node_id, [10.0, 0.0], [0.0, 1.0], control_mapping)
+    end
+    @test length(logger.logs) == 1
+    @test logger.logs[1].message == "profile_width and profile_slope cannot both be zero."
+    @test logger.logs[1].kwargs[:control_state] == "flat"
+end

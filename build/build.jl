@@ -2,7 +2,6 @@ using TOML
 using LibGit2
 using JuliaC
 import Pkg
-using PackageCompiler: default_app_cpu_target
 
 function (@main)(_)::Cint
     project_dir = "core"
@@ -28,7 +27,6 @@ function (@main)(_)::Cint
         output_type = "--output-lib",
         file = "build/libribasim.jl",
         project = project_dir,
-        cpu_target = default_app_cpu_target(),
         add_ccallables = true,
         c_sources = ["build/set_julia_threads.c"],
         verbose = true,
@@ -41,8 +39,7 @@ function (@main)(_)::Cint
     )
     bundle_recipe = BundleRecipe(; link_recipe, output_dir)
 
-    precompile_workload = abspath("generated_testmodels/basic/ribasim.toml")
-    withenv("RIBASIM_PRECOMPILE_WORKLOAD" => precompile_workload) do
+    withenv("RIBASIM_PRECOMPILE_WORKLOAD" => abspath("generated_testmodels")) do
         compile_products(image_recipe)
     end
     link_products(link_recipe)

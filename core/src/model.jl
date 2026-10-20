@@ -251,11 +251,11 @@ function update_allocation_until!(integrator, t_intervention_end::Float64)::Noth
 
     du = get_du(integrator)
     water_balance!(du, u, p, t)
-    copy_cache!(allocation.current_basin_properties, p.current_basin_properties)
+    copy_basin_properties!(allocation.current_basin_properties, p.current_basin_properties)
     p_allocation = Parameters(;
         p.p_independent,
-        allocation.current_basin_properties,
         p.time_dependent_cache,
+        allocation.current_basin_properties,
         p.p_mutable,
     )
     (; current_storage) = p_allocation.current_basin_properties

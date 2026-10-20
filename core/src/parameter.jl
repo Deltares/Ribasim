@@ -731,7 +731,7 @@ Requirements:
 * manning_n > 0
 * profile_width >= 0
 * profile_slope >= 0
-* (profile_width == 0) xor (profile_slope == 0)
+* not both profile_width == 0 and profile_slope == 0
 """
 @kwdef struct ManningResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -915,7 +915,6 @@ to be of `ForwardDiff.Dual` type. This second version of the cache is created by
 """
 const TimeDependentCache{T} = @NamedTuple{
     basin::ExactVerticalFlowCVector{T},
-    level_boundary::@NamedTuple{current_level::Vector{T}},
     flow_boundary::@NamedTuple{current_cumulative_boundary_flow::Vector{T}},
     pump::@NamedTuple{
         current_flow_rate_setpoint::Vector{T},
@@ -1271,62 +1270,67 @@ The part of the parameters passed to the rhs and callbacks that are non-mutable,
 and not derived from the state vector `u` (or the time `t`). In this context e.g. a vector
 of floats (not dependent on `u`) is not considered mutable, because even though it's elements are mutable,
 the object itself is not.
+
+It is a mutable struct with only const fields, so it is stored by reference instead of
+inline. Storing this large struct inline makes code that uses it, such as everything that
+takes the integrator, much slower to compile. The const fields keep loads as fast as for
+an immutable struct.
 """
-@kwdef struct ParametersIndependent{C1}
-    starttime::DateTime
-    reltol::Float64
-    graph::ModelGraph
-    allocation::Allocation
-    basin::Basin
-    linear_resistance::LinearResistance
-    manning_resistance::ManningResistance
-    tabulated_rating_curve::TabulatedRatingCurve
-    level_boundary::LevelBoundary
-    flow_boundary::FlowBoundary{C1}
-    pump::Pump
-    outlet::Outlet
-    terminal::Terminal
-    junction::Junction
-    discrete_control::DiscreteControl
-    continuous_control::ContinuousControl
-    pid_control::PidControl
-    user_demand::UserDemand
-    level_demand::LevelDemand
-    flow_demand::FlowDemand
-    subgrid::Subgrid
+@kwdef mutable struct ParametersIndependent{C1}
+    const starttime::DateTime
+    const reltol::Float64
+    const graph::ModelGraph
+    const allocation::Allocation
+    const basin::Basin
+    const linear_resistance::LinearResistance
+    const manning_resistance::ManningResistance
+    const tabulated_rating_curve::TabulatedRatingCurve
+    const level_boundary::LevelBoundary
+    const flow_boundary::FlowBoundary{C1}
+    const pump::Pump
+    const outlet::Outlet
+    const terminal::Terminal
+    const junction::Junction
+    const discrete_control::DiscreteControl
+    const continuous_control::ContinuousControl
+    const pid_control::PidControl
+    const user_demand::UserDemand
+    const level_demand::LevelDemand
+    const flow_demand::FlowDemand
+    const subgrid::Subgrid
     # Whether all specialized AD and linear solve code should be used
-    reduced_implicit_solve::Bool
+    const reduced_implicit_solve::Bool
     # Matrix which aggregates flows into the basin storages
-    incidence_matrix::SparseMatrixCSC{Int, Int}
+    const incidence_matrix::SparseMatrixCSC{Int, Int}
     # Water balance tolerances
-    water_balance_abstol::Float64
-    water_balance_reltol::Float64
+    const water_balance_abstol::Float64
+    const water_balance_reltol::Float64
     # Ranges of the state and flow vectors (flat NamedTuples)
-    state_ranges::RibasimStateTuple
-    flow_ranges::FlowTuple
+    const state_ranges::RibasimStateTuple
+    const flow_ranges::FlowTuple
     # Callback configurations
-    do_concentration::Bool
-    do_subgrid::Bool
+    const do_concentration::Bool
+    const do_subgrid::Bool
     # Solver constants
-    level_difference_threshold::Float64
-    max_depth::Float64
+    const level_difference_threshold::Float64
+    const max_depth::Float64
     # Per state the inflow, outflow and self id associated with that state (if they exist)
-    inflow_id::FlowCVector{NodeID}
-    outflow_id::FlowCVector{NodeID}
-    state_id::FlowCVector{NodeID}
+    const inflow_id::FlowCVector{NodeID}
+    const outflow_id::FlowCVector{NodeID}
+    const state_id::FlowCVector{NodeID}
     # The up- and downlink storage per flow
-    storage_uplink::FlowCVector{Float64} = similar(inflow_id, Float64)
-    storage_downlink::FlowCVector{Float64} = similar(inflow_id, Float64)
+    const storage_uplink::FlowCVector{Float64} = similar(inflow_id, Float64)
+    const storage_downlink::FlowCVector{Float64} = similar(inflow_id, Float64)
     # Cumulative flow over last timestep
-    cumulative_flow_dt::FlowCVector{Float64} = zero(storage_uplink)
+    const cumulative_flow_dt::FlowCVector{Float64} = zero(storage_uplink)
     # State at previous saveat
-    u_prev_saveat::RibasimStateCVector{Float64} = cvector_from_axes(state_ranges)
+    const u_prev_saveat::RibasimStateCVector{Float64} = cvector_from_axes(state_ranges)
     # Cumulative flow over last allocation times
-    cumulative_flow_prev_allocation_dt::FlowCVector{Float64} = zero(storage_uplink)
+    const cumulative_flow_prev_allocation_dt::FlowCVector{Float64} = zero(storage_uplink)
     # How much of the solver error is attributed to each state, see [`accumulate_residual!`](@ref).
-    convergence::RibasimStateCVector{Float64} = zero(u_prev_saveat)
-    convergence_ncalls::Vector{Int} = [0]
-    step_stats::StepStats = StepStats()
+    const convergence::RibasimStateCVector{Float64} = zero(u_prev_saveat)
+    const convergence_ncalls::Vector{Int} = [0]
+    const step_stats::StepStats = StepStats()
 end
 
 """
@@ -1334,9 +1338,6 @@ All cached values that depend on time `t`.
 """
 function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependentCache
     basin = zero(p_independent.basin.forcing.exact_cumulative_forcing)
-
-    n_level_boundary = length(p_independent.level_boundary.node_id)
-    level_boundary = (; current_level = zeros(n_level_boundary))
 
     n_flow_boundary = length(p_independent.flow_boundary.node_id)
     flow_boundary = (; current_cumulative_boundary_flow = zeros(n_flow_boundary))
@@ -1375,7 +1376,6 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
 
     return (;
         basin,
-        level_boundary,
         flow_boundary,
         pump,
         outlet,
@@ -1387,13 +1387,15 @@ end
 
 """
 The collection of all parameters that are passed to the rhs (`water_balance!`) and callbacks.
+
+A mutable struct with only const fields, like [`ParametersIndependent`](@ref).
 """
-@kwdef struct Parameters{C, T}
-    p_independent::ParametersIndependent{C}
-    time_dependent_cache::TimeDependentCache{T} = TimeDependentCache(p_independent)
-    current_basin_properties::CurrentBasinProperties =
+@kwdef mutable struct Parameters{C, T}
+    const p_independent::ParametersIndependent{C}
+    const time_dependent_cache::TimeDependentCache{T} = TimeDependentCache(p_independent)
+    const current_basin_properties::CurrentBasinProperties =
         CurrentBasinProperties(; n = length(p_independent.basin))
-    p_mutable::ParametersMutable = ParametersMutable()
+    const p_mutable::ParametersMutable = ParametersMutable()
 end
 
 Base.show(io::IO, ::Parameters) = print(io, "Ribasim Parameters")

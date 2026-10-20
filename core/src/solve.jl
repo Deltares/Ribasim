@@ -210,21 +210,23 @@ Here:
 
 The reason we do this is because of sparse matrix coloring (https://github.com/JuliaDiff/SparseMatrixColorings.jl);
 this formulation requires far fewer right hand side calls in the Jacobian computation than the standard way.
+
+A mutable struct with only const fields, like [`ParametersIndependent`](@ref).
 """
-@kwdef struct RibasimJacobian{
+@kwdef mutable struct RibasimJacobian{
         C <: RibasimJacobianEvaluationCache,
         PI <: ParametersIndependent,
     } <: AbstractSciMLOperator{Float64}
     # Cache for evaluating the Jacobian
-    cache::C
-    p_independent::PI
-    n_basin = length(p_independent.basin.node_id)
-    n_pid = length(p_independent.pid_control.node_id)
+    const cache::C
+    const p_independent::PI
+    const n_basin = length(p_independent.basin.node_id)
+    const n_pid = length(p_independent.pid_control.node_id)
     # J_inner_local represents the most expensive part of the inner linear solve,
     # namely the local dependence of flows on storages
-    J_inner_local::SparseMatrixCSC{Float64, Int} = spzeros(n_basin, n_basin)
+    const J_inner_local::SparseMatrixCSC{Float64, Int} = spzeros(n_basin, n_basin)
     # The area of PID controlled Basins
-    area_pid_controlled::Vector{Float64} = zeros(n_pid)
+    const area_pid_controlled::Vector{Float64} = zeros(n_pid)
 end
 
 # SciMLOperators interface
@@ -303,7 +305,7 @@ end
 Call `f(row, val)` for the structural nonzeros of a sparse matrix column,
 or the nonzero entries of a dense matrix column.
 """
-function foreach_column_entry(f::F, A::SparseMatrixCSC, col::Int) where {F}
+@inline function foreach_column_entry(f::F, A::SparseMatrixCSC, col::Int) where {F}
     rows = rowvals(A)
     vals = nonzeros(A)
     for k in nzrange(A, col)
@@ -312,7 +314,7 @@ function foreach_column_entry(f::F, A::SparseMatrixCSC, col::Int) where {F}
     return nothing
 end
 
-function foreach_column_entry(f::F, A::AbstractMatrix, col::Int) where {F}
+@inline function foreach_column_entry(f::F, A::AbstractMatrix, col::Int) where {F}
     for row in axes(A, 1)
         val = A[row, col]
         iszero(val) || f(row, val)
@@ -710,7 +712,7 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
         out,
         ũ, u₀, u₁, abstol, reltol, internalnorm::InternalNorm, t,
         # Some algorithms such as Tsit5 always pass this explicitly, which would otherwise
-        # dispatch to the generic DiffEqBase method. We always compute serially.
+        # dispatch to the generic DiffEqBase method. It is ignored, see `@threaded`.
         thread::Union{Serial, Threaded} = Serial()
     )
     (; p_independent) = internalnorm
@@ -722,7 +724,9 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
     # would get a very loose tolerance.
     # This is applied for both values of `reduced_implicit_solve`, so that `abstol` and
     # `reltol` have the same meaning regardless of which solve path is taken.
-    for idx in eachindex(out)
+    # The InternalNorm forwards to ODE_DEFAULT_NORM. That is passed instead, since in a closure
+    # the InternalNorm, which holds the parameters, makes every iteration allocate.
+    @threaded CHEAP_LOOP_MIN_CHUNK_SIZE for idx in eachindex(out)
         abs_diff = abs(u₁[idx] - u₀[idx])
         out[idx] = DiffEqBase.calculate_residuals(
             ũ[idx],
@@ -730,7 +734,7 @@ Base.broadcastable(internalnorm::InternalNorm) = Ref(internalnorm)
             abs_diff,
             abstol,
             reltol,
-            internalnorm,
+            ODE_DEFAULT_NORM,
             t
         )
     end
@@ -759,13 +763,8 @@ they hold back the timestep; it is not a magnitude, and a high value does not me
 is wrong.
 """
 function accumulate_residual!(convergence, residual)
-    max_abs_residual = 0.0
-    for i in eachindex(residual)
-        a = abs(residual[i])
-        if isfinite(a)
-            max_abs_residual = max(max_abs_residual, a)
-        end
-    end
+    # Assigned once, since a variable that is reassigned is boxed in the closure of @threaded
+    max_abs_residual = mapreduce(r -> isfinite(r) ? abs(r) : 0.0, max, residual; init = 0.0)
     if iszero(max_abs_residual)
         # If no finite residual exists, set maximum badness (1.0) for
         # non finite residuals
@@ -773,7 +772,7 @@ function accumulate_residual!(convergence, residual)
             !isfinite(residual[i]) && (convergence[i] += 1.0)
         end
     else
-        for i in eachindex(residual)
+        @threaded CHEAP_LOOP_MIN_CHUNK_SIZE for i in eachindex(residual)
             a = abs(residual[i])
             contribution = isfinite(a) ? a / max_abs_residual : 1.0
             convergence[i] += contribution
