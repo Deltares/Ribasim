@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 - BMI: Set FlowBoundary flow rates during a simulation and read cumulative flow for online coupling. [#3251](https://github.com/Deltares/Ribasim/pull/3251)
-- Error on rapidly oscillating DiscreteControl states with the configurable `solver.min_discrete_control_interval`. [#3237](https://github.com/Deltares/Ribasim/pull/3237)
+- Warn on rapidly oscillating DiscreteControl states with the configurable `solver.min_discrete_control_interval`. [#3237](https://github.com/Deltares/Ribasim/pull/3237)
 - Report rejected timesteps by cause and the mean solver order in `results/solver_stats.nc`. [#3269](https://github.com/Deltares/Ribasim/pull/3269)
 - Evaluate DiscreteControl only at a fixed interval with `solver.discrete_control_interval`, which can make models with many DiscreteControl nodes much faster.
 
@@ -26,6 +26,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Allocation: The adaptive timestep is now controlled by the success of the optimization. A failed optimization is retried with half the timestep down to `allocation.dtmin`, and every successful one doubles the timestep up to `allocation.dtmax`.
 - Allocation: Allocation passes its results to the physical layer at a fixed `allocation.intervention_interval`, representing human intervention, or at every BMI `update_until` call. Within an intervention interval allocation takes timesteps of its own, and the physical layer uses the time-averaged results. `allocation.dt` now sets a fixed allocation timestep within the intervention interval. The allocation output is written per intervention interval, or per allocation timestep if `solver.saveat` is 0.
 - Allocation: The simulation now stops when the allocation problem is infeasible, also when the infeasibility analysis finds the problem feasible without its objectives.
+- Duplicate rows in input tables are now an error, for instance two rows for the same node and control state in a static table. [#3316](https://github.com/Deltares/Ribasim/pull/3316)
+- A node with multiple control states that is not controlled by DiscreteControl needs a row without `control_state`, which defines its parameters. Nodes with multiple control states get their initial parameter values from the row without `control_state`, or else from the last control state. Before, time-interpolated parameters like Pump `min_flow_rate` used the first control state. [#3316](https://github.com/Deltares/Ribasim/pull/3316)
+- UserDemand `return_factor` and `min_level` must be the same for all demand priorities of a node (at the same time). [#3316](https://github.com/Deltares/Ribasim/pull/3316)
 
 ### Fixed
 - Allocation: Remove the Basin storage change upper bound and the flow bounds derived from it, which only existed for numerical reasons and could make the optimization problem infeasible. The flow of allocation controlled TabulatedRatingCurves is now bounded by its linearized Q(h) relation instead.

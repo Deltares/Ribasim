@@ -163,7 +163,7 @@ class Solver(ChildModel):
     level_difference_threshold : float
         Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes
     min_discrete_control_interval : float
-        The minimum time between control state updates, if the time is smaller an error will be thrown
+        The minimum time in seconds between control state updates of a DiscreteControl node, if the time is smaller a warning is given. Set to 0 to disable. (Optional, defaults to 1)
     discrete_control_interval : float
         The interval in seconds at which DiscreteControl logic is evaluated, or after every timestep if 0. (Optional, defaults to 0)
     specialize : bool
@@ -413,7 +413,7 @@ class DiscreteControl(NodeModel):
     condition: TableModel[DiscreteControlConditionSchema] = Field(
         default_factory=TableModel[DiscreteControlConditionSchema],
         json_schema_extra={
-            "sort_keys": ["node_id", "compound_variable_id", "condition_id"]
+            "sort_keys": ["node_id", "compound_variable_id", "condition_id", "time"]
         },
     )
     logic: TableModel[DiscreteControlLogicSchema] = Field(

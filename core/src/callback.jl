@@ -645,6 +645,8 @@ function discrete_control_initialize(c, u, t, integrator)::Nothing
     return apply_discrete_control!(integrator; initialize = true)
 end
 
+const MAX_OSCILLATION_WARNINGS = 10
+
 """
 Set the control state for a DiscreteControl node from its truth state.
 Returns `(node_errors, node_changed)`, indicating whether an error occurred and whether
@@ -658,7 +660,8 @@ function set_new_control_state!(
     (; p, t) = integrator
     (; p_independent) = p
     (; discrete_control, pump, outlet, tabulated_rating_curve) = p_independent
-    (; record, min_discrete_control_interval, last_update_time) = discrete_control
+    (; record, min_discrete_control_interval, last_update_time, oscillation_warned) =
+        discrete_control
 
     # Get the control state corresponding to the new truth state,
     # if one is defined
@@ -679,14 +682,23 @@ function set_new_control_state!(
         push!(record.truth_state, convert_truth_state(truth_state))
         push!(record.control_state, control_state_new)
 
-        # Check whether the control state update of this node came too quickly after the previous one
+        # Warn once per node if the control state update came too quickly after the previous
+        # one, for at most MAX_OSCILLATION_WARNINGS nodes
         update_dt = t - last_update_time[discrete_control_id.idx]
-        if update_dt < min_discrete_control_interval
-            @error lazy"$discrete_control_id changed control state with a smaller time interval than min_discrete_control_interval." update_dt min_discrete_control_interval
-            return true, false
-        elseif !iszero(t)
-            # The control state is initialized at t = 0, which is not a change to measure
-            # the interval from, so the first timestep is exempt from the check above.
+        if update_dt < min_discrete_control_interval &&
+                !oscillation_warned[discrete_control_id.idx]
+            n_warned = count(oscillation_warned)
+            oscillation_warned[discrete_control_id.idx] = true
+            if n_warned < MAX_OSCILLATION_WARNINGS
+                @warn lazy"$discrete_control_id changed control state with a smaller time interval than min_discrete_control_interval, which may indicate oscillations. Further warnings for this node are suppressed." t update_dt min_discrete_control_interval
+                if n_warned + 1 == MAX_OSCILLATION_WARNINGS
+                    @warn "Oscillation warnings were given for $MAX_OSCILLATION_WARNINGS DiscreteControl nodes, warnings for other nodes are suppressed."
+                end
+            end
+        end
+        # The control state is initialized at t = 0, which is not a change to measure
+        # the interval from, so the first timestep is exempt from the check above.
+        if !iszero(t)
             last_update_time[discrete_control_id.idx] = t
         end
 
