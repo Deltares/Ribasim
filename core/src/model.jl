@@ -225,53 +225,96 @@ Workaround for pre-step callbacks: https://github.com/SciML/OrdinaryDiffEq.jl/is
 function OrdinaryDiffEqCore.loopheader!(integrator::DEIntegrator{<:Any, <:Any, RibasimStateCVector{Float64}})
     (; p, t) = integrator
     (; allocation) = p.p_independent
-    if is_active(allocation) && !isempty(allocation.time.tstops)
-        if (t == first(allocation.time.tstops))
-            popfirst!(allocation.time.tstops)
-            tstop_new = compute_next_allocation_tstop(integrator)
-            allocation_Δt = tstop_new - t
-            update_allocation!(integrator, allocation_Δt, record = is_saveat_time(t, allocation.time))
-            tstop_new = t + allocation_Δt
-            add_allocation_tstop!(allocation.time, tstop_new)
-            add_tstop!(integrator, tstop_new)
-        elseif (t > first(allocation.time.tstops))
-            error("Allocation has skipped a tstop, please make an issue.")
-        end
+    (; time) = allocation
+    if is_active(allocation) && t >= time.t_intervention_end && t < time.t_end
+        update_allocation_until!(integrator, min(t + time.intervention_interval, time.t_end))
     end
     return invoke(loopheader!, Tuple{DEIntegrator}, integrator)
 end
 
 """
-Compute and return  the adaptive allocation Δt if the timestepping is adaptive, otherwise return
-the fixed timestep.
+    update_allocation_until!(integrator, t_intervention_end::Float64)::Nothing
+
+Run allocation over the intervention interval from the current time to `t_intervention_end`,
+and pass the time-averaged results to the physical layer.
+
+Within the interval allocation takes timesteps of its own, starting each one from the
+Basin storages predicted by the previous one. With adaptive timestepping a failed
+optimization is retried with half the timestep (down to `dtmin`), and after a
+successful one the timestep is doubled (up to `dtmax`).
 """
-function compute_next_allocation_tstop(integrator)::Float64
+function update_allocation_until!(integrator, t_intervention_end::Float64)::Nothing
     (; u, p, t) = integrator
     (; allocation) = p.p_independent
-    (; dtmin, dtmax) = allocation.config.allocation
+    (; time, allocation_models, record_demand, record_flow, record_control) = allocation
+    (; dtmin, dtmax) = time
 
-    Δt = if allocation.time.adaptive
-        du = get_du(integrator)
+    du = get_du(integrator)
+    water_balance!(du, u, p, t)
+    copy_basin_properties!(allocation.current_basin_properties, p.current_basin_properties)
+    p_allocation = Parameters(;
+        p.p_independent,
+        p.time_dependent_cache,
+        allocation.current_basin_properties,
+        p.p_mutable,
+    )
+    (; current_storage) = p_allocation.current_basin_properties
 
-        water_balance!(du, u, p, t)
-        Δt = Inf
-
-        for am in allocation.allocation_models
-            Δt_sub = compute_adaptive_allocation_Δt(am, p, du, t, allocation.config)
-            Δt = min(Δt, Δt_sub)
+    record_lengths = (length(record_demand), length(record_flow), length(record_control))
+    result_sum = AllocationResultSum(p.p_independent)
+    τ = t
+    while τ < t_intervention_end
+        τ_next = next_allocation_time(time, τ, t_intervention_end)
+        can_retry = time.adaptive && time.dt > dtmin
+        try
+            update_allocation!(
+                p_allocation,
+                τ,
+                τ_next - τ,
+                u,
+                du;
+                Δt_supplied = (τ == t) ? t - time.t_intervention : nothing,
+                can_retry,
+            )
+        catch e
+            (can_retry && e isa AllocationFailure) || rethrow()
+            time.dt = max(time.dt / 2, dtmin)
+            @debug "Allocation failed, retrying with a smaller timestep." e time.dt
+            continue
         end
-        clamp(Δt, dtmin, dtmax)
-    else
-        allocation.time.dt_fixed
+        add_allocation_results!(result_sum, p.p_independent, τ_next - τ)
+        for allocation_model in allocation_models
+            update_allocation_storage!(current_storage, allocation_model)
+        end
+        set_basin_properties!(p_allocation)
+        time.adaptive && (time.dt = min(2 * time.dt, dtmax))
+        τ = τ_next
     end
+
+    set_allocation_results!(p.p_independent, result_sum, t_intervention_end - t)
+    if !iszero(time.saveat)
+        average_records!(record_demand, record_lengths[1], t, t_intervention_end)
+        average_records!(record_flow, record_lengths[2], t, t_intervention_end)
+        average_records!(record_control, record_lengths[3], t, t_intervention_end)
+    end
+    for allocation_model in allocation_models
+        reset_cumulative!(allocation_model)
+    end
+
+    update_storage_prev!(p)
+    time.t_intervention = t
+    time.t_intervention_end = t_intervention_end
+    add_tstop!(integrator, t_intervention_end)
+    derivative_discontinuity!(integrator, true)
+    return nothing
+end
+
+function next_allocation_time(time::AllocationTime, τ::Float64, t_intervention_end::Float64)::Float64
+    Δt = time.adaptive ? time.dt : time.dt_fixed
     (Δt ≤ 0) && error("A non-positive allocation timestep was computed, please make an issue.")
 
-    tstop_next = t + Δt
-    return if tstop_next ≈ first(allocation.time.tstops)
-        first(allocation.time.tstops)
-    else
-        min(first(allocation.time.tstops), tstop_next)
-    end
+    τ_next = τ + Δt
+    return (τ_next ≈ t_intervention_end) ? t_intervention_end : min(τ_next, t_intervention_end)
 end
 
 """

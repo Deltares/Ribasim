@@ -254,10 +254,9 @@ end
     # Switch to scalar feasibility objective (as done in optimize! when INFEASIBLE is detected)
     Ribasim.set_feasibility_objective!(problem)
 
-    # Add a contradictory constraint to force INFEASIBLE
-    flow = problem[:flow]
-    first_link = first(only(flow.axes))
-    JuMP.@constraint(problem, flow[first_link] >= 1.0e10)
+    # Add a constraint contradicting the non-negative storage to force INFEASIBLE
+    storage_change = problem[:basin_storage_change]
+    JuMP.@constraint(problem, first(storage_change) <= -1.0e10)
     JuMP.optimize!(problem)
     @test JuMP.termination_status(problem) == JuMP.INFEASIBLE
 
@@ -358,8 +357,8 @@ end
     @test JuMP.upper_bound(flow[outlet_link]) * scaling.flow ≈
         outlet.max_flow_rate[outlet_id.idx](0.0)
 
-    # ManningResistance flows are bounded by the linearized flow over the
-    # storage change interval of the Basins it connects
+    # ManningResistance flows are only constrained by their linearized flow-level relation,
+    # and Basin storage changes only by the storage that is available
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/polder_management/ribasim.toml")
     @test ispath(toml_path)
@@ -371,22 +370,15 @@ end
     allocation_model = only(allocation.allocation_models)
     (; problem) = allocation_model
     flow = problem[:flow]
-    basin_storage_change = problem[:basin_storage_change]
 
     manning_id = NodeID(:ManningResistance, 2, p_independent)
     manning_link = manning_resistance.inflow_link[manning_id.idx].link
-    # The linearization is around zero flow, and the two Basins have mirrored
-    # storage change intervals, so the flow bounds are symmetric
-    @test JuMP.lower_bound(flow[manning_link]) ≈ -JuMP.upper_bound(flow[manning_link])
-    @test isfinite(JuMP.upper_bound(flow[manning_link]))
+    @test !JuMP.has_lower_bound(flow[manning_link])
+    @test !JuMP.has_upper_bound(flow[manning_link])
 
-    # All non-fixed flow variables have finite bounds
-    for allocation_model in allocation.allocation_models
-        for flow_variable in allocation_model.problem[:flow]
-            JuMP.is_fixed(flow_variable) && continue
-            @test JuMP.has_lower_bound(flow_variable)
-            @test JuMP.has_upper_bound(flow_variable)
-        end
+    for storage_change in problem[:basin_storage_change]
+        @test JuMP.has_lower_bound(storage_change)
+        @test !JuMP.has_upper_bound(storage_change)
     end
 end
 
@@ -414,6 +406,7 @@ end
     # To update the reference files run `pixi run write-allocation-problems`
     include("../../utils/utils.jl")
     toml_paths = get_testmodels()
+    failure_reasons = Dict{String, String}()
 
     for toml_path in toml_paths
         model_name = basename(dirname(toml_path))
@@ -423,28 +416,29 @@ end
             continue
         end
 
-        config = Ribasim.Config(toml_path)
+        try
+            config = Ribasim.Config(toml_path)
+            !config.experimental.allocation && continue
 
-        if !config.experimental.allocation
-            continue
-        end
+            # Initialize the same model 5 times
+            models = [Ribasim.Model(toml_path) for _ in 1:5]
+            BMI.update_until.(models, 86400.0)
 
-        # Initialize the same model 5 times
-        models = [Ribasim.Model(toml_path) for _ in 1:5]
-        BMI.update_until.(models, 86400.0)
+            subnetwork_ids = [
+                allocation_model.subnetwork_id for allocation_model in
+                    first(models).integrator.p.p_independent.allocation.allocation_models
+            ]
 
-        subnetwork_ids = [
-            allocation_model.subnetwork_id for allocation_model in
-                first(models).integrator.p.p_independent.allocation.allocation_models
-        ]
-
-        for (i, subnetwork_id) in enumerate(subnetwork_ids)
-            @testset "$(model_name)_subnetwork_id_$subnetwork_id" begin
+            for (i, subnetwork_id) in enumerate(subnetwork_ids)
                 written_problem_path = normpath(
                     @__DIR__,
                     "data/allocation_problems/$model_name/allocation_problem_$subnetwork_id.lp",
                 )
-                @test ispath(written_problem_path)
+                if !ispath(written_problem_path)
+                    failure_reasons[model_name] =
+                        "Missing reference allocation problem: $written_problem_path"
+                    break
+                end
                 written_problem = read(written_problem_path, String)
 
                 current_problem_path = normpath(
@@ -458,14 +452,21 @@ end
 
                     JuMP.write_to_file(problem, current_problem_path)
                     current_problem = read(current_problem_path, String)
-
-                    problem_equality = (current_problem == written_problem)
-                    @test problem_equality
-                    !problem_equality && break
+                    if current_problem != written_problem
+                        failure_reasons[model_name] =
+                            "Allocation problem differs for subnetwork $subnetwork_id"
+                        break
+                    end
                 end
+                haskey(failure_reasons, model_name) && break
             end
+        catch exception
+            failure_reasons[model_name] = sprint(showerror, exception, catch_backtrace())
         end
+
     end
+
+    @test isempty(failure_reasons)
 end
 
 @testitem "Route priorities" begin
@@ -535,120 +536,59 @@ end
     @test !isempty(low_level_flows)
 end
 
-@testitem "get_area_slope" begin
-    import Ribasim
-    using Ribasim: get_area_slope
+@testitem "allocation record averaging" begin
+    using Ribasim: DemandRecordDatum, FlowRecordDatum, AllocationControlRecordDatum,
+        average_records!, record_key
 
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
-    @test ispath(toml_path)
-    model = Ribasim.Model(toml_path)
-    (; basin) = model.integrator.p.p_independent
+    demand(t, id, value) =
+        DemandRecordDatum(t, 1, "UserDemand", id, 1, value, 2value, value)
+    flow(t, id, value) =
+        FlowRecordDatum(t, id, "Basin", 1, "UserDemand", 2, 1, value, t == 0, t == 2)
+    control(t, id, value) = AllocationControlRecordDatum(t, id, "Pump", value)
 
-    # The basic model has a piecewise-linear A(h) profile. Pick basin index 1.
-    # get_area_slope returns dA/dh, which equals the slope of the linear segment.
-    itp = basin.level_to_area[1]
-    h_mid = (itp.t[1] + itp.t[2]) / 2
-    expected_slope = (itp.u[2] - itp.u[1]) / (itp.t[2] - itp.t[1])
+    for make_record in (demand, flow, control)
+        previous = make_record(-1.0, 1, 10.0)
+        records = [
+            previous,
+            make_record(0.0, 2, 2.0),
+            make_record(0.0, 1, 4.0),
+            make_record(2.0, 2, 8.0),
+            make_record(2.0, 1, 16.0),
+        ]
+        @test (@inferred average_records!(records, 1, 0.0, 5.0)) === nothing
+        @test length(records) == 3
+        @test records[1] === previous
+        @test record_key(records[2]) == record_key(make_record(0.0, 2, 0.0))
+        @test record_key(records[3]) == record_key(make_record(0.0, 1, 0.0))
 
-    @test get_area_slope(basin, 1, h_mid) ≈ expected_slope
+        for (datum, expected) in zip(records[2:end], (5.6, 11.2))
+            @test datum.time == 0.0
+            if datum isa DemandRecordDatum
+                @test datum.demand ≈ expected
+                @test datum.allocated ≈ 2expected
+                @test datum.supplied == (datum.node_id == 2 ? 2.0 : 4.0)
+            else
+                @test datum.flow_rate ≈ expected
+                if datum isa FlowRecordDatum
+                    @test datum.lower_bound_hit
+                    @test datum.upper_bound_hit
+                end
+            end
+        end
 
-    # At a level beyond the last breakpoint the slope should equal the last segment slope
-    h_last_segment = (itp.t[end - 1] + itp.t[end]) / 2
-    expected_last_slope = (itp.u[end] - itp.u[end - 1]) / (itp.t[end] - itp.t[end - 1])
-    @test get_area_slope(basin, 1, h_last_segment) ≈ expected_last_slope
+        unchanged = copy(records)
+        @test (@inferred average_records!(records, 3, 5.0, 10.0)) === nothing
+        @test records == unchanged
+        empty!(records)
+        @test (@inferred average_records!(records, 0, 0.0, 5.0)) === nothing
+        @test isempty(records)
+    end
 end
 
-@testitem "get_max_flow_curvature" begin
+@testitem "allocation timestep controller" begin
     import Ribasim
-    using Ribasim: get_max_flow_curvature, tabulated_rating_curve_flow
-
-    t = 0.0
-
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/level_demand_with_rating_curve/ribasim.toml",
-    )
-    @test ispath(toml_path)
-    model = Ribasim.Model(toml_path)
-    (; p) = model.integrator
-    (; p_independent, current_basin_properties) = p
-    (; current_storage) = current_basin_properties
-    (; allocation) = p_independent
-
-    # A flow function that is linear in both levels has zero curvature by construction
-    linear_flow(connector_node, node_id, h_a, h_b, p, t) = 2.0 * h_a - 3.0 * h_b
-
-    linear_curvatures = Float64[]
-    rating_curve_curvatures = Float64[]
-    for allocation_model in allocation.allocation_models
-        (; tabulated_rating_curve_ids_subnetwork) = allocation_model.node_ids_in_subnetwork
-        isempty(tabulated_rating_curve_ids_subnetwork) && continue
-        push!(
-            linear_curvatures,
-            get_max_flow_curvature(
-                p_independent.tabulated_rating_curve,
-                tabulated_rating_curve_ids_subnetwork,
-                linear_flow,
-                p,
-                current_storage,
-                t,
-            ),
-        )
-        push!(
-            rating_curve_curvatures,
-            get_max_flow_curvature(
-                p_independent.tabulated_rating_curve,
-                tabulated_rating_curve_ids_subnetwork,
-                tabulated_rating_curve_flow,
-                p,
-                current_storage,
-                t,
-            ),
-        )
-    end
-    @test !isempty(linear_curvatures)
-    @test all(iszero, linear_curvatures)
-    # `qh_interpolation` prepends a point below the first level and fits a PCHIP spline,
-    # so even a 2-point rating curve table has a nonzero curvature in general.
-    @test all(c -> isfinite(c) && c >= 0, rating_curve_curvatures)
-
-    # allocation_training has 3-point rating curves (PCHIP interpolation),
-    # which are nonlinear so the second derivative must be strictly positive.
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/allocation_training/ribasim.toml",
-    )
-    @test ispath(toml_path)
-    model = Ribasim.Model(toml_path)
-    (; p) = model.integrator
-    (; p_independent, current_basin_properties) = p
-    (; current_storage) = current_basin_properties
-    (; allocation) = p_independent
-
-    nonlinear_curvatures = Float64[]
-    for allocation_model in allocation.allocation_models
-        (; tabulated_rating_curve_ids_subnetwork) = allocation_model.node_ids_in_subnetwork
-        isempty(tabulated_rating_curve_ids_subnetwork) && continue
-        push!(
-            nonlinear_curvatures,
-            get_max_flow_curvature(
-                p_independent.tabulated_rating_curve,
-                tabulated_rating_curve_ids_subnetwork,
-                tabulated_rating_curve_flow,
-                p,
-                current_storage,
-                t,
-            ),
-        )
-    end
-    @test !isempty(nonlinear_curvatures)
-    @test all(>(0), nonlinear_curvatures)
-end
-
-@testitem "compute_adaptive_allocation_Δt" begin
-    import Ribasim
-    using Ribasim: compute_adaptive_allocation_Δt, water_balance!, get_du
+    import JuMP
+    using Ribasim: update_allocation_until!
 
     toml_path = normpath(
         @__DIR__,
@@ -656,19 +596,44 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; config, integrator) = model
-    (; u, p, t) = integrator
-    (; p_independent) = p
-    (; allocation) = p_independent
+    (; integrator) = model
+    (; allocation) = integrator.p.p_independent
+    (; time, allocation_models) = allocation
+    (; dtmin, dtmax) = time
 
-    du = get_du(integrator)
-    water_balance!(du, u, p, t)
+    @test time.adaptive
+    @test time.dt == dtmin
 
-    for am in allocation.allocation_models
-        Δt = compute_adaptive_allocation_Δt(am, p, du, t, config)
+    # Timesteps of 1, 2, 4 and 8 hours, and the 9 hours left
+    update_allocation_until!(integrator, 86400.0)
+    @test time.dt == dtmax
+    @test time.t_intervention == 0.0
+    @test time.t_intervention_end == 86400.0
+    # Records are averaged over the intervention interval
+    @test all(datum -> datum.time == 0.0, allocation.record_flow)
 
-        # Result must be at least dtmin and positive
-        @test Δt >= config.allocation.dtmin
-        @test isfinite(Δt) || isinf(Δt)  # Inf is allowed when no curvature constraint applies
-    end
+    # A failing optimization is retried with halved timesteps, and errors at dtmin
+    time.dt = dtmax
+    (; problem) = first(allocation_models)
+    JuMP.@constraint(problem, first(problem[:low_storage_factor]) ≥ 2)
+    @test_throws ErrorException update_allocation_until!(integrator, 86400.0)
+    @test time.dt == dtmin
+end
+
+@testitem "allocation output per timestep for saveat = 0" begin
+    import Ribasim
+    using Ribasim: update_allocation_until!
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/basin_overflow/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    config = Ribasim.Config(toml_path; solver_saveat = 0.0)
+    model = Ribasim.Model(config)
+    (; allocation) = model.integrator.p.p_independent
+
+    update_allocation_until!(model.integrator, 86400.0)
+    times = unique(datum.time for datum in allocation.record_flow)
+    @test times == [0.0, 3600.0, 10800.0, 25200.0, 54000.0]
 end

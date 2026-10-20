@@ -323,6 +323,30 @@ function valid_config(config::Config)::Bool
         @error "The model starttime must be before the endtime."
     end
 
+    (; intervention_interval, dt, dtmin, dtmax, reltol_linearization) = config.allocation
+    if !isnothing(reltol_linearization)
+        @warn "The allocation.reltol_linearization setting is deprecated and ignored, it can be removed from the TOML." reltol_linearization
+    end
+    if !(0 < intervention_interval < Inf)
+        errors = true
+        @error "The allocation intervention_interval must be positive and finite." intervention_interval
+    else
+        for (name, value) in (("dtmin", dtmin), ("dtmax", dtmax), ("dt", dt))
+            if !isnothing(value) && value > intervention_interval
+                @warn "allocation.$name is larger than allocation.intervention_interval and is reduced to it. Increase intervention_interval to use a larger timestep." value intervention_interval
+            end
+        end
+        dtmin, dtmax = allocation_timestep_bounds(config)
+        if !(0 < dtmin ≤ dtmax)
+            errors = true
+            @error "The allocation timesteps must satisfy 0 < dtmin ≤ dtmax, after limiting both to intervention_interval." dtmin dtmax intervention_interval
+        end
+    end
+    if !isnothing(dt) && !(dt > 0)
+        errors = true
+        @error "The fixed allocation timestep dt must be positive." dt
+    end
+
     return !errors
 end
 
