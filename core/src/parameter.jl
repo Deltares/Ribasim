@@ -378,6 +378,9 @@ Data for the allocation timestepping
     const adaptive::Bool = true
     # The fixed allocation timestep (s) if not adaptive
     const dt_fixed::Float64 = 0.0
+    # The minimum and maximum adaptive allocation timestep (s), at most intervention_interval
+    const dtmin::Float64 = 0.0
+    const dtmax::Float64 = 0.0
     # The current allocation timestep (s), adapted by the controller
     dt::Float64 = 0.0
     # The endtime of the simulation in seconds

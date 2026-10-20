@@ -1,6 +1,8 @@
+import warnings
 from enum import StrEnum
+from typing import Any
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from ribasim.geometry import BasinAreaSchema, FlowBoundaryAreaSchema
 from ribasim.geometry.node import NodeModel
@@ -95,11 +97,13 @@ class Allocation(ChildModel):
         Interval in seconds at which allocation results are passed to the physical layer, representing human intervention (Optional, defaults to 86400.0)
     dt : float, optional
         Fixed allocation timestep in seconds within an intervention interval.
-        If not provided, adaptive timestepping is used.
+        If not provided, adaptive timestepping is used. Values above `intervention_interval` are reduced to it.
     dtmin : float
-        Minimum allocation timestep in seconds for adaptive timestepping (Optional, defaults to 3600.0)
+        Minimum allocation timestep in seconds for adaptive timestepping (Optional, defaults to 3600.0).
+        Values above `intervention_interval` are reduced to it.
     dtmax : float
-        Maximum allocation timestep in seconds for adaptive timestepping (Optional, defaults to 86400.0)
+        Maximum allocation timestep in seconds for adaptive timestepping (Optional, defaults to 86400.0).
+        Values above `intervention_interval` are reduced to it.
     route_priority : RoutePriority
         The default route priority per node type
     """
@@ -109,6 +113,18 @@ class Allocation(ChildModel):
     dtmin: float = 3600.0
     dtmax: float = 86400.0
     route_priority: RoutePriority = RoutePriority()
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_reltol_linearization(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "reltol_linearization" in data:
+            warnings.warn(
+                "The allocation.reltol_linearization setting is deprecated and ignored.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            data = {k: v for k, v in data.items() if k != "reltol_linearization"}
+        return data
 
 
 class Results(ChildModel):

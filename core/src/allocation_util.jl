@@ -641,8 +641,8 @@ function average_records!(
     resize!(records, n_before)
 
     times = sort!(unique(datum.time for datum in interval_records))
-    durations = Dict(zip(times, diff([times; t_end])))
-    groups = OrderedDict{Any, Vector{T}}()
+    durations = Dict{Float64, Float64}(zip(times, diff([times; t_end])))
+    groups = OrderedDict{typeof(record_key(first(interval_records))), Vector{T}}()
     for datum in interval_records
         push!(get!(groups, record_key(datum), T[]), datum)
     end
@@ -654,7 +654,7 @@ end
 
 function average_record(
         group::Vector{DemandRecordDatum},
-        durations::Dict,
+        durations::Dict{Float64, Float64},
         t_start::Float64,
         Δt::Float64,
     )::DemandRecordDatum
@@ -675,7 +675,7 @@ end
 
 function average_record(
         group::Vector{FlowRecordDatum},
-        durations::Dict,
+        durations::Dict{Float64, Float64},
         t_start::Float64,
         Δt::Float64,
     )::FlowRecordDatum
@@ -696,7 +696,7 @@ end
 
 function average_record(
         group::Vector{AllocationControlRecordDatum},
-        durations::Dict,
+        durations::Dict{Float64, Float64},
         t_start::Float64,
         Δt::Float64,
     )::AllocationControlRecordDatum

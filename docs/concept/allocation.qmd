@@ -109,7 +109,7 @@ The allocation LP linearizes the Basin profiles and the flow-level relationships
 - If the optimization succeeds, the next allocation timestep uses $\Delta t \leftarrow \min(2\,\Delta t, \Delta t_{\max})$.
 - If the optimization fails at $\Delta t_{\min}$, the infeasibility is analyzed and the simulation stops with an error.
 
-The simulation starts with $\Delta t = \Delta t_{\min}$, the configured `dtmin`, and $\Delta t_{\max}$ is the configured `dtmax`. Allocation timesteps are shortened to end at the next intervention time.
+The simulation starts with $\Delta t = \Delta t_{\min}$, the configured `dtmin`, and $\Delta t_{\max}$ is the configured `dtmax`, both limited to `intervention_interval`. Allocation timesteps are shortened to end at the next intervention time.
 
 The allocation output contains the time-averaged results per intervention interval. If `solver.saveat` is 0, the results of every allocation timestep are written instead.
 

@@ -246,8 +246,8 @@ successful one the timestep is doubled (up to `dtmax`).
 function update_allocation_until!(integrator, t_intervention_end::Float64)::Nothing
     (; u, p, t) = integrator
     (; allocation) = p.p_independent
-    (; time, config, allocation_models, record_demand, record_flow, record_control) = allocation
-    (; dtmin, dtmax) = config.allocation
+    (; time, allocation_models, record_demand, record_flow, record_control) = allocation
+    (; dtmin, dtmax) = time
 
     du = get_du(integrator)
     water_balance!(du, u, p, t)

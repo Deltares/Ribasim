@@ -1780,13 +1780,24 @@ function Subgrid(db::DB, config::Config, basin::Basin)
     return subgrid
 end
 
+"""
+The allocation `dtmin` and `dtmax`, limited to the intervention interval.
+"""
+function allocation_timestep_bounds(config::Config)::Tuple{Float64, Float64}
+    (; dtmin, dtmax, intervention_interval) = config.allocation
+    return min(dtmin, intervention_interval), min(dtmax, intervention_interval)
+end
+
 function AllocationTime(config::Config)
     (; saveat) = config.solver
-    (; dt, dtmin, intervention_interval) = config.allocation
+    (; dt, intervention_interval) = config.allocation
+    dtmin, dtmax = allocation_timestep_bounds(config)
 
     return AllocationTime(;
         adaptive = isnothing(dt),
-        dt_fixed = something(dt, 0.0),
+        dt_fixed = min(something(dt, 0.0), intervention_interval),
+        dtmin,
+        dtmax,
         dt = dtmin,
         t_end = seconds_since(config.endtime, config.starttime),
         intervention_interval,

@@ -232,6 +232,8 @@ end
     dt::Union{Float64, Nothing} = nothing
     dtmin::Float64 = 3600.0
     dtmax::Float64 = 86400.0
+    # Deprecated and ignored, accepted so TOML files from v2026.1.2 can still be read
+    reltol_linearization::Union{Float64, Nothing} = nothing
     route_priority::RoutePriority = RoutePriority()
 end
 

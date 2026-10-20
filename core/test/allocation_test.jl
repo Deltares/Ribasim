@@ -536,6 +536,55 @@ end
     @test !isempty(low_level_flows)
 end
 
+@testitem "allocation record averaging" begin
+    using Ribasim: DemandRecordDatum, FlowRecordDatum, AllocationControlRecordDatum,
+        average_records!, record_key
+
+    demand(t, id, value) =
+        DemandRecordDatum(t, 1, "UserDemand", id, 1, value, 2value, value)
+    flow(t, id, value) =
+        FlowRecordDatum(t, id, "Basin", 1, "UserDemand", 2, 1, value, t == 0, t == 2)
+    control(t, id, value) = AllocationControlRecordDatum(t, id, "Pump", value)
+
+    for make_record in (demand, flow, control)
+        previous = make_record(-1.0, 1, 10.0)
+        records = [
+            previous,
+            make_record(0.0, 2, 2.0),
+            make_record(0.0, 1, 4.0),
+            make_record(2.0, 2, 8.0),
+            make_record(2.0, 1, 16.0),
+        ]
+        @test (@inferred average_records!(records, 1, 0.0, 5.0)) === nothing
+        @test length(records) == 3
+        @test records[1] === previous
+        @test record_key(records[2]) == record_key(make_record(0.0, 2, 0.0))
+        @test record_key(records[3]) == record_key(make_record(0.0, 1, 0.0))
+
+        for (datum, expected) in zip(records[2:end], (5.6, 11.2))
+            @test datum.time == 0.0
+            if datum isa DemandRecordDatum
+                @test datum.demand ≈ expected
+                @test datum.allocated ≈ 2expected
+                @test datum.supplied == (datum.node_id == 2 ? 2.0 : 4.0)
+            else
+                @test datum.flow_rate ≈ expected
+                if datum isa FlowRecordDatum
+                    @test datum.lower_bound_hit
+                    @test datum.upper_bound_hit
+                end
+            end
+        end
+
+        unchanged = copy(records)
+        @test (@inferred average_records!(records, 3, 5.0, 10.0)) === nothing
+        @test records == unchanged
+        empty!(records)
+        @test (@inferred average_records!(records, 0, 0.0, 5.0)) === nothing
+        @test isempty(records)
+    end
+end
+
 @testitem "allocation timestep controller" begin
     import Ribasim
     import JuMP
@@ -547,10 +596,10 @@ end
     )
     @test ispath(toml_path)
     model = Ribasim.Model(toml_path)
-    (; config, integrator) = model
+    (; integrator) = model
     (; allocation) = integrator.p.p_independent
     (; time, allocation_models) = allocation
-    (; dtmin, dtmax) = config.allocation
+    (; dtmin, dtmax) = time
 
     @test time.adaptive
     @test time.dt == dtmin
