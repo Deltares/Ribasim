@@ -511,7 +511,6 @@ function tabulated_rating_curve_flow(
         t::Number;
         apply_low_storage_factor::Bool = true,
     )::Number
-    (; interpolations) = tabulated_rating_curve
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
     outflow_link = tabulated_rating_curve.outflow_link[node_id.idx]
@@ -523,10 +522,7 @@ function tabulated_rating_curve_flow(
     Δh = h_a - h_b
 
     factor = apply_low_storage_factor ? get_low_storage_factor(s_a, p, inflow_id) : 1.0
-    # Evaluated in `update_time_dependent_cache!`
-    interpolation_index = tabulated_rating_curve.interpolation_index[node_id.idx]
-    qh = interpolations[interpolation_index]
-    q = factor * qh(h_a)
+    q = factor * rating_curve_flow(tabulated_rating_curve, node_id.idx, h_a)
     q *= reduction_factor(Δh, level_difference_threshold)
     max_downstream_level = tabulated_rating_curve.max_downstream_level[node_id.idx]
     q *= reduction_factor(max_downstream_level - h_b, level_difference_threshold)
