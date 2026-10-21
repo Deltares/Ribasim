@@ -351,7 +351,7 @@ end
     substance_idx = Ribasim.find_index(:FlowBoundary, basin.concentration_data.substances)
     (; t, saveval) = model.saved.flow
     concentration = [saved.concentration[end, substance_idx] for saved in saveval]
-    @test maximum(abs.(concentration .- tanks_in_series.(t))) < 0.015
+    @test maximum(abs.(concentration .- tanks_in_series.(t))) < 1.0e-3
     # The tracer passes through all Basins
     @test last(concentration) ≈ 1 atol = 1.0e-3
 end

@@ -131,20 +131,24 @@ If you're interested in using this experimental feature, please [contact us](/co
 Ribasim can calculate concentrations of conservative tracers (i.e. substances that are non-reactive).
 It does so by calculating the mass transports by the flows of each timestep, after the timestep is taken.
 Each Basin is well mixed, so water leaves a Basin with the concentration of that Basin.
-Using the volumes $V_{ji}$ that flowed from Basin $j$ to Basin $i$ over the timestep, the outflow concentrations $C_i$ of all Basins follow from
+Over a timestep that concentration changes, and the outflowing water gets the weighted average $\theta_i C_i + (1 - \theta_i) C_i^0$ of the concentrations $C_i^0$ at the start and $C_i$ at the end of the timestep.
+Using the volumes $V_{ji}$ that flowed from Basin $j$ to Basin $i$ over the timestep, the concentrations $C_i$ of all Basins follow from
 
 $$
-(S_i + V_{\text{in},i}) C_i - \sum_j V_{ji} C_j = M_i + M_{\text{source},i}
+(W_i + \theta_i V_{\text{out},i}) C_i - \sum_j \theta_j V_{ji} C_j = M_i + M_{\text{source},i} - (1 - \theta_i) V_{\text{out},i} C_i^0 + \sum_j (1 - \theta_j) V_{ji} C_j^0
 $$
 
-where $S_i$ and $M_i$ are the storage and mass of Basin $i$ at the start of the timestep, $V_{\text{in},i}$ is its total inflow volume, and $M_{\text{source},i}$ is the mass that entered from boundaries, forcings and loads.
-This is a backward Euler (implicit upwind) step, the same scheme as integration option 15 that the [Delwaq coupling](/guide/coupling.qmd#sec-waterquality) uses.
-It conserves mass, keeps concentrations positive for any timestep, and lets substances travel through any number of Basins within one timestep.
+where $M_i$ is the mass of Basin $i$ at the start of the timestep, $W_i$ the volume that remains at the end, $V_{\text{out},i}$ its outflow volume, and $M_{\text{source},i}$ the mass that entered from boundaries, forcings and loads.
+The weight is $\theta_i = \max(1/2, 1 - S_i / V_{\text{out},i})$ with $S_i$ the storage at the start of the timestep.
+With $\theta = 1/2$ this is the trapezoidal rule, which is second order accurate.
+Where more water flows out of a Basin within one timestep than twice its storage, $\theta$ increases towards 1, backward Euler (implicit upwind), to keep the concentrations positive.
+This is similar to the local-theta schemes 21 and 22 of Delwaq, but with $\theta \geq 1/2$ instead of an explicit scheme where possible, since moving water a full Basin per timestep would not represent well mixed Basins.
+Backward Euler everywhere is the scheme of integration option 15, which the [Delwaq coupling](/guide/coupling.qmd#sec-waterquality) uses.
+The scheme conserves mass, keeps concentrations positive for any timestep, and lets substances travel through any number of Basins within one timestep.
 All substances share the same sparse linear system, which is factorized once per timestep.
-The mass that remains in each Basin is the remaining volume times $C_i$.
 
 We thus keep track of both mass and concentration of substances for each Basin.
-Note that we have not added the substance mass to the states, and we assume that concentrations of flows are piecewise constant over a timestep.
+Note that we have not added the substance mass to the states, and we assume that flows and boundary concentrations are constant over a timestep.
 This excludes the use of tracer injections.
 
 By default the following source tracers are enabled.
