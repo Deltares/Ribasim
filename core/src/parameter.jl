@@ -612,6 +612,28 @@ const StorageToLevelType = LinearInterpolationIntInv{
 }
 
 """
+The profiles of all Basins in contiguous vectors, to quickly compute the levels and areas of all
+Basins in `set_current_basin_properties!`. Within a profile this gives exactly the same results as
+`storage_to_level` and `level_to_area`, outside of it those are used for their extrapolation.
+Both relations have the same level points.
+"""
+@kwdef struct BasinProfiles
+    # The points of Basin i are at (offset[i] + 1):offset[i + 1]
+    offset::Vector{Int} = [0]
+    # The points of `storage_to_level` and of the dS/dh it integrates, with its slope per segment
+    storage::Vector{Float64} = Float64[]
+    level::Vector{Float64} = Float64[]
+    dS_dh::Vector{Float64} = Float64[]
+    dS_dh_slope::Vector{Float64} = Float64[]
+    # The points of `level_to_area`, with its slope per segment
+    area::Vector{Float64} = Float64[]
+    area_slope::Vector{Float64} = Float64[]
+    # Per Basin the segment of the last evaluation, where the search starts
+    segment::Vector{Int} = Int[]
+    area_segment::Vector{Int} = Int[]
+end
+
+"""
 Requirements:
 
 * Must be positive: precipitation, surface_runoff, evaporation, infiltration, drainage
@@ -641,6 +663,7 @@ Requirements:
         Vector{StorageToLevelType}(undef, length(node_id))
     level_to_area::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    profiles::BasinProfiles = BasinProfiles()
     # Values for allocation if applicable
     demand::Vector{Float64} = zeros(length(node_id))
     allocated::Vector{Float64} = zeros(length(node_id))

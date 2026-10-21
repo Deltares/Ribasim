@@ -1268,3 +1268,63 @@ function set_controlled_node_ids!(p_independent, node::Union{PidControl, Continu
     end
     return nothing
 end
+
+"Copy the profile interpolations of all Basins into `basin.profiles`"
+function set_basin_profiles!(basin::Basin)::Nothing
+    (; profiles, storage_to_level, level_to_area) = basin
+    for (storage_to_level_i, level_to_area_i) in zip(storage_to_level, level_to_area)
+        @assert storage_to_level_i.u == level_to_area_i.t
+        append!(profiles.storage, storage_to_level_i.t)
+        append!(profiles.level, storage_to_level_i.u)
+        append!(profiles.dS_dh, storage_to_level_i.itp.u)
+        # There is one segment fewer than there are points
+        append!(profiles.dS_dh_slope, storage_to_level_i.itp.p.slope, 0.0)
+        append!(profiles.area, level_to_area_i.u)
+        append!(profiles.area_slope, level_to_area_i.p.slope, 0.0)
+        push!(profiles.offset, length(profiles.storage))
+        push!(profiles.segment, 1)
+        push!(profiles.area_segment, 1)
+    end
+    return nothing
+end
+
+"""
+Find the last segment j in `first_idx:(last_idx - 1)` with `points[j] ≤ x`, searching from `guess`.
+This is how DataInterpolations finds the segment.
+"""
+@inline function find_segment(x::Float64, points::Vector{Float64}, first_idx::Int, last_idx::Int, guess::Int)::Int
+    j = clamp(guess, first_idx, last_idx - 1)
+    while j > first_idx && points[j] > x
+        j -= 1
+    end
+    while j < last_idx - 1 && points[j + 1] <= x
+        j += 1
+    end
+    return j
+end
+
+"""
+The level and area of Basin i at a storage within its profile, the same as evaluating
+`storage_to_level` and `level_to_area`. Returns `nothing` outside the profile.
+"""
+@inline function basin_level_and_area(
+        profiles::BasinProfiles,
+        i::Int,
+        storage::Float64,
+    )::Union{Nothing, Tuple{Float64, Float64}}
+    (; offset, segment, area_segment, level) = profiles
+    first_idx = offset[i] + 1
+    last_idx = offset[i + 1]
+    (profiles.storage[first_idx] <= storage <= profiles.storage[last_idx]) || return nothing
+
+    j = find_segment(storage, profiles.storage, first_idx, last_idx, first_idx - 1 + segment[i])
+    segment[i] = j - first_idx + 1
+    Δstorage = storage - profiles.storage[j]
+    x = profiles.dS_dh[j]
+    h = level[j] + 2Δstorage / (x + sqrt(x^2 + profiles.dS_dh_slope[j] * 2Δstorage))
+
+    k = find_segment(h, level, first_idx, last_idx, first_idx - 1 + area_segment[i])
+    area_segment[i] = k - first_idx + 1
+    area = profiles.area[k] + profiles.area_slope[k] * (h - level[k])
+    return h, area
+end
