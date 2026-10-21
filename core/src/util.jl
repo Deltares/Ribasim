@@ -1292,7 +1292,7 @@ end
 Find the last segment j in `first_idx:(last_idx - 1)` with `points[j] ≤ x`, searching from `guess`.
 This is how DataInterpolations finds the segment.
 """
-@inline function find_segment(x::Float64, points::Vector{Float64}, first_idx::Int, last_idx::Int, guess::Int)::Int
+@inline function find_segment(x::Real, points::Vector{Float64}, first_idx::Int, last_idx::Int, guess::Int)::Int
     j = clamp(guess, first_idx, last_idx - 1)
     while j > first_idx && points[j] > x
         j -= 1
@@ -1327,4 +1327,52 @@ The level and area of Basin i at a storage within its profile, the same as evalu
     area_segment[i] = k - first_idx + 1
     area = profiles.area[k] + profiles.area_slope[k] * (h - level[k])
     return h, area
+end
+
+"Copy the Q(h) interpolations of all TabulatedRatingCurves into `tabulated_rating_curve.tables`"
+function set_rating_curve_tables!(tabulated_rating_curve::TabulatedRatingCurve)::Nothing
+    (; tables, interpolations) = tabulated_rating_curve
+    for itp in interpolations
+        append!(tables.level, itp.t)
+        append!(tables.flow_rate, itp.u)
+        append!(tables.dflow_rate, itp.du)
+        # There is one segment fewer than there are points
+        append!(tables.c₁, itp.p.c₁, 0.0)
+        append!(tables.c₂, itp.p.c₂, 0.0)
+        push!(tables.offset, length(tables.level))
+    end
+    return nothing
+end
+
+"""
+The flow of a TabulatedRatingCurve at the upstream level `h`, the same as evaluating its Q(h)
+interpolation.
+"""
+function rating_curve_flow(
+        tabulated_rating_curve::TabulatedRatingCurve,
+        node_idx::Int,
+        h::Union{Float64, ForwardDiff.Dual},
+    )::Number
+    (; interpolations, interpolation_index, tables, segment) = tabulated_rating_curve
+    (; offset, level, flow_rate, dflow_rate, c₁, c₂) = tables
+    k = interpolation_index[node_idx]
+    first_idx = offset[k] + 1
+    last_idx = offset[k + 1]
+    # Outside the table the interpolation extrapolates
+    (level[first_idx] <= h <= level[last_idx]) || return interpolations[k](h)
+
+    j = find_segment(h, level, first_idx, last_idx, first_idx - 1 + segment[node_idx])
+    segment[node_idx] = j - first_idx + 1
+    # Same as `_interpolate` for a `CubicHermiteSpline` in DataInterpolations
+    Δt₀ = h - level[j]
+    Δt₁ = h - level[j + 1]
+    out = flow_rate[j] + Δt₀ * dflow_rate[j]
+    out += Δt₀^2 * (c₁[j] + Δt₁ * c₂[j])
+    return out
+end
+
+# Other number types, such as those for the sparsity detection, use the interpolation
+function rating_curve_flow(tabulated_rating_curve::TabulatedRatingCurve, node_idx::Int, h::Number)::Number
+    (; interpolations, interpolation_index) = tabulated_rating_curve
+    return interpolations[interpolation_index[node_idx]](h)
 end

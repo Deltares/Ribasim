@@ -666,6 +666,7 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
 
     errors && error("Errors occurred when parsing TabulatedRatingCurve data.")
 
+    set_rating_curve_tables!(rating_curve)
     return rating_curve
 end
 
