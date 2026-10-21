@@ -334,6 +334,28 @@ end
     @test flow_data_links == allocation_flow_data_links
 end
 
+@testitem "Tracer transport through Basins in series" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/tracer_chain/ribasim.toml")
+    @test ispath(toml_path) skip = true
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # 10 well mixed Basins in series with a residence time of 1000 s each, so the
+    # FlowBoundary tracer in the last Basin follows the tanks in series solution
+    n_basin = 10
+    residence_time = 1000.0
+    tanks_in_series(t) = 1 - exp(-t / residence_time) *
+        sum((t / residence_time)^k / factorial(k) for k in 0:(n_basin - 1))
+
+    (; basin) = model.integrator.p.p_independent
+    substance_idx = Ribasim.find_index(:FlowBoundary, basin.concentration_data.substances)
+    (; t, saveval) = model.saved.flow
+    concentration = [saved.concentration[end, substance_idx] for saved in saveval]
+    @test maximum(abs.(concentration .- tanks_in_series.(t))) < 0.015
+    # The tracer passes through all Basins
+    @test last(concentration) ≈ 1 atol = 1.0e-3
+end
+
 @testitem "Sparse and AD/FDM jac solver options" begin
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
