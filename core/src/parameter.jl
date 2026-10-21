@@ -663,6 +663,22 @@ Requirements:
 end
 
 """
+The Q(h) relations of all TabulatedRatingCurves in contiguous vectors, to quickly evaluate them in
+the right hand side. Within a relation this gives exactly the same results as the interpolation,
+outside of it the interpolation is used for its extrapolation.
+"""
+@kwdef struct RatingCurveTables
+    # The points of interpolation k are at (offset[k] + 1):offset[k + 1]
+    offset::Vector{Int} = [0]
+    level::Vector{Float64} = Float64[]
+    flow_rate::Vector{Float64} = Float64[]
+    # The derivative at the points, and the cubic Hermite coefficients per segment
+    dflow_rate::Vector{Float64} = Float64[]
+    c₁::Vector{Float64} = Float64[]
+    c₂::Vector{Float64} = Float64[]
+end
+
+"""
     struct TabulatedRatingCurve
 
 Rating curve from level to flow rate. The rating curve is a lookup table with linear
@@ -690,6 +706,9 @@ allocation_controlled: whether this TabulatedRatingCurve is controlled by alloca
     current_interpolation_index::Vector{IndexLookup} = IndexLookup[]
     # The value of `current_interpolation_index` at the time of the time dependent cache
     interpolation_index::Vector{Int} = ones(Int, length(node_id))
+    # The interpolations in contiguous vectors, and per node the segment of the last evaluation
+    tables::RatingCurveTables = RatingCurveTables()
+    segment::Vector{Int} = ones(Int, length(node_id))
     # Whether `current_interpolation_index` varies in time, see `update_time_dependent_cache!`
     time_varying::Vector{Bool} = fill(true, length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
