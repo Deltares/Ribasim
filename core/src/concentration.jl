@@ -183,6 +183,7 @@ function TracerTransport(
         backward_nz,
         zeros(n_basin),
         zeros(n_basin, n_substance),
+        zeros(n_basin),
         nothing,
     )
 end
@@ -191,12 +192,14 @@ end
 Transport the substances over the last timestep: the exchange between Basins, the outflows
 and the inflows from LevelBoundary, see [`TracerTransport`](@ref). The mass from the other
 sources is already added to `mass`, afterwards it holds the mass at the end of the timestep.
+`concentration_state` still holds the concentrations at the start of the timestep.
 """
 function transport_tracers!(p_independent::ParametersIndependent, t::Float64, dt::Float64)::Nothing
     (; tracer_transport, basin, level_boundary, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges) =
         p_independent
     (; A, diagonal_nz, forward_nz, backward_nz, outflow, work) = tracer_transport
-    (; mass, cumulative_in, evaporate_mass) = basin.concentration_data
+    (; mass, cumulative_in, evaporate_mass, concentration_state) = basin.concentration_data
+    (; theta) = tracer_transport
     (; storage_prev_dt) = basin
     isempty(diagonal_nz) && return nothing
     nzval = nonzeros(A)
@@ -236,16 +239,45 @@ function transport_tracers!(p_independent::ParametersIndependent, t::Float64, dt
         end
     end
 
+    # The outflows use a weighted average of the concentrations at the start and end of the
+    # timestep: θ = 1/2 is second order accurate, larger θ keeps the concentrations positive
     for i in eachindex(diagonal_nz)
         storage = storage_prev_dt[i]
         # The diagonal can already hold a flow from a Basin to itself
-        diagonal = nzval[diagonal_nz[i]] + storage + cumulative_in[i]
+        net_outflow = outflow[i] + nzval[diagonal_nz[i]]
+        θ = if storage > 0 && net_outflow > 0
+            max(0.5, 1 - storage / net_outflow)
+        else
+            1.0
+        end
+        theta[i] = θ
+        remaining = storage + cumulative_in[i] - outflow[i]
+        diagonal = remaining + θ * net_outflow
         # An empty Basin without inflow has no mass
         nzval[diagonal_nz[i]] = diagonal > 0 ? diagonal : 1.0
-        # The residence time tracer gets older
-        mass[Substance.ResidenceTime, i] += dt * storage
+        # The residence time tracer gets older, integrated with the trapezoidal rule
+        mass[Substance.ResidenceTime, i] += dt * (storage + max(remaining, 0.0)) / 2
         for substance_idx in axes(mass, 1)
-            work[i, substance_idx] = mass[substance_idx, i]
+            work[i, substance_idx] = mass[substance_idx, i] -
+                (1 - θ) * net_outflow * concentration_state[substance_idx, i]
+        end
+    end
+
+    # The inflows from other Basins with the same weights as their outflows
+    rows = rowvals(A)
+    for j in eachindex(diagonal_nz)
+        θ = theta[j]
+        for nz in nzrange(A, j)
+            i = rows[nz]
+            (i == j || iszero(nzval[nz])) && continue
+            volume = -nzval[nz]
+            nzval[nz] = -θ * volume
+            if θ < 1
+                for substance_idx in axes(mass, 1)
+                    work[i, substance_idx] +=
+                        (1 - θ) * volume * concentration_state[substance_idx, j]
+                end
+            end
         end
     end
 
