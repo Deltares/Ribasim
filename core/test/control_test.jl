@@ -425,3 +425,29 @@ end
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
     @test all(storage .< 7500 + 6)
 end
+
+@testitem "DiscreteControl on a concentration limits the timestep" begin
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/continuous_concentration_condition/ribasim.toml",
+    )
+    @test ispath(toml_path) skip = true
+    model = Ribasim.Model(toml_path)
+    (; integrator) = model
+    (; concentration_data) = integrator.p.p_independent.basin
+    substance_idx = Ribasim.find_index(:Cl, concentration_data.substances)
+
+    # The inflow of seawater stops above a concentration of 7, starting from 35
+    max_concentration = let max_concentration = 0.0
+        while integrator.t < 10 * 86400
+            Ribasim.SciMLBase.step!(integrator)
+            if integrator.t > 86400
+                concentration = concentration_data.concentration_state[substance_idx, 1]
+                max_concentration = max(max_concentration, concentration)
+            end
+        end
+        max_concentration
+    end
+    # Without limiting the timestep the concentration overshoots to almost 10
+    @test 7 < max_concentration < 7.05
+end

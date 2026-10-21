@@ -86,6 +86,23 @@ function create_callbacks(
     end
     push!(callbacks, discrete_control_cb)
 
+    # Concentrations are not states of the solver, so the solver does not limit the timestep
+    # for control that listens to them. When control is evaluated at a fixed interval
+    # the timing of threshold crossings in between does not matter.
+    if iszero(discrete_control_interval)
+        concentration_timestep = ConcentrationControlTimestep(p_independent)
+        if !isempty(concentration_timestep.listened)
+            push!(
+                callbacks,
+                DiscreteCallback(
+                    Returns(true),
+                    concentration_timestep;
+                    save_positions = (false, false),
+                ),
+            )
+        end
+    end
+
     reset_cb = DiscreteCallback(
         cumulative_flow_reset_condition,
         reset_cumulative_flows!;
@@ -691,6 +708,208 @@ function set_new_control_state!(
         return false, true
     end
     return false, false
+end
+
+"""
+A Basin concentration that control listens to, with the flows that can change it.
+"""
+struct ListenedConcentration
+    basin_id::NodeID
+    substance_idx::Int
+    # Indices of the horizontal flows to or from the Basin
+    flow_idx::Vector{Int}
+    # Indices of the FlowBoundary nodes that flow into the Basin
+    flow_boundary_idx::Vector{Int}
+end
+
+"""
+Limits the timestep for control that listens to Basin concentrations. These are not states
+of the solver, so otherwise the timestep does not depend on how fast they change.
+- Each timestep ends just past the predicted crossing of a DiscreteControl threshold on a
+  concentration, so the control state changes without a large overshoot.
+- The inflow into each listened Basin over a timestep is at most `max_courant` times its
+  storage, so the concentration changes gradually, also for ContinuousControl.
+"""
+struct ConcentrationControlTimestep
+    listened::Vector{ListenedConcentration}
+    # Per DiscreteControl node and compound variable, the weight and index into `listened`
+    # of each concentration it listens to
+    discrete_control_terms::Vector{Vector{Vector{Tuple{Float64, Int}}}}
+    # Per listened concentration the current rate of change and inflow rate relative to the storage
+    rate::Vector{Float64}
+    flushing_rate::Vector{Float64}
+    # Flow rates after a control state change
+    du::RibasimStateCVector{Float64}
+    max_courant::Float64
+end
+
+function ConcentrationControlTimestep(
+        p_independent::ParametersIndependent;
+        max_courant = 0.25,
+    )::ConcentrationControlTimestep
+    (; discrete_control, continuous_control, basin, flow_boundary, inflow_id, outflow_id, flow_ranges, do_concentration) =
+        p_independent
+    listened = ListenedConcentration[]
+    lookup = Dict{Tuple{NodeID, Int}, Int}()
+
+    function listened_index(subvariable::SubVariable)::Int
+        (; listen_node_id, variable) = subvariable
+        (do_concentration && startswith(variable, "concentration.")) || return 0
+        substance = Symbol(last(split(variable, ".")))
+        substance_idx = find_index(substance, basin.concentration_data.substances)
+        return get!(lookup, (listen_node_id, substance_idx)) do
+            flow_idx = [
+                # The horizontal flows come before the vertical flows
+                i for i in 1:(first(flow_ranges.vertical.evaporation) - 1) if
+                    (inflow_id[i].is_basin && inflow_id[i] == listen_node_id) ||
+                    (outflow_id[i].is_basin && outflow_id[i] == listen_node_id)
+            ]
+            flow_boundary_idx = [
+                i for (i, link) in enumerate(flow_boundary.outflow_link) if link.link[2] == listen_node_id
+            ]
+            push!(listened, ListenedConcentration(listen_node_id, substance_idx, flow_idx, flow_boundary_idx))
+            length(listened)
+        end
+    end
+
+    discrete_control_terms = [
+        [
+            [
+                (subvariable.weight, i) for subvariable in compound_variable.subvariables for
+                    i in (listened_index(subvariable),) if i != 0
+            ] for compound_variable in compound_variables
+        ] for compound_variables in discrete_control.compound_variables
+    ]
+    for compound_variable in continuous_control.compound_variable
+        foreach(listened_index, compound_variable.subvariables)
+    end
+
+    n = length(listened)
+    return ConcentrationControlTimestep(
+        listened,
+        discrete_control_terms,
+        zeros(n),
+        zeros(n),
+        build_state_vector(p_independent),
+        max_courant,
+    )
+end
+
+"""
+Set the rate of change of a listened concentration from the current flows into its Basin,
+and the inflow rate relative to the storage.
+"""
+function set_concentration_rate!(
+        timestep::ConcentrationControlTimestep,
+        idx::Int,
+        flow_rate::AbstractVector,
+        p::Parameters,
+        t::Float64,
+    )::Nothing
+    (; basin, level_boundary, flow_boundary, inflow_id, outflow_id) = p.p_independent
+    (; basin_id, substance_idx, flow_idx, flow_boundary_idx) = timestep.listened[idx]
+    (;
+        concentration_state,
+        concentration_drainage,
+        concentration_precipitation,
+        concentration_surface_runoff,
+        loads,
+    ) = basin.concentration_data
+    (; vertical_flux) = basin
+    i = basin_id.idx
+    concentration = concentration_state[substance_idx, i]
+
+    rate = loads.value[substance_idx, i]
+    inflow = 0.0
+    for (forcing_flux, forcing_concentration) in (
+            (vertical_flux.drainage, concentration_drainage),
+            (vertical_flux.precipitation, concentration_precipitation),
+            (vertical_flux.surface_runoff, concentration_surface_runoff),
+        )
+        rate += forcing_flux[i] * (forcing_concentration.value[substance_idx, i] - concentration)
+        inflow += forcing_flux[i]
+    end
+    for k in flow_idx
+        q = flow_rate[k]
+        upstream = if q > 0 && outflow_id[k] == basin_id
+            inflow_id[k]
+        elseif q < 0 && inflow_id[k] == basin_id
+            outflow_id[k]
+        else
+            continue
+        end
+        # Other inflows, such as UserDemand return flows, are assumed not to change the concentration
+        concentration_in = if upstream.is_basin
+            concentration_state[substance_idx, upstream.idx]
+        elseif upstream.type == NodeType.LevelBoundary
+            level_boundary.concentration_itp[upstream.idx][substance_idx](t)
+        else
+            concentration
+        end
+        rate += abs(q) * (concentration_in - concentration)
+        inflow += abs(q)
+    end
+    for k in flow_boundary_idx
+        q = boundary_flow_rate(flow_boundary, k, t)
+        rate += q * (flow_boundary.concentration_itp[k][substance_idx](t) - concentration)
+        inflow += q
+    end
+
+    storage = p.current_basin_properties.current_storage[i]
+    timestep.rate[idx] = storage > 0 ? rate / storage : 0.0
+    timestep.flushing_rate[idx] = storage > 0 ? inflow / storage : 0.0
+    return nothing
+end
+
+function (timestep::ConcentrationControlTimestep)(integrator)::Nothing
+    (; p, t, u) = integrator
+    (; discrete_control) = p.p_independent
+    (; listened, discrete_control_terms, rate, flushing_rate, max_courant) = timestep
+
+    # After a control state change the flows of the last timestep no longer apply
+    du = if !isempty(discrete_control.record.time) && last(discrete_control.record.time) == t
+        integrator.f(timestep.du, u, p, t)
+        timestep.du
+    else
+        get_du(integrator)
+    end
+
+    dt_limit = Inf
+    for idx in eachindex(listened)
+        set_concentration_rate!(timestep, idx, du.flow, p, t)
+        if flushing_rate[idx] > 0
+            dt_limit = min(dt_limit, max_courant / flushing_rate[idx])
+        end
+    end
+
+    storage = p.current_basin_properties.current_storage
+    for (terms_node, compound_variables, truth_state) in
+        zip(discrete_control_terms, discrete_control.compound_variables, discrete_control.truth_state)
+        condition_idx = 0
+        for (terms, compound_variable) in zip(terms_node, compound_variables)
+            (; threshold_low, threshold_high) = compound_variable
+            n_threshold = length(threshold_high)
+            value_rate = sum(weight * rate[idx] for (weight, idx) in terms; init = 0.0)
+            if !iszero(value_rate)
+                value = compound_variable_value(compound_variable, storage, du.flow, p, t)
+                for j in 1:n_threshold
+                    # Only the threshold that would change the truth state matters
+                    threshold = truth_state[condition_idx + j] ? threshold_low[j](t) : threshold_high[j](t)
+                    gap = threshold - value
+                    if sign(gap) == sign(value_rate)
+                        # End the timestep just past the predicted crossing
+                        dt_limit = min(dt_limit, 1.01 * gap / value_rate + 1.0)
+                    end
+                end
+            end
+            condition_idx += n_threshold
+        end
+    end
+
+    if dt_limit < get_proposed_dt(integrator)
+        set_proposed_dt!(integrator, dt_limit)
+    end
+    return nothing
 end
 
 function compound_variable_value(
