@@ -895,11 +895,11 @@ function ConcentrationData(
     substances = get_substances(db, config)
     n_substance = length(substances)
 
-    concentration_state = zeros(n_basin, n_substance)
-    concentration_state[:, Substance.Continuity] .= 1.0
-    concentration_state[:, Substance.Initial] .= 1.0
+    concentration_state = zeros(n_substance, n_basin)
+    concentration_state[Substance.Continuity, :] .= 1.0
+    concentration_state[Substance.Initial, :] .= 1.0
     set_concentrations!(concentration_state, concentration_state_data, substances, node_id)
-    mass = collect(eachrow(concentration_state))
+    mass = copy(concentration_state)
 
     concentration_itp_drainage =
         [initialize_concentration_itp(n_substance, Substance.Drainage) for _ in node_id]
@@ -987,10 +987,10 @@ function ConcentrationData(
     return ConcentrationData(;
         config.solver.evaporate_mass,
         concentration_state,
-        concentration_itp_drainage,
-        concentration_itp_precipitation,
-        concentration_itp_surface_runoff,
-        loads_itp,
+        concentration_drainage = ForcingConcentration(concentration_itp_drainage, n_substance),
+        concentration_precipitation = ForcingConcentration(concentration_itp_precipitation, n_substance),
+        concentration_surface_runoff = ForcingConcentration(concentration_itp_surface_runoff, n_substance),
+        loads = ForcingConcentration(loads_itp, n_substance),
         mass,
         concentration_external,
         substances,
@@ -1051,7 +1051,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     basin.storage0 .= storage0
     basin.storage_prev_dt .= storage0
     basin.storage_prev_saveat .= storage0
-    basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
+    basin.concentration_data.mass .*= storage0'  # was initialized by concentration_state, resulting in mass
 
     for id in node_id
         # Compute the low storage threshold as the disk of water between the bottom
@@ -2319,7 +2319,7 @@ function set_concentrations!(
             value = getproperty(first_row, concentration_column)
             ismissing(value) && continue
             node_idx = findfirst(node_id -> node_id == first_row.node_id, node_ids)
-            concentration[node_idx, sub_idx] = value
+            concentration[sub_idx, node_idx] = value
         end
     end
     return

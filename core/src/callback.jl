@@ -212,10 +212,10 @@ function update_concentrations!(u, t, integrator)::Nothing
         evaporate_mass,
         cumulative_in,
         concentration_state,
-        concentration_itp_drainage,
-        concentration_itp_precipitation,
-        concentration_itp_surface_runoff,
-        loads_itp,
+        concentration_drainage,
+        concentration_precipitation,
+        concentration_surface_runoff,
+        loads,
         mass,
     ) = concentration_data
 
@@ -228,43 +228,18 @@ function update_concentrations!(u, t, integrator)::Nothing
     dt = t - tprev
 
     # Basin forcings
-    for node_id in basin.node_id
-        mass_node = mass[node_id.idx]
-
-        add_substance_mass!(
-            mass_node,
-            concentration_itp_drainage[node_id.idx],
-            forcing.exact_cumulative_forcing_dt.drainage[node_id.idx],
-            t,
-        )
-
-        add_substance_mass!(
-            mass_node,
-            concentration_itp_precipitation[node_id.idx],
-            forcing.exact_cumulative_forcing_dt.precipitation[node_id.idx],
-            t,
-        )
-
-        add_substance_mass!(
-            mass_node,
-            concentration_itp_surface_runoff[node_id.idx],
-            forcing.exact_cumulative_forcing_dt.surface_runoff[node_id.idx],
-            t,
-        )
-
-        add_substance_mass!(
-            mass_node,
-            loads_itp[node_id.idx],
-            dt,  # loads are per second, not volume, so the flow is just the time step
-            t,
-        )
-    end
+    (; drainage, precipitation, surface_runoff) = forcing.exact_cumulative_forcing_dt
+    add_forcing_mass!(mass, concentration_drainage, drainage, t)
+    add_forcing_mass!(mass, concentration_precipitation, precipitation, t)
+    add_forcing_mass!(mass, concentration_surface_runoff, surface_runoff, t)
+    # Loads are per second, not volume, so the flow is just the time step
+    add_forcing_mass!(mass, loads, dt, t)
 
     # Exact boundary flow over time step
     for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
         outflow_id = outflow_link.link[2]
         add_substance_mass!(
-            mass[outflow_id.idx],
+            view(mass, :, outflow_id.idx),
             flow_boundary.concentration_itp[id.idx],
             flow_boundary.cumulative_flow_dt[id.idx],
             t,
@@ -287,11 +262,11 @@ function update_concentrations!(u, t, integrator)::Nothing
         storage_only_in = storage_prev_dt[node_id.idx] + cumulative_in[node_id.idx]
 
         # The residence time tracer gets older
-        mass[node_id.idx][Substance.ResidenceTime] += dt * storage_prev_dt[node_id.idx]
+        mass[Substance.ResidenceTime, node_id.idx] += dt * storage_prev_dt[node_id.idx]
         if iszero(storage_only_in)
-            concentration_state[node_id.idx, :] .= 0
+            concentration_state[:, node_id.idx] .= 0
         else
-            concentration_state[node_id.idx, :] .= mass[node_id.idx] ./ storage_only_in
+            concentration_state[:, node_id.idx] .= view(mass, :, node_id.idx) ./ storage_only_in
         end
     end
 
@@ -300,12 +275,12 @@ function update_concentrations!(u, t, integrator)::Nothing
     errors = false
 
     for node_id in basin.node_id
-        mass_node = mass[node_id.idx]
+        mass_node = view(mass, :, node_id.idx)
 
         # Evaporate mass to keep the mass balance, if enabled in model config
         if evaporate_mass
             evaporated_volume = cumulative_flow_dt.vertical.evaporation[node_id.idx]
-            mass_node .-= concentration_state[node_id.idx, :] .* evaporated_volume
+            mass_node .-= @view(concentration_state[:, node_id.idx]) .* evaporated_volume
         end
 
         # Take care of too small masses, possibly becoming negative due to truncation.
@@ -318,25 +293,34 @@ function update_concentrations!(u, t, integrator)::Nothing
         # Check for negative masses
         if any(<(0), mass_node)
             errors = true
-            for substance_idx in findall(<(0), mass_node)
-                substance_name = basin.concentration_data.substances[substance_idx]
-                substance_mass = mass_node[substance_idx]
-                @error "$node_id has negative mass $substance_mass for substance $substance_name"
-            end
+            log_negative_mass(node_id, mass_node, concentration_data.substances)
         end
 
         # Update the Basin concentrations again based on the removed mass
         s = current_storage[node_id.idx]
         if iszero(s)
-            concentration_state[node_id.idx, :] .= 0
+            concentration_state[:, node_id.idx] .= 0
         else
-            concentration_state[node_id.idx, :] .=
-                mass[node_id.idx] ./ s
+            concentration_state[:, node_id.idx] .= mass_node ./ s
         end
     end
 
     storage_prev_dt .= current_storage
     errors && error("Negative mass(es) detected at t = $t s")
+    return nothing
+end
+
+# Logging is kept out of the loop in `update_concentrations!`, since it hinders optimizing the loop
+@noinline function log_negative_mass(
+        node_id::NodeID,
+        mass_node::AbstractVector{Float64},
+        substances::OrderedSet{Symbol},
+    )::Nothing
+    for substance_idx in findall(<(0), mass_node)
+        substance_name = substances[substance_idx]
+        substance_mass = mass_node[substance_idx]
+        @error "$node_id has negative mass $substance_mass for substance $substance_name"
+    end
     return nothing
 end
 
@@ -390,7 +374,7 @@ function save_flow(u, t, integrator)
             basin.forcing.exact_cumulative_forcing_prev_saveat
     ) / Δt
 
-    concentration = copy(basin.concentration_data.concentration_state)
+    concentration = permutedims(basin.concentration_data.concentration_state)
 
     # Compute mean convergence over the saveat interval (missing if no nlsolver calls)
     flow_convergence = CVector(fill(missing, length(u)) |> Vector{Union{Missing, Float64}}, state_ranges)
@@ -779,7 +763,7 @@ function compound_variable_value(
         elseif startswith(variable, "concentration.")
             substance = Symbol(last(split(variable, ".")))
             var_idx = find_index(substance, basin.concentration_data.substances)
-            basin.concentration_data.concentration_state[listen_node_id.idx, var_idx]
+            basin.concentration_data.concentration_state[var_idx, listen_node_id.idx]
         else
             error("Unsupported listen variable $variable.")
         end

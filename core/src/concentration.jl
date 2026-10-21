@@ -20,20 +20,20 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
 
             # Exclude the UserDemand tracer from upstream: save before, restore after,
             # so only the fresh tracer from add_substance_mass! ends up in the return flow.
-            ud_mass_before = mass[to_node.idx][Substance.UserDemand]
+            ud_mass_before = mass[Substance.UserDemand, to_node.idx]
             if total_inflow > 0
                 for node_inflow_idx in eachindex(inflow_links)
                     from_node = inflow_links[node_inflow_idx].link[1]
                     link_inflow = inflows[node_inflow_idx]
                     fraction = link_inflow / total_inflow
-                    mass[to_node.idx] .+=
-                        concentration_state[from_node.idx, :] .* link_inflow .* fraction
+                    view(mass, :, to_node.idx) .+=
+                        @view(concentration_state[:, from_node.idx]) .* link_inflow .* fraction
                 end
             end
-            mass[to_node.idx][Substance.UserDemand] = ud_mass_before
+            mass[Substance.UserDemand, to_node.idx] = ud_mass_before
 
             add_substance_mass!(
-                mass[to_node.idx],
+                view(mass, :, to_node.idx),
                 user_demand.concentration_itp[node_idx],
                 cumulative_flow_dt.horizontal.user_demand_outflow[node_idx],
                 t,
@@ -63,11 +63,11 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
 
         if from_node.is_basin && cumulative_flow < 0
             if to_node.is_basin
-                mass[from_node.idx] .-=
-                    concentration_state[to_node.idx, :] .* cumulative_flow
+                mass[:, from_node.idx] .-=
+                    concentration_state[:, to_node.idx] .* cumulative_flow
             elseif to_node.type == NodeType.LevelBoundary
                 add_substance_mass!(
-                    mass[from_node.idx],
+                    mass[:, from_node.idx],
                     level_boundary.concentration_itp[to_node.idx],
                     -cumulative_flow,
                     t,
@@ -77,18 +77,18 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
                 # The unset flow link defaults to Terminal #0
                 nothing
             else
-                @warn "Unsupported outflow from $to_node to $from_node with cumulative flow $cumulative_flow m³"
+                warn_unsupported_flow(to_node, from_node, cumulative_flow)
             end
         end
 
         if to_node.is_basin && cumulative_flow > 0
             if from_node.is_basin
-                mass[to_node.idx] .+=
-                    concentration_state[from_node.idx, :] .* cumulative_flow
+                mass[:, to_node.idx] .+=
+                    concentration_state[:, from_node.idx] .* cumulative_flow
 
             elseif from_node.type == NodeType.LevelBoundary
                 add_substance_mass!(
-                    mass[to_node.idx],
+                    mass[:, to_node.idx],
                     level_boundary.concentration_itp[from_node.idx],
                     cumulative_flow,
                     t,
@@ -97,10 +97,20 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
                 # The unset flow link defaults to Terminal #0
                 nothing
             else
-                @warn "Unsupported outflow from $from_node to $to_node with flow $cumulative_flow m³"
+                warn_unsupported_flow(from_node, to_node, cumulative_flow)
             end
         end
     end
+    return nothing
+end
+
+# Logging is kept out of the loop in `mass_inflows_basin!`, since it hinders optimizing the loop
+@noinline function warn_unsupported_flow(
+        from_node::NodeID,
+        to_node::NodeID,
+        cumulative_flow::Float64,
+    )::Nothing
+    @warn "Unsupported outflow from $from_node to $to_node with cumulative flow $cumulative_flow m³"
     return nothing
 end
 
@@ -123,10 +133,10 @@ function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
         to_node = outflow_id[flow_idx]
 
         if from_node.is_basin && cumulative_flow > 0
-            mass[from_node.idx] .-= concentration_state[from_node.idx, :] .* cumulative_flow
+            mass[:, from_node.idx] .-= concentration_state[:, from_node.idx] .* cumulative_flow
         end
         if to_node.is_basin && cumulative_flow < 0
-            mass[to_node.idx] .+= concentration_state[to_node.idx, :] .* cumulative_flow
+            mass[:, to_node.idx] .+= concentration_state[:, to_node.idx] .* cumulative_flow
         end
     end
     return nothing
@@ -160,6 +170,49 @@ function get_concentration_itp(
     end
 
     return concentration_itp
+end
+
+function ForcingConcentration(
+        itp::Vector{Vector{ScalarConstantInterpolation}},
+        n_substance::Int,
+    )::ForcingConcentration
+    value = zeros(n_substance, length(itp))
+    time_dependent = CartesianIndex{2}[]
+    for I in CartesianIndices(value)
+        substance_idx, node_idx = Tuple(I)
+        (; u) = itp[node_idx][substance_idx]
+        if all(==(first(u)), u)
+            value[I] = first(u)
+        else
+            push!(time_dependent, I)
+        end
+    end
+    return ForcingConcentration(; itp, value, time_dependent)
+end
+
+"""
+Add the mass that enters each Basin through a forcing,
+with the cumulative flow over the timestep per Basin (or a scalar for all Basins).
+"""
+function add_forcing_mass!(
+        mass::Matrix{Float64},
+        forcing_concentration::ForcingConcentration,
+        cumulative_flow::Union{AbstractVector{Float64}, Float64},
+        t::Float64,
+    )::Nothing
+    (; itp, value, time_dependent) = forcing_concentration
+    for I in time_dependent
+        substance_idx, node_idx = Tuple(I)
+        value[I] = itp[node_idx][substance_idx](t)
+    end
+    for node_idx in axes(mass, 2)
+        flow = cumulative_flow isa Float64 ? cumulative_flow : cumulative_flow[node_idx]
+        iszero(flow) && continue
+        for substance_idx in axes(mass, 1)
+            mass[substance_idx, node_idx] += flow * value[substance_idx, node_idx]
+        end
+    end
+    return nothing
 end
 
 function add_substance_mass!(
