@@ -678,6 +678,10 @@ allocation_controlled: whether this TabulatedRatingCurve is controlled by alloca
     max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
     interpolations::Vector{ScalarPCHIPInterpolation} = ScalarLinearInterpolation[]
     current_interpolation_index::Vector{IndexLookup} = IndexLookup[]
+    # The value of `current_interpolation_index` at the time of the time dependent cache
+    interpolation_index::Vector{Int} = ones(Int, length(node_id))
+    # Whether `current_interpolation_index` varies in time, see `update_time_dependent_cache!`
+    time_varying::Vector{Bool} = fill(true, length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
         OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
     control_type::Vector{ContinuousControlType.T} =
@@ -860,6 +864,8 @@ flow_demand_id: connected flow demand node if applicable
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     max_downstream_level::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    # Whether any time series of the node varies in time, see `update_time_dependent_cache!`
+    time_varying::Vector{Bool} = fill(true, length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
         OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
     control_type::Vector{ContinuousControlType.T} =
@@ -900,6 +906,8 @@ flow_demand_id: connected flow demand node if applicable
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     max_downstream_level::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    # Whether any time series of the node varies in time, see `update_time_dependent_cache!`
+    time_varying::Vector{Bool} = fill(true, length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} = OrderedDict()
     control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
@@ -1238,6 +1246,8 @@ const ModelGraph = MetaGraph{
 The part of the parameters passed to the rhs and callbacks that are mutable.
 - `new_time_dependent_cache`: Whether the `t` with which `water_balance!` is called is considered new,
    and thus whether `time_dependent_cache` must be updated
+- `refresh_time_dependent_cache`: Whether at the next new `t` all time series in `time_dependent_cache`
+   must be evaluated, also those that are constant in time, because a control state change replaced some of them
 - `refresh_jac`: Whether the Jacobian needs to be re-evaluated for the current Newton solve.
    This flag doesn't get passed to `update_coefficients!` for `RibasimJacobian`, so we capture it by
    wrapping do_newJW. It is reset after the evaluation, so that the Jacobian is only evaluated at the
@@ -1251,6 +1261,7 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
 """
 @kwdef mutable struct ParametersMutable
     new_time_dependent_cache::Bool = true
+    refresh_time_dependent_cache::Bool = true
     refresh_jac::Bool = true
     jac_naccept::Int = 0
     jac_version::Int = 0
