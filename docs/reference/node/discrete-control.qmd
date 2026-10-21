@@ -150,6 +150,7 @@ The warning is given once per DiscreteControl node, for at most 10 nodes.
 Set `min_discrete_control_interval` to `0.0` to disable these warnings.
 
 By default the conditions are evaluated after every timestep.
+Concentrations are calculated after each timestep and do not affect its size otherwise, so for conditions on Basin concentrations the timestep is limited to end just after a threshold is predicted to be crossed.
 To evaluate them only at fixed times, for instance daily, set the solver setting `discrete_control_interval`, see [usage](/reference/usage.qmd#sec-solver-settings).
 
 ## Logic
