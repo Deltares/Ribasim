@@ -527,8 +527,11 @@ function check_negative_storage(u, t, integrator)::Nothing
     # constant time series take their value after a possible jump at t, see
     # `interpolation_time`. The time dependent cache still holds the values from before the
     # jump, as the last evaluation at t was part of the time step, so it is renewed.
+    # The jumps are at tstops, and the reached tstop is only removed after the callbacks.
     update_cumulative_forcing!(p, t)
-    p.time_dependent_cache.t_prev_call[1] = -1.0
+    if has_tstop(integrator) && first_tstop(integrator) == integrator.tdir * t
+        p.time_dependent_cache.t_prev_call[1] = -1.0
+    end
     water_balance!(du, u, p, t)
 
     if log_negative_storage(basin, current_basin_properties.current_storage)
