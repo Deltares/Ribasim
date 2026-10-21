@@ -878,8 +878,11 @@ function aggregate_flows!(
 
     if do_horizontal_flows && do_inflows && !isnothing(boundary_flow)
         for idx in eachindex(flow_boundary.node_id)
-            outflow_id = flow_boundary.outflow_link[idx].link[2]
-            aggregate[outflow_id.idx] += boundary_flow[idx]
+            outflow_data = flow_boundary.outflow_data[idx]
+            if !outflow_data.to_pass_down
+                outflow_id = outflow_data.outflow_link[idx].link[2]
+                aggregate[outflow_id.idx] += boundary_flow[idx]
+            end
         end
     end
 

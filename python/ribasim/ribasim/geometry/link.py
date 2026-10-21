@@ -315,7 +315,8 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         max_in: int = neighbor_bounds[to_node.node_type][1]
         max_out: int = neighbor_bounds[from_node.node_type][3]
 
-        # With a PassDown downstream, any number of outneighbors is allowed, but all must be PassDown
+        # With a PassDown downstream, any number of outneighbors is allowed, but all must be PassDown,
+        # except that a PassDown node can also have UserDemand outneighbors
         model = cast("Model | None", self._parent)
         if (
             link_type == "flow"
@@ -323,13 +324,18 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             and model is not None
             and model.node.df is not None
         ):
-            out_types = model.node.df.loc[out_to_node_ids, "node_type"]
-            is_pass_down = to_node.node_type == "PassDown"
-            if out_types.eq("PassDown").any() != is_pass_down and out_neighbor > 0:
+            out_types = set(model.node.df.loc[out_to_node_ids, "node_type"])
+            out_types.add(to_node.node_type)
+            allowed_types = (
+                {"PassDown", "UserDemand"}
+                if from_node.node_type == "PassDown"
+                else {"PassDown"}
+            )
+            if "PassDown" in out_types and not out_types <= allowed_types:
                 raise ValueError(
-                    f"Node {from_node.node_id} has a PassDown flow link outneighbor, so all its flow link outneighbors must be PassDown"
+                    f"Node {from_node.node_id} has a PassDown flow link outneighbor, so all its flow link outneighbors must be {' or '.join(sorted(allowed_types))}"
                 )
-            if is_pass_down:
+            if to_node.node_type == "PassDown":
                 max_out = np.iinfo(np.int64).max
 
         if in_neighbor >= max_in:

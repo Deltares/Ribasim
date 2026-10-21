@@ -16,12 +16,9 @@ from ribasim.nodes import (
     level_boundary,
     linear_resistance,
     manning_resistance,
-    observation,
     outlet,
-    pass_down,
     pump,
     tabulated_rating_curve,
-    user_demand,
 )
 from shapely.geometry import MultiPolygon, Point
 
@@ -776,64 +773,3 @@ def basic_basin_both_area_and_storage_model() -> Model:
     ]
 
     return build_model_with_basin(model, basin_definition)
-
-
-def pass_down_model() -> Model:
-    """Create a simple model containing multiple PassDown configurations."""
-    starttime = datetime(2022, 1, 1)
-    endtime = datetime(2023, 1, 1)
-
-    model = Model(
-        starttime=starttime,
-        endtime=endtime,
-        crs="EPSG:4326",
-    )
-
-    b1 = model.basin.add(
-        Node(1, Point(0, 0), subnetwork_id=2),
-        [
-            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 10.0]),
-            basin.State(level=[5.0]),
-        ],
-    )
-
-    p = model.pump.add(Node(2, Point(1, 0)), [pump.Static(flow_rate=[1e-3])])
-
-    pd1 = model.pass_down.add(Node(3, Point(2, 1)), [pass_down.Static(fraction=[0.6])])
-
-    pd2 = model.pass_down.add(
-        Node(4, Point(2, -1)), [pass_down.Static(fraction=[np.nan])]
-    )
-
-    ob = model.observation.add(
-        Node(5, Point(2, 2)),
-        [
-            observation.Time(
-                variable=["flow_rate", "flow_rate", "flow_rate"],
-                time=pd.date_range("2020-01-01", periods=3, freq="MS"),
-                value=[3.0e-7, 1.25e-5, 1.55e-5],
-            )
-        ],
-    )
-
-    ud = model.user_demand.add(
-        Node(6, Point(3, 1)),
-        [
-            user_demand.Static(
-                demand_priority=[1], demand=[1.0], return_factor=0.5, min_level=[-10.0]
-            )
-        ],
-    )
-
-    t = model.terminal.add(Node(7, Point(4, 0)))
-
-    model.link.add(b1, p)
-    model.link.add(p, pd1)
-    model.link.add(p, pd2)
-    model.link.add(ob, pd1)
-    model.link.add(pd1, ud)
-    model.link.add(ud, t)
-    model.link.add(pd2, t)
-    model.link.add(pd1, t)
-
-    return model

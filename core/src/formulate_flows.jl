@@ -1050,6 +1050,23 @@ function remaining_pass_down_flow(flow::FlowCVector{T}, pass_down::PassDown, id:
     return q
 end
 
+"The flow from a node upstream of a PassDown node that is available to be passed down."
+function get_pass_down_upstream_flow(
+        flow::FlowCVector{T},
+        p_independent::ParametersIndependent,
+        upstream_id::NodeID,
+        t::Number,
+    )::T where {T}
+    return if upstream_id.type == NodeType.PassDown
+        remaining_pass_down_flow(flow, p_independent.pass_down, upstream_id)
+    elseif upstream_id.type == NodeType.FlowBoundary
+        # FlowBoundary flows are not part of the flow state
+        boundary_flow_rate(p_independent.flow_boundary, upstream_id.idx, t)
+    else
+        get_node_outflow(flow, upstream_id)
+    end
+end
+
 """
 Compute the flows of the PassDown nodes and the UserDemand nodes in the PassDown subgraphs.
 A PassDown node gets its fraction of the flow from its upstream nodes, where of an upstream
@@ -1061,7 +1078,8 @@ function formulate_pass_down_flow!(
         p::Parameters,
         t::Number,
     )::Nothing where {T}
-    (; pass_down, user_demand) = p.p_independent
+    (; p_independent) = p
+    (; pass_down, user_demand) = p_independent
     (; fraction, inflow_ids, pass_down_subgraphs, user_demand_inflow_idxs) = pass_down
 
     @threaded for subgraph in pass_down_subgraphs
@@ -1069,11 +1087,7 @@ function formulate_pass_down_flow!(
             if id.type == NodeType.PassDown
                 inflow = zero(T)
                 for upstream_id in inflow_ids[id.idx]
-                    inflow += if upstream_id.type == NodeType.PassDown
-                        remaining_pass_down_flow(flow, pass_down, upstream_id)
-                    else
-                        get_node_outflow(flow, upstream_id)
-                    end
+                    inflow += get_pass_down_upstream_flow(flow, p_independent, upstream_id, t)
                 end
                 flow.horizontal.pass_down[id.idx] = inflow * fraction[id.idx]
                 # Reset the abstractions from this PassDown node, as the downstream

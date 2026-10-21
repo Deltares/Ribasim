@@ -622,7 +622,8 @@ function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
             n_outneighbors =
                 count(x -> true, outneighbor_labels_type(graph, node_id, link_type))
 
-            # With a PassDown downstream, any number of outneighbors is allowed, but all must be PassDown
+            # With a PassDown downstream, any number of outneighbors is allowed, but all must be PassDown,
+            # except that a PassDown node can also have UserDemand outneighbors
             n_pass_down_outneighbors =
                 (can_pass_down && link_type == LinkType.flow) ?
                 count(
@@ -630,8 +631,14 @@ function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
                     outneighbor_labels_type(graph, node_id, link_type),
                 ) : 0
             if n_pass_down_outneighbors > 0
-                if n_pass_down_outneighbors < n_outneighbors
-                    @error "$node_id has a PassDown $link_type outneighbor, so all its $link_type outneighbors must be PassDown (got $n_pass_down_outneighbors PassDown out of $n_outneighbors)."
+                n_allowed_outneighbors = count(
+                    x -> x.type == NodeType.PassDown ||
+                        (node_type == NodeType.PassDown && x.type == NodeType.UserDemand),
+                    outneighbor_labels_type(graph, node_id, link_type),
+                )
+                if n_allowed_outneighbors < n_outneighbors
+                    allowed = node_type == NodeType.PassDown ? "PassDown or UserDemand" : "PassDown"
+                    @error "$node_id has a PassDown $link_type outneighbor, so all its $link_type outneighbors must be $allowed (got $n_allowed_outneighbors out of $n_outneighbors)."
                     errors = true
                 end
                 bounds = n_neighbor_bounds(bounds.in_min, bounds.in_max, bounds.out_min, M)

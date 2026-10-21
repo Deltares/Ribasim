@@ -43,7 +43,6 @@ from ribasim_testmodels.basic import (
     drought_model,
     flow_boundary_interpolation_model,
     outlet_model,
-    pass_down_model,
     tabulated_rating_curve_model,
 )
 from ribasim_testmodels.bucket import bucket_model, leaky_bucket_model
@@ -84,6 +83,7 @@ from ribasim_testmodels.junction import (
     junction_combined,
 )
 from ribasim_testmodels.observation import observation_model
+from ribasim_testmodels.pass_down import pass_down_model
 from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
     pid_control_model,
