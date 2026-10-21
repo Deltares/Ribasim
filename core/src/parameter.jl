@@ -600,8 +600,8 @@ const StorageToLevelType = LinearInterpolationIntInv{
 
 """
 The profiles of all Basins in contiguous vectors, to quickly compute the levels and areas of all
-Basins in `set_current_basin_properties!`. Within a profile this gives exactly the same results as
-`storage_to_level` and `level_to_area`, outside of it those are used for their extrapolation.
+Basins in `set_current_basin_properties!`. This gives exactly the same results as
+`storage_to_level` and `level_to_area`, which are used below the profile.
 Both relations have the same level points.
 """
 @kwdef struct BasinProfiles
@@ -615,6 +615,9 @@ Both relations have the same level points.
     # The points of `level_to_area`, with its slope per segment
     area::Vector{Float64} = Float64[]
     area_slope::Vector{Float64} = Float64[]
+    # Per Basin the slope of `storage_to_level` above the profile, where it extrapolates linearly
+    # and `level_to_area` constantly
+    top_level_slope::Vector{Float64} = Float64[]
     # Per Basin the segment of the last evaluation, where the search starts
     segment::Vector{Int} = Int[]
     area_segment::Vector{Int} = Int[]
