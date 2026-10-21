@@ -207,7 +207,8 @@ function get_area(
     (; p_independent, current_basin_properties, p_mutable) = p
     (; level_to_area) = p_independent.basin
     return if p_mutable.ad_active
-        level_to_area[node_id.idx](level)
+        area = get_area_from_profile(p_independent.basin, node_id.idx, level)
+        isnothing(area) ? level_to_area[node_id.idx](level) : area
     else
         current_basin_properties.current_area[node_id.idx]
     end
@@ -1412,3 +1413,27 @@ get_level_from_profile(basin::Basin, i::Int, storage::Union{Float64, ForwardDiff
     basin_level(basin.profiles, i, storage; update_segment = false)
 # Other number types, such as those for the sparsity detection, use the interpolation
 get_level_from_profile(::Basin, ::Int, ::Number) = nothing
+
+"""
+The area of Basin i at a level, the same as evaluating `level_to_area`. Returns `nothing` below
+the profile. The segment to start the search from is not updated, see `basin_level`.
+"""
+@inline function basin_area(
+        profiles::BasinProfiles,
+        i::Int,
+        h::T,
+    )::Union{Nothing, T} where {T <: Union{Float64, ForwardDiff.Dual}}
+    (; offset, area_segment, level, area, area_slope) = profiles
+    first_idx = offset[i] + 1
+    last_idx = offset[i + 1]
+    h < level[first_idx] && return nothing
+    # Same as the constant extrapolation of `level_to_area`
+    h > level[last_idx] && return area[last_idx] + zero(h)
+    k = find_segment(h, level, first_idx, last_idx, first_idx - 1 + area_segment[i])
+    return area[k] + area_slope[k] * (h - level[k])
+end
+
+get_area_from_profile(basin::Basin, i::Int, level::Union{Float64, ForwardDiff.Dual}) =
+    basin_area(basin.profiles, i, level)
+# Other number types, such as those for the sparsity detection, use the interpolation
+get_area_from_profile(::Basin, ::Int, ::Number) = nothing
