@@ -1145,6 +1145,9 @@ function CompoundVariable(
         cyclic_time;
         field = :threshold_low,
     )
+    constant_value(itp) = is_constant_in_time(itp) ? first(itp.u) : NaN
+    append!(compound_variable.threshold_high_value, constant_value.(threshold_high))
+    append!(compound_variable.threshold_low_value, constant_value.(threshold_low))
     return compound_variable
 end
 

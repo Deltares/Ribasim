@@ -598,10 +598,11 @@ function apply_discrete_control!(integrator; initialize::Bool = false)::Nothing
         for compound_variable in compound_variables_node
             value = compound_variable_value(compound_variable, current_storage, du.flow, p, t)
 
-            # Loop over the threshold interpolations associated with the current compound variable
-            for (threshold_low, threshold_high) in
-                zip(compound_variable.threshold_low, compound_variable.threshold_high)
+            # Loop over the thresholds associated with the current compound variable
+            for threshold_idx in eachindex(compound_variable.threshold_high)
                 truth_value_old = truth_state_node[truth_state_idx]
+                threshold_low = threshold_value(compound_variable, threshold_idx, t; low = true)
+                threshold_high = threshold_value(compound_variable, threshold_idx, t; low = false)
 
                 # Hysteresis: if the condition was true before, only switch to false
                 # when below threshold_low, otherwise only switch to true when above threshold_high
@@ -609,11 +610,11 @@ function apply_discrete_control!(integrator; initialize::Bool = false)::Nothing
                     # No threshold has been crossed yet, so the initial value decides, where a
                     # value between the thresholds falls to the side it is closest to. Without
                     # hysteresis this reduces to the same strict inequality as below.
-                    truth_value_new = (value > (threshold_low(t) + threshold_high(t)) / 2)
+                    truth_value_new = (value > (threshold_low + threshold_high) / 2)
                 elseif truth_value_old
-                    truth_value_new = (value >= threshold_low(t))
+                    truth_value_new = (value >= threshold_low)
                 else
-                    truth_value_new = (value > threshold_high(t))
+                    truth_value_new = (value > threshold_high)
                 end
 
                 if truth_value_old != truth_value_new
@@ -732,6 +733,20 @@ function set_new_control_state!(
     return false, false
 end
 
+"The value of a threshold at time t, only evaluating its interpolation if it varies in time"
+function threshold_value(
+        compound_variable::CompoundVariable,
+        threshold_idx::Int,
+        t::Float64;
+        low::Bool,
+    )::Float64
+    value = low ? compound_variable.threshold_low_value[threshold_idx] :
+        compound_variable.threshold_high_value[threshold_idx]
+    isnan(value) || return value
+    return low ? compound_variable.threshold_low[threshold_idx](t) :
+        compound_variable.threshold_high[threshold_idx](t)
+end
+
 function compound_variable_value(
         compound_variable::CompoundVariable,
         storage::AbstractVector,
@@ -743,9 +758,9 @@ function compound_variable_value(
 
     value = zero(typeof(t))
     for subvariable in compound_variable.subvariables
-        (; listen_node_id, variable, weight, look_ahead) = subvariable
+        (; listen_node_id, variable, weight, look_ahead, type) = subvariable
 
-        sub_value = if variable == "level"
+        sub_value = if type == ListenVariableType.Level
             if listen_node_id.is_basin
                 # Basin level
                 get_level(storage[listen_node_id.idx], p, listen_node_id, t)
@@ -755,9 +770,9 @@ function compound_variable_value(
             else
                 error("Cannot obtain variable `$variable` from $listen_node_id.")
             end
-        elseif variable == "storage"
+        elseif type == ListenVariableType.Storage
             storage[listen_node_id.idx]
-        elseif variable == "flow_rate"
+        elseif type == ListenVariableType.FlowRate
             if listen_node_id.type == NodeType.FlowBoundary
                 # Flow boundary flow rate
                 flow_boundary.flow_rate[listen_node_id.idx](t + look_ahead)
@@ -777,9 +792,9 @@ function compound_variable_value(
             else
                 error("Cannot obtain variable `$variable` from $listen_node_id.")
             end
-        elseif startswith(variable, "concentration_external.")
+        elseif type == ListenVariableType.ConcentrationExternal
             basin.concentration_data.concentration_external[listen_node_id.idx][variable](t)
-        elseif startswith(variable, "concentration.")
+        elseif type == ListenVariableType.Concentration
             substance = Symbol(last(split(variable, ".")))
             var_idx = find_index(substance, basin.concentration_data.substances)
             basin.concentration_data.concentration_state[listen_node_id.idx, var_idx]
