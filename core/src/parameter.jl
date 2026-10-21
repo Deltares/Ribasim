@@ -1029,11 +1029,34 @@ function get_cache_vector(
     end
 end
 
+@enumx ListenVariableType Level Storage FlowRate ConcentrationExternal Concentration Unsupported
+
 @kwdef struct SubVariable
     listen_node_id::NodeID
     variable::String
     weight::Float64
     look_ahead::Float64
+    # The type of `variable`, to not compare strings when evaluating the subvariable
+    type::ListenVariableType.T = listen_variable_type(variable)
+end
+
+SubVariable(listen_node_id, variable, weight, look_ahead) =
+    SubVariable(; listen_node_id, variable, weight, look_ahead)
+
+function listen_variable_type(variable::String)::ListenVariableType.T
+    return if variable == "level"
+        ListenVariableType.Level
+    elseif variable == "storage"
+        ListenVariableType.Storage
+    elseif variable == "flow_rate"
+        ListenVariableType.FlowRate
+    elseif startswith(variable, "concentration_external.")
+        ListenVariableType.ConcentrationExternal
+    elseif startswith(variable, "concentration.")
+        ListenVariableType.Concentration
+    else
+        ListenVariableType.Unsupported
+    end
 end
 
 """
@@ -1050,6 +1073,9 @@ threshold_low: the thresholds this compound variable will be
     subvariables::Vector{SubVariable} = SubVariable[]
     threshold_high::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
     threshold_low::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+    # The thresholds that are constant in time, NaN for those that vary in time
+    threshold_high_value::Vector{Float64} = Float64[]
+    threshold_low_value::Vector{Float64} = Float64[]
 end
 
 """
