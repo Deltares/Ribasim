@@ -801,6 +801,10 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
     apply_parameter_update!.(itp_update_constant)
     apply_parameter_update!.(itp_update_linear)
     apply_parameter_update!.(itp_update_lookup)
+    # Evaluate all time series again at the next new t, as the replaced ones may be constant in time
+    if !(isempty(itp_update_constant) && isempty(itp_update_linear) && isempty(itp_update_lookup))
+        p.p_mutable.refresh_time_dependent_cache = true
+    end
 
     return nothing
 end
