@@ -410,14 +410,14 @@ If `structural`, all contributions are set to 1.0 to initialize the sparsity pat
 """
 function update_J_inner_local!(J::RibasimJacobian; structural::Bool = false)
     (; p_independent, J_inner_local) = J
-    (; inflow_id, outflow_id) = p_independent
+    (; inflow_id, outflow_data) = p_independent
 
     J_inner_local .= 0.0
     foreach_∂flow_∂storage(J) do flow_idx, basin_idx, ∂q_∂storage
         add_flow_contribution!(
             J_inner_local,
             inflow_id[flow_idx],
-            outflow_id[flow_idx],
+            outflow_data[flow_idx],
             basin_idx,
             structural ? 1.0 : ∂q_∂storage,
         )

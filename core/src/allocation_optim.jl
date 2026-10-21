@@ -1539,7 +1539,7 @@ function connector_flow_capacity_bounds(
         # All factors that reduce that flow are in [0, 1].
         inflow_id = tabulated_rating_curve.inflow_link[node_id.idx].link[1]
         h_a_max =
-            get_upstream_level(NaN, p, inflow_id, t + Δt_allocation) +
+            get_level(NaN, p, inflow_id, t + Δt_allocation) +
             last(allocation_level_change_bounds(allocation_model, p, inflow_id))
         isfinite(h_a_max) || return (0.0, Inf)
         q_max = maximum(

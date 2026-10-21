@@ -101,6 +101,9 @@ function limit_flow!(integrator, flow, flow_prev, t, user_demand::UserDemand)
             src_id = link_meta.link[1]
             min_flow_rate, max_flow_rate = if demand_from_timeseries
                 0.0, Inf
+            elseif src_id.type == NodeType.PassDown
+                # A PassDown source has no storage or level that guarantees a minimum abstraction
+                0.0, q_k_max
             else
                 factor_basin_min = min_low_storage_factor(
                     current_storage,

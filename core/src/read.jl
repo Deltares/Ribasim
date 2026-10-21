@@ -432,28 +432,12 @@ parse_control_states!(::BasinForcing, args...) = nothing
 
 function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inflow = true)
     inflow && map!(node_id -> inflow_link(graph, node_id), node.inflow_link, node.node_id)
-    set_outflow_links!(node, node.outflow_link, graph)
-    return nothing
-end
 
-function set_outflow_links!(
-        node::AbstractParameterNode,
-        outflow_link_::Vector{LinkMetadata},
-        graph::MetaGraph
-    )
-    map!(node_id -> outflow_link(graph, node_id), outflow_link_, node.node_id)
-    return nothing
-end
-
-function set_outflow_links!(
-        node::AbstractParameterNode,
-        outflow_link::Vector{OutflowData},
-        graph::MetaGraph
-    )
     for id in node.node_id
         outflow_links = get_outflow_links(graph, id)
-        outflow_link[id.idx] = if any(link.link[2].type == NodeType.PassDown for link in outflow_links)
-            OutflowData(; outflow_links, to_passdown = true)
+        to_pass_down = any(link.link[2].type == NodeType.PassDown for link in outflow_links)
+        node.outflow_data[id.idx] = if to_pass_down
+            OutflowData(; outflow_links, to_pass_down = true)
         else
             OutflowData(; outflow_link = only(outflow_links))
         end
@@ -1610,9 +1594,54 @@ function get_pass_down_subgraphs(
                 end
             end
         end
-        push!(subgraphs, sort!(subgraph))
+        push!(subgraphs, topological_sort_subgraph(graph, subgraph))
     end
     return subgraphs
+end
+
+"""
+Sort the nodes of a subgraph (Kahn's algorithm) such that every node comes after all nodes
+its flow depends on:
+- the upstream nodes in the subgraph;
+- for a PassDown node, the UserDemand nodes downstream of its upstream PassDown nodes,
+  since those UserDemand nodes take precedence and the PassDown nodes divide the remaining flow.
+Ties are broken by NodeID for a deterministic order.
+"""
+function topological_sort_subgraph(graph::ModelGraph, subgraph::Vector{NodeID})::Vector{NodeID}
+    node_set = Set(subgraph)
+    dependencies = Dict(id => Set{NodeID}() for id in subgraph)
+    for id in subgraph, upstream_id in inflow_ids(graph, id)
+        upstream_id in node_set || continue
+        push!(dependencies[id], upstream_id)
+        if id.type == NodeType.PassDown && upstream_id.type == NodeType.PassDown
+            for sibling_id in outflow_ids(graph, upstream_id)
+                sibling_id.type == NodeType.UserDemand && push!(dependencies[id], sibling_id)
+            end
+        end
+    end
+    dependents = Dict(id => NodeID[] for id in subgraph)
+    for (id, deps) in dependencies, dep_id in deps
+        push!(dependents[dep_id], id)
+    end
+
+    n_dependencies = Dict(id => length(deps) for (id, deps) in dependencies)
+    ready = sort!(filter(id -> n_dependencies[id] == 0, subgraph); rev = true)
+    sorted = NodeID[]
+    while !isempty(ready)
+        id = pop!(ready)
+        push!(sorted, id)
+        for dependent_id in dependents[id]
+            n_dependencies[dependent_id] -= 1
+            if n_dependencies[dependent_id] == 0
+                push!(ready, dependent_id)
+                sort!(ready; rev = true)
+            end
+        end
+    end
+    if length(sorted) != length(subgraph)
+        error("Cyclic flow dependency detected in PassDown subgraph containing nodes $(sort(subgraph)).")
+    end
+    return sorted
 end
 
 function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
@@ -1620,6 +1649,9 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
     node_id = get_node_ids(db, NodeType.PassDown)
     pass_down =
         PassDown(; node_id, pass_down_subgraphs = get_pass_down_subgraphs(graph, node_id))
+
+    map!(id -> collect(inflow_ids(graph, id)), pass_down.inflow_ids, node_id)
+
     (; fraction) = pass_down
     has_fraction = falses(length(node_id))
 
@@ -1637,7 +1669,6 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
     if !isempty(invalid_fraction_ids)
         @error "PassDown fractions must be between 0 and 1 (inclusive)." node_ids =
             invalid_fraction_ids
-        error("Invalid PassDown fractions.")
     end
 
     errors = false
@@ -1878,8 +1909,8 @@ function Parameters(db::DB, config::Config)::Parameters
     flow_ranges = count_flow_ranges(nodes)
     state_ranges = count_state_ranges(nodes)
 
-    inflow_id, outflow_id, state_id = get_flow_ids(nodes, flow_ranges)
-    incidence_matrix = get_incidence_matrix(inflow_id, outflow_id)
+    inflow_id, outflow_data, state_id = get_flow_ids(nodes, flow_ranges)
+    incidence_matrix = get_incidence_matrix(inflow_id, outflow_data)
 
     p_independent = ParametersIndependent(;
         config.starttime,
@@ -1889,7 +1920,7 @@ function Parameters(db::DB, config::Config)::Parameters
         nodes...,
         subgrid,
         inflow_id,
-        outflow_id,
+        outflow_data,
         state_id,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
