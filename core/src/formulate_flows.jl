@@ -125,9 +125,14 @@ function set_current_basin_properties!(flow::FlowCVector, p::Parameters, t::Numb
         id = node_id[idx]
         s = current_storage[idx]
         (s == storage_prev_call[idx]) && continue
-        h = get_level(s, p, id, t; force_evaluation = true)
-        Ah = level_to_area[idx]
-        A = Ah(h)
+        level_and_area = basin_level_and_area(basin.profiles, idx, s)
+        h, A = if isnothing(level_and_area)
+            # Outside the profile the interpolations extrapolate
+            h = get_level(s, p, id, t; force_evaluation = true)
+            h, level_to_area[idx](h)
+        else
+            level_and_area
+        end
         ϕ = low_storage_factor(s, basin, idx)
 
         current_level[idx] = h

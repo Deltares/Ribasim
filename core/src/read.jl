@@ -1034,6 +1034,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     errors && error("Errors encountered when parsing Basin data.")
 
     areas, levels, storage, node_ids = interpolate_basin_profile!(basin, profiles)
+    set_basin_profiles!(basin)
 
     if config.logging.verbosity == Debug
         dir = joinpath(config.dir, config.results_dir)
