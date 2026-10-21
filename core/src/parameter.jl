@@ -1120,6 +1120,37 @@ record: Namedtuple with discrete control information for results
     )
 end
 
+"""
+The conditions of all DiscreteControl nodes in contiguous vectors, so that they can be evaluated
+quickly after every timestep, see `apply_discrete_control!`. Compound variables that listen to
+other variables than Basin levels, Basin storages and flow rates of connector nodes, and
+thresholds that vary in time, are evaluated from `DiscreteControl.compound_variables`.
+"""
+@kwdef struct DiscreteControlConditions
+    # The conditions of DiscreteControl node i are at (condition_offset[i] + 1):condition_offset[i + 1]
+    condition_offset::Vector{Int} = [0]
+    # Per condition its compound variable, the index of its thresholds, the thresholds
+    # (NaN if they vary in time) and its truth value
+    compound_variable_idx::Vector{Int} = Int[]
+    threshold_idx::Vector{Int} = Int[]
+    threshold_low::Vector{Float64} = Float64[]
+    threshold_high::Vector{Float64} = Float64[]
+    truth_value::Vector{Bool} = Bool[]
+    # Per compound variable the DiscreteControl node index, its index within the node,
+    # whether it is evaluated from the subvariables below, and its current value
+    node_idx::Vector{Int} = Int[]
+    local_idx::Vector{Int} = Int[]
+    contiguous::Vector{Bool} = Bool[]
+    value::Vector{Float64} = Float64[]
+    # The subvariables of compound variable k are at (subvariable_offset[k] + 1):subvariable_offset[k + 1],
+    # with the Basin index for a level or storage, and the flow index for a flow rate
+    subvariable_offset::Vector{Int} = [0]
+    subvariable_type::Vector{ListenVariableType.T} = ListenVariableType.T[]
+    subvariable_node_id::Vector{NodeID} = NodeID[]
+    subvariable_idx::Vector{Int} = Int[]
+    subvariable_weight::Vector{Float64} = Float64[]
+end
+
 @kwdef struct ContinuousControl <: AbstractParameterNode
     node_id::Vector{NodeID}
     controlled_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
@@ -1418,6 +1449,9 @@ an immutable struct.
     const inflow_id::FlowCVector{NodeID}
     const outflow_id::FlowCVector{NodeID}
     const state_id::FlowCVector{NodeID}
+    # The DiscreteControl conditions in contiguous vectors
+    const discrete_control_conditions::DiscreteControlConditions =
+        DiscreteControlConditions(discrete_control, flow_ranges)
     # The up- and downlink storage per flow
     const storage_uplink::FlowCVector{Float64} = similar(inflow_id, Float64)
     const storage_downlink::FlowCVector{Float64} = similar(inflow_id, Float64)
