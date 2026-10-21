@@ -1036,11 +1036,23 @@ record: Namedtuple with discrete control information for results
     )
 end
 
+"""
+node_id: node IDs of the ContinuousControl nodes
+controlled_node_id: the ID of the structure (Pump/Outlet) controlled by each ContinuousControl node
+inflow_id: the ID of the node upstream of the controlled structure
+outflow_data: the outflow data of the controlled structure
+compound_variable: the compound variable each ContinuousControl node listens to
+controlled_variable: the name of the variable of the controlled structure that is set,
+    e.g. "flow_rate"
+func: the function (interpolation) that maps the compound variable value to the controlled variable value
+continuous_control_compound_variables: memory for the current value of the compound variable
+    of each ContinuousControl node
+"""
 @kwdef struct ContinuousControl <: AbstractParameterNode
     node_id::Vector{NodeID}
     controlled_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     inflow_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
-    outflow_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
+    outflow_data::Vector{OutflowData} = Vector{OutflowData}(undef, length(node_id))
     compound_variable::Vector{CompoundVariable}
     controlled_variable::Vector{String}
     func::Vector{ScalarPCHIPInterpolation}
@@ -1054,7 +1066,7 @@ node_id: node ID of the PidControl node
 controlled_node_id: the id of the structure (pum/outlet) being controlled
 listen_node_id: the id of the basin being controlled
 inflow_id: the id of the node upstream of the controlled structure
-outflow_id: the id pf the node downstream of the controlled structure
+outflow_data: the outflow data of the the controlled structure
 target: target level (possibly time dependent)
 target_ref: reference to the controlled flow_rate value
 proportional: proportionality coefficient error
@@ -1067,7 +1079,7 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
     controlled_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     listen_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     inflow_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
-    outflow_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
+    outflow_data::Vector{OutflowData} = Vector{OutflowData}(undef, length(node_id))
     target::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     proportional::Vector{ScalarConstantInterpolation} =

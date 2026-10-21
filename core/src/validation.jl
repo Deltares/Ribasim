@@ -204,11 +204,8 @@ sort_key(::Type{Schema.Basin.Subgrid}) = (:subgrid_id, :basin_level)
 sort_key(::Type{Schema.Basin.SubgridTime}) = (:subgrid_id, :time, :basin_level)
 sort_key(::Type{Schema.Basin.Time}) = (:node_id, :time)
 
-sort_by(::StructVector{Schema.PassDown.Static}) = x -> (x.node_id)
+sort_key(::Type{Schema.PassDown.Static}) = (:node_id,)
 
-sort_by(::StructVector{Schema.ContinuousControl.Function}) = x -> (x.node_id, x.input)
-sort_by(::StructVector{Schema.ContinuousControl.Variable}) =
-    x -> (x.node_id, x.listen_node_id, x.variable)
 sort_key(::Type{Schema.ContinuousControl.Function}) = (:node_id, :input)
 sort_key(::Type{Schema.ContinuousControl.Variable}) = (:node_id, :listen_node_id, :variable)
 

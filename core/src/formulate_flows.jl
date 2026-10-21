@@ -170,8 +170,8 @@ function set_current_storage!(
             time_dependent_cache.basin.surface_runoff
 
         for idx in eachindex(flow_boundary.node_id)
-            outflow_id = flow_boundary.outflow_link[idx].link[2]
-            storage[outflow_id.idx] += time_dependent_cache.flow_boundary.current_cumulative_boundary_flow[idx]
+            downstream_id = outflow_id(flow_boundary.outflow_data[idx])
+            storage[downstream_id.idx] += time_dependent_cache.flow_boundary.current_cumulative_boundary_flow[idx]
         end
     else
         aggregate_flows!(
@@ -512,18 +512,17 @@ function linear_resistance_flow(
     )::Number
     (; resistance, max_flow_rate) = linear_resistance
     inflow_link = linear_resistance.inflow_link[node_id.idx]
-    outflow_link = linear_resistance.outflow_link[node_id.idx]
 
     inflow_id = inflow_link.link[1]
-    outflow_id = outflow_link.link[2]
+    downstream_id = outflow_id(linear_resistance.outflow_data[node_id.idx])
 
     h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_id, t)
+    h_b = get_level(s_b, p, downstream_id, t)
     Δh = h_a - h_b
     q_unlimited = Δh / resistance[node_id.idx]
     q = clamp(q_unlimited, -max_flow_rate[node_id.idx], max_flow_rate[node_id.idx])
     apply_low_storage_factor || return q
-    return q * low_storage_factor_resistance_node(s_a, s_b, p, q_unlimited, inflow_id, outflow_id)
+    return q * low_storage_factor_resistance_node(s_a, s_b, p, q_unlimited, inflow_id, downstream_id)
 end
 
 function tabulated_rating_curve_flow(
@@ -538,12 +537,11 @@ function tabulated_rating_curve_flow(
     (; current_interpolation_index, interpolations) = tabulated_rating_curve
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
-    outflow_link = tabulated_rating_curve.outflow_link[node_id.idx]
+    outflow_data = tabulated_rating_curve.outflow_data[node_id.idx]
     inflow_id = inflow_link.link[1]
-    outflow_id = outflow_link.link[2]
 
     h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_id, t)
+    h_b = get_level(s_b, p, outflow_data, t)
     Δh = h_a - h_b
 
     factor = apply_low_storage_factor ? get_low_storage_factor(s_a, p, inflow_id) : 1.0
@@ -566,12 +564,14 @@ function allocated_rating_curve_flow(
     )::Number
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
-    outflow_link = tabulated_rating_curve.outflow_link[node_id.idx]
+    outflow_data = tabulated_rating_curve.outflow_data[node_id.idx]
+    @assert !outflow_data.to_pass_down "PassDown nodes in allocation subnetworks not supported yet, see issue #3322"
+
     inflow_id = inflow_link.link[1]
-    outflow_id = outflow_link.link[2]
+    downstream_id = outflow_id(outflow_data)
 
     h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_id, t)
+    h_b = get_level(s_b, p, downstream_id, t)
     Δh = h_a - h_b
 
     factor = get_low_storage_factor(s_a, p, inflow_id)
@@ -745,14 +745,14 @@ function manning_resistance_flow(
         apply_low_storage_factor::Bool = true,
     )::Number
     inflow_id = manning_resistance.inflow_link[node_id.idx].link[1]
-    outflow_id = manning_resistance.outflow_link[node_id.idx].link[2]
+    downstream_id = outflow_id(manning_resistance.outflow_data[node_id.idx])
 
     h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_id, t)
+    h_b = get_level(s_b, p, downstream_id, t)
     q = manning_flow(manning_resistance, node_id, h_a, h_b)
 
     apply_low_storage_factor || return q
-    return q * low_storage_factor_resistance_node(s_a, s_b, p, q, inflow_id, outflow_id)
+    return q * low_storage_factor_resistance_node(s_a, s_b, p, q, inflow_id, downstream_id)
 end
 
 """

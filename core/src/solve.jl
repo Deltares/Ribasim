@@ -342,22 +342,24 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
         continuous_control_input_ranges,
         ∂continuous_control_compound_∂continuous_control_input,
     ) = cache
-    (; inflow_id, outflow_id) = p_independent
+    (; inflow_id, outflow_data) = p_independent
     n_flow = length(inflow_id)
 
     # Dependence via the up- and downlink storages
-    for (storage_input_range, storage_node_id) in (
-            (flow_input_ranges.storage_uplink, inflow_id),
-            (flow_input_ranges.storage_downlink, outflow_id),
-        )
+    function foreach_storage_dependence(storage_input_range, get_storage_node_id)
         for (storage_flow_idx, col) in enumerate(storage_input_range)
-            basin_id = storage_node_id[storage_flow_idx]
+            basin_id = get_storage_node_id(storage_flow_idx)
             basin_id.is_basin || continue
             foreach_column_entry(∂flow_∂flow_input, col) do flow_idx, val
                 flow_idx <= n_flow && f(flow_idx, basin_id.idx, val)
             end
         end
+        return nothing
     end
+    foreach_storage_dependence(flow_input_ranges.storage_uplink, idx -> inflow_id[idx])
+    foreach_storage_dependence(
+        flow_input_ranges.storage_downlink, idx -> outflow_id(outflow_data[idx])
+    )
 
     # Dependence via the ContinuousControl compound variables
     storage_offset = first(continuous_control_input_ranges.storage) - 1
@@ -374,7 +376,7 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
                 else
                     listen_flow_idx = input_idx - flow_offset
                     id_in_listen = inflow_id[listen_flow_idx]
-                    id_out_listen = outflow_id[listen_flow_idx]
+                    id_out_listen = outflow_id(outflow_data[listen_flow_idx])
                     if id_in_listen.is_basin
                         ∂q_listen_∂storage = ∂flow_∂flow_input[listen_flow_idx, flow_input_ranges.storage_uplink[listen_flow_idx]]
                         f(flow_idx, id_in_listen.idx, val * cc_val * ∂q_listen_∂storage)
@@ -454,7 +456,7 @@ function build_J_inner!(
         structural::Bool = false,
     )
     (; p_independent, J_inner_local, area_pid_controlled) = J
-    (; pid_control, inflow_id, outflow_id) = p_independent
+    (; pid_control, inflow_id, outflow_data) = p_independent
 
     # Add J_inner_local into J_inner rather than copying it, which would reset the sparsity
     # pattern of J_inner and drop the entries that are only structurally nonzero
@@ -469,7 +471,7 @@ function build_J_inner!(
     foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, ∂q_∂pid_integral
         listen_node_id = pid_control.listen_node_id[pid_idx]
         contribution = structural ? 1.0 : -gamma * ∂q_∂pid_integral / area_pid_controlled[pid_idx]
-        add_flow_contribution!(J_inner, inflow_id[flow_idx], outflow_id[flow_idx], listen_node_id.idx, contribution)
+        add_flow_contribution!(J_inner, inflow_id[flow_idx], outflow_data[flow_idx], listen_node_id.idx, contribution)
     end
     return nothing
 end
@@ -477,12 +479,18 @@ end
 function add_flow_contribution!(
         J_inner::AbstractMatrix{Float64},
         id_in::NodeID,
-        id_out::NodeID,
+        data_out::OutflowData,
         basin_idx::Int,
         ∂q_∂storage::Float64,
     )
     id_in.is_basin && (J_inner[id_in.idx, basin_idx] -= ∂q_∂storage)
-    id_out.is_basin && (J_inner[id_out.idx, basin_idx] += ∂q_∂storage)
+
+    if data_out.to_pass_down
+        # TODO
+    else
+        id_out = outflow_id(data_out)
+        id_out.is_basin && (J_inner[id_out.idx, basin_idx] += ∂q_∂storage)
+    end
     return nothing
 end
 
@@ -583,7 +591,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
     (; cache_inner, W) = linsolve
     (; gamma, J) = W
     (; p_independent, area_pid_controlled, n_pid) = J
-    (; pid_control, inflow_id, outflow_id) = p_independent
+    (; pid_control, inflow_id, outflow_data) = p_independent
 
     W_inner = cache_inner.A
     J_inner = W_inner.J
@@ -598,7 +606,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
     foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, ∂q_∂pid_integral
         contribution = gamma * ∂q_∂pid_integral * b_pid_integral[pid_idx]
         id_in = inflow_id[flow_idx]
-        id_out = outflow_id[flow_idx]
+        id_out = outflow_id(outflow_data[flow_idx])
         id_in.is_basin && (b_inner[id_in.idx] -= contribution)
         id_out.is_basin && (b_inner[id_out.idx] += contribution)
     end

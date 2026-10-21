@@ -338,6 +338,12 @@ function outflow_id(graph::MetaGraph, id::NodeID)::NodeID
 end
 
 """
+Get the downstream node ID of the single outflow link.
+TODO: Support `to_pass_down = true`, where there are multiple outflow links.
+"""
+outflow_id(outflow_data::OutflowData)::NodeID = outflow_data.outflow_link.link[2]
+
+"""
 Get the unique inneighbor over a flow link.
 """
 function inflow_id(graph::MetaGraph, id::NodeID)::NodeID

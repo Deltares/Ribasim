@@ -205,7 +205,7 @@ function get_level(storage::Number, p::Parameters, outflow_data::OutflowData, t:
     return if outflow_data.to_pass_down
         -Inf
     else
-        get_level(storage, p, outflow_data.outflow_link.link[2], t; kwargs...)
+        get_level(storage, p, outflow_id(outflow_data), t; kwargs...)
     end
 end
 
@@ -776,7 +776,7 @@ function get_incidence_matrix(inflow_id::FlowCVector{NodeID}, outflow_data::Flow
         if out_data.to_pass_down
             # TODO
         else
-            out_id = out_data.outflow_link.link[2]
+            out_id = outflow_id(out_data)
             out_id.is_basin && (incidence_matrix[out_id.idx, flow_idx] = 1)
         end
     end
@@ -863,7 +863,7 @@ function aggregate_flows!(
             end
 
             if !data_out.to_pass_down
-                id_out = data_out.outflow_link.link[2]
+                id_out = outflow_id(data_out)
                 if id_out.is_basin && ((positive_flow && do_inflows) || (!positive_flow && do_outflows))
                     aggregate[id_out.idx] += weight * flow_
                 end
@@ -875,8 +875,7 @@ function aggregate_flows!(
         for idx in eachindex(flow_boundary.node_id)
             outflow_data = flow_boundary.outflow_data[idx]
             if !outflow_data.to_pass_down
-                outflow_id = outflow_data.outflow_link[idx].link[2]
-                aggregate[outflow_id.idx] += boundary_flow[idx]
+                aggregate[outflow_id(outflow_data).idx] += boundary_flow[idx]
             end
         end
     end
@@ -1200,7 +1199,7 @@ function set_uplink_downlink_storage!(
         storage_uplink[idx] = in_id.is_basin ? storage[in_id.idx] : zero(eltype(storage_uplink))
 
         if !out_data.to_pass_down
-            out_id = out_data.outflow_link.link[2]
+            out_id = outflow_id(out_data)
             storage_downlink[idx] = out_id.is_basin ? storage[out_id.idx] : zero(eltype(storage_downlink))
         end
     end
