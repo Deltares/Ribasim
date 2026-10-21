@@ -1055,6 +1055,68 @@ function check_new_t!(p::Parameters, t::Number)::Nothing
             ForwardDiff.partials(time_dependent_cache.t_prev_call[1])
     )
     time_dependent_cache.t_prev_call[1] = t
+    update_time_dependent_cache!(p, t)
+    return nothing
+end
+
+is_constant_in_time(itp::AbstractInterpolation)::Bool = all(==(first(itp.u)), itp.u)
+
+"""
+Evaluate the time series of Pumps, Outlets and TabulatedRatingCurves into the time dependent
+cache when the right hand side is called at a new `t`. Most of these time series are constant
+in time, so only the nodes with a time series that varies in time are evaluated, unless a
+control state change replaced time series and set `p_mutable.refresh_time_dependent_cache`.
+"""
+function update_time_dependent_cache!(p::Parameters, t::Float64)::Nothing
+    (; p_mutable, p_independent, time_dependent_cache) = p
+    p_mutable.new_time_dependent_cache || return nothing
+    refresh = p_mutable.refresh_time_dependent_cache
+    (; pump, outlet, tabulated_rating_curve) = p_independent
+    update_time_dependent_cache!(pump, time_dependent_cache.pump, p, t, refresh)
+    update_time_dependent_cache!(outlet, time_dependent_cache.outlet, p, t, refresh)
+
+    (; current_interpolation_index, interpolation_index, time_varying) = tabulated_rating_curve
+    for idx in eachindex(current_interpolation_index)
+        (refresh || time_varying[idx]) || continue
+        itp = current_interpolation_index[idx]
+        interpolation_index[idx] = itp(t)
+        time_varying[idx] = !is_constant_in_time(itp)
+    end
+    p_mutable.refresh_time_dependent_cache = false
+    return nothing
+end
+
+update_time_dependent_cache!(p::Parameters, t::Number)::Nothing = nothing
+
+function update_time_dependent_cache!(
+        node::Union{Pump, Outlet},
+        cache::NamedTuple,
+        p::Parameters,
+        t::Float64,
+        refresh::Bool,
+    )::Nothing
+    (; time_dependent_flow_rate, time_varying) = node
+    time_series = (
+        (node.min_flow_rate, cache.current_min_flow_rate),
+        (node.max_flow_rate, cache.current_max_flow_rate),
+        (node.min_upstream_level, cache.current_min_upstream_level),
+        (node.max_downstream_level, cache.current_max_downstream_level),
+    )
+    for idx in eachindex(time_varying)
+        (refresh || time_varying[idx]) || continue
+        varying = false
+        for (interpolations, values) in time_series
+            itp = interpolations[idx]
+            values[idx] = itp(interpolation_time(itp, p, t))
+            varying |= !is_constant_in_time(itp)
+        end
+        if isassigned(time_dependent_flow_rate, idx)
+            itp = time_dependent_flow_rate[idx]
+            cache.current_flow_rate_setpoint[idx] = itp(interpolation_time(itp, p, t))
+            varying |= !is_constant_in_time(itp)
+        end
+        time_varying[idx] = varying
+    end
     return nothing
 end
 
