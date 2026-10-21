@@ -43,102 +43,13 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
     return nothing
 end
 
-"""
-Process all mass inflows to basins
-"""
-function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
-    (; p, t) = integrator
-    (; basin, inflow_id, outflow_id, level_boundary, cumulative_flow_dt, flow_ranges) = p.p_independent
-    (; concentration_state, mass) = basin.concentration_data
-
-    # Loop over connections that have state
-    @views for (flow_idx, (from_node, to_node)) in enumerate(zip(inflow_id, outflow_id))
-
-        if flow_idx in flow_ranges.horizontal.user_demand_outflow
-            # UserDemand is handled separately in mass_inflows_from_user_demand
-            continue
-        end
-
-        cumulative_flow = cumulative_flow_dt[flow_idx]
-
-        if from_node.is_basin && cumulative_flow < 0
-            if to_node.is_basin
-                mass[:, from_node.idx] .-=
-                    concentration_state[:, to_node.idx] .* cumulative_flow
-            elseif to_node.type == NodeType.LevelBoundary
-                add_substance_mass!(
-                    mass[:, from_node.idx],
-                    level_boundary.concentration_itp[to_node.idx],
-                    -cumulative_flow,
-                    t,
-                )
-            elseif (to_node.type == NodeType.Terminal && to_node.value == 0)
-                # UserDemand inflow is discoupled from its outflow
-                # The unset flow link defaults to Terminal #0
-                nothing
-            else
-                warn_unsupported_flow(to_node, from_node, cumulative_flow)
-            end
-        end
-
-        if to_node.is_basin && cumulative_flow > 0
-            if from_node.is_basin
-                mass[:, to_node.idx] .+=
-                    concentration_state[:, from_node.idx] .* cumulative_flow
-
-            elseif from_node.type == NodeType.LevelBoundary
-                add_substance_mass!(
-                    mass[:, to_node.idx],
-                    level_boundary.concentration_itp[from_node.idx],
-                    cumulative_flow,
-                    t,
-                )
-            elseif from_node.type == NodeType.Terminal && from_node.value == 0
-                # The unset flow link defaults to Terminal #0
-                nothing
-            else
-                warn_unsupported_flow(from_node, to_node, cumulative_flow)
-            end
-        end
-    end
-    return nothing
-end
-
-# Logging is kept out of the loop in `mass_inflows_basin!`, since it hinders optimizing the loop
+# Logging is kept out of the loop in `transport_tracers!`, since it hinders optimizing the loop
 @noinline function warn_unsupported_flow(
         from_node::NodeID,
         to_node::NodeID,
         cumulative_flow::Float64,
     )::Nothing
     @warn "Unsupported outflow from $from_node to $to_node with cumulative flow $cumulative_flow m³"
-    return nothing
-end
-
-"""
-Process all mass outflows from Basins
-"""
-function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
-    (; basin, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges) = integrator.p.p_independent
-    (; mass, concentration_state) = basin.concentration_data
-
-    @views for flow_idx in eachindex(cumulative_flow_dt)
-
-        if flow_idx in flow_ranges.vertical.evaporation
-            # Evaporation is handled separately
-            continue
-        end
-
-        cumulative_flow = cumulative_flow_dt[flow_idx]
-        from_node = inflow_id[flow_idx]
-        to_node = outflow_id[flow_idx]
-
-        if from_node.is_basin && cumulative_flow > 0
-            mass[:, from_node.idx] .-= concentration_state[:, from_node.idx] .* cumulative_flow
-        end
-        if to_node.is_basin && cumulative_flow < 0
-            mass[:, to_node.idx] .+= concentration_state[:, to_node.idx] .* cumulative_flow
-        end
-    end
     return nothing
 end
 
@@ -223,6 +134,136 @@ function add_substance_mass!(
     )::Nothing
     for (substance_idx, itp) in enumerate(concentration_itp)
         mass[substance_idx] += cumulative_flow * itp(t)
+    end
+    return nothing
+end
+
+function TracerTransport(
+        inflow_id::FlowCVector{NodeID},
+        outflow_id::FlowCVector{NodeID},
+        basin::Basin,
+        do_concentration::Bool,
+    )::TracerTransport
+    n_basin = do_concentration ? length(basin.node_id) : 0
+    n_substance = do_concentration ? length(basin.concentration_data.substances) : 0
+    n_flow = length(inflow_id)
+
+    # Sparsity pattern: the diagonal and both directions of each flow between two Basins
+    rows = collect(1:n_basin)
+    cols = collect(1:n_basin)
+    if do_concentration
+        for (from_node, to_node) in zip(inflow_id, outflow_id)
+            if from_node.is_basin && to_node.is_basin
+                push!(rows, to_node.idx, from_node.idx)
+                push!(cols, from_node.idx, to_node.idx)
+            end
+        end
+    end
+    A = sparse(rows, cols, zeros(length(rows)), n_basin, n_basin)
+
+    function nz_index(row, col)
+        range = nzrange(A, col)
+        return range[findfirst(==(row), view(rowvals(A), range))]
+    end
+    diagonal_nz = [nz_index(i, i) for i in 1:n_basin]
+    forward_nz = zeros(Int, n_flow)
+    backward_nz = zeros(Int, n_flow)
+    if do_concentration
+        for (flow_idx, (from_node, to_node)) in enumerate(zip(inflow_id, outflow_id))
+            if from_node.is_basin && to_node.is_basin
+                forward_nz[flow_idx] = nz_index(to_node.idx, from_node.idx)
+                backward_nz[flow_idx] = nz_index(from_node.idx, to_node.idx)
+            end
+        end
+    end
+    return TracerTransport(
+        A,
+        diagonal_nz,
+        forward_nz,
+        backward_nz,
+        zeros(n_basin),
+        zeros(n_basin, n_substance),
+        nothing,
+    )
+end
+
+"""
+Transport the substances over the last timestep: the exchange between Basins, the outflows
+and the inflows from LevelBoundary, see [`TracerTransport`](@ref). The mass from the other
+sources is already added to `mass`, afterwards it holds the mass at the end of the timestep.
+"""
+function transport_tracers!(p_independent::ParametersIndependent, t::Float64, dt::Float64)::Nothing
+    (; tracer_transport, basin, level_boundary, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges) =
+        p_independent
+    (; A, diagonal_nz, forward_nz, backward_nz, outflow, work) = tracer_transport
+    (; mass, cumulative_in, evaporate_mass) = basin.concentration_data
+    (; storage_prev_dt) = basin
+    isempty(diagonal_nz) && return nothing
+    nzval = nonzeros(A)
+    fill!(nzval, 0.0)
+    fill!(outflow, 0.0)
+
+    for flow_idx in eachindex(cumulative_flow_dt)
+        # Without evaporating mass, the evaporated water leaves the mass behind
+        !evaporate_mass && flow_idx in flow_ranges.vertical.evaporation && continue
+        # The mass of the UserDemand return flow is added in `mass_inflows_from_user_demand!`
+        flow_idx in flow_ranges.horizontal.user_demand_outflow && continue
+
+        volume = cumulative_flow_dt[flow_idx]
+        upstream, downstream, nz = if volume > 0
+            inflow_id[flow_idx], outflow_id[flow_idx], forward_nz[flow_idx]
+        elseif volume < 0
+            outflow_id[flow_idx], inflow_id[flow_idx], backward_nz[flow_idx]
+        else
+            continue
+        end
+        volume = abs(volume)
+
+        upstream.is_basin && (outflow[upstream.idx] += volume)
+        downstream.is_basin || continue
+        if upstream.is_basin
+            nzval[nz] -= volume
+        elseif upstream.type == NodeType.LevelBoundary
+            add_substance_mass!(
+                view(mass, :, downstream.idx),
+                level_boundary.concentration_itp[upstream.idx],
+                volume,
+                t,
+            )
+        elseif !(upstream.type == NodeType.Terminal && upstream.value == 0)
+            # The unset flow link defaults to Terminal #0
+            warn_unsupported_flow(upstream, downstream, volume)
+        end
+    end
+
+    for i in eachindex(diagonal_nz)
+        storage = storage_prev_dt[i]
+        # The diagonal can already hold a flow from a Basin to itself
+        diagonal = nzval[diagonal_nz[i]] + storage + cumulative_in[i]
+        # An empty Basin without inflow has no mass
+        nzval[diagonal_nz[i]] = diagonal > 0 ? diagonal : 1.0
+        # The residence time tracer gets older
+        mass[Substance.ResidenceTime, i] += dt * storage
+        for substance_idx in axes(mass, 1)
+            work[i, substance_idx] = mass[substance_idx, i]
+        end
+    end
+
+    # The matrix is diagonally dominant by column, so the pivots can be reused
+    factorization = tracer_transport.factorization
+    if isnothing(factorization)
+        tracer_transport.factorization = factorization = PureKLU.klu(A)
+    else
+        PureKLU.klu!(factorization, nzval)
+    end
+    LinearAlgebra.ldiv!(factorization, work)
+
+    # The water that remains in the Basin has the concentration of the outflow
+    for i in eachindex(diagonal_nz)
+        remaining = max(storage_prev_dt[i] + cumulative_in[i] - outflow[i], 0.0)
+        for substance_idx in axes(mass, 1)
+            mass[substance_idx, i] = remaining * work[i, substance_idx]
+        end
     end
     return nothing
 end
