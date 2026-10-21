@@ -1,9 +1,9 @@
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(config.snake_case(nodetype)))
-neighbortypes(::Val{:pump}) = OrderedSet((:basin, :terminal, :level_boundary, :junction))
-neighbortypes(::Val{:outlet}) = OrderedSet((:basin, :terminal, :level_boundary, :junction))
+neighbortypes(::Val{:pump}) = OrderedSet((:basin, :terminal, :level_boundary, :pass_down, :junction))
+neighbortypes(::Val{:outlet}) = OrderedSet((:basin, :terminal, :level_boundary, :pass_down, :junction))
 neighbortypes(::Val{:user_demand}) =
-    OrderedSet((:basin, :terminal, :level_boundary, :junction))
+    OrderedSet((:basin, :terminal, :level_boundary, :pass_down, :junction))
 neighbortypes(::Val{:level_demand}) = OrderedSet((:basin,))
 neighbortypes(::Val{:basin}) = OrderedSet(
     (
@@ -28,10 +28,11 @@ neighbortypes(::Val{:junction}) = OrderedSet(
         :outlet,
         :user_demand,
         :terminal,
+        :pass_down,
     )
 )
 neighbortypes(::Val{:flow_boundary}) =
-    OrderedSet((:basin, :terminal, :level_boundary, :junction))
+    OrderedSet((:basin, :terminal, :level_boundary, :junction, :pass_down))
 neighbortypes(::Val{:level_boundary}) =
     OrderedSet((:linear_resistance, :pump, :outlet, :tabulated_rating_curve))
 neighbortypes(::Val{:linear_resistance}) = OrderedSet((:basin, :level_boundary, :junction))
@@ -49,7 +50,7 @@ neighbortypes(::Val{:discrete_control}) = OrderedSet(
 )
 neighbortypes(::Val{:pid_control}) = OrderedSet((:pump, :outlet))
 neighbortypes(::Val{:tabulated_rating_curve}) =
-    OrderedSet((:basin, :terminal, :level_boundary, :junction))
+    OrderedSet((:basin, :terminal, :level_boundary, :junction, :pass_down))
 neighbortypes(::Val{:flow_demand}) = OrderedSet(
     (
         :linear_resistance,
@@ -60,6 +61,7 @@ neighbortypes(::Val{:flow_demand}) = OrderedSet(
     )
 )
 neighbortypes(::Val{:observation}) = OrderedSet{Symbol}()
+neighbortypes(::Val{:pass_down}) = OrderedSet((:basin, :level_boundary, :terminal, :junction, :user_demand, :pass_down))
 neighbortypes(::Any) = OrderedSet{Symbol}()
 
 # Allowed number of inneighbors and outneighbors per node type
@@ -91,6 +93,7 @@ n_neighbor_bounds_flow(::Val{:UserDemand}) = n_neighbor_bounds(1, M, 1, 1)
 n_neighbor_bounds_flow(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:FlowDemand}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:Observation}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_flow(::Val{:PassDown}) = n_neighbor_bounds(1, M, 1, M)
 n_neighbor_bounds_flow(nodetype) =
     error("'n_neighbor_bounds_flow' not defined for $nodetype.")
 
@@ -112,6 +115,7 @@ n_neighbor_bounds_control(::Val{:UserDemand}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 1, M)
 n_neighbor_bounds_control(::Val{:FlowDemand}) = n_neighbor_bounds(0, 0, 1, 1)
 n_neighbor_bounds_control(::Val{:Observation}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_control(::Val{:PassDown}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
@@ -133,6 +137,7 @@ n_neighbor_bounds_listen(::Val{:UserDemand}) = n_neighbor_bounds(0, 0, 0, M)
 n_neighbor_bounds_listen(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 0, M)
 n_neighbor_bounds_listen(::Val{:FlowDemand}) = n_neighbor_bounds(0, 0, 0, M)
 n_neighbor_bounds_listen(::Val{:Observation}) = n_neighbor_bounds(0, 0, 0, 0)
+n_neighbor_bounds_listen(::Val{:PassDown}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_listen(nodetype) =
     error("'n_neighbor_bounds_listen' not defined for $nodetype.")
 
@@ -154,6 +159,7 @@ n_neighbor_bounds_observation(::Val{:UserDemand}) = n_neighbor_bounds(0, M, 0, 0
 n_neighbor_bounds_observation(::Val{:LevelDemand}) = n_neighbor_bounds(0, M, 0, 0)
 n_neighbor_bounds_observation(::Val{:FlowDemand}) = n_neighbor_bounds(0, M, 0, 0)
 n_neighbor_bounds_observation(::Val{:Observation}) = n_neighbor_bounds(0, 0, 0, 1)
+n_neighbor_bounds_observation(::Val{:PassDown}) = n_neighbor_bounds(0, M, 0, 0)
 n_neighbor_bounds_observation(nodetype) =
     error("'n_neighbor_bounds_observation' not defined for $nodetype.")
 
@@ -197,6 +203,8 @@ sort_key(::Type{Schema.Basin.Static}) = (:node_id,)
 sort_key(::Type{Schema.Basin.Subgrid}) = (:subgrid_id, :basin_level)
 sort_key(::Type{Schema.Basin.SubgridTime}) = (:subgrid_id, :time, :basin_level)
 sort_key(::Type{Schema.Basin.Time}) = (:node_id, :time)
+
+sort_key(::Type{Schema.PassDown.Static}) = (:node_id,)
 
 sort_key(::Type{Schema.ContinuousControl.Function}) = (:node_id, :input)
 sort_key(::Type{Schema.ContinuousControl.Variable}) = (:node_id, :listen_node_id, :variable)
@@ -713,7 +721,7 @@ function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
     node_type = NodeType.T(node_name)
 
     errors = false
-    # return !errors
+    can_pass_down = :pass_down in neighbortypes(node_name)
     for node_id in labels(graph)
         node_id.type == node_type || continue
         # listen links are not part of the graph, only validated in python
@@ -723,6 +731,28 @@ function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
                 count(x -> true, inneighbor_labels_type(graph, node_id, link_type))
             n_outneighbors =
                 count(x -> true, outneighbor_labels_type(graph, node_id, link_type))
+
+            # With a PassDown downstream, any number of outneighbors is allowed, but all must be PassDown,
+            # except that a PassDown node can also have UserDemand outneighbors
+            n_pass_down_outneighbors =
+                (can_pass_down && link_type == LinkType.flow) ?
+                count(
+                    x -> x.type == NodeType.PassDown,
+                    outneighbor_labels_type(graph, node_id, link_type),
+                ) : 0
+            if n_pass_down_outneighbors > 0
+                n_allowed_outneighbors = count(
+                    x -> x.type == NodeType.PassDown ||
+                        (node_type == NodeType.PassDown && x.type == NodeType.UserDemand),
+                    outneighbor_labels_type(graph, node_id, link_type),
+                )
+                if n_allowed_outneighbors < n_outneighbors
+                    allowed = node_type == NodeType.PassDown ? "PassDown or UserDemand" : "PassDown"
+                    @error "$node_id has a PassDown $link_type outneighbor, so all its $link_type outneighbors must be $allowed (got $n_allowed_outneighbors out of $n_outneighbors)."
+                    errors = true
+                end
+                bounds = n_neighbor_bounds(bounds.in_min, bounds.in_max, bounds.out_min, M)
+            end
 
             if n_inneighbors < bounds.in_min
                 @error "$node_id must have at least $(bounds.in_min) $link_type inneighbor(s) (got $n_inneighbors)."

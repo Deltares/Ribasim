@@ -316,6 +316,13 @@ class OutletTimeSchema(_BaseSchema):
     max_downstream_level: float = pa.Field(nullable=True)
 
 
+class PassDownStaticSchema(_BaseSchema):
+    _node_id_relation: str = "equal"
+    fid: Index[np.int32] = pa.Field(default=1, check_name=True, coerce=True)
+    node_id: np.int32 = pa.Field(nullable=False, default=0)
+    fraction: float = pa.Field(nullable=True)
+
+
 class PidControlStaticSchema(_BaseSchema):
     _node_id_relation: str = "partition"
     fid: Index[np.int32] = pa.Field(default=1, check_name=True, coerce=True)

@@ -562,6 +562,7 @@ end
         :ManningResistance,
         :Observation,
         :Outlet,
+        :PassDown,
         :PidControl,
         :Pump,
         :TabulatedRatingCurve,

@@ -192,7 +192,7 @@ end
         make(; L, n, w, s, bottom_a, bottom_b) = Ribasim.ManningResistance(;
             node_id = manning_resistance.node_id,
             inflow_link = manning_resistance.inflow_link,
-            outflow_link = manning_resistance.outflow_link,
+            outflow_data = manning_resistance.outflow_data,
             length = [L],
             manning_n = [n],
             profile_width = [w],

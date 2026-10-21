@@ -1,7 +1,9 @@
 from datetime import datetime
 
+import numpy as np
 from ribasim.config import Allocation, Experimental, Solver
 from ribasim.geometry.node import Node
+from ribasim.input_base import NodeData
 from ribasim.model import Model
 from ribasim.nodes import (
     basin,
@@ -10,6 +12,7 @@ from ribasim.nodes import (
     flow_demand,
     level_boundary,
     level_demand,
+    pass_down,
     pump,
     tabulated_rating_curve,
     user_demand,
@@ -288,4 +291,85 @@ def invalid_no_basin_model() -> Model:
     model.link.add(boundary1, sea)
     model.link.add(boundary2, sea)
 
+    return model
+
+
+def _invalid_pass_down_base() -> tuple[Model, NodeData]:
+    """Create a model with a Basin and a Pump, to which PassDown nodes can be connected."""
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
+        crs="EPSG:28992",
+    )
+    bsn = model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.State(level=[1.0]),
+            basin.Profile(level=[0.0, 2.0], area=[100.0, 200.0]),
+        ],
+    )
+    pmp = model.pump.add(Node(2, Point(1, 0)), [pump.Static(flow_rate=[1e-3])])
+    model.link.add(bsn, pmp)
+    return model, pmp
+
+
+def _pass_down_user_demand_static() -> list:
+    return [
+        user_demand.Static(
+            demand_priority=[1], demand=[1e-4], return_factor=0.5, min_level=[0.0]
+        )
+    ]
+
+
+def invalid_pass_down_missing_fractions_model() -> Model:
+    """Multiple PassDown nodes downstream of the same node with a missing fraction."""
+    model, pmp = _invalid_pass_down_base()
+    trm = model.terminal.add(Node(6, Point(3, 0)))
+    for node_id, y, fraction in [(3, 1, np.nan), (4, 0, np.nan), (5, -1, 0.5)]:
+        pd = model.pass_down.add(
+            Node(node_id, Point(2, y)), [pass_down.Static(fraction=[fraction])]
+        )
+        model.link.add(pmp, pd)
+        model.link.add(pd, trm)
+    return model
+
+
+def invalid_pass_down_fraction_sum_model() -> Model:
+    """PassDown fractions summing to more than 1, while one fraction is missing."""
+    model, pmp = _invalid_pass_down_base()
+    trm = model.terminal.add(Node(6, Point(3, 0)))
+    for node_id, y, fraction in [(3, 1, 0.75), (4, 0, 0.5), (5, -1, np.nan)]:
+        pd = model.pass_down.add(
+            Node(node_id, Point(2, y)), [pass_down.Static(fraction=[fraction])]
+        )
+        model.link.add(pmp, pd)
+        model.link.add(pd, trm)
+    return model
+
+
+def invalid_pass_down_multiple_user_demands_model() -> Model:
+    """PassDown node with multiple UserDemand nodes downstream."""
+    model, pmp = _invalid_pass_down_base()
+    pd = model.pass_down.add(Node(3, Point(2, 0)), [pass_down.Static(fraction=[1.0])])
+    ud1 = model.user_demand.add(Node(4, Point(3, 1)), _pass_down_user_demand_static())
+    ud2 = model.user_demand.add(Node(5, Point(3, -1)), _pass_down_user_demand_static())
+    trm = model.terminal.add(Node(6, Point(4, 0)))
+    model.link.add(pmp, pd)
+    model.link.add(pd, ud1)
+    model.link.add(pd, ud2)
+    model.link.add(pd, trm)
+    model.link.add(ud1, trm)
+    model.link.add(ud2, trm)
+    return model
+
+
+def invalid_pass_down_only_user_demand_model() -> Model:
+    """PassDown node with only a UserDemand node downstream, so the remaining flow has nowhere to go."""
+    model, pmp = _invalid_pass_down_base()
+    pd = model.pass_down.add(Node(3, Point(2, 0)), [pass_down.Static(fraction=[1.0])])
+    ud = model.user_demand.add(Node(4, Point(3, 0)), _pass_down_user_demand_static())
+    trm = model.terminal.add(Node(5, Point(4, 0)))
+    model.link.add(pmp, pd)
+    model.link.add(pd, ud)
+    model.link.add(ud, trm)
     return model
