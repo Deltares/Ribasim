@@ -1742,6 +1742,7 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
     (; fraction) = pass_down
     has_fraction = falses(length(node_id))
 
+    errors = false
     invalid_fraction_ids = Int32[]
     for row in static
         ismissing(row.fraction) && continue
@@ -1756,9 +1757,9 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
     if !isempty(invalid_fraction_ids)
         @error "PassDown fractions must be between 0 and 1 (inclusive)." node_ids =
             invalid_fraction_ids
+        errors = true
     end
 
-    errors = false
     for upstream_id in labels(graph)
         pass_down_ids = filter(
             id -> id.type == NodeType.PassDown,
@@ -1782,6 +1783,20 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
             errors = true
         else
             fraction[only(missing_ids).idx] = 1.0 - fraction_sum
+        end
+    end
+
+    # A UserDemand downstream of a PassDown node takes precedence over the other outneighbors,
+    # which receive the flow that is not abstracted
+    for id in node_id
+        n_outneighbors = count(_ -> true, outflow_ids(graph, id))
+        n_user_demand = count(x -> x.type == NodeType.UserDemand, outflow_ids(graph, id))
+        if n_user_demand > 1
+            @error "$id can have at most 1 UserDemand flow outneighbor (got $n_user_demand)."
+            errors = true
+        elseif n_user_demand == n_outneighbors == 1
+            @error "$id has only a UserDemand flow outneighbor, but needs another flow outneighbor for the flow that is not abstracted."
+            errors = true
         end
     end
     errors && error("Errors encountered when parsing PassDown data.")

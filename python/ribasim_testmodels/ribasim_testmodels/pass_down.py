@@ -19,7 +19,8 @@ def pass_down_model() -> Model:
     From upstream to downstream it contains:
 
     - A FlowBoundary with multiple PassDown nodes downstream.
-    - A Pump with multiple PassDown nodes downstream, one of which feeds a UserDemand.
+    - A Pump with multiple PassDown nodes downstream, one of which feeds a UserDemand
+      and passes the remaining flow to a Basin.
     - A UserDemand with multiple PassDown nodes downstream.
     - A UserDemand with inflow from both a Basin and a PassDown node, where the PassDown
       flow is smaller than the UserDemand's share of the demand on that link.
@@ -91,11 +92,13 @@ def pass_down_model() -> Model:
     model.link.add(p1, pd3)
     model.link.add(p1, pd4)
     model.link.add(pd3, ud1)
+    model.link.add(pd3, b2)
     model.link.add(pd4, b2)
     model.link.add(ud1, pd5)
     model.link.add(ud1, pd6)
     model.link.add(pd5, b2)
     model.link.add(pd6, ud2)
+    model.link.add(pd6, b3)
     model.link.add(b2, ud2)
     model.link.add(ud2, b3)
     model.link.add(b3, p2)
