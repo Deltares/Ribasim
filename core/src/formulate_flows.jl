@@ -127,7 +127,7 @@ function set_current_basin_properties!(flow::FlowCVector, p::Parameters, t::Numb
         (s == storage_prev_call[idx]) && continue
         level_and_area = basin_level_and_area(basin.profiles, idx, s)
         h, A = if isnothing(level_and_area)
-            # Outside the profile the interpolations extrapolate
+            # Below the profile the interpolations extrapolate
             h = get_level(s, p, id, t; force_evaluation = true)
             h, level_to_area[idx](h)
         else

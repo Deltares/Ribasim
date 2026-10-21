@@ -1281,6 +1281,10 @@ function set_basin_profiles!(basin::Basin)::Nothing
         append!(profiles.dS_dh_slope, storage_to_level_i.itp.p.slope, 0.0)
         append!(profiles.area, level_to_area_i.u)
         append!(profiles.area_slope, level_to_area_i.p.slope, 0.0)
+        push!(
+            profiles.top_level_slope,
+            derivative(storage_to_level_i, last(storage_to_level_i.t)),
+        )
         push!(profiles.offset, length(profiles.storage))
         push!(profiles.segment, 1)
         push!(profiles.area_segment, 1)
@@ -1304,8 +1308,8 @@ This is how DataInterpolations finds the segment.
 end
 
 """
-The level and area of Basin i at a storage within its profile, the same as evaluating
-`storage_to_level` and `level_to_area`. Returns `nothing` outside the profile.
+The level and area of Basin i at a storage, the same as evaluating `storage_to_level` and
+`level_to_area`. Returns `nothing` below the profile.
 """
 @inline function basin_level_and_area(
         profiles::BasinProfiles,
@@ -1315,7 +1319,12 @@ The level and area of Basin i at a storage within its profile, the same as evalu
     (; offset, segment, area_segment, level) = profiles
     first_idx = offset[i] + 1
     last_idx = offset[i + 1]
-    (profiles.storage[first_idx] <= storage <= profiles.storage[last_idx]) || return nothing
+    storage < profiles.storage[first_idx] && return nothing
+    if storage > profiles.storage[last_idx]
+        # Same as the linear and constant extrapolation of the interpolations
+        h = level[last_idx] + profiles.top_level_slope[i] * (storage - profiles.storage[last_idx])
+        return h, profiles.area[last_idx] + 0.0
+    end
 
     j = find_segment(storage, profiles.storage, first_idx, last_idx, first_idx - 1 + segment[i])
     segment[i] = j - first_idx + 1
