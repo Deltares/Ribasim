@@ -629,9 +629,9 @@ function allocation_data(model::Model; table::Bool = true)
         has_priority[i, j] = true
     end
 
-    # Handle supplied flows in last allocation timestep
+    # Handle supplied flows in the last intervention interval
     if !isempty(record_demand)
-        Δt = integrator.t - last(record_demand).time
+        Δt = integrator.t - allocation.time.t_intervention
         for allocation_model in allocation_models
             (; cumulative_supplied_volume, node_ids_in_subnetwork) = allocation_model
             (;

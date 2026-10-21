@@ -18,7 +18,7 @@ except ImportError:
 from pydantic import ValidationError
 from pyproj import CRS
 from ribasim import Node
-from ribasim.config import Solver
+from ribasim.config import Allocation, Solver
 from ribasim.geometry.node import NodeData
 from ribasim.input_base import esc_id
 from ribasim.model import Model
@@ -57,6 +57,16 @@ def test_solver():
 
     with pytest.raises(ValidationError):
         Solver(saveat="a")
+
+
+def test_allocation_reltol_linearization_deprecated():
+    with pytest.warns(DeprecationWarning, match="reltol_linearization"):
+        allocation = Allocation(reltol_linearization=0.01, dtmin=7200.0)
+    assert allocation.dtmin == 7200.0
+    assert "reltol_linearization" not in allocation.model_dump()
+
+    with pytest.raises(ValidationError):
+        Allocation(unknown_setting=1.0)
 
 
 def test_time_window_validation(basic):

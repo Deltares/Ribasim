@@ -7,20 +7,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 - BMI: Set FlowBoundary flow rates during a simulation and read cumulative flow for online coupling. [#3251](https://github.com/Deltares/Ribasim/pull/3251)
-- Error on rapidly oscillating DiscreteControl states with the configurable `solver.min_discrete_control_interval`. [#3237](https://github.com/Deltares/Ribasim/pull/3237)
+- Warn on rapidly oscillating DiscreteControl states with the configurable `solver.min_discrete_control_interval`. [#3237](https://github.com/Deltares/Ribasim/pull/3237)
 - Report rejected timesteps by cause and the mean solver order in `results/solver_stats.nc`. [#3269](https://github.com/Deltares/Ribasim/pull/3269)
 - Evaluate DiscreteControl only at a fixed interval with `solver.discrete_control_interval`, which can make models with many DiscreteControl nodes much faster.
 
 ### Changed
+- ManningResistance: the flow is now bounded by critical flow. The downstream water level cannot drop below critical depth and the flow cannot exceed the flow over the sill at the higher of the two Basin bottoms, which is the critical flow when the sill is free and goes to zero as the levels meet when it is drowned. So a Basin that lies far below its upstream neighbour no longer receives a supercritical flow that grows as it fills, and for a fixed upstream level the flow no longer increases with the downstream level. Subcritical flow between Basins of similar depth is mostly unchanged, but in short reaches and next to Basins with a much deeper profile the level difference now is at least the velocity head over the sill. Models with such reaches will see lower flows there, and a Basin draining over its sill into a much lower Basin now empties like a weir, so its last millimetres drain more slowly. [#3286](https://github.com/Deltares/Ribasim/pull/3286)
+- ManningResistance: the Reynolds number based threshold of the relaxed square root is replaced by a fixed threshold of `1e-5`, which in practice it already was. [#3286](https://github.com/Deltares/Ribasim/pull/3286)
+- ManningResistance: `profile_width` and `profile_slope` can no longer both be zero. [#3286](https://github.com/Deltares/Ribasim/pull/3286)
 - The default solver is now NordsieckBDF. [#3236](https://github.com/Deltares/Ribasim/pull/3236)
 - Solver tolerances now apply to changes over each timestep, including the nonlinear solver. [#3237](https://github.com/Deltares/Ribasim/pull/3237) [#3268](https://github.com/Deltares/Ribasim/pull/3268)
 - The default absolute and relative solver tolerances are now both `1e-4`. [#3237](https://github.com/Deltares/Ribasim/pull/3237)
 - In `results/solver_stats.nc`, `dt` is now the average timestep size over the output interval, and `rejected_timesteps` includes nonlinear solver failures. Convergence scores are now calculated per timestep, with bottlenecks logged after successful runs too. [#3253](https://github.com/Deltares/Ribasim/pull/3253) [#3269](https://github.com/Deltares/Ribasim/pull/3269)
 - Allocation-controlled Pumps and Outlets require a finite `max_flow_rate`; those linking primary and secondary networks must explicitly set `allocation_controlled = true`. [#3259](https://github.com/Deltares/Ribasim/pull/3259)
 - Large models initialize faster. [#3180](https://github.com/Deltares/Ribasim/pull/3180)
+- Delwaq: `generate` now writes the substance and process specific input files to an `include` subfolder, so other water quality simulations can be set up by replacing these files. The boundary list `ribasim_bndlist.inc` is renamed to `include/B5_bndlist.inc`. [#3321](https://github.com/Deltares/Ribasim/pull/3321)
 - Simulations are faster, especially for models with many Basins, and large models use multiple threads if Julia is started with them.
+- Allocation: The adaptive timestep is now controlled by the success of the optimization. A failed optimization is retried with half the timestep down to `allocation.dtmin`, and every successful one doubles the timestep up to `allocation.dtmax`.
+- Allocation: Allocation passes its results to the physical layer at a fixed `allocation.intervention_interval`, representing human intervention, or at every BMI `update_until` call. Within an intervention interval allocation takes timesteps of its own, and the physical layer uses the time-averaged results. `allocation.dt` now sets a fixed allocation timestep within the intervention interval. The allocation output is written per intervention interval, or per allocation timestep if `solver.saveat` is 0.
+- Allocation: `allocation.dt`, `allocation.dtmin` and `allocation.dtmax` are limited to `allocation.intervention_interval` (default 86400 s). Larger values, such as a multi-day `dt` or `dtmin` from earlier versions, are reduced to it with a warning; increase `intervention_interval` to keep a longer allocation timestep.
+- Allocation: The simulation now stops when the allocation problem is infeasible, also when the infeasibility analysis finds the problem feasible without its objectives.
+- Duplicate rows in input tables are now an error, for instance two rows for the same node and control state in a static table. [#3316](https://github.com/Deltares/Ribasim/pull/3316)
+- A node with multiple control states that is not controlled by DiscreteControl needs a row without `control_state`, which defines its parameters. Nodes with multiple control states get their initial parameter values from the row without `control_state`, or else from the last control state. Before, time-interpolated parameters like Pump `min_flow_rate` used the first control state. [#3316](https://github.com/Deltares/Ribasim/pull/3316)
+- UserDemand `return_factor` and `min_level` must be the same for all demand priorities of a node (at the same time). [#3316](https://github.com/Deltares/Ribasim/pull/3316)
 
 ### Fixed
+- Allocation: Remove the Basin storage change upper bound and the flow bounds derived from it, which only existed for numerical reasons and could make the optimization problem infeasible. The flow of allocation controlled TabulatedRatingCurves is now bounded by its linearized Q(h) relation instead.
 - Allocation: Normalize LevelDemand fairness constraints by the current mean Basin area per demand priority, improving numerical conditioning for large Basins.
 - Allocation: Use a deterministic minimum-inlet-flow tie-break when collecting secondary-network demands from the primary network.
 - Allocation: Fix the `low_storage_factor` being applied twice for non-allocation-controlled Pump and Outlet nodes (once via the physical layer's flow rate, once via the allocation `low_storage_factor` decision variable), which made their flows overly conservative during low storage. Pump and Outlet now go through the same linearized-connector-node mechanism as LinearResistance, ManningResistance and TabulatedRatingCurve, so `low_storage_factor` uniformly governs the low-storage reduction of every connector node type instead of being partly baked into a stale physical-layer scalar.
@@ -34,6 +46,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Python: Removing an external table no longer leaves a missing-file reference in the model configuration. [#3214](https://github.com/Deltares/Ribasim/pull/3214)
 - Delwaq: Reduce memory use when generating and parsing large results. [#3132](https://github.com/Deltares/Ribasim/pull/3132) [#3248](https://github.com/Deltares/Ribasim/pull/3248)
 - Simulations no longer abort with a tiny timestep when a Basin empties. Outflows now stop at a depth of 1% of `solver.depth_threshold` (1 mm by default), so an empty Basin keeps a small positive storage that floating point rounding cannot make negative, and the step limiter keeps evaporation and infiltration from overshooting it.
+
+### Deprecated
+- Allocation: The `allocation.reltol_linearization` setting is no longer used by the adaptive timestepping. It is still accepted in the TOML for compatibility, but ignored with a warning, and will be removed in a future release.
 
 ## [v2026.1.2] - 2026-06-16
 

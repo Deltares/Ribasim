@@ -1,0 +1,16 @@
+[deps]
+BasicModelInterface = "59605e27-edc0-445a-b93d-c09a3a50b330"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+GeoDataFrames = "62cb38b5-d8d2-4862-a48e-6a340996859f"
+GeoInterface = "cf35fbd7-0cd7-5166-be24-54bfbe79505f"
+GeometryOps = "3251bfac-6a57-4b6d-aa61-ac1fef2975ab"
+NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Ribasim = "aac5e3d9-0b8f-4d4f-8241-b1a7a9632635"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+Wflow = "d48b7d99-76e7-47ae-b1d5-ff0c1cf9a818"
+
+[sources]
+Ribasim = {path = "../core"}
+Wflow = {rev = "9022cefd76d5358a8680fad8d984587181d65435", subdir = "Wflow", url = "https://github.com/Deltares/Wflow.jl"}

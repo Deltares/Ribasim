@@ -287,21 +287,32 @@ struct NodeIDsInSubnetwork
 end
 
 """
+A cache for intermediate results in `water_balance!` which can depend on both the state vector `u` and time `t`. A second version of
+this cache is required for automatic differentiation, where e.g. ForwardDiff requires these vectors to
+be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
+"""
+@kwdef struct CurrentBasinProperties
+    n::Int
+    # NaN so that the first call always computes the properties, also for an initial storage of 0
+    storage_prev_call::Vector{Float64} = fill(NaN, n)
+    current_storage::Vector{Float64} = zeros(n)
+    current_level::Vector{Float64} = zeros(n)
+    current_area::Vector{Float64} = zeros(n)
+    current_low_storage_factor::Vector{Float64} = zeros(n)
+end
+
+"""
 Store information for a subnetwork used for allocation.
 
 subnetwork_id: The ID of this subnetwork
 node_ids_in_subnetwork: Per node type a vector of the nodes of that type in the subnetwork
 problem: The JuMP.jl model for solving the allocation problem
-Δt_since_last_record: Time elapsed since the last saveat-aligned LP solve
-    (i.e., since the last call that pushed records and reset cumulative_supplied_volume).
-    Updated after every LP solve and reset to 0 when records are emitted;
-    used to divide cumulative_supplied_volume into a rate for the records.
 has_demand_priority: Per demand priority in the whole model whether a demand of this priority is present in this
     subnetwork
 objectives: The objectives (goals) in the order in which they will be optimized for
 explicit_positive_forcing_volume: The computable cumulative forcing over the coming allocation timestep
 implicit_negative_forcing_volume: The predicted cumulative forcing over the coming allocation timestep (assuming no reduction)
-cumulative_supplied_volume: The net volume of flow supplied to a demand node over the last Δt_allocation
+cumulative_supplied_volume: The net volume of flow supplied to a demand node since the latest intervention
 sources: The nodes in the subnetwork which can act as sources, sorted by route priority
 secondary_network_demand: The total demand of the secondary network from the primary network per inlet per demand priority (irrelevant for the primary network)
 flow_links_subnetwork: The physical layer flow links from which at least one node has this allocation model's subnetwork ID
@@ -315,7 +326,6 @@ temporary_constraints: Goal programming constraints; one is added after each opt
     subnetwork_id::Int32
     node_ids_in_subnetwork::NodeIDsInSubnetwork
     problem::JuMP.Model
-    Δt_since_last_record::Float64 = 0.0
     has_demand_priority::Vector{Bool}
     objectives::Vector{AllocationObjective} = AllocationObjective[]
     explicit_positive_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
@@ -368,25 +378,23 @@ Data for the allocation timestepping
 """
 @kwdef mutable struct AllocationTime
     const adaptive::Bool = true
-    # The fixed timestep if applicable
+    # The fixed allocation timestep (s) if not adaptive
     const dt_fixed::Float64 = 0.0
-    # The endtime of the simulation in se
+    # The minimum and maximum adaptive allocation timestep (s), at most intervention_interval
+    const dtmin::Float64 = 0.0
+    const dtmax::Float64 = 0.0
+    # The current allocation timestep (s), adapted by the controller
+    dt::Float64 = 0.0
+    # The endtime of the simulation in seconds
     const t_end::Float64 = 0.0
-    # The times (s) when allocation is called next
-    tstops::Vector{Float64} = [0.0]
+    # The interval (s) between intervention times when not coupled
+    const intervention_interval::Float64 = 0.0
     # The output writing interval
     const saveat::Float64 = 0.0
-
-    function AllocationTime(
-            adaptive::Bool,
-            dt_fixed::Float64,
-            t_end::Float64,
-            tstops::Vector{Float64},
-            saveat::Float64,
-        )
-        adaptive && !iszero(dt_fixed) && throw(ArgumentError("dt_fixed must be 0.0 when adaptive."))
-        return new(adaptive, dt_fixed, t_end, tstops, saveat)
-    end
+    # The start (s) of the latest intervention interval
+    t_intervention::Float64 = 0.0
+    # The end (s) of the latest intervention interval
+    t_intervention_end::Float64 = 0.0
 end
 
 """
@@ -399,6 +407,7 @@ primary_network_connections: (from_id: pump or outlet in the primary network, to
 demand_priorities_all: All used demand priority values from all subnetworks
 config: The Ribasim Model config
 time: The data needed to handle allocation timestepping
+current_basin_properties: The Basin properties as predicted by allocation within an intervention interval
 record_demand: A record of demands and allocated flows for nodes that have these
 record_flow: A record of all flows computed by allocation optimization, eventually saved to
     output file
@@ -412,6 +421,8 @@ record_control: A record of all flow rates assigned to pumps and outlets by allo
     demand_priorities_all::Vector{Int32} = []
     config::Config
     time::AllocationTime = AllocationTime(config)
+    current_basin_properties::CurrentBasinProperties =
+        CurrentBasinProperties(; n = 0)
     record_demand::Vector{DemandRecordDatum} = []
     record_flow::Vector{FlowRecordDatum} = []
     record_control::Vector{AllocationControlRecordDatum} = []
@@ -731,7 +742,7 @@ Requirements:
 * manning_n > 0
 * profile_width >= 0
 * profile_slope >= 0
-* (profile_width == 0) xor (profile_slope == 0)
+* not both profile_width == 0 and profile_slope == 0
 """
 @kwdef struct ManningResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -906,21 +917,6 @@ node_id: node ID of the Junction node
     node_id::Vector{NodeID}
 end
 
-"""
-A cache for intermediate results in `water_balance!` which can depend on both the state vector `u` and time `t`. A second version of
-this cache is required for automatic differentiation, where e.g. ForwardDiff requires these vectors to
-be of `ForwardDiff.Dual` type. This second version of the cache is created by DifferentiationInterface.
-"""
-@kwdef struct CurrentBasinProperties
-    n::Int
-    # NaN so that the first call always computes the properties, also for an initial storage of 0
-    storage_prev_call::Vector{Float64} = fill(NaN, n)
-    current_storage::Vector{Float64} = zeros(n)
-    current_level::Vector{Float64} = zeros(n)
-    current_area::Vector{Float64} = zeros(n)
-    current_low_storage_factor::Vector{Float64} = zeros(n)
-end
-
 @enumx CacheType flow_rate_pump flow_rate_outlet basin_level basin_storage
 
 """
@@ -1004,7 +1000,8 @@ controlled_nodes: The IDs of the nodes controlled by the DiscreteControl node
 compound_variables: The compound variables the DiscreteControl node listens to
 truth_state: Memory allocated for storing the truth state
 last_update_time: Per DiscreteControl node the last time there was a control state change
-min_discrete_control_interval: The minimum time between control state updates, if the time is smaller an error will be thrown
+min_discrete_control_interval: The minimum time between control state updates, if the time is smaller a warning is given
+oscillation_warned: Per DiscreteControl node whether a warning was given for a too small control state update interval
 control_state: The current control state of the DiscreteControl node
 control_state_start: The start time of the  current control state
 logic_mapping: Dictionary: truth state => control state for the DiscreteControl node
@@ -1018,6 +1015,7 @@ record: Namedtuple with discrete control information for results
     truth_state::Vector{Vector{Bool}}
     last_update_time::Vector{Float64} = fill(-Inf, length(node_id))
     min_discrete_control_interval::Float64
+    oscillation_warned::Vector{Bool} = fill(false, length(node_id))
     control_state::Vector{String} = fill("undefined_state", length(node_id))
     control_state_start::Vector{Float64} = zeros(length(node_id))
     logic_mapping::Vector{OrderedDict{Vector{Bool}, String}}
@@ -1307,63 +1305,68 @@ The part of the parameters passed to the rhs and callbacks that are non-mutable,
 and not derived from the state vector `u` (or the time `t`). In this context e.g. a vector
 of floats (not dependent on `u`) is not considered mutable, because even though it's elements are mutable,
 the object itself is not.
+
+It is a mutable struct with only const fields, so it is stored by reference instead of
+inline. Storing this large struct inline makes code that uses it, such as everything that
+takes the integrator, much slower to compile. The const fields keep loads as fast as for
+an immutable struct.
 """
-@kwdef struct ParametersIndependent{C1}
-    starttime::DateTime
-    reltol::Float64
-    graph::ModelGraph
-    allocation::Allocation
-    basin::Basin
-    linear_resistance::LinearResistance
-    manning_resistance::ManningResistance
-    tabulated_rating_curve::TabulatedRatingCurve
-    level_boundary::LevelBoundary
-    flow_boundary::FlowBoundary{C1}
-    pump::Pump
-    outlet::Outlet
-    terminal::Terminal
-    junction::Junction
-    discrete_control::DiscreteControl
-    continuous_control::ContinuousControl
-    pid_control::PidControl
-    user_demand::UserDemand
-    level_demand::LevelDemand
-    flow_demand::FlowDemand
-    pass_down::PassDown
-    subgrid::Subgrid
+@kwdef mutable struct ParametersIndependent{C1}
+    const starttime::DateTime
+    const reltol::Float64
+    const graph::ModelGraph
+    const allocation::Allocation
+    const basin::Basin
+    const linear_resistance::LinearResistance
+    const manning_resistance::ManningResistance
+    const tabulated_rating_curve::TabulatedRatingCurve
+    const level_boundary::LevelBoundary
+    const flow_boundary::FlowBoundary{C1}
+    const pump::Pump
+    const outlet::Outlet
+    const terminal::Terminal
+    const junction::Junction
+    const discrete_control::DiscreteControl
+    const continuous_control::ContinuousControl
+    const pid_control::PidControl
+    const user_demand::UserDemand
+    const level_demand::LevelDemand
+    const flow_demand::FlowDemand
+    const pass_down::PassDown
+    const subgrid::Subgrid
     # Whether all specialized AD and linear solve code should be used
-    reduced_implicit_solve::Bool
+    const reduced_implicit_solve::Bool
     # Matrix which aggregates flows into the basin storages
-    incidence_matrix::SparseMatrixCSC{Int, Int}
+    const incidence_matrix::SparseMatrixCSC{Int, Int}
     # Water balance tolerances
-    water_balance_abstol::Float64
-    water_balance_reltol::Float64
+    const water_balance_abstol::Float64
+    const water_balance_reltol::Float64
     # Ranges of the state and flow vectors (flat NamedTuples)
-    state_ranges::RibasimStateTuple
-    flow_ranges::FlowTuple
+    const state_ranges::RibasimStateTuple
+    const flow_ranges::FlowTuple
     # Callback configurations
-    do_concentration::Bool
-    do_subgrid::Bool
+    const do_concentration::Bool
+    const do_subgrid::Bool
     # Solver constants
-    level_difference_threshold::Float64
-    max_depth::Float64
+    const level_difference_threshold::Float64
+    const max_depth::Float64
     # Per state the inflow id, outflow data and self id associated with that state (if they exist)
-    inflow_id::FlowCVector{NodeID}
-    outflow_data::FlowCVector{OutflowData}
-    state_id::FlowCVector{NodeID}
+    const inflow_id::FlowCVector{NodeID}
+    const outflow_data::FlowCVector{OutflowData}
+    const state_id::FlowCVector{NodeID}
     # The up- and downlink storage per flow
-    storage_uplink::FlowCVector{Float64} = similar(inflow_id, Float64)
-    storage_downlink::FlowCVector{Float64} = similar(inflow_id, Float64)
+    const storage_uplink::FlowCVector{Float64} = similar(inflow_id, Float64)
+    const storage_downlink::FlowCVector{Float64} = similar(inflow_id, Float64)
     # Cumulative flow over last timestep
-    cumulative_flow_dt::FlowCVector{Float64} = zero(storage_uplink)
+    const cumulative_flow_dt::FlowCVector{Float64} = zero(storage_uplink)
     # State at previous saveat
-    u_prev_saveat::RibasimStateCVector{Float64} = cvector_from_axes(state_ranges)
+    const u_prev_saveat::RibasimStateCVector{Float64} = cvector_from_axes(state_ranges)
     # Cumulative flow over last allocation times
-    cumulative_flow_prev_allocation_dt::FlowCVector{Float64} = zero(storage_uplink)
+    const cumulative_flow_prev_allocation_dt::FlowCVector{Float64} = zero(storage_uplink)
     # How much of the solver error is attributed to each state, see [`accumulate_residual!`](@ref).
-    convergence::RibasimStateCVector{Float64} = zero(u_prev_saveat)
-    convergence_ncalls::Vector{Int} = [0]
-    step_stats::StepStats = StepStats()
+    const convergence::RibasimStateCVector{Float64} = zero(u_prev_saveat)
+    const convergence_ncalls::Vector{Int} = [0]
+    const step_stats::StepStats = StepStats()
 end
 
 """
@@ -1420,13 +1423,15 @@ end
 
 """
 The collection of all parameters that are passed to the rhs (`water_balance!`) and callbacks.
+
+A mutable struct with only const fields, like [`ParametersIndependent`](@ref).
 """
-@kwdef struct Parameters{C, T}
-    p_independent::ParametersIndependent{C}
-    time_dependent_cache::TimeDependentCache{T} = TimeDependentCache(p_independent)
-    current_basin_properties::CurrentBasinProperties =
+@kwdef mutable struct Parameters{C, T}
+    const p_independent::ParametersIndependent{C}
+    const time_dependent_cache::TimeDependentCache{T} = TimeDependentCache(p_independent)
+    const current_basin_properties::CurrentBasinProperties =
         CurrentBasinProperties(; n = length(p_independent.basin))
-    p_mutable::ParametersMutable = ParametersMutable()
+    const p_mutable::ParametersMutable = ParametersMutable()
 end
 
 Base.show(io::IO, ::Parameters) = print(io, "Ribasim Parameters")

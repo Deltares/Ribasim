@@ -1,6 +1,8 @@
+import warnings
 from enum import StrEnum
+from typing import Any
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from ribasim.geometry import BasinAreaSchema, FlowBoundaryAreaSchema
 from ribasim.geometry.node import NodeModel
@@ -92,24 +94,38 @@ class Allocation(ChildModel):
 
     Attributes
     ----------
+    intervention_interval : float
+        Interval in seconds at which allocation results are passed to the physical layer, representing human intervention (Optional, defaults to 86400.0)
     dt : float, optional
-        The simulated time in seconds between successive allocation calls.
-        If not provided, adaptive timestepping is used. When provided, this acts as a fixed timestep.
-    reltol_linearization : float
-        Relative tolerance for linearization errors of basin profiles and connector node Q(h) relationships (Optional, defaults to 0.01)
+        Fixed allocation timestep in seconds within an intervention interval.
+        If not provided, adaptive timestepping is used. Values above `intervention_interval` are reduced to it.
     dtmin : float
-        Minimum allocation timestep in seconds for adaptive timestepping (Optional, defaults to 3600.0)
+        Minimum allocation timestep in seconds for adaptive timestepping (Optional, defaults to 3600.0).
+        Values above `intervention_interval` are reduced to it.
     dtmax : float
-        Maximum allocation timestep in seconds for adaptive timestepping, typically the human intervention interval (Optional, defaults to 86400.0)
+        Maximum allocation timestep in seconds for adaptive timestepping (Optional, defaults to 86400.0).
+        Values above `intervention_interval` are reduced to it.
     route_priority : RoutePriority
         The default route priority per node type
     """
 
+    intervention_interval: float = 86400.0
     dt: float | None = None
-    reltol_linearization: float = 0.01
     dtmin: float = 3600.0
     dtmax: float = 86400.0
     route_priority: RoutePriority = RoutePriority()
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_reltol_linearization(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "reltol_linearization" in data:
+            warnings.warn(
+                "The allocation.reltol_linearization setting is deprecated and ignored.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            data = {k: v for k, v in data.items() if k != "reltol_linearization"}
+        return data
 
 
 class Results(ChildModel):
@@ -164,7 +180,7 @@ class Solver(ChildModel):
     level_difference_threshold : float
         Universal reduction factor threshold for the level difference of Pump/Outlet and TabulatedRatingCurve nodes
     min_discrete_control_interval : float
-        The minimum time between control state updates, if the time is smaller an error will be thrown
+        The minimum time in seconds between control state updates of a DiscreteControl node, if the time is smaller a warning is given. Set to 0 to disable. (Optional, defaults to 1)
     discrete_control_interval : float
         The interval in seconds at which DiscreteControl logic is evaluated, or after every timestep if 0. (Optional, defaults to 0)
     specialize : bool
@@ -421,7 +437,7 @@ class DiscreteControl(NodeModel):
     condition: TableModel[DiscreteControlConditionSchema] = Field(
         default_factory=TableModel[DiscreteControlConditionSchema],
         json_schema_extra={
-            "sort_keys": ["node_id", "compound_variable_id", "condition_id"]
+            "sort_keys": ["node_id", "compound_variable_id", "condition_id", "time"]
         },
     )
     logic: TableModel[DiscreteControlLogicSchema] = Field(

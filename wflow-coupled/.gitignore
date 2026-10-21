@@ -1,0 +1,4 @@
+models/
+coupling.gpkg
+coupling_diagnostics.csv
+*.qgz

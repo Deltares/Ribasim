@@ -26,6 +26,42 @@
     end
 end
 
+@testitem "allocation config compatibility" begin
+    using Ribasim: AllocationTime, valid_config
+
+    # A v2026.1.2 TOML with the removed reltol_linearization and timesteps above the
+    # default intervention interval
+    toml_path = joinpath(mktempdir(), "ribasim.toml")
+    source = read(normpath(@__DIR__, "data", "config_test.toml"), String)
+    write(
+        toml_path,
+        source * """
+
+            [allocation]
+            reltol_linearization = 0.01
+            dt = 172800
+            dtmin = 172800
+            """,
+    )
+    config = Ribasim.Config(toml_path)
+    @test config.allocation.reltol_linearization == 0.01
+    @test (
+        @test_logs(
+            (:warn, r"reltol_linearization setting is deprecated"),
+            (:warn, r"allocation\.dtmin is larger than allocation\.intervention_interval"),
+            (:warn, r"allocation\.dt is larger than allocation\.intervention_interval"),
+            valid_config(config),
+        )
+    )
+
+    time = AllocationTime(config)
+    @test time.dt_fixed == 86400.0
+    @test time.dtmin == time.dtmax == 86400.0
+
+    config = Ribasim.Config(toml_path; allocation_dtmin = 7200.0, allocation_dtmax = 3600.0)
+    @test !(@test_logs (:error, r"0 < dtmin ≤ dtmax") match_mode = :any valid_config(config))
+end
+
 @testitem "Solver" begin
     using OrdinaryDiffEqCore: alg_autodiff, AutoFiniteDiff, AutoForwardDiff
     using Ribasim: convert_saveat, is_adaptive, Solver, algorithm

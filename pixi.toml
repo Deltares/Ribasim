@@ -319,6 +319,41 @@ python = "3.13.*"
 [feature.pandas2.dependencies]
 pandas = ">=2.2,<3"
 
+# Online coupling of Wflow and Ribasim, see wflow-coupled/README.md
+# This is a separate lightweight environment without the default feature,
+# such that hydromt-ribasim, which is not yet public, does not affect the other environments.
+[feature.wflow-coupled]
+platforms = ["win-64", "linux-64"]
+
+[feature.wflow-coupled.dependencies]
+julia = { version = "==1.13.1", channel = "https://prefix.dev/julia-forge" }
+python = "3.13.*"
+
+[feature.wflow-coupled.pypi-dependencies]
+hydromt-ribasim = { git = "https://github.com/Deltares-research/hydromt_ribasim.git", rev = "0c4018fced8d478215f3a02d1885a5fc92eaa40e" }
+ribasim = { path = "python/ribasim", editable = true }
+# affine>=3.0 dropped tuple subclassing, which breaks numba typing in pyflwdir
+affine = "<3"
+
+# hydromt-ribasim pins ribasim to a git revision, use the one from this repository instead
+[feature.wflow-coupled.pypi-options.dependency-overrides]
+ribasim = { path = "python/ribasim", editable = true }
+
+[feature.wflow-coupled.tasks]
+wflow-coupled-instantiate-julia = "julia --startup-file=no --project=wflow-coupled --eval='using Pkg; Registry.update(); Pkg.instantiate()'"
+wflow-coupled-build-wflow = { cmd = "python build_piave_wflow.py", cwd = "wflow-coupled" }
+wflow-coupled-build-ribasim = { cmd = "python build_piave_ribasim.py", cwd = "wflow-coupled", depends-on = [
+    "wflow-coupled-build-wflow",
+] }
+wflow-coupled-build-mapping = { cmd = "julia --startup-file=no --project=wflow-coupled wflow-coupled/build_mapping.jl", depends-on = [
+    "wflow-coupled-instantiate-julia",
+    "wflow-coupled-build-ribasim",
+] }
+wflow-coupled-prepare = { depends-on = ["wflow-coupled-build-mapping"] }
+wflow-coupled-run = { cmd = "julia --startup-file=no --project=wflow-coupled wflow-coupled/online.jl", depends-on = [
+    "wflow-coupled-instantiate-julia",
+] }
+
 [target.win-64.dependencies]
 rcedit = "*"
 qgis = ">=3.40,<4"
@@ -341,6 +376,7 @@ scripts = ["scripts/load-env.bat"]
 default = ["py313"]
 py312 = ["py312"]
 pandas2 = ["py313", "pandas2"]
+wflow-coupled = { features = ["wflow-coupled"], no-default-feature = true }
 
 [activation.env]
 JULIA_CONDAPKG_BACKEND = "Null"

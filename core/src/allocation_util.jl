@@ -16,6 +16,19 @@ function set_variable_bounds!(
     return nothing
 end
 
+"""
+Give a container of variables with indices of type `K` a concrete type, also when it is empty.
+JuMP infers the types from the elements, so an empty container gets `Any` types. Then the code
+compiled for a model with for instance FlowDemand nodes can't be reused for a model without.
+"""
+function typed_variables(
+        variables::JuMP.Containers.SparseAxisArray,
+        ::Type{K},
+    )::JuMP.Containers.SparseAxisArray{JuMP.VariableRef} where {K <: Tuple}
+    data = OrderedDict{K, JuMP.VariableRef}(variables.data)
+    return JuMP.Containers.SparseAxisArray(data, variables.names)
+end
+
 function variable_sum(variables)
     return if isempty(variables)
         JuMP.AffExpr()
@@ -270,161 +283,6 @@ function variable_ref_from_index(problem::JuMP.Model, variable_index)
     return
 end
 
-"""
-Compute the slope dA/dh of the basin profile at a given level.
-The basin profile is piecewise-linear in A(h), so dA/dh is piecewise-constant.
-"""
-function get_area_slope(basin::Basin, state_idx::Int, level::Float64)::Float64
-    return derivative(basin.level_to_area[state_idx], level)
-end
-
-"""
-Compute the max |d²Q/dh²| across all connector nodes of a given type in the subnetwork.
-Uses DifferentiationInterface second_derivative with AutoForwardDiff backend.
-"""
-function get_max_flow_curvature(
-        connector_node::AbstractParameterNode,
-        connector_ids::Vector{NodeID},
-        flow_function::Function,
-        p::Parameters,
-        storage::AbstractVector,
-        t::Float64,
-    )::Float64
-    max_curvature = 0.0
-    backend = AutoForwardDiff()
-    (; current_area) = p.current_basin_properties
-
-    @ad_active p for node_id in connector_ids
-        inflow_id = connector_node.inflow_link[node_id.idx].link[1]
-        outflow_id = connector_node.outflow_link[node_id.idx].link[2]
-
-        s_a = inflow_id.is_basin ? storage[inflow_id.idx] : 0.0
-        s_b = outflow_id.is_basin ? storage[outflow_id.idx] : 0.0
-
-        # d²Q/ds² is converted to d²Q/dh² via the chain rule, approximating the basin
-        # area as locally constant (dh/ds = 1/A), consistent with the linearization
-        # in `linearize_connector_node!`. Only basins have a storage state to
-        # linearize against, so non-basin (e.g. LevelBoundary) sides are skipped.
-        if inflow_id.is_basin
-            d²Q_ds_a² = second_derivative(
-                s_ -> flow_function(connector_node, node_id, s_, s_b, p, t),
-                backend,
-                s_a,
-            )
-            d²Q_dh_a² = d²Q_ds_a² * current_area[inflow_id.idx]^2
-            max_curvature = max(max_curvature, abs(d²Q_dh_a²))
-        end
-
-        if outflow_id.is_basin
-            d²Q_ds_b² = second_derivative(
-                s_ -> flow_function(connector_node, node_id, s_a, s_, p, t),
-                backend,
-                s_b,
-            )
-            d²Q_dh_b² = d²Q_ds_b² * current_area[outflow_id.idx]^2
-            max_curvature = max(max_curvature, abs(d²Q_dh_b²))
-        end
-    end
-    return max_curvature
-end
-
-"""
-Compute the adaptive allocation timestep for a single subnetwork.
-
-The timestep is bounded by two linearization error sources:
-1. Basin profiles: |error| = ½|dA/dh|·Δh² ≤ ε_S = ε_rel·S_max
-2. Connector Q(h):  |error| = ½|d²Q/dh²|·Δh² ≤ ε_Q
-
-Both give a Δh_max. The global Δh_max is the minimum across all basins
-and connector nodes. Then Δt_i = A_i·Δh_max / |dS_i/dt| per basin.
-"""
-function compute_adaptive_allocation_Δt(
-        allocation_model::AllocationModel,
-        p::Parameters,
-        du::CVector,
-        t::Float64,
-        config::Config,
-    )::Float64
-    (; node_ids_in_subnetwork) = allocation_model
-    (;
-        basin_ids_subnetwork,
-        tabulated_rating_curve_ids_subnetwork,
-        linear_resistance_ids_subnetwork,
-        manning_resistance_ids_subnetwork,
-    ) = node_ids_in_subnetwork
-    (; basin, tabulated_rating_curve, linear_resistance, manning_resistance) = p.p_independent
-    (; current_storage) = p.current_basin_properties
-
-    ε_rel = config.allocation.reltol_linearization
-    overshoot_reduction = 0.8
-
-    # Phase 1: compute global Δh_max from all linearization curvatures
-    Δh_max = Inf
-
-    # Basin profile curvature: Δh ≤ sqrt(2·ε_rel·S_max / |dA/dh|)
-    for basin_id in basin_ids_subnetwork
-        idx = basin_id.idx
-        storage_now = current_storage[idx]
-        level_now = get_level_from_storage(basin, idx, storage_now)
-        storage_max = basin.storage_to_level[idx].t[end]
-        m = get_area_slope(basin, idx, level_now)
-
-        if m < eps()
-            continue
-        end
-
-        ε_S = ε_rel * storage_max
-        Δh_max = min(Δh_max, sqrt(2 * ε_S / m))
-    end
-
-    # Connector node curvature: Δh ≤ sqrt(2·ε_Q / |d²Q/dh²|)
-    # Use ε_Q = ε_rel · max_flow_rate as a scale for flow error tolerance
-    connector_types = (
-        (tabulated_rating_curve, tabulated_rating_curve_ids_subnetwork, tabulated_rating_curve_flow),
-        (linear_resistance, linear_resistance_ids_subnetwork, linear_resistance_flow),
-        (manning_resistance, manning_resistance_ids_subnetwork, manning_resistance_flow),
-    )
-
-    for (connector, ids, flow_fn) in connector_types
-        isempty(ids) && continue
-        curvature = get_max_flow_curvature(connector, ids, flow_fn, p, current_storage, t)
-        if curvature > eps()
-            # Use 1.0 m³/s as absolute flow error tolerance
-            # (relative tolerance would require knowing Q, which varies per node)
-            ε_Q = ε_rel
-            Δh_max = min(Δh_max, sqrt(2 * ε_Q / curvature))
-        end
-    end
-
-    if isinf(Δh_max)
-        return Inf
-    end
-
-    # Phase 2: convert Δh_max to Δt per basin
-    Δt = Inf
-
-    for basin_id in basin_ids_subnetwork
-        idx = basin_id.idx
-        A = get_area_from_storage(basin, idx, current_storage[idx])
-
-        if A < eps()
-            continue
-        end
-
-        dstorage = formulate_dstorage_single_basin(du.flow, p.p_independent, basin_id; t)
-
-        if abs(dstorage) < eps()
-            continue
-        end
-
-        Δt_basin = overshoot_reduction * A * Δh_max / abs(dstorage)
-        Δt = min(Δt, Δt_basin)
-    end
-
-    # Upper bound is applied externally (saveat, tspan_end)
-    return Δt
-end
-
 # Custom iterator to iterate over the demand priorities for which a particular node has a demand
 struct DemandPriorityIterator{V}
     node_id::NodeID
@@ -634,27 +492,219 @@ function delete_flow!(
     return JuMP.delete(problem, problem[:flow])
 end
 
-function add_allocation_tstop!(time::AllocationTime, tstop_new::Float64)
-    return if tstop_new ∉ time.tstops
-        insert!(
-            time.tstops,
-            searchsortedfirst(time.tstops, tstop_new),
-            tstop_new
-        )
-        @assert issorted(time.tstops)
+"""
+Time integrals over an intervention interval of the allocation results that are passed to
+the physical layer.
+"""
+struct AllocationResultSum
+    user_demand_allocated::Matrix{Float64}
+    user_demand_inflow_link_allocated::Vector{Vector{Float64}}
+    pump_flow_rate::Vector{Float64}
+    outlet_flow_rate::Vector{Float64}
+    tabulated_rating_curve_flow_rate::Vector{Float64}
+end
+
+function AllocationResultSum(p_independent::ParametersIndependent)
+    (; user_demand, pump, outlet, tabulated_rating_curve) = p_independent
+    return AllocationResultSum(
+        zero(user_demand.allocated),
+        zero.(user_demand.inflow_link_allocated),
+        zeros(length(pump.node_id)),
+        zeros(length(outlet.node_id)),
+        zeros(length(tabulated_rating_curve.node_id)),
+    )
+end
+
+function add_allocation_results!(
+        result_sum::AllocationResultSum,
+        p_independent::ParametersIndependent,
+        Δt::Float64,
+    )::Nothing
+    (; user_demand, pump, outlet, tabulated_rating_curve) = p_independent
+    @. result_sum.user_demand_allocated += Δt * user_demand.allocated
+    for (link_sum, link_allocated) in
+        zip(result_sum.user_demand_inflow_link_allocated, user_demand.inflow_link_allocated)
+        @. link_sum += Δt * link_allocated
     end
+    for (node, flow_rate_sum) in (
+            (pump, result_sum.pump_flow_rate),
+            (outlet, result_sum.outlet_flow_rate),
+            (tabulated_rating_curve, result_sum.tabulated_rating_curve_flow_rate),
+        )
+        for i in eachindex(flow_rate_sum)
+            node.allocation_controlled[i] && (flow_rate_sum[i] += Δt * node.flow_rate[i])
+        end
+    end
+    return nothing
 end
 
 """
-Whether `t` falls on a save boundary, i.e. a multiple of `saveat` or the end
-of the simulation horizon. The save grid is degenerate when `saveat` is 0 (every
-step) or `Inf` (only end), so both return `true`.
+Pass the time-averaged allocation results over an intervention interval to the physical layer.
 """
-function is_saveat_time(t::Float64, time::AllocationTime; atol::Float64 = 1.0e-9)::Bool
-    (; saveat, t_end) = time
-    iszero(saveat) && return true
-    isinf(saveat) && return true
-    isapprox(t, t_end; atol) && return true
-    rem = t % saveat
-    return isapprox(rem, 0.0; atol) || isapprox(rem, saveat; atol)
+function set_allocation_results!(
+        p_independent::ParametersIndependent,
+        result_sum::AllocationResultSum,
+        Δt::Float64,
+    )::Nothing
+    (; user_demand, pump, outlet, tabulated_rating_curve) = p_independent
+    @. user_demand.allocated = result_sum.user_demand_allocated / Δt
+    for (link_allocated, link_sum) in
+        zip(user_demand.inflow_link_allocated, result_sum.user_demand_inflow_link_allocated)
+        @. link_allocated = link_sum / Δt
+    end
+    for (node, flow_rate_sum) in (
+            (pump, result_sum.pump_flow_rate),
+            (outlet, result_sum.outlet_flow_rate),
+            (tabulated_rating_curve, result_sum.tabulated_rating_curve_flow_rate),
+        )
+        for i in eachindex(flow_rate_sum)
+            node.allocation_controlled[i] && (node.flow_rate[i] = flow_rate_sum[i] / Δt)
+        end
+    end
+    return nothing
+end
+
+function copy_basin_properties!(
+        destination::CurrentBasinProperties,
+        source::CurrentBasinProperties,
+    )::Nothing
+    for name in (
+            :storage_prev_call,
+            :current_storage,
+            :current_level,
+            :current_area,
+            :current_low_storage_factor,
+        )
+        destination_vector = getfield(destination, name)
+        source_vector = getfield(source, name)
+        resize!(destination_vector, length(source_vector))
+        copyto!(destination_vector, source_vector)
+    end
+    return nothing
+end
+
+"""
+Set the Basin levels, areas and low storage factors in the cache from its storages.
+"""
+function set_basin_properties!(p::Parameters)::Nothing
+    (; basin) = p.p_independent
+    (;
+        storage_prev_call,
+        current_storage,
+        current_level,
+        current_area,
+        current_low_storage_factor,
+    ) = p.current_basin_properties
+    for (i, s) in enumerate(current_storage)
+        current_low_storage_factor[i] = low_storage_factor(s, basin, i)
+        current_level[i] = get_level_from_storage(basin, i, s)
+        current_area[i] = basin.level_to_area[i](current_level[i])
+        storage_prev_call[i] = s
+    end
+    return nothing
+end
+
+function update_allocation_storage!(
+        storage::Vector{Float64},
+        allocation_model::AllocationModel,
+    )::Nothing
+    (; problem, scaling, node_ids_in_subnetwork) = allocation_model
+    storage_change = problem[:basin_storage_change]
+    for basin_id in node_ids_in_subnetwork.basin_ids_subnetwork
+        storage[basin_id.idx] = max(
+            0.0,
+            storage[basin_id.idx] + JuMP.value(storage_change[basin_id]) * scaling.storage,
+        )
+    end
+    return nothing
+end
+
+record_key(datum::DemandRecordDatum) =
+    (datum.subnetwork_id, datum.node_id, datum.demand_priority)
+record_key(datum::FlowRecordDatum) =
+    (datum.link_id, datum.from_node_id, datum.to_node_id, datum.subnetwork_id)
+record_key(datum::AllocationControlRecordDatum) = (datum.node_type, datum.node_id)
+
+"""
+Replace the records of all allocation timesteps in an intervention interval from `t_start` to
+`t_end` by their time-weighted average, at time `t_start`. The records of the interval are
+those after the first `n_before` records.
+"""
+function average_records!(
+        records::Vector{T},
+        n_before::Int,
+        t_start::Float64,
+        t_end::Float64,
+    )::Nothing where {T}
+    interval_records = records[(n_before + 1):end]
+    isempty(interval_records) && return nothing
+    resize!(records, n_before)
+
+    times = sort!(unique(datum.time for datum in interval_records))
+    durations = Dict{Float64, Float64}(zip(times, diff([times; t_end])))
+    groups = OrderedDict{typeof(record_key(first(interval_records))), Vector{T}}()
+    for datum in interval_records
+        push!(get!(groups, record_key(datum), T[]), datum)
+    end
+    for group in values(groups)
+        push!(records, average_record(group, durations, t_start, t_end - t_start))
+    end
+    return nothing
+end
+
+function average_record(
+        group::Vector{DemandRecordDatum},
+        durations::Dict{Float64, Float64},
+        t_start::Float64,
+        Δt::Float64,
+    )::DemandRecordDatum
+    datum = first(group)
+    mean(f) = sum(durations[d.time] * f(d) for d in group) / Δt
+    return DemandRecordDatum(
+        t_start,
+        datum.subnetwork_id,
+        datum.node_type,
+        datum.node_id,
+        datum.demand_priority,
+        mean(d -> d.demand),
+        mean(d -> d.allocated),
+        # The supplied flow is only known at the start of the interval
+        datum.supplied,
+    )
+end
+
+function average_record(
+        group::Vector{FlowRecordDatum},
+        durations::Dict{Float64, Float64},
+        t_start::Float64,
+        Δt::Float64,
+    )::FlowRecordDatum
+    datum = first(group)
+    return FlowRecordDatum(
+        t_start,
+        datum.link_id,
+        datum.from_node_type,
+        datum.from_node_id,
+        datum.to_node_type,
+        datum.to_node_id,
+        datum.subnetwork_id,
+        sum(durations[d.time] * d.flow_rate for d in group) / Δt,
+        any(d -> d.lower_bound_hit, group),
+        any(d -> d.upper_bound_hit, group),
+    )
+end
+
+function average_record(
+        group::Vector{AllocationControlRecordDatum},
+        durations::Dict{Float64, Float64},
+        t_start::Float64,
+        Δt::Float64,
+    )::AllocationControlRecordDatum
+    datum = first(group)
+    return AllocationControlRecordDatum(
+        t_start,
+        datum.node_id,
+        datum.node_type,
+        sum(durations[d.time] * d.flow_rate for d in group) / Δt,
+    )
 end

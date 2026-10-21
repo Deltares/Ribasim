@@ -231,12 +231,12 @@ end
 end
 
 @testitem "Allocation polder level management" begin
-    using Ribasim
     using DataFrames: DataFrame
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/polder_management/ribasim.toml")
-    model = Ribasim.run(toml_path)
+    config = Ribasim.Config(toml_path; allocation_dt = 86400.0)
+    model = Ribasim.run(config)
 
     basin_results = DataFrame(Ribasim.basin_data(model))
     level_polder_4 = filter(:node_id => ==(4), basin_results).level
@@ -254,7 +254,6 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
 
-    tbr = model.integrator.p.p_independent.tabulated_rating_curve
     flow_results = DataFrame(Ribasim.flow_data(model))
     flow_link_1 = filter(:link_id => ==(1), flow_results).flow_rate
     basin_results = DataFrame(Ribasim.basin_data(model))
@@ -265,20 +264,20 @@ end
     idx = findfirst(e -> abs(e - min_level) <= 1.0e-1, level_basin_1)
 
     @test !isnothing(idx)
-    # tabulated_rating_curve_flow takes storages and reads cached levels outside AD,
-    # so evaluate the Q(h) relation directly
-    qh = tbr.interpolations[1]
-
-    # the flow up to that level should behave as an uncontrolled TBR:
-    @test qh.(level_basin_1[1:idx]) ≈ flow_link_1[1:idx] atol = 1.0e-5
-
-    # the flow near min_level should be close to 0
-    @test all(≈(0.0; atol = 1.0e-4), flow_link_1[(idx + 1):end])
 
     # Run with allocation off; TRC should have default behaviour
     config = Ribasim.Config(toml_path; experimental_allocation = false)
-    model = Ribasim.run(config)
-    @test all(DataFrame(Ribasim.flow_data(model)).flow_rate .> 0)
+    model_uncontrolled = Ribasim.run(config)
+    flow_uncontrolled = DataFrame(Ribasim.flow_data(model_uncontrolled)).flow_rate
+    @test all(flow_uncontrolled .> 0)
+
+    # the flow up to that level should behave as an uncontrolled TBR:
+    flow_link_1_uncontrolled =
+        filter(:link_id => ==(1), DataFrame(Ribasim.flow_data(model_uncontrolled))).flow_rate
+    @test flow_link_1_uncontrolled[1:idx] ≈ flow_link_1[1:idx] atol = 1.0e-5
+
+    # the flow near min_level should be close to 0
+    @test all(≈(0.0; atol = 1.0e-4), flow_link_1[(idx + 1):end])
 end
 
 

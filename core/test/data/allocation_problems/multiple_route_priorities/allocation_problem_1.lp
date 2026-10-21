@@ -20,14 +20,14 @@ average_flow_unit_error_constraint_2_: 1 average_flow_unit_error_2_ = 0
 average_storage_unit_error_constraint_1,upper_: -1 level_demand_error_Basin_#2,1,upper,first_ + 1 average_storage_unit_error_1,upper_ = 0
 average_storage_unit_error_constraint_1,lower_: -1 level_demand_error_Basin_#2,1,lower,first_ + 1 average_storage_unit_error_1,lower_ = 0
 Bounds
--0.5714285714285714 <= basin_storage_change_Basin_#2_ <= 2.2857142857142856
+basin_storage_change_Basin_#2_ >= -0.5714285714285714
 0 <= low_storage_factor_Basin_#2_ <= 1
-0 <= flow_(Pump_#4,_Basin_#2)_ <= 24.685714285714287
-0 <= flow_(LevelBoundary_#7,_Pump_#4)_ <= 24.685714285714287
-0 <= flow_(Pump_#5,_Basin_#2)_ <= 24.685714285714287
-0 <= flow_(LevelBoundary_#8,_Pump_#5)_ <= 24.685714285714287
-0 <= flow_(Pump_#6,_Basin_#2)_ <= 24.685714285714287
-0 <= flow_(LevelBoundary_#9,_Pump_#6)_ <= 24.685714285714287
+0 <= flow_(Pump_#4,_Basin_#2)_ <= 9.257142857142858
+0 <= flow_(LevelBoundary_#7,_Pump_#4)_ <= 9.257142857142858
+0 <= flow_(Pump_#5,_Basin_#2)_ <= 9.257142857142858
+0 <= flow_(LevelBoundary_#8,_Pump_#5)_ <= 9.257142857142858
+0 <= flow_(Pump_#6,_Basin_#2)_ <= 9.257142857142858
+0 <= flow_(LevelBoundary_#9,_Pump_#6)_ <= 9.257142857142858
 flow_(Basin_#2,_UserDemand_#1)_ = 0
 flow_(UserDemand_#1,_Basin_#2)_ = 0
 boundary_level_LevelBoundary_#7_ = 1

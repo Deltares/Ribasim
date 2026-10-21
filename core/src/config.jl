@@ -228,10 +228,12 @@ end
 end
 
 @option struct Allocation <: TableOption
+    intervention_interval::Float64 = 86400.0
     dt::Union{Float64, Nothing} = nothing
-    reltol_linearization::Float64 = 0.01
     dtmin::Float64 = 3600.0
     dtmax::Float64 = 86400.0
+    # Deprecated and ignored, accepted so TOML files from v2026.1.2 can still be read
+    reltol_linearization::Union{Float64, Nothing} = nothing
     route_priority::RoutePriority = RoutePriority()
 end
 

@@ -210,21 +210,23 @@ Here:
 
 The reason we do this is because of sparse matrix coloring (https://github.com/JuliaDiff/SparseMatrixColorings.jl);
 this formulation requires far fewer right hand side calls in the Jacobian computation than the standard way.
+
+A mutable struct with only const fields, like [`ParametersIndependent`](@ref).
 """
-@kwdef struct RibasimJacobian{
+@kwdef mutable struct RibasimJacobian{
         C <: RibasimJacobianEvaluationCache,
         PI <: ParametersIndependent,
     } <: AbstractSciMLOperator{Float64}
     # Cache for evaluating the Jacobian
-    cache::C
-    p_independent::PI
-    n_basin = length(p_independent.basin.node_id)
-    n_pid = length(p_independent.pid_control.node_id)
+    const cache::C
+    const p_independent::PI
+    const n_basin = length(p_independent.basin.node_id)
+    const n_pid = length(p_independent.pid_control.node_id)
     # J_inner_local represents the most expensive part of the inner linear solve,
     # namely the local dependence of flows on storages
-    J_inner_local::SparseMatrixCSC{Float64, Int} = spzeros(n_basin, n_basin)
+    const J_inner_local::SparseMatrixCSC{Float64, Int} = spzeros(n_basin, n_basin)
     # The area of PID controlled Basins
-    area_pid_controlled::Vector{Float64} = zeros(n_pid)
+    const area_pid_controlled::Vector{Float64} = zeros(n_pid)
 end
 
 # SciMLOperators interface
