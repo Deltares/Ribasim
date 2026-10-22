@@ -1,5 +1,6 @@
 # Run one-way online coupling from Wflow SBM runoff to Ribasim surface water.
 
+using DataFrames: DataFrame, nrow
 using GeoDataFrames
 using Printf
 using Ribasim: Ribasim
@@ -33,14 +34,23 @@ function validate_models(wflow, ribasim)::Nothing
     wflow.config.model.land_routing == Wflow.RoutingType.kinematic_wave ||
         error("Only kinematic-wave overland routing is supported.")
     !wflow.config.model.reservoir__flag || error("Wflow reservoirs are not supported.")
-    !Wflow.do_water_demand(wflow.config) ||
-        error("Wflow water demand and allocation are not supported.")
     return nothing
 end
 
 "Load the map and resolve public Ribasim node IDs to runtime vector positions."
 function load_mapping(path::AbstractString, wflow, ribasim)::NamedTuple
     mapping = GeoDataFrames.read(path; layer = MAPPING_LAYER)
+    unknown = setdiff(unique(mapping.node_type), ("Basin", "FlowBoundary", "UserDemand"))
+    isempty(unknown) || error("Mapping contains unsupported Ribasim node types $unknown.")
+    river_rows = mapping.node_type .!= "UserDemand"
+    return merge(
+        load_river_mapping(mapping[river_rows, :], wflow, ribasim),
+        load_irrigation_mapping(mapping[.!river_rows, :], wflow, ribasim),
+    )
+end
+
+"Resolve the Wflow river cell to Ribasim Basin or FlowBoundary mapping."
+function load_river_mapping(mapping::DataFrame, wflow, ribasim)::NamedTuple
     river_network = wflow.domain.river.network
     nrow(mapping) == length(river_network.indices) ||
         error("Mapping and Wflow river-cell counts differ.")
@@ -75,6 +85,32 @@ function load_mapping(path::AbstractString, wflow, ribasim)::NamedTuple
         end
     end
     return (; basin_positions, flow_boundary_positions)
+end
+
+"Resolve the irrigated Wflow land cell to Ribasim UserDemand mapping."
+function load_irrigation_mapping(mapping::DataFrame, wflow, ribasim)::NamedTuple
+    land_indices = wflow.domain.land.network.indices
+    wflow_land_indices = Int.(mapping.wflow_land_index)
+    all(ismissing, mapping.wflow_river_index) ||
+        error("Mapping UserDemand rows must not have a Wflow river index.")
+    allunique(wflow_land_indices) ||
+        error("Mapping couples a Wflow land cell to more than one UserDemand.")
+    all(in(eachindex(land_indices)), wflow_land_indices) ||
+        error("Mapping Wflow land indices are outside the Wflow land domain.")
+    mapping.x_index == getindex.(Tuple.(land_indices[wflow_land_indices]), 1) ||
+        error("Mapping x indices do not match the Wflow land domain.")
+    mapping.y_index == getindex.(Tuple.(land_indices[wflow_land_indices]), 2) ||
+        error("Mapping y indices do not match the Wflow land domain.")
+
+    user_demand_ids = ribasim.integrator.p.p_independent.user_demand.node_id
+    user_demand_position =
+        Dict(Int(node_id.value) => node_id.idx for node_id in user_demand_ids)
+    user_demand_positions = map(mapping.node_id) do node_id
+        get(user_demand_position, node_id) do
+            error("Mapping contains unknown Ribasim UserDemand ID $node_id.")
+        end
+    end
+    return (; wflow_land_indices, user_demand_positions = Vector{Int}(user_demand_positions))
 end
 
 "Advance Wflow land hydrology and routing while bypassing river routing."
@@ -165,6 +201,7 @@ function run_coupled(
             load_mapping(config.mapping, wflow, ribasim)
         basin_inflow = BMI.get_value_ptr(ribasim, "basin.surface_runoff")
         flow_boundary_inflow = BMI.get_value_ptr(ribasim, "flow_boundary.flow_rate")
+        user_demand_cumulative_inflow = BMI.get_value_ptr(ribasim, "user_demand.cumulative_inflow")
         river_inflow = zeros(length(basin_positions))
         timestep = Wflow.tosecond(wflow.clock.dt)
         end_time = BMI.get_end_time(ribasim)

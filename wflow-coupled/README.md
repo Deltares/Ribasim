@@ -3,9 +3,9 @@
 A proof of concept for online coupling of [Ribasim](https://github.com/Deltares/Ribasim) and [Wflow](https://github.com/Deltares/Wflow.jl), see Ribasim issue [#16](https://github.com/Deltares/Ribasim/issues/16).
 Wflow SBM computes the land hydrology, and the runoff that Wflow would route into its rivers is passed to Ribasim Basins and FlowBoundaries every timestep instead.
 
-- `build_piave_wflow.py` uses HydroMT to build a Wflow model of the Piave catchment.
-- `build_piave_ribasim.py` uses HydroMT-Ribasim to build a Ribasim network from the Wflow static maps.
-- `build_mapping.jl` writes `coupling.gpkg`, which maps each Wflow river cell to a Ribasim Basin or FlowBoundary.
+- `build_piave_wflow.py` uses HydroMT to build a Wflow model of the Piave catchment, including non-paddy irrigation demand.
+- `build_piave_ribasim.py` uses HydroMT-Ribasim to build a Ribasim network from the Wflow static maps, with a placeholder irrigation UserDemand for each part of a Basin, split by Wflow allocation area, that contains irrigated Wflow cells.
+- `build_mapping.jl` writes `coupling.gpkg`, which maps each Wflow river cell to a Ribasim Basin or FlowBoundary, and each irrigated Wflow cell to a Ribasim UserDemand.
 - `online.jl` runs both models in online coupling, configured by `coupling.toml`, and writes `coupling_diagnostics.csv`.
 
 This uses the `wflow-coupled` Pixi environment, from the root of the repository run:
