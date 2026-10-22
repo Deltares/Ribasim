@@ -1448,7 +1448,7 @@ end
 
 ## Allocation Timestep Selection
 
-By default the allocation timestep $\Delta t_{\text{allocation}}$ is determined adaptively from bounds on the linearization errors, see [Adaptive timestepping](/concept/allocation.qmd#sec-adaptive-timestepping) and `compute_adaptive_allocation_Δt`. It can be overridden with a fixed value using the `allocation.dt` [configuration setting](/reference/usage.qmd#sec-allocation-settings). The trade-off is:
+By default the allocation timestep $\Delta t_{\text{allocation}}$ within an intervention interval is adapted to the success of the optimization, see [Adaptive timestepping](/concept/allocation.qmd#sec-adaptive-timestepping) and `update_allocation_until!`. It can be overridden with a fixed value using the `allocation.dt` [configuration setting](/reference/usage.qmd#sec-allocation-settings). The trade-off is:
 
 - **Too small**: Frequent optimization overhead, linearization always valid
 - **Too large**: Linearization may be inaccurate, less responsive to changes

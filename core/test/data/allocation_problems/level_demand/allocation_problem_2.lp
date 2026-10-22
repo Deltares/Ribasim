@@ -1,21 +1,21 @@
 minimize
 obj: -1 low_storage_factor_Basin_#2_ - 1 low_storage_factor_Basin_#5_
 subject to
-c1: 1 level_demand_error_Basin_#2,1,lower,first_ + 1 level_demand_error_Basin_#2,1,upper,first_ + 1 level_demand_error_Basin_#5,1,lower,first_ + 1 level_demand_error_Basin_#5,1,upper,first_ <= 0.3008
-c2: 1 level_demand_error_Basin_#2,1,lower,second_ + 1 level_demand_error_Basin_#2,1,upper,second_ + 1 level_demand_error_Basin_#5,1,lower,second_ + 1 level_demand_error_Basin_#5,1,upper,second_ <= 0.03141818181818182
+c1: 1 level_demand_error_Basin_#2,1,lower,first_ + 1 level_demand_error_Basin_#2,1,upper,first_ + 1 level_demand_error_Basin_#5,1,lower,first_ + 1 level_demand_error_Basin_#5,1,upper,first_ <= 0.29787540511343175
+c2: 1 level_demand_error_Basin_#2,1,lower,second_ + 1 level_demand_error_Basin_#2,1,upper,second_ + 1 level_demand_error_Basin_#5,1,lower,second_ + 1 level_demand_error_Basin_#5,1,upper,second_ <= 0.03111271155923659
 c3: 1 user_demand_error_UserDemand_#3,2,first_ <= 1
 c4: 1 user_demand_error_UserDemand_#3,2,second_ <= 0
-user_demand_relative_error_constraint_UserDemand_#3,2_: 1 user_demand_allocated_UserDemand_#3,2_ + 0.047127272727272726 user_demand_error_UserDemand_#3,2,first_ >= 0.047127272727272726
-storage_constraint_lower_Basin_#2,1_: 1 basin_storage_change_Basin_#2_ + 1 level_demand_error_Basin_#2,1,lower,first_ >= 0.18181818181818182
-storage_constraint_lower_Basin_#5,1_: 1 basin_storage_change_Basin_#5_ + 1 level_demand_error_Basin_#5,1,lower,first_ >= 0.18181818181818182
-storage_constraint_upper_Basin_#2,1_: -1 basin_storage_change_Basin_#2_ + 1 level_demand_error_Basin_#2,1,upper,first_ >= -0.36363636363636365
-storage_constraint_upper_Basin_#5,1_: -1 basin_storage_change_Basin_#5_ + 1 level_demand_error_Basin_#5,1,upper,first_ >= -0.36363636363636365
+user_demand_relative_error_constraint_UserDemand_#3,2_: 1 user_demand_allocated_UserDemand_#3,2_ + 0.017500900252070583 user_demand_error_UserDemand_#3,2,first_ >= 0.017500900252070583
+storage_constraint_lower_Basin_#2,1_: 1 basin_storage_change_Basin_#2_ + 1 level_demand_error_Basin_#2,1,lower,first_ >= 0.14115952466690673
+storage_constraint_lower_Basin_#5,1_: 1 basin_storage_change_Basin_#5_ + 1 level_demand_error_Basin_#5,1,lower,first_ >= 0.18005041411595246
+storage_constraint_upper_Basin_#2,1_: -1 basin_storage_change_Basin_#2_ + 1 level_demand_error_Basin_#2,1,upper,first_ >= -0.3212099387828592
+storage_constraint_upper_Basin_#5,1_: -1 basin_storage_change_Basin_#5_ + 1 level_demand_error_Basin_#5,1,upper,first_ >= -0.3601008282319049
 user_demand_fairness_error_constraint_UserDemand_#3,2_: -1 user_demand_error_UserDemand_#3,2,first_ + 1 user_demand_error_UserDemand_#3,2,second_ + 1 average_flow_unit_error_2_ >= 0
 level_demand_fairness_error_constraint_Basin_#2,1,lower_: -1 level_demand_error_Basin_#2,1,lower,first_ + 1 level_demand_error_Basin_#2,1,lower,second_ + 1 average_storage_unit_error_1,lower_ >= 0
 level_demand_fairness_error_constraint_Basin_#2,1,upper_: -1 level_demand_error_Basin_#2,1,upper,first_ + 1 level_demand_error_Basin_#2,1,upper,second_ + 1 average_storage_unit_error_1,upper_ >= 0
 level_demand_fairness_error_constraint_Basin_#5,1,lower_: -1 level_demand_error_Basin_#5,1,lower,first_ + 1 level_demand_error_Basin_#5,1,lower,second_ + 1 average_storage_unit_error_1,lower_ >= 0
 level_demand_fairness_error_constraint_Basin_#5,1,upper_: -1 level_demand_error_Basin_#5,1,upper,first_ + 1 level_demand_error_Basin_#5,1,upper,second_ + 1 average_storage_unit_error_1,upper_ >= 0
-volume_conservation_Basin_#2_: 1 basin_storage_change_Basin_#2_ - 1 flow_(FlowBoundary_#1,_Basin_#2)_ + 1 flow_(Basin_#2,_UserDemand_#3)_ = 0.03141818181818182
+volume_conservation_Basin_#2_: 1 basin_storage_change_Basin_#2_ - 1 flow_(FlowBoundary_#1,_Basin_#2)_ + 1 flow_(Basin_#2,_UserDemand_#3)_ = 0.011667266834713719
 volume_conservation_Basin_#5_: 1 basin_storage_change_Basin_#5_ - 1 flow_(UserDemand_#3,_Basin_#5)_ = 0
 user_demand_allocated_sum_constraint_UserDemand_#3_: 1 flow_(Basin_#2,_UserDemand_#3)_ - 1 user_demand_allocated_UserDemand_#3,2_ = 0
 user_demand_return_flow_UserDemand_#3_: -0.2 flow_(Basin_#2,_UserDemand_#3)_ + 1 flow_(UserDemand_#3,_Basin_#5)_ = 0
@@ -23,14 +23,14 @@ average_flow_unit_error_constraint_2_: -1 user_demand_error_UserDemand_#3,2,firs
 average_storage_unit_error_constraint_1,upper_: -1 level_demand_error_Basin_#2,1,upper,first_ - 1 level_demand_error_Basin_#5,1,upper,first_ + 2 average_storage_unit_error_1,upper_ = 0
 average_storage_unit_error_constraint_1,lower_: -1 level_demand_error_Basin_#2,1,lower,first_ - 1 level_demand_error_Basin_#5,1,lower,first_ + 2 average_storage_unit_error_1,lower_ = 0
 Bounds
--0.18181818181818182 <= basin_storage_change_Basin_#2_ <= 3.4545454545454546
--0.18181818181818182 <= basin_storage_change_Basin_#5_ <= 3.4545454545454546
+basin_storage_change_Basin_#2_ >= -0.2189413035649982
+basin_storage_change_Basin_#5_ >= -0.18005041411595246
 0 <= low_storage_factor_Basin_#2_ <= 1
 0 <= low_storage_factor_Basin_#5_ <= 1
-flow_(FlowBoundary_#1,_Basin_#2)_ = 0.03141818181818182
-0 <= flow_(Basin_#2,_UserDemand_#3)_ <= 0.047127272727272726
-0 <= flow_(UserDemand_#3,_Basin_#5)_ <= 0.047127272727272726
-0 <= user_demand_allocated_UserDemand_#3,2_ <= 0.047127272727272726
+flow_(FlowBoundary_#1,_Basin_#2)_ = 0.01166726683471372
+0 <= flow_(Basin_#2,_UserDemand_#3)_ <= 0.017500900252070583
+0 <= flow_(UserDemand_#3,_Basin_#5)_ <= 0.017500900252070583
+0 <= user_demand_allocated_UserDemand_#3,2_ <= 0.017500900252070583
 0 <= user_demand_error_UserDemand_#3,2,first_ <= 1
 0 <= user_demand_error_UserDemand_#3,2,second_ <= 1
 level_demand_error_Basin_#2,1,lower,first_ >= 0
