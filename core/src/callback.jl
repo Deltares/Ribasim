@@ -798,6 +798,11 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
     apply_parameter_update!.(itp_update_constant)
     apply_parameter_update!.(itp_update_linear)
     apply_parameter_update!.(itp_update_lookup)
+    # The time dependent cache holds the values of the replaced time series, so renew it at
+    # the next call of the right hand side, also at the same t
+    if !(isempty(itp_update_constant) && isempty(itp_update_linear) && isempty(itp_update_lookup))
+        p.time_dependent_cache.t_prev_call[1] = -1.0
+    end
 
     return nothing
 end
