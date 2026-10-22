@@ -572,9 +572,11 @@ Apply the discrete control logic. There's somewhat of a complex structure:
 """
 function apply_discrete_control!(integrator; initialize::Bool = false)::Nothing
     (; p, t) = integrator
-    (; discrete_control) = p.p_independent
+    (; discrete_control, discrete_control_conditions) = p.p_independent
     (; current_storage) = p.current_basin_properties
     (; node_id, truth_state, compound_variables) = discrete_control
+    (; condition_offset, compound_variable_idx, threshold_idx, truth_value, value) =
+        discrete_control_conditions
     du = get_du(integrator)
 
     errors = false
@@ -582,51 +584,46 @@ function apply_discrete_control!(integrator; initialize::Bool = false)::Nothing
     # Whether any node changed control state, and thus whether the right hand side changed
     control_state_changed = false
 
+    # The values of the compound variables only depend on the state, not on the control states
+    set_compound_variable_values!(discrete_control_conditions, compound_variables, current_storage, du.flow, p, t)
+
     # Loop over the discrete control nodes to determine their truth state
     # and detect possible control state changes
-    for (node_id, truth_state_node, compound_variables_node) in
-        zip(node_id, truth_state, compound_variables)
+    for (i, node_id) in enumerate(node_id)
 
         # Whether a change in truth state was detected, and thus whether
         # a change in control state is possible
         truth_state_change = false
 
-        # The index in the truth state associated with the current discrete control node
-        truth_state_idx = 1
+        for condition_idx in (condition_offset[i] + 1):condition_offset[i + 1]
+            truth_value_old = truth_value[condition_idx]
+            variable_value = value[compound_variable_idx[condition_idx]]
+            threshold_low, threshold_high =
+                threshold_values(discrete_control_conditions, compound_variables, condition_idx, t)
 
-        # Loop over the compound variables listened to by this discrete control node
-        for compound_variable in compound_variables_node
-            value = compound_variable_value(compound_variable, current_storage, du.flow, p, t)
+            # Hysteresis: if the condition was true before, only switch to false
+            # when below threshold_low, otherwise only switch to true when above threshold_high
+            truth_value_new = if initialize
+                # No threshold has been crossed yet, so the initial value decides, where a
+                # value between the thresholds falls to the side it is closest to. Without
+                # hysteresis this reduces to the same strict inequality as below.
+                variable_value > (threshold_low + threshold_high) / 2
+            elseif truth_value_old
+                variable_value >= threshold_low
+            else
+                variable_value > threshold_high
+            end
 
-            # Loop over the threshold interpolations associated with the current compound variable
-            for (threshold_low, threshold_high) in
-                zip(compound_variable.threshold_low, compound_variable.threshold_high)
-                truth_value_old = truth_state_node[truth_state_idx]
-
-                # Hysteresis: if the condition was true before, only switch to false
-                # when below threshold_low, otherwise only switch to true when above threshold_high
-                if initialize
-                    # No threshold has been crossed yet, so the initial value decides, where a
-                    # value between the thresholds falls to the side it is closest to. Without
-                    # hysteresis this reduces to the same strict inequality as below.
-                    truth_value_new = (value > (threshold_low(t) + threshold_high(t)) / 2)
-                elseif truth_value_old
-                    truth_value_new = (value >= threshold_low(t))
-                else
-                    truth_value_new = (value > threshold_high(t))
-                end
-
-                if truth_value_old != truth_value_new
-                    truth_state_change = true
-                    truth_state_node[truth_state_idx] = truth_value_new
-                end
-
-                truth_state_idx += 1
+            if truth_value_old != truth_value_new
+                truth_state_change = true
+                truth_value[condition_idx] = truth_value_new
             end
         end
 
         # Set a new control state if applicable
         if initialize || truth_state_change
+            truth_state_node = truth_state[i]
+            truth_state_node .= view(truth_value, (condition_offset[i] + 1):condition_offset[i + 1])
             node_errors, node_changed =
                 set_new_control_state!(integrator, node_id, truth_state_node)
             errors |= node_errors
@@ -732,6 +729,110 @@ function set_new_control_state!(
     return false, false
 end
 
+function DiscreteControlConditions(
+        discrete_control::DiscreteControl,
+        flow_ranges::FlowTuple,
+    )::DiscreteControlConditions
+    conditions = DiscreteControlConditions()
+    for (i, compound_variables_node) in enumerate(discrete_control.compound_variables)
+        for (j, compound_variable) in enumerate(compound_variables_node)
+            push!(conditions.node_idx, i)
+            push!(conditions.local_idx, j)
+            push!(conditions.value, NaN)
+            k = length(conditions.value)
+            for threshold_idx in eachindex(compound_variable.threshold_high)
+                push!(conditions.compound_variable_idx, k)
+                push!(conditions.threshold_idx, threshold_idx)
+                push!(conditions.threshold_low, compound_variable.threshold_low_value[threshold_idx])
+                push!(conditions.threshold_high, compound_variable.threshold_high_value[threshold_idx])
+                push!(conditions.truth_value, false)
+            end
+
+            contiguous = all(compound_variable.subvariables) do subvariable
+                (; listen_node_id, type) = subvariable
+                (type in (ListenVariableType.Level, ListenVariableType.Storage) && listen_node_id.is_basin) ||
+                    (
+                    type == ListenVariableType.FlowRate &&
+                        snake_case(listen_node_id.type) in
+                        (:pump, :outlet, :tabulated_rating_curve, :linear_resistance, :manning_resistance)
+                )
+            end
+            push!(conditions.contiguous, contiguous)
+            if contiguous
+                for subvariable in compound_variable.subvariables
+                    (; listen_node_id, type, weight) = subvariable
+                    idx = if type == ListenVariableType.FlowRate
+                        getproperty(flow_ranges.horizontal, snake_case(listen_node_id.type))[listen_node_id.idx]
+                    else
+                        listen_node_id.idx
+                    end
+                    push!(conditions.subvariable_type, type)
+                    push!(conditions.subvariable_node_id, listen_node_id)
+                    push!(conditions.subvariable_idx, idx)
+                    push!(conditions.subvariable_weight, weight)
+                end
+            end
+            push!(conditions.subvariable_offset, length(conditions.subvariable_idx))
+        end
+        push!(conditions.condition_offset, length(conditions.truth_value))
+    end
+    return conditions
+end
+
+"Compute the values of all compound variables listened to by DiscreteControl"
+function set_compound_variable_values!(
+        conditions::DiscreteControlConditions,
+        compound_variables::Vector{Vector{CompoundVariable}},
+        storage::AbstractVector,
+        flow::AbstractVector,
+        p::Parameters,
+        t::Float64,
+    )::Nothing
+    (; subvariable_offset, subvariable_type, subvariable_node_id, subvariable_idx, subvariable_weight) =
+        conditions
+    for k in eachindex(conditions.value)
+        conditions.value[k] = if conditions.contiguous[k]
+            value = zero(t)
+            for s in (subvariable_offset[k] + 1):subvariable_offset[k + 1]
+                type = subvariable_type[s]
+                idx = subvariable_idx[s]
+                sub_value = if type == ListenVariableType.Level
+                    get_level(storage[idx], p, subvariable_node_id[s], t)
+                elseif type == ListenVariableType.Storage
+                    storage[idx]
+                else
+                    flow[idx]
+                end
+                value += subvariable_weight[s] * sub_value
+            end
+            value
+        else
+            compound_variable = compound_variables[conditions.node_idx[k]][conditions.local_idx[k]]
+            compound_variable_value(compound_variable, storage, flow, p, t)
+        end
+    end
+    return nothing
+end
+
+"The thresholds of a condition at time t, only evaluating the interpolations if they vary in time"
+function threshold_values(
+        conditions::DiscreteControlConditions,
+        compound_variables::Vector{Vector{CompoundVariable}},
+        condition_idx::Int,
+        t::Float64,
+    )::Tuple{Float64, Float64}
+    threshold_low = conditions.threshold_low[condition_idx]
+    threshold_high = conditions.threshold_high[condition_idx]
+    if isnan(threshold_low) || isnan(threshold_high)
+        k = conditions.compound_variable_idx[condition_idx]
+        compound_variable = compound_variables[conditions.node_idx[k]][conditions.local_idx[k]]
+        j = conditions.threshold_idx[condition_idx]
+        threshold_low = compound_variable.threshold_low[j](t)
+        threshold_high = compound_variable.threshold_high[j](t)
+    end
+    return threshold_low, threshold_high
+end
+
 function compound_variable_value(
         compound_variable::CompoundVariable,
         storage::AbstractVector,
@@ -743,9 +844,9 @@ function compound_variable_value(
 
     value = zero(typeof(t))
     for subvariable in compound_variable.subvariables
-        (; listen_node_id, variable, weight, look_ahead) = subvariable
+        (; listen_node_id, variable, weight, look_ahead, type) = subvariable
 
-        sub_value = if variable == "level"
+        sub_value = if type == ListenVariableType.Level
             if listen_node_id.is_basin
                 # Basin level
                 get_level(storage[listen_node_id.idx], p, listen_node_id, t)
@@ -755,9 +856,9 @@ function compound_variable_value(
             else
                 error("Cannot obtain variable `$variable` from $listen_node_id.")
             end
-        elseif variable == "storage"
+        elseif type == ListenVariableType.Storage
             storage[listen_node_id.idx]
-        elseif variable == "flow_rate"
+        elseif type == ListenVariableType.FlowRate
             if listen_node_id.type == NodeType.FlowBoundary
                 # Flow boundary flow rate
                 flow_boundary.flow_rate[listen_node_id.idx](t + look_ahead)
@@ -777,9 +878,9 @@ function compound_variable_value(
             else
                 error("Cannot obtain variable `$variable` from $listen_node_id.")
             end
-        elseif startswith(variable, "concentration_external.")
+        elseif type == ListenVariableType.ConcentrationExternal
             basin.concentration_data.concentration_external[listen_node_id.idx][variable](t)
-        elseif startswith(variable, "concentration.")
+        elseif type == ListenVariableType.Concentration
             substance = Symbol(last(split(variable, ".")))
             var_idx = find_index(substance, basin.concentration_data.substances)
             basin.concentration_data.concentration_state[listen_node_id.idx, var_idx]
@@ -801,6 +902,10 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
     apply_parameter_update!.(itp_update_constant)
     apply_parameter_update!.(itp_update_linear)
     apply_parameter_update!.(itp_update_lookup)
+    # Evaluate all time series again at the next new t, as the replaced ones may be constant in time
+    if !(isempty(itp_update_constant) && isempty(itp_update_linear) && isempty(itp_update_lookup))
+        p.p_mutable.refresh_time_dependent_cache = true
+    end
 
     return nothing
 end
