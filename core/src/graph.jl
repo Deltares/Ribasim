@@ -7,24 +7,42 @@ and data of links (LinkMetadata):
 """
 function create_graph(db::DB, config::Config)::MetaGraph
     node_table = get_node_ids(db)
-    node_rows = execute(
-        db,
-        "SELECT node_id, node_type, subnetwork_id, route_priority FROM Node ORDER BY node_type, node_id",
+    node_rows = StructVector(
+        query_columns(
+            db,
+            "SELECT node_id, node_type, subnetwork_id, route_priority FROM Node ORDER BY node_type, node_id",
+            @NamedTuple{
+                node_id::Int32,
+                node_type::String,
+                subnetwork_id::Union{Missing, Int32},
+                route_priority::Union{Missing, Int32},
+            },
+        ),
     )
-    link_rows = execute(
-        db,
-        """
-        SELECT
-            Link.link_id,
-            FromNode.node_id AS from_node_id,
-            FromNode.node_type AS from_node_type,
-            ToNode.node_id AS to_node_id,
-            ToNode.node_type AS to_node_type,
-            Link.link_type
-        FROM Link
-        LEFT JOIN Node AS FromNode ON FromNode.node_id = Link.from_node_id
-        LEFT JOIN Node AS ToNode ON ToNode.node_id = Link.to_node_id
-        """,
+    link_rows = StructVector(
+        query_columns(
+            db,
+            """
+            SELECT
+                Link.link_id,
+                FromNode.node_id AS from_node_id,
+                FromNode.node_type AS from_node_type,
+                ToNode.node_id AS to_node_id,
+                ToNode.node_type AS to_node_type,
+                Link.link_type
+            FROM Link
+            LEFT JOIN Node AS FromNode ON FromNode.node_id = Link.from_node_id
+            LEFT JOIN Node AS ToNode ON ToNode.node_id = Link.to_node_id
+            """,
+            @NamedTuple{
+                link_id::Int32,
+                from_node_id::Int32,
+                from_node_type::String,
+                to_node_id::Int32,
+                to_node_type::String,
+                link_type::String,
+            },
+        ),
     )
     # Node IDs per subnetwork
     node_ids = OrderedDict{Int32, OrderedSet{NodeID}}()
@@ -33,13 +51,15 @@ function create_graph(db::DB, config::Config)::MetaGraph
     # and will be in the output
     external_flow_links = LinkMetadata[]
 
+    # The default constructor, which specializes on the weight function
     graph = MetaGraph(
-        DiGraph();
-        label_type = NodeID,
-        vertex_data_type = NodeMetadata,
-        edge_data_type = LinkMetadata,
-        graph_data = nothing,
-        weight_function = Returns(1.0),
+        DiGraph(),
+        Dict{Int, NodeID}(),
+        Dict{NodeID, Tuple{Int, NodeMetadata}}(),
+        Dict{Tuple{NodeID, NodeID}, LinkMetadata}(),
+        nothing,
+        Returns(1.0),
+        1.0,
     )
 
     route_priority_dict = OrderedDict(
@@ -58,11 +78,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         # Observation nodes are not part of the simulation graph
         node_id.type == NodeType.Observation && continue
         # Process allocation network ID
-        if ismissing(row.subnetwork_id)
-            subnetwork_id = 1
-        else
-            subnetwork_id = row.subnetwork_id
-        end
+        subnetwork_id = coalesce(row.subnetwork_id, Int32(1))
         if !haskey(node_ids, subnetwork_id)
             node_ids[subnetwork_id] = OrderedSet{NodeID}()
         end
@@ -79,12 +95,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
 
     for (; link_id, from_node_type, from_node_id, to_node_type, to_node_id, link_type) in
         link_rows
-        try
-            # hasfield does not work
-            link_type = getfield(LinkType, Symbol(link_type))
-        catch
-            error("Invalid link type $link_type.")
-        end
+        link_type = parse_enum(LinkType.T, link_type)
         id_src = NodeID(from_node_type, from_node_id, node_table)
         id_dst = NodeID(to_node_type, to_node_id, node_table)
         link_metadata =
@@ -206,8 +217,8 @@ function simplify_graph!(
     # Map link_ids to logical indices
     internal_flow_link_ids = [flow_link.id for flow_link in internal_flow_links]
     external_flow_link_ids = [flow_link.id for flow_link in external_flow_links]
-    I = findfirst.(isequal.(I), Ref(external_flow_link_ids))
-    J = findfirst.(isequal.(J), Ref(internal_flow_link_ids))
+    I = Int[something(findfirst(==(i), external_flow_link_ids)) for i in I]
+    J = Int[something(findfirst(==(j), internal_flow_link_ids)) for j in J]
     flow_link_map = sparse(I, J, true)
 
     return flow_link_map, internal_flow_links, errors

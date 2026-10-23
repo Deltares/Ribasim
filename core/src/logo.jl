@@ -1,5 +1,5 @@
-"Print the Ribasim Unicode logo with version info to the terminal."
-function print_logo(io::IO = stderr)::Nothing
+"The Ribasim Unicode logo with version info."
+function make_logo()::String
     b = "\e[38;2;80;130;210m"
     bold = "\e[1m"
     d = "\e[2m"
@@ -63,6 +63,14 @@ function print_logo(io::IO = stderr)::Nothing
     ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠁⣿⣿⠆⠀⠀⠀⠀⠀⠀
     """
     #! format: on
-    println(io, logo)
+    return logo
+end
+
+# Created while loading, to have a constant string in a trimmed binary
+const LOGO = make_logo()
+
+"Print the Ribasim Unicode logo with version info to the terminal."
+function print_logo(io::IO = stderr)::Nothing
+    println(io, LOGO)
     return nothing
 end

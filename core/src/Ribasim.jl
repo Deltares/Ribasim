@@ -124,11 +124,8 @@ import MathOptAnalyzer
 # see the docs: https://ribasim.org/dev/bmi.html
 import BasicModelInterface as BMI
 
-using DelimitedFiles: writedlm
-
 # Reading GeoPackage files, which are SQLite databases with spatial data
-using SQLite: SQLite, DB, Query, esc_id
-using DBInterface: execute, prepare
+using SQLite: SQLite, DB, esc_id
 
 # Logging to both the console and a file
 using Logging: with_logger, @logmsg, LogLevel, AbstractLogger, Debug, current_logger
@@ -144,7 +141,11 @@ using Dates: Dates, DateTime, Millisecond, @dateformat_str, canonicalize, now
 # E.g. after each timestep for discrete control,
 # or at each saveat for saving storage and flow results.
 using DiffEqCallbacks:
-    FunctionCallingCallback, PresetTimeCallback, SavedValues, SavingCallback
+    DiffEqCallbacks,
+    FunctionCallingCallback,
+    PresetTimeCallback,
+    SavedValues,
+    SavingCallback
 
 # The network defined by the Node and Link table is converted to a graph internally.
 using Graphs:
@@ -170,22 +171,21 @@ using Accessors: @set, @reset
 import IterTools
 import PureKLU
 
-# Tables interface that works with SQLite tables.
-using Tables: Tables, AbstractRow, columntable
-
 # Wrapper around a vector of structs to easily retrieve the same field from all elements.
-using StructArrays: StructVector, LazyRows, foreachfield
+using StructArrays: StructVector, foreachfield
 
 # OrderedSet is used to store the order of the substances in the network.
 # OrderedDict is used to store the order of the sources in a subnetwork.
-using DataStructures: OrderedSet, OrderedDict, counter, inc!
+using DataStructures: OrderedSet, OrderedDict, BinaryMinHeap, counter, inc!
 
-# NCDatasets and CommonDataModel are used to read and write NetCDF files.
-using NCDatasets: NCDatasets, NCDataset, defDim, defVar, dimnames, CFVariable
 
 using Dates: Second
 
 using Base.Threads: nthreads
+
+# Reading and writing NetCDF files, with a type stable wrapper of netCDF-C
+include("netcdf.jl")
+using .NC: NC
 
 include("cvectors.jl")
 using .CVectors:

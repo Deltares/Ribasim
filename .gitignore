@@ -8,6 +8,7 @@
 /generated_testmodels
 build/ribasim/
 build/cli/target
+build/trim/out/
 
 LocalPreferences.toml
 .env

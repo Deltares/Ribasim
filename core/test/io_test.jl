@@ -380,118 +380,104 @@ end
     # Test Basin / state loading
     ncpath = normpath(ncdir, "basin_state.nc")
     table = load_netcdf(ncpath, Schema.Basin.State)
-    @test table isa OrderedDict{Symbol, AbstractVector}
-    @test table[:node_id] isa Vector{Int32}
-    @test table[:time] isa Vector{DateTime}
-    @test table[:level] isa Vector{Union{Missing, Float32}}
-    @test length(table[:node_id]) == 6
-    @test allunique(table[:node_id])
-    @test allequal(table[:time])
-    @test !any(ismissing, table[:level])
+    @test table isa NamedTuple
+    @test table.node_id isa Vector{Int32}
+    @test table.level isa Vector{Float64}
+    @test length(table.node_id) == 6
+    @test allunique(table.node_id)
 
     # Test FlowBoundary / time loading
     ncpath = normpath(ncdir, "flow_boundary.nc")
     table = load_netcdf(ncpath, Schema.FlowBoundary.Time)
-    @test table[:node_id] isa Vector{Int32}
-    @test table[:time] isa Vector{DateTime}
-    @test table[:flow_rate] isa Vector{Union{Missing, Float32}}
+    @test table.node_id isa Vector{Int32}
+    @test table.time isa Vector{DateTime}
+    @test table.flow_rate isa Vector{Float64}
     n_id, n_time = 8, 10
     # 2 rows with missing flow_rate are filtered out (station 202/time 3 and station 205/time 7)
-    @test length(table[:node_id]) == n_id * n_time - 2
-    @test length(unique(table[:node_id])) == n_id
-    @test length(unique(table[:time])) == n_time
-    @test !any(ismissing, table[:flow_rate])
-    @test !any(==(-999.0f0), table[:flow_rate])
+    @test length(table.node_id) == n_id * n_time - 2
+    @test length(unique(table.node_id)) == n_id
+    @test length(unique(table.time)) == n_time
+    @test !any(==(-999.0), table.flow_rate)
 
     # Test FlowDemand / time loading
     ncpath = normpath(ncdir, "flow_demand.nc")
     table = load_netcdf(ncpath, Schema.FlowDemand.Time)
-    @test table[:node_id] isa Vector{Int32}
-    @test table[:demand_priority] isa Vector{Int32}
-    @test table[:time] isa Vector{DateTime}
-    @test table[:demand] isa Vector{Union{Missing, Float32}}
+    @test table.node_id isa Vector{Int32}
+    @test table.demand_priority isa Vector{Union{Missing, Int32}}
+    @test table.time isa Vector{DateTime}
+    @test table.demand isa Vector{Float64}
     n_id, n_time = 5, 10
-    @test length(table[:node_id]) == n_id * n_time
-    @test length(unique(table[:node_id])) == n_id
-    @test length(unique(table[:time])) == n_time
-    @test !any(ismissing, table[:demand])
+    @test length(table.node_id) == n_id * n_time
+    @test length(unique(table.node_id)) == n_id
+    @test length(unique(table.time)) == n_time
+    @test !any(ismissing, table.demand_priority)
 
     # Test UserDemand / time loading
     ncpath = normpath(ncdir, "user_demand.nc")
     table = load_netcdf(ncpath, Schema.UserDemand.Time)
-    @test table[:node_id] isa Vector{Int32}
-    @test table[:demand_priority] isa Vector{Int32}
-    @test table[:time] isa Vector{DateTime}
-    @test table[:demand] isa Vector{Union{Missing, Float32}}
-    @test table[:return_factor] isa Vector{Union{Missing, Float32}}
-    @test table[:min_level] isa Vector{Union{Missing, Float32}}
+    @test table.node_id isa Vector{Int32}
+    @test table.demand_priority isa Vector{Union{Missing, Int32}}
+    @test table.time isa Vector{DateTime}
+    @test table.demand isa Vector{Float64}
+    @test table.return_factor isa Vector{Float64}
+    @test table.min_level isa Vector{Float64}
     n_id, n_time = 10, 10
-    @test length(table[:node_id]) == n_id * n_time
-    @test length(unique(table[:node_id])) == n_id
-    @test length(unique(table[:time])) == n_time
-    @test !any(ismissing, table[:demand])
+    @test length(table.node_id) == n_id * n_time
+    @test length(unique(table.node_id)) == n_id
+    @test length(unique(table.time)) == n_time
 end
 
-
-@testitem "parse_time_strings!" begin
-    using Ribasim: parse_time_strings!
-    using DataStructures: OrderedDict
+@testitem "parse_sqlite_time" begin
+    using Ribasim: parse_sqlite_time
     using Dates: DateTime
 
-    starttime = DateTime(2020)
-
-    # No :time key → no-op
-    dict = OrderedDict{Symbol, AbstractVector}(:node_id => Int32[1, 2])
-    parse_time_strings!(dict, starttime)
-    @test !haskey(dict, :time)
-
-    # Normal time string
-    dict = OrderedDict{Symbol, AbstractVector}(
-        :time => ["2020-06-01 12:00:00.000"],
-    )
-    parse_time_strings!(dict, starttime)
-    @test dict[:time] == [DateTime("2020-06-01T12:00:00")]
-
+    @test parse_sqlite_time("2020-06-01 12:00:00") == DateTime("2020-06-01T12:00:00")
+    @test parse_sqlite_time("2020-06-01 12:00:00.000") == DateTime("2020-06-01T12:00:00")
+    @test parse_sqlite_time("2020-06-01T12:00:00.5") == DateTime("2020-06-01T12:00:00.500")
     # Extra fractional digits are truncated to 3
-    dict = OrderedDict{Symbol, AbstractVector}(
-        :time => ["2020-06-01 12:00:00.123456789"],
-    )
-    parse_time_strings!(dict, starttime)
-    @test dict[:time] == [DateTime("2020-06-01T12:00:00.123")]
-
-    # Missing values are replaced with starttime
-    dict = OrderedDict{Symbol, AbstractVector}(
-        :time => Union{Missing, String}[missing, "2020-06-01 12:00:00.000"],
-    )
-    parse_time_strings!(dict, starttime)
-    @test dict[:time] == [DateTime(2020), DateTime("2020-06-01T12:00:00")]
+    @test parse_sqlite_time("2020-06-01 12:00:00.123456789") ==
+        DateTime("2020-06-01T12:00:00.123")
+    @test parse_sqlite_time("2020-06-01") == DateTime("2020-06-01")
+    @test_throws ErrorException parse_sqlite_time("2020/06/01")
 end
 
-@testitem "typed_columntable" begin
-    using Ribasim: typed_columntable, Schema
-    using DataStructures: OrderedDict
+@testitem "query_columns" begin
+    using Ribasim: query_columns, Schema, SQLite
     using Dates: DateTime
 
-    # Convert Union{Missing, Float32} to Float64 (as from NetCDF)
-    dict = OrderedDict{Symbol, AbstractVector}(
-        :node_id => Int32[1, 2, 1],
-        :time => DateTime[DateTime(2020), DateTime(2020), DateTime(2021)],
-        :flow_rate => Union{Missing, Float32}[1.0f0, 3.0f0, 4.0f0],
+    db = SQLite.DB()
+    SQLite.DBInterface.execute(
+        db,
+        "CREATE TABLE flow (fid INTEGER, node_id INTEGER, time TEXT, flow_rate REAL)",
     )
-    result = typed_columntable(dict, Schema.FlowBoundary.Time)
-    @test result.flow_rate == [1.0, 3.0, 4.0]
-    @test eltype(result.flow_rate) === Float64
-    @test eltype(result.node_id) === Int32
+    SQLite.DBInterface.execute(
+        db,
+        "INSERT INTO flow VALUES (1, 2, '2020-01-02 00:00:00', 1.5), (2, 1, NULL, 3)",
+    )
+    starttime = DateTime(2020)
+    table = query_columns(db, "SELECT * FROM flow", Schema.FlowBoundary.Time; starttime)
+    @test table.node_id == Int32[2, 1]
+    @test table.node_id isa Vector{Int32}
+    # Empty times are the starttime
+    @test table.time == [DateTime(2020, 1, 2), starttime]
+    # Integers are converted to the column type
+    @test table.flow_rate == [1.5, 3.0]
 
-    # Already correct types: column is reused
-    dict_clean = OrderedDict{Symbol, AbstractVector}(
-        :node_id => Int32[1, 2],
-        :time => DateTime[DateTime(2020), DateTime(2020)],
-        :flow_rate => Float64[1.0, 2.0],
+    # Columns that are absent are missing if allowed
+    table = query_columns(
+        db,
+        "SELECT node_id, time FROM flow",
+        @NamedTuple{node_id::Int32, demand_priority::Union{Missing, Int32}};
+        starttime,
     )
-    original_flow = dict_clean[:flow_rate]
-    result_clean = typed_columntable(dict_clean, Schema.FlowBoundary.Time)
-    @test result_clean.flow_rate === original_flow
+    @test all(ismissing, table.demand_priority)
+    @test_throws ArgumentError query_columns(
+        db,
+        "SELECT node_id FROM flow",
+        Schema.FlowBoundary.Time;
+        starttime,
+    )
+    close(db)
 end
 
 @testitem "warm state netcdf" begin

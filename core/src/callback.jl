@@ -3,112 +3,114 @@ Create the different callbacks that are used to store results
 and feed the simulation with new data. The different callbacks
 are combined to a CallbackSet that goes to the integrator.
 Returns the CallbackSet and the SavedValues for flow.
+
+The types of the callbacks do not depend on the configuration, such that the integrator type
+is known at compile time.
 """
 function create_callbacks(
         p_independent::ParametersIndependent,
         config::Config,
-        saveat,
+        saveat::Union{Float64, Vector{Float64}},
     )::Tuple{CallbackSet, SavedResults}
     (; basin) = p_independent
-    callbacks = SciMLBase.DECallback[]
+    t_end = seconds_since(config.endtime, config.starttime)
 
     # Check for negative storage
     # As the first callback that is always applied, this callback also calls water_balance!
     # to make sure all parameter data is up to date with the state
-    negative_storage_cb = FunctionCallingCallback(check_negative_storage)
-    push!(callbacks, negative_storage_cb)
+    negative_storage_cb = FunctionCallingCallback(Specialized(check_negative_storage))
 
     # Save storages and levels
     saved_basin_states = SavedValues(Float64, SavedBasinState)
-    save_basin_state_cb = SavingCallback(save_basin_state!, saved_basin_states; saveat)
-    push!(callbacks, save_basin_state_cb)
+    save_basin_state_cb =
+        saving_callback(save_basin_state!, saved_basin_states, saveat, t_end)
 
     # Update cumulative flows (exact integration and for allocation)
     cumulative_flows_cb =
-        FunctionCallingCallback(update_cumulative_flows!; func_start = false)
-    push!(callbacks, cumulative_flows_cb)
+        FunctionCallingCallback(Specialized(update_cumulative_flows!); func_start = false)
 
     # Update concentrations
-    concentrations_cb = FunctionCallingCallback(update_concentrations!; func_start = false)
-    push!(callbacks, concentrations_cb)
+    concentrations_cb =
+        FunctionCallingCallback(Specialized(update_concentrations!); func_start = false)
 
     # Update Basin forcings
     # All variables are given at the same time, so just precipitation works
     tstops = Vector{Float64}[]
-    t_end = seconds_since(config.endtime, config.starttime)
     get_timeseries_tstops!(tstops, t_end, basin.forcing.precipitation)
     tstops = sort(unique(reduce(vcat, tstops)))
-    basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
-    push!(callbacks, basin_cb)
+    basin_cb = PresetTimeCallback(
+        tstops,
+        Specialized(update_basin!);
+        initialize = Specialized(SciMLBase.INITIALIZE_DEFAULT),
+        save_positions = (false, false),
+    )
 
     # If saveat is a vector which contains 0.0 this callback will still be called
     # at t = 0.0 despite save_start = false
-    saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat
+    saveat_flow = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat
 
     # save the flows averaged over the saveat intervals
     saved_flow = SavedValues(Float64, SavedFlow)
-    save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
-    push!(callbacks, save_flow_cb)
+    save_flow_cb =
+        saving_callback(save_flow, saved_flow, saveat_flow, t_end; save_start = false)
 
     # save solver stats
     saved_solver_stats = SavedValues(Float64, SolverStats)
-    solver_stats_cb =
-        SavingCallback(save_solver_stats, saved_solver_stats; saveat, save_start = true)
-    push!(callbacks, solver_stats_cb)
+    solver_stats_cb = saving_callback(
+        save_solver_stats,
+        saved_solver_stats,
+        saveat,
+        t_end;
+        save_start = true,
+    )
 
     # interpolate the levels
     saved_subgrid_level = SavedValues(Float64, Vector{Float64})
 
-    export_cb =
-        SavingCallback(save_subgrid_level, saved_subgrid_level; saveat, save_start = true)
-    push!(callbacks, export_cb)
+    export_cb = saving_callback(
+        save_subgrid_level,
+        saved_subgrid_level,
+        saveat,
+        t_end;
+        save_start = true,
+    )
 
     # Not a FunctionCallingCallback, because that reports the derivative as continuous,
     # which hides the right hand side discontinuity of a control state change
     (; discrete_control_interval) = config.solver
-    discrete_control_cb = if iszero(discrete_control_interval) ||
-            isempty(p_independent.discrete_control.node_id)
-        DiscreteCallback(
-            discrete_control_condition,
-            apply_discrete_control!;
-            initialize = discrete_control_initialize,
-            save_positions = (false, false),
-        )
-    else
-        # Evaluating all DiscreteControl nodes at the same times makes the control state
-        # changes coincide, so the integrator restarts less often
-        PresetTimeCallback(
-            range(discrete_control_interval, t_end; step = discrete_control_interval),
-            apply_discrete_control!;
-            initialize = discrete_control_initialize,
-            save_positions = (false, false),
-        )
-    end
-    push!(callbacks, discrete_control_cb)
+    every_step = iszero(discrete_control_interval) ||
+        isempty(p_independent.discrete_control.node_id)
+    # Evaluating all DiscreteControl nodes at the same times makes the control state
+    # changes coincide, so the integrator restarts less often
+    discrete_control_times = every_step ? Float64[] :
+        collect(range(discrete_control_interval, t_end; step = discrete_control_interval))
+    discrete_control_timing = DiscreteControlTiming(every_step, discrete_control_times)
+    discrete_control_cb = DiscreteCallback(
+        discrete_control_timing,
+        Specialized(apply_discrete_control!);
+        initialize = discrete_control_timing,
+        save_positions = (false, false),
+    )
 
     # Concentrations are not states of the solver, so the solver does not limit the timestep
     # for control that listens to them. When control is evaluated at a fixed interval
     # the timing of threshold crossings in between does not matter.
-    if iszero(discrete_control_interval)
-        concentration_timestep = ConcentrationControlTimestep(p_independent)
-        if !isempty(concentration_timestep.listened)
-            push!(
-                callbacks,
-                DiscreteCallback(
-                    Returns(true),
-                    concentration_timestep;
-                    save_positions = (false, false),
-                ),
-            )
-        end
-    end
-
-    reset_cb = DiscreteCallback(
-        cumulative_flow_reset_condition,
-        reset_cumulative_flows!;
+    # The callback is always part of the CallbackSet to keep its type stable, but only active
+    # if needed.
+    concentration_timestep = ConcentrationControlTimestep(p_independent)
+    concentration_timestep_active =
+        iszero(discrete_control_interval) && !isempty(concentration_timestep.listened)
+    concentration_timestep_cb = DiscreteCallback(
+        Returns(concentration_timestep_active),
+        concentration_timestep;
         save_positions = (false, false),
     )
-    push!(callbacks, reset_cb)
+
+    reset_cb = DiscreteCallback(
+        Specialized(cumulative_flow_reset_condition),
+        Specialized(reset_cumulative_flows!);
+        save_positions = (false, false),
+    )
 
     saved = SavedResults(
         saved_flow,
@@ -116,9 +118,161 @@ function create_callbacks(
         saved_subgrid_level,
         saved_solver_stats,
     )
-    callback = CallbackSet(callbacks...)
+    # Only discrete callbacks, the CallbackSet constructor doesn't specialize on many
+    callback = CallbackSet(
+        (),
+        (
+            negative_storage_cb,
+            save_basin_state_cb,
+            cumulative_flows_cb,
+            concentrations_cb,
+            basin_cb,
+            save_flow_cb,
+            solver_stats_cb,
+            export_cb,
+            discrete_control_cb,
+            concentration_timestep_cb,
+            reset_cb,
+        ),
+    )
 
     return callback, saved
+end
+
+# DiffEqBase initializes and finalizes the callbacks by recursion over a vararg, which does
+# not specialize for this many callbacks. Recursion over the tuple does, which is needed for
+# trimming.
+function DiffEqBase.initialize!(
+        cb::CallbackSet{Tuple{}, <:Tuple{SciMLBase.DECallback, Vararg{SciMLBase.DECallback}}},
+        u,
+        t,
+        integrator::DEIntegrator{<:Any, <:Any, <:RibasimStateCVector},
+    )::Bool
+    return initialize_callbacks!(u, t, integrator, false, cb.discrete_callbacks)
+end
+
+initialize_callbacks!(u, t, integrator, any_modified::Bool, ::Tuple{}) = any_modified
+function initialize_callbacks!(u, t, integrator, any_modified::Bool, callbacks::Tuple)::Bool
+    callback = first(callbacks)
+    callback.initialize(callback, u, t, integrator)
+    any_modified = any_modified || integrator.derivative_discontinuity
+    return initialize_callbacks!(u, t, integrator, any_modified, Base.tail(callbacks))
+end
+
+function DiffEqBase.finalize!(
+        cb::CallbackSet{Tuple{}, <:Tuple{SciMLBase.DECallback, Vararg{SciMLBase.DECallback}}},
+        u,
+        t,
+        integrator::DEIntegrator{<:Any, <:Any, <:RibasimStateCVector},
+    )::Bool
+    return finalize_callbacks!(u, t, integrator, false, cb.discrete_callbacks)
+end
+
+finalize_callbacks!(u, t, integrator, any_modified::Bool, ::Tuple{}) = any_modified
+function finalize_callbacks!(u, t, integrator, any_modified::Bool, callbacks::Tuple)::Bool
+    callback = first(callbacks)
+    callback.finalize(callback, u, t, integrator)
+    any_modified = any_modified || integrator.derivative_discontinuity
+    return finalize_callbacks!(u, t, integrator, any_modified, Base.tail(callbacks))
+end
+
+"""
+A function wrapper that is not a `Function`. Julia does not specialize on a `Function`
+argument that is only passed through, like by the DiffEqCallbacks constructors, see the
+performance tips in the Julia manual. Such a wrapper is specialized on, which keeps the
+callbacks type stable, as needed for trimming.
+"""
+struct Specialized{F}
+    f::F
+end
+
+@inline (s::Specialized)(args...; kwargs...) = s.f(args...; kwargs...)
+
+"""
+A SavingCallback with `saveat` as a Vector also when it is given as a Number, such that its
+type does not depend on the configuration. This follows the defaults of `SavingCallback`,
+and how it expands a Number `saveat` at initialization. Constructed like `SavingCallback`,
+without the time direction argument, which makes the type of `SavingCallback` unstable.
+"""
+function saving_callback(
+        save_func::F,
+        saved_values::SavedValues,
+        saveat::Union{Float64, Vector{Float64}},
+        t_end::Float64;
+        save_start::Union{Bool, Nothing} = nothing,
+    ) where {F}
+    if saveat isa Float64
+        save_start = something(save_start, true)
+        saveat_range = range(save_start ? 0.0 : saveat, t_end; step = saveat)
+        # avoid saving the end twice
+        save_end = t_end != last(saveat_range)
+        saveat_cache = collect(saveat_range)
+        save_everystep = false
+    else
+        save_everystep = isempty(saveat)
+        save_start = something(save_start, save_everystep)
+        save_end = save_everystep
+        saveat_cache = collect(saveat)
+    end
+    affect! = DiffEqCallbacks.SavingAffect(
+        Specialized(save_func),
+        saved_values,
+        BinaryMinHeap(saveat_cache),
+        saveat_cache,
+        save_everystep,
+        save_start,
+        save_end,
+        0,
+    )
+    return DiscreteCallback(
+        DiffEqCallbacks.true_condition,
+        affect!;
+        initialize = saving_initialize,
+        save_positions = (false, false),
+    )
+end
+
+"""
+Like `DiffEqCallbacks.saving_initialize`, for a Vector `saveat` and forward in time, which
+avoids its type instability: a heap of a different type for backward in time.
+"""
+function saving_initialize(cb, u, t, integrator)
+    affect! = cb.affect!
+    if affect!.saveiter != 0
+        affect!.saveat = BinaryMinHeap(affect!.saveat_cache)
+        affect!.saveiter = 0
+    end
+    affect!.save_start && affect!(integrator)
+    return derivative_discontinuity!(integrator, false)
+end
+
+"""
+The condition and initialization of the DiscreteControl callback. The control is applied
+every timestep, or at the preset `times` if a `discrete_control_interval` is configured,
+like a `PresetTimeCallback`. This is a single type for both, to keep the callback type
+stable.
+"""
+struct DiscreteControlTiming
+    every_step::Bool
+    times::Vector{Float64}
+end
+
+# The callback condition
+function (timing::DiscreteControlTiming)(u, t, integrator)::Bool
+    timing.every_step && return true
+    return insorted(t, timing.times) && (integrator.t - integrator.dt) != integrator.t
+end
+
+# The callback initialization
+function (timing::DiscreteControlTiming)(c, u, t, integrator)::Nothing
+    discrete_control_initialize(c, u, t, integrator)
+    timing.every_step && return nothing
+    tspan = integrator.sol.prob.tspan
+    for time in timing.times
+        tspan[1] < time < tspan[2] && add_tstop!(integrator, time)
+    end
+    insorted(t, timing.times) && apply_discrete_control!(integrator)
+    return nothing
 end
 
 """
@@ -471,7 +625,7 @@ function check_water_balance_error!(
         saved_flow.relative_error[id.idx] = relative_error
     end
     if errors
-        t = datetime_since(t, starttime)
+        t = datetime_string(datetime_since(t, starttime))
         error("Too large water balance error(s) detected at t = $t")
     end
     return nothing
@@ -517,7 +671,7 @@ function check_negative_storage(u, t, integrator)::Nothing
 
     if log_negative_storage(basin, current_basin_properties.current_storage)
         t_datetime = datetime_since(integrator.t, p_independent.starttime)
-        error("Negative storages found at $t_datetime.")
+        error("Negative storages found at $(datetime_string(t_datetime)).")
     end
     return nothing
 end
@@ -620,8 +774,6 @@ function apply_discrete_control!(integrator; initialize::Bool = false)::Nothing
     return nothing
 end
 
-discrete_control_condition(u, t, integrator)::Bool = true
-
 function discrete_control_initialize(c, u, t, integrator)::Nothing
     return apply_discrete_control!(integrator; initialize = true)
 end
@@ -650,7 +802,7 @@ function set_new_control_state!(
         get(discrete_control.logic_mapping[discrete_control_id.idx], truth_state, nothing)
 
     if isnothing(control_state_new)
-        @error lazy"No control state specified for $discrete_control_id for truth state $truth_state."
+        @error lazy"No control state specified for $discrete_control_id for truth state $(convert_truth_state(truth_state))."
         return true, false
     end
 

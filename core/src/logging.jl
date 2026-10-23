@@ -32,9 +32,12 @@ function setup_logger(;
         terminal_logger
 end
 
-"Log messages before the model is initialized."
-function log_startup(config, toml_path::AbstractString)::Nothing
-    print_logo()
+"""
+Log messages before the model is initialized, and print the logo to `logo_io`, which a
+trimmed binary passes with a concrete type.
+"""
+function log_startup(config, toml_path::AbstractString; logo_io::IO = stderr)::Nothing
+    print_logo(logo_io)
     ribasim_version = RIBASIM_VERSION
     threads = Threads.nthreads()
     (; starttime, endtime) = config
@@ -44,7 +47,7 @@ function log_startup(config, toml_path::AbstractString)::Nothing
         @warn "Version mismatch, this will likely fail. Ribasim only supports running simulations with the same Ribasim version it was generated with." model_version ribasim_version
     end
     ribasim_home = dirname(Sys.BINDIR)
-    @info "Starting a Ribasim simulation at $(now())." toml_path ribasim_version ribasim_home starttime endtime threads
+    @info "Starting a Ribasim simulation at $(format_datetime(now()))." toml_path ribasim_version ribasim_home starttime endtime threads
 
     if any(config.experimental)
         @warn "The following *experimental* features are enabled: $(showexperimental(config))"
@@ -66,7 +69,7 @@ function log_bottlenecks(model; level = LoggingExtras.Warn)
         return nothing
     end
 
-    errors = Pair{Symbol, Float64}[]
+    errors = String[]
     error_count = 0
     max_errors = 5
     # Iterate over the errors in descending order
@@ -77,12 +80,13 @@ function log_bottlenecks(model; level = LoggingExtras.Warn)
         if error < 1 / length(flow_error) || error_count >= max_errors
             break
         end
-        node_id = Symbol(get_state_node_id(p_independent, i))
-        push!(errors, node_id => round(error; digits = 2))
+        node_id = get_state_node_id(p_independent, i)
+        push!(errors, string("\n  ", node_id, " = ", round(error; digits = 2)))
         error_count += 1
     end
     if !isempty(errors)
-        @logmsg level "Convergence bottlenecks in descending order of severity (1.0 is the worst):" errors...
+        # The errors are part of the message, since keyword arguments are not type stable
+        @logmsg level "Convergence bottlenecks in descending order of severity (1.0 is the worst):$(join(errors))"
     end
     return nothing
 end
@@ -91,7 +95,7 @@ end
 function log_finalize(model)::Cint
     if success(model)
         log_bottlenecks(model; level = LoggingExtras.Info)
-        @info "The model finished successfully at $(now())."
+        @info "The model finished successfully at $(format_datetime(now()))."
         return 0
     else
         # OrdinaryDiffEq doesn't error on e.g. convergence failure,
@@ -99,7 +103,7 @@ function log_finalize(model)::Cint
         log_bottlenecks(model)
         t = datetime_since(model.integrator.t, model.config.starttime)
         (; retcode) = model.integrator.sol
-        @error """The model exited at model time $t with return code $retcode at $(now()).
+        @error """The model exited at model time $(datetime_string(t)) with return code $retcode at $(format_datetime(now())).
         See https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#retcodes""" is_finished(model)
         return 1
     end

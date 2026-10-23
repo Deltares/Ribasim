@@ -11,12 +11,20 @@ using StrideArraysCore: StrideArraysCore, PtrArray
 # Recursively compute the flat range covered by axes
 flat_range(loc::Integer) = loc:loc
 flat_range(loc::AbstractUnitRange{<:Integer}) = loc
-flat_range(loc::NamedTuple) =
-    minimum(first ∘ flat_range, values(loc)):maximum(last ∘ flat_range, values(loc))
+flat_range(loc::NamedTuple) = _min_first(values(loc)):_max_last(values(loc))
+
+# Recursion over the tuple of components, which have different types
+_min_first(locs::Tuple{Any}) = first(flat_range(only(locs)))
+_min_first(locs::Tuple) = min(first(flat_range(first(locs))), _min_first(Base.tail(locs)))
+_max_last(locs::Tuple{Any}) = last(flat_range(only(locs)))
+_max_last(locs::Tuple) = max(last(flat_range(first(locs))), _max_last(Base.tail(locs)))
 
 component_length(loc::Integer) = 1
 component_length(loc::AbstractUnitRange{<:Integer}) = length(loc)
-component_length(loc::NamedTuple) = sum(component_length, values(loc))
+component_length(loc::NamedTuple) = _sum_lengths(values(loc))
+
+_sum_lengths(::Tuple{}) = 0
+_sum_lengths(locs::Tuple) = component_length(first(locs)) + _sum_lengths(Base.tail(locs))
 
 struct CVector{T, A <: DenseVector{T}, NT} <: DenseVector{T}
     data::A
@@ -27,7 +35,7 @@ struct CVector{T, A <: DenseVector{T}, NT} <: DenseVector{T}
     function CVector(data::A, axes::NT) where {T, A <: DenseVector{T}, NT <: NamedTuple}
         range = flat_range(axes)
         len = component_length(axes)
-        @assert length(range) == len "Axes must be contiguous (no gaps or overlaps), got $axes"
+        @assert length(range) == len "Axes must be contiguous (no gaps or overlaps)"
         offset = first(range) - 1
         return new{T, A, NT}(data, axes, offset, len)
     end
@@ -224,18 +232,24 @@ combined axes form one contiguous range. Component names must be unique.
 """
 function concatenate_axes(axes::NamedTuple...)
     isempty(axes) && return NamedTuple()
-    component_names = reduce((names, axis) -> (names..., keys(axis)...), axes; init = ())
-    length(unique(component_names)) == length(component_names) ||
+    merged = merge(axes...)
+    # merge drops duplicate names
+    length(merged) == _sum_lengths_outer(axes) ||
         throw(ArgumentError("Component names must be unique when concatenating axes."))
+    return NamedTuple{keys(merged)}(_shift_components(values(merged), 0))
+end
 
-    result = NamedTuple()
-    offset = 0
-    for axes_part in axes, (name, axis) in pairs(axes_part)
-        shift = offset + 1 - first(flat_range(axis))
-        result = merge(result, NamedTuple{(name,)}((shift_axes(axis, shift),)))
-        offset += component_length(axis)
-    end
-    return result
+_sum_lengths_outer(::Tuple{}) = 0
+_sum_lengths_outer(axes::Tuple) = length(first(axes)) + _sum_lengths_outer(Base.tail(axes))
+
+# Shift each component to start after the previous one, by recursion over the components,
+# which have different types
+_shift_components(::Tuple{}, offset::Int) = ()
+function _shift_components(locs::Tuple, offset::Int)
+    loc = first(locs)
+    shift = offset + 1 - first(flat_range(loc))
+    rest = _shift_components(Base.tail(locs), offset + component_length(loc))
+    return (shift_axes(loc, shift), rest...)
 end
 
 

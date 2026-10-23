@@ -64,7 +64,7 @@ function log_timeseries_backfilled(
     )::Nothing
     if !cyclic_time && !isempty(times) && first(times) > 0
         first_time = datetime_since(first(times), starttime)
-        @info "The input time series for $node_id starts at $first_time, which is after the simulation start time ($starttime). The first value is constant-extrapolated back to the start of the simulation."
+        @info "The input time series for $node_id starts at $(datetime_string(first_time)), which is after the simulation start time ($(datetime_string(starttime))). The first value is constant-extrapolated back to the start of the simulation."
     end
     return nothing
 end
@@ -73,11 +73,10 @@ function get_scalar_interpolation(
         starttime::DateTime,
         time::AbstractVector,
         node_id::NodeID,
-        param::Symbol;
+        ::Val{param};
         default_value::Float64 = 0.0,
-        interpolation_type::Type{<:AbstractInterpolation} = ConstantInterpolation,
         cyclic_time::Bool = false,
-    )::interpolation_type
+    )::ScalarConstantInterpolation where {param}
     rows = searchsorted(time.node_id, node_id)
     parameter = getproperty(time, param)[rows]
     parameter = coalesce.(parameter, default_value)
@@ -86,7 +85,7 @@ function get_scalar_interpolation(
     valid = valid_time_interpolation(times, parameter, node_id, cyclic_time)
     !valid && error("Invalid time series.")
     log_timeseries_backfilled(times, starttime, node_id, cyclic_time)
-    return interpolation_type(
+    return ConstantInterpolation(
         parameter,
         times;
         extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
@@ -233,9 +232,9 @@ all possible explicit truth states.
 function expand_logic_mapping(
         logic_mapping::Vector{OrderedDict{String, String}},
         node_ids::Vector{NodeID},
-    )::Vector{OrderedDict{Vector{Bool}, String}}
+    )::Vector{Dict{Vector{Bool}, String}}
     logic_mapping_expanded =
-        [OrderedDict{Vector{Bool}, String}() for _ in eachindex(node_ids)]
+        [Dict{Vector{Bool}, String}() for _ in eachindex(node_ids)]
     pattern = r"^[TF\*]+$"
 
     for node_id in node_ids
@@ -249,22 +248,18 @@ function expand_logic_mapping(
             control_state = logic_mapping[node_id.idx][truth_state]
             n_wildcards = count(==('*'), truth_state)
 
-            substitutions = if n_wildcards > 0
-                substitutions = Iterators.product(fill([true, false], n_wildcards)...)
-            else
-                [nothing]
-            end
-
-            # Loop over all substitution sets for the wildcards
-            for substitution in substitutions
+            # Loop over all substitution sets for the wildcards, in the order of
+            # `Iterators.product(fill([true, false], n_wildcards)...)`, where the bits of
+            # `substitution` are the wildcard values, with 0 meaning true
+            for substitution in 0:(2^n_wildcards - 1)
                 truth_state_new = Bool[]
                 s_index = 0
 
                 # If a wildcard is found replace it, otherwise take the old truth value
                 for truth_value in truth_state
                     if truth_value == '*'
+                        push!(truth_state_new, iszero((substitution >> s_index) & 1))
                         s_index += 1
-                        push!(truth_state_new, substitution[s_index])
                     else
                         push!(truth_state_new, truth_value == 'T')
                     end
@@ -274,7 +269,8 @@ function expand_logic_mapping(
                     control_state_existing =
                         logic_mapping_expanded[node_id.idx][truth_state_new]
                     control_states = sort([control_state, control_state_existing])
-                    msg = "Multiple control states found for $node_id for truth state `$(convert_truth_state(truth_state_new))`: $control_states."
+                    control_states_str = join((format_value(c) for c in control_states), ", ")
+                    msg = "Multiple control states found for $node_id for truth state `$(convert_truth_state(truth_state_new))`: [$control_states_str]."
                     @assert control_state_existing == control_state msg
                 else
                     logic_mapping_expanded[node_id.idx][truth_state_new] = control_state
@@ -316,18 +312,9 @@ function Base.getindex(fv::FlatVector, i::Int)
     return v[r + 1]
 end
 
-"Construct a FlatVector from one of the fields of SavedFlow, following a path of symbols."
-function FlatVector(saveval::Vector{SavedFlow}, syms::Symbol...)
-    v = if isempty(saveval)
-        Vector{Float64}[]
-    else
-        v_ = getfield.(saveval, first(syms))
-        for sym in syms[2:end]
-            v_ = getproperty.(v_, sym)
-        end
-        v_
-    end
-    return FlatVector(v)
+"Construct a FlatVector from the vectors that `f` returns for each SavedFlow."
+function FlatVector(saveval::Vector{SavedFlow}, f::F) where {F <: Function}
+    return FlatVector(map(f, saveval))
 end
 FlatVector(v::Vector{Matrix{Float64}}) = FlatVector(vec.(v))
 
@@ -414,27 +401,34 @@ function is_primary_network(subnetwork_id::Int32)::Bool
     return subnetwork_id == 1
 end
 
+function add_demand_priorities!(
+        demand_priorities::OrderedSet{Int32},
+        db::DB,
+        config::Config,
+        table_type::Type{T},
+    )::Bool where {T <: Table}
+    data = load_structvector(db, config, table_type)
+    demand_priority_col = Int32[coalesce(x, Int32(0)) for x in data.demand_priority]
+    return if valid_demand_priorities(demand_priority_col, config.experimental.allocation)
+        union!(demand_priorities, demand_priority_col)
+        true
+    else
+        table_name = sql_table_name(table_type)
+        @error "Missing demand_priority parameter(s) for a $table_name node in the allocation problem."
+        false
+    end
+end
+
+"The tables with a demand_priority column, a Tuple to iterate over them type stably."
+const demand_priority_table_types =
+    Tuple(filter(table_type -> hasfield(table_type, :demand_priority), table_types))
+
 function get_all_demand_priorities(db::DB, config::Config)::Vector{Int32}
     demand_priorities = OrderedSet{Int32}()
-    is_valid = true
-
-    for table_type in table_types
-        if !hasfield(table_type, :demand_priority)
-            continue
-        end
-
-        data = load_structvector(db, config, table_type)
-        demand_priority_col = data.demand_priority
-        demand_priority_col = Int32.(coalesce.(demand_priority_col, Int32(0)))
-        if valid_demand_priorities(demand_priority_col, config.experimental.allocation)
-            union!(demand_priorities, demand_priority_col)
-        else
-            is_valid = false
-            table_name = sql_table_name(table_type)
-            @error "Missing demand_priority parameter(s) for a $table_name node in the allocation problem."
-        end
+    is_valid = map(demand_priority_table_types) do table_type
+        add_demand_priorities!(demand_priorities, db, config, table_type)
     end
-    if is_valid
+    if all(is_valid)
         return sort(collect(demand_priorities))
     else
         error("Missing demand priority parameter(s).")
@@ -507,10 +501,41 @@ function convert_truth_state(boolean_vector)::String
     return String(UInt8.(ifelse.(boolean_vector, 'T', 'F')))
 end
 
+"""
+    with_node(f, p_independent::ParametersIndependent, type::Symbol)
+
+Call `f(node)` with the node struct for the snake case node type, e.g. `p_independent.pump`
+for `:pump`. Unlike `getfield(p_independent, type)` this is type stable: `type` is compared
+to the names of the node fields, and `f` is compiled for each node type.
+"""
+@generated function with_node(f::F, p_independent::ParametersIndependent, type::Symbol) where {F}
+    body = :(error("Unknown node type: $type"))
+    for (name, T) in reverse(collect(zip(fieldnames(p_independent), fieldtypes(p_independent))))
+        T <: AbstractParameterNode || continue
+        body = :(type === $(QuoteNode(name)) ? f(p_independent.$name) : $body)
+    end
+    return body
+end
+
+"""
+    typed_field(x, name::Symbol, ::Type{T})::T
+
+The field `name` of `x`, which must have type `T`. Unlike `getfield(x, name)` this is type
+stable: `name` is compared to the names of the fields of type `T`.
+"""
+@generated function typed_field(x, name::Symbol, ::Type{T})::T where {T}
+    body = :(error("No field $name of type $(nameof(T)) in $(nameof(typeof(x)))."))
+    for (field, type) in reverse(collect(zip(fieldnames(x), fieldtypes(x))))
+        type === T || continue
+        body = :(name === $(QuoteNode(field)) ? getfield(x, $(QuoteNode(field))) : $body)
+    end
+    return body
+end
+
 function NodeID(type::Symbol, value::Integer, p_independent::ParametersIndependent)::NodeID
     node_type = NodeType.T(type)
-    node = getfield(p_independent, snake_case(type))
-    idx = searchsortedfirst(node.node_id, NodeID(node_type, value, 0))
+    node_ids = with_node(node -> node.node_id, p_independent, snake_case(type))
+    idx = searchsortedfirst(node_ids, NodeID(node_type, value, 0))
     return NodeID(node_type, value, idx)
 end
 
@@ -545,25 +570,25 @@ function set_discrete_controlled_target_refs!(
 
         # References to scalar parameters
         for (i, parameter_update) in enumerate(scalar_update)
-            field = getfield(node, parameter_update.name)
+            field = typed_field(node, parameter_update.name, Vector{Float64})
             scalar_update[i] = @set parameter_update.ref = Ref(field, idx)
         end
 
         # References to constant interpolation parameters
         for (i, parameter_update) in enumerate(itp_update_constant)
-            field = getfield(node, parameter_update.name)
+            field = typed_field(node, parameter_update.name, Vector{ScalarConstantInterpolation})
             itp_update_constant[i] = @set parameter_update.ref = Ref(field, idx)
         end
 
         # References to linear interpolation parameters
         for (i, parameter_update) in enumerate(itp_update_linear)
-            field = getfield(node, parameter_update.name)
+            field = typed_field(node, parameter_update.name, Vector{ScalarLinearInterpolation})
             itp_update_linear[i] = @set parameter_update.ref = Ref(field, idx)
         end
 
         # References to index interpolation parameters
         for (i, parameter_update) in enumerate(itp_update_lookup)
-            field = getfield(node, parameter_update.name)
+            field = typed_field(node, parameter_update.name, Vector{IndexLookup})
             itp_update_lookup[i] = @set parameter_update.ref = Ref(field, idx)
         end
     end
@@ -581,9 +606,11 @@ function collect_control_mappings!(p_independent::ParametersIndependent)::Nothin
     for node_type in instances(NodeType.T)
         node_type == NodeType.Terminal && continue
         node_type == NodeType.Observation && continue
-        node = getfield(p_independent, snake_case(node_type))
-        if hasfield(typeof(node), :control_mapping)
-            control_mappings[node_type] = node.control_mapping
+        with_node(p_independent, snake_case(node_type)) do node
+            if hasfield(typeof(node), :control_mapping)
+                control_mappings[node_type] = node.control_mapping
+            end
+            return nothing
         end
     end
     return
@@ -681,7 +708,7 @@ function set_flow_ids!(inflow_id, outflow_id, node::AbstractParameterNode)
 end
 
 function set_flow_ids!(inflow_id, outflow_id, user_demand::UserDemand)
-    inflow_id .= [link.link[1] for link in vcat(user_demand.inflow_links...)]
+    inflow_id .= [link.link[1] for links in user_demand.inflow_links for link in links]
     outflow_id .= [link.link[2] for link in user_demand.outflow_link]
     return nothing
 end
@@ -1031,19 +1058,19 @@ function get_interpolation_vec(
         interpolation_type::String,
         block_transition_period::Float64,
         node_id::Vector{NodeID},
-    )::Vector
-    type = if interpolation_type == "linear"
-        ScalarLinearInterpolation
+    )::FlowBoundaryRate
+    n = length(node_id)
+    return if interpolation_type == "linear"
+        Vector{ScalarLinearInterpolation}(undef, n)
     elseif interpolation_type == "block"
         if iszero(block_transition_period)
-            ScalarConstantInterpolation # Doesn't support smoothing
+            Vector{ScalarConstantInterpolation}(undef, n) # Doesn't support smoothing
         else
-            ScalarBlockInterpolation # Does support smoothing
+            Vector{ScalarBlockInterpolation}(undef, n) # Does support smoothing
         end
     else
         error("Invalid interpolation type specified: $interpolation_type.")
     end
-    return Vector{type}(undef, length(node_id))
 end
 
 function check_new_t!(p::Parameters, t::Number)::Nothing
@@ -1198,13 +1225,13 @@ end
 
 function filtered_constant_interpolation(
         group,
-        field::Symbol,
+        ::Val{field},
         cyclic_time::Bool,
         config::Config;
         node_id::Union{NodeID, Nothing} = nothing,
-    )::ScalarConstantInterpolation
-    values = getproperty.(group, field)
-    times = getproperty.(group, :time)
+    )::ScalarConstantInterpolation where {field}
+    values = [getproperty(row, field) for row in group]
+    times = [row.time for row in group]
     mask = map(!ismissing, values)
     return if any(mask)
         t = seconds_since.(times[mask], config.starttime)
@@ -1437,3 +1464,137 @@ get_area_from_profile(basin::Basin, i::Int, level::Union{Float64, ForwardDiff.Du
     basin_area(basin.profiles, i, level)
 # Other number types, such as those for the sparsity detection, use the interpolation
 get_area_from_profile(::Basin, ::Int, ::Number) = nothing
+
+"""
+    groupby(f, v::AbstractVector)
+
+Group consecutive elements of `v` with equal `f(x)` into Vectors, like `IterTools.groupby`,
+but type stable, also for keys of a `Union` type like `Union{Missing, Int32}`. Like for
+`IterTools.groupby`, the first element of the iteration state is false after the last group.
+"""
+groupby(f::F, v::AbstractVector) where {F} = GroupBy(v, group_ranges(f, v))
+
+"The ranges of consecutive elements of `v` with equal `f(x)`."
+function group_ranges(f::F, v::AbstractVector)::Vector{UnitRange{Int}} where {F}
+    ranges = UnitRange{Int}[]
+    start = firstindex(v)
+    for i in (firstindex(v) + 1):(lastindex(v) + 1)
+        if i > lastindex(v) || !isequal(f(v[i]), f(v[start]))
+            push!(ranges, start:(i - 1))
+            start = i
+        end
+    end
+    return ranges
+end
+
+struct GroupBy{V <: AbstractVector}
+    v::V
+    ranges::Vector{UnitRange{Int}}
+end
+
+Base.IteratorSize(::Type{<:GroupBy}) = Base.HasLength()
+Base.length(groups::GroupBy) = length(groups.ranges)
+Base.eltype(::Type{GroupBy{V}}) where {V} = Vector{eltype(V)}
+
+function Base.iterate(groups::GroupBy, state::Tuple{Bool, Int} = (true, 1))
+    (; v, ranges) = groups
+    i = state[2]
+    i > length(ranges) && return nothing
+    group = eltype(v)[v[j] for j in ranges[i]]
+    return group, (i < length(ranges), i + 1)
+end
+
+"""
+    format_datetime(t::DateTime)::String
+
+Format as `yyyy-mm-ddTHH:MM:SS.sss`, like `string(t)` but trim compatible, and always with
+milliseconds.
+"""
+function format_datetime(t::DateTime)::String
+    return string(
+        string(Dates.year(t); pad = 4), '-',
+        string(Dates.month(t); pad = 2), '-',
+        string(Dates.day(t); pad = 2), 'T',
+        string(Dates.hour(t); pad = 2), ':',
+        string(Dates.minute(t); pad = 2), ':',
+        string(Dates.second(t); pad = 2), '.',
+        string(Dates.millisecond(t); pad = 3),
+    )
+end
+
+"Like `string(t)`, which omits zero milliseconds, but trim compatible."
+function datetime_string(t::DateTime)::String
+    str = format_datetime(t)
+    return Dates.millisecond(t) == 0 ? str[1:(end - 4)] : str
+end
+
+"Like `repr` for the types in tables, but trim compatible."
+format_value(x::String)::String = string('"', x, '"')
+format_value(::Missing)::String = "missing"
+format_value(x::Union{Integer, Float64})::String = string(x)
+format_value(t::DateTime)::String = string("DateTime(\"", datetime_string(t), "\")")
+
+# Other values, like interpolations, only by type name
+format_value(x)::String = string('<', nameof(typeof(x)), '>')
+
+"""
+The message of an exception, like `sprint(showerror, e)`, but trim compatible, since it
+needs no dynamic dispatch. Exceptions without a message field only give their type name.
+"""
+function error_message(@nospecialize(e))::String
+    msg = if e isa ErrorException
+        e.msg
+    elseif e isa ArgumentError
+        e.msg
+    elseif e isa AssertionError
+        e.msg
+    elseif e isa DomainError
+        e.msg
+    else
+        nothing
+    end
+    return if msg isa String
+        msg
+    else
+        string(nameof(typeof(e)::DataType))
+    end
+end
+
+"Format a Vector like `show`, e.g. `[\"a\", \"b\"]`, but trim compatible."
+function format_vector(v::Vector{T})::String where {T <: Union{String, Integer, Float64}}
+    # Like `show`, only print the element type if it is not the default for the literal
+    prefix = T in (String, Int, Float64) ? "" : string(nameof(T))
+    return string(prefix, '[', join(map(format_value, v), ", "), ']')
+end
+
+"Format a key like `repr` of a NamedTuple, e.g. `(node_id = 1, control_state = missing)`."
+function format_key(names::NTuple{N, Symbol}, values::NTuple{N, String})::String where {N}
+    parts = map((name, value) -> string(name, " = ", value), names, values)
+    return length(parts) == 1 ? string('(', only(parts), ",)") :
+        string('(', join(parts, ", "), ')')
+end
+
+"""
+    format_duration(seconds::Float64)::String
+
+Format a duration like `canonicalize`, e.g. `1 minute, 2 seconds, 345 milliseconds`, but
+trim compatible.
+"""
+function format_duration(seconds::Float64)::String
+    remaining = round(Int, seconds * 1000)
+    parts = String[]
+    for (unit, ms) in (
+            ("week", 604_800_000),
+            ("day", 86_400_000),
+            ("hour", 3_600_000),
+            ("minute", 60_000),
+            ("second", 1000),
+            ("millisecond", 1),
+        )
+        n, remaining = divrem(remaining, ms)
+        if n != 0
+            push!(parts, string(n, ' ', unit, abs(n) == 1 ? "" : "s"))
+        end
+    end
+    return isempty(parts) ? "empty period" : join(parts, ", ")
+end

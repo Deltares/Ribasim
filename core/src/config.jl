@@ -2,16 +2,20 @@
     module config
 
 Ribasim.config is a submodule of [`Ribasim`](@ref) to handle the configuration of a Ribasim model.
-It is implemented using the [Configurations](https://configurations.rogerluo.dev/stable/) package.
+The sections are defined with the [Configurations](https://configurations.rogerluo.dev/stable/)
+package, and the TOML is parsed by `parse_section`, which is type stable.
 A full configuration is represented by [`Config`](@ref), which is the main API.
 Ribasim.config is a submodule mainly to avoid name clashes between the configuration sections and the rest of Ribasim.
 """
 module config
 
 using ADTypes: AutoForwardDiff, AutoFiniteDiff
-using Configurations: Configurations, @option, from_toml, @type_alias
+import DifferentiationInterface
+using Configurations: Configurations, @option
 using DataStructures: OrderedDict
-using Dates: DateTime
+using Dates: Date, DateTime
+using SciMLBase: AbstractSpecialization, FullSpecialize, NoSpecialize
+import TOML
 using Logging: LogLevel, Debug, Info, Warn, Error
 using ..Ribasim: Ribasim, Table, Schema
 using OrdinaryDiffEqCore: OrdinaryDiffEqAlgorithm, OrdinaryDiffEqNewtonAdaptiveAlgorithm
@@ -30,8 +34,13 @@ using LinearSolve:
     LinearSolve,
     SciMLLinearSolveAlgorithm
 
-export Config, Solver, Results, Logging, Toml
+export Config, Solver, Results, Logging, Toml, SolverTypes, RibasimTag
 export algorithm,
+    algorithm_type,
+    is_sparse,
+    is_reduced_implicit_solve,
+    specialization_type,
+    supports_solver,
     camel_case,
     get_ad_type,
     snake_case,
@@ -249,7 +258,7 @@ function Base.iterate(exp::Experimental, state = 0)
 end
 
 function showexperimental(exp::Experimental)
-    fields = filter(x -> getfield(exp, x), fieldnames(typeof(exp)))
+    fields = String[String(name) for name in fieldnames(Experimental) if getfield(exp, name)]
     return join(fields, " ")
 end
 
@@ -282,10 +291,153 @@ Parse a TOML file to a Config. Keys can be overruled using keyword arguments. To
 keys from a subsection, e.g. `dt` from the `solver` section, use underscores: `solver_dt`.
 """
 function Config(config_path::AbstractString; kwargs...)::Config
-    toml = from_toml(Toml, config_path; kwargs...)
+    dict = TOML.parsefile(config_path)
+    for (key, value) in kwargs
+        set_override!(dict, Toml, String(key), value)
+    end
+    toml = parse_section(Toml, dict, "")
     dir = dirname(normpath(config_path))
     validate_config(toml)
     return Config(toml, dir)
+end
+
+qualified_key(section::String, key::String)::String =
+    isempty(section) ? key : string(section, '.', key)
+
+"""
+    parse_section(::Type{T}, dict::Dict{String, Any}, section::String)::T
+
+Construct a TOML section of type `T` from the parsed TOML. Missing keys get their default
+value, from `T()`. This is type stable, since only the TOML values are of unknown type,
+which are converted to the field types by `parse_value`.
+"""
+@generated function parse_section(
+        ::Type{T},
+        dict::Dict{String, Any},
+        section::String,
+    )::T where {T <: TableOption}
+    keys = String.(fieldnames(T))
+    # Only the top level section has fields without a default value
+    default = T === Toml ? nothing : :(T())
+    args = map(enumerate(zip(keys, fieldtypes(T)))) do (i, (key, type))
+        if type <: TableOption
+            :(parse_section($type, subsection(dict, $key, section), qualified_key(section, $key)))
+        else
+            value_default = T === Toml ? :(missing_key(section, $key)) : :(getfield(default, $i))
+            :(
+                haskey(dict, $key) ?
+                    parse_value($type, dict[$key], qualified_key(section, $key)) :
+                    $value_default
+            )
+        end
+    end
+    return quote
+        check_keys(dict, $(Tuple(keys)), section)
+        default = $default
+        return T($(args...))
+    end
+end
+
+function check_keys(dict::Dict{String, Any}, keys::NTuple{N, String}, section::String)::Nothing where {N}
+    for key in Base.keys(dict)
+        if !(key in keys)
+            options = join(collect(String, keys), ", ")
+            error("Invalid key $(qualified_key(section, key)) in TOML, possible keys are: $options.")
+        end
+    end
+    return nothing
+end
+
+missing_key(section::String, key::String) =
+    error("Missing required key $(qualified_key(section, key)) in TOML.")
+
+function subsection(dict::Dict{String, Any}, key::String, section::String)::Dict{String, Any}
+    value = get(dict, key, nothing)
+    return if value === nothing
+        Dict{String, Any}()
+    elseif value isa Dict{String, Any}
+        value
+    else
+        error("Expected a TOML table for $(qualified_key(section, key)).")
+    end
+end
+
+conversion_error(type::DataType, @nospecialize(value), key::String) = error(
+    "Cannot convert TOML value of type $(nameof(typeof(value)::DataType)) to $(nameof(type)) for $key.",
+)
+
+"Convert a value from the parsed TOML, of unknown type, to the field type."
+function parse_value(::Type{Float64}, @nospecialize(value), key::String)::Float64
+    return if value isa Float64
+        value
+    elseif value isa Int
+        Float64(value)
+    else
+        conversion_error(Float64, value, key)
+    end
+end
+
+function parse_value(::Type{T}, @nospecialize(value), key::String)::T where {T <: Union{Int, Int32}}
+    return if value isa Int
+        T(value)
+    elseif value isa Float64 && isinteger(value)
+        T(value)
+    else
+        conversion_error(T, value, key)
+    end
+end
+
+function parse_value(::Type{Bool}, @nospecialize(value), key::String)::Bool
+    return value isa Bool ? value : conversion_error(Bool, value, key)
+end
+
+function parse_value(::Type{String}, @nospecialize(value), key::String)::String
+    return value isa String ? value : conversion_error(String, value, key)
+end
+
+function parse_value(::Type{DateTime}, @nospecialize(value), key::String)::DateTime
+    return if value isa DateTime
+        value
+    elseif value isa Date
+        DateTime(value)
+    else
+        conversion_error(DateTime, value, key)
+    end
+end
+
+function parse_value(::Type{LogLevel}, @nospecialize(value), key::String)::LogLevel
+    value isa String || conversion_error(LogLevel, value, key)
+    return parse_loglevel(value)
+end
+
+# TOML has no null value, but a keyword argument of `Config` can be `nothing`
+function parse_value(::Type{T}, @nospecialize(value), key::String)::T where {T >: Nothing}
+    return value === nothing ? nothing : parse_value(Base.nonnothingtype(T), value, key)
+end
+
+"""
+Set a key from the keyword arguments of `Config` in the parsed TOML. Keys of subsections
+are prefixed by the section name and an underscore, e.g. `solver_dt`.
+"""
+function set_override!(dict::Dict{String, Any}, ::Type{T}, key::String, value)::Nothing where {T <: TableOption}
+    # Match the longest section name, for e.g. `allocation_route_priority_basin`
+    section = ""
+    section_type = Nothing
+    for (name, type) in zip(fieldnames(T), fieldtypes(T))
+        prefix = string(name, '_')
+        if type <: TableOption && startswith(key, prefix) && length(prefix) > length(section)
+            section = prefix
+            section_type = type
+        end
+    end
+    if isempty(section)
+        dict[key] = value
+    else
+        name = chop(section)
+        subdict = get!(Dict{String, Any}, dict, name)::Dict{String, Any}
+        set_override!(subdict, section_type, key[(length(section) + 1):end], value)
+    end
+    return nothing
 end
 
 showexperimental(config::Config) = showexperimental(config.experimental)
@@ -293,7 +445,7 @@ showexperimental(config::Config) = showexperimental(config.experimental)
 """
 Do extra validation on the validity of the TOML config.
 
-Configurations.jl handles the type checks and required fields.
+`parse_section` handles the type checks and required fields.
 This is the place to enforce additional rules, such as supported algorithms and formats,
 to avoid runtime errors, especially when writing results.
 """
@@ -341,7 +493,7 @@ function results_path(config::Config, path::String = "")
     return normpath(config.dir, config.results_dir, path)
 end
 
-function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::AbstractString)
+function parse_loglevel(level::AbstractString)::LogLevel
     level == "debug" && return Debug
     level == "info" && return Info
     level == "warn" && return Warn
@@ -352,6 +504,9 @@ function Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::Abst
         ),
     )
 end
+
+Configurations.from_dict(::Type{Logging}, ::Type{LogLevel}, level::AbstractString) =
+    parse_loglevel(level)
 Configurations.to_dict(::Type, x::LogLevel) = lowercase(string(x))
 
 function Base.show(io::IO, c::Config)
@@ -406,55 +561,117 @@ function function_accepts_kwarg(f, kwarg)::Bool
     return false
 end
 
-function get_ad_type(solver::Solver)
+# Evaluate the method reflection once while loading, so `algorithm` can use it statically
+for algotype in values(algorithms)
+    @eval accepts_autodiff(::Type{$algotype}) = $(function_accepts_kwarg(algotype, :autodiff))
+    @eval accepts_step_limiter(::Type{$algotype}) =
+        $(function_accepts_kwarg(algotype, :step_limiter!))
+end
+
+"""
+    SolverTypes{algorithm, sparse, autodiff, chunksize, reduced_implicit_solve, specialize}()
+
+The solver settings that select types, as type parameters, such that the model setup and
+the simulation are type stable for given `SolverTypes`. `SolverTypes(solver)` takes them
+from the TOML, which is not type stable. A trimmed binary fixes them at compile time
+instead.
+"""
+struct SolverTypes{
+        A, sparse, autodiff, chunksize, reduced_implicit_solve, S <: AbstractSpecialization,
+    } end
+
+function SolverTypes(solver::Solver)::SolverTypes
     chunksize = solver.specialize ? nothing : 1
-    return if solver.autodiff
-        AutoForwardDiff(; chunksize, tag = :Ribasim)
+    specialize = solver.specialize ? FullSpecialize : NoSpecialize
+    return SolverTypes{
+        algorithms[solver.algorithm],
+        solver.sparse,
+        solver.autodiff,
+        chunksize,
+        solver.reduced_implicit_solve,
+        specialize,
+    }()
+end
+
+algorithm_type(::SolverTypes{A}) where {A} = A
+is_sparse(::SolverTypes{A, sparse}) where {A, sparse} = sparse
+is_reduced_implicit_solve(::SolverTypes{A, S, AD, C, R}) where {A, S, AD, C, R} = R
+specialization_type(::SolverTypes{A, S, AD, C, R, SP}) where {A, S, AD, C, R, SP} = SP
+
+"""
+Check that the solver settings from the TOML select the given `SolverTypes`. The
+specialization and the derived `chunksize` are a performance choice that is not checked.
+"""
+function supports_solver(::SolverTypes{A, S, AD, C, R}, solver::Solver)::Bool where {A, S, AD, C, R}
+    return algorithms[solver.algorithm] === A &&
+        solver.sparse == S &&
+        solver.autodiff == AD &&
+        solver.reduced_implicit_solve == R
+end
+
+get_ad_type(solver::Solver) = get_ad_type(SolverTypes(solver))
+
+"The tag of the ForwardDiff dual numbers of Ribasim."
+struct RibasimTag end
+
+function get_ad_type(::SolverTypes{A, S, autodiff, chunksize}) where {A, S, autodiff, chunksize}
+    return if autodiff
+        AutoForwardDiff(; chunksize, tag = RibasimTag())
     else
         AutoFiniteDiff()
     end
 end
 
+# DifferentiationInterface uses a separate type of batch size settings if the input fits in
+# a single batch, which makes the type of the AD preparation depend on the input size. For
+# type stability always use the general type, which also handles a single batch.
+DifferentiationInterface.pick_batchsize(::AutoForwardDiff{1, RibasimTag}, N::Integer) =
+    DifferentiationInterface.BatchSizeSettings{1, false, true}(N)
+
 """
 A wrapper of a SciMLLinearSolveAlgorithm to dispatch on for the specialized Jacobian
 matrix of Ribasim.
 """
-struct RibasimLinearSolve{AType <: SciMLLinearSolveAlgorithm} <: SciMLLinearSolveAlgorithm
+struct RibasimLinearSolve{AType <: SciMLLinearSolveAlgorithm, reduced_implicit_solve} <:
+    SciMLLinearSolveAlgorithm
     algorithm::AType
-    reduced_implicit_solve::Bool
 end
 
-LinearSolve.needs_concrete_A(alg::RibasimLinearSolve) = alg.reduced_implicit_solve ? false : needs_concrete_A(alg.algorithm)
+# `reduced_implicit_solve` is a type parameter, to know it at compile time
+RibasimLinearSolve(algorithm::SciMLLinearSolveAlgorithm, reduced_implicit_solve::Bool) =
+    RibasimLinearSolve{typeof(algorithm), reduced_implicit_solve}(algorithm)
+
+is_reduced_implicit_solve(::RibasimLinearSolve{A, R}) where {A, R} = R
+
+LinearSolve.needs_concrete_A(alg::RibasimLinearSolve) =
+    is_reduced_implicit_solve(alg) ? false : needs_concrete_A(alg.algorithm)
 
 "Create an OrdinaryDiffEqAlgorithm from solver config"
-function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
-    kwargs = OrderedDict{Symbol, Any}()
-    algotype = algorithms[solver.algorithm]
+algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm = algorithm(SolverTypes(solver))
 
-    if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
-        kwargs[:nlsolve] = NLNewton()
-        if solver.sparse
-            kwargs[:linsolve] = RibasimLinearSolve(
-                KLUFactorization(; check_pattern = false),
-                solver.reduced_implicit_solve,
-            )
+function algorithm(solver_types::SolverTypes)::OrdinaryDiffEqAlgorithm
+    algotype = algorithm_type(solver_types)
+
+    kwargs_newton = if algotype <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
+        factorization = if is_sparse(solver_types)
+            KLUFactorization(; check_pattern = false)
         else
-            kwargs[:linsolve] = RibasimLinearSolve(
-                LHLFactorization(),
-                solver.reduced_implicit_solve,
-            )
+            LHLFactorization()
         end
+        linsolve =
+            RibasimLinearSolve(factorization, is_reduced_implicit_solve(solver_types))
+        (; nlsolve = NLNewton(), linsolve)
+    else
+        (;)
     end
 
-    if function_accepts_kwarg(algotype, :autodiff)
-        kwargs[:autodiff] = get_ad_type(solver)
-    end
+    kwargs_autodiff =
+        accepts_autodiff(algotype) ? (; autodiff = get_ad_type(solver_types)) : (;)
 
-    if function_accepts_kwarg(algotype, :step_limiter!)
-        kwargs[:step_limiter!] = Ribasim.limit_flow!
-    end
+    kwargs_step_limiter =
+        accepts_step_limiter(algotype) ? (; step_limiter! = Ribasim.limit_flow!) : (;)
 
-    return algotype(; kwargs...)
+    return algotype(; kwargs_newton..., kwargs_autodiff..., kwargs_step_limiter...)
 end
 
 "Convert the saveat Float64 from our Config to SciML's saveat"

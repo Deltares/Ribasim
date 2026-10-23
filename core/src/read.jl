@@ -120,7 +120,7 @@ function get_parameter_value(
     else
         if !isempty(take_first_columns)
             group = first(
-                IterTools.groupby(i -> map(column -> column[i], take_first_columns), data_group),
+                groupby(i -> map(column -> column[i], take_first_columns), data_group),
             )
             data_group = first(group):last(group)
         end
@@ -146,34 +146,32 @@ end
 """Collect groups of a StructVector by node_id. Returns nothing if the input is empty."""
 function pregroup_by_node_id(sv::Union{StructVector, Nothing})
     (isnothing(sv) || isempty(sv)) && return nothing
-    return collect(IterTools.groupby(row -> row.node_id, sv))
+    return collect(groupby(row -> row.node_id, sv))
 end
 
 """Create a lookup from node_id to grouped StructVector rows."""
-function group_lookup_by_node_id(sv::Union{StructVector, Nothing})
-    groups = pregroup_by_node_id(sv)
-    lookup = OrderedDict{Int32, StructVector}()
-    isnothing(groups) && return lookup
-    for group in groups
-        lookup[first(group).node_id] = StructVector(group)
+group_lookup_by_node_id(::Nothing) = OrderedDict{Int32, StructVector}()
+
+function group_lookup_by_node_id(sv::S)::OrderedDict{Int32, S} where {S <: StructVector}
+    lookup = OrderedDict{Int32, S}()
+    for range in group_ranges(row -> row.node_id, sv)
+        lookup[sv[first(range)].node_id] = sv[range]
     end
     return lookup
 end
 
 """Create a lookup from compound_variable_id to grouped StructVector rows."""
-function group_lookup_by_compound_variable_id(sv::StructVector)
-    lookup = OrderedDict{Int32, StructVector}()
-    isempty(sv) && return lookup
-    for group in IterTools.groupby(row -> row.compound_variable_id, sv)
-        lookup[first(group).compound_variable_id] = StructVector(group)
+function group_lookup_by_compound_variable_id(sv::S)::OrderedDict{Int32, S} where {S <: StructVector}
+    lookup = OrderedDict{Int32, S}()
+    for range in group_ranges(row -> row.compound_variable_id, sv)
+        lookup[sv[first(range)].compound_variable_id] = sv[range]
     end
     return lookup
 end
 
 """Collect StructVector groups by compound_variable_id while preserving input order."""
-function pregroup_by_compound_variable_id(sv::StructVector)
-    isempty(sv) && return StructVector[]
-    return StructVector.(IterTools.groupby(row -> row.compound_variable_id, sv))
+function pregroup_by_compound_variable_id(sv::S)::Vector{S} where {S <: StructVector}
+    return S[sv[range] for range in group_ranges(row -> row.compound_variable_id, sv)]
 end
 
 "The value of a `Val`, which is a compile time constant"
@@ -215,12 +213,14 @@ function parse_parameter!(
     # The names are type parameters, so the field and column lookups are type-stable
     # Pass only the columns that are used, so the loop over the nodes below is compiled
     # for few combinations of types, instead of for each table type
-    static_columns = if isnothing(static) || isempty(static)
+    # Empty tables give empty columns rather than nothing, to keep the types independent of
+    # the data
+    static_columns = if isnothing(static)
         nothing
     else
         (static.node_id, getproperty(static, parameter_name))
     end
-    time_columns = if isnothing(time) || isempty(time)
+    time_columns = if isnothing(time)
         nothing
     else
         (
@@ -230,7 +230,7 @@ function parse_parameter!(
             map(name -> getproperty(time, name), val_value(take_first)),
         )
     end
-    control_states = if is_controllable && node isa AbstractParameterNode &&
+    control_states = if node isa AbstractParameterNode &&
             !isnothing(static) && hasproperty(static, :control_state)
         (static.control_state, node.control_mapping)
     else
@@ -251,21 +251,12 @@ function parse_parameter!(
         val_value(field_name),
         is_complete,
         is_optional,
+        is_controllable,
     )
 end
 
 "The ranges of consecutive equal values in a sorted vector."
-function group_ranges(values::Vector{Int32})::Vector{UnitRange{Int}}
-    ranges = UnitRange{Int}[]
-    start = 1
-    for i in 2:(length(values) + 1)
-        if i > length(values) || values[i] != values[start]
-            push!(ranges, start:(i - 1))
-            start = i
-        end
-    end
-    return ranges
-end
+group_ranges(values::Vector{Int32})::Vector{UnitRange{Int}} = group_ranges(identity, values)
 
 "Parse the values of a parameter per node from the columns of the static and time tables."
 function parse_parameter_values!(
@@ -282,6 +273,7 @@ function parse_parameter_values!(
         field_name::Symbol,
         is_complete::Bool,
         is_optional::Bool,
+        is_controllable::Bool,
     )::Bool where {T}
     has_default = !isnothing(default)
     is_itp = (T <: AbstractInterpolation)
@@ -356,11 +348,11 @@ function parse_parameter_values!(
             val, valid =
                 get_parameter_value(static_group, static_parameter, data_args...; data_kwargs...)
             if !valid
-                @error "Invalid static parameter value $parameter_name = $val for $id"
+                @error "Invalid static parameter value $parameter_name = $(format_value(val)) for $id"
                 errors = true
             end
             param_vec[id.idx] = val
-            isnothing(control_states) || parse_control_states!(
+            (is_controllable && !isnothing(control_states)) && parse_control_states!(
                 control_states...,
                 T,
                 static_group,
@@ -379,7 +371,7 @@ function parse_parameter_values!(
                 from_static = false,
             )
             if !valid
-                @error "Invalid time parameter value $parameter_name = $val for $id"
+                @error "Invalid time parameter value $parameter_name = $(format_value(val)) for $id"
                 errors = true
             end
             param_vec[id.idx] = val
@@ -404,7 +396,7 @@ function parse_control_states!(
         field_name::Symbol,
     ) where {T <: Union{<:Number, <:AbstractInterpolation}}
     for group in
-        IterTools.groupby(i -> coalesce(control_state[i], nothing), static_group)
+        groupby(i -> coalesce(control_state[i], nothing), static_group)
         control_state_group = control_state[first(group)]
         val = parameter[first(group)]
         (ismissing(control_state_group) || ismissing(val)) && continue
@@ -471,7 +463,7 @@ function initialize_control_mapping!(
     errors = false
     has_alloc_controlled = hasproperty(first(static), :allocation_controlled) && config.experimental.allocation
     node_has_alloc_controlled = hasfield(typeof(node), :allocation_controlled)
-    static_groups = IterTools.groupby(row -> row.node_id, static)
+    static_groups = groupby(row -> row.node_id, static)
     static_group, static_idx = iterate(static_groups)
     for node_id in node.node_id
         in_static = isempty(static) ? false : (first(static_group).node_id == node_id)
@@ -479,7 +471,7 @@ function initialize_control_mapping!(
             n_control_states = 0
             has_missing_control_state = false
             for control_state_group in
-                IterTools.groupby(row -> coalesce(row.control_state, nothing), static_group)
+                groupby(row -> coalesce(row.control_state, nothing), static_group)
                 first_row = first(control_state_group)
                 control_state = first_row.control_state
                 n_control_states += 1
@@ -570,11 +562,11 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
     interpolation_index = 0
 
     if !isempty(static)
-        static_groups = IterTools.groupby(row -> row.node_id, static)
+        static_groups = groupby(row -> row.node_id, static)
         static_group, static_idx = iterate(static_groups)
     end
     if !isempty(time)
-        time_groups = IterTools.groupby(row -> row.node_id, time)
+        time_groups = groupby(row -> row.node_id, time)
         time_group, time_idx = iterate(time_groups)
     end
 
@@ -590,7 +582,7 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
             errors = true
         else
             if in_static
-                for qh_group in IterTools.groupby(
+                for qh_group in groupby(
                         row -> coalesce(row.control_state, nothing),
                         static_group,
                     )
@@ -621,7 +613,7 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
             if in_time
                 lookup_time = Float64[]
                 lookup_index = Int[]
-                for time_time_group in IterTools.groupby(row -> row.time, time_group)
+                for time_time_group in groupby(row -> row.time, time_group)
                     qh_table = StructVector(time_time_group)
                     interpolation = qh_interpolation(id, qh_table.level, qh_table.flow_rate)
                     interpolation_index += 1
@@ -637,7 +629,7 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
                     itp_first = rating_curve.interpolations[first(lookup_index)]
                     itp_last = rating_curve.interpolations[last(lookup_index)]
                     if !((itp_first.t == itp_last.t) && (itp_first.u == itp_last.u))
-                        @error "For $node_id with cyclic_time the first and last rating curves are not equal."
+                        @error "For $id with cyclic_time the first and last rating curves are not equal."
                         errors = true
                     end
                     lookup_index[end] = first(lookup_index)
@@ -755,7 +747,8 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)
         node_id,
     )
 
-    flow_boundary = FlowBoundary(; node_id, concentration_itp, flow_rate)
+    # A function barrier, to construct the FlowBoundary for each type of flow_rate
+    flow_boundary = new_flow_boundary(node_id, concentration_itp, flow_rate)
 
     set_inoutflow_links!(flow_boundary, graph; inflow = false)
     errors = parse_parameter!(flow_boundary, config, Val(:flow_rate); static, time, cyclic_times)
@@ -769,6 +762,9 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)
 
     return flow_boundary
 end
+
+new_flow_boundary(node_id, concentration_itp, flow_rate::Vector)::FlowBoundary =
+    FlowBoundary(; node_id, concentration_itp, flow_rate)
 
 function parse_pump_or_outlet_parameters!(
         node::Union{Pump, Outlet},
@@ -922,15 +918,15 @@ function ConcentrationData(
         id = get(node_id_lookup, id_value, nothing)
         isnothing(id) && continue
         cyclic_time = cyclic_time_lookup[id_value]
-        for group in IterTools.groupby(row -> row.substance, data_id)
+        for group in groupby(row -> row.substance, data_id)
             first_row = first(group)
             substance_idx = find_index(Symbol(first_row.substance), substances)
             concentration_itp_drainage[id.idx][substance_idx] =
-                filtered_constant_interpolation(group, :drainage, cyclic_time, config; node_id = id)
+                filtered_constant_interpolation(group, Val(:drainage), cyclic_time, config; node_id = id)
             concentration_itp_precipitation[id.idx][substance_idx] =
-                filtered_constant_interpolation(group, :precipitation, cyclic_time, config; node_id = id)
+                filtered_constant_interpolation(group, Val(:precipitation), cyclic_time, config; node_id = id)
             concentration_itp_surface_runoff[id.idx][substance_idx] =
-                filtered_constant_interpolation(group, :surface_runoff, cyclic_time, config; node_id = id)
+                filtered_constant_interpolation(group, Val(:surface_runoff), cyclic_time, config; node_id = id)
         end
     end
 
@@ -939,11 +935,11 @@ function ConcentrationData(
         id = get(node_id_lookup, id_value, nothing)
         isnothing(id) && continue
         cyclic_time = cyclic_time_lookup[id_value]
-        for group in IterTools.groupby(row -> row.substance, data_id)
+        for group in groupby(row -> row.substance, data_id)
             first_row = first(group)
             substance_idx = find_index(Symbol(first_row.substance), substances)
             loads_itp[id.idx][substance_idx] =
-                filtered_constant_interpolation(group, :load, cyclic_time, config; node_id = id)
+                filtered_constant_interpolation(group, Val(:load), cyclic_time, config; node_id = id)
         end
     end
 
@@ -959,16 +955,15 @@ function ConcentrationData(
         isnothing(id) && continue
         cyclic_time = cyclic_time_lookup[id_value]
         concentration_external_id = concentration_external[id.idx]
-        for group in IterTools.groupby(row -> row.substance, data_id)
+        for group in groupby(row -> row.substance, data_id)
             first_row = first(group)
             substance = first_row.substance
             itp = get_scalar_interpolation(
                 config.starttime,
                 StructVector(group),
                 NodeID(:Basin, first_row.node_id, 0),
-                :concentration;
+                Val(:concentration);
                 cyclic_time,
-                interpolation_type = ConstantInterpolation,
             )
             concentration_external_id["concentration_external.$substance"] = itp
             if any(itp.u .< 0)
@@ -1085,7 +1080,7 @@ function get_threshold!(
     (; node_id) = first(conditions_compound_variable)
 
     for condition_group in
-        IterTools.groupby(row -> row.condition_id, conditions_compound_variable)
+        groupby(row -> row.condition_id, conditions_compound_variable)
         condition_group = StructVector(condition_group)
         push_constant_interpolation!(
             threshold,
@@ -1373,11 +1368,11 @@ function parse_demand!(
         config,
     )::Bool
     if !isempty(static)
-        static_groups = IterTools.groupby(row -> row.node_id, static)
+        static_groups = groupby(row -> row.node_id, static)
         static_group, static_idx = iterate(static_groups)
     end
     if !isempty(time)
-        time_groups = IterTools.groupby(row -> row.node_id, time)
+        time_groups = groupby(row -> row.node_id, time)
         time_group, time_idx = iterate(time_groups)
     end
 
@@ -1452,7 +1447,7 @@ function parse_time_demand_data!(
     if node isa UserDemand
         node.demand_from_timeseries[id.idx] = true
     end
-    for time_priority_group in IterTools.groupby(row -> row.demand_priority, time_group)
+    for time_priority_group in groupby(row -> row.demand_priority, time_group)
         demand_priority_idx =
             findsorted(demand_priorities, first(time_priority_group).demand_priority)
         node.has_demand_priority[id.idx, demand_priority_idx] = true
@@ -1460,7 +1455,7 @@ function parse_time_demand_data!(
             config.starttime,
             StructVector(time_priority_group),
             id,
-            :demand;
+            Val(:demand);
             cyclic_time,
         )
         node.demand_interpolation[id.idx][demand_priority_idx] = demand_interpolation
@@ -1553,7 +1548,7 @@ function parse_time_demand_data!(
         cyclic_time::Bool,
         config::Config,
     )::Nothing
-    for time_priority_group in IterTools.groupby(row -> row.demand_priority, time_group)
+    for time_priority_group in groupby(row -> row.demand_priority, time_group)
         demand_priority_idx =
             findsorted(demand_priorities, first(time_priority_group).demand_priority)
         level_demand.has_demand_priority[id.idx, demand_priority_idx] = true
@@ -1561,7 +1556,7 @@ function parse_time_demand_data!(
             config.starttime,
             StructVector(time_priority_group),
             id,
-            :min_level;
+            Val(:min_level);
             default_value = (-Inf),
             cyclic_time,
         )
@@ -1570,7 +1565,7 @@ function parse_time_demand_data!(
             config.starttime,
             StructVector(time_priority_group),
             id,
-            :max_level;
+            Val(:max_level);
             default_value = Inf,
             cyclic_time,
         )
@@ -1679,12 +1674,12 @@ function Subgrid(db::DB, config::Config, basin::Basin)
 
     node_to_basin = Dict{Int32, NodeID}(id.value => id for id in basin.node_id)
 
-    for group in IterTools.groupby(row -> row.subgrid_id, static)
+    for group in groupby(row -> row.subgrid_id, static)
         first_row = first(group)
         subgrid_id = first_row.subgrid_id
         node_id = first_row.node_id
-        basin_level = getproperty.(group, :basin_level)
-        subgrid_level = getproperty.(group, :subgrid_level)
+        basin_level = [row.basin_level for row in group]
+        subgrid_level = [row.subgrid_level for row in group]
 
         if valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
             hh_itp = LinearInterpolation(
@@ -1709,7 +1704,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)
 
     interpolation_index = 0
 
-    for group in IterTools.groupby(row -> row.subgrid_id, time)
+    for group in groupby(row -> row.subgrid_id, time)
         first_row = first(group)
         subgrid_id = first_row.subgrid_id
         node_id = first_row.node_id
@@ -1724,11 +1719,11 @@ function Subgrid(db::DB, config::Config, basin::Basin)
         lookup_time = Float64[]
         lookup_index = Int[]
 
-        for group_time in IterTools.groupby(row -> row.time, group)
+        for group_time in groupby(row -> row.time, group)
             interpolation_index += 1
             t = first(group_time).time
-            basin_level = getproperty.(group_time, :basin_level)
-            subgrid_level = getproperty.(group_time, :subgrid_level)
+            basin_level = [row.basin_level for row in group_time]
+            subgrid_level = [row.subgrid_level for row in group_time]
 
             if valid_subgrid(subgrid_id, node_id, node_to_basin, basin_level, subgrid_level)
                 hh_itp = LinearInterpolation(
@@ -1742,7 +1737,7 @@ function Subgrid(db::DB, config::Config, basin::Basin)
                 push!(lookup_time, seconds_since(t, config.starttime))
                 push!(subgrid.interpolations_time, hh_itp)
             else
-                @error "Invalid Basin time subgrid table for $node_id, time = $t."
+                @error "Invalid Basin time subgrid table for $node_id, time = $(datetime_string(t))."
                 errors = true
             end
         end
@@ -1886,6 +1881,7 @@ function Parameters(db::DB, config::Config)::Parameters
 
     # Allocation data structures
     if config.experimental.allocation
+        allocation_compiled() || error("Allocation is not supported by this build.")
         initialize_allocation!(p_independent, config)
     end
 
@@ -1894,14 +1890,14 @@ end
 
 function get_node_ids_int32(db::DB, node_type)::Vector{Int32}
     sql = "SELECT node_id FROM Node WHERE node_type = $(esc_id(node_type)) ORDER BY node_id"
-    return only(execute(columntable, db, sql))
+    return query_columns(db, sql, @NamedTuple{node_id::Int32}).node_id
 end
 
 function get_node_ids_types(
         db::DB,
     )::@NamedTuple{node_id::Vector{Int32}, node_type::Vector{NodeType.T}}
     sql = "SELECT node_id, node_type FROM Node ORDER BY node_id"
-    table = execute(columntable, db, sql)
+    table = query_columns(db, sql, @NamedTuple{node_id::Int32, node_type::String})
     # convert from String to NodeType
     node_type = NodeType.T.(table.node_type)
     return (; table.node_id, node_type)
@@ -1911,7 +1907,7 @@ function get_node_ids(db::DB)::Vector{NodeID}
     nt = get_node_ids_types(db)
     node_ids = Vector{NodeID}(undef, length(nt.node_id))
     count = counter(NodeType.T)
-    for (i, (; node_id, node_type)) in enumerate(Tables.rows(nt))
+    for (i, (; node_id, node_type)) in enumerate(StructVector(nt))
         index = inc!(count, node_type)
         node_ids[i] = NodeID(node_type, node_id, index)
     end
@@ -1940,15 +1936,12 @@ end
 
 function get_cyclic_time(db::DB, node_type::String)::Vector{Bool}
     sql = "SELECT cyclic_time FROM Node WHERE node_type = $(esc_id(node_type)) ORDER BY node_id"
-    return only(execute(columntable, db, sql))
+    return query_columns(db, sql, @NamedTuple{cyclic_time::Bool}).cyclic_time
 end
 
 function exists(db::DB, tablename::String)
-    query = execute(
-        db,
-        "SELECT name FROM sqlite_master WHERE type='table' AND name=$(esc_id(tablename)) COLLATE NOCASE",
-    )
-    return !isempty(query)
+    sql = "SELECT name FROM sqlite_master WHERE type='table' AND name=$(esc_id(tablename)) COLLATE NOCASE"
+    return !isempty(query_columns(db, sql, @NamedTuple{name::String}).name)
 end
 
 """
@@ -1976,25 +1969,24 @@ DateTime. This is used to convert between the solver's inner float time, and the
 """
 datetime_since(t::Real, t0::DateTime)::DateTime = t0 + Millisecond(round(1000 * t))
 
+# Defined before the generated functions that use it
+const nc_dim_names =
+    ("time", "node_id", "link_id", "subgrid_id", "substance", "demand_priority")
+
 """
-    load_netcdf(table_path::String, table_type::Type{<:Table})::OrderedDict{Symbol, AbstractVector}
+    load_netcdf(table_path::String, table_type::Type{<:Table})::NamedTuple
 
 Load a table from a NetCDF file. The data is stored as multi-dimensional arrays, and
 converted to a table for compatibility with the rest of the internals.
 """
-function load_netcdf(
-        table_path::String,
-        table_type::Type{<:Table},
-    )::OrderedDict{Symbol, AbstractVector}
-    table = OrderedDict{Symbol, AbstractVector}()
-    NCDataset(table_path) do ds
-        names = fieldnames(table_type)
-        data_varnames = filter(x -> !(String(x) in nc_dim_names), names)
-
+function load_netcdf(table_path::String, table_type::Type{T})::columns_type(T) where {T <: Table}
+    return NC.Dataset(table_path) do ds
         # Each table has a node_id dimension, some have priority and time dimensions
-        node_id = timeseries_ids(ds)
-        time_var = findcoord(ds, is_time_coord)
-        priority_var = findcoord(ds, is_priority_coord)
+        node_id = NC.read_ids(ds, findcoord(ds, is_node_id_coord))
+        time_name = findcoord(ds, is_time_coord)
+        priority_name = findcoord(ds, is_priority_coord)
+        time = isempty(time_name) ? nothing : NC.read_time(ds, time_name)
+        priority = isempty(priority_name) ? nothing : NC.read_var(ds, priority_name, Int32)
 
         # Get the size of each dimension.
         # We treat missing dimensions as having length 1 for simplicity,
@@ -2002,8 +1994,9 @@ function load_netcdf(
         # This also helps us when e.g. Delft-FEWS adds a time dimension of length 1
         # to variables that do not need it, like Basin / state.
         n_node_id = length(node_id)
-        n_time = time_var === nothing ? 1 : length(time_var)
-        n_priority = priority_var === nothing ? 1 : length(priority_var)
+        n_time = time === nothing ? 1 : length(time)
+        n_priority = priority === nothing ? 1 : length(priority)
+        dims = NetCDFTableDims(n_node_id, n_time, n_priority, T === Schema.UserDemand.Time)
 
         # `repeat` allows us to expand dimensions to make it fit the tabular format.
         # The `inner` keyword is used to add a dimension before the array.
@@ -2011,220 +2004,407 @@ function load_netcdf(
         # Use nested repeat calls to add multiple dimensions on one side.
 
         # repeat (stations) to (stations, priority, time)
-        table[:node_id] = repeat(repeat(node_id; outer = n_priority); outer = n_time)
+        node_id = repeat(repeat(node_id; outer = n_priority); outer = n_time)
+        # repeat (priority) to (stations, priority, time)
+        priority = priority === nothing ? nothing :
+            repeat(priority; inner = n_node_id, outer = n_time)
+        # repeat (time) to (stations, priority, time)
+        time = time === nothing ? nothing :
+            repeat(repeat(time; inner = n_priority); inner = n_node_id)
 
-        if priority_var !== nothing
-            priority = Int32.(Array(priority_var))
-            # repeat (priority) to (stations, priority, time)
-            table[:demand_priority] = repeat(priority; inner = n_node_id, outer = n_time)
-        end
-
-        if time_var !== nothing
-            time = DateTime.(Array(time_var))
-            # repeat (time) to (stations, priority, time)
-            table[:time] = repeat(repeat(time; inner = n_priority); inner = n_node_id)
-        end
-
-        for data_varname in data_varnames
-            var = ds[data_varname]
-            # For most tables, each data variable has all dimensions of the table.
-            # For "UserDemand / time", variables are either:
-            # - (stations, priority, time) for demand
-            # - (stations, time) for return_factor
-            # - (stations) for min_level
-            # So we have to repeat the 1D and 2D variables to fit the full table.
-            # Note that Delft-FEWS also adds time to min_level.
-            if table_type == Ribasim.Schema.UserDemand.Time
-                if ndims(var) == 1
-                    # repeat (stations) to (stations, priority, time)
-                    arr = Array(var)
-                    data = repeat(repeat(arr; outer = n_priority); outer = n_time)
-                elseif ndims(var) == 2
-                    # repeat (stations, time) to (stations, priority, time)
-                    arr = vec(Array(var))
-                    data = repeat(arr; outer = n_priority)
-                else
-                    data = Array(var)
-                end
-            else
-                data = Array(var)
-            end
-            table[data_varname] = vec(data)
-        end
-
-        # Drop rows where all data variables are missing (happens with NetCDF dense grids)
-        n = n_node_id * n_time * n_priority
-        mask = trues(n)
-        for i in 1:n
-            if all(name -> ismissing(table[name][i]), data_varnames)
-                mask[i] = false
-            end
-        end
-        for (name, col) in pairs(table)
-            table[name] = col[mask]
-        end
+        netcdf_columns(ds, T, dims, node_id, time, priority)
     end
-    # check lengths, since OrderedDict does not validate them
-    n = length(first(values(table)))
-    for (name, col) in pairs(table)
-        if length(col) != n
-            error("Inconsistent lengths in NetCDF file $table_path for variable $name")
-        end
-    end
-
-    return table
 end
 
-function check_attrib(var::CFVariable, attname::String, attval::String)::Bool
-    if attname in NCDatasets.attribnames(var)
-        return NCDatasets.attrib(var, attname) == attval
-    end
-    return false
-end
-
-function is_time_coord(var::CFVariable)::Bool
-    check_attrib(var, "axis", "T") && return true
-    check_attrib(var, "standard_name", "time") && return true
-    NCDatasets.name(var) == "time" && return true
-    return false
-end
-
-function is_node_id_coord(var::CFVariable)::Bool
-    check_attrib(var, "cf_role", "timeseries_id") && return true
-    NCDatasets.name(var) == "node_id" && return true
-    return false
-end
-
-function is_priority_coord(var::CFVariable)::Bool
-    check_attrib(var, "standard_name", "realization") && return true
-    NCDatasets.name(var) == "realization" && return true
-    return false
-end
-
-"Find coordinate variable based on some condition"
-function findcoord(ds::NCDataset, f::Function)::Union{CFVariable, Nothing}
-    # more generic NCDatasets.varbyattrib function
-    for coord_var_name in keys(ds)
-        coord_var = ds[coord_var_name]
-        f(coord_var) && return coord_var
-    end
-    return nothing
+struct NetCDFTableDims
+    n_node_id::Int
+    n_time::Int
+    n_priority::Int
+    # Whether data variables can have fewer dimensions than the table
+    is_user_demand_time::Bool
 end
 
 """
-Get the variable by name or by cf_role attribute
-Delft-FEWS uses `char station_id(stations, char_leng_id)`
+Collect the columns of table `T` from the NetCDF file, and drop rows where all data
+variables are missing, which happens with NetCDF dense grids.
 """
-function timeseries_ids(ds::NCDataset)::Vector{Int32}
-    id_var = findcoord(ds, is_node_id_coord)
-
-    # Support NetCDF3 Char Matrix or anything that can convert to Vector{Int32}
-    id_arr = Array(id_var)
-    if eltype(id_arr) == Char && ndims(id_arr) == 2
-        # strip nulls
-        # assumes first dimension is the character length
-        n_char, n_id = size(id_arr)
-        id_vec = Vector{Int32}(undef, n_id)
-        for i in 1:n_id
-            for c in 1:n_char
-                if id_arr[c, i] == '\0'
-                    str = String(id_arr[1:(c - 1), i])
-                    id_vec[i] = parse(Int32, str)
-                    break
-                elseif c == n_char
-                    str = String(id_arr[:, i])
-                    id_vec[i] = parse(Int32, str)
-                end
-            end
+@generated function netcdf_columns(
+        ds::NC.Dataset,
+        ::Type{T},
+        dims::NetCDFTableDims,
+        node_id::Vector{Int32},
+        time::Union{Vector{DateTime}, Nothing},
+        priority::Union{Vector{Int32}, Nothing},
+    ) where {T <: Table}
+    names = fieldnames(T)
+    types = fieldtypes(T)
+    columns = [Symbol(:column_, i) for i in eachindex(names)]
+    data_columns = Symbol[]
+    body = Expr[]
+    # Data variables are read with missing values, which are converted to the field type
+    # after dropping rows without data
+    results = Any[:($c[mask]) for c in columns]
+    for (i, (name, type)) in enumerate(zip(names, types))
+        key = String(name)
+        expr = if name === :node_id
+            :(convert($(Vector{type}), node_id))
+        elseif name === :time
+            :(coordinate_column($type, time, n, $key))
+        elseif name === :demand_priority
+            :(coordinate_column($type, priority, n, $key))
+        elseif key in nc_dim_names
+            :(coordinate_column($type, nothing, n, $key))
+        else
+            push!(data_columns, columns[i])
+            results[i] = :(typed_column($type, $(columns[i])[mask], $key, ds.path))
+            :(data_column(ds, $key, $(Union{Missing, nonmissingtype(type)}), dims))
         end
-        return id_vec
+        push!(body, :($(columns[i]) = $expr))
+    end
+    return quote
+        n = length(node_id)
+        $(body...)
+        mask = nonmissing_rows(n, ($(data_columns...),))
+        return NamedTuple{$names}(($(results...),))
+    end
+end
+
+"Convert a NetCDF column to the field type, which may not allow missing values."
+function typed_column(::Type{T}, column::Vector, name::String, path::String)::Vector{T} where {T}
+    return if Missing <: T
+        column
     else
-        return id_arr
+        T[ismissing(x) ? error("Missing values found in `$name` in `$path`.") : x for x in column]
     end
 end
 
+"Whether not all of the data columns are missing, per row."
+function nonmissing_rows(n::Int, data::Tuple)::BitVector
+    return BitVector(any(column -> !ismissing(column[i]), data) for i in 1:n)
+end
+
+function coordinate_column(
+        ::Type{T},
+        coordinate::Union{Vector, Nothing},
+        n::Int,
+        name::String,
+    )::Vector{T} where {T}
+    return if coordinate !== nothing
+        convert(Vector{T}, coordinate)
+    elseif Missing <: T
+        fill(missing, n)
+    else
+        throw(ArgumentError("Missing required coordinate $name in NetCDF file."))
+    end
+end
+
+function data_column(ds::NC.Dataset, name::String, ::Type{T}, dims::NetCDFTableDims)::Vector{T} where {T}
+    (; n_node_id, n_time, n_priority, is_user_demand_time) = dims
+    data = NC.read_var(ds, name, T)
+    n = n_node_id * n_time * n_priority
+    # For most tables, each data variable has all dimensions of the table.
+    # For "UserDemand / time", variables are either:
+    # - (stations, priority, time) for demand
+    # - (stations, time) for return_factor
+    # - (stations) for min_level
+    # So we have to repeat the 1D and 2D variables to fit the full table.
+    # Note that Delft-FEWS also adds time to min_level.
+    if is_user_demand_time
+        ndims = NC.var_ndims(ds, name)
+        if ndims == 1
+            # repeat (stations) to (stations, priority, time)
+            data = repeat(repeat(data; outer = n_priority); outer = n_time)
+        elseif ndims == 2
+            # repeat (stations, time) to (stations, priority, time)
+            data = repeat(data; outer = n_priority)
+        end
+    end
+    if length(data) != n
+        error("Inconsistent lengths in NetCDF file $(ds.path) for variable $name")
+    end
+    return data
+end
+
+function check_attrib(ds::NC.Dataset, varname::String, attname::String, attval::String)::Bool
+    return NC.attribute_string(ds, varname, attname) == attval
+end
+
+function is_time_coord(ds::NC.Dataset, varname::String)::Bool
+    check_attrib(ds, varname, "axis", "T") && return true
+    check_attrib(ds, varname, "standard_name", "time") && return true
+    varname == "time" && return true
+    return false
+end
+
+function is_node_id_coord(ds::NC.Dataset, varname::String)::Bool
+    check_attrib(ds, varname, "cf_role", "timeseries_id") && return true
+    varname == "node_id" && return true
+    return false
+end
+
+function is_priority_coord(ds::NC.Dataset, varname::String)::Bool
+    check_attrib(ds, varname, "standard_name", "realization") && return true
+    varname == "realization" && return true
+    return false
+end
+
+"Find the name of a coordinate variable based on some condition, empty if not found."
+function findcoord(ds::NC.Dataset, f::F)::String where {F}
+    for varname in NC.varnames(ds)
+        f(ds, varname) && return varname
+    end
+    return ""
+end
+
 """
-    load_data(db::DB, config::Config, nodetype::Symbol, kind::Symbol)::Union{NamedTuple, Nothing}
+    load_data(db::DB, config::Config, table_type::Type{<:Table})::Union{NamedTuple, Nothing}
 
 Load data from NetCDF files if available, otherwise the database.
-Returns either a `NamedTuple` of Vectors or `nothing` if the data is not present.
+Returns either a `NamedTuple` of typed column Vectors or `nothing` if the data is not present.
 """
 function load_data(
         db::DB,
         config::Config,
-        table_type::Type{<:Table},
-    )::Union{NamedTuple, Nothing}
-    toml = getfield(config, :toml)
-    section_name = snake_case(node_type(table_type))
-    section = getproperty(toml, section_name)
-    kind = table_name(table_type)
+        table_type::Type{T},
+    )::Union{columns_type(T), Nothing} where {T <: Table}
     sql_name = sql_table_name(table_type)
-
-    path = hasproperty(section, kind) ? getproperty(section, kind) : nothing
+    path = table_path(getfield(config, :toml), table_type)
 
     return if !isnothing(path)
         # the TOML specifies a file outside the database
-        path = getproperty(section, kind)
-        table_path = input_path(config, path)
-        # check suffix and read with NCDatasets
-        ext = lowercase(splitext(table_path)[2])
+        file_path = input_path(config, path)
+        # check suffix and read with NetCDF
+        ext = lowercase(splitext(file_path)[2])
         if ext == ".nc"
-            dict = load_netcdf(table_path, table_type)
-            return typed_columntable(dict, table_type)
+            load_netcdf(file_path, table_type)
         else
-            error("Unsupported file format: $table_path. Only '.nc' is supported.")
+            error("Unsupported file format: $file_path. Only '.nc' is supported.")
         end
+    elseif exists(db, sql_name)
+        query_columns(
+            db,
+            "select * from $(esc_id(sql_name))",
+            table_type;
+            starttime = config.starttime,
+        )
     else
-        if exists(db, sql_name)
-            query = execute(prepare(db, "select * from $(esc_id(sql_name))"), (), strict = true)
-            dict = OrderedDict{Symbol, AbstractVector}(pairs(columntable(query)))
-            parse_time_strings!(dict, config.starttime)
-            return typed_columntable(dict, table_type)
-        else
-            return nothing
+        nothing
+    end
+end
+
+"""
+The path of a table outside of the database, given in its TOML section, e.g. the `time` key
+in the `[basin]` section for `Schema.Basin.Time`. The section and key are found at compile
+time.
+"""
+@generated function table_path(toml::Toml, ::Type{T})::Union{String, Nothing} where {T <: Table}
+    section = snake_case(node_type(T))
+    kind = table_name(T)
+    return if hasfield(fieldtype(Toml, section), kind)
+        :(getfield(getfield(toml, $(QuoteNode(section))), $(QuoteNode(kind))))
+    else
+        :(nothing)
+    end
+end
+
+"The NamedTuple type with a column Vector for each field of `R`."
+@generated function columns_type(::Type{R}) where {R}
+    names = fieldnames(R)
+    types = Tuple{(Vector{T} for T in fieldtypes(R))...}
+    return :(NamedTuple{$names, $types})
+end
+
+"""
+    query_columns(db::DB, sql::String, ::Type{R}; starttime)::columns_type(R)
+
+Execute `sql` and collect the result in a NamedTuple of typed column Vectors, with the field
+names and types of `R`, a [`Table`](@ref) or NamedTuple type. Result columns are matched by
+name, and other result columns are ignored. Columns that are not in the result are filled
+with `missing`, if the type allows it. Times are parsed from SQLite time strings, and empty
+times are the `starttime`. This uses the SQLite C API to be type stable.
+"""
+function query_columns(
+        db::DB,
+        sql::String,
+        ::Type{R};
+        starttime::DateTime = DateTime(0),
+    )::columns_type(R) where {R}
+    stmt = SQLite.Stmt(db, sql; register = false)
+    try
+        return read_columns(db, SQLite._get_stmt_handle(stmt), R, starttime, sql)
+    finally
+        SQLite._close_stmt!(stmt)
+    end
+end
+
+@generated function read_columns(
+        db::DB,
+        handle::SQLite.StmtHandle,
+        ::Type{R},
+        starttime::DateTime,
+        sql::String,
+    ) where {R}
+    names = fieldnames(R)
+    types = fieldtypes(R)
+    columns = [Symbol(:column_, i) for i in eachindex(names)]
+    indices = [Symbol(:index_, i) for i in eachindex(names)]
+    init = [:($(columns[i]) = $(Vector{types[i]})()) for i in eachindex(names)]
+    find = [
+        :(
+            $(indices[i]) = result_column_index(
+                result_names, $(String(names[i])), $(Missing <: types[i]), sql,
+            )
+        ) for i in eachindex(names)
+    ]
+    push = [
+        :(push!($(columns[i]), column_value($(types[i]), handle, $(indices[i]), starttime)))
+            for i in eachindex(names)
+    ]
+    return quote
+        result_names = result_column_names(handle)
+        $(init...)
+        $(find...)
+        while true
+            rc = SQLite.C.sqlite3_step(handle)
+            if rc == SQLite.C.SQLITE_DONE
+                break
+            elseif rc != SQLite.C.SQLITE_ROW
+                throw(SQLite.sqliteexception(db.handle))
+            end
+            $(push...)
         end
+        return NamedTuple{$names}(($(columns...),))
     end
 end
 
-"Parse SQLite time strings to DateTime in-place."
-function parse_time_strings!(dict::OrderedDict{Symbol, AbstractVector}, starttime::DateTime)::Nothing
-    if haskey(dict, :time)
-        df = dateformat"yyyy-mm-dd HH:MM:SS.s"
-        dict[:time] = [
-            ismissing(val) ? DateTime(starttime) :
-                DateTime(replace(val, r"(\.\d{3})\d+$" => s"\1"), df) for val in dict[:time]
-        ]
+function result_column_names(handle::SQLite.StmtHandle)::Vector{String}
+    n = Int(SQLite.C.sqlite3_column_count(handle))
+    return String[unsafe_string(SQLite.C.sqlite3_column_name(handle, i - 1)) for i in 1:n]
+end
+
+"The 1-based index of a result column, or 0 if it is absent but may be missing."
+function result_column_index(
+        result_names::Vector{String},
+        name::String,
+        allow_missing::Bool,
+        sql::String,
+    )::Int
+    i = findfirst(==(name), result_names)
+    return if !isnothing(i)
+        i
+    elseif allow_missing
+        0
+    else
+        throw(ArgumentError("Missing required column $name for query: $sql"))
     end
-    return nothing
+end
+
+is_null(handle::SQLite.StmtHandle, i::Int)::Bool =
+    SQLite.C.sqlite3_column_type(handle, i - 1) == SQLite.C.SQLITE_NULL
+
+function null_error(i::Int)
+    throw(ArgumentError("Unexpected empty value in column $i."))
+end
+
+function column_value(
+        ::Type{S},
+        handle::SQLite.StmtHandle,
+        i::Int,
+        starttime::DateTime,
+    )::S where {S >: Missing}
+    T = nonmissingtype(S)
+    return if i == 0
+        missing
+    elseif T === DateTime
+        # Empty times are the starttime, also when they may be missing
+        column_value(T, handle, i, starttime)
+    elseif is_null(handle, i)
+        missing
+    else
+        column_value(T, handle, i, starttime)
+    end
+end
+
+function column_value(
+        ::Type{T},
+        handle::SQLite.StmtHandle,
+        i::Int,
+        starttime::DateTime,
+    )::T where {T <: Union{Int32, Int64}}
+    is_null(handle, i) && null_error(i)
+    return T(SQLite.C.sqlite3_column_int64(handle, i - 1))
+end
+
+function column_value(
+        ::Type{Bool},
+        handle::SQLite.StmtHandle,
+        i::Int,
+        starttime::DateTime,
+    )::Bool
+    is_null(handle, i) && null_error(i)
+    return Bool(SQLite.C.sqlite3_column_int64(handle, i - 1))
+end
+
+function column_value(
+        ::Type{Float64},
+        handle::SQLite.StmtHandle,
+        i::Int,
+        starttime::DateTime,
+    )::Float64
+    is_null(handle, i) && null_error(i)
+    return SQLite.C.sqlite3_column_double(handle, i - 1)
+end
+
+function column_value(
+        ::Type{String},
+        handle::SQLite.StmtHandle,
+        i::Int,
+        starttime::DateTime,
+    )::String
+    is_null(handle, i) && null_error(i)
+    return unsafe_string(SQLite.C.sqlite3_column_text(handle, i - 1))
+end
+
+function column_value(
+        ::Type{DateTime},
+        handle::SQLite.StmtHandle,
+        i::Int,
+        starttime::DateTime,
+    )::DateTime
+    is_null(handle, i) && return starttime
+    return parse_sqlite_time(unsafe_string(SQLite.C.sqlite3_column_text(handle, i - 1)))
 end
 
 """
-    typed_columntable(table, ::Type{T})::NamedTuple
-
-Convert a dict-like column table to a typed `NamedTuple` matching the field types of `T`.
-Replaces columns whose element type doesn't match the schema in-place before constructing
-the final NamedTuple.
+Parse an SQLite time string like `yyyy-mm-dd HH:MM:SS.sss`, the time and the fractional
+seconds are optional. Digits beyond milliseconds are ignored.
 """
-function typed_columntable(table, ::Type{T})::NamedTuple where {T <: Table}
-    names_T = fieldnames(T)
-    types_T = fieldtypes(T)
-    n_row = isempty(table) ? 0 : length(first(values(table)))
-    for (name, target_type) in zip(names_T, types_T)
-        if !haskey(table, name)
-            if Missing <: target_type
-                table[name] = fill(missing, n_row)
-            else
-                throw(ArgumentError("Missing required column $(name) for table $(T)."))
+function parse_sqlite_time(str::String)::DateTime
+    date_time = split(str, (' ', 'T'); limit = 2, keepempty = false)
+    isempty(date_time) && error("Invalid time: $str")
+    ymd = split(date_time[1], '-')
+    length(ymd) == 3 || error("Invalid time: $str")
+    year = parse(Int, ymd[1])
+    month = parse(Int, ymd[2])
+    day = parse(Int, ymd[3])
+    hour = minute = second = millisecond = 0
+    if length(date_time) == 2
+        hms = split(date_time[2], ':')
+        length(hms) in (2, 3) || error("Invalid time: $str")
+        hour = parse(Int, hms[1])
+        minute = parse(Int, hms[2])
+        if length(hms) == 3
+            sec_frac = split(hms[3], '.'; limit = 2)
+            second = parse(Int, sec_frac[1])
+            if length(sec_frac) == 2
+                # Milliseconds from the first three digits
+                for (i, c) in enumerate(first(sec_frac[2], 3))
+                    millisecond += parse(Int, c) * 10^(3 - i)
+                end
             end
         end
-        col = table[name]
-        if eltype(col) !== target_type
-            target = Vector{target_type}(undef, length(col))
-            target .= col
-            table[name] = target
-        end
     end
-    return NamedTuple{names_T}(ntuple(i -> table[names_T[i]], length(names_T)))
+    return DateTime(year, month, day, hour, minute, second, millisecond)
 end
 
 """
@@ -2292,20 +2472,26 @@ end
 function get_substances(db::DB, config::Config)::OrderedSet{Symbol}
     # Hardcoded tracers
     substances = OrderedSet{Symbol}(Symbol.(instances(Substance.T)))
-    for table in [
-            Schema.Basin.ConcentrationState,
-            Schema.Basin.Concentration,
-            Schema.Basin.MassLoad,
-            Schema.FlowBoundary.Concentration,
-            Schema.LevelBoundary.Concentration,
-            Schema.UserDemand.Concentration,
-        ]
-        data = load_structvector(db, config, table)
-        for row in data
-            push!(substances, Symbol(row.substance))
-        end
-    end
+    # Explicit calls, to specialize on each table type
+    add_substances!(substances, db, config, Schema.Basin.ConcentrationState)
+    add_substances!(substances, db, config, Schema.Basin.Concentration)
+    add_substances!(substances, db, config, Schema.Basin.MassLoad)
+    add_substances!(substances, db, config, Schema.FlowBoundary.Concentration)
+    add_substances!(substances, db, config, Schema.LevelBoundary.Concentration)
+    add_substances!(substances, db, config, Schema.UserDemand.Concentration)
     return substances
+end
+
+function add_substances!(
+        substances::OrderedSet{Symbol},
+        db::DB,
+        config::Config,
+        ::Type{T},
+    )::Nothing where {T <: Table}
+    for row in load_structvector(db, config, T)
+        push!(substances, Symbol(row.substance))
+    end
+    return nothing
 end
 
 "Set values in wide concentration matrix from a long input table."
@@ -2319,7 +2505,7 @@ function set_concentrations!(
     for substance in unique(concentration_data.substance)
         data_sub = filter(row -> row.substance == substance, concentration_data)
         sub_idx = find_index(Symbol(substance), substances)
-        for group in IterTools.groupby(row -> row.node_id, data_sub)
+        for group in groupby(row -> row.node_id, data_sub)
             first_row = first(group)
             value = getproperty(first_row, concentration_column)
             ismissing(value) && continue
@@ -2339,11 +2525,11 @@ function interpolate_basin_profile!(
     storage = Vector{Vector{Float64}}()
 
     node_ids = Vector{Int32}()
-    for (i, group) in enumerate(IterTools.groupby(row -> row.node_id, profiles))
+    for (i, group) in enumerate(groupby(row -> row.node_id, profiles))
         push!(node_ids, first(group).node_id)
-        group_area = getproperty.(group, :area)
-        group_level = getproperty.(group, :level)
-        group_storage = getproperty.(group, :storage)
+        group_area = [row.area for row in group]
+        group_level = [row.level for row in group]
+        group_storage = [row.storage for row in group]
 
         # If there is no storage as input, we integrate A(h)
         if all(ismissing, group_storage)
@@ -2360,10 +2546,11 @@ function interpolate_basin_profile!(
 
         for j in 1:(length(dS_dh) - 1)
             if dS_dh[j + 1] < 0
+                # Built in parts, since long string interpolations do not specialize
+                step_from = "(h=$(group_level[j]), S=$(group_storage[j]))"
+                step_to = "(h=$(group_level[j + 1]), S=$(group_storage[j + 1]))"
                 error(
-                    (
-                        "Invalid profile for $(basin.node_id[i]). The step from (h=$(group_level[j]), S=$(group_storage[j])) to (h=$(group_level[j + 1]), S=$(group_storage[j + 1])) implies a decreasing area compared to lower points in the profile, which is not allowed."
-                    ),
+                    "Invalid profile for $(basin.node_id[i]). The step from $step_from to $step_to implies a decreasing area compared to lower points in the profile, which is not allowed.",
                 )
             end
         end
@@ -2388,7 +2575,7 @@ function interpolate_basin_profile!(
             )
         catch e
             error(
-                "Failed to construct a storage to level interpolation for $(basin.node_id[i]): $(sprint(showerror, e))",
+                "Failed to construct a storage to level interpolation for $(basin.node_id[i]): $(error_message(e))",
             )
         end
 

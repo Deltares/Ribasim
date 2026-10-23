@@ -96,10 +96,17 @@ function config.snake_case(nt::NodeType.T)::Symbol
     return out
 end
 
-# Support creating a NodeType enum instance from a symbol or string
-function NodeType.T(s::Symbol)::NodeType.T
-    return getfield(NodeType, s)
+"Get the enum instance by name, `Symbol(x)` gives the name of an instance."
+function parse_enum(::Type{E}, name::Union{Symbol, AbstractString})::E where {E <: Enum}
+    sym = Symbol(name)
+    for x in instances(E)
+        Symbol(x) === sym && return x
+    end
+    error("Invalid $(nameof(parentmodule(E))) $name.")
 end
+
+# Support creating a NodeType enum instance from a symbol or string
+NodeType.T(s::Symbol)::NodeType.T = parse_enum(NodeType.T, s)
 
 NodeType.T(str::AbstractString) = NodeType.T(Symbol(str))
 NodeType.T(x::NodeType.T) = x
@@ -135,7 +142,7 @@ end
 
 function NodeID(node_type, value::Integer, node_ids::Vector{NodeID})::NodeID
     node_type = NodeType.T(node_type)
-    index = searchsortedfirst(node_ids, value; by = Int32)
+    index = searchsortedfirst(node_ids, value; by = Base.Fix1(convert, Int32))
     if index == lastindex(node_ids) + 1
         @error "Node ID $node_type #$value is not in the Node table."
         error("Node ID not found")
@@ -149,7 +156,7 @@ function NodeID(node_type, value::Integer, node_ids::Vector{NodeID})::NodeID
 end
 
 function NodeID(value::Integer, node_ids::Vector{NodeID})::NodeID
-    index = searchsortedfirst(node_ids, value; by = Int32)
+    index = searchsortedfirst(node_ids, value; by = Base.Fix1(convert, Int32))
     if index == lastindex(node_ids) + 1
         @error "Node ID #$value is not in the Node table."
         error("Node ID not found")
@@ -326,17 +333,17 @@ temporary_constraints: Goal programming constraints; one is added after each opt
     problem::JuMP.Model
     has_demand_priority::Vector{Bool}
     objectives::Vector{AllocationObjective} = AllocationObjective[]
-    explicit_positive_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
-    implicit_negative_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict()
-    cumulative_supplied_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict()
-    sources::OrderedDict{Int32, NodeID} = OrderedDict()
+    explicit_positive_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict{NodeID, Float64}()
+    implicit_negative_forcing_volume::OrderedDict{NodeID, Float64} = OrderedDict{NodeID, Float64}()
+    cumulative_supplied_volume::OrderedDict{Tuple{NodeID, NodeID}, Float64} = OrderedDict{Tuple{NodeID, NodeID}, Float64}()
+    sources::OrderedDict{Int32, NodeID} = OrderedDict{Int32, NodeID}()
     secondary_network_demand::OrderedDict{Tuple{NodeID, NodeID}, Vector{Float64}} =
         OrderedDict()
     flow_links_subnetwork::Vector{Tuple{NodeID, NodeID}} = Vector{Tuple{NodeID, NodeID}}()
     scaling::ScalingFactors = ScalingFactors()
-    level_demand_area_sum::OrderedDict{Int32, Float64} = OrderedDict()
-    level_demand_count::OrderedDict{Int32, Int} = OrderedDict()
-    level_demand_area_scale::OrderedDict{Int32, Float64} = OrderedDict()
+    level_demand_area_sum::OrderedDict{Int32, Float64} = OrderedDict{Int32, Float64}()
+    level_demand_count::OrderedDict{Int32, Int} = OrderedDict{Int32, Int}()
+    level_demand_area_scale::OrderedDict{Int32, Float64} = OrderedDict{Int32, Float64}()
     temporary_constraints::Vector{JuMP.ConstraintRef} = JuMP.ConstraintRef[]
 end
 
@@ -413,17 +420,17 @@ record_control: A record of all flow rates assigned to pumps and outlets by allo
 """
 @kwdef struct Allocation
     subnetwork_ids::Vector{Int32} = Int32[]
-    allocation_models::Vector{AllocationModel} = []
+    allocation_models::Vector{AllocationModel} = Vector{AllocationModel}()
     primary_network_connections::OrderedDict{Int32, Vector{Tuple{NodeID, NodeID}}} =
-        OrderedDict()
-    demand_priorities_all::Vector{Int32} = []
+        OrderedDict{Int32, Vector{Tuple{NodeID, NodeID}}}()
+    demand_priorities_all::Vector{Int32} = Vector{Int32}()
     config::Config
     time::AllocationTime = AllocationTime(config)
     current_basin_properties::CurrentBasinProperties =
         CurrentBasinProperties(; n = 0)
-    record_demand::Vector{DemandRecordDatum} = []
-    record_flow::Vector{FlowRecordDatum} = []
-    record_control::Vector{AllocationControlRecordDatum} = []
+    record_demand::Vector{DemandRecordDatum} = Vector{DemandRecordDatum}()
+    record_flow::Vector{FlowRecordDatum} = Vector{FlowRecordDatum}()
+    record_control::Vector{AllocationControlRecordDatum} = Vector{AllocationControlRecordDatum}()
 end
 
 """
@@ -517,6 +524,24 @@ In-memory storage of saved instantaneous storages and levels for writing to resu
     level::Vector{Float64}
     t::Float64
 end
+
+# Saved values can be copied by DiffEqCallbacks, these are type stable unlike the generic
+# `deepcopy`, which is needed for trimming
+Base.deepcopy(x::SavedBasinState) = SavedBasinState(copy(x.storage), copy(x.level), x.t)
+Base.deepcopy(x::SavedFlow) = SavedFlow(
+    copy(x.flow),
+    copy(x.boundary_flow),
+    copy(x.exact_vertical_forcing),
+    copy(x.inflow),
+    copy(x.outflow),
+    copy(x.concentration),
+    copy(x.storage_rate),
+    copy(x.balance_error),
+    copy(x.relative_error),
+    copy(x.flow_convergence),
+    copy(x.basin_convergence),
+    x.t,
+)
 
 abstract type AbstractParameterNode end
 
@@ -860,6 +885,17 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
 end
 
 """
+The interpolation types that the FlowBoundary flow rate can have, depending on the
+`[interpolation]` settings. A small Union, rather than a type parameter, such that the
+type of the Parameters does not depend on the TOML.
+"""
+const FlowBoundaryRate = Union{
+    Vector{ScalarConstantInterpolation},
+    Vector{ScalarLinearInterpolation},
+    Vector{ScalarBlockInterpolation},
+}
+
+"""
 node_id: node ID of the FlowBoundary node
 outflow_link: The outgoing flow link metadata
 flow_rate: flow rate (exact)
@@ -869,10 +905,10 @@ cumulative_flow_prev_saveat: `cumulative_flow` at the previous saveat
 cumulative_flow_dt: The exact cumulative flow over the latest timestep
 concentration_itp: matrix with boundary concentrations per FlowBoundary per substance
 """
-@kwdef struct FlowBoundary{I} <: AbstractParameterNode
+@kwdef struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    flow_rate::Vector{I}
+    flow_rate::FlowBoundaryRate
     flow_rate_bmi::Vector{Float64} = fill(NaN, length(node_id))
     cumulative_flow::Vector{Float64} = zeros(length(node_id))
     cumulative_flow_since_reset::Vector{Float64} = zeros(length(node_id))
@@ -987,7 +1023,7 @@ flow_demand_id: connected flow demand node if applicable
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     # Whether any time series of the node varies in time, see `update_time_dependent_cache!`
     time_varying::Vector{Bool} = fill(true, length(node_id))
-    control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} = OrderedDict()
+    control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} = OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
     control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
     allocation_controlled::Vector{Bool} = fill(false, length(node_id))
@@ -1136,7 +1172,7 @@ record: Namedtuple with discrete control information for results
     oscillation_warned::Vector{Bool} = fill(false, length(node_id))
     control_state::Vector{String} = fill("undefined_state", length(node_id))
     control_state_start::Vector{Float64} = zeros(length(node_id))
-    logic_mapping::Vector{OrderedDict{Vector{Bool}, String}}
+    logic_mapping::Vector{Dict{Vector{Bool}, String}}
     control_mappings::OrderedDict{
         NodeType.T,
         OrderedDict{Tuple{NodeID, String}, ControlStateUpdate},
@@ -1292,16 +1328,16 @@ storage_demand: The storage change each Basin needs to reach the [min, max] wind
 """
 @kwdef struct LevelDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
-    demand_priorities::Vector{Int32} = []
+    demand_priorities::Vector{Int32} = Vector{Int32}()
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
     min_level::Vector{Vector{ScalarConstantInterpolation}} =
         trivial_allocation_itp_fill(demand_priorities, node_id; val = NaN)
     max_level::Vector{Vector{ScalarConstantInterpolation}} =
         trivial_allocation_itp_fill(demand_priorities, node_id; val = NaN)
-    basins_with_demand::Vector{Vector{NodeID}} = []
-    storage_prev::OrderedDict{NodeID, Float64} = OrderedDict()
-    storage_demand::OrderedDict{NodeID, Vector{Float64}} = OrderedDict()
+    basins_with_demand::Vector{Vector{NodeID}} = Vector{Vector{NodeID}}()
+    storage_prev::OrderedDict{NodeID, Float64} = OrderedDict{NodeID, Float64}()
+    storage_demand::OrderedDict{NodeID, Vector{Float64}} = OrderedDict{NodeID, Vector{Float64}}()
 end
 
 """
@@ -1314,7 +1350,7 @@ demand: The current demand per FlowDemand node per demand priority (node_idx, de
 """
 @kwdef struct FlowDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
-    demand_priorities::Vector{Int32} = []
+    demand_priorities::Vector{Int32} = Vector{Int32}()
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
@@ -1326,29 +1362,29 @@ end
 "Subgrid linearly interpolates basin levels."
 @kwdef struct Subgrid
     # current level of each subgrid (static and dynamic) ordered by subgrid_id
-    level::Vector{Float64} = []
+    level::Vector{Float64} = Vector{Float64}()
 
     # Static part
     # Static subgrid ids
-    subgrid_id_static::Vector{Int32} = []
+    subgrid_id_static::Vector{Int32} = Vector{Int32}()
     # index into the p.current_basin_properties.current_level vector for each static subgrid_id
-    basin_id_static::Vector{NodeID} = []
+    basin_id_static::Vector{NodeID} = Vector{NodeID}()
     # index into the subgrid.level vector for each static subgrid_id
-    level_index_static::Vector{Int} = []
+    level_index_static::Vector{Int} = Vector{Int}()
     # per subgrid one relation
-    interpolations_static::Vector{ScalarLinearInterpolation} = []
+    interpolations_static::Vector{ScalarLinearInterpolation} = Vector{ScalarLinearInterpolation}()
 
     # Dynamic part
     # Dynamic subgrid ids
-    subgrid_id_time::Vector{Int32} = []
+    subgrid_id_time::Vector{Int32} = Vector{Int32}()
     # index into the p.current_basin_properties.current_level vector for each dynamic subgrid_id
-    basin_id_time::Vector{NodeID} = []
+    basin_id_time::Vector{NodeID} = Vector{NodeID}()
     # index into the subgrid.level vector for each dynamic subgrid_id
-    level_index_time::Vector{Int} = []
+    level_index_time::Vector{Int} = Vector{Int}()
     # per subgrid n relations, n being the number of timesteps for that subgrid
-    interpolations_time::Vector{ScalarLinearInterpolation} = []
+    interpolations_time::Vector{ScalarLinearInterpolation} = Vector{ScalarLinearInterpolation}()
     # per subgrid 1 lookup from t to an index in interpolations_time
-    current_interpolation_index::Vector{IndexLookup} = []
+    current_interpolation_index::Vector{IndexLookup} = Vector{IndexLookup}()
 end
 
 """
@@ -1441,7 +1477,7 @@ inline. Storing this large struct inline makes code that uses it, such as everyt
 takes the integrator, much slower to compile. The const fields keep loads as fast as for
 an immutable struct.
 """
-@kwdef mutable struct ParametersIndependent{C1}
+@kwdef mutable struct ParametersIndependent
     const starttime::DateTime
     const reltol::Float64
     const graph::ModelGraph
@@ -1451,7 +1487,7 @@ an immutable struct.
     const manning_resistance::ManningResistance
     const tabulated_rating_curve::TabulatedRatingCurve
     const level_boundary::LevelBoundary
-    const flow_boundary::FlowBoundary{C1}
+    const flow_boundary::FlowBoundary
     const pump::Pump
     const outlet::Outlet
     const terminal::Terminal
@@ -1561,8 +1597,8 @@ The collection of all parameters that are passed to the rhs (`water_balance!`) a
 
 A mutable struct with only const fields, like [`ParametersIndependent`](@ref).
 """
-@kwdef mutable struct Parameters{C, T}
-    const p_independent::ParametersIndependent{C}
+@kwdef mutable struct Parameters{T}
+    const p_independent::ParametersIndependent
     const time_dependent_cache::TimeDependentCache{T} = TimeDependentCache(p_independent)
     const current_basin_properties::CurrentBasinProperties =
         CurrentBasinProperties(; n = length(p_independent.basin))

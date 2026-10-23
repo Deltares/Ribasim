@@ -1,5 +1,31 @@
+"""
+    static_dispatch(f, value, ::Val{candidates})
+
+Call `f(Val(value))`, with static dispatch by comparing `value` to the `candidates`, unlike
+`Val(value)` for a value only known at runtime. Other values give `f(UnknownValue(value))`.
+"""
+@generated function static_dispatch(f::F, value, ::Val{candidates}) where {F, candidates}
+    body = :(f(UnknownValue(value)))
+    for candidate in reverse(candidates)
+        body = :(value === $(QuoteNode(candidate)) ? f(Val($(QuoteNode(candidate)))) : $body)
+    end
+    return body
+end
+
+"A value that `static_dispatch` does not know, printed as the value."
+struct UnknownValue{T}
+    value::T
+end
+
+Base.print(io::IO, x::UnknownValue) = print(io, x.value)
+
+const node_type_names = Tuple(node_types)
+const node_type_names_snake = Tuple(snake_case.(node_types))
+const link_types = Tuple(instances(LinkType.T))
+
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
-neighbortypes(nodetype::Symbol) = neighbortypes(Val(config.snake_case(nodetype)))
+neighbortypes(nodetype::Symbol) =
+    static_dispatch(neighbortypes, config.snake_case(nodetype), Val(node_type_names_snake))
 neighbortypes(::Val{:pump}) = OrderedSet((:basin, :terminal, :level_boundary, :junction))
 neighbortypes(::Val{:outlet}) = OrderedSet((:basin, :terminal, :level_boundary, :junction))
 neighbortypes(::Val{:user_demand}) =
@@ -73,7 +99,8 @@ end
 # Mucho
 const M = typemax(Int)
 
-n_neighbor_bounds_flow(nodetype::Symbol) = n_neighbor_bounds_flow(Val(nodetype))
+n_neighbor_bounds_flow(nodetype::Symbol) =
+    static_dispatch(n_neighbor_bounds_flow, nodetype, Val(node_type_names))
 n_neighbor_bounds_flow(::Val{:Basin}) = n_neighbor_bounds(0, M, 0, M)
 n_neighbor_bounds_flow(::Val{:LinearResistance}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:ManningResistance}) = n_neighbor_bounds(1, 1, 1, 1)
@@ -94,7 +121,8 @@ n_neighbor_bounds_flow(::Val{:Observation}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(nodetype) =
     error("'n_neighbor_bounds_flow' not defined for $nodetype.")
 
-n_neighbor_bounds_control(nodetype::Symbol) = n_neighbor_bounds_control(Val(nodetype))
+n_neighbor_bounds_control(nodetype::Symbol) =
+    static_dispatch(n_neighbor_bounds_control, nodetype, Val(node_type_names))
 n_neighbor_bounds_control(::Val{:Basin}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:LinearResistance}) = n_neighbor_bounds(0, 1, 0, 0)
 n_neighbor_bounds_control(::Val{:ManningResistance}) = n_neighbor_bounds(0, 1, 0, 0)
@@ -115,7 +143,8 @@ n_neighbor_bounds_control(::Val{:Observation}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
-n_neighbor_bounds_listen(nodetype::Symbol) = n_neighbor_bounds_listen(Val(nodetype))
+n_neighbor_bounds_listen(nodetype::Symbol) =
+    static_dispatch(n_neighbor_bounds_listen, nodetype, Val(node_type_names))
 n_neighbor_bounds_listen(::Val{:Basin}) = n_neighbor_bounds(0, 0, 0, M)
 n_neighbor_bounds_listen(::Val{:LinearResistance}) = n_neighbor_bounds(0, 0, 0, M)
 n_neighbor_bounds_listen(::Val{:ManningResistance}) = n_neighbor_bounds(0, 0, 0, M)
@@ -136,7 +165,8 @@ n_neighbor_bounds_listen(::Val{:Observation}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_listen(nodetype) =
     error("'n_neighbor_bounds_listen' not defined for $nodetype.")
 
-n_neighbor_bounds_observation(nodetype::Symbol) = n_neighbor_bounds_observation(Val(nodetype))
+n_neighbor_bounds_observation(nodetype::Symbol) =
+    static_dispatch(n_neighbor_bounds_observation, nodetype, Val(node_type_names))
 n_neighbor_bounds_observation(::Val{:Basin}) = n_neighbor_bounds(0, M, 0, 0)
 n_neighbor_bounds_observation(::Val{:LinearResistance}) = n_neighbor_bounds(0, M, 0, 0)
 n_neighbor_bounds_observation(::Val{:ManningResistance}) = n_neighbor_bounds(0, M, 0, 0)
@@ -158,7 +188,7 @@ n_neighbor_bounds_observation(nodetype) =
     error("'n_neighbor_bounds_observation' not defined for $nodetype.")
 
 n_neighbor_bounds(nodetype::Symbol, link_type::LinkType.T) =
-    n_neighbor_bounds(nodetype, Val(link_type))
+    static_dispatch(val -> n_neighbor_bounds(nodetype, val), link_type, Val(link_types))
 n_neighbor_bounds(nodetype::Symbol, ::Val{LinkType.flow}) = n_neighbor_bounds_flow(nodetype)
 n_neighbor_bounds(nodetype::Symbol, ::Val{LinkType.control}) =
     n_neighbor_bounds_control(nodetype)
@@ -166,10 +196,12 @@ n_neighbor_bounds(nodetype::Symbol, ::Val{LinkType.listen}) =
     n_neighbor_bounds_listen(nodetype)
 n_neighbor_bounds(nodetype::Symbol, ::Val{LinkType.observation}) =
     n_neighbor_bounds_observation(nodetype)
+n_neighbor_bounds(nodetype::Symbol, link_type) = error("Unknown link type $link_type.")
 n_neighbor_bounds(nodetype::Symbol, ::Val{LinkType.none}) =
     error("'n_neighbor_bounds' not defined for link type $(LinkType.none).")
 
-controllablefields(nodetype::Symbol) = controllablefields(Val(nodetype))
+controllablefields(nodetype::Symbol) =
+    static_dispatch(controllablefields, nodetype, Val(node_type_names))
 controllablefields(::Val{:LinearResistance}) = OrderedSet((:resistance,))
 controllablefields(::Val{:ManningResistance}) = OrderedSet((:manning_n,))
 controllablefields(::Val{:TabulatedRatingCurve}) = OrderedSet((:table,))
@@ -247,6 +279,12 @@ sort_key(::Type{Schema.Observation.Time}) = (:node_id, :variable, :time)
 sort_by(::StructVector{T}) where {T <: Table} =
     row -> map(k -> getproperty(row, k), sort_key(T))
 
+"The columns of the `sort_key`, as a Tuple. The key is found at compile time."
+@generated function key_columns(table::StructVector{T}) where {T <: Table}
+    columns = (:(getproperty(table, $(QuoteNode(k)))) for k in sort_key(T))
+    return :(($(columns...),))
+end
+
 """
 Whether the rows of a table must be unique by their `sort_key`.
 
@@ -261,15 +299,14 @@ unique_rows(::Type{Schema.DiscreteControl.Variable}) = false
 Sort a table in place in the required order.
 
 The parameter initialization code after this assumes the function is sorted, using e.g.
-`IterTools.groupby`.
+`groupby`.
 
 Note that Ribasim-Python also sorts tables in the required order on write.
 """
 function sorted_table!(table::StructVector{T})::StructVector{T} where {T <: Table}
-    by = sort_by(table)
     # Sort a permutation of the keys and apply it to each column, rather than sorting the
     # rows, so the sorting code is compiled per key type instead of per table type
-    perm = sortperm(map(by, LazyRows(table)))
+    perm = sortperm(collect(zip(key_columns(table)...)))
     foreachfield(column -> permute!(column, perm), table)
     return table
 end
@@ -279,13 +316,14 @@ Check that the rows of a sorted table are unique by their `sort_key`, logging ea
 """
 function valid_unique_rows(table::StructVector{T})::Bool where {T <: Table}
     unique_rows(T) || return true
-    key = sort_key(T)
-    row_key(i) = NamedTuple{key}(map(k -> getproperty(table, k)[i], key))
+    columns = key_columns(table)
+    # Compare and format per column, since a Tuple of the values can be of an abstract type
+    same_key(i, j) = all(map(column -> isequal(column[i], column[j]), columns))
     errors = false
     for i in 2:length(table)
-        if isequal(row_key(i), row_key(i - 1)) &&
-                (i == 2 || !isequal(row_key(i - 1), row_key(i - 2)))
-            @error "Duplicate rows found in $(sql_table_name(T)) for $(row_key(i))."
+        if same_key(i, i - 1) && (i == 2 || !same_key(i - 1, i - 2))
+            key = format_key(sort_key(T), map(column -> format_value(column[i]), columns))
+            @error "Duplicate rows found in $(sql_table_name(T)) for $key."
             errors = true
         end
     end
@@ -300,7 +338,7 @@ function valid_user_demand_parameters(
         table::StructVector{T},
     )::Bool where {T <: Union{Schema.UserDemand.Static, Schema.UserDemand.Time}}
     errors = false
-    for node_group in IterTools.groupby(row -> row.node_id, table)
+    for node_group in groupby(row -> row.node_id, table)
         parameters = Dict{Union{Nothing, DateTime}, Tuple{Float64, Float64}}()
         for row in node_group
             time = T <: Schema.UserDemand.Time ? row.time : nothing
@@ -354,7 +392,7 @@ function valid_nodes(db::DB)::Bool
     errors = false
 
     sql = "SELECT node_id FROM Node GROUP BY node_id HAVING COUNT(*) > 1"
-    node_ids = only(execute(columntable, db, sql))
+    node_ids = query_columns(db, sql, @NamedTuple{node_id::Int32}).node_id
     for node_id in node_ids
         errors = true
         @error "Multiple occurrences of node_id $node_id found in Node table."
@@ -364,7 +402,8 @@ function valid_nodes(db::DB)::Bool
 end
 
 function database_warning(db::DB)::Nothing
-    cols = SQLite.columns(db, "Link")
+    sql = "SELECT name FROM pragma_table_info('Link')"
+    cols = query_columns(db, sql, @NamedTuple{name::String})
     if "subnetwork_id" in cols.name
         @warn "The 'subnetwork_id' column in the 'Link' table is deprecated since ribasim v2025.1."
     end
@@ -602,18 +641,19 @@ later in the simulation.
 function valid_allocation_flow_capacity(node::Union{Outlet, Pump})::Bool
     errors = false
 
-    function check_max_flow_rate(node_id, allocation_controlled, max_flow_rate)
-        allocation_controlled || return
+    # Returns whether the max_flow_rate is invalid
+    function invalid_max_flow_rate(node_id, allocation_controlled, max_flow_rate)::Bool
+        allocation_controlled || return false
         if any(!isfinite, max_flow_rate.u)
             @error "Allocation-controlled $node_id requires a finite max_flow_rate."
-            errors = true
+            return true
         end
-        return
+        return false
     end
 
     for (node_id, allocation_controlled, max_flow_rate) in
         zip(node.node_id, node.allocation_controlled, node.max_flow_rate)
-        check_max_flow_rate(node_id, allocation_controlled, max_flow_rate)
+        errors |= invalid_max_flow_rate(node_id, allocation_controlled, max_flow_rate)
     end
 
     for ((node_id, _), control_state_update) in node.control_mapping
@@ -622,7 +662,11 @@ function valid_allocation_flow_capacity(node::Union{Outlet, Pump})::Bool
             node.allocation_controlled[node_id.idx]
         for parameter_update in control_state_update.itp_update_constant
             parameter_update.name == :max_flow_rate || continue
-            check_max_flow_rate(node_id, allocation_controlled, parameter_update.value)
+            errors |= invalid_max_flow_rate(
+                node_id,
+                allocation_controlled,
+                parameter_update.value,
+            )
         end
     end
 
@@ -666,8 +710,9 @@ function incomplete_subnetwork(
     # analyze the subnetwork without junctions
     node_ids_without_junctions = OrderedDict{Int32, OrderedSet{NodeID}}()
     for (subnetwork_id, node_ids_in_subnetwork) in node_ids
-        node_ids_without_junctions[subnetwork_id] =
-            OrderedSet(filter(x -> x.type != NodeType.Junction, node_ids_in_subnetwork))
+        node_ids_without_junctions[subnetwork_id] = OrderedSet{NodeID}(
+            x for x in node_ids_in_subnetwork if x.type != NodeType.Junction
+        )
     end
 
 
@@ -750,9 +795,17 @@ end
 
 "Check that only supported link types are declared."
 function valid_link_types(db::DB)::Bool
-    link_rows = execute(
-        db,
-        "SELECT link_id, from_node_id, to_node_id, link_type FROM Link ORDER BY link_id",
+    link_rows = StructVector(
+        query_columns(
+            db,
+            "SELECT link_id, from_node_id, to_node_id, link_type FROM Link ORDER BY link_id",
+            @NamedTuple{
+                link_id::Int32,
+                from_node_id::Int32,
+                to_node_id::Int32,
+                link_type::String,
+            },
+        ),
     )
     errors = false
 
@@ -803,32 +856,33 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
 
         if !isempty(truth_states_wrong_length)
             errors = true
-            @error "$id has $n_conditions condition(s), which is inconsistent with these truth state(s): $(convert_truth_state.(truth_states_wrong_length))."
+            @error "$id has $n_conditions condition(s), which is inconsistent with these truth state(s): $(format_vector(convert_truth_state.(truth_states_wrong_length)))."
         end
 
         # Check whether these control states are defined for the
         # control outneighbors
         for id_outneighbor in outneighbor_labels_type(graph, id, LinkType.control)
 
-            # Node object for the outneighbor node type
-            node = getfield(p, graph[id_outneighbor].type)
-
             # Get control states of the controlled node
             control_states_controlled = OrderedSet{String}()
 
             # It is known that this node type has a control mapping, otherwise
             # connectivity validation would have failed.
-            for (controlled_id, control_state) in keys(node.control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate})
-                if controlled_id == id_outneighbor
-                    push!(control_states_controlled, control_state)
+            with_node(p, graph[id_outneighbor].type) do node
+                hasfield(typeof(node), :control_mapping) || return nothing
+                for (controlled_id, control_state) in keys(node.control_mapping)
+                    if controlled_id == id_outneighbor
+                        push!(control_states_controlled, control_state)
+                    end
                 end
+                return nothing
             end
 
             undefined_control_states =
                 setdiff(control_states_discrete_control, control_states_controlled)
 
             if !isempty(undefined_control_states)
-                undefined_list = collect(undefined_control_states)
+                undefined_list = format_vector(collect(undefined_control_states))
                 @error "These control states from $id are not defined for controlled $id_outneighbor: $undefined_list."
                 errors = true
             end
@@ -858,10 +912,8 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
                             errors = true
                             @error "Negative look ahead supplied for listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id)."
                         else
-                            node = getfield(p, graph[subvariable.listen_node_id].type)
-                            interpolation =
-                                getfield(node, Symbol(subvariable.variable))[subvariable.listen_node_id.idx]
-                            if t_end + subvariable.look_ahead > interpolation.t[end]
+                            t_last = timeseries_end(p, subvariable)
+                            if t_end + subvariable.look_ahead > t_last
                                 errors = true
                                 @error "Look ahead for listen variable '$(subvariable.variable)' from listen node $(subvariable.listen_node_id) goes past timeseries end during simulation."
                             end
@@ -873,6 +925,19 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
     end
 
     return !errors
+end
+
+"The last time of the timeseries that a subvariable with a `look_ahead` listens to."
+function timeseries_end(p::ParametersIndependent, subvariable::SubVariable)::Float64
+    (; listen_node_id, variable) = subvariable
+    (; idx) = listen_node_id
+    return if listen_node_id.type == NodeType.FlowBoundary && variable == "flow_rate"
+        last(p.flow_boundary.flow_rate[idx].t)
+    elseif listen_node_id.type == NodeType.LevelBoundary && variable == "level"
+        last(p.level_boundary.level[idx].t)
+    else
+        error("Look ahead is not supported for listen variable '$variable' from listen node $listen_node_id.")
+    end
 end
 
 function valid_demand_priorities(
@@ -924,10 +989,10 @@ function validate_consistent_basin_initialization(
     init_with_storage = Int32[]
     init_with_both = Int32[]
 
-    for group in IterTools.groupby(row -> row.node_id, profiles)
-        group_level = getproperty.(group, :level)
-        group_area = getproperty.(group, :area)
-        group_storage = getproperty.(group, :storage)
+    for group in groupby(row -> row.node_id, profiles)
+        group_level = [row.level for row in group]
+        group_area = [row.area for row in group]
+        group_storage = [row.storage for row in group]
         node_id = group[1].node_id
 
         n = length(group_level)
@@ -1002,8 +1067,8 @@ function invalid_nested_interpolation_times(
     n_itp_ = length(interpolations_max)
     @assert n_itp == n_itp_
 
-    tstops = reduce(vcat, getfield.(interpolations_min, :t))
-    append!(tstops, reduce(vcat, getfield.(interpolations_max, :t)))
+    tstops = reduce(vcat, [itp.t for itp in interpolations_min])
+    append!(tstops, reduce(vcat, [itp.t for itp in interpolations_max]))
     sort!(unique!(tstops))
 
     out = zeros(2 * n_itp)

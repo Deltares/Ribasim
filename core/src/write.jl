@@ -11,54 +11,54 @@ function write_results(model::Model)::Model
     @info "Writing results."
 
     # state
-    data = basin_state_data(model; table = false)
+    data = basin_state_data(model, Val(false))
     path = results_path(config, RESULTS_FILENAME.basin_state)
     write_netcdf(path, data; deflatelevel)
 
     # basin
-    data = basin_data(model; table = false)
+    data = basin_data(model, Val(false))
     path = results_path(config, RESULTS_FILENAME.basin)
     write_netcdf(path, data; deflatelevel)
 
     # flow
-    data = flow_data(model; table = false)
+    data = flow_data(model, Val(false))
     path = results_path(config, RESULTS_FILENAME.flow)
     write_netcdf(path, data; deflatelevel)
 
     # concentrations
     if experimental.concentration
-        data = concentration_data(model; table = false)
+        data = concentration_data(model, Val(false))
         path = results_path(config, RESULTS_FILENAME.concentration)
         write_netcdf(path, data; deflatelevel)
     end
 
     # discrete control
-    data = discrete_control_data(model; table = false)
+    data = discrete_control_data(model, Val(false))
     path = results_path(config, RESULTS_FILENAME.control)
     write_netcdf(path, data; deflatelevel)
 
     # allocation
-    data = allocation_data(model; table = false)
+    data = allocation_data(model, Val(false))
     path = results_path(config, RESULTS_FILENAME.allocation)
     write_netcdf(path, data; deflatelevel)
 
     # allocation flow
-    data = allocation_flow_data(model; table = false)
+    data = allocation_flow_data(model, Val(false))
     path = results_path(config, RESULTS_FILENAME.allocation_flow)
     write_netcdf(path, data; deflatelevel)
 
     # allocation control
-    data = allocation_control_data(model; table = false)
+    data = allocation_control_data(model, Val(false))
     path = results_path(config, RESULTS_FILENAME.allocation_control)
     write_netcdf(path, data; deflatelevel)
 
     # exported levels
-    data = subgrid_level_data(model; table = false)
+    data = subgrid_level_data(model, Val(false))
     path = results_path(config, RESULTS_FILENAME.subgrid_level)
     write_netcdf(path, data; deflatelevel)
 
     # solver stats
-    data = solver_stats_data(model; table = false)
+    data = solver_stats_data(model, Val(false))
     path = results_path(config, RESULTS_FILENAME.solver_stats)
     write_netcdf(path, data; deflatelevel)
 
@@ -82,8 +82,6 @@ const RESULTS_FILENAME = (
     allocation_infeasible_problem = "allocation_infeasible_problem.lp",
 )
 
-const nc_dim_names =
-    ("time", "node_id", "link_id", "subgrid_id", "substance", "demand_priority")
 
 "Return existing result NetCDF files that cannot be opened for read/write access."
 function locked_result_netcdf_files(config::Config)::Vector{String}
@@ -370,7 +368,10 @@ function get_storages_and_levels(
 end
 
 "Create the basin state table from the saved data"
-function basin_state_data(model::Model; table::Bool = true)
+basin_state_data(model::Model; table::Bool = true) = basin_state_data(model, Val(table))
+
+# `table` is a type parameter, since the types of the columns depend on it
+function basin_state_data(model::Model, ::Val{table}) where {table}
     (; u, p, t) = model.integrator
     (; basin) = p.p_independent
     set_current_basin_properties!(u.flow, p, t)
@@ -378,7 +379,10 @@ function basin_state_data(model::Model; table::Bool = true)
 end
 
 "Create the basin result table from the saved data"
-function basin_data(model::Model; table::Bool = true)
+basin_data(model::Model; table::Bool = true) = basin_data(model, Val(table))
+
+# `table` is a type parameter, since the types of the columns depend on it
+function basin_data(model::Model, ::Val{table}) where {table}
     (; saved) = model
 
     # The last timestep is not included; there is no period over which to compute flows.
@@ -389,17 +393,17 @@ function basin_data(model::Model; table::Bool = true)
     nbasin = length(data.node_id)
     ntsteps = length(data.time) - 1
 
-    inflow_rate = FlatVector(saved.flow.saveval, :inflow)
-    outflow_rate = FlatVector(saved.flow.saveval, :outflow)
-    drainage = FlatVector(saved.flow.saveval, :exact_vertical_forcing, :drainage)
-    precipitation = FlatVector(saved.flow.saveval, :exact_vertical_forcing, :precipitation)
-    surface_runoff = FlatVector(saved.flow.saveval, :exact_vertical_forcing, :surface_runoff)
-    evaporation = FlatVector(saved.flow.saveval, :flow, :vertical, :evaporation)
-    infiltration = FlatVector(saved.flow.saveval, :flow, :vertical, :infiltration)
-    storage_rate = FlatVector(saved.flow.saveval, :storage_rate)
-    balance_error = FlatVector(saved.flow.saveval, :balance_error)
-    relative_error = FlatVector(saved.flow.saveval, :relative_error)
-    convergence = FlatVector(saved.flow.saveval, :basin_convergence)
+    inflow_rate = FlatVector(saved.flow.saveval, s -> s.inflow)
+    outflow_rate = FlatVector(saved.flow.saveval, s -> s.outflow)
+    drainage = FlatVector(saved.flow.saveval, s -> s.exact_vertical_forcing.drainage)
+    precipitation = FlatVector(saved.flow.saveval, s -> s.exact_vertical_forcing.precipitation)
+    surface_runoff = FlatVector(saved.flow.saveval, s -> s.exact_vertical_forcing.surface_runoff)
+    evaporation = FlatVector(saved.flow.saveval, s -> s.flow.vertical.evaporation)
+    infiltration = FlatVector(saved.flow.saveval, s -> s.flow.vertical.infiltration)
+    storage_rate = FlatVector(saved.flow.saveval, s -> s.storage_rate)
+    balance_error = FlatVector(saved.flow.saveval, s -> s.balance_error)
+    relative_error = FlatVector(saved.flow.saveval, s -> s.relative_error)
+    convergence = FlatVector(saved.flow.saveval, s -> s.basin_convergence)
 
     time = data.time[begin:(end - 1)]
     node_id = Int32.(data.node_id)
@@ -433,7 +437,10 @@ function basin_data(model::Model; table::Bool = true)
     )
 end
 
-function solver_stats_data(model::Model; table::Bool = true)
+solver_stats_data(model::Model; table::Bool = true) = solver_stats_data(model, Val(table))
+
+# `table` is a type parameter, since the types of the columns depend on it
+function solver_stats_data(model::Model, ::Val{table}) where {table}
     solver_stats = StructVector(model.saved.solver_stats.saveval)
     accepted_timesteps = diff(solver_stats.accepted_timesteps)
     return (;
@@ -456,7 +463,10 @@ function solver_stats_data(model::Model; table::Bool = true)
 end
 
 "Create a flow result table from the saved data"
-function flow_data(model::Model; table::Bool = true)
+flow_data(model::Model; table::Bool = true) = flow_data(model, Val(table))
+
+# `table` is a type parameter, since the types of the columns depend on it
+function flow_data(model::Model, ::Val{table}) where {table}
     (; config, saved, integrator) = model
     (; t, saveval) = saved.flow
     (; p) = integrator
@@ -538,7 +548,10 @@ function flow_data(model::Model; table::Bool = true)
 end
 
 "Create a concentration result table from the saved data"
-function concentration_data(model::Model; table::Bool = true)
+concentration_data(model::Model; table::Bool = true) = concentration_data(model, Val(table))
+
+# `table` is a type parameter, since the types of the columns depend on it
+function concentration_data(model::Model, ::Val{table}) where {table}
     (; saved, integrator) = model
     (; p_independent) = integrator.p
     (; basin) = p_independent
@@ -551,7 +564,7 @@ function concentration_data(model::Model; table::Bool = true)
     nsubstance = length(basin.concentration_data.substances)
 
     substances = String.(basin.concentration_data.substances)
-    concentration = FlatVector(saved.flow.saveval, :concentration)
+    concentration = FlatVector(saved.flow.saveval, s -> s.concentration)
 
     time = data.time[begin:(end - 1)]
     substance = substances
@@ -569,7 +582,10 @@ function concentration_data(model::Model; table::Bool = true)
 end
 
 "Create a discrete control result table from the saved data"
-function discrete_control_data(model::Model; table::Bool = true)
+discrete_control_data(model::Model; table::Bool = true) = discrete_control_data(model, Val(table))
+
+# `table` is a type parameter, since the types of the columns depend on it
+function discrete_control_data(model::Model, ::Val{table}) where {table}
     (; config) = model
     (; record) = model.integrator.p.p_independent.discrete_control
 
@@ -578,7 +594,10 @@ function discrete_control_data(model::Model; table::Bool = true)
 end
 
 "Create an allocation result table for the saved data"
-function allocation_data(model::Model; table::Bool = true)
+allocation_data(model::Model; table::Bool = true) = allocation_data(model, Val(table))
+
+# `table` is a type parameter, since the types of the columns depend on it
+function allocation_data(model::Model, ::Val{table}) where {table}
     (; config, integrator) = model
     (; p_independent, current_basin_properties) = integrator.p
     (; current_storage) = current_basin_properties
@@ -693,7 +712,10 @@ function allocation_data(model::Model; table::Bool = true)
     end
 end
 
-function allocation_flow_data(model::Model; table::Bool = true)
+allocation_flow_data(model::Model; table::Bool = true) = allocation_flow_data(model, Val(table))
+
+# `table` is a type parameter, since the types of the columns depend on it
+function allocation_flow_data(model::Model, ::Val{table}) where {table}
     (; config) = model
     record_flow = StructVector(model.integrator.p.p_independent.allocation.record_flow)
 
@@ -762,7 +784,10 @@ function allocation_flow_data(model::Model; table::Bool = true)
     )
 end
 
-function allocation_control_data(model::Model; table::Bool = true)
+allocation_control_data(model::Model; table::Bool = true) = allocation_control_data(model, Val(table))
+
+# `table` is a type parameter, since the types of the columns depend on it
+function allocation_control_data(model::Model, ::Val{table}) where {table}
     (; integrator, config) = model
     record_control =
         StructVector(model.integrator.p.p_independent.allocation.record_control)
@@ -801,7 +826,10 @@ function allocation_control_data(model::Model; table::Bool = true)
     return (; time, node_id, node_type, flow_rate)
 end
 
-function subgrid_level_data(model::Model; table::Bool = true)
+subgrid_level_data(model::Model; table::Bool = true) = subgrid_level_data(model, Val(table))
+
+# `table` is a type parameter, since the types of the columns depend on it
+function subgrid_level_data(model::Model, ::Val{table}) where {table}
     (; config, saved, integrator) = model
     (; t, saveval) = saved.subgrid_level
     subgrid = integrator.p.p_independent.subgrid
@@ -831,24 +859,80 @@ function write_netcdf(
     mkpath(dirname(path))
     # Don't write empty files
     haskey(data, :time) && isempty(data.time) && return nothing
-    file_name = splitext(basename(path))[1]
-    attrib = merge(CF_GLOBAL_ATTRIB, OrderedDict("title" => "Ribasim results: $file_name"))
-    NCDataset(path, "c"; attrib) do ds
-        for (var_name, var_data) in pairs(data)
-            var_name = String(var_name)
-            var_dims = Tuple(nc_dims(file_name, var_name))
-            # FlatVector contents can easily be stacked to a matrix
-            # Normal Vectors should be reshape to a matrix already
-            if var_data isa FlatVector && length(var_dims) > 1
-                var_data = stack(var_data.v)
-            end
-            attrib = CF[var_name]
-            defVar(ds, var_name, var_data, var_dims; attrib, deflatelevel)
+    file_name = String(splitext(basename(path))[1])
+    NC.create(path) do ds
+        for (key, value) in CF_GLOBAL_ATTRIB
+            NC.put_attribute(ds, NC.NC_GLOBAL, key, value)
         end
+        NC.put_attribute(ds, NC.NC_GLOBAL, "title", "Ribasim results: $file_name")
+        write_netcdf_vars!(ds, file_name, keys(data), values(data), deflatelevel)
     end
     return nothing
 end
 
+# Recurse over the variables, which have different types
+write_netcdf_vars!(ds::NC.Dataset, file_name::String, ::Tuple{}, ::Tuple{}, deflatelevel::Int) =
+    nothing
+
+function write_netcdf_vars!(
+        ds::NC.Dataset,
+        file_name::String,
+        var_names::Tuple,
+        var_data::Tuple,
+        deflatelevel::Int,
+    )::Nothing
+    var_name = String(first(var_names))
+    var_dims = nc_dims(file_name, var_name)
+    data = first(var_data)
+    # FlatVector contents can easily be stacked to a matrix
+    # Normal Vectors should be reshape to a matrix already
+    if data isa FlatVector
+        data = length(var_dims) > 1 ? stack(data.v) : collect(data)
+    end
+    write_netcdf_var!(ds, var_name, data, var_dims, deflatelevel)
+    return write_netcdf_vars!(ds, file_name, Base.tail(var_names), Base.tail(var_data), deflatelevel)
+end
+
+"""
+Define and write a NetCDF variable, creating its dimensions if needed. Missing values are
+written as the fill value, DateTime as days since 1900, and Bool as Int8. The layout
+follows NCDatasets.jl.
+"""
+function write_netcdf_var!(
+        ds::NC.Dataset,
+        var_name::String,
+        data::AbstractArray{T},
+        var_dims::Vector{String},
+        deflatelevel::Int,
+    )::Nothing where {T}
+    if ndims(data) != length(var_dims)
+        error("Variable $var_name has $(ndims(data)) dimensions, expected $(format_vector(var_dims)).")
+    end
+    for (i, dim) in enumerate(var_dims)
+        if NC.dimid(ds, dim) < 0
+            NC.def_dim(ds, dim, size(data, i))
+        end
+    end
+    S = nonmissingtype(T)
+    id = NC.def_var(ds, var_name, S, var_dims; deflatelevel)
+    for (key, value) in CF[var_name]
+        NC.put_attribute(ds, id, key, value)
+    end
+    raw = if S === DateTime
+        NC.put_attribute(ds, id, "units", NC.TIME_UNITS)
+        NC.encode_time(collect(DateTime, data))
+    elseif S === Bool
+        collect(Int8, data)
+    elseif S !== T
+        fill_value = NC.fill_value(S)
+        NC.put_attribute(ds, id, "_FillValue", fill_value)
+        S[coalesce(x, fill_value) for x in data]
+    else
+        collect(S, data)
+    end
+    NC.put_var(ds, id, raw)
+    return nothing
+end
 
 function output_basin_profiles(
         all_levels::Vector{Vector{Float64}},
@@ -872,9 +956,12 @@ function output_basin_profiles(
         node_id[idx:(idx + len - 1)] .= nid
         idx += len
     end
-    data = (; node_id, level, area, storage)
     filename = joinpath(dir, "basin_profiles.csv")
     mkpath(dirname(filename))
-    writedlm(filename, Tables.rowtable(data), ',')
+    open(filename, "w") do io
+        for i in 1:n
+            println(io, node_id[i], ',', level[i], ',', area[i], ',', storage[i])
+        end
+    end
     return nothing
 end

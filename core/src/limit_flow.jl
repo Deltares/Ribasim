@@ -185,6 +185,6 @@ function min_low_user_demand_level_factor(
             level_difference_threshold,
         )
     else
-        one(T)
+        one(level_now)
     end
 end

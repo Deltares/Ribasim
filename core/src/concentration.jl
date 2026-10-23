@@ -73,11 +73,11 @@ function get_concentration_itp(
 
     for (id, cyclic_time) in zip(node_id, cyclic_times)
         data_id = filter(row -> row.node_id == id, concentration_time)
-        for group in IterTools.groupby(row -> row.substance, data_id)
+        for group in groupby(row -> row.substance, data_id)
             first_row = first(group)
             substance_idx = find_index(Symbol(first_row.substance), substances)
             concentration_itp[id.idx][substance_idx] =
-                filtered_constant_interpolation(group, :concentration, cyclic_time, config; node_id = id)
+                filtered_constant_interpolation(group, Val(:concentration), cyclic_time, config; node_id = id)
         end
     end
 

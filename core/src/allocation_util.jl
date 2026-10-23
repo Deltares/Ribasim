@@ -1,4 +1,14 @@
-is_active(allocation::Allocation) = allocation.config.experimental.allocation
+"""
+    allocation_compiled()::Bool
+
+Whether this build supports allocation. A trimmed binary without allocation support
+redefines this to return `false`, which makes the allocation code, including JuMP and HiGHS,
+unreachable, such that it is not compiled.
+"""
+allocation_compiled() = true
+
+is_active(allocation::Allocation) =
+    allocation_compiled() && allocation.config.experimental.allocation
 
 """
 Set the bounds of a variable, where infinite bounds mean no bound at all.

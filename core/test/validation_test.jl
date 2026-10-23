@@ -85,13 +85,13 @@ end
     @test logger.logs[3].message ==
         "Pump #6 must have at least 1 flow inneighbor(s) (got 0)."
 
-    @test_throws "'n_neighbor_bounds_flow' not defined for Val{:foo}()." Ribasim.n_neighbor_bounds_flow(
+    @test_throws "'n_neighbor_bounds_flow' not defined for foo." Ribasim.n_neighbor_bounds_flow(
         :foo,
     )
-    @test_throws "'n_neighbor_bounds_control' not defined for Val{:bar}()." Ribasim.n_neighbor_bounds_control(
+    @test_throws "'n_neighbor_bounds_control' not defined for bar." Ribasim.n_neighbor_bounds_control(
         :bar,
     )
-    @test_throws "'n_neighbor_bounds_listen' not defined for Val{:baz}()." Ribasim.n_neighbor_bounds_listen(
+    @test_throws "'n_neighbor_bounds_listen' not defined for baz." Ribasim.n_neighbor_bounds_listen(
         :baz,
     )
 end
@@ -698,7 +698,7 @@ end
         @test !valid_unique_rows(condition)
     end
     @test only(logger.logs).message ==
-        "Duplicate rows found in DiscreteControl / condition for (node_id = 1, compound_variable_id = 1, condition_id = 1, time = $(repr(time)))."
+        "Duplicate rows found in DiscreteControl / condition for (node_id = 1, compound_variable_id = 1, condition_id = 1, time = DateTime(\"2020-01-01T00:00:00\"))."
 
     # The same variable can be listened to multiple times
     variable = sorted_table!(

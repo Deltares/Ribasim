@@ -71,7 +71,21 @@ function parallel_foreach(
         foreach(f, chunk(1))
     finally
         # Wait for all tasks, also when a chunk throws, since the others may still be writing
-        waitall(tasks; failfast = false)
+        wait_all(tasks)
     end
+    return nothing
+end
+
+"Wait for all tasks and rethrow the first failure, like `waitall` but trim compatible."
+function wait_all(tasks::Vector{Task})::Nothing
+    exception = nothing
+    for task in tasks
+        try
+            wait(task)
+        catch e
+            exception === nothing && (exception = e)
+        end
+    end
+    exception === nothing || throw(exception)
     return nothing
 end

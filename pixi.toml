@@ -73,6 +73,10 @@ build = { "cmd" = "julia --startup-file=no --project build/build.jl", depends-on
     "generate-testmodels",
     "instantiate-julia",
 ] }
+# Trimmed executable, a proof of concept, see build/trim/README.md
+build-trim = { "cmd" = "julia --startup-file=no --project build/trim/build.jl", depends-on = [
+    "instantiate-julia",
+] }
 # Tests
 s3-download = { cmd = "python utils/s3_download.py {{ remote }} {{ local }}", args = [
     "remote",

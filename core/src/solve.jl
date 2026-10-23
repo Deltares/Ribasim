@@ -28,30 +28,36 @@ const ContinuousControlInputCVector{T} = CVector{T, Vector{T}, ContinuousControl
 Cache for evaluating the lazy Ribasim Jacobian. For more details
 see the RibasmimJacobian docstring.
 """
-@kwdef struct RibasimJacobianEvaluationCache{M <: AbstractMatrix{Float64}}
+@kwdef struct RibasimJacobianEvaluationCache{
+        M <: AbstractMatrix{Float64},
+        F1 <: Function,
+        F2 <: Function,
+    }
     # Jacobian of mapping (storage_uplink, storage_downlink, pid_integral, continuous_control_compound) -> (flow, pid_error)
     flow_input::FlowInputCVector{Float64}
     flow_input_ranges::FlowInputCVector{Int} = CVector(collect(eachindex(flow_input)), getaxes(flow_input))
     ∂flow_∂flow_input::M
-    # Closures stored as Function to keep their large types out of the integrator type
-    eval_∂flow_∂flow_input!::Function
+    # Closures are stored as Function to keep their large types out of the integrator type,
+    # unless the solver specializes fully, see `RibasimJacobianEvaluationCache(p, solver_types)`
+    eval_∂flow_∂flow_input!::F1
     # Cached flows used for continuous control input
     du_cache::RibasimStateCVector{Float64}
     # Jacobian of mapping (storage, flow) -> continuous_control_compound
     continuous_control_input::ContinuousControlInputCVector{Float64}
     continuous_control_input_ranges::ContinuousControlInputCVector{Int} = CVector(collect(eachindex(continuous_control_input)), getaxes(continuous_control_input))
     ∂continuous_control_compound_∂continuous_control_input::M
-    eval_∂continuous_control_compound_∂continuous_control_input!::Function
+    eval_∂continuous_control_compound_∂continuous_control_input!::F2
 end
 
-function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
+function RibasimJacobianEvaluationCache(p::Parameters, solver_types::SolverTypes)
     (; p_independent) = p
     (; flow_ranges, basin, pid_control, continuous_control, u_prev_saveat) = p_independent
     du = zero(u_prev_saveat)
 
-    backend = get_ad_type(solver)
+    backend = get_ad_type(solver_types)
+    sparse = is_sparse(solver_types)
     # The default NoColoringAlgorithm gives each column its own color
-    backend_jac = solver.sparse ?
+    backend_jac = sparse ?
         AutoSparse(
             backend;
             sparsity_detector = TracerSparsityDetector(),
@@ -102,7 +108,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
         flow_input,
         Constant(t),
     )
-    ∂flow_∂flow_input = solver.sparse ?
+    ∂flow_∂flow_input = sparse ?
         ∂flow_∂flow_input_prep.sparsity * 1.0 :
         zeros(length(du), length(flow_input))
 
@@ -145,7 +151,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
         Constant(t),
     )
 
-    ∂continuous_control_compound_∂continuous_control_input = solver.sparse ?
+    ∂continuous_control_compound_∂continuous_control_input = sparse ?
         ∂continuous_control_compound_∂continuous_control_input_prep.sparsity * 1.0 :
         zeros(length(continuous_control), length(continuous_control_input))
 
@@ -159,7 +165,11 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
         Constant(t),
     )
 
-    return RibasimJacobianEvaluationCache(;
+    # Type stability (e.g. for trimming) requires concrete closure types
+    full = specialization_type(solver_types) === FullSpecialize
+    F1 = full ? typeof(eval_∂flow_∂flow_input!) : Function
+    F2 = full ? typeof(eval_∂continuous_control_compound_∂continuous_control_input!) : Function
+    return RibasimJacobianEvaluationCache{typeof(∂flow_∂flow_input), F1, F2}(;
         flow_input,
         ∂flow_∂flow_input,
         eval_∂flow_∂flow_input!,
@@ -220,13 +230,19 @@ A mutable struct with only const fields, like [`ParametersIndependent`](@ref).
     # Cache for evaluating the Jacobian
     const cache::C
     const p_independent::PI
-    const n_basin = length(p_independent.basin.node_id)
-    const n_pid = length(p_independent.pid_control.node_id)
+    const n_basin::Int = length(p_independent.basin.node_id)
+    const n_pid::Int = length(p_independent.pid_control.node_id)
     # J_inner_local represents the most expensive part of the inner linear solve,
     # namely the local dependence of flows on storages
     const J_inner_local::SparseMatrixCSC{Float64, Int} = spzeros(n_basin, n_basin)
     # The area of PID controlled Basins
     const area_pid_controlled::Vector{Float64} = zeros(n_pid)
+end
+
+# The generic method returns `J` for a zero `λ`, and an `AddedOperator` otherwise. Always
+# returning the latter keeps the type of the `WOperator` stable, which contains `-I/γ + J`.
+function Base.:+(λ::UniformScaling, J::RibasimJacobian)
+    return SciMLOperators.AddedOperator(λ * SciMLOperators.IdentityOperator(size(J, 1)), J)
 end
 
 # SciMLOperators interface
@@ -788,7 +804,13 @@ function DiffEqBase.prepare_alg(
         p::Parameters,
         prob::ODEProblem,
     )
-    return if p.p_independent.reduced_implicit_solve
+    # Known at compile time from the linear solver if possible, to keep the type stable
+    reduced_implicit_solve = if alg.linsolve isa config.RibasimLinearSolve
+        is_reduced_implicit_solve(alg.linsolve)
+    else
+        p.p_independent.reduced_implicit_solve
+    end
+    return if reduced_implicit_solve
         alg
     else
         invoke(
@@ -816,11 +838,54 @@ is the node itself.
 function state_label(u::CVector, node_id::AbstractVector{NodeID}, state_idx::Int)::String
     checkbounds(Bool, node_id, state_idx) || return "state $state_idx"
     id = node_id[state_idx]
-    for (name, range) in pairs(getaxes(u))
-        state_idx in range || continue
-        return name === snake_case(id) ? string(id) : "$id ($name)"
+    # The name of the top level range component that contains the state, per component,
+    # since they have different types
+    axes = getaxes(u)
+    names = map(keys(axes), values(axes)) do name, loc
+        loc isa AbstractUnitRange && state_idx in loc ? name : nothing
     end
-    return string(id)
+    i = findfirst(!isnothing, names)
+    isnothing(i) && return string(id)
+    name = names[i]::Symbol
+    return name === snake_case(id) ? string(id) : "$id ($name)"
+end
+
+# Report solver failures as a Ribasim log message. DiffEqBase does this with a closure that
+# SciMLLogging calls without specializing on it, which is not trim compatible.
+function SciMLBase.report_integrator_failure(
+        integ::ODEIntegrator{<:Any, <:Any, <:RibasimStateCVector},
+        ::Val{reason},
+    )::Nothing where {reason}
+    message = DiffEqBase.failure_message(integ, Val(reason))
+    diagnostic = SciMLBase.log_numerical_instability(integ)
+    @warn string(message, diagnostic)
+    return nothing
+end
+
+# DiffEqBase builds these failure messages as `LazyString`, which is not trim compatible to
+# print since the parts are untyped. These are the same messages as a `String`, without the
+# step error estimate, which is not a field of the ODEIntegrator.
+function DiffEqBase.failure_message(
+        integ::ODEIntegrator{<:Any, <:Any, <:RibasimStateCVector},
+        ::Val{:dt_min_unstable},
+    )::String
+    # In parts, since long string interpolations do not specialize on all parts
+    dt = string("dt(", integ.dt, ") <= dtmin(", integ.opts.dtmin, ") at t=", integ.t)
+    return string(
+        dt,
+        ". Aborting. There is either an error in your model specification or the true solution is unstable.",
+    )
+end
+
+function DiffEqBase.failure_message(
+        integ::ODEIntegrator{<:Any, <:Any, <:RibasimStateCVector},
+        ::Val{:dt_epsilon},
+    )::String
+    dt = string("At t=", integ.t, ", dt was forced below floating point epsilon ", integ.dt)
+    return string(
+        dt,
+        ". Aborting. There is either an error in your model specification or the true solution is unstable (or it cannot be represented in Float64 precision).",
+    )
 end
 
 # Modelled after SciMLBase.log_numerical_instability(integrator::ODEIntegrator; jacobian_logging = true)
@@ -946,14 +1011,15 @@ end
 function get_diff_eval(
         p::Parameters,
         t::Number,
-        solver::Solver,
+        solver_types::SolverTypes,
         u::RibasimStateCVector,
         du::RibasimStateCVector
     )
     (; p_independent, current_basin_properties) = p
     (; storage_uplink, storage_downlink, continuous_control) = p_independent
 
-    backend = get_ad_type(solver)
+    backend = get_ad_type(solver_types)
+    sparse = is_sparse(solver_types)
 
     # In-place AD caches, only for:
     # - solver.optimized.implicit_solve = false
@@ -965,12 +1031,14 @@ function get_diff_eval(
         Cache(current_basin_properties.current_storage),
     )
 
-    if solver.reduced_implicit_solve
-        cache = RibasimJacobianEvaluationCache(p, solver)
+    if is_reduced_implicit_solve(solver_types)
+        cache = RibasimJacobianEvaluationCache(p, solver_types)
         jac_prototype = RibasimJacobian(; p.p_independent, cache)
-        jac = nothing # Jacobian is updated via SciMLOperators.update_coefficients!
+        # The Jacobian operator is updated via SciMLOperators.update_coefficients!, like
+        # SciMLBase does for `jac = nothing`, but as an `InPlace`
+        jac = InPlace(SciMLOperators.update_coefficients!)
     else
-        backend_jac = if solver.sparse
+        backend_jac = if sparse
             AutoSparse(
                 backend;
                 sparsity_detector = TracerSparsityDetector(),
@@ -997,7 +1065,7 @@ function get_diff_eval(
             ad_caches...
         )
 
-        jac_prototype = solver.sparse ? Float64.(sparsity_pattern(jac_prep)) : zeros(length(du), length(du))
+        jac_prototype = sparse ? Float64.(sparsity_pattern(jac_prep)) : zeros(length(du), length(du))
         jac(J, u, p, t) = @ad_active p jacobian!(
             water_balance!_,
             du,
@@ -1042,5 +1110,33 @@ function get_diff_eval(
         ad_caches...,
     )
 
-    return (; jac_prototype, jac, tgrad)
+    return (; jac_prototype, jac = InPlace(jac), tgrad = InPlace(tgrad))
 end
+
+"""
+A wrapper of an in-place function for SciML, which unlike a `Function` is always
+specialized on, see [`Specialized`](@ref). SciMLBase determines whether a function is
+in-place by method reflection, which is not available in a trimmed binary, so this
+states it directly.
+"""
+struct InPlace{F}
+    f::F
+end
+
+@inline (f::InPlace)(args...) = f.f(args...)
+InPlace(f::InPlace) = f
+
+SciMLBase.isinplace(
+    ::InPlace,
+    inplace_param_number,
+    fname = "f",
+    iip_preferred = true;
+    kwargs...,
+) = true
+
+# OrdinaryDiffEq deep copies the ODEFunction and the parameters if they are not aliased,
+# which Ribasim doesn't need. The generic `deepcopy` is not trim compatible, since it does
+# not specialize and iterates over the fields.
+Base.deepcopy(::ODEFunction{iip, S, <:InPlace}) where {iip, S} =
+    error("Copying the Ribasim ODEFunction is not supported.")
+Base.deepcopy(::Parameters) = error("Copying the Ribasim Parameters is not supported.")

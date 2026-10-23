@@ -16,19 +16,25 @@ which is implemented on the Model.
 A Model can be created from the path to a TOML configuration file, or a [`Config`](@ref) object.
 Both accept a `logger` to send log messages to, and the `log_io` stream it writes to, if any.
 """
-struct Model
+struct Model{I <: SciMLBase.AbstractODEIntegrator, L <: AbstractLogger}
     "The SciML integrator holding the state, parameters and solver settings."
-    integrator::SciMLBase.AbstractODEIntegrator
+    integrator::I
     "The TOML configuration that this Model was built from."
     config::Config
     "Results collected by the saving callbacks over the course of the simulation."
     saved::SavedResults
     "Logger that all Ribasim log messages of this Model are sent to."
-    logger::AbstractLogger
+    logger::L
     "Log file owned by the Model, closed in `BMI.finalize`."
     log_io::Union{IOStream, Nothing}
     function Model(integrator, config, saved, logger, log_io)
-        return new(integrator, config, saved, logger, log_io)
+        return new{typeof(integrator), typeof(logger)}(
+            integrator,
+            config,
+            saved,
+            logger,
+            log_io,
+        )
     end
 end
 
@@ -36,11 +42,25 @@ function Model(config_path::AbstractString; kwargs...)::Model
     return Model(Config(config_path); kwargs...)
 end
 
+function Model(config::Config; kwargs...)::Model
+    # The solver settings select types, the Model construction is type stable given them
+    return Model(config, SolverTypes(config.solver); kwargs...)
+end
+
+"""
+    Model(config::Config, solver_types::SolverTypes; logger, log_io)
+
+Construct a Model with the solver types fixed at compile time, see [`SolverTypes`](@ref).
+"""
 function Model(
-        config::Config;
+        config::Config,
+        solver_types::SolverTypes;
         logger::AbstractLogger = current_logger(),
         log_io::Union{IOStream, Nothing} = nothing,
     )::Model
+    if !supports_solver(solver_types, config.solver)
+        error("The solver settings in the TOML do not match the compiled solver types.")
+    end
     if !valid_config(config)
         error("Invalid configuration in TOML.")
     end
@@ -122,7 +142,7 @@ function Model(
     du0 = zero(u0)
 
     # The Solver algorithm
-    alg = algorithm(config.solver)
+    alg = algorithm(solver_types)
 
     # Run water_balance! before initializing the integrator. This is because
     # at this initialization the discrete control callback is called for the first
@@ -134,10 +154,10 @@ function Model(
     tstops = sort(unique(reduce(vcat, tstops)))
     adaptive = is_adaptive(config.solver.dt)
 
-    specialize = config.solver.specialize ? FullSpecialize : NoSpecialize
+    specialize = specialization_type(solver_types)
     RHS = ODEFunction{true, specialize}(
-        water_balance!;
-        get_diff_eval(parameters, t0, config.solver, u0, du0)...,
+        InPlace(water_balance!);
+        get_diff_eval(parameters, t0, solver_types, u0, du0)...,
     )
     prob = ODEProblem{true, specialize}(RHS, u0, timespan, parameters)
     @debug "Setup ODEProblem."
@@ -154,9 +174,7 @@ function Model(
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
     # Not all keyword arguments (e.g. `dtmax`) support `nothing`, in which case we follow
     # https://github.com/SciML/OrdinaryDiffEq.jl/blob/v6.57.0/src/solve.jl#L10
-    integrator = init(
-        prob,
-        alg;
+    solver_kwargs = (;
         progress = true,
         progress_name = "Simulating",
         progress_steps = 100,
@@ -166,7 +184,6 @@ function Model(
         isoutofdomain,
         adaptive,
         internalnorm = InternalNorm(; parameters.p_independent),
-        config.solver.dt,
         config.solver.dtmin,
         dtmax = something(config.solver.dtmax, t_end),
         config.solver.force_dtmin,
@@ -174,6 +191,14 @@ function Model(
         config.solver.reltol,
         config.solver.maxiters,
     )
+    # A `dt` of `nothing` means an automatic initial timestep. Separate calls keep the types
+    # of the keyword arguments concrete, the integrator type is the same.
+    (; dt) = config.solver
+    integrator = if isnothing(dt)
+        init(prob, alg; dt = nothing, solver_kwargs...)
+    else
+        init(prob, alg; dt, solver_kwargs...)
+    end
     @debug "Setup integrator."
 
     model = Model(integrator, config, saved, logger, log_io)
@@ -182,7 +207,7 @@ end
 
 "Get all saved times in seconds since start"
 tsaves(model::Model)::Vector{Float64} =
-    [0.0, (cvec.t for cvec in model.saved.flow.saveval)...]
+    pushfirst!([cvec.t for cvec in model.saved.flow.saveval], 0.0)
 
 "Get all saved times as a Vector{DateTime}"
 function datetimes(model::Model)::Vector{DateTime}
@@ -327,7 +352,6 @@ function solve!(model::Model)::Model
 
     comptime_s = @elapsed SciMLBase.solve!(integrator)
     check_error!(integrator)
-    comptime = canonicalize(Millisecond(round(Int, comptime_s * 1000)))
-    @info "Computation time: $comptime"
+    @info "Computation time: $(format_duration(comptime_s))"
     return model
 end
