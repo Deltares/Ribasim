@@ -50,7 +50,7 @@ open class Build(platformOs: String) : Template() {
                 scriptContent = header +
                 """
                 pixi --version
-                pixi run build
+                pixi run build-trim
                 """.trimIndent()
             }
         }

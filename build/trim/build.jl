@@ -19,7 +19,8 @@ image_recipe = ImageRecipe(;
     file = joinpath(@__DIR__, "ribasim_trim.jl"),
     project = normpath(@__DIR__, "../../core"),
     trim_mode = "safe",
-    cpu_target = get(ENV, "RIBASIM_TRIM_CPU_TARGET", "native"),
+    # JuliaC's default when not set, for binaries that run on other machines
+    cpu_target = get(ENV, "RIBASIM_TRIM_CPU_TARGET", nothing),
     verbose = true,
 )
 link_recipe = LinkRecipe(;

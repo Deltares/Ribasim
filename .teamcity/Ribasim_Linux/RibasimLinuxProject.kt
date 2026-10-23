@@ -60,7 +60,7 @@ object Linux_BuildRibasim : BuildType({
 
     name = "Build Ribasim"
 
-    artifactRules = """ribasim\build\ribasim => ribasim_linux.zip!/ribasim"""
+    artifactRules = """ribasim\build\trim\out => ribasim_trim_linux.zip!/ribasim"""
 })
 
 object Linux_TestRibasimBinaries : BuildType({
