@@ -109,11 +109,14 @@ function can_open_netcdf_result_for_overwrite(path::AbstractString)::Bool
         FILE_ATTRIBUTE_NORMAL = UInt32(0x00000080)
         INVALID_HANDLE_VALUE = Ptr{Cvoid}(-1)
 
+        # A null terminated UTF-16 path, converted here rather than by `Cwstring`, whose
+        # error message for embedded nulls is not trim compatible
+        wpath = push!(transcode(UInt16, String(path)), 0x0000)
         handle = ccall(
             (:CreateFileW, "kernel32"),
             Ptr{Cvoid},
-            (Cwstring, UInt32, UInt32, Ptr{Cvoid}, UInt32, UInt32, Ptr{Cvoid}),
-            path,
+            (Ptr{UInt16}, UInt32, UInt32, Ptr{Cvoid}, UInt32, UInt32, Ptr{Cvoid}),
+            wpath,
             GENERIC_WRITE | DELETE_ACCESS,
             FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
             C_NULL,
