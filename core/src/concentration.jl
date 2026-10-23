@@ -17,6 +17,7 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
             # source basins' concentrations.
             inflows = get_inflows(cumulative_flow_dt, user_demand, node_idx)
             total_inflow = sum(inflows)
+            return_flow = cumulative_flow_dt.horizontal.user_demand_outflow[node_idx]
 
             # Exclude the UserDemand tracer from upstream: save before, restore after,
             # so only the fresh tracer from add_substance_mass! ends up in the return flow.
@@ -27,7 +28,7 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
                     link_inflow = inflows[node_inflow_idx]
                     fraction = link_inflow / total_inflow
                     view(mass, :, to_node.idx) .+=
-                        @view(concentration_state[:, from_node.idx]) .* link_inflow .* fraction
+                        @view(concentration_state[:, from_node.idx]) .* return_flow .* fraction
                 end
             end
             mass[Substance.UserDemand, to_node.idx] = ud_mass_before
@@ -35,7 +36,7 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
             add_substance_mass!(
                 view(mass, :, to_node.idx),
                 user_demand.concentration_itp[node_idx],
-                cumulative_flow_dt.horizontal.user_demand_outflow[node_idx],
+                return_flow,
                 t,
             )
         end
