@@ -19,9 +19,36 @@ const LOGGER = Ref(TrimLogger(Info))
 """
 Standard error, written synchronously. `Core.stderr` writes via libuv, which on Windows
 queues the writes to a pipe until the event loop runs, such that they are lost when the CLI
-exits.
+exits. Failing writes are ignored, such that they cannot fail a simulation.
 """
-terminal()::Base.Filesystem.File = Base.Filesystem.File(Base.RawFD(2))
+struct Terminal <: IO end
+
+const TERMINAL = Terminal()
+
+function stderr_file()::Base.Filesystem.File
+    return @static if Sys.iswindows()
+        # Not the C runtime file descriptor 2, which is not valid in every host process
+        STD_ERROR_HANDLE = -12 % UInt32
+        handle = ccall(:GetStdHandle, stdcall, Libc.WindowsRawSocket, (UInt32,), STD_ERROR_HANDLE)
+        Base.Filesystem.File(handle)
+    else
+        Base.Filesystem.File(Base.RawFD(2))
+    end
+end
+
+function Base.unsafe_write(::Terminal, p::Ptr{UInt8}, n::UInt)::Int
+    try
+        unsafe_write(stderr_file(), p, n)
+    catch
+    end
+    return Int(n)
+end
+
+function Base.write(io::Terminal, x::UInt8)::Int
+    r = Ref(x)
+    GC.@preserve r unsafe_write(io, Base.unsafe_convert(Ptr{UInt8}, r), UInt(1))
+    return 1
+end
 const LOG_FILE = Ref{IOStream}()
 
 "Configure the logger from the TOML and open `ribasim.log` in the results directory."
@@ -130,7 +157,7 @@ function CoreLogging.handle_message(
     buffer = IOBuffer()
     write_record(buffer, level, message, kwargs)
     record = take!(buffer)
-    write(terminal(), record)
+    write(TERMINAL, record)
     if isassigned(LOG_FILE)
         write(LOG_FILE[], record)
     end
@@ -166,7 +193,7 @@ end
             logger, level, msg, _module, group, id, file, line; kwargs...,
         )
     catch
-        println(terminal(), "Error while writing a log message")
+        println(TERMINAL, "Error while writing a log message")
     end
     return nothing
 end
@@ -175,6 +202,6 @@ end
 function CoreLogging.logging_error(
         logger::TrimLogger, level, _module, group, id, filepath, line, err, real::Bool,
     )
-    println(terminal(), "Exception while generating log record: ", exception_message(err))
+    println(TERMINAL, "Exception while generating log record: ", exception_message(err))
     return nothing
 end

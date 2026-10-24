@@ -79,7 +79,7 @@ function run_model(toml_path::String)::Cint
     retcode = try
         config = Ribasim.Config(toml_path)
         init_trim_logger(config)
-        Ribasim.log_startup(config, toml_path; logo_io = terminal())
+        Ribasim.log_startup(config, toml_path; logo_io = TERMINAL)
         model = new_model(config)
         try
             Ribasim.solve!(model)
@@ -96,7 +96,7 @@ function run_model(toml_path::String)::Cint
     catch e
         message = exception_message(e)
         @error "Ribasim simulation failed" exception = message
-        println(terminal(), "Ribasim simulation failed: ", message)
+        println(TERMINAL, "Ribasim simulation failed: ", message)
         Cint(1)
     end
     close_trim_logger()
@@ -111,7 +111,7 @@ Base.@ccallable function initialize(path::Cstring)::Cint
         # Like `BMI.initialize`, with the `TrimLogger`
         config = Ribasim.Config(config_path)
         init_trim_logger(config)
-        Ribasim.log_startup(config, config_path; logo_io = terminal())
+        Ribasim.log_startup(config, config_path; logo_io = TERMINAL)
         model = new_model(config)
     end
     return 0
