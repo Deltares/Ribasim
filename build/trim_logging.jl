@@ -15,6 +15,13 @@ struct TrimLogger <: AbstractLogger
 end
 
 const LOGGER = Ref(TrimLogger(Info))
+
+"""
+Standard error, written synchronously. `Core.stderr` writes via libuv, which on Windows
+queues the writes to a pipe until the event loop runs, such that they are lost when the CLI
+exits.
+"""
+terminal()::Base.Filesystem.File = Base.Filesystem.File(Base.RawFD(2))
 const LOG_FILE = Ref{IOStream}()
 
 "Configure the logger from the TOML and open `ribasim.log` in the results directory."
@@ -120,9 +127,12 @@ function CoreLogging.handle_message(
         logger::TrimLogger, level::LogLevel, message, _module, group, id, file, line;
         kwargs...,
     )
-    write_record(Core.stderr, level, message, kwargs)
+    buffer = IOBuffer()
+    write_record(buffer, level, message, kwargs)
+    record = take!(buffer)
+    write(terminal(), record)
     if isassigned(LOG_FILE)
-        write_record(LOG_FILE[], level, message, kwargs)
+        write(LOG_FILE[], record)
     end
     return nothing
 end
@@ -156,7 +166,7 @@ end
             logger, level, msg, _module, group, id, file, line; kwargs...,
         )
     catch
-        println(Core.stderr, "Error while writing a log message")
+        println(terminal(), "Error while writing a log message")
     end
     return nothing
 end
@@ -165,6 +175,6 @@ end
 function CoreLogging.logging_error(
         logger::TrimLogger, level, _module, group, id, filepath, line, err, real::Bool,
     )
-    println(Core.stderr, "Exception while generating log record: ", exception_message(err))
+    println(terminal(), "Exception while generating log record: ", exception_message(err))
     return nothing
 end
