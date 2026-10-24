@@ -31,6 +31,10 @@ function close_trim_logger()::Nothing
     return nothing
 end
 
+# The `TrimLogger` is always used, so `with_logger` is not needed. Its implementation with
+# scoped values is not trim compatible.
+CoreLogging.with_logger(f::Function, ::TrimLogger) = f()
+
 CoreLogging.min_enabled_level(logger::TrimLogger) = logger.min_level
 CoreLogging.shouldlog(::TrimLogger, level, _module, group, id) = true
 CoreLogging.catch_exceptions(::TrimLogger) = true
@@ -76,7 +80,7 @@ function print_value(io::IO, @nospecialize(value), quote_strings::Bool = false):
     elseif value isa Ribasim.NodeID
         print(io, value::Ribasim.NodeID)
     elseif value isa Exception
-        print(io, error_message(value))
+        print(io, exception_message(value))
     else
         print(io, "<", nameof(typeof(value)), ">")
     end
@@ -116,7 +120,7 @@ function CoreLogging.handle_message(
         logger::TrimLogger, level::LogLevel, message, _module, group, id, file, line;
         kwargs...,
     )
-    write_record(Core.stdout, level, message, kwargs)
+    write_record(Core.stderr, level, message, kwargs)
     if isassigned(LOG_FILE)
         write_record(LOG_FILE[], level, message, kwargs)
     end
@@ -161,6 +165,6 @@ end
 function CoreLogging.logging_error(
         logger::TrimLogger, level, _module, group, id, filepath, line, err, real::Bool,
     )
-    println(Core.stderr, "Exception while generating log record: ", error_message(err))
+    println(Core.stderr, "Exception while generating log record: ", exception_message(err))
     return nothing
 end

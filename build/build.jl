@@ -23,11 +23,16 @@ function (@main)(_)::Cint
         ld_flags = ["-B$lld_dir"]
     end
 
+    # Trimmed, so only the code reachable from the C callable functions is compiled, and
+    # the build fails if any of it needs runtime compilation, see build/README.md
     image_recipe = ImageRecipe(;
         output_type = "--output-lib",
         file = "build/libribasim.jl",
         project = project_dir,
         add_ccallables = true,
+        trim_mode = "safe",
+        # JuliaC's default when not set, for binaries that run on other machines
+        cpu_target = get(ENV, "RIBASIM_TRIM_CPU_TARGET", nothing),
         c_sources = ["build/set_julia_threads.c"],
         verbose = true,
     )
@@ -39,9 +44,8 @@ function (@main)(_)::Cint
     )
     bundle_recipe = BundleRecipe(; link_recipe, output_dir)
 
-    withenv("RIBASIM_PRECOMPILE_WORKLOAD" => abspath("generated_testmodels")) do
-        compile_products(image_recipe)
-    end
+    # A trimmed build compiles ahead of time, so it doesn't need the precompile workload
+    compile_products(image_recipe)
     link_products(link_recipe)
     bundle_products(bundle_recipe)
 

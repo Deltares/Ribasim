@@ -1,5 +1,4 @@
-# Entry point of the trimmed Ribasim executable, see build/trim/README.md
-import Ribasim
+# Build profile and patches of the trimmed libribasim, see build/README.md
 using Ribasim: SolverTypes
 using SciMLBase: FullSpecialize
 using OrdinaryDiffEqBDF: NordsieckBDF
@@ -43,7 +42,7 @@ import OrdinaryDiffEqCore
 end
 
 "Error message for common exception types, `showerror` needs dynamic dispatch."
-function error_message(@nospecialize(e))::String
+function exception_message(@nospecialize(e))::String
     return if e isa SystemError
         string(e.prefix, ": errno ", e.errnum)
     elseif e isa Ribasim.NC.NetCDFError
@@ -51,41 +50,4 @@ function error_message(@nospecialize(e))::String
     else
         Ribasim.error_message(e)
     end
-end
-
-include("trim_logging.jl")
-
-function (@main)(args::Vector{String})::Cint
-    if length(args) != 1
-        println(Core.stdout, "Usage: ribasim_trim path/to/ribasim.toml")
-        return 1
-    end
-    toml_path = only(args)
-    # The Ribasim logger setup (TerminalLoggers, LoggingExtras) is not trim compatible, it
-    # is replaced by the `TrimLogger`, see trim_logging.jl.
-    retcode = try
-        config = Ribasim.Config(toml_path)
-        init_trim_logger(config)
-        Ribasim.log_startup(config, toml_path; logo_io = Core.stderr)
-        model = Ribasim.Model(config, SOLVER_TYPES; logger = LOGGER[])
-        try
-            Ribasim.solve!(model)
-        catch e
-            # Like `Ribasim.main`, write the results up to a crash during the simulation
-            t = Ribasim.datetime_since(model.integrator.t, config.starttime)
-            @warn "Simulation crashed or interrupted at $(Ribasim.datetime_string(t))."
-            Ribasim.log_bottlenecks(model)
-            Ribasim.write_results(model)
-            rethrow()
-        end
-        Ribasim.write_results(model)
-        Ribasim.log_finalize(model)
-    catch e
-        message = error_message(e)
-        @error "Ribasim simulation failed" exception = message
-        println(Core.stderr, "Ribasim simulation failed: ", message)
-        Cint(1)
-    end
-    close_trim_logger()
-    return retcode
 end

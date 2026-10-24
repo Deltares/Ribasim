@@ -909,7 +909,10 @@ function ConcentrationControlTimestep(
         (do_concentration && startswith(variable, "concentration.")) || return 0
         substance = Symbol(last(split(variable, ".")))
         substance_idx = find_index(substance, basin.concentration_data.substances)
-        return get!(lookup, (listen_node_id, substance_idx)) do
+        key = (listen_node_id, substance_idx)
+        # Not `get!` with a function, which is not trim compatible here
+        haskey(lookup, key) && return lookup[key]
+        lookup[key] = let
             flow_idx = [
                 # The horizontal flows come before the vertical flows
                 i for i in 1:(first(flow_ranges.vertical.evaporation) - 1) if
@@ -922,6 +925,7 @@ function ConcentrationControlTimestep(
             push!(listened, ListenedConcentration(listen_node_id, substance_idx, flow_idx, flow_boundary_idx))
             length(listened)
         end
+        return lookup[key]
     end
 
     discrete_control_terms = [

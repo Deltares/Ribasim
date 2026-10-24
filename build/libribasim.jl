@@ -1,22 +1,34 @@
+# The entry point of libribasim, which is trimmed, see build/README.md
 import BasicModelInterface as BMI
 import Ribasim
 using SciMLBase: successful_retcode
 
+include("trim_profile.jl")
+include("trim_logging.jl")
+
+"Construct a Model with the compiled solver types, logging with the `TrimLogger`."
+new_model(config::Ribasim.Config) = Ribasim.Model(config, SOLVER_TYPES; logger = LOGGER[])
+
+"The concrete type of the Model, as needed for the type of the global `model`."
+const ModelType = Base.infer_return_type(new_model, Tuple{Ribasim.Config})
+isconcretetype(ModelType) || error("The Model type is not concrete: $ModelType")
+
 # globals
-model::Union{Ribasim.Model, Nothing} = nothing
+model::Union{ModelType, Nothing} = nothing
 last_error_message::String = ""
 
 # After update and update_until we need to return an integer status code
 # indicating success (zero) or failure (nonzero)
-update_retcode(model)::Cint = !successful_retcode(model.integrator.sol)
+update_retcode(model::ModelType)::Cint = !successful_retcode(model.integrator.sol)
 
 """
     @try_c(ex)
 
 The `try_c` macro adds boilerplate around the body of a C callable function.
 Specifically, it wraps the body in a try-catch, which returns 1 on failure.
-On failure, it also prints the stacktrace.
-It makes the `model` from the global scope available, and checks if it is initialized.
+On failure, it stores the error message for `get_last_bmi_error`.
+It makes the `model` from the global scope available as a local variable of the concrete
+`ModelType`, and checks if it is initialized.
 
 # Usage
 ```
@@ -24,29 +36,19 @@ It makes the `model` from the global scope available, and checks if it is initia
     BMI.update(model)
 end
 ```
-
-This expands to
-```
-try
-    global model
-    model === nothing && error("Model not initialized")
-    BMI.update(model)
-catch
-    Base.invokelatest(Base.display_error, current_exceptions())
-    return 1
-end
-```
 """
 macro try_c(ex)
     return quote
         try
-            global model
-            model === nothing && error("Model not initialized")
-            $(esc(ex))
+            initialized_model = model
+            initialized_model === nothing && error("Model not initialized")
+            let $(esc(:model)) = initialized_model
+                $(esc(ex))
+            end
         catch e
             global last_error_message
-            last_error_message = sprint(showerror, e)
-            return 1
+            last_error_message = exception_message(e)
+            return Cint(1)
         end
     end
 end
@@ -63,10 +65,42 @@ macro try_c_uninitialized(ex)
             $(esc(ex))
         catch e
             global last_error_message
-            last_error_message = sprint(showerror, e)
-            return 1
+            last_error_message = exception_message(e)
+            return Cint(1)
         end
     end
+end
+
+"""
+Run a model like `Ribasim.main`, logging to the terminal and `results/ribasim.log`.
+Returns the exit code.
+"""
+function run_model(toml_path::String)::Cint
+    retcode = try
+        config = Ribasim.Config(toml_path)
+        init_trim_logger(config)
+        Ribasim.log_startup(config, toml_path; logo_io = Core.stderr)
+        model = new_model(config)
+        try
+            Ribasim.solve!(model)
+        catch
+            # Like `Ribasim.main`, write the results up to a crash during the simulation
+            t = Ribasim.datetime_since(model.integrator.t, config.starttime)
+            @warn "Simulation crashed or interrupted at $(Ribasim.datetime_string(t))."
+            Ribasim.log_bottlenecks(model)
+            Ribasim.write_results(model)
+            rethrow()
+        end
+        Ribasim.write_results(model)
+        Ribasim.log_finalize(model)
+    catch e
+        message = exception_message(e)
+        @error "Ribasim simulation failed" exception = message
+        println(Core.stderr, "Ribasim simulation failed: ", message)
+        Cint(1)
+    end
+    close_trim_logger()
+    return retcode
 end
 
 # all exported C callable functions
@@ -74,17 +108,23 @@ end
 Base.@ccallable function initialize(path::Cstring)::Cint
     @try_c_uninitialized begin
         config_path = unsafe_string(path)
-        model = BMI.initialize(Ribasim.Model, config_path)
+        # Like `BMI.initialize`, with the `TrimLogger`
+        config = Ribasim.Config(config_path)
+        init_trim_logger(config)
+        Ribasim.log_startup(config, config_path; logo_io = Core.stderr)
+        model = new_model(config)
     end
     return 0
 end
 
 Base.@ccallable function finalize()::Cint
     @try_c_uninitialized begin
-        if model !== nothing
-            BMI.finalize(model)
+        m = model
+        if m !== nothing
+            BMI.finalize(m)
         end
         model = nothing
+        close_trim_logger()
     end
     return 0
 end
@@ -92,15 +132,15 @@ end
 Base.@ccallable function update()::Cint
     @try_c begin
         BMI.update(model)
+        return update_retcode(model)
     end
-    return update_retcode(model)
 end
 
 Base.@ccallable function update_until(time::Cdouble)::Cint
     @try_c begin
         BMI.update_until(model, time)
+        return update_retcode(model)
     end
-    return update_retcode(model)
 end
 
 Base.@ccallable function update_subgrid_level()::Cint
@@ -201,7 +241,7 @@ Base.@ccallable function get_last_bmi_error(error_message::Cstring)::Cint
 end
 
 Base.@ccallable function execute(toml_path::Cstring)::Cint
-    Ribasim.main(unsafe_string(toml_path))
+    return run_model(unsafe_string(toml_path))
 end
 
 Base.@ccallable function get_value_ptr_double(

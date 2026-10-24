@@ -8,7 +8,6 @@ from ribasim_testmodels import (
     basic_model,
     leaky_bucket_model,
     two_basin_model,
-    user_demand_model,
 )
 
 
@@ -41,11 +40,6 @@ def basic() -> ribasim.Model:
 @pytest.fixture(scope="session")
 def leaky_bucket() -> ribasim.Model:
     return leaky_bucket_model()
-
-
-@pytest.fixture(scope="session")
-def user_demand() -> ribasim.Model:
-    return user_demand_model()
 
 
 @pytest.fixture(scope="session")

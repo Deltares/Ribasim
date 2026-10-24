@@ -73,7 +73,15 @@ object Windows_BuildRibasim : BuildType({
     templates(WindowsAgent, GithubCommitStatusIntegration, BuildWindows)
     name = "Build Ribasim"
 
-    artifactRules = """ribasim\build\trim\out => ribasim_trim_windows.zip!/ribasim"""
+    steps {
+        script {
+            name = "add Ribasim logo to .exe"
+            id = "RUNNER_2417"
+            workingDir = "ribasim"
+            scriptContent = "pixi run add-ribasim-icon"
+        }
+    }
+    artifactRules = """ribasim\build\ribasim => ribasim_windows.zip!/ribasim"""
 })
 
 object Windows_BuildMsix : BuildType({

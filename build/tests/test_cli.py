@@ -12,6 +12,16 @@ ribasim_home = Path(__file__).parents[1] / "ribasim"
 executable = ribasim_home / "bin/ribasim"
 
 
+def compiled_solver(solver: ribasim.config.Solver) -> bool:
+    """Whether the solver settings match the solver types compiled into libribasim."""
+    return (
+        solver.algorithm == "NordsieckBDF"
+        and solver.sparse
+        and solver.autodiff
+        and solver.reduced_implicit_solve
+    )
+
+
 @pytest.mark.parametrize(
     "model_constructor",
     ribasim_testmodels.constructors.values(),
@@ -23,6 +33,9 @@ def test_models(model_constructor, tmp_path):
 
     if model.experimental.allocation:
         pytest.skip("Model uses allocation which is not stable.")
+
+    if not compiled_solver(model.solver):
+        pytest.skip("Model uses solver settings that are not compiled into libribasim.")
 
     result = subprocess.run([executable, tmp_path / "ribasim.toml"])
 

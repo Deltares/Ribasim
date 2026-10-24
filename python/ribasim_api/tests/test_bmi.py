@@ -5,6 +5,8 @@ import numpy as np
 import pytest
 import tomli
 from numpy.testing import assert_array_almost_equal
+from ribasim.config import Solver
+from ribasim_testmodels import user_demand_model
 from xmipy.errors import XMIError
 
 
@@ -154,8 +156,11 @@ def test_get_value_ptr_basin_forcing(libribasim, leaky_bucket, tmp_path):
     assert_array_almost_equal(actual_drainage, expected_drainage)
 
 
-def test_get_value_ptr_allocation(libribasim, user_demand, tmp_path):
-    user_demand.write(tmp_path / "ribasim.toml")
+def test_get_value_ptr_allocation(libribasim, tmp_path):
+    # libribasim is only compiled for the default solver
+    model = user_demand_model()
+    model.solver = Solver()
+    model.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.initialize(config_file)
 
@@ -207,3 +212,12 @@ def test_execute(libribasim, basic, tmp_path):
     basic.write(tmp_path / "ribasim.toml")
     config_file = str(tmp_path / "ribasim.toml")
     libribasim.execute(config_file)
+
+
+def test_err_uninitialized(libribasim):
+    # Finalizing an uninitialized model is allowed, xmipy guards against it
+    assert libribasim.lib.finalize() == 0
+
+    error_message = "Message from Ribasim 'Model not initialized'"
+    with pytest.raises(XMIError, match=error_message):
+        libribasim.get_current_time()
