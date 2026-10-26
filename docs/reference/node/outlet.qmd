@@ -1,5 +1,6 @@
 ---
 title: "![](/assets/node-icons/Outlet.svg){height=20} Outlet"
+engine: julia
 ---
 
 The Outlet lets water flow downstream with a prescribed flow rate.
@@ -11,15 +12,12 @@ When PID controlled, the Outlet must point towards the controlled Basin in terms
 
 ## Static
 
-column                | type    | unit                  | restriction
----------             | ------- | --------------------- | -----------
-node_id               | Int32   | -                     |
-flow_rate             | Float64 | $\text{m}^3/\text{s}$ | non-negative
-min_flow_rate         | Float64 | $\text{m}^3/\text{s}$ | (optional, default 0.0)
-max_flow_rate         | Float64 | $\text{m}^3/\text{s}$ | (optional)
-min_upstream_level    | Float64 | $\text{m}$            | (optional)
-max_downstream_level  | Float64 | $\text{m}$            | (optional)
-control_state         | String  | -                     | (optional)
+```{julia}
+# | code-fold: true
+include("../../../utils/gen_docs_table.jl")
+const OUTLET_RESTRICTIONS = Dict(:flow_rate => "non-negative")
+table_from_schema(Ribasim.Schema.Outlet.Static; restrictions = OUTLET_RESTRICTIONS)
+```
 
 ## Time
 
@@ -29,15 +27,10 @@ values are block interpolated (forward fill), and outside the values are constan
 nearest time value.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
-column                | type    | unit                  | restriction
----------             | ------- | --------------------- | -----------
-node_id               | Int32   | -                     |
-time                  | DateTime| -                     |
-flow_rate             | Float64 | $\text{m}^3/\text{s}$ | non-negative
-min_flow_rate         | Float64 | $\text{m}^3/\text{s}$ | (optional, default 0.0)
-max_flow_rate         | Float64 | $\text{m}^3/\text{s}$ | (optional)
-min_upstream_level    | Float64 | $\text{m}$            | (optional)
-max_downstream_level  | Float64 | $\text{m}$            | (optional)
+```{julia}
+# | code-fold: true
+table_from_schema(Ribasim.Schema.Outlet.Time; restrictions = OUTLET_RESTRICTIONS)
+```
 
 # Equations
 

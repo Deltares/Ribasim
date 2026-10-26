@@ -52,7 +52,7 @@ quarto-render = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto rende
     "quartodoc-build",
     "generate-testmodels",
     "instantiate-julia",
-], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "yes", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
+], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "yes", "PYTHON_JULIACALL_STARTUP_FILE" = "no", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
 # Publish pre-rendered docs to ribasim.org; should normally only run on CI on main
 quarto-publish = { cmd = "quarto publish gh-pages --no-render --no-prompt --no-browser", cwd = "docs", env = { "PRE_COMMIT_ALLOW_NO_CONFIG" = "1" } }
 docs = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto preview docs/{{path}}", args = [
@@ -61,7 +61,7 @@ docs = { cmd = "PYTHON_JULIAPKG_PROJECT=$PIXI_PROJECT_ROOT quarto preview docs/{
     "quartodoc-build",
     "generate-testmodels",
     "instantiate-julia",
-], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "yes", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
+], env = { "PYTHON_JULIACALL_CHECK_BOUNDS" = "yes", "PYTHON_JULIACALL_HANDLE_SIGNALS" = "yes", "PYTHON_JULIACALL_STARTUP_FILE" = "no", "PYTHON_JULIAPKG_OFFLINE" = "yes" } }
 # Lint
 typecheck = "ty check"
 check = "prek run --all-files"
