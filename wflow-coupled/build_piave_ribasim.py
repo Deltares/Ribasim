@@ -16,6 +16,9 @@ MODEL_ROOT = Path("models/ribasim_piave")
 
 ALLOCATION_AREA = "demand_allocation_area_id"
 IRRIGATED = "demand_nonpaddy_irrigated_mask"
+# Water depth above the Basin bottom below which the irrigation UserDemands stop abstracting.
+# Chosen within the depth range of the source Basins in July, so that shortages occur.
+IRRIGATION_MIN_DEPTH = 1.3
 
 
 def main() -> None:
@@ -50,8 +53,8 @@ def main() -> None:
         root=MODEL_ROOT,
         mode="w+",
         data_libs=["artifact_data"],
-        starttime=datetime.datetime(2010, 2, 2),
-        endtime=datetime.datetime(2010, 2, 10),
+        starttime=datetime.datetime(2010, 7, 1),
+        endtime=datetime.datetime(2010, 7, 31),
     )
     model.ribamodel.ribasim_version = ribasim.__version__
     model.setup_base_network_from_dem(
@@ -74,6 +77,7 @@ def add_irrigation_demands(model: ribasim.Model, staticmaps: xr.Dataset) -> None
     an allocation area intersect when they share cells. If such an intersection has
     irrigated cells, a UserDemand is placed at their mean location, extracting from
     and returning to the Basin. The demand is a placeholder, to be set from Wflow.
+    The UserDemand stops abstracting below IRRIGATION_MIN_DEPTH above the Basin bottom.
     """
     cells = staticmaps[[ALLOCATION_AREA, IRRIGATED]].to_dataframe().reset_index()
     cells = cells[cells[ALLOCATION_AREA] > 0]
@@ -92,6 +96,7 @@ def add_irrigation_demands(model: ribasim.Model, staticmaps: xr.Dataset) -> None
         f"{cells.groupby(pair).ngroups} Basin and allocation area intersections, "
         f"{irrigated.groupby(pair).ngroups} with irrigated cells."
     )
+    basin_bottom = model.basin.profile.df.groupby("node_id")["level"].min()
     for (basin_id, area_id), group in irrigated.groupby(pair):
         demand = model.user_demand.add(
             Node(
@@ -103,7 +108,7 @@ def add_irrigation_demands(model: ribasim.Model, staticmaps: xr.Dataset) -> None
                 user_demand.Static(
                     demand=[0.0],
                     return_factor=[0.0],
-                    min_level=[-1000.0],
+                    min_level=[basin_bottom[basin_id] + IRRIGATION_MIN_DEPTH],
                     demand_priority=[1],
                 )
             ],
