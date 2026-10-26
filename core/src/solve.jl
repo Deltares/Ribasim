@@ -24,6 +24,12 @@ const continuous_control_input_components = (:storage, :flow)
 const ContinuousControlInputTuple = NamedTuple{continuous_control_input_components, Tuple{UnitRange{Int}, FlowTuple}}
 const ContinuousControlInputCVector{T} = CVector{T, Vector{T}, ContinuousControlInputTuple}
 
+struct SubJacobian{I, M <: AbstractMatrix{Float64}}
+    input::I
+    jac::M
+    jac_func::Function
+end
+
 """
 Cache for evaluating the lazy Ribasim Jacobian. For more details
 see the RibasmimJacobian docstring.
@@ -37,11 +43,13 @@ see the RibasmimJacobian docstring.
     eval_∂flow_∂flow_input!::Function
     # Cached flows used for continuous control input
     du_cache::RibasimStateCVector{Float64}
-    # Jacobian of mapping (storage, flow) -> continuous_control_compound
-    continuous_control_input::ContinuousControlInputCVector{Float64}
-    continuous_control_input_ranges::ContinuousControlInputCVector{Int} = CVector(collect(eachindex(continuous_control_input)), getaxes(continuous_control_input))
-    ∂continuous_control_compound_∂continuous_control_input::M
-    eval_∂continuous_control_compound_∂continuous_control_input!::Function
+    # # Jacobian of mapping (storage, flow) -> continuous_control_compound
+    continuous_control_jac::SubJacobian{ContinuousControlInputCVector{Float64}, M}
+    # pass_down_jac::SubJacobian{, M}
+    # continuous_control_input::ContinuousControlInputCVector{Float64}
+    # continuous_control_input_ranges::ContinuousControlInputCVector{Int} = CVector(collect(eachindex(continuous_control_input)), getaxes(continuous_control_input))
+    # ∂continuous_control_compound_∂continuous_control_input::M
+    # eval_∂continuous_control_compound_∂continuous_control_input!::Function
 end
 
 function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)

@@ -1155,7 +1155,7 @@ end
 
 "The flow of a PassDown node minus what is abstracted from it by downstream UserDemand nodes."
 function remaining_pass_down_flow(flow::FlowCVector{T}, pass_down::PassDown, id::NodeID)::T where {T}
-    q = flow.horizontal.pass_down[id.idx]
+    q = flow.pass_down[id.idx]
     for flow_idx in pass_down.user_demand_inflow_idxs[id.idx]
         q -= flow.horizontal.user_demand_inflow[flow_idx]
     end
@@ -1201,7 +1201,7 @@ function formulate_pass_down_flow!(
                 for upstream_id in inflow_ids[id.idx]
                     inflow += get_pass_down_upstream_flow(flow, p_independent, upstream_id, t)
                 end
-                flow.horizontal.pass_down[id.idx] = inflow * fraction[id.idx]
+                flow.pass_down[id.idx] = inflow * fraction[id.idx]
                 # Reset the abstractions from this PassDown node, as the downstream
                 # UserDemand nodes take from what has not been abstracted yet
                 for flow_idx in user_demand_inflow_idxs[id.idx]

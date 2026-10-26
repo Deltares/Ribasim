@@ -647,7 +647,6 @@ function get_ns_flow_horizontal(nodes::NamedTuple)
         length(manning_resistance),
         mapreduce(length, +, user_demand.inflow_links; init = 0), # user_demand inflow
         length(user_demand), # user_demand outflow
-        length(pass_down),
     ]
 end
 
@@ -658,31 +657,32 @@ function get_ns_flow_vertical(nodes::NamedTuple)
     ]
 end
 
-get_n_flow(nodes::NamedTuple) = sum(get_ns_flow_horizontal(nodes)) + sum(get_ns_flow_vertical(nodes))
+get_n_flow(nodes::NamedTuple) =
+    sum(get_ns_flow_horizontal(nodes)) +
+    sum(get_ns_flow_vertical(nodes)) +
+    length(nodes.pass_down)
 
 function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::FlowTuple
     ns_flow_horizontal = get_ns_flow_horizontal(nodes)
     ns_flow_vertical = get_ns_flow_vertical(nodes)
 
-    horizontal_flow = cvector_axes_from_lengths(
+    horizontal = cvector_axes_from_lengths(
         state_horizontal_flow_components,
         ns_flow_horizontal,
     )
-    vertical_flow = cvector_axes_from_lengths(
+    vertical = cvector_axes_from_lengths(
         state_vertical_flow_components,
-        ns_flow_vertical;
-        offset = sum(ns_flow_horizontal)
+        ns_flow_vertical
     )
-    return NamedTuple{state_flow_components}((horizontal_flow, vertical_flow))
+    return concatenate_axes((; horizontal), (; vertical), (; pass_down = 1:length(nodes.pass_down)))
 end
 
 "Create the axis of the state vector"
 function count_state_ranges(nodes::Union{NamedTuple, ParametersIndependent})::RibasimStateTuple
     flow_ranges = count_flow_ranges(nodes)
-    n_flows = get_n_flow(nodes)
-    return (;
-        flow = flow_ranges,
-        pid_integral = (n_flows + 1):(n_flows + length(nodes.pid_control)),
+    return concatenate_axes(
+        (; flow = flow_ranges),
+        (; pid_integral = 1:length(nodes.pid_control)),
     )
 end
 
@@ -773,9 +773,7 @@ function get_incidence_matrix(inflow_id::FlowCVector{NodeID}, outflow_data::Flow
         out_data = outflow_data[flow_idx]
         in_id.is_basin && (incidence_matrix[in_id.idx, flow_idx] = -1)
 
-        if out_data.to_pass_down
-            # TODO
-        else
+        if !out_data.to_pass_down
             out_id = outflow_id(out_data)
             out_id.is_basin && (incidence_matrix[out_id.idx, flow_idx] = 1)
         end

@@ -361,6 +361,16 @@ function get_flow(
 
     from_id, to_id = link
 
+    # PassDown
+    from_pass_down = (from_id.type == NodeType.PassDown)
+    to_pass_down = (to_id.type == NodeType.PassDown)
+
+    if from_pass_down && to_pass_down
+        return flow.pass_down[to_id.idx]
+    elseif from_pass_down
+        return flow.pass_down[from_id.idx]
+    end
+
     # Connector node flows
     for (flow_component_data, node_type) in (
             (flow.horizontal.pump, NodeType.Pump),

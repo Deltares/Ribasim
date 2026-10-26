@@ -30,7 +30,7 @@ The rejection causes are:
 end
 
 const state_components = (:flow, :pid_integral)
-const state_flow_components = (:horizontal, :vertical)
+const state_flow_components = (:horizontal, :vertical, :pass_down)
 const state_horizontal_flow_components = (
     :pump,
     :outlet,
@@ -39,7 +39,6 @@ const state_horizontal_flow_components = (
     :manning_resistance,
     :user_demand_inflow,
     :user_demand_outflow,
-    :pass_down,
 )
 const state_vertical_flow_components = (
     :evaporation,
@@ -54,7 +53,7 @@ const HorizontalFlowCVector{T} = CVector{T, Vector{T}, HorizontalFlowTuple}
 const VerticalFlowTuple = cvector_axes_type(state_vertical_flow_components)
 const VerticalFlowCVector{T} = CVector{T, Vector{T}, VerticalFlowTuple}
 
-const FlowTuple = NamedTuple{state_flow_components, Tuple{HorizontalFlowTuple, VerticalFlowTuple}}
+const FlowTuple = NamedTuple{state_flow_components, Tuple{HorizontalFlowTuple, VerticalFlowTuple, UnitRange{Int}}}
 const FlowCVector{T} = CVector{T, Vector{T}, FlowTuple}
 
 const RibasimStateTuple = NamedTuple{state_components, Tuple{FlowTuple, UnitRange{Int}}}
@@ -1101,6 +1100,7 @@ pass_down_subgraphs: disjoint trees of flow-connected PassDown and UserDemand no
     are ordered such that each node comes after all nodes its flow depends on.
 user_demand_inflow_idxs: per PassDown node the indices into the `user_demand_inflow` flow
     component of the links from that PassDown node to UserDemand nodes
+to_basin: Whether the PassDown node flows out into a Basin
 """
 @kwdef struct PassDown <: AbstractParameterNode
     node_id::Vector{NodeID}
