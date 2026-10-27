@@ -9,7 +9,7 @@
         @assert ispath(toml_path)
         logger = TestLogger()
         with_logger(logger) do
-            @test_throws "Errors encountered when parsing PassDown data." Ribasim.Model(toml_path)
+            @test_throws "Invalid number of connections for certain node types." Ribasim.Model(toml_path)
         end
         return [string(log.message) for log in logger.logs if log.level == Logging.Error]
     end
@@ -30,12 +30,12 @@ end
 
 @testitem "PassDown multiple UserDemands" setup = [PassDownValidation] begin
     messages = PassDownValidation.error_messages("invalid_pass_down_multiple_user_demands")
-    @test messages == ["PassDown #3 can have at most 1 UserDemand flow outneighbor (got 2)."]
+    @test messages == ["PassDown #3 cannot have more than one UserDemand outflow."]
 end
 
 @testitem "PassDown only UserDemand" setup = [PassDownValidation] begin
     messages = PassDownValidation.error_messages("invalid_pass_down_only_user_demand")
     @test messages == [
-        "PassDown #3 has only a UserDemand flow outneighbor, but needs another flow outneighbor for the flow that is not abstracted.",
+        "PassDown #3 cannot just flow out into a PassDown node, the remainder flow needs somewhere to go.",
     ]
 end

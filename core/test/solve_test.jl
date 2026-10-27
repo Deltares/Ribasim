@@ -11,7 +11,7 @@
     (; incidence_matrix) = integrator.p.p_independent
     (; W, linsolve) = integrator.cache.nlsolver.cache
     (; J) = W
-    (; ∂flow_∂flow_input) = J.cache
+    ∂flow_∂flow_input = J.cache.jac_flow.jac
     (; cache_inner) = linsolve
     W_inner = cache_inner.A
     J_inner = W_inner.J
