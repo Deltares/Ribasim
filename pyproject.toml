@@ -70,7 +70,13 @@ ribasim_testmodels = { path = "python/ribasim_testmodels", editable = true }
 [tool.pixi.workspace]
 name = "Ribasim"
 channels = ["conda-forge", "https://prefix.dev/julia-forge"]
-platforms = ["win-64", "linux-64", "osx-arm64", "linux-aarch64"]
+platforms = [
+    "win-64",
+    "linux-64",
+    # The macOS version also sets the PyPI wheel tags, the netCDF4 wheels need 15.0
+    { name = "osx-arm64-15", platform = "osx-arm64", macos = "15.0" },
+    "linux-aarch64",
+]
 
 [tool.pixi.tasks]
 # Tests
@@ -368,6 +374,9 @@ wflow-coupled-run = { cmd = "julia --startup-file=no --project=wflow-coupled wfl
 rcedit = "*"
 qgis = ">=3.40,<4"
 quarto = "*"
+# QGIS brings the conda libarrow, whose arrow.dll would be loaded instead of the one in the
+# pyarrow wheel, making `import pyarrow` fail. So use the conda pyarrow built against it.
+pyarrow = "*"
 
 [tool.pixi.target.linux-64.dependencies]
 qgis = ">=3.40,<4"
