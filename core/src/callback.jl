@@ -240,7 +240,7 @@ function update_concentrations!(u, t, integrator)::Nothing
         if !data_out.to_pass_down
             to_node = outflow_id(data_out)
             add_substance_mass!(
-                view(mass, :, outflow_id.idx),
+                view(mass, :, id.idx),
                 flow_boundary.concentration_itp[id.idx],
                 flow_boundary.cumulative_flow_dt[id.idx],
                 t,

@@ -24,8 +24,9 @@ const continuous_control_input_components = (:storage, :flow)
 const ContinuousControlInputTuple = NamedTuple{continuous_control_input_components, Tuple{UnitRange{Int}, FlowTuple}}
 const ContinuousControlInputCVector{T} = CVector{T, Vector{T}, ContinuousControlInputTuple}
 
-struct SubJacobian{I, M <: AbstractMatrix{Float64}}
+@kwdef struct SubJacobian{I, R, M <: AbstractMatrix{Float64}}
     input::I
+    ranges::R = CVector(collect(eachindex(input)), getaxes(input))
     jac::M
     jac_func::Function
 end
@@ -35,21 +36,14 @@ Cache for evaluating the lazy Ribasim Jacobian. For more details
 see the RibasmimJacobian docstring.
 """
 @kwdef struct RibasimJacobianEvaluationCache{M <: AbstractMatrix{Float64}}
-    # Jacobian of mapping (storage_uplink, storage_downlink, pid_integral, continuous_control_compound) -> (flow, pid_error)
-    flow_input::FlowInputCVector{Float64}
-    flow_input_ranges::FlowInputCVector{Int} = CVector(collect(eachindex(flow_input)), getaxes(flow_input))
-    ∂flow_∂flow_input::M
-    # Closures stored as Function to keep their large types out of the integrator type
-    eval_∂flow_∂flow_input!::Function
     # Cached flows used for continuous control input
     du_cache::RibasimStateCVector{Float64}
+    # Jacobian of mapping (storage_uplink, storage_downlink, pid_integral, continuous_control_compound) -> (flow, pid_error)
+    jac_flow::SubJacobian{FlowInputCVector{Float64}, FlowInputCVector{Int}, M}
     # # Jacobian of mapping (storage, flow) -> continuous_control_compound
-    continuous_control_jac::SubJacobian{ContinuousControlInputCVector{Float64}, M}
-    # pass_down_jac::SubJacobian{, M}
-    # continuous_control_input::ContinuousControlInputCVector{Float64}
-    # continuous_control_input_ranges::ContinuousControlInputCVector{Int} = CVector(collect(eachindex(continuous_control_input)), getaxes(continuous_control_input))
-    # ∂continuous_control_compound_∂continuous_control_input::M
-    # eval_∂continuous_control_compound_∂continuous_control_input!::Function
+    jac_continuous_control::SubJacobian{ContinuousControlInputCVector{Float64}, ContinuousControlInputCVector{Int}, M}
+    # Jacobian of mapping flow -> PassDown subnetwork flow
+    jac_pass_down::SubJacobian{FlowInputCVector{Float64}, FlowInputCVector{Int}, M}
 end
 
 function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
@@ -68,7 +62,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
     t = 0.0
 
     ###
-    #### Jacobian of mapping (storage_uplink, storage_downlink, pid_integral, continuous_control_compound) -> (flow, pid_error)
+    #### jac_flow
     ###
 
     flow_input_axes = concatenate_axes(
@@ -125,8 +119,14 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
         Constant(t),
     )
 
+    jac_flow = SubJacobian(;
+        input = flow_input,
+        jac = ∂flow_∂flow_input,
+        jac_func = eval_∂flow_∂flow_input!
+    )
+
     ###
-    #### Jacobian of mapping (storage, flow) -> continuous_control_compound
+    #### jac_continuous_control
     ###
 
     continuous_control_input_axes = concatenate_axes((; storage = 1:length(basin), flow = flow_ranges))
@@ -167,14 +167,55 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
         Constant(t),
     )
 
+    jac_continuous_control = SubJacobian(;
+        input = continuous_control_input,
+        jac = ∂continuous_control_compound_∂continuous_control_input,
+        jac_func = eval_∂continuous_control_compound_∂continuous_control_input!
+    )
+
+    ###
+    #### jac_pass_down
+    ###
+
+    non_pass_down_flow = cvector_from_axes(p_independent.flow_ranges)
+    pass_down_flow = zero(non_pass_down_flow)
+
+    function pass_down_closure!(pass_down_flow, non_pass_down_flow, t)
+        formulate_pass_down_flow!(pass_down_flow, p, t; flow_in = non_pass_down_flow)
+        return nothing
+    end
+
+    ∂pass_down_flow_∂flow_prep = @ad_active p prepare_jacobian(
+        pass_down_closure!,
+        pass_down_flow,
+        backend_jac,
+        non_pass_down_flow,
+        Constant(t)
+    )
+
+    ∂pass_down_flow_∂flow = solver.sparse ? ∂pass_down_flow_∂flow_prep.sparsity * 1.0 :
+        zeros(length(pass_down_flow), length(non_pass_down_flow))
+
+    eval_∂pass_down_flow_∂flow!(t) = @ad_active p jacobian!(
+        pass_down_closure!,
+        pass_down_flow,
+        ∂pass_down_flow_∂flow_prep,
+        backend_jac,
+        non_pass_down_flow,
+        Constant(t)
+    )
+
+    jac_pass_down = SubJacobian(;
+        input = flow_input,
+        jac = ∂pass_down_flow_∂flow,
+        jac_func = eval_∂pass_down_flow_∂flow!
+    )
+
     return RibasimJacobianEvaluationCache(;
-        flow_input,
-        ∂flow_∂flow_input,
-        eval_∂flow_∂flow_input!,
         du_cache = du,
-        continuous_control_input,
-        ∂continuous_control_compound_∂continuous_control_input,
-        eval_∂continuous_control_compound_∂continuous_control_input!,
+        jac_flow,
+        jac_continuous_control,
+        jac_pass_down
     )
 end
 
@@ -256,16 +297,15 @@ function SciMLOperators.update_coefficients!(
         t::Number,
     )
     (; cache, area_pid_controlled, n_pid) = J
-    (;
-        flow_input,
-        eval_∂flow_∂flow_input!,
-        continuous_control_input,
-        eval_∂continuous_control_compound_∂continuous_control_input!,
-        du_cache,
-    ) = cache
+    (; du_cache, jac_flow, jac_continuous_control) = cache
+    flow_input = jac_flow.input
     (; storage_uplink, storage_downlink) = flow_input
     (; p_independent, p_mutable, current_basin_properties) = p
     (; pid_control, basin) = p_independent
+
+    eval_∂flow_∂flow_input! = jac_flow.jac_func
+    continuous_control_input = jac_continuous_control.input
+    eval_∂continuous_control_compound_∂continuous_control_input! = jac_continuous_control.jac_func
 
     !p_mutable.refresh_jac && return nothing
 
@@ -344,12 +384,12 @@ listened flows on their own up- and downlink storage is taken into account, as c
 """
 function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
     (; p_independent, cache) = J
-    (;
-        flow_input_ranges,
-        ∂flow_∂flow_input,
-        continuous_control_input_ranges,
-        ∂continuous_control_compound_∂continuous_control_input,
-    ) = cache
+    (; jac_flow, jac_continuous_control) = cache
+    flow_input_ranges = jac_flow.ranges
+    ∂flow_∂flow_input = jac_flow.jac
+    continuous_control_input_ranges = jac_continuous_control.ranges
+    ∂continuous_control_compound_∂continuous_control_input = jac_continuous_control.jac
+
     (; inflow_id, outflow_data) = p_independent
     n_flow = length(inflow_id)
 
@@ -405,7 +445,9 @@ Call `f(flow_idx, pid_idx, ∂q_∂pid_integral)` for each dependence of a flow 
 """
 function foreach_∂flow_∂pid_integral(f::F, J::RibasimJacobian) where {F}
     (; p_independent, cache) = J
-    (; flow_input_ranges, ∂flow_∂flow_input) = cache
+    (; jac_flow) = cache
+    flow_input_ranges = jac_flow.ranges
+    ∂flow_∂flow_input = jac_flow.jac
     n_flow = length(p_independent.inflow_id)
 
     for (pid_idx, col) in enumerate(flow_input_ranges.pid_integral)

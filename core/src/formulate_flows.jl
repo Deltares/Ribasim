@@ -1143,7 +1143,8 @@ PassDown node only the flow remaining after abstraction by its downstream UserDe
 function formulate_pass_down_flow!(
         flow::FlowCVector{T},
         p::Parameters,
-        t::Number,
+        t::Number;
+        flow_in::FlowCVector{T} = flow,
     )::Nothing where {T}
     (; p_independent, time_dependent_cache) = p
     (; pass_down, user_demand) = p_independent
@@ -1157,7 +1158,7 @@ function formulate_pass_down_flow!(
                 # PassDown distributing flow via the fractions
                 inflow = zero(T)
                 for upstream_id in inflow_ids[id.idx]
-                    inflow += get_pass_down_upstream_flow(flow, p_independent, upstream_id, t)
+                    inflow += get_pass_down_upstream_flow(flow_in, p_independent, upstream_id, t)
                 end
                 # UserDemand flow is abstracted from the inflow as that takes precedence
                 user_id = user_demand_id[id.idx]
