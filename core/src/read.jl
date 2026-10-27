@@ -179,6 +179,11 @@ end
 "The value of a `Val`, which is a compile time constant"
 val_value(::Val{V}) where {V} = V
 
+"The schema type of the static table, or else of the time table, or else `nothing`."
+table_type(::StructVector{T}, _) where {T} = T
+table_type(::Nothing, ::StructVector{T}) where {T} = T
+table_type(::Nothing, ::Nothing) = nothing
+
 """
 Parse a single variable for a certain node type. The name of the variable is passed as a
 `Val`, e.g. `Val(:flow_rate)`, so the column and field are known at compile time.
@@ -186,7 +191,8 @@ Parse a single variable for a certain node type. The name of the variable is pas
 Keyword arguments:
 - static: The static StructVector if it exists for the node type
 - time: The time StructVector if it exists for the node type
-- default: The default value inserted where the parameter is missing
+- default: The default value inserted where the parameter is missing. Defaults to the
+   default of the column in the schema of the static or time table, see `@schema`.
 - is_complete: If true, the function errors if the parameter data is in neither static nor time
 - is_controllable: Whether the parameter value can be updated by DiscreteControl
 - node_id: The node IDs associated with the node. Defaults to node.node_id
@@ -202,7 +208,7 @@ function parse_parameter!(
         ::Val{parameter_name};
         static::Union{StructVector, Nothing} = nothing,
         time::Union{StructVector, Nothing} = nothing,
-        default = nothing,
+        default = schema_default(table_type(static, time), Val(parameter_name)),
         is_complete::Bool = true,
         is_controllable::Bool = true,
         node_id = node.node_id,
@@ -487,7 +493,10 @@ function initialize_control_mapping!(
 
                 # Read allocation_controlled from static data if available
                 alloc_controlled = if has_alloc_controlled
-                    coalesce(first_row.allocation_controlled, false)
+                    coalesce(
+                        first_row.allocation_controlled,
+                        schema_default(eltype(static), Val(:allocation_controlled)),
+                    )
                 else
                     false
                 end
@@ -547,8 +556,7 @@ function LinearResistance(db, config, graph)
     set_inoutflow_links!(linear_resistance, graph)
     set_external_flow_demand_nodes!(linear_resistance, graph)
     errors |= parse_parameter!(linear_resistance, config, Val(:resistance); static)
-    errors |=
-        parse_parameter!(linear_resistance, config, Val(:max_flow_rate); static, default = Inf)
+    errors |= parse_parameter!(linear_resistance, config, Val(:max_flow_rate); static)
 
     errors && error("Errors encountered when parsing LinearResistance data.")
 
@@ -566,14 +574,7 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
     errors = initialize_control_mapping!(rating_curve, static, config, graph)
     set_inoutflow_links!(rating_curve, graph)
     set_external_flow_demand_nodes!(rating_curve, graph)
-    errors |= parse_parameter!(
-        rating_curve,
-        config,
-        Val(:max_downstream_level);
-        static,
-        time,
-        default = Inf,
-    )
+    errors |= parse_parameter!(rating_curve, config, Val(:max_downstream_level); static, time)
 
     interpolation_index = 0
 
@@ -827,12 +828,10 @@ function parse_pump_or_outlet_parameters!(
     errors |= !valid_flow_rates(node_id, node.time_dependent_flow_rate, node.control_mapping)
     errors |= !valid_flow_rates(node_id, node.flow_rate, node.control_mapping)
 
-    errors |= parse_parameter!(node, config, Val(:min_flow_rate); static, time, default = 0.0)
-    errors |= parse_parameter!(node, config, Val(:max_flow_rate); static, time, default = Inf)
-    errors |=
-        parse_parameter!(node, config, Val(:min_upstream_level); static, time, default = (-Inf))
-    errors |=
-        parse_parameter!(node, config, Val(:max_downstream_level); static, time, default = Inf)
+    errors |= parse_parameter!(node, config, Val(:min_flow_rate); static, time)
+    errors |= parse_parameter!(node, config, Val(:max_flow_rate); static, time)
+    errors |= parse_parameter!(node, config, Val(:min_upstream_level); static, time)
+    errors |= parse_parameter!(node, config, Val(:max_downstream_level); static, time)
 
     return errors
 end
@@ -903,11 +902,11 @@ function ConcentrationData(
     substances = get_substances(db, config)
     n_substance = length(substances)
 
-    concentration_state = zeros(n_basin, n_substance)
-    concentration_state[:, Substance.Continuity] .= 1.0
-    concentration_state[:, Substance.Initial] .= 1.0
+    concentration_state = zeros(n_substance, n_basin)
+    concentration_state[Substance.Continuity, :] .= 1.0
+    concentration_state[Substance.Initial, :] .= 1.0
     set_concentrations!(concentration_state, concentration_state_data, substances, node_id)
-    mass = collect(eachrow(concentration_state))
+    mass = copy(concentration_state)
 
     concentration_itp_drainage =
         [initialize_concentration_itp(n_substance, Substance.Drainage) for _ in node_id]
@@ -995,10 +994,10 @@ function ConcentrationData(
     return ConcentrationData(;
         config.solver.evaporate_mass,
         concentration_state,
-        concentration_itp_drainage,
-        concentration_itp_precipitation,
-        concentration_itp_surface_runoff,
-        loads_itp,
+        concentration_drainage = ForcingConcentration(concentration_itp_drainage, n_substance),
+        concentration_precipitation = ForcingConcentration(concentration_itp_precipitation, n_substance),
+        concentration_surface_runoff = ForcingConcentration(concentration_itp_surface_runoff, n_substance),
+        loads = ForcingConcentration(loads_itp, n_substance),
         mass,
         concentration_external,
         substances,
@@ -1059,7 +1058,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     basin.storage0 .= storage0
     basin.storage_prev_dt .= storage0
     basin.storage_prev_saveat .= storage0
-    basin.concentration_data.mass .*= storage0  # was initialized by concentration_state, resulting in mass
+    basin.concentration_data.mass .*= storage0'  # was initialized by concentration_state, resulting in mass
 
     for id in node_id
         # Compute the low storage threshold as the disk of water between the bottom
@@ -1133,10 +1132,8 @@ function CompoundVariable(
         end
         # Placeholder until actual ref is known
         variable = row.variable
-        # Default to weight = 1.0 if not specified
-        weight = coalesce(row.weight, 1.0)
-        # Default to look_ahead = 0.0 if not specified
-        look_ahead = coalesce(row.look_ahead, 0.0)
+        weight = coalesce(row.weight, schema_default(typeof(row), Val(:weight)))
+        look_ahead = coalesce(row.look_ahead, schema_default(typeof(row), Val(:look_ahead)))
         subvariable = SubVariable(listen_node_id, variable, weight, look_ahead)
         push!(subvariables, subvariable)
     end
@@ -1436,7 +1433,7 @@ function parse_static_demand_data!(
     for row in static_group
         demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
         node.has_demand_priority[id.idx, demand_priority_idx] = true
-        demand_row = coalesce(row.demand, 0.0)
+        demand_row = coalesce(row.demand, schema_default(typeof(row), Val(:demand)))
         demand_interpolation = trivial_constant_itp(; val = demand_row)
         node.demand_interpolation[id.idx][demand_priority_idx] = demand_interpolation
         node.demand[id.idx, demand_priority_idx] = demand_row
@@ -1540,10 +1537,12 @@ function parse_static_demand_data!(
     for row in static_group
         demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
         level_demand.has_demand_priority[id.idx, demand_priority_idx] = true
-        level_demand.min_level[id.idx][demand_priority_idx] =
-            trivial_constant_itp(; val = coalesce(row.min_level, -Inf))
-        level_demand.max_level[id.idx][demand_priority_idx] =
-            trivial_constant_itp(; val = coalesce(row.max_level, Inf))
+        level_demand.min_level[id.idx][demand_priority_idx] = trivial_constant_itp(;
+            val = coalesce(row.min_level, schema_default(typeof(row), Val(:min_level))),
+        )
+        level_demand.max_level[id.idx][demand_priority_idx] = trivial_constant_itp(;
+            val = coalesce(row.max_level, schema_default(typeof(row), Val(:max_level))),
+        )
     end
     return nothing
 end
@@ -1556,6 +1555,7 @@ function parse_time_demand_data!(
         cyclic_time::Bool,
         config::Config,
     )::Nothing
+    T = eltype(time_group)
     for time_priority_group in IterTools.groupby(row -> row.demand_priority, time_group)
         demand_priority_idx =
             findsorted(demand_priorities, first(time_priority_group).demand_priority)
@@ -1565,7 +1565,7 @@ function parse_time_demand_data!(
             StructVector(time_priority_group),
             id,
             :min_level;
-            default_value = (-Inf),
+            default_value = schema_default(T, Val(:min_level)),
             cyclic_time,
         )
         level_demand.min_level[id.idx][demand_priority_idx] = min_level
@@ -1574,7 +1574,7 @@ function parse_time_demand_data!(
             StructVector(time_priority_group),
             id,
             :max_level;
-            default_value = Inf,
+            default_value = schema_default(T, Val(:max_level)),
             cyclic_time,
         )
         level_demand.max_level[id.idx][demand_priority_idx] = max_level
@@ -2487,7 +2487,7 @@ function set_concentrations!(
             value = getproperty(first_row, concentration_column)
             ismissing(value) && continue
             node_idx = findfirst(node_id -> node_id == first_row.node_id, node_ids)
-            concentration[node_idx, sub_idx] = value
+            concentration[sub_idx, node_idx] = value
         end
     end
     return

@@ -12,11 +12,11 @@ PassDown nodes can be chained arbitrarily, as long as there are no loops (and at
 
 ## Static
 
-<!-- ```{julia}
+```{python}
 # | code-fold: true
-include("../utils/gen_docs_table.jl")
-Ribasim.Schema.PassDown.Static |> table_from_schema
-``` -->
+%run ../../gen_docs_table.py
+table_from_schema("PassDown.Static")
+```
 
 # Equations
 
