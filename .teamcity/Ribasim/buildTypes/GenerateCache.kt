@@ -20,7 +20,7 @@ object Windows_GenerateCache : BuildType({
                 +:root=Ribasim_Ribasim:/Manifest.toml
                 +:root=Ribasim_Ribasim:/Project.toml
                 +:root=Ribasim_Ribasim:/pixi.lock
-                +:root=Ribasim_Ribasim:/pyproject.toml
+                +:root=Ribasim_Ribasim:/pixi.toml
             """.trimIndent()
             branchFilter = "+:<default>"
         }
@@ -38,7 +38,7 @@ object Linux_GenerateCache : BuildType({
                 +:root=Ribasim_Ribasim:/Manifest.toml
                 +:root=Ribasim_Ribasim:/Project.toml
                 +:root=Ribasim_Ribasim:/pixi.lock
-                +:root=Ribasim_Ribasim:/pyproject.toml
+                +:root=Ribasim_Ribasim:/pixi.toml
             """.trimIndent()
             branchFilter = "+:<default>"
         }

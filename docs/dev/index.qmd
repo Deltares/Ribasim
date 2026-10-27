@@ -22,7 +22,7 @@ Windows users should [enable Developer Mode](https://learn.microsoft.com/en-us/w
 
 Then set up the environment by running the following command. It will take a while.
 You can interrupt the task if you don't want to precompile the Julia dependencies at this moment, because that is the last task.
-Check out the `[tool.pixi.tasks]` table in the root `pyproject.toml` file to see the tasks that are part of this, you can also run them individually.
+Check out the `pixi.toml` file to see the tasks that are part of this, you can also run them individually.
 
 ```sh
 pixi run install

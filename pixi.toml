@@ -1,74 +1,8 @@
-# This pyproject.toml is the manifest of the Pixi workspace, it doesn't build a package.
-# Python dependencies are declared here and in python/*/pyproject.toml, and Pixi installs them from PyPI.
-# The [tool.pixi.dependencies] tables only hold Python itself and tools that are not on PyPI.
-[project]
-name = "ribasim-workspace"
+[workspace]
+name = "Ribasim"
 version = "2026.1.2"
 description = "Water resources modeling"
-authors = [
-    { name = "Deltares and contributors", email = "ribasim.info@deltares.nl" },
-]
-readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE"]
-requires-python = ">=3.12"
-dependencies = [
-    "ribasim[all]",
-    "ribasim_api",
-    "ribasim_testmodels",
-]
-
-[project.urls]
-Homepage = "https://ribasim.org/"
-Documentation = "https://ribasim.org/"
-Repository = "https://github.com/Deltares/Ribasim"
-
-[dependency-groups]
-dev = [
-    # Lint and typecheck
-    "nbstripout",
-    "pandas-stubs",
-    "prek",
-    "pyqt5-stubs",
-    "ruff",
-    "ty",
-    "types-geopandas",
-    "types-networkx",
-    "typos",
-    # Tests
-    "lxml",
-    "pytest-qgis >=4.0.1, <5",
-    # Docs
-    "griffe >=1, <2",
-    "juliacall ==0.9.36",
-    "jupyter",
-    "plotly",
-    "quartodoc",
-    # QGIS
-    "qgis-plugin-manager >=1.7.2",
-    # Data
-    "dvc",
-    "dvc-s3",
-    "minio",
-    "python-dotenv",
-    # Build and release
-    "hatch",
-    "hatchling",
-    "python-magic >=0.4.27",
-    "sbom4python >=0.12.3",
-    "twine",
-    # Debugging
-    "debugpy",
-]
-
-# For using uv instead of Pixi; Pixi ignores this and uses [tool.pixi.pypi-dependencies]
-[tool.uv.sources]
-ribasim = { path = "python/ribasim", editable = true }
-ribasim_api = { path = "python/ribasim_api", editable = true }
-ribasim_testmodels = { path = "python/ribasim_testmodels", editable = true }
-
-[tool.pixi.workspace]
-name = "Ribasim"
+authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge", "https://prefix.dev/julia-forge"]
 platforms = [
     "win-64",
@@ -77,8 +11,14 @@ platforms = [
     { name = "osx-arm64-15", platform = "osx-arm64", macos = "15.0" },
     "linux-aarch64",
 ]
+readme = "README.md"
+license = "MIT"
+license-file = "LICENSE"
+homepage = "https://ribasim.org/"
+documentation = "https://ribasim.org/"
+repository = "https://github.com/Deltares/Ribasim"
 
-[tool.pixi.tasks]
+[tasks]
 # Tests
 test-ribasim-python = "pytest --basetemp=python/ribasim/tests/temp --numprocesses=4 -m 'not regression' python/ribasim/tests"
 test-ribasim-python-cov = "pytest --numprocesses=4 --cov=ribasim --cov-report=xml -m 'not regression' python/ribasim/tests"
@@ -242,17 +182,17 @@ filter-model = "python utils/filter_model.py"
 github-release = "python utils/github-release.py"
 
 # QGIS
-[tool.pixi.tasks.qgis]
+[tasks.qgis]
 args = [{ "arg" = "profiles_path", "default" = ".qgis-settings" }]
 cmd = "qgis --profiles-path {{ profiles_path }}"
 
-[tool.pixi.tasks.install-ribasim-qgis]
+[tasks.install-ribasim-qgis]
 args = [
     { "arg" = "profile_path", "default" = ".qgis-settings/profiles/default" },
 ]
 cmd = "python ribasim_qgis/scripts/install_ribasim_qgis.py {{ profile_path }}"
 
-[tool.pixi.tasks.install-qgis-plugin]
+[tasks.install-qgis-plugin]
 args = [
     { "arg" = "package" },
     { "arg" = "package_name" },
@@ -260,7 +200,7 @@ args = [
 ]
 cmd = "python ribasim_qgis/scripts/install_qgis_plugin.py {{ package }} {{ profile_path }} && python ribasim_qgis/scripts/enable_plugin.py {{ package_name }} {{ profile_path }}"
 
-[tool.pixi.tasks.install-qgis-plugins]
+[tasks.install-qgis-plugins]
 args = [
     { "arg" = "profile_path", "default" = ".qgis-settings/profiles/default" },
 ]
@@ -280,82 +220,118 @@ depends-on = [
     ] },
 ]
 
-[tool.pixi.tasks.generate-sbom-ribasim-core]
+[tasks.generate-sbom-ribasim-core]
 cmd = "julia --startup-file=no --project -- utils/generate-sbom.jl"
 depends-on = ["instantiate-julia"]
 inputs = ["core/Project.toml"]
 outputs = ["Ribasim.spdx.json"]
 
-[tool.pixi.tasks.generate-sbom-ribasim-python-noarch]
+[tasks.generate-sbom-ribasim-python-noarch]
 args = [{ "arg" = "path_sep" }]
 cmd = "sbom4python -m ribasim --system --sbom spdx --format json --output Ribasim-python.spdx.json"
 env = { "PATH" = "$PATH$path_sep$CONDA_PREFIX/Lib/site-packages/magic/libmagic" }
 inputs = ["python/ribasim/pyproject.toml"]
 outputs = ["Ribasim-python.spdx.json"]
 
-[tool.pixi.target.win.tasks]
+[target.win.tasks]
 add-ribasim-icon = { cmd = "rcedit build/ribasim/bin/ribasim.exe --set-icon docs/assets/ribasim.ico" }
 
-[[tool.pixi.target.win.tasks.generate-sbom-ribasim-python.depends-on]]
+[[target.win.tasks.generate-sbom-ribasim-python.depends-on]]
 task = "generate-sbom-ribasim-python-noarch"
 args = [";"]
 
-[[tool.pixi.target.linux.tasks.generate-sbom-ribasim-python.depends-on]]
+[[target.linux.tasks.generate-sbom-ribasim-python.depends-on]]
 task = "generate-sbom-ribasim-python-noarch"
 args = [":"]
 
-[[tool.pixi.target.osx.tasks.generate-sbom-ribasim-python.depends-on]]
+[[target.osx.tasks.generate-sbom-ribasim-python.depends-on]]
 task = "generate-sbom-ribasim-python-noarch"
 args = [":"]
 
-[tool.pixi.target.linux-aarch64.tasks]
+[target.linux-aarch64.tasks]
 # Override docs task to be a no-op on ARM64 Linux where Quarto doesn't work
 docs = { cmd = "echo 'Skipping docs build on ARM64 Linux (Quarto not supported)'" }
 quarto-check = { cmd = "echo 'Skipping quarto check on ARM64 Linux (Quarto not supported)'" }
 quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not supported)'" }
 
-[tool.pixi.dependencies]
+# Only Python and tools that are not on PyPI come from conda-forge.
+# Dependencies of the Python packages go in python/*/pyproject.toml.
+[dependencies]
 gh = "*"
 julia = { version = "==1.13.1", channel = "https://prefix.dev/julia-forge" }
 rust = "*"
 # The yamlfmt on PyPI is an unrelated project
 yamlfmt = "*"
 
-[tool.pixi.pypi-dependencies]
-ribasim = { path = "python/ribasim", editable = true }
+[pypi-dependencies]
+ribasim = { path = "python/ribasim", editable = true, extras = ["all"] }
 ribasim_api = { path = "python/ribasim_api", editable = true }
 ribasim_testmodels = { path = "python/ribasim_testmodels", editable = true }
+# Lint and typecheck
+nbstripout = "*"
+pandas-stubs = "*"
+prek = "*"
+pyqt5-stubs = "*"
+ruff = "*"
+ty = "*"
+types-geopandas = "*"
+types-networkx = "*"
+typos = "*"
+# Tests
+lxml = "*"
+pytest-qgis = ">=4.0.1, <5"
+# Docs
+griffe = ">=1, <2"
+juliacall = "==0.9.36"
+jupyter = "*"
+plotly = "*"
+quartodoc = "*"
+# QGIS
+qgis-plugin-manager = ">=1.7.2"
+# Data
+dvc = "*"
+dvc-s3 = "*"
+minio = "*"
+python-dotenv = "*"
+# Build and release
+hatch = "*"
+hatchling = "*"
+python-magic = ">=0.4.27"
+sbom4python = ">=0.12.3"
+twine = "*"
+# Debugging
+debugpy = "*"
 
-[tool.pixi.feature.py312.dependencies]
+[feature.py312.dependencies]
 python = "3.12.*"
 
-[tool.pixi.feature.py313.dependencies]
+[feature.py313.dependencies]
 python = "3.13.*"
 
-[tool.pixi.feature.pandas2.pypi-dependencies]
+[feature.pandas2.pypi-dependencies]
 pandas = ">=2.2,<3"
 
 # Online coupling of Wflow and Ribasim, see wflow-coupled/README.md
 # This is a separate lightweight environment without the default feature,
 # such that hydromt-ribasim, which is not yet public, does not affect the other environments.
-[tool.pixi.feature.wflow-coupled]
+[feature.wflow-coupled]
 platforms = ["win-64", "linux-64"]
 
-[tool.pixi.feature.wflow-coupled.dependencies]
+[feature.wflow-coupled.dependencies]
 julia = { version = "==1.13.1", channel = "https://prefix.dev/julia-forge" }
 python = "3.13.*"
 
-[tool.pixi.feature.wflow-coupled.pypi-dependencies]
+[feature.wflow-coupled.pypi-dependencies]
 hydromt-ribasim = { git = "https://github.com/Deltares-research/hydromt_ribasim.git", rev = "0c4018fced8d478215f3a02d1885a5fc92eaa40e" }
 ribasim = { path = "python/ribasim", editable = true }
 # affine>=3.0 dropped tuple subclassing, which breaks numba typing in pyflwdir
 affine = "<3"
 
 # hydromt-ribasim pins ribasim to a git revision, use the one from this repository instead
-[tool.pixi.feature.wflow-coupled.pypi-options.dependency-overrides]
+[feature.wflow-coupled.pypi-options.dependency-overrides]
 ribasim = { path = "python/ribasim", editable = true }
 
-[tool.pixi.feature.wflow-coupled.tasks]
+[feature.wflow-coupled.tasks]
 wflow-coupled-instantiate-julia = "julia --startup-file=no --project=wflow-coupled --eval='using Pkg; Registry.update(); Pkg.instantiate()'"
 wflow-coupled-build-wflow = { cmd = "python build_piave_wflow.py", cwd = "wflow-coupled" }
 wflow-coupled-build-ribasim = { cmd = "python build_piave_ribasim.py", cwd = "wflow-coupled", depends-on = [
@@ -370,7 +346,7 @@ wflow-coupled-run = { cmd = "julia --startup-file=no --project=wflow-coupled wfl
     "wflow-coupled-instantiate-julia",
 ] }
 
-[tool.pixi.target.win-64.dependencies]
+[target.win-64.dependencies]
 rcedit = "*"
 qgis = ">=3.40,<4"
 quarto = "*"
@@ -378,24 +354,24 @@ quarto = "*"
 # pyarrow wheel, making `import pyarrow` fail. So use the conda pyarrow built against it.
 pyarrow = "*"
 
-[tool.pixi.target.linux-64.dependencies]
+[target.linux-64.dependencies]
 qgis = ">=3.40,<4"
 quarto = "*"
 
-[tool.pixi.target.osx-arm64.dependencies]
+[target.osx-arm64.dependencies]
 quarto = "*"
 
-[tool.pixi.target.unix.activation]
+[target.unix.activation]
 scripts = ["scripts/load-env.sh"]
 
-[tool.pixi.target.win.activation]
+[target.win.activation]
 scripts = ["scripts/load-env.bat"]
 
-[tool.pixi.environments]
-default = ["py313", "dev"]
-py312 = ["py312", "dev"]
-pandas2 = ["py313", "pandas2", "dev"]
+[environments]
+default = ["py313"]
+py312 = ["py312"]
+pandas2 = ["py313", "pandas2"]
 wflow-coupled = { features = ["wflow-coupled"], no-default-feature = true }
 
-[tool.pixi.activation.env]
+[activation.env]
 JULIA_CONDAPKG_BACKEND = "Null"

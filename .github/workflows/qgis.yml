@@ -2,10 +2,10 @@ name: QGIS Tests
 on:
   push:
     branches: [main]
-    paths: ["ribasim_qgis/**", "pyproject.toml", "pixi.lock"]
+    paths: ["ribasim_qgis/**", "pixi.toml", "pixi.lock"]
     tags: ["*"]
   pull_request:
-    paths: ["ribasim_qgis/**", "pyproject.toml", "pixi.lock"]
+    paths: ["ribasim_qgis/**", "pixi.toml", "pixi.lock"]
   merge_group:
   workflow_dispatch:
 permissions:

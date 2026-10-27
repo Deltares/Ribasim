@@ -9,8 +9,8 @@ title: "Python tooling development"
 Python dependencies are declared as PyPI dependencies.
 Pixi installs them from PyPI, unless a conda-forge package like QGIS already depends on them.
 Dependencies of the Python packages go in their own `python/*/pyproject.toml`.
-Development tools such as linters and documentation generators go in the `dev` dependency group of the root `pyproject.toml`.
-The root `pyproject.toml` is also the Pixi manifest; `[tool.pixi.dependencies]` only holds Python and tools that are not on PyPI, like Julia and QGIS.
+Development tools such as linters and documentation generators go in `[pypi-dependencies]` in `pixi.toml`.
+`[dependencies]` in `pixi.toml` only holds Python and tools that are not on PyPI, like Julia and QGIS.
 
 ## Running the tests {#sec-test}
 

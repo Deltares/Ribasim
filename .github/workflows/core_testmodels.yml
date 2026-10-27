@@ -2,10 +2,10 @@ name: Julia Run Testmodels
 on:
   push:
     branches: [main]
-    paths: ["core/**", "python/**", "pyproject.toml", "pixi.lock", "Project.toml", "Manifest.toml"]
+    paths: ["core/**", "python/**", "pixi.toml", "pixi.lock", "Project.toml", "Manifest.toml"]
     tags: ["*"]
   pull_request:
-    paths: ["core/**", "python/**", "pyproject.toml", "pixi.lock", "Project.toml", "Manifest.toml"]
+    paths: ["core/**", "python/**", "pixi.toml", "pixi.lock", "Project.toml", "Manifest.toml"]
   merge_group:
   workflow_dispatch:
 concurrency:
