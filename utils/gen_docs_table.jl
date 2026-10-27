@@ -55,12 +55,14 @@ Create a markdown table documenting the columns of an input table schema.
 The column names, types, whether they are optional and their defaults are taken from the
 schema, the units from `UNITS` unless overridden with `units_override`.
 Use `defaults_override` for defaults that cannot be expressed as a value in the schema.
+The table is returned as `text/markdown`, or as a `String` if `output = String`.
 """
 function table_from_schema(
         schema::Type{<:Ribasim.Table};
         units_override::AbstractDict{Symbol, String} = Dict{Symbol, String}(),
         restrictions::AbstractDict{Symbol, String} = Dict{Symbol, String}(),
         defaults_override::AbstractDict{Symbol} = Dict{Symbol, Any}(),
+        output = MIME("text/markdown"),
     )
     defaults = merge(Dict{Symbol, Any}(pairs(Ribasim.defaults(schema))), defaults_override)
     column = String[]
@@ -81,5 +83,5 @@ function table_from_schema(
 
     df = DataFrame(; column, type, unit, optional, default, restriction)
     non_trivial_cols = [col for col in names(df) if !all(df[!, col] .== "-")]
-    return markdown_table(select(df, non_trivial_cols))
+    return markdown_table(select(df, non_trivial_cols), output)
 end

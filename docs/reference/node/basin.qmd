@@ -1,6 +1,5 @@
 ---
 title: "![](/assets/node-icons/Basin.svg){height=20} Basin"
-engine: julia
 ---
 
 The Basin node represents a flexible, generalized control volume that can be used to model various water bodies and systems.
@@ -33,18 +32,20 @@ similar schema, with the time column added. A static value for a variable is onl
 there is no dynamic forcing data for that variable. Specifically, if there is either no
 time table, it is empty, or all timestamps of that variable are missing.
 
-```{julia}
+```{python}
 # | code-fold: true
-using PythonCall
-# Render matplotlib figures off-screen; they are displayed by ending a cell with the figure
-pyimport("matplotlib").use("Agg")
-include("../../../utils/gen_docs_table.jl")
-const BASIN_FORCING_RESTRICTIONS = Dict(
-    name => "non-negative" for name in [
-        :drainage, :potential_evaporation, :infiltration, :precipitation, :surface_runoff,
-    ]
+%run ../../gen_docs_table.py
+basin_forcing_restrictions = dict.fromkeys(
+    [
+        "drainage",
+        "potential_evaporation",
+        "infiltration",
+        "precipitation",
+        "surface_runoff",
+    ],
+    "non-negative",
 )
-table_from_schema(Ribasim.Schema.Basin.Static; restrictions = BASIN_FORCING_RESTRICTIONS)
+table_from_schema("Basin.Static", restrictions=basin_forcing_restrictions)
 ```
 
 Note that if variables are not set in the static table, default values are used when
@@ -56,9 +57,9 @@ to have a reasonable and safe default, a value must be provided in the static ta
 This table is the transient form of the `Basin` table.
 The only difference is that a time column is added.
 
-```{julia}
+```{python}
 # | code-fold: true
-table_from_schema(Ribasim.Schema.Basin.Time; restrictions = BASIN_FORCING_RESTRICTIONS)
+table_from_schema("Basin.Time", restrictions=basin_forcing_restrictions)
 ```
 
 ### Interpolation
@@ -70,7 +71,7 @@ At the given timestamps the values are set in the simulation, such that the time
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from IPython.display import Markdown
+from IPython.display import display, Markdown
 
 np.random.seed(1)
 fig, ax = plt.subplots()
@@ -101,11 +102,7 @@ ax.set_ylabel("forcing", fontsize = fontsize)
 xlim = ax.get_xlim()
 ax.set_xlim(xlim[0], (x[-2] + x[-1])/2)
 ax.legend()
-fig
-```
 
-```{python}
-# | code-fold: true
 markdown_table = pd.DataFrame(
         data = {
             "time" : x,
@@ -113,7 +110,7 @@ markdown_table = pd.DataFrame(
         }
     ).to_markdown(index = False)
 
-Markdown(markdown_table)
+display(Markdown(markdown_table))
 ```
 
 As shown this interpolation type supports missing data, and just maintains the last available value. Because of this for instance precipitation can be updated while evaporation stays the same.
@@ -122,12 +119,9 @@ As shown this interpolation type supports missing data, and just maintains the l
 
 The state table gives the initial water levels of all Basins.
 
-```{julia}
+```{python}
 # | code-fold: true
-table_from_schema(
-    Ribasim.Schema.Basin.State;
-    restrictions = Dict(:level => "≥ basin bottom")
-)
+table_from_schema("Basin.State", restrictions={"level": "≥ basin bottom"})
 ```
 
 Each Basin ID needs to be in the table.
@@ -146,15 +140,15 @@ This only applies when the user wishes to continue an existing simulation as if 
 
 The profile table defines the physical dimensions of the storage reservoir of each basin. Either storage or area is required.
 
-```{julia}
+```{python}
 # | code-fold: true
 table_from_schema(
-    Ribasim.Schema.Basin.Profile;
-    restrictions = Dict(
-        :storage => "non-negative and non-decreasing (optional if area is defined)",
-        :area => "non-negative, per node_id: start positive (optional if storage is defined)",
-        :level => "increasing"
-    )
+    "Basin.Profile",
+    restrictions={
+        "storage": "non-negative and non-decreasing (optional if area is defined)",
+        "area": "non-negative, per node_id: start positive (optional if storage is defined)",
+        "level": "increasing",
+    },
 )
 ```
 
@@ -210,11 +204,7 @@ ax.set_xlim(xlim[0], (level[-1] + level_extrap)/2)
 
 ax.legend()
 fig.tight_layout()
-fig
-```
 
-```{python}
-# | code-fold: true
 markdown_table = pd.DataFrame(
         data = {
             "level" : level,
@@ -222,7 +212,7 @@ markdown_table = pd.DataFrame(
         }
     ).to_markdown(index = False)
 
-Markdown(markdown_table)
+display(Markdown(markdown_table))
 ```
 
 For this interpolation it is validated that:
@@ -272,7 +262,6 @@ ax.plot(level_eval_extrap, storage_eval_extrap, color = "C0", linestyle = "dashe
 xlim = ax.get_xlim()
 ax.set_xlim(xlim[0], (level[-1] + level_extrap)/2)
 ax.legend()
-fig
 ```
 
 for converting the initial state in terms of levels to an initial state in terms of storages used in the core.
@@ -394,8 +383,7 @@ fig.update_layout(
     margin = {"t": 100, "b": 100}
 )
 
-from IPython.display import HTML
-HTML(fig.to_html(full_html = False, include_plotlyjs = "cdn"))
+fig.show()
 ```
 
 #### Storage to level
@@ -418,11 +406,10 @@ The subgrid table defines a piecewise linear interpolation from a basin water le
 Many subgrid elements may be associated with a single basin, each with distinct interpolation functions.
 This functionality can be used to translate a single lumped basin level to a more spatially detailed representation (e.g comparable to the output of a hydrodynamic simulation).
 
-```{julia}
+```{python}
 # | code-fold: true
 table_from_schema(
-    Ribasim.Schema.Basin.Subgrid;
-    restrictions = Dict(:node_id => "constant per subgrid_id")
+    "Basin.Subgrid", restrictions={"node_id": "constant per subgrid_id"}
 )
 ```
 
@@ -453,11 +440,10 @@ With this the subgrid relations can be updated over time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 That means for each Basin all subgrid relations are either static or dynamic.
 
-```{julia}
+```{python}
 # | code-fold: true
 table_from_schema(
-    Ribasim.Schema.Basin.SubgridTime;
-    restrictions = Dict(:node_id => "constant per subgrid_id")
+    "Basin.SubgridTime", restrictions={"node_id": "constant per subgrid_id"}
 )
 ```
 
@@ -465,50 +451,40 @@ table_from_schema(
 This table defines the concentration of substances for the inflow boundaries of a Basin node.
 In between the given times the values are block interpolated (forward fill), and outside the concentration is constant given by the nearest time value.
 
-```{julia}
+```{python}
 # | code-fold: true
+delwaq_restrictions = {"substance": "can correspond to known Delwaq substances"}
 table_from_schema(
-    Ribasim.Schema.Basin.Concentration;
-    units_override = Dict(
-        :drainage => CONCENTRATION_UNIT,
-        :precipitation => CONCENTRATION_UNIT,
-        :surface_runoff => CONCENTRATION_UNIT
+    "Basin.Concentration",
+    units_override=dict.fromkeys(
+        ["drainage", "precipitation", "surface_runoff"], jl.CONCENTRATION_UNIT
     ),
-    restrictions = Dict(:substance => "can correspond to known Delwaq substances")
+    restrictions=delwaq_restrictions,
 )
 ```
 
 ## Concentration state {#sec-basin-conc-state}
 This table defines the concentration of substances in the Basin at the start of the simulation.
 
-```{julia}
+```{python}
 # | code-fold: true
-table_from_schema(
-    Ribasim.Schema.Basin.ConcentrationState;
-    restrictions = Dict(:substance => "can correspond to known Delwaq substances")
-)
+table_from_schema("Basin.ConcentrationState", restrictions=delwaq_restrictions)
 ```
 
 ## Concentration external
 This table is used for (external) concentrations, that can be used for Control lookups.
 
-```{julia}
+```{python}
 # | code-fold: true
-table_from_schema(
-    Ribasim.Schema.Basin.ConcentrationExternal;
-    restrictions = Dict(:substance => "can correspond to known Delwaq substances")
-)
+table_from_schema("Basin.ConcentrationExternal", restrictions=delwaq_restrictions)
 ```
 
 ## Mass load
 This table is used for dry (waste) loads, i.e. mass injection into a basin.
 
-```{julia}
+```{python}
 # | code-fold: true
-table_from_schema(
-    Ribasim.Schema.Basin.MassLoad;
-    restrictions = Dict(:substance => "can correspond to known Delwaq substances")
-)
+table_from_schema("Basin.MassLoad", restrictions=delwaq_restrictions)
 ```
 
 # Equations
@@ -563,7 +539,7 @@ ax.set_ylabel(r"$\phi(x;p)$", fontsize=fontsize)
 ax.set_ylim(y_lim)
 
 fig.tight_layout()
-fig
+plt.show()
 ```
 
 ### The low storage factor

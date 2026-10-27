@@ -60,7 +60,7 @@ table_from_schema(
     Ribasim.Schema.DiscreteControl.Variable;
     restrictions = Dict(
         :listen_node_id => "cannot be a Junction",
-        :variable => "must be \"level\", \"storage\", \"flow_rate\", \"concentration.<substance>\" or \"concentration_external.<substance>\"",
+        :variable => "must be `level`, `storage`, `flow_rate`, `concentration.<substance>` or `concentration_external.<substance>`",
         :look_ahead => "only on transient boundary conditions, non-negative",
     ),
 )
