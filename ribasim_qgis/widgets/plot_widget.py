@@ -474,7 +474,6 @@ class PlotWidget(QWidget):
         self._initialized = False
         self._page_loaded = False
         self._pending_js: str | None = None
-        # ty: ignore[unresolved-attribute]
         self._web_view.loadFinished.connect(self._on_load_finished)
 
         # Keep node/link buttons in sync with the active layer and map tool.
@@ -841,9 +840,9 @@ class PlotWidget(QWidget):
         if page is None:
             return
         if _BACKEND is _WebViewBackend.WEBENGINE:
-            page.runJavaScript(js)  # ty: ignore[unresolved-attribute]
+            page.runJavaScript(js)
         else:
-            frame = page.mainFrame()  # ty: ignore[unresolved-attribute]
+            frame = page.mainFrame()
             if frame is not None:
                 frame.evaluateJavaScript(js)
 
@@ -1553,6 +1552,8 @@ class PlotWidget(QWidget):
             "editable": False,
             "displayModeBar": True,
             "responsive": True,
+            # plotly.js 4 shows a "Share chart" button by default that uploads data
+            "showSendToCloud": False,
         }
         # toImage uses an <a download> click that QtWebKit silently ignores.
         if _BACKEND is _WebViewBackend.WEBKIT:
