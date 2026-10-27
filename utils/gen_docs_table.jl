@@ -2,15 +2,15 @@ using Ribasim
 using DataFrames: DataFrame, select
 using MarkdownTables
 
-const FLOW_RATE_UNIT = "m³s⁻¹"
+const FLOW_RATE_UNIT = "m³ s⁻¹"
 const LENGTH_UNIT = "m"
-const VELOCITY_UNIT = "ms⁻¹"
+const VELOCITY_UNIT = "m s⁻¹"
 const VOLUME_UNIT = "m³"
 const AREA_UNIT = "m²"
-const CONCENTRATION_UNIT = "gm⁻³"
-const LOAD_UNIT = "gs⁻¹"
-const RESISTANCE_UNIT = "sm⁻²"
-const MANNING_UNIT = "sm⁻¹ᐟ³"
+const CONCENTRATION_UNIT = "g m⁻³"
+const LOAD_UNIT = "g s⁻¹"
+const RESISTANCE_UNIT = "s m⁻²"
+const MANNING_UNIT = "s m⁻¹ᐟ³"
 const PROPORTIONAL_UNIT = "s⁻¹"
 const INTEGRAL_UNIT = "s⁻²"
 const TIME_UNIT = "s"
