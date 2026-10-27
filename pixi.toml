@@ -310,6 +310,10 @@ ribasim_api = { path = "python/ribasim_api", editable = true }
 ribasim_testmodels = { path = "python/ribasim_testmodels", editable = true }
 sbom4python = ">=0.12.3"
 
+[pypi-options.dependency-overrides]
+# qgis-plugin-manager pins semver==3.0.4 exactly, which conflicts with the conda semver (via dvc)
+semver = ">=3.0.4"
+
 [feature.py312.dependencies]
 python = "3.12.*"
 
