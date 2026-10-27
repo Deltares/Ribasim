@@ -171,7 +171,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     return nothing
 end
 
-const CUMULATIVE_FLOW_RESET_THRESHOLD = 1.0e12 # m³s⁻¹
+const CUMULATIVE_FLOW_RESET_THRESHOLD = 1.0e12 # m³ s⁻¹
 
 function cumulative_flow_reset_condition(u, t, integrator)::Bool
     (; basin, flow_boundary) = integrator.p.p_independent
