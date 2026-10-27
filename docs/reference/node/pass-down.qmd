@@ -1,0 +1,32 @@
+---
+title: "![](/assests/node-icons/PassDown.svg){height=20} PassDown"
+---
+
+The PassDown node can be thought of as a Basin without storage. It fully 'passes-down' flow, so the sum of the inflow is always equal to the sum of the outflow. As such, the PassDown node does not need any profile information. The general concept is:
+- The PassDown node receives flow from other nodes which provide flow: connector nodes, FlowBoundary or other PassDown nodes
+- The PassDown node directs this flow to flow receiving nodes: Basins, level boundaries, terminals, user demands or other PassDown nodes
+
+PassDown nodes can be chained arbitrarily, as long as there are no loops (and at the moment we do not support confluences of multiple PassDown nodes into a PassDown node). Over such chains, which are subgraphs of the model consisting of PassDown and potentially UserDemand nodes, flow travels instantaneously.
+
+# Tables
+
+## Static
+
+<!-- ```{julia}
+# | code-fold: true
+include("../utils/gen_docs_table.jl")
+Ribasim.Schema.PassDown.Static |> table_from_schema
+``` -->
+
+# Equations
+
+The algorithm for the PassDown node flow is as follows:
+- Compute the inflow sum $q_\text{in}$
+- If a UserDemand is upstream of the
+
+# Connectivity rules
+
+The PassDown node has some specific connectivity rules:
+- A maximum of 1 UserDemand node can abstract from a PassDown node.
+- A UserDemand node cannot abstract from Basin(s) and a PassDown node simultaneously.
+- Since a PassDown node cannot accumulate water, it always needs one or more outflow links. If the PassDown node flows into a UserDemand node, there must be another outflow link to a different node type, because the inflow to the PassDown can be larger than the demand and the remainder needs somewhere to go.

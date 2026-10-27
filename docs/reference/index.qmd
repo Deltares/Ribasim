@@ -11,6 +11,7 @@ These pages contain the test models, node descriptions and Ribasim Python API do
 ::: {layout-ncol=3 style="text-align: center;"}
 
 [![](/assets/node-icons/Basin.svg){height=80}<br>Basin](node/basin.qmd)
+[![](/assets/node-icons/Basin.svg){height=80}<br>Basin](node/pass-down.qmd)
 
 :::
 
