@@ -37,6 +37,11 @@ jobs:
             CRED_PATH=$(git config get --path includeIf.gitdir:"${GIT_DIR}".path)
             git config set --path includeIf.gitdir:"${GIT_DIR}/worktrees/*".path "${CRED_PATH}"
           fi
+      - uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: "latest"
+          # Put the pixi environment, including julia, on the PATH for later steps
+          activate-environment: true
       - uses: julia-actions/cache@a7bed9df697e5d7309d68afe7542a87621a8b6c8 # v3.3.0
       - name: Cache Delwaq map file
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -45,9 +50,6 @@ jobs:
           key: delwaq-map-${{ github.run_id }}
           restore-keys: |
             delwaq-map-
-      - uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
-        with:
-          pixi-version: "latest"
       - name: Check Quarto installation and all engines
         run: pixi run quarto-check
       - name: Render Quarto Project
