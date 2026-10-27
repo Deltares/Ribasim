@@ -99,7 +99,6 @@ def pass_down_model() -> Model:
     model.link.add(pd5, b2)
     model.link.add(pd6, ud2)
     model.link.add(pd6, b3)
-    model.link.add(b2, ud2)
     model.link.add(ud2, b3)
     model.link.add(b3, p2)
     model.link.add(p2, pd7)

@@ -714,6 +714,57 @@ function valid_n_neighbors(graph::MetaGraph)::Bool
         errors |= !valid_n_neighbors(node_type, graph)
     end
 
+    errors |= !valid_pass_down_connectivity(graph)
+
+    return !errors
+end
+
+function valid_pass_down_connectivity(graph)
+    errors = false
+
+    for id in labels(graph)
+        if id.type == NodeType.UserDemand
+            from_pass_down = false
+            from_basin = false
+            for inflow_id in inflow_ids(graph, id)
+                inflow_id.is_basin && (from_basin = true)
+                inflow_id.type == NodeType.PassDown && (from_pass_down = true)
+            end
+            if from_pass_down && from_basin
+                @error "$id cannot abstract from both PassDown and Basin."
+                errors = true
+            end
+        elseif id.type == NodeType.PassDown
+            n_user_demand_out = 0
+            n_other_out = 0
+            for outflow_id in outflow_ids(graph, id)
+                if outflow_id.type == NodeType.UserDemand
+                    n_user_demand_out += 1
+                else
+                    n_other_out += 1
+                end
+            end
+            if n_user_demand_out > 1
+                @error "$id cannot have more than one UserDemand outflow."
+                errors = true
+            elseif isone(n_user_demand_out) && iszero(n_other_out)
+                @error "$id cannot just flow out into a PassDown node, the remainder flow needs somewhere to go."
+                errors = true
+            end
+        else
+            n_basin_out = 0
+            n_pass_down_out = 0
+            for outflow_id in outflow_ids(graph, id)
+                outflow_id.is_basin && (n_basin_out += 1)
+                (outflow_id.type == NodeType.PassDown) && (n_pass_down_out += 1)
+            end
+            if !iszero(n_basin_out) && !iszero(n_pass_down_out)
+                @error "$id cannot have outflow into both PassDown and Basin."
+                errors = true
+            end
+        end
+    end
+
     return !errors
 end
 
@@ -721,7 +772,7 @@ function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
     node_type = NodeType.T(node_name)
 
     errors = false
-    can_pass_down = :pass_down in neighbortypes(node_name)
+    can_to_pass_down = :pass_down in neighbortypes(node_name)
     for node_id in labels(graph)
         node_id.type == node_type || continue
         # listen links are not part of the graph, only validated in python
@@ -732,28 +783,6 @@ function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
             n_outneighbors =
                 count(x -> true, outneighbor_labels_type(graph, node_id, link_type))
 
-            # With a PassDown downstream, any number of outneighbors is allowed, but all must be PassDown,
-            # except that a PassDown node can also have UserDemand outneighbors
-            n_pass_down_outneighbors =
-                (can_pass_down && link_type == LinkType.flow) ?
-                count(
-                    x -> x.type == NodeType.PassDown,
-                    outneighbor_labels_type(graph, node_id, link_type),
-                ) : 0
-            if n_pass_down_outneighbors > 0
-                n_allowed_outneighbors = count(
-                    x -> x.type == NodeType.PassDown ||
-                        (node_type == NodeType.PassDown && x.type == NodeType.UserDemand),
-                    outneighbor_labels_type(graph, node_id, link_type),
-                )
-                if n_allowed_outneighbors < n_outneighbors
-                    allowed = node_type == NodeType.PassDown ? "PassDown or UserDemand" : "PassDown"
-                    @error "$node_id has a PassDown $link_type outneighbor, so all its $link_type outneighbors must be $allowed (got $n_allowed_outneighbors out of $n_outneighbors)."
-                    errors = true
-                end
-                bounds = n_neighbor_bounds(bounds.in_min, bounds.in_max, bounds.out_min, M)
-            end
-
             if n_inneighbors < bounds.in_min
                 @error "$node_id must have at least $(bounds.in_min) $link_type inneighbor(s) (got $n_inneighbors)."
                 errors = true
@@ -762,6 +791,11 @@ function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
             if n_inneighbors > bounds.in_max
                 @error "$node_id can have at most $(bounds.in_max) $link_type inneighbor(s) (got $n_inneighbors)."
                 errors = true
+            end
+
+            # If there is any outflow to PassDown, that is validated in valid_pass_down_connectivity
+            if (link_type == LinkType.flow) && can_to_pass_down
+                any(id.type == NodeType.PassDown for id in outflow_ids(graph, node_id)) && continue
             end
 
             if n_outneighbors < bounds.out_min

@@ -85,7 +85,7 @@ function water_balance!(
     )
 
     # Formulate PassDown flows and the UserDemand flows in the PassDown subgraphs
-    formulate_pass_down_flow!(du.flow, storage_uplink, p, t)
+    formulate_pass_down_flow!(du.flow, p, t)
     return nothing
 end
 
@@ -394,85 +394,50 @@ function formulate_flow!(
         p::Parameters,
         t::Number,
     )::Nothing
-    for node_idx in eachindex(user_demand.node_id)
-        # The flows of UserDemand nodes in a PassDown subgraph are computed in formulate_pass_down_flow!
-        user_demand.in_pass_down_subgraph[node_idx] && continue
-        formulate_user_demand_flow!(flow, user_demand, node_idx, storage_uplink, p, t)
-    end
-    return nothing
-end
-
-"""
-Compute the inflows and outflow of a single UserDemand node. An inflow can come from:
-- a Basin, where the abstraction is reduced when the Basin storage is low or its level
-  approaches `min_level`;
-- a PassDown node, where the abstraction is limited by the PassDown flow that is not yet
-  abstracted by other UserDemand nodes.
-"""
-function formulate_user_demand_flow!(
-        flow::FlowCVector{T},
-        user_demand::UserDemand,
-        node_idx::Int,
-        storage_uplink::FlowCVector,
-        p::Parameters,
-        t::Number,
-    )::Nothing where {T}
     (; p_independent, time_dependent_cache) = p
     (; current_return_factor) = time_dependent_cache.user_demand
-    (; allocation, level_difference_threshold, pass_down) = p_independent
+    (; level_difference_threshold) = p_independent
 
-    id = user_demand.node_id[node_idx]
-    inflow_links = user_demand.inflow_links[node_idx]
-    link_offset = user_demand.inflow_link_offsets[node_idx]
-    has_demand_priority = view(user_demand.has_demand_priority, node_idx, :)
-    allocated = view(user_demand.allocated, node_idx, :)
-    return_factor = user_demand.return_factor[node_idx]
-    min_level = user_demand.min_level[node_idx]
+    for node_idx in eachindex(user_demand.node_id)
+        # UserDemands fed by PassDown nodes are handled separately
+        user_demand.in_pass_down_subgraph[node_idx] && continue
 
-    # Total effective demand = min(allocated, demand) summed over priorities.
-    # When allocation is not running, allocated = Inf and this becomes the demand.
-    q_total_demand = 0.0
-    for demand_priority_idx in eachindex(allocation.demand_priorities_all)
-        !has_demand_priority[demand_priority_idx] && continue
-        q_total_demand += min(
-            allocated[demand_priority_idx],
-            get_demand(user_demand, id, demand_priority_idx, t),
-        )
-    end
+        id = user_demand.node_id[node_idx]
+        inflow_links = user_demand.inflow_links[node_idx]
+        link_offset = user_demand.inflow_link_offsets[node_idx]
+        return_factor = user_demand.return_factor[node_idx]
+        min_level = user_demand.min_level[node_idx]
+        q_total_demand = get_effective_user_demand(p_independent, node_idx, t)
 
-    # With allocation disabled, fall back to an equal split of the total demand.
-    # Each link then applies its own source reduction.
-    link_alloc = user_demand.inflow_link_allocated[node_idx]
-    n_links = length(inflow_links)
-    equal_split = n_links == 0 ? 0.0 : q_total_demand / n_links
+        # With allocation disabled, fall back to an equal split of the total demand.
+        # Each link then applies its own source basin reduction factors.
+        link_alloc = user_demand.inflow_link_allocated[node_idx]
+        n_links = length(inflow_links)
+        equal_split = n_links == 0 ? 0.0 : q_total_demand / n_links
 
-    q_total_actual = zero(T)
-    for (inflow_idx, link_meta) in enumerate(inflow_links)
-        src_id = link_meta.link[1]
-        flow_idx = link_offset + inflow_idx
-        q_k_target = isinf(link_alloc[inflow_idx]) ? equal_split : link_alloc[inflow_idx]
-        q_k::T = if src_id.type == NodeType.PassDown
-            # Other UserDemand inflows from this PassDown node that are not computed yet are 0
-            min(q_k_target, max(remaining_pass_down_flow(flow, pass_down, src_id), zero(T)))
-        else
-            upstream_storage = storage_uplink.horizontal.user_demand_inflow[flow_idx]
+        q_total_actual = 0.0
+        for (inflow_idx, link_meta) in enumerate(inflow_links)
+            src_id = link_meta.link[1]
+            upstream_storage = storage_uplink.horizontal.user_demand_inflow[link_offset + inflow_idx]
             f_low_storage = get_low_storage_factor(upstream_storage, p, src_id)
             source_level = get_level(upstream_storage, p, src_id, t)
             f_reduction = reduction_factor(
                 source_level - min_level,
                 level_difference_threshold,
             )
-            q_k_target * f_low_storage * f_reduction
+            q_k_target = isinf(link_alloc[inflow_idx]) ? equal_split : link_alloc[inflow_idx]
+            q_k = q_k_target * f_low_storage * f_reduction
+            # Apply each inflow link's abstraction to the source basin
+            q_total_actual += q_k
+            flow.horizontal.user_demand_inflow[link_offset + inflow_idx] = q_k
         end
-        q_total_actual += q_k
-        flow.horizontal.user_demand_inflow[flow_idx] = q_k
+
+        q_return =
+            q_total_actual *
+            eval_time_interpolation(return_factor, current_return_factor, id.idx, p, t)
+
+        flow.horizontal.user_demand_outflow[id.idx] = q_return
     end
-
-    q_return =
-        q_total_actual *
-        eval_time_interpolation(return_factor, current_return_factor, id.idx, p, t)
-
-    flow.horizontal.user_demand_outflow[id.idx] = q_return
     return nothing
 end
 
@@ -1153,15 +1118,6 @@ let body = :(error("Unsupported node $id upstream of PassDown node."))
     end
 end
 
-"The flow of a PassDown node minus what is abstracted from it by downstream UserDemand nodes."
-function remaining_pass_down_flow(flow::FlowCVector{T}, pass_down::PassDown, id::NodeID)::T where {T}
-    q = flow.pass_down[id.idx]
-    for flow_idx in pass_down.user_demand_inflow_idxs[id.idx]
-        q -= flow.horizontal.user_demand_inflow[flow_idx]
-    end
-    return q
-end
-
 "The flow from a node upstream of a PassDown node that is available to be passed down."
 function get_pass_down_upstream_flow(
         flow::FlowCVector{T},
@@ -1169,11 +1125,11 @@ function get_pass_down_upstream_flow(
         upstream_id::NodeID,
         t::Number,
     )::T where {T}
-    return if upstream_id.type == NodeType.PassDown
-        remaining_pass_down_flow(flow, p_independent.pass_down, upstream_id)
-    elseif upstream_id.type == NodeType.FlowBoundary
+    return if upstream_id.type == NodeType.FlowBoundary
         # FlowBoundary flows are not part of the flow state
         boundary_flow_rate(p_independent.flow_boundary, upstream_id.idx, t)
+    elseif upstream_id.type == NodeType.PassDown
+        flow.pass_down[upstream_id.idx]
     else
         get_node_outflow(flow, upstream_id)
     end
@@ -1186,29 +1142,45 @@ PassDown node only the flow remaining after abstraction by its downstream UserDe
 """
 function formulate_pass_down_flow!(
         flow::FlowCVector{T},
-        storage_uplink::FlowCVector,
         p::Parameters,
         t::Number,
     )::Nothing where {T}
-    (; p_independent) = p
+    (; p_independent, time_dependent_cache) = p
     (; pass_down, user_demand) = p_independent
-    (; fraction, inflow_ids, pass_down_subgraphs, user_demand_inflow_idxs) = pass_down
+    (; fraction, inflow_ids, pass_down_subgraphs, user_demand_id) = pass_down
+    (; current_return_factor) = time_dependent_cache.user_demand
 
+    # Different PassDown subgraphs are independent from eachother
     @threaded for subgraph in pass_down_subgraphs
         for id in subgraph
             if id.type == NodeType.PassDown
+                # PassDown distributing flow via the fractions
                 inflow = zero(T)
                 for upstream_id in inflow_ids[id.idx]
                     inflow += get_pass_down_upstream_flow(flow, p_independent, upstream_id, t)
                 end
-                flow.pass_down[id.idx] = inflow * fraction[id.idx]
-                # Reset the abstractions from this PassDown node, as the downstream
-                # UserDemand nodes take from what has not been abstracted yet
-                for flow_idx in user_demand_inflow_idxs[id.idx]
-                    flow.horizontal.user_demand_inflow[flow_idx] = zero(T)
+                # UserDemand flow is abstracted from the inflow as that takes precedence
+                user_id = user_demand_id[id.idx]
+                outflow = if user_id.type == NodeType.UserDemand
+                    inflow - flow.horizontal.user_demand_outflow[user_id.idx]
+                else
+                    inflow
                 end
+                flow.pass_down[id.idx] = outflow * fraction[id.idx]
             elseif id.type == NodeType.UserDemand
-                formulate_user_demand_flow!(flow, user_demand, id.idx, storage_uplink, p, t)
+                # UserDemand abstracting from a single PassDown node
+                # Flow is minimum of PassDown flow and effective demand
+                q_total_demand = get_effective_user_demand(p_independent, id.idx, t)
+                inflow_id = only(user_demand.inflow_links[id.idx]).link[1]
+                @assert inflow_id.type == NodeType.PassDown
+                pass_down_flow = flow.pass_down[inflow_id.idx]
+                inflow = min(q_total_demand, pass_down_flow)
+                outflow = inflow * eval_time_interpolation(
+                    user_demand.return_factor[id.idx], current_return_factor, id.idx, p, t
+                )
+                inflow_idx = user_demand.inflow_link_offsets[id.idx] + 1
+                flow.horizontal.user_demand_inflow[inflow_idx] = inflow
+                flow.horizontal.user_demand_outflow[id.idx] = outflow
             else
                 error("Unsupported node $id in PassDown subgraph.")
             end

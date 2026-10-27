@@ -1789,14 +1789,9 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
     # A UserDemand downstream of a PassDown node takes precedence over the other outneighbors,
     # which receive the flow that is not abstracted
     for id in node_id
-        n_outneighbors = count(_ -> true, outflow_ids(graph, id))
-        n_user_demand = count(x -> x.type == NodeType.UserDemand, outflow_ids(graph, id))
-        if n_user_demand > 1
-            @error "$id can have at most 1 UserDemand flow outneighbor (got $n_user_demand)."
-            errors = true
-        elseif n_user_demand == n_outneighbors == 1
-            @error "$id has only a UserDemand flow outneighbor, but needs another flow outneighbor for the flow that is not abstracted."
-            errors = true
+        user_demand_ids = filter(id -> id.type == NodeType.UserDemand, outflow_ids(graph, id) |> collect)
+        if isone(length(user_demand_ids))
+            pass_down.user_demand_id[id.idx] = only(user_demand_ids)
         end
     end
     errors && error("Errors encountered when parsing PassDown data.")

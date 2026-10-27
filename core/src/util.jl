@@ -1241,13 +1241,24 @@ function set_in_pass_down_subgraph!(user_demand::UserDemand, pass_down::PassDown
     for subgraph in pass_down.pass_down_subgraphs, id in subgraph
         id.type == NodeType.UserDemand || continue
         user_demand.in_pass_down_subgraph[id.idx] = true
-        link_offset = user_demand.inflow_link_offsets[id.idx]
-        for (inflow_idx, link) in enumerate(user_demand.inflow_links[id.idx])
-            src_id = link.link[1]
-            if src_id.type == NodeType.PassDown
-                push!(pass_down.user_demand_inflow_idxs[src_id.idx], link_offset + inflow_idx)
-            end
-        end
     end
     return nothing
+end
+
+# Total effective demand = min(allocated, demand) summed over priorities.
+# When allocation is not running, allocated = Inf and this becomes the demand.
+function get_effective_user_demand(p_independent::ParametersIndependent, node_idx::Int, t::Number)
+    (; allocation, user_demand) = p_independent
+
+    has_demand_priority = view(user_demand.has_demand_priority, node_idx, :)
+    allocated = view(user_demand.allocated, node_idx, :)
+    q_total_demand = 0.0
+    for demand_priority_idx in eachindex(allocation.demand_priorities_all)
+        !has_demand_priority[demand_priority_idx] && continue
+        q_total_demand += min(
+            allocated[demand_priority_idx],
+            get_demand(user_demand, user_demand.node_id[node_idx], demand_priority_idx, t),
+        )
+    end
+    return q_total_demand
 end
