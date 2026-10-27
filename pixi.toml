@@ -301,7 +301,8 @@ python = "3.13.*"
 solve-strategy = "lowest-direct"
 
 [feature.min.dependencies]
-# The same as requires-python in python/*/pyproject.toml, checked by check-min-python
+# The same as requires-python in python/*/pyproject.toml, so lowest-direct picks the
+# oldest supported Python. If requires-python is raised, locking fails until this is too.
 python = ">=3.12"
 
 [feature.min.pypi-dependencies]
@@ -309,10 +310,7 @@ ribasim = { path = "python/ribasim", editable = true, extras = ["all"] }
 ribasim_testmodels = { path = "python/ribasim_testmodels", editable = true }
 
 [feature.min.tasks]
-check-min-python = "python utils/check-min-python.py"
-test-ribasim-python-cov = { cmd = "pytest --numprocesses=4 --cov=ribasim --cov-report=xml -m 'not regression' python/ribasim/tests", depends-on = [
-    "check-min-python",
-] }
+test-ribasim-python-cov = "pytest --numprocesses=4 --cov=ribasim --cov-report=xml -m 'not regression' python/ribasim/tests"
 
 # QGIS with what the Ribasim plugin needs, for developing and testing the plugin.
 # This is a separate environment, so that the conda Python packages that QGIS brings

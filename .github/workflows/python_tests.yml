@@ -2,10 +2,10 @@ name: Ribasim Python Tests
 on:
   push:
     branches: [main]
-    paths: ["python/**", "pixi.toml", "pixi.lock", "utils/check-min-python.py"]
+    paths: ["python/**", "pixi.toml", "pixi.lock"]
     tags: ["*"]
   pull_request:
-    paths: ["python/**", "pixi.toml", "pixi.lock", "utils/check-min-python.py"]
+    paths: ["python/**", "pixi.toml", "pixi.lock"]
   merge_group:
   workflow_dispatch:
 concurrency:
