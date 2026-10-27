@@ -123,6 +123,8 @@ ENV/
 env.bak/
 venv.bak/
 .pixi
+# Pixi uses pixi.lock, uv users get their own uv.lock
+uv.lock
 
 # Spyder project settings
 .spyderproject
