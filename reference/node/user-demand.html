@@ -23,6 +23,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -45,7 +80,7 @@ ul.task-list li input[type="checkbox"] {
 <link href="../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-3d5ac159a77d1826e09626a1d1105a20.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-cfac9797321bc647b9212eb4548dab00.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -442,18 +477,34 @@ window.Quarto = {
 <section id="static" class="level2" data-number="1.1">
 <h2 data-number="1.1" class="anchored" data-anchor-id="static"><span class="header-section-number">1.1</span> Static</h2>
 <p>This table contains the static form of the <code>UserDemand</code> node.</p>
-<table class="caption-top table">
+<div id="2" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">include</span>(<span class="st">"../../../utils/gen_docs_table.jl"</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> USER_DEMAND_RESTRICTIONS <span class="op">=</span> <span class="fu">Dict</span>(</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">:</span>demand <span class="op">=&gt;</span> <span class="st">"non-negative"</span>,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">:</span>return_factor <span class="op">=&gt;</span> <span class="st">"between [0 - 1]"</span>,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">:</span>demand_priority <span class="op">=&gt;</span> <span class="st">"positive"</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(Ribasim.Schema.UserDemand.Static; restrictions <span class="op">=</span> USER_DEMAND_RESTRICTIONS)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
+<table class="caption-top table table-sm table-striped small">
 <colgroup>
-<col style="width: 27%">
+<col style="width: 24%">
 <col style="width: 12%">
-<col style="width: 40%">
-<col style="width: 20%">
+<col style="width: 11%">
+<col style="width: 14%">
+<col style="width: 12%">
+<col style="width: 24%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
 <th>type</th>
 <th>unit</th>
+<th>optional</th>
+<th>default</th>
 <th>restriction</th>
 </tr>
 </thead>
@@ -462,50 +513,63 @@ window.Quarto = {
 <td>node_id</td>
 <td>Int32</td>
 <td>-</td>
-<td></td>
+<td>x</td>
+<td>-</td>
+<td>-</td>
 </tr>
 <tr class="even">
 <td>demand</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
-<td>non-negative (optional)</td>
+<td>m³ s⁻¹</td>
+<td>✓</td>
+<td>0.0</td>
+<td>non-negative</td>
 </tr>
 <tr class="odd">
 <td>return_factor</td>
 <td>Float64</td>
+<td>-</td>
+<td>x</td>
 <td>-</td>
 <td>between [0 - 1]</td>
 </tr>
 <tr class="even">
 <td>min_level</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{m}\)</span></td>
+<td>m</td>
+<td>x</td>
+<td>-</td>
 <td>-</td>
 </tr>
 <tr class="odd">
 <td>demand_priority</td>
 <td>Int32</td>
 <td>-</td>
-<td>positive (optional)</td>
+<td>✓</td>
+<td>-</td>
+<td>positive</td>
 </tr>
 </tbody>
 </table>
+</div>
+</div>
 </section>
 <section id="time" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="time"><span class="header-section-number">1.2</span> Time</h2>
 <p>This table is the transient form of the <code>UserDemand</code> table. The only difference is that a time column is added. With this the demand and return factor can be updated over time. In between the given times the values are block interpolated (forward fill), and outside the demand is constant given by the nearest time value. The allocation algorithm evaluates the interpolation at the start of the allocation time step. The <code>demand_priority</code> is not allowed to change over time. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 24%">
-<col style="width: 15%">
-<col style="width: 39%">
-<col style="width: 20%">
-</colgroup>
+<div id="4" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(Ribasim.Schema.UserDemand.<span class="dt">Time</span>; restrictions <span class="op">=</span> USER_DEMAND_RESTRICTIONS)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
+<table class="caption-top table table-sm table-striped small">
 <thead>
 <tr class="header">
 <th>column</th>
 <th>type</th>
 <th>unit</th>
+<th>optional</th>
 <th>restriction</th>
 </tr>
 </thead>
@@ -514,40 +578,48 @@ window.Quarto = {
 <td>node_id</td>
 <td>Int32</td>
 <td>-</td>
-<td></td>
+<td>x</td>
+<td>-</td>
 </tr>
 <tr class="even">
 <td>time</td>
 <td>DateTime</td>
 <td>-</td>
-<td></td>
+<td>x</td>
+<td>-</td>
 </tr>
 <tr class="odd">
 <td>demand</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
+<td>m³ s⁻¹</td>
+<td>x</td>
 <td>non-negative</td>
 </tr>
 <tr class="even">
 <td>return_factor</td>
 <td>Float64</td>
 <td>-</td>
+<td>x</td>
 <td>between [0 - 1]</td>
 </tr>
 <tr class="odd">
 <td>min_level</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{m}\)</span></td>
+<td>m</td>
+<td>x</td>
 <td>-</td>
 </tr>
 <tr class="even">
 <td>demand_priority</td>
 <td>Int32</td>
 <td>-</td>
-<td>positive (optional)</td>
+<td>✓</td>
+<td>positive</td>
 </tr>
 </tbody>
 </table>
+</div>
+</div>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -565,18 +637,29 @@ Note
 <section id="concentration" class="level2" data-number="1.3">
 <h2 data-number="1.3" class="anchored" data-anchor-id="concentration"><span class="header-section-number">1.3</span> Concentration</h2>
 <p>This table defines the concentration of substances for the flow from the UserDemand.</p>
-<table class="caption-top table">
+<div id="6" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.UserDemand.Concentration;</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(<span class="op">:</span>substance <span class="op">=&gt;</span> <span class="st">"can correspond to known Delwaq substances"</span>),</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
+<table class="caption-top table table-sm table-striped small">
 <colgroup>
-<col style="width: 25%">
-<col style="width: 14%">
-<col style="width: 38%">
-<col style="width: 20%">
+<col style="width: 17%">
+<col style="width: 11%">
+<col style="width: 8%">
+<col style="width: 11%">
+<col style="width: 50%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
 <th>type</th>
 <th>unit</th>
+<th>optional</th>
 <th>restriction</th>
 </tr>
 </thead>
@@ -585,28 +668,34 @@ Note
 <td>node_id</td>
 <td>Int32</td>
 <td>-</td>
-<td></td>
+<td>x</td>
+<td>-</td>
 </tr>
 <tr class="even">
 <td>time</td>
 <td>DateTime</td>
 <td>-</td>
-<td></td>
+<td>x</td>
+<td>-</td>
 </tr>
 <tr class="odd">
 <td>substance</td>
 <td>String</td>
 <td>-</td>
+<td>x</td>
 <td>can correspond to known Delwaq substances</td>
 </tr>
 <tr class="even">
 <td>concentration</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{g}/\text{m}^3\)</span></td>
-<td></td>
+<td>g m⁻³</td>
+<td>x</td>
+<td>-</td>
 </tr>
 </tbody>
 </table>
+</div>
+</div>
 </section>
 </section>
 <section id="equations" class="level1" data-number="2">

@@ -80,7 +80,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-3d5ac159a77d1826e09626a1d1105a20.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-cfac9797321bc647b9212eb4548dab00.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -475,31 +475,34 @@ window.Quarto = {
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">DataFrames</span>: DataFrame</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">MarkdownTables</span></span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">PythonCall</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>node_names <span class="op">=</span> <span class="dt">Symbol</span>[]</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>controllable_parameters <span class="op">=</span> <span class="dt">String</span>[]</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Render matplotlib figures off-screen; they are displayed by ending a cell with the figure</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">pyimport</span>(<span class="st">"matplotlib"</span>).<span class="fu">use</span>(<span class="st">"Agg"</span>)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">include</span>(<span class="st">"../../../utils/gen_docs_table.jl"</span>)</span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> node_type <span class="kw">in</span> <span class="fu">fieldtypes</span>(Ribasim.ParametersIndependent)</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> node_type <span class="op">&lt;:</span><span class="dt"> Ribasim.AbstractParameterNode</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        node_name <span class="op">=</span> <span class="fu">nameof</span>(node_type)</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        controllable_fields <span class="op">=</span> Ribasim.<span class="fu">controllablefields</span>(node_name)</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        controllable_fields <span class="op">=</span> <span class="fu">sort!</span>(<span class="fu">string</span>.(controllable_fields))</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> node_name <span class="op">==</span> <span class="op">:</span>TabulatedRatingCurve</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>            controllable_fields <span class="op">=</span> <span class="fu">map</span>(</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>                s <span class="op">-&gt;</span> <span class="fu">replace</span>(s, <span class="st">"table"</span> <span class="op">=&gt;</span> <span class="st">"q(h) relationship (given by level, flow_rate)"</span>),</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>                controllable_fields,</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>            )</span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> !<span class="fu">isempty</span>(controllable_fields)</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>            <span class="fu">push!</span>(node_names, Ribasim.<span class="fu">snake_case</span>(node_name))</span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>            <span class="fu">push!</span>(controllable_parameters, <span class="fu">join</span>(controllable_fields, <span class="st">", "</span>))</span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> <span class="fu">DataFrame</span>(<span class="op">:</span>node <span class="op">=&gt;</span> node_names, <span class="op">:</span>controllable_parameters <span class="op">=&gt;</span> controllable_parameters)</span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="fu">markdown_table</span>(df)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>node_names <span class="op">=</span> <span class="dt">Symbol</span>[]</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>controllable_parameters <span class="op">=</span> <span class="dt">String</span>[]</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> node_type <span class="kw">in</span> <span class="fu">fieldtypes</span>(Ribasim.ParametersIndependent)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> node_type <span class="op">&lt;:</span><span class="dt"> Ribasim.AbstractParameterNode</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        node_name <span class="op">=</span> <span class="fu">nameof</span>(node_type)</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        controllable_fields <span class="op">=</span> Ribasim.<span class="fu">controllablefields</span>(node_name)</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        controllable_fields <span class="op">=</span> <span class="fu">sort!</span>(<span class="fu">string</span>.(controllable_fields))</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> node_name <span class="op">==</span> <span class="op">:</span>TabulatedRatingCurve</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>            controllable_fields <span class="op">=</span> <span class="fu">map</span>(</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>                s <span class="op">-&gt;</span> <span class="fu">replace</span>(s, <span class="st">"table"</span> <span class="op">=&gt;</span> <span class="st">"q(h) relationship (given by level, flow_rate)"</span>),</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>                controllable_fields,</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>            )</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> !<span class="fu">isempty</span>(controllable_fields)</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>            <span class="fu">push!</span>(node_names, Ribasim.<span class="fu">snake_case</span>(node_name))</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>            <span class="fu">push!</span>(controllable_parameters, <span class="fu">join</span>(controllable_fields, <span class="st">", "</span>))</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>        <span class="cf">end</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> <span class="fu">DataFrame</span>(<span class="op">:</span>node <span class="op">=&gt;</span> node_names, <span class="op">:</span>controllable_parameters <span class="op">=&gt;</span> controllable_parameters)</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="fu">markdown_table</span>(df)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
 <table class="caption-top table table-sm table-striped small">
@@ -550,18 +553,35 @@ window.Quarto = {
 \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots,
 \]</span></p>
 <p>which can be for instance an average or a difference of variables. If a variable comes from a time-series, a look ahead <span class="math inline">\(\Delta t\)</span> can be supplied.</p>
-<table class="caption-top table">
+<div id="4" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.DiscreteControl.Variable;</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>listen_node_id <span class="op">=&gt;</span> <span class="st">"cannot be a Junction"</span>,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>variable <span class="op">=&gt;</span> <span class="st">"must be `level`, `storage`, `flow_rate`, `concentration.&lt;substance&gt;` or `concentration_external.&lt;substance&gt;`"</span>,</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>look_ahead <span class="op">=&gt;</span> <span class="st">"only on transient boundary conditions, non-negative"</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
+<table class="caption-top table table-sm table-striped small">
 <colgroup>
-<col style="width: 40%">
-<col style="width: 16%">
-<col style="width: 22%">
-<col style="width: 22%">
+<col style="width: 13%">
+<col style="width: 5%">
+<col style="width: 3%">
+<col style="width: 6%">
+<col style="width: 5%">
+<col style="width: 66%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
 <th>type</th>
 <th>unit</th>
+<th>optional</th>
+<th>default</th>
 <th>restriction</th>
 </tr>
 </thead>
@@ -570,17 +590,23 @@ window.Quarto = {
 <td>node_id</td>
 <td>Int32</td>
 <td>-</td>
-<td></td>
+<td>x</td>
+<td>-</td>
+<td>-</td>
 </tr>
 <tr class="even">
 <td>compound_variable_id</td>
 <td>Int32</td>
 <td>-</td>
-<td></td>
+<td>x</td>
+<td>-</td>
+<td>-</td>
 </tr>
 <tr class="odd">
 <td>listen_node_id</td>
 <td>Int32</td>
+<td>-</td>
+<td>x</td>
 <td>-</td>
 <td>cannot be a Junction</td>
 </tr>
@@ -588,29 +614,40 @@ window.Quarto = {
 <td>variable</td>
 <td>String</td>
 <td>-</td>
-<td>must be “level”, “storage” or “flow_rate”</td>
+<td>x</td>
+<td>-</td>
+<td>must be <code>level</code>, <code>storage</code>, <code>flow_rate</code>, <code>concentration.&lt;substance&gt;</code> or <code>concentration_external.&lt;substance&gt;</code></td>
 </tr>
 <tr class="odd">
 <td>weight</td>
 <td>Float64</td>
 <td>-</td>
-<td>(optional, default 1.0)</td>
+<td>✓</td>
+<td>1.0</td>
+<td>-</td>
 </tr>
 <tr class="even">
 <td>look_ahead</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{s}\)</span></td>
-<td>Only on transient boundary conditions, non-negative (optional, default 0.0).</td>
+<td>s</td>
+<td>✓</td>
+<td>0.0</td>
+<td>only on transient boundary conditions, non-negative</td>
 </tr>
 </tbody>
 </table>
+</div>
+</div>
 <p>These variables can be listened to:</p>
 <ul>
 <li>The storage of a Basin</li>
 <li>The level of a Basin</li>
 <li>The level of a LevelBoundary (supports look ahead)</li>
 <li>The flow rate through one of these node types: Pump, Outlet, TabulatedRatingCurve, LinearResistance, ManningResistance</li>
+<li>The inflow rate of a UserDemand</li>
 <li>The flow rate of a FlowBoundary (supports look ahead)</li>
+<li>The concentration of a substance in a Basin, with variable <code>concentration.&lt;substance&gt;</code>, e.g.&nbsp;<code>concentration.Cl</code></li>
+<li>The external concentration of a substance in a Basin, with variable <code>concentration_external.&lt;substance&gt;</code>, as given in the <a href="../../reference/node/basin.html#concentration-external"><code>Basin / concentration_external</code></a> table</li>
 </ul>
 </section>
 <section id="condition" class="level2" data-number="1.2">
@@ -624,18 +661,32 @@ window.Quarto = {
 \]</span></p>
 <p>Multiple conditions with different <code>threshold_high</code> and/or <code>threshold_low</code> values can be defined on the same compound_variable, each with their own unique <code>condition_id</code>.</p>
 <p>At the start of the simulation, a condition is true if its variable exceeds the midpoint of <code>threshold_low</code> and <code>threshold_high</code> (which equals <code>threshold_high</code> without hysteresis).</p>
-<table class="caption-top table">
+<div id="6" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.DiscreteControl.<span class="dt">Condition</span>;</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(<span class="op">:</span>threshold_low <span class="op">=&gt;</span> <span class="st">"≤ threshold_high"</span>),</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    defaults_override <span class="op">=</span> <span class="fu">Dict</span>(<span class="op">:</span>threshold_low <span class="op">=&gt;</span> <span class="st">"threshold_high"</span>),</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
+<table class="caption-top table table-sm table-striped small">
 <colgroup>
-<col style="width: 43%">
-<col style="width: 17%">
-<col style="width: 15%">
-<col style="width: 23%">
+<col style="width: 25%">
+<col style="width: 11%">
+<col style="width: 10%">
+<col style="width: 11%">
+<col style="width: 18%">
+<col style="width: 21%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
 <th>type</th>
 <th>unit</th>
+<th>optional</th>
+<th>default</th>
 <th>restriction</th>
 </tr>
 </thead>
@@ -644,11 +695,15 @@ window.Quarto = {
 <td>node_id</td>
 <td>Int32</td>
 <td>-</td>
+<td>x</td>
+<td>-</td>
 <td>-</td>
 </tr>
 <tr class="even">
 <td>compound_variable_id</td>
 <td>Int32</td>
+<td>-</td>
+<td>x</td>
 <td>-</td>
 <td>-</td>
 </tr>
@@ -656,65 +711,84 @@ window.Quarto = {
 <td>condition_id</td>
 <td>Int32</td>
 <td>-</td>
+<td>x</td>
+<td>-</td>
 <td>-</td>
 </tr>
 <tr class="even">
 <td>threshold_high</td>
 <td>Float64</td>
 <td>various</td>
+<td>x</td>
+<td>-</td>
 <td>-</td>
 </tr>
 <tr class="odd">
 <td>threshold_low</td>
 <td>Float64</td>
 <td>various</td>
-<td>(optional), &lt;= threshold_high</td>
+<td>✓</td>
+<td>threshold_high</td>
+<td>≤ threshold_high</td>
 </tr>
 <tr class="even">
 <td>time</td>
 <td>DateTime</td>
 <td>-</td>
-<td>(optional)</td>
+<td>✓</td>
+<td>-</td>
+<td>-</td>
 </tr>
 </tbody>
 </table>
+</div>
+</div>
 <p>When no (or only a single) <code>time</code> is supplied for a given <code>condition_id</code>, the <code>threshold_high</code> value of this condition is unchanging over time. When multiple times are supplied, in between the given times the <code>threshold_high</code> and <code>threshold_low</code> values are block interpolated (forward fill), and outside they are constant given by the nearest time value. It is possible to configure a DiscreteControl node such that it very rapidly oscillates between control states, which isn’t realistic behavior. See the example model below.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim <span class="im">import</span> Model, Node</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.nodes <span class="im">import</span> basin, discrete_control, flow_boundary, pump</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> shapely.geometry <span class="im">import</span> Point</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> Model(starttime<span class="op">=</span><span class="st">"2020-01-01"</span>, endtime<span class="op">=</span><span class="st">"2021-01-01"</span>, crs<span class="op">=</span><span class="st">"EPSG:4326"</span>)</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>fb <span class="op">=</span> model.flow_boundary.add(</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">1</span>, Point(<span class="dv">0</span>, <span class="dv">0</span>)), [flow_boundary.Static(flow_rate<span class="op">=</span>[<span class="fl">1.0</span>])]</span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>bsn <span class="op">=</span> model.basin.add(</span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">2</span>, Point(<span class="dv">1</span>, <span class="dv">0</span>)), [basin.Profile(area<span class="op">=</span>[<span class="fl">100.0</span>, <span class="fl">100.0</span>], level<span class="op">=</span>[<span class="fl">0.0</span>, <span class="fl">1.0</span>])]</span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>pmp <span class="op">=</span> model.pump.add(Node(<span class="dv">3</span>, Point(<span class="dv">2</span>, <span class="dv">0</span>)), [pump.Static(flow_rate<span class="op">=</span>[<span class="fl">1.0</span>])])</span>
-<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>t <span class="op">=</span> model.terminal.add(Node(<span class="dv">4</span>, Point(<span class="dv">3</span>, <span class="dv">0</span>)))</span>
-<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>dc <span class="op">=</span> model.discrete_control.add(</span>
-<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">5</span>, Point(<span class="fl">1.5</span>, <span class="op">-</span><span class="dv">1</span>)),</span>
-<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    [</span>
-<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>        discrete_control.Variable(</span>
-<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>            compound_variable_id<span class="op">=</span>[<span class="dv">1</span>], listen_node_id<span class="op">=</span>[<span class="dv">2</span>], variable<span class="op">=</span>[<span class="st">"level"</span>]</span>
-<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>        )</span>
-<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    ],</span>
-<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>model.link.add(fb, bsn)</span>
-<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>model.link.add(bsn, pmp)</span>
-<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>model.link.add(pmp, t)</span>
-<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>model.link.add(dc, pmp)</span>
-<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>model.plot()</span>
-<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
-<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim <span class="im">import</span> Model, Node</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.nodes <span class="im">import</span> basin, discrete_control, flow_boundary, pump</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> shapely.geometry <span class="im">import</span> Point</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> Model(starttime<span class="op">=</span><span class="st">"2020-01-01"</span>, endtime<span class="op">=</span><span class="st">"2021-01-01"</span>, crs<span class="op">=</span><span class="st">"EPSG:4326"</span>)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>fb <span class="op">=</span> model.flow_boundary.add(</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">1</span>, Point(<span class="dv">0</span>, <span class="dv">0</span>)), [flow_boundary.Static(flow_rate<span class="op">=</span>[<span class="fl">1.0</span>])]</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>bsn <span class="op">=</span> model.basin.add(</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">2</span>, Point(<span class="dv">1</span>, <span class="dv">0</span>)), [basin.Profile(area<span class="op">=</span>[<span class="fl">100.0</span>, <span class="fl">100.0</span>], level<span class="op">=</span>[<span class="fl">0.0</span>, <span class="fl">1.0</span>])]</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>pmp <span class="op">=</span> model.pump.add(Node(<span class="dv">3</span>, Point(<span class="dv">2</span>, <span class="dv">0</span>)), [pump.Static(flow_rate<span class="op">=</span>[<span class="fl">1.0</span>])])</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>t <span class="op">=</span> model.terminal.add(Node(<span class="dv">4</span>, Point(<span class="dv">3</span>, <span class="dv">0</span>)))</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>dc <span class="op">=</span> model.discrete_control.add(</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>    Node(<span class="dv">5</span>, Point(<span class="fl">1.5</span>, <span class="op">-</span><span class="dv">1</span>)),</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>    [</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>        discrete_control.Variable(</span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>            compound_variable_id<span class="op">=</span>[<span class="dv">1</span>], listen_node_id<span class="op">=</span>[<span class="dv">2</span>], variable<span class="op">=</span>[<span class="st">"level"</span>]</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>    ],</span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>model.link.add(fb, bsn)</span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>model.link.add(bsn, pmp)</span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>model.link.add(pmp, t)</span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>model.link.add(dc, pmp)</span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>ax <span class="op">=</span> model.plot()</span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>ax.figure.tight_layout()</span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>ax.figure</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="8" class="cell" data-execution_count="1">
+<div class="cell-output cell-output-display" data-execution_count="1">
+<div>
+<figure class="figure">
+<p><img src="discrete-control_files/figure-html/cell-5-output-1.svg" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
 <p>Say there is constant inflow from the <code>FlowBoundary</code> node and there are no vertical forcings on the Basin. Say furthermore that the Pump is active only when the Basin level is above a reference value, with a flow greater than the boundary flow. In this case the Pump will rapidly turn on and off as the Basin level oscillates around the reference value.</p>
 <p>To make you aware of these oscillations, Ribasim will give a warning if successive control state changes of a DiscreteControl node in simulated time are closer than <code>min_discrete_control_interval</code>, which is configurable and defaults to 1 second. The warning is given once per DiscreteControl node, for at most 10 nodes. Set <code>min_discrete_control_interval</code> to <code>0.0</code> to disable these warnings.</p>
 <p>By default the conditions are evaluated after every timestep. To evaluate them only at fixed times, for instance daily, set the solver setting <code>discrete_control_interval</code>, see <a href="../../reference/usage.html#sec-solver-settings">usage</a>.</p>
@@ -729,18 +803,29 @@ window.Quarto = {
 <li>The table below determines for the given DiscreteControl node ID and truth state what the corresponding control state is.</li>
 <li>For all the nodes this DiscreteControl node affects (as given by the “control” links in <a href="../../reference/usage.html#link">Links / static</a>), their parameters are set to those parameters in <code>NodeType / static</code> corresponding to the determined control state.</li>
 </ul>
-<table class="caption-top table">
+<div id="10" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.DiscreteControl.Logic;</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>truth_state <span class="op">=&gt;</span> <span class="st">"consists of the characters `T` (true), `F` (false) and `*` (any)"</span>,</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
+<table class="caption-top table table-sm table-striped small">
 <colgroup>
-<col style="width: 37%">
-<col style="width: 21%">
+<col style="width: 15%">
+<col style="width: 8%">
 <col style="width: 10%">
-<col style="width: 29%">
+<col style="width: 66%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
 <th>type</th>
-<th>unit</th>
+<th>optional</th>
 <th>restriction</th>
 </tr>
 </thead>
@@ -748,23 +833,25 @@ window.Quarto = {
 <tr class="odd">
 <td>node_id</td>
 <td>Int32</td>
+<td>x</td>
 <td>-</td>
-<td></td>
 </tr>
 <tr class="even">
 <td>truth_state</td>
 <td>String</td>
-<td>-</td>
-<td>Consists of the characters “T” (true), “F” (false) and “*” (any)</td>
+<td>x</td>
+<td>consists of the characters <code>T</code> (true), <code>F</code> (false) and <code>*</code> (any)</td>
 </tr>
 <tr class="odd">
 <td>control_state</td>
 <td>String</td>
-<td>-</td>
+<td>x</td>
 <td>-</td>
 </tr>
 </tbody>
 </table>
+</div>
+</div>
 
 
 </section>

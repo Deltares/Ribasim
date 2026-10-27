@@ -23,6 +23,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -45,7 +80,7 @@ ul.task-list li input[type="checkbox"] {
 <link href="../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-3d5ac159a77d1826e09626a1d1105a20.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-cfac9797321bc647b9212eb4548dab00.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -457,18 +492,36 @@ Note
     \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots,
 \]</span></p>
 <p>which can be for instance an average or a difference of variables. If a variable comes from a timeseries, a look ahead <span class="math inline">\(\Delta t\)</span> can be supplied. There is only one compound variable per <code>ContinuousControl</code> node.</p>
-<table class="caption-top table">
+<div id="2" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">include</span>(<span class="st">"../../../utils/gen_docs_table.jl"</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.ContinuousControl.Variable;</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>listen_node_id <span class="op">=&gt;</span> <span class="st">"cannot be a Junction"</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>variable <span class="op">=&gt;</span> <span class="st">"must be </span><span class="sc">\"</span><span class="st">level</span><span class="sc">\"</span><span class="st"> or </span><span class="sc">\"</span><span class="st">flow_rate</span><span class="sc">\"</span><span class="st">"</span>,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>look_ahead <span class="op">=&gt;</span> <span class="st">"only on transient boundary conditions, non-negative"</span>,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
+<table class="caption-top table table-sm table-striped small">
 <colgroup>
-<col style="width: 40%">
-<col style="width: 16%">
-<col style="width: 20%">
-<col style="width: 22%">
+<col style="width: 15%">
+<col style="width: 8%">
+<col style="width: 5%">
+<col style="width: 9%">
+<col style="width: 8%">
+<col style="width: 51%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
 <th>type</th>
 <th>unit</th>
+<th>optional</th>
+<th>default</th>
 <th>restriction</th>
 </tr>
 </thead>
@@ -477,11 +530,15 @@ Note
 <td>node_id</td>
 <td>Int32</td>
 <td>-</td>
-<td></td>
+<td>x</td>
+<td>-</td>
+<td>-</td>
 </tr>
 <tr class="even">
 <td>listen_node_id</td>
 <td>Int32</td>
+<td>-</td>
+<td>x</td>
 <td>-</td>
 <td>cannot be a Junction</td>
 </tr>
@@ -489,22 +546,30 @@ Note
 <td>variable</td>
 <td>String</td>
 <td>-</td>
+<td>x</td>
+<td>-</td>
 <td>must be “level” or “flow_rate”</td>
 </tr>
 <tr class="even">
 <td>weight</td>
 <td>Float64</td>
 <td>-</td>
-<td>(optional, default 1.0)</td>
+<td>✓</td>
+<td>1.0</td>
+<td>-</td>
 </tr>
 <tr class="odd">
 <td>look_ahead</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{s}\)</span></td>
-<td>Only on transient boundary conditions, non-negative (optional, default 0.0).</td>
+<td>s</td>
+<td>✓</td>
+<td>0.0</td>
+<td>only on transient boundary conditions, non-negative</td>
 </tr>
 </tbody>
 </table>
+</div>
+</div>
 </section>
 <section id="function" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="function"><span class="header-section-number">1.2</span> Function</h2>
@@ -512,18 +577,27 @@ Note
 <p><span class="math display">\[
     f(\text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots).
 \]</span></p>
-<table class="caption-top table">
+<div id="4" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.ContinuousControl.<span class="dt">Function</span>;</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(<span class="op">:</span>controlled_variable <span class="op">=&gt;</span> <span class="st">"must be </span><span class="sc">\"</span><span class="st">level</span><span class="sc">\"</span><span class="st">, </span><span class="sc">\"</span><span class="st">storage</span><span class="sc">\"</span><span class="st"> or </span><span class="sc">\"</span><span class="st">flow_rate</span><span class="sc">\"</span><span class="st">"</span>),</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
+<table class="caption-top table table-sm table-striped small">
 <colgroup>
-<col style="width: 44%">
-<col style="width: 15%">
-<col style="width: 15%">
-<col style="width: 24%">
+<col style="width: 25%">
+<col style="width: 10%">
+<col style="width: 12%">
+<col style="width: 51%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
 <th>type</th>
-<th>unit</th>
+<th>optional</th>
 <th>restriction</th>
 </tr>
 </thead>
@@ -531,29 +605,31 @@ Note
 <tr class="odd">
 <td>node_id</td>
 <td>Int32</td>
+<td>x</td>
 <td>-</td>
-<td></td>
 </tr>
 <tr class="even">
 <td>input</td>
 <td>Float64</td>
+<td>x</td>
 <td>-</td>
-<td></td>
 </tr>
 <tr class="odd">
 <td>output</td>
 <td>Float64</td>
-<td>-</td>
+<td>x</td>
 <td>-</td>
 </tr>
 <tr class="even">
 <td>controlled_variable</td>
 <td>String</td>
-<td>-</td>
-<td>must be “level” or “flow_rate”</td>
+<td>x</td>
+<td>must be “level”, “storage” or “flow_rate”</td>
 </tr>
 </tbody>
 </table>
+</div>
+</div>
 
 
 </section>

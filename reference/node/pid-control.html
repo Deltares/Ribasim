@@ -23,6 +23,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -45,7 +80,7 @@ ul.task-list li input[type="checkbox"] {
 <link href="../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-3d5ac159a77d1826e09626a1d1105a20.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-cfac9797321bc647b9212eb4548dab00.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -401,15 +436,15 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#tables" id="toc-tables" class="nav-link active" data-scroll-target="#tables"><span class="header-section-number">1</span> Tables</a></li>
-  <li><a href="#static" id="toc-static" class="nav-link" data-scroll-target="#static"><span class="header-section-number">2</span> Static</a>
+  <li><a href="#tables" id="toc-tables" class="nav-link active" data-scroll-target="#tables"><span class="header-section-number">1</span> Tables</a>
   <ul class="collapse">
-  <li><a href="#time" id="toc-time" class="nav-link" data-scroll-target="#time"><span class="header-section-number">2.1</span> Time</a></li>
+  <li><a href="#static" id="toc-static" class="nav-link" data-scroll-target="#static"><span class="header-section-number">1.1</span> Static</a></li>
+  <li><a href="#time" id="toc-time" class="nav-link" data-scroll-target="#time"><span class="header-section-number">1.2</span> Time</a></li>
   </ul></li>
-  <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">3</span> Equations</a>
+  <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">2</span> Equations</a>
   <ul class="collapse">
-  <li><a href="#the-derivative-term" id="toc-the-derivative-term" class="nav-link" data-scroll-target="#the-derivative-term"><span class="header-section-number">3.1</span> The derivative term</a></li>
-  <li><a href="#the-sign-of-the-parameters" id="toc-the-sign-of-the-parameters" class="nav-link" data-scroll-target="#the-sign-of-the-parameters"><span class="header-section-number">3.2</span> The sign of the parameters</a></li>
+  <li><a href="#the-derivative-term" id="toc-the-derivative-term" class="nav-link" data-scroll-target="#the-derivative-term"><span class="header-section-number">2.1</span> The derivative term</a></li>
+  <li><a href="#the-sign-of-the-parameters" id="toc-the-sign-of-the-parameters" class="nav-link" data-scroll-target="#the-sign-of-the-parameters"><span class="header-section-number">2.2</span> The sign of the parameters</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -440,15 +475,25 @@ window.Quarto = {
 <p>In the future controlling the flow on a particular link could be supported.</p>
 <section id="tables" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Tables</h1>
-</section>
-<section id="static" class="level1" data-number="2">
-<h1 data-number="2"><span class="header-section-number">2</span> Static</h1>
-<table class="caption-top table">
+<section id="static" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="static"><span class="header-section-number">1.1</span> Static</h2>
+<div id="2" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">include</span>(<span class="st">"../../../utils/gen_docs_table.jl"</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.PidControl.Static;</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(<span class="op">:</span>listen_node_id <span class="op">=&gt;</span> <span class="st">"must be a Basin"</span>),</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
+<table class="caption-top table table-sm table-striped small">
 <thead>
 <tr class="header">
 <th>column</th>
 <th>type</th>
 <th>unit</th>
+<th>optional</th>
 <th>restriction</th>
 </tr>
 </thead>
@@ -457,55 +502,75 @@ window.Quarto = {
 <td>node_id</td>
 <td>Int32</td>
 <td>-</td>
-<td></td>
+<td>x</td>
+<td>-</td>
 </tr>
 <tr class="even">
 <td>listen_node_id</td>
 <td>Int32</td>
 <td>-</td>
+<td>x</td>
 <td>must be a Basin</td>
 </tr>
 <tr class="odd">
 <td>target</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{m}\)</span></td>
+<td>m</td>
+<td>x</td>
 <td>-</td>
 </tr>
 <tr class="even">
 <td>proportional</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{s}^{-1}\)</span></td>
+<td>s⁻¹</td>
+<td>x</td>
 <td>-</td>
 </tr>
 <tr class="odd">
 <td>integral</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{s}^{-2}\)</span></td>
+<td>s⁻²</td>
+<td>x</td>
 <td>-</td>
 </tr>
 <tr class="even">
 <td>derivative</td>
 <td>Float64</td>
 <td>-</td>
+<td>x</td>
 <td>-</td>
 </tr>
 <tr class="odd">
 <td>control_state</td>
 <td>String</td>
 <td>-</td>
-<td>(optional)</td>
+<td>✓</td>
+<td>-</td>
 </tr>
 </tbody>
 </table>
-<section id="time" class="level2" data-number="2.1">
-<h2 data-number="2.1" class="anchored" data-anchor-id="time"><span class="header-section-number">2.1</span> Time</h2>
+</div>
+</div>
+</section>
+<section id="time" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="time"><span class="header-section-number">1.2</span> Time</h2>
 <p>This table is the transient form of the <code>PidControl</code> table. The difference is that a time column is added. With this the target level and PID coefficients can be updated over time. In between the given times the values are block interpolated (forward fill), and outside this range the values are kept constant at the value from the nearest time. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
-<table class="caption-top table">
+<div id="4" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.PidControl.<span class="dt">Time</span>;</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(<span class="op">:</span>listen_node_id <span class="op">=&gt;</span> <span class="st">"must be a Basin"</span>),</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
+<table class="caption-top table table-sm table-striped small">
 <thead>
 <tr class="header">
 <th>column</th>
 <th>type</th>
 <th>unit</th>
+<th>optional</th>
 <th>restriction</th>
 </tr>
 </thead>
@@ -514,50 +579,59 @@ window.Quarto = {
 <td>node_id</td>
 <td>Int32</td>
 <td>-</td>
-<td></td>
+<td>x</td>
+<td>-</td>
 </tr>
 <tr class="even">
 <td>listen_node_id</td>
 <td>Int32</td>
 <td>-</td>
+<td>x</td>
 <td>must be a Basin</td>
 </tr>
 <tr class="odd">
 <td>time</td>
 <td>DateTime</td>
 <td>-</td>
-<td></td>
+<td>x</td>
+<td>-</td>
 </tr>
 <tr class="even">
 <td>target</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{m}\)</span></td>
+<td>m</td>
+<td>x</td>
 <td>-</td>
 </tr>
 <tr class="odd">
 <td>proportional</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{s}^{-1}\)</span></td>
+<td>s⁻¹</td>
+<td>x</td>
 <td>-</td>
 </tr>
 <tr class="even">
 <td>integral</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{s}^{-2}\)</span></td>
+<td>s⁻²</td>
+<td>x</td>
 <td>-</td>
 </tr>
 <tr class="odd">
 <td>derivative</td>
 <td>Float64</td>
 <td>-</td>
+<td>x</td>
 <td>-</td>
 </tr>
 </tbody>
 </table>
+</div>
+</div>
 </section>
 </section>
-<section id="equations" class="level1" data-number="3">
-<h1 data-number="3"><span class="header-section-number">3</span> Equations</h1>
+<section id="equations" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Equations</h1>
 <p>The PID controller continuously sets the flow rate of a Pump or Outlet to bring the level of a certain Basin closer to its setpoint. If we denote the setpoint by <span class="math inline">\(\text{SP}(t)\)</span> and the Basin level by <span class="math inline">\(y(t)\)</span>, then the error is given by</p>
 <p><span id="eq-error"><span class="math display">\[
 e(t) = \text{SP}(t) - y(t).
@@ -587,8 +661,8 @@ Note
 <p>In the case of the controlled Outlet, the upstream node can also be a level boundary. In this case we define <span class="math inline">\(\phi = 1\)</span>.</p>
 </div>
 </div>
-<section id="the-derivative-term" class="level2" data-number="3.1">
-<h2 data-number="3.1" class="anchored" data-anchor-id="the-derivative-term"><span class="header-section-number">3.1</span> The derivative term</h2>
+<section id="the-derivative-term" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="the-derivative-term"><span class="header-section-number">2.1</span> The derivative term</h2>
 <p>When <span class="math inline">\(K_d \ne 0\)</span> this adds a level of complexity. We can see this by looking at the error derivative more closely: <span class="math display">\[
 \frac{\text{d}e}{\text{d}t} = \frac{\text{d}\text{SP}}{\text{d}t} - \frac{1}{A(u_\text{PID})}\frac{\text{d}u_\text{PID}}{\text{d}t},
 \]</span></p>
@@ -602,8 +676,8 @@ Q_\text{pump/outlet} = \text{clamp}\left(\phi(u_\text{us})\frac{K_pe + K_iI + K_
 \]</span></p>
 <p>where the clamping is again done last. Note that to compute this, <span class="math inline">\(\hat{f}_\text{PID}\)</span> has to be known first, meaning that the PID controlled Pump or Outlet flow rate has to be computed after all other contributions to the PID controlled Basin’s storage are known.</p>
 </section>
-<section id="the-sign-of-the-parameters" class="level2" data-number="3.2">
-<h2 data-number="3.2" class="anchored" data-anchor-id="the-sign-of-the-parameters"><span class="header-section-number">3.2</span> The sign of the parameters</h2>
+<section id="the-sign-of-the-parameters" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="the-sign-of-the-parameters"><span class="header-section-number">2.2</span> The sign of the parameters</h2>
 <p>Note by <a href="#eq-error" class="quarto-xref">Equation&nbsp;1</a> that the error is positive if the setpoint is larger than the Basin level and negative if the setpoint is smaller than the Basin level.</p>
 <p>We enforce the convention that when a Pump is controlled, its link points away from the Basin, and when an Outlet is controlled, its link points towards the Basin, so that the main flow direction along these links is positive. Therefore, positive flows of the Pump and Outlet have opposite effects on the Basin, and thus the parameters <span class="math inline">\(K_p,K_i,K_d\)</span> of the Pump and Outlet must have opposite signs to achieve the same goal.</p>
 

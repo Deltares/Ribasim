@@ -23,6 +23,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -44,7 +79,7 @@ ul.task-list li input[type="checkbox"] {
 <link href="../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-3d5ac159a77d1826e09626a1d1105a20.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-cfac9797321bc647b9212eb4548dab00.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -408,12 +443,33 @@ ul.task-list li input[type="checkbox"] {
 <h1 data-number="1"><span class="header-section-number">1</span> Tables</h1>
 <section id="time" class="level2" data-number="1.1">
 <h2 data-number="1.1" class="anchored" data-anchor-id="time"><span class="header-section-number">1.1</span> Time</h2>
-<table class="caption-top table">
+<div id="2" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">include</span>(<span class="st">"../../../utils/gen_docs_table.jl"</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.Observation.<span class="dt">Time</span>;</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>variable <span class="op">=&gt;</span> <span class="st">"name of the Ribasim variable being observed (e.g. </span><span class="sc">\"</span><span class="st">level</span><span class="sc">\"</span><span class="st">, </span><span class="sc">\"</span><span class="st">flow_rate</span><span class="sc">\"</span><span class="st">)"</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>value <span class="op">=&gt;</span> <span class="st">"unit equal to that of the Ribasim variable"</span>,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 8%">
+<col style="width: 8%">
+<col style="width: 8%">
+<col style="width: 8%">
+<col style="width: 65%">
+</colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
 <th>type</th>
 <th>unit</th>
+<th>optional</th>
 <th>restriction</th>
 </tr>
 </thead>
@@ -422,28 +478,35 @@ ul.task-list li input[type="checkbox"] {
 <td>node_id</td>
 <td>Int32</td>
 <td>-</td>
-<td></td>
+<td>x</td>
+<td>-</td>
 </tr>
 <tr class="even">
 <td>variable</td>
 <td>String</td>
 <td>-</td>
-<td>Name of the Ribasim variable being observed (e.g.&nbsp;“level”, “flow_rate”), see <a href="reference/usage.qmd#sec-results">Results</a></td>
+<td>x</td>
+<td>name of the Ribasim variable being observed (e.g.&nbsp;“level”, “flow_rate”)</td>
 </tr>
 <tr class="odd">
 <td>time</td>
 <td>DateTime</td>
 <td>-</td>
-<td>Timestamp of the observation</td>
+<td>x</td>
+<td>-</td>
 </tr>
 <tr class="even">
 <td>value</td>
 <td>Float64</td>
-<td>-</td>
-<td>Value of the observation, unit equal to Ribasim variable</td>
+<td>various</td>
+<td>x</td>
+<td>unit equal to that of the Ribasim variable</td>
 </tr>
 </tbody>
 </table>
+</div>
+</div>
+<p>See <a href="../../reference/usage.html#sec-results">Results</a> for the variables that can be observed.</p>
 </section>
 </section>
 <section id="examples" class="level1" data-number="2">

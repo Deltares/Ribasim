@@ -80,7 +80,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-3d5ac159a77d1826e09626a1d1105a20.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-cfac9797321bc647b9212eb4548dab00.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -478,18 +478,37 @@ window.Quarto = {
 <h1 data-number="1"><span class="header-section-number">1</span> Tables</h1>
 <section id="static" class="level2" data-number="1.1">
 <h2 data-number="1.1" class="anchored" data-anchor-id="static"><span class="header-section-number">1.1</span> Static</h2>
-<table class="caption-top table">
+<div id="30a733cf" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span>run ..<span class="op">/</span>..<span class="op">/</span>gen_docs_table.py</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>table_from_schema(</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"ManningResistance.Static"</span>,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    restrictions<span class="op">=</span>{</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">"length"</span>: <span class="st">"positive"</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="st">"manning_n"</span>: <span class="st">"positive"</span>,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="st">"profile_width"</span>: <span class="st">"non-negative, not zero together with profile_slope"</span>,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    },</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Detected IPython. Loading juliacall extension. See https://juliapy.github.io/PythonCall.jl/stable/compat/#IPython</code></pre>
+</div>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
+<table class="caption-top table table-sm table-striped small">
 <colgroup>
-<col style="width: 20%">
+<col style="width: 15%">
+<col style="width: 9%">
+<col style="width: 9%">
 <col style="width: 10%">
-<col style="width: 52%">
-<col style="width: 16%">
+<col style="width: 54%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
 <th>type</th>
 <th>unit</th>
+<th>optional</th>
 <th>restriction</th>
 </tr>
 </thead>
@@ -498,40 +517,48 @@ window.Quarto = {
 <td>node_id</td>
 <td>Int32</td>
 <td>-</td>
-<td></td>
+<td>x</td>
+<td>-</td>
 </tr>
 <tr class="even">
 <td>length</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{m}\)</span></td>
+<td>m</td>
+<td>x</td>
 <td>positive</td>
 </tr>
 <tr class="odd">
 <td>manning_n</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{s} \text{m}^{-\frac{1}{3}}\)</span></td>
+<td>s m⁻¹ᐟ³</td>
+<td>x</td>
 <td>positive</td>
 </tr>
 <tr class="even">
 <td>profile_width</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{m}\)</span></td>
+<td>m</td>
+<td>x</td>
 <td>non-negative, not zero together with profile_slope</td>
 </tr>
 <tr class="odd">
 <td>profile_slope</td>
 <td>Float64</td>
 <td>-</td>
+<td>x</td>
 <td>-</td>
 </tr>
 <tr class="even">
 <td>control_state</td>
 <td>String</td>
 <td>-</td>
-<td>(optional)</td>
+<td>✓</td>
+<td>-</td>
 </tr>
 </tbody>
 </table>
+</div>
+</div>
 </section>
 </section>
 <section id="equations" class="level1" data-number="2">
@@ -687,35 +714,35 @@ s(x; x_0)
 \end{align}
 \]</span></p>
 <p>with <span class="math inline">\(x_0 = 10^{-5}\)</span>. This is a numerical regularisation, not a physical laminar transition: for real channels the transition to laminar flow lies many orders of magnitude lower. Note that for a reach of length <span class="math inline">\(L\)</span> the relaxation is active for head differences below <span class="math inline">\(x_0 L\)</span>, so for a 1 km reach below 1 cm, and in that region the flow is smaller than the Gauckler-Manning formula gives. The square root in the sill flow is relaxed in the same way, as <span class="math inline">\(\sqrt{2 g L}\, s\left(\frac{E - d}{L}; x_0\right)\)</span>, so that for nearly equal levels the Manning flow and the sill flow are both proportional to <span class="math inline">\(s(\Delta h / L; x_0)\)</span> and their minimum is as smooth as each of them.</p>
-<div id="058ca864" class="cell" data-execution_count="1">
+<div id="150a735d" class="cell" data-execution_count="2">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> s(x, threshold):</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> np.<span class="bu">abs</span>(x) <span class="op">&lt;</span> threshold:</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    x_scaled <span class="op">=</span> x <span class="op">/</span> threshold</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> x <span class="op">/</span> (<span class="dv">4</span><span class="op">*</span>np.sqrt(threshold)) <span class="op">*</span> (<span class="dv">5</span> <span class="op">-</span> (x<span class="op">/</span>threshold)<span class="op">**</span><span class="dv">2</span>)</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">else</span>:</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.sign(x)<span class="op">*</span>np.sqrt(np.<span class="bu">abs</span>(x))</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>threshold <span class="op">=</span> <span class="fl">1e-5</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> np.linspace(<span class="op">-</span><span class="fl">2.5</span><span class="op">*</span>threshold, <span class="fl">2.5</span><span class="op">*</span>threshold, <span class="dv">100</span>)</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots()</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>y_o <span class="op">=</span> np.sign(x)<span class="op">*</span>np.sqrt(np.<span class="bu">abs</span>(x))</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>y_s <span class="op">=</span> [s(x_, threshold) <span class="cf">for</span> x_ <span class="kw">in</span> x]</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>ax.plot(x, y_o, ls <span class="op">=</span> <span class="st">":"</span>, label <span class="op">=</span> <span class="vs">r"sign</span><span class="dv">$</span><span class="kw">(</span><span class="vs">x</span><span class="kw">)</span><span class="dv">\s</span><span class="vs">qrt{</span><span class="cf">|</span><span class="vs">x</span><span class="cf">|</span><span class="vs">}</span><span class="dv">$</span><span class="vs">"</span>)</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>ax.plot(x, y_s, color <span class="op">=</span> <span class="st">"C0"</span>, label <span class="op">=</span> <span class="vs">r"</span><span class="dv">$</span><span class="vs">s</span><span class="er">\</span><span class="vs">left</span><span class="kw">(</span><span class="vs">x; 10</span><span class="dv">^</span><span class="vs">{-5} </span><span class="ch">\r</span><span class="vs">ight</span><span class="kw">)</span><span class="dv">$</span><span class="vs">"</span>)</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>ax.legend()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> s(x, threshold):</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> np.<span class="bu">abs</span>(x) <span class="op">&lt;</span> threshold:</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    x_scaled <span class="op">=</span> x <span class="op">/</span> threshold</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> x <span class="op">/</span> (<span class="dv">4</span><span class="op">*</span>np.sqrt(threshold)) <span class="op">*</span> (<span class="dv">5</span> <span class="op">-</span> (x<span class="op">/</span>threshold)<span class="op">**</span><span class="dv">2</span>)</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">else</span>:</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.sign(x)<span class="op">*</span>np.sqrt(np.<span class="bu">abs</span>(x))</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>threshold <span class="op">=</span> <span class="fl">1e-5</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> np.linspace(<span class="op">-</span><span class="fl">2.5</span><span class="op">*</span>threshold, <span class="fl">2.5</span><span class="op">*</span>threshold, <span class="dv">100</span>)</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots()</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>y_o <span class="op">=</span> np.sign(x)<span class="op">*</span>np.sqrt(np.<span class="bu">abs</span>(x))</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>y_s <span class="op">=</span> [s(x_, threshold) <span class="cf">for</span> x_ <span class="kw">in</span> x]</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>ax.plot(x, y_o, ls <span class="op">=</span> <span class="st">":"</span>, label <span class="op">=</span> <span class="vs">r"sign</span><span class="dv">$</span><span class="kw">(</span><span class="vs">x</span><span class="kw">)</span><span class="dv">\s</span><span class="vs">qrt{</span><span class="cf">|</span><span class="vs">x</span><span class="cf">|</span><span class="vs">}</span><span class="dv">$</span><span class="vs">"</span>)</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>ax.plot(x, y_s, color <span class="op">=</span> <span class="st">"C0"</span>, label <span class="op">=</span> <span class="vs">r"</span><span class="dv">$</span><span class="vs">s</span><span class="er">\</span><span class="vs">left</span><span class="kw">(</span><span class="vs">x; 10</span><span class="dv">^</span><span class="vs">{-5} </span><span class="ch">\r</span><span class="vs">ight</span><span class="kw">)</span><span class="dv">$</span><span class="vs">"</span>)</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>ax.legend()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="manning-resistance_files/figure-html/cell-2-output-1.png" width="599" height="429" class="figure-img"></p>
+<p><img src="manning-resistance_files/figure-html/cell-3-output-1.png" width="599" height="429" class="figure-img"></p>
 </figure>
 </div>
 </div>

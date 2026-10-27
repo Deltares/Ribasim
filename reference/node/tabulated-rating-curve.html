@@ -80,7 +80,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-3d5ac159a77d1826e09626a1d1105a20.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-cfac9797321bc647b9212eb4548dab00.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -483,18 +483,32 @@ window.Quarto = {
 <h1 data-number="1"><span class="header-section-number">1</span> Tables</h1>
 <section id="static" class="level2" data-number="1.1">
 <h2 data-number="1.1" class="anchored" data-anchor-id="static"><span class="header-section-number">1.1</span> Static</h2>
-<table class="caption-top table">
+<div id="2" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">include</span>(<span class="st">"../../../utils/gen_docs_table.jl"</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.TabulatedRatingCurve.Static;</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(<span class="op">:</span>level <span class="op">=&gt;</span> <span class="st">"unique"</span>, <span class="op">:</span>flow_rate <span class="op">=&gt;</span> <span class="st">"start at 0, increasing"</span>),</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
+<table class="caption-top table table-sm table-striped small">
 <colgroup>
-<col style="width: 25%">
-<col style="width: 13%">
-<col style="width: 40%">
-<col style="width: 21%">
+<col style="width: 27%">
+<col style="width: 10%">
+<col style="width: 9%">
+<col style="width: 12%">
+<col style="width: 10%">
+<col style="width: 28%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
 <th>type</th>
 <th>unit</th>
+<th>optional</th>
+<th>default</th>
 <th>restriction</th>
 </tr>
 </thead>
@@ -503,83 +517,103 @@ window.Quarto = {
 <td>node_id</td>
 <td>Int32</td>
 <td>-</td>
-<td></td>
+<td>x</td>
+<td>-</td>
+<td>-</td>
 </tr>
 <tr class="even">
 <td>level</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{m}\)</span></td>
+<td>m</td>
+<td>x</td>
+<td>-</td>
 <td>unique</td>
 </tr>
 <tr class="odd">
 <td>flow_rate</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
+<td>m³ s⁻¹</td>
+<td>x</td>
+<td>-</td>
 <td>start at 0, increasing</td>
 </tr>
 <tr class="even">
 <td>max_downstream_level</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{m}\)</span></td>
-<td>(optional)</td>
+<td>m</td>
+<td>✓</td>
+<td>Inf</td>
+<td>-</td>
 </tr>
 <tr class="odd">
 <td>control_state</td>
 <td>String</td>
 <td>-</td>
-<td>(optional)</td>
+<td>✓</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr class="even">
+<td>allocation_controlled</td>
+<td>Bool</td>
+<td>-</td>
+<td>✓</td>
+<td>false</td>
+<td>-</td>
 </tr>
 </tbody>
 </table>
+</div>
+</div>
 <section id="interpolation" class="level3" data-number="1.1.1">
 <h3 data-number="1.1.1" class="anchored" data-anchor-id="interpolation"><span class="header-section-number">1.1.1</span> Interpolation</h3>
 <p>The <span class="math inline">\(Q(h)\)</span> relationship of a tabulated rating curve is defined as a PCHIPInterpolation, for more information see <a href="https://www.mathworks.com/help/matlab/ref/pchip.html">here</a>.</p>
-<div id="2" class="cell" data-execution_count="1">
+<div id="4" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">DataInterpolations</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">Plots</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>level <span class="op">=</span> [<span class="fl">12.0</span>, <span class="fl">12.2</span>, <span class="fl">12.5</span>, <span class="fl">13.0</span>]</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>flow <span class="op">=</span> [<span class="fl">0.0</span>, <span class="fl">0.5</span>, <span class="fl">2.5</span>, <span class="fl">8.0</span>]</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>level_aug <span class="op">=</span> <span class="fu">copy</span>(level)</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>flow_aug <span class="op">=</span> <span class="fu">copy</span>(flow)</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">pushfirst!</span>(level_aug, <span class="fu">first</span>(level) <span class="op">-</span> <span class="fl">1.0</span>)</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">pushfirst!</span>(flow_aug, <span class="fl">0.0</span>)</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>itp <span class="op">=</span> <span class="fu">PCHIPInterpolation</span>(</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    flow_aug,</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    level_aug;</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    extrapolation_right <span class="op">=</span> DataInterpolations.ExtrapolationType.Linear,</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>level_eval <span class="op">=</span> <span class="fu">range</span>(<span class="fu">first</span>(level), <span class="fu">last</span>(level); length <span class="op">=</span> <span class="fl">1000</span>)</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>flow_eval <span class="op">=</span> <span class="fu">itp</span>.(level_eval)</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>level_extrap_left <span class="op">=</span> [<span class="fu">first</span>(level) <span class="op">-</span> <span class="fl">0.3</span>, <span class="fu">first</span>(level)]</span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>flow_extrap_left <span class="op">=</span> <span class="fu">itp</span>.(level_extrap_left)</span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>level_extrap_right <span class="op">=</span> [<span class="fu">last</span>(level), <span class="fu">last</span>(level) <span class="op">+</span> <span class="fl">0.3</span>]</span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>flow_extrap_right <span class="op">=</span> <span class="fu">itp</span>.(level_extrap_right)</span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>c <span class="op">=</span> <span class="op">:</span>blue</span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(</span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    level_eval,</span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    flow_eval;</span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>    c,</span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>    label <span class="op">=</span> <span class="st">"interpolation"</span>,</span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>    xticks <span class="op">=</span> <span class="cn">false</span>,</span>
-<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>    yticks <span class="op">=</span> <span class="cn">false</span>,</span>
-<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>    left_margin <span class="op">=</span> <span class="fl">5</span>Plots.mm,</span>
-<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="fu">plot!</span>(level_extrap_left, flow_extrap_left; ls <span class="op">=</span> <span class="op">:</span>dash, c, label <span class="op">=</span> <span class="st">"extrapolation"</span>)</span>
-<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="fu">plot!</span>(level_extrap_right, flow_extrap_right; ls <span class="op">=</span> <span class="op">:</span>dash, c, label <span class="op">=</span> <span class="st">""</span>)</span>
-<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="fu">scatter!</span>(level, flow; c, label <span class="op">=</span> <span class="st">"data"</span>, markeralpha <span class="op">=</span> <span class="fl">0.25</span>)</span>
-<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="fu">xlabel!</span>(<span class="st">"level"</span>)</span>
-<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="fu">ylabel!</span>(<span class="st">"flow"</span>)</span>
-<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="fu">xlims!</span>(<span class="fu">first</span>(level) <span class="op">-</span> <span class="fl">0.2</span>, <span class="fu">last</span>(level) <span class="op">+</span> <span class="fl">0.2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">DataInterpolations</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">Plots</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>level <span class="op">=</span> [<span class="fl">12.0</span>, <span class="fl">12.2</span>, <span class="fl">12.5</span>, <span class="fl">13.0</span>]</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>flow <span class="op">=</span> [<span class="fl">0.0</span>, <span class="fl">0.5</span>, <span class="fl">2.5</span>, <span class="fl">8.0</span>]</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>level_aug <span class="op">=</span> <span class="fu">copy</span>(level)</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>flow_aug <span class="op">=</span> <span class="fu">copy</span>(flow)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="fu">pushfirst!</span>(level_aug, <span class="fu">first</span>(level) <span class="op">-</span> <span class="fl">1.0</span>)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="fu">pushfirst!</span>(flow_aug, <span class="fl">0.0</span>)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>itp <span class="op">=</span> <span class="fu">PCHIPInterpolation</span>(</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    flow_aug,</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    level_aug;</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    extrapolation_right <span class="op">=</span> DataInterpolations.ExtrapolationType.Linear,</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>level_eval <span class="op">=</span> <span class="fu">range</span>(<span class="fu">first</span>(level), <span class="fu">last</span>(level); length <span class="op">=</span> <span class="fl">1000</span>)</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>flow_eval <span class="op">=</span> <span class="fu">itp</span>.(level_eval)</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>level_extrap_left <span class="op">=</span> [<span class="fu">first</span>(level) <span class="op">-</span> <span class="fl">0.3</span>, <span class="fu">first</span>(level)]</span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>flow_extrap_left <span class="op">=</span> <span class="fu">itp</span>.(level_extrap_left)</span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>level_extrap_right <span class="op">=</span> [<span class="fu">last</span>(level), <span class="fu">last</span>(level) <span class="op">+</span> <span class="fl">0.3</span>]</span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>flow_extrap_right <span class="op">=</span> <span class="fu">itp</span>.(level_extrap_right)</span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>c <span class="op">=</span> <span class="op">:</span>blue</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(</span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    level_eval,</span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    flow_eval;</span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>    c,</span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>    label <span class="op">=</span> <span class="st">"interpolation"</span>,</span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>    xticks <span class="op">=</span> <span class="cn">false</span>,</span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>    yticks <span class="op">=</span> <span class="cn">false</span>,</span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>    left_margin <span class="op">=</span> <span class="fl">5</span>Plots.mm,</span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a><span class="fu">plot!</span>(level_extrap_left, flow_extrap_left; ls <span class="op">=</span> <span class="op">:</span>dash, c, label <span class="op">=</span> <span class="st">"extrapolation"</span>)</span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a><span class="fu">plot!</span>(level_extrap_right, flow_extrap_right; ls <span class="op">=</span> <span class="op">:</span>dash, c, label <span class="op">=</span> <span class="st">""</span>)</span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a><span class="fu">scatter!</span>(level, flow; c, label <span class="op">=</span> <span class="st">"data"</span>, markeralpha <span class="op">=</span> <span class="fl">0.25</span>)</span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a><span class="fu">xlabel!</span>(<span class="st">"level"</span>)</span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a><span class="fu">ylabel!</span>(<span class="st">"flow"</span>)</span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a><span class="fu">xlims!</span>(<span class="fu">first</span>(level) <span class="op">-</span> <span class="fl">0.2</span>, <span class="fu">last</span>(level) <span class="op">+</span> <span class="fl">0.2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-display" data-execution_count="1">
 <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAoQAAAHMCAIAAADDNi6EAAAABmJLR0QA/wD/AP+gvaeTAAAgAElEQVR4nO3deWBM5+L/8c9kJ7EkIagtKI1d7VtQLqqoVvFFqS4XrVLkqrXVurfVVmnRjWptra201L4klthjKbFf+xpCNpKQbeb3x/ilrkYlJDmTmffrr8nkzDmf0Objec45zzFZLBYBAADjOBkdAAAAR0cZAwBgMMoYAACDUcYAABiMMgYAwGCUMQAABqOMAQAwGGUMAIDBKGMAAAxmcBnHxMQYGwAAAMMZWcbXr19v1KiRgQEAALAFRpZxampqamqqgQEAALAFnDMGAMBglDEAAAajjAEAMBhlDACAwShjAAAMRhkDAGAwyhgAAINRxgAAGIwyBgDAYJQxAAAGo4wBADCYi9EBAAAZSEpKunz5stEpcJfJZCpdurSLS06VJmUMALboo48+mjZtWsGCBY0OAkmKjY0dOXLku+++m0P7p4wBwBYlJyd/8MEHAwcONDoIJGn8+PFJSUk5t3/OGQMAYDDKGAAAg1HGAAAYjDIGAMBglDEAAAajjAEAMBhlDADIsu+++2758uUP+m5qauqtW7dy6NBdunRJTEx80Hfj4uLS0tKsr9etWzd58uQcipG9KGMAQJZ5e3sXKFDgQd/dtm1b27Ztc+jQq1evTklJedB369Spc+LECetrLy8vHx+fHIqRvVj0AwCQZTVq1PD09JR07ty55OTkpKSkHTt21K5du169epL2798fFxcXHBzs4eHRtGlTSadOndq+fXuhQoXatWvn7u4uadeuXQEBAZs3b05LS3v22WcPHDjw5JNPrly5skSJEs8++6yT092x4rZt206cOFG5cuXGjRvfl+H69etbtmyJiYmpVq1ao0aNJB09evT27ds7d+68cuVK7dq1y5Ytm76EWWJi4rp1627dutWsWTN/f39JkZGRV65c8fb2XrduXYUKFVq1apU7f3QZYmQMAMiyr7/+etmyZZIWLlzYq1evjz76KCIi4oUXXlixYoWkffv2xcbGBgcHb9u2TdK8efOef/75CxcurFy5slmzZsnJyZL69u377LPPhoSEXLx48cKFC506derevXtkZOSECRNee+0161GGDBkydOjQiIiIQYMGDRs27L4MY8eO3bdv340bNwYNGvTRRx9JOnbsWGJi4s6dO4ODg6Ojo9esWTNp0iRJt27dqlev3rJly06ePNmkSZONGzdKCg0N7dmzp3X/AwcONHZCm5ExAOQZb76p6GgDjvvBB6pa9YHfdXd3X7RokaQSJUosWLCgY8eOffv2PXv27KeffiopKSlp8ODB+/btK1u2rKSuXbsuWbKkZ8+eknr06DF48GBJx44di4mJ+eGHHypUqBAUFOTv73/kyBEPD485c+acO3euUKFCb7/9tr+//8CBA62DWqvvvvvO+qJ///4BAQHvvffeSy+9NGLEiKCgoCpVqkjatGmTdYNp06ZVrlx5zpw5kqpUqTJq1Kjdu3dLio+PX7hwoZubW9OmTUeNGjVkyJAc+MPLFMoYAPKM11/XzZsGHLdcub/7bu3ata0vSpcuff369fu+e/r06Vu3bv3zn/9M/7Jy5crW1w0aNEjfzM/Pr0KFCpLc3d3r1KkTHh7u6elZvXr1QoUKSfL29q5Spcrhw4fvLeM5c+ZMmjTJycnJxcUlKioqMTExf/78GSY8dOhQYGCg9XWzZs3eeOMNi8UiqXr16m5ubpLKlCnz1+S5iTIGgDyjfn2jE2Tkrw8WNJlM6a89PT3z5cu3aNGi9Dc9PDysL6xFaHX79m2LxWLdJiEhwdPT09PTMyEhIX2DhIQELy+v9C9v3LgRFBR07NgxPz+/hISEAgUKpF9E/Vf37io+Pt7T09N6IGdn50f6ibMf54wBANnMx8fn2rVr1muey5QpU6FChYULF3p7e3t7e1sslpsZje7j4uJ++eUXSUePHj148GDjxo3r1q174cKFnTt3SgoNDb169WqdOnXSt4+Pj3dycrJeRPb1119bR7qSfH19L126dN/O27ZtO2/ePOtxv/322zZt2uTIj/0YGBkDALLMy8srX758kjw8PKwvJLm6uloHr9WqVWvZsmXVqlWLFy8eGhq6ePHifv36TZkyxdXV1Ww2z5s3r1ixYgULFrx3SF22bNmVK1d+/PHH0dHR33//fZEiRST9/PPPr7zyipubW0pKyvz58603U/n6+jo5Ofn7+3fv3r1ixYq+vr7t27cvXry4dbA7evToYcOGJSQkzJ0718PDw5qnU6dOYWFh1atX9/DwKFu27Ny5cyW5ubmlD7WdnZ2t8+FGMaX/ayL3RUREBAYGnjp1yqgAAGCzRowYUbp0aXt6nnFKSkpqamp6c9/r2LFjHTp0OH36dEJCQv78+e+d5Zb0NyeD79y5YzKZrPdKPZTZbE5OTk6fJM+S8ePHm83m99577xE+mxmMjAEAucHV1dXV1fXvt7FOO9/nQU2se04/Z4aTk9OjNXEu4JwxAMBgZcqUsU4dOyzKGABgME9PzyZNmmT1U5cuXTp06FAmN96+fXuGF47ZCMoYAJCDfvzxR+sV0dlu7dq1EydOfNB3Dx06dO+iWm+99dbJkydzIka2oIwBADlo48aN6U9uyE0XLlxYtWpV+pcHDx68984oW0MZAwAexcqVK2vVqvXkk082adLkyJEjkv7zn/+kryD9+uuvf/PNN0uXLl27du24cePq1q07a9asAwcOtG/fvn///sWLF582bdrq1aurV69eoUKFJ5988ocffrB+cOzYsSNGjGjQoEGpUqU6d+4cGxsrKS0tbdSoUeXLly9Xrly/fv3ue4TilStXGjdu/OSTT/r7+/fv3z81NfXOnTtDhgwJCwurW7du165dJbVv3/7w4cOSLl++3L59+3LlylWqVGnWrFnWPfTo0eOrr76qUaNGsWLFXnvttdy/z4irqQEgzwgLy3g5zEaNlH4Z8s6dumfdqj81bar0S4m3b9ft2/dvYDIpMFDpi2KFhio5+e7rxo113xXNJ06cePvttzdv3lyuXLm1a9d279790KFD7777bsOGDRcsWBATE3PkyJFp06a5ubktWbKkdevWr776qqRdu3atWbNm4cKF06dPN5vNFy9e3LVrl6enZ0RERMOGDdu0aVOmTJkbN26sXr06LCysaNGir7/++gcffDBlypTZs2dv2LAhPDzc3d39xRdf/PTTT//973+nh/Hy8lq8eHHJkiWTk5O7dOny888/v/rqq5MnT548efKGDRus21y6dCkpKUlSv379nn766VWrVp09e7ZBgwa1atV6+umnr1y5smbNmt27d1sslnr16gUHB7du3TpTfyXZhDIGgDxj5syMHxRRosSfD3KYMUPx8Rls4++vJ5+UpLQ0TZumpKQMtqlYUWXKSFJSkqZPV/pTg594QlWq/M+Wy5Ytq1Sp0t69e/fu3Svp4sWLERERJUqUmDdvXuvWrU0m086dO+9d7TJdmTJlunXrJsnJyemJJ55YsmTJwYMHY2JiTCbTwYMHy5QpI6lHjx5+fn6ShgwZ0rlz5ylTpqxaterNN9+0rtExZMiQd999994yLliw4MGDB2fMmHHt2rXo6Oh9+/ZZu/+vUlJS1q9fP2/ePEnlypV76aWXVq9e/fTTT0vq27ev9R7owMDAEydOUMYAgIxNm/bwbWbOfMgGzs766aeHbOPurnnz/m6DqKio1NTUM2fOWL8cNWqU9R7iokWLSvLz8ytevHiGH/Tx8Ul/PXjw4KioqFdffdXX1/fYsWPx//8fEemLYRUqVCguLk5SXFxc4cKFrW8WLlzYOnedbunSpR988MHYsWPbtGmzbNmyGzduPCh2fHy8xWKxruR1367SV+Nyc3NLTp8TyC2UMQAgy2rWrLlr164RI0bc+6bZbH7llVcGDRp09OjRkSNHfvHFF5Lc3d1T0ofY/ys4OHjp0qVVq1ZNTk4+d+5c+vvW0bakPXv2WB+GWLly5bCwsC5dukjavXt31f99oGNISMhrr71m/e60adOsq2xmeFxvb++iRYvu27evfv36knbt2vXKK688zp9DdqGMAQBZ1r1791mzZnXu3LlNmzY3b94MDQ1duXLlZ599lpycPHz48Nu3b9erV6958+adOnVq1KjRV199dfr06bZt2963Fmbjxo2HDx/+4osv/v777/euU33gwIGhQ4eWK1fu888/t17YFRQUFBgYaF1NesqUKUuXLr13P02aNBk7dqynp+fhw4f37NnTqFEjSTVq1Dhy5EhQUFCpUqWCgoLSN/7444979eo1aNCgP/74IyoqqkePHjn7J5U5lDEAIMucnZ3Xr1+/atWqY8eOFShQYMKECRaLJSAgoG/fvs7Ozl5eXitXrjx79qykvn371q5d++zZs8WLF/fz8/vss8/SdzJ9+vQFCxZcu3bto48+SkxMLFmypPX9gQMHli1b9tSpU8uXL7ee0C1fvvzevXuXL1+enJy8bds265OPW7ZsWb16dUk9evTw9fXdt29f69athwwZEhUVJcnPz+/AgQP79u2zrlw9YcKE8uXLS3r99derV68eGhraokWLr7/+2rpA5rhx49Kfsvzaa69luCpnjuJBEQBgi+zvQRGZNGDAgEqVKg0ZMsToIP+DB0UAABxIQEBAqVKljE6R2yhjALBnUVFRly9HXL8en5ZmLlQo3xNPFHniiSecnZ2NzvVA77zzjtERDMAKXABgnywWy9Gjx9evP3zggKKjS9265X/ypNfGjRd27Nh3586dbDxQfHz8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">
@@ -630,12 +664,31 @@ window.Quarto = {
 <section id="time" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="time"><span class="header-section-number">1.2</span> Time</h2>
 <p>This table is the transient form of the <code>TabulatedRatingCurve</code> table. The only difference is that a time column is added. With this the rating curves can be updated over time. The <code>max_downstream_level</code> currently cannot be updated over time. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
-<table class="caption-top table">
+<div id="6" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.TabulatedRatingCurve.<span class="dt">Time</span>;</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(<span class="op">:</span>level <span class="op">=&gt;</span> <span class="st">"unique per time"</span>, <span class="op">:</span>flow_rate <span class="op">=&gt;</span> <span class="st">"start at 0, increasing per time"</span>),</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 23%">
+<col style="width: 10%">
+<col style="width: 8%">
+<col style="width: 10%">
+<col style="width: 9%">
+<col style="width: 35%">
+</colgroup>
 <thead>
 <tr class="header">
 <th>column</th>
 <th>type</th>
 <th>unit</th>
+<th>optional</th>
+<th>default</th>
 <th>restriction</th>
 </tr>
 </thead>
@@ -644,34 +697,46 @@ window.Quarto = {
 <td>node_id</td>
 <td>Int32</td>
 <td>-</td>
-<td></td>
+<td>x</td>
+<td>-</td>
+<td>-</td>
 </tr>
 <tr class="even">
 <td>time</td>
 <td>DateTime</td>
 <td>-</td>
-<td></td>
+<td>x</td>
+<td>-</td>
+<td>-</td>
 </tr>
 <tr class="odd">
 <td>level</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{m}\)</span></td>
-<td></td>
+<td>m</td>
+<td>x</td>
+<td>-</td>
+<td>unique per time</td>
 </tr>
 <tr class="even">
 <td>flow_rate</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{m}^3/\text{s}\)</span></td>
-<td>non-negative</td>
+<td>m³ s⁻¹</td>
+<td>x</td>
+<td>-</td>
+<td>start at 0, increasing per time</td>
 </tr>
 <tr class="odd">
 <td>max_downstream_level</td>
 <td>Float64</td>
-<td><span class="math inline">\(\text{m}\)</span></td>
-<td>(optional)</td>
+<td>m</td>
+<td>✓</td>
+<td>Inf</td>
+<td>-</td>
 </tr>
 </tbody>
 </table>
+</div>
+</div>
 </section>
 </section>
 <section id="equations" class="level1" data-number="2">
