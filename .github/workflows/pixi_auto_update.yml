@@ -21,7 +21,7 @@ jobs:
         run: |
           set -o pipefail
           # The wflow-coupled environment is left out since hydromt-ribasim is not yet public
-          pixi update --environment default --environment py312 --environment pandas2 --json | pixi exec pixi-diff-to-markdown >> diff.md
+          pixi update --environment default --environment py312 --environment pandas2 --environment qgis --json | pixi exec pixi-diff-to-markdown >> diff.md
           pixi run generate-sbom-ribasim-python
       - name: Create pull request
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1

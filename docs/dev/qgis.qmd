@@ -25,6 +25,9 @@ We wanted to implement this via `pip install --editable`, but QGIS doesn't find 
 
 # Running QGIS
 
+QGIS is in a separate `qgis` Pixi environment, which is available on Windows and Linux.
+It is kept apart from the default environment, since QGIS brings its own Python packages from conda-forge.
+
 In order to run QGIS with the plugins, simply call `pixi run qgis`.
 You will find the Ribasim plugin in the tool bar.
 
@@ -36,6 +39,8 @@ QGIS needs some more paths during the startup and the Pixi environment provides 
 # Running tests
 
 To run the QGIS plugin tests locally inside a QGIS process, call `pixi run test-ribasim-qgis`.
+To type check the plugin against QGIS, call `pixi run typecheck-qgis`.
+This is not part of the `typecheck` pre-commit hook, to avoid installing QGIS for every commit, but it runs on CI.
 This launches QGIS and runs the full test suite (including plugin and UI tests) via the test runner.
 
 For CI or headless environments, the same tests can be run in Docker with `pixi run test-ribasim-qgis-docker`.
