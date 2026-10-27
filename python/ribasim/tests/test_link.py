@@ -60,7 +60,6 @@ def test_node_data():
 def test_listen_link_type_inference(discrete_control_of_pid_control):
     """Listen links are auto-added when a control link is created."""
     model = discrete_control_of_pid_control
-    assert model.link.df is not None
     listen_links = model.link.df.loc[model.link.df["link_type"] == "listen"]
     # Basin(3)->PidControl(6) was auto-added when PidControl(6)->Outlet(2) control link was created
     basin_to_pid = listen_links.loc[
@@ -104,6 +103,5 @@ def test_listen_link_allows_reverse_control(discrete_control_of_pid_control):
     # pid_control #6 has a control link *to* outlet #2;
     # the listen link from basin #3 to pid_control #6 was auto-added
     # without triggering the "opposite link already exists" error.
-    assert model.link.df is not None
     listen_links = model.link.df.loc[model.link.df["link_type"] == "listen"]
     assert not listen_links.empty

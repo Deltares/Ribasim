@@ -42,7 +42,6 @@ def test_basic(basic, tmp_path):
     assert model_orig.filepath == toml_path
     model_loaded = Model.read(toml_path)
     assert model_loaded.filepath == toml_path
-    assert model_loaded.link.df is not None
 
     with toml_path.open("rb") as f:
         toml_dict = tomli.load(f)
@@ -172,7 +171,6 @@ def test_update_used_ids(basic):
         crs="EPSG:28992",
     )
     model.basin.add(Node(1, Point(0, 0)), [basin.State(level=[1.0])])
-    assert model.node.df is not None
     model.node.df.index = pd.Index([20], name="node_id")
 
     model.update_used_ids()
@@ -184,7 +182,6 @@ def test_update_used_ids(basic):
     )
     assert nbasin.node_id == 21
 
-    assert basic.link.df is not None
     basic.link.df = basic.link.df.iloc[[0]].copy()
     basic.link.df.index = pd.Index([40], name="link_id")
 
@@ -287,10 +284,10 @@ def test_add_existing():
     assert 20 not in model.node._used_node_ids.node_ids
     assert 2 not in model.link._used_link_ids.node_ids
 
-    # Remove the only Link
-    assert model.link.df is not None
+    # Remove the only Link, this leaves an empty Link table
     model.remove_link(1)
-    assert model.link.df is None
+    assert model.link.df.empty
+    assert model.link.df.crs == model.crs
     assert 1 not in model.link._used_link_ids.node_ids
 
     # Remove the only UserDemand
