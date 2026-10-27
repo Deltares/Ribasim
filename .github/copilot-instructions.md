@@ -50,7 +50,7 @@ See also the developer docs at `docs/dev`.
 - **Matplotlib**: Visualization and plotting
 
 ### Build & Development
-- **Pixi**: Primary package/environment manager, also used to run e.g. tests via tasks. (see `pixi.toml`)
+- **Pixi**: Primary package/environment manager, also used to run e.g. tests via tasks. (see `pyproject.toml`)
 - **Julia Package Manager**: For Julia dependencies. `Project.toml` has all dev dependencies and `core/Project.toml` the Ribasim core dependencies.
 - **Prek**: Code quality hooks
 - **Pytest**: Python testing
@@ -216,7 +216,7 @@ We use the `GitHub` repository https://github.com/Deltares/Ribasim for issues an
 
 - `core/src/Ribasim.jl`: Main Julia module entry point
 - `python/ribasim/ribasim/model.py`: Core Python model class
-- `pixi.toml`: Development environment and task definitions
+- `pyproject.toml`: Pixi workspace manifest with the development environment, Python dev dependencies and task definitions
 - `Project.toml`: Julia development dependencies
 - `core/Project.toml`: Julia package dependencies
 - `python/ribasim/pyproject.toml`: Python package configuration

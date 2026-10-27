@@ -2,10 +2,10 @@ name: Python Codegen
 on:
   push:
     branches: [main]
-    paths: ["core/**", "python/**", "pixi.toml", "pixi.lock"]
+    paths: ["core/**", "python/**", "pyproject.toml", "pixi.lock"]
     tags: ["*"]
   pull_request:
-    paths: ["core/**", "python/**", "pixi.toml", "pixi.lock"]
+    paths: ["core/**", "python/**", "pyproject.toml", "pixi.lock"]
   merge_group:
   workflow_dispatch:
 concurrency:

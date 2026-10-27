@@ -4,6 +4,14 @@ title: "Python tooling development"
 
 # Set up the developer environment
 
+## Dependencies
+
+Python dependencies are declared as PyPI dependencies.
+Pixi installs them from PyPI, unless a conda-forge package like QGIS already depends on them.
+Dependencies of the Python packages go in their own `python/*/pyproject.toml`.
+Development tools such as linters and documentation generators go in the `dev` dependency group of the root `pyproject.toml`.
+The root `pyproject.toml` is also the Pixi manifest; `[tool.pixi.dependencies]` only holds Python and non-Python tools from conda-forge, like Julia and QGIS.
+
 ## Running the tests {#sec-test}
 
 In order to run tests on Ribasim Python execute
