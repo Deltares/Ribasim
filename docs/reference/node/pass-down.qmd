@@ -6,7 +6,7 @@ The PassDown node can be thought of as a Basin without storage. It fully 'passes
 - The PassDown node receives flow from other nodes which provide flow: connector nodes, FlowBoundary or other PassDown nodes
 - The PassDown node directs this flow to flow receiving nodes: Basins, level boundaries, terminals, user demands or other PassDown nodes
 
-PassDown nodes can be chained arbitrarily, as long as there are no loops (and at the moment we do not support confluences of multiple PassDown nodes into a PassDown node). Over such chains, which are subgraphs of the model consisting of PassDown and potentially UserDemand nodes, flow travels instantaneously.
+PassDown nodes can be chained arbitrarily, as long as there are no loops (and at the moment we do not support confluences of multiple PassDown nodes into a PassDown node). Over such chains, which are subgraphs of the model consisting of PassDown and potentially UserDemand nodes, flow travels instantaneously. PassDown nodes can also distribute flows, using the associated flow fraction.
 
 # Tables
 
@@ -15,14 +15,31 @@ PassDown nodes can be chained arbitrarily, as long as there are no loops (and at
 ```{python}
 # | code-fold: true
 %run ../../gen_docs_table.py
-table_from_schema("PassDown.Static")
+table_from_schema("PassDown.Static", restrictions = {"fraction": "Must be in [0,1], and for n parallel PassDown nodes n-1 fractions must be supplied which sum to ≤1."})
 ```
 
 # Equations
 
-The algorithm for the PassDown node flow is as follows:
-- Compute the inflow sum $q_\text{in}$
-- If a UserDemand is upstream of the
+The algorithm for the PassDown node flow in a subgraph is as follows:
+- Traverse the pass down subgraph node-wise from upstream to downstream breadth first, and within that UserDemands before PassDown nodes as these take precedence
+- For PassDown nodes:
+    - Compute the total inflow
+    $$
+        q_\text{total in} = \sum q_\text{in}
+    $$
+    - Compute the corrected outflow
+    $$
+        q_\text{out} = q_\text{total in} - q_\text{ud},
+    $$
+    where $q_\text{ud}$ is the UserDemand abstraction given the effective total demand $d$:
+    $$
+        q_\text{ud} = \min(q_\text{total in}, d).
+    $$
+    Then the PassDown follows from the fraction $f$:
+    $$
+        q_\text{pd} = f \cdot q_\text{out}.
+    $$
+- For UserDemand nodes it works equivalent to the standard UserDemand flow [reference] but without the low storage factor or minimum upstream level.
 
 # Connectivity rules
 

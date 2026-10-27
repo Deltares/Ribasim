@@ -78,6 +78,10 @@ end
 markdown_table(neighbor_bounds_table(node_names_snake_case, node_names_camel_case, Ribasim.n_neighbor_bounds_flow))
 ```
 
+::: {.callout-note}
+The above table only valid when no PassDown nodes are involved. For PassDown connectivity rules see the [pass_down docs page].
+:::
+
 ## Control links
 
 ```{julia}
