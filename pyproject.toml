@@ -1,6 +1,6 @@
 # This pyproject.toml is the manifest of the Pixi workspace, it doesn't build a package.
 # Python dependencies are declared here and in python/*/pyproject.toml, and Pixi installs them from PyPI.
-# The [tool.pixi.dependencies] tables only hold Python itself and non-Python tools from conda-forge.
+# The [tool.pixi.dependencies] tables only hold Python itself and tools that are not on PyPI.
 [project]
 name = "ribasim-workspace"
 version = "2026.1.2"
@@ -28,11 +28,13 @@ dev = [
     # Lint and typecheck
     "nbstripout",
     "pandas-stubs",
+    "prek",
     "pyqt5-stubs",
     "ruff",
     "ty",
     "types-geopandas",
     "types-networkx",
+    "typos",
     # Tests
     "lxml",
     "pytest-qgis >=4.0.1, <5",
@@ -309,9 +311,8 @@ quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not
 [tool.pixi.dependencies]
 gh = "*"
 julia = { version = "==1.13.1", channel = "https://prefix.dev/julia-forge" }
-prek = "*"
 rust = "*"
-typos = "*"
+# The yamlfmt on PyPI is an unrelated project
 yamlfmt = "*"
 
 [tool.pixi.pypi-dependencies]
