@@ -291,14 +291,28 @@ python-magic = ">=0.4.27"
 sbom4python = ">=0.12.3"
 twine = "*"
 
-[feature.py312.dependencies]
-python = "3.12.*"
-
 [feature.py313.dependencies]
 python = "3.13.*"
 
-[feature.pandas2.pypi-dependencies]
-pandas = ">=2.2,<3"
+# Test the lower bounds of the Python packages, with the oldest supported Python and the
+# lowest versions of their direct dependencies. Since dependencies without a lower bound
+# would get ancient releases, all dependencies in python/*/pyproject.toml need one.
+[feature.min]
+solve-strategy = "lowest-direct"
+
+[feature.min.dependencies]
+# The same as requires-python in python/*/pyproject.toml, checked by check-min-python
+python = ">=3.12"
+
+[feature.min.pypi-dependencies]
+ribasim = { path = "python/ribasim", editable = true, extras = ["all"] }
+ribasim_testmodels = { path = "python/ribasim_testmodels", editable = true }
+
+[feature.min.tasks]
+check-min-python = "python utils/check-min-python.py"
+test-ribasim-python-cov = { cmd = "pytest --numprocesses=4 --cov=ribasim --cov-report=xml -m 'not regression' python/ribasim/tests", depends-on = [
+    "check-min-python",
+] }
 
 # QGIS with what the Ribasim plugin needs, for developing and testing the plugin.
 # This is a separate environment, so that the conda Python packages that QGIS brings
@@ -385,8 +399,7 @@ scripts = ["scripts/load-env.bat"]
 
 [environments]
 default = ["py313"]
-py312 = ["py312"]
-pandas2 = ["py313", "pandas2"]
+min = { features = ["min"], no-default-feature = true }
 qgis = { features = ["qgis"], no-default-feature = true }
 wflow-coupled = { features = ["wflow-coupled"], no-default-feature = true }
 

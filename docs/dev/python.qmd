@@ -13,6 +13,10 @@ Development tools such as linters and documentation generators go in `[pypi-depe
 `[dependencies]` in `pixi.toml` only holds Python and tools that are not on PyPI, like Julia.
 QGIS is in a separate `qgis` environment, see [QGIS plugin development](/dev/qgis.qmd).
 
+The `min` environment tests the lower bounds of the dependencies, with the oldest supported Python and the lowest versions of the direct dependencies.
+Therefore every dependency in `python/*/pyproject.toml` needs a lower bound, otherwise it resolves to an ancient release.
+Run the tests in it with `pixi run --environment min test-ribasim-python-cov`.
+
 ## Running the tests {#sec-test}
 
 In order to run tests on Ribasim Python execute

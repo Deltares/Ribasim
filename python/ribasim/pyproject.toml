@@ -24,9 +24,9 @@ dependencies = [
     "pandas >=2.2",
     "pandera >=0.25",
     "pyarrow >=17.0",
-    "pydantic >=2.0",
-    "pyogrio >=0.8",
-    "shapely >=2.0",
+    "pydantic >=2.10",
+    "pyogrio >=0.9",
+    "shapely >=2.0.4",
     "tomli >=2.0",
     "tomli-w >=1.0",
     "xarray >=2023.11",
@@ -35,16 +35,16 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 tests = [
-    "lxml",
-    "pytest",
-    "pytest-xdist",
-    "pytest-cov",
+    "lxml >=5.0",
+    "pytest >=8.0",
+    "pytest-xdist >=3.5",
+    "pytest-cov >=5.0",
     "ribasim_testmodels",
-    "teamcity-messages",
+    "teamcity-messages >=1.32",
 ]
 diff = ["datacompy >=0.16"]
-netcdf = ["xugrid"]
-delwaq = ["jinja2", "networkx", "ribasim[netcdf]"]
+netcdf = ["xugrid >=0.13.0"]
+delwaq = ["jinja2 >=3.1", "networkx >=3.3", "ribasim[netcdf]"]
 all = ["ribasim[tests]", "ribasim[netcdf]", "ribasim[delwaq]", "ribasim[diff]"]
 
 [project.urls]
