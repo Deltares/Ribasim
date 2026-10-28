@@ -107,7 +107,6 @@ class Model(FileModel, ParentModel):
     experimental: Experimental = Field(default_factory=Experimental)
 
     basin: Basin = Field(default_factory=Basin)
-    pass_down: PassDown = Field(default_factory=PassDown)
     junction: Junction = Field(default_factory=Junction)
     continuous_control: ContinuousControl = Field(default_factory=ContinuousControl)
     discrete_control: DiscreteControl = Field(default_factory=DiscreteControl)
@@ -119,6 +118,7 @@ class Model(FileModel, ParentModel):
     manning_resistance: ManningResistance = Field(default_factory=ManningResistance)
     observation: Observation = Field(default_factory=Observation)
     outlet: Outlet = Field(default_factory=Outlet)
+    pass_down: PassDown = Field(default_factory=PassDown)
     pid_control: PidControl = Field(default_factory=PidControl)
     pump: Pump = Field(default_factory=Pump)
     tabulated_rating_curve: TabulatedRatingCurve = Field(

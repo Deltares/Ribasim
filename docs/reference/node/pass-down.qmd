@@ -1,8 +1,9 @@
 ---
-title: "![](/assests/node-icons/PassDown.svg){height=20} PassDown"
+title: "![](/assets/node-icons/PassDown.svg){height=20} PassDown"
 ---
 
 The PassDown node can be thought of as a Basin without storage. It fully 'passes-down' flow, so the sum of the inflow is always equal to the sum of the outflow. As such, the PassDown node does not need any profile information. The general concept is:
+
 - The PassDown node receives flow from other nodes which provide flow: connector nodes, FlowBoundary or other PassDown nodes
 - The PassDown node directs this flow to flow receiving nodes: Basins, level boundaries, terminals, user demands or other PassDown nodes
 
@@ -21,6 +22,7 @@ table_from_schema("PassDown.Static", restrictions = {"fraction": "Must be in [0,
 # Equations
 
 The algorithm for the PassDown node flow in a subgraph is as follows:
+
 - Traverse the pass down subgraph node-wise from upstream to downstream breadth first, and within that UserDemands before PassDown nodes as these take precedence
 - For PassDown nodes:
     - Compute the total inflow
@@ -44,6 +46,7 @@ The algorithm for the PassDown node flow in a subgraph is as follows:
 # Connectivity rules
 
 The PassDown node has some specific connectivity rules:
+
 - A maximum of 1 UserDemand node can abstract from a PassDown node.
 - A UserDemand node cannot abstract from Basin(s) and a PassDown node simultaneously.
 - Since a PassDown node cannot accumulate water, it always needs one or more outflow links. If the PassDown node flows into a UserDemand node, there must be another outflow link to a different node type, because the inflow to the PassDown can be larger than the demand and the remainder needs somewhere to go.
