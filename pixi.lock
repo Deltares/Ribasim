@@ -73,7 +73,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/rust-std-x86_64-unknown-linux-gnu-1.99.1-h480d76f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/sysroot_linux-64-2.28-h4ee821c_9.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2026e-h5d301ff_0.conda
-      - conda: https://prefix.dev/julia-forge/linux-64/julia-1.13.1-hb0f4dca_0.conda
+      - conda: https://prefix.dev/julia-forge/linux-64/julia-1.13.3-hb0f4dca_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -401,7 +401,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/rust-std-aarch64-unknown-linux-gnu-1.99.1-hb0489cc_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/sysroot_linux-aarch64-2.28-h585391f_9.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2026e-h5d301ff_0.conda
-      - conda: https://prefix.dev/julia-forge/linux-aarch64/julia-1.13.1-he8cfe8b_0.conda
+      - conda: https://prefix.dev/julia-forge/linux-aarch64/julia-1.13.3-he8cfe8b_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -721,7 +721,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/tk-8.6.13-hbeba79b_4.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/typst-0.14.2-hd1458d2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/yamlfmt-0.21.0-h820172f_0.conda
-      - conda: https://prefix.dev/julia-forge/osx-arm64/julia-1.13.1-h60d57d3_0.conda
+      - conda: https://prefix.dev/julia-forge/osx-arm64/julia-1.13.3-h60d57d3_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -1044,7 +1044,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/vcomp14-14.51.36247-habf1de7_41.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.51.36247-h633cb9f_41.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/yamlfmt-0.21.0-h11686cb_0.conda
-      - conda: https://prefix.dev/julia-forge/win-64/julia-1.13.1-h9490d1a_0.conda
+      - conda: https://prefix.dev/julia-forge/win-64/julia-1.13.3-h9490d1a_0.conda
       - pypi: ./python/ribasim
       - pypi: ./python/ribasim_api
       - pypi: ./python/ribasim_testmodels
@@ -2400,7 +2400,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/ca-certificates-2026.7.22-hbd8a1cb_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/python_abi-3.13-9_cp313.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2026c-h151e31d_0.conda
-      - conda: https://prefix.dev/julia-forge/linux-64/julia-1.13.1-hb0f4dca_0.conda
+      - conda: https://prefix.dev/julia-forge/linux-64/julia-1.13.3-hb0f4dca_0.conda
       - pypi: ./python/ribasim
       - pypi: git+https://github.com/Deltares-research/hydromt_ribasim.git?rev=0c4018fced8d478215f3a02d1885a5fc92eaa40e#0c4018fced8d478215f3a02d1885a5fc92eaa40e
       - pypi: https://files.pythonhosted.org/packages/02/c3/253a89ee03fc9b9682f1541728eb66db7db22148cd94f89ab22528cd1e1b/deprecation-2.1.0-py2.py3-none-any.whl
@@ -2560,7 +2560,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/vc-14.5-ha367084_41.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/vc14_runtime-14.51.36247-habf1de7_41.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/vcomp14-14.51.36247-habf1de7_41.conda
-      - conda: https://prefix.dev/julia-forge/win-64/julia-1.13.1-h9490d1a_0.conda
+      - conda: https://prefix.dev/julia-forge/win-64/julia-1.13.3-h9490d1a_0.conda
       - pypi: ./python/ribasim
       - pypi: git+https://github.com/Deltares-research/hydromt_ribasim.git?rev=0c4018fced8d478215f3a02d1885a5fc92eaa40e#0c4018fced8d478215f3a02d1885a5fc92eaa40e
       - pypi: https://files.pythonhosted.org/packages/01/33/e591f9d3d8d6c9cfc02ae95f3e3c44920f2d18050f3f252c244e0f293a0e/msgspec-0.22.0-cp313-cp313-win_amd64.whl
@@ -15586,34 +15586,34 @@ packages:
     - zstd >=1.5.7,<1.6.0a0
   size: 387535
   timestamp: 1786599623274
-- conda: https://prefix.dev/julia-forge/linux-64/julia-1.13.1-hb0f4dca_0.conda
-  sha256: 2022baef9fb2e345f3a0a6967a6b2eaa91bcfb4a078b17db97a9e3f9749cb2c7
-  md5: 2e9b9a27549ff4bb406894e17d9b5f49
+- conda: https://prefix.dev/julia-forge/linux-64/julia-1.13.3-hb0f4dca_0.conda
+  sha256: d377a80fd216f184cfd4dac7617a0176f681f3e75124c52ff0680f995e1995d8
+  md5: 363aea1f79c077d90fbd1d60753043d3
   license: MIT
   run_exports: {}
-  size: 230274242
-  timestamp: 1790515279487
-- conda: https://prefix.dev/julia-forge/linux-aarch64/julia-1.13.1-he8cfe8b_0.conda
-  sha256: bad330d65d7fe12cccbb673102b9ce295f3dabcfc9bee622e48b01e4f284c1d4
-  md5: 934f83b7ae6e31d09e03fca8adc6105f
+  size: 230566761
+  timestamp: 1793022499189
+- conda: https://prefix.dev/julia-forge/linux-aarch64/julia-1.13.3-he8cfe8b_0.conda
+  sha256: 2e9aa7768615d075d41dfeaecb896735d1bb85d07ebd6d2de181ef17457a0084
+  md5: e6365da3444afe13de2378070b355257
   license: MIT
   run_exports: {}
-  size: 255311342
-  timestamp: 1790515285295
-- conda: https://prefix.dev/julia-forge/osx-arm64/julia-1.13.1-h60d57d3_0.conda
-  sha256: 17a7e6dbf2b6230dc06ca168a25b4e827827ee54e816e1984efcd7f4ae2d4ca3
-  md5: 49a4e967159a08af623d00ebaf3f1903
+  size: 255780630
+  timestamp: 1793022501832
+- conda: https://prefix.dev/julia-forge/osx-arm64/julia-1.13.3-h60d57d3_0.conda
+  sha256: b4beeb20ec8ed4e8c50dc554ba838efa4521c806bd2cb5a700d400e2aa9da01e
+  md5: 690e06cd7224f81bd5cc5f21d3253988
   license: MIT
   run_exports: {}
-  size: 205585525
-  timestamp: 1790515287053
-- conda: https://prefix.dev/julia-forge/win-64/julia-1.13.1-h9490d1a_0.conda
-  sha256: cd48f90a1e3ed285871723e21a2bbf95f8f41dbcb5fa58c70f8c812b104d180c
-  md5: a16a3a15b979360e23d5dbbe2d37eec2
+  size: 206135183
+  timestamp: 1793022499198
+- conda: https://prefix.dev/julia-forge/win-64/julia-1.13.3-h9490d1a_0.conda
+  sha256: 4e65ca80c6537aaf2a0644b708cda10edfafd4741fccea69b29236c2a7b69662
+  md5: ad8e447790603ce472e306fe50bf66ca
   license: MIT
   run_exports: {}
-  size: 229921017
-  timestamp: 1790515300396
+  size: 230429738
+  timestamp: 1793164239271
 - pypi: ./python/ribasim
   name: ribasim
   requires_dist:
