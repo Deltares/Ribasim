@@ -1151,6 +1151,10 @@ function formulate_pass_down_flow!(
     (; fraction, inflow_ids, pass_down_subgraphs, user_demand_id) = pass_down
     (; current_return_factor) = time_dependent_cache.user_demand
 
+    # No-ops if flow === flow_in, but needed for AD
+    flow.horizontal .= flow_in.horizontal
+    flow.vertical .= flow_in.vertical
+
     # Different PassDown subgraphs are independent from eachother
     @threaded for subgraph in pass_down_subgraphs
         for id in subgraph

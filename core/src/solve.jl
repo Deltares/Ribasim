@@ -24,11 +24,19 @@ const continuous_control_input_components = (:storage, :flow)
 const ContinuousControlInputTuple = NamedTuple{continuous_control_input_components, Tuple{UnitRange{Int}, FlowTuple}}
 const ContinuousControlInputCVector{T} = CVector{T, Vector{T}, ContinuousControlInputTuple}
 
+"""
+Data related to the Jacobian of a some function `f` which is part of `water_balance`.
+
+ - input: The input vector of the function `f`
+ - ranges: The ranges of the input
+ - jac: The data of the Jacobian itself, either sparse or dense
+ - jac_func!: The function which updates `jac`
+"""
 @kwdef struct SubJacobian{I, R, M <: AbstractMatrix{Float64}}
     input::I
     ranges::R = CVector(collect(eachindex(input)), getaxes(input))
     jac::M
-    jac_func::Function
+    jac_func!::Function
 end
 
 """
@@ -122,7 +130,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
     jac_flow = SubJacobian(;
         input = flow_input,
         jac = ∂flow_∂flow_input,
-        jac_func = eval_∂flow_∂flow_input!
+        jac_func! = eval_∂flow_∂flow_input!
     )
 
     ###
@@ -170,7 +178,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
     jac_continuous_control = SubJacobian(;
         input = continuous_control_input,
         jac = ∂continuous_control_compound_∂continuous_control_input,
-        jac_func = eval_∂continuous_control_compound_∂continuous_control_input!
+        jac_func! = eval_∂continuous_control_compound_∂continuous_control_input!
     )
 
     ###
@@ -199,6 +207,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
     eval_∂pass_down_flow_∂flow!(t) = @ad_active p jacobian!(
         pass_down_closure!,
         pass_down_flow,
+        ∂pass_down_flow_∂flow,
         ∂pass_down_flow_∂flow_prep,
         backend_jac,
         non_pass_down_flow,
@@ -208,7 +217,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
     jac_pass_down = SubJacobian(;
         input = flow_input,
         jac = ∂pass_down_flow_∂flow,
-        jac_func = eval_∂pass_down_flow_∂flow!
+        jac_func! = eval_∂pass_down_flow_∂flow!
     )
 
     return RibasimJacobianEvaluationCache(;
@@ -231,6 +240,15 @@ The rhs of the ODE problem is composed of:
 - Computing levels and areas from the storages
 - Computing flows from the levels and areas
 - Computing continuously controlled variables via ContinuousControl and PidControl
+- Computing Continuously controlled flows (both ContinuousControl and PidControl)
+- Computing the PassDown flows as the function of the input flows
+
+The full Jacobian is of the form
+
+J = [∂q_∂Q ∂q_I]
+    [∂e_Q     0]
+
+### ∂q_∂Q
 
 Within the solve, The Jacobian is formulated as a function of v = (storage_uplink, storage_downlink, pid_integral, continuous_control_compound), where:
 - storage_uplink is the storage uplink per cumulative flow state
@@ -244,11 +262,11 @@ This means that the computed Jacobian has the following structure:
 
 This relates to the Jacobian of water_balance! as follows:
 
- ∂water_balance!_∂Q = ∂q_∂v * ∂v_∂Q
-                    = ∂q_∂storage_uplink * ∂storage_uplink_∂Q +
-                      ∂q_∂storage_downlink * ∂storage_downlink_∂Q +
-                      ∂q_∂pid_integral * ∂pid_integral_∂Q +
-                      ∂q_∂continuous_control_compound * ∂continuous_control_compound_∂Q
+ ∂q_∂Q = ∂q_∂v * ∂v_∂Q
+       = ∂q_∂storage_uplink * ∂storage_uplink_∂Q +
+         ∂q_∂storage_downlink * ∂storage_downlink_∂Q +
+         ∂q_∂pid_integral * ∂pid_integral_∂Q +
+         ∂q_∂continuous_control_compound * ∂continuous_control_compound_∂Q
 
 Here:
 - ∂q_∂storage_uplink and ∂q_∂storage_downlink are diagonal matrices, except for the rows of flows
@@ -259,6 +277,14 @@ Here:
 
 The reason we do this is because of sparse matrix coloring (https://github.com/JuliaDiff/SparseMatrixColorings.jl);
 this formulation requires far fewer right hand side calls in the Jacobian computation than the standard way.
+
+### PassDown
+If there are PassDown nodes present there is another step at the end of `water_balance!`, which computes PassDown flows as a function of non-PassDown flows.
+As such, we obtain
+
+∂q_∂Q = ∂q_all_∂q_non_pass_down * ∂q_non_pass_down_∂Q
+
+where ∂q_non_pass_down_∂Q is equivalent to ∂q_∂Q in the above.
 
 A mutable struct with only const fields, like [`ParametersIndependent`](@ref).
 """
@@ -297,15 +323,11 @@ function SciMLOperators.update_coefficients!(
         t::Number,
     )
     (; cache, area_pid_controlled, n_pid) = J
-    (; du_cache, jac_flow, jac_continuous_control) = cache
+    (; du_cache, jac_flow, jac_continuous_control, jac_pass_down) = cache
     flow_input = jac_flow.input
     (; storage_uplink, storage_downlink) = flow_input
     (; p_independent, p_mutable, current_basin_properties) = p
     (; pid_control, basin) = p_independent
-
-    eval_∂flow_∂flow_input! = jac_flow.jac_func
-    continuous_control_input = jac_continuous_control.input
-    eval_∂continuous_control_compound_∂continuous_control_input! = jac_continuous_control.jac_func
 
     !p_mutable.refresh_jac && return nothing
 
@@ -318,13 +340,13 @@ function SciMLOperators.update_coefficients!(
         p_independent
     )
     check_new_t!(p, t)
-    flow_input.pid_integral .= u.pid_integral
+    jac_flow.input.pid_integral .= u.pid_integral
     # Cached by the last water_balance! call
-    flow_input.continuous_control_compound .=
+    jac_flow.input.continuous_control_compound .=
         p_independent.continuous_control.continuous_control_compound_variables
 
     # Compute derivatives
-    eval_∂flow_∂flow_input!(t)
+    jac_flow.jac_func!(t)
 
     # Area of PID controlled Basins
     for pid_idx in 1:n_pid
@@ -335,9 +357,12 @@ function SciMLOperators.update_coefficients!(
     end
 
     # Compute Jacobian of the ContinuousControl output w.r.t. the input
-    continuous_control_input.storage .= current_basin_properties.current_storage
-    continuous_control_input.flow .= du_cache.flow
-    eval_∂continuous_control_compound_∂continuous_control_input!(t)
+    jac_continuous_control.input.storage .= current_basin_properties.current_storage
+    jac_continuous_control.input.flow .= du_cache.flow
+    jac_continuous_control.jac_func!(t)
+
+    # Compute the PassDown Jacobian
+    jac_pass_down.jac_func!(t)
 
     # Compute local part of the reduced linear solve Jacobian
     update_J_inner_local!(J)
@@ -497,7 +522,7 @@ end
 
 """
 Compute J_inner = J_inner_local - γ * M * ∂q_∂pid_integral * ∂pid_integral_∂storage.
-If `structural`, all PID contributions are set to 1.0 to initialize the sparsity pattern.
+If `structural`, all contributions are set to 1.0 to initialize the sparsity pattern.
 """
 function build_J_inner!(
         J_inner::AbstractMatrix{Float64},

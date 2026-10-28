@@ -4,37 +4,49 @@
     using Test
 
     "Construct the model and return the error messages logged during construction."
-    function error_messages(model_name::String)::Vector{String}
+    function error_messages(model_name::String, error_message::String)::Vector{String}
         toml_path = normpath(@__DIR__, "../../generated_testmodels/$model_name/ribasim.toml")
         @assert ispath(toml_path)
         logger = TestLogger()
         with_logger(logger) do
-            @test_throws "Invalid number of connections for certain node types." Ribasim.Model(toml_path)
+            @test_throws error_message Ribasim.Model(toml_path)
         end
         return [string(log.message) for log in logger.logs if log.level == Logging.Error]
     end
 end
 
 @testitem "PassDown missing fractions" setup = [PassDownValidation] begin
-    messages = PassDownValidation.error_messages("invalid_pass_down_missing_fractions")
+    messages = PassDownValidation.error_messages(
+        "invalid_pass_down_missing_fractions",
+        "Errors encountered when parsing PassDown data."
+    )
     @test messages ==
         ["At most one PassDown node downstream of Pump #2 can have an unspecified fraction."]
 end
 
 @testitem "PassDown fraction sum" setup = [PassDownValidation] begin
-    messages = PassDownValidation.error_messages("invalid_pass_down_fraction_sum")
+    messages = PassDownValidation.error_messages(
+        "invalid_pass_down_fraction_sum",
+        "Errors encountered when parsing PassDown data."
+    )
     @test messages == [
         "The fractions of the PassDown nodes downstream of Pump #2 must sum to at most 1 when one fraction is unspecified (got 1.25).",
     ]
 end
 
 @testitem "PassDown multiple UserDemands" setup = [PassDownValidation] begin
-    messages = PassDownValidation.error_messages("invalid_pass_down_multiple_user_demands")
+    messages = PassDownValidation.error_messages(
+        "invalid_pass_down_multiple_user_demands",
+        "Invalid number of connections for certain node types."
+    )
     @test messages == ["PassDown #3 cannot have more than one UserDemand outflow."]
 end
 
 @testitem "PassDown only UserDemand" setup = [PassDownValidation] begin
-    messages = PassDownValidation.error_messages("invalid_pass_down_only_user_demand")
+    messages = PassDownValidation.error_messages(
+        "invalid_pass_down_only_user_demand",
+        "Invalid number of connections for certain node types."
+    )
     @test messages == [
         "PassDown #3 cannot just flow out into a PassDown node, the remainder flow needs somewhere to go.",
     ]
