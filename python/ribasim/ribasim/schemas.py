@@ -12,7 +12,8 @@ from ribasim import migrations
 
 
 class _BaseSchema(pa.DataFrameModel):
-    class Config:
+    # The nested Config class is how pandera expects options to be set
+    class Config:  # ty: ignore[invalid-attribute-override]
         add_missing_columns = True
         coerce = True
 

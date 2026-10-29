@@ -1,5 +1,6 @@
 ---
 title: "![](/assets/node-icons/PidControl.svg){height=20} PidControl"
+engine: julia
 ---
 
 The PidControl node controls the level in a Basin by continuously controlling the flow rate of a connected Pump or Outlet.
@@ -9,17 +10,16 @@ In the future controlling the flow on a particular link could be supported.
 
 # Tables
 
-# Static
+## Static
 
-column           | type     | unit            | restriction
----------------- | -------- | --------------- | -----------
-node_id          | Int32    | -               |
-listen_node_id   | Int32    | -               | must be a Basin
-target           | Float64  | $\text{m}$      | -
-proportional     | Float64  | $\text{s}^{-1}$ | -
-integral         | Float64  | $\text{s}^{-2}$ | -
-derivative       | Float64  | -               | -
-control_state    | String   | -               | (optional)
+```{julia}
+# | code-fold: true
+include("../../../utils/gen_docs_table.jl")
+table_from_schema(
+    Ribasim.Schema.PidControl.Static;
+    restrictions = Dict(:listen_node_id => "must be a Basin"),
+)
+```
 
 ## Time
 
@@ -30,15 +30,13 @@ the values are block interpolated (forward fill), and outside this range the val
 value from the nearest time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
-column           | type     | unit            | restriction
----------------- | -------- | --------------- | -----------
-node_id          | Int32    | -               |
-listen_node_id   | Int32    | -               | must be a Basin
-time             | DateTime | -               |
-target           | Float64  | $\text{m}$      | -
-proportional     | Float64  | $\text{s}^{-1}$ | -
-integral         | Float64  | $\text{s}^{-2}$ | -
-derivative       | Float64  | -               | -
+```{julia}
+# | code-fold: true
+table_from_schema(
+    Ribasim.Schema.PidControl.Time;
+    restrictions = Dict(:listen_node_id => "must be a Basin"),
+)
+```
 
 # Equations
 

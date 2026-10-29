@@ -1,5 +1,6 @@
 ---
 title: "![](/assets/node-icons/ContinuousControl.svg){height=20} ContinuousControl"
+engine: julia
 ---
 
 The `ContinuousControl` node allows for fine control of a controllable property of a connector node, which is updated at each time step. This control can be set up as follows:
@@ -24,13 +25,18 @@ $$
 
 which can be for instance an average or a difference of variables. If a variable comes from a timeseries, a look ahead $\Delta t$ can be supplied. There is only one compound variable per `ContinuousControl` node.
 
-column               | type     | unit       | restriction
--------------------- | -------- | ---------- | -----------
-node_id              | Int32    | -          |
-listen_node_id       | Int32    | -          | cannot be a Junction
-variable             | String   | -          | must be "level" or "flow_rate"
-weight               | Float64  | -          | (optional, default 1.0)
-look_ahead           | Float64  | $\text{s}$ | Only on transient boundary conditions, non-negative (optional, default 0.0).
+```{julia}
+# | code-fold: true
+include("../../../utils/gen_docs_table.jl")
+table_from_schema(
+    Ribasim.Schema.ContinuousControl.Variable;
+    restrictions = Dict(
+        :listen_node_id => "cannot be a Junction",
+        :variable => "must be \"level\" or \"flow_rate\"",
+        :look_ahead => "only on transient boundary conditions, non-negative",
+    ),
+)
+```
 
 ## Function
 
@@ -40,9 +46,10 @@ $$
     f(\text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots).
 $$
 
-column               | type    | unit    | restriction
--------------------- | ------- | ------- | -----------
-node_id              | Int32   | -       |
-input                | Float64 | -       |
-output               | Float64 | -       | -
-controlled_variable  | String  | -       | must be "level" or "flow_rate"
+```{julia}
+# | code-fold: true
+table_from_schema(
+    Ribasim.Schema.ContinuousControl.Function;
+    restrictions = Dict(:controlled_variable => "must be \"level\", \"storage\" or \"flow_rate\""),
+)
+```
