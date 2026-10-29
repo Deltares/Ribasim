@@ -155,7 +155,9 @@ publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api",
 ] }
 
 
-test-ribasim-qgis-docker = { cmd = "sh ./test.sh", cwd = ".docker" }
+test-ribasim-qgis-docker = { cmd = "bash .docker/test.sh {{ image }}", args = [
+    { "arg" = "image", "default" = "qgis/qgis:4.2" },
+] }
 
 # Run
 ribasim-core = { cmd = "julia --startup-file=no --project=core -e 'using Ribasim; Ribasim.main(ARGS)'", depends-on = [
