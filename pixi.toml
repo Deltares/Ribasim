@@ -26,7 +26,7 @@ test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=r
 # Installation
 # This is only for developers who want their global Julia to use the right version.
 # Use `pixi run julia` for the package used by CI.
-install-julia = "juliaup add 1.13.1 && juliaup override set 1.13.1"
+install-julia = "juliaup add 1.13.3 && juliaup override set 1.13.3"
 _prek-install = "prek install --overwrite"
 instantiate-formatting = { cmd = "julia --startup-file=no --project=utils/formatting --eval 'using Pkg; Pkg.instantiate()'" }
 install-prek = { depends-on = [
@@ -251,7 +251,7 @@ quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not
 # Dependencies of the Python packages go in python/*/pyproject.toml.
 [dependencies]
 gh = "*"
-julia = { version = "==1.13.1", channel = "https://prefix.dev/julia-forge" }
+julia = { version = "==1.13.3", channel = "https://prefix.dev/julia-forge" }
 rust = "*"
 # The yamlfmt on PyPI is an unrelated project
 yamlfmt = "*"
@@ -351,7 +351,7 @@ cmd = "qgis --profiles-path {{ profiles_path }}"
 platforms = ["win-64", "linux-64"]
 
 [feature.wflow-coupled.dependencies]
-julia = { version = "==1.13.1", channel = "https://prefix.dev/julia-forge" }
+julia = { version = "==1.13.3", channel = "https://prefix.dev/julia-forge" }
 python = "3.13.*"
 
 [feature.wflow-coupled.pypi-dependencies]
