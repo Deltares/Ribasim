@@ -1738,7 +1738,8 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
     pass_down =
         PassDown(; node_id, pass_down_subgraphs = get_pass_down_subgraphs(graph, node_id))
 
-    map!(id -> collect(inflow_ids(graph, id)), pass_down.inflow_ids, node_id)
+    map!(id -> get_inflow_links(graph, id), pass_down.inflow_links, node_id)
+    map!(id -> get_outflow_links(graph, id), pass_down.outflow_links, node_id)
 
     (; fraction) = pass_down
     has_fraction = falses(length(node_id))

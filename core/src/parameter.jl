@@ -1106,7 +1106,8 @@ end
 
 """
 node_id: node IDs of the PassDown nodes
-inflow_ids: the upstream node IDs over flow links of each PassDown node
+inflow_links: the inflow links per PassDown node
+outflow_links: the outflow links per PassDown node
 fraction: the fraction of the upstream flow that goes through each PassDown node
 pass_down_subgraphs: disjoint trees of flow-connected PassDown and UserDemand nodes,
     excluding UserDemand nodes without a PassDown inneighbor. The nodes of each subgraph
@@ -1115,7 +1116,8 @@ user_demand_id: The ID of the UserDemand node that abstracts from the PassDown n
 """
 @kwdef struct PassDown <: AbstractParameterNode
     node_id::Vector{NodeID}
-    inflow_ids::Vector{Vector{NodeID}} = Vector{Vector{NodeID}}(undef, length(node_id))
+    inflow_links::Vector{Vector{LinkMetadata}} = [LinkMetadata[] for _ in node_id]
+    outflow_links::Vector{Vector{LinkMetadata}} = [LinkMetadata[] for _ in node_id]
     fraction::Vector{Float64} = zeros(length(node_id))
     pass_down_subgraphs::Vector{Vector{NodeID}} = Vector{NodeID}[]
     user_demand_id::Vector{NodeID} = fill(NodeID(:Terminal, 0, 0), length(node_id))

@@ -1093,48 +1093,6 @@ function formulate_flows!(
     end
 end
 
-# A @generated function cannot branch on the runtime value `id.type`, so the
-# if-elseif chain is unrolled at definition time instead. The outflow component of a node type
-# is the horizontal flow component named after it, or `<name>_outflow` (e.g. UserDemand).
-let body = :(error("Unsupported node $id upstream of PassDown node."))
-    for (node_type, name) in node_type_map
-        component = if name in state_horizontal_flow_components
-            name
-        elseif Symbol(name, :_outflow) in state_horizontal_flow_components
-            Symbol(name, :_outflow)
-        else
-            continue
-        end
-        body = Expr(:if, :(id.type == $node_type), :(horizontal.$component[id.idx]), body)
-    end
-    @eval begin
-        """
-        The total outflow of a node with a single flow state that can be upstream of a PassDown node.
-        """
-        function get_node_outflow(flow::FlowCVector{T}, id::NodeID)::T where {T}
-            (; horizontal) = flow
-            return $body
-        end
-    end
-end
-
-"The flow from a node upstream of a PassDown node that is available to be passed down."
-function get_pass_down_upstream_flow(
-        flow::FlowCVector{T},
-        p_independent::ParametersIndependent,
-        upstream_id::NodeID,
-        t::Number,
-    )::T where {T}
-    return if upstream_id.type == NodeType.FlowBoundary
-        # FlowBoundary flows are not part of the flow state
-        boundary_flow_rate(p_independent.flow_boundary, upstream_id.idx, t)
-    elseif upstream_id.type == NodeType.PassDown
-        flow.pass_down[upstream_id.idx]
-    else
-        get_node_outflow(flow, upstream_id)
-    end
-end
-
 """
 Compute the flows of the PassDown nodes and the UserDemand nodes in the PassDown subgraphs.
 A PassDown node gets its fraction of the flow from its upstream nodes, where of an upstream
@@ -1148,7 +1106,7 @@ function formulate_pass_down_flow!(
     )::Nothing where {T}
     (; p_independent, time_dependent_cache) = p
     (; pass_down, user_demand) = p_independent
-    (; fraction, inflow_ids, pass_down_subgraphs, user_demand_id) = pass_down
+    (; fraction, inflow_links, pass_down_subgraphs, user_demand_id) = pass_down
     (; current_return_factor) = time_dependent_cache.user_demand
 
     # No-ops if flow === flow_in, but needed for AD
@@ -1161,8 +1119,8 @@ function formulate_pass_down_flow!(
             if id.type == NodeType.PassDown
                 # PassDown distributing flow via the fractions
                 inflow = zero(T)
-                for upstream_id in inflow_ids[id.idx]
-                    inflow += get_pass_down_upstream_flow(flow_in, p_independent, upstream_id, t)
+                for inflow_link in inflow_links[id.idx]
+                    inflow += get_flow(flow_in, inflow_link.link, p; t)
                 end
                 # UserDemand flow is abstracted from the inflow as that takes precedence
                 user_id = user_demand_id[id.idx]
