@@ -28,15 +28,15 @@ CONSTANT_PARAMETERS = {
 
 def main() -> None:
     """Build and write the complete Wflow SBM model."""
-    model = WflowSbmModel(root=str(MODEL_ROOT), mode="w+", data_libs=["artifact_data"])
+    model = WflowSbmModel(root=str(MODEL_ROOT), mode="w+", data_libs=["artifact_data","deltares_data"])
     model.build(
         steps=[
             {
                 "setup_config": {
                     "data": {
                         "wflow_version": "1.1",
-                        "time.starttime": "2010-02-02T00:00:00",
-                        "time.endtime": "2010-02-10T00:00:00",
+                        "time.starttime": "2010-01-01T00:00:00",
+                        "time.endtime": "2014-12-31T00:00:00",
                         "time.timestepsecs": 86400,
                         "model.reservoir__flag": False,
                         "model.glacier__flag": False,

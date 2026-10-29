@@ -105,11 +105,20 @@ function update_wflow_land!(model)::Nothing
     )
     Wflow.update_overland_flow_model!(overland_flow, domain.land, dt)
     Wflow.update_total_water_storage!(model)
+
+#   Wflow.compute_mass_balance!(model, model.mass_balance)
+    Wflow.write_output(model)
+
     return nothing
 end
 
 "Collect the flow exported from each Wflow river cell in m3/s."
-function collect_river_inflow!(river_inflow::Vector{Float64}, wflow)::Vector{Float64}
+function collect_river_inflow!(
+	river_inflow::Vector{Float64},
+	overland::Vector{Float64},
+	subsurface::Vector{Float64},
+	runoff::Vector{Float64},
+ 	wflow)::Vector{Float64}
     (; routing, land, domain) = wflow
     (; land_indices) = domain.river.network
     (; cell_area) = domain.river.parameters
@@ -118,10 +127,11 @@ function collect_river_inflow!(river_inflow::Vector{Float64}, wflow)::Vector{Flo
     net_runoff_river = land.runoff.variables.net_runoff_river
     for river_index in eachindex(river_inflow)
         land_index = land_indices[river_index]
-        river_inflow[river_index] =
-            overland_to_river[land_index] +
-            subsurface_to_river[land_index] +
-            net_runoff_river[land_index] * cell_area[river_index]
+
+        overland[river_index] = overland_to_river[land_index]
+        subsurface[river_index] = subsurface_to_river[land_index]
+        runoff[river_index] = net_runoff_river[land_index] * cell_area[river_index]
+        river_inflow[river_index] = overland[river_index] + subsurface[river_index] + runoff[river_index]
     end
     all(isfinite, river_inflow) || error("Wflow produced non-finite river inflow.")
     return river_inflow
@@ -166,6 +176,9 @@ function run_coupled(
         basin_inflow = BMI.get_value_ptr(ribasim, "basin.surface_runoff")
         flow_boundary_inflow = BMI.get_value_ptr(ribasim, "flow_boundary.flow_rate")
         river_inflow = zeros(length(basin_positions))
+        overland = zeros(length(basin_positions))
+        subsurface = zeros(length(basin_positions))
+        runoff = zeros(length(basin_positions))
         timestep = Wflow.tosecond(wflow.clock.dt)
         end_time = BMI.get_end_time(ribasim)
         steps = isnothing(max_steps) ? round(Int, end_time / timestep) : max_steps
@@ -176,7 +189,7 @@ function run_coupled(
                 coupling_time = step * timestep
                 coupling_time <= end_time || error("Coupling step exceeds the model end time.")
                 update_wflow_land!(wflow)
-                collect_river_inflow!(river_inflow, wflow)
+                collect_river_inflow!(river_inflow, overland, subsurface, runoff, wflow)
                 aggregate_to_ribasim!(
                     basin_inflow,
                     flow_boundary_inflow,
@@ -185,6 +198,9 @@ function run_coupled(
                     flow_boundary_positions,
                 )
                 exported = sum(river_inflow)
+                sum_overland = sum(overland)
+                sum_subsurface = sum(subsurface)
+                sum_runoff = sum(runoff)
                 injected = sum(basin_inflow) + sum(flow_boundary_inflow)
                 error_flow = injected - exported
                 isapprox(injected, exported; rtol = 1.0e-12, atol = 1.0e-12) ||
@@ -192,8 +208,11 @@ function run_coupled(
                 BMI.update_until(ribasim, coupling_time)
                 @printf(
                     diagnostics,
-                    "%.1f,%.16g,%.16g,%.16g\n",
+                    "%.1f,%.16g,%.16g,%.16g,%.16g,%.16g,%.16g\n",
                     coupling_time,
+                    sum_overland,
+                    sum_subsurface,
+                    sum_runoff,
                     exported,
                     injected,
                     error_flow,
@@ -203,7 +222,7 @@ function run_coupled(
         end
         completed = steps * timestep == end_time
     finally
-        Wflow.close_files(wflow; delete_output = true)
+        Wflow.close_files(wflow; delete_output = false)
         if completed
             BMI.finalize(ribasim)
         end

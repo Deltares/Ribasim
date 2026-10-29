@@ -43,8 +43,8 @@ def main() -> None:
         root=MODEL_ROOT,
         mode="w+",
         data_libs=["artifact_data"],
-        starttime=datetime.datetime(2010, 2, 2),
-        endtime=datetime.datetime(2010, 2, 10),
+        starttime=datetime.datetime(2010, 1, 1),
+        endtime=datetime.datetime(2014, 12, 31),
     )
     model.ribamodel.ribasim_version = ribasim.__version__
     model.setup_base_network_from_dem(
