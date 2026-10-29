@@ -80,7 +80,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-83714cd0e7dc9fdbafbbd371d0427816.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-d3dd72e47976c844a05ffb6b950c6ecd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -781,10 +781,14 @@ window.Quarto = {
 <span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>ax.figure.tight_layout()</span>
 <span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>ax.figure</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div id="8" class="cell" data-execution_count="1">
+<div class="cell-output cell-output-stdout">
+<pre><code>/home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/xugrid/ugrid/connectivity.py:83: NumbaPerformanceWarning: numba is not installed; running a pure-Python fallback instead. Regridding, interpolation, and snapping may be much slower; install numba to enable acceleration.
+  @numba.njit(inline="always")</code></pre>
+</div>
 <div class="cell-output cell-output-display" data-execution_count="1">
 <div>
 <figure class="figure">
-<p><img src="discrete-control_files/figure-html/cell-5-output-1.svg" class="img-fluid figure-img"></p>
+<p><img src="discrete-control_files/figure-html/cell-5-output-2.svg" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -806,12 +810,12 @@ window.Quarto = {
 <div id="10" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.DiscreteControl.Logic;</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>truth_state <span class="op">=&gt;</span> <span class="st">"consists of the characters `T` (true), `F` (false) and `*` (any)"</span>,</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    ),</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.DiscreteControl.Logic;</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span>truth_state <span class="op">=&gt;</span> <span class="st">"consists of the characters `T` (true), `F` (false) and `*` (any)"</span>,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
 <table class="caption-top table table-sm table-striped small">

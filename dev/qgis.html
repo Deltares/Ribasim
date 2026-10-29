@@ -80,7 +80,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-83714cd0e7dc9fdbafbbd371d0427816.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-d3dd72e47976c844a05ffb6b950c6ecd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script src="../site_libs/quarto-contrib/kbd/kbd.js"></script>
 <link href="../site_libs/quarto-contrib/kbd/kbd.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
@@ -353,6 +353,7 @@ Note
 </section>
 <section id="running-qgis" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> Running QGIS</h1>
+<p>QGIS is in a separate <code>qgis</code> Pixi environment, which is available on Windows and Linux. It is kept apart from the default environment, since QGIS brings its own Python packages from conda-forge.</p>
 <p>In order to run QGIS with the plugins, simply call <code>pixi run qgis</code>. You will find the Ribasim plugin in the tool bar.</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -370,7 +371,7 @@ Note
 </section>
 <section id="running-tests" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Running tests</h1>
-<p>To run the QGIS plugin tests locally inside a QGIS process, call <code>pixi run test-ribasim-qgis</code>. This launches QGIS and runs the full test suite (including plugin and UI tests) via the test runner.</p>
+<p>To run the QGIS plugin tests locally inside a QGIS process, call <code>pixi run test-ribasim-qgis</code>. To type check the plugin against QGIS, call <code>pixi run typecheck-qgis</code>. This is not part of the <code>typecheck</code> pre-commit hook, to avoid installing QGIS for every commit, but it runs on CI. This launches QGIS and runs the full test suite (including plugin and UI tests) via the test runner.</p>
 <p>For CI or headless environments, the same tests can be run in Docker with <code>pixi run test-ribasim-qgis-docker</code>. Make sure that Docker is installed and available in your path.</p>
 </section>
 <section id="qml-styles-and-node-icons" class="level1" data-number="4">

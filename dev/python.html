@@ -80,7 +80,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-83714cd0e7dc9fdbafbbd371d0427816.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-d3dd72e47976c844a05ffb6b950c6ecd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -289,11 +289,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul>
   <li><a href="#set-up-the-developer-environment" id="toc-set-up-the-developer-environment" class="nav-link active" data-scroll-target="#set-up-the-developer-environment"><span class="header-section-number">1</span> Set up the developer environment</a>
   <ul class="collapse">
-  <li><a href="#sec-test" id="toc-sec-test" class="nav-link" data-scroll-target="#sec-test"><span class="header-section-number">1.1</span> Running the tests</a></li>
-  <li><a href="#updating-example-notebooks" id="toc-updating-example-notebooks" class="nav-link" data-scroll-target="#updating-example-notebooks"><span class="header-section-number">1.2</span> Updating example notebooks</a></li>
-  <li><a href="#prepare-model-input" id="toc-prepare-model-input" class="nav-link" data-scroll-target="#prepare-model-input"><span class="header-section-number">1.3</span> Prepare model input</a></li>
-  <li><a href="#sec-vscode" id="toc-sec-vscode" class="nav-link" data-scroll-target="#sec-vscode"><span class="header-section-number">1.4</span> Setup Visual Studio Code (optional)</a></li>
-  <li><a href="#linting" id="toc-linting" class="nav-link" data-scroll-target="#linting"><span class="header-section-number">1.5</span> Linting</a></li>
+  <li><a href="#dependencies" id="toc-dependencies" class="nav-link" data-scroll-target="#dependencies"><span class="header-section-number">1.1</span> Dependencies</a></li>
+  <li><a href="#sec-test" id="toc-sec-test" class="nav-link" data-scroll-target="#sec-test"><span class="header-section-number">1.2</span> Running the tests</a></li>
+  <li><a href="#updating-example-notebooks" id="toc-updating-example-notebooks" class="nav-link" data-scroll-target="#updating-example-notebooks"><span class="header-section-number">1.3</span> Updating example notebooks</a></li>
+  <li><a href="#prepare-model-input" id="toc-prepare-model-input" class="nav-link" data-scroll-target="#prepare-model-input"><span class="header-section-number">1.4</span> Prepare model input</a></li>
+  <li><a href="#sec-vscode" id="toc-sec-vscode" class="nav-link" data-scroll-target="#sec-vscode"><span class="header-section-number">1.5</span> Setup Visual Studio Code (optional)</a></li>
+  <li><a href="#linting" id="toc-linting" class="nav-link" data-scroll-target="#linting"><span class="header-section-number">1.6</span> Linting</a></li>
   </ul></li>
   <li><a href="#sec-codecov" id="toc-sec-codecov" class="nav-link" data-scroll-target="#sec-codecov"><span class="header-section-number">2</span> Code maintenance</a></li>
   </ul>
@@ -323,27 +324,32 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="set-up-the-developer-environment" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Set up the developer environment</h1>
-<section id="sec-test" class="level2" data-number="1.1">
-<h2 data-number="1.1" class="anchored" data-anchor-id="sec-test"><span class="header-section-number">1.1</span> Running the tests</h2>
+<section id="dependencies" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="dependencies"><span class="header-section-number">1.1</span> Dependencies</h2>
+<p>Python dependencies are declared as PyPI dependencies. Pixi installs them from PyPI, unless a conda-forge package like QGIS already depends on them. Dependencies of the Python packages go in their own <code>python/*/pyproject.toml</code>. Development tools such as linters and documentation generators go in <code>[pypi-dependencies]</code> in <code>pixi.toml</code>. <code>[dependencies]</code> in <code>pixi.toml</code> only holds Python and tools that are not on PyPI, like Julia. QGIS is in a separate <code>qgis</code> environment, see <a href="../dev/qgis.html">QGIS plugin development</a>.</p>
+<p>The <code>min</code> environment tests the lower bounds of the dependencies, with the oldest supported Python and the lowest versions of the direct dependencies. Therefore every dependency in <code>python/*/pyproject.toml</code> needs a lower bound, otherwise it resolves to an ancient release. Run the tests in it with <code>pixi run --environment min test-ribasim-python-cov</code>.</p>
+</section>
+<section id="sec-test" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="sec-test"><span class="header-section-number">1.2</span> Running the tests</h2>
 <p>In order to run tests on Ribasim Python execute</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run test-ribasim-python</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="updating-example-notebooks" class="level2" data-number="1.2">
-<h2 data-number="1.2" class="anchored" data-anchor-id="updating-example-notebooks"><span class="header-section-number">1.2</span> Updating example notebooks</h2>
+<section id="updating-example-notebooks" class="level2" data-number="1.3">
+<h2 data-number="1.3" class="anchored" data-anchor-id="updating-example-notebooks"><span class="header-section-number">1.3</span> Updating example notebooks</h2>
 <p>Make sure to run <code>Clear All Outputs</code> on the notebook before committing.</p>
 </section>
-<section id="prepare-model-input" class="level2" data-number="1.3">
-<h2 data-number="1.3" class="anchored" data-anchor-id="prepare-model-input"><span class="header-section-number">1.3</span> Prepare model input</h2>
+<section id="prepare-model-input" class="level2" data-number="1.4">
+<h2 data-number="1.4" class="anchored" data-anchor-id="prepare-model-input"><span class="header-section-number">1.4</span> Prepare model input</h2>
 <p>Before running the Julia tests or building binaries, example model input needs to created. This is done by running the following:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run generate-testmodels</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>This places example model input files under <code>./generated_testmodels/</code>. If the example models change, re-run this script.</p>
 </section>
-<section id="sec-vscode" class="level2" data-number="1.4">
-<h2 data-number="1.4" class="anchored" data-anchor-id="sec-vscode"><span class="header-section-number">1.4</span> Setup Visual Studio Code (optional)</h2>
+<section id="sec-vscode" class="level2" data-number="1.5">
+<h2 data-number="1.5" class="anchored" data-anchor-id="sec-vscode"><span class="header-section-number">1.5</span> Setup Visual Studio Code (optional)</h2>
 <p>Install the <a href="https://marketplace.visualstudio.com/items?itemName=ms-python.python">Python</a>, <a href="https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff">ruff</a> and <a href="https://marketplace.visualstudio.com/items?itemName=njpwerner.autodocstring">autoDocstring</a> extensions.</p>
 </section>
-<section id="linting" class="level2" data-number="1.5">
-<h2 data-number="1.5" class="anchored" data-anchor-id="linting"><span class="header-section-number">1.5</span> Linting</h2>
+<section id="linting" class="level2" data-number="1.6">
+<h2 data-number="1.6" class="anchored" data-anchor-id="linting"><span class="header-section-number">1.6</span> Linting</h2>
 <p>To run our linting suite locally, execute:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pixi</span> run lint</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>

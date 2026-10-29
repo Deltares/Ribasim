@@ -45,7 +45,7 @@ ul.task-list li input[type="checkbox"] {
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-83714cd0e7dc9fdbafbbd371d0427816.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-d3dd72e47976c844a05ffb6b950c6ecd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -331,6 +331,7 @@ ul.task-list li input[type="checkbox"] {
 <li>Allocation: Allocation passes its results to the physical layer at a fixed <code>allocation.intervention_interval</code>, representing human intervention, or at every BMI <code>update_until</code> call. Within an intervention interval allocation takes timesteps of its own, and the physical layer uses the time-averaged results. <code>allocation.dt</code> now sets a fixed allocation timestep within the intervention interval. The allocation output is written per intervention interval, or per allocation timestep if <code>solver.saveat</code> is 0.</li>
 <li>Allocation: <code>allocation.dt</code>, <code>allocation.dtmin</code> and <code>allocation.dtmax</code> are limited to <code>allocation.intervention_interval</code> (default 86400 s). Larger values, such as a multi-day <code>dt</code> or <code>dtmin</code> from earlier versions, are reduced to it with a warning; increase <code>intervention_interval</code> to keep a longer allocation timestep.</li>
 <li>Allocation: The simulation now stops when the allocation problem is infeasible, also when the infeasibility analysis finds the problem feasible without its objectives.</li>
+<li>Python: the minimum versions of the dependencies are now tested, which raised them to pydantic 2.10, shapely 2.0.4, pyogrio 0.9 and xugrid 0.13. <a href="https://github.com/Deltares/Ribasim/pull/3354">#3354</a></li>
 <li>Duplicate rows in input tables are now an error, for instance two rows for the same node and control state in a static table. <a href="https://github.com/Deltares/Ribasim/pull/3316">#3316</a></li>
 <li>A node with multiple control states that is not controlled by DiscreteControl needs a row without <code>control_state</code>, which defines its parameters. Nodes with multiple control states get their initial parameter values from the row without <code>control_state</code>, or else from the last control state. Before, time-interpolated parameters like Pump <code>min_flow_rate</code> used the first control state. <a href="https://github.com/Deltares/Ribasim/pull/3316">#3316</a></li>
 <li>UserDemand <code>return_factor</code> and <code>min_level</code> must be the same for all demand priorities of a node (at the same time). <a href="https://github.com/Deltares/Ribasim/pull/3316">#3316</a></li>
