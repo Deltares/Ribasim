@@ -2,16 +2,17 @@
 Process mass inflows from UserDemand separately
 as the UserDemand nodes are not conservative
 """
-function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
-    (; p, t) = integrator
+function mass_inflows_from_user_demand!(integrator::DEIntegrator, substep = 1, max_substeps = 1)::Nothing
+    (; p, t, tprev) = integrator
+    dt = t - tprev
     (; basin, user_demand, cumulative_flow_dt) = p.p_independent
-    (; concentration_state, mass) = basin.concentration_data
+    (; concentration_state, mass, nsubsteps, stepsize) = basin.concentration_data
 
     for (node_idx, outflow_link) in enumerate(user_demand.outflow_link)
         to_node = outflow_link.link[2]
         inflow_links = user_demand.inflow_links[node_idx]
 
-        if to_node.is_basin
+        if to_node.is_basin && (substep % stepsize[to_node.idx]) == 0
             # Mix concentrations of all inflow links weighted by each link's cumulative
             # flow. The return-flow concentration is a mass-weighted average of the
             # source basins' concentrations.
@@ -27,7 +28,8 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
                     link_inflow = inflows[node_inflow_idx]
                     fraction = link_inflow / total_inflow
                     view(mass, :, to_node.idx) .+=
-                        @view(concentration_state[:, from_node.idx]) .* link_inflow .* fraction
+                        @view(concentration_state[:, from_node.idx]) .* link_inflow .* fraction ./
+                        nsubsteps[to_node.idx]
                 end
             end
             mass[Substance.UserDemand, to_node.idx] = ud_mass_before
@@ -35,8 +37,8 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
             add_substance_mass!(
                 view(mass, :, to_node.idx),
                 user_demand.concentration_itp[node_idx],
-                cumulative_flow_dt.horizontal.user_demand_outflow[node_idx],
-                t,
+                cumulative_flow_dt.horizontal.user_demand_outflow[node_idx] / nsubsteps[to_node.idx],
+                tprev + dt / max_substeps * substep,
             )
         end
     end
@@ -46,10 +48,12 @@ end
 """
 Process all mass inflows to basins
 """
-function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
-    (; p, t) = integrator
+function mass_inflows_basin!(integrator::DEIntegrator, substep = 1, max_substeps = 1)::Nothing
+    (; p, t, tprev) = integrator
+    dt = t - tprev
     (; basin, inflow_id, outflow_id, level_boundary, cumulative_flow_dt, flow_ranges) = p.p_independent
-    (; concentration_state, mass) = basin.concentration_data
+    (; concentration_state, mass, nsubsteps, stepsize) = basin.concentration_data
+    t_sub = tprev + dt / max_substeps * substep
 
     # Loop over connections that have state
     @views for (flow_idx, (from_node, to_node)) in enumerate(zip(inflow_id, outflow_id))
@@ -61,16 +65,16 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
 
         cumulative_flow = cumulative_flow_dt[flow_idx]
 
-        if from_node.is_basin && cumulative_flow < 0
+        if from_node.is_basin && cumulative_flow < 0 && (substep % stepsize[from_node.idx]) == 0
             if to_node.is_basin
                 mass[:, from_node.idx] .-=
-                    concentration_state[:, to_node.idx] .* cumulative_flow
+                    concentration_state[:, to_node.idx] .* cumulative_flow ./ nsubsteps[from_node.idx]
             elseif to_node.type == NodeType.LevelBoundary
                 add_substance_mass!(
                     mass[:, from_node.idx],
                     level_boundary.concentration_itp[to_node.idx],
-                    -cumulative_flow,
-                    t,
+                    -cumulative_flow / nsubsteps[from_node.idx],
+                    t_sub,
                 )
             elseif (to_node.type == NodeType.Terminal && to_node.value == 0)
                 # UserDemand inflow is discoupled from its outflow
@@ -81,17 +85,17 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
             end
         end
 
-        if to_node.is_basin && cumulative_flow > 0
+        if to_node.is_basin && cumulative_flow > 0 && (substep % stepsize[to_node.idx]) == 0
             if from_node.is_basin
                 mass[:, to_node.idx] .+=
-                    concentration_state[:, from_node.idx] .* cumulative_flow
+                    concentration_state[:, from_node.idx] .* cumulative_flow ./ nsubsteps[to_node.idx]
 
             elseif from_node.type == NodeType.LevelBoundary
                 add_substance_mass!(
                     mass[:, to_node.idx],
                     level_boundary.concentration_itp[from_node.idx],
-                    cumulative_flow,
-                    t,
+                    cumulative_flow / nsubsteps[to_node.idx],
+                    t_sub,
                 )
             elseif from_node.type == NodeType.Terminal && from_node.value == 0
                 # The unset flow link defaults to Terminal #0
@@ -117,9 +121,9 @@ end
 """
 Process all mass outflows from Basins
 """
-function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
+function mass_outflows_basin!(integrator::DEIntegrator, substep = 1, max_substeps = 1)::Nothing
     (; basin, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges) = integrator.p.p_independent
-    (; mass, concentration_state) = basin.concentration_data
+    (; mass, concentration_state, nsubsteps, stepsize) = basin.concentration_data
 
     @views for flow_idx in eachindex(cumulative_flow_dt)
 
@@ -132,11 +136,13 @@ function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
         from_node = inflow_id[flow_idx]
         to_node = outflow_id[flow_idx]
 
-        if from_node.is_basin && cumulative_flow > 0
-            mass[:, from_node.idx] .-= concentration_state[:, from_node.idx] .* cumulative_flow
+        if from_node.is_basin && cumulative_flow > 0 && (substep % stepsize[from_node.idx]) == 0
+            mass[:, from_node.idx] .-=
+                concentration_state[:, from_node.idx] .* cumulative_flow ./ nsubsteps[from_node.idx]
         end
-        if to_node.is_basin && cumulative_flow < 0
-            mass[:, to_node.idx] .+= concentration_state[:, to_node.idx] .* cumulative_flow
+        if to_node.is_basin && cumulative_flow < 0 && (substep % stepsize[to_node.idx]) == 0
+            mass[:, to_node.idx] .+=
+                concentration_state[:, to_node.idx] .* cumulative_flow ./ nsubsteps[to_node.idx]
         end
     end
     return nothing
@@ -193,12 +199,16 @@ end
 """
 Add the mass that enters each Basin through a forcing,
 with the cumulative flow over the timestep per Basin (or a scalar for all Basins).
+Only the Basins that are processed in this substep get their share of the timestep.
 """
 function add_forcing_mass!(
         mass::Matrix{Float64},
         forcing_concentration::ForcingConcentration,
         cumulative_flow::Union{AbstractVector{Float64}, Float64},
         t::Float64,
+        substep::Int,
+        stepsize::Vector{Int16},
+        nsubsteps::Vector{Int16},
     )::Nothing
     (; itp, value, time_dependent) = forcing_concentration
     for I in time_dependent
@@ -206,7 +216,9 @@ function add_forcing_mass!(
         value[I] = itp[node_idx][substance_idx](t)
     end
     for node_idx in axes(mass, 2)
+        (substep % stepsize[node_idx]) != 0 && continue
         flow = cumulative_flow isa Float64 ? cumulative_flow : cumulative_flow[node_idx]
+        flow /= nsubsteps[node_idx]
         iszero(flow) && continue
         for substance_idx in axes(mass, 1)
             mass[substance_idx, node_idx] += flow * value[substance_idx, node_idx]
