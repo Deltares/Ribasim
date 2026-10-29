@@ -982,8 +982,10 @@ function ConcentrationData(
     end
 
     cumulative_in = zeros(n_basin)
+    cumulative_out = zeros(n_basin)
     nsubsteps = fill(one(Int16), n_basin)
     stepsize = fill(one(Int16), n_basin)
+    (; substep_depth) = config.concentration
 
     return ConcentrationData(;
         config.concentration.evaporate_mass,
@@ -998,8 +1000,12 @@ function ConcentrationData(
         concentration_external,
         substances,
         cumulative_in,
+        cumulative_out,
         nsubsteps,
         stepsize,
+        basin_order = zeros(Int, n_basin),
+        basin_count_ge = zeros(Int, substep_depth + 2),
+        flow_count_ge = zeros(Int, substep_depth + 2),
     )
 end
 

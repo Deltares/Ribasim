@@ -206,16 +206,21 @@ function update_concentrations!(u, t, integrator)::Nothing
     (; p, tprev) = integrator
     (; p_independent, current_basin_properties) = p
     (; current_storage) = current_basin_properties
-    (; basin, flow_boundary, do_concentration, cumulative_flow_dt) = p_independent
+    (; basin, flow_boundary, do_concentration, cumulative_flow_dt, inflow_id, outflow_id) = p_independent
     (; storage_prev_dt, concentration_data, forcing) = basin
     (;
         evaporate_mass,
         substep_ratio,
         substep_depth,
         cumulative_in,
+        cumulative_out,
         concentration_state,
         nsubsteps,
         stepsize,
+        basin_order,
+        basin_count_ge,
+        flow_order,
+        flow_count_ge,
         concentration_drainage,
         concentration_precipitation,
         concentration_surface_runoff,
@@ -231,16 +236,7 @@ function update_concentrations!(u, t, integrator)::Nothing
 
     dt = t - tprev
 
-    # Determine number of substeps needed based on a fraction of the residence time
-    safe = x -> isinf(x) ? 0 : x
-    residence_time = view(concentration_state, Substance.ResidenceTime, :)
-    @. nsubsteps = 2^clamp(floor(Int, safe(log2(dt / (residence_time * substep_ratio)))), 0, substep_depth)
-    max_substeps = maximum(nsubsteps)
-    @. stepsize = max_substeps ÷ nsubsteps
-
-    dt_sub = dt / max_substeps
-
-    # The total inflow volume per Basin over the timestep, spread evenly over its substeps
+    # The total inflow and outflow volume per Basin over the timestep, spread evenly over its substeps
     aggregate_flows!(
         cumulative_in,
         cumulative_flow_dt,
@@ -249,66 +245,102 @@ function update_concentrations!(u, t, integrator)::Nothing
         positive_vertical_forcing = forcing.exact_cumulative_forcing_dt,
         boundary_flow = flow_boundary.cumulative_flow_dt,
     )
+    aggregate_flows!(cumulative_out, cumulative_flow_dt, p_independent; do_inflows = false, weight = -1)
+
+    # Determine the number of substeps per Basin such that at most `substep_ratio` of its
+    # storage flows in or out per substep, rounded up to a power of two
+    max_level = 0
+    for i in eachindex(nsubsteps)
+        storage = (storage_prev_dt[i] + current_storage[i]) / 2
+        throughflow = max(cumulative_in[i], cumulative_out[i])
+        level = if throughflow <= substep_ratio * storage
+            0
+        elseif storage > 0
+            min(ceil(Int, log2(throughflow / (substep_ratio * storage))), substep_depth)
+        else
+            substep_depth
+        end
+        nsubsteps[i] = 2^level
+        max_level = max(max_level, level)
+    end
+    max_substeps = 2^max_level
+    @. stepsize = max_substeps ÷ nsubsteps
+
+    # Order the Basins and flows such that the ones processed in a substep come first
+    basin_level(i) = trailing_zeros(nsubsteps[i])
+    order_by_level!(basin_order, basin_count_ge, basin_level, length(nsubsteps))
+    function flow_level(flow_idx)
+        from_node = inflow_id[flow_idx]
+        to_node = outflow_id[flow_idx]
+        from_level = from_node.is_basin ? basin_level(from_node.idx) : -1
+        to_level = to_node.is_basin ? basin_level(to_node.idx) : -1
+        return max(from_level, to_level)
+    end
+    resize!(flow_order, length(cumulative_flow_dt))
+    order_by_level!(flow_order, flow_count_ge, flow_level, length(cumulative_flow_dt))
+
+    dt_sub = dt / max_substeps
 
     for substep in 1:max_substeps
         t_sub = tprev + dt_sub * substep
 
+        # The Basins with at least 2^level substeps are processed in this substep
+        level = max_level - trailing_zeros(substep)
+        active_basins = view(basin_order, 1:basin_count_ge[level + 1])
+        active_flows = view(flow_order, 1:flow_count_ge[level + 1])
+
         # Basin forcings
         (; drainage, precipitation, surface_runoff) = forcing.exact_cumulative_forcing_dt
-        add_forcing_mass!(mass, concentration_drainage, drainage, t_sub, substep, stepsize, nsubsteps)
-        add_forcing_mass!(mass, concentration_precipitation, precipitation, t_sub, substep, stepsize, nsubsteps)
-        add_forcing_mass!(mass, concentration_surface_runoff, surface_runoff, t_sub, substep, stepsize, nsubsteps)
+        add_forcing_mass!(mass, concentration_drainage, drainage, t_sub, active_basins, nsubsteps)
+        add_forcing_mass!(mass, concentration_precipitation, precipitation, t_sub, active_basins, nsubsteps)
+        add_forcing_mass!(mass, concentration_surface_runoff, surface_runoff, t_sub, active_basins, nsubsteps)
         # Loads are per second, not volume, so the flow is just the time step
-        add_forcing_mass!(mass, loads, dt, t_sub, substep, stepsize, nsubsteps)
+        add_forcing_mass!(mass, loads, dt, t_sub, active_basins, nsubsteps)
 
         # Exact boundary flow over time step
         for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
-            outflow_id = outflow_link.link[2]
-            (substep % stepsize[outflow_id.idx]) != 0 && continue
+            to_node = outflow_link.link[2]
+            (substep % stepsize[to_node.idx]) != 0 && continue
             add_substance_mass!(
-                view(mass, :, outflow_id.idx),
+                view(mass, :, to_node.idx),
                 flow_boundary.concentration_itp[id.idx],
-                flow_boundary.cumulative_flow_dt[id.idx] / nsubsteps[outflow_id.idx],
+                flow_boundary.cumulative_flow_dt[id.idx] / nsubsteps[to_node.idx],
                 t_sub,
             )
         end
 
         mass_inflows_from_user_demand!(integrator, substep, max_substeps)
-        mass_inflows_basin!(integrator, substep, max_substeps)
+        mass_inflows_basin!(integrator, substep, max_substeps, active_flows)
 
         # Update the Basin concentrations based on the added mass and flows
-        for node_id in basin.node_id
-            (substep % stepsize[node_id.idx]) != 0 && continue
+        for i in active_basins
+            # Storage at the start and end of this processing window
+            s_start = storage_prev_dt[i] +
+                (current_storage[i] - storage_prev_dt[i]) * (substep - stepsize[i]) / max_substeps
+            s_end = storage_prev_dt[i] +
+                (current_storage[i] - storage_prev_dt[i]) * substep / max_substeps
+            storage_only_in = s_start + cumulative_in[i] / nsubsteps[i]
 
-            # Storage at the start of this processing window + inflows during the window
-            s_start = storage_prev_dt[node_id.idx] +
-                (current_storage[node_id.idx] - storage_prev_dt[node_id.idx]) *
-                (substep - stepsize[node_id.idx]) / max_substeps
-            storage_only_in = s_start + cumulative_in[node_id.idx] / nsubsteps[node_id.idx]
-
-            # The residence time tracer gets older
-            mass[Substance.ResidenceTime, node_id.idx] +=
-                dt_sub * stepsize[node_id.idx] * storage_prev_dt[node_id.idx]
+            # The residence time tracer gets older, integrated with the trapezoidal rule
+            mass[Substance.ResidenceTime, i] += dt_sub * stepsize[i] * (s_start + s_end) / 2
             if iszero(storage_only_in)
-                concentration_state[:, node_id.idx] .= 0
+                concentration_state[:, i] .= 0
             else
-                concentration_state[:, node_id.idx] .= view(mass, :, node_id.idx) ./ storage_only_in
+                concentration_state[:, i] .= view(mass, :, i) ./ storage_only_in
             end
         end
 
-        mass_outflows_basin!(integrator, substep, max_substeps)
+        mass_outflows_basin!(integrator, substep, max_substeps, active_flows)
 
         errors = false
 
-        for node_id in basin.node_id
-            (substep % stepsize[node_id.idx]) != 0 && continue
-
-            mass_node = view(mass, :, node_id.idx)
+        for i in active_basins
+            mass_node = view(mass, :, i)
 
             # Evaporate mass to keep the mass balance, if enabled in model config
             if evaporate_mass
-                evaporated_volume = cumulative_flow_dt.vertical.evaporation[node_id.idx] / nsubsteps[node_id.idx]
-                mass_node .-= @view(concentration_state[:, node_id.idx]) .* evaporated_volume
+                evaporated_volume = cumulative_flow_dt.vertical.evaporation[i] / nsubsteps[i]
+                mass_node .-= @view(concentration_state[:, i]) .* evaporated_volume
             end
 
             # Take care of too small masses, possibly becoming negative due to truncation.
@@ -321,22 +353,51 @@ function update_concentrations!(u, t, integrator)::Nothing
             # Check for negative masses
             if any(<(0), mass_node)
                 errors = true
-                log_negative_mass(node_id, mass_node, concentration_data.substances)
+                log_negative_mass(basin.node_id[i], mass_node, concentration_data.substances)
             end
 
             # Update the Basin concentrations again based on the removed mass
-            s = storage_prev_dt[node_id.idx] +
-                (current_storage[node_id.idx] - storage_prev_dt[node_id.idx]) * substep / max_substeps
+            s = storage_prev_dt[i] + (current_storage[i] - storage_prev_dt[i]) * substep / max_substeps
             if iszero(s)
-                concentration_state[:, node_id.idx] .= 0
+                concentration_state[:, i] .= 0
             else
-                concentration_state[:, node_id.idx] .= mass_node ./ s
+                concentration_state[:, i] .= mass_node ./ s
             end
         end
         errors && error("Negative mass(es) detected at t = $t_sub s")
     end
 
     storage_prev_dt .= current_storage
+    return nothing
+end
+
+"""
+Order the items by their level (the base 2 logarithm of the number of substeps) from high to
+low, such that the items that are processed in a substep come first: `order[1:count_ge[l + 1]]`
+holds the items with a level of at least `l`. Items with a negative level are left out.
+"""
+function order_by_level!(order::Vector{Int}, count_ge::Vector{Int}, level::F, n_item::Int)::Nothing where {F}
+    fill!(count_ge, 0)
+    for i in 1:n_item
+        l = level(i)
+        l >= 0 && (count_ge[l + 1] += 1)
+    end
+    for l in (length(count_ge) - 1):-1:1
+        count_ge[l] += count_ge[l + 1]
+    end
+    n_ordered = count_ge[1]
+    # Fill the block of each level from the back, which leaves count_ge[l + 1] at the
+    # number of items with a level above l
+    for i in n_item:-1:1
+        l = level(i)
+        l < 0 && continue
+        order[count_ge[l + 1]] = i
+        count_ge[l + 1] -= 1
+    end
+    for l in length(count_ge):-1:2
+        count_ge[l] = count_ge[l - 1]
+    end
+    count_ge[1] = n_ordered
     return nothing
 end
 

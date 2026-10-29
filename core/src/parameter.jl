@@ -542,16 +542,23 @@ end
 @kwdef struct ConcentrationData
     # Config setting to enable/disable evaporation of mass
     evaporate_mass::Bool = true
-    # Safety factor to determine number of substeps based on residence time
+    # Maximum fraction of the Basin storage that flows in or out per substep
     substep_ratio::Float64 = 1 / 5
     # Maximum number of substeps (2^substep_depth)
     substep_depth::Int = 10
     # Cumulative inflow for each Basin at a given time
     cumulative_in::Vector{Float64} = zeros(Float64, 0)
+    # Cumulative outflow for each Basin at a given time
+    cumulative_out::Vector{Float64} = zeros(Float64, 0)
     # Number of substeps per Basin for mass outflow processing
     nsubsteps::Vector{Int16} = zeros(Int16, 0)
     # Stepsize for each Basin for mass outflow processing, in number of substeps (e.g. stepsize of 2 means every other substep is processed)
     stepsize::Vector{Int16} = zeros(Int16, 0)
+    # The Basins and flows ordered by their number of substeps, from high to low, see `order_by_level!`
+    basin_order::Vector{Int} = zeros(Int, 0)
+    basin_count_ge::Vector{Int} = zeros(Int, 0)
+    flow_order::Vector{Int} = zeros(Int, 0)
+    flow_count_ge::Vector{Int} = zeros(Int, 0)
     # Matrix with concentrations for each substance and Basin,
     # such that the concentrations of a Basin are contiguous in memory
     concentration_state::Matrix{Float64} = zeros(Float64, 0, 0)  # substance, Basin

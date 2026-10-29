@@ -48,15 +48,22 @@ end
 """
 Process all mass inflows to basins
 """
-function mass_inflows_basin!(integrator::DEIntegrator, substep = 1, max_substeps = 1)::Nothing
+function mass_inflows_basin!(
+        integrator::DEIntegrator,
+        substep::Int,
+        max_substeps::Int,
+        active_flows::AbstractVector{Int},
+    )::Nothing
     (; p, t, tprev) = integrator
     dt = t - tprev
     (; basin, inflow_id, outflow_id, level_boundary, cumulative_flow_dt, flow_ranges) = p.p_independent
     (; concentration_state, mass, nsubsteps, stepsize) = basin.concentration_data
     t_sub = tprev + dt / max_substeps * substep
 
-    # Loop over connections that have state
-    @views for (flow_idx, (from_node, to_node)) in enumerate(zip(inflow_id, outflow_id))
+    # Loop over the flows connected to a Basin that is processed in this substep
+    @views for flow_idx in active_flows
+        from_node = inflow_id[flow_idx]
+        to_node = outflow_id[flow_idx]
 
         if flow_idx in flow_ranges.horizontal.user_demand_outflow
             # UserDemand is handled separately in mass_inflows_from_user_demand
@@ -121,11 +128,16 @@ end
 """
 Process all mass outflows from Basins
 """
-function mass_outflows_basin!(integrator::DEIntegrator, substep = 1, max_substeps = 1)::Nothing
+function mass_outflows_basin!(
+        integrator::DEIntegrator,
+        substep::Int,
+        max_substeps::Int,
+        active_flows::AbstractVector{Int},
+    )::Nothing
     (; basin, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges) = integrator.p.p_independent
     (; mass, concentration_state, nsubsteps, stepsize) = basin.concentration_data
 
-    @views for flow_idx in eachindex(cumulative_flow_dt)
+    @views for flow_idx in active_flows
 
         if flow_idx in flow_ranges.vertical.evaporation
             # Evaporation is handled separately
@@ -206,8 +218,7 @@ function add_forcing_mass!(
         forcing_concentration::ForcingConcentration,
         cumulative_flow::Union{AbstractVector{Float64}, Float64},
         t::Float64,
-        substep::Int,
-        stepsize::Vector{Int16},
+        active_basins::AbstractVector{Int},
         nsubsteps::Vector{Int16},
     )::Nothing
     (; itp, value, time_dependent) = forcing_concentration
@@ -215,8 +226,7 @@ function add_forcing_mass!(
         substance_idx, node_idx = Tuple(I)
         value[I] = itp[node_idx][substance_idx](t)
     end
-    for node_idx in axes(mass, 2)
-        (substep % stepsize[node_idx]) != 0 && continue
+    for node_idx in active_basins
         flow = cumulative_flow isa Float64 ? cumulative_flow : cumulative_flow[node_idx]
         flow /= nsubsteps[node_idx]
         iszero(flow) && continue
