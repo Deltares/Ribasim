@@ -434,8 +434,9 @@ function get_all_demand_priorities(db::DB, config::Config)::Vector{Int32}
         end
 
         data = load_structvector(db, config, table_type)
+        demand_priority_default = schema_default(Schema.UserDemand.Static, Val(:demand_priority))
         demand_priority_col = data.demand_priority
-        demand_priority_col = Int32.(coalesce.(demand_priority_col, Int32(0)))
+        demand_priority_col = Int32.(coalesce.(demand_priority_col, demand_priority_default))
         if valid_demand_priorities(demand_priority_col, config.experimental.allocation)
             union!(demand_priorities, demand_priority_col)
         else

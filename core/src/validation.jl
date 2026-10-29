@@ -309,7 +309,7 @@ function valid_user_demand_parameters(
     )::Bool where {T <: Union{Schema.UserDemand.Static, Schema.UserDemand.Time}}
     errors = false
     for node_group in IterTools.groupby(row -> row.node_id, table)
-        parameters = Dict{Union{Nothing, DateTime}, Tuple{Float64, Float64}}()
+        parameters = Dict{Union{Nothing, DateTime}, Tuple{Float64, Union{Float64, Missing}}}()
         for row in node_group
             time = T <: Schema.UserDemand.Time ? row.time : nothing
             row_parameters = (row.return_factor, row.min_level)

@@ -1430,8 +1430,9 @@ function parse_static_demand_data!(
     if node isa UserDemand
         node.demand_from_timeseries[id.idx] = false
     end
+    demand_priority_default = schema_default(Schema.UserDemand.Static, Val(:demand_priority))
     for row in static_group
-        demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
+        demand_priority_idx = findsorted(demand_priorities, coalesce(row.demand_priority, demand_priority_default))
         node.has_demand_priority[id.idx, demand_priority_idx] = true
         demand_row = coalesce(row.demand, schema_default(typeof(row), Val(:demand)))
         demand_interpolation = trivial_constant_itp(; val = demand_row)
