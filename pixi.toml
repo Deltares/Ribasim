@@ -4,7 +4,13 @@ version = "2026.1.2"
 description = "Water resources modeling"
 authors = ["Deltares and contributors <ribasim.info@deltares.nl>"]
 channels = ["conda-forge", "https://prefix.dev/julia-forge"]
-platforms = ["win-64", "linux-64", "osx-arm64", "linux-aarch64"]
+platforms = [
+    "win-64",
+    "linux-64",
+    # The macOS version also sets the PyPI wheel tags, the netCDF4 wheels need 15.0
+    { name = "osx-arm64-15", platform = "osx-arm64", macos = "15.0" },
+    "linux-aarch64",
+]
 readme = "README.md"
 license = "MIT"
 license-file = "LICENSE"
@@ -16,7 +22,7 @@ repository = "https://github.com/Deltares/Ribasim"
 # Tests
 test-ribasim-python = "pytest --basetemp=python/ribasim/tests/temp --numprocesses=4 -m 'not regression' python/ribasim/tests"
 test-ribasim-python-cov = "pytest --numprocesses=4 --cov=ribasim --cov-report=xml -m 'not regression' python/ribasim/tests"
-test-ribasim-api = "pytest -p no:pytest_qgis --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
+test-ribasim-api = "pytest --basetemp=python/ribasim_api/tests/temp --junitxml=report.xml python/ribasim_api/tests"
 # Installation
 # This is only for developers who want their global Julia to use the right version.
 # Use `pixi run julia` for the package used by CI.
@@ -82,7 +88,7 @@ s3-upload = { cmd = "python utils/s3_upload.py {{ source }} {{ destination }}", 
     "source",
     "destination",
 ] }
-test-ribasim-cli = "pytest -p no:pytest_qgis --numprocesses=4 --basetemp=build/tests/temp --junitxml=report.xml build/tests"
+test-ribasim-cli = "pytest --numprocesses=4 --basetemp=build/tests/temp --junitxml=report.xml build/tests"
 test-ribasim-core = { cmd = "julia --startup-file=no --project=core --eval 'using Pkg; Pkg.test(allow_reresolve=false)'", depends-on = [
     "generate-testmodels",
 ] }
@@ -150,9 +156,6 @@ publish-ribasim-api = { cmd = "twine upload dist/*", cwd = "python/ribasim_api",
 
 
 test-ribasim-qgis-docker = { cmd = "sh ./test.sh", cwd = ".docker" }
-test-ribasim-qgis = { cmd = "pytest --basetemp=ribasim_qgis/tests/temp ribasim_qgis", depends-on = [
-    "install-ribasim-qgis",
-] }
 
 # Run
 ribasim-core = { cmd = "julia --startup-file=no --project=core -e 'using Ribasim; Ribasim.main(ARGS)'", depends-on = [
@@ -175,11 +178,7 @@ filter-model = "python utils/filter_model.py"
 # Release
 github-release = "python utils/github-release.py"
 
-# QGIS
-[tasks.qgis]
-args = [{ "arg" = "profiles_path", "default" = ".qgis-settings" }]
-cmd = "qgis --profiles-path {{ profiles_path }}"
-
+# QGIS plugin installation, this doesn't need QGIS itself
 [tasks.install-ribasim-qgis]
 args = [
     { "arg" = "profile_path", "default" = ".qgis-settings/profiles/default" },
@@ -248,71 +247,49 @@ docs = { cmd = "echo 'Skipping docs build on ARM64 Linux (Quarto not supported)'
 quarto-check = { cmd = "echo 'Skipping quarto check on ARM64 Linux (Quarto not supported)'" }
 quarto-render = { cmd = "echo 'Skipping quarto render on ARM64 Linux (Quarto not supported)'" }
 
+# Only Python and tools that are not on PyPI come from conda-forge.
+# Dependencies of the Python packages go in python/*/pyproject.toml.
 [dependencies]
-datacompy = ">=0.16"
-debugpy = "*"
-dvc = "*"
-dvc-s3 = "*"
-geopandas = ">=1.0"
 gh = "*"
-griffe = ">=1,<2"
-hatch = "*"
-hatchling = "*"
-jinja2 = "*"
 julia = { version = "==1.13.1", channel = "https://prefix.dev/julia-forge" }
-jupyter = "*"
-lxml = "*"
-matplotlib = ">=3.9"
-minio = "*"
-nbstripout = "*"
-netcdf4 = ">=1.7.1"
-networkx = ">=3.3"
-numpy = ">=2.0"
-packaging = ">=23.0"
-pandas = ">=2.2"
-pandas-stubs = "*"
-pandera = ">=0.25"
-plotly = "*"
-prek = "*"
-pyarrow = ">=17.0"
-pydantic = ">=2.0"
-python-dotenv = "*"
-pyogrio = ">=0.8"
-pyqt-stubs = "*"
-pytest = "*"
-pytest-cov = "*"
-pytest-xdist = "*"
-python = ">=3.12"
-quartodoc = "*"
-ruff = "*"
 rust = "*"
-shapely = ">=2.0"
-teamcity-messages = "*"
-tomli = ">=2.0"
-tomli-w = ">=1.0"
-twine = "*"
+# The yamlfmt on PyPI is an unrelated project
+yamlfmt = "*"
+
+[pypi-dependencies]
+ribasim = { path = "python/ribasim", editable = true, extras = ["all"] }
+ribasim_api = { path = "python/ribasim_api", editable = true }
+ribasim_testmodels = { path = "python/ribasim_testmodels", editable = true }
+# Lint and typecheck
+nbstripout = "*"
+pandas-stubs = "*"
+prek = "*"
+ruff = "*"
 ty = "*"
 types-geopandas = "*"
 types-networkx = "*"
 typos = "*"
-xarray = ">=2023.11"
-xmipy = ">=1.3"
-xugrid = "*"
-yamlfmt = "*"
-
-[pypi-dependencies]
+# Tests
+lxml = "*"
+# Docs
+griffe = ">=1, <2"
 juliacall = "==0.9.36"
-pytest-qgis = ">=4.0.1, <5"
-python-magic = ">=0.4.27"
+jupyter = "*"
+plotly = "*"
+quartodoc = "*"
+# QGIS
 qgis-plugin-manager = ">=1.7.2"
-ribasim = { path = "python/ribasim", editable = true }
-ribasim_api = { path = "python/ribasim_api", editable = true }
-ribasim_testmodels = { path = "python/ribasim_testmodels", editable = true }
+# Data
+dvc = "*"
+dvc-s3 = "*"
+minio = "*"
+python-dotenv = "*"
+# Build and release
+hatch = "*"
+hatchling = "*"
+python-magic = ">=0.4.27"
 sbom4python = ">=0.12.3"
-
-[pypi-options.dependency-overrides]
-# qgis-plugin-manager pins semver==3.0.4 exactly, which conflicts with the conda semver (via dvc)
-semver = ">=3.0.4"
+twine = "*"
 
 [feature.py312.dependencies]
 python = "3.12.*"
@@ -320,8 +297,40 @@ python = "3.12.*"
 [feature.py313.dependencies]
 python = "3.13.*"
 
-[feature.pandas2.dependencies]
+[feature.pandas2.pypi-dependencies]
 pandas = ">=2.2,<3"
+
+# QGIS with what the Ribasim plugin needs, for developing and testing the plugin.
+# This is a separate environment, so that the conda Python packages that QGIS brings
+# don't mix with the PyPI packages of the default environment.
+[feature.qgis]
+platforms = ["win-64", "linux-64"]
+
+[feature.qgis.dependencies]
+python = "3.13.*"
+qgis = ">=3.40,<4"
+
+[feature.qgis.pypi-dependencies]
+# For the QGIS DevTools plugin
+debugpy = "*"
+netcdf4 = "*"
+pandas = "*"
+pandas-stubs = "*"
+plotly = "*"
+pyqt5-stubs = "*"
+pytest = "*"
+pytest-qgis = ">=4.0.1, <5"
+ty = "*"
+
+[feature.qgis.tasks]
+test-ribasim-qgis = { cmd = "pytest --basetemp=ribasim_qgis/tests/temp ribasim_qgis", depends-on = [
+    { task = "install-ribasim-qgis", environment = "default" },
+] }
+typecheck-qgis = "ty check ribasim_qgis"
+
+[feature.qgis.tasks.qgis]
+args = [{ "arg" = "profiles_path", "default" = ".qgis-settings" }]
+cmd = "qgis --profiles-path {{ profiles_path }}"
 
 # Online coupling of Wflow and Ribasim, see wflow-coupled/README.md
 # This is a separate lightweight environment without the default feature,
@@ -360,11 +369,9 @@ wflow-coupled-run = { cmd = "julia --startup-file=no --project=wflow-coupled wfl
 
 [target.win-64.dependencies]
 rcedit = "*"
-qgis = ">=3.40,<4"
 quarto = "*"
 
 [target.linux-64.dependencies]
-qgis = ">=3.40,<4"
 quarto = "*"
 
 [target.osx-arm64.dependencies]
@@ -380,6 +387,7 @@ scripts = ["scripts/load-env.bat"]
 default = ["py313"]
 py312 = ["py312"]
 pandas2 = ["py313", "pandas2"]
+qgis = { features = ["qgis"], no-default-feature = true }
 wflow-coupled = { features = ["wflow-coupled"], no-default-feature = true }
 
 [activation.env]

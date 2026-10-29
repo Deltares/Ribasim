@@ -5,6 +5,9 @@ include = [
     "python/ribasim_testmodels/ribasim_testmodels",
     "ribasim_qgis",
 ]
+# ribasim_qgis needs QGIS, so it is checked separately in the qgis environment,
+# with `pixi run typecheck-qgis`, which passes the path explicitly
+exclude = ["ribasim_qgis"]
 
 [environment]
 python-version = "3.12"
