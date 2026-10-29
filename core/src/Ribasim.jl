@@ -65,6 +65,7 @@ using SciMLBase:
     ODEProblem,
     get_du,
     get_proposed_dt,
+    set_proposed_dt!,
     add_tstop!,
     DEIntegrator,
     FullSpecialize,
