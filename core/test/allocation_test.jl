@@ -538,34 +538,6 @@ end
 
 @testitem "Control constraints are only rebuilt when allocation control changes" begin
     import BasicModelInterface as BMI
-    using Ribasim: NodeID
-
-    toml_path = normpath(
-        @__DIR__,
-        "../../generated_testmodels/two_basin_user_demand/ribasim.toml",
-    )
-    @test ispath(toml_path)
-    model = Ribasim.Model(toml_path)
-    BMI.update(model)
-
-    (; p_independent) = model.integrator.p
-    allocation_model = only(p_independent.allocation.allocation_models)
-    (; problem) = allocation_model
-    outlet_id = NodeID(:Outlet, 7, p_independent)
-    constraints = problem[:outlet_constraint]
-    @test outlet_id ∉ only(axes(constraints))
-
-    Ribasim.update_control_states!(allocation_model, p_independent)
-    @test problem[:outlet_constraint] === constraints
-
-    # Without allocation control the Outlet gets a linearized flow-level constraint
-    p_independent.outlet.allocation_controlled[outlet_id.idx] = false
-    Ribasim.update_control_states!(allocation_model, p_independent)
-    @test outlet_id ∈ only(axes(problem[:outlet_constraint]))
-end
-
-@testitem "Kept control constraints equal rebuilt ones" begin
-    import BasicModelInterface as BMI
     import JuMP
     using Ribasim: NodeID
 
@@ -589,7 +561,9 @@ end
         return data
     end
 
-    # Set the simulation data on the kept control constraints, and on rebuilt ones
+    # Skipping the rebuild relies on set_simulation_data! setting all coefficients and
+    # right-hand sides in place. Set the simulation data on the kept control constraints,
+    # and on rebuilt ones.
     function kept_and_rebuilt(model)
         (; p, u, t) = model.integrator
         allocation_model = only(p.p_independent.allocation.allocation_models)
@@ -616,16 +590,30 @@ end
         @test kept == rebuilt
     end
 
-    # Without flow the Pump constraint uses the low storage factor of the downstream Basin
-    # instead of the upstream one, so the old coefficient has to be reset
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/minimal_subnetwork/ribasim.toml")
     model = Ribasim.Model(toml_path)
     BMI.update_until(model, 86400.0)
-    (; pump) = model.integrator.p.p_independent
-    pump.flow_rate[NodeID(:Pump, 3, model.integrator.p.p_independent).idx] = 0.0
+    (; p_independent) = model.integrator.p
+    allocation_model = only(p_independent.allocation.allocation_models)
+    (; problem) = allocation_model
+    pump_id = NodeID(:Pump, 3, p_independent)
+    constraints = problem[:pump_constraint]
+    @test pump_id ∈ only(axes(constraints))
+
+    Ribasim.update_control_states!(allocation_model, p_independent)
+    @test problem[:pump_constraint] === constraints
+
+    # Without flow the Pump constraint uses the low storage factor of the downstream Basin
+    # instead of the upstream one, so the old coefficient has to be reset
+    p_independent.pump.flow_rate[pump_id.idx] = 0.0
     kept, rebuilt = kept_and_rebuilt(model)
     @test kept == rebuilt
+
+    # With allocation control the Pump has no linearized flow-level constraint
+    p_independent.pump.allocation_controlled[pump_id.idx] = true
+    Ribasim.update_control_states!(allocation_model, p_independent)
+    @test pump_id ∉ only(axes(problem[:pump_constraint]))
 end
 
 @testitem "allocation record averaging" begin
