@@ -536,6 +536,33 @@ end
     @test !isempty(low_level_flows)
 end
 
+@testitem "FlowDemand on a node with DiscreteControl" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/flow_demand_discrete_control/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    # The Pump has two control inneighbors: a FlowDemand and a DiscreteControl
+    model = Ribasim.run(toml_path)
+    @test success(model)
+    @test isfile(normpath(dirname(toml_path), "results/allocation.nc"))
+    @test isfile(normpath(dirname(toml_path), "results/allocation_flow.nc"))
+
+    control_states = Ribasim.discrete_control_data(model).control_state
+    @test "allocation" in control_states
+    @test "prescribed" in control_states
+
+    allocation_table = DataFrame(Ribasim.allocation_data(model))
+    pump_table = filter(:node_id => ==(2), allocation_table)
+    @test !isempty(pump_table)
+    @test all(≈(2.0e-3), pump_table.demand)
+    # The supplied flow of the last intervention interval is computed separately
+    @test isfinite(last(pump_table.supplied))
+end
+
 @testitem "allocation record averaging" begin
     using Ribasim: DemandRecordDatum, FlowRecordDatum, AllocationControlRecordDatum,
         average_records!, record_key
