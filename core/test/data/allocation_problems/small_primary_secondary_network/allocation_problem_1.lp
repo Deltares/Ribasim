@@ -1,9 +1,9 @@
 minimize
 obj: 40 flow_(Outlet_#4,_Basin_#5)_
 subject to
-c1: 1 user_demand_error_UserDemand_#3,2,first_ <= 0
-c2: 1 user_demand_error_UserDemand_#3,2,second_ <= 0
-c3: -1 low_storage_factor_Basin_#2_ <= -1
+c1: -1 low_storage_factor_Basin_#2_ <= -1
+c2: 1 user_demand_error_UserDemand_#3,2,first_ <= 0
+c3: 1 user_demand_error_UserDemand_#3,2,second_ <= 0
 user_demand_relative_error_constraint_UserDemand_#3,2_: 1 user_demand_allocated_UserDemand_#3,2_ + 0.17704918032786887 user_demand_error_UserDemand_#3,2,first_ >= 0.17704918032786887
 secondary_network_relative_error_constraint_(Outlet_#4,_Basin_#5),1_: 1 secondary_network_allocated_(Outlet_#4,_Basin_#5),1_ >= 0
 secondary_network_relative_error_constraint_(Outlet_#4,_Basin_#5),2_: 1 secondary_network_allocated_(Outlet_#4,_Basin_#5),2_ >= 0

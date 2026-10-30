@@ -1,11 +1,11 @@
 minimize
 obj: 20 flow_(LinearResistance_#4,_Basin_#5)_ - 10 flow_(TabulatedRatingCurve_#7,_Terminal_#8)_
 subject to
-c1: 1 user_demand_error_UserDemand_#3,1,first_ <= 0
-c2: 1 user_demand_error_UserDemand_#3,1,second_ <= 0
-c3: 1 user_demand_error_UserDemand_#6,3,first_ <= 0
-c4: 1 user_demand_error_UserDemand_#6,3,second_ <= 0
-c5: -1 low_storage_factor_Basin_#2_ - 1 low_storage_factor_Basin_#5_ <= -2
+c1: -1 low_storage_factor_Basin_#2_ - 1 low_storage_factor_Basin_#5_ <= -2
+c2: 1 user_demand_error_UserDemand_#3,1,first_ <= 0
+c3: 1 user_demand_error_UserDemand_#3,1,second_ <= 0
+c4: 1 user_demand_error_UserDemand_#6,3,first_ <= 0
+c5: 1 user_demand_error_UserDemand_#6,3,second_ <= 0
 user_demand_relative_error_constraint_UserDemand_#3,1_: 1 user_demand_allocated_UserDemand_#3,1_ + 0.24003540521496733 user_demand_error_UserDemand_#3,1,first_ >= 0.24003540521496733
 user_demand_relative_error_constraint_UserDemand_#6,3_: 1 user_demand_allocated_UserDemand_#6,3_ + 0.1600236034766449 user_demand_error_UserDemand_#6,3,first_ >= 0.1600236034766449
 user_demand_fairness_error_constraint_UserDemand_#3,1_: -1 user_demand_error_UserDemand_#3,1,first_ + 1 user_demand_error_UserDemand_#3,1,second_ + 1 average_flow_unit_error_1_ >= 0

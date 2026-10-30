@@ -613,9 +613,8 @@ push!(
 ```
 
 **Key points:**
-- Maximizes the low storage factor to allow more outflow from basins
-- Optimized last to avoid infeasibility from emptying basins
-- Special priority (-1) ensures it runs after demand objectives
+- Maximizes the low storage factor, so outflows from Basins are only reduced to prevent negative storage
+- Optimized first, before the demand objectives. Otherwise the demand objectives can lower the low storage factors to hold back water, for instance to meet a LevelDemand by throttling a weir, which the physical layer cannot do
 
 # Updating Constraints Before Optimization
 

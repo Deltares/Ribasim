@@ -1,15 +1,15 @@
 minimize
 obj: 50 flow_(Pump_#2,_Terminal_#3)_
 subject to
-c1: 1 level_demand_error_Basin_#1,1,lower,first_ + 1 level_demand_error_Basin_#1,1,upper,first_ <= 0
-c2: 1 level_demand_error_Basin_#1,1,lower,second_ + 1 level_demand_error_Basin_#1,1,upper,second_ <= 0
-c3: 1 flow_demand_error_Pump_#2,2,first_ <= 0
-c4: 1 flow_demand_error_Pump_#2,2,second_ <= 0
-c5: 1 user_demand_error_UserDemand_#5,3,first_ <= 0
-c6: 1 user_demand_error_UserDemand_#5,3,second_ <= 0
-c7: 1 flow_demand_error_Pump_#2,4,first_ <= 1.0000000000000002
-c8: 1 flow_demand_error_Pump_#2,4,second_ <= 0
-c9: -1 low_storage_factor_Basin_#1_ <= -1
+c1: -1 low_storage_factor_Basin_#1_ <= -1
+c2: 1 level_demand_error_Basin_#1,1,lower,first_ + 1 level_demand_error_Basin_#1,1,upper,first_ <= 0
+c3: 1 level_demand_error_Basin_#1,1,lower,second_ + 1 level_demand_error_Basin_#1,1,upper,second_ <= 0
+c4: 1 flow_demand_error_Pump_#2,2,first_ <= 0
+c5: 1 flow_demand_error_Pump_#2,2,second_ <= 0
+c6: 1 user_demand_error_UserDemand_#5,3,first_ <= 0
+c7: 1 user_demand_error_UserDemand_#5,3,second_ <= 0
+c8: 1 flow_demand_error_Pump_#2,4,first_ <= 1.0000000000000002
+c9: 1 flow_demand_error_Pump_#2,4,second_ <= 0
 user_demand_relative_error_constraint_UserDemand_#5,3_: 1 user_demand_allocated_UserDemand_#5,3_ + 0.024300000000000002 user_demand_error_UserDemand_#5,3,first_ >= 0.024300000000000002
 flow_demand_relative_error_constraint_Pump_#2,2_: 1 flow_demand_allocated_Pump_#2,2_ + 0.016200000000000003 flow_demand_error_Pump_#2,2,first_ >= 0.016200000000000003
 flow_demand_relative_error_constraint_Pump_#2,4_: 1 flow_demand_allocated_Pump_#2,4_ + 0.024300000000000002 flow_demand_error_Pump_#2,4,first_ >= 0.024300000000000002
