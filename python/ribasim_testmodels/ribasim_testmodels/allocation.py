@@ -1299,6 +1299,76 @@ def multi_priority_flow_demand_model() -> Model:
     return model
 
 
+def flow_demand_discrete_control_model() -> Model:
+    """Set up a model with a Pump that has both a FlowDemand and a DiscreteControl.
+
+    The DiscreteControl switches the Pump between allocation control and a prescribed flow
+    rate, based on the level of the upstream Basin.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 21),
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+
+    bsn = model.basin.add(
+        Node(1, Point(0, 0), subnetwork_id=2),
+        [basin.Profile(level=[0.0, 10.0], area=1000.0), basin.State(level=[3.0])],
+    )
+
+    pmp = model.pump.add(
+        Node(2, Point(1, 0), subnetwork_id=2),
+        [
+            pump.Static(
+                control_state=["allocation", "prescribed"],
+                flow_rate=[0.0, 1e-2],
+                max_flow_rate=[1e-2, 1e-2],
+                allocation_controlled=[True, False],
+            )
+        ],
+    )
+
+    tml = model.terminal.add(Node(3, Point(2, 0), subnetwork_id=2))
+
+    flb = model.flow_boundary.add(
+        Node(4, Point(-1, 0), subnetwork_id=2), [flow_boundary.Static(flow_rate=[5e-3])]
+    )
+
+    fdm = model.flow_demand.add(
+        Node(5, Point(1, 1), subnetwork_id=2),
+        [flow_demand.Static(demand_priority=[1], demand=2e-3)],
+    )
+
+    dsc = model.discrete_control.add(
+        Node(6, Point(1, -1), subnetwork_id=2),
+        [
+            discrete_control.Variable(
+                compound_variable_id=[1],
+                listen_node_id=[1],
+                variable=["level"],
+            ),
+            discrete_control.Condition(
+                compound_variable_id=[1],
+                condition_id=[1],
+                threshold_high=[4.0],
+            ),
+            discrete_control.Logic(
+                control_state=["allocation", "prescribed"],
+                truth_state=["F", "T"],
+            ),
+        ],
+    )
+
+    model.link.add(flb, bsn)
+    model.link.add(bsn, pmp)
+    model.link.add(pmp, tml)
+    model.link.add(fdm, pmp)
+    model.link.add(dsc, pmp)
+
+    return model
+
+
 def allocation_off_flow_demand_model() -> Model:
     """Set up a model with a Pump with a FlowDemand but allocation turned off."""
     model = Model(
