@@ -23,7 +23,9 @@ jobs:
         run: pixi run instantiate-julia
       - name: Run compression variants
         run: |
-          export HDF5_PLUGIN_PATH="$CONDA_PREFIX/lib/hdf5/plugin"
+          # The HDF5 filter plugins that ship with the netCDF4 wheel
+          export HDF5_PLUGIN_PATH=$(python -c "import netCDF4, pathlib; print(pathlib.Path(netCDF4.__file__).parent / 'plugins')")
+          ls "$HDF5_PLUGIN_PATH"
           julia --startup-file=no --project=core utils/netcdf-compression/run_variants.jl generated_testmodels/basic netcdf-compression-basic
           cp utils/netcdf-compression/README.md netcdf-compression-basic/
       - name: Check variants
