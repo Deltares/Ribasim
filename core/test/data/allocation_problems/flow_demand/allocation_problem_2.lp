@@ -21,6 +21,7 @@ flow_demand_fairness_error_constraint_TabulatedRatingCurve_#2,2_: -1 flow_demand
 flow_conservation_tabulated_rating_curve_TabulatedRatingCurve_#2_: 1 flow_(LevelBoundary_#1,_TabulatedRatingCurve_#2)_ - 1 flow_(TabulatedRatingCurve_#2,_Basin_#3)_ = 0
 volume_conservation_Basin_#3_: 1 basin_storage_change_Basin_#3_ - 1 flow_(TabulatedRatingCurve_#2,_Basin_#3)_ + 1 flow_(Basin_#3,_UserDemand_#4)_ + 1 flow_(Basin_#3,_UserDemand_#6)_ = 0
 volume_conservation_Basin_#7_: 1 basin_storage_change_Basin_#7_ - 1 flow_(UserDemand_#4,_Basin_#7)_ + 1 flow_(Basin_#7,_UserDemand_#8)_ - 1 flow_(UserDemand_#8,_Basin_#7)_ - 1 flow_(UserDemand_#6,_Basin_#7)_ = 0
+tabulated_rating_curve_constraint_TabulatedRatingCurve_#2_: 1 flow_(LevelBoundary_#1,_TabulatedRatingCurve_#2)_ = 0.002158057748026776
 user_demand_allocated_sum_constraint_UserDemand_#4_: 1 flow_(Basin_#3,_UserDemand_#4)_ - 1 user_demand_allocated_UserDemand_#4,3_ = 0
 user_demand_allocated_sum_constraint_UserDemand_#6_: 1 flow_(Basin_#3,_UserDemand_#6)_ - 1 user_demand_allocated_UserDemand_#6,1_ = 0
 user_demand_allocated_sum_constraint_UserDemand_#8_: 1 flow_(Basin_#7,_UserDemand_#8)_ - 1 user_demand_allocated_UserDemand_#8,4_ = 0
@@ -32,7 +33,6 @@ average_flow_unit_error_constraint_1_: -1 user_demand_error_UserDemand_#6,1,firs
 average_flow_unit_error_constraint_2_: -1 flow_demand_error_TabulatedRatingCurve_#2,2,first_ + 1 average_flow_unit_error_2_ = 0
 average_flow_unit_error_constraint_3_: -1 user_demand_error_UserDemand_#4,3,first_ + 1 average_flow_unit_error_3_ = 0
 average_flow_unit_error_constraint_4_: -1 user_demand_error_UserDemand_#8,4,first_ + 1 average_flow_unit_error_4_ = 0
-tabulated_rating_curve_constraint_TabulatedRatingCurve_#2_: 1 flow_(LevelBoundary_#1,_TabulatedRatingCurve_#2)_ = 0.002158057748026776
 Bounds
 basin_storage_change_Basin_#3_ >= -0.33303360309055186
 basin_storage_change_Basin_#7_ >= -0.3366303660039298

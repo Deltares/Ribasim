@@ -536,6 +536,34 @@ end
     @test !isempty(low_level_flows)
 end
 
+@testitem "Control constraints are only rebuilt when allocation control changes" begin
+    import BasicModelInterface as BMI
+    using Ribasim: NodeID
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/two_basin_user_demand/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    BMI.update(model)
+
+    (; p_independent) = model.integrator.p
+    allocation_model = only(p_independent.allocation.allocation_models)
+    (; problem) = allocation_model
+    outlet_id = NodeID(:Outlet, 7, p_independent)
+    constraints = problem[:outlet_constraint]
+    @test outlet_id ∉ only(axes(constraints))
+
+    Ribasim.update_control_states!(allocation_model, p_independent)
+    @test problem[:outlet_constraint] === constraints
+
+    # Without allocation control the Outlet gets a linearized flow-level constraint
+    p_independent.outlet.allocation_controlled[outlet_id.idx] = false
+    Ribasim.update_control_states!(allocation_model, p_independent)
+    @test outlet_id ∈ only(axes(problem[:outlet_constraint]))
+end
+
 @testitem "allocation record averaging" begin
     using Ribasim: DemandRecordDatum, FlowRecordDatum, AllocationControlRecordDatum,
         average_records!, record_key

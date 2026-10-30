@@ -319,6 +319,8 @@ level_demand_area_sum: The sum of current Basin areas per active LevelDemand pri
 level_demand_count: The number of Basins per active LevelDemand priority
 level_demand_area_scale: The mean current Basin area per active LevelDemand priority
 temporary_constraints: Goal programming constraints; one is added after each optimization to retain their results
+allocation_controlled: The allocation_controlled flags of the Pumps, Outlets and TabulatedRatingCurves in the
+    subnetwork that the control constraints were built for, see update_control_states!
 """
 @kwdef mutable struct AllocationModel
     subnetwork_id::Int32
@@ -338,6 +340,7 @@ temporary_constraints: Goal programming constraints; one is added after each opt
     level_demand_count::OrderedDict{Int32, Int} = OrderedDict()
     level_demand_area_scale::OrderedDict{Int32, Float64} = OrderedDict()
     temporary_constraints::Vector{JuMP.ConstraintRef} = JuMP.ConstraintRef[]
+    allocation_controlled::Vector{Bool} = Bool[]
 end
 
 struct DemandRecordDatum
