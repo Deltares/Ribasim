@@ -646,6 +646,31 @@ const StorageToLevelType = LinearInterpolationIntInv{
 }
 
 """
+The profiles of all Basins in contiguous vectors, to quickly compute the levels and areas of all
+Basins in `set_current_basin_properties!`. This gives exactly the same results as
+`storage_to_level` and `level_to_area`, which are used below the profile.
+Both relations have the same level points.
+"""
+@kwdef struct BasinProfiles
+    # The points of Basin i are at (offset[i] + 1):offset[i + 1]
+    offset::Vector{Int} = [0]
+    # The points of `storage_to_level` and of the dS/dh it integrates, with its slope per segment
+    storage::Vector{Float64} = Float64[]
+    level::Vector{Float64} = Float64[]
+    dS_dh::Vector{Float64} = Float64[]
+    dS_dh_slope::Vector{Float64} = Float64[]
+    # The points of `level_to_area`, with its slope per segment
+    area::Vector{Float64} = Float64[]
+    area_slope::Vector{Float64} = Float64[]
+    # Per Basin the slope of `storage_to_level` above the profile, where it extrapolates linearly
+    # and `level_to_area` constantly
+    top_level_slope::Vector{Float64} = Float64[]
+    # Per Basin the segment of the last evaluation, where the search starts
+    segment::Vector{Int} = Int[]
+    area_segment::Vector{Int} = Int[]
+end
+
+"""
 Requirements:
 
 * Must be positive: precipitation, surface_runoff, evaporation, infiltration, drainage
@@ -675,6 +700,7 @@ Requirements:
         Vector{StorageToLevelType}(undef, length(node_id))
     level_to_area::Vector{ScalarLinearInterpolation} =
         Vector{ScalarLinearInterpolation}(undef, length(node_id))
+    profiles::BasinProfiles = BasinProfiles()
     # Values for allocation if applicable
     demand::Vector{Float64} = zeros(length(node_id))
     allocated::Vector{Float64} = zeros(length(node_id))
@@ -684,6 +710,22 @@ Requirements:
     # Connected level demand node if applicable
     level_demand_id::Vector{NodeID} =
         fill(NodeID(NodeType.LevelDemand, 0, 0), length(node_id))
+end
+
+"""
+The Q(h) relations of all TabulatedRatingCurves in contiguous vectors, to quickly evaluate them in
+the right hand side. Within a relation this gives exactly the same results as the interpolation,
+outside of it the interpolation is used for its extrapolation.
+"""
+@kwdef struct RatingCurveTables
+    # The points of interpolation k are at (offset[k] + 1):offset[k + 1]
+    offset::Vector{Int} = [0]
+    level::Vector{Float64} = Float64[]
+    flow_rate::Vector{Float64} = Float64[]
+    # The derivative at the points, and the cubic Hermite coefficients per segment
+    dflow_rate::Vector{Float64} = Float64[]
+    c₁::Vector{Float64} = Float64[]
+    c₂::Vector{Float64} = Float64[]
 end
 
 """
@@ -712,6 +754,13 @@ allocation_controlled: whether this TabulatedRatingCurve is controlled by alloca
     max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
     interpolations::Vector{ScalarPCHIPInterpolation} = ScalarLinearInterpolation[]
     current_interpolation_index::Vector{IndexLookup} = IndexLookup[]
+    # The value of `current_interpolation_index` at the time of the time dependent cache
+    interpolation_index::Vector{Int} = ones(Int, length(node_id))
+    # The interpolations in contiguous vectors, and per node the segment of the last evaluation
+    tables::RatingCurveTables = RatingCurveTables()
+    segment::Vector{Int} = ones(Int, length(node_id))
+    # Whether `current_interpolation_index` varies in time, see `update_time_dependent_cache!`
+    time_varying::Vector{Bool} = fill(true, length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
         OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
     control_type::Vector{ContinuousControlType.T} =
@@ -894,6 +943,8 @@ flow_demand_id: connected flow demand node if applicable
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     max_downstream_level::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    # Whether any time series of the node varies in time, see `update_time_dependent_cache!`
+    time_varying::Vector{Bool} = fill(true, length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
         OrderedDict{Tuple{NodeID, String}, ControlStateUpdate}()
     control_type::Vector{ContinuousControlType.T} =
@@ -934,6 +985,8 @@ flow_demand_id: connected flow demand node if applicable
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     max_downstream_level::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
+    # Whether any time series of the node varies in time, see `update_time_dependent_cache!`
+    time_varying::Vector{Bool} = fill(true, length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} = OrderedDict()
     control_type::Vector{ContinuousControlType.T} =
         fill(ContinuousControlType.None, length(node_id))
@@ -1010,11 +1063,34 @@ function get_cache_vector(
     end
 end
 
+@enumx ListenVariableType Level Storage FlowRate ConcentrationExternal Concentration Unsupported
+
 @kwdef struct SubVariable
     listen_node_id::NodeID
     variable::String
     weight::Float64
     look_ahead::Float64
+    # The type of `variable`, to not compare strings when evaluating the subvariable
+    type::ListenVariableType.T = listen_variable_type(variable)
+end
+
+SubVariable(listen_node_id, variable, weight, look_ahead) =
+    SubVariable(; listen_node_id, variable, weight, look_ahead)
+
+function listen_variable_type(variable::String)::ListenVariableType.T
+    return if variable == "level"
+        ListenVariableType.Level
+    elseif variable == "storage"
+        ListenVariableType.Storage
+    elseif variable == "flow_rate"
+        ListenVariableType.FlowRate
+    elseif startswith(variable, "concentration_external.")
+        ListenVariableType.ConcentrationExternal
+    elseif startswith(variable, "concentration.")
+        ListenVariableType.Concentration
+    else
+        ListenVariableType.Unsupported
+    end
 end
 
 """
@@ -1031,6 +1107,9 @@ threshold_low: the thresholds this compound variable will be
     subvariables::Vector{SubVariable} = SubVariable[]
     threshold_high::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
     threshold_low::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
+    # The thresholds that are constant in time, NaN for those that vary in time
+    threshold_high_value::Vector{Float64} = Float64[]
+    threshold_low_value::Vector{Float64} = Float64[]
 end
 
 """
@@ -1073,6 +1152,37 @@ record: Namedtuple with discrete control information for results
         truth_state = String[],
         control_state = String[],
     )
+end
+
+"""
+The conditions of all DiscreteControl nodes in contiguous vectors, so that they can be evaluated
+quickly after every timestep, see `apply_discrete_control!`. Compound variables that listen to
+other variables than Basin levels, Basin storages and flow rates of connector nodes, and
+thresholds that vary in time, are evaluated from `DiscreteControl.compound_variables`.
+"""
+@kwdef struct DiscreteControlConditions
+    # The conditions of DiscreteControl node i are at (condition_offset[i] + 1):condition_offset[i + 1]
+    condition_offset::Vector{Int} = [0]
+    # Per condition its compound variable, the index of its thresholds, the thresholds
+    # (NaN if they vary in time) and its truth value
+    compound_variable_idx::Vector{Int} = Int[]
+    threshold_idx::Vector{Int} = Int[]
+    threshold_low::Vector{Float64} = Float64[]
+    threshold_high::Vector{Float64} = Float64[]
+    truth_value::Vector{Bool} = Bool[]
+    # Per compound variable the DiscreteControl node index, its index within the node,
+    # whether it is evaluated from the subvariables below, and its current value
+    node_idx::Vector{Int} = Int[]
+    local_idx::Vector{Int} = Int[]
+    contiguous::Vector{Bool} = Bool[]
+    value::Vector{Float64} = Float64[]
+    # The subvariables of compound variable k are at (subvariable_offset[k] + 1):subvariable_offset[k + 1],
+    # with the Basin index for a level or storage, and the flow index for a flow rate
+    subvariable_offset::Vector{Int} = [0]
+    subvariable_type::Vector{ListenVariableType.T} = ListenVariableType.T[]
+    subvariable_node_id::Vector{NodeID} = NodeID[]
+    subvariable_idx::Vector{Int} = Int[]
+    subvariable_weight::Vector{Float64} = Float64[]
 end
 
 @kwdef struct ContinuousControl <: AbstractParameterNode
@@ -1272,6 +1382,8 @@ const ModelGraph = MetaGraph{
 The part of the parameters passed to the rhs and callbacks that are mutable.
 - `new_time_dependent_cache`: Whether the `t` with which `water_balance!` is called is considered new,
    and thus whether `time_dependent_cache` must be updated
+- `refresh_time_dependent_cache`: Whether at the next new `t` all time series in `time_dependent_cache`
+   must be evaluated, also those that are constant in time, because a control state change replaced some of them
 - `refresh_jac`: Whether the Jacobian needs to be re-evaluated for the current Newton solve.
    This flag doesn't get passed to `update_coefficients!` for `RibasimJacobian`, so we capture it by
    wrapping do_newJW. It is reset after the evaluation, so that the Jacobian is only evaluated at the
@@ -1285,6 +1397,7 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
 """
 @kwdef mutable struct ParametersMutable
     new_time_dependent_cache::Bool = true
+    refresh_time_dependent_cache::Bool = true
     refresh_jac::Bool = true
     jac_naccept::Int = 0
     jac_version::Int = 0
@@ -1373,6 +1486,9 @@ an immutable struct.
     # Linear system for the implicit tracer transport between Basins
     const tracer_transport::TracerTransport =
         TracerTransport(inflow_id, outflow_id, basin, do_concentration)
+    # The DiscreteControl conditions in contiguous vectors
+    const discrete_control_conditions::DiscreteControlConditions =
+        DiscreteControlConditions(discrete_control, flow_ranges)
     # The up- and downlink storage per flow
     const storage_uplink::FlowCVector{Float64} = similar(inflow_id, Float64)
     const storage_downlink::FlowCVector{Float64} = similar(inflow_id, Float64)
