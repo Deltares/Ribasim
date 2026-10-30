@@ -16,6 +16,8 @@
         @test o isa Ribasim.Results
         @test !o.compression
         @test o.compression_level === 1
+        @test o.compression_algorithm == "deflate"
+        @test o.significant_bits === 0
         @test_throws MethodError Ribasim.Results(compression = "zstd")
     end
 

@@ -209,7 +209,9 @@ end
 
 @option struct Results <: TableOption
     compression::Bool = false
+    compression_algorithm::String = "deflate"
     compression_level::Int = 1
+    significant_bits::Int = 0
     subgrid::Bool = false
 end
 

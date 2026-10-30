@@ -199,6 +199,66 @@ end
     end
 end
 
+@testitem "netcdf compression" begin
+    using NCDatasets: NCDatasets, NCDataset
+    using Dates: DateTime, Day
+    using Ribasim: Results, write_netcdf, valid_results_config, zstd_available
+
+    time = DateTime(2020) .+ Day.(0:9)
+    node_id = Int32[1, 2, 3]
+    level = 100.0 .+ rand(3, 10)
+    data = (; time, node_id, level)
+    dir = mktempdir()
+
+    # lossless
+    path = joinpath(dir, "deflate", "basin.nc")
+    write_netcdf(path, data, Results(; compression = true))
+    NCDataset(path) do ds
+        @test ds["time"][:] == time
+        @test ds["node_id"][:] == node_id
+        @test ds["level"][:, :] == level
+        @test NCDatasets.deflate(ds["level"].var) == (false, true, 1)
+        @test !haskey(ds["level"].attrib, "_QuantizeBitRoundNumberOfSignificantBits")
+    end
+
+    # quantized with shuffle
+    path = joinpath(dir, "bitround", "basin.nc")
+    write_netcdf(path, data, Results(; compression = true, significant_bits = 20))
+    NCDataset(path) do ds
+        @test ds["time"][:] == time
+        @test ds["node_id"][:] == node_id
+        @test ds["level"][:, :] != level
+        @test maximum(abs.(ds["level"][:, :] ./ level .- 1)) <= 2.0^-21
+        @test NCDatasets.deflate(ds["level"].var) == (true, true, 1)
+        @test ds["level"].attrib["_QuantizeBitRoundNumberOfSignificantBits"] == 20
+        @test !haskey(ds["time"].attrib, "_QuantizeBitRoundNumberOfSignificantBits")
+    end
+
+    # basin_state is written lossless
+    path = joinpath(dir, "state", "basin.nc")
+    write_netcdf(path, data, Results(; significant_bits = 20); significant_bits = 0)
+    NCDataset(path) do ds
+        @test ds["level"][:, :] == level
+    end
+
+    @test valid_results_config(Results())
+    @test valid_results_config(Results(; compression = true, significant_bits = 20))
+    @test !valid_results_config(Results(; significant_bits = 53))
+    @test !valid_results_config(Results(; compression = true, compression_level = 10))
+    @test !valid_results_config(Results(; compression = true, compression_algorithm = "lz4"))
+    # zstd needs an HDF5 filter plugin, which NetCDF_jll does not ship
+    zstd = Results(; compression = true, compression_algorithm = "zstd", compression_level = 3)
+    @test valid_results_config(zstd) == zstd_available()
+    if zstd_available()
+        path = joinpath(dir, "zstd", "basin.nc")
+        write_netcdf(path, data, zstd)
+        NCDataset(path) do ds
+            @test ds["level"][:, :] == level
+            @test NCDatasets.nc_inq_var_zstandard(ds.ncid, ds["level"].var.varid) == (true, 3)
+        end
+    end
+end
+
 @testitem "netcdf allocation results" begin
     using NCDatasets: NCDataset, dimnames
     using Ribasim: results_path, RESULTS_FILENAME

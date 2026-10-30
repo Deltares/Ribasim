@@ -347,6 +347,43 @@ function valid_config(config::Config)::Bool
         @error "The fixed allocation timestep dt must be positive." dt
     end
 
+    valid_results_config(config.results) || (errors = true)
+
+    return !errors
+end
+
+function valid_results_config(results::Results)::Bool
+    errors = false
+    (; compression, compression_algorithm, compression_level, significant_bits) = results
+
+    if !(0 <= significant_bits <= 52)
+        errors = true
+        @error "The results significant_bits must be between 1 and 52, or 0 to disable quantization." significant_bits
+    end
+
+    compression || return !errors
+
+    if compression_algorithm == "deflate"
+        if !(0 <= compression_level <= 9)
+            errors = true
+            @error "The results compression_level must be between 0 and 9 for deflate." compression_level
+        end
+    elseif compression_algorithm == "zstd"
+        if !(1 <= compression_level <= 22)
+            errors = true
+            @error "The results compression_level must be between 1 and 22 for zstd." compression_level
+        end
+        if !zstd_available()
+            errors = true
+            @error """The zstd HDF5 filter plugin is not available, so zstd compressed results cannot be written.
+            Set the HDF5_PLUGIN_PATH environment variable to a directory with the HDF5 filter plugins,
+            or use compression_algorithm = "deflate"."""
+        end
+    else
+        errors = true
+        @error "The results compression_algorithm must be \"deflate\" or \"zstd\"." compression_algorithm
+    end
+
     return !errors
 end
 
