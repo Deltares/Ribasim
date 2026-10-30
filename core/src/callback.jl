@@ -209,7 +209,6 @@ function update_concentrations!(u, t, integrator)::Nothing
     (; basin, flow_boundary, do_concentration, cumulative_flow_dt) = p_independent
     (; storage_prev_dt, concentration_data, forcing) = basin
     (;
-        evaporate_mass,
         cumulative_in,
         concentration_state,
         concentration_drainage,
@@ -247,7 +246,8 @@ function update_concentrations!(u, t, integrator)::Nothing
     end
 
     mass_inflows_from_user_demand!(integrator)
-    mass_inflows_basin!(integrator)
+
+    # Transport between Basins with the total inflow volume per Basin
     aggregate_flows!(
         cumulative_in,
         cumulative_flow_dt,
@@ -257,31 +257,12 @@ function update_concentrations!(u, t, integrator)::Nothing
         boundary_flow = flow_boundary.cumulative_flow_dt,
     )
 
-    # Update the Basin concentrations based on the added mass and flows
-    for node_id in basin.node_id
-        storage_only_in = storage_prev_dt[node_id.idx] + cumulative_in[node_id.idx]
-
-        # The residence time tracer gets older
-        mass[Substance.ResidenceTime, node_id.idx] += dt * storage_prev_dt[node_id.idx]
-        if iszero(storage_only_in)
-            concentration_state[:, node_id.idx] .= 0
-        else
-            concentration_state[:, node_id.idx] .= view(mass, :, node_id.idx) ./ storage_only_in
-        end
-    end
-
-    mass_outflows_basin!(integrator)
+    transport_tracers!(p_independent, t, dt)
 
     errors = false
 
     for node_id in basin.node_id
         mass_node = view(mass, :, node_id.idx)
-
-        # Evaporate mass to keep the mass balance, if enabled in model config
-        if evaporate_mass
-            evaporated_volume = cumulative_flow_dt.vertical.evaporation[node_id.idx]
-            mass_node .-= @view(concentration_state[:, node_id.idx]) .* evaporated_volume
-        end
 
         # Take care of too small masses, possibly becoming negative due to truncation.
         for I in eachindex(mass_node)
@@ -296,7 +277,6 @@ function update_concentrations!(u, t, integrator)::Nothing
             log_negative_mass(node_id, mass_node, concentration_data.substances)
         end
 
-        # Update the Basin concentrations again based on the removed mass
         s = current_storage[node_id.idx]
         if iszero(s)
             concentration_state[:, node_id.idx] .= 0

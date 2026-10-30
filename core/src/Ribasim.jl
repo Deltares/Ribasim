@@ -165,6 +165,7 @@ using Accessors: @set, @reset
 
 # Iteration utilities, used to partition and group tables.
 import IterTools
+import PureKLU
 
 # Tables interface that works with SQLite tables.
 using Tables: Tables, AbstractRow, columntable

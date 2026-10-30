@@ -538,6 +538,40 @@ once, so that each timestep only the time dependent ones need to be evaluated.
     time_dependent::Vector{CartesianIndex{2}} = CartesianIndex{2}[]
 end
 
+"""
+The linear system for the transport of substances between Basins over a timestep.
+Water leaves Basin i with concentration θ_i C_i + (1 - θ_i) C⁰_i, a weighted average of the
+concentrations at the end and start of the timestep, which gives for each Basin i
+
+    (W_i + θ_i V_out_i) C_i - Σ_j θ_j V_ji C_j =
+        M_i + mass from other sources - (1 - θ_i) V_out_i C⁰_i + Σ_j (1 - θ_j) V_ji C⁰_j
+
+with M_i the mass at the start of the timestep, W_i the volume that remains at the end,
+V_out_i the outflow volume over the timestep and V_ji the volume that flowed from Basin j to
+Basin i. θ_i = max(1/2, 1 - S_i / V_out_i) with S_i the storage at the start of the timestep:
+the trapezoidal rule (θ = 1/2) is second order accurate, and a larger θ towards backward
+Euler (θ = 1) keeps the concentrations positive when the outflow exceeds twice the storage.
+This conserves mass and lets substances travel through more than one Basin per timestep.
+All substances share the matrix.
+"""
+mutable struct TracerTransport
+    # Matrix with a fixed sparsity pattern: the diagonal and both directions of each Basin to Basin flow
+    const A::SparseMatrixCSC{Float64, Int}
+    # Index into nonzeros(A) of the diagonal entry per Basin
+    const diagonal_nz::Vector{Int}
+    # Per flow index into nonzeros(A) of the entry for positive and negative flow, 0 if not Basin to Basin
+    const forward_nz::Vector{Int}
+    const backward_nz::Vector{Int}
+    # Volume that left each Basin with its mixed concentration over the timestep
+    const outflow::Vector{Float64}
+    # Right hand side and solution of the linear system, Basin x substance
+    const work::Matrix{Float64}
+    # Per Basin the weight of the concentration at the end of the timestep in its outflows
+    const theta::Vector{Float64}
+    # Created at the first timestep, afterwards only refactored with new values
+    factorization::Union{Nothing, PureKLU.KLUFactorization{Float64, Int, Float64}}
+end
+
 @kwdef struct ConcentrationData
     # Config setting to enable/disable evaporation of mass
     evaporate_mass::Bool = true
@@ -1336,6 +1370,9 @@ an immutable struct.
     const inflow_id::FlowCVector{NodeID}
     const outflow_id::FlowCVector{NodeID}
     const state_id::FlowCVector{NodeID}
+    # Linear system for the implicit tracer transport between Basins
+    const tracer_transport::TracerTransport =
+        TracerTransport(inflow_id, outflow_id, basin, do_concentration)
     # The up- and downlink storage per flow
     const storage_uplink::FlowCVector{Float64} = similar(inflow_id, Float64)
     const storage_downlink::FlowCVector{Float64} = similar(inflow_id, Float64)
