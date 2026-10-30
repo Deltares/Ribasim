@@ -34,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - UserDemand `return_factor` and `min_level` must be the same for all demand priorities of a node (at the same time). [#3316](https://github.com/Deltares/Ribasim/pull/3316)
 
 ### Fixed
+- Allocation: UserDemand abstractions are now reduced towards the `min_level` like in the physical layer, so allocation no longer allocates water below the `min_level` that cannot be abstracted.
 - Allocation: Remove the Basin storage change upper bound and the flow bounds derived from it, which only existed for numerical reasons and could make the optimization problem infeasible. The flow of allocation controlled TabulatedRatingCurves is now bounded by its linearized Q(h) relation instead.
 - Allocation: Normalize LevelDemand fairness constraints by the current mean Basin area per demand priority, improving numerical conditioning for large Basins.
 - Allocation: Use a deterministic minimum-inlet-flow tie-break when collecting secondary-network demands from the primary network.

@@ -922,7 +922,7 @@ For allocation controlled Pump and Outlet nodes there is no fallback bound, so a
 
 ### Demand-based bounds
 
-`update_user_demand_flow_bounds!` bounds all inflow links and the outflow link of a UserDemand node between zero and its total demand over all demand priorities. For the outflow the return factor is conservatively assumed to be 1. Since the demand values stored in the problem are already divided by `scaling.flow`, the upper bounds of the allocated variables can be used directly.
+`update_user_demand_flow_bounds!` bounds all inflow links and the outflow link of a UserDemand node between zero and its total demand over all demand priorities. For each inflow link the upper bound is multiplied by the same reduction factor for the source level and the `min_level` as in the physical layer, evaluated at the start of the allocation timestep. This factor is not linearized w.r.t. the storage change, since that would make it a lower bound on the source storage, which the problem could only satisfy by lowering low storage factors. For the outflow the return factor is conservatively assumed to be 1. Since the demand values stored in the problem are already divided by `scaling.flow`, the upper bounds of the allocated variables can be used directly.
 
 `update_flow_demand_variable_bounds!` then takes the (now final) bounds of the flow variable of the node with a flow demand and transfers them to the helper variables: the allocated variable of the earliest demand priority may go down to $\min(0, Q^\min)$ to represent negative flow, and the 'demand priority 0' surplus variable is bounded above by $\max(0, Q^\max)$. If the flow variable has no bound on a side, the corresponding helper variable bound is deleted as well.
 
@@ -938,7 +938,7 @@ set_simulation_data!(allocation_model, integrator, Δt)
 reset_demand_coefficients(allocation_model)
 set_demands!(allocation_model, integrator, Δt)
 update_flow_variable_bounds!(allocation_model, integrator, Δt)
-update_user_demand_flow_bounds!(allocation_model, p_independent)
+update_user_demand_flow_bounds!(allocation_model, p, t)
 update_flow_demand_variable_bounds!(allocation_model, p_independent)
 normalize_flow_demand_objectives!(allocation_model)
 warm_start!(allocation_model, integrator, Δt)
