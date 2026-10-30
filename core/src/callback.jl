@@ -504,7 +504,8 @@ function check_negative_storage(u, t, integrator)::Nothing
     (; p) = integrator
     (; p_independent, current_basin_properties) = p
     (; basin) = p_independent
-    du = get_du(integrator)
+    # Not get_du(integrator), which for NordsieckBDF allocates an interpolated derivative
+    du = integrator.fsallast
 
     # The accepted time step ends at t, which is the start of the next one. Integrate the
     # forcings over the time step and set p_mutable.tprev to t. From here on, piecewise
@@ -514,6 +515,10 @@ function check_negative_storage(u, t, integrator)::Nothing
     update_cumulative_forcing!(p, t)
     p.time_dependent_cache.t_prev_call[1] = -1.0
     water_balance!(du, u, p, t)
+    # The step limiter can change u after the step, so OrdinaryDiffEq marks the derivative at
+    # the start of the next step for re-evaluation. That is what was just computed here, so
+    # skip it. A later callback that changes the right hand side still forces it.
+    integrator.reeval_fsal = false
 
     if log_negative_storage(basin, current_basin_properties.current_storage)
         t_datetime = datetime_since(integrator.t, p_independent.starttime)
