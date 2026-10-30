@@ -1444,6 +1444,26 @@ function delete_control_constraints!(
 end
 
 """
+The allocation_controlled flags of the Pumps, Outlets and TabulatedRatingCurves in the subnetwork.
+"""
+function allocation_controlled_flags(
+        allocation_model::AllocationModel,
+        p_independent::ParametersIndependent,
+    )::Vector{Bool}
+    (; pump, outlet, tabulated_rating_curve) = p_independent
+    (; pump_ids_subnetwork, outlet_ids_subnetwork, tabulated_rating_curve_ids_subnetwork) =
+        allocation_model.node_ids_in_subnetwork
+    return vcat(
+        [pump.allocation_controlled[id.idx] for id in pump_ids_subnetwork],
+        [outlet.allocation_controlled[id.idx] for id in outlet_ids_subnetwork],
+        [
+            tabulated_rating_curve.allocation_controlled[id.idx] for
+                id in tabulated_rating_curve_ids_subnetwork
+        ],
+    )
+end
+
+"""
 Flow capacity imposed on a link by one of the nodes it connects.
 Flows set by a linearized flow-level relation get no bounds, since these would only
 follow from the same linearization.
@@ -1590,6 +1610,13 @@ function update_control_states!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
     )::Nothing
+    # Control states can switch nodes between allocation control and their linearized
+    # flow-level relation. Rebuilding the constraints is expensive for large subnetworks,
+    # so only do so if that changed. The coefficients are updated in set_simulation_data!.
+    allocation_controlled = allocation_controlled_flags(allocation_model, p_independent)
+    allocation_controlled == allocation_model.allocation_controlled && return nothing
+    allocation_model.allocation_controlled = allocation_controlled
+
     delete_control_constraints!(allocation_model, :pump_constraint)
     delete_control_constraints!(allocation_model, :outlet_constraint)
     delete_control_constraints!(allocation_model, :tabulated_rating_curve_constraint)
