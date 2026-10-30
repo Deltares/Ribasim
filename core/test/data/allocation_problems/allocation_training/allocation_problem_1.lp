@@ -1,13 +1,13 @@
 minimize
 obj: -10 flow_(TabulatedRatingCurve_#4,_Terminal_#5)_ - 10 flow_(TabulatedRatingCurve_#8,_Basin_#3)_
 subject to
-c1: 1 level_demand_error_Basin_#7,1,lower,first_ + 1 level_demand_error_Basin_#7,1,upper,first_ <= 0
-c2: 1 level_demand_error_Basin_#7,1,lower,second_ + 1 level_demand_error_Basin_#7,1,upper,second_ <= 0
-c3: 1 user_demand_error_UserDemand_#10,2,first_ <= 0
-c4: 1 user_demand_error_UserDemand_#10,2,second_ <= 0
-c5: 1 user_demand_error_UserDemand_#9,3,first_ <= 0
-c6: 1 user_demand_error_UserDemand_#9,3,second_ <= 0
-c7: -1 low_storage_factor_Basin_#3_ - 1 low_storage_factor_Basin_#7_ <= -2
+c1: -1 low_storage_factor_Basin_#3_ - 1 low_storage_factor_Basin_#7_ <= -2
+c2: 1 level_demand_error_Basin_#7,1,lower,first_ + 1 level_demand_error_Basin_#7,1,upper,first_ <= 0
+c3: 1 level_demand_error_Basin_#7,1,lower,second_ + 1 level_demand_error_Basin_#7,1,upper,second_ <= 0
+c4: 1 user_demand_error_UserDemand_#10,2,first_ <= 0
+c5: 1 user_demand_error_UserDemand_#10,2,second_ <= 0
+c6: 1 user_demand_error_UserDemand_#9,3,first_ <= 0
+c7: 1 user_demand_error_UserDemand_#9,3,second_ <= 0
 user_demand_relative_error_constraint_UserDemand_#6,4_: 1 user_demand_allocated_UserDemand_#6,4_ >= 0
 user_demand_relative_error_constraint_UserDemand_#9,3_: 1 user_demand_allocated_UserDemand_#9,3_ + 0.0013825731182412792 user_demand_error_UserDemand_#9,3,first_ >= 0.0013825731182412792
 user_demand_relative_error_constraint_UserDemand_#10,2_: 1 user_demand_allocated_UserDemand_#10,2_ + 0.0027651462364825584 user_demand_error_UserDemand_#10,2,first_ >= 0.0027651462364825584
