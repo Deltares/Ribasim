@@ -43,6 +43,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 - Allocation: The low storage factors are now optimized before the demands, so they only reduce Basin outflows to prevent negative storage. Before, the demand objectives could lower them to hold back water, for instance to meet a LevelDemand by reducing the flow over an uncontrolled weir, which the physical layer then did not follow.
+- Allocation: UserDemand abstractions are now reduced towards the `min_level` like in the physical layer, so allocation no longer allocates water below the `min_level` that cannot be abstracted.
 - Allocation: Remove the Basin storage change upper bound and the flow bounds derived from it, which only existed for numerical reasons and could make the optimization problem infeasible. The flow of allocation controlled TabulatedRatingCurves is now bounded by its linearized Q(h) relation instead.
 - Allocation: Normalize LevelDemand fairness constraints by the current mean Basin area per demand priority, improving numerical conditioning for large Basins.
 - Allocation: Use a deterministic minimum-inlet-flow tie-break when collecting secondary-network demands from the primary network.

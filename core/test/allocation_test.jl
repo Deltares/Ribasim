@@ -265,6 +265,31 @@ end
     end
 end
 
+@testitem "UserDemand min_level in allocation" begin
+    using DataFrames: DataFrame
+    using Dates: DateTime
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/small_primary_secondary_network/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # After the first two days the Basins are at the min_level of the UserDemand nodes,
+    # so allocation should not allocate water that cannot be abstracted
+    df = DataFrame(Ribasim.allocation_data(model))
+    df = df[
+        (df.node_type .== "UserDemand") .&& (df.time .>= DateTime(2020, 1, 3)) .&&
+            .!isnan.(df.demand),
+        :,
+    ]
+    @test !isempty(df)
+    @test all(df.allocated .< 0.01)
+    @test all(isapprox.(df.allocated, df.supplied; atol = 0.01))
+end
+
 @testitem "infeasibility analysis" begin
     using Logging
     using JuMP
