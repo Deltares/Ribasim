@@ -1,7 +1,7 @@
 minimize
 obj: 40 flow_(Outlet_#3,_Terminal_#6)_ + 40 flow_(Outlet_#4,_Basin_#1)_ + 1000 flow_(LevelBoundary_#5,_Outlet_#4)_
 subject to
-c1: 1 level_demand_error_Basin_#1,1,lower,first_ + 1 level_demand_error_Basin_#1,1,upper,first_ <= 0.02699303309754806
+c1: 1 level_demand_error_Basin_#1,1,lower,first_ + 1 level_demand_error_Basin_#1,1,upper,first_ <= 0.026993033097548063
 c2: 1 level_demand_error_Basin_#1,1,lower,second_ + 1 level_demand_error_Basin_#1,1,upper,second_ <= 0
 c3: -1 low_storage_factor_Basin_#1_ <= -1
 storage_constraint_lower_Basin_#1,1_: 1 basin_storage_change_Basin_#1_ + 1 level_demand_error_Basin_#1,1,lower,first_ >= -0.026869617220324004
@@ -18,10 +18,10 @@ outlet_constraint_Outlet_#4_: 1 flow_(LevelBoundary_#5,_Outlet_#4)_ = 0
 Bounds
 basin_storage_change_Basin_#1_ >= -0.8572603960735468
 0 <= low_storage_factor_Basin_#1_ <= 1
-flow_(LevelBoundary_#5,_Outlet_#4)_ = 0
-flow_(Outlet_#4,_Basin_#1)_ = 0
-0 <= flow_(Basin_#1,_Outlet_#3)_ <= 0.00012341587722405697
-0 <= flow_(Outlet_#3,_Terminal_#6)_ <= 0.00012341587722405697
+flow_(LevelBoundary_#5,_Outlet_#4)_ free
+flow_(Outlet_#4,_Basin_#1)_ free
+flow_(Basin_#1,_Outlet_#3)_ free
+flow_(Outlet_#3,_Terminal_#6)_ free
 boundary_level_LevelBoundary_#5_ = 1
 level_demand_error_Basin_#1,1,lower,first_ >= 0
 level_demand_error_Basin_#1,1,lower,second_ >= 0

@@ -438,22 +438,19 @@ UserDemand nodes dictate proportional relationships between flows over links in 
 
 ## Flow capacities {#sec-flow-capacities}
 
-Every flow variable in the optimization problem needs bounds, both because unbounded variables make the problem numerically poorly behaved and because an unbounded problem cannot be solved at all. These bounds are recomputed before every optimization, because they depend on the current state of the physical layer and on the allocation timestep $\Delta t$.
+Every flow variable in the optimization problem needs to be bounded, either by bounds on the variable itself or through the constraints, both because unbounded variables make the problem numerically poorly behaved and because an unbounded problem cannot be solved at all. These bounds are recomputed before every optimization, because they depend on the current state of the physical layer and on the allocation timestep $\Delta t$.
 
 For each flow link, the bounds are the intersection of the bounds imposed by the node at either end of the link. Per node type:
 
 - **FlowBoundary**: the flow variable is fixed to the prescribed boundary flow, so no bounds are needed.
-- **Pump and Outlet**: bounded by `min_flow_rate` and `max_flow_rate`. Since allocation assigns a single flow rate for the whole timestep, the tightest bounds over $[t, t + \Delta t]$ are used, i.e. the largest minimum and the smallest maximum of the two interpolated endpoints.
+- **Allocation controlled Pump and Outlet**: bounded by `min_flow_rate` and `max_flow_rate`, where `max_flow_rate` is [required to be finite](#control-by-allocation). Since allocation assigns a single flow rate for the whole timestep, the tightest bounds over $[t, t + \Delta t]$ are used, i.e. the largest minimum and the smallest maximum of the two interpolated endpoints.
+- **Allocation controlled TabulatedRatingCurve**: bounded below by $0$. The upper bound is a constraint rather than a bound on the variable: the flow is at most $Q(h_a)$, linearized around the current upstream level. Because $Q(h)$ is validated to be non-decreasing and all reduction factors applied in the physical layer are in $[0, 1]$, this is a valid upper bound.
 - **UserDemand**: both the inflow links and the return flow link are bounded between $0$ and the total demand of the node summed over all its demand priorities. For the upper bound the return factor is conservatively assumed to be $1$.
-- **LinearResistance, ManningResistance and non-allocation-controlled TabulatedRatingCurve**: the flow of these nodes is given by the linearized relation
+- **LinearResistance, ManningResistance, and Pump, Outlet and TabulatedRatingCurve that are not allocation controlled**: the flow of these nodes is given by the linearized relation
 
-  $$Q \approx Q^n + \frac{\partial Q}{\partial h_a}\Delta h_a + \frac{\partial Q}{\partial h_b}\Delta h_b.$$
+  $$Q \approx Q^n + \frac{\partial Q}{\partial h_a}\Delta h_a + \frac{\partial Q}{\partial h_b}\Delta h_b,$$
 
-  Evaluating this expression over the interval of level changes $\Delta h$ that the Basins at either end can reach within the timestep gives the tightest bounds consistent with the flow constraint itself. The reachable level change of a Basin follows from the bounds on its storage change decision variable $\Delta S$ using the same linearized profile the constraints use, $\Delta h = \Delta S / A^n$. Levels of LevelBoundary and Terminal nodes are fixed within one optimization, so they contribute no level change.
-- **Allocation controlled TabulatedRatingCurve**: bounded between $0$ and $Q(h_{a,\max})$, where $h_{a,\max}$ is the highest upstream level reachable within the timestep. Because $Q(h)$ is validated to be non-decreasing and all reduction factors applied in the physical layer are in $[0, 1]$, this is a valid upper bound.
-- **Allocation controlled Pump and Outlet**: bounded by `max_flow_rate`, which is [required to be finite](#control-by-allocation).
-
-Because a bound derived this way follows directly from the flow constraint of the node, it can never make the problem infeasible: any flow that satisfies the constraints also satisfies the bound.
+  so they get no bounds of their own: these would only follow from the same linearization. In particular, a Pump or Outlet that is not allocation controlled is not bounded by its `min_flow_rate` and `max_flow_rate`. Its physical flow applies the reduction factors for low storage and `min_upstream_level` to `min_flow_rate` as well, so it can be below `min_flow_rate`, and such a bound could make the problem infeasible.
 
 ## Route priority
 
