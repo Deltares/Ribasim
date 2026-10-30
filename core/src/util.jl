@@ -175,7 +175,8 @@ function get_level(
     return if node_id.is_basin
         if p_mutable.ad_active || force_evaluation
             if storage ≥ 0
-                storage_to_level[node_id.idx](storage)
+                level = get_level_from_profile(basin, node_id.idx, storage)
+                isnothing(level) ? storage_to_level[node_id.idx](storage) : level
             else
                 # For negative storage mirror the Basin profile in the bottom
                 2 * basin_bottom(basin, node_id)[2] - storage_to_level[node_id.idx](-storage)
@@ -206,7 +207,8 @@ function get_area(
     (; p_independent, current_basin_properties, p_mutable) = p
     (; level_to_area) = p_independent.basin
     return if p_mutable.ad_active
-        level_to_area[node_id.idx](level)
+        area = get_area_from_profile(p_independent.basin, node_id.idx, level)
+        isnothing(area) ? level_to_area[node_id.idx](level) : area
     else
         current_basin_properties.current_area[node_id.idx]
     end
@@ -1055,6 +1057,68 @@ function check_new_t!(p::Parameters, t::Number)::Nothing
             ForwardDiff.partials(time_dependent_cache.t_prev_call[1])
     )
     time_dependent_cache.t_prev_call[1] = t
+    update_time_dependent_cache!(p, t)
+    return nothing
+end
+
+is_constant_in_time(itp::AbstractInterpolation)::Bool = all(==(first(itp.u)), itp.u)
+
+"""
+Evaluate the time series of Pumps, Outlets and TabulatedRatingCurves into the time dependent
+cache when the right hand side is called at a new `t`. Most of these time series are constant
+in time, so only the nodes with a time series that varies in time are evaluated, unless a
+control state change replaced time series and set `p_mutable.refresh_time_dependent_cache`.
+"""
+function update_time_dependent_cache!(p::Parameters, t::Float64)::Nothing
+    (; p_mutable, p_independent, time_dependent_cache) = p
+    p_mutable.new_time_dependent_cache || return nothing
+    refresh = p_mutable.refresh_time_dependent_cache
+    (; pump, outlet, tabulated_rating_curve) = p_independent
+    update_time_dependent_cache!(pump, time_dependent_cache.pump, p, t, refresh)
+    update_time_dependent_cache!(outlet, time_dependent_cache.outlet, p, t, refresh)
+
+    (; current_interpolation_index, interpolation_index, time_varying) = tabulated_rating_curve
+    for idx in eachindex(current_interpolation_index)
+        (refresh || time_varying[idx]) || continue
+        itp = current_interpolation_index[idx]
+        interpolation_index[idx] = itp(t)
+        time_varying[idx] = !is_constant_in_time(itp)
+    end
+    p_mutable.refresh_time_dependent_cache = false
+    return nothing
+end
+
+update_time_dependent_cache!(p::Parameters, t::Number)::Nothing = nothing
+
+function update_time_dependent_cache!(
+        node::Union{Pump, Outlet},
+        cache::NamedTuple,
+        p::Parameters,
+        t::Float64,
+        refresh::Bool,
+    )::Nothing
+    (; time_dependent_flow_rate, time_varying) = node
+    time_series = (
+        (node.min_flow_rate, cache.current_min_flow_rate),
+        (node.max_flow_rate, cache.current_max_flow_rate),
+        (node.min_upstream_level, cache.current_min_upstream_level),
+        (node.max_downstream_level, cache.current_max_downstream_level),
+    )
+    for idx in eachindex(time_varying)
+        (refresh || time_varying[idx]) || continue
+        varying = false
+        for (interpolations, values) in time_series
+            itp = interpolations[idx]
+            values[idx] = itp(interpolation_time(itp, p, t))
+            varying |= !is_constant_in_time(itp)
+        end
+        if isassigned(time_dependent_flow_rate, idx)
+            itp = time_dependent_flow_rate[idx]
+            cache.current_flow_rate_setpoint[idx] = itp(interpolation_time(itp, p, t))
+            varying |= !is_constant_in_time(itp)
+        end
+        time_varying[idx] = varying
+    end
     return nothing
 end
 
@@ -1206,3 +1270,170 @@ function set_controlled_node_ids!(p_independent, node::Union{PidControl, Continu
     end
     return nothing
 end
+
+"Copy the profile interpolations of all Basins into `basin.profiles`"
+function set_basin_profiles!(basin::Basin)::Nothing
+    (; profiles, storage_to_level, level_to_area) = basin
+    for (storage_to_level_i, level_to_area_i) in zip(storage_to_level, level_to_area)
+        @assert storage_to_level_i.u == level_to_area_i.t
+        append!(profiles.storage, storage_to_level_i.t)
+        append!(profiles.level, storage_to_level_i.u)
+        append!(profiles.dS_dh, storage_to_level_i.itp.u)
+        # There is one segment fewer than there are points
+        append!(profiles.dS_dh_slope, storage_to_level_i.itp.p.slope, 0.0)
+        append!(profiles.area, level_to_area_i.u)
+        append!(profiles.area_slope, level_to_area_i.p.slope, 0.0)
+        push!(
+            profiles.top_level_slope,
+            derivative(storage_to_level_i, last(storage_to_level_i.t)),
+        )
+        push!(profiles.offset, length(profiles.storage))
+        push!(profiles.segment, 1)
+        push!(profiles.area_segment, 1)
+    end
+    return nothing
+end
+
+"""
+Find the last segment j in `first_idx:(last_idx - 1)` with `points[j] ≤ x`, searching from `guess`.
+This is how DataInterpolations finds the segment.
+"""
+@inline function find_segment(x::Real, points::Vector{Float64}, first_idx::Int, last_idx::Int, guess::Int)::Int
+    j = clamp(guess, first_idx, last_idx - 1)
+    while j > first_idx && points[j] > x
+        j -= 1
+    end
+    while j < last_idx - 1 && points[j + 1] <= x
+        j += 1
+    end
+    return j
+end
+
+"""
+The level of Basin i at a storage, the same as evaluating `storage_to_level`.
+Returns `nothing` below the profile. Only updates the segment to start the next search from if
+`update_segment`, which must be false when called for the same Basin in parallel.
+"""
+@inline function basin_level(
+        profiles::BasinProfiles,
+        i::Int,
+        storage::T;
+        update_segment::Bool = true,
+    )::Union{Nothing, T} where {T <: Union{Float64, ForwardDiff.Dual}}
+    (; offset, segment, level, top_level_slope) = profiles
+    first_idx = offset[i] + 1
+    last_idx = offset[i + 1]
+    storage < profiles.storage[first_idx] && return nothing
+    if storage > profiles.storage[last_idx]
+        # Same as the linear extrapolation of `storage_to_level`
+        return level[last_idx] + top_level_slope[i] * (storage - profiles.storage[last_idx])
+    end
+
+    j = find_segment(storage, profiles.storage, first_idx, last_idx, first_idx - 1 + segment[i])
+    update_segment && (segment[i] = j - first_idx + 1)
+    # Same as `_interpolate` for a `LinearInterpolationIntInv` in DataInterpolations
+    Δstorage = storage - profiles.storage[j]
+    x = profiles.dS_dh[j]
+    return level[j] + 2Δstorage / (x + sqrt(x^2 + profiles.dS_dh_slope[j] * 2Δstorage))
+end
+
+"""
+The level and area of Basin i at a storage, the same as evaluating `storage_to_level` and
+`level_to_area`. Returns `nothing` below the profile.
+"""
+@inline function basin_level_and_area(
+        profiles::BasinProfiles,
+        i::Int,
+        storage::Float64,
+    )::Union{Nothing, Tuple{Float64, Float64}}
+    h = basin_level(profiles, i, storage)
+    isnothing(h) && return nothing
+    (; offset, area_segment, level) = profiles
+    first_idx = offset[i] + 1
+    last_idx = offset[i + 1]
+    # Same as the constant extrapolation of `level_to_area`
+    storage > profiles.storage[last_idx] && return h, profiles.area[last_idx] + 0.0
+
+    k = find_segment(h, level, first_idx, last_idx, first_idx - 1 + area_segment[i])
+    area_segment[i] = k - first_idx + 1
+    area = profiles.area[k] + profiles.area_slope[k] * (h - level[k])
+    return h, area
+end
+
+"Copy the Q(h) interpolations of all TabulatedRatingCurves into `tabulated_rating_curve.tables`"
+function set_rating_curve_tables!(tabulated_rating_curve::TabulatedRatingCurve)::Nothing
+    (; tables, interpolations) = tabulated_rating_curve
+    for itp in interpolations
+        append!(tables.level, itp.t)
+        append!(tables.flow_rate, itp.u)
+        append!(tables.dflow_rate, itp.du)
+        # There is one segment fewer than there are points
+        append!(tables.c₁, itp.p.c₁, 0.0)
+        append!(tables.c₂, itp.p.c₂, 0.0)
+        push!(tables.offset, length(tables.level))
+    end
+    return nothing
+end
+
+"""
+The flow of a TabulatedRatingCurve at the upstream level `h`, the same as evaluating its Q(h)
+interpolation.
+"""
+function rating_curve_flow(
+        tabulated_rating_curve::TabulatedRatingCurve,
+        node_idx::Int,
+        h::Union{Float64, ForwardDiff.Dual},
+    )::Number
+    (; interpolations, interpolation_index, tables, segment) = tabulated_rating_curve
+    (; offset, level, flow_rate, dflow_rate, c₁, c₂) = tables
+    k = interpolation_index[node_idx]
+    first_idx = offset[k] + 1
+    last_idx = offset[k + 1]
+    # Outside the table the interpolation extrapolates
+    (level[first_idx] <= h <= level[last_idx]) || return interpolations[k](h)
+
+    j = find_segment(h, level, first_idx, last_idx, first_idx - 1 + segment[node_idx])
+    segment[node_idx] = j - first_idx + 1
+    # Same as `_interpolate` for a `CubicHermiteSpline` in DataInterpolations
+    Δt₀ = h - level[j]
+    Δt₁ = h - level[j + 1]
+    out = flow_rate[j] + Δt₀ * dflow_rate[j]
+    out += Δt₀^2 * (c₁[j] + Δt₁ * c₂[j])
+    return out
+end
+
+# Other number types, such as those for the sparsity detection, use the interpolation
+function rating_curve_flow(tabulated_rating_curve::TabulatedRatingCurve, node_idx::Int, h::Number)::Number
+    (; interpolations, interpolation_index) = tabulated_rating_curve
+    return interpolations[interpolation_index[node_idx]](h)
+end
+
+# The profiles are evaluated in parallel during automatic differentiation, so the segment is not updated
+get_level_from_profile(basin::Basin, i::Int, storage::Union{Float64, ForwardDiff.Dual}) =
+    basin_level(basin.profiles, i, storage; update_segment = false)
+# Other number types, such as those for the sparsity detection, use the interpolation
+get_level_from_profile(::Basin, ::Int, ::Number) = nothing
+
+"""
+The area of Basin i at a level, the same as evaluating `level_to_area`. Returns `nothing` below
+the profile. The segment to start the search from is not updated, see `basin_level`.
+"""
+@inline function basin_area(
+        profiles::BasinProfiles,
+        i::Int,
+        h::T,
+    )::Union{Nothing, T} where {T <: Union{Float64, ForwardDiff.Dual}}
+    (; offset, area_segment, level, area, area_slope) = profiles
+    first_idx = offset[i] + 1
+    last_idx = offset[i + 1]
+    h < level[first_idx] && return nothing
+    # Same as the constant extrapolation of `level_to_area`
+    h > level[last_idx] && return area[last_idx] + zero(h)
+    k = find_segment(h, level, first_idx, last_idx, first_idx - 1 + area_segment[i])
+    return area[k] + area_slope[k] * (h - level[k])
+end
+
+get_area_from_profile(basin::Basin, i::Int, level::Union{Float64, ForwardDiff.Dual}) =
+    basin_area(basin.profiles, i, level)
+# Other number types, such as those for the sparsity detection, use the interpolation
+get_area_from_profile(::Basin, ::Int, ::Number) = nothing

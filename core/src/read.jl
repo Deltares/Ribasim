@@ -666,6 +666,7 @@ function TabulatedRatingCurve(db::DB, config::Config, graph::MetaGraph)
 
     errors && error("Errors occurred when parsing TabulatedRatingCurve data.")
 
+    set_rating_curve_tables!(rating_curve)
     return rating_curve
 end
 
@@ -1033,6 +1034,7 @@ function Basin(db::DB, config::Config, graph::MetaGraph)::Basin
     errors && error("Errors encountered when parsing Basin data.")
 
     areas, levels, storage, node_ids = interpolate_basin_profile!(basin, profiles)
+    set_basin_profiles!(basin)
 
     if config.logging.verbosity == Debug
         dir = joinpath(config.dir, config.results_dir)
@@ -1140,6 +1142,9 @@ function CompoundVariable(
         cyclic_time;
         field = :threshold_low,
     )
+    constant_value(itp) = is_constant_in_time(itp) ? first(itp.u) : NaN
+    append!(compound_variable.threshold_high_value, constant_value.(threshold_high))
+    append!(compound_variable.threshold_low_value, constant_value.(threshold_low))
     return compound_variable
 end
 
