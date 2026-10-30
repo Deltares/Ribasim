@@ -1506,11 +1506,14 @@ end
 
 function update_user_demand_flow_bounds!(
         allocation_model::AllocationModel,
-        p_independent::ParametersIndependent,
+        p::Parameters,
+        t::Float64,
     )::Nothing
     (; problem, node_ids_in_subnetwork) = allocation_model
     (; user_demand_ids_subnetwork) = node_ids_in_subnetwork
-    (; user_demand) = p_independent
+    (; p_independent) = p
+    (; user_demand, level_difference_threshold) = p_independent
+    (; current_storage) = p.current_basin_properties
     flow = problem[:flow]
     user_demand_allocated = problem[:user_demand_allocated]
 
@@ -1519,9 +1522,16 @@ function update_user_demand_flow_bounds!(
             JuMP.upper_bound(user_demand_allocated[node_id, demand_priority]) for
                 demand_priority in DemandPriorityIterator(node_id, p_independent)
         )
+        min_level = user_demand.min_level[node_id.idx]
         for link_metadata in user_demand.inflow_links[node_id.idx]
+            # Like in the physical layer, the abstraction stops when the source reaches the
+            # minimum level. This uses the level at the start of the timestep.
+            source_id = link_metadata.link[1]
+            source_storage = source_id.is_basin ? current_storage[source_id.idx] : 0.0
+            source_level = get_level(source_storage, p, source_id, t)
+            f_reduction = reduction_factor(source_level - min_level, level_difference_threshold)
             JuMP.set_lower_bound(flow[link_metadata.link], 0.0)
-            JuMP.set_upper_bound(flow[link_metadata.link], total_demand)
+            JuMP.set_upper_bound(flow[link_metadata.link], total_demand * f_reduction)
         end
         JuMP.set_lower_bound(flow[user_demand.outflow_link[node_id.idx].link], 0.0)
         JuMP.set_upper_bound(flow[user_demand.outflow_link[node_id.idx].link], total_demand)
@@ -1624,7 +1634,7 @@ function update_allocation!(
         reset_demand_coefficients(secondary_network)
         set_demands!(secondary_network, p, t, Δt)
         update_flow_variable_bounds!(secondary_network, p, t, Δt)
-        update_user_demand_flow_bounds!(secondary_network, p_independent)
+        update_user_demand_flow_bounds!(secondary_network, p, t)
         update_flow_demand_variable_bounds!(secondary_network, p_independent)
         normalize_flow_demand_objectives!(secondary_network)
 
@@ -1661,7 +1671,7 @@ function update_allocation!(
 
         set_demands!(primary_network, p, t, Δt)
         update_flow_variable_bounds!(primary_network, p, t, Δt)
-        update_user_demand_flow_bounds!(primary_network, p_independent)
+        update_user_demand_flow_bounds!(primary_network, p, t)
         update_flow_demand_variable_bounds!(primary_network, p_independent)
         normalize_flow_demand_objectives!(primary_network)
         warm_start!(primary_network, p, t, Δt, du)

@@ -207,7 +207,7 @@ $$
 	\in UD.
 $$
 
-Note that this means that we enforce that only allocated flow can enter a UserDemand node, and so there can not be more flow into the UserDemand node than the total demand of that node.
+Note that this means that we enforce that only allocated flow can enter a UserDemand node, and so there can not be more flow into the UserDemand node than the total demand of that node. Like in the physical layer, the flow over each inflow link is furthermore multiplied by a reduction factor that goes to zero when the level of the source at the start of the allocation timestep approaches the `min_level` of the UserDemand, so that allocation does not allocate water that cannot be abstracted.
 For FlowDemand we do allow that there is more flow through the node with the flow demand than the total demand (or even negative flow). To allow this freedom, we introduce a special 'demand priority 0' variable
 
 $$
