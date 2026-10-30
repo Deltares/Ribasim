@@ -122,6 +122,7 @@ Time, identifiers and `basin_state.nc` are never quantized.
 The `zstd` algorithm is faster and compresses a bit better than `deflate`, but needs the HDF5 zstd filter plugin to write and read.
 Not all NetCDF readers have this plugin.
 Ribasim does not ship it, so to write zstd compressed results, the `HDF5_PLUGIN_PATH` environment variable needs to point to a directory with the HDF5 filter plugins.
+The `netCDF4` Python package has these in its `plugins` directory, which `python -c "import netCDF4, pathlib; print(pathlib.Path(netCDF4.__file__).parent / 'plugins')"` prints.
 
 ## Logging settings
 
