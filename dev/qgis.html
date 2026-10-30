@@ -372,7 +372,7 @@ Note
 <section id="running-tests" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Running tests</h1>
 <p>To run the QGIS plugin tests locally inside a QGIS process, call <code>pixi run test-ribasim-qgis</code>. To type check the plugin against QGIS, call <code>pixi run typecheck-qgis</code>. This is not part of the <code>typecheck</code> pre-commit hook, to avoid installing QGIS for every commit, but it runs on CI. This launches QGIS and runs the full test suite (including plugin and UI tests) via the test runner.</p>
-<p>For CI or headless environments, the same tests can be run in Docker with <code>pixi run test-ribasim-qgis-docker</code>. Make sure that Docker is installed and available in your path.</p>
+<p>For CI or headless environments, the same tests can be run in Docker with <code>pixi run test-ribasim-qgis-docker</code>. This uses the <code>qgis/qgis:4.2</code> image by default; pass another image to test a different QGIS version, e.g.&nbsp;<code>pixi run test-ribasim-qgis-docker qgis/qgis:3.44</code>. CI runs the tests on both QGIS 3 and QGIS 4. Make sure that Docker is installed and available in your path.</p>
 </section>
 <section id="qml-styles-and-node-icons" class="level1" data-number="4">
 <h1 data-number="4"><span class="header-section-number">4</span> QML styles and node icons</h1>
