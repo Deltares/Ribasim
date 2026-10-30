@@ -97,7 +97,7 @@ from ribasim_testmodels.time import (
     flow_boundary_time_model,
     transient_pump_outlet_model,
 )
-from ribasim_testmodels.tracer import tracer_chain_model
+from ribasim_testmodels.tracer import tracer_chain_model, tracer_user_demand_model
 from ribasim_testmodels.trivial import trivial_model
 from ribasim_testmodels.two_basin import two_basin_model
 
@@ -174,6 +174,7 @@ __all__ = [
     "tabulated_rating_curve_control_model",
     "tabulated_rating_curve_model",
     "tracer_chain_model",
+    "tracer_user_demand_model",
     "transient_condition_model",
     "transient_pump_outlet_model",
     "trivial_model",
