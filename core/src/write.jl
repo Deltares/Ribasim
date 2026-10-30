@@ -924,7 +924,7 @@ function write_netcdf_variable(
         defVar(ds, var_name, nctype, var_dims; attrib)
     end
     if quantize
-        # NCDatasets.quantize is not released yet
+        # NCDatasets.quantize is on main, and will be in the release after v0.14.15
         NCDatasets.check(
             ccall(
                 (:nc_def_var_quantize, NCDatasets.libnetcdf),
