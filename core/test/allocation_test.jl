@@ -193,7 +193,7 @@ end
 
         # Test allocation_control if it exists (may be empty for models without control)
         if isfile(allocation_control_path)
-            NCDDataset(allocation_control_path) do ds
+            NCDataset(allocation_control_path) do ds
                 @test "time" in keys(ds)
                 @test "node_id" in keys(ds)
                 @test "node_type" in keys(ds)
