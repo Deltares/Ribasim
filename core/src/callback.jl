@@ -210,8 +210,12 @@ function update_concentrations!(u, t, integrator)::Nothing
     (; storage_prev_dt, concentration_data, forcing) = basin
     (;
         evaporate_mass,
+        substep_ratio,
+        substep_depth,
         cumulative_in,
         concentration_state,
+        nsubsteps,
+        stepsize,
         concentration_drainage,
         concentration_precipitation,
         concentration_surface_runoff,
@@ -227,27 +231,16 @@ function update_concentrations!(u, t, integrator)::Nothing
 
     dt = t - tprev
 
-    # Basin forcings
-    (; drainage, precipitation, surface_runoff) = forcing.exact_cumulative_forcing_dt
-    add_forcing_mass!(mass, concentration_drainage, drainage, t)
-    add_forcing_mass!(mass, concentration_precipitation, precipitation, t)
-    add_forcing_mass!(mass, concentration_surface_runoff, surface_runoff, t)
-    # Loads are per second, not volume, so the flow is just the time step
-    add_forcing_mass!(mass, loads, dt, t)
+    # Determine number of substeps needed based on a fraction of the residence time
+    safe = x -> isinf(x) ? 0 : x
+    residence_time = view(concentration_state, Substance.ResidenceTime, :)
+    @. nsubsteps = 2^clamp(floor(Int, safe(log2(dt / (residence_time * substep_ratio)))), 0, substep_depth)
+    max_substeps = maximum(nsubsteps)
+    @. stepsize = max_substeps ÷ nsubsteps
 
-    # Exact boundary flow over time step
-    for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
-        outflow_id = outflow_link.link[2]
-        add_substance_mass!(
-            view(mass, :, outflow_id.idx),
-            flow_boundary.concentration_itp[id.idx],
-            flow_boundary.cumulative_flow_dt[id.idx],
-            t,
-        )
-    end
+    dt_sub = dt / max_substeps
 
-    mass_inflows_from_user_demand!(integrator)
-    mass_inflows_basin!(integrator)
+    # The total inflow volume per Basin over the timestep, spread evenly over its substeps
     aggregate_flows!(
         cumulative_in,
         cumulative_flow_dt,
@@ -257,56 +250,93 @@ function update_concentrations!(u, t, integrator)::Nothing
         boundary_flow = flow_boundary.cumulative_flow_dt,
     )
 
-    # Update the Basin concentrations based on the added mass and flows
-    for node_id in basin.node_id
-        storage_only_in = storage_prev_dt[node_id.idx] + cumulative_in[node_id.idx]
+    for substep in 1:max_substeps
+        t_sub = tprev + dt_sub * substep
 
-        # The residence time tracer gets older
-        mass[Substance.ResidenceTime, node_id.idx] += dt * storage_prev_dt[node_id.idx]
-        if iszero(storage_only_in)
-            concentration_state[:, node_id.idx] .= 0
-        else
-            concentration_state[:, node_id.idx] .= view(mass, :, node_id.idx) ./ storage_only_in
-        end
-    end
+        # Basin forcings
+        (; drainage, precipitation, surface_runoff) = forcing.exact_cumulative_forcing_dt
+        add_forcing_mass!(mass, concentration_drainage, drainage, t_sub, substep, stepsize, nsubsteps)
+        add_forcing_mass!(mass, concentration_precipitation, precipitation, t_sub, substep, stepsize, nsubsteps)
+        add_forcing_mass!(mass, concentration_surface_runoff, surface_runoff, t_sub, substep, stepsize, nsubsteps)
+        # Loads are per second, not volume, so the flow is just the time step
+        add_forcing_mass!(mass, loads, dt, t_sub, substep, stepsize, nsubsteps)
 
-    mass_outflows_basin!(integrator)
-
-    errors = false
-
-    for node_id in basin.node_id
-        mass_node = view(mass, :, node_id.idx)
-
-        # Evaporate mass to keep the mass balance, if enabled in model config
-        if evaporate_mass
-            evaporated_volume = cumulative_flow_dt.vertical.evaporation[node_id.idx]
-            mass_node .-= @view(concentration_state[:, node_id.idx]) .* evaporated_volume
+        # Exact boundary flow over time step
+        for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
+            outflow_id = outflow_link.link[2]
+            (substep % stepsize[outflow_id.idx]) != 0 && continue
+            add_substance_mass!(
+                view(mass, :, outflow_id.idx),
+                flow_boundary.concentration_itp[id.idx],
+                flow_boundary.cumulative_flow_dt[id.idx] / nsubsteps[outflow_id.idx],
+                t_sub,
+            )
         end
 
-        # Take care of too small masses, possibly becoming negative due to truncation.
-        for I in eachindex(mass_node)
-            if (-eps(Float64)) < mass_node[I] < (eps(Float64))
-                mass_node[I] = 0.0
+        mass_inflows_from_user_demand!(integrator, substep, max_substeps)
+        mass_inflows_basin!(integrator, substep, max_substeps)
+
+        # Update the Basin concentrations based on the added mass and flows
+        for node_id in basin.node_id
+            (substep % stepsize[node_id.idx]) != 0 && continue
+
+            # Storage at the start of this processing window + inflows during the window
+            s_start = storage_prev_dt[node_id.idx] +
+                (current_storage[node_id.idx] - storage_prev_dt[node_id.idx]) *
+                (substep - stepsize[node_id.idx]) / max_substeps
+            storage_only_in = s_start + cumulative_in[node_id.idx] / nsubsteps[node_id.idx]
+
+            # The residence time tracer gets older
+            mass[Substance.ResidenceTime, node_id.idx] +=
+                dt_sub * stepsize[node_id.idx] * storage_prev_dt[node_id.idx]
+            if iszero(storage_only_in)
+                concentration_state[:, node_id.idx] .= 0
+            else
+                concentration_state[:, node_id.idx] .= view(mass, :, node_id.idx) ./ storage_only_in
             end
         end
 
-        # Check for negative masses
-        if any(<(0), mass_node)
-            errors = true
-            log_negative_mass(node_id, mass_node, concentration_data.substances)
-        end
+        mass_outflows_basin!(integrator, substep, max_substeps)
 
-        # Update the Basin concentrations again based on the removed mass
-        s = current_storage[node_id.idx]
-        if iszero(s)
-            concentration_state[:, node_id.idx] .= 0
-        else
-            concentration_state[:, node_id.idx] .= mass_node ./ s
+        errors = false
+
+        for node_id in basin.node_id
+            (substep % stepsize[node_id.idx]) != 0 && continue
+
+            mass_node = view(mass, :, node_id.idx)
+
+            # Evaporate mass to keep the mass balance, if enabled in model config
+            if evaporate_mass
+                evaporated_volume = cumulative_flow_dt.vertical.evaporation[node_id.idx] / nsubsteps[node_id.idx]
+                mass_node .-= @view(concentration_state[:, node_id.idx]) .* evaporated_volume
+            end
+
+            # Take care of too small masses, possibly becoming negative due to truncation.
+            for I in eachindex(mass_node)
+                if (-eps(Float64)) < mass_node[I] < (eps(Float64))
+                    mass_node[I] = 0.0
+                end
+            end
+
+            # Check for negative masses
+            if any(<(0), mass_node)
+                errors = true
+                log_negative_mass(node_id, mass_node, concentration_data.substances)
+            end
+
+            # Update the Basin concentrations again based on the removed mass
+            s = storage_prev_dt[node_id.idx] +
+                (current_storage[node_id.idx] - storage_prev_dt[node_id.idx]) * substep / max_substeps
+            if iszero(s)
+                concentration_state[:, node_id.idx] .= 0
+            else
+                concentration_state[:, node_id.idx] .= mass_node ./ s
+            end
         end
+        errors && error("Negative mass(es) detected at t = $t_sub s")
     end
 
     storage_prev_dt .= current_storage
-    errors && error("Negative mass(es) detected at t = $t s")
     return nothing
 end
 
@@ -482,7 +512,8 @@ end
 
 function save_solver_stats(u, t, integrator)
     (; stats) = integrator.sol
-    (; step_stats) = integrator.p.p_independent
+    (; step_stats, basin) = integrator.p.p_independent
+    (; nsubsteps) = basin.concentration_data
     return (;
         time = t,
         time_ns = time_ns(),
@@ -496,6 +527,7 @@ function save_solver_stats(u, t, integrator)
         rejected_nonlinear_solve = step_stats.rejected_nonlinear_solve,
         rejected_local_error = step_stats.rejected_local_error,
         rejected_out_of_domain = step_stats.rejected_out_of_domain,
+        max_subtimesteps = maximum(nsubsteps; init = 0),
         order_sum = step_stats.order_sum,
     )
 end
