@@ -103,26 +103,24 @@ There are the following allocation settings:
 
 The following entries can be set in the configuration in the `[results]` section.
 
-entry                 | type   | description
---------------------- | ------ | -----------
-compression           | Bool   | Whether to compress the results or not.
-compression_algorithm | String | Compression algorithm, `deflate` (default) or `zstd`.
-compression_level     | Int    | Compression level, 0-9 for deflate and 1-22 for zstd. Default is 1, higher compresses more.
-significant_bits      | Int    | Number of mantissa bits to keep in floating point results (1-52). Default is 0, which keeps all bits.
-subgrid               | Bool   | Compute and output more detailed water levels.
+entry             | type   | description
+----------------- | ------ | -----------
+compression       | Bool   | Whether to apply deflate compression or not. Default is true.
+compression_level | Int    | Deflate compression level (0-9). Default is 1, higher compresses more.
+significant_bits  | Int    | Number of mantissa bits to keep in compressed floating point results (1-52). Default is 20, 0 keeps all bits.
+subgrid           | Bool   | Compute and output more detailed water levels.
 
 Results are written in NetCDF format with CF conventions.
 
 The trailing mantissa bits of the results are mostly noise, which compresses poorly.
-Setting `significant_bits` rounds the floating point results to that many mantissa bits using BitRound quantization, and sets the remaining bits to zero.
-The results stay `Float64`, and the relative error is at most $2^{-(n+1)}$, so about `5e-7` for 20 bits.
-If `compression` is also on, the shuffle filter is applied as well, which together make the results files about 4 times smaller.
-Time, identifiers and `basin_state.nc` are never quantized.
+Therefore Ribasim by default rounds the compressed floating point results to `significant_bits` mantissa bits using BitRound quantization, and sets the remaining bits to zero.
+The results stay `Float64`, and the relative error of each value is at most $2^{-(n+1)}$ for $n$ significant bits, so about `5e-7` for the default of 20 bits.
+This is well below the default solver `reltol` of `1e-4`.
+Together with the shuffle filter, which is applied to the quantized results, this makes the results files about 4 times smaller than with deflate compression alone.
+Time, identifiers and `basin_state.nc` are never quantized, and the same value is always rounded the same way.
+Note that differences between two values are only accurate up to the error of both values, so to compute small differences between large values, like storage changes of a large Basin, set `significant_bits = 0`.
 
-The `zstd` algorithm is faster and compresses a bit better than `deflate`, but needs the HDF5 zstd filter plugin to write and read.
-Not all NetCDF readers have this plugin.
-Ribasim does not ship it, so to write zstd compressed results, the `HDF5_PLUGIN_PATH` environment variable needs to point to a directory with the HDF5 filter plugins.
-The `netCDF4` Python package has these in its `plugins` directory, which `python -c "import netCDF4, pathlib; print(pathlib.Path(netCDF4.__file__).parent / 'plugins')"` prints.
+Compressed results are stored in chunks that are shaped such that reading all nodes at one time, and one node at all times, are both fast.
 
 ## Logging settings
 

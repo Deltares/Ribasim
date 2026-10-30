@@ -66,10 +66,9 @@ specialize = false  # optional, default false
 verbosity = "info" # optional, default "info", can also be "debug", "warn" or "error"
 
 [results]
-compression = true    # optional, default false
-compression_algorithm = "deflate" # optional, default "deflate", can also be "zstd"
-compression_level = 1 # optional, default 1 (0-9 for deflate, 1-22 for zstd)
-significant_bits = 0  # optional, default 0 to keep all bits (1-52)
+compression = true    # optional, default true, using deflate compression
+compression_level = 1 # optional, default 1 (0-9)
+significant_bits = 20 # optional, default 20 (1-52), 0 keeps all bits
 subgrid = false       # optional, default false
 
 [experimental]

@@ -128,10 +128,9 @@ class Allocation(ChildModel):
 
 
 class Results(ChildModel):
-    compression: bool = False
-    compression_algorithm: str = "deflate"
+    compression: bool = True
     compression_level: int = 1
-    significant_bits: int = 0
+    significant_bits: int = 20
     subgrid: bool = False
 
 

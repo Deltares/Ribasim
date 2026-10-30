@@ -7,17 +7,16 @@
         @test config isa Ribasim.Config
         @test config.endtime > config.starttime
         @test config.solver == Ribasim.Solver(; saveat = 3600.0)
-        @test !config.results.compression
+        @test config.results.compression
         @test config.results.compression_level == 1
     end
 
     @testset Teamcity.TeamcityTestSet "results" begin
         o = Ribasim.Results()
         @test o isa Ribasim.Results
-        @test !o.compression
+        @test o.compression
         @test o.compression_level === 1
-        @test o.compression_algorithm == "deflate"
-        @test o.significant_bits === 0
+        @test o.significant_bits === 20
         @test_throws MethodError Ribasim.Results(compression = "zstd")
     end
 

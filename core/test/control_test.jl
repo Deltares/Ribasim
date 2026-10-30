@@ -336,7 +336,8 @@ end
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/circular_flow/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.run(toml_path)
+    # lossless results, to compare levels to the control thresholds
+    model = Ribasim.run(Ribasim.Config(toml_path; results_significant_bits = 0))
 
     control_times = NCDataset(normpath(dirname(toml_path), "results/control.nc")) do ds
         ds["time"][:]

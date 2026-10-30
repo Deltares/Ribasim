@@ -848,16 +848,40 @@ function write_netcdf(
     return nothing
 end
 
-# From netcdf.h and H5Zpublic.h
+# From netcdf.h
 const NC_QUANTIZE_BITROUND = Cint(3)
-const H5Z_FILTER_ZSTD = Cuint(32015)
+
+# Number of values in a chunk, 1 MiB of Float64
+const NC_CHUNK_LENGTH = 131072
+
+"""
+Chunk sizes for a variable with a location and a time dimension.
+
+The chunks are shaped such that reading all locations at one time, and reading one location
+at all times, read about the same amount of data. Other dimensions, like substance, get a
+chunk size of 1, since they are typically read one at a time.
+"""
+function nc_chunksizes(var_dims::Tuple, var_size::Tuple)::Union{Vector{Int}, Nothing}
+    i_time = findfirst(==("time"), var_dims)
+    i_location = findfirst(in(("node_id", "link_id", "subgrid_id")), var_dims)
+    (isnothing(i_time) || isnothing(i_location) || any(iszero, var_size)) && return nothing
+    ntime = var_size[i_time]
+    nlocation = var_size[i_location]
+    chunk_location = clamp(round(Int, sqrt(NC_CHUNK_LENGTH * nlocation / ntime)), 1, nlocation)
+    chunk_time = clamp(NC_CHUNK_LENGTH ÷ chunk_location, 1, ntime)
+    chunksizes = ones(Int, length(var_dims))
+    chunksizes[i_time] = chunk_time
+    chunksizes[i_location] = chunk_location
+    return chunksizes
+end
 
 """
 Define a NetCDF variable and write its data.
 
-The filters need to be set between defining the variable and writing the data, so this
-splits up what `defVar(ds, var_name, var_data, var_dims)` does. If `significant_bits` is
-positive, floating point data is quantized with BitRound, and shuffled before compression.
+The quantization needs to be set between defining the variable and writing the data, so
+this splits up what `defVar(ds, var_name, var_data, var_dims)` does. If compression is on and
+`significant_bits` is positive, floating point data is quantized with BitRound, and shuffled
+before compression.
 """
 function write_netcdf_variable(
         ds::NCDataset,
@@ -867,7 +891,7 @@ function write_netcdf_variable(
         results::Results,
         significant_bits::Int,
     )::Nothing
-    (; compression, compression_algorithm, compression_level) = results
+    (; compression, compression_level) = results
     for (i, dim_name) in enumerate(var_dims)
         haskey(ds.dim, dim_name) || defDim(ds, dim_name, size(var_data, i))
     end
@@ -876,7 +900,7 @@ function write_netcdf_variable(
     T = eltype(var_data)
     nctype = nonmissingtype(T)
     # don't quantize time, which is stored as a Float64
-    quantize = nctype <: AbstractFloat && significant_bits > 0
+    quantize = compression && nctype <: AbstractFloat && significant_bits > 0
     if nctype <: DateTime
         nctype = Float64
         attrib["units"] = "days since 1900-01-01 00:00:00"
@@ -885,16 +909,19 @@ function write_netcdf_variable(
         attrib["_FillValue"] = NCDatasets.fillvalue(nctype)
     end
 
-    v = defVar(ds, var_name, nctype, var_dims; attrib)
-    ncid = ds.ncid
-    varid = v.var.varid
-    shuffle = compression && quantize
-    if compression && compression_algorithm == "deflate"
-        NCDatasets.nc_def_var_deflate(ncid, varid, shuffle, 1, compression_level)
-    elseif compression && compression_algorithm == "zstd"
-        # shuffle needs to be defined before zstd, since filters are applied in order
-        shuffle && NCDatasets.nc_def_var_deflate(ncid, varid, true, 0, 0)
-        NCDatasets.nc_def_var_zstandard(ncid, varid, compression_level)
+    v = if compression
+        defVar(
+            ds,
+            var_name,
+            nctype,
+            var_dims;
+            attrib,
+            deflatelevel = compression_level,
+            shuffle = quantize,
+            chunksizes = nc_chunksizes(var_dims, size(var_data)),
+        )
+    else
+        defVar(ds, var_name, nctype, var_dims; attrib)
     end
     if quantize
         # NCDatasets.quantize is not released yet
@@ -903,8 +930,8 @@ function write_netcdf_variable(
                 (:nc_def_var_quantize, NCDatasets.libnetcdf),
                 Cint,
                 (Cint, Cint, Cint, Cint),
-                ncid,
-                varid,
+                ds.ncid,
+                v.var.varid,
                 NC_QUANTIZE_BITROUND,
                 significant_bits,
             ),
@@ -913,13 +940,6 @@ function write_netcdf_variable(
 
     v[axes(var_data)...] = var_data
     return nothing
-end
-
-"Check whether libnetcdf can find the HDF5 zstd filter plugin, via HDF5_PLUGIN_PATH."
-function zstd_available()::Bool
-    return NCDataset(tempname(), "c"; diskless = true, persist = false) do ds
-        NCDatasets.nc_inq_filter_avail(ds.ncid, H5Z_FILTER_ZSTD)
-    end
 end
 
 function output_basin_profiles(
