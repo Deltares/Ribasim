@@ -209,7 +209,6 @@ function update_concentrations!(u, t, integrator)::Nothing
     (; basin, flow_boundary, do_concentration, cumulative_flow_dt, inflow_id, outflow_id) = p_independent
     (; storage_prev_dt, concentration_data, forcing) = basin
     (;
-        evaporate_mass,
         substep_ratio,
         substep_depth,
         cumulative_in,
@@ -221,6 +220,10 @@ function update_concentrations!(u, t, integrator)::Nothing
         basin_count_ge,
         flow_order,
         flow_count_ge,
+        flow_boundary_order,
+        flow_boundary_count_ge,
+        user_demand_order,
+        user_demand_count_ge,
         concentration_drainage,
         concentration_precipitation,
         concentration_surface_runoff,
@@ -260,6 +263,15 @@ function update_concentrations!(u, t, integrator)::Nothing
         else
             substep_depth
         end
+        # The mass leaves at the concentration from the start of the substep, which stays
+        # positive if less than the storage flows out per substep. The storage is lowest
+        # at the start or end of the timestep, and never zero due to the low storage reserve.
+        min_storage = min(storage_prev_dt[i], current_storage[i])
+        if cumulative_out[i] >= min_storage
+            stable_level = min_storage > 0 ?
+                floor(Int, log2(cumulative_out[i] / min_storage)) + 1 : MAX_SUBSTEP_LEVEL
+            level = max(level, min(stable_level, MAX_SUBSTEP_LEVEL))
+        end
         nsubsteps[i] = 2^level
         max_level = max(max_level, level)
     end
@@ -278,6 +290,26 @@ function update_concentrations!(u, t, integrator)::Nothing
     end
     resize!(flow_order, length(cumulative_flow_dt))
     order_by_level!(flow_order, flow_count_ge, flow_level, length(cumulative_flow_dt))
+    # The boundaries by the Basin they flow into
+    function receiving_level(outflow_links, idx)
+        to_node = outflow_links[idx].link[2]
+        return to_node.is_basin ? basin_level(to_node.idx) : -1
+    end
+    (; user_demand) = p_independent
+    resize!(flow_boundary_order, length(flow_boundary.node_id))
+    order_by_level!(
+        flow_boundary_order,
+        flow_boundary_count_ge,
+        idx -> receiving_level(flow_boundary.outflow_link, idx),
+        length(flow_boundary.node_id),
+    )
+    resize!(user_demand_order, length(user_demand.node_id))
+    order_by_level!(
+        user_demand_order,
+        user_demand_count_ge,
+        idx -> receiving_level(user_demand.outflow_link, idx),
+        length(user_demand.node_id),
+    )
 
     dt_sub = dt / max_substeps
 
@@ -288,6 +320,8 @@ function update_concentrations!(u, t, integrator)::Nothing
         level = max_level - trailing_zeros(substep)
         active_basins = view(basin_order, 1:basin_count_ge[level + 1])
         active_flows = view(flow_order, 1:flow_count_ge[level + 1])
+        active_flow_boundaries = view(flow_boundary_order, 1:flow_boundary_count_ge[level + 1])
+        active_user_demands = view(user_demand_order, 1:user_demand_count_ge[level + 1])
 
         # Basin forcings
         (; drainage, precipitation, surface_runoff) = forcing.exact_cumulative_forcing_dt
@@ -298,50 +332,30 @@ function update_concentrations!(u, t, integrator)::Nothing
         add_forcing_mass!(mass, loads, dt, t_sub, active_basins, nsubsteps)
 
         # Exact boundary flow over time step
-        for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
-            to_node = outflow_link.link[2]
-            (substep % stepsize[to_node.idx]) != 0 && continue
+        for idx in active_flow_boundaries
+            to_node = flow_boundary.outflow_link[idx].link[2]
             add_substance_mass!(
                 view(mass, :, to_node.idx),
-                flow_boundary.concentration_itp[id.idx],
-                flow_boundary.cumulative_flow_dt[id.idx] / nsubsteps[to_node.idx],
+                flow_boundary.concentration_itp[idx],
+                flow_boundary.cumulative_flow_dt[idx] / nsubsteps[to_node.idx],
                 t_sub,
             )
         end
 
-        mass_inflows_from_user_demand!(integrator, substep, max_substeps)
-        mass_inflows_basin!(integrator, substep, max_substeps, active_flows)
-
-        # Update the Basin concentrations based on the added mass and flows
-        for i in active_basins
-            # Storage at the start and end of this processing window
-            s_start = storage_prev_dt[i] +
-                (current_storage[i] - storage_prev_dt[i]) * (substep - stepsize[i]) / max_substeps
-            s_end = storage_prev_dt[i] +
-                (current_storage[i] - storage_prev_dt[i]) * substep / max_substeps
-            storage_only_in = s_start + cumulative_in[i] / nsubsteps[i]
-
-            # The residence time tracer gets older, integrated with the trapezoidal rule
-            mass[Substance.ResidenceTime, i] += dt_sub * stepsize[i] * (s_start + s_end) / 2
-            if iszero(storage_only_in)
-                concentration_state[:, i] .= 0
-            else
-                concentration_state[:, i] .= view(mass, :, i) ./ storage_only_in
-            end
-        end
-
-        mass_outflows_basin!(integrator, substep, max_substeps, active_flows)
+        mass_inflows_from_user_demand!(p_independent, t_sub, active_user_demands)
+        transport_mass!(p_independent, t_sub, active_flows)
 
         errors = false
 
         for i in active_basins
             mass_node = view(mass, :, i)
 
-            # Evaporate mass to keep the mass balance, if enabled in model config
-            if evaporate_mass
-                evaporated_volume = cumulative_flow_dt.vertical.evaporation[i] / nsubsteps[i]
-                mass_node .-= @view(concentration_state[:, i]) .* evaporated_volume
-            end
+            # The residence time tracer gets older, integrated with the trapezoidal rule
+            s_start = storage_prev_dt[i] +
+                (current_storage[i] - storage_prev_dt[i]) * (substep - stepsize[i]) / max_substeps
+            s_end = storage_prev_dt[i] +
+                (current_storage[i] - storage_prev_dt[i]) * substep / max_substeps
+            mass[Substance.ResidenceTime, i] += dt_sub * stepsize[i] * (s_start + s_end) / 2
 
             # Take care of too small masses, possibly becoming negative due to truncation.
             for I in eachindex(mass_node)
@@ -356,12 +370,11 @@ function update_concentrations!(u, t, integrator)::Nothing
                 log_negative_mass(basin.node_id[i], mass_node, concentration_data.substances)
             end
 
-            # Update the Basin concentrations again based on the removed mass
-            s = storage_prev_dt[i] + (current_storage[i] - storage_prev_dt[i]) * substep / max_substeps
-            if iszero(s)
+            # Update the Basin concentrations based on the added and removed mass
+            if iszero(s_end)
                 concentration_state[:, i] .= 0
             else
-                concentration_state[:, i] .= mass_node ./ s
+                concentration_state[:, i] .= mass_node ./ s_end
             end
         end
         errors && error("Negative mass(es) detected at t = $t_sub s")
@@ -370,6 +383,9 @@ function update_concentrations!(u, t, integrator)::Nothing
     storage_prev_dt .= current_storage
     return nothing
 end
+
+"The maximum number of substeps of the tracer calculation is 2^MAX_SUBSTEP_LEVEL"
+const MAX_SUBSTEP_LEVEL = 30
 
 """
 Order the items by their level (the base 2 logarithm of the number of substeps) from high to

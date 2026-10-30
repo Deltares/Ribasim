@@ -551,14 +551,18 @@ end
     # Cumulative outflow for each Basin at a given time
     cumulative_out::Vector{Float64} = zeros(Float64, 0)
     # Number of substeps per Basin for mass outflow processing
-    nsubsteps::Vector{Int16} = zeros(Int16, 0)
+    nsubsteps::Vector{Int} = zeros(Int, 0)
     # Stepsize for each Basin for mass outflow processing, in number of substeps (e.g. stepsize of 2 means every other substep is processed)
-    stepsize::Vector{Int16} = zeros(Int16, 0)
+    stepsize::Vector{Int} = zeros(Int, 0)
     # The Basins and flows ordered by their number of substeps, from high to low, see `order_by_level!`
     basin_order::Vector{Int} = zeros(Int, 0)
     basin_count_ge::Vector{Int} = zeros(Int, 0)
     flow_order::Vector{Int} = zeros(Int, 0)
     flow_count_ge::Vector{Int} = zeros(Int, 0)
+    flow_boundary_order::Vector{Int} = zeros(Int, 0)
+    flow_boundary_count_ge::Vector{Int} = zeros(Int, 0)
+    user_demand_order::Vector{Int} = zeros(Int, 0)
+    user_demand_count_ge::Vector{Int} = zeros(Int, 0)
     # Matrix with concentrations for each substance and Basin,
     # such that the concentrations of a Basin are contiguous in memory
     concentration_state::Matrix{Float64} = zeros(Float64, 0, 0)  # substance, Basin

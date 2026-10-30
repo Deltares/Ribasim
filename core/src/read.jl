@@ -983,9 +983,8 @@ function ConcentrationData(
 
     cumulative_in = zeros(n_basin)
     cumulative_out = zeros(n_basin)
-    nsubsteps = fill(one(Int16), n_basin)
-    stepsize = fill(one(Int16), n_basin)
-    (; substep_depth) = config.concentration
+    nsubsteps = ones(Int, n_basin)
+    stepsize = ones(Int, n_basin)
 
     return ConcentrationData(;
         config.concentration.evaporate_mass,
@@ -1004,8 +1003,10 @@ function ConcentrationData(
         nsubsteps,
         stepsize,
         basin_order = zeros(Int, n_basin),
-        basin_count_ge = zeros(Int, substep_depth + 2),
-        flow_count_ge = zeros(Int, substep_depth + 2),
+        basin_count_ge = zeros(Int, MAX_SUBSTEP_LEVEL + 2),
+        flow_count_ge = zeros(Int, MAX_SUBSTEP_LEVEL + 2),
+        flow_boundary_count_ge = zeros(Int, MAX_SUBSTEP_LEVEL + 2),
+        user_demand_count_ge = zeros(Int, MAX_SUBSTEP_LEVEL + 2),
     )
 end
 

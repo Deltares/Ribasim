@@ -2,17 +2,19 @@
 Process mass inflows from UserDemand separately
 as the UserDemand nodes are not conservative
 """
-function mass_inflows_from_user_demand!(integrator::DEIntegrator, substep = 1, max_substeps = 1)::Nothing
-    (; p, t, tprev) = integrator
-    dt = t - tprev
-    (; basin, user_demand, cumulative_flow_dt) = p.p_independent
-    (; concentration_state, mass, nsubsteps, stepsize) = basin.concentration_data
+function mass_inflows_from_user_demand!(
+        p_independent::ParametersIndependent,
+        t::Float64,
+        active_user_demands::AbstractVector{Int},
+    )::Nothing
+    (; basin, user_demand, cumulative_flow_dt) = p_independent
+    (; concentration_state, mass, nsubsteps) = basin.concentration_data
 
-    for (node_idx, outflow_link) in enumerate(user_demand.outflow_link)
-        to_node = outflow_link.link[2]
+    for node_idx in active_user_demands
+        to_node = user_demand.outflow_link[node_idx].link[2]
         inflow_links = user_demand.inflow_links[node_idx]
 
-        if to_node.is_basin && (substep % stepsize[to_node.idx]) == 0
+        if to_node.is_basin
             # Mix concentrations of all inflow links weighted by each link's cumulative
             # flow. The return-flow concentration is a mass-weighted average of the
             # source basins' concentrations.
@@ -38,84 +40,14 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator, substep = 1, m
                 view(mass, :, to_node.idx),
                 user_demand.concentration_itp[node_idx],
                 cumulative_flow_dt.horizontal.user_demand_outflow[node_idx] / nsubsteps[to_node.idx],
-                tprev + dt / max_substeps * substep,
+                t,
             )
         end
     end
     return nothing
 end
 
-"""
-Process all mass inflows to basins
-"""
-function mass_inflows_basin!(
-        integrator::DEIntegrator,
-        substep::Int,
-        max_substeps::Int,
-        active_flows::AbstractVector{Int},
-    )::Nothing
-    (; p, t, tprev) = integrator
-    dt = t - tprev
-    (; basin, inflow_id, outflow_id, level_boundary, cumulative_flow_dt, flow_ranges) = p.p_independent
-    (; concentration_state, mass, nsubsteps, stepsize) = basin.concentration_data
-    t_sub = tprev + dt / max_substeps * substep
-
-    # Loop over the flows connected to a Basin that is processed in this substep
-    @views for flow_idx in active_flows
-        from_node = inflow_id[flow_idx]
-        to_node = outflow_id[flow_idx]
-
-        if flow_idx in flow_ranges.horizontal.user_demand_outflow
-            # UserDemand is handled separately in mass_inflows_from_user_demand
-            continue
-        end
-
-        cumulative_flow = cumulative_flow_dt[flow_idx]
-
-        if from_node.is_basin && cumulative_flow < 0 && (substep % stepsize[from_node.idx]) == 0
-            if to_node.is_basin
-                mass[:, from_node.idx] .-=
-                    concentration_state[:, to_node.idx] .* cumulative_flow ./ nsubsteps[from_node.idx]
-            elseif to_node.type == NodeType.LevelBoundary
-                add_substance_mass!(
-                    mass[:, from_node.idx],
-                    level_boundary.concentration_itp[to_node.idx],
-                    -cumulative_flow / nsubsteps[from_node.idx],
-                    t_sub,
-                )
-            elseif (to_node.type == NodeType.Terminal && to_node.value == 0)
-                # UserDemand inflow is discoupled from its outflow
-                # The unset flow link defaults to Terminal #0
-                nothing
-            else
-                warn_unsupported_flow(to_node, from_node, cumulative_flow)
-            end
-        end
-
-        if to_node.is_basin && cumulative_flow > 0 && (substep % stepsize[to_node.idx]) == 0
-            if from_node.is_basin
-                mass[:, to_node.idx] .+=
-                    concentration_state[:, from_node.idx] .* cumulative_flow ./ nsubsteps[to_node.idx]
-
-            elseif from_node.type == NodeType.LevelBoundary
-                add_substance_mass!(
-                    mass[:, to_node.idx],
-                    level_boundary.concentration_itp[from_node.idx],
-                    cumulative_flow / nsubsteps[to_node.idx],
-                    t_sub,
-                )
-            elseif from_node.type == NodeType.Terminal && from_node.value == 0
-                # The unset flow link defaults to Terminal #0
-                nothing
-            else
-                warn_unsupported_flow(from_node, to_node, cumulative_flow)
-            end
-        end
-    end
-    return nothing
-end
-
-# Logging is kept out of the loop in `mass_inflows_basin!`, since it hinders optimizing the loop
+# Logging is kept out of the loop in `transport_mass!`, since it hinders optimizing the loop
 @noinline function warn_unsupported_flow(
         from_node::NodeID,
         to_node::NodeID,
@@ -126,35 +58,54 @@ end
 end
 
 """
-Process all mass outflows from Basins
+Transport the mass over the flows that are processed in this substep. A flow is processed in
+the substeps of the Basin at either end with the most substeps. Both ends exchange the same
+mass, with the concentration of the upstream Basin, such that mass is conserved.
 """
-function mass_outflows_basin!(
-        integrator::DEIntegrator,
-        substep::Int,
-        max_substeps::Int,
+function transport_mass!(
+        p_independent::ParametersIndependent,
+        t::Float64,
         active_flows::AbstractVector{Int},
     )::Nothing
-    (; basin, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges) = integrator.p.p_independent
-    (; mass, concentration_state, nsubsteps, stepsize) = basin.concentration_data
+    (; basin, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges, level_boundary) = p_independent
+    (; mass, concentration_state, nsubsteps, evaporate_mass) = basin.concentration_data
 
-    @views for flow_idx in active_flows
-
-        if flow_idx in flow_ranges.vertical.evaporation
-            # Evaporation is handled separately
-            continue
-        end
+    for flow_idx in active_flows
+        # The mass of the UserDemand return flow is added in `mass_inflows_from_user_demand!`
+        flow_idx in flow_ranges.horizontal.user_demand_outflow && continue
+        # Without evaporating mass, the evaporated water leaves the mass behind
+        !evaporate_mass && flow_idx in flow_ranges.vertical.evaporation && continue
 
         cumulative_flow = cumulative_flow_dt[flow_idx]
-        from_node = inflow_id[flow_idx]
-        to_node = outflow_id[flow_idx]
-
-        if from_node.is_basin && cumulative_flow > 0 && (substep % stepsize[from_node.idx]) == 0
-            mass[:, from_node.idx] .-=
-                concentration_state[:, from_node.idx] .* cumulative_flow ./ nsubsteps[from_node.idx]
+        upstream, downstream = if cumulative_flow > 0
+            inflow_id[flow_idx], outflow_id[flow_idx]
+        elseif cumulative_flow < 0
+            outflow_id[flow_idx], inflow_id[flow_idx]
+        else
+            continue
         end
-        if to_node.is_basin && cumulative_flow < 0 && (substep % stepsize[to_node.idx]) == 0
-            mass[:, to_node.idx] .+=
-                concentration_state[:, to_node.idx] .* cumulative_flow ./ nsubsteps[to_node.idx]
+        n_upstream = upstream.is_basin ? nsubsteps[upstream.idx] : 1
+        n_downstream = downstream.is_basin ? nsubsteps[downstream.idx] : 1
+        volume = abs(cumulative_flow) / max(n_upstream, n_downstream)
+
+        if upstream.is_basin
+            for substance_idx in axes(mass, 1)
+                transported = concentration_state[substance_idx, upstream.idx] * volume
+                mass[substance_idx, upstream.idx] -= transported
+                if downstream.is_basin
+                    mass[substance_idx, downstream.idx] += transported
+                end
+            end
+        elseif upstream.type == NodeType.LevelBoundary
+            add_substance_mass!(
+                view(mass, :, downstream.idx),
+                level_boundary.concentration_itp[upstream.idx],
+                volume,
+                t,
+            )
+        elseif !(upstream.type == NodeType.Terminal && upstream.value == 0)
+            # The unset flow link defaults to Terminal #0
+            warn_unsupported_flow(upstream, downstream, volume)
         end
     end
     return nothing
@@ -219,7 +170,7 @@ function add_forcing_mass!(
         cumulative_flow::Union{AbstractVector{Float64}, Float64},
         t::Float64,
         active_basins::AbstractVector{Int},
-        nsubsteps::Vector{Int16},
+        nsubsteps::Vector{Int},
     )::Nothing
     (; itp, value, time_dependent) = forcing_concentration
     for I in time_dependent

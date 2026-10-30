@@ -301,6 +301,24 @@ end
     @test normalized == "\n\nPhysical layer diagnostics:\n\nNon-plausible (flow) rates (outside [-500000.0, 500000.0]):\n  LinearResistance #12: Inf\n\nNon-plausible depths (outside [0,2000.0]):\n  Basin #1: <finite depth>\n  Basin #3: -Inf\n  Basin #6: <finite depth>\n  Basin #9: <finite depth>\n\nNon-finite states:\n  TabulatedRatingCurve #4: Inf\n\nJacobian values:\n  row(s) [1, 2, 3, 4] have non-finite entries (e.g. J[1,1] = NaN, J[2,1] = NaN, J[3,1] = NaN, J[4,1] = NaN, J[1,2] = NaN), suggesting a singularity in those equation(s)\n  column(s) [1, 2, 3, 4] have non-finite entries, suggesting those state component(s) are diverging"
 end
 
+@testitem "Tracer mass conservation with substeps" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/tracer_closed_chain/ribasim.toml")
+    @test ispath(toml_path) skip = true
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # No water leaves the last Basin, so all FlowBoundary tracer mass is still in the Basins
+    (; basin, flow_boundary) = model.integrator.p.p_independent
+    (; concentration_data) = basin
+    substance_idx = Ribasim.find_index(:FlowBoundary, concentration_data.substances)
+    # The Basins differ in size, so they are processed with different numbers of substeps
+    @test length(unique(concentration_data.nsubsteps)) > 1
+    @test sum(concentration_data.mass[substance_idx, :]) ≈ only(flow_boundary.cumulative_flow) rtol = 1.0e-10
+    storage = model.integrator.p.current_basin_properties.current_storage
+    @test sum(concentration_data.concentration_state[substance_idx, :] .* storage) ≈
+        only(flow_boundary.cumulative_flow) rtol = 1.0e-10
+end
+
 @testitem "basic transient model" begin
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
