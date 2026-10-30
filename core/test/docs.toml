@@ -68,7 +68,7 @@ verbosity = "info" # optional, default "info", can also be "debug", "warn" or "e
 [results]
 compression = true    # optional, default true, using deflate compression
 compression_level = 1 # optional, default 1 (0-9)
-significant_bits = 20 # optional, default 20 (1-52), 0 keeps all bits
+significant_bits = 20 # optional, default 20 (1-52), 0 for lossless
 subgrid = false       # optional, default false
 
 [experimental]
