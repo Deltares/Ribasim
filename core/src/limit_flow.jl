@@ -40,9 +40,11 @@ function limit_flow!(integrator, flow, flow_prev, t, node::Union{Pump, Outlet})
     end
 
     @threaded for idx in eachindex(node_id)
-        max_flow = max_flow_rate[idx]
+        itp = max_flow_rate[idx]
+        # Most of these are constant in time, which is much cheaper than evaluating them
+        max_flow = all(==(first(itp.u)), itp.u) ? first(itp.u) : itp(t)
         # Reduction factors can lower the flow below min_flow_rate, including to zero.
-        limit_flow!(flow_node, flow_node_prev, 0.0, max_flow(t), dt, idx)
+        limit_flow!(flow_node, flow_node_prev, 0.0, max_flow, dt, idx)
     end
     return nothing
 end
