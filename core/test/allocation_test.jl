@@ -346,7 +346,7 @@ end
         @test JuMP.lower_bound(flow[link_metadata.link]) == 0
         @test JuMP.upper_bound(flow[link_metadata.link]) ≈ total_demand
     end
-    return_link = user_demand.outflow_link[user_demand_id.idx].link
+    return_link = user_demand.outflow_data[user_demand_id.idx].outflow_link.link
     @test JuMP.lower_bound(flow[return_link]) == 0
     @test JuMP.upper_bound(flow[return_link]) ≈ total_demand
 

@@ -532,10 +532,18 @@ is_discrete_controlled(graph::MetaGraph, node_id::NodeID)::Bool =
 )
 
 function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inflow = true)
-    if inflow
-        map!(node_id -> inflow_link(graph, node_id), node.inflow_link, node.node_id)
+    inflow && map!(node_id -> inflow_link(graph, node_id), node.inflow_link, node.node_id)
+
+    for id in node.node_id
+        outflow_links = get_outflow_links(graph, id)
+        to_pass_down = any(link.link[2].type == NodeType.PassDown for link in outflow_links)
+        node.outflow_data[id.idx] = if to_pass_down
+            OutflowData(; outflow_links, to_pass_down = true)
+        else
+            OutflowData(; outflow_link = only(outflow_links))
+        end
     end
-    return map!(node_id -> outflow_link(graph, node_id), node.outflow_link, node.node_id)
+    return nothing
 end
 
 function LinearResistance(db, config, graph)
@@ -1422,8 +1430,9 @@ function parse_static_demand_data!(
     if node isa UserDemand
         node.demand_from_timeseries[id.idx] = false
     end
+    demand_priority_default = schema_default(Schema.UserDemand.Static, Val(:demand_priority))
     for row in static_group
-        demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
+        demand_priority_idx = findsorted(demand_priorities, coalesce(row.demand_priority, demand_priority_default))
         node.has_demand_priority[id.idx, demand_priority_idx] = true
         demand_row = coalesce(row.demand, schema_default(typeof(row), Val(:demand)))
         demand_interpolation = trivial_constant_itp(; val = demand_row)
@@ -1493,7 +1502,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
             user_demand.inflow_link_offsets[i] + n_links
         user_demand.inflow_link_allocated[i] = fill(Inf, n_links)
     end
-    map!(id -> outflow_link(graph, id), user_demand.outflow_link, user_demand.node_id)
+    set_inoutflow_links!(user_demand, graph; inflow = false)
     errors = !valid_user_demand_parameters(static)
     errors |= !valid_user_demand_parameters(time)
     errors |= parse_parameter!(
@@ -1632,6 +1641,163 @@ function FlowDemand(db::DB, config::Config, graph::MetaGraph)
     errors && error("Errors encountered when parsing FlowDemand data.")
 
     return flow_demand
+end
+
+"""
+Find the disjoint trees of PassDown and UserDemand nodes connected by flow links.
+UserDemand nodes without a PassDown inneighbor (i.e. at the start of a tree) are excluded.
+"""
+function get_pass_down_subgraphs(
+        graph::ModelGraph,
+        pass_down_ids::Vector{NodeID},
+    )::Vector{Vector{NodeID}}
+    in_subgraph(id::NodeID) =
+        id.type == NodeType.PassDown || (
+        id.type == NodeType.UserDemand && any(
+            inneighbor_id -> inneighbor_id.type == NodeType.PassDown,
+            inneighbor_labels_type(graph, id, LinkType.flow),
+        )
+    )
+
+    visited = Set{NodeID}()
+    subgraphs = Vector{NodeID}[]
+    # Every subgraph contains a PassDown node, so starting from those finds all subgraphs
+    for start_id in pass_down_ids
+        start_id in visited && continue
+        subgraph = NodeID[]
+        stack = [start_id]
+        push!(visited, start_id)
+        while !isempty(stack)
+            id = pop!(stack)
+            push!(subgraph, id)
+            for neighbor_id in Iterators.flatten(
+                    (
+                        inneighbor_labels_type(graph, id, LinkType.flow),
+                        outneighbor_labels_type(graph, id, LinkType.flow),
+                    )
+                )
+                if neighbor_id ∉ visited && in_subgraph(neighbor_id)
+                    push!(visited, neighbor_id)
+                    push!(stack, neighbor_id)
+                end
+            end
+        end
+        push!(subgraphs, topological_sort_subgraph(graph, subgraph))
+    end
+    return subgraphs
+end
+
+"""
+Sort the nodes of a subgraph (Kahn's algorithm) such that every node comes after all nodes
+its flow depends on:
+- the upstream nodes in the subgraph;
+- for a PassDown node, the UserDemand nodes downstream of its upstream PassDown nodes,
+  since those UserDemand nodes take precedence and the PassDown nodes divide the remaining flow.
+Ties are broken by NodeID for a deterministic order.
+"""
+function topological_sort_subgraph(graph::ModelGraph, subgraph::Vector{NodeID})::Vector{NodeID}
+    node_set = Set(subgraph)
+    dependencies = Dict(id => Set{NodeID}() for id in subgraph)
+    for id in subgraph, upstream_id in inflow_ids(graph, id)
+        upstream_id in node_set || continue
+        push!(dependencies[id], upstream_id)
+        if id.type == NodeType.PassDown && upstream_id.type == NodeType.PassDown
+            for sibling_id in outflow_ids(graph, upstream_id)
+                sibling_id.type == NodeType.UserDemand && push!(dependencies[id], sibling_id)
+            end
+        end
+    end
+    dependents = Dict(id => NodeID[] for id in subgraph)
+    for (id, deps) in dependencies, dep_id in deps
+        push!(dependents[dep_id], id)
+    end
+
+    n_dependencies = Dict(id => length(deps) for (id, deps) in dependencies)
+    ready = sort!(filter(id -> n_dependencies[id] == 0, subgraph); rev = true)
+    sorted = NodeID[]
+    while !isempty(ready)
+        id = pop!(ready)
+        push!(sorted, id)
+        for dependent_id in dependents[id]
+            n_dependencies[dependent_id] -= 1
+            if n_dependencies[dependent_id] == 0
+                push!(ready, dependent_id)
+                sort!(ready; rev = true)
+            end
+        end
+    end
+    if length(sorted) != length(subgraph)
+        error("Cyclic flow dependency detected in PassDown subgraph containing nodes $(sort(subgraph)).")
+    end
+    return sorted
+end
+
+function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
+    static = load_structvector(db, config, Schema.PassDown.Static)
+    node_id = get_node_ids(db, NodeType.PassDown)
+    pass_down =
+        PassDown(; node_id, pass_down_subgraphs = get_pass_down_subgraphs(graph, node_id))
+
+    map!(id -> collect(inflow_ids(graph, id)), pass_down.inflow_ids, node_id)
+
+    (; fraction) = pass_down
+    has_fraction = falses(length(node_id))
+
+    errors = false
+    invalid_fraction_ids = Int32[]
+    for row in static
+        ismissing(row.fraction) && continue
+        if !(0 <= row.fraction <= 1)
+            push!(invalid_fraction_ids, row.node_id)
+            continue
+        end
+        id = NodeID(NodeType.PassDown, row.node_id, node_id)
+        fraction[id.idx] = row.fraction
+        has_fraction[id.idx] = true
+    end
+    if !isempty(invalid_fraction_ids)
+        @error "PassDown fractions must be between 0 and 1 (inclusive)." node_ids =
+            invalid_fraction_ids
+        errors = true
+    end
+
+    for upstream_id in labels(graph)
+        pass_down_ids = filter(
+            id -> id.type == NodeType.PassDown,
+            collect(outneighbor_labels_type(graph, upstream_id, LinkType.flow)),
+        )
+        isempty(pass_down_ids) && continue
+
+        missing_ids = filter(id -> !has_fraction[id.idx], pass_down_ids)
+        fraction_sum = sum(id -> has_fraction[id.idx] ? fraction[id.idx] : 0.0, pass_down_ids)
+
+        if isempty(missing_ids)
+            if !isapprox(fraction_sum, 1.0)
+                @error "The fractions of the PassDown nodes downstream of $upstream_id must sum to 1 (got $fraction_sum)." pass_down_ids
+                errors = true
+            end
+        elseif length(missing_ids) > 1
+            @error "At most one PassDown node downstream of $upstream_id can have an unspecified fraction." missing_ids
+            errors = true
+        elseif fraction_sum > 1
+            @error "The fractions of the PassDown nodes downstream of $upstream_id must sum to at most 1 when one fraction is unspecified (got $fraction_sum)." pass_down_ids
+            errors = true
+        else
+            fraction[only(missing_ids).idx] = 1.0 - fraction_sum
+        end
+    end
+
+    # A UserDemand downstream of a PassDown node takes precedence over the other outneighbors,
+    # which receive the flow that is not abstracted
+    for id in node_id
+        user_demand_ids = filter(id -> id.type == NodeType.UserDemand, outflow_ids(graph, id) |> collect)
+        if isone(length(user_demand_ids))
+            pass_down.user_demand_id[id.idx] = only(user_demand_ids)
+        end
+    end
+    errors && error("Errors encountered when parsing PassDown data.")
+
+    return pass_down
 end
 
 "Create and push a ConstantInterpolation to the constant_interpolations."
@@ -1828,6 +1994,7 @@ function Parameters(db::DB, config::Config)::Parameters
     basin = Basin(db, config, graph)
     nodes = (;
         basin,
+        pass_down = PassDown(db, config, graph),
         linear_resistance = LinearResistance(db, config, graph),
         manning_resistance = ManningResistance(db, config, graph, basin),
         tabulated_rating_curve = TabulatedRatingCurve(db, config, graph),
@@ -1845,12 +2012,14 @@ function Parameters(db::DB, config::Config)::Parameters
         flow_demand = FlowDemand(db, config, graph),
     )
 
+    set_in_pass_down_subgraph!(nodes.user_demand, nodes.pass_down)
+
     subgrid = Subgrid(db, config, basin)
     flow_ranges = count_flow_ranges(nodes)
     state_ranges = count_state_ranges(nodes)
 
-    inflow_id, outflow_id, state_id = get_flow_ids(nodes, flow_ranges)
-    incidence_matrix = get_incidence_matrix(inflow_id, outflow_id)
+    inflow_id, outflow_data, state_id = get_flow_ids(nodes, flow_ranges)
+    incidence_matrix = get_incidence_matrix(inflow_id, outflow_data)
 
     p_independent = ParametersIndependent(;
         config.starttime,
@@ -1860,7 +2029,7 @@ function Parameters(db::DB, config::Config)::Parameters
         nodes...,
         subgrid,
         inflow_id,
-        outflow_id,
+        outflow_data,
         state_id,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,

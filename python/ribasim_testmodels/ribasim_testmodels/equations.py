@@ -10,9 +10,11 @@ from ribasim.nodes import (
     level_boundary,
     linear_resistance,
     manning_resistance,
+    pass_down,
     pid_control,
     pump,
     tabulated_rating_curve,
+    user_demand,
 )
 from shapely.geometry import Point
 
@@ -329,5 +331,62 @@ def pid_control_equation_model() -> Model:
         model.pid_control[4],
         model.pump[2],
     )
+
+    return model
+
+
+def pass_down_equation_model() -> Model:
+    """Set up a minimal including PassDown for an equation test."""
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
+        crs="EPSG:28992",
+    )
+
+    b1 = model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 3.0]),
+            basin.State(level=[5.0]),
+        ],
+    )
+
+    trc = model.tabulated_rating_curve.add(
+        Node(2, Point(1, 0)),
+        [tabulated_rating_curve.Static(level=[0.0, 3.0], flow_rate=[0.0, 1e-3])],
+    )
+
+    fb = model.flow_boundary.add(
+        Node(3, Point(1, 2)), [flow_boundary.Static(flow_rate=[5e-4])]
+    )
+
+    pd1 = model.pass_down.add(
+        Node(4, Point(2, 1)), [pass_down.Static(fraction=[np.nan])]
+    )
+
+    ud = model.user_demand.add(
+        Node(5, Point(3, 0)),
+        tables=[user_demand.Static(demand=[3e-4], return_factor=[1.0])],
+    )
+
+    t = model.terminal.add(Node(6, Point(4, 1)))
+
+    pd2 = model.pass_down.add(
+        Node(7, Point(3, 1)), [pass_down.Static(fraction=[1 / 3])]
+    )
+
+    pd3 = model.pass_down.add(
+        Node(8, Point(3, 2)), tables=[pass_down.Static(fraction=[np.nan])]
+    )
+
+    model.link.add(b1, trc)
+    model.link.add(trc, pd1)
+    model.link.add(fb, pd1)
+    model.link.add(pd1, ud)
+    model.link.add(ud, t)
+    model.link.add(pd1, pd2)
+    model.link.add(pd2, t)
+    model.link.add(pd1, pd3)
+    model.link.add(pd3, t)
 
     return model

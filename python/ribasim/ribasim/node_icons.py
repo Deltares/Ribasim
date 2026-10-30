@@ -35,6 +35,7 @@ class NodeIconSpec:
 
 NODE_ICON_DATA: tuple[NodeIconSpec, ...] = (
     NodeIconSpec("Basin", "#0072B2", "trapezium", "Trapezium"),
+    NodeIconSpec("PassDown", "#0072B2", "o", "Filled circle"),
     NodeIconSpec("ManningResistance", "#F0E442", "v", "Down triangle"),
     NodeIconSpec("LinearResistance", "#009E73", "^", "Up triangle"),
     NodeIconSpec("FlowBoundary", "#FF7F00", "o", "Filled circle"),

@@ -159,7 +159,7 @@ end
 
 """
 Get the current water level of a node ID.
-The ID can belong to either a Basin or a LevelBoundary.
+The ID can belong to either a Basin, PassDown or a LevelBoundary.
 """
 function get_level(
         storage::Number,
@@ -192,8 +192,20 @@ function get_level(
         # Terminal is like a bottomless pit.
         # A level at -Inf ensures we don't hit `max_downstream_level` reduction factors.
         -Inf
+    elseif node_id.type == NodeType.PassDown
+        # This is an upstream PassDown, as downstream PassDowns are caught in the top get_level method
+        Inf
     else
-        error("Node ID $node_id is not a Basin, LevelBoundary or Terminal.")
+        error("Node ID $node_id is not a Basin, PassDown, LevelBoundary or Terminal.")
+        Inf
+    end
+end
+
+function get_level(storage::Number, p::Parameters, outflow_data::OutflowData, t::Number; kwargs...)
+    return if outflow_data.to_pass_down
+        -Inf
+    else
+        get_level(storage, p, outflow_id(outflow_data), t; kwargs...)
     end
 end
 
@@ -422,8 +434,9 @@ function get_all_demand_priorities(db::DB, config::Config)::Vector{Int32}
         end
 
         data = load_structvector(db, config, table_type)
+        demand_priority_default = schema_default(Schema.UserDemand.Static, Val(:demand_priority))
         demand_priority_col = data.demand_priority
-        demand_priority_col = Int32.(coalesce.(demand_priority_col, Int32(0)))
+        demand_priority_col = Int32.(coalesce.(demand_priority_col, demand_priority_default))
         if valid_demand_priorities(demand_priority_col, config.experimental.allocation)
             union!(demand_priorities, demand_priority_col)
         else
@@ -615,7 +628,7 @@ end
 reduction_factor(x::GradientTracer, ::Real) = x
 low_storage_factor_resistance_node(::Number, ::Number, ::Parameters, q::GradientTracer, ::NodeID, ::NodeID) = q
 relaxed_root(x::GradientTracer, threshold::Real) = x
-get_level(storage::GradientTracer, p::Parameters, node_id::NodeID, t::Number; kwargs...) = storage
+get_level(storage::GradientTracer, ::Parameters, ::NodeID, ::Number; kwargs...) = storage
 
 function get_ns_flow_horizontal(nodes::NamedTuple)
     (;
@@ -625,6 +638,7 @@ function get_ns_flow_horizontal(nodes::NamedTuple)
         linear_resistance,
         manning_resistance,
         user_demand,
+        pass_down,
     ) = nodes
     return [
         length(pump),
@@ -644,43 +658,44 @@ function get_ns_flow_vertical(nodes::NamedTuple)
     ]
 end
 
-get_n_flow(nodes::NamedTuple) = sum(get_ns_flow_horizontal(nodes)) + sum(get_ns_flow_vertical(nodes))
+get_n_flow(nodes::NamedTuple) =
+    sum(get_ns_flow_horizontal(nodes)) +
+    sum(get_ns_flow_vertical(nodes)) +
+    length(nodes.pass_down)
 
 function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::FlowTuple
     ns_flow_horizontal = get_ns_flow_horizontal(nodes)
     ns_flow_vertical = get_ns_flow_vertical(nodes)
 
-    horizontal_flow = cvector_axes_from_lengths(
+    horizontal = cvector_axes_from_lengths(
         state_horizontal_flow_components,
         ns_flow_horizontal,
     )
-    vertical_flow = cvector_axes_from_lengths(
+    vertical = cvector_axes_from_lengths(
         state_vertical_flow_components,
-        ns_flow_vertical;
-        offset = sum(ns_flow_horizontal)
+        ns_flow_vertical
     )
-    return NamedTuple{state_flow_components}((horizontal_flow, vertical_flow))
+    return concatenate_axes((; horizontal), (; vertical), (; pass_down = 1:length(nodes.pass_down)))
 end
 
 "Create the axis of the state vector"
 function count_state_ranges(nodes::Union{NamedTuple, ParametersIndependent})::RibasimStateTuple
     flow_ranges = count_flow_ranges(nodes)
-    n_flows = get_n_flow(nodes)
-    return (;
-        flow = flow_ranges,
-        pid_integral = (n_flows + 1):(n_flows + length(nodes.pid_control)),
+    return concatenate_axes(
+        (; flow = flow_ranges),
+        (; pid_integral = 1:length(nodes.pid_control)),
     )
 end
 
-function set_flow_ids!(inflow_id, outflow_id, node::AbstractParameterNode)
+function set_flow_ids!(inflow_id, outflow_data, node::AbstractParameterNode)
     inflow_id .= [link.link[1] for link in node.inflow_link]
-    outflow_id .= [link.link[2] for link in node.outflow_link]
+    outflow_data .= node.outflow_data
     return nothing
 end
 
-function set_flow_ids!(inflow_id, outflow_id, user_demand::UserDemand)
+function set_flow_ids!(inflow_id, outflow_data, user_demand::UserDemand)
     inflow_id .= [link.link[1] for link in vcat(user_demand.inflow_links...)]
-    outflow_id .= [link.link[2] for link in user_demand.outflow_link]
+    outflow_data .= user_demand.outflow_data
     return nothing
 end
 
@@ -688,7 +703,7 @@ function set_flow_ids!(inflow_id, outflow_id, basin::Basin)
     (; node_id) = basin
     inflow_id.evaporation .= node_id
     inflow_id.infiltration .= node_id
-    outflow_id .= NodeID(NodeType.Terminal, 0, 0)
+    fill!(outflow_id, OutflowData())
     return nothing
 end
 
@@ -706,20 +721,20 @@ function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
     dummy_node = NodeID(:Terminal, 0, 0)
 
     inflow_id = CVector(fill(dummy_node, n_flows), flow_ranges)
-    outflow_id = CVector(fill(dummy_node, n_flows), flow_ranges)
+    outflow_data = CVector(fill(OutflowData(), n_flows), flow_ranges)
     state_id = CVector(fill(dummy_node, n_flows), flow_ranges)
 
-    set_flow_ids!(inflow_id.horizontal.pump, outflow_id.horizontal.pump, pump)
-    set_flow_ids!(inflow_id.horizontal.outlet, outflow_id.horizontal.outlet, outlet)
-    set_flow_ids!(inflow_id.horizontal.tabulated_rating_curve, outflow_id.horizontal.tabulated_rating_curve, tabulated_rating_curve)
-    set_flow_ids!(inflow_id.horizontal.linear_resistance, outflow_id.horizontal.linear_resistance, linear_resistance)
-    set_flow_ids!(inflow_id.horizontal.manning_resistance, outflow_id.horizontal.manning_resistance, manning_resistance)
-    set_flow_ids!(inflow_id.horizontal.user_demand_inflow, outflow_id.horizontal.user_demand_outflow, user_demand)
-    set_flow_ids!(inflow_id.vertical, outflow_id.vertical, basin)
+    set_flow_ids!(inflow_id.horizontal.pump, outflow_data.horizontal.pump, pump)
+    set_flow_ids!(inflow_id.horizontal.outlet, outflow_data.horizontal.outlet, outlet)
+    set_flow_ids!(inflow_id.horizontal.tabulated_rating_curve, outflow_data.horizontal.tabulated_rating_curve, tabulated_rating_curve)
+    set_flow_ids!(inflow_id.horizontal.linear_resistance, outflow_data.horizontal.linear_resistance, linear_resistance)
+    set_flow_ids!(inflow_id.horizontal.manning_resistance, outflow_data.horizontal.manning_resistance, manning_resistance)
+    set_flow_ids!(inflow_id.horizontal.user_demand_inflow, outflow_data.horizontal.user_demand_outflow, user_demand)
+    set_flow_ids!(inflow_id.vertical, outflow_data.vertical, basin)
 
     # The UserDemand node itself is the outflow of its inflow state and the inflow of its outflow state
-    outflow_id.horizontal.user_demand_inflow .=
-        [node_id for (node_id, links) in zip(user_demand.node_id, user_demand.inflow_links) for _ in links]
+    outflow_data.horizontal.user_demand_inflow .=
+        [OutflowData(; outflow_link = link) for links in user_demand.inflow_links for link in links]
     inflow_id.horizontal.user_demand_outflow .= user_demand.node_id
 
     state_id.horizontal.pump .= pump.node_id
@@ -733,7 +748,7 @@ function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
     state_id.vertical.evaporation .= basin.node_id
     state_id.vertical.infiltration .= basin.node_id
 
-    return inflow_id, outflow_id, state_id
+    return inflow_id, outflow_data, state_id
 end
 
 """
@@ -749,17 +764,20 @@ function get_state_node_id(p_independent::ParametersIndependent, state_idx::Int)
     end
 end
 
-function get_incidence_matrix(inflow_id::FlowCVector{NodeID}, outflow_id::FlowCVector{NodeID})::SparseMatrixCSC
+function get_incidence_matrix(inflow_id::FlowCVector{NodeID}, outflow_data::FlowCVector{OutflowData})::SparseMatrixCSC
     n_flow = length(inflow_id)
     n_basin = length(inflow_id.vertical.evaporation)
     incidence_matrix = spzeros(Int, n_basin, n_flow)
 
     for flow_idx in 1:n_flow
         in_id = inflow_id[flow_idx]
-        out_id = outflow_id[flow_idx]
-
+        out_data = outflow_data[flow_idx]
         in_id.is_basin && (incidence_matrix[in_id.idx, flow_idx] = -1)
-        out_id.is_basin && (incidence_matrix[out_id.idx, flow_idx] = 1)
+
+        if !out_data.to_pass_down
+            out_id = outflow_id(out_data)
+            out_id.is_basin && (incidence_matrix[out_id.idx, flow_idx] = 1)
+        end
     end
     return incidence_matrix
 end
@@ -831,28 +849,33 @@ function aggregate_flows!(
         positive_vertical_forcing::Union{ExactVerticalFlowCVector, Nothing} = nothing,
         boundary_flow::Union{Vector{Float64}, Nothing} = nothing
     )
-    (; flow_boundary, inflow_id, outflow_id) = p_independent
+    (; flow_boundary, inflow_id, outflow_data) = p_independent
 
     from_zero && (aggregate .= 0)
 
     if do_horizontal_flows
-        for (flow_, id_in, id_out) in zip(flow.horizontal, inflow_id.horizontal, outflow_id.horizontal)
+        for (flow_, id_in, data_out) in zip(flow.horizontal, inflow_id.horizontal, outflow_data.horizontal)
             positive_flow = (flow_ > 0)
 
             if id_in.is_basin && ((!positive_flow && do_inflows) || (positive_flow && do_outflows))
                 aggregate[id_in.idx] -= weight * flow_
             end
 
-            if id_out.is_basin && ((positive_flow && do_inflows) || (!positive_flow && do_outflows))
-                aggregate[id_out.idx] += weight * flow_
+            if !data_out.to_pass_down
+                id_out = outflow_id(data_out)
+                if id_out.is_basin && ((positive_flow && do_inflows) || (!positive_flow && do_outflows))
+                    aggregate[id_out.idx] += weight * flow_
+                end
             end
         end
     end
 
     if do_horizontal_flows && do_inflows && !isnothing(boundary_flow)
         for idx in eachindex(flow_boundary.node_id)
-            outflow_id = flow_boundary.outflow_link[idx].link[2]
-            aggregate[outflow_id.idx] += boundary_flow[idx]
+            outflow_data = flow_boundary.outflow_data[idx]
+            if !outflow_data.to_pass_down
+                aggregate[outflow_id(outflow_data).idx] += boundary_flow[idx]
+            end
         end
     end
 
@@ -1167,13 +1190,17 @@ function set_uplink_downlink_storage!(
         storage::AbstractVector,
         p_independent::ParametersIndependent,
     )
-    (; inflow_id, outflow_id) = p_independent
+    (; inflow_id, outflow_data) = p_independent
 
     @threaded CHEAP_LOOP_MIN_CHUNK_SIZE for idx in eachindex(storage_uplink)
         in_id = inflow_id[idx]
-        out_id = outflow_id[idx]
+        out_data = outflow_data[idx]
         storage_uplink[idx] = in_id.is_basin ? storage[in_id.idx] : zero(eltype(storage_uplink))
-        storage_downlink[idx] = out_id.is_basin ? storage[out_id.idx] : zero(eltype(storage_downlink))
+
+        if !out_data.to_pass_down
+            out_id = outflow_id(out_data)
+            storage_downlink[idx] = out_id.is_basin ? storage[out_id.idx] : zero(eltype(storage_downlink))
+        end
     end
 
     return nothing
@@ -1193,7 +1220,7 @@ function get_link_index(
 end
 
 function set_controlled_node_ids!(p_independent, node::Union{PidControl, ContinuousControl})
-    (; graph, inflow_id, outflow_id, flow_ranges) = p_independent
+    (; graph, inflow_id, outflow_data, flow_ranges) = p_independent
 
     for id in node.node_id
         controlled_node_id = only(outneighbor_labels_type(graph, id, LinkType.control))
@@ -1202,7 +1229,37 @@ function set_controlled_node_ids!(p_independent, node::Union{PidControl, Continu
         flow_idx = flow_ranges.horizontal[component][controlled_node_id.idx]
 
         node.inflow_id[id.idx] = inflow_id[flow_idx]
-        node.outflow_id[id.idx] = outflow_id[flow_idx]
+        node.outflow_data[id.idx] = outflow_data[flow_idx]
     end
     return nothing
+end
+
+"""
+Mark the UserDemand nodes that are part of a PassDown subgraph, and store per PassDown node
+the indices of its outflow links to UserDemand nodes in the `user_demand_inflow` flow component.
+"""
+function set_in_pass_down_subgraph!(user_demand::UserDemand, pass_down::PassDown)::Nothing
+    for subgraph in pass_down.pass_down_subgraphs, id in subgraph
+        id.type == NodeType.UserDemand || continue
+        user_demand.in_pass_down_subgraph[id.idx] = true
+    end
+    return nothing
+end
+
+# Total effective demand = min(allocated, demand) summed over priorities.
+# When allocation is not running, allocated = Inf and this becomes the demand.
+function get_effective_user_demand(p_independent::ParametersIndependent, node_idx::Int, t::Number)
+    (; allocation, user_demand) = p_independent
+
+    has_demand_priority = view(user_demand.has_demand_priority, node_idx, :)
+    allocated = view(user_demand.allocated, node_idx, :)
+    q_total_demand = 0.0
+    for demand_priority_idx in eachindex(allocation.demand_priorities_all)
+        !has_demand_priority[demand_priority_idx] && continue
+        q_total_demand += min(
+            allocated[demand_priority_idx],
+            get_demand(user_demand, user_demand.node_id[node_idx], demand_priority_idx, t),
+        )
+    end
+    return q_total_demand
 end

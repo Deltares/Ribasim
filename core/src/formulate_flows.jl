@@ -83,6 +83,9 @@ function water_balance!(
         formulate_flows_args...;
         control_type = ContinuousControlType.Continuous,
     )
+
+    # Formulate PassDown flows and the UserDemand flows in the PassDown subgraphs
+    formulate_pass_down_flow!(du.flow, p, t)
     return nothing
 end
 
@@ -167,8 +170,8 @@ function set_current_storage!(
             time_dependent_cache.basin.surface_runoff
 
         for idx in eachindex(flow_boundary.node_id)
-            outflow_id = flow_boundary.outflow_link[idx].link[2]
-            storage[outflow_id.idx] += time_dependent_cache.flow_boundary.current_cumulative_boundary_flow[idx]
+            downstream_id = outflow_id(flow_boundary.outflow_data[idx])
+            storage[downstream_id.idx] += time_dependent_cache.flow_boundary.current_cumulative_boundary_flow[idx]
         end
     else
         aggregate_flows!(
@@ -393,27 +396,18 @@ function formulate_flow!(
     )::Nothing
     (; p_independent, time_dependent_cache) = p
     (; current_return_factor) = time_dependent_cache.user_demand
-    (; allocation, level_difference_threshold) = p_independent
+    (; level_difference_threshold) = p_independent
 
     for node_idx in eachindex(user_demand.node_id)
+        # UserDemands fed by PassDown nodes are handled separately
+        user_demand.in_pass_down_subgraph[node_idx] && continue
+
         id = user_demand.node_id[node_idx]
         inflow_links = user_demand.inflow_links[node_idx]
         link_offset = user_demand.inflow_link_offsets[node_idx]
-        has_demand_priority = view(user_demand.has_demand_priority, node_idx, :)
-        allocated = view(user_demand.allocated, node_idx, :)
         return_factor = user_demand.return_factor[node_idx]
         min_level = user_demand.min_level[node_idx]
-
-        # Total effective demand = min(allocated, demand) summed over priorities.
-        # When allocation is not running, allocated = Inf and this becomes the demand.
-        q_total_demand = 0.0
-        for demand_priority_idx in eachindex(allocation.demand_priorities_all)
-            !has_demand_priority[demand_priority_idx] && continue
-            q_total_demand += min(
-                allocated[demand_priority_idx],
-                get_demand(user_demand, id, demand_priority_idx, t),
-            )
-        end
+        q_total_demand = get_effective_user_demand(p_independent, node_idx, t)
 
         # With allocation disabled, fall back to an equal split of the total demand.
         # Each link then applies its own source basin reduction factors.
@@ -483,18 +477,17 @@ function linear_resistance_flow(
     )::Number
     (; resistance, max_flow_rate) = linear_resistance
     inflow_link = linear_resistance.inflow_link[node_id.idx]
-    outflow_link = linear_resistance.outflow_link[node_id.idx]
 
     inflow_id = inflow_link.link[1]
-    outflow_id = outflow_link.link[2]
+    downstream_id = outflow_id(linear_resistance.outflow_data[node_id.idx])
 
     h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_id, t)
+    h_b = get_level(s_b, p, downstream_id, t)
     Δh = h_a - h_b
     q_unlimited = Δh / resistance[node_id.idx]
     q = clamp(q_unlimited, -max_flow_rate[node_id.idx], max_flow_rate[node_id.idx])
     apply_low_storage_factor || return q
-    return q * low_storage_factor_resistance_node(s_a, s_b, p, q_unlimited, inflow_id, outflow_id)
+    return q * low_storage_factor_resistance_node(s_a, s_b, p, q_unlimited, inflow_id, downstream_id)
 end
 
 function tabulated_rating_curve_flow(
@@ -509,12 +502,11 @@ function tabulated_rating_curve_flow(
     (; current_interpolation_index, interpolations) = tabulated_rating_curve
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
-    outflow_link = tabulated_rating_curve.outflow_link[node_id.idx]
+    outflow_data = tabulated_rating_curve.outflow_data[node_id.idx]
     inflow_id = inflow_link.link[1]
-    outflow_id = outflow_link.link[2]
 
     h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_id, t)
+    h_b = get_level(s_b, p, outflow_data, t)
     Δh = h_a - h_b
 
     factor = apply_low_storage_factor ? get_low_storage_factor(s_a, p, inflow_id) : 1.0
@@ -537,12 +529,14 @@ function allocated_rating_curve_flow(
     )::Number
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
-    outflow_link = tabulated_rating_curve.outflow_link[node_id.idx]
+    outflow_data = tabulated_rating_curve.outflow_data[node_id.idx]
+    @assert !outflow_data.to_pass_down "PassDown nodes in allocation subnetworks not supported yet, see issue #3322"
+
     inflow_id = inflow_link.link[1]
-    outflow_id = outflow_link.link[2]
+    downstream_id = outflow_id(outflow_data)
 
     h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_id, t)
+    h_b = get_level(s_b, p, downstream_id, t)
     Δh = h_a - h_b
 
     factor = get_low_storage_factor(s_a, p, inflow_id)
@@ -716,14 +710,14 @@ function manning_resistance_flow(
         apply_low_storage_factor::Bool = true,
     )::Number
     inflow_id = manning_resistance.inflow_link[node_id.idx].link[1]
-    outflow_id = manning_resistance.outflow_link[node_id.idx].link[2]
+    downstream_id = outflow_id(manning_resistance.outflow_data[node_id.idx])
 
     h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_id, t)
+    h_b = get_level(s_b, p, downstream_id, t)
     q = manning_flow(manning_resistance, node_id, h_a, h_b)
 
     apply_low_storage_factor || return q
-    return q * low_storage_factor_resistance_node(s_a, s_b, p, q, inflow_id, outflow_id)
+    return q * low_storage_factor_resistance_node(s_a, s_b, p, q, inflow_id, downstream_id)
 end
 
 """
@@ -887,14 +881,14 @@ function pump_or_outlet_flow(
 
     node_idx = node_id.idx
     inflow_id = node.inflow_link[node_idx].link[1]
-    outflow_id = node.outflow_link[node_idx].link[2]
+    outflow_data = node.outflow_data[node_idx]
     min_flow_rate = node.min_flow_rate[node_idx]
     max_flow_rate = node.max_flow_rate[node_idx]
     min_upstream_level = node.min_upstream_level[node_idx]
     max_downstream_level = node.max_downstream_level[node_idx]
 
     src_level = get_level(s_a, p, inflow_id, t)
-    dst_level = get_level(s_b, p, outflow_id, t)
+    dst_level = get_level(s_b, p, outflow_data, t)
 
     q = flow_rate
     apply_low_storage_factor && (q *= get_low_storage_factor(s_a, p, inflow_id))
@@ -1097,4 +1091,105 @@ function formulate_flows!(
         formulate_flow!(du.flow, tabulated_rating_curve, common_args...)
         formulate_flow!(du.flow, user_demand, common_args...)
     end
+end
+
+# A @generated function cannot branch on the runtime value `id.type`, so the
+# if-elseif chain is unrolled at definition time instead. The outflow component of a node type
+# is the horizontal flow component named after it, or `<name>_outflow` (e.g. UserDemand).
+let body = :(error("Unsupported node $id upstream of PassDown node."))
+    for (node_type, name) in node_type_map
+        component = if name in state_horizontal_flow_components
+            name
+        elseif Symbol(name, :_outflow) in state_horizontal_flow_components
+            Symbol(name, :_outflow)
+        else
+            continue
+        end
+        body = Expr(:if, :(id.type == $node_type), :(horizontal.$component[id.idx]), body)
+    end
+    @eval begin
+        """
+        The total outflow of a node with a single flow state that can be upstream of a PassDown node.
+        """
+        function get_node_outflow(flow::FlowCVector{T}, id::NodeID)::T where {T}
+            (; horizontal) = flow
+            return $body
+        end
+    end
+end
+
+"The flow from a node upstream of a PassDown node that is available to be passed down."
+function get_pass_down_upstream_flow(
+        flow::FlowCVector{T},
+        p_independent::ParametersIndependent,
+        upstream_id::NodeID,
+        t::Number,
+    )::T where {T}
+    return if upstream_id.type == NodeType.FlowBoundary
+        # FlowBoundary flows are not part of the flow state
+        boundary_flow_rate(p_independent.flow_boundary, upstream_id.idx, t)
+    elseif upstream_id.type == NodeType.PassDown
+        flow.pass_down[upstream_id.idx]
+    else
+        get_node_outflow(flow, upstream_id)
+    end
+end
+
+"""
+Compute the flows of the PassDown nodes and the UserDemand nodes in the PassDown subgraphs.
+A PassDown node gets its fraction of the flow from its upstream nodes, where of an upstream
+PassDown node only the flow remaining after abstraction by its downstream UserDemand nodes counts.
+"""
+function formulate_pass_down_flow!(
+        flow::FlowCVector{T},
+        p::Parameters,
+        t::Number;
+        flow_in::FlowCVector{T} = flow,
+    )::Nothing where {T}
+    (; p_independent, time_dependent_cache) = p
+    (; pass_down, user_demand) = p_independent
+    (; fraction, inflow_ids, pass_down_subgraphs, user_demand_id) = pass_down
+    (; current_return_factor) = time_dependent_cache.user_demand
+
+    # No-ops if flow === flow_in, but needed for AD
+    flow.horizontal .= flow_in.horizontal
+    flow.vertical .= flow_in.vertical
+
+    # Different PassDown subgraphs are independent from eachother
+    @threaded for subgraph in pass_down_subgraphs
+        for id in subgraph
+            if id.type == NodeType.PassDown
+                # PassDown distributing flow via the fractions
+                inflow = zero(T)
+                for upstream_id in inflow_ids[id.idx]
+                    inflow += get_pass_down_upstream_flow(flow_in, p_independent, upstream_id, t)
+                end
+                # UserDemand flow is abstracted from the inflow as that takes precedence
+                user_id = user_demand_id[id.idx]
+                outflow = if user_id.type == NodeType.UserDemand
+                    inflow - flow.horizontal.user_demand_outflow[user_id.idx]
+                else
+                    inflow
+                end
+                flow.pass_down[id.idx] = outflow * fraction[id.idx]
+            elseif id.type == NodeType.UserDemand
+                # UserDemand abstracting from a single PassDown node
+                # Flow is minimum of PassDown flow and effective demand
+                q_total_demand = get_effective_user_demand(p_independent, id.idx, t)
+                inflow_id = only(user_demand.inflow_links[id.idx]).link[1]
+                @assert inflow_id.type == NodeType.PassDown
+                pass_down_flow = flow.pass_down[inflow_id.idx]
+                inflow = min(q_total_demand, pass_down_flow)
+                outflow = inflow * eval_time_interpolation(
+                    user_demand.return_factor[id.idx], current_return_factor, id.idx, p, t
+                )
+                inflow_idx = user_demand.inflow_link_offsets[id.idx] + 1
+                flow.horizontal.user_demand_inflow[inflow_idx] = inflow
+                flow.horizontal.user_demand_outflow[id.idx] = outflow
+            else
+                error("Unsupported node $id in PassDown subgraph.")
+            end
+        end
+    end
+    return nothing
 end

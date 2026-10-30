@@ -67,6 +67,7 @@ from ribasim_testmodels.equations import (
     manning_resistance_deep_basin_model,
     manning_resistance_model,
     misc_nodes_model,
+    pass_down_equation_model,
     pid_control_equation_model,
     rating_curve_between_basins_model,
     rating_curve_model,
@@ -76,6 +77,10 @@ from ribasim_testmodels.invalid import (
     invalid_discrete_control_model,
     invalid_link_types_model,
     invalid_no_basin_model,
+    invalid_pass_down_fraction_sum_model,
+    invalid_pass_down_missing_fractions_model,
+    invalid_pass_down_multiple_user_demands_model,
+    invalid_pass_down_only_user_demand_model,
     invalid_priorities_model,
     invalid_qh_model,
     invalid_unstable_model,
@@ -85,6 +90,7 @@ from ribasim_testmodels.junction import (
     junction_combined,
 )
 from ribasim_testmodels.observation import observation_model
+from ribasim_testmodels.pass_down import pass_down_model
 from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
     pid_control_model,
@@ -132,6 +138,10 @@ __all__ = [
     "invalid_discrete_control_model",
     "invalid_link_types_model",
     "invalid_no_basin_model",
+    "invalid_pass_down_fraction_sum_model",
+    "invalid_pass_down_missing_fractions_model",
+    "invalid_pass_down_multiple_user_demands_model",
+    "invalid_pass_down_only_user_demand_model",
     "invalid_priorities_model",
     "invalid_qh_model",
     "invalid_unstable_model",
@@ -158,6 +168,8 @@ __all__ = [
     "outlet_allocation_discrete_control_model",
     "outlet_continuous_control_model",
     "outlet_model",
+    "pass_down_equation_model",
+    "pass_down_model",
     "pid_control_equation_model",
     "pid_control_model",
     "polder_management_model",

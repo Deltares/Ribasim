@@ -44,6 +44,7 @@ from ribasim.config import (
     ManningResistance,
     Observation,
     Outlet,
+    PassDown,
     PidControl,
     Pump,
     Results,
@@ -117,6 +118,7 @@ class Model(FileModel, ParentModel):
     manning_resistance: ManningResistance = Field(default_factory=ManningResistance)
     observation: Observation = Field(default_factory=Observation)
     outlet: Outlet = Field(default_factory=Outlet)
+    pass_down: PassDown = Field(default_factory=PassDown)
     pid_control: PidControl = Field(default_factory=PidControl)
     pump: Pump = Field(default_factory=Pump)
     tabulated_rating_curve: TabulatedRatingCurve = Field(

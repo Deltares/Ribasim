@@ -69,6 +69,7 @@ node_names_snake_case = [
     "manning_resistance",
     "observation",
     "outlet",
+    "pass_down",
     "pid_control",
     "pump",
     "tabulated_rating_curve",

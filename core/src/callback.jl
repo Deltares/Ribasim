@@ -236,14 +236,16 @@ function update_concentrations!(u, t, integrator)::Nothing
     add_forcing_mass!(mass, loads, dt, t)
 
     # Exact boundary flow over time step
-    for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
-        outflow_id = outflow_link.link[2]
-        add_substance_mass!(
-            view(mass, :, outflow_id.idx),
-            flow_boundary.concentration_itp[id.idx],
-            flow_boundary.cumulative_flow_dt[id.idx],
-            t,
-        )
+    for (id, data_out) in zip(flow_boundary.node_id, flow_boundary.outflow_data)
+        if !data_out.to_pass_down
+            to_node = outflow_id(data_out)
+            add_substance_mass!(
+                view(mass, :, to_node.idx),
+                flow_boundary.concentration_itp[id.idx],
+                flow_boundary.cumulative_flow_dt[id.idx],
+                t,
+            )
+        end
     end
 
     mass_inflows_from_user_demand!(integrator)
