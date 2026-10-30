@@ -1458,14 +1458,18 @@ function connector_flow_capacity_bounds(
 
     if node_id.type ∈ (NodeType.Pump, NodeType.Outlet)
         node = (node_id.type == NodeType.Pump) ? pump : outlet
-        min_flow_rate = node.min_flow_rate[node_id.idx]
-        max_flow_rate = node.max_flow_rate[node_id.idx]
-        # Take the tightest bounds over the allocation time step, since allocation
-        # assigns a single flow rate for the whole step
-        return (
-            max(0.0, min_flow_rate(t), min_flow_rate(t + Δt_allocation)),
-            min(max_flow_rate(t), max_flow_rate(t + Δt_allocation)),
-        )
+        # Without allocation control the flow follows from the linearized flow-level relation,
+        # whose reduction factors can bring it below min_flow_rate
+        if node.allocation_controlled[node_id.idx]
+            min_flow_rate = node.min_flow_rate[node_id.idx]
+            max_flow_rate = node.max_flow_rate[node_id.idx]
+            # Take the tightest bounds over the allocation time step, since allocation
+            # assigns a single flow rate for the whole step
+            return (
+                max(0.0, min_flow_rate(t), min_flow_rate(t + Δt_allocation)),
+                min(max_flow_rate(t), max_flow_rate(t + Δt_allocation)),
+            )
+        end
     elseif node_id.type == NodeType.TabulatedRatingCurve &&
             tabulated_rating_curve.allocation_controlled[node_id.idx]
         # The upper bound is the tabulated_rating_curve_capacity_constraint

@@ -410,6 +410,13 @@ end
     @test JuMP.upper_bound(flow[outlet_link]) * scaling.flow ≈
         outlet.max_flow_rate[outlet_id.idx](0.0)
 
+    # Without allocation control the Outlet flow follows from its linearized flow-level
+    # relation, whose reduction factors can bring it below min_flow_rate
+    outlet.allocation_controlled[outlet_id.idx] = false
+    outlet.min_flow_rate[outlet_id.idx].u .= 1.0e-3
+    @test Ribasim.connector_flow_capacity_bounds(outlet_id, model.integrator.p, 0.0, 86400.0) ==
+        (-Inf, Inf)
+
     # ManningResistance flows are only constrained by their linearized flow-level relation,
     # and Basin storage changes only by the storage that is available
     toml_path =
