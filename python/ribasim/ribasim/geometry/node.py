@@ -1,6 +1,7 @@
 import numbers
 import warnings
 from collections.abc import Callable, Generator, Sequence
+from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import geopandas as gpd
@@ -13,12 +14,13 @@ from matplotlib.axes import Axes
 from matplotlib.offsetbox import AnnotationBbox
 from matplotlib.patches import Patch
 from pandera.typing import Index, Series
-from pandera.typing.geopandas import GeoSeries
+from pandera.typing.geopandas import GeoDataFrame, GeoSeries
 from pydantic import (
     BaseModel as PydanticBaseModel,
 )
 from pydantic import (
     ConfigDict,
+    Field,
     NonNegativeInt,
     PrivateAttr,
     ValidationInfo,
@@ -69,10 +71,19 @@ class NodeSchema(_GeoBaseSchema):
 class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
     """The Ribasim nodes as Point geometries."""
 
+    # Unlike the data tables, the Node table is never None, but empty by default.
+    df: GeoDataFrame[NodeSchema] = Field(  # ty: ignore[invalid-mutable-override]
+        default_factory=lambda: NodeTable._empty_df(), exclude=True, repr=False
+    )
     _used_node_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
 
+    @classmethod
+    def _from_db(cls, path: Path, table: str) -> GeoDataFrame[NodeSchema]:
+        df = super()._from_db(path, table)
+        return cls._empty_df() if df is None else df
+
     def _update_used_ids(self) -> "NodeTable":
-        if self.df is not None and len(self.df.index) > 0:
+        if len(self.df.index) > 0:
             self._used_node_ids.node_ids.update(self.df.index)
             self._used_node_ids.max_node_id = self.df.index.max()
         return self
@@ -81,11 +92,12 @@ class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
     def _validate_used_ids(self) -> "NodeTable":
         return self._update_used_ids()
 
-    def filter(self, nodetype: str):
-        """Filter the node table based on the node type."""
-        if self.df is not None:
-            mask = self.df[self.df["node_type"] == nodetype].index
-            return self.df.loc[mask]
+    def filter(self, nodetype: str) -> GeoDataFrame[NodeSchema]:
+        """Filter the node table based on the node type.
+
+        Returns an empty table if there are no nodes of this type.
+        """
+        return self.df.loc[self.df["node_type"] == nodetype]
 
     def plot_allocation_networks(
         self, ax=None, zorder=None
@@ -100,7 +112,6 @@ class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
 
         contains_main_network = False
         contains_subnetworks = False
-        assert self.df is not None
 
         for subnetwork_id, df_subnetwork in self.df.groupby("subnetwork_id"):
             if subnetwork_id is None:
@@ -146,7 +157,7 @@ class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
             _, ax = plt.subplots()
             ax.axis("off")
 
-        if self.df is None:
+        if self.df.empty:
             return ax
 
         NODE_ICON_SIZE = 22.0  # display-points per icon
@@ -166,7 +177,6 @@ class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
 
         # AnnotationBbox doesn't update axes data limits, so do it manually
         # to prevent bbox_inches='tight' from computing absurd figure sizes.
-        assert self.df is not None
         geometry = self.df["geometry"]
         coords = np.column_stack((geometry.x, geometry.y))
         ax.update_datalim(coords)
@@ -273,11 +283,14 @@ class NodeModel(ParentModel, ChildModel):
         return f"{cls.get_input_type()}{delimiter}{field}"
 
     @property
-    def node(self) -> NodeTable | None:
-        if self._parent is not None:
-            model = cast("Model", self._parent)
-            return NodeTable(df=model.node.filter(self.__class__.__name__))
-        return None
+    def node(self) -> NodeTable:
+        """The nodes of this node type, taken from the Node table of the Model."""
+        if self._parent is None:
+            raise AttributeError(
+                f"A {self.get_input_type()} NodeModel only has nodes when attached to a Model."
+            )
+        model = cast("Model", self._parent)
+        return NodeTable(df=model.node.filter(self.__class__.__name__))
 
     def _tables(self, skip_empty: bool = True) -> Generator[TableModel[_BaseSchema]]:
         for key in self._fields():
@@ -311,8 +324,6 @@ class NodeModel(ParentModel, ChildModel):
             return
         model = cast("Model", self._parent)
         node_df = model.node.filter(self.__class__.__name__)
-        if node_df is None:
-            return
 
         expected_ids: set[int] = set(node_df.index)
         node_type = self.__class__.__name__
@@ -498,10 +509,7 @@ class NodeModel(ParentModel, ChildModel):
             node_type=self.__class__.__name__, node_id=node_id
         )
         node_table.set_crs(model.crs, inplace=True)
-        if model.node.df is None:
-            df = node_table
-        else:
-            df = _concat([model.node.df, node_table])
+        df = _concat([model.node.df, node_table])
 
         has_extra_cols = (
             node.model_extra is not None
@@ -510,10 +518,10 @@ class NodeModel(ParentModel, ChildModel):
         )
         if has_extra_cols:
             # User-provided extra columns go through validation
-            model.node.df = df  # ty: ignore[invalid-assignment]
+            model.node.df = df
         else:
             with model.node._no_validate():
-                model.node.df = df  # ty: ignore[invalid-assignment]
+                model.node.df = df
 
         model.node._used_node_ids.add(node_id)
         return self[node_id]
@@ -529,8 +537,6 @@ class NodeModel(ParentModel, ChildModel):
 
         assert self._parent is not None
         model = cast("Model", self._parent)
-        assert model.node.df is not None
-
         row = model.node.df.loc[index]
         return NodeData(
             node_id=int(index),
