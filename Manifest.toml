@@ -2,7 +2,7 @@
 
 julia_version = "1.13.3"
 manifest_format = "2.1"
-project_hash = "10d6b355f32ad70dc5925c4de0f20589bb8a8b2a"
+project_hash = "11ddd904ef550193beeb9f674e9f1f9b7b0629dc"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -2516,10 +2516,10 @@ weakdeps = ["ForwardDiff"]
 
 [[deps.PythonCall]]
 deps = ["CondaPkg", "Dates", "Libdl", "MacroTools", "Markdown", "Preferences", "Serialization", "Tables", "UnsafePointers"]
-git-tree-sha1 = "8d29e96192c00e8c2bf027b790d1950b19fe922e"
+git-tree-sha1 = "00d3a883b716a8482da76d08dae1f6084bbfeb23"
 registries = "General"
 uuid = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
-version = "0.9.36"
+version = "0.9.37"
 
     [deps.PythonCall.extensions]
     CategoricalArraysExt = "CategoricalArrays"

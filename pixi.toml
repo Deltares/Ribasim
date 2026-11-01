@@ -275,7 +275,7 @@ typos = "*"
 lxml = "*"
 # Docs
 griffe = ">=1, <2"
-juliacall = "==0.9.36"
+juliacall = "==0.9.37"
 jupyter = "*"
 plotly = "*"
 quartodoc = "*"
