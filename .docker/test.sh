@@ -1,24 +1,21 @@
 #!/usr/bin/env bash
-set -eux
+# Run the QGIS plugin tests inside an official QGIS docker image, e.g.:
+#
+#   bash .docker/test.sh qgis/qgis:3.44
+#   bash .docker/test.sh qgis/qgis:4.2
+#
+# The plugin is mounted at /tests_directory/ribasim_qgis, where qgis_setup.sh
+# expects it to be.
+set -euo pipefail
 
-docker compose -f compose.yml up -d --force-recreate --remove-orphans
+IMAGE=${1:?usage: test.sh <qgis docker image>}
+DOCKER_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+REPO_DIR=$(dirname "${DOCKER_DIR}")
 
-echo "Downloading QGIS setup scripts (not included in qgis/qgis:3.40 image)"
-docker exec -t qgis sh -c "wget -q -P /usr/bin https://raw.githubusercontent.com/qgis/QGIS/refs/tags/ltr-3_40/.docker/qgis_resources/test_runner/qgis_setup.sh && chmod +x /usr/bin/qgis_setup.sh"
-docker exec -t qgis sh -c "wget -q -P /usr/bin https://raw.githubusercontent.com/qgis/QGIS/refs/tags/ltr-3_40/.docker/qgis_resources/test_runner/qgis_startup.py"
-
-docker exec -t qgis sh -c "apt install -y python3-pandas python3-pytest python3-coverage python3-netcdf4"
-
-echo "Installation of the plugin Ribasim"
-docker exec -t qgis sh -c "qgis_setup.sh ribasim_qgis"
-echo "Containers are running"
-
-# Run tests using our custom test runner
-docker exec -t -e QGIS_TEST_MODULE=ribasim_qgis.tests qgis sh -c "cd /tests_directory/ribasim_qgis/tests && xvfb-run -a qgis --nologo --code /tests_directory/ribasim_qgis/scripts/qgis_testrunner.py"
-exit_code=$?
-
-echo 'Stopping/killing containers'
-docker compose -f compose.yml kill
-docker compose -f compose.yml rm -f
-
-exit $exit_code
+docker run --rm \
+    --platform linux/amd64 \
+    --env CI=true \
+    --volume "${REPO_DIR}/ribasim_qgis:/tests_directory/ribasim_qgis" \
+    --volume "${DOCKER_DIR}:/tests_directory/.docker:ro" \
+    "${IMAGE}" \
+    bash /tests_directory/.docker/run_tests.sh
