@@ -4,7 +4,7 @@ from pathlib import Path
 
 from hydromt_wflow import WflowSbmModel
 
-MODEL_ROOT = Path("models/wflow_piave")
+MODEL_ROOT = Path("models/wflow_piave_test")
 REGION = {
     "subbasin": [12.2051, 45.8331],
     "strord": 4,
@@ -40,6 +40,34 @@ def main() -> None:
                         "time.timestepsecs": 86400,
                         "model.reservoir__flag": False,
                         "model.glacier__flag": False,
+                        "model.water_mass_balance__flag": True,
+                        "output.lateral.river.h": "river_depth",
+                        "output.lateral.river.q_av" : "river_discharge",
+                        "output.netcdf_grid.path": "output.nc",
+                        # Transfers to the river (RHS of the balance in volumes.py)
+                        "output.netcdf_grid.variables.land_surface_water__to_river_volume_flow_rate": "q_land_to_river",
+                        "output.netcdf_grid.variables.subsurface_water__to_river_volume_flow_rate": "ssf_to_river",
+                        "output.netcdf_grid.variables.land.runoff.variables.net_runoff_river": "net_runoff_river",
+                        # External fluxes
+                        "output.netcdf_grid.variables.atmosphere_water__precipitation_volume_flux": "precip",
+                        "output.netcdf_grid.variables.land_surface__evapotranspiration_volume_flux": "actet",
+                        "output.netcdf_grid.variables.soil_water_saturated_zone_bottom__leakage_volume_flux": "leakage",
+                        # Lateral flows, used for the outflow at the catchment outlet (pit)
+                        "output.netcdf_grid.variables.land_surface_water__volume_flow_rate": "q_av_land",
+                        "output.netcdf_grid.variables.routing.subsurface_flow.variables.q_in_average": "ssf_in",
+                        "output.netcdf_grid.variables.routing.subsurface_flow.variables.q_average": "ssf_out",
+                        # Storages
+                        "output.netcdf_grid.variables.vegetation_canopy_water__depth": "canopystorage",
+                        "output.netcdf_grid.variables.snowpack_dry_snow__leq_depth": "snow_storage",
+                        "output.netcdf_grid.variables.snowpack_liquid_water__depth": "snow_water",
+                        "output.netcdf_grid.variables.soil_water_saturated_zone__depth": "satwaterdepth",
+                        "output.netcdf_grid.variables.soil_water_unsaturated_zone__depth": "ustoredepth",
+                        "output.netcdf_grid.variables.land_surface_water__volume": "land_volume",
+                        "output.netcdf_grid.variables.land_surface_water__depth": "h_av_land",
+                        # Diagnostics
+                        "output.netcdf_grid.variables.soil_surface_water__net_runoff_volume_flux": "net_runoff_land",
+                        "output.netcdf_grid.variables.routing.subsurface_flow.parameters.area": "cell_area",
+                        "output.netcdf_grid.variables.land_water_mass_balance_error__volume_flux": "land_balance_error",
                     }
                 }
             },
