@@ -1138,9 +1138,6 @@ function formulate_pass_down_flow!(
     flow.horizontal .= flow_in.horizontal
     flow.vertical .= flow_in.vertical
 
-    in_subgraph(id::NodeID) =
-        id.is_pass_down || (id.type == NodeType.UserDemand && user_demand.in_pass_down_subgraph[id.idx])
-
     # Different PassDown subgraphs are independent from eachother
     @threaded for subgraph in pass_down_subgraphs
         for id in subgraph
@@ -1148,7 +1145,7 @@ function formulate_pass_down_flow!(
                 inflow = zero(T)
                 for (inflow_link, state_idx) in zip(inflow_links[id.idx], inflow_state_idx[id.idx])
                     source_id = inflow_link.link[1]
-                    if !in_subgraph(source_id)
+                    if !in_pass_down_subgraph(source_id, user_demand)
                         flow.pass_down[state_idx] =
                             fraction[id.idx] * get_source_flow(flow, source_id, p_independent, t)
                     end

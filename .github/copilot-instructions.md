@@ -205,6 +205,10 @@ We use the `GitHub` repository https://github.com/Deltares/Ribasim for issues an
 3. **Coordinate systems**: Be explicit about CRS in geospatial operations
 4. **Numerical precision**: Water balance calculations require careful numerical handling
 
+## Working With the User
+
+Ask the user questions freely, about possible approaches and about how the code works, instead of guessing or diving very deep into the code first.
+
 ## Getting Help
 
 - **Documentation**: https://ribasim.org/
