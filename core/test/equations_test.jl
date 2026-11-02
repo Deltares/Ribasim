@@ -327,3 +327,19 @@ end
     @test flow(mr, h, d_c - 1.0e-6) ≈ q_free rtol = 1.0e-4
     @test flow(mr, h, d_c + 1.0e-6) ≈ q_free rtol = 1.0e-4
 end
+
+@testitem "PassDown" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pass_down_equation/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    flow_data = Ribasim.flow_data(model) |> DataFrame
+
+    trc_flow_data = filter(:to_node_id => ==(2), flow_data)
+    fb_flow_data = filter(:from_node_id => ==(3), flow_data)
+    ud_flow_data = filter(:to_node_id => ==(5), flow_data)
+    pd8_flow_data = filter(:from_node_id => ==(8), flow_data)
+
+    expected_pd8_flow = 2 / 3 * (trc_flow_data.flow_rate + fb_flow_data.flow_rate - ud_flow_data.flow_rate)
+    @test pd8_flow_data.flow_rate ≈ expected_pd8_flow rtol = 1.0e-5
+end
