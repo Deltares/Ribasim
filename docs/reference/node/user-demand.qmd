@@ -9,7 +9,7 @@ When allocation is not used, a `UserDemand` node attempts to extract the full de
 When allocation is used, the amount a `UserDemand` node is allowed to abstract is determined by the [allocation algorithm](../../concept/allocation.qmd).
 This algorithm first tries to allocate from the directly connected basin, and then from other sources whose flow can reach the `UserDemand` node.
 Note that `demand_priority` is used to determine the order in which the UserDemands are allocated water.
-This parameter is only used when allocation is active and is optional when allocation is not active.
+This parameter is only used when allocation is active and is optional, it defaults to 1.
 
 When the connected Basin is almost empty or reaches the minimum level at which the UserDemand can extract water (`min_level`), it will stop extraction.
 The `min_level` must be provided when the UserDemand abstracts from Basin(s); it is not used for abstraction from a PassDown node.
