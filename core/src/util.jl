@@ -1238,9 +1238,11 @@ function set_uplink_downlink_storage!(
         out_data = outflow_data[idx]
         storage_uplink[idx] = in_id.is_basin ? storage[in_id.idx] : zero(eltype(storage_uplink))
 
-        if !out_data.to_pass_down
+        storage_downlink[idx] = if out_data.to_pass_down
+            zero(eltype(storage_downlink))
+        else
             out_id = outflow_id(out_data)
-            storage_downlink[idx] = out_id.is_basin ? storage[out_id.idx] : zero(eltype(storage_downlink))
+            out_id.is_basin ? storage[out_id.idx] : zero(eltype(storage_downlink))
         end
     end
 

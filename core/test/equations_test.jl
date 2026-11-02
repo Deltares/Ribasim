@@ -341,5 +341,5 @@ end
     pd8_flow_data = filter(:from_node_id => ==(8), flow_data)
 
     expected_pd8_flow = 2 / 3 * (trc_flow_data.flow_rate + fb_flow_data.flow_rate - ud_flow_data.flow_rate)
-    @test pd8_flow_data.flow_rate ≈ expected_pd8_flow rtol = 1.0e-5
+    @test pd8_flow_data.flow_rate ≈ expected_pd8_flow
 end

@@ -59,12 +59,14 @@ end
     using Ribasim.SciMLOperators: update_coefficients!
     using Ribasim.OrdinaryDiffEqDifferentiation: dolinsolve
 
-    # PID control with derivative term, continuous control and a model without control
+    # PID control with derivative term, continuous control, PassDown and a model without control
     for model_name in [
             "basic",
             "pid_control",
             "discrete_control_of_pid_control",
             "outlet_continuous_control",
+            "pass_down",
+            "pass_down_equation",
         ]
         toml_path = normpath(@__DIR__, "../../generated_testmodels/$model_name/ribasim.toml")
 
