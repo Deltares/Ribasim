@@ -22,8 +22,8 @@ def pass_down_model() -> Model:
     - A Pump with multiple PassDown nodes downstream, one of which feeds a UserDemand
       and passes the remaining flow to a Basin.
     - A UserDemand with multiple PassDown nodes downstream.
-    - A UserDemand with inflow from both a Basin and a PassDown node, where the PassDown
-      flow is smaller than the UserDemand's share of the demand on that link.
+    - A UserDemand with inflow from a single PassDown node, where the PassDown
+      flow is smaller than the UserDemand's demand.
     - A PassDown node with both a UserDemand and multiple PassDown nodes downstream,
       where the UserDemand takes precedence and the remaining flow is divided over
       the PassDown nodes.
@@ -72,7 +72,7 @@ def pass_down_model() -> Model:
     pd6 = model.pass_down.add(node(10, 6, 0), [pass_down.Static(fraction=[np.nan])])
     b2 = model.basin.add(node(11, 7, -1), basin_tables())
 
-    # UserDemand with inflow from both a Basin and a PassDown node
+    # UserDemand with inflow from a single PassDown node
     ud2 = model.user_demand.add(node(12, 8, 0), user_demand_tables(2e-3, 0.5))
     b3 = model.basin.add(node(13, 9, 0), basin_tables())
 

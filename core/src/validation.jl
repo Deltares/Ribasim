@@ -323,6 +323,23 @@ function valid_user_demand_parameters(
     return !errors
 end
 
+"""
+Check that a min_level is provided for the UserDemand nodes that abstract from Basin(s),
+since the abstraction is reduced below this level. It is not needed for PassDown inflow,
+which has no level.
+"""
+function valid_user_demand_min_level(user_demand::UserDemand)::Bool
+    errors = false
+    for (id, inflow_links, min_level) in
+        zip(user_demand.node_id, user_demand.inflow_links, user_demand.min_level)
+        if isnan(min_level) && any(link_metadata.link[1].is_basin for link_metadata in inflow_links)
+            @error "$id abstracts from a Basin, so a min_level must be provided."
+            errors = true
+        end
+    end
+    return !errors
+end
+
 function valid_config(config::Config)::Bool
     errors = false
 
@@ -724,14 +741,17 @@ function valid_pass_down_connectivity(graph)
 
     for id in labels(graph)
         if id.type == NodeType.UserDemand
-            from_pass_down = false
-            from_basin = false
+            n_pass_down_in = 0
+            n_other_in = 0
             for inflow_id in inflow_ids(graph, id)
-                inflow_id.is_basin && (from_basin = true)
-                inflow_id.is_pass_down && (from_pass_down = true)
+                if inflow_id.is_pass_down
+                    n_pass_down_in += 1
+                else
+                    n_other_in += 1
+                end
             end
-            if from_pass_down && from_basin
-                @error "$id cannot abstract from both PassDown and Basin."
+            if !iszero(n_pass_down_in) && (n_pass_down_in + n_other_in > 1)
+                @error "$id must have either one or more Basin inflow links, or exactly one PassDown inflow link."
                 errors = true
             end
         elseif id.is_pass_down

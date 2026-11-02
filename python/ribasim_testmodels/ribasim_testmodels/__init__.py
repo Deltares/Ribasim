@@ -84,6 +84,7 @@ from ribasim_testmodels.invalid import (
     invalid_priorities_model,
     invalid_qh_model,
     invalid_unstable_model,
+    invalid_user_demand_missing_min_level_model,
 )
 from ribasim_testmodels.junction import (
     junction_chained,
@@ -145,6 +146,7 @@ __all__ = [
     "invalid_priorities_model",
     "invalid_qh_model",
     "invalid_unstable_model",
+    "invalid_user_demand_missing_min_level_model",
     "junction_chained",
     "junction_combined",
     "leaky_bucket_model",

@@ -48,5 +48,5 @@ The algorithm for the PassDown node flow in a subgraph is as follows:
 The PassDown node has some specific connectivity rules:
 
 - A maximum of 1 UserDemand node can abstract from a PassDown node.
-- A UserDemand node cannot abstract from Basin(s) and a PassDown node simultaneously.
+- A UserDemand node must have either one or more Basin inflow links, or exactly one PassDown inflow link.
 - Since a PassDown node cannot accumulate water, it always needs one or more outflow links. If the PassDown node flows into a UserDemand node, there must be another outflow link to a different node type, because the inflow to the PassDown can be larger than the demand and the remainder needs somewhere to go.

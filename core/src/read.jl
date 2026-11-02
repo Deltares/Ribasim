@@ -1515,6 +1515,7 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
         take_first = Val((:demand_priority,)),
     )
     errors |= parse_parameter!(user_demand, config, Val(:min_level); static, time)
+    errors |= !valid_user_demand_min_level(user_demand)
     errors |= parse_demand!(user_demand, static, time, cyclic_times, demand_priorities, config)
     errors |=
         !valid_demand(

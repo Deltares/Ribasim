@@ -373,3 +373,27 @@ def invalid_pass_down_only_user_demand_model() -> Model:
     model.link.add(pd, ud)
     model.link.add(ud, trm)
     return model
+
+
+def invalid_user_demand_missing_min_level_model() -> Model:
+    """UserDemand abstracting from a Basin without a min_level."""
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
+        crs="EPSG:28992",
+    )
+    bsn = model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.State(level=[1.0]),
+            basin.Profile(level=[0.0, 2.0], area=[100.0, 200.0]),
+        ],
+    )
+    ud = model.user_demand.add(
+        Node(2, Point(1, 0)),
+        [user_demand.Static(demand_priority=[1], demand=[1e-4], return_factor=0.5)],
+    )
+    trm = model.terminal.add(Node(3, Point(2, 0)))
+    model.link.add(bsn, ud)
+    model.link.add(ud, trm)
+    return model
