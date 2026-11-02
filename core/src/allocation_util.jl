@@ -52,7 +52,11 @@ function collect_primary_network_connections!(
         for node_id in graph[].node_ids[subnetwork_id]
             for upstream_id in inflow_ids(graph, node_id)
                 upstream_node_subnetwork_id = graph[upstream_id].subnetwork_id
-                if is_primary_network(upstream_node_subnetwork_id)
+                if (upstream_id.is_pass_down || node_id.is_pass_down) &&
+                        upstream_node_subnetwork_id != subnetwork_id
+                    @error "PassDown nodes at the boundary between subnetworks are not supported." upstream_id node_id
+                    errors = true
+                elseif is_primary_network(upstream_node_subnetwork_id)
                     if upstream_id.type ∈ (NodeType.Pump, NodeType.Outlet)
                         push!(
                             primary_network_connections_subnetwork,
@@ -83,6 +87,21 @@ function collect_primary_network_connections!(
             primary_network_connections_subnetwork
     end
 
+    # Flow from a subnetwork into the primary network is not supported, which includes PassDown nodes
+    # at this boundary
+    for node_id in get(graph[].node_ids, Int32(1), ())
+        for upstream_id in inflow_ids(graph, node_id)
+            if !is_primary_network(graph[upstream_id].subnetwork_id)
+                if upstream_id.is_pass_down || node_id.is_pass_down
+                    @error "PassDown nodes at the boundary between subnetworks are not supported." upstream_id node_id
+                else
+                    @error "This node flows from a subnetwork into the primary network, which is not supported." upstream_id node_id
+                end
+                errors = true
+            end
+        end
+    end
+
     errors &&
         error("Errors detected in connections between primary network and subnetworks.")
 
@@ -96,6 +115,22 @@ function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
     else
         1.0
     end
+end
+
+"""
+The outflow links of a node: the links to all PassDown nodes if the node flows into PassDown nodes,
+otherwise the single outflow link.
+"""
+function all_outflow_links(outflow_data::OutflowData)::Vector{LinkMetadata}
+    return outflow_data.to_pass_down ? outflow_data.outflow_links : [outflow_data.outflow_link]
+end
+
+"""
+The fraction of the outflow of a node that flows over a link, which is the fraction of the PassDown node
+that the link leads to. Without a PassDown node downstream the node has a single outflow link.
+"""
+function outflow_link_fraction(pass_down::PassDown, link::Tuple{NodeID, NodeID})::Float64
+    return link[2].is_pass_down ? pass_down.fraction[link[2].idx] : 1.0
 end
 
 function write_problem_to_file(problem, config; info = true, path = nothing)::Nothing

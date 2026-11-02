@@ -286,6 +286,7 @@ struct NodeIDsInSubnetwork
     manning_resistance_ids_subnetwork::Vector{NodeID}
     pump_ids_subnetwork::Vector{NodeID}
     outlet_ids_subnetwork::Vector{NodeID}
+    pass_down_ids_subnetwork::Vector{NodeID}
     basin_ids_subnetwork_with_level_demand::Vector{NodeID}
     node_ids_subnetwork_with_flow_demand::Vector{NodeID}
 end

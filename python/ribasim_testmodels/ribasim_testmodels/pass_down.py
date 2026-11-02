@@ -2,7 +2,7 @@ from datetime import datetime
 
 import numpy as np
 from ribasim import Model
-from ribasim.config import Experimental
+from ribasim.config import Allocation, Experimental
 from ribasim.geometry.node import Node
 from ribasim.nodes import (
     basin,
@@ -174,5 +174,61 @@ def pass_down_tracer_model() -> Model:
     model.link.add(pd_a, pd_b)
     model.link.add(ud, b1)
     model.link.add(pd_b, b2)
+
+    return model
+
+
+def pass_down_allocation_model() -> Model:
+    """Create a model for testing allocation with PassDown nodes.
+
+    A FlowBoundary (3e-3 m³/s) and a Pump (2e-3 m³/s) flow into PassDown #4. UserDemand #5
+    abstracts its demand of 4e-3 m³/s first, and the remaining 1e-3 m³/s is divided over
+    PassDown #6 (70%, flows into Basin #8) and #7 (30%, flows into Basin #9). The return flow
+    of the UserDemand (50%) flows via PassDown #10 into Basin #11.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 10),
+        crs="EPSG:28992",
+        allocation=Allocation(),
+        experimental=Experimental(allocation=True),
+    )
+
+    def node(node_id: int, x: float, y: float) -> Node:
+        return Node(node_id, Point(x, y), subnetwork_id=2)
+
+    def basin_tables(level: float) -> list:
+        return [
+            basin.Profile(area=[1e5, 1e5], level=[0.0, 100.0]),
+            basin.State(level=[level]),
+        ]
+
+    source = model.basin.add(node(1, 0, 1), basin_tables(10.0))
+    pmp = model.pump.add(node(2, 1, 1), [pump.Static(flow_rate=[2e-3])])
+    fb = model.flow_boundary.add(
+        node(3, 1, -1), [flow_boundary.Static(flow_rate=[3e-3])]
+    )
+    pd_a = model.pass_down.add(node(4, 2, 0), [pass_down.Static(fraction=[np.nan])])
+    ud = model.user_demand.add(
+        node(5, 3, 1),
+        [user_demand.Static(demand=[4e-3], return_factor=0.5)],
+    )
+    pd_b = model.pass_down.add(node(6, 3, 0), [pass_down.Static(fraction=[0.7])])
+    pd_c = model.pass_down.add(node(7, 3, -1), [pass_down.Static(fraction=[np.nan])])
+    b1 = model.basin.add(node(8, 4, 0), basin_tables(1.0))
+    b2 = model.basin.add(node(9, 4, -1), basin_tables(1.0))
+    pd_d = model.pass_down.add(node(10, 4, 1), [pass_down.Static(fraction=[np.nan])])
+    b3 = model.basin.add(node(11, 5, 1), basin_tables(1.0))
+
+    model.link.add(source, pmp)
+    model.link.add(pmp, pd_a)
+    model.link.add(fb, pd_a)
+    model.link.add(pd_a, ud)
+    model.link.add(pd_a, pd_b)
+    model.link.add(pd_a, pd_c)
+    model.link.add(pd_b, b1)
+    model.link.add(pd_c, b2)
+    model.link.add(ud, pd_d)
+    model.link.add(pd_d, b3)
 
     return model

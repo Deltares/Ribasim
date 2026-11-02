@@ -52,6 +52,10 @@ With `experimental.concentration` the tracers are propagated through the PassDow
 - A UserDemand abstracting from a PassDown node handles tracers like a UserDemand abstracting from Basins: the mass of the flow it abstracts ends up in its return flow, with the UserDemand tracer replaced by the one of the UserDemand itself.
 - The mass that flows from a PassDown subgraph into a Basin is added to the mass of that Basin. A PassDown node itself does not store water, so tracers do not age in it.
 
+## Allocation
+
+PassDown nodes can be used in [allocation](/concept/allocation.qmd#sec-allocation-pass-down) subnetworks, where the UserDemand abstracting from a PassDown node abstracts up to its allocated demand and the rest of the flow is divided over the downstream nodes. A PassDown node must have the same subnetwork ID as the nodes it is connected to: PassDown nodes at the boundary between the primary network and a subnetwork, or between subnetworks, are not supported yet.
+
 # Connectivity rules
 
 The PassDown node has some specific connectivity rules:
