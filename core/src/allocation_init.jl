@@ -234,6 +234,27 @@ function add_user_demand!(
         base_name = "user_demand_return_flow"
     )
 
+    # Define constraints: abstraction from a Basin is limited by the level of that Basin at the
+    # end of the allocation timestep relative to the min_level of the UserDemand. The (scaled)
+    # coefficient and rhs are set in update_user_demand_flow_bounds!. The slack variable
+    # (scaling.flow * m^3/s) keeps the problem feasible if other flows lower the Basin level
+    # regardless of the abstraction, and is minimized in the low storage factor objective.
+    basin_inflow_links = [
+        link_metadata.link for node_id in user_demand_ids_subnetwork for
+            link_metadata in inflow_links[node_id.idx] if link_metadata.link[1].is_basin
+    ]
+    storage_change = problem[:basin_storage_change]
+    problem[:user_demand_min_level_slack] = JuMP.@variable(
+        problem,
+        0 ≤ user_demand_min_level_slack[link = basin_inflow_links],
+    )
+    problem[:user_demand_min_level_constraint] = JuMP.@constraint(
+        problem,
+        [link = basin_inflow_links],
+        flow[link] - storage_change[link[1]] - user_demand_min_level_slack[link] ≤ 1.0,
+        base_name = "user_demand_min_level_constraint"
+    )
+
     # Add the links for which the supplied volume is required for output
     for node_id in user_demand_ids_subnetwork
         for link_metadata in inflow_links[node_id.idx]
@@ -869,7 +890,9 @@ for this allocation model.
 function add_low_storage_factor_objective!(allocation_model::AllocationModel)::Nothing
     (; problem, objectives) = allocation_model
 
-    expression = -variable_sum(problem[:low_storage_factor])
+    # The small weight makes sure the low storage factors are not lowered to reduce the slack
+    expression = -variable_sum(problem[:low_storage_factor]) +
+        1.0e-3 * variable_sum(problem[:user_demand_min_level_slack])
     push!(
         objectives,
         AllocationObjective(;

@@ -1513,13 +1513,15 @@ function update_user_demand_flow_bounds!(
         p::Parameters,
         t::Float64,
     )::Nothing
-    (; problem, node_ids_in_subnetwork) = allocation_model
+    (; problem, node_ids_in_subnetwork, scaling) = allocation_model
     (; user_demand_ids_subnetwork) = node_ids_in_subnetwork
     (; p_independent) = p
     (; user_demand, level_difference_threshold) = p_independent
-    (; current_storage) = p.current_basin_properties
+    (; current_storage, current_area) = p.current_basin_properties
     flow = problem[:flow]
     user_demand_allocated = problem[:user_demand_allocated]
+    storage_change = problem[:basin_storage_change]
+    min_level_constraint = problem[:user_demand_min_level_constraint]
 
     for node_id in user_demand_ids_subnetwork
         total_demand = sum(
@@ -1528,14 +1530,31 @@ function update_user_demand_flow_bounds!(
         )
         min_level = user_demand.min_level[node_id.idx]
         for link_metadata in user_demand.inflow_links[node_id.idx]
-            # Like in the physical layer, the abstraction stops when the source reaches the
-            # minimum level. This uses the level at the start of the timestep.
-            source_id = link_metadata.link[1]
-            source_storage = source_id.is_basin ? current_storage[source_id.idx] : 0.0
-            source_level = get_level(source_storage, p, source_id, t)
-            f_reduction = reduction_factor(source_level - min_level, level_difference_threshold)
-            JuMP.set_lower_bound(flow[link_metadata.link], 0.0)
-            JuMP.set_upper_bound(flow[link_metadata.link], total_demand * f_reduction)
+            link = link_metadata.link
+            source_id = link[1]
+            JuMP.set_lower_bound(flow[link], 0.0)
+            if source_id.is_basin
+                source_level = get_level(current_storage[source_id.idx], p, source_id, t)
+                Δh = source_level - min_level
+                # The line through (0, 0) that touches the physical reduction factor from above
+                # at Δh = 3/4 * threshold. Combined with the upper bound of 1 this never cuts
+                # off the physical flow, and it is linear in the level at the end of the timestep.
+                slope = 9 / 8 * total_demand / level_difference_threshold
+                has_water = Δh > 0
+                JuMP.set_upper_bound(flow[link], has_water ? total_demand : 0.0)
+                JuMP.set_normalized_coefficient(
+                    min_level_constraint[link],
+                    storage_change[source_id],
+                    has_water ? -slope * scaling.storage / current_area[source_id.idx] : 0.0,
+                )
+                JuMP.set_normalized_rhs(min_level_constraint[link], has_water ? slope * Δh : 0.0)
+            else
+                # The level of a LevelBoundary does not depend on the optimization
+                source_level = get_level(0.0, p, source_id, t)
+                f_reduction =
+                    reduction_factor(source_level - min_level, level_difference_threshold)
+                JuMP.set_upper_bound(flow[link], total_demand * f_reduction)
+            end
         end
         JuMP.set_lower_bound(flow[user_demand.outflow_link[node_id.idx].link], 0.0)
         JuMP.set_upper_bound(flow[user_demand.outflow_link[node_id.idx].link], total_demand)

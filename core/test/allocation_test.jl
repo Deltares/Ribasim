@@ -241,6 +241,8 @@ end
     using DataFrames: DataFrame
     using Dates: DateTime
 
+    # After the first two days the Basins are at the min_level of the UserDemand nodes,
+    # so allocation should not allocate most of the demand of 2 m3/s that cannot be abstracted
     toml_path = normpath(
         @__DIR__,
         "../../generated_testmodels/small_primary_secondary_network/ribasim.toml",
@@ -248,9 +250,6 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test success(model)
-
-    # After the first two days the Basins are at the min_level of the UserDemand nodes,
-    # so allocation should not allocate water that cannot be abstracted
     df = DataFrame(Ribasim.allocation_data(model))
     df = df[
         (df.node_type .== "UserDemand") .&& (df.time .>= DateTime(2020, 1, 3)) .&&
@@ -258,8 +257,29 @@ end
         :,
     ]
     @test !isempty(df)
-    @test all(df.allocated .< 0.01)
-    @test all(isapprox.(df.allocated, df.supplied; atol = 0.01))
+    @test sum(df.allocated) < 0.5
+    @test sum(df.supplied) < 0.5
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/user_demand_min_level/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    # The Pump with a min_flow_rate lowering the level does not make the problem infeasible
+    @test success(model)
+    df = DataFrame(Ribasim.allocation_data(model))
+    df = df[(df.node_type .== "UserDemand") .&& .!isnan.(df.demand), :]
+
+    # The allocation follows the inflow of 0.02 m3/s that can be abstracted in equilibrium,
+    # instead of alternating between too much and too little per day
+    df_inflow = df[(df.node_id .== 3) .&& (df.time .>= DateTime(2020, 1, 4)), :]
+    @test !isempty(df_inflow)
+    @test all(isapprox.(df_inflow.allocated, 0.02; atol = 0.003))
+    @test all(isapprox.(df_inflow.supplied, 0.02; atol = 0.003))
+
+    # The level ends up below the min_level so there is hardly anything to allocate
+    df_pump = df[df.node_id .== 7, :]
+    @test !isempty(df_pump)
+    @test sum(df_pump.allocated) < 0.01
 end
 
 @testitem "infeasibility analysis" begin
