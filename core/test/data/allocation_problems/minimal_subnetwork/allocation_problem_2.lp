@@ -23,8 +23,8 @@ basin_storage_change_Basin_#4_ >= -0.004810710976939163
 0 <= low_storage_factor_Basin_#2_ <= 1
 0 <= low_storage_factor_Basin_#4_ <= 1
 flow_(FlowBoundary_#1,_Basin_#2)_ = 0.00025865754339998156
-0 <= flow_(Basin_#2,_Pump_#3)_ <= 0.0005173150867999631
-0 <= flow_(Pump_#3,_Basin_#4)_ <= 0.0005173150867999631
+flow_(Basin_#2,_Pump_#3)_ free
+flow_(Pump_#3,_Basin_#4)_ free
 0 <= flow_(Basin_#4,_UserDemand_#5)_ <= 0.00012932877169999078
 0 <= flow_(Basin_#4,_UserDemand_#6)_ <= 0.00012932877169999078
 0 <= flow_(UserDemand_#5,_Basin_#4)_ <= 0.00012932877169999078
