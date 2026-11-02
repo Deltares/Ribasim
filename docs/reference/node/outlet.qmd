@@ -8,6 +8,14 @@ It is similar to the Pump, except that water only flows down, by gravity.
 
 When PID controlled, the Outlet must point towards the controlled Basin in terms of links.
 
+# Schematic
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_connector_schematic.jl")
+plot_connector_schematic(:Outlet)
+```
+
 # Tables
 
 ## Static

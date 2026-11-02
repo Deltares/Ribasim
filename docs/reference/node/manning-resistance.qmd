@@ -1,24 +1,33 @@
 ---
 title: "![](/assets/node-icons/ManningResistance.svg){height=20} ManningResistance"
+engine: julia
 ---
 
 The ManningResistance node calculates a flow rate between two Basins based on their water levels.
 The flow rate is calculated by conservation of energy and the Manning-Gauckler formula to estimate friction losses.
 
+# Schematic
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_connector_schematic.jl")
+plot_connector_schematic(:ManningResistance)
+```
+
 # Tables
 
 ## Static
 
-```{python}
+```{julia}
 # | code-fold: true
-%run ../../gen_docs_table.py
+include("../../../utils/gen_docs_table.jl")
 table_from_schema(
-    "ManningResistance.Static",
-    restrictions={
-        "length": "positive",
-        "manning_n": "positive",
-        "profile_width": "non-negative, not zero together with profile_slope",
-    },
+    Ribasim.Schema.ManningResistance.Static;
+    restrictions = Dict(
+        :length => "positive",
+        :manning_n => "positive",
+        :profile_width => "non-negative, not zero together with profile_slope",
+    ),
 )
 ```
 
@@ -230,29 +239,25 @@ with $x_0 = 10^{-5}$. This is a numerical regularisation, not a physical laminar
 Note that for a reach of length $L$ the relaxation is active for head differences below $x_0 L$, so for a 1 km reach below 1 cm, and in that region the flow is smaller than the Gauckler-Manning formula gives.
 The square root in the sill flow is relaxed in the same way, as $\sqrt{2 g L}\, s\left(\frac{E - d}{L}; x_0\right)$, so that for nearly equal levels the Manning flow and the sill flow are both proportional to $s(\Delta h / L; x_0)$ and their minimum is as smooth as each of them.
 
-```{python}
+```{julia}
 # | code-fold: true
-import numpy as np
-import matplotlib.pyplot as plt
+using Plots
 
-def s(x, threshold):
-  if np.abs(x) < threshold:
-    x_scaled = x / threshold
-    return x / (4*np.sqrt(threshold)) * (5 - (x/threshold)**2)
-  else:
-    return np.sign(x)*np.sqrt(np.abs(x))
+function s(x, threshold)
+    if abs(x) < threshold
+        return x / (4 * sqrt(threshold)) * (5 - (x / threshold)^2)
+    else
+        return sign(x) * sqrt(abs(x))
+    end
+end
 
-threshold = 1e-5
-x = np.linspace(-2.5*threshold, 2.5*threshold, 100)
+threshold = 1.0e-5
+x = range(-2.5 * threshold, 2.5 * threshold; length = 100)
+y_o = sign.(x) .* sqrt.(abs.(x))
+y_s = s.(x, threshold)
 
-fig, ax = plt.subplots()
-
-y_o = np.sign(x)*np.sqrt(np.abs(x))
-y_s = [s(x_, threshold) for x_ in x]
-
-ax.plot(x, y_o, ls = ":", label = r"sign$(x)\sqrt{|x|}$")
-ax.plot(x, y_s, color = "C0", label = r"$s\left(x; 10^{-5} \right)$")
-ax.legend();
+plot(x, y_o; linestyle = :dot, label = raw"$\mathrm{sign}(x)\sqrt{|x|}$")
+plot!(x, y_s; label = raw"$s(x; 10^{-5})$")
 ```
 
 Finally the flow $Q$ is multiplied by the reduction factor $\phi$, which makes the flow go smoothly to $0$ as the upstream storage (as determined by the flow direction) becomes smaller than the equivalent of a water depth of $10 \;\text{cm}$ (change with solver setting `depth_threshold`).

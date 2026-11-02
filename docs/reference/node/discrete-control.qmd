@@ -42,6 +42,73 @@ df = DataFrame(:node => node_names, :controllable_parameters => controllable_par
 markdown_table(df)
 ```
 
+# Schematic
+
+```{julia}
+# | code-fold: true
+using Plots
+
+control_diagram = plot(;
+    xlims = (0, 11), ylims = (0, 7), size = (768, 490),
+    aspect_ratio = :equal,
+    axis = false, ticks = false, grid = false, legend = false,
+    margin = 5Plots.mm,
+)
+
+control_states = ["off", "low", "high"]
+active_state = "low"
+state_flow_rates = [0.0, 0.5, 1.0]
+selector_x, selector_y = 2.5, 4.5
+radius = 1.6
+
+for (i, state) in enumerate(control_states)
+    active = state == active_state
+    start_angle = -pi / 2 + (i - 1) * 2pi / length(control_states)
+    end_angle = start_angle + 2pi / length(control_states)
+    angles = range(start_angle, end_angle; length = 60)
+    middle_angle = (start_angle + end_angle) / 2
+    plot!(
+        control_diagram,
+        Shape(
+            [selector_x; selector_x .+ radius .* cos.(angles); selector_x],
+            [selector_y; selector_y .+ radius .* sin.(angles); selector_y],
+        );
+        fillcolor = active ? :lightgreen : :lightgrey,
+        linecolor = :white, linewidth = 2,
+    )
+    annotate!(
+        control_diagram,
+        selector_x + 0.7radius * cos(middle_angle),
+        selector_y + 0.7radius * sin(middle_angle),
+        text(state, 11),
+    )
+
+    y = 6.1 - (i - 1) * 1.2
+    plot!(
+        control_diagram,
+        Shape([6.2, 10.5, 10.5, 6.2], [y - 0.45, y - 0.45, y + 0.45, y + 0.45]);
+        fillcolor = active ? :lightgreen : :white,
+        linecolor = active ? :darkgreen : :grey,
+        linewidth = active ? 2 : 1,
+    )
+    annotate!(
+        control_diagram, 8.35, y,
+        text("$state: flow_rate = $(state_flow_rates[i])", 10),
+    )
+end
+
+plot!(control_diagram, [selector_x, selector_x], [2.9, 1.8]; color = :grey, linestyle = :dot)
+plot!(control_diagram, [8.35, 8.35], [3.25, 1.8]; color = :grey, linestyle = :dot)
+plot!(control_diagram, [2.5, 8.35], [1.4, 1.4]; color = "#808080", linewidth = 2)
+scatter!(control_diagram, [5.4], [1.4]; markershape = :rtriangle, markersize = 6, color = "#808080")
+scatter!(control_diagram, [2.5], [1.4]; markershape = :star5, markersize = 20, color = "#984EA3")
+scatter!(control_diagram, [8.35], [1.4]; markershape = :hexagon, markersize = 18, color = :grey)
+annotate!(control_diagram, 2.5, 0.65, text("DiscreteControl", 11))
+annotate!(control_diagram, 8.35, 0.65, text("Pump", 11))
+annotate!(control_diagram, 5.4, 1.8, text("control", 10))
+control_diagram
+```
+
 # Tables
 
 ## Variable

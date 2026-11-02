@@ -7,6 +7,14 @@ A TabulatedRatingCurve determines outflow from a Basin by looking up the flow ra
 The TabulatedRatingCurve takes a rating curve as input.
 Use it for instance to model flow over a weir.
 
+# Schematic
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_connector_schematic.jl")
+plot_connector_schematic(:TabulatedRatingCurve)
+```
+
 # Tables
 
 ## Static
