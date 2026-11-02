@@ -192,7 +192,7 @@ function get_level(
         # Terminal is like a bottomless pit.
         # A level at -Inf ensures we don't hit `max_downstream_level` reduction factors.
         -Inf
-    elseif node_id.type == NodeType.PassDown
+    elseif node_id.is_pass_down
         # This is an upstream PassDown, as downstream PassDowns are caught in the top get_level method
         Inf
     else
@@ -1262,4 +1262,9 @@ function get_effective_user_demand(p_independent::ParametersIndependent, node_id
         )
     end
     return q_total_demand
+end
+
+function unique_user_demand_inflow(flow::FlowCVector, user_demand::UserDemand, node_id::NodeID)
+    inflow_idx = user_demand.inflow_link_offsets[node_id.idx] + 1
+    return flow.horizontal.user_demand_inflow[inflow_idx]
 end

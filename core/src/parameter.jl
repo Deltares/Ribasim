@@ -127,10 +127,15 @@ This index can be passed directly, or calculated from the database or parameters
     value::Int32
     "Index into the internal node type struct"
     idx::Int
-    "Fast lookup of whether this node is a Basin"
+    "Fast lookup of whether this node is a Basin or PassDown"
     is_basin::Bool
+    is_pass_down::Bool
     function NodeID(type, value, idx)
-        new(type, value, idx, type ∈ (NodeType.Basin, :Basin))
+        new(
+            type, value, idx,
+            type ∈ (NodeType.Basin, :Basin),
+            type ∈ (NodeType.PassDown, :PassDown)
+        )
     end
 end
 

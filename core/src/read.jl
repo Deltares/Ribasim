@@ -536,7 +536,7 @@ function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inf
 
     for id in node.node_id
         outflow_links = get_outflow_links(graph, id)
-        to_pass_down = any(link.link[2].type == NodeType.PassDown for link in outflow_links)
+        to_pass_down = any(link.link[2].is_pass_down for link in outflow_links)
         node.outflow_data[id.idx] = if to_pass_down
             OutflowData(; outflow_links, to_pass_down = true)
         else
@@ -1652,9 +1652,9 @@ function get_pass_down_subgraphs(
         pass_down_ids::Vector{NodeID},
     )::Vector{Vector{NodeID}}
     in_subgraph(id::NodeID) =
-        id.type == NodeType.PassDown || (
+        id.is_pass_down || (
         id.type == NodeType.UserDemand && any(
-            inneighbor_id -> inneighbor_id.type == NodeType.PassDown,
+            inneighbor_id -> inneighbor_id.is_pass_down,
             inneighbor_labels_type(graph, id, LinkType.flow),
         )
     )
@@ -1701,7 +1701,7 @@ function topological_sort_subgraph(graph::ModelGraph, subgraph::Vector{NodeID}):
     for id in subgraph, upstream_id in inflow_ids(graph, id)
         upstream_id in node_set || continue
         push!(dependencies[id], upstream_id)
-        if id.type == NodeType.PassDown && upstream_id.type == NodeType.PassDown
+        if id.is_pass_down && upstream_id.is_pass_down
             for sibling_id in outflow_ids(graph, upstream_id)
                 sibling_id.type == NodeType.UserDemand && push!(dependencies[id], sibling_id)
             end
@@ -1764,7 +1764,7 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
 
     for upstream_id in labels(graph)
         pass_down_ids = filter(
-            id -> id.type == NodeType.PassDown,
+            id -> id.is_pass_down,
             collect(outneighbor_labels_type(graph, upstream_id, LinkType.flow)),
         )
         isempty(pass_down_ids) && continue

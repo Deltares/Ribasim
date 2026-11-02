@@ -489,9 +489,9 @@ function flow_data(model::Model; table::Bool = true)
                 internal_convergence[fi] = missing
             else
                 internal_flow_rate[fi] =
-                    get_flow(saved_flow.flow, link.link, p)
+                    get_flow(saved_flow.flow, link.link, p_independent)
                 internal_convergence[fi] =
-                    get_flow(saved_flow.flow_convergence.flow, link.link, p)
+                    get_flow(saved_flow.flow_convergence.flow, link.link, p_independent)
             end
         end
         mul!(

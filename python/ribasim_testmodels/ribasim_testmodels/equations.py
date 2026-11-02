@@ -346,18 +346,18 @@ def pass_down_equation_model() -> Model:
     b1 = model.basin.add(
         Node(1, Point(0, 0)),
         [
-            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 3.0]),
+            basin.Profile(area=[100000.0, 100000.0], level=[0.0, 3.0]),
             basin.State(level=[5.0]),
         ],
     )
 
     trc = model.tabulated_rating_curve.add(
         Node(2, Point(1, 0)),
-        [tabulated_rating_curve.Static(level=[0.0, 3.0], flow_rate=[0.0, 1e-3])],
+        [tabulated_rating_curve.Static(level=[0.0, 3.0], flow_rate=[0.0, 1e-1])],
     )
 
     fb = model.flow_boundary.add(
-        Node(3, Point(1, 2)), [flow_boundary.Static(flow_rate=[5e-4])]
+        Node(3, Point(1, 2)), [flow_boundary.Static(flow_rate=[5e-2])]
     )
 
     pd1 = model.pass_down.add(
@@ -366,7 +366,7 @@ def pass_down_equation_model() -> Model:
 
     ud = model.user_demand.add(
         Node(5, Point(3, 0)),
-        tables=[user_demand.Static(demand=[3e-4], return_factor=[1.0])],
+        tables=[user_demand.Static(demand=[3e-2], return_factor=[1.0])],
     )
 
     t = model.terminal.add(Node(6, Point(4, 1)))

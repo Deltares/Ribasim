@@ -728,13 +728,13 @@ function valid_pass_down_connectivity(graph)
             from_basin = false
             for inflow_id in inflow_ids(graph, id)
                 inflow_id.is_basin && (from_basin = true)
-                inflow_id.type == NodeType.PassDown && (from_pass_down = true)
+                inflow_id.is_pass_down && (from_pass_down = true)
             end
             if from_pass_down && from_basin
                 @error "$id cannot abstract from both PassDown and Basin."
                 errors = true
             end
-        elseif id.type == NodeType.PassDown
+        elseif id.is_pass_down
             n_user_demand_out = 0
             n_other_out = 0
             for outflow_id in outflow_ids(graph, id)
@@ -756,7 +756,7 @@ function valid_pass_down_connectivity(graph)
             n_pass_down_out = 0
             for outflow_id in outflow_ids(graph, id)
                 outflow_id.is_basin && (n_basin_out += 1)
-                (outflow_id.type == NodeType.PassDown) && (n_pass_down_out += 1)
+                outflow_id.is_pass_down && (n_pass_down_out += 1)
             end
             if !iszero(n_basin_out) && !iszero(n_pass_down_out)
                 @error "$id cannot have outflow into both PassDown and Basin."
@@ -795,7 +795,7 @@ function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
 
             # If there is any outflow to PassDown, that is validated in valid_pass_down_connectivity
             if (link_type == LinkType.flow) && can_to_pass_down
-                any(id.type == NodeType.PassDown for id in outflow_ids(graph, node_id)) && continue
+                any(id.is_pass_down for id in outflow_ids(graph, node_id)) && continue
             end
 
             if n_outneighbors < bounds.out_min

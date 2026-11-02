@@ -1106,7 +1106,7 @@ function formulate_pass_down_flow!(
     )::Nothing where {T}
     (; p_independent, time_dependent_cache) = p
     (; pass_down, user_demand) = p_independent
-    (; fraction, inflow_links, pass_down_subgraphs, user_demand_id) = pass_down
+    (; inflow_links, pass_down_subgraphs) = pass_down
     (; current_return_factor) = time_dependent_cache.user_demand
 
     # No-ops if flow === flow_in, but needed for AD
@@ -1116,26 +1116,19 @@ function formulate_pass_down_flow!(
     # Different PassDown subgraphs are independent from eachother
     @threaded for subgraph in pass_down_subgraphs
         for id in subgraph
-            if id.type == NodeType.PassDown
+            if id.is_pass_down
                 # PassDown distributing flow via the fractions
                 inflow = zero(T)
                 for inflow_link in inflow_links[id.idx]
-                    inflow += get_flow(flow_in, inflow_link.link, p; t)
+                    inflow += get_flow(flow, inflow_link.link, p_independent; t)
                 end
-                # UserDemand flow is abstracted from the inflow as that takes precedence
-                user_id = user_demand_id[id.idx]
-                outflow = if user_id.type == NodeType.UserDemand
-                    inflow - flow.horizontal.user_demand_outflow[user_id.idx]
-                else
-                    inflow
-                end
-                flow.pass_down[id.idx] = outflow * fraction[id.idx]
+                flow.pass_down[id.idx] = inflow
             elseif id.type == NodeType.UserDemand
                 # UserDemand abstracting from a single PassDown node
                 # Flow is minimum of PassDown flow and effective demand
                 q_total_demand = get_effective_user_demand(p_independent, id.idx, t)
                 inflow_id = only(user_demand.inflow_links[id.idx]).link[1]
-                @assert inflow_id.type == NodeType.PassDown
+                @assert inflow_id.is_pass_down
                 pass_down_flow = flow.pass_down[inflow_id.idx]
                 inflow = min(q_total_demand, pass_down_flow)
                 outflow = inflow * eval_time_interpolation(

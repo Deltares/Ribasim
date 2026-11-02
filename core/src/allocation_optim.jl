@@ -936,7 +936,7 @@ end
 
 function warm_start!(
         allocation_model::AllocationModel,
-        p::Parameters,
+        p_independent::ParametersIndependent,
         t::Float64,
         Δt_allocation::Float64,
         du,
@@ -945,7 +945,7 @@ function warm_start!(
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
     flow = problem[:flow]
     storage_change = problem[:basin_storage_change]
-    (; flow_link_lookup) = p.p_independent.graph[]
+    (; flow_link_lookup) = p_independent.graph[]
 
     # Extrapolate the current instantaneous flow rates from the physical layer
     for link in only(flow.axes)
@@ -955,7 +955,7 @@ function warm_start!(
                 flow[link], get_flow(
                     du.flow,
                     link,
-                    p;
+                    p_independent;
                     t
                 ) / scaling.flow
             )
@@ -966,7 +966,7 @@ function warm_start!(
     for node_id in basin_ids_subnetwork
         JuMP.set_start_value(
             storage_change[node_id],
-            formulate_dstorage_single_basin(du.flow, p.p_independent, node_id; t) * Δt_allocation / scaling.storage,
+            formulate_dstorage_single_basin(du.flow, p_independent, node_id; t) * Δt_allocation / scaling.storage,
         )
     end
 
@@ -1637,7 +1637,7 @@ function update_allocation!(
         normalize_flow_demand_objectives!(secondary_network)
 
         # Use data from the physical layer to set the initial guess
-        warm_start!(secondary_network, p, t, Δt, du)
+        warm_start!(secondary_network, p_independent, t, Δt, du)
     end
 
     if has_primary_network(allocation)
@@ -1672,7 +1672,7 @@ function update_allocation!(
         update_user_demand_flow_bounds!(primary_network, p_independent)
         update_flow_demand_variable_bounds!(primary_network, p_independent)
         normalize_flow_demand_objectives!(primary_network)
-        warm_start!(primary_network, p, t, Δt, du)
+        warm_start!(primary_network, p_independent, t, Δt, du)
     end
 
     # Allocate in all networks, starting with the primary network if it exists

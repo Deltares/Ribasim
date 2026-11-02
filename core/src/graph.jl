@@ -350,53 +350,83 @@ function inflow_id(graph::MetaGraph, id::NodeID)::NodeID
     return only(inflow_ids(graph, id))
 end
 
-function get_flow(
-        flow::FlowCVector,
-        link::Tuple{NodeID, NodeID},
-        p::Parameters;
+function get_node_flow(
+        flow::FlowCVector{T},
+        node_id::NodeID;
         boundary_flow::Union{Nothing, Vector{Float64}} = nothing,
-        t::Union{Number, Nothing} = nothing
-    )
-    (; user_demand, flow_boundary) = p.p_independent
+        flow_boundary::Union{Nothing, FlowBoundary} = nothing,
+        t::Union{Number, Nothing} = nothing,
+        validate::Bool = true
+    )::T where {T}
 
-    from_id, to_id = link
-
-    # PassDown
-    from_pass_down = (from_id.type == NodeType.PassDown)
-    to_pass_down = (to_id.type == NodeType.PassDown)
-
-    if from_pass_down && to_pass_down
-        return flow.pass_down[to_id.idx]
-    elseif from_pass_down
-        return flow.pass_down[from_id.idx]
-    end
-
-    # Connector node flows
-    for (flow_component_data, node_type) in (
+    # Connector nodes, PassDown
+    for (flow_component, node_type) in (
             (flow.horizontal.pump, NodeType.Pump),
             (flow.horizontal.outlet, NodeType.Outlet),
             (flow.horizontal.tabulated_rating_curve, NodeType.TabulatedRatingCurve),
             (flow.horizontal.linear_resistance, NodeType.LinearResistance),
             (flow.horizontal.manning_resistance, NodeType.ManningResistance),
+            (flow.pass_down, NodeType.PassDown),
         )
-        if from_id.type == node_type
-            return flow_component_data[from_id.idx]
-        elseif to_id.type == node_type
-            return flow_component_data[to_id.idx]
+        if node_id.type == node_type
+            return flow_component[node_id.idx]
         end
     end
 
     # FlowBoundary
-    if from_id.type == NodeType.FlowBoundary
+    if node_id.type == NodeType.FlowBoundary
         return if isnothing(boundary_flow)
             @assert !isnothing(t) "Cannot evaluate flow rate for $from_id since t is not provided."
-            flow_boundary.flow_rate[from_id.idx](t)
+            @assert !isnothing(flow_boundary) "Cannot evaluate flow rate for $from_id since flow_boundary is not provided."
+            flow_boundary.flow_rate[node_id.idx](t)
         else
-            boundary_flow[from_id.idx]
+            boundary_flow[node_id.idx]
         end
     end
 
-    # UserDemand
+    validate && error("Couldn't obtain flow for $node_id.")
+    return NaN
+end
+
+function get_flow(
+        flow::FlowCVector,
+        link::Tuple{NodeID, NodeID},
+        p_independent::ParametersIndependent;
+        boundary_flow::Union{Nothing, Vector{Float64}} = nothing,
+        t::Union{Number, Nothing} = nothing
+    )
+    (; pass_down, user_demand, flow_boundary) = p_independent
+
+    from_id, to_id = link
+
+    # PassDown related flow
+    if to_id.is_pass_down
+        node_flow = get_node_flow(flow, from_id; boundary_flow, flow_boundary, t)
+        # Correct for UserDemand if branching off from upstream
+        if from_id.is_pass_down && pass_down.user_demand_id[from_id.idx].type == NodeType.UserDemand
+            # Unique UserDemand inflow from PassDown
+            user_demand_id = pass_down.user_demand_id[from_id.idx]
+            node_flow -= unique_user_demand_inflow(flow, user_demand, user_demand_id)
+        end
+        return pass_down.fraction[to_id.idx] * node_flow
+    elseif from_id.is_pass_down && (to_id.type == NodeType.UserDemand)
+        # Unique UserDemand inflow from PassDown
+        offset = user_demand.inflow_link_offsets[to_id.idx]
+        return flow.horizontal.user_demand_inflow[offset + 1]
+    elseif from_id.is_pass_down
+        return flow.pass_down[from_id.idx]
+    end
+
+    # Connector node flow
+    from_flow = get_node_flow(flow, from_id; boundary_flow, flow_boundary, t, validate = false)
+    if isnan(from_flow)
+        to_flow = get_node_flow(flow, to_id; t, validate = false)
+        !isnan(to_flow) && return to_flow
+    else
+        return from_flow
+    end
+
+    # UserDemand flow
     if from_id.type == NodeType.UserDemand
         return flow.horizontal.user_demand_outflow[from_id.idx]
     elseif to_id.type == NodeType.UserDemand

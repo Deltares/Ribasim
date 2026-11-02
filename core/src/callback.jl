@@ -165,7 +165,7 @@ function update_cumulative_flows!(u, t, integrator)::Nothing
     for allocation_model in allocation.allocation_models
         (; cumulative_supplied_volume) = allocation_model
         for link in keys(cumulative_supplied_volume)
-            cumulative_supplied_volume[link] += get_flow(cumulative_flow_dt, link, p)
+            cumulative_supplied_volume[link] += get_flow(cumulative_flow_dt, link, p_independent)
         end
     end
     return nothing
@@ -338,7 +338,8 @@ end
 Save all flow rates (averaged over the saveat interval) and vertical fluxes.
 """
 function save_flow(u, t, integrator)
-    (; p_independent, current_basin_properties) = integrator.p
+    (; p) = integrator
+    (; p_independent, current_basin_properties) = p
     (; basin, flow_boundary, u_prev_saveat, cumulative_flow_dt, state_ranges) = p_independent
     Δt = get_Δt(integrator)
 
@@ -416,8 +417,8 @@ function save_flow(u, t, integrator)
         basin_convergence,
         t,
     )
-    check_basin_water_balance_error!(saved_flow, integrator, Δt)
-    check_pass_down_water_balance_error!(integrator, flow_mean, boundary_flow_mean)
+    check_basin_water_balance_error!(saved_flow, p, t, Δt)
+    check_pass_down_water_balance_error!(p, t, flow_mean, boundary_flow_mean)
     u_prev_saveat .= u
     basin.storage_prev_saveat .= current_basin_properties.current_storage
     basin.forcing.exact_cumulative_forcing_prev_saveat .= basin.forcing.exact_cumulative_forcing_since_reset
@@ -426,23 +427,24 @@ function save_flow(u, t, integrator)
 end
 
 function check_pass_down_water_balance_error!(
-        integrator::DEIntegrator,
+        p::Parameters,
+        t::Float64,
         flow_mean::FlowCVector{Float64},
         boundary_flow_mean::Vector{Float64},
     )::Nothing
-    (; p, t) = integrator
-    (; pass_down, water_balance_abstol, water_balance_reltol, starttime) = p.p_independent
+    (; p_independent) = p
+    (; pass_down, water_balance_abstol, water_balance_reltol, starttime) = p_independent
     (; node_id, inflow_links, outflow_links) = pass_down
 
     errors = false
 
     for id in node_id
         inflow_rate = sum(
-            get_flow(flow_mean, link.link, p; boundary_flow = boundary_flow_mean, t)
+            get_flow(flow_mean, link.link, p_independent; boundary_flow = boundary_flow_mean, t)
                 for link in inflow_links[id.idx]
         )
         outflow_rate = sum(
-            get_flow(flow_mean, link.link, p; boundary_flow = boundary_flow_mean, t)
+            get_flow(flow_mean, link.link, p_independent; boundary_flow = boundary_flow_mean, t)
                 for link in outflow_links[id.idx]
         )
 
@@ -465,10 +467,10 @@ end
 
 function check_basin_water_balance_error!(
         saved_flow::SavedFlow,
-        integrator::DEIntegrator,
+        p::Parameters,
+        t::Float64,
         Δt::Float64,
     )::Nothing
-    (; p, t) = integrator
     (; p_independent, current_basin_properties) = p
     (; current_storage) = current_basin_properties
 
