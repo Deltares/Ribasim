@@ -1736,12 +1736,26 @@ end
 function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
     static = load_structvector(db, config, Schema.PassDown.Static)
     node_id = get_node_ids(db, NodeType.PassDown)
-    pass_down =
-        PassDown(; node_id, pass_down_subgraphs = get_pass_down_subgraphs(graph, node_id))
+    inflow_links = [get_inflow_links(graph, id) for id in node_id]
+    outflow_links = [get_outflow_links(graph, id) for id in node_id]
 
-    map!(id -> get_inflow_links(graph, id), pass_down.inflow_links, node_id)
-    map!(id -> get_outflow_links(graph, id), pass_down.outflow_links, node_id)
+    # The links towards a UserDemand node are not included, the UserDemand inflow state is their flow state
+    state_links_dict = Dict{Int32, LinkMetadata}()
+    for link in Iterators.flatten((Iterators.flatten(inflow_links), Iterators.flatten(outflow_links)))
+        link.link[2].type == NodeType.UserDemand && continue
+        state_links_dict[link.id] = link
+    end
+    state_links = [state_links_dict[link_id] for link_id in sort!(collect(keys(state_links_dict)))]
 
+    pass_down = PassDown(;
+        node_id,
+        inflow_links,
+        outflow_links,
+        pass_down_subgraphs = get_pass_down_subgraphs(graph, node_id),
+        state_links,
+        inflow_state_idx = [[state_link_index(state_links, link) for link in links] for links in inflow_links],
+        outflow_state_idx = [[state_link_index(state_links, link) for link in links] for links in outflow_links],
+    )
     (; fraction) = pass_down
     has_fraction = falses(length(node_id))
 

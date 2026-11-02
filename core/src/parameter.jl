@@ -1118,6 +1118,12 @@ pass_down_subgraphs: disjoint trees of flow-connected PassDown and UserDemand no
     excluding UserDemand nodes without a PassDown inneighbor. The nodes of each subgraph
     are ordered such that each node comes after all nodes its flow depends on.
 user_demand_id: The ID of the UserDemand node that abstracts from the PassDown node, if present
+state_links: The flow links that have a flow state in the `pass_down` flow component, sorted by link ID: all flow links
+    with a PassDown node at either end, except the links towards a UserDemand node, since the flow
+    on those is the UserDemand inflow state.
+inflow_state_idx: Per PassDown node the index in `state_links` of each of its inflow links
+outflow_state_idx: Per PassDown node the index in `state_links` of each of its outflow links,
+    or 0 for the link towards a UserDemand node
 """
 @kwdef struct PassDown <: AbstractParameterNode
     node_id::Vector{NodeID}
@@ -1126,6 +1132,17 @@ user_demand_id: The ID of the UserDemand node that abstracts from the PassDown n
     fraction::Vector{Float64} = zeros(length(node_id))
     pass_down_subgraphs::Vector{Vector{NodeID}} = Vector{NodeID}[]
     user_demand_id::Vector{NodeID} = fill(NodeID(:Terminal, 0, 0), length(node_id))
+    state_links::Vector{LinkMetadata} = LinkMetadata[]
+    inflow_state_idx::Vector{Vector{Int}} = [Int[] for _ in node_id]
+    outflow_state_idx::Vector{Vector{Int}} = [Int[] for _ in node_id]
+end
+
+"""
+The index of a link in `state_links`, or 0 if it has no state in the `pass_down` flow component.
+"""
+function state_link_index(state_links::Vector{LinkMetadata}, link::LinkMetadata)::Int
+    idx = searchsortedfirst(state_links, link)
+    return (idx <= length(state_links) && state_links[idx].id == link.id) ? idx : 0
 end
 
 """
@@ -1157,6 +1174,8 @@ cumulative_inflow: The summed inflow since the start of the simulation
 concentration_itp: matrix with timeseries interpolations of concentrations per LevelBoundary per substance
 in_pass_down_subgraph: whether the UserDemand node is part of one of the PassDown subgraphs,
     in which case its flows are computed in `formulate_pass_down_flow!`
+pass_down_outflow_state_idx: for the UserDemand nodes in a PassDown subgraph, the index in the `pass_down` flow
+    component of each outflow link, or 0 for outflow links that have no state there
 """
 @kwdef struct UserDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
@@ -1178,6 +1197,7 @@ in_pass_down_subgraph: whether the UserDemand node is part of one of the PassDow
     cumulative_inflow::Vector{Float64} = zeros(length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
     in_pass_down_subgraph::Vector{Bool} = fill(false, length(node_id))
+    pass_down_outflow_state_idx::Vector{Vector{Int}} = [Int[] for _ in node_id]
 end
 
 """

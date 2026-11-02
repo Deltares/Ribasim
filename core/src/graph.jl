@@ -359,14 +359,13 @@ function get_node_flow(
         validate::Bool = true
     )::T where {T}
 
-    # Connector nodes, PassDown
+    # Connector nodes
     for (flow_component, node_type) in (
             (flow.horizontal.pump, NodeType.Pump),
             (flow.horizontal.outlet, NodeType.Outlet),
             (flow.horizontal.tabulated_rating_curve, NodeType.TabulatedRatingCurve),
             (flow.horizontal.linear_resistance, NodeType.LinearResistance),
             (flow.horizontal.manning_resistance, NodeType.ManningResistance),
-            (flow.pass_down, NodeType.PassDown),
         )
         if node_id.type == node_type
             return flow_component[node_id.idx]
@@ -399,22 +398,17 @@ function get_flow(
 
     from_id, to_id = link
 
-    # PassDown related flow
-    if to_id.is_pass_down
-        node_flow = get_node_flow(flow, from_id; boundary_flow, flow_boundary, t)
-        # Correct for UserDemand if branching off from upstream
-        if from_id.is_pass_down && pass_down.user_demand_id[from_id.idx].type == NodeType.UserDemand
-            # Unique UserDemand inflow from PassDown
-            user_demand_id = pass_down.user_demand_id[from_id.idx]
-            node_flow -= unique_user_demand_inflow(flow, user_demand, user_demand_id)
-        end
-        return pass_down.fraction[to_id.idx] * node_flow
-    elseif from_id.is_pass_down && (to_id.type == NodeType.UserDemand)
-        # Unique UserDemand inflow from PassDown
+    # Links in a PassDown subgraph have their own flow state, the link towards a UserDemand
+    # node has the UserDemand inflow state
+    if from_id.is_pass_down && (to_id.type == NodeType.UserDemand)
         offset = user_demand.inflow_link_offsets[to_id.idx]
         return flow.horizontal.user_demand_inflow[offset + 1]
     elseif from_id.is_pass_down
-        return flow.pass_down[from_id.idx]
+        links, state_idxs = pass_down.outflow_links[from_id.idx], pass_down.outflow_state_idx[from_id.idx]
+        return flow.pass_down[state_idxs[findfirst(l -> l.link == link, links)]]
+    elseif to_id.is_pass_down
+        links, state_idxs = pass_down.inflow_links[to_id.idx], pass_down.inflow_state_idx[to_id.idx]
+        return flow.pass_down[state_idxs[findfirst(l -> l.link == link, links)]]
     end
 
     # Connector node flow

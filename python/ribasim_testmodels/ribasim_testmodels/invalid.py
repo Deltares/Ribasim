@@ -297,13 +297,49 @@ def invalid_pass_down_multiple_user_demands_model() -> Model:
     pd = model.pass_down.add(Node(3, Point(2, 0)), [pass_down.Static(fraction=[1.0])])
     ud1 = model.user_demand.add(Node(4, Point(3, 1)), _pass_down_user_demand_static())
     ud2 = model.user_demand.add(Node(5, Point(3, -1)), _pass_down_user_demand_static())
+    pd_trm = model.pass_down.add(
+        Node(7, Point(3, 0)), [pass_down.Static(fraction=[1.0])]
+    )
     trm = model.terminal.add(Node(6, Point(4, 0)))
     model.link.add(pmp, pd)
     model.link.add(pd, ud1)
     model.link.add(pd, ud2)
-    model.link.add(pd, trm)
+    model.link.add(pd, pd_trm)
+    model.link.add(pd_trm, trm)
     model.link.add(ud1, trm)
     model.link.add(ud2, trm)
+    return model
+
+
+def invalid_pass_down_user_demand_and_other_model() -> Model:
+    """PassDown node with both a UserDemand and a non-PassDown node downstream."""
+    model, pmp = _invalid_pass_down_base()
+    pd = model.pass_down.add(Node(3, Point(2, 0)), [pass_down.Static(fraction=[1.0])])
+    ud = model.user_demand.add(Node(4, Point(3, 1)), _pass_down_user_demand_static())
+    bsn = model.basin.add(
+        Node(5, Point(3, -1)),
+        [
+            basin.State(level=[1.0]),
+            basin.Profile(level=[0.0, 2.0], area=[100.0, 200.0]),
+        ],
+    )
+    trm = model.terminal.add(Node(6, Point(4, 1)))
+    # Temporary PassDown node, since the link validation does not allow this connectivity
+    pd_tmp = model.pass_down.add(
+        Node(7, Point(3, 0)), [pass_down.Static(fraction=[1.0])]
+    )
+    model.link.add(pmp, pd)
+    model.link.add(pd, ud)
+    model.link.add(pd, pd_tmp)
+    model.link.add(ud, trm)
+    model.link.add(pd_tmp, bsn)
+    assert model.link.df is not None
+    model.link.df.loc[
+        (model.link.df["from_node_id"] == pd.node_id)
+        & (model.link.df["to_node_id"] == pd_tmp.node_id),
+        "to_node_id",
+    ] = bsn.node_id
+    model.remove_node(pd_tmp.node_id)
     return model
 
 

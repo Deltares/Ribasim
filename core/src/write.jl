@@ -483,7 +483,7 @@ function flow_data(model::Model; table::Bool = true)
 
     for (ti, saved_flow) in enumerate(saveval)
         for (fi, link) in enumerate(internal_flow_links)
-            if link.link[1].type == NodeType.FlowBoundary
+            if link.link[1].type == NodeType.FlowBoundary && !link.link[2].is_pass_down
                 internal_flow_rate[fi] =
                     saved_flow.boundary_flow[link.link[1].idx]
                 internal_convergence[fi] = missing

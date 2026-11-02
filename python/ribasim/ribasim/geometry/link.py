@@ -343,6 +343,15 @@ class LinkTable(SpatialTableModel[LinkSchema]):
                 raise ValueError(
                     f"Node {from_node.node_id} has a PassDown flow link outneighbor, so all its flow link outneighbors must be {' or '.join(sorted(allowed_types))}"
                 )
+            if (
+                not junction_involved
+                and from_node.node_type == "PassDown"
+                and "UserDemand" in out_types
+                and not out_types <= {"PassDown", "UserDemand"}
+            ):
+                raise ValueError(
+                    f"Node {from_node.node_id} has a UserDemand flow link outneighbor, so all its other flow link outneighbors must be PassDown"
+                )
             if to_node.node_type == "PassDown" or (
                 junction_involved and "PassDown" in out_types
             ):

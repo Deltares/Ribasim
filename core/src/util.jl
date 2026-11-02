@@ -661,7 +661,7 @@ end
 get_n_flow(nodes::NamedTuple) =
     sum(get_ns_flow_horizontal(nodes)) +
     sum(get_ns_flow_vertical(nodes)) +
-    length(nodes.pass_down)
+    length(nodes.pass_down.state_links)
 
 function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::FlowTuple
     ns_flow_horizontal = get_ns_flow_horizontal(nodes)
@@ -675,7 +675,9 @@ function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::Flo
         state_vertical_flow_components,
         ns_flow_vertical
     )
-    return concatenate_axes((; horizontal), (; vertical), (; pass_down = 1:length(nodes.pass_down)))
+    return concatenate_axes(
+        (; horizontal), (; vertical), (; pass_down = 1:length(nodes.pass_down.state_links))
+    )
 end
 
 "Create the axis of the state vector"
@@ -707,6 +709,16 @@ function set_flow_ids!(inflow_id, outflow_id, basin::Basin)
     return nothing
 end
 
+"""
+Every PassDown flow state is the flow over a link with a PassDown node at either end,
+see `PassDown.state_links`.
+"""
+function set_flow_ids!(inflow_id, outflow_data, pass_down::PassDown)
+    inflow_id .= [link.link[1] for link in pass_down.state_links]
+    outflow_data .= [OutflowData(; outflow_link = link) for link in pass_down.state_links]
+    return nothing
+end
+
 function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
     (;
         pump,
@@ -716,6 +728,7 @@ function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
         manning_resistance,
         user_demand,
         basin,
+        pass_down,
     ) = nodes
     n_flows = get_n_flow(nodes)
     dummy_node = NodeID(:Terminal, 0, 0)
@@ -731,6 +744,7 @@ function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
     set_flow_ids!(inflow_id.horizontal.manning_resistance, outflow_data.horizontal.manning_resistance, manning_resistance)
     set_flow_ids!(inflow_id.horizontal.user_demand_inflow, outflow_data.horizontal.user_demand_outflow, user_demand)
     set_flow_ids!(inflow_id.vertical, outflow_data.vertical, basin)
+    set_flow_ids!(inflow_id.pass_down, outflow_data.pass_down, pass_down)
 
     # The UserDemand node itself is the outflow of its inflow state and the inflow of its outflow state
     outflow_data.horizontal.user_demand_inflow .=
@@ -747,6 +761,8 @@ function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
     state_id.horizontal.user_demand_outflow .= user_demand.node_id
     state_id.vertical.evaporation .= basin.node_id
     state_id.vertical.infiltration .= basin.node_id
+    state_id.pass_down .=
+        [link.link[2].is_pass_down ? link.link[2] : link.link[1] for link in pass_down.state_links]
 
     return inflow_id, outflow_data, state_id
 end
@@ -836,6 +852,36 @@ function unsafe_array(
     return GC.@preserve A unsafe_wrap(Array, pointer(A), length(A))
 end
 
+"""
+Add the flows of a flow component to the Basins they flow out of or into,
+see `aggregate_flows!`.
+"""
+function aggregate_link_flows!(
+        aggregate::AbstractVector,
+        flows,
+        inflow_ids,
+        outflow_data,
+        do_inflows::Bool,
+        do_outflows::Bool,
+        weight::Number,
+    )
+    for (flow_, id_in, data_out) in zip(flows, inflow_ids, outflow_data)
+        positive_flow = (flow_ > 0)
+
+        if id_in.is_basin && ((!positive_flow && do_inflows) || (positive_flow && do_outflows))
+            aggregate[id_in.idx] -= weight * flow_
+        end
+
+        if !data_out.to_pass_down
+            id_out = outflow_id(data_out)
+            if id_out.is_basin && ((positive_flow && do_inflows) || (!positive_flow && do_outflows))
+                aggregate[id_out.idx] += weight * flow_
+            end
+        end
+    end
+    return nothing
+end
+
 function aggregate_flows!(
         aggregate::AbstractVector,
         flow::FlowCVector,
@@ -854,20 +900,15 @@ function aggregate_flows!(
     from_zero && (aggregate .= 0)
 
     if do_horizontal_flows
-        for (flow_, id_in, data_out) in zip(flow.horizontal, inflow_id.horizontal, outflow_data.horizontal)
-            positive_flow = (flow_ > 0)
-
-            if id_in.is_basin && ((!positive_flow && do_inflows) || (positive_flow && do_outflows))
-                aggregate[id_in.idx] -= weight * flow_
-            end
-
-            if !data_out.to_pass_down
-                id_out = outflow_id(data_out)
-                if id_out.is_basin && ((positive_flow && do_inflows) || (!positive_flow && do_outflows))
-                    aggregate[id_out.idx] += weight * flow_
-                end
-            end
-        end
+        aggregate_link_flows!(
+            aggregate, flow.horizontal, inflow_id.horizontal, outflow_data.horizontal,
+            do_inflows, do_outflows, weight,
+        )
+        # The flows through the PassDown nodes that end up in a Basin
+        aggregate_link_flows!(
+            aggregate, flow.pass_down, inflow_id.pass_down, outflow_data.pass_down,
+            do_inflows, do_outflows, weight,
+        )
     end
 
     if do_horizontal_flows && do_inflows && !isnothing(boundary_flow)
@@ -1235,13 +1276,16 @@ function set_controlled_node_ids!(p_independent, node::Union{PidControl, Continu
 end
 
 """
-Mark the UserDemand nodes that are part of a PassDown subgraph, and store per PassDown node
-the indices of its outflow links to UserDemand nodes in the `user_demand_inflow` flow component.
+Mark the UserDemand nodes that are part of a PassDown subgraph, and store for those
+the indices in the `pass_down` flow component of their outflow links.
 """
 function set_in_pass_down_subgraph!(user_demand::UserDemand, pass_down::PassDown)::Nothing
     for subgraph in pass_down.pass_down_subgraphs, id in subgraph
         id.type == NodeType.UserDemand || continue
         user_demand.in_pass_down_subgraph[id.idx] = true
+        outflow_links = user_demand.outflow_data[id.idx].outflow_links
+        user_demand.pass_down_outflow_state_idx[id.idx] =
+            [state_link_index(pass_down.state_links, link) for link in outflow_links]
     end
     return nothing
 end
@@ -1262,9 +1306,4 @@ function get_effective_user_demand(p_independent::ParametersIndependent, node_id
         )
     end
     return q_total_demand
-end
-
-function unique_user_demand_inflow(flow::FlowCVector, user_demand::UserDemand, node_id::NodeID)
-    inflow_idx = user_demand.inflow_link_offsets[node_id.idx] + 1
-    return flow.horizontal.user_demand_inflow[inflow_idx]
 end

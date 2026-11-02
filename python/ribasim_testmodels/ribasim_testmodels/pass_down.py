@@ -20,7 +20,7 @@ def pass_down_model() -> Model:
 
     - A FlowBoundary with multiple PassDown nodes downstream.
     - A Pump with multiple PassDown nodes downstream, one of which feeds a UserDemand
-      and passes the remaining flow to a Basin.
+      and passes the remaining flow on to a Basin via another PassDown node.
     - A UserDemand with multiple PassDown nodes downstream.
     - A UserDemand with inflow from a single PassDown node, where the PassDown
       flow is smaller than the UserDemand's demand.
@@ -84,6 +84,11 @@ def pass_down_model() -> Model:
     pd9 = model.pass_down.add(node(18, 12, -1), [pass_down.Static(fraction=[np.nan])])
     t = model.terminal.add(node(19, 13, 0))
 
+    # PassDown nodes that pass the remainder after a UserDemand abstraction on to a Basin,
+    # since a PassDown node with a UserDemand outflow can only flow into other PassDown nodes
+    pd10 = model.pass_down.add(node(20, 5, 0), [pass_down.Static(fraction=[np.nan])])
+    pd11 = model.pass_down.add(node(21, 7, 1), [pass_down.Static(fraction=[np.nan])])
+
     model.link.add(fb, pd1)
     model.link.add(fb, pd2)
     model.link.add(pd1, b1)
@@ -92,13 +97,15 @@ def pass_down_model() -> Model:
     model.link.add(p1, pd3)
     model.link.add(p1, pd4)
     model.link.add(pd3, ud1)
-    model.link.add(pd3, b2)
+    model.link.add(pd3, pd10)
+    model.link.add(pd10, b2)
     model.link.add(pd4, b2)
     model.link.add(ud1, pd5)
     model.link.add(ud1, pd6)
     model.link.add(pd5, b2)
     model.link.add(pd6, ud2)
-    model.link.add(pd6, b3)
+    model.link.add(pd6, pd11)
+    model.link.add(pd11, b3)
     model.link.add(ud2, b3)
     model.link.add(b3, p2)
     model.link.add(p2, pd7)

@@ -51,3 +51,13 @@ end
         "PassDown #3 cannot just flow out into a PassDown node, the remainder flow needs somewhere to go.",
     ]
 end
+
+@testitem "PassDown UserDemand and other outflow" setup = [PassDownValidation] begin
+    messages = PassDownValidation.error_messages(
+        "invalid_pass_down_user_demand_and_other",
+        "Invalid number of connections for certain node types."
+    )
+    @test messages == [
+        "PassDown #3 cannot have both a UserDemand outflow and an outflow into a node that is not a PassDown node, the remainder flow must be passed down to PassDown nodes.",
+    ]
+end

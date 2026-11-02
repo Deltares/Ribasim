@@ -51,7 +51,7 @@ see the RibasmimJacobian docstring.
     # # Jacobian of mapping (storage, flow) -> continuous_control_compound
     jac_continuous_control::SubJacobian{ContinuousControlInputCVector{Float64}, ContinuousControlInputCVector{Int}, M}
     # Jacobian of mapping flow -> PassDown subnetwork flow
-    jac_pass_down::SubJacobian{FlowInputCVector{Float64}, FlowInputCVector{Int}, M}
+    jac_pass_down::SubJacobian{FlowCVector{Float64}, FlowCVector{Int}, M}
 end
 
 function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
@@ -215,7 +215,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
     )
 
     jac_pass_down = SubJacobian(;
-        input = flow_input,
+        input = non_pass_down_flow,
         jac = ∂pass_down_flow_∂flow,
         jac_func! = eval_∂pass_down_flow_∂flow!
     )
@@ -361,7 +361,8 @@ function SciMLOperators.update_coefficients!(
     jac_continuous_control.input.flow .= du_cache.flow
     jac_continuous_control.jac_func!(t)
 
-    # Compute the PassDown Jacobian
+    # Compute the PassDown Jacobian at the flows cached by jac_flow.jac_func!
+    jac_pass_down.input .= du_cache.flow
     jac_pass_down.jac_func!(t)
 
     # Compute local part of the reduced linear solve Jacobian

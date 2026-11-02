@@ -756,10 +756,13 @@ function valid_pass_down_connectivity(graph)
             end
         elseif id.is_pass_down
             n_user_demand_out = 0
+            n_pass_down_out = 0
             n_other_out = 0
             for outflow_id in outflow_ids(graph, id)
                 if outflow_id.type == NodeType.UserDemand
                     n_user_demand_out += 1
+                elseif outflow_id.is_pass_down
+                    n_pass_down_out += 1
                 else
                     n_other_out += 1
                 end
@@ -767,8 +770,14 @@ function valid_pass_down_connectivity(graph)
             if n_user_demand_out > 1
                 @error "$id cannot have more than one UserDemand outflow."
                 errors = true
-            elseif isone(n_user_demand_out) && iszero(n_other_out)
+            elseif isone(n_user_demand_out) && iszero(n_pass_down_out + n_other_out)
                 @error "$id cannot just flow out into a PassDown node, the remainder flow needs somewhere to go."
+                errors = true
+            elseif !iszero(n_user_demand_out) && !iszero(n_other_out)
+                @error "$id cannot have both a UserDemand outflow and an outflow into a node that is not a PassDown node, the remainder flow must be passed down to PassDown nodes."
+                errors = true
+            elseif n_other_out > 1 || (!iszero(n_other_out) && !iszero(n_pass_down_out))
+                @error "$id must have either PassDown outflows or a single outflow into a node that is not a PassDown node."
                 errors = true
             end
         else
