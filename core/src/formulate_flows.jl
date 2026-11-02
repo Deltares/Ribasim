@@ -1108,7 +1108,7 @@ function get_source_flow(
     return if source_id.type == NodeType.UserDemand
         flow.horizontal.user_demand_outflow[source_id.idx]
     else
-        get_node_flow(flow, source_id; flow_boundary, t)
+        get_node_flow(flow, source_id; flow_boundary, t)[1]
     end
 end
 

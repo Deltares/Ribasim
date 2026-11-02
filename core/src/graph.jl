@@ -357,7 +357,7 @@ function get_node_flow(
         flow_boundary::Union{Nothing, FlowBoundary} = nothing,
         t::Union{Number, Nothing} = nothing,
         validate::Bool = true
-    )::T where {T}
+    )::Tuple{T, Bool} where {T}
 
     # Connector nodes
     for (flow_component, node_type) in (
@@ -368,7 +368,7 @@ function get_node_flow(
             (flow.horizontal.manning_resistance, NodeType.ManningResistance),
         )
         if node_id.type == node_type
-            return flow_component[node_id.idx]
+            return (flow_component[node_id.idx], true)
         end
     end
 
@@ -377,14 +377,14 @@ function get_node_flow(
         return if isnothing(boundary_flow)
             @assert !isnothing(t) "Cannot evaluate flow rate for $from_id since t is not provided."
             @assert !isnothing(flow_boundary) "Cannot evaluate flow rate for $from_id since flow_boundary is not provided."
-            flow_boundary.flow_rate[node_id.idx](t)
+            (flow_boundary.flow_rate[node_id.idx](t), true)
         else
-            boundary_flow[node_id.idx]
+            (boundary_flow[node_id.idx], true)
         end
     end
 
     validate && error("Couldn't obtain flow for $node_id.")
-    return NaN
+    return (NaN, false)
 end
 
 function get_flow(
@@ -412,12 +412,12 @@ function get_flow(
     end
 
     # Connector node flow
-    from_flow = get_node_flow(flow, from_id; boundary_flow, flow_boundary, t, validate = false)
-    if isnan(from_flow)
-        to_flow = get_node_flow(flow, to_id; t, validate = false)
-        !isnan(to_flow) && return to_flow
-    else
+    from_flow, got_from_flow = get_node_flow(flow, from_id; boundary_flow, flow_boundary, t, validate = false)
+    if got_from_flow
         return from_flow
+    else
+        to_flow, got_to_flow = get_node_flow(flow, to_id; t, validate = false)
+        got_to_flow && return to_flow
     end
 
     # UserDemand flow
