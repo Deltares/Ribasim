@@ -234,11 +234,6 @@ function add_user_demand!(
         base_name = "user_demand_return_flow"
     )
 
-    # The constraints that limit the abstraction from a Basin to the water above the min_level of
-    # the UserDemand, and their slack variables, see add_user_demand_min_level_constraint!
-    problem[:user_demand_min_level_constraint] = JuMP.ConstraintRef[]
-    problem[:user_demand_min_level_slack] = JuMP.VariableRef[]
-
     # Add the links for which the supplied volume is required for output
     for node_id in user_demand_ids_subnetwork
         for link_metadata in inflow_links[node_id.idx]

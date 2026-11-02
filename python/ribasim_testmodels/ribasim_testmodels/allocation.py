@@ -1912,13 +1912,9 @@ def outlet_allocation_discrete_control_model() -> Model:
 
 
 def user_demand_min_level_model() -> Model:
-    """Two Basins that start just above the min_level of their UserDemand.
+    """Two Basins that start at the min_level of their UserDemand, supplied from a much larger Basin.
 
-    Basin #1 has an inflow that is smaller than the demand of UserDemand #3.
-    Basin #5 has a Pump that is not controlled by allocation, which lowers the level regardless
-    of the abstraction of UserDemand #7.
-    Basin #10 starts at the min_level of UserDemand #11, and is supplied from the much larger
-    Basin #8 by an allocation controlled Outlet.
+    Basin #3 is supplied by an allocation controlled Outlet, Basin #7 by an allocation controlled Pump.
     """
     model = Model(
         starttime="2020-01-01",
@@ -1929,76 +1925,42 @@ def user_demand_min_level_model() -> Model:
     )
 
     basin1 = model.basin.add(
-        Node(1, Point(1, 0), subnetwork_id=2),
-        [basin.Profile(area=1e4, level=[0.0, 3.0]), basin.State(level=[0.51])],
-    )
-    flow_boundary2 = model.flow_boundary.add(
-        Node(2, Point(0, 0), subnetwork_id=2),
-        [flow_boundary.Static(flow_rate=[0.02])],
-    )
-    user_demand3 = model.user_demand.add(
-        Node(3, Point(1, 1), subnetwork_id=2),
-        [
-            user_demand.Static(
-                demand=[0.1], return_factor=0.0, min_level=0.5, demand_priority=1
-            )
-        ],
-    )
-    terminal4 = model.terminal.add(Node(4, Point(2, 2), subnetwork_id=2))
-
-    basin5 = model.basin.add(
-        Node(5, Point(3, 0), subnetwork_id=2),
-        [basin.Profile(area=1e5, level=[0.0, 3.0]), basin.State(level=[0.51])],
-    )
-    pump6 = model.pump.add(
-        Node(6, Point(4, 0), subnetwork_id=2),
-        [pump.Static(flow_rate=[0.01])],
-    )
-    user_demand7 = model.user_demand.add(
-        Node(7, Point(3, 1), subnetwork_id=2),
-        [
-            user_demand.Static(
-                demand=[0.1], return_factor=0.0, min_level=0.5, demand_priority=1
-            )
-        ],
-    )
-
-    model.link.add(flow_boundary2, basin1)
-    model.link.add(basin1, user_demand3)
-    model.link.add(user_demand3, terminal4)
-    model.link.add(basin5, pump6)
-    model.link.add(pump6, terminal4)
-    model.link.add(basin5, user_demand7)
-    model.link.add(user_demand7, terminal4)
-
-    basin8 = model.basin.add(
-        Node(8, Point(5, 0), subnetwork_id=2),
+        Node(1, Point(0, 0), subnetwork_id=2),
         [basin.Profile(area=1e6, level=[0.0, 3.0]), basin.State(level=[2.0])],
     )
-    outlet9 = model.outlet.add(
-        Node(9, Point(6, 0), subnetwork_id=2),
+    outlet2 = model.outlet.add(
+        Node(2, Point(1, 1), subnetwork_id=2),
         [
             outlet.Static(
                 flow_rate=[0.0], max_flow_rate=[1.0], allocation_controlled=True
             )
         ],
     )
-    basin10 = model.basin.add(
-        Node(10, Point(7, 0), subnetwork_id=2),
-        [basin.Profile(area=1e4, level=[0.0, 3.0]), basin.State(level=[0.5])],
+    pump6 = model.pump.add(
+        Node(6, Point(1, -1), subnetwork_id=2),
+        [pump.Static(flow_rate=[0.0], max_flow_rate=[1.0], allocation_controlled=True)],
     )
-    user_demand11 = model.user_demand.add(
-        Node(11, Point(7, 1), subnetwork_id=2),
-        [
-            user_demand.Static(
-                demand=[0.1], return_factor=0.0, min_level=0.5, demand_priority=1
-            )
-        ],
-    )
+    terminal5 = model.terminal.add(Node(5, Point(3, 0), subnetwork_id=2))
 
-    model.link.add(basin8, outlet9)
-    model.link.add(outlet9, basin10)
-    model.link.add(basin10, user_demand11)
-    model.link.add(user_demand11, terminal4)
+    for basin_id, user_demand_id, y, connector in [
+        (3, 4, 1, outlet2),
+        (7, 8, -1, pump6),
+    ]:
+        downstream_basin = model.basin.add(
+            Node(basin_id, Point(2, y), subnetwork_id=2),
+            [basin.Profile(area=1e4, level=[0.0, 3.0]), basin.State(level=[0.5])],
+        )
+        user = model.user_demand.add(
+            Node(user_demand_id, Point(3, y), subnetwork_id=2),
+            [
+                user_demand.Static(
+                    demand=[0.1], return_factor=0.0, min_level=0.5, demand_priority=1
+                )
+            ],
+        )
+        model.link.add(basin1, connector)
+        model.link.add(connector, downstream_basin)
+        model.link.add(downstream_basin, user)
+        model.link.add(user, terminal5)
 
     return model

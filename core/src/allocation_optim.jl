@@ -1509,161 +1509,43 @@ function update_flow_variable_bounds!(
 end
 
 """
-Whether the flow into this node is a decision of the allocation problem, as opposed to
-following from the physical layer. Only the first kind can be chosen to leave water in a Basin.
+The largest reduction factor of the allocation controlled Pump and Outlet nodes that flow into this
+Basin, at the current levels. A Pump does not depend on the level difference.
 """
-function is_allocated_outflow(node_id::NodeID, p_independent::ParametersIndependent)::Bool
-    (; pump, outlet, tabulated_rating_curve) = p_independent
-    return if node_id.type == NodeType.UserDemand
-        true
-    elseif node_id.type == NodeType.Pump
-        pump.allocation_controlled[node_id.idx]
-    elseif node_id.type == NodeType.Outlet
-        outlet.allocation_controlled[node_id.idx]
-    elseif node_id.type == NodeType.TabulatedRatingCurve
-        tabulated_rating_curve.allocation_controlled[node_id.idx]
-    else
-        false
-    end
-end
-
-"""
-The flow rate that allocated inflows of a Basin can physically bring in at the current levels.
-"""
-function allocated_inflow_capacity(
+function allocated_inflow_reduction_factor(
         basin_id::NodeID,
+        basin_level::Float64,
         p::Parameters,
         t::Float64,
-        Δt_allocation::Float64,
     )::Float64
-    (; basin, pump, outlet, level_difference_threshold) = p.p_independent
-    basin_level = get_level(NaN, p, basin_id, t)
-    capacity = 0.0
+    (; basin, graph, pump, outlet, level_difference_threshold) = p.p_independent
+    f_reduction = 0.0
     for other_id in basin.inflow_ids[basin_id.idx]
-        other_id.type == NodeType.UserDemand && continue
-        is_allocated_outflow(other_id, p.p_independent) || continue
-        (; type, idx) = other_id
-        upstream_id = inflow_id(p.p_independent.graph, other_id)
-        upstream_level = get_level(NaN, p, upstream_id, t)
-        f_reduction = 1.0
-        if type != NodeType.Pump
-            # These flow by gravity
-            f_reduction *= reduction_factor(
-                upstream_level - basin_level,
-                level_difference_threshold,
-            )
-        end
-        if type != NodeType.TabulatedRatingCurve
-            node = type == NodeType.Pump ? pump : outlet
-            f_reduction *= reduction_factor(
-                upstream_level - node.min_upstream_level[idx](t),
-                level_difference_threshold,
-            )
-        end
-        if !iszero(f_reduction)
-            capacity += f_reduction * last(connector_flow_capacity_bounds(other_id, p, t, Δt_allocation))
-        end
-    end
-    return capacity
-end
-
-function low_storage_factor_expression(allocation_model::AllocationModel)::JuMP.AffExpr
-    objective = only(
-        objective for objective in allocation_model.objectives if
-            objective.type == AllocationObjectiveType.low_storage_factor
-    )
-    return only(objective.expressions)
-end
-
-function delete_user_demand_min_level_constraints!(allocation_model::AllocationModel)::Nothing
-    (; problem) = allocation_model
-    constraints = problem[:user_demand_min_level_constraint]
-    slacks = problem[:user_demand_min_level_slack]
-    foreach(constraint -> JuMP.delete(problem, constraint), constraints)
-    expression = low_storage_factor_expression(allocation_model)
-    for slack in slacks
-        delete!(expression.terms, slack)
-        JuMP.delete(problem, slack)
-    end
-    empty!(constraints)
-    empty!(slacks)
-    return nothing
-end
-
-"""
-Limit the abstraction from a Basin based on the level at the end of the allocation timestep,
-if this abstraction can lower the level to the `min_level` of the UserDemand within the timestep.
-"""
-function add_user_demand_min_level_constraint!(
-        allocation_model::AllocationModel,
-        p_independent::ParametersIndependent,
-        node_id::NodeID,
-        link::Tuple{NodeID, NodeID},
-        Δh::Float64,
-        total_demand::Float64,
-        area::Float64,
-        Δt_allocation::Float64,
-    )::Nothing
-    (; problem, scaling) = allocation_model
-    (; basin, level_difference_threshold) = p_independent
-    flow = problem[:flow]
-    source_id = link[1]
-
-    # The line through (0, 0) that touches the physical reduction factor from above at
-    # Δh = 3/4 * threshold. Combined with the upper bound of 1 this never cuts off the physical
-    # flow, and it is linear in the level at the end of the timestep.
-    slope = 9 / 8 * total_demand / level_difference_threshold
-
-    expression = JuMP.AffExpr(0.0, flow[link] => 1.0)
-    JuMP.add_to_expression!(
-        expression,
-        -slope * scaling.storage / area,
-        problem[:basin_storage_change][source_id],
-    )
-    # Add back the other allocated outflows of the Basin to the storage change, to not make the
-    # min_level a lower bound on the level for these other flows
-    for other_id in basin.outflow_ids[source_id.idx]
-        if other_id != node_id && is_allocated_outflow(other_id, p_independent)
-            JuMP.add_to_expression!(
-                expression,
-                -slope * Δt_allocation * scaling.flow / area,
-                flow[(source_id, other_id)],
+        if other_id.type == NodeType.Pump && pump.allocation_controlled[other_id.idx]
+            f_reduction = 1.0
+        elseif other_id.type == NodeType.Outlet && outlet.allocation_controlled[other_id.idx]
+            upstream_level = get_level(0.0, p, inflow_id(graph, other_id), t)
+            f_reduction = max(
+                f_reduction,
+                reduction_factor(upstream_level - basin_level, level_difference_threshold),
             )
         end
     end
-    # This slack (scaling.flow * m^3/s) keeps the problem feasible if other flows lower the level
-    # regardless of the abstraction. It is minimized before the demand objectives so it cannot be
-    # used to abstract more. The small weight gives the low storage factors precedence, since
-    # these should not be lowered to stay above the min_level.
-    slack = JuMP.@variable(problem, lower_bound = 0.0, base_name = "user_demand_min_level_slack_$link")
-    push!(problem[:user_demand_min_level_slack], slack)
-    JuMP.add_to_expression!(expression, -1.0, slack)
-    JuMP.add_to_expression!(low_storage_factor_expression(allocation_model), 1.0e-3, slack)
-
-    constraint = JuMP.@constraint(
-        problem,
-        expression ≤ slope * Δh,
-        base_name = "user_demand_min_level_constraint_$link"
-    )
-    push!(problem[:user_demand_min_level_constraint], constraint)
-    return nothing
+    return f_reduction
 end
 
 function update_user_demand_flow_bounds!(
         allocation_model::AllocationModel,
         p::Parameters,
         t::Float64,
-        Δt_allocation::Float64,
     )::Nothing
-    (; problem, node_ids_in_subnetwork, scaling) = allocation_model
+    (; problem, node_ids_in_subnetwork) = allocation_model
     (; user_demand_ids_subnetwork) = node_ids_in_subnetwork
     (; p_independent) = p
     (; user_demand, level_difference_threshold) = p_independent
-    (; current_storage, current_area) = p.current_basin_properties
+    (; current_storage) = p.current_basin_properties
     flow = problem[:flow]
     user_demand_allocated = problem[:user_demand_allocated]
-
-    delete_user_demand_min_level_constraints!(allocation_model)
 
     for node_id in user_demand_ids_subnetwork
         total_demand = sum(
@@ -1672,40 +1554,22 @@ function update_user_demand_flow_bounds!(
         )
         min_level = user_demand.min_level[node_id.idx]
         for link_metadata in user_demand.inflow_links[node_id.idx]
-            link = link_metadata.link
-            source_id = link[1]
-            upper_bound = total_demand
+            # Like in the physical layer, the abstraction stops when the source reaches the
+            # minimum level. This uses the level at the start of the timestep.
+            source_id = link_metadata.link[1]
+            source_storage = source_id.is_basin ? current_storage[source_id.idx] : 0.0
+            source_level = get_level(source_storage, p, source_id, t)
+            f_reduction = reduction_factor(source_level - min_level, level_difference_threshold)
             if source_id.is_basin
-                Δh = get_level(current_storage[source_id.idx], p, source_id, t) - min_level
-                area = current_area[source_id.idx]
-                max_drawdown = total_demand * scaling.flow * Δt_allocation / area
-                # What can be abstracted now, plus what allocated inflows can bring in. Without
-                # the latter a UserDemand at its min_level would never get a supply.
-                upper_bound = min(
-                    total_demand,
-                    total_demand * reduction_factor(Δh, level_difference_threshold) +
-                        allocated_inflow_capacity(source_id, p, t, Δt_allocation) / scaling.flow,
+                # An allocated inflow can raise the level. Without this a UserDemand at its
+                # min_level would never get a supply, since nothing would ask for the water.
+                f_reduction = max(
+                    f_reduction,
+                    allocated_inflow_reduction_factor(source_id, source_level, p, t),
                 )
-                if upper_bound > 0 && Δh < level_difference_threshold + max_drawdown
-                    add_user_demand_min_level_constraint!(
-                        allocation_model,
-                        p_independent,
-                        node_id,
-                        link,
-                        max(Δh, 0.0),
-                        total_demand,
-                        area,
-                        Δt_allocation,
-                    )
-                end
-            else
-                # The level of a LevelBoundary does not depend on the optimization
-                source_level = get_level(0.0, p, source_id, t)
-                upper_bound *=
-                    reduction_factor(source_level - min_level, level_difference_threshold)
             end
-            JuMP.set_lower_bound(flow[link], 0.0)
-            JuMP.set_upper_bound(flow[link], upper_bound)
+            JuMP.set_lower_bound(flow[link_metadata.link], 0.0)
+            JuMP.set_upper_bound(flow[link_metadata.link], total_demand * f_reduction)
         end
         JuMP.set_lower_bound(flow[user_demand.outflow_link[node_id.idx].link], 0.0)
         JuMP.set_upper_bound(flow[user_demand.outflow_link[node_id.idx].link], total_demand)
@@ -1808,7 +1672,7 @@ function update_allocation!(
         reset_demand_coefficients(secondary_network)
         set_demands!(secondary_network, p, t, Δt)
         update_flow_variable_bounds!(secondary_network, p, t, Δt)
-        update_user_demand_flow_bounds!(secondary_network, p, t, Δt)
+        update_user_demand_flow_bounds!(secondary_network, p, t)
         update_flow_demand_variable_bounds!(secondary_network, p_independent)
         normalize_flow_demand_objectives!(secondary_network)
 
@@ -1845,7 +1709,7 @@ function update_allocation!(
 
         set_demands!(primary_network, p, t, Δt)
         update_flow_variable_bounds!(primary_network, p, t, Δt)
-        update_user_demand_flow_bounds!(primary_network, p, t, Δt)
+        update_user_demand_flow_bounds!(primary_network, p, t)
         update_flow_demand_variable_bounds!(primary_network, p_independent)
         normalize_flow_demand_objectives!(primary_network)
         warm_start!(primary_network, p, t, Δt, du)

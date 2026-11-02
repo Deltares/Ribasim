@@ -239,13 +239,9 @@ end
 end
 
 @testitem "UserDemand min_level in allocation" begin
-    import BasicModelInterface as BMI
-    import JuMP
     using DataFrames: DataFrame
     using Dates: DateTime
 
-    # After the first two days the Basins are at the min_level of the UserDemand nodes,
-    # so allocation should not allocate most of the demand of 2 m3/s that cannot be abstracted
     toml_path = normpath(
         @__DIR__,
         "../../generated_testmodels/small_primary_secondary_network/ribasim.toml",
@@ -253,6 +249,9 @@ end
     @test ispath(toml_path)
     model = Ribasim.run(toml_path)
     @test success(model)
+
+    # After the first two days the Basins are at the min_level of the UserDemand nodes,
+    # so allocation should not allocate water that cannot be abstracted
     df = DataFrame(Ribasim.allocation_data(model))
     df = df[
         (df.node_type .== "UserDemand") .&& (df.time .>= DateTime(2020, 1, 3)) .&&
@@ -260,42 +259,20 @@ end
         :,
     ]
     @test !isempty(df)
-    @test sum(df.allocated) < 0.5
-    @test sum(df.supplied) < 0.5
+    @test all(df.allocated .< 0.01)
+    @test all(isapprox.(df.allocated, df.supplied; atol = 0.01))
 
+    # A UserDemand at its min_level is still supplied through an allocation controlled inflow
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/user_demand_min_level/ribasim.toml")
     @test ispath(toml_path)
-    model = Ribasim.Model(toml_path)
-    allocation_model = only(model.integrator.p.p_independent.allocation.allocation_models)
-    low_storage_factor = allocation_model.problem[:low_storage_factor]
-    # Step per day, since each update_until call is an intervention time
-    for day in 1:10
-        BMI.update_until(model, day * 86400.0)
-        # The low storage factors are not lowered to stay above the min_level, since this is
-        # not a reason for the Pump to stop in the physical layer
-        @test all(≈(1), JuMP.value.(low_storage_factor))
-    end
-    BMI.finalize(model)
+    model = Ribasim.run(toml_path)
+    @test success(model)
     df = DataFrame(Ribasim.allocation_data(model))
     df = df[(df.node_type .== "UserDemand") .&& .!isnan.(df.demand), :]
-
-    # The allocation follows the inflow of 0.02 m3/s that can be abstracted in equilibrium,
-    # instead of alternating between too much and too little per day
-    df_inflow = df[(df.node_id .== 3) .&& (df.time .>= DateTime(2020, 1, 4)), :]
-    @test !isempty(df_inflow)
-    @test all(isapprox.(df_inflow.allocated, 0.02; atol = 0.003))
-    @test all(isapprox.(df_inflow.supplied, 0.02; atol = 0.003))
-
-    # The level ends up below the min_level so there is hardly anything to allocate
-    df_pump = df[df.node_id .== 7, :]
-    @test !isempty(df_pump)
-    @test sum(df_pump.allocated) < 0.01
-
-    # An allocated inflow supplies a UserDemand that starts at its min_level
-    df_outlet = df[(df.node_id .== 11) .&& (df.time .>= DateTime(2020, 1, 3)), :]
-    @test !isempty(df_outlet)
-    @test all(isapprox.(df_outlet.supplied, 0.1; atol = 0.01))
+    @test sort(unique(df.node_id)) == [4, 8]
+    @test all(df.allocated .> 0.09)
+    @test all(df.supplied .> 0.01)
 end
 
 @testitem "Low storage factor only prevents negative storage" begin

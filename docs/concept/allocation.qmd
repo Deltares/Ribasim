@@ -209,21 +209,7 @@ $$
 	\in UD.
 $$
 
-Note that this means that we enforce that only allocated flow can enter a UserDemand node, and so there can not be more flow into the UserDemand node than the total demand of that node.
-In the physical layer the abstraction of a UserDemand goes to zero when the source level approaches the `min_level` of the UserDemand, within the `level_difference_threshold` $\Delta h_t$. Allocation accounts for this so that it does not allocate water that cannot be abstracted. Let $\Delta h^n_{(b, v)}$ be the level difference at the start of the allocation timestep, $\phi$ the physical reduction factor and $R_b$ the flow rate that allocated inflows can bring into Basin $b$ at the current levels. Then the flow over an inflow link from a Basin is bounded by
-
-$$
-	F_{(b, v)} \le \min\left(1, \phi\left(\Delta h^n_{(b, v)}\right) + \frac{R_b}{\sum_{p \in P_v} d_v^p}\right) \sum_{p \in P_v} d_v^p.
-$$
-
-Without $R_b$ a UserDemand at its `min_level` would never get a supply through a Pump or Outlet, as nothing would ask for this water. If the abstraction can lower the level to the `min_level` within the timestep, this constraint on the level at the end of the timestep is added:
-
-$$
-	F_{(b, v)} \le \frac{9}{8 \Delta h_t} \left(\max\left(\Delta h^n_{(b, v)}, 0\right) + \frac{\Delta S'_{(b, v)}}{A^n_b}\right) \sum_{p \in P_v} d_v^p + E^\text{level}_{(b, v)}.
-$$
-
-The right hand side is a line that touches the physical reduction factor from above. Here $\Delta S'_{(b, v)}$ is the storage change of the Basin without the other allocated outflows, such that the `min_level` of a UserDemand does not limit how much other nodes can take from the Basin. The slack $E^\text{level}_{(b, v)} \ge 0$ keeps the problem feasible if other flows lower the level regardless of the abstraction. It is minimized in the low storage factor objective. For an inflow link from a LevelBoundary the level is known, so the flow is bounded by the demand times the physical reduction factor.
-
+Note that this means that we enforce that only allocated flow can enter a UserDemand node, and so there can not be more flow into the UserDemand node than the total demand of that node. Like in the physical layer, the flow over each inflow link is furthermore multiplied by a reduction factor that goes to zero when the level of the source at the start of the allocation timestep approaches the `min_level` of the UserDemand, so that allocation does not allocate water that cannot be abstracted. If an allocation controlled Pump or Outlet flows into a source Basin, the factor is at least that of the inflow, based on the level difference for an Outlet, since the inflow can raise the level.
 For FlowDemand we do allow that there is more flow through the node with the flow demand than the total demand (or even negative flow). To allow this freedom, we introduce a special 'demand priority 0' variable
 
 $$
