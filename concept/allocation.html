@@ -496,6 +496,7 @@ Note
 <section id="objectives-goals" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Objectives (goals)</h1>
 <p>The allocation algorithm optimizes for a sequence of objectives in succession. Before optimizing the next goal, it adds an inequality constraint that retains the preceding result in the direction of improvement. For a minimization objective with optimal value <span class="math inline">\(z^*\)</span>, this is <span class="math inline">\(z \le z^*\)</span>. This approach is known as <a href="https://en.wikipedia.org/wiki/Goal_programming">goal programming</a>.</p>
+<p>The first objective maximizes the sum of the low storage factors of the Basins, which reduce the outflows of a Basin to prevent negative storage, like the low storage factor in the physical layer. Because this objective comes first, these factors are only lowered when a Basin would otherwise run empty, and the demand objectives cannot lower them to hold back water. Then come the demand objectives below, and finally the route priority objective.</p>
 <section id="demand-objectives" class="level3" data-number="3.0.1">
 <h3 data-number="3.0.1" class="anchored" data-anchor-id="demand-objectives"><span class="header-section-number">3.0.1</span> Demand objectives</h3>
 <p>There are several types of demand nodes:</p>

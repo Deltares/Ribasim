@@ -868,7 +868,7 @@ G^p = \sum_{v \in V_p} w_v^p E_v^p.
 <span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>        expressions <span class="op">=</span> [expression],</span>
 <span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>    ),</span>
 <span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Key points:</strong> - Maximizes the low storage factor to allow more outflow from basins - Optimized last to avoid infeasibility from emptying basins - Special priority (-1) ensures it runs after demand objectives</p>
+<p><strong>Key points:</strong> - Maximizes the low storage factor, so outflows from Basins are only reduced to prevent negative storage - Optimized first, before the demand objectives. Otherwise the demand objectives can lower the low storage factors to hold back water, for instance to meet a LevelDemand by throttling a weir, which the physical layer cannot do</p>
 </section>
 </section>
 </section>

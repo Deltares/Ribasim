@@ -340,6 +340,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="fixed" class="level3" data-number="1.1.3">
 <h3 data-number="1.1.3" class="anchored" data-anchor-id="fixed"><span class="header-section-number">1.1.3</span> Fixed</h3>
 <ul>
+<li>Allocation: The low storage factors are now optimized before the demands, so they only reduce Basin outflows to prevent negative storage. Before, the demand objectives could lower them to hold back water, for instance to meet a LevelDemand by reducing the flow over an uncontrolled weir, which the physical layer then did not follow.</li>
 <li>Allocation: Remove the Basin storage change upper bound and the flow bounds derived from it, which only existed for numerical reasons and could make the optimization problem infeasible. The flow of allocation controlled TabulatedRatingCurves is now bounded by its linearized Q(h) relation instead.</li>
 <li>Allocation: Normalize LevelDemand fairness constraints by the current mean Basin area per demand priority, improving numerical conditioning for large Basins.</li>
 <li>Allocation: Use a deterministic minimum-inlet-flow tie-break when collecting secondary-network demands from the primary network.</li>
