@@ -336,7 +336,13 @@ def pid_control_equation_model() -> Model:
 
 
 def pass_down_equation_model() -> Model:
-    """Set up a minimal including PassDown for an equation test."""
+    """Set up a minimal including PassDown for an equation test.
+
+    The inflow of PassDown #4 comes from a TabulatedRatingCurve, a FlowBoundary and a
+    PID controlled Pump, so the PassDown flows depend on the Basin storages and on the PID
+    integral. UserDemand #5 takes precedence over the PassDown nodes #7 and #8, of which #7
+    flows into Basin #9, so that the PassDown flows change the storage of a Basin.
+    """
     model = Model(
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2021, 1, 1),
@@ -379,14 +385,55 @@ def pass_down_equation_model() -> Model:
         Node(8, Point(3, 2)), tables=[pass_down.Static(fraction=[np.nan])]
     )
 
+    b2 = model.basin.add(
+        Node(9, Point(4, 2)),
+        [
+            basin.Profile(area=[100000.0, 100000.0], level=[0.0, 100.0]),
+            basin.State(level=[1.0]),
+        ],
+    )
+
+    # PID controlled Pump from a Basin which is not fed by PassDown nodes, into PassDown #4
+    b3 = model.basin.add(
+        Node(10, Point(0, 3)),
+        [
+            basin.Profile(area=1000.0, level=[0.0, 10.0]),
+            basin.State(level=[6.0]),
+        ],
+    )
+
+    fb2 = model.flow_boundary.add(
+        Node(11, Point(-1, 3)), [flow_boundary.Static(flow_rate=[1e-3])]
+    )
+
+    # The flow rate is overwritten by the PID controller
+    pmp = model.pump.add(Node(12, Point(1, 3)), [pump.Static(flow_rate=[0.0])])
+
+    pid = model.pid_control.add(
+        Node(13, Point(1, 4)),
+        [
+            pid_control.Static(
+                listen_node_id=[10],
+                target=[5.5],
+                proportional=[-5e-3],
+                integral=[-7e-10],
+                derivative=[-8e3],
+            )
+        ],
+    )
+
     model.link.add(b1, trc)
     model.link.add(trc, pd1)
     model.link.add(fb, pd1)
     model.link.add(pd1, ud)
     model.link.add(ud, t)
     model.link.add(pd1, pd2)
-    model.link.add(pd2, t)
+    model.link.add(pd2, b2)
     model.link.add(pd1, pd3)
     model.link.add(pd3, t)
+    model.link.add(fb2, b3)
+    model.link.add(b3, pmp)
+    model.link.add(pmp, pd1)
+    model.link.add(pid, pmp)
 
     return model

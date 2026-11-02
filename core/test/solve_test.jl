@@ -94,3 +94,51 @@ end
         end
     end
 end
+
+@testitem "Reduced Jacobian with PassDown matches full Jacobian" begin
+    using LinearAlgebra: norm
+    using Ribasim.SciMLOperators: update_coefficients!
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pass_down_equation/ribasim.toml")
+
+    model = Ribasim.Model(toml_path)
+    (; integrator) = model
+    (; u, p, t) = integrator
+    (; J) = integrator.cache.nlsolver.cache.W
+    p.p_mutable.refresh_jac = true
+    update_coefficients!(J, u, p, t)
+
+    n_flow = length(u.flow)
+    n_pid = length(u.pid_integral)
+    @test Ribasim.has_pass_down(J)
+    @test n_pid > 0
+
+    # Q_S = ∂q_∂storage and G = ∂q_∂pid_integral of the flows before the PassDown subgraphs
+    Q_S = zeros(n_flow, J.n_basin)
+    Ribasim.foreach_∂flow_∂storage(J) do flow_idx, basin_idx, val
+        Q_S[flow_idx, basin_idx] += val
+    end
+    G = zeros(n_flow, n_pid)
+    Ribasim.foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, val
+        G[flow_idx, pid_idx] += val
+    end
+    K = Matrix(J.cache.jac_pass_down.jac)
+    M = Matrix(p.p_independent.incidence_matrix)
+
+    config_full = Ribasim.Config(toml_path; solver_reduced_implicit_solve = false)
+    integrator_full = Ribasim.Model(config_full).integrator
+    J_full = Matrix(copy(integrator_full.f.jac_prototype))
+    integrator_full.f.jac(J_full, integrator_full.u, integrator_full.p, integrator_full.t)
+
+    # The flow and PID integral columns of the flow rows
+    J_flow_flow = J_full[1:n_flow, 1:n_flow]
+    J_flow_pid = J_full[1:n_flow, (n_flow + 1):end]
+    @test norm(J_flow_flow) > 0
+    @test norm(J_flow_pid) > 0
+
+    @test norm(K * Q_S * M - J_flow_flow) <= 1.0e-8 * norm(J_flow_flow)
+    @test norm(K * G - J_flow_pid) <= 1.0e-8 * norm(J_flow_pid)
+
+    # Without the PassDown Jacobian the result is different
+    @test norm(Q_S * M - J_flow_flow) > 1.0e-2 * norm(J_flow_flow)
+end
