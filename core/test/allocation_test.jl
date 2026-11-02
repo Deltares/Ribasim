@@ -193,7 +193,7 @@ end
 
         # Test allocation_control if it exists (may be empty for models without control)
         if isfile(allocation_control_path)
-            NCDDataset(allocation_control_path) do ds
+            NCDataset(allocation_control_path) do ds
                 @test "time" in keys(ds)
                 @test "node_id" in keys(ds)
                 @test "node_type" in keys(ds)
@@ -356,6 +356,13 @@ end
     @test JuMP.lower_bound(flow[outlet_link]) == 0
     @test JuMP.upper_bound(flow[outlet_link]) * scaling.flow ≈
         outlet.max_flow_rate[outlet_id.idx](0.0)
+
+    # Without allocation control the Outlet flow follows from its linearized flow-level
+    # relation, whose reduction factors can bring it below min_flow_rate
+    outlet.allocation_controlled[outlet_id.idx] = false
+    outlet.min_flow_rate[outlet_id.idx].u .= 1.0e-3
+    @test Ribasim.connector_flow_capacity_bounds(outlet_id, model.integrator.p, 0.0, 86400.0) ==
+        (-Inf, Inf)
 
     # ManningResistance flows are only constrained by their linearized flow-level relation,
     # and Basin storage changes only by the storage that is available
@@ -534,6 +541,33 @@ end
     # Verify we actually have data in both regimes
     @test !isempty(high_level_flows)
     @test !isempty(low_level_flows)
+end
+
+@testitem "FlowDemand on a node with DiscreteControl" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/flow_demand_discrete_control/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    # The Pump has two control inneighbors: a FlowDemand and a DiscreteControl
+    model = Ribasim.run(toml_path)
+    @test success(model)
+    @test isfile(normpath(dirname(toml_path), "results/allocation.nc"))
+    @test isfile(normpath(dirname(toml_path), "results/allocation_flow.nc"))
+
+    control_states = Ribasim.discrete_control_data(model).control_state
+    @test "allocation" in control_states
+    @test "prescribed" in control_states
+
+    allocation_table = DataFrame(Ribasim.allocation_data(model))
+    pump_table = filter(:node_id => ==(2), allocation_table)
+    @test !isempty(pump_table)
+    @test all(≈(2.0e-3), pump_table.demand)
+    # The supplied flow of the last intervention interval is computed separately
+    @test isfinite(last(pump_table.supplied))
 end
 
 @testitem "allocation record averaging" begin
