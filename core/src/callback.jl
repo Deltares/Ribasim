@@ -249,6 +249,7 @@ function update_concentrations!(u, t, integrator)::Nothing
     end
 
     mass_inflows_from_user_demand!(integrator)
+    mass_through_pass_down!(integrator)
     mass_inflows_basin!(integrator)
     aggregate_flows!(
         cumulative_in,

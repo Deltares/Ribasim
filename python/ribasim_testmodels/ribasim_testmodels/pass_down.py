@@ -2,6 +2,7 @@ from datetime import datetime
 
 import numpy as np
 from ribasim import Model
+from ribasim.config import Experimental
 from ribasim.geometry.node import Node
 from ribasim.nodes import (
     basin,
@@ -27,11 +28,14 @@ def pass_down_model() -> Model:
     - A PassDown node with both a UserDemand and multiple PassDown nodes downstream,
       where the UserDemand takes precedence and the remaining flow is divided over
       the PassDown nodes.
+
+    Tracers are enabled, so the flows through all these configurations also carry tracer mass.
     """
     model = Model(
         starttime=datetime(2022, 1, 1),
         endtime=datetime(2023, 1, 1),
         crs="EPSG:4326",
+        experimental=Experimental(concentration=True),
     )
 
     def node(node_id: int, x: float, y: float) -> Node:
@@ -115,5 +119,60 @@ def pass_down_model() -> Model:
     model.link.add(ud3, t)
     model.link.add(pd8, t)
     model.link.add(pd9, t)
+
+    return model
+
+
+def pass_down_tracer_model() -> Model:
+    """Create a model for testing the tracers through PassDown nodes.
+
+    Two FlowBoundaries flow into PassDown #3, of which only #1 has a concentration for the
+    substance Foo. UserDemand #4 abstracts from PassDown #3 and returns to Basin #6, while the
+    remaining flow goes via PassDown #5 to Basin #7.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 3, 1),
+        crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
+    )
+
+    def basin_tables() -> list:
+        return [
+            basin.Profile(area=[1e5, 1e5], level=[0.0, 100.0]),
+            basin.State(level=[1.0]),
+        ]
+
+    fb1 = model.flow_boundary.add(
+        Node(1, Point(0, 1)),
+        [
+            flow_boundary.Static(flow_rate=[0.04]),
+            flow_boundary.Concentration(
+                time=["2020-01-01"], substance=["Foo"], concentration=[2.0]
+            ),
+        ],
+    )
+    fb2 = model.flow_boundary.add(
+        Node(2, Point(0, -1)), [flow_boundary.Static(flow_rate=[0.02])]
+    )
+    pd_a = model.pass_down.add(
+        Node(3, Point(1, 0)), [pass_down.Static(fraction=[np.nan])]
+    )
+    ud = model.user_demand.add(
+        Node(4, Point(2, 1)),
+        [user_demand.Static(demand=[0.01], return_factor=0.5)],
+    )
+    pd_b = model.pass_down.add(
+        Node(5, Point(2, -1)), [pass_down.Static(fraction=[np.nan])]
+    )
+    b1 = model.basin.add(Node(6, Point(3, 1)), basin_tables())
+    b2 = model.basin.add(Node(7, Point(3, -1)), basin_tables())
+
+    model.link.add(fb1, pd_a)
+    model.link.add(fb2, pd_a)
+    model.link.add(pd_a, ud)
+    model.link.add(pd_a, pd_b)
+    model.link.add(ud, b1)
+    model.link.add(pd_b, b2)
 
     return model

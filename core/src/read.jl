@@ -1491,7 +1491,12 @@ function UserDemand(db::DB, config::Config, graph::MetaGraph)
         continuity_tracer = false,
     )
 
-    user_demand = UserDemand(; node_id, concentration_itp, demand_priorities)
+    user_demand = UserDemand(;
+        node_id,
+        concentration_itp,
+        demand_priorities,
+        return_mass = zeros(length(substances), length(node_id)),
+    )
 
 
     for (i, id) in enumerate(user_demand.node_id)
@@ -1747,6 +1752,7 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
     end
     state_links = [state_links_dict[link_id] for link_id in sort!(collect(keys(state_links_dict)))]
 
+    n_substance = length(get_substances(db, config))
     pass_down = PassDown(;
         node_id,
         inflow_links,
@@ -1755,6 +1761,8 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
         state_links,
         inflow_state_idx = [[state_link_index(state_links, link) for link in links] for links in inflow_links],
         outflow_state_idx = [[state_link_index(state_links, link) for link in links] for links in outflow_links],
+        link_mass = zeros(n_substance, length(state_links)),
+        concentration = zeros(n_substance, length(node_id)),
     )
     (; fraction) = pass_down
     has_fraction = falses(length(node_id))
