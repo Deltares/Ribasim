@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.38">
+<meta name="generator" content="quarto-1.11.9">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -12,10 +12,13 @@
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
 */
-code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
-div.columns{display: flex; gap: min(4vw, 1.5em);}
-div.column{flex: auto; overflow-x: auto;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
 div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 ul.task-list{list-style: none;}
 ul.task-list li input[type="checkbox"] {
@@ -73,14 +76,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../assets/ribasim.ico" rel="icon">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/scrollable-regions/scrollable-regions.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-d3dd72e47976c844a05ffb6b950c6ecd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-11dfed304549e7d9db55013033367f26.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -116,11 +120,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link rel="stylesheet" href="../assets/styles.css">
 </head>
 
-<body class="nav-sidebar floating nav-fixed quarto-light">
+<body class="nav-sidebar floating nav-fixed quarto-light"><a id="quarto-skip-link" class="visually-hidden-focusable" href="#quarto-document-content">Skip to main content</a>
 
 <div id="quarto-search-results"></div>
   <header id="quarto-header" class="headroom fixed-top">
-    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark" aria-label="Site">
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
     <a href="../index.html" class="navbar-brand navbar-brand-logo">
@@ -131,8 +135,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <span class="navbar-title">Ribasim</span>
     </a>
   </div>
-            <div id="quarto-search" class="" title="Search"></div>
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
   <span class="navbar-toggler-icon"></span>
 </button>
           <div class="collapse navbar-collapse" id="navbarCollapse">
@@ -172,15 +175,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           </div> <!-- /navcollapse -->
             <div class="quarto-navbar-tools">
 </div>
+            <div id="quarto-search" class="" title="Search"></div>
       </div> <!-- /container-fluid -->
     </nav>
-  <nav class="quarto-secondary-nav">
+  <nav class="quarto-secondary-nav" aria-label="Toolbar">
     <div class="container-fluid d-flex">
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../guide/delwaq.html">Coupling guides</a></li><li class="breadcrumb-item"><a href="../guide/delwaq.html">Ribasim Delwaq coupling</a></li></ol></nav>
-        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        <nav class="quarto-page-breadcrumbs" aria-label="Breadcrumbs"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../guide/delwaq.html">Coupling guides</a></li><li class="breadcrumb-item"><a href="../guide/delwaq.html">Ribasim Delwaq coupling</a></li></ol></nav>
+        <a class="flex-grow-1" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
   </nav>
@@ -188,7 +192,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <!-- content -->
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
-  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto" aria-label="Section">
     <div class="sidebar-menu-container"> 
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
@@ -229,13 +233,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
- <span class="menu-text">Coupling guides</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
-            <i class="bi bi-chevron-right ms-2"></i>
-          </a> 
+            <button type="button" class="sidebar-item-text sidebar-item-toggle sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-controls="quarto-sidebar-section-1" aria-expanded="true">
+ <span class="menu-text" id="quarto-sidebar-section-1-label">Coupling guides</span><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
       </div>
-      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+      <ul id="quarto-sidebar-section-1" aria-labelledby="quarto-sidebar-section-1-label" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../guide/delwaq.html" class="sidebar-item-text sidebar-link active">
@@ -256,7 +257,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        <nav id="TOC" role="doc-toc" class="toc-active">
+        <nav id="TOC" role="doc-toc" aria-labelledby="toc-title" class="toc-active">
     <h2 id="toc-title">On this page</h2>
    
   <ul>
@@ -266,9 +267,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </nav>
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content">
+<main class="content" id="quarto-document-content" tabindex="-1">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../guide/delwaq.html">Coupling guides</a></li><li class="breadcrumb-item"><a href="../guide/delwaq.html">Ribasim Delwaq coupling</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="Breadcrumbs"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../guide/delwaq.html">Coupling guides</a></li><li class="breadcrumb-item"><a href="../guide/delwaq.html">Ribasim Delwaq coupling</a></li></ol></nav>
 <div class="quarto-title">
 <h1 class="title">Ribasim Delwaq coupling</h1>
 </div>
@@ -291,13 +292,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>All testmodels can be <a href="../getting-started/install.html">downloaded from here</a>.</p>
 <section id="generating-delwaq-input" class="level2" data-number="1">
 <h2 data-number="1" class="anchored" data-anchor-id="generating-delwaq-input"><span class="header-section-number">1</span> Generating Delwaq input</h2>
-<div id="015da967" class="cell" data-execution_count="1">
+<div id="15a3ec15" class="cell" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>toml_path <span class="op">=</span> Path(<span class="st">"../../generated_testmodels/basic/ribasim.toml"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>This Ribasim model already has substance concentrations for <code>Cl</code> and <code>Tracer</code> in the input tables, and we will use these to generate the Delwaq input files.</p>
-<div id="f16ab10e" class="cell" data-execution_count="2">
+<div id="5c3b8956" class="cell" data-execution_count="2">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim <span class="im">import</span> Model, run_ribasim</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> Model.read(toml_path)</span>
@@ -711,7 +712,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </div>
-<div id="c5af0829" class="cell" data-execution_count="4">
+<div id="64bc8692" class="cell" data-execution_count="4">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>model.basin.profile</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="4">
 <div>Basin / profile</div><div>
@@ -798,7 +799,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>Let’s add another tracer to the model, to setup a fraction calculation.</p>
-<div id="59994d4e" class="cell" data-execution_count="5">
+<div id="099ae567" class="cell" data-execution_count="5">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> add_tracer</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>add_tracer(model, <span class="dv">11</span>, <span class="st">"Foo"</span>)</span>
@@ -921,7 +922,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <pre><code>PosixPath('../../generated_testmodels/basic/ribasim.toml')</code></pre>
 </div>
 </div>
-<div id="4394596c" class="cell" data-execution_count="6">
+<div id="446e2c8e" class="cell" data-execution_count="6">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>run_ribasim(toml_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>⠀⠀⠀⠀⠀⠀⠀⣿⣿⢂⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -934,7 +935,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 ⠀⠀⠀⢿⣿⠇⠿⠟⢿⣾⣿⠿⠿⠿⠃⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠁⣿⣿⠆⠀⠀⠀⠀⠀⠀
 
-┌ Info: Starting a Ribasim simulation at 2026-11-02T17:39:12.846.
+┌ Info: Starting a Ribasim simulation at 2026-11-03T09:08:13.479.
 │   toml_path = "../../generated_testmodels/basic/ribasim.toml"
 │   ribasim_version = "2026.1.2"
 │   ribasim_home = "/home/runner/work/Ribasim/Ribasim/.pixi/envs/default"
@@ -950,7 +951,7 @@ Simulating  44%|█████████████████▌          
 Simulating  71%|████████████████████████████▍           |  ETA: 0:00:01
 Simulating  98%|███████████████████████████████████████▍|  ETA: 0:00:00
 Simulating 100%|████████████████████████████████████████| Time: 0:00:02
-[ Info: Computation time: 2 seconds, 532 milliseconds
+[ Info: Computation time: 2 seconds, 543 milliseconds
 [ Info: Writing results.
 ┌ Info: Convergence bottlenecks in descending order of severity (1.0 is the
 │ worst):
@@ -959,11 +960,11 @@ Simulating 100%|█████████████████████�
 │   TabulatedRatingCurve #4 = 0.37
 │   ManningResistance #2 = 0.31
 └   LinearResistance #10 = 0.2
-[ Info: The model finished successfully at 2026-11-02T17:39:44.485.</code></pre>
+[ Info: The model finished successfully at 2026-11-03T09:08:45.393.</code></pre>
 </div>
 </div>
 <p>Given the path to a completed Ribasim simulation, we can call <code>ribasim.delwaq.generate</code> for generating the required input files for Delwaq from scratch. <code>ribasim.delwaq.generate</code> either takes a <code>Model</code> instance, or the path to a toml file, as well as an output_path keyword, where the input for Delwaq will be written. By default it is set to the delwaq folder next to the toml.</p>
-<div id="ea3ab5fb" class="cell" data-execution_count="7">
+<div id="2f8c6137" class="cell" data-execution_count="7">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> generate</span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="co"># The default path is the delwaq folder next to the toml</span></span>
@@ -972,22 +973,22 @@ Simulating 100%|█████████████████████�
 <span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>generate(model, output_path)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="7">
 <pre><code>ribasim.Model(
-    starttime=datetime.datetime(2020, 1, 1, 0, 0),
-    experimental=Experimental(concentration=True, allocation=False),
-    results_dir=PosixPath('results'),
-    logging=Logging(verbosity='debug'),
-    filepath=PosixPath('../../generated_testmodels/basic/ribasim.toml'),
     link=Link(...),
-    node=Node(...),
+    ribasim_version='2026.1.2',
+    starttime=datetime.datetime(2020, 1, 1, 0, 0),
+    filepath=PosixPath('../../generated_testmodels/basic/ribasim.toml'),
     input_dir=PosixPath('input'),
     crs='EPSG:28992',
     endtime=datetime.datetime(2021, 1, 1, 0, 0),
-    ribasim_version='2026.1.2',
+    node=Node(...),
+    results_dir=PosixPath('results'),
+    experimental=Experimental(concentration=True, allocation=False),
+    logging=Logging(verbosity='debug'),
 )</code></pre>
 </div>
 </div>
 <p>This call produces a handful of files in the user defined folder. Let’s take a look at them:</p>
-<div id="72e41ccd" class="cell" data-execution_count="8">
+<div id="d2b6f310" class="cell" data-execution_count="8">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="bu">list</span>(output_path.iterdir())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display" data-execution_count="8">
 <pre><code>[PosixPath('../../generated_testmodels/basic/delwaq/include'),
@@ -1018,7 +1019,7 @@ Simulating 100%|█████████████████████�
 <section id="parsing-the-results" class="level2" data-number="2">
 <h2 data-number="2" class="anchored" data-anchor-id="parsing-the-results"><span class="header-section-number">2</span> Parsing the results</h2>
 <p>With Delwaq having run, we can now parse the results using <code>ribasim.delwaq.parse</code>. This function requires either a path to a toml file, or a Model instance. The mapping and substances needed to interpret the results are read from the <code>ribasim.nc</code> file written by <code>ribasim.delwaq.generate</code>. You can optionally set the path to the results folder of the Delwaq simulation, if you overrode the default during <code>ribasim.delwaq.generate</code>.</p>
-<div id="f0a64635" class="cell" data-execution_count="10">
+<div id="0e09fb60" class="cell" data-execution_count="10">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> parse</span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>nmodel_nc <span class="op">=</span> parse(model, output_path, to_input<span class="op">=</span><span class="va">False</span>)</span>
@@ -1030,11 +1031,11 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>By default (<code>to_input=False</code>), the parsed model writes the Delwaq tracer results to <code>results/concentration.nc</code> and does not populate the <code>Basin / concentration_external</code> table.</p>
-<div id="9d3df418" class="cell" data-execution_count="11">
+<div id="fb0f27ad" class="cell" data-execution_count="11">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Parse Delwaq results and also populate Basin / concentration_external for plotting</span></span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>nmodel <span class="op">=</span> parse(model, output_path, to_input<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div id="861383e6" class="cell" data-execution_count="12">
+<div id="6cc097cd" class="cell" data-execution_count="12">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>display(nmodel.basin.concentration_external)</span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>t <span class="op">=</span> nmodel.basin.concentration_external.df</span>
 <span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="bu">sorted</span>(t.substance.unique()))</span>
@@ -1108,36 +1109,36 @@ Simulating 100%|█████████████████████�
 <th data-quarto-table-cell-role="th">19027</th>
 <td>2020-12-30</td>
 <td>9</td>
-<td>0.009143</td>
-<td>Foo</td>
+<td>0.019558</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">19028</th>
 <td>2020-12-31</td>
 <td>1</td>
 <td>0.000091</td>
-<td>Foo</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">19029</th>
 <td>2020-12-31</td>
 <td>3</td>
 <td>0.004970</td>
-<td>Foo</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">19030</th>
 <td>2020-12-31</td>
 <td>6</td>
 <td>0.002616</td>
-<td>Foo</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">19031</th>
 <td>2020-12-31</td>
 <td>9</td>
-<td>0.009058</td>
-<td>Foo</td>
+<td>0.019346</td>
+<td>LevelBoundary</td>
 </tr>
 </tbody>
 </table>
@@ -1203,336 +1204,336 @@ Simulating 100%|█████████████████████�
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>Drainage</td>
+<td>Basic</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1465</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>Drainage</td>
+<td>Basic</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">1466</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>Drainage</td>
+<td>Basic</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">1467</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>Drainage</td>
+<td>Basic</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2928</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>UserDemand</td>
+<td>Precipitation</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">2929</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>UserDemand</td>
+<td>Precipitation</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">2930</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>UserDemand</td>
+<td>Precipitation</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">2931</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>UserDemand</td>
+<td>Precipitation</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">4392</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>Basic</td>
+<td>SurfaceRunoff</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">4393</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>Basic</td>
+<td>SurfaceRunoff</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">4394</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>Basic</td>
+<td>SurfaceRunoff</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">4395</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>Basic</td>
+<td>SurfaceRunoff</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">5856</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>SurfaceRunoff</td>
+<td>UserDemand</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">5857</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>SurfaceRunoff</td>
+<td>UserDemand</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">5858</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>SurfaceRunoff</td>
+<td>UserDemand</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">5859</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>SurfaceRunoff</td>
+<td>UserDemand</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">7320</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>0.0</td>
-<td>Precipitation</td>
+<td>1.0</td>
+<td>Cl</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">7321</th>
 <td>2020-01-01</td>
 <td>3</td>
-<td>0.0</td>
-<td>Precipitation</td>
+<td>1.0</td>
+<td>Cl</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">7322</th>
 <td>2020-01-01</td>
 <td>6</td>
-<td>0.0</td>
-<td>Precipitation</td>
+<td>1.0</td>
+<td>Cl</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">7323</th>
 <td>2020-01-01</td>
 <td>9</td>
-<td>0.0</td>
-<td>Precipitation</td>
+<td>1.0</td>
+<td>Cl</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">8784</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>LevelBoundary</td>
+<td>Bar</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">8785</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>LevelBoundary</td>
+<td>Bar</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">8786</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>LevelBoundary</td>
+<td>Bar</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">8787</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>LevelBoundary</td>
+<td>Bar</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">10248</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>0.0</td>
-<td>FlowBoundary</td>
+<td>1.0</td>
+<td>Continuity</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">10249</th>
 <td>2020-01-01</td>
 <td>3</td>
-<td>0.0</td>
-<td>FlowBoundary</td>
+<td>1.0</td>
+<td>Continuity</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">10250</th>
 <td>2020-01-01</td>
 <td>6</td>
-<td>0.0</td>
-<td>FlowBoundary</td>
+<td>1.0</td>
+<td>Continuity</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">10251</th>
 <td>2020-01-01</td>
 <td>9</td>
-<td>0.0</td>
-<td>FlowBoundary</td>
+<td>1.0</td>
+<td>Continuity</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">11712</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>1.0</td>
-<td>Continuity</td>
+<td>0.0</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">11713</th>
 <td>2020-01-01</td>
 <td>3</td>
-<td>1.0</td>
-<td>Continuity</td>
+<td>0.0</td>
+<td>Foo</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">11714</th>
 <td>2020-01-01</td>
 <td>6</td>
-<td>1.0</td>
-<td>Continuity</td>
+<td>0.0</td>
+<td>Foo</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">11715</th>
 <td>2020-01-01</td>
 <td>9</td>
-<td>1.0</td>
-<td>Continuity</td>
+<td>0.0</td>
+<td>Foo</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">13176</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>1.0</td>
-<td>Cl</td>
+<td>Initial</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">13177</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>1.0</td>
-<td>Cl</td>
+<td>Initial</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">13178</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>1.0</td>
-<td>Cl</td>
+<td>Initial</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">13179</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>1.0</td>
-<td>Cl</td>
+<td>Initial</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">14640</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>Bar</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">14641</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>Bar</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">14642</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>Bar</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">14643</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>Bar</td>
+<td>FlowBoundary</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">16104</th>
 <td>2020-01-01</td>
 <td>1</td>
-<td>1.0</td>
-<td>Initial</td>
+<td>0.0</td>
+<td>Drainage</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">16105</th>
 <td>2020-01-01</td>
 <td>3</td>
-<td>1.0</td>
-<td>Initial</td>
+<td>0.0</td>
+<td>Drainage</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">16106</th>
 <td>2020-01-01</td>
 <td>6</td>
-<td>1.0</td>
-<td>Initial</td>
+<td>0.0</td>
+<td>Drainage</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">16107</th>
 <td>2020-01-01</td>
 <td>9</td>
-<td>1.0</td>
-<td>Initial</td>
+<td>0.0</td>
+<td>Drainage</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">17568</th>
 <td>2020-01-01</td>
 <td>1</td>
 <td>0.0</td>
-<td>Foo</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">17569</th>
 <td>2020-01-01</td>
 <td>3</td>
 <td>0.0</td>
-<td>Foo</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="odd">
 <th data-quarto-table-cell-role="th">17570</th>
 <td>2020-01-01</td>
 <td>6</td>
 <td>0.0</td>
-<td>Foo</td>
+<td>LevelBoundary</td>
 </tr>
 <tr class="even">
 <th data-quarto-table-cell-role="th">17571</th>
 <td>2020-01-01</td>
 <td>9</td>
 <td>0.0</td>
-<td>Foo</td>
+<td>LevelBoundary</td>
 </tr>
 </tbody>
 </table>
@@ -1541,7 +1542,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 <p>We can use this table to plot the results of the Delwaq model, both spatially as over time.</p>
-<div id="9872bd76" class="cell" data-execution_count="13">
+<div id="32f4c4ce" class="cell" data-execution_count="13">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> plot_fraction</span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot default tracers (sum to 1), plus custom tracers on node 9</span></span>
@@ -1570,7 +1571,7 @@ Simulating 100%|█████████████████████�
 </div>
 </div>
 </div>
-<div id="0bbf36ec" class="cell" data-execution_count="14">
+<div id="94c8e661" class="cell" data-execution_count="14">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.delwaq <span class="im">import</span> plot_spatial</span>
 <span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>plot_spatial(nmodel, <span class="st">"Bar"</span>)</span>
@@ -1673,7 +1674,8 @@ Simulating 100%|█████████████████████�
           return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
       }
       // Inspect non-navigation links and adorn them if external
-     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      window.quartoDecorateExternalLinks = function (root) {
+     var links = (root || window.document).querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
       for (var i=0; i<links.length; i++) {
         const link = links[i];
         if (!isInternal(link.href)) {
@@ -1682,8 +1684,69 @@ Simulating 100%|█████████████████████�
           if (link.dataset.originalHref !== undefined) {
             link.href = link.dataset.originalHref;
           }
+          if (!link.classList.contains('no-external-icon')) {
+          }
         }
       }
+      };
+      window.quartoDecorateExternalLinks(window.document);
+    // Esc closes the popup (WCAG 1.4.13) and focus leaving both trigger and
+    // popup closes it (WCAG 2.4.11); tippy handles neither for interactive popups.
+    const hideOnEscAndFocusOut = {
+      name: 'hideOnEscAndFocusOut',
+      defaultValue: true,
+      fn(instance) {
+        const dismiss = () => {
+          // A show scheduled by the trigger delay would otherwise reopen it
+          instance.clearDelayTimeouts();
+          instance.hide();
+        };
+        const onKeyDown = (event) => {
+          if (event.key !== 'Escape') {
+            return;
+          }
+          // Keep Esc from also reaching page handlers (e.g. reveal.js overview),
+          // except an open reveal.js slide menu, which Esc should close too.
+          // The menu handles keys only when its keyboard option is on.
+          const menuHandlesEsc = window.Reveal?.getPlugin?.('menu')?.isOpen() &&
+            window.Reveal.getConfig().menu?.keyboard !== false;
+          if (!menuHandlesEsc) {
+            event.stopPropagation();
+          }
+          if (instance.popper.contains(window.document.activeElement)) {
+            // Disabled while refocusing so the focus trigger does not reopen it
+            instance.disable();
+            instance.reference.focus();
+            instance.enable();
+          }
+          dismiss();
+        };
+        const onFocusOut = (event) => {
+          const target = event.relatedTarget;
+          if (target && !instance.reference.contains(target) &&
+              !instance.popper.contains(target)) {
+            dismiss();
+          }
+        };
+        // On the trigger too: a click trigger (code-annotations: select) has no
+        // blur handling. Attached for the instance's lifetime so leaving the
+        // trigger also cancels a show still pending on the trigger delay.
+        instance.reference.addEventListener('focusout', onFocusOut);
+        return {
+          onShow() {
+            window.document.addEventListener('keydown', onKeyDown, true);
+            instance.popper.addEventListener('focusout', onFocusOut);
+          },
+          onHide() {
+            window.document.removeEventListener('keydown', onKeyDown, true);
+            instance.popper.removeEventListener('focusout', onFocusOut);
+          },
+          onDestroy() {
+            instance.reference.removeEventListener('focusout', onFocusOut);
+          },
+        };
+      },
+    };
     function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
       const config = {
         allowHTML: true,
@@ -1697,6 +1760,7 @@ Simulating 100%|█████████████████████�
         interactiveBorder: 10,
         theme: 'quarto',
         placement: 'bottom-start',
+        plugins: [hideOnEscAndFocusOut],
       };
       if (contentFn) {
         config.content = contentFn;
@@ -1859,44 +1923,54 @@ Simulating 100%|█████████████████████�
           const lineIds = lines.map((line) => {
             return targetCell + "-" + line;
           })
-          let top = null;
-          let height = null;
-          let parent = null;
+          // Each band is positioned against its own containing block, which is
+          // not the offsetParent of the lines, so place it from client rects.
+          const placeBand = (band, firstEl, lastEl, codeBlock) => {
+            const container = band.offsetParent;
+            if (container === null) {
+              return;
+            }
+            const containerRect = container.getBoundingClientRect();
+            // Reveal.js scales slides with a transform, so convert client
+            // pixels back to the CSS pixels of the container.
+            const scale = containerRect.height / container.offsetHeight || 1;
+            const firstRect = firstEl.getBoundingClientRect();
+            const lastRect = lastEl.getBoundingClientRect();
+            const top = (firstRect.top - containerRect.top) / scale - container.clientTop + container.scrollTop;
+            const height = (lastRect.bottom - firstRect.top) / scale;
+            band.style.top = top - 2 + "px";
+            band.style.height = height + 4 + "px";
+            if (codeBlock) {
+              // Without the copy button wrapper, the containing block is wider
+              // than the code block, so span the code block explicitly.
+              const blockRect = codeBlock.getBoundingClientRect();
+              band.style.left = (blockRect.left - containerRect.left) / scale - container.clientLeft + container.scrollLeft + "px";
+              band.style.width = blockRect.width / scale + "px";
+            }
+          };
           if (lineIds.length > 0) {
-              //compute the position of the single el (top and bottom and make a div)
-              const el = window.document.getElementById(lineIds[0]);
-              top = el.offsetTop;
-              height = el.offsetHeight;
-              parent = el.parentElement.parentElement;
-            if (lineIds.length > 1) {
-              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
-              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
-              height = bottom - top;
+            const el = window.document.getElementById(lineIds[0]);
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const parent = el.parentElement.parentElement;
+            // cook up a div (if necessary) and position it
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
             }
-            if (top !== null && height !== null && parent !== null) {
-              // cook up a div (if necessary) and position it 
-              let div = window.document.getElementById("code-annotation-line-highlight");
-              if (div === null) {
-                div = window.document.createElement("div");
-                div.setAttribute("id", "code-annotation-line-highlight");
-                div.style.position = 'absolute';
-                parent.appendChild(div);
-              }
-              div.style.top = top - 2 + "px";
-              div.style.height = height + 4 + "px";
-              div.style.left = 0;
-              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
-              if (gutterDiv === null) {
-                gutterDiv = window.document.createElement("div");
-                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
-                gutterDiv.style.position = 'absolute';
-                const codeCell = window.document.getElementById(targetCell);
-                const gutter = codeCell.querySelector('.code-annotation-gutter');
-                gutter.appendChild(gutterDiv);
-              }
-              gutterDiv.style.top = top - 2 + "px";
-              gutterDiv.style.height = height + 4 + "px";
+            placeBand(div, el, lastEl, parent.closest("div.sourceCode") || parent);
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
             }
+            placeBand(gutterDiv, el, lastEl);
             selectedAnnoteEl = annoteEl;
           }
         };
@@ -1995,7 +2069,10 @@ Simulating 100%|█████████████████████�
     }
   });
   </script>
-<nav class="page-navigation">
+  <script type="application/javascript">
+  window.quartoScrollableRegionsLabels = {"code":"Scrollable code","output":"Scrollable output"};
+  </script>
+<nav class="page-navigation" aria-label="Page">
   <div class="nav-page nav-page-previous">
       <a href="../guide/coupling.html" class="pagination-link" aria-label="Coupling">
         <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Coupling</span>
