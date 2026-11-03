@@ -61,9 +61,11 @@ $$
 - $Q$ is the actual Pump flow rate.
 - $Q_\text{set}$ is the Pump's target `flow_rate`.
 - $Q_{\min}$ and $Q_{\max}$ are the Pump `min_flow_rate` and `max_flow_rate`.
-- $\phi_\text{storage}$ is the reduction factor that smoothly reduces flow when the upstream volume is below the equivalent of a water depth of $10 \;\text{cm}$ (change with solver setting `depth_threshold`).
-- $\phi_\text{level}$ is the product of the reduction factors that smoothly reduce flow based on these criteria (change the $0.02 \;\text{m}$ with solver setting `level_difference_threshold`):
-  - The upstream level is below `min_upstream_level` + $0.02 \;\text{m}$
-  - The downstream level is above `max_downstream_level` - $0.02 \;\text{m}$
+- $\phi_\text{storage}$ is the reduction factor that smoothly reduces flow as the upstream water depth goes from `depth_threshold` to the Basin bottom.
+- $\phi_\text{level}$ is the product of the reduction factors that smoothly reduce flow based on these criteria:
+  - The upstream level goes from `min_upstream_level` + `level_difference_threshold` to `min_upstream_level`.
+  - The downstream level goes from `max_downstream_level` - `level_difference_threshold` to `max_downstream_level`.
+
+For `depth_threshold`, `level_difference_threshold` see [Solver settings](/reference/usage.qmd#sec-solver-settings).
 
 Since $\phi_\text{level}$ is applied after the clamp, `min_flow_rate` is not a strict minimum: the level criteria can still reduce the flow to zero.

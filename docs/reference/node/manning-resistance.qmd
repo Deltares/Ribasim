@@ -268,7 +268,9 @@ plot(x, y_o; linestyle = :dot, label = raw"$\mathrm{sign}(x)\sqrt{|x|}$")
 plot!(x, y_s; label = raw"$s(x; 10^{-5})$")
 ```
 
-Finally the flow $Q$ is multiplied by the reduction factor $\phi$, which makes the flow go smoothly to $0$ as the upstream storage (as determined by the flow direction) becomes smaller than the equivalent of a water depth of $10 \;\text{cm}$ (change with solver setting `depth_threshold`).
+Finally the flow $Q$ is multiplied by the reduction factor $\phi$, which makes the flow go smoothly to $0$ as the upstream water depth (as determined by the flow direction) goes from `depth_threshold` to the Basin bottom.
+
+For `depth_threshold` see [Solver settings](/reference/usage.qmd#sec-solver-settings).
 
 :::{.callout-note}
 The computation of $S_f$ is not exact: we base it on the average of the two ends of the reach rather than integrating $S_f$ along the length of a reach, as in the standard step method with a single step.
