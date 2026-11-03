@@ -20,6 +20,7 @@ function set_simulation_data!(
         pump,
         outlet,
         user_demand,
+        pass_down,
         tabulated_rating_curve,
     ) = p.p_independent
 
@@ -33,7 +34,7 @@ function set_simulation_data!(
     set_simulation_data!(allocation_model, tabulated_rating_curve, p, t, Δt_allocation)
     set_simulation_data!(allocation_model, pump, p, t, Δt_allocation, u, du)
     set_simulation_data!(allocation_model, outlet, p, t, Δt_allocation, u, du)
-    set_simulation_data!(allocation_model, user_demand, t, Δt_allocation)
+    set_simulation_data!(allocation_model, user_demand, pass_down, t, Δt_allocation)
 
     if errors
         error(
@@ -140,21 +141,22 @@ function set_simulation_data!(
     )::Nothing
     (; problem, scaling) = allocation_model
     (; p_independent) = p
-    (; flow_boundary) = p_independent
+    (; flow_boundary, pass_down) = p_independent
     (; node_ids_in_subnetwork) = allocation_model
     (; flow_boundary_ids_subnetwork) = node_ids_in_subnetwork
     flow = problem[:flow]
 
-    @assert all(!data_out.to_pass_down for data_out in flow_boundary.outflow_data) "PassDown nodes in allocation subnetworks not supported yet, see issue #3322"
-    outflow_link = getfield.(flow_boundary.outflow_data, :outflow_link)
-
     for node_id in flow_boundary_ids_subnetwork
-        link = outflow_link[node_id.idx].link
-        JuMP.fix(
-            flow[link],
-            boundary_flow_rate(flow_boundary, link[1].idx, t) / scaling.flow;
-            force = true,
-        )
+        flow_rate = boundary_flow_rate(flow_boundary, node_id.idx, t) / scaling.flow
+        # The flow is divided over the PassDown nodes downstream by their fractions
+        for link_metadata in all_outflow_links(flow_boundary.outflow_data[node_id.idx])
+            link = link_metadata.link
+            JuMP.fix(
+                flow[link],
+                outflow_link_fraction(pass_down, link) * flow_rate;
+                force = true,
+            )
+        end
     end
 
     return nothing
@@ -211,8 +213,6 @@ function linearize_connector_node!(
     (; problem, scaling) = allocation_model
     (; inflow_link, outflow_data) = connector_node
     (; current_storage, current_area) = p.current_basin_properties
-
-    @assert all(!data_out.to_pass_down for data_out in outflow_data) "PassDown nodes in allocation subnetworks not supported yet, see issue #3322"
 
     # Mathematical formulation: Taylor series linearization around current state
     # Q^{n+1} ≈ Q^n + (∂Q/∂h_a)(h_a^{n+1} - h_a^n) + (∂Q/∂h_b)(h_b^{n+1} - h_b^n)
@@ -462,11 +462,13 @@ end
 function set_simulation_data!(
         allocation_model::AllocationModel,
         user_demand::UserDemand,
+        pass_down::PassDown,
         t::Float64,
         Δt_allocation,
     )::Nothing
     (; problem) = allocation_model
     constraints = problem[:user_demand_return_flow]
+    constraints_pass_down = problem[:user_demand_return_flow_pass_down]
     flow = problem[:flow]
 
     # Set the return factor for the end of the time step.
@@ -474,6 +476,19 @@ function set_simulation_data!(
     for node_id in only(constraints.axes)
         constraint = constraints[node_id]
         return_factor = user_demand.return_factor[node_id.idx](t + Δt_allocation)
+        for inflow_link_metadata in user_demand.inflow_links[node_id.idx]
+            inflow = flow[inflow_link_metadata.link]
+            JuMP.set_normalized_coefficient(constraint, inflow, -return_factor)
+        end
+    end
+
+    # The return flow into a PassDown node is its fraction of the total return flow
+    for link in only(constraints_pass_down.axes)
+        constraint = constraints_pass_down[link]
+        node_id = link[1]
+        return_factor =
+            outflow_link_fraction(pass_down, link) *
+            user_demand.return_factor[node_id.idx](t + Δt_allocation)
         for inflow_link_metadata in user_demand.inflow_links[node_id.idx]
             inflow = flow[inflow_link_metadata.link]
             JuMP.set_normalized_coefficient(constraint, inflow, -return_factor)
@@ -1523,9 +1538,6 @@ function update_user_demand_flow_bounds!(
     flow = problem[:flow]
     user_demand_allocated = problem[:user_demand_allocated]
 
-    @assert all(!data_out.to_pass_down for data_out in user_demand.outflow_data) "PassDown nodes in allocation subnetworks not supported yet, see issue #3322"
-    outflow_link = getfield.(user_demand.outflow_data, :outflow_link)
-
     for node_id in user_demand_ids_subnetwork
         total_demand = sum(
             JuMP.upper_bound(user_demand_allocated[node_id, demand_priority]) for
@@ -1535,8 +1547,10 @@ function update_user_demand_flow_bounds!(
             JuMP.set_lower_bound(flow[link_metadata.link], 0.0)
             JuMP.set_upper_bound(flow[link_metadata.link], total_demand)
         end
-        JuMP.set_lower_bound(flow[outflow_link[node_id.idx].link], 0.0)
-        JuMP.set_upper_bound(flow[outflow_link[node_id.idx].link], total_demand)
+        for link_metadata in all_outflow_links(user_demand.outflow_data[node_id.idx])
+            JuMP.set_lower_bound(flow[link_metadata.link], 0.0)
+            JuMP.set_upper_bound(flow[link_metadata.link], total_demand)
+        end
     end
     return nothing
 end
