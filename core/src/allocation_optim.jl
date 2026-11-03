@@ -141,19 +141,19 @@ function set_simulation_data!(
     )::Nothing
     (; problem, scaling) = allocation_model
     (; p_independent) = p
-    (; flow_boundary, pass_down) = p_independent
+    (; flow_boundary) = p_independent
     (; node_ids_in_subnetwork) = allocation_model
     (; flow_boundary_ids_subnetwork) = node_ids_in_subnetwork
     flow = problem[:flow]
 
     for node_id in flow_boundary_ids_subnetwork
         flow_rate = boundary_flow_rate(flow_boundary, node_id.idx, t) / scaling.flow
-        # The flow is divided over the PassDown nodes downstream by their fractions
+        # The flow goes to the PassDown node downstream
         for link_metadata in all_outflow_links(flow_boundary.outflow_data[node_id.idx])
             link = link_metadata.link
             JuMP.fix(
                 flow[link],
-                outflow_link_fraction(pass_down, link) * flow_rate;
+                flow_rate;
                 force = true,
             )
         end
@@ -482,13 +482,11 @@ function set_simulation_data!(
         end
     end
 
-    # The return flow into a PassDown node is its fraction of the total return flow
+    # The return flow into a PassDown node is the total return flow
     for link in only(constraints_pass_down.axes)
         constraint = constraints_pass_down[link]
         node_id = link[1]
-        return_factor =
-            outflow_link_fraction(pass_down, link) *
-            user_demand.return_factor[node_id.idx](t + Δt_allocation)
+        return_factor = user_demand.return_factor[node_id.idx](t + Δt_allocation)
         for inflow_link_metadata in user_demand.inflow_links[node_id.idx]
             inflow = flow[inflow_link_metadata.link]
             JuMP.set_normalized_coefficient(constraint, inflow, -return_factor)

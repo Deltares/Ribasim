@@ -1650,7 +1650,7 @@ function FlowDemand(db::DB, config::Config, graph::MetaGraph)
 end
 
 """
-Find the disjoint trees of PassDown and UserDemand nodes connected by flow links.
+Find the connected components of PassDown and UserDemand nodes connected by flow links.
 UserDemand nodes without a PassDown inneighbor (i.e. at the start of a tree) are excluded.
 """
 function get_pass_down_subgraphs(
@@ -1765,49 +1765,68 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
         concentration = zeros(n_substance, length(node_id)),
     )
     (; fraction) = pass_down
-    has_fraction = falses(length(node_id))
+    has_fraction = [falses(length(links)) for links in outflow_links]
 
     errors = false
-    invalid_fraction_ids = Int32[]
+    invalid_fraction_rows = NamedTuple{(:node_id, :to_node_id), Tuple{Int32, Int32}}[]
+    unknown_link_rows = NamedTuple{(:node_id, :to_node_id), Tuple{Int32, Int32}}[]
+    duplicate_rows = NamedTuple{(:node_id, :to_node_id), Tuple{Int32, Int32}}[]
     for row in static
-        ismissing(row.fraction) && continue
-        if !(0 <= row.fraction <= 1)
-            push!(invalid_fraction_ids, row.node_id)
-            continue
-        end
+        row_ids = (; node_id = row.node_id, to_node_id = row.to_node_id)
         id = NodeID(NodeType.PassDown, row.node_id, node_id)
-        fraction[id.idx] = row.fraction
-        has_fraction[id.idx] = true
+        # The fractions are only used to divide the flow over multiple PassDown nodes
+        link_idx = findfirst(
+            link -> link.link[2].value == row.to_node_id && link.link[2].is_pass_down,
+            outflow_links[id.idx],
+        )
+        if isnothing(link_idx)
+            push!(unknown_link_rows, row_ids)
+        elseif has_fraction[id.idx][link_idx]
+            push!(duplicate_rows, row_ids)
+        elseif ismissing(row.fraction)
+            continue
+        elseif !(0 <= row.fraction <= 1)
+            push!(invalid_fraction_rows, row_ids)
+        else
+            fraction[id.idx][link_idx] = row.fraction
+            has_fraction[id.idx][link_idx] = true
+        end
     end
-    if !isempty(invalid_fraction_ids)
-        @error "PassDown fractions must be between 0 and 1 (inclusive)." node_ids =
-            invalid_fraction_ids
+    if !isempty(unknown_link_rows)
+        @error "PassDown fractions can only be given for flow links from the PassDown node to another PassDown node." unknown_link_rows
+        errors = true
+    end
+    if !isempty(duplicate_rows)
+        @error "Duplicate PassDown fractions for the same link." duplicate_rows
+        errors = true
+    end
+    if !isempty(invalid_fraction_rows)
+        @error "PassDown fractions must be between 0 and 1 (inclusive)." invalid_fraction_rows
         errors = true
     end
 
-    for upstream_id in labels(graph)
-        pass_down_ids = filter(
-            id -> id.is_pass_down,
-            collect(outneighbor_labels_type(graph, upstream_id, LinkType.flow)),
-        )
-        isempty(pass_down_ids) && continue
+    for id in node_id
+        pass_down_idxs =
+            findall(link -> link.link[2].is_pass_down, outflow_links[id.idx])
+        isempty(pass_down_idxs) && continue
 
-        missing_ids = filter(id -> !has_fraction[id.idx], pass_down_ids)
-        fraction_sum = sum(id -> has_fraction[id.idx] ? fraction[id.idx] : 0.0, pass_down_ids)
+        specified = has_fraction[id.idx][pass_down_idxs]
+        fraction_sum = sum(fraction[id.idx][pass_down_idxs][specified]; init = 0.0)
+        missing_idxs = pass_down_idxs[.!specified]
 
-        if isempty(missing_ids)
+        if isempty(missing_idxs)
             if !isapprox(fraction_sum, 1.0)
-                @error "The fractions of the PassDown nodes downstream of $upstream_id must sum to 1 (got $fraction_sum)." pass_down_ids
+                @error "The fractions of the outflow links of $id to PassDown nodes must sum to 1 (got $fraction_sum)."
                 errors = true
             end
-        elseif length(missing_ids) > 1
-            @error "At most one PassDown node downstream of $upstream_id can have an unspecified fraction." missing_ids
+        elseif length(missing_idxs) > 1
+            @error "$id can have at most one outflow link to a PassDown node with an unspecified fraction."
             errors = true
         elseif fraction_sum > 1
-            @error "The fractions of the PassDown nodes downstream of $upstream_id must sum to at most 1 when one fraction is unspecified (got $fraction_sum)." pass_down_ids
+            @error "The fractions of the outflow links of $id to PassDown nodes must sum to at most 1 when one fraction is unspecified (got $fraction_sum)."
             errors = true
         else
-            fraction[only(missing_ids).idx] = 1.0 - fraction_sum
+            fraction[id.idx][only(missing_idxs)] = 1.0 - fraction_sum
         end
     end
 

@@ -204,7 +204,7 @@ sort_key(::Type{Schema.Basin.Subgrid}) = (:subgrid_id, :basin_level)
 sort_key(::Type{Schema.Basin.SubgridTime}) = (:subgrid_id, :time, :basin_level)
 sort_key(::Type{Schema.Basin.Time}) = (:node_id, :time)
 
-sort_key(::Type{Schema.PassDown.Static}) = (:node_id,)
+sort_key(::Type{Schema.PassDown.Static}) = (:node_id, :to_node_id)
 
 sort_key(::Type{Schema.ContinuousControl.Function}) = (:node_id, :input)
 sort_key(::Type{Schema.ContinuousControl.Variable}) = (:node_id, :listen_node_id, :variable)
@@ -780,17 +780,6 @@ function valid_pass_down_connectivity(graph)
                 @error "$id must have either PassDown outflows or a single outflow into a node that is not a PassDown node."
                 errors = true
             end
-        else
-            n_basin_out = 0
-            n_pass_down_out = 0
-            for outflow_id in outflow_ids(graph, id)
-                outflow_id.is_basin && (n_basin_out += 1)
-                outflow_id.is_pass_down && (n_pass_down_out += 1)
-            end
-            if !iszero(n_basin_out) && !iszero(n_pass_down_out)
-                @error "$id cannot have outflow into both PassDown and Basin."
-                errors = true
-            end
         end
     end
 
@@ -801,7 +790,6 @@ function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
     node_type = NodeType.T(node_name)
 
     errors = false
-    can_to_pass_down = :pass_down in neighbortypes(node_name)
     for node_id in labels(graph)
         node_id.type == node_type || continue
         # listen links are not part of the graph, only validated in python
@@ -820,11 +808,6 @@ function valid_n_neighbors(node_name::Symbol, graph::MetaGraph)::Bool
             if n_inneighbors > bounds.in_max
                 @error "$node_id can have at most $(bounds.in_max) $link_type inneighbor(s) (got $n_inneighbors)."
                 errors = true
-            end
-
-            # If there is any outflow to PassDown, that is validated in valid_pass_down_connectivity
-            if (link_type == LinkType.flow) && can_to_pass_down
-                any(id.is_pass_down for id in outflow_ids(graph, node_id)) && continue
             end
 
             if n_outneighbors < bounds.out_min

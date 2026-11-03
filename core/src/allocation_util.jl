@@ -126,11 +126,14 @@ function all_outflow_links(outflow_data::OutflowData)::Vector{LinkMetadata}
 end
 
 """
-The fraction of the outflow of a node that flows over a link, which is the fraction of the PassDown node
-that the link leads to. Without a PassDown node downstream the node has a single outflow link.
+The fraction of the outflow of a node that flows over a link. This is the fraction of the link if it
+leaves a PassDown node, otherwise the node has a single outflow link.
 """
 function outflow_link_fraction(pass_down::PassDown, link::Tuple{NodeID, NodeID})::Float64
-    return link[2].is_pass_down ? pass_down.fraction[link[2].idx] : 1.0
+    from_id = link[1]
+    from_id.is_pass_down || return 1.0
+    link_idx = findfirst(link_metadata -> link_metadata.link == link, pass_down.outflow_links[from_id.idx])
+    return pass_down.fraction[from_id.idx][link_idx]
 end
 
 function write_problem_to_file(problem, config; info = true, path = nothing)::Nothing

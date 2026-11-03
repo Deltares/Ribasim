@@ -19,10 +19,11 @@ def pass_down_model() -> Model:
 
     From upstream to downstream it contains:
 
-    - A FlowBoundary with multiple PassDown nodes downstream.
-    - A Pump with multiple PassDown nodes downstream, one of which feeds a UserDemand
-      and passes the remaining flow on to a Basin via another PassDown node.
-    - A UserDemand with multiple PassDown nodes downstream.
+    - A FlowBoundary with multiple PassDown nodes downstream, via a PassDown node that divides the flow.
+    - A Pump with multiple PassDown nodes downstream, via a PassDown node that divides the flow.
+      One of these feeds a UserDemand and passes the remaining flow on to a Basin via another
+      PassDown node, which also receives flow from another PassDown node (a confluence).
+    - A UserDemand with multiple PassDown nodes downstream, via a PassDown node that divides the flow.
     - A UserDemand with inflow from a single PassDown node, where the PassDown
       flow is smaller than the UserDemand's demand.
     - A PassDown node with both a UserDemand and multiple PassDown nodes downstream,
@@ -61,19 +62,31 @@ def pass_down_model() -> Model:
     fb = model.flow_boundary.add(
         node(1, 0, 0), [flow_boundary.Static(flow_rate=[2e-3])]
     )
-    pd1 = model.pass_down.add(node(2, 1, 1), [pass_down.Static(fraction=[0.25])])
-    pd2 = model.pass_down.add(node(3, 1, -1), [pass_down.Static(fraction=[np.nan])])
+    pd_fb = model.pass_down.add(
+        node(22, 0.5, 0),
+        [pass_down.Static(to_node_id=[2, 3], fraction=[0.25, np.nan])],
+    )
+    pd1 = model.pass_down.add(node(2, 1, 1))
+    pd2 = model.pass_down.add(node(3, 1, -1))
     b1 = model.basin.add(node(4, 2, 0), basin_tables())
 
     # Pump with multiple PassDown nodes downstream, one of which feeds a UserDemand
     p1 = model.pump.add(node(5, 3, 0), [pump.Static(flow_rate=[1e-3])])
-    pd3 = model.pass_down.add(node(6, 4, 1), [pass_down.Static(fraction=[0.6])])
-    pd4 = model.pass_down.add(node(7, 4, -1), [pass_down.Static(fraction=[np.nan])])
+    pd_p1 = model.pass_down.add(
+        node(23, 3.5, 0),
+        [pass_down.Static(to_node_id=[6, 7], fraction=[0.6, np.nan])],
+    )
+    pd3 = model.pass_down.add(node(6, 4, 1))
+    pd4 = model.pass_down.add(node(7, 4, -1))
 
     # UserDemand with multiple PassDown nodes downstream
     ud1 = model.user_demand.add(node(8, 5, 1), user_demand_tables(1.0, 0.5))
-    pd5 = model.pass_down.add(node(9, 6, 2), [pass_down.Static(fraction=[0.5])])
-    pd6 = model.pass_down.add(node(10, 6, 0), [pass_down.Static(fraction=[np.nan])])
+    pd_ud1 = model.pass_down.add(
+        node(24, 5.5, 1),
+        [pass_down.Static(to_node_id=[9, 10], fraction=[0.5, np.nan])],
+    )
+    pd5 = model.pass_down.add(node(9, 6, 2))
+    pd6 = model.pass_down.add(node(10, 6, 0))
     b2 = model.basin.add(node(11, 7, -1), basin_tables())
 
     # UserDemand with inflow from a single PassDown node
@@ -82,30 +95,40 @@ def pass_down_model() -> Model:
 
     # PassDown node with both a UserDemand and multiple PassDown nodes downstream
     p2 = model.pump.add(node(14, 10, 0), [pump.Static(flow_rate=[2e-3])])
-    pd7 = model.pass_down.add(node(15, 11, 0), [pass_down.Static(fraction=[np.nan])])
+    pd7 = model.pass_down.add(
+        node(15, 11, 0),
+        [pass_down.Static(to_node_id=[17, 18], fraction=[0.3, np.nan])],
+    )
     ud3 = model.user_demand.add(node(16, 12, 1), user_demand_tables(5e-4, 0.0))
-    pd8 = model.pass_down.add(node(17, 12, 0), [pass_down.Static(fraction=[0.3])])
-    pd9 = model.pass_down.add(node(18, 12, -1), [pass_down.Static(fraction=[np.nan])])
+    pd8 = model.pass_down.add(node(17, 12, 0))
+    pd9 = model.pass_down.add(node(18, 12, -1))
     t = model.terminal.add(node(19, 13, 0))
 
     # PassDown nodes that pass the remainder after a UserDemand abstraction on to a Basin,
     # since a PassDown node with a UserDemand outflow can only flow into other PassDown nodes
-    pd10 = model.pass_down.add(node(20, 5, 0), [pass_down.Static(fraction=[np.nan])])
-    pd11 = model.pass_down.add(node(21, 7, 1), [pass_down.Static(fraction=[np.nan])])
+    pd10 = model.pass_down.add(node(20, 5, 0))
+    pd11 = model.pass_down.add(node(21, 7, 1))
 
-    model.link.add(fb, pd1)
-    model.link.add(fb, pd2)
+    # Confluence of two PassDown nodes
+    pd_conf = model.pass_down.add(node(25, 6, -1))
+
+    model.link.add(fb, pd_fb)
+    model.link.add(pd_fb, pd1)
+    model.link.add(pd_fb, pd2)
     model.link.add(pd1, b1)
     model.link.add(pd2, b1)
     model.link.add(b1, p1)
-    model.link.add(p1, pd3)
-    model.link.add(p1, pd4)
+    model.link.add(p1, pd_p1)
+    model.link.add(pd_p1, pd3)
+    model.link.add(pd_p1, pd4)
     model.link.add(pd3, ud1)
     model.link.add(pd3, pd10)
-    model.link.add(pd10, b2)
-    model.link.add(pd4, b2)
-    model.link.add(ud1, pd5)
-    model.link.add(ud1, pd6)
+    model.link.add(pd10, pd_conf)
+    model.link.add(pd4, pd_conf)
+    model.link.add(pd_conf, b2)
+    model.link.add(ud1, pd_ud1)
+    model.link.add(pd_ud1, pd5)
+    model.link.add(pd_ud1, pd6)
     model.link.add(pd5, b2)
     model.link.add(pd6, ud2)
     model.link.add(pd6, pd11)
@@ -155,16 +178,12 @@ def pass_down_tracer_model() -> Model:
     fb2 = model.flow_boundary.add(
         Node(2, Point(0, -1)), [flow_boundary.Static(flow_rate=[0.02])]
     )
-    pd_a = model.pass_down.add(
-        Node(3, Point(1, 0)), [pass_down.Static(fraction=[np.nan])]
-    )
+    pd_a = model.pass_down.add(Node(3, Point(1, 0)))
     ud = model.user_demand.add(
         Node(4, Point(2, 1)),
         [user_demand.Static(demand=[0.01], return_factor=0.5)],
     )
-    pd_b = model.pass_down.add(
-        Node(5, Point(2, -1)), [pass_down.Static(fraction=[np.nan])]
-    )
+    pd_b = model.pass_down.add(Node(5, Point(2, -1)))
     b1 = model.basin.add(Node(6, Point(3, 1)), basin_tables())
     b2 = model.basin.add(Node(7, Point(3, -1)), basin_tables())
 
@@ -208,16 +227,19 @@ def pass_down_allocation_model() -> Model:
     fb = model.flow_boundary.add(
         node(3, 1, -1), [flow_boundary.Static(flow_rate=[3e-3])]
     )
-    pd_a = model.pass_down.add(node(4, 2, 0), [pass_down.Static(fraction=[np.nan])])
+    pd_a = model.pass_down.add(
+        node(4, 2, 0),
+        [pass_down.Static(to_node_id=[6, 7], fraction=[0.7, np.nan])],
+    )
     ud = model.user_demand.add(
         node(5, 3, 1),
         [user_demand.Static(demand=[4e-3], return_factor=0.5)],
     )
-    pd_b = model.pass_down.add(node(6, 3, 0), [pass_down.Static(fraction=[0.7])])
-    pd_c = model.pass_down.add(node(7, 3, -1), [pass_down.Static(fraction=[np.nan])])
+    pd_b = model.pass_down.add(node(6, 3, 0))
+    pd_c = model.pass_down.add(node(7, 3, -1))
     b1 = model.basin.add(node(8, 4, 0), basin_tables(1.0))
     b2 = model.basin.add(node(9, 4, -1), basin_tables(1.0))
-    pd_d = model.pass_down.add(node(10, 4, 1), [pass_down.Static(fraction=[np.nan])])
+    pd_d = model.pass_down.add(node(10, 4, 1))
     b3 = model.basin.add(node(11, 5, 1), basin_tables(1.0))
 
     model.link.add(source, pmp)
