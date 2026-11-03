@@ -524,23 +524,36 @@ abstract type AbstractDemandNode <: AbstractParameterNode end
 
 Base.length(node::AbstractParameterNode) = length(node.node_id)
 
+"""
+Concentrations of the water that enters Basins through a forcing, or the mass per second for
+loads, per substance and Basin. Interpolations that are constant in time are only evaluated
+once, so that each timestep only the time dependent ones need to be evaluated.
+"""
+@kwdef struct ForcingConcentration
+    # Interpolation per Basin per substance
+    itp::Vector{Vector{ScalarConstantInterpolation}} = Vector{ScalarConstantInterpolation}[]
+    # Current value per substance and Basin
+    value::Matrix{Float64} = zeros(Float64, 0, 0)
+    # Indices (substance, Basin) into `value` of the interpolations that vary in time
+    time_dependent::Vector{CartesianIndex{2}} = CartesianIndex{2}[]
+end
+
 @kwdef struct ConcentrationData
     # Config setting to enable/disable evaporation of mass
     evaporate_mass::Bool = true
     # Cumulative inflow for each Basin at a given time
     cumulative_in::Vector{Float64} = zeros(Float64, 0)
-    # Matrix with concentrations for each Basin and substance
-    concentration_state::Matrix{Float64} = zeros(Float64, 0, 0)  # Basin, substance
-    # Vectors with concentration timeseries interpolations for each incoming forcing per Basin per substance
-    concentration_itp_drainage::Vector{Vector{ScalarConstantInterpolation}} =
-        Vector{ScalarBlockInterpolation}[]
-    concentration_itp_precipitation::Vector{Vector{ScalarConstantInterpolation}} =
-        Vector{ScalarBlockInterpolation}[]
-    concentration_itp_surface_runoff::Vector{Vector{ScalarConstantInterpolation}} =
-        Vector{ScalarBlockInterpolation}[]
-    loads_itp::Vector{Vector{ScalarConstantInterpolation}} = Vector{ScalarBlockInterpolation}[]
-    # matrix with mass for each Basin and substance
-    mass::Vector{Vector{Float64}} = Vector{Float64}[]
+    # Matrix with concentrations for each substance and Basin,
+    # such that the concentrations of a Basin are contiguous in memory
+    concentration_state::Matrix{Float64} = zeros(Float64, 0, 0)  # substance, Basin
+    # Concentrations for each incoming forcing per substance per Basin
+    concentration_drainage::ForcingConcentration = ForcingConcentration()
+    concentration_precipitation::ForcingConcentration = ForcingConcentration()
+    concentration_surface_runoff::ForcingConcentration = ForcingConcentration()
+    # Mass loads per substance per Basin, in mass per second
+    loads::ForcingConcentration = ForcingConcentration()
+    # Matrix with mass for each substance and Basin
+    mass::Matrix{Float64} = zeros(Float64, 0, 0)
     # substances in use by the model (ordered like their axis in the concentration matrices)
     substances::OrderedSet{Symbol} = OrderedSet{Symbol}()
     # Data source for external concentrations (used in control)

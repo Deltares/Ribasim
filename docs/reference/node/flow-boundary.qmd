@@ -1,5 +1,6 @@
 ---
 title: "![](/assets/node-icons/FlowBoundary.svg){height=20} FlowBoundary"
+engine: julia
 ---
 
 A FlowBoundary adds water to the model at a specified flow rate.
@@ -10,10 +11,14 @@ We require that a link connected to a FlowBoundary is always outgoing, and point
 
 ## Static
 
-column        | type    | unit                  | restriction
-------------- | ------- | --------------------- | -----------
-node_id       | Int32   | -                     |
-flow_rate     | Float64 | $\text{m}^3/\text{s}$ | non-negative
+```{julia}
+# | code-fold: true
+include("../../../utils/gen_docs_table.jl")
+table_from_schema(
+    Ribasim.Schema.FlowBoundary.Static;
+    restrictions = Dict(:flow_rate => "non-negative"),
+)
+```
 
 ## Time
 
@@ -24,21 +29,24 @@ flow rate is interpolated in a way specified in the [interpolation settings](/re
 nearest time value unless the node is cyclic in time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
-column    | type     | unit                  | restriction
---------- | -------  | --------------------- | -----------
-node_id   | Int32    | -                     |
-time      | DateTime | -                     |
-flow_rate | Float64  | $\text{m}^3/\text{s}$ | non-negative
+```{julia}
+# | code-fold: true
+table_from_schema(
+    Ribasim.Schema.FlowBoundary.Time;
+    restrictions = Dict(:flow_rate => "non-negative"),
+)
+```
 
 ## Concentration {#sec-flow-boundary-conc}
 This table defines the concentration of substances for the flow from the FlowBoundary.
 
-column         | type     | unit                  | restriction
--------------- | -------- | --------------------- | -----------
-node_id        | Int32    | -                     |
-time           | DateTime | -                     |
-substance      | String   | -                     | can correspond to known Delwaq substances
-concentration  | Float64  | $\text{g}/\text{m}^3$ |
+```{julia}
+# | code-fold: true
+table_from_schema(
+    Ribasim.Schema.FlowBoundary.Concentration;
+    restrictions = Dict(:substance => "can correspond to known Delwaq substances"),
+)
+```
 
 ## Area
 

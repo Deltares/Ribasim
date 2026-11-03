@@ -1,5 +1,6 @@
 ---
 title: "![](/assets/node-icons/LevelBoundary.svg){height=20} LevelBoundary"
+engine: julia
 ---
 
 LevelBoundary is a node whose water level is determined by the input.
@@ -11,10 +12,11 @@ Connect the LevelBoundary to a node that will look at the level to calculate the
 
 ## Static
 
-column        | type    | unit         | restriction
-------------- | ------- | ------------ | -----------
-node_id       | Int32   | -            |
-level         | Float64 | $\text{m}$          | -
+```{julia}
+# | code-fold: true
+include("../../../utils/gen_docs_table.jl")
+table_from_schema(Ribasim.Schema.LevelBoundary.Static)
+```
 
 ## Time
 
@@ -25,21 +27,21 @@ level is block interpolated (forward fill), and outside the level is constant gi
 nearest time value.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
-column    | type     | unit         | restriction
---------- | -------  | ------------ | -----------
-node_id   | Int32    | -            |
-time      | DateTime | -            |
-level     | Float64  | $\text{m}$   | -
+```{julia}
+# | code-fold: true
+table_from_schema(Ribasim.Schema.LevelBoundary.Time)
+```
 
 ## Concentration {#sec-level-boundary-conc}
 This table defines the concentration of substances for the flow from the LevelBoundary.
 
-column         | type     | unit                  | restriction
--------------- | -------- | --------------------- | -----------
-node_id        | Int32    | -                     |
-time           | DateTime | -                     |
-substance      | String   | -                     | can correspond to known Delwaq substances
-concentration  | Float64  | $\text{g}/\text{m}^3$ |
+```{julia}
+# | code-fold: true
+table_from_schema(
+    Ribasim.Schema.LevelBoundary.Concentration;
+    restrictions = Dict(:substance => "can correspond to known Delwaq substances"),
+)
+```
 
 # Equations
 

@@ -582,7 +582,7 @@ function allocation_data(model::Model; table::Bool = true)
     (; config, integrator) = model
     (; p_independent, current_basin_properties) = integrator.p
     (; current_storage) = current_basin_properties
-    (; allocation, graph, user_demand, flow_demand, level_demand) = p_independent
+    (; allocation, user_demand, flow_demand, level_demand) = p_independent
     (; demand_priorities_all, allocation_models) = allocation
     record_demand = StructVector(model.integrator.p.p_independent.allocation.record_demand)
 
@@ -653,7 +653,8 @@ function allocation_data(model::Model; table::Bool = true)
             # FlowDemand
             for id in node_ids_subnetwork_with_flow_demand
                 j = searchsortedfirst(node_id, id)
-                flow_demand_id = only(inneighbor_labels_type(graph, id, LinkType.control))
+                # The node can also have other control inneighbors, such as a DiscreteControl
+                flow_demand_id = get_external_demand_id(p_independent, id)
                 supplied[view(has_priority, :, j), j, end] .=
                     cumulative_supplied_volume[flow_demand.inflow_link[flow_demand_id.idx].link] /
                     Δt

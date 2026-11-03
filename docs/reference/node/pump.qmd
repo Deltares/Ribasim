@@ -1,5 +1,6 @@
 ---
 title: "![](/assets/node-icons/Pump.svg){height=20} Pump"
+engine: julia
 ---
 
 Pump water from a source node to a destination node.
@@ -12,15 +13,12 @@ When [PID controlled](/reference/node/pid-control.qmd), the pump must point away
 
 ## Static
 
-column                | type    | unit         | restriction
----------             | ------- | ------------ | -----------
-node_id               | Int32   | -            |
-flow_rate             | Float64 | $\text{m}^3/\text{s}$ | non-negative
-min_flow_rate         | Float64 | $\text{m}^3/\text{s}$ | (optional, default 0.0)
-max_flow_rate         | Float64 | $\text{m}^3/\text{s}$ | (optional)
-min_upstream_level    | Float64 | $\text{m}$          | (optional)
-max_downstream_level  | Float64 | $\text{m}$          | (optional)
-control_state         | String  | -            | (optional)
+```{julia}
+# | code-fold: true
+include("../../../utils/gen_docs_table.jl")
+const PUMP_RESTRICTIONS = Dict(:flow_rate => "non-negative")
+table_from_schema(Ribasim.Schema.Pump.Static; restrictions = PUMP_RESTRICTIONS)
+```
 
 ## Time
 
@@ -30,15 +28,10 @@ values are block interpolated (forward fill), and outside the values are constan
 nearest time value.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
-column                | type    | unit         | restriction
----------             | ------- | ------------ | -----------
-node_id               | Int32   | -            |
-time                  | DateTime| -            |
-flow_rate             | Float64 | $\text{m}^3/\text{s}$ | non-negative
-min_flow_rate         | Float64 | $\text{m}^3/\text{s}$ | (optional, default 0.0)
-max_flow_rate         | Float64 | $\text{m}^3/\text{s}$ | (optional)
-min_upstream_level    | Float64 | $\text{m}$          | (optional)
-max_downstream_level  | Float64 | $\text{m}$          | (optional)
+```{julia}
+# | code-fold: true
+table_from_schema(Ribasim.Schema.Pump.Time; restrictions = PUMP_RESTRICTIONS)
+```
 
 # Equations
 

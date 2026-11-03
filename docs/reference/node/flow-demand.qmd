@@ -1,5 +1,6 @@
 ---
 title: "![](/assets/node-icons/FlowDemand.svg){height=20} FlowDemand"
+engine: julia
 ---
 
 A `FlowDemand` node associates a non-consuming flow demand to a connector node (e.g. `Pump`, `TabulatedRatingCurve`) for one or more demand priorities.
@@ -12,11 +13,12 @@ FlowDemand nodes can be used for instance to model minimum environmental flow or
 
 ## Static
 
-column          | type     | unit                  | restriction
---------------- | -------- | --------------------- | -----------
-node_id         | Int32    | -                     |
-demand_priority | Int32    | -                     | positive (optional)
-demand          | Float64  | $\text{m}^3/\text{s}$ | non-negative
+```{julia}
+# | code-fold: true
+include("../../../utils/gen_docs_table.jl")
+const FLOW_DEMAND_RESTRICTIONS = Dict(:demand => "non-negative", :demand_priority => "positive")
+table_from_schema(Ribasim.Schema.FlowDemand.Static; restrictions = FLOW_DEMAND_RESTRICTIONS)
+```
 
 ## Time
 
@@ -25,9 +27,7 @@ With this the demand can be updated over time. In between the given times the
 demand is block interpolated (forward fill), and outside the demand is constant given by the
 nearest time value. The allocation algorithm evaluates the interpolation at the start of the allocation time step.
 
-column          | type     | unit                  | restriction
---------------- | -------- | --------------------- | -----------
-node_id         | Int32    | -                     |
-time            | DateTime | -                     |
-demand_priority | Int32    | -                     | positive (optional)
-demand          | Float64  | $\text{m}^3/\text{s}$ | non-negative
+```{julia}
+# | code-fold: true
+table_from_schema(Ribasim.Schema.FlowDemand.Time; restrictions = FLOW_DEMAND_RESTRICTIONS)
+```

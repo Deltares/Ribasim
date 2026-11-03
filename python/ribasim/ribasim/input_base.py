@@ -7,7 +7,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
 from sqlite3 import connect
-from typing import Any, Self, TypeVar, cast
+from typing import Any, Self, TypeVar, cast, get_args
 
 import geopandas as gpd
 import numpy as np
@@ -728,8 +728,8 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
         The type of the field `df` is known to always be an DataFrame[TableT]]] | None
         """
         optionalfieldtype = cls.model_fields["df"].annotation
-        fieldtype = optionalfieldtype.__args__[0]
-        T: TableT = fieldtype.__args__[0]
+        fieldtype = get_args(optionalfieldtype)[0]
+        T: TableT = get_args(fieldtype)[0]
         return T
 
     @classmethod
@@ -771,7 +771,10 @@ class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
     Overrides the reading and writing methods of a TableModel.
     """
 
-    df: GeoDataFrame[TableT] | None = Field(default=None, exclude=True, repr=False)
+    # Narrowing the pydantic field to GeoDataFrame is intentional
+    df: GeoDataFrame[TableT] | None = Field(  # ty: ignore[invalid-attribute-override]
+        default=None, exclude=True, repr=False
+    )
 
     def sort(self):
         # Only sort the index (node_id / link_id) since this needs to be sorted in a GeoPackage.

@@ -425,3 +425,33 @@ end
     storage = Ribasim.get_storages_and_levels(model).storage[1, :]
     @test all(storage .< 7500 + 6)
 end
+
+@testitem "Control state change renews the time dependent cache" begin
+    using Ribasim: NodeID, ParameterUpdate, trivial_constant_itp
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/pump_discrete_control/ribasim.toml")
+    @test ispath(toml_path) skip = true
+    model = Ribasim.Model(toml_path)
+    (; p, u, t) = model.integrator
+    (; pump) = p.p_independent
+    pump_id = NodeID(:Pump, 4, p.p_independent)
+    du = similar(u)
+
+    # Let the control state "on" also set the maximum flow rate to zero
+    push!(
+        pump.control_mapping[(pump_id, "on")].itp_update_constant,
+        ParameterUpdate(
+            :max_flow_rate,
+            trivial_constant_itp(; val = 0.0),
+            Ref(pump.max_flow_rate, pump_id.idx),
+        ),
+    )
+
+    Ribasim.set_control_params!(p, pump_id, "off")
+    Ribasim.water_balance!(du, u, p, t)
+    Ribasim.set_control_params!(p, pump_id, "on")
+    # The right hand side at the same time uses the new maximum flow rate
+    Ribasim.water_balance!(du, u, p, t)
+    @test du.flow.horizontal.pump[pump_id.idx] == 0
+end

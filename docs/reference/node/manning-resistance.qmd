@@ -9,14 +9,18 @@ The flow rate is calculated by conservation of energy and the Manning-Gauckler f
 
 ## Static
 
-column        | type    | unit                               | restriction
-------------- | ------- | ---------------------------------- | -----------
-node_id       | Int32   | -                                  |
-length        | Float64 | $\text{m}$                         | positive
-manning_n     | Float64 | $\text{s} \text{m}^{-\frac{1}{3}}$ | positive
-profile_width | Float64 | $\text{m}$                         | non-negative, not zero together with profile_slope
-profile_slope | Float64 | -                                  | -
-control_state | String  | -                                  | (optional)
+```{python}
+# | code-fold: true
+%run ../../gen_docs_table.py
+table_from_schema(
+    "ManningResistance.Static",
+    restrictions={
+        "length": "positive",
+        "manning_n": "positive",
+        "profile_width": "non-negative, not zero together with profile_slope",
+    },
+)
+```
 
 # Equations
 

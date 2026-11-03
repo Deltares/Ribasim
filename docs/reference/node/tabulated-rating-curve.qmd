@@ -11,13 +11,14 @@ Use it for instance to model flow over a weir.
 
 ## Static
 
-column               | type    | unit                  | restriction
--------------        | ------- | --------------------- | -----------
-node_id              | Int32   | -                     |
-level                | Float64 | $\text{m}$            | unique
-flow_rate            | Float64 | $\text{m}^3/\text{s}$ | start at 0, increasing
-max_downstream_level | Float64 | $\text{m}$            | (optional)
-control_state        | String  | -                     | (optional)
+```{julia}
+# | code-fold: true
+include("../../../utils/gen_docs_table.jl")
+table_from_schema(
+    Ribasim.Schema.TabulatedRatingCurve.Static;
+    restrictions = Dict(:level => "unique", :flow_rate => "start at 0, increasing"),
+)
+```
 
 ### Interpolation
 
@@ -97,13 +98,13 @@ With this the rating curves can be updated over time.
 The `max_downstream_level` currently cannot be updated over time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
 
-column               | type     | unit                  | restriction
--------------------- | -------  | --------------------- | -----------
-node_id              | Int32    | -                     |
-time                 | DateTime | -                     |
-level                | Float64  | $\text{m}$            |
-flow_rate            | Float64  | $\text{m}^3/\text{s}$ | non-negative
-max_downstream_level | Float64  | $\text{m}$            | (optional)
+```{julia}
+# | code-fold: true
+table_from_schema(
+    Ribasim.Schema.TabulatedRatingCurve.Time;
+    restrictions = Dict(:level => "unique per time", :flow_rate => "start at 0, increasing per time"),
+)
+```
 
 # Equations
 

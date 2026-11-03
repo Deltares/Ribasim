@@ -1,5 +1,6 @@
 ---
 title: "![](/assets/node-icons/LinearResistance.svg){height=20} LinearResistance"
+engine: julia
 ---
 
 Bidirectional flow proportional to the level difference between the connected basins.
@@ -8,12 +9,14 @@ Bidirectional flow proportional to the level difference between the connected ba
 
 ## Static
 
-column        | type    | unit                  | restriction
-------------- | ------- | --------------------- | -----------
-node_id       | Int32   | -                     |
-resistance    | Float64 | $\text{s}/\text{m}^2$ | -
-max_flow_rate | Float64 | $\text{m}^3/s$        | non-negative (optional)
-control_state | String  | -                     | (optional)
+```{julia}
+# | code-fold: true
+include("../../../utils/gen_docs_table.jl")
+table_from_schema(
+    Ribasim.Schema.LinearResistance.Static;
+    restrictions = Dict(:max_flow_rate => "non-negative"),
+)
+```
 
 # Equations
 

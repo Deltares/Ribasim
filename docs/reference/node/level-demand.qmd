@@ -1,5 +1,6 @@
 ---
 title: "![](/assets/node-icons/LevelDemand.svg){height=20} LevelDemand"
+engine: julia
 ---
 
 A `LevelDemand` node associates a minimum and a maximum level (possibly multiple over different priorities) with connected Basins to be used by the allocation algorithm.
@@ -17,12 +18,14 @@ If both are missing, `LevelDemand` won't have any effects on allocation.
 
 ## Static
 
-column          | type    | unit         | restriction
---------------- | ------- | ------------ | -----------
-node_id         | Int32   | -            |
-min_level       | Float64 | $\text{m}$   | (optional, default -Inf)
-max_level       | Float64 | $\text{m}$   | (optional, default Inf)
-demand_priority | Int32   | -            | positive (optional)
+```{julia}
+# | code-fold: true
+include("../../../utils/gen_docs_table.jl")
+table_from_schema(
+    Ribasim.Schema.LevelDemand.Static;
+    restrictions = Dict(:demand_priority => "positive"),
+)
+```
 
 ## Time
 
@@ -33,10 +36,10 @@ nearest time value. The allocation algorithm evaluates the interpolation at the 
 
 This is in contrast with UserDemand and FlowDemand, as allocation will aim to reach the desired level at the end of the allocation time step.
 
-column          | type     | unit         | restriction
---------------- | -------  | ------------ | -----------
-node_id         | Int32    | -            |
-time            | DateTime | -            |
-min_level       | Float64  | $\text{m}$   | (optional)
-max_level       | Float64  | $\text{m}$   | (optional)
-demand_priority | Int32    | -            | positive (optional)
+```{julia}
+# | code-fold: true
+table_from_schema(
+    Ribasim.Schema.LevelDemand.Time;
+    restrictions = Dict(:demand_priority => "positive"),
+)
+```

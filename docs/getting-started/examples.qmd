@@ -990,7 +990,7 @@ def plot_link_flow(from_node_type, from_node_id, to_node_type, to_node_id):
 plot_link_flow("LinearResistance", 1, "Basin", 1)
 plot_link_flow("Basin", 1, "Outlet", 1)
 plot_link_flow("Basin", 1, "Outlet", 2)
-ax.set_ylabel("flow [m³s⁻¹]");
+ax.set_ylabel("flow [m³ s⁻¹]");
 ```
 
 # Allocation-controlled TabulatedRatingCurve {#allocation-controlled-tabulatedratingcurve}
@@ -1078,7 +1078,7 @@ df_flow_trc = df_flow[
 
 fig, ax = plt.subplots()
 df_flow_trc.plot(x="time", y="flow_rate", ax=ax, label="Basin #1 → TRC #2")
-ax.set_ylabel("flow [m³s⁻¹]")
+ax.set_ylabel("flow [m³ s⁻¹]")
 ax.legend();
 ```
 

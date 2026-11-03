@@ -1,5 +1,6 @@
 ---
 title: "![](/assets/node-icons/Observation.svg){height=20} Observation"
+engine: julia
 ---
 
 An Observation node is used to attach time series of observed or reference data to a node in the network. These are not used in the simulation core, but are available for visualization, validation, or post-processing.
@@ -12,12 +13,19 @@ An Observation node connects to at most one other node, but may carry multiple v
 
 ## Time
 
-column   | type     | unit   | restriction
--------- | -------- | ------ | -----------
-node_id  | Int32    | -      |
-variable | String   | -      | Name of the Ribasim variable being observed (e.g. "level", "flow_rate"), see [Results](reference/usage.qmd#sec-results)
-time     | DateTime | -      | Timestamp of the observation
-value    | Float64  | -      | Value of the observation, unit equal to Ribasim variable
+```{julia}
+# | code-fold: true
+include("../../../utils/gen_docs_table.jl")
+table_from_schema(
+    Ribasim.Schema.Observation.Time;
+    restrictions = Dict(
+        :variable => "name of the Ribasim variable being observed (e.g. \"level\", \"flow_rate\")",
+        :value => "unit equal to that of the Ribasim variable",
+    ),
+)
+```
+
+See [Results](/reference/usage.qmd#sec-results) for the variables that can be observed.
 
 # Examples
 
