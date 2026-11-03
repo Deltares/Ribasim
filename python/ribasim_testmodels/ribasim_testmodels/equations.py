@@ -367,7 +367,8 @@ def pass_down_equation_model() -> Model:
     )
 
     pd1 = model.pass_down.add(
-        Node(4, Point(2, 1)), [pass_down.Static(fraction=[np.nan])]
+        Node(4, Point(2, 1)),
+        [pass_down.Static(to_node_id=[7, 8], fraction=[1 / 3, np.nan])],
     )
 
     ud = model.user_demand.add(
@@ -377,13 +378,9 @@ def pass_down_equation_model() -> Model:
 
     t = model.terminal.add(Node(6, Point(4, 1)))
 
-    pd2 = model.pass_down.add(
-        Node(7, Point(3, 1)), [pass_down.Static(fraction=[1 / 3])]
-    )
+    pd2 = model.pass_down.add(Node(7, Point(3, 1)))
 
-    pd3 = model.pass_down.add(
-        Node(8, Point(3, 2)), tables=[pass_down.Static(fraction=[np.nan])]
-    )
+    pd3 = model.pass_down.add(Node(8, Point(3, 2)))
 
     b2 = model.basin.add(
         Node(9, Point(4, 2)),

@@ -20,8 +20,9 @@ end
         "invalid_pass_down_missing_fractions",
         "Errors encountered when parsing PassDown data."
     )
-    @test messages ==
-        ["At most one PassDown node downstream of Pump #2 can have an unspecified fraction."]
+    @test messages == [
+        "PassDown #7 can have at most one outflow link to a PassDown node with an unspecified fraction.",
+    ]
 end
 
 @testitem "PassDown fraction sum" setup = [PassDownValidation] begin
@@ -30,8 +31,16 @@ end
         "Errors encountered when parsing PassDown data."
     )
     @test messages == [
-        "The fractions of the PassDown nodes downstream of Pump #2 must sum to at most 1 when one fraction is unspecified (got 1.25).",
+        "The fractions of the outflow links of PassDown #7 to PassDown nodes must sum to at most 1 when one fraction is unspecified (got 1.25).",
     ]
+end
+
+@testitem "PassDown connector split" setup = [PassDownValidation] begin
+    messages = PassDownValidation.error_messages(
+        "invalid_pass_down_connector_split",
+        "Invalid number of connections for certain node types."
+    )
+    @test messages == ["Pump #2 can have at most 1 flow outneighbor(s) (got 2)."]
 end
 
 @testitem "PassDown multiple UserDemands" setup = [PassDownValidation] begin
@@ -105,7 +114,7 @@ end
     @test all(isfinite, concentration)
     @test all(>=(-1.0e-12), concentration)
 
-    # Basin #4 only receives water from FlowBoundary #1 via PassDown nodes #2 and #3, so
+    # Basin #4 only receives water from FlowBoundary #1 via PassDown nodes #22, #2 and #3, so
     # the water in it comes from either the initial state or the FlowBoundary
     basin_idx = 1
     @test all(isapprox.(concentration[basin_idx, findfirst(==("Continuity"), substances), :], 1.0))
@@ -113,6 +122,25 @@ end
     flow_boundary = concentration[basin_idx, findfirst(==("FlowBoundary"), substances), :]
     @test all(isapprox.(initial + flow_boundary, 1.0))
     @test last(flow_boundary) > 0
+end
+
+@testitem "PassDown confluence" begin
+    using DataFrames: DataFrame
+
+    model = Ribasim.run(normpath(@__DIR__, "../../generated_testmodels/pass_down/ribasim.toml"))
+    @test success(model)
+
+    flow_data = Ribasim.flow_data(model) |> DataFrame
+    flow_rates(from_node_id, to_node_id) =
+        filter(row -> row.from_node_id == from_node_id && row.to_node_id == to_node_id, flow_data).flow_rate
+
+    # PassDown #25 receives the flow from PassDown #20 and #7 and passes all of it on to Basin #11
+    @test flow_rates(25, 11) ≈ flow_rates(20, 25) .+ flow_rates(7, 25)
+    @test all(>(0), flow_rates(25, 11))
+
+    # PassDown #22 divides the flow of FlowBoundary #1 over #2 and #3 by the fractions of these links
+    @test flow_rates(22, 2) ≈ 0.25 .* flow_rates(1, 22)
+    @test flow_rates(22, 3) ≈ 0.75 .* flow_rates(1, 22)
 end
 
 @testitem "PassDown at subnetwork boundary" setup = [PassDownValidation] begin

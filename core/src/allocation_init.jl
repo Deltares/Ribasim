@@ -83,8 +83,7 @@ function add_flow_conservation!(
         base_name = "flow_conservation_$node_name"
     )
 
-    # Define constraints: nodes that flow into PassDown nodes divide their flow over these
-    # PassDown nodes by their fractions
+    # Define constraints: nodes that flow into a PassDown node pass their flow on to that node
     pass_down_links = Tuple{NodeID, NodeID}[
         link_metadata.link for id in node_ids if outflow_data[id.idx].to_pass_down for
             link_metadata in outflow_data[id.idx].outflow_links
@@ -92,7 +91,7 @@ function add_flow_conservation!(
     problem[Symbol("flow_conservation_pass_down_$node_name")] = JuMP.@constraint(
         problem,
         [link = pass_down_links],
-        flow[link] == outflow_link_fraction(pass_down, link) * flow[inflow_link[link[1].idx].link],
+        flow[link] == flow[inflow_link[link[1].idx].link],
         base_name = "flow_conservation_pass_down_$node_name"
     )
     return nothing
@@ -256,8 +255,7 @@ function add_user_demand!(
         base_name = "user_demand_return_flow"
     )
 
-    # Define constraints: if the return flow goes into PassDown nodes it is divided over these
-    # by their fractions
+    # Define constraints: if the return flow goes into a PassDown node it equals the return flow
     pass_down_links = Tuple{NodeID, NodeID}[
         link_metadata.link for id in user_demand_ids_subnetwork if
             outflow_data[id.idx].to_pass_down for
@@ -267,8 +265,7 @@ function add_user_demand!(
         problem,
         [link = pass_down_links],
         flow[link] ==
-            outflow_link_fraction(pass_down, link) * return_factor *
-            sum(flow[lm.link] for lm in inflow_links[link[1].idx]),
+            return_factor * sum(flow[lm.link] for lm in inflow_links[link[1].idx]),
         base_name = "user_demand_return_flow_pass_down"
     )
 

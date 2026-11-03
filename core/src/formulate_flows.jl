@@ -1114,12 +1114,12 @@ end
 Compute the flows over the links in the PassDown subgraphs, see `PassDown.state_links`,
 and the UserDemand flows in the PassDown subgraphs.
 
-- A PassDown node gets the flow from its inflow links, where the flow from outside the subgraph
-  is multiplied by the fraction of the PassDown node.
+- A PassDown node gets the flow from its inflow links, which come from other PassDown nodes (confluences are
+  allowed) or from outside the subgraph, where the flow goes to this PassDown node only.
 - The UserDemand node downstream of the PassDown node, if present, takes precedence: it
   abstracts the minimum of the flow into the PassDown node and its demand.
-- The remaining flow goes to the downstream PassDown nodes (multiplied by their fractions).
-- The return flow of a UserDemand node is divided over its downstream PassDown nodes.
+- The remaining flow is divided over the downstream links of the PassDown node by the fractions of these links.
+- The return flow of a UserDemand node flows into a single PassDown node.
 """
 function formulate_pass_down_flow!(
         flow::FlowCVector{T},
@@ -1129,7 +1129,7 @@ function formulate_pass_down_flow!(
     )::Nothing where {T}
     (; p_independent, time_dependent_cache) = p
     (; pass_down, user_demand) = p_independent
-    (; inflow_links, outflow_links, inflow_state_idx, outflow_state_idx, fraction, pass_down_subgraphs) = pass_down
+    (; inflow_links, outflow_state_idx, inflow_state_idx, fraction, pass_down_subgraphs) = pass_down
     (; current_return_factor) = time_dependent_cache.user_demand
 
     # No-ops if flow === flow_in, but needed for AD
@@ -1144,8 +1144,7 @@ function formulate_pass_down_flow!(
                 for (inflow_link, state_idx) in zip(inflow_links[id.idx], inflow_state_idx[id.idx])
                     source_id = inflow_link.link[1]
                     if !in_pass_down_subgraph(source_id, user_demand)
-                        flow.pass_down[state_idx] =
-                            fraction[id.idx] * get_source_flow(flow, source_id, p_independent, t)
+                        flow.pass_down[state_idx] = get_source_flow(flow, source_id, p_independent, t)
                     end
                     inflow += flow.pass_down[state_idx]
                 end
@@ -1161,12 +1160,10 @@ function formulate_pass_down_flow!(
                 end
 
                 remainder = inflow - abstraction
-                for (outflow_link, state_idx) in zip(outflow_links[id.idx], outflow_state_idx[id.idx])
+                for (state_idx, link_fraction) in zip(outflow_state_idx[id.idx], fraction[id.idx])
                     # The UserDemand inflow state is already set
                     iszero(state_idx) && continue
-                    target_id = outflow_link.link[2]
-                    flow.pass_down[state_idx] =
-                        target_id.is_pass_down ? fraction[target_id.idx] * remainder : remainder
+                    flow.pass_down[state_idx] = link_fraction * remainder
                 end
             elseif id.type == NodeType.UserDemand
                 # UserDemand abstracting from a single PassDown node
@@ -1176,11 +1173,9 @@ function formulate_pass_down_flow!(
                 )
                 flow.horizontal.user_demand_outflow[id.idx] = outflow
 
-                outflow_data = user_demand.outflow_data[id.idx]
-                for (outflow_link, state_idx) in
-                    zip(outflow_data.outflow_links, user_demand.pass_down_outflow_state_idx[id.idx])
+                for state_idx in user_demand.pass_down_outflow_state_idx[id.idx]
                     iszero(state_idx) && continue
-                    flow.pass_down[state_idx] = fraction[outflow_link.link[2].idx] * outflow
+                    flow.pass_down[state_idx] = outflow
                 end
             else
                 error("Unsupported node $id in PassDown subgraph.")

@@ -92,7 +92,7 @@ end
 """
 Set the mass that flows over a link into a PassDown subgraph from a node outside of the subgraph:
 - FlowBoundary: the flow times the concentration of the FlowBoundary;
-- UserDemand: the fraction of the mass in the return flow that goes to the PassDown node;
+- UserDemand: the mass in the return flow;
 - Pump, Outlet or TabulatedRatingCurve: the flow times the concentration of the upstream Basin or LevelBoundary.
 """
 function set_pass_down_source_mass!(
@@ -100,7 +100,6 @@ function set_pass_down_source_mass!(
         p_independent::ParametersIndependent,
         source_id::NodeID,
         cumulative_flow::Float64,
-        fraction::Float64,
         t::Float64,
     )::Nothing
     (; basin, flow_boundary, level_boundary, user_demand) = p_independent
@@ -115,7 +114,7 @@ function set_pass_down_source_mass!(
             t,
         )
     elseif source_id.type == NodeType.UserDemand
-        link_mass .= fraction .* view(user_demand.return_mass, :, source_id.idx)
+        link_mass .= view(user_demand.return_mass, :, source_id.idx)
     else
         upstream_id = connector_inflow_id(p_independent, source_id)
         if upstream_id.is_basin
@@ -156,7 +155,6 @@ function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
         outflow_links,
         inflow_state_idx,
         outflow_state_idx,
-        fraction,
         link_mass,
         concentration,
         pass_down_subgraphs,
@@ -177,7 +175,6 @@ function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
                         p_independent,
                         source_id,
                         cumulative_flow_dt.pass_down[state_idx],
-                        fraction[id.idx],
                         t,
                     )
                 end
@@ -223,10 +220,9 @@ function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
 
             outflow_data = user_demand.outflow_data[id.idx]
             if outflow_data.to_pass_down
-                for (outflow_link, state_idx) in
-                    zip(outflow_data.outflow_links, user_demand.pass_down_outflow_state_idx[id.idx])
+                for state_idx in user_demand.pass_down_outflow_state_idx[id.idx]
                     iszero(state_idx) && continue
-                    view(link_mass, :, state_idx) .= fraction[outflow_link.link[2].idx] .* return_mass_node
+                    view(link_mass, :, state_idx) .= return_mass_node
                 end
             else
                 target_id = outflow_id(outflow_data)
