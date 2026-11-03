@@ -553,20 +553,24 @@ class Model(FileModel, ParentModel):
 
         node_geometry = node["geometry"]
         geometry = []
-        for row in missing_pairs.itertuples(index=False):
-            if row.from_node_id not in node_geometry.index:
+        for from_node_id, to_node_id in zip(
+            missing_pairs["from_node_id"].tolist(),
+            missing_pairs["to_node_id"].tolist(),
+            strict=True,
+        ):
+            if from_node_id not in node_geometry.index:
                 raise ValueError(
-                    f"Listen source node_id {row.from_node_id} does not exist in Node table."
+                    f"Listen source node_id {from_node_id} does not exist in Node table."
                 )
-            if row.to_node_id not in node_geometry.index:
+            if to_node_id not in node_geometry.index:
                 raise ValueError(
-                    f"Listen control node_id {row.to_node_id} does not exist in Node table."
+                    f"Listen control node_id {to_node_id} does not exist in Node table."
                 )
             geometry.append(
                 LineString(
                     [
-                        node_geometry.loc[row.from_node_id],
-                        node_geometry.loc[row.to_node_id],
+                        node_geometry.loc[from_node_id],
+                        node_geometry.loc[to_node_id],
                     ]
                 )
             )
