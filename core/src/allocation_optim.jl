@@ -145,8 +145,11 @@ function set_simulation_data!(
     (; flow_boundary_ids_subnetwork) = node_ids_in_subnetwork
     flow = problem[:flow]
 
+    @assert all(!data_out.to_pass_down for data_out in flow_boundary.outflow_data) "PassDown nodes in allocation subnetworks not supported yet, see issue #3322"
+    outflow_link = getfield.(flow_boundary.outflow_data, :outflow_link)
+
     for node_id in flow_boundary_ids_subnetwork
-        link = flow_boundary.outflow_link[node_id.idx].link
+        link = outflow_link[node_id.idx].link
         JuMP.fix(
             flow[link],
             boundary_flow_rate(flow_boundary, link[1].idx, t) / scaling.flow;
@@ -206,8 +209,10 @@ function linearize_connector_node!(
         Δt_allocation,
     )
     (; problem, scaling) = allocation_model
-    (; inflow_link, outflow_link) = connector_node
+    (; inflow_link, outflow_data) = connector_node
     (; current_storage, current_area) = p.current_basin_properties
+
+    @assert all(!data_out.to_pass_down for data_out in outflow_data) "PassDown nodes in allocation subnetworks not supported yet, see issue #3322"
 
     # Mathematical formulation: Taylor series linearization around current state
     # Q^{n+1} ≈ Q^n + (∂Q/∂h_a)(h_a^{n+1} - h_a^n) + (∂Q/∂h_b)(h_b^{n+1} - h_b^n)
@@ -222,11 +227,11 @@ function linearize_connector_node!(
     # Without ad_active, get_level ignores the storage argument, giving zero derivatives
     @ad_active p for node_id in only(flow_constraint.axes)
         inflow_id = inflow_link[node_id.idx].link[1]
-        outflow_id = outflow_link[node_id.idx].link[2]
+        downstream_id = outflow_id(outflow_data[node_id.idx])
 
         # Flow functions expect storage values (not levels) and internally convert to levels
         s_a = inflow_id.is_basin ? current_storage[inflow_id.idx] : 0.0
-        s_b = outflow_id.is_basin ? current_storage[outflow_id.idx] : 0.0
+        s_b = downstream_id.is_basin ? current_storage[downstream_id.idx] : 0.0
 
         constraint = flow_constraint[node_id]
 
@@ -245,12 +250,12 @@ function linearize_connector_node!(
 
         # The basin whose low_storage_factor governs this flow, matching the
         # upstream/downstream selection in low_storage_factor_resistance_node.
-        relevant_id = q0_raw > 0 ? inflow_id : outflow_id
+        relevant_id = q0_raw > 0 ? inflow_id : downstream_id
         lsf = get_low_storage_factor(problem, relevant_id)
 
         # Reset both candidate coefficients every call: flow direction (and hence
         # which basin's low_storage_factor applies) can flip between allocation steps.
-        for basin_id in (inflow_id, outflow_id)
+        for basin_id in (inflow_id, downstream_id)
             basin_id.is_basin || continue
             JuMP.set_normalized_coefficient(
                 constraint,
@@ -284,17 +289,17 @@ function linearize_connector_node!(
             )
         end
 
-        if outflow_id.is_basin
+        if downstream_id.is_basin
             # partial derivative with respect to downstream storage, converted to ∂q/∂h
             ∂q∂s_b = forward_diff(
                 storage_b ->
                 flow_function(connector_node, node_id, s_a, storage_b, p, t_after),
                 s_b,
             )
-            ∂q∂h_b = ∂q∂s_b * current_area[outflow_id.idx]
+            ∂q∂h_b = ∂q∂s_b * current_area[downstream_id.idx]
             set_partial_derivative_wrt_level!(
                 allocation_model,
-                outflow_id,
+                downstream_id,
                 ∂q∂h_b,
                 p,
                 constraint,
@@ -931,7 +936,7 @@ end
 
 function warm_start!(
         allocation_model::AllocationModel,
-        p::Parameters,
+        p_independent::ParametersIndependent,
         t::Float64,
         Δt_allocation::Float64,
         du,
@@ -940,7 +945,7 @@ function warm_start!(
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
     flow = problem[:flow]
     storage_change = problem[:basin_storage_change]
-    (; flow_link_lookup) = p.p_independent.graph[]
+    (; flow_link_lookup) = p_independent.graph[]
 
     # Extrapolate the current instantaneous flow rates from the physical layer
     for link in only(flow.axes)
@@ -950,7 +955,7 @@ function warm_start!(
                 flow[link], get_flow(
                     du.flow,
                     link,
-                    p;
+                    p_independent;
                     t
                 ) / scaling.flow
             )
@@ -961,7 +966,7 @@ function warm_start!(
     for node_id in basin_ids_subnetwork
         JuMP.set_start_value(
             storage_change[node_id],
-            formulate_dstorage_single_basin(du.flow, p.p_independent, node_id; t) * Δt_allocation / scaling.storage,
+            formulate_dstorage_single_basin(du.flow, p_independent, node_id; t) * Δt_allocation / scaling.storage,
         )
     end
 
@@ -1518,6 +1523,9 @@ function update_user_demand_flow_bounds!(
     flow = problem[:flow]
     user_demand_allocated = problem[:user_demand_allocated]
 
+    @assert all(!data_out.to_pass_down for data_out in user_demand.outflow_data) "PassDown nodes in allocation subnetworks not supported yet, see issue #3322"
+    outflow_link = getfield.(user_demand.outflow_data, :outflow_link)
+
     for node_id in user_demand_ids_subnetwork
         total_demand = sum(
             JuMP.upper_bound(user_demand_allocated[node_id, demand_priority]) for
@@ -1527,8 +1535,8 @@ function update_user_demand_flow_bounds!(
             JuMP.set_lower_bound(flow[link_metadata.link], 0.0)
             JuMP.set_upper_bound(flow[link_metadata.link], total_demand)
         end
-        JuMP.set_lower_bound(flow[user_demand.outflow_link[node_id.idx].link], 0.0)
-        JuMP.set_upper_bound(flow[user_demand.outflow_link[node_id.idx].link], total_demand)
+        JuMP.set_lower_bound(flow[outflow_link[node_id.idx].link], 0.0)
+        JuMP.set_upper_bound(flow[outflow_link[node_id.idx].link], total_demand)
     end
     return nothing
 end
@@ -1633,7 +1641,7 @@ function update_allocation!(
         normalize_flow_demand_objectives!(secondary_network)
 
         # Use data from the physical layer to set the initial guess
-        warm_start!(secondary_network, p, t, Δt, du)
+        warm_start!(secondary_network, p_independent, t, Δt, du)
     end
 
     if has_primary_network(allocation)
@@ -1668,7 +1676,7 @@ function update_allocation!(
         update_user_demand_flow_bounds!(primary_network, p_independent)
         update_flow_demand_variable_bounds!(primary_network, p_independent)
         normalize_flow_demand_objectives!(primary_network)
-        warm_start!(primary_network, p, t, Δt, du)
+        warm_start!(primary_network, p_independent, t, Δt, du)
     end
 
     # Allocate in all networks, starting with the primary network if it exists

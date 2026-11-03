@@ -7,8 +7,9 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
     (; basin, user_demand, cumulative_flow_dt) = p.p_independent
     (; concentration_state, mass) = basin.concentration_data
 
-    for (node_idx, outflow_link) in enumerate(user_demand.outflow_link)
-        to_node = outflow_link.link[2]
+    for (node_idx, outflow_data) in enumerate(user_demand.outflow_data)
+        @assert !outflow_data.to_pass_down "Internal tracers through PassDown nodes not supported yet, see issue #3337"
+        to_node = outflow_id(outflow_data)
         inflow_links = user_demand.inflow_links[node_idx]
 
         if to_node.is_basin
@@ -48,11 +49,13 @@ Process all mass inflows to basins
 """
 function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
     (; p, t) = integrator
-    (; basin, inflow_id, outflow_id, level_boundary, cumulative_flow_dt, flow_ranges) = p.p_independent
+    (; basin, inflow_id, outflow_data, level_boundary, cumulative_flow_dt, flow_ranges) = p.p_independent
     (; concentration_state, mass) = basin.concentration_data
 
     # Loop over connections that have state
-    @views for (flow_idx, (from_node, to_node)) in enumerate(zip(inflow_id, outflow_id))
+    @views for (flow_idx, (from_node, to_data)) in enumerate(zip(inflow_id, outflow_data))
+        @assert !to_data.to_pass_down "Internal tracers through PassDown nodes not supported yet, see issue #3337"
+        to_node = outflow_id(to_data)
 
         if flow_idx in flow_ranges.horizontal.user_demand_outflow
             # UserDemand is handled separately in mass_inflows_from_user_demand
@@ -118,7 +121,7 @@ end
 Process all mass outflows from Basins
 """
 function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
-    (; basin, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges) = integrator.p.p_independent
+    (; basin, cumulative_flow_dt, inflow_id, outflow_data, flow_ranges) = integrator.p.p_independent
     (; mass, concentration_state) = basin.concentration_data
 
     @views for flow_idx in eachindex(cumulative_flow_dt)
@@ -130,7 +133,10 @@ function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
 
         cumulative_flow = cumulative_flow_dt[flow_idx]
         from_node = inflow_id[flow_idx]
-        to_node = outflow_id[flow_idx]
+        to_data = outflow_data[flow_idx]
+
+        @assert !to_data.to_pass_down "Internal tracers through PassDown nodes not supported yet, see issue #3337"
+        to_node = outflow_id(to_data)
 
         if from_node.is_basin && cumulative_flow > 0
             mass[:, from_node.idx] .-= concentration_state[:, from_node.idx] .* cumulative_flow

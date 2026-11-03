@@ -220,12 +220,14 @@ include("main.jl")
 """
 The test models that run in the precompile workload. Code compiled while running them is
 cached, and reused for other models. The first two combine many test models, to cover all
-node types, input tables and allocation demand types.
+node types, input tables and allocation demand types, except for the PassDown node, which
+is not supported together with tracers and allocation and is covered by its own model.
 """
 const PRECOMPILE_WORKLOAD_MODELS = (
     "precompile_workload",
     "precompile_workload_allocation",
     "medium_primary_secondary_network",
+    "pass_down",
 )
 
 @setup_workload begin

@@ -63,9 +63,12 @@ function add_flow_conservation!(
         graph::MetaGraph,
     )::Nothing
     (; problem, subnetwork_id) = allocation_model
-    (; node_id, inflow_link, outflow_link) = node
+    (; node_id, inflow_link, outflow_data) = node
     node_ids = filter(id -> graph[id].subnetwork_id == subnetwork_id, node_id)
     flow = problem[:flow]
+
+    @assert all(!data_out.to_pass_down for data_out in outflow_data) "PassDown nodes in allocation subnetworks not supported yet, see issue #3322"
+    outflow_link = getfield.(outflow_data, :outflow_link)
 
     # Extract node type name from the struct type
     node_name = snake_case(string(typeof(node).name.name))
@@ -162,8 +165,11 @@ function add_user_demand!(
     (; problem, cumulative_supplied_volume, node_ids_in_subnetwork) = allocation_model
     (; user_demand_ids_subnetwork) = node_ids_in_subnetwork
     (; user_demand) = p_independent
-    (; inflow_links, outflow_link) = user_demand
+    (; inflow_links, outflow_data) = user_demand
     flow = problem[:flow]
+
+    @assert all(!data_out.to_pass_down for data_out in outflow_data) "PassDown nodes in allocation subnetworks not supported yet, see issue #3322"
+    outflow_link = getfield.(outflow_data, :outflow_link)
 
     # Define decision variables: Per UserDemand node the flow allocated to that node
     # per demand priority for which that node has a demand (scaling.flow * m^3/s)
@@ -411,7 +417,9 @@ function add_linearized_connector_node!(
         node_ids_subnetwork,
     )::Nothing
     (; problem) = allocation_model
-    (; inflow_link, outflow_link) = node
+    (; inflow_link, outflow_data) = node
+
+    @assert all(!data_out.to_pass_down for data_out in outflow_data) "PassDown nodes in allocation subnetworks not supported yet, see issue #3322"
 
     flow = problem[:flow]
     storage_change = problem[:basin_storage_change]
@@ -444,7 +452,7 @@ function add_linearized_connector_node!(
                 )
             end
 
-            downstream_node = outflow_link[node_id.idx].link[2]
+            downstream_node = outflow_id(outflow_data[node_id.idx])
             if downstream_node.is_basin
                 JuMP.add_to_expression!(
                     linearization,

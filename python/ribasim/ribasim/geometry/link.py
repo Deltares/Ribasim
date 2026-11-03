@@ -304,14 +304,81 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             & (self.df["link_type"] == link_type)
         ].shape[0]
 
-        out_neighbor: int = self.df.loc[
+        out_to_node_ids = self.df.loc[
             (self.df["from_node_id"] == from_node.node_id)
-            & (self.df["link_type"] == link_type)
-        ].shape[0]
+            & (self.df["link_type"] == link_type),
+            "to_node_id",
+        ]
+        out_neighbor: int = out_to_node_ids.shape[0]
         neighbor_bounds = link_neighbor_amount[link_type]
 
         max_in: int = neighbor_bounds[to_node.node_type][1]
         max_out: int = neighbor_bounds[from_node.node_type][3]
+
+        # With a PassDown downstream, any number of outneighbors is allowed, but all must be PassDown,
+        # except that a PassDown node can also have UserDemand outneighbors
+        model = cast("Model | None", self._parent)
+        if (
+            link_type == "flow"
+            and "PassDown" in node_type_connectivity.get(from_node.node_type, [])
+            and model is not None
+            and model.node.df is not None
+        ):
+            out_types = set(model.node.df.loc[out_to_node_ids, "node_type"])
+            out_types.add(to_node.node_type)
+            allowed_types = (
+                {"PassDown", "UserDemand"}
+                if from_node.node_type == "PassDown"
+                else {"PassDown"}
+            )
+            # Junctions obscure the actual connectivity, so leave that to the Julia core
+            junction_involved = (
+                "Junction" in out_types or from_node.node_type == "Junction"
+            )
+            if (
+                not junction_involved
+                and "PassDown" in out_types
+                and not out_types <= allowed_types
+            ):
+                raise ValueError(
+                    f"Node {from_node.node_id} has a PassDown flow link outneighbor, so all its flow link outneighbors must be {' or '.join(sorted(allowed_types))}"
+                )
+            if (
+                not junction_involved
+                and from_node.node_type == "PassDown"
+                and "UserDemand" in out_types
+                and not out_types <= {"PassDown", "UserDemand"}
+            ):
+                raise ValueError(
+                    f"Node {from_node.node_id} has a UserDemand flow link outneighbor, so all its other flow link outneighbors must be PassDown"
+                )
+            if to_node.node_type == "PassDown" or (
+                junction_involved and "PassDown" in out_types
+            ):
+                max_out = np.iinfo(np.int64).max
+
+        if (
+            link_type == "flow"
+            and to_node.node_type == "UserDemand"
+            and model is not None
+            and model.node.df is not None
+        ):
+            in_from_node_ids = self.df.loc[
+                (self.df["to_node_id"] == to_node.node_id)
+                & (self.df["link_type"] == link_type),
+                "from_node_id",
+            ]
+            in_types = list(model.node.df.loc[in_from_node_ids, "node_type"])
+            in_types.append(from_node.node_type)
+            if (
+                "Junction" not in in_types
+                and "PassDown" in in_types
+                and len(in_types) > 1
+            ):
+                raise ValueError(
+                    f"Node {to_node.node_id} must have either one or more Basin inflow links, or exactly one PassDown inflow link"
+                )
+
         if in_neighbor >= max_in:
             raise ValueError(
                 f"Node {to_node.node_id} can have at most {max_in} {link_type} link inneighbor(s)"
