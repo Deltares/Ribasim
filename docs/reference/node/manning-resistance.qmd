@@ -14,6 +14,14 @@ include("../../../utils/plot_connector_schematic.jl")
 plot_connector_schematic(:ManningResistance)
 ```
 
+# Allowed connectivity
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_node_connectivity.jl")
+plot_node_connectivity("ManningResistance")
+```
+
 # Tables
 
 ## Static

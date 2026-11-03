@@ -23,6 +23,16 @@ These parameters help define how water is stored and managed in the system. Belo
 # Confluence Representation
 A confluence where multiple links converge into a single node can be modeled using a [Junction node](/reference/node/junction.qmd).
 
+# Allowed connectivity
+
+```{python}
+# | code-fold: true
+%run ../../../utils/plot_node_connectivity.py
+fig = plot_node_connectivity("Basin")
+plt.show()
+plt.close(fig)
+```
+
 # Tables
 
 ## Static

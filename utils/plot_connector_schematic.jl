@@ -63,14 +63,14 @@ function plot_connector_schematic(node_type::Symbol)
                 [lower, lower, upper, upper],
             );
             fillcolor = :orange, fillalpha = 0.3, linecolor = :transparent,
-            label = i == 1 ? "level_difference_threshold" : "",
+            label = i == 1 ? "level_difference_threshold (global)" : "",
         )
         isempty(label) && continue
         limit = label == "min_upstream_level" ? lower : upper
         plot!(
             diagram, [basin_left(left, limit), basin_right(right, limit)], [limit, limit];
             color = label == "min_upstream_level" ? :darkorange : :purple,
-            linestyle = :dash, linewidth = 2, label,
+            linestyle = :dash, linewidth = 2, label = "$label (local)",
         )
     end
 
@@ -83,7 +83,7 @@ function plot_connector_schematic(node_type::Symbol)
                 [4.6, 4.6, 4.9, 4.9],
             );
             fillcolor = :teal, fillalpha = 0.8, linecolor = :transparent,
-            label = i == 1 ? "depth_threshold" : "",
+            label = i == 1 ? "depth_threshold (global)" : "",
         )
     end
 
@@ -92,7 +92,7 @@ function plot_connector_schematic(node_type::Symbol)
         diagram, [basin_right(4.5, connector_level), basin_left(7.5, connector_level)],
         [connector_level, connector_level];
         color = "#3690c0", linewidth = 2, arrow = is_resistance ? :both : true,
-        label = is_manning ? "length" : "",
+        label = is_manning ? "length (local)" : "",
     )
     scatter!(
         diagram, [6], [connector_level];
@@ -142,18 +142,18 @@ function plot_manning_profile()
     plot!(
         profile, [-surface_half_width, -width / 2, width / 2, surface_half_width],
         [depth, 0, 0, depth];
-        color = :saddlebrown, linewidth = 4, label = "manning_n",
+        color = :saddlebrown, linewidth = 4, label = "manning_n (local)",
     )
     plot!(
         profile, [-width / 2, width / 2], [-0.4, -0.4];
-        color = :darkorange, linewidth = 2, label = "profile_width",
+        color = :darkorange, linewidth = 2, label = "profile_width (local)",
     )
     for x in (-width / 2, width / 2)
         plot!(profile, [x, x], [-0.5, -0.3]; color = :darkorange, label = "")
     end
     plot!(
         profile, [width / 2, width / 2 + slope], [1, 1];
-        color = :purple, linewidth = 2, label = "profile_slope",
+        color = :purple, linewidth = 2, label = "profile_slope (local)",
     )
     plot!(
         profile, [width / 2, width / 2], [0, 1];

@@ -17,6 +17,14 @@ UserDemands need an outgoing flow link along which they can send their return fl
 The amount of return flow is always a fraction of the inflow into the UserDemand.
 The difference is consumed by the UserDemand.
 
+# Allowed connectivity
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_node_connectivity.jl")
+plot_node_connectivity("UserDemand")
+```
+
 # Tables
 
 ## Static

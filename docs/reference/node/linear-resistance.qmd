@@ -13,6 +13,14 @@ include("../../../utils/plot_connector_schematic.jl")
 plot_connector_schematic(:LinearResistance)
 ```
 
+# Allowed connectivity
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_node_connectivity.jl")
+plot_node_connectivity("LinearResistance")
+```
+
 # Tables
 
 ## Static

@@ -15,6 +15,14 @@ include("../../../utils/plot_connector_schematic.jl")
 plot_connector_schematic(:TabulatedRatingCurve)
 ```
 
+# Allowed connectivity
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_node_connectivity.jl")
+plot_node_connectivity("TabulatedRatingCurve")
+```
+
 # Tables
 
 ## Static
