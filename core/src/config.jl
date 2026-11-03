@@ -193,7 +193,6 @@ end
     reduced_implicit_solve::Bool = true
     sparse::Bool = true
     autodiff::Bool = true
-    evaporate_mass::Bool = true
     depth_threshold::Float64 = 0.1
     max_depth::Float64 = 2000.0
     level_difference_threshold::Float64 = 0.02
@@ -237,6 +236,12 @@ end
     route_priority::RoutePriority = RoutePriority()
 end
 
+@option struct Concentration <: TableOption
+    evaporate_mass::Bool = true
+    substep_ratio::Float64 = 1 / 5
+    substep_depth::Int = 10
+end
+
 @option struct Experimental <: TableOption
     concentration::Bool = false
     allocation::Bool = false
@@ -262,6 +267,7 @@ end
     results_dir::String
     interpolation::Interpolation = Interpolation()
     allocation::Allocation = Allocation()
+    concentration::Concentration = Concentration()
     solver::Solver = Solver()
     logging::Logging = Logging()
     results::Results = Results()

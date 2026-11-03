@@ -290,6 +290,8 @@ const CF = OrderedDict{String, OrderedDict{String, String}}(
         OrderedDict("units" => "1", "long_name" => "number of accepted timesteps"),
     "rejected_timesteps" =>
         OrderedDict("units" => "1", "long_name" => "number of rejected timesteps"),
+    "max_subtimesteps" =>
+        OrderedDict("units" => "1", "long_name" => "maximum number of subtimesteps in the last timestep"),
     "rejected_nonlinear_solve" => OrderedDict(
         "units" => "1",
         "long_name" => "number of timesteps rejected because the nonlinear solver did not converge",
@@ -450,6 +452,7 @@ function solver_stats_data(model::Model; table::Bool = true)
         rejected_nonlinear_solve = diff(solver_stats.rejected_nonlinear_solve),
         rejected_local_error = diff(solver_stats.rejected_local_error),
         rejected_out_of_domain = diff(solver_stats.rejected_out_of_domain),
+        max_subtimesteps = solver_stats.max_subtimesteps[2:end],
         mean_order = diff(solver_stats.order_sum) ./ accepted_timesteps,
         dt = diff(solver_stats.time) ./ accepted_timesteps,
     )
