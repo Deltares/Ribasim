@@ -10,6 +10,7 @@ from typing import Any, Self, cast
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import shapely
 import tomli
 import tomli_w
 import xarray as xr
@@ -24,7 +25,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from shapely.geometry import LineString
 
 import ribasim
 from ribasim.config import (
@@ -552,31 +552,29 @@ class Model(FileModel, ParentModel):
         )
 
         node_geometry = node["geometry"]
-        geometry = []
-        for from_node_id, to_node_id in zip(
-            missing_pairs["from_node_id"].tolist(),
-            missing_pairs["to_node_id"].tolist(),
-            strict=True,
-        ):
-            if from_node_id not in node_geometry.index:
+        from_node_ids = missing_pairs["from_node_id"]
+        to_node_ids = missing_pairs["to_node_id"]
+        for node_ids, role in ((from_node_ids, "source"), (to_node_ids, "control")):
+            unknown_node_ids = node_ids[~node_ids.isin(node_geometry.index)]
+            if not unknown_node_ids.empty:
                 raise ValueError(
-                    f"Listen source node_id {from_node_id} does not exist in Node table."
+                    f"Listen {role} node_id {unknown_node_ids.iloc[0]} does not exist in Node table."
                 )
-            if to_node_id not in node_geometry.index:
-                raise ValueError(
-                    f"Listen control node_id {to_node_id} does not exist in Node table."
-                )
-            geometry.append(
-                LineString(
-                    [
-                        node_geometry.loc[from_node_id],
-                        node_geometry.loc[to_node_id],
-                    ]
-                )
+        include_z = bool(node_geometry.has_z.any())
+        geometry = shapely.linestrings(
+            np.stack(
+                [
+                    shapely.get_coordinates(
+                        node_geometry.loc[node_ids].to_numpy(), include_z=include_z
+                    )
+                    for node_ids in (from_node_ids, to_node_ids)
+                ],
+                axis=1,
             )
+        )
 
         new_link_ids: list[int] = []
-        for _ in range(len(geometry)):
+        for _ in range(len(missing_pairs)):
             new_link_id = self.link._used_link_ids.new_id()
             self.link._used_link_ids.add(new_link_id)
             new_link_ids.append(new_link_id)
@@ -584,8 +582,8 @@ class Model(FileModel, ParentModel):
             data={
                 "from_node_id": missing_pairs["from_node_id"].to_numpy(np.int32),
                 "to_node_id": missing_pairs["to_node_id"].to_numpy(np.int32),
-                "link_type": ["listen"] * len(geometry),
-                "name": [""] * len(geometry),
+                "link_type": ["listen"] * len(missing_pairs),
+                "name": [""] * len(missing_pairs),
             },
             geometry=geometry,
             crs=df_link.crs,
