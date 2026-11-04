@@ -1264,29 +1264,14 @@ class PlotWidget(QWidget):
         visited: set[int],
     ) -> list[tuple[int, int, int]]:
         """Recursive helper for :meth:`_resolve_junction_sources`."""
-        from qgis.core import QgsFeatureRequest
-
         visited = visited | {junction_id}
-        expr = (
-            f'"from_node_id" = {int(junction_id)} OR "to_node_id" = {int(junction_id)}'
-        )
-        request = QgsFeatureRequest().setFilterExpression(expr)
-        # Materialise the iterator so nested getFeatures calls on the same
-        # layer don't interfere with the outer iteration.
-        neighbours: list[tuple[int, int, int]] = []
-        for feat in link_layer.getFeatures(request):
-            lid = int(feat["link_id"])
-            if lid == arrival_link_id:
-                continue
-            from_id = int(feat["from_node_id"])
-            to_id = int(feat["to_node_id"])
-            if from_id == junction_id:
-                neighbours.append((to_id, lid, -1))
-            else:
-                neighbours.append((from_id, lid, 1))
 
         sources: list[tuple[int, int, int]] = []
-        for far_node, lid, inflow_sign in neighbours:
+        for far_node, lid, inflow_sign in self._junction_neighbours(
+            junction_id, link_layer
+        ):
+            if lid == arrival_link_id:
+                continue
             # Traverse through connectors to reach the actual source node.
             resolved_node, resolved_lid = far_node, lid
             resolved_type = self._get_node_type(far_node)
@@ -1300,15 +1285,104 @@ class PlotWidget(QWidget):
             if resolved_type == "Basin":
                 sources.append((resolved_node, lid, inflow_sign))
             elif resolved_type == "Junction" and resolved_node not in visited:
-                sources.extend(
-                    self._collect_junction_sources(
-                        resolved_node,
-                        resolved_lid,
-                        link_layer,
-                        visited,
-                    )
+                # A connector on another Junction group can take its water from
+                # the one Basin of that group.
+                outflow_basin = (
+                    self._junction_outflow_basin(resolved_node, resolved_lid)
+                    if resolved_node != far_node
+                    else None
                 )
+                if outflow_basin is not None:
+                    sources.append((outflow_basin, lid, inflow_sign))
+                else:
+                    sources.extend(
+                        self._collect_junction_sources(
+                            resolved_node,
+                            resolved_lid,
+                            link_layer,
+                            visited,
+                        )
+                    )
         return sources
+
+    def _junction_neighbours(
+        self, junction_id: int, link_layer: Any
+    ) -> list[tuple[int, int, int]]:
+        """Return ``(far_node_id, link_id, inflow_sign)`` for the links of a Junction.
+
+        *inflow_sign* is ``+1`` when positive flow on the link means flow towards
+        *junction_id*, and ``-1`` otherwise.
+        """
+        from qgis.core import QgsFeatureRequest
+
+        expr = (
+            f'"from_node_id" = {int(junction_id)} OR "to_node_id" = {int(junction_id)}'
+        )
+        request = QgsFeatureRequest().setFilterExpression(expr)
+        # Materialise the iterator so nested getFeatures calls on the same
+        # layer don't interfere with the outer iteration.
+        neighbours: list[tuple[int, int, int]] = []
+        for feat in link_layer.getFeatures(request):
+            lid = int(feat["link_id"])
+            from_id = int(feat["from_node_id"])
+            to_id = int(feat["to_node_id"])
+            if from_id == junction_id:
+                neighbours.append((to_id, lid, -1))
+            else:
+                neighbours.append((from_id, lid, 1))
+        return neighbours
+
+    def _junction_side_basins(
+        self, junction_id: int, skipped_link_id: int, link_layer: Any
+    ) -> set[int]:
+        """Find the Basins next to the Junctions reachable without *skipped_link_id*."""
+        basins: set[int] = set()
+        visited = {junction_id}
+        stack = [junction_id]
+        while stack:
+            for far_node, lid, _ in self._junction_neighbours(stack.pop(), link_layer):
+                if lid == skipped_link_id:
+                    continue
+                far_type = self._get_node_type(far_node)
+                if far_type == "Basin":
+                    basins.add(far_node)
+                elif far_type == "Junction" and far_node not in visited:
+                    visited.add(far_node)
+                    stack.append(far_node)
+        return basins
+
+    def _junction_outflow_basin(self, junction_id: int, link_id: int) -> int | None:
+        """Find the Basin that supplies the water leaving a Junction over *link_id*.
+
+        A connected group of Junctions with exactly one Basin as a neighbor connects
+        each other neighbor directly to that Basin. Water from the group to such a
+        neighbor, or along a link of the group away from the Basin, is therefore
+        water from that Basin, and doesn't mix with inflows to the group.
+
+        Returns ``None`` for other groups, and when the Basin is on the other side
+        of *link_id*, so that the water comes from the inflows behind the Junction.
+        """
+        if self._link_layer_getter is None:
+            return None
+        layer = self._link_layer_getter()
+        if layer is None:
+            return None
+
+        basins = self._junction_side_basins(junction_id, link_id, layer)
+        if len(basins) != 1:
+            return None
+
+        # The group continues on the other side of the link.
+        endpoints = self._get_link_endpoints(link_id)
+        if endpoints is None:
+            return None
+        far_node = endpoints[1] if endpoints[0] == junction_id else endpoints[0]
+        far_type = self._get_node_type(far_node)
+        if far_type == "Basin":
+            basins.add(far_node)
+        elif far_type == "Junction":
+            basins |= self._junction_side_basins(far_node, link_id, layer)
+        return next(iter(basins)) if len(basins) == 1 else None
 
     def _build_junction_concentration(
         self,
@@ -1379,7 +1453,8 @@ class PlotWidget(QWidget):
         """Resolve a link endpoint to concentration data.
 
         Handles Basin (direct lookup), traversable connectors, and Junction
-        nodes (flow-weighted average of source Basin concentrations).
+        nodes (the one Basin that supplies the link, or else the flow-weighted
+        average of source Basin concentrations).
         Connectors are traversed iteratively so that chains like
         ``Basin → Junction → ManningResistance → ...`` are supported.
         """
@@ -1391,6 +1466,10 @@ class PlotWidget(QWidget):
                     return None
                 return self._concentration_for_node_getter(cur_node)
             if node_type == "Junction":
+                outflow_basin = self._junction_outflow_basin(cur_node, cur_link)
+                if outflow_basin is not None:
+                    cur_node = outflow_basin
+                    continue
                 sources = self._resolve_junction_sources(cur_node, cur_link)
                 return self._build_junction_concentration(
                     sources, n_timesteps, flow_time

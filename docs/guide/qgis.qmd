@@ -89,6 +89,9 @@ Select one link, and if you have concentration results, you can choose the varia
 
 Under the variable → concentration dropdown menu you can select another set of tracers if they are available.
 
+For a [Junction](/reference/node/junction.qmd) group with exactly one Basin as a neighbor, water that flows out to a connector, or along a link of the group away from the Basin, consists of the tracers of that Basin.
+A link between the Junctions of such a group reports the net flow. If that is towards the Basin, the plot scales the tracers of the inflows behind the link to the net flow.
+
 If your model has [Observation](/reference/node/observation.qmd) nodes, select the `node` button and click an Observation node to compare its observed and simulated timeseries.
 The observed series (read from the input) is drawn in black, and the corresponding simulated series in red.
 

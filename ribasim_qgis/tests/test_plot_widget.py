@@ -3,6 +3,8 @@
 from typing import Any
 
 import numpy as np
+import pytest
+from qgis.core import QgsFeature, QgsVectorLayer
 from qgis.PyQt.QtWidgets import QCheckBox, QWidgetAction
 
 from ribasim_qgis.widgets.plot_widget import (
@@ -976,6 +978,194 @@ def test_plot_widget_fractional_flow_connector_to_junction(monkeypatch):
     for trace in fig.data:
         if trace.name == "Tracer":
             assert np.allclose(trace.y, np.array([6.8, 13.6]))
+
+
+def _memory_layer(fields: str, rows: list[tuple[Any, ...]]) -> QgsVectorLayer:
+    layer = QgsVectorLayer(f"None?{fields}", "layer", "memory")
+    features = []
+    for row in rows:
+        feature = QgsFeature(layer.fields())
+        feature.setAttributes(list(row))
+        features.append(feature)
+    provider = layer.dataProvider()
+    assert provider is not None
+    provider.addFeatures(features)
+    return layer
+
+
+def _fractional_tracer_flow(
+    monkeypatch,
+    node_types: dict[int, str],
+    links: dict[int, tuple[int, int]],
+    concentrations: dict[int, float],
+    flows: dict[int, float],
+    link_id: int,
+    selected_flow: list[float],
+) -> np.ndarray:
+    """Plot the fractional flow of one link, on real layers, and return its tracer."""
+    captured_figures = []
+
+    def _capture_plot(fig, **kwargs):
+        captured_figures.append(fig)
+        return "<div></div>"
+
+    monkeypatch.setattr("ribasim_qgis.widgets.plot_widget.po.plot", _capture_plot)
+
+    time = np.array(["2020-01-01", "2020-01-02"])
+    node_layer = _memory_layer(
+        "field=node_id:integer&field=node_type:string",
+        list(node_types.items()),
+    )
+    link_layer = _memory_layer(
+        "field=link_id:integer&field=from_node_id:integer&field=to_node_id:integer",
+        [(lid, from_id, to_id) for lid, (from_id, to_id) in links.items()],
+    )
+
+    def _conc_getter(node_id):
+        if node_id not in concentrations:
+            return None
+        return {"Tracer": (time, np.full(2, concentrations[node_id]))}
+
+    def _flow_getter(lid):
+        if lid not in flows:
+            return None
+        return (time, np.full(2, flows[lid]))
+
+    widget = PlotWidget(
+        node_layer_getter=lambda: node_layer,
+        link_layer_getter=lambda: link_layer,
+        concentration_for_node_getter=_conc_getter,
+        flow_for_link_getter=_flow_getter,
+    )
+    widget._fractional_flow_enabled = True
+    widget.set_data(
+        {"flow": {"flow_rate": {f"Link #{link_id}": (time, np.array(selected_flow))}}},
+        units={"flow": {"flow_rate": "m3 s-1"}},
+    )
+
+    assert len(captured_figures) == 1
+    return next(t.y for t in captured_figures[0].data if t.name == "Tracer")
+
+
+# One Junction tree connects the inflows and outflows of Basin 1:
+#
+#   Basin 1 --1--> Junction 2 <--2-- Junction 3
+#   Basin 10 --3--> LinearResistance 4 --4--> Junction 2 --5--> Pump 5 --6--> Basin 11
+#   Basin 12 --7--> LinearResistance 7 --8--> Junction 3 --9--> Pump 8 --10--> Basin 13
+_TREE_NODE_TYPES = {
+    1: "Basin",
+    2: "Junction",
+    3: "Junction",
+    4: "LinearResistance",
+    5: "Pump",
+    7: "LinearResistance",
+    8: "Pump",
+    10: "Basin",
+    11: "Basin",
+    12: "Basin",
+    13: "Basin",
+}
+_TREE_LINKS = {
+    1: (1, 2),
+    2: (3, 2),
+    3: (10, 4),
+    4: (4, 2),
+    5: (2, 5),
+    6: (5, 11),
+    7: (12, 7),
+    8: (7, 3),
+    9: (3, 8),
+    10: (8, 13),
+}
+_TREE_CONCENTRATIONS = {1: 0.1, 10: 0.2, 11: 0.9, 12: 0.4, 13: 0.9}
+_TREE_FLOWS = {4: 6.0, 5: 3.0, 8: 2.0, 9: 5.0}
+
+
+@pytest.mark.parametrize(
+    ("link_id", "selected_flow", "expected"),
+    [
+        # An outflow is water from Basin 1, not mixed with the inflow at Junction 2.
+        (5, [3.0, 3.0], [0.1 * 3.0, 0.1 * 3.0]),
+        # Also behind the connector.
+        (6, [3.0, 3.0], [0.1 * 3.0, 0.1 * 3.0]),
+        # A connector with an inflow takes water from Basin 1 if it reverses.
+        (4, [6.0, -6.0], [0.2 * 6.0, 0.1 * -6.0]),
+        # A link towards Basin 1 has the inflows behind it, away from it Basin 1.
+        (2, [2.0, -3.0], [0.4 * 2.0, 0.1 * -3.0]),
+        # The link of Basin 1 has all inflows if towards it, and Basin 1 if away.
+        (1, [-8.0, 3.0], [(0.2 * 6.0 + 0.4 * 2.0) / 8.0 * -8.0, 0.1 * 3.0]),
+    ],
+)
+def test_plot_widget_fractional_flow_junction_tree(
+    monkeypatch, link_id, selected_flow, expected
+):
+    """A Junction group with one Basin doesn't mix its inflows with its outflows."""
+    y = _fractional_tracer_flow(
+        monkeypatch,
+        _TREE_NODE_TYPES,
+        _TREE_LINKS,
+        _TREE_CONCENTRATIONS,
+        _TREE_FLOWS,
+        link_id,
+        selected_flow,
+    )
+    assert np.allclose(y, expected)
+
+
+def test_plot_widget_fractional_flow_junction_two_basins(monkeypatch):
+    """A Junction group with two Basins connects them to all downstream nodes."""
+    y = _fractional_tracer_flow(
+        monkeypatch,
+        {
+            1: "Basin",
+            2: "Basin",
+            3: "Junction",
+            4: "LinearResistance",
+            5: "Basin",
+        },
+        {1: (1, 3), 2: (2, 3), 3: (3, 4), 4: (4, 5)},
+        {1: 0.2, 2: 0.6, 5: 0.9},
+        {1: 3.0, 2: 1.0},
+        4,
+        [4.0, 4.0],
+    )
+    # (0.2 * 3 + 0.6 * 1) / 4 = 0.3
+    assert np.allclose(y, [0.3 * 4.0, 0.3 * 4.0])
+
+
+def test_plot_widget_fractional_flow_connector_between_junction_groups(monkeypatch):
+    """A connector takes its water from the one Basin of the group upstream of it."""
+    y = _fractional_tracer_flow(
+        monkeypatch,
+        {
+            1: "Basin",
+            2: "Junction",
+            3: "Pump",
+            4: "Junction",
+            5: "Basin",
+            6: "Basin",
+            7: "LinearResistance",
+            8: "Basin",
+            9: "LinearResistance",
+        },
+        {
+            1: (1, 2),
+            2: (2, 3),
+            3: (3, 4),
+            4: (4, 5),
+            5: (6, 7),
+            6: (7, 2),
+            7: (8, 9),
+            8: (9, 4),
+        },
+        {1: 0.1, 5: 0.9, 6: 0.7, 8: 0.5},
+        {3: 2.0, 6: 4.0, 8: 2.0},
+        4,
+        [4.0, 4.0],
+    )
+    # The inflow of Basin 6 to the upstream group goes to Basin 1, not over the Pump.
+    # (0.1 * 2 + 0.5 * 2) / 4 = 0.3
+    assert np.allclose(y, [0.3 * 4.0, 0.3 * 4.0])
 
 
 def test_plot_widget_observation_grouped_with_results():
