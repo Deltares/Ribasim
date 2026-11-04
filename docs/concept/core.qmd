@@ -130,7 +130,7 @@ If you're interested in using this experimental feature, please [contact us](/co
 
 Ribasim can calculate concentrations of conservative tracers (i.e. substances that are non-reactive).
 It does so by calculating the mass transports by the flows of each timestep, after the timestep is taken.
-Each Basin is well mixed, so water leaves a Basin with the concentration of that Basin.
+Each Basin is instantaneously mixed, so water leaves a Basin with the concentration of that Basin.
 Over a timestep that concentration changes, and the outflowing water gets the weighted average $\theta_i C_i + (1 - \theta_i) C_i^0$ of the concentrations $C_i^0$ at the start and $C_i$ at the end of the timestep.
 Using the volumes $V_{ji}$ that flowed from Basin $j$ to Basin $i$ over the timestep, the concentrations $C_i$ of all Basins follow from
 
