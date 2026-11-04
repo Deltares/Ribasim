@@ -101,6 +101,7 @@ from ribasim_testmodels.time import (
 from ribasim_testmodels.tracer import (
     tracer_boundary_pulse_model,
     tracer_chain_model,
+    tracer_evaporation_model,
     tracer_user_demand_model,
 )
 from ribasim_testmodels.trivial import trivial_model
@@ -181,6 +182,7 @@ __all__ = [
     "tabulated_rating_curve_model",
     "tracer_boundary_pulse_model",
     "tracer_chain_model",
+    "tracer_evaporation_model",
     "tracer_user_demand_model",
     "transient_condition_model",
     "transient_pump_outlet_model",

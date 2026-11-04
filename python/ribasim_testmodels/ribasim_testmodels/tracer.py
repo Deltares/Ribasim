@@ -131,3 +131,43 @@ def tracer_boundary_pulse_model() -> Model:
     model.link.add(boundary, basin_node)
 
     return model
+
+
+def tracer_evaporation_model() -> Model:
+    """Set up a Basin with a constant throughflow and evaporation that leaves the mass behind.
+
+    Evaporation concentrates the substances, the FlowBoundary tracer rises above 1.
+    The storage decreases linearly, for which the concentrations have an analytical solution.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 2),
+        crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
+        solver=Solver(saveat=3600.0, dtmax=60.0, evaporate_mass=False),
+    )
+
+    boundary = model.flow_boundary.add(
+        Node(1, Point(0, 0)), [flow_boundary.Static(flow_rate=[0.1])]
+    )
+    basin_node = model.basin.add(
+        Node(2, Point(1, 0)),
+        [
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 10.0]),
+            basin.State(level=[1.0]),
+            basin.Static(
+                drainage=[0.0],
+                potential_evaporation=[1e-6],
+                infiltration=[0.0],
+                precipitation=[0.0],
+            ),
+        ],
+    )
+    pump_node = model.pump.add(Node(3, Point(2, 0)), [pump.Static(flow_rate=[0.1])])
+    terminal = model.terminal.add(Node(4, Point(3, 0)))
+
+    model.link.add(boundary, basin_node)
+    model.link.add(basin_node, pump_node)
+    model.link.add(pump_node, terminal)
+
+    return model

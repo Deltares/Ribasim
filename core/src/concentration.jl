@@ -177,6 +177,10 @@ function TracerTransport(
             end
         end
     end
+    # The factorization pivots on the diagonal, like for the matrices of the timesteps, so
+    # identity values give the pivot order and sparsity pattern for all of those
+    nonzeros(A)[diagonal_nz] .= 1.0
+    factorization = iszero(n_basin) ? nothing : PureKLU.klu(A)
     return TracerTransport(
         A,
         diagonal_nz,
@@ -185,24 +189,29 @@ function TracerTransport(
         zeros(n_basin),
         zeros(n_basin, n_substance),
         zeros(n_basin),
-        nothing,
+        factorization,
     )
 end
 
 """
 Transport the substances over the last timestep: the exchange between Basins, the outflows
-and the inflows from LevelBoundary, see [`TracerTransport`](@ref). The mass from the other
-sources is already added to `mass`, afterwards it holds the mass at the end of the timestep.
-`concentration_state` still holds the concentrations at the start of the timestep.
+and the inflows from LevelBoundary, see the section on substance concentrations in
+`docs/concept/core.qmd`. The mass from the other sources is already added to `mass`,
+afterwards it holds the mass at the end of the timestep. `concentration_state` still holds
+the concentrations at the start of the timestep.
 """
-function transport_tracers!(p_independent::ParametersIndependent, tprev::Float64, dt::Float64)::Nothing
+function transport_tracers!(
+        p_independent::ParametersIndependent,
+        current_storage::Vector{Float64},
+        tprev::Float64,
+        dt::Float64,
+    )::Nothing
     (; tracer_transport, basin, level_boundary, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges) =
         p_independent
-    (; A, diagonal_nz, forward_nz, backward_nz, outflow, work) = tracer_transport
-    (; mass, cumulative_in, evaporate_mass, concentration_state) = basin.concentration_data
-    (; theta) = tracer_transport
+    (; A, diagonal_nz, forward_nz, backward_nz, outflow, work, theta, factorization) = tracer_transport
+    (; mass, evaporate_mass, concentration_state) = basin.concentration_data
     (; storage_prev_dt) = basin
-    isempty(diagonal_nz) && return nothing
+    isnothing(factorization) && return nothing
     nzval = nonzeros(A)
     fill!(nzval, 0.0)
     fill!(outflow, 0.0)
@@ -252,12 +261,11 @@ function transport_tracers!(p_independent::ParametersIndependent, tprev::Float64
             1.0
         end
         theta[i] = θ
-        remaining = storage + cumulative_in[i] - outflow[i]
-        diagonal = remaining + θ * net_outflow
+        diagonal = current_storage[i] + θ * net_outflow
         # An empty Basin without inflow has no mass
         nzval[diagonal_nz[i]] = diagonal > 0 ? diagonal : 1.0
         # The residence time tracer gets older, integrated with the trapezoidal rule
-        mass[Substance.ResidenceTime, i] += dt * (storage + max(remaining, 0.0)) / 2
+        mass[Substance.ResidenceTime, i] += dt * (storage + current_storage[i]) / 2
         for substance_idx in axes(mass, 1)
             work[i, substance_idx] = mass[substance_idx, i] -
                 (1 - θ) * net_outflow * concentration_state[substance_idx, i]
@@ -282,20 +290,13 @@ function transport_tracers!(p_independent::ParametersIndependent, tprev::Float64
         end
     end
 
-    # The matrix is diagonally dominant by column, so the pivots can be reused
-    factorization = tracer_transport.factorization
-    if isnothing(factorization)
-        tracer_transport.factorization = factorization = PureKLU.klu(A)
-    else
-        PureKLU.klu!(factorization, nzval)
-    end
+    # The matrix is diagonally dominant by column, so the diagonal pivots stay stable
+    PureKLU.klu!(factorization, nzval)
     LinearAlgebra.ldiv!(factorization, work)
 
-    # The water that remains in the Basin has the concentration of the outflow
     for i in eachindex(diagonal_nz)
-        remaining = max(storage_prev_dt[i] + cumulative_in[i] - outflow[i], 0.0)
         for substance_idx in axes(mass, 1)
-            mass[substance_idx, i] = remaining * work[i, substance_idx]
+            mass[substance_idx, i] = current_storage[i] * work[i, substance_idx]
         end
     end
     return nothing

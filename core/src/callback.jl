@@ -206,10 +206,9 @@ function update_concentrations!(u, t, integrator)::Nothing
     (; p, tprev) = integrator
     (; p_independent, current_basin_properties) = p
     (; current_storage) = current_basin_properties
-    (; basin, flow_boundary, do_concentration, cumulative_flow_dt) = p_independent
+    (; basin, flow_boundary, do_concentration) = p_independent
     (; storage_prev_dt, concentration_data, forcing) = basin
     (;
-        cumulative_in,
         concentration_state,
         concentration_drainage,
         concentration_precipitation,
@@ -250,17 +249,7 @@ function update_concentrations!(u, t, integrator)::Nothing
 
     mass_inflows_from_user_demand!(integrator)
 
-    # Transport between Basins with the total inflow volume per Basin
-    aggregate_flows!(
-        cumulative_in,
-        cumulative_flow_dt,
-        p_independent;
-        do_outflows = false,
-        positive_vertical_forcing = forcing.exact_cumulative_forcing_dt,
-        boundary_flow = flow_boundary.cumulative_flow_dt,
-    )
-
-    transport_tracers!(p_independent, tprev, dt)
+    transport_tracers!(p_independent, current_storage, tprev, dt)
 
     errors = false
 

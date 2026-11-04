@@ -340,7 +340,7 @@ end
     model = Ribasim.run(toml_path)
     @test success(model)
 
-    # 10 well mixed Basins in series with a residence time of 1000 s each, so the
+    # 10 instantaneously mixed Basins in series with a residence time of 1000 s each, so the
     # FlowBoundary tracer in the last Basin follows the tanks in series solution
     n_basin = 10
     residence_time = 1000.0
@@ -367,6 +367,27 @@ end
     (; concentration_data) = model.integrator.p.p_independent.basin
     substance_idx = Ribasim.find_index(:Pulse, concentration_data.substances)
     @test only(concentration_data.mass[substance_idx, :]) ≈ 0.1 * 4.4 * 3600 rtol = 1.0e-10
+end
+
+@testitem "Tracers with evaporation that leaves the mass behind" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/tracer_evaporation/ribasim.toml")
+    @test ispath(toml_path) skip = true
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # With storage S, throughflow q and evaporation e the FlowBoundary concentration follows
+    # from S dC/dt = q (1 - C) + e C with S decreasing linearly over time
+    q = 0.1
+    e = 1000 * 1.0e-6
+    S0 = 1000.0
+    exact(t) = q / (q - e) * (1 - ((S0 - e * t) / S0)^((q - e) / e))
+
+    (; basin) = model.integrator.p.p_independent
+    substance_idx = Ribasim.find_index(:FlowBoundary, basin.concentration_data.substances)
+    (; t, saveval) = model.saved.flow
+    concentration = [only(saved.concentration[:, substance_idx]) for saved in saveval]
+    @test maximum(abs.(concentration .- exact.(t))) < 1.0e-5
+    @test last(concentration) > 1
 end
 
 @testitem "Tracers through a UserDemand return flow" begin
