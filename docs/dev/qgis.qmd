@@ -44,6 +44,8 @@ This is not part of the `typecheck` pre-commit hook, to avoid installing QGIS fo
 This launches QGIS and runs the full test suite (including plugin and UI tests) via the test runner.
 
 For CI or headless environments, the same tests can be run in Docker with `pixi run test-ribasim-qgis-docker`.
+This uses the `qgis/qgis:4.2` image by default; pass another image to test a different QGIS version, e.g. `pixi run test-ribasim-qgis-docker qgis/qgis:3.44`.
+CI runs the tests on both QGIS 3 and QGIS 4.
 Make sure that Docker is installed and available in your path.
 
 # QML styles and node icons

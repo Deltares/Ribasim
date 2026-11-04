@@ -356,6 +356,21 @@ end
     @test last(concentration) ≈ 1 atol = 1.0e-3
 end
 
+@testitem "Tracers through a UserDemand return flow" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/tracer_user_demand/ribasim.toml")
+    @test ispath(toml_path) skip = true
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    table = Ribasim.concentration_data(model)
+    concentration(substance) = table.concentration[table.substance .== substance]
+    # The return flow carries the concentrations of the abstracted water
+    @test all(isapprox.(concentration("Continuity"), 1.0))
+    @test all(isapprox.(concentration("FlowBoundary") .+ concentration("Initial"), 1.0))
+    # A quarter of the inflow of 1.25 m³/s comes from the UserDemand
+    @test last(concentration("UserDemand")) ≈ 0.2 rtol = 1.0e-4
+end
+
 @testitem "Sparse and AD/FDM jac solver options" begin
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
