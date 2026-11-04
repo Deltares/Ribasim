@@ -7,6 +7,7 @@ import pytest
 from qgis.core import QgsFeature, QgsVectorLayer
 from qgis.PyQt.QtWidgets import QCheckBox, QWidgetAction
 
+from ribasim_qgis.widgets.dataset_widget import DatasetWidget
 from ribasim_qgis.widgets.plot_widget import (
     PlotData,
     PlotWidget,
@@ -682,7 +683,8 @@ def test_plot_widget_fractional_flow_plots_multiplied_values(monkeypatch):
     names = {trace.name for trace in fig.data}
     assert names == {"LevelBoundary", "FlowBoundary", "flow_rate"}
     stacked = [t for t in fig.data if t.name != "flow_rate"]
-    assert all(trace.stackgroup == "fractions" for trace in stacked)
+    # Positive flows don't need a stack for negative values.
+    assert all(trace.stackgroup == "positive" for trace in stacked)
 
     # Verify multiplication: concentration * flow_rate
     for trace in fig.data:
@@ -892,10 +894,12 @@ def test_plot_widget_fractional_flow_sign_flip(monkeypatch):
 
     assert len(captured_figures) == 1
     fig = captured_figures[0]
-    for trace in fig.data:
-        if trace.name == "LevelBoundary":
-            # t0: 0.4 * 10 = 4.0,  t1: 0.8 * -10 = -8.0
-            assert np.allclose(trace.y, np.array([4.0, -8.0]))
+    positive, negative = (t for t in fig.data if t.name == "LevelBoundary")
+    # t0: 0.4 * 10 = 4.0,  t1: 0.8 * -10 = -8.0
+    assert np.allclose(positive.y, np.array([4.0, 0.0]))
+    assert np.allclose(negative.y, np.array([0.0, -8.0]))
+    # The hover label of the first trace has the signed value of both.
+    assert np.allclose(positive.customdata, np.array([4.0, -8.0]))
 
 
 def test_plot_widget_fractional_flow_connector_to_junction(monkeypatch):
@@ -998,11 +1002,11 @@ def _fractional_tracer_flow(
     node_types: dict[int, str],
     links: dict[int, tuple[int, int]],
     concentrations: dict[int, float],
-    flows: dict[int, float],
+    flows: dict[int, list[float]],
     link_id: int,
     selected_flow: list[float],
-) -> np.ndarray:
-    """Plot the fractional flow of one link, on real layers, and return its tracer."""
+) -> tuple[Any, ...]:
+    """Plot the fractional flow of one link, on real layers, and return its traces."""
     captured_figures = []
 
     def _capture_plot(fig, **kwargs):
@@ -1024,12 +1028,13 @@ def _fractional_tracer_flow(
     def _conc_getter(node_id):
         if node_id not in concentrations:
             return None
-        return {"Tracer": (time, np.full(2, concentrations[node_id]))}
+        tracer = np.full(2, concentrations[node_id])
+        return {"Tracer": (time, tracer), "Other": (time, 1.0 - tracer)}
 
     def _flow_getter(lid):
         if lid not in flows:
             return None
-        return (time, np.full(2, flows[lid]))
+        return (time, np.array(flows[lid]))
 
     widget = PlotWidget(
         node_layer_getter=lambda: node_layer,
@@ -1044,7 +1049,12 @@ def _fractional_tracer_flow(
     )
 
     assert len(captured_figures) == 1
-    return next(t.y for t in captured_figures[0].data if t.name == "Tracer")
+    return captured_figures[0].data
+
+
+def _signed_values(traces: tuple[Any, ...], name: str) -> np.ndarray:
+    """Add up the positive and negative stack of a tracer."""
+    return np.sum([t.y for t in traces if t.name == name], axis=0)
 
 
 # One Junction tree connects the inflows and outflows of Basin 1:
@@ -1078,7 +1088,9 @@ _TREE_LINKS = {
     10: (8, 13),
 }
 _TREE_CONCENTRATIONS = {1: 0.1, 10: 0.2, 11: 0.9, 12: 0.4, 13: 0.9}
-_TREE_FLOWS = {4: 6.0, 5: 3.0, 8: 2.0, 9: 5.0}
+# At the first time the inflows dominate, at the second the outflows, and the
+# connector with an inflow to Junction 2 reverses.
+_TREE_FLOWS = {4: [6.0, -1.0], 5: [3.0, 3.0], 8: [2.0, 2.0], 9: [1.0, 5.0]}
 
 
 @pytest.mark.parametrize(
@@ -1089,18 +1101,25 @@ _TREE_FLOWS = {4: 6.0, 5: 3.0, 8: 2.0, 9: 5.0}
         # Also behind the connector.
         (6, [3.0, 3.0], [0.1 * 3.0, 0.1 * 3.0]),
         # A connector with an inflow takes water from Basin 1 if it reverses.
-        (4, [6.0, -6.0], [0.2 * 6.0, 0.1 * -6.0]),
-        # A link towards Basin 1 has the inflows behind it, away from it Basin 1.
-        (2, [2.0, -3.0], [0.4 * 2.0, 0.1 * -3.0]),
-        # The link of Basin 1 has all inflows if towards it, and Basin 1 if away.
-        (1, [-8.0, 3.0], [(0.2 * 6.0 + 0.4 * 2.0) / 8.0 * -8.0, 0.1 * 3.0]),
+        (4, [6.0, -1.0], [0.2 * 6.0, 0.1 * -1.0]),
+        # A link points towards Basin 1 and has the net tracer flow behind it.
+        (2, [1.0, -3.0], [0.4 * 2.0 - 0.1 * 1.0, 0.4 * 2.0 - 0.1 * 5.0]),
+        # The link of Basin 1 points away from it and has all neighbors behind it.
+        (
+            1,
+            [-4.0, 7.0],
+            [
+                -(0.2 * 6.0 - 0.1 * 3.0 + 0.4 * 2.0 - 0.1 * 1.0),
+                -(0.1 * -1.0 - 0.1 * 3.0 + 0.4 * 2.0 - 0.1 * 5.0),
+            ],
+        ),
     ],
 )
 def test_plot_widget_fractional_flow_junction_tree(
     monkeypatch, link_id, selected_flow, expected
 ):
     """A Junction group with one Basin doesn't mix its inflows with its outflows."""
-    y = _fractional_tracer_flow(
+    traces = _fractional_tracer_flow(
         monkeypatch,
         _TREE_NODE_TYPES,
         _TREE_LINKS,
@@ -1109,12 +1128,45 @@ def test_plot_widget_fractional_flow_junction_tree(
         link_id,
         selected_flow,
     )
-    assert np.allclose(y, expected)
+    assert np.allclose(_signed_values(traces, "Tracer"), expected)
+    # The tracers add up to the net flow of the link.
+    total = _signed_values(traces, "Tracer") + _signed_values(traces, "Other")
+    assert np.allclose(total, selected_flow)
+
+
+def test_plot_widget_fractional_flow_opposite_signs(monkeypatch):
+    """Tracer flows with opposite signs are stacked on either side of zero."""
+    traces = _fractional_tracer_flow(
+        monkeypatch,
+        _TREE_NODE_TYPES,
+        _TREE_LINKS,
+        _TREE_CONCENTRATIONS,
+        _TREE_FLOWS,
+        2,
+        [1.0, -3.0],
+    )
+    # At the second time the net flow is negative, but the Tracer flow is positive.
+    tracer = [t for t in traces if t.name == "Tracer"]
+    assert len(tracer) == 1
+    assert tracer[0].stackgroup == "positive"
+    assert np.allclose(tracer[0].y, [0.7, 0.3])
+
+    positive, negative = (t for t in traces if t.name == "Other")
+    assert (positive.stackgroup, negative.stackgroup) == ("positive", "negative")
+    assert np.allclose(positive.y, [0.3, 0.0])
+    assert np.allclose(negative.y, [0.0, -3.3])
+    assert np.allclose(positive.customdata, [0.3, -3.3])
+    # Both parts look like one tracer.
+    assert positive.line.color == negative.line.color
+    assert positive.line.color != tracer[0].line.color
+    assert positive.legendgroup == negative.legendgroup
+    assert negative.showlegend is False
+    assert negative.hoverinfo == "skip"
 
 
 def test_plot_widget_fractional_flow_junction_two_basins(monkeypatch):
     """A Junction group with two Basins connects them to all downstream nodes."""
-    y = _fractional_tracer_flow(
+    traces = _fractional_tracer_flow(
         monkeypatch,
         {
             1: "Basin",
@@ -1125,17 +1177,17 @@ def test_plot_widget_fractional_flow_junction_two_basins(monkeypatch):
         },
         {1: (1, 3), 2: (2, 3), 3: (3, 4), 4: (4, 5)},
         {1: 0.2, 2: 0.6, 5: 0.9},
-        {1: 3.0, 2: 1.0},
+        {1: [3.0, 3.0], 2: [1.0, 1.0]},
         4,
         [4.0, 4.0],
     )
     # (0.2 * 3 + 0.6 * 1) / 4 = 0.3
-    assert np.allclose(y, [0.3 * 4.0, 0.3 * 4.0])
+    assert np.allclose(_signed_values(traces, "Tracer"), [0.3 * 4.0, 0.3 * 4.0])
 
 
 def test_plot_widget_fractional_flow_connector_between_junction_groups(monkeypatch):
     """A connector takes its water from the one Basin of the group upstream of it."""
-    y = _fractional_tracer_flow(
+    traces = _fractional_tracer_flow(
         monkeypatch,
         {
             1: "Basin",
@@ -1159,13 +1211,51 @@ def test_plot_widget_fractional_flow_connector_between_junction_groups(monkeypat
             8: (9, 4),
         },
         {1: 0.1, 5: 0.9, 6: 0.7, 8: 0.5},
-        {3: 2.0, 6: 4.0, 8: 2.0},
+        {3: [2.0, 2.0], 6: [4.0, 4.0], 8: [2.0, 2.0]},
         4,
         [4.0, 4.0],
     )
     # The inflow of Basin 6 to the upstream group goes to Basin 1, not over the Pump.
-    # (0.1 * 2 + 0.5 * 2) / 4 = 0.3
-    assert np.allclose(y, [0.3 * 4.0, 0.3 * 4.0])
+    # 0.1 * 2 + 0.5 * 2 = 1.2
+    assert np.allclose(_signed_values(traces, "Tracer"), [1.2, 1.2])
+
+
+@pytest.mark.parametrize(
+    ("links", "flows", "expected"),
+    [
+        # All links point towards the Junction.
+        ([(1, 2), (3, 2)], [4.0, 1.0], 5.0),
+        # All links point away from the Junction, which used to give no flow rate.
+        ([(2, 1), (2, 3)], [-4.0, 4.0], 4.0),
+        # The direction of the links does not matter.
+        ([(1, 2), (2, 3)], [4.0, 4.0], 4.0),
+        ([(2, 1), (3, 2)], [-4.0, 4.0], 8.0),
+    ],
+)
+def test_junction_inflow_column(links, flows, expected):
+    """The flow rate of a Junction is the flow towards it over all its links."""
+    link_layer = _memory_layer(
+        "field=link_id:integer&field=from_node_id:integer"
+        "&field=to_node_id:integer&field=link_type:string",
+        [(i, *link, "flow") for i, link in enumerate(links)],
+    )
+    column = DatasetWidget._junction_inflow_column(
+        link_layer, 2, {i: i for i in range(len(links))}, np.array([flows])
+    )
+    assert column is not None
+    assert np.allclose(column, [expected])
+
+
+def test_junction_inflow_column_without_links():
+    link_layer = _memory_layer(
+        "field=link_id:integer&field=from_node_id:integer"
+        "&field=to_node_id:integer&field=link_type:string",
+        [(0, 1, 3, "flow")],
+    )
+    assert (
+        DatasetWidget._junction_inflow_column(link_layer, 2, {0: 0}, np.array([[1.0]]))
+        is None
+    )
 
 
 def test_plot_widget_observation_grouped_with_results():
