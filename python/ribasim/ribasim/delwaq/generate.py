@@ -143,6 +143,33 @@ def _setup_graph(nodes, link, evaporate_mass=True):
     # We find an unwanted node, remove it,
     # and merge the flow links to/from the node.
     # Remove Junctions first, as they can be chained
+    # A connected group of Junctions with one Basin connects its other neighbors to
+    # that Basin, and the flow is the one on the link of the neighbor with the group.
+    junction_ids = [n for n, d in G.nodes(data=True) if d["type"] == "Junction"]
+    for group in list(nx.weakly_connected_components(G.subgraph(junction_ids))):
+        basin_ids = {
+            neighbor
+            for node_id in group
+            for neighbor in nx.all_neighbors(G, node_id)
+            if G.nodes[neighbor]["type"] == "Basin"
+        }
+        if len(basin_ids) != 1:
+            continue
+        basin_id = basin_ids.pop()
+        new_links = []
+        for node_id in group:
+            for neighbor, data in G.pred[node_id].items():
+                if neighbor not in group and neighbor != basin_id:
+                    new_links.append((neighbor, basin_id, data["id"]))
+            for neighbor, data in G.succ[node_id].items():
+                if neighbor not in group and neighbor != basin_id:
+                    new_links.append((basin_id, neighbor, data["id"]))
+        for from_id, to_id, link_ids in new_links:
+            if G.has_edge(from_id, to_id):
+                raise ValueError("Merging links would create duplicate links.")
+            G.add_edge(from_id, to_id, id=link_ids)
+        G.remove_nodes_from(group)
+
     remove_nodes = []
     for node_id, out in G.succ.items():
         if G.nodes[node_id]["type"] == "Junction":

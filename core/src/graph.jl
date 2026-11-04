@@ -158,13 +158,54 @@ function simplify_graph!(
     # Setup sparse matrix for junctions mapping
     internal_flow_link_ids = [flow_link.id for flow_link in internal_flow_links]
     I, J = internal_flow_link_ids, copy(internal_flow_link_ids)
+    V = ones(Int8, length(I))
 
     # Map internal (simplified) link IDs to external (with junctions) link IDs
     link_mapping = OrderedDict{Int32, Vector{Int32}}()
     errors = false
 
-    # Remove junctions by iteratively simplifying from IN--J--OUT to IN--OUT
-    for junction_id in get_node_ids(db, NodeType.Junction)
+    junction_ids = get_node_ids(db, NodeType.Junction)
+
+    # Connect the neighbors of a group of Junctions with one Basin to that Basin
+    junction_ids_to_basin = Set{NodeID}()
+    for group in junction_groups(graph, junction_ids)
+        basin_ids = junction_group_basins(graph, group)
+        is_valid = valid_junction_group(graph, group, basin_ids)
+        errors |= !is_valid
+        length(basin_ids) == 1 || continue
+        union!(junction_ids_to_basin, group)
+        is_valid || continue
+        basin_id = only(basin_ids)
+
+        for (link, route) in junction_group_routes(graph, group, basin_id)
+            id_src, id_dst = link
+            link_metadata = LinkMetadata(; id = new_link_id, type = LinkType.flow, link)
+            if haskey(graph, id_src, id_dst)
+                errors = true
+                @error "Duplicate link: a node reaches the Basin through multiple links of a Junction group." id_src id_dst external_link_ids = first.(route)
+            elseif haskey(graph, id_dst, id_src) &&
+                    (NodeType.UserDemand ∉ (id_src.type, id_dst.type))
+                errors = true
+                @error "Invalid link: the opposite link already exists (this is only allowed for UserDemand)." id_src id_dst external_link_ids = first.(route)
+            else
+                graph[id_src, id_dst] = link_metadata
+            end
+            push!(internal_flow_links, link_metadata)
+            for (external_link_id, sign) in route
+                push!(I, external_link_id)
+                push!(J, new_link_id)
+                push!(V, sign)
+            end
+            new_link_id += 1
+        end
+    end
+
+    # Remove the other junctions by iteratively simplifying from IN--J--OUT to IN--OUT
+    for junction_id in junction_ids
+        if junction_id in junction_ids_to_basin
+            rem_vertex!(graph, code_for(graph, junction_id))
+            continue
+        end
         for in_neighbor in collect(inneighbor_labels(graph, junction_id)),
                 out_neighbor in collect(outneighbor_labels(graph, junction_id))
 
@@ -186,6 +227,7 @@ function simplify_graph!(
                 for external_link_id in external_link_ids
                     push!(I, external_link_id)
                     push!(J, new_link_id)
+                    push!(V, Int8(1))
                 end
                 push!(internal_flow_links, link_metadata)
             end
@@ -208,9 +250,104 @@ function simplify_graph!(
     external_flow_link_ids = [flow_link.id for flow_link in external_flow_links]
     I = findfirst.(isequal.(I), Ref(external_flow_link_ids))
     J = findfirst.(isequal.(J), Ref(internal_flow_link_ids))
-    flow_link_map = sparse(I, J, true)
+    flow_link_map = sparse(I, J, V, length(external_flow_links), length(internal_flow_links))
 
     return flow_link_map, internal_flow_links, errors
+end
+
+"""
+Find the connected groups of Junctions, ignoring the direction of the links.
+"""
+function junction_groups(graph::MetaGraph, junction_ids::Vector{NodeID})::Vector{Vector{NodeID}}
+    groups = Vector{NodeID}[]
+    visited = Set{NodeID}()
+    for junction_id in junction_ids
+        junction_id in visited && continue
+        push!(visited, junction_id)
+        group = NodeID[]
+        stack = [junction_id]
+        while !isempty(stack)
+            id = pop!(stack)
+            push!(group, id)
+            for neighbor in inflow_ids(graph, id)
+                if neighbor.type == NodeType.Junction && neighbor ∉ visited
+                    push!(visited, neighbor)
+                    push!(stack, neighbor)
+                end
+            end
+            for neighbor in outflow_ids(graph, id)
+                if neighbor.type == NodeType.Junction && neighbor ∉ visited
+                    push!(visited, neighbor)
+                    push!(stack, neighbor)
+                end
+            end
+        end
+        push!(groups, sort!(group))
+    end
+    return groups
+end
+
+"""
+Get the unique Basins that are a neighbor of a group of Junctions.
+"""
+function junction_group_basins(graph::MetaGraph, group::Vector{NodeID})::Vector{NodeID}
+    basin_ids = OrderedSet{NodeID}()
+    for junction_id in group
+        for neighbor in inflow_ids(graph, junction_id)
+            neighbor.type == NodeType.Basin && push!(basin_ids, neighbor)
+        end
+        for neighbor in outflow_ids(graph, junction_id)
+            neighbor.type == NodeType.Basin && push!(basin_ids, neighbor)
+        end
+    end
+    return collect(basin_ids)
+end
+
+"""
+For a tree of Junctions with one Basin, get the links that connect the other neighbors of
+the group to the Basin. Each comes with its route: the external flow links that it flows through,
+with 1 if the flow is in the direction of the external link and -1 if it is against it.
+"""
+function junction_group_routes(
+        graph::MetaGraph,
+        group::Vector{NodeID},
+        basin_id::NodeID,
+    )::Vector{Tuple{Tuple{NodeID, NodeID}, Vector{Tuple{Int32, Int8}}}}
+    routes = Tuple{Tuple{NodeID, NodeID}, Vector{Tuple{Int32, Int8}}}[]
+    group_set = Set(group)
+    # Per node, the links from the Basin to that node, with 1 if the link points away from the Basin
+    paths = Dict{NodeID, Vector{Tuple{Int32, Int8}}}(basin_id => Tuple{Int32, Int8}[])
+    stack = [basin_id]
+    while !isempty(stack)
+        id = pop!(stack)
+        path = paths[id]
+        for neighbor in outflow_ids(graph, id)
+            link_id = graph[id, neighbor].id
+            if neighbor in group_set
+                if !haskey(paths, neighbor)
+                    paths[neighbor] = push!(copy(path), (link_id, Int8(1)))
+                    push!(stack, neighbor)
+                end
+            elseif id != basin_id && neighbor != basin_id
+                # A link out of the group is a link out of the Basin, along the path
+                push!(routes, ((basin_id, neighbor), push!(copy(path), (link_id, Int8(1)))))
+            end
+        end
+        for neighbor in inflow_ids(graph, id)
+            link_id = graph[neighbor, id].id
+            if neighbor in group_set
+                if !haskey(paths, neighbor)
+                    paths[neighbor] = push!(copy(path), (link_id, Int8(-1)))
+                    push!(stack, neighbor)
+                end
+            elseif id != basin_id && neighbor != basin_id
+                # A link into the group is a link into the Basin, against the path
+                route = [(path_link_id, -sign) for (path_link_id, sign) in path]
+                push!(routes, ((neighbor, basin_id), push!(route, (link_id, Int8(1)))))
+            end
+        end
+    end
+    return routes
 end
 
 abstract type AbstractNeighbors end

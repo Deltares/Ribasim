@@ -96,6 +96,119 @@ end
     )
 end
 
+@testitem "Junction group validation" begin
+    import SQLite
+    using Logging
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/junction_bidirectional/ribasim.toml",
+    )
+    config = Ribasim.Config(toml_path)
+
+    # Create the graph of the links between the given nodes
+    function create_graph(nodes, links)
+        db = SQLite.DB()
+        SQLite.execute(
+            db,
+            "CREATE TABLE Node (node_id INTEGER, node_type TEXT, subnetwork_id INTEGER, route_priority INTEGER)",
+        )
+        SQLite.execute(
+            db,
+            "CREATE TABLE Link (link_id INTEGER, from_node_id INTEGER, to_node_id INTEGER, link_type TEXT)",
+        )
+        used_node_ids = Set(Iterators.flatten(links))
+        for (node_id, node_type) in nodes
+            node_id in used_node_ids || continue
+            SQLite.execute(
+                db,
+                "INSERT INTO Node VALUES (?, ?, NULL, NULL)",
+                (node_id, String(node_type)),
+            )
+        end
+        for (link_id, (from_node_id, to_node_id)) in enumerate(links)
+            SQLite.execute(
+                db,
+                "INSERT INTO Link VALUES (?, ?, ?, 'flow')",
+                (link_id, from_node_id, to_node_id),
+            )
+        end
+        return Ribasim.create_graph(db, config)
+    end
+
+    # The error messages of creating the graph, which should fail
+    function graph_errors(nodes, links)
+        logger = TestLogger()
+        with_logger(logger) do
+            @test_throws "Invalid links found" create_graph(nodes, links)
+        end
+        return [log.message for log in logger.logs if log.level == Error]
+    end
+
+    nodes = [
+        1 => :Basin,
+        2 => :Junction,
+        3 => :Junction,
+        4 => :Pump,
+        5 => :Outlet,
+        6 => :UserDemand,
+        7 => :Basin,
+        8 => :Terminal,
+    ]
+
+    # The links between the Basin and the Junctions form a cycle
+    errors = graph_errors(nodes, [(1, 2), (2, 3), (3, 1), (4, 2)])
+    @test only(errors) ==
+        "The links of a Junction group with one Basin must form a tree, without cycles."
+
+    # A Junction at the end of a tree does nothing
+    errors = graph_errors(nodes, [(1, 2), (2, 3), (4, 2)])
+    @test only(errors) == "Junction #3 must have at least 2 flow links (got 1)."
+
+    # Without exactly one Basin the current rule applies, which needs both directions
+    errors = graph_errors(nodes, [(1, 2), (7, 2)])
+    @test only(errors) ==
+        "Junction #2 must have at least 1 flow inneighbor and 1 flow outneighbor (got 2 and 0), since its Junction group does not have exactly one Basin as a neighbor."
+    errors = graph_errors(nodes, [(4, 2)])
+    @test only(errors) ==
+        "Junction #2 must have at least 1 flow inneighbor and 1 flow outneighbor (got 1 and 0), since its Junction group does not have exactly one Basin as a neighbor."
+
+    # A node that reaches the Basin through two links
+    errors = graph_errors(nodes, [(1, 2), (2, 3), (2, 6), (3, 6)])
+    @test only(errors) ==
+        "Duplicate link: a node reaches the Basin through multiple links of a Junction group."
+
+    # A node with a link directly to the Basin and one through the group
+    errors = graph_errors(nodes, [(1, 2), (2, 6), (1, 6), (6, 1)])
+    @test only(errors) ==
+        "Duplicate link: a node reaches the Basin through multiple links of a Junction group."
+
+    # Only a UserDemand can connect to the Basin in both directions
+    errors = graph_errors(nodes, [(1, 2), (2, 4), (4, 3), (3, 2)])
+    @test only(errors) ==
+        "Invalid link: the opposite link already exists (this is only allowed for UserDemand)."
+    errors = graph_errors(nodes, [(1, 2), (2, 4), (4, 1)])
+    @test only(errors) ==
+        "Invalid link: the opposite link already exists (this is only allowed for UserDemand)."
+    graph = create_graph(nodes, [(1, 2), (2, 6), (6, 3), (3, 2)])
+    @test haskey(graph, Ribasim.NodeID(:Basin, 1, 1), Ribasim.NodeID(:UserDemand, 6, 1))
+    @test haskey(graph, Ribasim.NodeID(:UserDemand, 6, 1), Ribasim.NodeID(:Basin, 1, 1))
+
+    # The direction of the links in the group does not matter
+    graph = create_graph(nodes, [(2, 1), (3, 2), (2, 4), (3, 5), (6, 3), (3, 6)])
+    @test Ribasim.valid_links(graph)
+    @test haskey(graph, Ribasim.NodeID(:Basin, 1, 1), Ribasim.NodeID(:Pump, 4, 1))
+    @test haskey(graph, Ribasim.NodeID(:Basin, 1, 1), Ribasim.NodeID(:Outlet, 5, 1))
+
+    # A Terminal does not take the place of the Basin, nor connects to it
+    graph = create_graph(nodes, [(1, 2), (2, 8)])
+    logger = TestLogger()
+    with_logger(logger) do
+        @test !Ribasim.valid_links(graph)
+    end
+    @test only(logger.logs).message == "Cannot connect a basin to a terminal."
+end
+
 @testitem "PidControl connectivity validation" begin
     using Graphs: DiGraph
     using Logging

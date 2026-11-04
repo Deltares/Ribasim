@@ -83,7 +83,8 @@ n_neighbor_bounds_flow(::Val{:FlowBoundary}) = n_neighbor_bounds(0, 0, 1, 1)
 n_neighbor_bounds_flow(::Val{:Pump}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:Outlet}) = n_neighbor_bounds(1, 1, 1, 1)
 n_neighbor_bounds_flow(::Val{:Terminal}) = n_neighbor_bounds(1, M, 0, 0)
-n_neighbor_bounds_flow(::Val{:Junction}) = n_neighbor_bounds(1, M, 1, M)
+# The required links of a Junction depend on its group, see `valid_junction_group`
+n_neighbor_bounds_flow(::Val{:Junction}) = n_neighbor_bounds(0, M, 0, M)
 n_neighbor_bounds_flow(::Val{:PidControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:ContinuousControl}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:DiscreteControl}) = n_neighbor_bounds(0, 0, 0, 0)
@@ -387,6 +388,49 @@ function valid_links(graph::MetaGraph)::Bool
             errors = true
             @error "Cannot connect a $type_src to a $type_dst." id_src id_dst
         end
+    end
+    return !errors
+end
+
+"""
+Test whether a connected group of Junctions has the links it needs.
+With one Basin as a neighbor the group connects each other neighbor to that Basin, for which
+the group and the Basin must form a tree and each Junction needs at least two links.
+Otherwise a Junction connects its upstream with its downstream nodes, so it needs both.
+"""
+function valid_junction_group(
+        graph::MetaGraph,
+        group::Vector{NodeID},
+        basin_ids::Vector{NodeID},
+    )::Bool
+    errors = false
+    is_tree_group = length(basin_ids) == 1
+    n_tree_links = 0
+    for junction_id in group
+        n_in = 0
+        n_out = 0
+        for neighbor in inflow_ids(graph, junction_id)
+            n_in += 1
+            n_tree_links += (neighbor.type in (NodeType.Junction, NodeType.Basin))
+        end
+        for neighbor in outflow_ids(graph, junction_id)
+            n_out += 1
+            n_tree_links += (neighbor.type == NodeType.Basin)
+        end
+        if is_tree_group
+            if n_in + n_out < 2
+                errors = true
+                @error "$junction_id must have at least 2 flow links (got $(n_in + n_out))."
+            end
+        elseif n_in < 1 || n_out < 1
+            errors = true
+            @error "$junction_id must have at least 1 flow inneighbor and 1 flow outneighbor (got $n_in and $n_out), since its Junction group does not have exactly one Basin as a neighbor."
+        end
+    end
+    # Each Junction link is counted once, so a tree has one link per Junction
+    if is_tree_group && n_tree_links != length(group)
+        errors = true
+        @error "The links of a Junction group with one Basin must form a tree, without cycles." basin_id = only(basin_ids) group
     end
     return !errors
 end

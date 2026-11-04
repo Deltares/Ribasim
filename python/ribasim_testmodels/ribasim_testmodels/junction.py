@@ -1,11 +1,14 @@
 from datetime import datetime
 
 from ribasim import Model
-from ribasim.config import Experimental
+from ribasim.config import Allocation, Experimental
 from ribasim.geometry.node import Node
 from ribasim.nodes import (
     basin,
+    flow_boundary,
     linear_resistance,
+    pump,
+    user_demand,
 )
 from shapely.geometry import Point
 
@@ -151,5 +154,87 @@ def junction_chained() -> Model:
     model.link.add(model.junction[3], model.linear_resistance[5])
     model.link.add(model.linear_resistance[4], model.basin[6])
     model.link.add(model.linear_resistance[5], model.basin[7])
+
+    return model
+
+
+def junction_bidirectional() -> Model:
+    """Testmodel with one Junction tree that connects a Basin in both directions.
+
+    The tree of Junction 2 and 3 connects these nodes to Basin 1:
+
+    - In: FlowBoundary 4, FlowBoundary 7, LinearResistance 10 and UserDemand 9
+    - Out: Pump 5, Pump 8 and UserDemand 9
+
+    The links between Basin 1, Junction 2 and Junction 3 have opposite directions.
+    The LinearResistance flows away from Basin 1, against the direction of its link.
+    Allocation is active to also test the flows it records on the links of the tree.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 2, 1),
+        crs="EPSG:28992",
+        allocation=Allocation(),
+        experimental=Experimental(allocation=True),
+    )
+
+    model.basin.add(
+        Node(1, Point(0.0, 0.0), subnetwork_id=1),
+        [
+            basin.Profile(area=[100_000.0, 100_000.0], level=[0.0, 10.0]),
+            basin.State(level=[5.0]),
+        ],
+    )
+
+    model.junction.add(Node(2, Point(1.0, 0.0), subnetwork_id=1))
+    model.junction.add(Node(3, Point(2.0, 0.0), subnetwork_id=1))
+
+    model.flow_boundary.add(
+        Node(4, Point(1.0, 1.0), subnetwork_id=1),
+        [flow_boundary.Static(flow_rate=[1e-3])],
+    )
+    model.pump.add(
+        Node(5, Point(1.0, -1.0), subnetwork_id=1), [pump.Static(flow_rate=[3e-4])]
+    )
+    model.terminal.add(Node(6, Point(1.5, -2.0), subnetwork_id=1))
+    model.flow_boundary.add(
+        Node(7, Point(2.0, 1.0), subnetwork_id=1),
+        [flow_boundary.Static(flow_rate=[5e-4])],
+    )
+    model.pump.add(
+        Node(8, Point(2.0, -1.0), subnetwork_id=1), [pump.Static(flow_rate=[7e-4])]
+    )
+    model.user_demand.add(
+        Node(9, Point(3.0, 0.0), subnetwork_id=1),
+        [
+            user_demand.Static(
+                demand=[2e-4], return_factor=[0.5], min_level=[0.0], demand_priority=[1]
+            )
+        ],
+    )
+    model.linear_resistance.add(
+        Node(10, Point(2.5, 1.0), subnetwork_id=1),
+        [linear_resistance.Static(resistance=[1e5])],
+    )
+    model.basin.add(
+        Node(11, Point(2.5, 2.0), subnetwork_id=1),
+        [
+            basin.Profile(area=[10_000.0, 10_000.0], level=[0.0, 10.0]),
+            basin.State(level=[1.0]),
+        ],
+    )
+
+    model.link.add(model.basin[1], model.junction[2])
+    model.link.add(model.junction[3], model.junction[2])
+    model.link.add(model.flow_boundary[4], model.junction[2])
+    model.link.add(model.junction[2], model.pump[5])
+    model.link.add(model.pump[5], model.terminal[6])
+    model.link.add(model.flow_boundary[7], model.junction[3])
+    model.link.add(model.junction[3], model.pump[8])
+    model.link.add(model.pump[8], model.terminal[6])
+    model.link.add(model.junction[3], model.user_demand[9])
+    model.link.add(model.user_demand[9], model.junction[3])
+    model.link.add(model.linear_resistance[10], model.junction[3])
+    model.link.add(model.basin[11], model.linear_resistance[10])
 
     return model

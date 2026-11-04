@@ -6,6 +6,8 @@ A Junction node allows explicitly representing confluences and bifurcations in t
 
 Junctions can connect to other Junctions, but are not allowed to form cycles. Note that a confluence Junction followed by bifurcation Junction is generally invalid, as it will connect a connector node with multiple basins.
 
+A connected group of Junctions with exactly one Basin as a neighbor can connect that Basin in both directions, so inflows and outflows along the same waterway can share one Junction tree.
+
 
 # Tables
 
@@ -15,6 +17,19 @@ No tables are required for Junction nodes.
 
 Junctions connect all upstream nodes with all downstream nodes,
 and are not used in the equations themselves.
+
+The exception is a connected group of Junctions, ignoring link directions, with exactly one Basin as a neighbor.
+Such a group connects every other neighbor to that Basin, in the direction of its own link with the group:
+a link into the group becomes a link into the Basin, and a link out of the group becomes a link out of the Basin.
+The direction of the links between the Junctions, and between the Junctions and the Basin, does not matter.
+The group and the Basin must form a tree, and each of these Junctions needs at least two links.
+A UserDemand can connect to the Basin in both directions through the group.
+A Terminal or a LevelBoundary does not take the place of the Basin.
+
+The flow of a link of a group is the sum of the flows of the connector nodes behind it.
+Flows in the direction of the link count as positive and flows against it as negative.
+A link between Junctions therefore reports the net flow through that part of the waterway.
+To get the inflows and outflows separately, use separate Junction trees.
 
 # Examples
 
@@ -65,4 +80,44 @@ flowchart LR
     A{{Connector}} --> F[\Basin/]
     B{{Connector}} --> F
     C{{Connector}} --> F
+```
+
+Inflows and outflows of a Basin along the same waterway can use separate Junction trees, which do not connect to each other
+
+```{mermaid}
+flowchart LR
+    classDef junction fill:#000,stroke:#000,color:white
+    A{{Connector A}} --> J1((Junction))
+    E{{Connector E}} --> J2((Junction))
+    J2 --> J1
+    J1 --> B[\Basin/]
+    B --> J3((Junction))
+    J3 --> C{{Connector C}}
+    J3 --> J4((Junction))
+    J4 --> D{{Connector D}}
+    class J1,J2,J3,J4 junction
+```
+
+or a single tree, with undirected links here where the direction does not matter:
+
+```{mermaid}
+flowchart LR
+    classDef junction fill:#000,stroke:#000,color:white
+    B[\Basin/] --- J1((Junction))
+    J1 --- J2((Junction))
+    A{{Connector A}} --> J1
+    J1 --> C{{Connector C}}
+    E{{Connector E}} --> J2
+    J2 --> D{{Connector D}}
+    class J1,J2 junction
+```
+
+Both translate to the following model:
+
+```{mermaid}
+flowchart LR
+    A{{Connector A}} --> B[\Basin/]
+    E{{Connector E}} --> B
+    B --> C{{Connector C}}
+    B --> D{{Connector D}}
 ```

@@ -772,6 +772,94 @@ end
     model = Ribasim.run(toml_path)
 end
 
+@testitem "junction bidirectional" begin
+    import SQLite
+    using DataFrames: DataFrame
+    import MetaGraphsNext: labels
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/junction_bidirectional/ribasim.toml",
+    )
+    config = Ribasim.Config(toml_path)
+    db = SQLite.DB(Ribasim.database_path(config))
+    graph = Ribasim.create_graph(db, config)
+    close(db)
+
+    (; internal_flow_links, external_flow_links, flow_link_map) = graph.graph_data
+    @test all(node.type != Ribasim.NodeType.Junction for node in labels(graph))
+    @test Set((Int(a.value), Int(b.value)) for (a, b) in getfield.(internal_flow_links, :link)) ==
+        Set(
+        [
+            (4, 1), (7, 1), (10, 1), (9, 1), (1, 5), (1, 8), (1, 9),
+            (5, 6), (8, 6), (11, 10),
+        ]
+    )
+    @test size(flow_link_map) == (length(external_flow_links), length(internal_flow_links))
+
+    # The sign of each internal flow through the external links of the group
+    function sign_of(from_internal, to_internal, from_external, to_external)
+        i = findfirst(
+            link -> Tuple(Int.(getfield.(link.link, :value))) ==
+                (from_external, to_external),
+            external_flow_links,
+        )
+        j = findfirst(
+            link -> Tuple(Int.(getfield.(link.link, :value))) ==
+                (from_internal, to_internal),
+            internal_flow_links,
+        )
+        return flow_link_map[i, j]
+    end
+    # Basin 1 -> Junction 2 points away from the Basin, Junction 3 -> Junction 2 towards it
+    @test sign_of(1, 8, 1, 2) == 1
+    @test sign_of(1, 8, 3, 2) == -1
+    @test sign_of(1, 8, 3, 8) == 1
+    @test sign_of(7, 1, 7, 3) == 1
+    @test sign_of(7, 1, 3, 2) == 1
+    @test sign_of(7, 1, 1, 2) == -1
+    @test sign_of(4, 1, 1, 2) == -1
+    @test sign_of(4, 1, 3, 2) == 0
+
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # Allocation records the same signed flows as the physical layer
+    for flow in (
+            DataFrame(Ribasim.flow_data(model)),
+            DataFrame(Ribasim.allocation_flow_data(model)),
+        )
+        function q(from_node_id, to_node_id)
+            return flow.flow_rate[(flow.from_node_id .== from_node_id) .& (flow.to_node_id .== to_node_id)]
+        end
+        @test all(q(4, 2) .≈ 1.0e-3)
+        @test all(q(2, 5) .≈ 3.0e-4)
+        @test all(q(7, 3) .≈ 5.0e-4)
+        @test all(q(3, 8) .≈ 7.0e-4)
+        # The LinearResistance flows against the direction of its link: out of the group
+        @test all(q(10, 3) .< 0)
+        @test q(10, 3) ≈ q(11, 10)
+
+        # The net flow over the links of the tree
+        behind_junction_3 = q(7, 3) .+ q(9, 3) .+ q(10, 3) .- q(3, 8) .- q(3, 9)
+        @test q(3, 2) ≈ behind_junction_3
+        @test q(1, 2) ≈ q(2, 5) .- q(4, 2) .- behind_junction_3
+        # Which conserves the mass at each Junction
+        @test q(1, 2) .+ q(4, 2) .+ q(3, 2) ≈ q(2, 5)
+    end
+
+    # The demand is met at its upper bound, which is a lower bound on a link against the flow
+    allocation_flow = DataFrame(Ribasim.allocation_flow_data(model))
+    function row(from_node_id, to_node_id)
+        return (allocation_flow.from_node_id .== from_node_id) .&
+            (allocation_flow.to_node_id .== to_node_id)
+    end
+    @test all(allocation_flow.upper_bound_hit[row(3, 9)])
+    @test all(allocation_flow.upper_bound_hit[row(1, 2)])
+    @test all(allocation_flow.lower_bound_hit[row(3, 2)])
+    @test !any(allocation_flow.upper_bound_hit[row(3, 2)])
+end
+
 @testitem "Drought" begin
     using DataFrames
     toml_path = normpath(@__DIR__, "../../generated_testmodels/drought/ribasim.toml")
