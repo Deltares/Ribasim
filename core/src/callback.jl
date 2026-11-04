@@ -226,13 +226,16 @@ function update_concentrations!(u, t, integrator)::Nothing
 
     dt = t - tprev
 
+    # The concentrations in the input are constant over the timestep, since these are tstops.
+    # At t they may already have the next value, so they are evaluated at tprev.
+
     # Basin forcings
     (; drainage, precipitation, surface_runoff) = forcing.exact_cumulative_forcing_dt
-    add_forcing_mass!(mass, concentration_drainage, drainage, t)
-    add_forcing_mass!(mass, concentration_precipitation, precipitation, t)
-    add_forcing_mass!(mass, concentration_surface_runoff, surface_runoff, t)
+    add_forcing_mass!(mass, concentration_drainage, drainage, tprev)
+    add_forcing_mass!(mass, concentration_precipitation, precipitation, tprev)
+    add_forcing_mass!(mass, concentration_surface_runoff, surface_runoff, tprev)
     # Loads are per second, not volume, so the flow is just the time step
-    add_forcing_mass!(mass, loads, dt, t)
+    add_forcing_mass!(mass, loads, dt, tprev)
 
     # Exact boundary flow over time step
     for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
@@ -241,7 +244,7 @@ function update_concentrations!(u, t, integrator)::Nothing
             view(mass, :, outflow_id.idx),
             flow_boundary.concentration_itp[id.idx],
             flow_boundary.cumulative_flow_dt[id.idx],
-            t,
+            tprev,
         )
     end
 
@@ -257,7 +260,7 @@ function update_concentrations!(u, t, integrator)::Nothing
         boundary_flow = flow_boundary.cumulative_flow_dt,
     )
 
-    transport_tracers!(p_independent, t, dt)
+    transport_tracers!(p_independent, tprev, dt)
 
     errors = false
 

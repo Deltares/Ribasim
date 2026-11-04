@@ -91,3 +91,43 @@ def tracer_user_demand_model() -> Model:
     model.link.add(pump_node, terminal)
 
     return model
+
+
+def tracer_boundary_pulse_model() -> Model:
+    """Set up a Basin without outflow that gets a pulse of a substance from a FlowBoundary.
+
+    The times at which the concentration changes are not used by anything else in the model.
+    All mass in the pulse stays in the Basin, which is the flow rate times the pulse duration.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 2),
+        crs="EPSG:28992",
+        experimental=Experimental(concentration=True),
+    )
+
+    boundary = model.flow_boundary.add(
+        Node(1, Point(0, 0)),
+        [
+            flow_boundary.Static(flow_rate=[0.1]),
+            flow_boundary.Concentration(
+                time=[
+                    "2020-01-01 00:00:00",
+                    "2020-01-01 03:17:00",
+                    "2020-01-01 07:41:00",
+                ],
+                substance=["Pulse", "Pulse", "Pulse"],
+                concentration=[0.0, 1.0, 0.0],
+            ),
+        ],
+    )
+    basin_node = model.basin.add(
+        Node(2, Point(1, 0)),
+        [
+            basin.Profile(area=[1000.0, 1000.0], level=[0.0, 10.0]),
+            basin.State(level=[1.0]),
+        ],
+    )
+    model.link.add(boundary, basin_node)
+
+    return model

@@ -3,7 +3,7 @@ Process mass inflows from UserDemand separately
 as the UserDemand nodes are not conservative
 """
 function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
-    (; p, t) = integrator
+    (; p, tprev) = integrator
     (; basin, user_demand, cumulative_flow_dt) = p.p_independent
     (; concentration_state, mass) = basin.concentration_data
 
@@ -37,7 +37,7 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
                 view(mass, :, to_node.idx),
                 user_demand.concentration_itp[node_idx],
                 return_flow,
-                t,
+                tprev,
             )
         end
     end
@@ -195,7 +195,7 @@ and the inflows from LevelBoundary, see [`TracerTransport`](@ref). The mass from
 sources is already added to `mass`, afterwards it holds the mass at the end of the timestep.
 `concentration_state` still holds the concentrations at the start of the timestep.
 """
-function transport_tracers!(p_independent::ParametersIndependent, t::Float64, dt::Float64)::Nothing
+function transport_tracers!(p_independent::ParametersIndependent, tprev::Float64, dt::Float64)::Nothing
     (; tracer_transport, basin, level_boundary, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges) =
         p_independent
     (; A, diagonal_nz, forward_nz, backward_nz, outflow, work) = tracer_transport
@@ -232,7 +232,7 @@ function transport_tracers!(p_independent::ParametersIndependent, t::Float64, dt
                 view(mass, :, downstream.idx),
                 level_boundary.concentration_itp[upstream.idx],
                 volume,
-                t,
+                tprev,
             )
         elseif !(upstream.type == NodeType.Terminal && upstream.value == 0)
             # The unset flow link defaults to Terminal #0
