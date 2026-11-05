@@ -31,8 +31,7 @@ Flows in the direction of the link count as positive and flows against it as neg
 A link between Junctions therefore reports the net flow through that part of the waterway.
 To get the inflows and outflows separately, use separate Junction trees.
 
-The flow rate of a Junction, which control nodes can listen to and Observation nodes can observe, is the flow on the link that leads to the Basin of its group, positive in the direction of that link.
-In a group without exactly one Basin as a neighbor it is the sum of the flows on the incoming links of the Junction.
+The flow rate of a Junction, which control nodes can listen to, is the net flow through it, positive in the direction of its link towards the Basin.
 
 # Examples
 
