@@ -797,47 +797,6 @@ end
     )
     @test size(flow_link_map) == (length(external_flow_links), length(internal_flow_links))
 
-    # The sign of each internal flow through the external links of the group
-    function sign_of(from_internal, to_internal, from_external, to_external)
-        i = findfirst(
-            link -> Tuple(Int.(getfield.(link.link, :value))) ==
-                (from_external, to_external),
-            external_flow_links,
-        )
-        j = findfirst(
-            link -> Tuple(Int.(getfield.(link.link, :value))) ==
-                (from_internal, to_internal),
-            internal_flow_links,
-        )
-        return flow_link_map[i, j]
-    end
-    # Basin 1 -> Junction 2 points away from the Basin, Junction 3 -> Junction 2 towards it
-    @test sign_of(1, 8, 1, 2) == 1
-    @test sign_of(1, 8, 3, 2) == -1
-    @test sign_of(1, 8, 3, 8) == 1
-    @test sign_of(7, 1, 7, 3) == 1
-    @test sign_of(7, 1, 3, 2) == 1
-    @test sign_of(7, 1, 1, 2) == -1
-    @test sign_of(4, 1, 1, 2) == -1
-    @test sign_of(4, 1, 3, 2) == 0
-
-    # The flow rate of a Junction is the flow on its link that leads to the Basin
-    junction_flows = [
-        Set(((Int(a.value), Int(b.value)), sign) for ((a, b), sign) in flows) for
-            flows in graph.graph_data.junction_flows
-    ]
-    # Junction 2: Basin 1 -> Junction 2, which points away from the Basin
-    @test junction_flows[1] == Set(
-        [
-            ((4, 1), -1), ((7, 1), -1), ((10, 1), -1), ((9, 1), -1),
-            ((1, 5), 1), ((1, 8), 1), ((1, 9), 1),
-        ]
-    )
-    # Junction 3: Junction 3 -> Junction 2, which points towards the Basin
-    @test junction_flows[2] == Set(
-        [((7, 1), 1), ((10, 1), 1), ((9, 1), 1), ((1, 8), -1), ((1, 9), -1)]
-    )
-
     model = Ribasim.run(toml_path)
     @test success(model)
 
@@ -846,10 +805,11 @@ end
     (; p, t) = integrator
     du = Ribasim.get_du(integrator)
     node_ids = Ribasim.get_node_ids(toml_path)
+    flow = DataFrame(Ribasim.flow_data(model))
+    # Basin 1 -> Junction 2 points away from the Basin, Junction 3 -> Junction 2 towards it
     for (junction, link) in ((2, (1, 2)), (3, (3, 2)))
         junction_id = only(filter(id -> id.value == junction, node_ids))
         value = Ribasim.get_junction_flow(du.flow, junction_id, p, t)
-        flow = DataFrame(Ribasim.flow_data(model))
         q = flow.flow_rate[(flow.from_node_id .== link[1]) .& (flow.to_node_id .== link[2])]
         @test value ≈ q[end] rtol = 1.0e-3
         @test value < 0

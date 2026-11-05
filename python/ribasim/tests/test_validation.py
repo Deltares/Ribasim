@@ -386,14 +386,13 @@ def test_junction_group_one_basin():
     with pytest.raises(ValueError, match="through multiple links"):
         invalid._validate_model()
 
-
-def test_junction_group_connector_both_directions():
-    model = junction_bidirectional()
-    model.pump.add(Node(20, Point(4.0, 0.0)), [pump.Static(flow_rate=[1.0])])
-    model.link.add(model.junction[2], model.pump[20])
-    model.link.add(model.pump[20], model.junction[3])
+    # Only a UserDemand can connect to the Basin in both directions
+    invalid = junction_bidirectional()
+    invalid.pump.add(Node(20, Point(4.0, 0.0)), [pump.Static(flow_rate=[1.0])])
+    invalid.link.add(invalid.junction[2], invalid.pump[20])
+    invalid.link.add(invalid.pump[20], invalid.junction[3])
     with pytest.raises(ValueError, match="in both directions"):
-        model._validate_model()
+        invalid._validate_model()
 
 
 def test_junction_group_other_basins():

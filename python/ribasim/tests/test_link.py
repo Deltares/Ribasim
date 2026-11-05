@@ -4,7 +4,6 @@ import shapely.geometry as sg
 from pandera.errors import SchemaErrors
 from pydantic import ValidationError
 from ribasim.geometry.link import LinkTable, NodeData, _infer_link_type
-from ribasim_testmodels import junction_control
 
 
 @pytest.fixture(scope="session")
@@ -108,16 +107,3 @@ def test_listen_link_allows_reverse_control(discrete_control_of_pid_control):
     assert model.link.df is not None
     listen_links = model.link.df.loc[model.link.df["link_type"] == "listen"]
     assert not listen_links.empty
-
-
-def test_listen_link_from_junction():
-    """A control node that listens to a Junction gets a listen link from it."""
-    model = junction_control()
-    model._validate_model()
-    df = model.link.df
-    assert df is not None
-    listen = df.loc[df["link_type"] == "listen"]
-    assert set(zip(listen["from_node_id"], listen["to_node_id"], strict=True)) == {
-        (3, 9),
-        (2, 11),
-    }

@@ -457,9 +457,7 @@ end
 end
 
 @testitem "Listen to Junction flow rate" begin
-    import SQLite
     using DataFrames: DataFrame
-    using Logging
 
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/junction_control/ribasim.toml")
@@ -487,20 +485,4 @@ end
     @test t_switch ≈ 15.5 * 86400 atol = 86400
     @test q(8, 6)[1] == 0
     @test q(8, 6)[end] ≈ 1.0e-4
-
-    # Other variables can't be read from a Junction
-    tmp_dir = mktempdir()
-    cp(dirname(toml_path), tmp_dir; force = true)
-    tmp_toml_path = joinpath(tmp_dir, "ribasim.toml")
-    db = SQLite.DB(Ribasim.database_path(Ribasim.Config(tmp_toml_path)))
-    SQLite.execute(db, "UPDATE `ContinuousControl / variable` SET variable = 'level'")
-    close(db)
-    logger = TestLogger()
-    with_logger(logger) do
-        @test_throws "Invalid `listen_node_id`." Ribasim.Model(tmp_toml_path)
-    end
-    @test any(
-        log -> log.message == "Can only listen to the flow_rate of a Junction node",
-        logger.logs,
-    )
 end

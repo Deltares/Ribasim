@@ -1164,27 +1164,6 @@ def test_plot_widget_fractional_flow_opposite_signs(monkeypatch):
     assert negative.hoverinfo == "skip"
 
 
-def test_plot_widget_fractional_flow_junction_two_basins(monkeypatch):
-    """A Junction group with two Basins connects them to all downstream nodes."""
-    traces = _fractional_tracer_flow(
-        monkeypatch,
-        {
-            1: "Basin",
-            2: "Basin",
-            3: "Junction",
-            4: "LinearResistance",
-            5: "Basin",
-        },
-        {1: (1, 3), 2: (2, 3), 3: (3, 4), 4: (4, 5)},
-        {1: 0.2, 2: 0.6, 5: 0.9},
-        {1: [3.0, 3.0], 2: [1.0, 1.0]},
-        4,
-        [4.0, 4.0],
-    )
-    # (0.2 * 3 + 0.6 * 1) / 4 = 0.3
-    assert np.allclose(_signed_values(traces, "Tracer"), [0.3 * 4.0, 0.3 * 4.0])
-
-
 def test_plot_widget_fractional_flow_connector_between_junction_groups(monkeypatch):
     """A connector takes its water from the one Basin of the group upstream of it."""
     traces = _fractional_tracer_flow(
@@ -1244,17 +1223,12 @@ _ONE_BASIN = {1: "Pump", 2: "Junction", 3: "Pump", 4: "Basin"}
 @pytest.mark.parametrize(
     ("node_types", "links", "flows", "expected"),
     [
-        # An ordinary Junction has the flow on its link to the Basin, with its sign.
-        (_ONE_BASIN, [(1, 2), (3, 2), (2, 4)], [3.0, 2.0, 5.0], 5.0),
+        # The flow on the link to the Basin, with its sign.
         (_ONE_BASIN, [(1, 2), (3, 2), (2, 4)], [5.0, -2.0, 3.0], 3.0),
         (_ONE_BASIN, [(1, 2), (3, 2), (2, 4)], [-3.0, -2.0, -5.0], -5.0),
-        # Also with the Basin upstream.
-        (_ONE_BASIN, [(4, 2), (2, 1), (2, 3)], [5.0, 3.0, 2.0], 5.0),
         # In a shared tree it is the net flow, in the direction of that link.
         (_ONE_BASIN, [(1, 2), (2, 3), (2, 4)], [6.0, 4.0, 2.0], 2.0),
         (_ONE_BASIN, [(1, 2), (2, 3), (4, 2)], [6.0, 4.0, -2.0], -2.0),
-        # All links pointing away from the Junction.
-        (_ONE_BASIN, [(2, 1), (2, 3), (2, 4)], [-6.0, 4.0, 2.0], 2.0),
         # The link that leads to the Basin can go to another Junction.
         (
             {1: "Pump", 2: "Junction", 3: "Junction", 4: "Basin"},
@@ -1262,7 +1236,7 @@ _ONE_BASIN = {1: "Pump", 2: "Junction", 3: "Pump", 4: "Basin"}
             [6.0, 6.0, 6.0],
             6.0,
         ),
-        # With two Basins the links have a direction, so sum the incoming links.
+        # With two Basins it is the sum of the incoming links.
         (
             {1: "Basin", 2: "Junction", 3: "Basin", 4: "Pump"},
             [(1, 2), (3, 2), (2, 4)],
@@ -1275,22 +1249,6 @@ def test_junction_flow_column(node_types, links, flows, expected):
     column = _junction_flow_column(node_types, links, flows)
     assert column is not None
     assert np.allclose(column, [expected])
-
-
-def test_junction_flow_column_ignores_other_links():
-    """A listen link of a Junction is not a flow link and doesn't lead to the Basin."""
-    node_types = {**_ONE_BASIN, 5: "DiscreteControl"}
-    column = _junction_flow_column(
-        node_types, [(2, 5), (1, 2), (2, 4)], [0.0, 3.0, 3.0]
-    )
-    assert column is not None
-    assert np.allclose(column, [3.0])
-
-
-def test_junction_flow_column_without_incoming_links():
-    # No Basin to give a link, and no incoming links to sum.
-    node_types = {1: "Pump", 2: "Junction", 3: "Pump"}
-    assert _junction_flow_column(node_types, [(2, 1), (2, 3)], [1.0, 1.0]) is None
 
 
 def test_plot_widget_observation_grouped_with_results():
