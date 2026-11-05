@@ -36,6 +36,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - UserDemand `return_factor` and `min_level` must be the same for all demand priorities of a node (at the same time). [#3316](https://github.com/Deltares/Ribasim/pull/3316)
 
 ### Fixed
+- `allocation_flow.nc` now contains the vertical flow of all Basins, before only that of the last Basin was kept. [#2853](https://github.com/Deltares/Ribasim/issues/2853)
+- `subgrid_level.nc` no longer contains only NaN if concentrations are off. It is now only written if `results.subgrid` is `true`, before this setting had no effect. [#2853](https://github.com/Deltares/Ribasim/issues/2853)
+- With `saveat = Inf`, `basin.nc` now contains the storage and level at the start of the simulation, instead of after the first timestep. [#2853](https://github.com/Deltares/Ribasim/issues/2853)
 - Allocation: The low storage factors are now optimized before the demands, so they only reduce Basin outflows to prevent negative storage. Before, the demand objectives could lower them to hold back water, for instance to meet a LevelDemand by reducing the flow over an uncontrolled weir, which the physical layer then did not follow.
 - Allocation: Remove the Basin storage change upper bound and the flow bounds derived from it, which only existed for numerical reasons and could make the optimization problem infeasible. The flow of allocation controlled TabulatedRatingCurves is now bounded by its linearized Q(h) relation instead.
 - Allocation: Normalize LevelDemand fairness constraints by the current mean Basin area per demand priority, improving numerical conditioning for large Basins.

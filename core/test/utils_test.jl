@@ -439,22 +439,6 @@ end
     @test atmp ≈ expected
 end
 
-@testitem "FlatVector" begin
-    vv = [[2.2, 3.2], [4.3, 5.3], [6.4, 7.4]]
-    fv = Ribasim.FlatVector(vv)
-    @test length(fv) == 6
-    @test size(fv) == (6,)
-    @test collect(fv) == [2.2, 3.2, 4.3, 5.3, 6.4, 7.4]
-    @test fv[begin] == 2.2
-    @test fv[5] == 6.4
-    @test fv[end] == 7.4
-
-    vv = Vector{Float64}[]
-    fv = Ribasim.FlatVector(vv)
-    @test isempty(fv)
-    @test length(fv) == 0
-end
-
 @testitem "reduction_factor" begin
     using Ribasim: reduction_factor
     @test reduction_factor(-2.0, 2.0) === 0.0
