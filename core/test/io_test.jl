@@ -272,6 +272,14 @@ end
     @test nc_chunksizes(("demand_priority", "node_id", "time"), (2, 5, 10)) == [1, 5, 10]
     @test isnothing(nc_chunksizes(("time",), (10,)))
     @test isnothing(nc_chunksizes(("node_id", "time"), (0, 10)))
+
+    # results written during the simulation have a given chunk size along time
+    @test nc_chunksizes(("node_id", "time"), (20249, 11), 25) == [5242, 25]
+    @test nc_chunksizes(("node_id", "time"), (3, 11), 25) == [3, 25]
+    @test nc_chunksizes(("node_id", "substance", "time"), (100, 3, 11), 25) == [100, 1, 25]
+    @test nc_chunksizes(("demand_priority", "node_id", "time"), (2, 5, 11), 25) == [1, 5, 25]
+    @test nc_chunksizes(("time",), (11,), 25) == [25]
+    @test isnothing(nc_chunksizes(("node_id",), (11,), 25))
 end
 
 @testitem "subgrid level results" begin
@@ -300,6 +308,19 @@ end
     @test !isfile(path)
 end
 
+@testitem "concentrations are only in memory if asked for" begin
+    using Ribasim: BMI
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    @test ispath(toml_path)
+    for experimental_concentration in (true, false)
+        model = Ribasim.Model(Ribasim.Config(toml_path; experimental_concentration))
+        BMI.update_until(model, 86400.0)
+        @test isempty(model.saved.concentration.time) == !experimental_concentration
+        @test isempty(model.saved.concentration.variables.concentration) == !experimental_concentration
+    end
+end
+
 @testitem "state at the start with saveat = Inf" begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
@@ -310,6 +331,361 @@ end
     @test size(data.level) == (length(level_start), 1)
     @test data.level[:, 1] == level_start
     @test Ribasim.tsaves(model) == [0.0, model.integrator.t]
+end
+
+@testitem "results written during the simulation" begin
+    using NCDatasets: NCDatasets, NCDataset
+    using Ribasim: BMI, solve!, write_results, results_path, RESULTS_FILENAME
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    @test ispath(toml_path)
+    day = 86400.0
+    (; basin, flow, concentration, subgrid_level, solver_stats) = RESULTS_FILENAME
+    filenames = [basin, flow, concentration, subgrid_level, solver_stats]
+
+    function model_in_chunks(chunk_time; kwargs...)
+        config = Ribasim.Config(
+            toml_path;
+            results_dir = mktempdir(),
+            experimental_concentration = true,
+            results_subgrid = true,
+            kwargs...,
+        )
+        model = Ribasim.Model(config)
+        if !isnothing(chunk_time)
+            model.saved.chunk_time = chunk_time
+        end
+        return model
+    end
+
+    function read_results(model)
+        results = Dict{String, Array}()
+        for filename in filenames
+            NCDataset(results_path(model.config, filename)) do ds
+                for name in keys(ds)
+                    name == "computation_time" && continue
+                    results["$filename/$name"] = Array(ds[name])
+                end
+            end
+        end
+        return results
+    end
+
+    # By default this model fits in a single chunk, which is written at the end
+    reference = model_in_chunks(nothing)
+    @test reference.saved.chunk_time == 366
+    solve!(reference)
+    @test reference.saved.basin.ntime_written == 0
+    write_results(reference)
+    expected = read_results(reference)
+
+    # Results are written and removed from memory each time a chunk is complete
+    model = model_in_chunks(7)
+    BMI.update_until(model, 10day)
+    @test model.saved.basin.ntime_written == 7
+    @test length(model.saved.basin.time) == 3
+    @test length(model.saved.basin.variables.level) == 3 * 4
+    @test Ribasim.tsaves(model) == (7:10) .* day
+    @test sprint(show, model) == "Model(ts: 11, t: 2020-01-11T00:00:00)\n"
+
+    # The results written so far can be read during the simulation
+    NCDataset(results_path(model.config, basin)) do ds
+        @test ds.dim["time"] == 7
+        @test NCDatasets.unlimited(ds.dim) == ["time"]
+        @test NCDatasets.chunking(ds["level"].var) == (:chunked, (4, 7))
+        @test NCDatasets.chunking(ds["time"].var) == (:chunked, (7,))
+        @test ds["time"][:] == Ribasim.datetime_since.((0:6) .* day, model.config.starttime)
+        @test ds["level"][:, :] ≈ reshape(expected["$basin/level"][:, 1:7], 4, 7)
+    end
+
+    # Writing the results that are in memory doesn't stop the simulation, and overlaps with
+    # the results that are written next
+    write_results(model)
+    NCDataset(results_path(model.config, basin)) do ds
+        @test ds.dim["time"] == 10
+    end
+
+    BMI.update_until(model, 21day)
+    @test model.saved.basin.ntime_written == 21
+    @test isempty(model.saved.basin.time)
+
+    solve!(model)
+    write_results(model)
+    results = read_results(model)
+    @test keys(results) == keys(expected)
+    for (name, value) in expected
+        @test isequal(results[name], value)
+    end
+
+    # File sizes stay similar for reasonably sized chunks
+    model = model_in_chunks(64)
+    solve!(model)
+    write_results(model)
+    @test model.saved.basin.ntime_written == 320
+    @test isequal(read_results(model), expected)
+    for filename in filenames
+        size_chunks = filesize(results_path(model.config, filename))
+        size_expected = filesize(results_path(reference.config, filename))
+        @test size_chunks < 1.2 * size_expected
+    end
+
+    # Without quantization and compression the results equal those in memory, also when
+    # saving at each solver time step
+    for kwargs in (
+            (; results_significant_bits = 0),
+            (; results_compression = false),
+            (; results_significant_bits = 0, solver_saveat = 0.0),
+        )
+        model = model_in_chunks(7; kwargs...)
+        model_one_chunk = model_in_chunks(nothing; kwargs...)
+        solve!(model)
+        solve!(model_one_chunk)
+        write_results(model)
+        write_results(model_one_chunk)
+        results = read_results(model)
+        @test isequal(results, read_results(model_one_chunk))
+        @test results["$basin/level"][:, end] == Ribasim.basin_data(model; table = false).level[:, end]
+    end
+end
+
+@testitem "control and allocation results written during the simulation" begin
+    using NCDatasets: NCDataset
+    using Ribasim: solve!, write_results, results_path, RESULTS_FILENAME
+
+    function read_results(model, filename)
+        return NCDataset(results_path(model.config, filename)) do ds
+            Dict(name => Array(ds[name]) for name in keys(ds))
+        end
+    end
+
+    (; control, allocation, allocation_flow, allocation_control) = RESULTS_FILENAME
+    for (name, filenames) in (
+            ("pump_discrete_control", [control]),
+            ("flow_condition", [control]),
+            ("medium_primary_secondary_network", [allocation, allocation_flow, allocation_control]),
+            ("switch_allocation_control", [allocation, allocation_flow, allocation_control]),
+        )
+        toml_path = normpath(@__DIR__, "../../generated_testmodels/$name/ribasim.toml")
+        @test ispath(toml_path)
+        models = map((nothing, 1, 5)) do chunk_time
+            config = Ribasim.Config(toml_path; results_dir = mktempdir())
+            model = Ribasim.Model(config)
+            isnothing(chunk_time) || (model.saved.chunk_time = chunk_time)
+            solve!(model)
+            write_results(model)
+            model
+        end
+        for model in models[2:end], filename in filenames
+            @test model.saved.basin.ntime_written > 0
+            expected = read_results(first(models), filename)
+            results = read_results(model, filename)
+            @test keys(results) == keys(expected)
+            for (key, value) in expected
+                @test isequal(results[key], value)
+            end
+        end
+    end
+end
+
+@testitem "a result file open in another process stops the simulation" begin
+    using NCDatasets: NCDataset
+    using Ribasim: BMI, write_results, results_path, RESULTS_FILENAME
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    @test ispath(toml_path)
+    day = 86400.0
+    config = Ribasim.Config(toml_path; results_dir = mktempdir())
+    model = Ribasim.Model(config)
+    model.saved.chunk_time = 7
+    BMI.update_until(model, 8day)
+    @test model.saved.basin.ntime_written == 7
+
+    (; basin, flow, basin_state) = RESULTS_FILENAME
+    ntime(filename) = NCDataset(ds -> ds.dim["time"], results_path(config, filename))
+
+    # The viewer has the file open until it gets a line on stdin
+    path = results_path(config, basin)
+    code = "using NCDatasets; ds = NCDataset(ARGS[1]); println(ds.dim[\"time\"]); flush(stdout); readline(); close(ds)"
+    cmd = `$(Base.julia_cmd()) --startup-file=no --project=$(Base.active_project()) -e $code $path`
+    function close_viewer(viewer)
+        println(viewer)
+        close(viewer.in)
+        wait(viewer)
+        return success(viewer)
+    end
+
+    # Without file locking the viewer doesn't block writing
+    viewer = open(addenv(cmd, "HDF5_USE_FILE_LOCKING" => "FALSE"), "r+")
+    @test readline(viewer) == "7"
+    BMI.update_until(model, 15day)
+    @test model.saved.basin.ntime_written == 14
+    @test close_viewer(viewer)
+
+    # With file locking the next write stops the simulation, and the error names the file. The
+    # file keeps what it had, the other files are written.
+    viewer = open(cmd, "r+")
+    @test readline(viewer) == "14"
+    @test_throws path BMI.update_until(model, 22day)
+    @test ntime(basin) == 14
+    @test ntime(flow) == 21
+
+    # The same goes for writing the remaining results
+    @test !isfile(results_path(config, basin_state))
+    @test_throws path write_results(model)
+    @test ntime(basin) == 14
+    @test isfile(results_path(config, basin_state))
+    @test close_viewer(viewer)
+
+    # No results are lost if the file is closed
+    write_results(model)
+    @test ntime(basin) == ntime(flow) == 21
+    NCDataset(path) do ds
+        @test !any(isnan, ds["level"][:, :])
+    end
+
+    # A file of an earlier simulation is not emptied if it is open when it is first written.
+    # On Windows it can't be removed, elsewhere the viewer keeps the removed file.
+    model = Ribasim.Model(config)
+    model.saved.chunk_time = 7
+    viewer = open(cmd, "r+")
+    @test readline(viewer) == "21"
+    if Sys.iswindows()
+        @test_throws path BMI.update_until(model, 8day)
+        @test ntime(basin) == 21
+    else
+        BMI.update_until(model, 8day)
+        @test ntime(basin) == 7
+    end
+    @test close_viewer(viewer)
+end
+
+@testitem "result chunk time" begin
+    using Ribasim: NC_NTIME_SAVE_EVERY_STEP
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    @test ispath(toml_path)
+    chunk_time(; kwargs...) = Ribasim.Model(Ribasim.Config(toml_path; kwargs...)).saved.chunk_time
+
+    # All results fit in a single chunk
+    @test chunk_time() == 366
+    # Only the start and end of the simulation
+    @test chunk_time(; solver_saveat = Inf) == 1
+    # Each solver time step, we don't know how many there are
+    @test chunk_time(; solver_saveat = 0) == NC_NTIME_SAVE_EVERY_STEP
+    # Too many time steps for a single chunk
+    @test chunk_time(; solver_saveat = 60) == 65536
+end
+
+@testitem "results up to the last accepted time step" begin
+    using NCDatasets: NCDataset
+    using Dates: DateTime, Day
+    using Ribasim: BMI, write_results, results_path, RESULTS_FILENAME
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    @test ispath(toml_path)
+    day = 86400.0
+    config = Ribasim.Config(toml_path; results_dir = mktempdir(), results_significant_bits = 0)
+    model = Ribasim.Model(config)
+    BMI.update_until(model, 2.5day)
+    (; integrator) = model
+    @test Ribasim.tsaves(model) == [0, 1, 2] .* day
+
+    # The state in the integrator can be from a time step in progress, for instance if an error
+    # occurs there, that one isn't accepted so it must not be used.
+    integrator.u .= NaN
+    write_results(model)
+    @test Ribasim.tsaves(model) == [0, 1, 2, 2.5] .* day
+
+    (; storage, level, storage_rate, balance_error) = Ribasim.basin_data(model; table = false)
+    (; current_storage) = integrator.p.current_basin_properties
+    @test size(storage, 2) == 3
+    # The last time step covers half a day, and ends at the state in the results
+    @test storage[:, end] .+ 0.5day .* storage_rate[:, end] ≈ current_storage
+    @test maximum(abs, balance_error) < 1.0e-10
+    NCDataset(results_path(config, RESULTS_FILENAME.basin)) do ds
+        @test ds["time"][:] == DateTime(2020) .+ Day.(0:2)
+        @test ds["storage"][:, :] == storage
+    end
+    NCDataset(results_path(config, RESULTS_FILENAME.flow)) do ds
+        @test ds.dim["time"] == 3
+    end
+    NCDataset(results_path(config, RESULTS_FILENAME.solver_stats)) do ds
+        @test ds.dim["time"] == 3
+    end
+    NCDataset(results_path(config, RESULTS_FILENAME.basin_state)) do ds
+        @test ds["level"][:] == model.saved.level_prev
+        @test !any(isnan, ds["level"][:])
+    end
+end
+
+@testitem "results after an error" begin
+    using NCDatasets: NCDataset
+    using Ribasim: results_path, RESULTS_FILENAME
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    @test ispath(toml_path)
+    config = Ribasim.Config(
+        toml_path;
+        results_dir = mktempdir(),
+        solver_water_balance_abstol = 0.0,
+        solver_water_balance_reltol = 0.0,
+    )
+    @test_throws "Too large water balance error" Ribasim.run(config)
+    # The results show the time step with the error
+    NCDataset(results_path(config, RESULTS_FILENAME.basin)) do ds
+        @test ds.dim["time"] == 1
+        @test any(!iszero, ds["balance_error"][:, :])
+    end
+    @test isfile(results_path(config, RESULTS_FILENAME.basin_state))
+end
+
+@testitem "results after Ctrl-C" begin
+    using NCDatasets: NCDataset
+    using Dates: DateTime
+    using Ribasim: RESULTS_FILENAME
+    import TOML
+
+    # kill can't send a Ctrl-C on Windows, that is tested through the CLI in build/tests
+    if Sys.iswindows()
+        @test_skip false
+    else
+        source = normpath(@__DIR__, "../../generated_testmodels/basic")
+        model_dir = joinpath(mktempdir(), "basic")
+        cp(source, model_dir)
+        toml_path = joinpath(model_dir, "ribasim.toml")
+        toml = TOML.parsefile(toml_path)
+        toml["endtime"] = DateTime(2400)
+        get!(toml, "solver", Dict{String, Any}())["saveat"] = 3600.0
+        open(io -> TOML.print(io, toml), toml_path, "w")
+        results_dir = joinpath(model_dir, "results")
+        rm(results_dir; force = true, recursive = true)
+
+        code = "using Ribasim; exit(Ribasim.main(ARGS[1]))"
+        cmd = `$(Base.julia_cmd()) --startup-file=no --project=$(Base.active_project()) -e $code $toml_path`
+        process = run(pipeline(cmd; stdout = devnull, stderr = devnull); wait = false)
+        # This is one of the last files of the first write, after which it continues solving
+        path(file) = joinpath(results_dir, file)
+        while process_running(process) && !isfile(path(RESULTS_FILENAME.solver_stats))
+            sleep(0.1)
+        end
+        sleep(1)
+        @test process_running(process)
+        kill(process, Base.SIGINT)
+        wait(process)
+        @test process.exitcode == 1
+
+        @test occursin("interrupted", read(path("ribasim.log"), String))
+        @test isfile(path(RESULTS_FILENAME.basin_state))
+        ntime = NCDataset(ds -> ds.dim["time"], path(RESULTS_FILENAME.basin))
+        # All results are there, not only the ones written so far
+        @test ntime > 131072
+        NCDataset(path(RESULTS_FILENAME.flow)) do ds
+            @test ds.dim["time"] == ntime
+        end
+        NCDataset(path(RESULTS_FILENAME.solver_stats)) do ds
+            @test ds.dim["time"] == ntime
+        end
+    end
 end
 
 @testitem "netcdf allocation results" begin
