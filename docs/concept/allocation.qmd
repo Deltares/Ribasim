@@ -160,7 +160,7 @@ $$ Q_m^{n+1} \approx Q_m^{n} + \frac{1}{A^n}\frac{\partial Q_m}{\partial h_1}(h_
 We have the following boundary nodes in Ribasim:
 
 - The Terminal, where water simply leaves the model
-- The LevelBoundary, which yields fixed water levels; $h^{n+1}_{lb}$ is read from the interpolated timeseries $h_{lb}$ of the node or is a constant value
+- The LevelBoundary, which yields fixed water levels; the level known at the intervention time $t$ is used and held constant over the interval (persistence)
 - The FlowBoundary, which specifies a flow rate. Here the average outflow of the FlowBoundary in the physical layer over the previous $\Delta t$ is used as a prediction of the flow rate in the next $\Delta t$ over which the optimization takes place.
 
 :::{.callout-note}

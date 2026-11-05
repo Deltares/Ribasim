@@ -10,6 +10,7 @@ function set_simulation_data!(
         Δt_allocation,
         u,
         du,
+        t_known::Float64,
     )::Nothing
     (;
         basin,
@@ -26,8 +27,8 @@ function set_simulation_data!(
     errors = false
 
     errors |= set_simulation_data!(allocation_model, basin, p, t, Δt_allocation, du)
-    set_simulation_data!(allocation_model, level_boundary, t, Δt_allocation)
-    set_simulation_data!(allocation_model, flow_boundary, p, t)
+    set_simulation_data!(allocation_model, level_boundary, t_known)
+    set_simulation_data!(allocation_model, flow_boundary, p, t_known)
     set_simulation_data!(allocation_model, linear_resistance, p, t, Δt_allocation)
     set_simulation_data!(allocation_model, manning_resistance, p, t, Δt_allocation)
     set_simulation_data!(allocation_model, tabulated_rating_curve, p, t, Δt_allocation)
@@ -161,7 +162,6 @@ function set_simulation_data!(
         allocation_model::AllocationModel,
         level_boundary::LevelBoundary,
         t::Float64,
-        Δt_allocation,
     )::Nothing
     (; problem) = allocation_model
     boundary_level = problem[:boundary_level]
@@ -170,7 +170,7 @@ function set_simulation_data!(
     for node_id in only(boundary_level.axes)
         JuMP.fix(
             boundary_level[node_id],
-            level_boundary.level[node_id.idx](t + Δt_allocation);
+            level_boundary.level[node_id.idx](t);
             force = true,
         )
     end
@@ -464,11 +464,11 @@ function set_simulation_data!(
     constraints = problem[:user_demand_return_flow]
     flow = problem[:flow]
 
-    # Set the return factor for the end of the time step.
+    # Set the return factor, a rate, at the start of the time step.
     # The return-flow constraint is: return_flow  = return_factor * Σ inflow
     for node_id in only(constraints.axes)
         constraint = constraints[node_id]
-        return_factor = user_demand.return_factor[node_id.idx](t + Δt_allocation)
+        return_factor = user_demand.return_factor[node_id.idx](t)
         for inflow_link_metadata in user_demand.inflow_links[node_id.idx]
             inflow = flow[inflow_link_metadata.link]
             JuMP.set_normalized_coefficient(constraint, inflow, -return_factor)
@@ -1607,6 +1607,7 @@ function update_allocation!(
         Δt::Float64,
         u::CVector,
         du::CVector;
+        t_known::Float64 = t,
         Δt_supplied::Union{Float64, Nothing} = nothing,
         can_retry::Bool = false,
     )::Nothing
@@ -1622,7 +1623,7 @@ function update_allocation!(
     for secondary_network in get_secondary_networks(allocation_models)
         update_control_states!(secondary_network, p_independent)
         # Transfer data about physical processes from the simulation to the optimization
-        set_simulation_data!(secondary_network, p, t, Δt, u, du)
+        set_simulation_data!(secondary_network, p, t, Δt, u, du, t_known)
 
         # Set demands for all priorities
         reset_demand_coefficients(secondary_network)
@@ -1642,7 +1643,7 @@ function update_allocation!(
 
         update_control_states!(primary_network, p_independent)
         # Transfer data about physical processes from the simulation to the optimization
-        set_simulation_data!(primary_network, p, t, Δt, u, du)
+        set_simulation_data!(primary_network, p, t, Δt, u, du, t_known)
 
         reset_demand_coefficients(primary_network)
         for secondary_network in

@@ -411,7 +411,7 @@ problem[:user_demand_return_flow] = JuMP.@constraint(
 ```
 
 **Key points:**
-- `return_factor` is a placeholder, updated before optimization with the value at the end of the allocation timestep
+- `return_factor` is a placeholder, updated before optimization with the value at the start of the allocation timestep (a rate)
 - Links the total inflow and the outflow of a UserDemand node
 - Models consumptive use (when the return factor < 1)
 

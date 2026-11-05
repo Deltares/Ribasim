@@ -273,6 +273,7 @@ function update_allocation_until!(integrator, t_intervention_end::Float64)::Noth
                 τ_next - τ,
                 u,
                 du;
+                t_known = t,
                 Δt_supplied = (τ == t) ? t - time.t_intervention : nothing,
                 can_retry,
             )
