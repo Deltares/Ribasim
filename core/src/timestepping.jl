@@ -33,6 +33,7 @@ function OrdinaryDiffEqCore._loopfooter!(
         integrator::ODEIntegrator{<:Any, <:Any, <:RibasimStateCVector},
     )::Nothing
     (; convergence, convergence_ncalls, step_stats) = integrator.p.p_independent
+    (; defer_interrupt) = integrator.p.p_mutable
 
     residuals = bottleneck_residuals(integrator)
     if !isnothing(residuals)
@@ -46,6 +47,10 @@ function OrdinaryDiffEqCore._loopfooter!(
     step_stats.order_sum += order
 
     invoke(OrdinaryDiffEqCore._loopfooter!, Tuple{Any}, integrator)
+
+    # The results are consistent with the last accepted time step here, so this is where a
+    # Ctrl-C that came in during the time step gets thrown as an InterruptException.
+    defer_interrupt && reenable_sigint(Returns(nothing))
 
     integrator.accept_step && return nothing
 

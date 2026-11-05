@@ -5,21 +5,26 @@ The results of a NetCDF file with a time dimension that are in memory, in the sh
 - `coordinates`: The variables that don't depend on time
 - `variables`: For each variable all values in one vector, where time is the last dimension
 - `size`: The size of the variables without the time dimension
+- `ntime_written`: The number of time steps in the file that are no longer in memory
 """
 @kwdef mutable struct SavedFile{C <: NamedTuple, V <: NamedTuple, N}
     const time::Vector{Float64} = Float64[]
     const coordinates::C
     const variables::V
     size::NTuple{N, Int}
+    ntime_written::Int = 0
 end
 
 """
-All results over time that are in memory, which are added to at each saveat by `SaveResults`.
+All results that are in memory, which are added to at each saveat by `SaveResults`. Each time
+`chunk_time` time steps are complete they are written to file and removed from memory, so
+functions like `basin_data` and `flow_data` only return all results if they fit in one chunk.
 
 - `mean_flows`: Buffers for the mean flows of the saveat interval that is being saved
 - `t_prev`: The time of the previous save, the start of the next saveat interval
 - `level_prev`: The Basin levels at `t_prev`
 - `solver_stats_prev`: The cumulative solver stats at `t_prev`
+- `chunk_time`: The number of time steps per write, also the chunk size along the time dimension
 
 The `control` results share their vectors with `discrete_control.record`, which is added to when
 a control state changes. Allocation results are moved here from `allocation.record_demand` and
@@ -39,6 +44,7 @@ the like at each saveat, because those are averaged over an intervention interva
     const level_prev::Vector{Float64}
     t_prev::Float64 = NaN
     solver_stats_prev::SolverStats = zero_solver_stats()
+    chunk_time::Int
 end
 
 """
@@ -57,7 +63,7 @@ struct Model
     integrator::SciMLBase.AbstractODEIntegrator
     "The TOML configuration that this Model was built from."
     config::Config
-    "Results over time collected by `SaveResults` over the course of the simulation."
+    "The results that are not yet removed from memory, see [`SavedResults`](@ref)."
     saved::SavedResults
     "Logger that all Ribasim log messages of this Model are sent to."
     logger::AbstractLogger
@@ -216,7 +222,7 @@ function Model(
     return model
 end
 
-"Get all saved times in seconds since start"
+"Get all saved times that are in memory in seconds since start"
 tsaves(model::Model)::Vector{Float64} = [model.saved.basin.time; model.saved.t_prev]
 
 "Get all saved times as a Vector{DateTime}"
@@ -227,7 +233,7 @@ end
 function Base.show(io::IO, model::Model)
     (; config, integrator) = model
     t = datetime_since(integrator.t, config.starttime)
-    nsaved = length(tsaves(model))
+    nsaved = model.saved.basin.ntime_written + length(tsaves(model))
     return println(io, "Model(ts: $nsaved, t: $t)")
 end
 
@@ -355,12 +361,20 @@ end
 """
     solve!(model::Model)::Model
 
-Solve a Model until the configured `endtime`.
+Solve a Model until the configured `endtime`. If it is interrupted with Ctrl-C this happens in
+between time steps.
 """
 function solve!(model::Model)::Model
     (; integrator) = model
+    (; p_mutable) = integrator.p
 
-    comptime_s = @elapsed SciMLBase.solve!(integrator)
+    # Handle Ctrl-C in between time steps, such that the results are consistent, see `_loopfooter!`
+    p_mutable.defer_interrupt = true
+    comptime_s = try
+        @elapsed disable_sigint(() -> SciMLBase.solve!(integrator))
+    finally
+        p_mutable.defer_interrupt = false
+    end
     check_error!(integrator)
     comptime = canonicalize(Millisecond(round(Int, comptime_s * 1000)))
     @info "Computation time: $comptime"

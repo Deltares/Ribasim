@@ -32,3 +32,14 @@ RIBASIM_DLLEXPORT int ribasim_set_julia_threads(int32_t threads)
         threads > 1 ? JL_OPTIONS_HANDLE_SIGNALS_ON : JL_OPTIONS_HANDLE_SIGNALS_OFF;
     return 0;
 }
+
+RIBASIM_DLLEXPORT int ribasim_enable_julia_signal_handlers(void)
+{
+    // Julia reads jl_options once, while initializing the runtime.
+    if (jl_is_initialized())
+    {
+        return 1;
+    }
+    jl_options.handle_signals = JL_OPTIONS_HANDLE_SIGNALS_ON;
+    return 0;
+}
