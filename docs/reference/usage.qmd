@@ -105,11 +105,17 @@ The following entries can be set in the configuration in the `[results]` section
 
 entry             | type   | description
 ----------------- | ------ | -----------
-compression       | Bool   | Whether to apply deflate compression or not.
-compression_level | Int    | Deflate compression level (0-9). Default is 1, higher compresses more.
+compression       | Bool   | Whether to compress the results. Default is true.
+compression_level | Int    | Compression level (0-9). Default is 1, higher compresses more.
+significant_bits  | Int    | Precision of lossy compression in bits (1-52). Default is 20, 0 gives lossless compression.
 subgrid           | Bool   | Compute and output more detailed water levels.
 
 Results are written in NetCDF format with CF conventions.
+
+By default the results are compressed lossy, with a relative error of at most `5e-7`.
+This is well below the solver tolerance, and makes the files about 4 times smaller.
+For lossless compression set `significant_bits = 0`, for instance to compute small differences between large values.
+The `basin_state.nc` file is always lossless.
 
 ## Logging settings
 

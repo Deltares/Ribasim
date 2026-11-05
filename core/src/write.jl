@@ -6,61 +6,60 @@ Write all results to NetCDF files as specified in the model configuration.
 function write_results(model::Model)::Model
     (; config) = model
     (; results, experimental) = model.config
-    deflatelevel = results.compression ? results.compression_level : 0
 
     @info "Writing results."
 
-    # state
+    # state, not quantized since it can be used as the initial state of another simulation
     data = basin_state_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.basin_state)
-    write_netcdf(path, data; deflatelevel)
+    write_netcdf(path, data, results; significant_bits = 0)
 
     # basin
     data = basin_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.basin)
-    write_netcdf(path, data; deflatelevel)
+    write_netcdf(path, data, results)
 
     # flow
     data = flow_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.flow)
-    write_netcdf(path, data; deflatelevel)
+    write_netcdf(path, data, results)
 
     # concentrations
     if experimental.concentration
         data = concentration_data(model; table = false)
         path = results_path(config, RESULTS_FILENAME.concentration)
-        write_netcdf(path, data; deflatelevel)
+        write_netcdf(path, data, results)
     end
 
     # discrete control
     data = discrete_control_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.control)
-    write_netcdf(path, data; deflatelevel)
+    write_netcdf(path, data, results)
 
     # allocation
     data = allocation_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.allocation)
-    write_netcdf(path, data; deflatelevel)
+    write_netcdf(path, data, results)
 
     # allocation flow
     data = allocation_flow_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.allocation_flow)
-    write_netcdf(path, data; deflatelevel)
+    write_netcdf(path, data, results)
 
     # allocation control
     data = allocation_control_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.allocation_control)
-    write_netcdf(path, data; deflatelevel)
+    write_netcdf(path, data, results)
 
     # exported levels
     data = subgrid_level_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.subgrid_level)
-    write_netcdf(path, data; deflatelevel)
+    write_netcdf(path, data, results)
 
     # solver stats
     data = solver_stats_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.solver_stats)
-    write_netcdf(path, data; deflatelevel)
+    write_netcdf(path, data, results)
 
     @debug "Wrote results."
     return model
@@ -826,8 +825,9 @@ end
 "Write a result table to disk as a NetCDF file"
 function write_netcdf(
         path::AbstractString,
-        data::NamedTuple;
-        deflatelevel::Int = 0,
+        data::NamedTuple,
+        results::Results = Results();
+        significant_bits::Int = results.significant_bits,
     )::Nothing
     mkpath(dirname(path))
     # Don't write empty files
@@ -843,13 +843,105 @@ function write_netcdf(
             if var_data isa FlatVector && length(var_dims) > 1
                 var_data = stack(var_data.v)
             end
-            attrib = CF[var_name]
-            defVar(ds, var_name, var_data, var_dims; attrib, deflatelevel)
+            write_netcdf_variable(ds, var_name, var_data, var_dims, results, significant_bits)
         end
     end
     return nothing
 end
 
+# From netcdf.h
+const NC_QUANTIZE_BITROUND = Cint(3)
+
+# Number of values in a chunk, 1 MiB of Float64
+const NC_CHUNK_LENGTH = 131072
+
+"""
+Chunk sizes for a variable with a location and a time dimension.
+
+The chunks are shaped such that reading all locations at one time, and reading one location
+at all times, read about the same amount of data. Other dimensions, like substance, get a
+chunk size of 1, since they are typically read one at a time.
+"""
+function nc_chunksizes(var_dims::Tuple, var_size::Tuple)::Union{Vector{Int}, Nothing}
+    i_time = findfirst(==("time"), var_dims)
+    i_location = findfirst(in(("node_id", "link_id", "subgrid_id")), var_dims)
+    (isnothing(i_time) || isnothing(i_location) || any(iszero, var_size)) && return nothing
+    ntime = var_size[i_time]
+    nlocation = var_size[i_location]
+    chunk_location = clamp(round(Int, sqrt(NC_CHUNK_LENGTH * nlocation / ntime)), 1, nlocation)
+    chunk_time = clamp(NC_CHUNK_LENGTH ÷ chunk_location, 1, ntime)
+    chunksizes = ones(Int, length(var_dims))
+    chunksizes[i_time] = chunk_time
+    chunksizes[i_location] = chunk_location
+    return chunksizes
+end
+
+"""
+Define a NetCDF variable and write its data.
+
+The quantization needs to be set between defining the variable and writing the data, so
+this splits up what `defVar(ds, var_name, var_data, var_dims)` does. If compression is on and
+`significant_bits` is positive, floating point data is quantized with BitRound, and shuffled
+before compression.
+"""
+function write_netcdf_variable(
+        ds::NCDataset,
+        var_name::String,
+        var_data::AbstractArray,
+        var_dims::Tuple,
+        results::Results,
+        significant_bits::Int,
+    )::Nothing
+    (; compression, compression_level) = results
+    for (i, dim_name) in enumerate(var_dims)
+        haskey(ds.dim, dim_name) || defDim(ds, dim_name, size(var_data, i))
+    end
+
+    attrib = OrderedDict{String, Any}(CF[var_name])
+    T = eltype(var_data)
+    nctype = nonmissingtype(T)
+    # don't quantize time, which is stored as a Float64
+    quantize = compression && nctype <: AbstractFloat && significant_bits > 0
+    if nctype <: DateTime
+        nctype = Float64
+        attrib["units"] = "days since 1900-01-01 00:00:00"
+    end
+    if Missing <: T
+        attrib["_FillValue"] = NCDatasets.fillvalue(nctype)
+    end
+
+    v = if compression
+        defVar(
+            ds,
+            var_name,
+            nctype,
+            var_dims;
+            attrib,
+            deflatelevel = compression_level,
+            shuffle = quantize,
+            chunksizes = nc_chunksizes(var_dims, size(var_data)),
+        )
+    else
+        defVar(ds, var_name, nctype, var_dims; attrib)
+    end
+    if quantize
+        # NCDatasets.quantize is on main, and will be in the release after v0.14.15
+        NCDatasets.check(
+            ccall(
+                (:nc_def_var_quantize, NCDatasets.libnetcdf),
+                Cint,
+                (Cint, Cint, Cint, Cint),
+                ds.ncid,
+                v.var.varid,
+                NC_QUANTIZE_BITROUND,
+                significant_bits,
+            ),
+        )
+    end
+
+    v[axes(var_data)...] = var_data
+    return nothing
+end
 
 function output_basin_profiles(
         all_levels::Vector{Vector{Float64}},

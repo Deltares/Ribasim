@@ -208,8 +208,9 @@ end
 end
 
 @option struct Results <: TableOption
-    compression::Bool = false
+    compression::Bool = true
     compression_level::Int = 1
+    significant_bits::Int = 20
     subgrid::Bool = false
 end
 

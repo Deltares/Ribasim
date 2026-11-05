@@ -199,6 +199,81 @@ end
     end
 end
 
+@testitem "netcdf compression" begin
+    using NCDatasets: NCDatasets, NCDataset
+    using Dates: DateTime, Day
+    using Ribasim: Results, write_netcdf, valid_results_config
+
+    time = DateTime(2020) .+ Day.(0:9)
+    node_id = Int32[1, 2, 3]
+    level = 100.0 .+ rand(3, 10)
+    data = (; time, node_id, level)
+    dir = mktempdir()
+
+    # uncompressed results are not quantized
+    path = joinpath(dir, "uncompressed", "basin.nc")
+    write_netcdf(path, data, Results(; compression = false))
+    NCDataset(path) do ds
+        @test ds["time"][:] == time
+        @test ds["level"][:, :] == level
+        @test NCDatasets.deflate(ds["level"].var) == (false, false, 0)
+        @test NCDatasets.chunking(ds["level"].var)[1] == :contiguous
+    end
+
+    # lossless compression
+    path = joinpath(dir, "lossless", "basin.nc")
+    write_netcdf(path, data, Results(; significant_bits = 0))
+    NCDataset(path) do ds
+        @test ds["time"][:] == time
+        @test ds["node_id"][:] == node_id
+        @test ds["level"][:, :] == level
+        @test NCDatasets.deflate(ds["level"].var) == (false, true, 1)
+        @test NCDatasets.chunking(ds["level"].var) == (:chunked, (3, 10))
+        @test !haskey(ds["level"].attrib, "_QuantizeBitRoundNumberOfSignificantBits")
+    end
+
+    # default, quantized with shuffle
+    path = joinpath(dir, "default", "basin.nc")
+    write_netcdf(path, data, Results())
+    NCDataset(path) do ds
+        @test ds["time"][:] == time
+        @test ds["node_id"][:] == node_id
+        @test ds["level"][:, :] != level
+        @test maximum(abs.(ds["level"][:, :] ./ level .- 1)) <= 2.0^-21
+        @test NCDatasets.deflate(ds["level"].var) == (true, true, 1)
+        @test ds["level"].attrib["_QuantizeBitRoundNumberOfSignificantBits"] == 20
+        @test !haskey(ds["time"].attrib, "_QuantizeBitRoundNumberOfSignificantBits")
+    end
+
+    # basin_state is written lossless
+    path = joinpath(dir, "state", "basin.nc")
+    write_netcdf(path, data, Results(); significant_bits = 0)
+    NCDataset(path) do ds
+        @test ds["level"][:, :] == level
+    end
+
+    @test valid_results_config(Results())
+    @test valid_results_config(Results(; significant_bits = 0))
+    @test !valid_results_config(Results(; significant_bits = 53))
+    @test !valid_results_config(Results(; compression_level = 10))
+end
+
+@testitem "netcdf chunking" begin
+    using Ribasim: nc_chunksizes
+
+    # LHM, balanced between reading all nodes at one time and one node at all times
+    @test nc_chunksizes(("node_id", "time"), (20249, 365)) == [2697, 48]
+    # small variables are a single chunk
+    @test nc_chunksizes(("link_id", "time"), (3, 10)) == [3, 10]
+    # long time series of few nodes
+    @test nc_chunksizes(("node_id", "time"), (2, 10^6)) == [1, 131072]
+    # other dimensions are read one at a time
+    @test nc_chunksizes(("node_id", "substance", "time"), (100, 3, 1000)) == [100, 1, 1000]
+    @test nc_chunksizes(("demand_priority", "node_id", "time"), (2, 5, 10)) == [1, 5, 10]
+    @test isnothing(nc_chunksizes(("time",), (10,)))
+    @test isnothing(nc_chunksizes(("node_id", "time"), (0, 10)))
+end
+
 @testitem "netcdf allocation results" begin
     using NCDatasets: NCDataset, dimnames
     using Ribasim: results_path, RESULTS_FILENAME

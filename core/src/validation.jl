@@ -347,6 +347,24 @@ function valid_config(config::Config)::Bool
         @error "The fixed allocation timestep dt must be positive." dt
     end
 
+    valid_results_config(config.results) || (errors = true)
+
+    return !errors
+end
+
+function valid_results_config(results::Results)::Bool
+    errors = false
+    (; compression_level, significant_bits) = results
+
+    if !(0 <= compression_level <= 9)
+        errors = true
+        @error "The results compression_level must be between 0 and 9." compression_level
+    end
+    if !(0 <= significant_bits <= 52)
+        errors = true
+        @error "The results significant_bits must be between 1 and 52, or 0 to disable quantization." significant_bits
+    end
+
     return !errors
 end
 
