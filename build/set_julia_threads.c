@@ -1,5 +1,8 @@
 #include <julia.h>
 #include <stdint.h>
+#ifndef _WIN32
+#include <signal.h>
+#endif
 
 #ifdef _WIN32
 #define RIBASIM_DLLEXPORT __declspec(dllexport)
@@ -41,5 +44,14 @@ RIBASIM_DLLEXPORT int ribasim_enable_julia_signal_handlers(void)
         return 1;
     }
     jl_options.handle_signals = JL_OPTIONS_HANDLE_SIGNALS_ON;
+#ifndef _WIN32
+    // The Rust runtime gives the main thread a signal stack of a few KiB. Remove it so Julia
+    // creates its own, otherwise it uses that one and crashes on the backtrace of Ctrl-C.
+    stack_t signal_stack = {.ss_flags = SS_DISABLE};
+    if (sigaltstack(&signal_stack, NULL) != 0)
+    {
+        return 2;
+    }
+#endif
     return 0;
 }
