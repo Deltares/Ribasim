@@ -160,9 +160,6 @@ function simplify_graph!(
     internal_flow_link_ids = [flow_link.id for flow_link in internal_flow_links]
     I, J = internal_flow_link_ids, copy(internal_flow_link_ids)
     V = ones(Int8, length(I))
-
-    # Map internal (simplified) link IDs to external (with junctions) link IDs
-    link_mapping = OrderedDict{Int32, Vector{Int32}}()
     errors = false
 
     junction_ids = get_node_ids(db, NodeType.Junction)
@@ -170,29 +167,24 @@ function simplify_graph!(
     # Per Junction the external flow links that define its flow rate
     junction_flow_link_ids = [Int32[] for _ in junction_ids]
 
-    # Connect the neighbors of a group of Junctions with one Basin to that Basin
-    junction_ids_to_basin = Set{NodeID}()
+    # Replace each group of Junctions by links between its neighbors
     for group in junction_groups(graph, junction_ids)
         basin_ids = junction_group_basins(graph, group)
-        is_valid = valid_junction_group(graph, group, basin_ids)
-        errors |= !is_valid
-        length(basin_ids) == 1 || continue
-        union!(junction_ids_to_basin, group)
-        is_valid || continue
-        basin_id = only(basin_ids)
-        routes, paths = junction_group_routes(graph, group, basin_id)
-
-        # The flow rate of a Junction is the flow on the link that leads to the Basin
-        for junction_id in group
-            push!(junction_flow_link_ids[junction_id.idx], first(last(paths[junction_id])))
+        if !valid_junction_group(graph, group, basin_ids)
+            errors = true
+            continue
+        end
+        links, flow_link_ids = junction_group_links(graph, group, basin_ids)
+        for (junction_id, link_ids) in flow_link_ids
+            append!(junction_flow_link_ids[junction_id.idx], link_ids)
         end
 
-        for (link, route) in routes
+        for (link, route) in links
             id_src, id_dst = link
             link_metadata = LinkMetadata(; id = new_link_id, type = LinkType.flow, link)
             if haskey(graph, id_src, id_dst)
                 errors = true
-                @error "Duplicate link: a node reaches the Basin through multiple links of a Junction group." id_src id_dst external_link_ids = first.(route)
+                @error "Duplicate link: a Junction group connects these nodes through multiple links." id_src id_dst external_link_ids = first.(route)
             elseif haskey(graph, id_dst, id_src) &&
                     (NodeType.UserDemand ∉ (id_src.type, id_dst.type))
                 errors = true
@@ -210,56 +202,8 @@ function simplify_graph!(
         end
     end
 
-    # The flow rate of the other Junctions is the sum of the flows on their incoming links
-    for flow_link in external_flow_links
-        id_dst = flow_link.link[2]
-        if id_dst.type == NodeType.Junction && id_dst ∉ junction_ids_to_basin
-            push!(junction_flow_link_ids[id_dst.idx], flow_link.id)
-        end
-    end
-
-    # Remove the other junctions by iteratively simplifying from IN--J--OUT to IN--OUT
+    # Will also remove the links of the Junctions
     for junction_id in junction_ids
-        if junction_id in junction_ids_to_basin
-            rem_vertex!(graph, code_for(graph, junction_id))
-            continue
-        end
-        for in_neighbor in collect(inneighbor_labels(graph, junction_id)),
-                out_neighbor in collect(outneighbor_labels(graph, junction_id))
-
-            link_id = graph[in_neighbor, junction_id].id
-            external_link_ids = copy(get(link_mapping, link_id, [link_id]))
-
-            link_id = graph[junction_id, out_neighbor].id
-            append!(external_link_ids, get(link_mapping, link_id, [link_id]))
-
-            link_metadata = LinkMetadata(;
-                id = new_link_id,
-                type = LinkType.flow,
-                link = (in_neighbor, out_neighbor),
-            )
-
-            # Create new flow link when no Junctions remain
-            if in_neighbor.type != NodeType.Junction &&
-                    out_neighbor.type != NodeType.Junction
-                for external_link_id in external_link_ids
-                    push!(I, external_link_id)
-                    push!(J, new_link_id)
-                    push!(V, Int8(1))
-                end
-                push!(internal_flow_links, link_metadata)
-            end
-
-            link_mapping[new_link_id] = external_link_ids
-            new_link_id += 1
-            if haskey(graph, in_neighbor, out_neighbor)
-                errors = true
-                @error "Duplicate link: Junction links form cycle." in_neighbor out_neighbor external_link_ids
-            else
-                graph[in_neighbor, out_neighbor] = link_metadata
-            end
-        end
-        # Will also remove the edges
         rem_vertex!(graph, code_for(graph, junction_id))
     end
 
@@ -353,54 +297,99 @@ function junction_group_basins(graph::MetaGraph, group::Vector{NodeID})::Vector{
 end
 
 """
-For a tree of Junctions with one Basin, get the links that connect the other neighbors of
-the group to the Basin. Each comes with its route: the external flow links that it flows through,
-with 1 if the flow is in the direction of the external link and -1 if it is against it.
-Also returns per node the links from the Basin to that node, with 1 if the link points away
-from the Basin, so that the last link of a Junction is the one that leads to the Basin.
+For a tree of Junctions, get per node the links from `root` to that node, with 1 if the link
+points away from `root` and -1 otherwise.
 """
-function junction_group_routes(
+function tree_paths(
         graph::MetaGraph,
-        group::Vector{NodeID},
-        basin_id::NodeID,
-    )::Tuple{
-        Vector{Tuple{Tuple{NodeID, NodeID}, Vector{Tuple{Int32, Int8}}}},
-        Dict{NodeID, Vector{Tuple{Int32, Int8}}},
-    }
-    routes = Tuple{Tuple{NodeID, NodeID}, Vector{Tuple{Int32, Int8}}}[]
-    group_set = Set(group)
-    paths = Dict{NodeID, Vector{Tuple{Int32, Int8}}}(basin_id => Tuple{Int32, Int8}[])
-    stack = [basin_id]
+        group_set::Set{NodeID},
+        root::NodeID,
+    )::Dict{NodeID, Vector{Tuple{Int32, Int8}}}
+    paths = Dict{NodeID, Vector{Tuple{Int32, Int8}}}(root => Tuple{Int32, Int8}[])
+    stack = [root]
     while !isempty(stack)
         id = pop!(stack)
-        path = paths[id]
         for neighbor in outflow_ids(graph, id)
-            link_id = graph[id, neighbor].id
-            if neighbor in group_set
-                if !haskey(paths, neighbor)
-                    paths[neighbor] = push!(copy(path), (link_id, Int8(1)))
-                    push!(stack, neighbor)
-                end
-            elseif id != basin_id && neighbor != basin_id
-                # A link out of the group is a link out of the Basin, along the path
-                push!(routes, ((basin_id, neighbor), push!(copy(path), (link_id, Int8(1)))))
+            if neighbor in group_set && !haskey(paths, neighbor)
+                paths[neighbor] = push!(copy(paths[id]), (graph[id, neighbor].id, Int8(1)))
+                push!(stack, neighbor)
             end
         end
         for neighbor in inflow_ids(graph, id)
-            link_id = graph[neighbor, id].id
-            if neighbor in group_set
-                if !haskey(paths, neighbor)
-                    paths[neighbor] = push!(copy(path), (link_id, Int8(-1)))
-                    push!(stack, neighbor)
-                end
-            elseif id != basin_id && neighbor != basin_id
-                # A link into the group is a link into the Basin, against the path
-                route = [(path_link_id, -sign) for (path_link_id, sign) in path]
-                push!(routes, ((neighbor, basin_id), push!(route, (link_id, Int8(1)))))
+            if neighbor in group_set && !haskey(paths, neighbor)
+                paths[neighbor] = push!(copy(paths[id]), (graph[neighbor, id].id, Int8(-1)))
+                push!(stack, neighbor)
             end
         end
     end
-    return routes, paths
+    return paths
+end
+
+"""
+Get the links that replace a tree of Junctions, each with its route through the tree: the
+external flow links it flows through, with 1 if in the direction of the link and -1 if against it.
+
+With exactly one Basin as a neighbor, each other neighbor connects to that Basin in the
+direction of its own link with the group. Otherwise each upstream neighbor connects to each
+downstream neighbor that the links of the group lead to.
+
+Also returns per Junction the external flow links that define its flow rate: the link that
+leads to the Basin, or else the incoming links.
+"""
+function junction_group_links(
+        graph::MetaGraph,
+        group::Vector{NodeID},
+        basin_ids::Vector{NodeID},
+    )::Tuple{
+        Vector{Tuple{Tuple{NodeID, NodeID}, Vector{Tuple{Int32, Int8}}}},
+        Vector{Pair{NodeID, Vector{Int32}}},
+    }
+    group_set = Set(group)
+    tree_set = length(basin_ids) == 1 ? union(group_set, basin_ids) : group_set
+
+    # The links between the tree and the other neighbors: (neighbor, Junction, link ID)
+    inflows = Tuple{NodeID, NodeID, Int32}[]
+    outflows = Tuple{NodeID, NodeID, Int32}[]
+    for junction_id in group
+        for neighbor in inflow_ids(graph, junction_id)
+            neighbor in tree_set ||
+                push!(inflows, (neighbor, junction_id, graph[neighbor, junction_id].id))
+        end
+        for neighbor in outflow_ids(graph, junction_id)
+            neighbor in tree_set ||
+                push!(outflows, (neighbor, junction_id, graph[junction_id, neighbor].id))
+        end
+    end
+
+    links = Tuple{Tuple{NodeID, NodeID}, Vector{Tuple{Int32, Int8}}}[]
+    if length(basin_ids) == 1
+        basin_id = only(basin_ids)
+        paths = tree_paths(graph, tree_set, basin_id)
+        for (neighbor, junction_id, link_id) in inflows
+            # Into the Basin, so against the path from the Basin
+            route = [(path_link_id, -sign) for (path_link_id, sign) in paths[junction_id]]
+            push!(links, ((neighbor, basin_id), push!(route, (link_id, Int8(1)))))
+        end
+        for (neighbor, junction_id, link_id) in outflows
+            route = push!(copy(paths[junction_id]), (link_id, Int8(1)))
+            push!(links, ((basin_id, neighbor), route))
+        end
+        flow_link_ids = [id => [first(last(paths[id]))] for id in group]
+    else
+        for (from_id, from_junction_id, from_link_id) in inflows
+            paths = tree_paths(graph, tree_set, from_junction_id)
+            for (to_id, to_junction_id, to_link_id) in outflows
+                path = paths[to_junction_id]
+                # Only along the direction of the links
+                all(sign == 1 for (_, sign) in path) || continue
+                route = Tuple{Int32, Int8}[(from_link_id, Int8(1))]
+                append!(route, path)
+                push!(links, ((from_id, to_id), push!(route, (to_link_id, Int8(1)))))
+            end
+        end
+        flow_link_ids = [id => [graph[n, id].id for n in inflow_ids(graph, id)] for id in group]
+    end
+    return links, flow_link_ids
 end
 
 abstract type AbstractNeighbors end

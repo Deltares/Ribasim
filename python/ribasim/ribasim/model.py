@@ -634,9 +634,9 @@ class Model(FileModel, ParentModel):
     ) -> None:
         """Validate the connected groups of Junctions, ignoring the direction of the links.
 
-        A group with exactly one Basin as a neighbor connects each other neighbor to that Basin.
-        It must form a tree with that Basin, its Junctions need at least two links,
-        and the links to the Basin may not exist yet.
+        The Junctions must form a tree, together with the Basin if the group has exactly one
+        Basin as a neighbor. Such a group connects each other neighbor to that Basin, so its
+        Junctions need at least two links, and the links to the Basin may not exist yet.
         The Junctions of other groups connect their upstream with their downstream nodes,
         so they need at least one of both.
         """
@@ -685,26 +685,35 @@ class Model(FileModel, ParentModel):
                 for node_id in link
                 if node_types[node_id] == "Basin"
             }
-            if len(basin_ids) != 1:
+            has_one_basin = len(basin_ids) == 1
+            if has_one_basin:
+                errors.extend(
+                    f"Junction #{node_id} must have at least 2 flow links."
+                    for node_id in sorted(group)
+                    if n_in[node_id] + n_out[node_id] < 2
+                )
+            else:
                 errors.extend(
                     f"Junction #{node_id} must have at least 1 flow inneighbor and 1 flow outneighbor, since its Junction group does not have exactly one Basin as a neighbor."
                     for node_id in sorted(group)
                     if n_in[node_id] < 1 or n_out[node_id] < 1
                 )
+
+            tree_ids = group | basin_ids if has_one_basin else group
+            n_tree_links = sum(
+                from_id in tree_ids and to_id in tree_ids
+                for from_id, to_id in group_links
+            )
+            if n_tree_links != len(tree_ids) - 1:
+                errors.append(
+                    f"The links of the Junction group {sorted(group)} must form a tree, without cycles."
+                )
+            if not has_one_basin:
                 continue
 
-            errors.extend(
-                f"Junction #{node_id} must have at least 2 flow links."
-                for node_id in sorted(group)
-                if n_in[node_id] + n_out[node_id] < 2
-            )
-
             basin_id = next(iter(basin_ids))
-            tree_ids = group | basin_ids
-            n_tree_links = 0
             for from_id, to_id in sorted(group_links):
                 if from_id in tree_ids and to_id in tree_ids:
-                    n_tree_links += 1
                     continue
                 link = (from_id, basin_id) if to_id in group else (basin_id, to_id)
                 if link in existing_links:
@@ -719,11 +728,6 @@ class Model(FileModel, ParentModel):
                         f"Junction group connects nodes #{link[0]} and #{link[1]} in both directions, which is only allowed for UserDemand."
                     )
                 existing_links.add(link)
-
-            if n_tree_links != len(group):
-                errors.append(
-                    f"The links of the Junction group with Basin #{basin_id} must form a tree, without cycles: {sorted(group)}."
-                )
 
         if errors:
             raise ValueError("\n".join(errors))
