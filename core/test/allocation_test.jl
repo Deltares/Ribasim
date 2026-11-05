@@ -598,6 +598,28 @@ end
     @test isfinite(last(pump_table.supplied))
 end
 
+@testitem "Allocation solves from scratch" begin
+    import BasicModelInterface as BMI
+    import JuMP
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/two_basin_user_demand/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    BMI.update(model)
+
+    (; problem) = only(model.integrator.p.p_independent.allocation.allocation_models)
+    # Start values would make HiGHS construct a basis, and then it skips presolve
+    @test all(isnothing, JuMP.start_value.(JuMP.all_variables(problem)))
+
+    objective_value = JuMP.objective_value(problem)
+    Ribasim.optimize_cold!(problem)
+    @test JuMP.termination_status(problem) == JuMP.OPTIMAL
+    @test JuMP.objective_value(problem) ≈ objective_value
+end
+
 @testitem "allocation record averaging" begin
     using Ribasim: DemandRecordDatum, FlowRecordDatum, AllocationControlRecordDatum,
         average_records!, record_key
