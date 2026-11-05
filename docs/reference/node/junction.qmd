@@ -7,6 +7,16 @@ A Junction node allows explicitly representing confluences and bifurcations in t
 Junctions can connect to other Junctions, but are not allowed to form cycles. Note that a confluence Junction followed by bifurcation Junction is generally invalid, as it will connect a connector node with multiple basins.
 
 
+# Allowed connectivity
+
+```{python}
+# | code-fold: true
+%run ../../../utils/plot_node_connectivity.py
+fig = plot_node_connectivity("Junction")
+plt.show()
+plt.close(fig)
+```
+
 # Tables
 
 No tables are required for Junction nodes.

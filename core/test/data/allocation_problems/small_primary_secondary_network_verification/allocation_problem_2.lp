@@ -1,11 +1,11 @@
 minimize
 obj: 40 flow_(Outlet_#4,_Basin_#5)_
 subject to
-c1: 1 level_demand_error_Basin_#5,1,lower,first_ + 1 level_demand_error_Basin_#5,1,upper,first_ <= 0
-c2: 1 level_demand_error_Basin_#5,1,lower,second_ + 1 level_demand_error_Basin_#5,1,upper,second_ <= 0
-c3: 0.5 user_demand_error_UserDemand_#3,2,first_ + 0.5 user_demand_error_UserDemand_#6,2,first_ <= 0
-c4: 1 user_demand_error_UserDemand_#3,2,second_ + 1 user_demand_error_UserDemand_#6,2,second_ <= 0
-c5: -1 low_storage_factor_Basin_#2_ - 1 low_storage_factor_Basin_#5_ <= -2
+c1: -1 low_storage_factor_Basin_#2_ - 1 low_storage_factor_Basin_#5_ <= -2
+c2: 1 level_demand_error_Basin_#5,1,lower,first_ + 1 level_demand_error_Basin_#5,1,upper,first_ <= 0
+c3: 1 level_demand_error_Basin_#5,1,lower,second_ + 1 level_demand_error_Basin_#5,1,upper,second_ <= 0
+c4: 0.5 user_demand_error_UserDemand_#3,2,first_ + 0.5 user_demand_error_UserDemand_#6,2,first_ <= 0
+c5: 1 user_demand_error_UserDemand_#3,2,second_ + 1 user_demand_error_UserDemand_#6,2,second_ <= 0
 user_demand_relative_error_constraint_UserDemand_#3,2_: 1 user_demand_allocated_UserDemand_#3,2_ + 0.17704918032786887 user_demand_error_UserDemand_#3,2,first_ >= 0.17704918032786887
 user_demand_relative_error_constraint_UserDemand_#6,2_: 1 user_demand_allocated_UserDemand_#6,2_ + 0.17704918032786887 user_demand_error_UserDemand_#6,2,first_ >= 0.17704918032786887
 storage_constraint_lower_Basin_#5,1_: 1 basin_storage_change_Basin_#5_ + 1 level_demand_error_Basin_#5,1,lower,first_ >= -0.36065573770491804
