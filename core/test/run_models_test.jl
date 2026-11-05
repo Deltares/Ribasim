@@ -413,7 +413,7 @@ end
     (; level) = level_boundary
     level = level[1]
 
-    t = model.saved.flow.t
+    t = Ribasim.tsaves(model)[2:end]
     flow = DataFrame(Ribasim.flow_data(model))
     outlet_flow =
         filter([:from_node_id, :to_node_id] => (from, to) -> from == 2 && to == 3, flow)

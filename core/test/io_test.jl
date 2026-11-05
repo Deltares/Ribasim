@@ -274,6 +274,44 @@ end
     @test isnothing(nc_chunksizes(("node_id", "time"), (0, 10)))
 end
 
+@testitem "subgrid level results" begin
+    using NCDatasets: NCDataset
+    using Ribasim: results_path, RESULTS_FILENAME
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/two_basin/ribasim.toml")
+    @test ispath(toml_path)
+    results_dir = mktempdir()
+    path = joinpath(results_dir, RESULTS_FILENAME.subgrid_level)
+
+    # They don't depend on whether concentrations are on
+    for experimental_concentration in (true, false)
+        config = Ribasim.Config(toml_path; results_dir, experimental_concentration)
+        @test config.results.subgrid
+        Ribasim.run(config)
+        NCDataset(path) do ds
+            @test !any(isnan, ds["subgrid_level"][:, :])
+        end
+        rm(path)
+    end
+
+    # Only written if asked for
+    config = Ribasim.Config(toml_path; results_dir, results_subgrid = false)
+    Ribasim.run(config)
+    @test !isfile(path)
+end
+
+@testitem "state at the start with saveat = Inf" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
+    @test ispath(toml_path)
+    level_start = Ribasim.Model(toml_path).saved.level_prev
+    model = Ribasim.Model(Ribasim.Config(toml_path; solver_saveat = Inf))
+    Ribasim.solve!(model)
+    data = Ribasim.basin_data(model; table = false)
+    @test size(data.level) == (length(level_start), 1)
+    @test data.level[:, 1] == level_start
+    @test Ribasim.tsaves(model) == [0.0, model.integrator.t]
+end
+
 @testitem "netcdf allocation results" begin
     using NCDatasets: NCDataset, dimnames
     using Ribasim: results_path, RESULTS_FILENAME
@@ -316,6 +354,13 @@ end
         @test size(ds["upper_bound_hit"]) == (nlink, ntime)
         @test dimnames(ds["flow_rate"]) == ("link_id", "time")
         @test dimnames(ds["from_node_id"]) == ("link_id",)
+
+        # Each Basin has a vertical flow, which has no link_id of its own
+        is_vertical = ds["from_node_id"][:] .== ds["to_node_id"][:]
+        @test count(is_vertical) == 6
+        @test allunique(ds["from_node_id"][is_vertical])
+        @test all(==(0), ds["link_id"][is_vertical])
+        @test all(==("Basin"), ds["from_node_type"][is_vertical])
     end
 
     # Test allocation_control NetCDF output

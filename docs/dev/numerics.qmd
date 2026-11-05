@@ -184,12 +184,10 @@ Ribasim uses SciML's [callback mechanism](https://docs.sciml.ai/DiffEqDocs/stabl
 | Callback | Type | Purpose |
 |----------|------|---------|
 | Negative storage check | `FunctionCallingCallback` | Detects and handles negative basin storage at every accepted step |
-| Basin state saving | `SavingCallback` | Records basin storage/level at output times |
 | Cumulative flow update | `FunctionCallingCallback` | Tracks cumulative flows for mass balance |
 | Basin forcing update | `PresetTimeCallback` | Injects new forcing data at prescribed times |
-| Flow saving | `SavingCallback` | Records averaged flows at output times |
+| Result saving | `SavingCallback` | Records all results over time at output times |
 | Discrete control | `FunctionCallingCallback` | Evaluates and applies discrete control rules |
 | Tolerance decrease | `FunctionCallingCallback` | Compensates for growing cumulative state magnitudes (see [numerical considerations](/concept/numerics.qmd#compensating-for-cumulative-flows)) |
-| Subgrid interpolation | `SavingCallback` | Interpolates subgrid levels for output |
 
 `PresetTimeCallback` fires at specific times (e.g. when forcing data changes). `FunctionCallingCallback` fires at every accepted solver step. `SavingCallback` fires at the `saveat` interval and stores results for later output.
