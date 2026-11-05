@@ -3,3 +3,6 @@ wflow_toml = "models/wflow_piave/wflow_sbm.toml"
 ribasim_toml = "models/ribasim_piave/ribasim.toml"
 mapping = "coupling.gpkg"
 diagnostics = "coupling_diagnostics.csv"
+# Supply the Wflow irrigation demand from the Ribasim UserDemand nodes in the mapping.
+# If false, Wflow irrigation is not supplied and Ribasim UserDemands use their own input.
+coupled_irrigation = true
