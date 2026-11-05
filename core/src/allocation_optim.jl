@@ -350,7 +350,7 @@ function set_simulation_data!(
     for node_id in only(capacity_constraint.axes)
         inflow_id = tabulated_rating_curve.inflow_link[node_id.idx].link[1]
         h_a = get_level(NaN, p, inflow_id, t_level)
-        qh = interpolations[current_interpolation_index[node_id.idx]]
+        qh = interpolations[current_interpolation_index[node_id.idx](t_level)]
         constraint = capacity_constraint[node_id]
         JuMP.set_normalized_rhs(constraint, qh(h_a) / scaling.flow)
         if inflow_id.type == NodeType.Basin
