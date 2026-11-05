@@ -31,7 +31,7 @@ include("../../../utils/gen_docs_table.jl")
 table_from_schema(
     Ribasim.Schema.ContinuousControl.Variable;
     restrictions = Dict(
-        :listen_node_id => "cannot be a Junction",
+        :listen_node_id => "a Junction only with variable \"flow_rate\"",
         :variable => "must be \"level\" or \"flow_rate\"",
         :look_ahead => "only on transient boundary conditions, non-negative",
     ),

@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Warn on rapidly oscillating DiscreteControl states with the configurable `solver.min_discrete_control_interval`. [#3237](https://github.com/Deltares/Ribasim/pull/3237)
 - Report rejected timesteps by cause and the mean solver order in `results/solver_stats.nc`. [#3269](https://github.com/Deltares/Ribasim/pull/3269)
 - Evaluate DiscreteControl only at a fixed interval with `solver.discrete_control_interval`, which can make models with many DiscreteControl nodes much faster.
+- Junction: control nodes can listen to the `flow_rate` of a Junction. [#3385](https://github.com/Deltares/Ribasim/pull/3385)
 - Junction: a connected group of Junctions with exactly one Basin as a neighbor can connect that Basin in both directions, so inflows and outflows along the same waterway can share one Junction tree. In QGIS, the fractional flow plot follows the water to and from that Basin, and stacks positive and negative tracer flows separately. [#3385](https://github.com/Deltares/Ribasim/pull/3385)
 
 ### Changed

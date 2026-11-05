@@ -85,6 +85,7 @@ from ribasim_testmodels.junction import (
     junction_bidirectional,
     junction_chained,
     junction_combined,
+    junction_control,
 )
 from ribasim_testmodels.observation import observation_model
 from ribasim_testmodels.pid_control import (
@@ -142,6 +143,7 @@ __all__ = [
     "junction_bidirectional",
     "junction_chained",
     "junction_combined",
+    "junction_control",
     "leaky_bucket_model",
     "level_boundary_condition_model",
     "level_demand_model",

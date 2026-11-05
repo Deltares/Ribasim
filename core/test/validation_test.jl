@@ -200,6 +200,13 @@ end
     @test haskey(graph, Ribasim.NodeID(:Basin, 1, 1), Ribasim.NodeID(:Pump, 4, 1))
     @test haskey(graph, Ribasim.NodeID(:Basin, 1, 1), Ribasim.NodeID(:Outlet, 5, 1))
 
+    # Without exactly one Basin the flow rate of a Junction is the sum of its incoming links
+    graph = create_graph(nodes, [(1, 2), (7, 2), (2, 4)])
+    @test Set(
+        ((Int(a.value), Int(b.value)), sign) for
+            ((a, b), sign) in only(graph.graph_data.junction_flows)
+    ) == Set([((1, 4), 1), ((7, 4), 1)])
+
     # A Terminal does not take the place of the Basin, nor connects to it
     graph = create_graph(nodes, [(1, 2), (2, 8)])
     logger = TestLogger()

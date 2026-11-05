@@ -1,12 +1,15 @@
 from datetime import datetime
 
 from ribasim import Model
-from ribasim.config import Allocation, Experimental
+from ribasim.config import Allocation, Experimental, Interpolation
 from ribasim.geometry.node import Node
 from ribasim.nodes import (
     basin,
+    continuous_control,
+    discrete_control,
     flow_boundary,
     linear_resistance,
+    outlet,
     pump,
     user_demand,
 )
@@ -236,5 +239,86 @@ def junction_bidirectional() -> Model:
     model.link.add(model.user_demand[9], model.junction[3])
     model.link.add(model.linear_resistance[10], model.junction[3])
     model.link.add(model.basin[11], model.linear_resistance[10])
+
+    return model
+
+
+def junction_control() -> Model:
+    """Testmodel with control nodes that listen to the flow rate of Junctions.
+
+    The flow rate of a Junction is the flow on its link that leads to Basin 1:
+
+    - Junction 3: FlowBoundary 4 minus Pump 5
+    - Junction 2: the flow rate of Junction 3 plus FlowBoundary 7
+
+    DiscreteControl 9 switches on Pump 8 if the flow rate of Junction 3 gets high.
+    ContinuousControl 11 sets Outlet 10 to half of the flow rate of Junction 2.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 2, 1),
+        crs="EPSG:28992",
+        interpolation=Interpolation(flow_boundary="linear"),
+    )
+
+    model.basin.add(
+        Node(1, Point(0.0, 0.0)),
+        [
+            basin.Profile(area=[100_000.0, 100_000.0], level=[0.0, 10.0]),
+            basin.State(level=[5.0]),
+        ],
+    )
+
+    model.junction.add(Node(2, Point(1.0, 0.0)))
+    model.junction.add(Node(3, Point(2.0, 0.0)))
+
+    model.flow_boundary.add(
+        Node(4, Point(2.0, 1.0)),
+        [flow_boundary.Time(time=["2020-01-01", "2020-02-01"], flow_rate=[0.0, 2e-3])],
+    )
+    model.pump.add(Node(5, Point(2.0, -1.0)), [pump.Static(flow_rate=[5e-4])])
+    model.terminal.add(Node(6, Point(1.0, -2.0)))
+    model.flow_boundary.add(
+        Node(7, Point(1.0, 1.0)), [flow_boundary.Static(flow_rate=[1e-3])]
+    )
+    model.pump.add(
+        Node(8, Point(0.0, -1.0)),
+        [pump.Static(flow_rate=[0.0, 1e-4], control_state=["off", "on"])],
+    )
+    model.discrete_control.add(
+        Node(9, Point(-1.0, 0.0)),
+        [
+            discrete_control.Variable(
+                listen_node_id=[3], variable="flow_rate", compound_variable_id=1
+            ),
+            discrete_control.Condition(
+                threshold_high=[5e-4], compound_variable_id=1, condition_id=1
+            ),
+            discrete_control.Logic(truth_state=["T", "F"], control_state=["on", "off"]),
+        ],
+    )
+    model.outlet.add(Node(10, Point(0.5, -1.0)), [outlet.Static(flow_rate=[1.0])])
+    model.continuous_control.add(
+        Node(11, Point(0.5, -2.0)),
+        [
+            continuous_control.Variable(listen_node_id=[2], variable="flow_rate"),
+            continuous_control.Function(
+                input=[0.0, 1.0], output=[0.0, 0.5], controlled_variable="flow_rate"
+            ),
+        ],
+    )
+
+    model.link.add(model.junction[2], model.basin[1])
+    model.link.add(model.junction[3], model.junction[2])
+    model.link.add(model.flow_boundary[4], model.junction[3])
+    model.link.add(model.junction[3], model.pump[5])
+    model.link.add(model.pump[5], model.terminal[6])
+    model.link.add(model.flow_boundary[7], model.junction[2])
+    model.link.add(model.basin[1], model.pump[8])
+    model.link.add(model.pump[8], model.terminal[6])
+    model.link.add(model.basin[1], model.outlet[10])
+    model.link.add(model.outlet[10], model.terminal[6])
+    model.link.add(model.discrete_control[9], model.pump[8])
+    model.link.add(model.continuous_control[11], model.outlet[10])
 
     return model

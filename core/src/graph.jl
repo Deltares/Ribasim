@@ -113,7 +113,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
     end
 
     # Remove junctions and create new (internal) flow links
-    flow_link_map, internal_flow_links, jerrors =
+    flow_link_map, internal_flow_links, junction_flows, jerrors =
         simplify_graph!(graph, db, external_flow_links, max_link_id + 1)
     errors |= jerrors
 
@@ -131,6 +131,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         internal_flow_links,
         external_flow_links,
         flow_link_map,
+        junction_flows,
         flow_link_lookup = Dict{Tuple{NodeID, NodeID}, Int}(
             link_meta.link => i for (i, link_meta) in enumerate(internal_flow_links)
         ),
@@ -166,6 +167,9 @@ function simplify_graph!(
 
     junction_ids = get_node_ids(db, NodeType.Junction)
 
+    # Per Junction the external flow links that define its flow rate
+    junction_flow_link_ids = [Int32[] for _ in junction_ids]
+
     # Connect the neighbors of a group of Junctions with one Basin to that Basin
     junction_ids_to_basin = Set{NodeID}()
     for group in junction_groups(graph, junction_ids)
@@ -176,8 +180,14 @@ function simplify_graph!(
         union!(junction_ids_to_basin, group)
         is_valid || continue
         basin_id = only(basin_ids)
+        routes, paths = junction_group_routes(graph, group, basin_id)
 
-        for (link, route) in junction_group_routes(graph, group, basin_id)
+        # The flow rate of a Junction is the flow on the link that leads to the Basin
+        for junction_id in group
+            push!(junction_flow_link_ids[junction_id.idx], first(last(paths[junction_id])))
+        end
+
+        for (link, route) in routes
             id_src, id_dst = link
             link_metadata = LinkMetadata(; id = new_link_id, type = LinkType.flow, link)
             if haskey(graph, id_src, id_dst)
@@ -197,6 +207,14 @@ function simplify_graph!(
                 push!(V, sign)
             end
             new_link_id += 1
+        end
+    end
+
+    # The flow rate of the other Junctions is the sum of the flows on their incoming links
+    for flow_link in external_flow_links
+        id_dst = flow_link.link[2]
+        if id_dst.type == NodeType.Junction && id_dst ∉ junction_ids_to_basin
+            push!(junction_flow_link_ids[id_dst.idx], flow_link.id)
         end
     end
 
@@ -252,7 +270,38 @@ function simplify_graph!(
     J = findfirst.(isequal.(J), Ref(internal_flow_link_ids))
     flow_link_map = sparse(I, J, V, length(external_flow_links), length(internal_flow_links))
 
-    return flow_link_map, internal_flow_links, errors
+    junction_flows = get_junction_flows(
+        flow_link_map,
+        junction_flow_link_ids,
+        external_flow_link_ids,
+        internal_flow_links,
+    )
+
+    return flow_link_map, internal_flow_links, junction_flows, errors
+end
+
+"""
+Per Junction, get the internal flow links that make up its flow rate, with their sign,
+from the external flow links that define its flow rate.
+"""
+function get_junction_flows(
+        flow_link_map::SparseMatrixCSC{Int8, Int},
+        junction_flow_link_ids::Vector{Vector{Int32}},
+        external_flow_link_ids::Vector{Int32},
+        internal_flow_links::Vector{LinkMetadata},
+    )::Vector{Vector{Tuple{Tuple{NodeID, NodeID}, Int8}}}
+    external_index = Dict(link_id => i for (i, link_id) in enumerate(external_flow_link_ids))
+    # The columns of the transpose hold the internal flow links per external flow link
+    internal_per_external = permutedims(flow_link_map)
+    rows = rowvals(internal_per_external)
+    signs = nonzeros(internal_per_external)
+    junction_flows = [Tuple{Tuple{NodeID, NodeID}, Int8}[] for _ in junction_flow_link_ids]
+    for (flows, link_ids) in zip(junction_flows, junction_flow_link_ids), link_id in link_ids
+        for nz_idx in nzrange(internal_per_external, external_index[link_id])
+            push!(flows, (internal_flow_links[rows[nz_idx]].link, signs[nz_idx]))
+        end
+    end
+    return junction_flows
 end
 
 """
@@ -307,15 +356,19 @@ end
 For a tree of Junctions with one Basin, get the links that connect the other neighbors of
 the group to the Basin. Each comes with its route: the external flow links that it flows through,
 with 1 if the flow is in the direction of the external link and -1 if it is against it.
+Also returns per node the links from the Basin to that node, with 1 if the link points away
+from the Basin, so that the last link of a Junction is the one that leads to the Basin.
 """
 function junction_group_routes(
         graph::MetaGraph,
         group::Vector{NodeID},
         basin_id::NodeID,
-    )::Vector{Tuple{Tuple{NodeID, NodeID}, Vector{Tuple{Int32, Int8}}}}
+    )::Tuple{
+        Vector{Tuple{Tuple{NodeID, NodeID}, Vector{Tuple{Int32, Int8}}}},
+        Dict{NodeID, Vector{Tuple{Int32, Int8}}},
+    }
     routes = Tuple{Tuple{NodeID, NodeID}, Vector{Tuple{Int32, Int8}}}[]
     group_set = Set(group)
-    # Per node, the links from the Basin to that node, with 1 if the link points away from the Basin
     paths = Dict{NodeID, Vector{Tuple{Int32, Int8}}}(basin_id => Tuple{Int32, Int8}[])
     stack = [basin_id]
     while !isempty(stack)
@@ -347,7 +400,7 @@ function junction_group_routes(
             end
         end
     end
-    return routes
+    return routes, paths
 end
 
 abstract type AbstractNeighbors end
@@ -482,7 +535,7 @@ function inflow_id(graph::MetaGraph, id::NodeID)::NodeID
 end
 
 function get_flow(
-        flow::FlowCVector,
+        flow::AbstractVector,
         link::Tuple{NodeID, NodeID},
         p::Parameters;
         boundary_flow::Union{Nothing, Vector{Float64}} = nothing,
@@ -529,6 +582,19 @@ function get_flow(
 
     error("Couldn't obtain flow for link $link.")
     return 0.0
+end
+
+"""
+Get the flow rate of a Junction. In a group of Junctions with one Basin this is the flow on
+the link that leads to that Basin, otherwise the sum of the flows on its incoming links.
+"""
+function get_junction_flow(flow::AbstractVector, junction_id::NodeID, p::Parameters, t::Number)
+    (; graph) = p.p_independent
+    value = zero(eltype(flow))
+    for (link, sign) in graph[].junction_flows[junction_id.idx]
+        value += sign * get_flow(flow, link, p; t)
+    end
+    return value
 end
 
 """
