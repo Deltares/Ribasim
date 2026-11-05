@@ -117,15 +117,8 @@ This is well below the solver tolerance, and makes the files about 4 times small
 For lossless compression set `significant_bits = 0`, for instance to compute small differences between large values.
 The `basin_state.nc` file is always lossless.
 
-Results are written during the simulation, each time a number of timesteps is complete, so the memory they use doesn't grow during the simulation.
-Between these writes the files are closed, so you can already look at the results of a running simulation.
-If another application has a result file open when it needs to be written to, Ribasim logs a warning and keeps the results in memory until a next attempt succeeds, so it is best to close the file again soon.
-To keep an application from delaying the writing, start it with the environment variable `HDF5_USE_FILE_LOCKING=FALSE`.
-If it reads a file at the moment Ribasim writes to it, it can then get an error or wrong values, so read the file again to be sure. The file itself is not affected.
-
-If a simulation stops early because of an error or Ctrl-C, all results up to the last accepted timestep are written, including the state in `basin_state.nc`.
-The last timestep in the results then covers a shorter period than `saveat`.
-If the process is killed, the results are available up to the last write.
+Results are written during the simulation. If it stops early because of an error or Ctrl-C, they go up to the last accepted timestep.
+To read a result file during the simulation without blocking Ribasim, start the application that reads it with the environment variable `HDF5_USE_FILE_LOCKING=FALSE`. It can then read wrong values at the moment Ribasim writes.
 
 ## Logging settings
 
