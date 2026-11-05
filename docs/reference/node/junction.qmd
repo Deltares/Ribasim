@@ -39,9 +39,11 @@ This model with both diverging and converging Junctions
 ```{mermaid}
 flowchart LR
     classDef junction fill:#000,stroke:#000,color:white
-    C((Boundary)) --> E((Junction))
-    E --> F[\Basin/]
-    E --> G[\Basin/]
+    A[\Basin/] --> E((Junction))
+    E --> B{{Connector}}
+    E --> C{{Connector}}
+    B --> F[\Basin/]
+    C --> G[\Basin/]
     F --> H{{Connector}}
     G --> I{{Connector}}
     H --> J((Junction))
@@ -54,7 +56,9 @@ translates to the following model:
 
 ```{mermaid}
 flowchart LR
-    C((Boundary)) --> F[\Basin/]
+    A[\Basin/] --> B{{Connector}}
+    A --> C{{Connector}}
+    B --> F[\Basin/]
     C --> G[\Basin/]
     F --> H{{Connector}}
     G --> I{{Connector}}
