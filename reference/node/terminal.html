@@ -84,7 +84,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-8d3ad9c781c51ccd60b292c95058b2c2.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-11dfed304549e7d9db55013033367f26.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -421,7 +421,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>A Terminal is a water sink without state or properties. Any water that flows into a Terminal node is removed from the model. No water can come into the model from a Terminal node. For example, Terminal nodes can be used as a downstream boundary.</p>
 <section id="allowed-connectivity" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Allowed connectivity</h1>
-<div id="3fdc471b" class="cell" data-execution_count="1">
+<p>The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node. This is a connectivity illustration, not a valid simulation model.</p>
+<div id="d89a162f" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span>run ..<span class="op">/</span>..<span class="op">/</span>..<span class="op">/</span>utils<span class="op">/</span>plot_node_connectivity.py</span>
@@ -429,14 +430,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>plt.show()</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>plt.close(fig)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
-<div class="cell-output cell-output-stderr">
-<pre><code>/home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/xugrid/ugrid/connectivity.py:83: NumbaPerformanceWarning: numba is not installed; running a pure-Python fallback instead. Regridding, interpolation, and snapping may be much slower; install numba to enable acceleration.
-  @numba.njit(inline="always")</code></pre>
-</div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="terminal_files/figure-html/cell-2-output-2.png" width="801" height="353" class="figure-img"></p>
+<p><img src="terminal_files/figure-html/cell-2-output-1.png" width="544" height="315" class="figure-img"></p>
 </figure>
 </div>
 </div>
