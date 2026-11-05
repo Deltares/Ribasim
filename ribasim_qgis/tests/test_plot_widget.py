@@ -1220,42 +1220,77 @@ def test_plot_widget_fractional_flow_connector_between_junction_groups(monkeypat
     assert np.allclose(_signed_values(traces, "Tracer"), [1.2, 1.2])
 
 
-@pytest.mark.parametrize(
-    ("links", "flows", "expected"),
-    [
-        # All links point towards the Junction.
-        ([(1, 2), (3, 2)], [4.0, 1.0], 5.0),
-        # All links point away from the Junction, which used to give no flow rate.
-        ([(2, 1), (2, 3)], [-4.0, 4.0], 4.0),
-        # The direction of the links does not matter.
-        ([(1, 2), (2, 3)], [4.0, 4.0], 4.0),
-        ([(2, 1), (3, 2)], [-4.0, 4.0], 8.0),
-    ],
-)
-def test_junction_inflow_column(links, flows, expected):
-    """The flow rate of a Junction is the flow towards it over all its links."""
+def _junction_flow_column(
+    node_types: dict[int, str], links: list[tuple[int, int]], flows: list[float]
+) -> np.ndarray | None:
+    """Return the flow rate of Junction 2 for flows given at a single time."""
+    node_layer = _memory_layer(
+        "field=node_id:integer&field=node_type:string", list(node_types.items())
+    )
     link_layer = _memory_layer(
         "field=link_id:integer&field=from_node_id:integer"
         "&field=to_node_id:integer&field=link_type:string",
         [(i, *link, "flow") for i, link in enumerate(links)],
     )
-    column = DatasetWidget._junction_inflow_column(
-        link_layer, 2, {i: i for i in range(len(links))}, np.array([flows])
+    return DatasetWidget._junction_flow_column(
+        link_layer, node_layer, 2, {i: i for i in range(len(flows))}, np.array([flows])
     )
+
+
+# Junction 2 with connectors 1 and 3, and Basin 4.
+_ONE_BASIN = {1: "Pump", 2: "Junction", 3: "Pump", 4: "Basin"}
+
+
+@pytest.mark.parametrize(
+    ("node_types", "links", "flows", "expected"),
+    [
+        # An ordinary Junction has the flow on its link to the Basin, with its sign.
+        (_ONE_BASIN, [(1, 2), (3, 2), (2, 4)], [3.0, 2.0, 5.0], 5.0),
+        (_ONE_BASIN, [(1, 2), (3, 2), (2, 4)], [5.0, -2.0, 3.0], 3.0),
+        (_ONE_BASIN, [(1, 2), (3, 2), (2, 4)], [-3.0, -2.0, -5.0], -5.0),
+        # Also with the Basin upstream.
+        (_ONE_BASIN, [(4, 2), (2, 1), (2, 3)], [5.0, 3.0, 2.0], 5.0),
+        # In a shared tree it is the net flow, in the direction of that link.
+        (_ONE_BASIN, [(1, 2), (2, 3), (2, 4)], [6.0, 4.0, 2.0], 2.0),
+        (_ONE_BASIN, [(1, 2), (2, 3), (4, 2)], [6.0, 4.0, -2.0], -2.0),
+        # All links pointing away from the Junction.
+        (_ONE_BASIN, [(2, 1), (2, 3), (2, 4)], [-6.0, 4.0, 2.0], 2.0),
+        # The link that leads to the Basin can go to another Junction.
+        (
+            {1: "Pump", 2: "Junction", 3: "Junction", 4: "Basin"},
+            [(1, 2), (2, 3), (3, 4)],
+            [6.0, 6.0, 6.0],
+            6.0,
+        ),
+        # With two Basins the links have a direction, so sum the incoming links.
+        (
+            {1: "Basin", 2: "Junction", 3: "Basin", 4: "Pump"},
+            [(1, 2), (3, 2), (2, 4)],
+            [3.0, 2.0, 5.0],
+            5.0,
+        ),
+    ],
+)
+def test_junction_flow_column(node_types, links, flows, expected):
+    column = _junction_flow_column(node_types, links, flows)
     assert column is not None
     assert np.allclose(column, [expected])
 
 
-def test_junction_inflow_column_without_links():
-    link_layer = _memory_layer(
-        "field=link_id:integer&field=from_node_id:integer"
-        "&field=to_node_id:integer&field=link_type:string",
-        [(0, 1, 3, "flow")],
+def test_junction_flow_column_ignores_other_links():
+    """A listen link of a Junction is not a flow link and doesn't lead to the Basin."""
+    node_types = {**_ONE_BASIN, 5: "DiscreteControl"}
+    column = _junction_flow_column(
+        node_types, [(2, 5), (1, 2), (2, 4)], [0.0, 3.0, 3.0]
     )
-    assert (
-        DatasetWidget._junction_inflow_column(link_layer, 2, {0: 0}, np.array([[1.0]]))
-        is None
-    )
+    assert column is not None
+    assert np.allclose(column, [3.0])
+
+
+def test_junction_flow_column_without_incoming_links():
+    # No Basin to give a link, and no incoming links to sum.
+    node_types = {1: "Pump", 2: "Junction", 3: "Pump"}
+    assert _junction_flow_column(node_types, [(2, 1), (2, 3)], [1.0, 1.0]) is None
 
 
 def test_plot_widget_observation_grouped_with_results():

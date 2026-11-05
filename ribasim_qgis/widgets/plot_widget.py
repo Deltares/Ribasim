@@ -21,6 +21,8 @@ from qgis.PyQt.QtWidgets import (
     QWidgetAction,
 )
 
+from ribasim_qgis.core.junctions import junction_neighbours, junction_side
+
 # Keep optional imports always bound for static typing.
 go: Any = None
 po: Any = None
@@ -1268,9 +1270,7 @@ class PlotWidget(QWidget):
         visited = visited | {junction_id}
 
         sources: list[tuple[int, int, int]] = []
-        for far_node, lid, inflow_sign in self._junction_neighbours(
-            junction_id, link_layer
-        ):
+        for far_node, lid, inflow_sign in junction_neighbours(link_layer, junction_id):
             if lid == arrival_link_id:
                 continue
             # Traverse through connectors to reach the actual source node.
@@ -1306,60 +1306,6 @@ class PlotWidget(QWidget):
                     )
         return sources
 
-    def _junction_neighbours(
-        self, junction_id: int, link_layer: Any
-    ) -> list[tuple[int, int, int]]:
-        """Return ``(far_node_id, link_id, inflow_sign)`` for the links of a Junction.
-
-        *inflow_sign* is ``+1`` when positive flow on the link means flow towards
-        *junction_id*, and ``-1`` otherwise.
-        """
-        from qgis.core import QgsFeatureRequest
-
-        expr = (
-            f'"from_node_id" = {int(junction_id)} OR "to_node_id" = {int(junction_id)}'
-        )
-        request = QgsFeatureRequest().setFilterExpression(expr)
-        # Materialise the iterator so nested getFeatures calls on the same
-        # layer don't interfere with the outer iteration.
-        neighbours: list[tuple[int, int, int]] = []
-        for feat in link_layer.getFeatures(request):
-            lid = int(feat["link_id"])
-            from_id = int(feat["from_node_id"])
-            to_id = int(feat["to_node_id"])
-            if from_id == junction_id:
-                neighbours.append((to_id, lid, -1))
-            else:
-                neighbours.append((from_id, lid, 1))
-        return neighbours
-
-    def _junction_side(
-        self, junction_id: int, skipped_link_id: int, link_layer: Any
-    ) -> tuple[set[int], list[tuple[int, int, int]]]:
-        """Walk the Junctions reachable from *junction_id* without *skipped_link_id*.
-
-        Returns the Basins next to these Junctions, and the other neighbors as
-        ``(node_id, link_id, inflow_sign)``, see :meth:`_junction_neighbours`.
-        """
-        basins: set[int] = set()
-        others: list[tuple[int, int, int]] = []
-        visited = {junction_id}
-        stack = [junction_id]
-        while stack:
-            for neighbour in self._junction_neighbours(stack.pop(), link_layer):
-                far_node, lid, _ = neighbour
-                if lid == skipped_link_id:
-                    continue
-                far_type = self._get_node_type(far_node)
-                if far_type == "Basin":
-                    basins.add(far_node)
-                elif far_type != "Junction":
-                    others.append(neighbour)
-                elif far_node not in visited:
-                    visited.add(far_node)
-                    stack.append(far_node)
-        return basins, others
-
     def _junction_outflow_basin(self, junction_id: int, link_id: int) -> int | None:
         """Find the Basin that supplies the water leaving a Junction over *link_id*.
 
@@ -1377,7 +1323,7 @@ class PlotWidget(QWidget):
         if layer is None:
             return None
 
-        basins, _ = self._junction_side(junction_id, link_id, layer)
+        basins, _ = junction_side(layer, self._get_node_type, junction_id, link_id)
         if len(basins) != 1:
             return None
 
@@ -1390,7 +1336,7 @@ class PlotWidget(QWidget):
         if far_type == "Basin":
             basins.add(far_node)
         elif far_type == "Junction":
-            basins |= self._junction_side(far_node, link_id, layer)[0]
+            basins |= junction_side(layer, self._get_node_type, far_node, link_id)[0]
         return next(iter(basins)) if len(basins) == 1 else None
 
     def _build_junction_concentration(
@@ -1531,7 +1477,9 @@ class PlotWidget(QWidget):
             if node_type == "Basin":
                 sides.append(({node_id}, []))
             elif node_type == "Junction":
-                sides.append(self._junction_side(node_id, link_id, layer))
+                sides.append(
+                    junction_side(layer, self._get_node_type, node_id, link_id)
+                )
             else:
                 return None
         (from_basins, from_others), (to_basins, to_others) = sides
