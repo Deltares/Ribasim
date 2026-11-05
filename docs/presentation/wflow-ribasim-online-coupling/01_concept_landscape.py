@@ -4,6 +4,8 @@ a) Wflow stand-alone, b) Wflow + Ribasim river coupling, c) coupling with irriga
 Ribasim nodes use the icons from `ribasim.node_icons`, as in Ribasim's own network plots.
 """
 
+from itertools import pairwise
+
 import matplotlib.pyplot as plt
 import numpy as np
 from common import C, arrow, badge, cloud, droplet, save, setup_style
@@ -97,6 +99,42 @@ MOUNTAINS = [
     (8.8, HORIZON + 0.05),
     (9.5, HORIZON - 0.3),
 ]
+
+
+def cell_runoff(ax, target):
+    """Runoff leaving a Wflow land cell towards the river (target in screen coordinates)."""
+    origin = np.mean(cell(7, 6), axis=0)
+    ax.add_patch(
+        Polygon(
+            cell(7, 6),
+            closed=True,
+            facecolor="#7FB35A",
+            edgecolor="white",
+            lw=1.5,
+            zorder=6,
+        )
+    )
+    arrow(
+        ax,
+        origin,
+        target,
+        C["wflow"],
+        lw=4,
+        scale=28,
+        zorder=16,
+        shrinkA=0,
+        shrinkB=14,
+    )
+    ax.text(
+        origin[0] + 0.35,
+        origin[1] - 0.05,
+        "runoff",
+        color=C["wflow"],
+        fontsize=20,
+        fontweight="bold",
+        ha="left",
+        zorder=16,
+    )
 
 
 def draw(variant: str) -> None:
@@ -263,16 +301,6 @@ def draw(variant: str) -> None:
     if not coupled:
         # Wflow routes the runoff through its own river cells
         arrow(ax, (1.2, 5.6), (4.0, 4.55), C["wflow"], lw=4, rad=0.25, scale=28)
-        target = project(8.2, 0.47)
-        arrow(
-            ax,
-            (8.3, 5.4),
-            (target[0] + 0.3, target[1] + 0.25),
-            C["wflow"],
-            lw=4,
-            rad=-0.2,
-            scale=28,
-        )
         ax.text(
             0.5,
             5.0,
@@ -283,6 +311,7 @@ def draw(variant: str) -> None:
             rotation=-25,
             zorder=16,
         )
+        cell_runoff(ax, project(8.0, 0.5))
         # Flow direction along the river, oriented with the local tangent
         for i in (len(rx) // 4, len(rx) // 2, 3 * len(rx) // 4):
             ax.annotate(
@@ -310,7 +339,7 @@ def draw(variant: str) -> None:
         )
     else:
         # Ribasim replaces the river routing: Basins connected via ManningResistance nodes
-        for a, b in zip(basins[:-1], basins[1:]):
+        for a, b in pairwise(basins):
             mid = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 0.05)
             link(ax, a, mid)
             link(ax, mid, b)
@@ -323,32 +352,26 @@ def draw(variant: str) -> None:
         icon(ax, "FlowBoundary", flow_boundary, size=95)
         arrow(
             ax,
-            (1.2, 5.6),
-            (flow_boundary[0] - 0.3, flow_boundary[1] + 0.05),
+            (1.5, 5.9),
+            flow_boundary,
             C["wflow"],
             lw=4,
-            rad=0.25,
+            rad=0.2,
             scale=28,
-        )
-        arrow(
-            ax,
-            (8.3, 5.4),
-            (basins[1][0] + 0.3, basins[1][1] + 0.3),
-            C["wflow"],
-            lw=4,
-            rad=-0.2,
-            scale=28,
+            shrinkA=0,
+            shrinkB=22,
         )
         ax.text(
-            0.5,
-            5.0,
+            0.9,
+            6.15,
             "runoff",
             color=C["wflow"],
             fontsize=20,
             fontweight="bold",
-            rotation=-25,
+            rotation=-20,
             zorder=16,
         )
+        cell_runoff(ax, (basins[1][0] - 0.05, basins[1][1] + 0.05))
         legend += [
             (make_icon_box("FlowBoundary", size=70), "Ribasim FlowBoundary"),
             (make_icon_box("Basin", size=80), "Ribasim Basin"),

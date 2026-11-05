@@ -28,12 +28,15 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
 NODE_STYLE = {
-    "Basin": {"marker": "o", "color": C["water_dark"], "s": 70},
-    "FlowBoundary": {"marker": "h", "color": "#7B4FA0", "s": 90},
-    "ManningResistance": {"marker": "^", "color": "#555555", "s": 30},
-    "LinearResistance": {"marker": "^", "color": "#555555", "s": 30},
-    "LevelBoundary": {"marker": "D", "color": C["ribasim"], "s": 70},
-    "UserDemand": {"marker": "s", "color": C["shortage"], "s": 80},
+    "Basin": {
+        "marker": [(-1, 1), (1, 1), (0.6, -1), (-0.6, -1)],
+        "color": "#0072B2",
+        "s": 110,
+    },
+    "FlowBoundary": {"marker": "o", "color": "#FF7F00", "s": 90},
+    "ManningResistance": {"marker": "v", "color": "#F0E442", "s": 45},
+    "LinearResistance": {"marker": "^", "color": "#009E73", "s": 45},
+    "UserDemand": {"marker": "s", "color": "#E41A1C", "s": 80},
 }
 
 setup_style()
@@ -49,7 +52,7 @@ rivers = mapping[mapping.node_type != "UserDemand"]
 colors = basin_colors(basin_area.node_id)
 
 fig, axes = plt.subplots(1, 3, figsize=(20, 9.2))
-fig.subplots_adjust(left=0.01, right=0.99, top=0.82, bottom=0.08, wspace=0.08)
+fig.subplots_adjust(left=0.01, right=0.99, top=0.75, bottom=0.1, wspace=0.08)
 slide_title(
     fig,
     "From grid to network: the Piave catchment",
@@ -66,15 +69,27 @@ river_rgba[river_mask == 1] = (0.12, 0.44, 0.70, 1.0)
 ax.imshow(river_rgba, extent=extent, interpolation="nearest")
 region.boundary.plot(ax=ax, color=C["dark"], lw=1.5)
 map_axis(ax)
-ax.set_title("Wflow: grid cells (~1 km)", color=C["wflow"], loc="left")
+ax.set_title(
+    "Wflow: grid cells (~1 km)", color=C["wflow"], loc="left", fontsize=24, pad=38
+)
+ax.text(
+    0,
+    1.01,
+    "data from HydroMT Wflow",
+    transform=ax.transAxes,
+    fontsize=19,
+    color=C["dark"],
+    va="bottom",
+    fontweight="bold",
+)
 n_land = int(np.isfinite(elevation).sum())
 badge(
     ax,
     0.03,
-    -0.02,
-    f"{n_land:,} land cells   |   {len(rivers)} river cells",
+    -0.07,
+    f"{n_land:,} land cells\n{len(rivers)} river cells",
     C["wflow"],
-    fontsize=13,
+    fontsize=17,
     ha="left",
     transform=ax.transAxes,
 )
@@ -100,15 +115,31 @@ for node_type, style in NODE_STYLE.items():
 map_axis(ax)
 ax.set_xlim(extent[:2])
 ax.set_ylim(extent[2:])
-ax.set_title("Ribasim: areas + node network", color=C["ribasim"], loc="left")
+ax.set_title(
+    "Ribasim: areas + node network",
+    color=C["ribasim"],
+    loc="left",
+    fontsize=24,
+    pad=38,
+)
+ax.text(
+    0,
+    1.01,
+    "data from HydroMT Ribasim",
+    transform=ax.transAxes,
+    fontsize=19,
+    color=C["dark"],
+    va="bottom",
+    fontweight="bold",
+)
 counts = nodes.node_type.value_counts()
 badge(
     ax,
     0.03,
-    -0.02,
-    f"{counts.get('Basin', 0)} Basins   |   {counts.get('FlowBoundary', 0)} FlowBoundaries",
+    -0.07,
+    f"{counts.get('Basin', 0)} Basins\n{counts.get('FlowBoundary', 0)} FlowBoundaries",
     C["ribasim"],
-    fontsize=13,
+    fontsize=17,
     ha="left",
     transform=ax.transAxes,
 )
@@ -119,7 +150,7 @@ handles = [
         ls="",
         marker=s["marker"],
         color=s["color"],
-        markersize=9,
+        markersize=14,
         markeredgecolor="white",
         label=t,
     )
@@ -137,7 +168,7 @@ handles.append(
 ax.legend(
     handles=handles,
     loc="lower right",
-    fontsize=11,
+    fontsize=16,
     ncols=1,
     bbox_to_anchor=(1.08, 0.08),
 )
@@ -153,7 +184,8 @@ flow_boundary_area.plot(
 in_basin = rivers.node_type == "Basin"
 
 cell_colors = [
-    c if b else "#7B4FA0" for c, b in zip(rivers.node_id.map(colors), in_basin)
+    c if b else C["flowboundary"]
+    for c, b in zip(rivers.node_id.map(colors), in_basin, strict=False)
 ]
 ax.scatter(
     rivers.longitude,
@@ -170,7 +202,7 @@ for node_id, node in basins.iterrows():
     ax.annotate(
         f"#{node_id}",
         (node.geometry.x, node.geometry.y),
-        fontsize=9,
+        fontsize=13,
         ha="center",
         va="center",
         color=C["dark"],
@@ -185,15 +217,27 @@ for node_id, node in basins.iterrows():
 map_axis(ax)
 ax.set_xlim(extent[:2])
 ax.set_ylim(extent[2:])
-ax.set_title("Coupling: river cell → node", color="#6A3D9A", loc="left")
+ax.set_title(
+    "Coupling: river cell → node", color="#6A3D9A", loc="left", fontsize=24, pad=38
+)
+ax.text(
+    0,
+    1.01,
+    "coupler logic",
+    transform=ax.transAxes,
+    fontsize=19,
+    color=C["dark"],
+    va="bottom",
+    fontweight="bold",
+)
 n_basin = int(in_basin.sum())
 badge(
     ax,
     0.03,
-    -0.02,
-    f"{n_basin} cells → Basins   |   {len(rivers) - n_basin} cells → FlowBoundaries",
+    -0.07,
+    f"{n_basin} cells → Basins\n{len(rivers) - n_basin} cells → FlowBoundaries",
     "#6A3D9A",
-    fontsize=13,
+    fontsize=17,
     ha="left",
     transform=ax.transAxes,
 )

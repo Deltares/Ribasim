@@ -10,7 +10,6 @@ import numpy as np
 from common import (
     WFLOW_DIR,
     C,
-    arrow,
     arrow_between,
     badge,
     basin_colors,
@@ -27,7 +26,9 @@ from common import (
 )
 from matplotlib.colors import ListedColormap
 from matplotlib.lines import Line2D
+from matplotlib.offsetbox import AnnotationBbox
 from matplotlib.patches import Patch, Rectangle
+from ribasim.node_icons import make_icon_box
 
 UD_COLORS = ["#F28C28", "#E8C120", "#D95F9E", "#5FB4D9"]
 UNCOUPLED = "#98A2B3"
@@ -182,27 +183,24 @@ for row in coupled.itertuples():
         zorder=4,
     )
 
-is_ud_link = links.to_node_id.isin(user_demands.index) | links.from_node_id.isin(
-    user_demands.index
-)
-links[~is_ud_link].plot(ax=ax, color=C["water_dark"], lw=2.5, zorder=4)
-for node_type, marker, color, size in [
-    ("Basin", "o", C["water_dark"], 220),
-    ("ManningResistance", "^", "#555555", 80),
-    ("FlowBoundary", "h", "#7B4FA0", 220),
-    ("LevelBoundary", "D", C["ribasim"], 150),
+links.plot(ax=ax, color=C["water_dark"], lw=2.5, zorder=4)
+# The outlet LevelBoundary (#33) lies exactly on Basin #1 and is left out so it does not hide it
+for node_type, size in [
+    ("ManningResistance", 55),
+    ("FlowBoundary", 70),
+    ("Basin", 80),
 ]:
-    sub = nodes[nodes.node_type == node_type]
-    ax.scatter(
-        sub.geometry.x,
-        sub.geometry.y,
-        marker=marker,
-        s=size,
-        color=color,
-        edgecolor="white",
-        lw=1.5,
-        zorder=6,
-    )
+    for geom in nodes[nodes.node_type == node_type].geometry:
+        if zoom[0] < geom.x < zoom[1] and zoom[2] < geom.y < zoom[3]:
+            ax.add_artist(
+                AnnotationBbox(
+                    make_icon_box(node_type, size=size),
+                    (geom.x, geom.y),
+                    frameon=False,
+                    pad=0,
+                    zorder=6,
+                )
+            )
 
 for node_id, ud in user_demands.iterrows():
     source = links[
@@ -210,27 +208,21 @@ for node_id, ud in user_demands.iterrows():
         & links.from_node_id.isin(nodes.index[nodes.node_type == "Basin"])
     ].from_node_id.iloc[0]
     basin = nodes.loc[source].geometry
-    arrow(
-        ax,
-        (basin.x, basin.y),
-        (ud.geometry.x, ud.geometry.y),
-        C["irrigation"],
-        lw=4,
-        rad=0.25,
-        scale=24,
-        zorder=7,
-        shrinkA=10,
-        shrinkB=12,
-    )
-    ax.scatter(
-        ud.geometry.x,
-        ud.geometry.y,
-        marker="s",
-        s=420,
-        color=C["shortage"],
-        edgecolor="white",
+    ax.plot(
+        [basin.x, ud.geometry.x],
+        [basin.y, ud.geometry.y],
+        color=C["water_dark"],
         lw=2.5,
-        zorder=8,
+        zorder=7,
+    )
+    ax.add_artist(
+        AnnotationBbox(
+            make_icon_box("UserDemand", size=95),
+            (ud.geometry.x, ud.geometry.y),
+            frameon=False,
+            pad=0,
+            zorder=8,
+        )
     )
     ax.annotate(
         f"UserDemand #{node_id}\nBasin #{source} ∩ area {int(ud.meta_allocation_area_id)}",
@@ -301,11 +293,20 @@ handles += [
         [],
         ls="",
         marker="o",
-        color=C["water_dark"],
-        markersize=12,
+        color="#FF7F00",
+        markersize=13,
+        label="Ribasim FlowBoundary",
+    ),
+    Line2D(
+        [],
+        [],
+        ls="",
+        marker=[(-1, 1), (1, 1), (0.6, -1), (-0.6, -1)],
+        color="#0072B2",
+        markersize=13,
         label="Ribasim Basin",
     ),
-    Line2D([], [], color=C["irrigation"], lw=4, label="abstraction"),
+    Line2D([], [], color=C["water_dark"], lw=3, label="Ribasim flow link"),
 ]
 ax.legend(
     handles=handles,

@@ -106,14 +106,17 @@ def setup_style() -> None:
     )
 
 
-def save(fig, name: str) -> Path:
+def save(fig, name: str, tight: bool = True) -> Path:
     OUT_DIR.mkdir(exist_ok=True)
     path = OUT_DIR / name
     # OneDrive or an image viewer can briefly lock the file; retry a few times
     for attempt in range(10):
         try:
             fig.savefig(
-                path, dpi=200, bbox_inches="tight", facecolor=fig.get_facecolor()
+                path,
+                dpi=200,
+                bbox_inches="tight" if tight else None,
+                facecolor=fig.get_facecolor(),
             )
             break
         except OSError:
