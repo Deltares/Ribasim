@@ -59,8 +59,8 @@ function log_bottlenecks(model; level = LoggingExtras.Warn)
 
     flow_error = if p_independent.convergence_ncalls[1] > 0
         p_independent.convergence ./ p_independent.convergence_ncalls[1]
-    elseif !isempty(saved.flow.saveval)
-        saved.flow.saveval[end].flow_convergence
+    elseif !isempty(saved.basin.time)
+        saved.mean_flows.flow_convergence
     else
         @logmsg level "No data available for logging convergence bottlenecks."
         return nothing

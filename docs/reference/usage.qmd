@@ -491,7 +491,7 @@ Currently the stored demand and abstraction rate are those at the allocation tim
 
 ## Allocation flow - `allocation_flow.nc`
 
-The allocation flow results contain results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved (see also [here](/concept/allocation.qmd#the-high-level-algorithm)).
+The allocation flow results contain results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved. The vertical flow of a Basin has `link_id` 0, and the Basin as both `from_node_id` and `to_node_id` (see also [here](/concept/allocation.qmd#the-high-level-algorithm)).
 If in the model a primary network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork.
 
 **NetCDF structure:**
@@ -531,7 +531,7 @@ Substances can correspond to known Delwaq substances.
 
 ## Subgrid level - `subgrid_level.nc`
 
-This result file is only written if the model contains a [Basin / subgrid](/reference/node/basin.qmd#subgrid) table.
+This result file is only written if `results.subgrid` is set to `true` and the model contains a [Basin / subgrid](/reference/node/basin.qmd#subgrid) table.
 See there for more information on the meaning of this output.
 
 **NetCDF structure:**

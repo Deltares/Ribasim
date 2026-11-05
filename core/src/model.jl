@@ -1,8 +1,44 @@
-struct SavedResults
-    flow::SavedValues{Float64, SavedFlow}
-    basin_state::SavedValues{Float64, SavedBasinState}
-    subgrid_level::SavedValues{Float64, Vector{Float64}}
-    solver_stats::SavedValues{Float64, SolverStats}
+"""
+The results of a NetCDF file with a time dimension that are in memory, in the shape of the file.
+
+- `time`: The time per time step, in seconds since the start of the simulation
+- `coordinates`: The variables that don't depend on time
+- `variables`: For each variable all values in one vector, where time is the last dimension
+- `size`: The size of the variables without the time dimension
+"""
+@kwdef mutable struct SavedFile{C <: NamedTuple, V <: NamedTuple, N}
+    const time::Vector{Float64} = Float64[]
+    const coordinates::C
+    const variables::V
+    size::NTuple{N, Int}
+end
+
+"""
+All results over time that are in memory, which are added to at each saveat by `SaveResults`.
+
+- `mean_flows`: Buffers for the mean flows of the saveat interval that is being saved
+- `t_prev`: The time of the previous save, the start of the next saveat interval
+- `level_prev`: The Basin levels at `t_prev`
+- `solver_stats_prev`: The cumulative solver stats at `t_prev`
+
+The `control` results share their vectors with `discrete_control.record`, which is added to when
+a control state changes. Allocation results are moved here from `allocation.record_demand` and
+the like at each saveat, because those are averaged over an intervention interval first.
+"""
+@kwdef mutable struct SavedResults{B, F, C, S, T, D, A, AF, AC}
+    const basin::B
+    const flow::F
+    const concentration::C
+    const subgrid_level::S
+    const solver_stats::T
+    const control::D
+    const allocation::A
+    const allocation_flow::AF
+    const allocation_control::AC
+    const mean_flows::MeanFlows
+    const level_prev::Vector{Float64}
+    t_prev::Float64 = NaN
+    solver_stats_prev::SolverStats = zero_solver_stats()
 end
 
 """
@@ -21,7 +57,7 @@ struct Model
     integrator::SciMLBase.AbstractODEIntegrator
     "The TOML configuration that this Model was built from."
     config::Config
-    "Results collected by the saving callbacks over the course of the simulation."
+    "Results over time collected by `SaveResults` over the course of the simulation."
     saved::SavedResults
     "Logger that all Ribasim log messages of this Model are sent to."
     logger::AbstractLogger
@@ -179,8 +215,7 @@ function Model(
 end
 
 "Get all saved times in seconds since start"
-tsaves(model::Model)::Vector{Float64} =
-    [0.0, (cvec.t for cvec in model.saved.flow.saveval)...]
+tsaves(model::Model)::Vector{Float64} = [model.saved.basin.time; model.saved.t_prev]
 
 "Get all saved times as a Vector{DateTime}"
 function datetimes(model::Model)::Vector{DateTime}
