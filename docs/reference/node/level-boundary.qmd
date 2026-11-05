@@ -10,6 +10,9 @@ Connect the LevelBoundary to a node that will look at the level to calculate the
 
 # Allowed connectivity
 
+The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node.
+This is a connectivity illustration, not a valid simulation model.
+
 ```{julia}
 # | code-fold: true
 include("../../../utils/plot_node_connectivity.jl")

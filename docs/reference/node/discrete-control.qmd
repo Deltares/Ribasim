@@ -46,7 +46,7 @@ markdown_table(df)
 
 ```{julia}
 # | code-fold: true
-using Plots
+include("../../../utils/docs_plots.jl")
 
 control_diagram = plot(;
     xlims = (0, 11), ylims = (-4, 7), size = (768, 730),

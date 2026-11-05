@@ -126,12 +126,4 @@ def _plot_connectivity(node_types: list[str]) -> Figure:
             fontweight="bold" if is_central else "normal",
         )
     ax.axis("off")
-    fig.text(
-        0.5,
-        0.02,
-        "This illustration is not intended to be a valid model, it shows which nodes are allowed upstream and downstream.",
-        ha="center",
-        fontsize=10,
-        color="silver",
-    )
     return fig

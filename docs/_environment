@@ -1,0 +1,1 @@
+PYTHONWARNINGS="ignore:numba is not installed:RuntimeWarning"
