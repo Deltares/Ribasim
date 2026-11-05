@@ -3,7 +3,8 @@
 
 Write all results that are not written yet to NetCDF files as specified in the model
 configuration, up to the last accepted time step. Most of the results are already written during
-the simulation, see [`SaveResults`](@ref).
+the simulation, see [`SaveResults`](@ref). If a file can't be written, the others still are, and
+then this throws an error that names the file.
 """
 function write_results(model::Model)::Model
     (; config, saved) = model
@@ -13,13 +14,15 @@ function write_results(model::Model)::Model
 
     save_until_last_time_step!(model)
 
-    # state, not quantized since it can be used as the initial state of another simulation
-    data = basin_state_data(model; table = false)
-    path = results_path(config, RESULTS_FILENAME.basin_state)
-    write_netcdf(path, data, results; significant_bits = 0)
-
     finish_allocation_results!(model)
-    write_saved_files(saved, config)
+    try
+        write_saved_files(saved, config)
+    finally
+        # state, not quantized since it can be used as the initial state of another simulation
+        data = basin_state_data(model; table = false)
+        path = results_path(config, RESULTS_FILENAME.basin_state)
+        write_netcdf(path, data, results; significant_bits = 0)
+    end
 
     @debug "Wrote results."
     return model
@@ -31,6 +34,7 @@ const NC_CONTROL_CHUNK_TIME = 1024
 """
 Write the results of all files with a time dimension that are in memory, after the time steps
 that the files already have. It is safe to do this again, for instance if it failed halfway.
+If a file can't be written, the others still are, and then this throws an error that names it.
 
 During the simulation the last time step of some files is not written with `nkeep = 1`: the
 supplied flows in `allocation.nc` are set by the next time step, and `subgrid_level.nc` has a
@@ -39,19 +43,25 @@ writes stay aligned with the chunks, and the files only get complete time steps.
 """
 function write_saved_files(saved::SavedResults, config::Config; nkeep::Int = 0)::Nothing
     (; chunk_time) = saved
-    write_saved_file(saved.basin, RESULTS_FILENAME.basin, config, chunk_time)
-    write_saved_file(saved.flow, RESULTS_FILENAME.flow, config, chunk_time)
-    write_saved_file(saved.concentration, RESULTS_FILENAME.concentration, config, chunk_time)
-    write_saved_file(saved.subgrid_level, RESULTS_FILENAME.subgrid_level, config, chunk_time; nkeep)
-    write_saved_file(saved.solver_stats, RESULTS_FILENAME.solver_stats, config, chunk_time)
-    write_saved_file(saved.control, RESULTS_FILENAME.control, config, NC_CONTROL_CHUNK_TIME)
-    write_saved_file(saved.allocation, RESULTS_FILENAME.allocation, config, chunk_time; nkeep)
-    write_saved_file(saved.allocation_flow, RESULTS_FILENAME.allocation_flow, config, chunk_time)
-    write_saved_file(saved.allocation_control, RESULTS_FILENAME.allocation_control, config, chunk_time)
-    return nothing
+    failed = String[]
+    write_saved_file!(failed, saved.basin, RESULTS_FILENAME.basin, config, chunk_time)
+    write_saved_file!(failed, saved.flow, RESULTS_FILENAME.flow, config, chunk_time)
+    write_saved_file!(failed, saved.concentration, RESULTS_FILENAME.concentration, config, chunk_time)
+    write_saved_file!(failed, saved.subgrid_level, RESULTS_FILENAME.subgrid_level, config, chunk_time; nkeep)
+    write_saved_file!(failed, saved.solver_stats, RESULTS_FILENAME.solver_stats, config, chunk_time)
+    write_saved_file!(failed, saved.control, RESULTS_FILENAME.control, config, NC_CONTROL_CHUNK_TIME)
+    write_saved_file!(failed, saved.allocation, RESULTS_FILENAME.allocation, config, chunk_time; nkeep)
+    write_saved_file!(failed, saved.allocation_flow, RESULTS_FILENAME.allocation_flow, config, chunk_time)
+    write_saved_file!(failed, saved.allocation_control, RESULTS_FILENAME.allocation_control, config, chunk_time)
+    isempty(failed) && return nothing
+    error(
+        "Cannot write these result NetCDF files, are they open in another application?\n" *
+            join("- " .* failed, "\n"),
+    )
 end
 
-function write_saved_file(
+function write_saved_file!(
+        failed::Vector{String},
         file::SavedFile,
         filename::String,
         config::Config,
@@ -60,24 +70,22 @@ function write_saved_file(
     )::Nothing
     data = netcdf_data(file, config.starttime; nkeep)
     path = results_path(config, filename)
-    write_netcdf(path, data, config.results; chunk_time, file.ntime_written)
+    try
+        write_netcdf(path, data, config.results; chunk_time, file.ntime_written)
+    catch e
+        e isa Union{NCDatasets.NetCDFError, Base.IOError} || rethrow()
+        push!(failed, "$path (error code: $(e.code))")
+    end
     return nothing
 end
 
 """
-Write the results that are in memory to file and remove them from memory. If that doesn't work,
-for instance if another application has a file open, they stay in memory for the next attempt,
-which writes them all again, since a part of them may be written already.
+Write the results that are in memory to file and remove them from memory. If a file can't be
+written this throws an error, and they stay in memory such that `write_results` can write the
+other files up to the last accepted time step.
 """
 function write_chunk!(saved::SavedResults, config::Config)::Nothing
-    try
-        write_saved_files(saved, config; nkeep = 1)
-    catch e
-        e isa NCDatasets.NetCDFError || rethrow()
-        @warn "Could not write the results, they stay in memory and are written later. Is a result file open in another application?" exception =
-            e maxlog = 1
-        return nothing
-    end
+    write_saved_files(saved, config; nkeep = 1)
     remove_written!(saved.basin)
     remove_written!(saved.flow)
     remove_written!(saved.concentration)
@@ -739,6 +747,8 @@ function write_netcdf(
     file_name = splitext(basename(path))[1]
     attrib = merge(CF_GLOBAL_ATTRIB, OrderedDict("title" => "Ribasim results: $file_name"))
     is_new = iszero(ntime_written)
+    # Creating a file that is open in another application would empty it before failing
+    is_new && rm(path; force = true)
     NCDataset(path, is_new ? "c" : "a"; attrib = is_new ? attrib : empty(attrib)) do ds
         for (var_name, var_data) in pairs(data)
             var_name = String(var_name)

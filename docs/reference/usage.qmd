@@ -122,7 +122,7 @@ For lossless compression set `significant_bits = 0`, for instance to compute sma
 The `basin_state.nc` file is always lossless.
 
 Results are written during the simulation. If it stops early because of an error or Ctrl-C, they go up to the last accepted timestep.
-To read a result file during the simulation without blocking Ribasim, start the application that reads it with the environment variable `HDF5_USE_FILE_LOCKING=FALSE`. It can then read wrong values at the moment Ribasim writes.
+If another application has a result file open when Ribasim writes it, the simulation stops with an error. To avoid this, start that application with the environment variable `HDF5_USE_FILE_LOCKING=FALSE`. It can then read wrong values at the moment Ribasim writes.
 
 ## Logging settings
 
