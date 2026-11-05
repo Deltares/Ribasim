@@ -315,9 +315,7 @@ function (save_results::SaveResults)(u, t, integrator)::Nothing
     (; saved, config, t_end) = save_results
     errors = save_results!(saved, u, t, integrator)
 
-    # If the last write failed, the next attempt is when another time chunk is complete
-    ntime = length(saved.basin.time)
-    if ntime > 0 && iszero(ntime % saved.chunk_time) && t != t_end
+    if length(saved.basin.time) >= saved.chunk_time && t != t_end
         write_chunk!(saved, config)
     end
 

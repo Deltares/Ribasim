@@ -335,8 +335,6 @@ end
 
 @testitem "results written during the simulation" begin
     using NCDatasets: NCDatasets, NCDataset
-    using Logging: Warn
-    using Test: TestLogger
     using Ribasim: BMI, solve!, write_results, results_path, RESULTS_FILENAME
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
@@ -345,7 +343,6 @@ end
     (; basin, flow, concentration, subgrid_level, solver_stats) = RESULTS_FILENAME
     filenames = [basin, flow, concentration, subgrid_level, solver_stats]
 
-    logger = TestLogger()
     function model_in_chunks(chunk_time; kwargs...)
         config = Ribasim.Config(
             toml_path;
@@ -354,7 +351,7 @@ end
             results_subgrid = true,
             kwargs...,
         )
-        model = Ribasim.Model(config; logger)
+        model = Ribasim.Model(config)
         if !isnothing(chunk_time)
             model.saved.chunk_time = chunk_time
         end
@@ -408,17 +405,6 @@ end
         @test ds.dim["time"] == 10
     end
 
-    # A result file that is open in another application only delays writing
-    NCDataset(results_path(model.config, basin)) do ds
-        BMI.update_until(model, 16day)
-    end
-    warning = only(filter(log -> log.level == Warn, logger.logs))
-    @test startswith(warning.message, "Could not write the results")
-    @test model.saved.basin.ntime_written == 7
-    @test length(model.saved.basin.time) == 9
-    # The next attempt is when another time chunk is complete
-    BMI.update_until(model, 20day)
-    @test model.saved.basin.ntime_written == 7
     BMI.update_until(model, 21day)
     @test model.saved.basin.ntime_written == 21
     @test isempty(model.saved.basin.time)
@@ -501,24 +487,24 @@ end
     end
 end
 
-@testitem "a viewer in another process only delays writing results" begin
+@testitem "a result file open in another process stops the simulation" begin
     using NCDatasets: NCDataset
-    using Logging: Warn
-    using Test: TestLogger
-    using Ribasim: BMI, solve!, write_results, results_path, RESULTS_FILENAME
+    using Ribasim: BMI, write_results, results_path, RESULTS_FILENAME
 
     toml_path = normpath(@__DIR__, "../../generated_testmodels/basic/ribasim.toml")
     @test ispath(toml_path)
     day = 86400.0
-    logger = TestLogger()
     config = Ribasim.Config(toml_path; results_dir = mktempdir())
-    model = Ribasim.Model(config; logger)
+    model = Ribasim.Model(config)
     model.saved.chunk_time = 7
     BMI.update_until(model, 8day)
     @test model.saved.basin.ntime_written == 7
 
+    (; basin, flow, basin_state) = RESULTS_FILENAME
+    ntime(filename) = NCDataset(ds -> ds.dim["time"], results_path(config, filename))
+
     # The viewer has the file open until it gets a line on stdin
-    path = results_path(config, RESULTS_FILENAME.basin)
+    path = results_path(config, basin)
     code = "using NCDatasets; ds = NCDataset(ARGS[1]); println(ds.dim[\"time\"]); flush(stdout); readline(); close(ds)"
     cmd = `$(Base.julia_cmd()) --startup-file=no --project=$(Base.active_project()) -e $code $path`
     function close_viewer(viewer)
@@ -528,29 +514,49 @@ end
         return success(viewer)
     end
 
-    viewer = open(cmd, "r+")
-    @test readline(viewer) == "7"
-    BMI.update_until(model, 16day)
-    @test model.saved.basin.ntime_written == 7
-    warning = only(filter(log -> log.level == Warn, logger.logs))
-    @test startswith(warning.message, "Could not write the results")
-    @test close_viewer(viewer)
-    BMI.update_until(model, 21day)
-    @test model.saved.basin.ntime_written == 21
-
-    # Without file locking the viewer doesn't delay writing
+    # Without file locking the viewer doesn't block writing
     viewer = open(addenv(cmd, "HDF5_USE_FILE_LOCKING" => "FALSE"), "r+")
-    @test readline(viewer) == "21"
-    BMI.update_until(model, 28day)
-    @test model.saved.basin.ntime_written == 28
+    @test readline(viewer) == "7"
+    BMI.update_until(model, 15day)
+    @test model.saved.basin.ntime_written == 14
     @test close_viewer(viewer)
 
-    solve!(model)
+    # With file locking the next write stops the simulation, and the error names the file. The
+    # file keeps what it had, the other files are written.
+    viewer = open(cmd, "r+")
+    @test readline(viewer) == "14"
+    @test_throws path BMI.update_until(model, 22day)
+    @test ntime(basin) == 14
+    @test ntime(flow) == 21
+
+    # The same goes for writing the remaining results
+    @test !isfile(results_path(config, basin_state))
+    @test_throws path write_results(model)
+    @test ntime(basin) == 14
+    @test isfile(results_path(config, basin_state))
+    @test close_viewer(viewer)
+
+    # No results are lost if the file is closed
     write_results(model)
+    @test ntime(basin) == ntime(flow) == 21
     NCDataset(path) do ds
-        @test ds.dim["time"] == 366
         @test !any(isnan, ds["level"][:, :])
     end
+
+    # A file of an earlier simulation is not emptied if it is open when it is first written.
+    # On Windows it can't be removed, elsewhere the viewer keeps the removed file.
+    model = Ribasim.Model(config)
+    model.saved.chunk_time = 7
+    viewer = open(cmd, "r+")
+    @test readline(viewer) == "21"
+    if Sys.iswindows()
+        @test_throws path BMI.update_until(model, 8day)
+        @test ntime(basin) == 21
+    else
+        BMI.update_until(model, 8day)
+        @test ntime(basin) == 7
+    end
+    @test close_viewer(viewer)
 end
 
 @testitem "result chunk time" begin
