@@ -79,6 +79,20 @@ fn main() -> ExitCode {
             }
         }
 
+        // Let Julia handle Ctrl-C, such that the results are written before stopping.
+        let enable_signal_handlers: Symbol<unsafe extern "C" fn() -> i32> =
+            match lib.get(b"ribasim_enable_julia_signal_handlers") {
+                Ok(symbol) => symbol,
+                Err(error) => {
+                    eprintln!("Failed to find the Julia signal handler configurator: {error}");
+                    return ExitCode::FAILURE;
+                }
+            };
+        if enable_signal_handlers() != 0 {
+            eprintln!("Julia was initialized before its signal handlers were configured");
+            return ExitCode::FAILURE;
+        }
+
         // Execute
         let execute: Symbol<unsafe extern "C" fn(*const libc::c_char) -> i32> =
             lib.get(b"execute").unwrap();

@@ -1,7 +1,9 @@
 """
     write_results(model::Model)::Model
 
-Write all results to NetCDF files as specified in the model configuration.
+Write all results that are not written yet to NetCDF files as specified in the model
+configuration, up to the last accepted time step. Most of the results are already written during
+the simulation, see [`SaveResults`](@ref).
 """
 function write_results(model::Model)::Model
     (; config, saved) = model
@@ -9,30 +11,100 @@ function write_results(model::Model)::Model
 
     @info "Writing results."
 
+    save_until_last_time_step!(model)
+
     # state, not quantized since it can be used as the initial state of another simulation
     data = basin_state_data(model; table = false)
     path = results_path(config, RESULTS_FILENAME.basin_state)
     write_netcdf(path, data, results; significant_bits = 0)
 
     finish_allocation_results!(model)
-    write_saved_file(saved.basin, RESULTS_FILENAME.basin, config)
-    write_saved_file(saved.flow, RESULTS_FILENAME.flow, config)
-    write_saved_file(saved.concentration, RESULTS_FILENAME.concentration, config)
-    write_saved_file(saved.allocation, RESULTS_FILENAME.allocation, config)
-    write_saved_file(saved.allocation_flow, RESULTS_FILENAME.allocation_flow, config)
-    write_saved_file(saved.allocation_control, RESULTS_FILENAME.allocation_control, config)
-    write_saved_file(saved.subgrid_level, RESULTS_FILENAME.subgrid_level, config)
-    write_saved_file(saved.solver_stats, RESULTS_FILENAME.solver_stats, config)
-    write_saved_file(saved.control, RESULTS_FILENAME.control, config)
+    write_saved_files(saved, config)
 
     @debug "Wrote results."
     return model
 end
 
-"Write the results of a file with a time dimension that are in memory."
-function write_saved_file(file::SavedFile, filename::String, config::Config)::Nothing
-    data = netcdf_data(file, config.starttime)
-    write_netcdf(results_path(config, filename), data, config.results)
+# The chunk size along time of the control results, which have a varying number per time step
+const NC_CONTROL_CHUNK_TIME = 1024
+
+"""
+Write the results of all files with a time dimension that are in memory, after the time steps
+that the files already have. It is safe to do this again, for instance if it failed halfway.
+
+During the simulation the last time step of some files is not written with `nkeep = 1`: the
+supplied flows in `allocation.nc` are set by the next time step, and `subgrid_level.nc` has a
+time step more than the others because it includes the end of the last interval. This way the
+writes stay aligned with the chunks, and the files only get complete time steps.
+"""
+function write_saved_files(saved::SavedResults, config::Config; nkeep::Int = 0)::Nothing
+    (; chunk_time) = saved
+    write_saved_file(saved.basin, RESULTS_FILENAME.basin, config, chunk_time)
+    write_saved_file(saved.flow, RESULTS_FILENAME.flow, config, chunk_time)
+    write_saved_file(saved.concentration, RESULTS_FILENAME.concentration, config, chunk_time)
+    write_saved_file(saved.subgrid_level, RESULTS_FILENAME.subgrid_level, config, chunk_time; nkeep)
+    write_saved_file(saved.solver_stats, RESULTS_FILENAME.solver_stats, config, chunk_time)
+    write_saved_file(saved.control, RESULTS_FILENAME.control, config, NC_CONTROL_CHUNK_TIME)
+    write_saved_file(saved.allocation, RESULTS_FILENAME.allocation, config, chunk_time; nkeep)
+    write_saved_file(saved.allocation_flow, RESULTS_FILENAME.allocation_flow, config, chunk_time)
+    write_saved_file(saved.allocation_control, RESULTS_FILENAME.allocation_control, config, chunk_time)
+    return nothing
+end
+
+function write_saved_file(
+        file::SavedFile,
+        filename::String,
+        config::Config,
+        chunk_time::Int;
+        nkeep::Int = 0,
+    )::Nothing
+    data = netcdf_data(file, config.starttime; nkeep)
+    path = results_path(config, filename)
+    write_netcdf(path, data, config.results; chunk_time, file.ntime_written)
+    return nothing
+end
+
+"""
+Write the results that are in memory to file and remove them from memory. If that doesn't work,
+for instance if another application has a file open, they stay in memory for the next attempt,
+which writes them all again, since a part of them may be written already.
+"""
+function write_chunk!(saved::SavedResults, config::Config)::Nothing
+    try
+        write_saved_files(saved, config; nkeep = 1)
+    catch e
+        e isa NCDatasets.NetCDFError || rethrow()
+        @warn "Could not write the results, they stay in memory and are written later. Is a result file open in another application?" exception =
+            e maxlog = 1
+        return nothing
+    end
+    remove_written!(saved.basin)
+    remove_written!(saved.flow)
+    remove_written!(saved.concentration)
+    remove_written!(saved.subgrid_level; nkeep = 1)
+    remove_written!(saved.solver_stats)
+    remove_written!(saved.control)
+    remove_written!(saved.allocation; nkeep = 1)
+    remove_written!(saved.allocation_flow)
+    remove_written!(saved.allocation_control)
+    return nothing
+end
+
+"Remove all but the last `nkeep` time steps of a file from memory, these are written to file."
+function remove_written!(file::SavedFile; nkeep::Int = 0)::Nothing
+    (; time, variables, size) = file
+    ntime = length(time)
+    nkeep = min(nkeep, ntime)
+    keep_last!(time, nkeep)
+    foreach(variable -> keep_last!(variable, nkeep * prod(size)), variables)
+    file.ntime_written += ntime - nkeep
+    return nothing
+end
+
+"Remove all but the last `n` elements, keeping the memory for reuse."
+function keep_last!(v::Vector, n::Int)::Nothing
+    copyto!(v, 1, v, length(v) - n + 1, n)
+    resize!(v, n)
     return nothing
 end
 
@@ -318,7 +390,7 @@ Create the structures for the results over time, in the shape of the NetCDF file
 
 The coordinates of allocation and allocation flow are set once the first results are there.
 """
-function SavedResults(p_independent::ParametersIndependent)::SavedResults
+function SavedResults(p_independent::ParametersIndependent, config::Config, saveat)::SavedResults
     (; basin, subgrid, graph, state_ranges, flow_boundary, cumulative_flow_dt, discrete_control) = p_independent
     (; internal_flow_links, external_flow_links) = graph[]
     (; record) = discrete_control
@@ -337,8 +409,10 @@ function SavedResults(p_independent::ParametersIndependent)::SavedResults
     substance = String.(basin.concentration_data.substances)
     subgrid_id = sort(vcat(subgrid.subgrid_id_static, subgrid.subgrid_id_time))
     allocation_control_id = allocation_control_node_ids(p_independent)
+    chunk_time = result_chunk_time(p_independent, config, saveat)
 
-    return SavedResults(;
+    saved = SavedResults(;
+        chunk_time,
         basin = SavedFile(;
             coordinates = (; node_id),
             variables = (;
@@ -443,6 +517,20 @@ function SavedResults(p_independent::ParametersIndependent)::SavedResults
         ),
         level_prev = zeros(nbasin),
     )
+
+    # The memory of the first time chunk is reused for all next ones
+    reserve_time_chunk!(saved.basin, chunk_time)
+    reserve_time_chunk!(saved.flow, chunk_time)
+    reserve_time_chunk!(saved.solver_stats, chunk_time)
+    p_independent.do_concentration && reserve_time_chunk!(saved.concentration, chunk_time)
+    p_independent.do_subgrid && reserve_time_chunk!(saved.subgrid_level, chunk_time)
+    return saved
+end
+
+function reserve_time_chunk!(file::SavedFile, chunk_time::Int)::Nothing
+    sizehint!(file.time, chunk_time)
+    foreach(variable -> sizehint!(variable, prod(file.size) * chunk_time), file.variables)
+    return nothing
 end
 
 """
@@ -464,14 +552,15 @@ function allocation_control_node_ids(p_independent::ParametersIndependent)::Vect
     return sort!(unique!(node_ids))
 end
 
-"The results of a file in the shape of the NetCDF file."
-function netcdf_data(file::SavedFile, starttime::DateTime)::NamedTuple
+"The results of a file in the shape of the NetCDF file, without the last `nkeep` time steps."
+function netcdf_data(file::SavedFile, starttime::DateTime; nkeep::Int = 0)::NamedTuple
     (; time, coordinates, variables, size) = file
-    ntime = length(time)
+    ntime = max(length(time) - nkeep, 0)
+    nvalue = prod(size) * ntime
     return (;
-        time = datetime_since.(time, starttime),
+        time = datetime_since.(view(time, 1:ntime), starttime),
         coordinates...,
-        map(variable -> reshape(variable, size..., ntime), variables)...,
+        map(variable -> reshape(view(variable, 1:nvalue), size..., ntime), variables)...,
     )
 end
 
@@ -521,9 +610,9 @@ end
 
 "Create the basin state table from the saved data"
 function basin_state_data(model::Model; table::Bool = true)
-    (; u, p, t) = model.integrator
-    (; basin) = p.p_independent
-    set_current_basin_properties!(u.flow, p, t)
+    (; p) = model.integrator
+    (; basin, u_accepted) = p.p_independent
+    set_current_basin_properties!(u_accepted.flow, p, p.p_mutable.tprev)
     return (; node_id = Int32.(basin.node_id), level = copy(p.current_basin_properties.current_level))
 end
 
@@ -630,23 +719,44 @@ end
 subgrid_level_data(model::Model; table::Bool = true) =
     saved_data(model.saved.subgrid_level, "subgrid_level", model; table)
 
-"Write a result table to disk as a NetCDF file"
+"""
+Write a result table to disk as a NetCDF file.
+
+If `chunk_time` is given, the time dimension is unlimited and this is the time chunk size.
+The `data` then holds the time steps after the `ntime_written` that are already in the file.
+"""
 function write_netcdf(
         path::AbstractString,
         data::NamedTuple,
         results::Results = Results();
         significant_bits::Int = results.significant_bits,
+        chunk_time::Union{Int, Nothing} = nothing,
+        ntime_written::Int = 0,
     )::Nothing
     mkpath(dirname(path))
     # Don't write empty files
     haskey(data, :time) && isempty(data.time) && return nothing
     file_name = splitext(basename(path))[1]
     attrib = merge(CF_GLOBAL_ATTRIB, OrderedDict("title" => "Ribasim results: $file_name"))
-    NCDataset(path, "c"; attrib) do ds
+    is_new = iszero(ntime_written)
+    NCDataset(path, is_new ? "c" : "a"; attrib = is_new ? attrib : empty(attrib)) do ds
         for (var_name, var_data) in pairs(data)
             var_name = String(var_name)
             var_dims = Tuple(nc_dims(file_name, var_name))
-            write_netcdf_variable(ds, var_name, var_data, var_dims, results, significant_bits)
+            has_time = "time" in var_dims
+            # The location coordinates are already in the file
+            !is_new && !has_time && continue
+            v = if is_new
+                define_netcdf_variable(ds, var_name, var_data, var_dims, results, significant_bits, chunk_time)
+            else
+                ds[var_name]
+            end
+            if has_time
+                ntime = size(var_data, ndims(var_data))
+                v[axes(var_data)[begin:(end - 1)]..., (ntime_written + 1):(ntime_written + ntime)] = var_data
+            else
+                v[axes(var_data)...] = var_data
+            end
         end
     end
     return nothing
@@ -659,20 +769,60 @@ const NC_QUANTIZE_BITROUND = Cint(3)
 const NC_CHUNK_LENGTH = 131072
 
 """
-Chunk sizes for a variable with a location and a time dimension.
-
-The chunks are shaped such that reading all locations at one time, and reading one location
-at all times, read about the same amount of data. Other dimensions, like substance, get a
-chunk size of 1, since they are typically read one at a time.
+Chunk sizes along the location and time dimensions, shaped such that reading all locations at
+one time, and reading one location at all times, read about the same amount of data.
 """
-function nc_chunksizes(var_dims::Tuple, var_size::Tuple)::Union{Vector{Int}, Nothing}
-    i_time = findfirst(==("time"), var_dims)
-    i_location = findfirst(in(("node_id", "link_id", "subgrid_id")), var_dims)
-    (isnothing(i_time) || isnothing(i_location) || any(iszero, var_size)) && return nothing
-    ntime = var_size[i_time]
-    nlocation = var_size[i_location]
+function balanced_chunksizes(nlocation::Int, ntime::Int)::Tuple{Int, Int}
     chunk_location = clamp(round(Int, sqrt(NC_CHUNK_LENGTH * nlocation / ntime)), 1, nlocation)
     chunk_time = clamp(NC_CHUNK_LENGTH ÷ chunk_location, 1, ntime)
+    return chunk_location, chunk_time
+end
+
+# The expected number of time steps if results are saved at each solver time step
+const NC_NTIME_SAVE_EVERY_STEP = 8192
+
+"""
+The time chunk size of all results that are written during the simulation, which is balanced
+for the result with the most locations. The other results are then faster to read at one time.
+"""
+function result_chunk_time(p_independent::ParametersIndependent, config::Config, saveat)::Int
+    (; basin, subgrid, graph) = p_independent
+    nlocation = max(length(basin), length(graph[].external_flow_links), length(subgrid.level), 1)
+    t_end = seconds_since(config.endtime, config.starttime)
+    ntime = if saveat isa Float64
+        max(ceil(Int, t_end / saveat), 1)
+    else
+        isempty(saveat) ? NC_NTIME_SAVE_EVERY_STEP : 1
+    end
+    return last(balanced_chunksizes(nlocation, ntime))
+end
+
+"""
+Chunk sizes for a variable with a time dimension. Dimensions other than location and time, like
+substance, get a chunk size of 1, since they are typically read one at a time.
+
+If `chunk_time` is given, the time dimension is unlimited and this is the time chunk size.
+Otherwise the chunks are balanced, see `balanced_chunksizes`.
+"""
+function nc_chunksizes(
+        var_dims::Tuple,
+        var_size::Tuple,
+        chunk_time::Union{Int, Nothing} = nothing,
+    )::Union{Vector{Int}, Nothing}
+    i_time = findfirst(==("time"), var_dims)
+    i_location = findfirst(in(("node_id", "link_id", "subgrid_id")), var_dims)
+    isnothing(i_time) && return nothing
+    if isnothing(i_location)
+        # All chunks are complete after a write, like those of the variables with a location
+        return isnothing(chunk_time) ? nothing : [chunk_time]
+    end
+    any(iszero, var_size) && return nothing
+    nlocation = var_size[i_location]
+    chunk_location, chunk_time = if isnothing(chunk_time)
+        balanced_chunksizes(nlocation, var_size[i_time])
+    else
+        clamp(NC_CHUNK_LENGTH ÷ chunk_time, 1, nlocation), chunk_time
+    end
     chunksizes = ones(Int, length(var_dims))
     chunksizes[i_time] = chunk_time
     chunksizes[i_location] = chunk_location
@@ -680,24 +830,30 @@ function nc_chunksizes(var_dims::Tuple, var_size::Tuple)::Union{Vector{Int}, Not
 end
 
 """
-Define a NetCDF variable and write its data.
+Define a NetCDF variable.
 
 The quantization needs to be set between defining the variable and writing the data, so
 this splits up what `defVar(ds, var_name, var_data, var_dims)` does. If compression is on and
 `significant_bits` is positive, floating point data is quantized with BitRound, and shuffled
 before compression.
+
+If `chunk_time` is given, the time dimension is unlimited and this is the time chunk size.
 """
-function write_netcdf_variable(
+function define_netcdf_variable(
         ds::NCDataset,
         var_name::String,
         var_data::AbstractArray,
         var_dims::Tuple,
         results::Results,
         significant_bits::Int,
-    )::Nothing
+        chunk_time::Union{Int, Nothing},
+    )
     (; compression, compression_level) = results
     for (i, dim_name) in enumerate(var_dims)
-        haskey(ds.dim, dim_name) || defDim(ds, dim_name, size(var_data, i))
+        if !haskey(ds.dim, dim_name)
+            unlimited = dim_name == "time" && !isnothing(chunk_time)
+            defDim(ds, dim_name, unlimited ? Inf : size(var_data, i))
+        end
     end
 
     attrib = OrderedDict{String, Any}(CF[var_name])
@@ -713,6 +869,7 @@ function write_netcdf_variable(
         attrib["_FillValue"] = NCDatasets.fillvalue(nctype)
     end
 
+    chunksizes = nc_chunksizes(var_dims, size(var_data), chunk_time)
     v = if compression
         defVar(
             ds,
@@ -722,10 +879,12 @@ function write_netcdf_variable(
             attrib,
             deflatelevel = compression_level,
             shuffle = quantize,
-            chunksizes = nc_chunksizes(var_dims, size(var_data)),
+            chunksizes,
         )
-    else
+    elseif isnothing(chunk_time)
         defVar(ds, var_name, nctype, var_dims; attrib)
+    else
+        defVar(ds, var_name, nctype, var_dims; attrib, chunksizes)
     end
     if quantize
         # NCDatasets.quantize is on main, and will be in the release after v0.14.15
@@ -742,8 +901,7 @@ function write_netcdf_variable(
         )
     end
 
-    v[axes(var_data)...] = var_data
-    return nothing
+    return v
 end
 
 function output_basin_profiles(
