@@ -973,7 +973,7 @@ function optimize_multi_objective!(
                 )
             end
             JuMP.@objective(problem, Min, expression)
-            JuMP.optimize!(problem)
+            optimize_cold!(problem)
             latest_constraint =
                 isempty(temporary_constraints) ? nothing : last(temporary_constraints)
             parse_termination_status(
@@ -1249,7 +1249,11 @@ end
 
 # Solving from scratch
 
-Every optimization solves the problem from scratch with `optimize_cold!`, without start values or the basis of the previous solve. HiGHS only uses presolve when there is no basis. For large subnetworks presolve removes nearly all rows, because most flows follow from linearized flow-level relations, which makes this orders of magnitude faster than reusing a basis.
+Every optimization solves the problem from scratch with `optimize_cold!`, without start values or the basis of the previous solve. HiGHS only uses presolve when there is no basis. For large subnetworks presolve removes nearly all rows, because most flows follow from linearized flow-level relations.
+
+Start values make HiGHS construct a basis, which is slow for large subnetworks. Reusing the basis of the previous solve needs fewer iterations and has a lower median solve time, but on large subnetworks some solves take much longer and more of them end in status `Unknown`, so we prefer the more robust solve from scratch.
+
+A solve from scratch can also end in status `Unknown` or a solver error, when its solution just violates the feasibility tolerance after unscaling. A solve that doesn't reach the optimum is first retried with slightly relaxed constraints on the previous objectives, and if that fails or there are no previous objectives, with looser feasibility tolerances. The looser tolerances are the last resort, because the next objectives can't reach a bound found with them, so each of those solves then needs a retry as well.
 
 # Output and Communication with Physical Layer
 
@@ -1347,7 +1351,7 @@ function analyze_infeasibility(
         for constraint in violated_constraints
     )
     constraint_to_slack = JuMP.relax_with_penalty!(problem, constraint_to_penalty)
-    JuMP.optimize!(problem)
+    optimize_cold!(problem)
 
     # Report which constraints are in conflict
     for irreducible_infeasible_subset in data_infeasibility.iis

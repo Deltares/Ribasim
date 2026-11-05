@@ -932,6 +932,9 @@ end
 "Relative slack to relax the constraints on previous objectives with when a problem fails to solve"
 const LEXICOGRAPHIC_SLACK = 1.0e-6
 
+"Feasibility tolerance to solve with when a problem fails to solve"
+const RETRY_FEASIBILITY_TOLERANCE = 1.0e-6
+
 function optimize_multi_objective!(
         model::AllocationModel,
         config::Config,
@@ -971,6 +974,12 @@ function optimize_multi_objective!(
                     JuMP.set_normalized_rhs(constraint, bound + LEXICOGRAPHIC_SLACK * max(1.0, abs(bound)))
                 end
                 optimize_cold!(problem)
+            end
+            if JuMP.termination_status(problem) != JuMP.OPTIMAL
+                # A solution can just violate the tolerance after unscaling, which ends in status
+                # Unknown or a solver error, also for the first objective. This is the last resort,
+                # since the next objectives can't reach a bound found with a looser tolerance.
+                optimize_cold!(problem; feasibility_tolerance = RETRY_FEASIBILITY_TOLERANCE)
             end
             @debug objective expression JuMP.solution_summary(problem)
             latest_constraint = isempty(temporary_constraints) ? nothing : last(temporary_constraints)

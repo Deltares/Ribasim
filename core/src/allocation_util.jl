@@ -234,24 +234,34 @@ function get_optimizer()
         "time_limit" => 60.0,
         "random_seed" => 0,
         "small_matrix_value" => 1.0e-12,
-        # The default equilibration can leave a large problem infeasible after unscaling, which
-        # ends in status Unknown, also when the presolved problem was solved to optimality
+        # A solution can violate the feasibility tolerance after unscaling, which ends in status
+        # Unknown, also when the presolved problem was solved to optimality. For large problems
+        # this happens much less often with max value scaling than with the default equilibration.
         "simplex_scale_strategy" => 4,
     )
 end
 
+"The primal and dual feasibility tolerance of an optimization, which is the default of HiGHS"
+const FEASIBILITY_TOLERANCE = 1.0e-7
+
 """
 Solve the problem from scratch, without the basis of a previous solve or start values.
 HiGHS only uses presolve without a basis. Presolve removes nearly all rows of the allocation
-problem of a large subnetwork, since most flows follow from linearized flow-level relations,
-which makes this orders of magnitude faster than reusing a basis.
+problem of a large subnetwork, since most flows follow from linearized flow-level relations.
+Solves that do reuse a basis need fewer iterations, but on large subnetworks they can take
+much longer and more often end in status Unknown.
+
+The tolerances are set for every solve instead of being reset after a solve with other
+tolerances, because changing an attribute after a solve makes JuMP reject its solution.
 """
-function optimize_cold!(problem::JuMP.Model)::Nothing
-    (; state, ATTACHED_OPTIMIZER) = JuMP.MOI.Utilities
-    if state(JuMP.backend(problem)) == ATTACHED_OPTIMIZER
-        status = HiGHS.Highs_clearSolver(JuMP.unsafe_backend(problem))
-        @assert status == HiGHS.kHighsStatusOk
-    end
+function optimize_cold!(
+        problem::JuMP.Model;
+        feasibility_tolerance::Float64 = FEASIBILITY_TOLERANCE,
+    )::Nothing
+    JuMP.set_attribute(problem, "primal_feasibility_tolerance", feasibility_tolerance)
+    JuMP.set_attribute(problem, "dual_feasibility_tolerance", feasibility_tolerance)
+    status = HiGHS.Highs_clearSolver(JuMP.unsafe_backend(problem))
+    @assert status == HiGHS.kHighsStatusOk
     JuMP.optimize!(problem)
     return nothing
 end

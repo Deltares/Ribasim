@@ -1228,7 +1228,6 @@ const ModelGraph = MetaGraph{
         internal_flow_links::Vector{LinkMetadata},
         external_flow_links::Vector{LinkMetadata},
         flow_link_map::SparseMatrixCSC{Bool, Int},
-        flow_link_lookup::Dict{Tuple{NodeID, NodeID}, Int},
     },
     Returns{Float64},
     Float64,

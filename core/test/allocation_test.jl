@@ -618,6 +618,36 @@ end
     Ribasim.optimize_cold!(problem)
     @test JuMP.termination_status(problem) == JuMP.OPTIMAL
     @test JuMP.objective_value(problem) ≈ objective_value
+
+    # A problem presolve doesn't solve by itself: from the basis of the previous solve
+    # no iterations are needed, unless the solver is cleared
+    problem = JuMP.Model(Ribasim.get_optimizer())
+    JuMP.@variable(problem, 0 <= x[1:50] <= 1)
+    JuMP.@constraint(problem, [i in 1:49], x[i] + x[i + 1] <= 1.5)
+    JuMP.@objective(problem, Max, sum(x))
+    Ribasim.optimize_cold!(problem)
+    iterations = JuMP.simplex_iterations(problem)
+    @test iterations > 0
+    JuMP.optimize!(problem)
+    @test JuMP.simplex_iterations(problem) == 0
+    Ribasim.optimize_cold!(problem)
+    @test JuMP.simplex_iterations(problem) == iterations
+
+    # The tolerances of a retry only apply to that solve, and its solution can be read
+    Ribasim.optimize_cold!(
+        problem;
+        feasibility_tolerance = Ribasim.RETRY_FEASIBILITY_TOLERANCE,
+    )
+    @test JuMP.get_attribute(problem, "primal_feasibility_tolerance") ==
+        Ribasim.RETRY_FEASIBILITY_TOLERANCE
+    @test JuMP.get_attribute(problem, "dual_feasibility_tolerance") ==
+        Ribasim.RETRY_FEASIBILITY_TOLERANCE
+    @test JuMP.value(first(x)) >= 0
+    Ribasim.optimize_cold!(problem)
+    @test JuMP.get_attribute(problem, "primal_feasibility_tolerance") ==
+        Ribasim.FEASIBILITY_TOLERANCE
+    @test JuMP.get_attribute(problem, "dual_feasibility_tolerance") ==
+        Ribasim.FEASIBILITY_TOLERANCE
 end
 
 @testitem "allocation record averaging" begin
