@@ -88,9 +88,16 @@ fn main() -> ExitCode {
                     return ExitCode::FAILURE;
                 }
             };
-        if enable_signal_handlers() != 0 {
-            eprintln!("Julia was initialized before its signal handlers were configured");
-            return ExitCode::FAILURE;
+        match enable_signal_handlers() {
+            0 => {}
+            1 => {
+                eprintln!("Julia was initialized before its signal handlers were configured");
+                return ExitCode::FAILURE;
+            }
+            code => {
+                eprintln!("Failed to configure Julia signal handlers (error code {code})");
+                return ExitCode::FAILURE;
+            }
         }
 
         // Execute
