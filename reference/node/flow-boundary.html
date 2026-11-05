@@ -390,14 +390,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#tables" id="toc-tables" class="nav-link active" data-scroll-target="#tables"><span class="header-section-number">1</span> Tables</a>
+  <li><a href="#allowed-connectivity" id="toc-allowed-connectivity" class="nav-link active" data-scroll-target="#allowed-connectivity"><span class="header-section-number">1</span> Allowed connectivity</a></li>
+  <li><a href="#tables" id="toc-tables" class="nav-link" data-scroll-target="#tables"><span class="header-section-number">2</span> Tables</a>
   <ul class="collapse">
-  <li><a href="#static" id="toc-static" class="nav-link" data-scroll-target="#static"><span class="header-section-number">1.1</span> Static</a></li>
-  <li><a href="#time" id="toc-time" class="nav-link" data-scroll-target="#time"><span class="header-section-number">1.2</span> Time</a></li>
-  <li><a href="#sec-flow-boundary-conc" id="toc-sec-flow-boundary-conc" class="nav-link" data-scroll-target="#sec-flow-boundary-conc"><span class="header-section-number">1.3</span> Concentration</a></li>
-  <li><a href="#area" id="toc-area" class="nav-link" data-scroll-target="#area"><span class="header-section-number">1.4</span> Area</a></li>
+  <li><a href="#static" id="toc-static" class="nav-link" data-scroll-target="#static"><span class="header-section-number">2.1</span> Static</a></li>
+  <li><a href="#time" id="toc-time" class="nav-link" data-scroll-target="#time"><span class="header-section-number">2.2</span> Time</a></li>
+  <li><a href="#sec-flow-boundary-conc" id="toc-sec-flow-boundary-conc" class="nav-link" data-scroll-target="#sec-flow-boundary-conc"><span class="header-section-number">2.3</span> Concentration</a></li>
+  <li><a href="#area" id="toc-area" class="nav-link" data-scroll-target="#area"><span class="header-section-number">2.4</span> Area</a></li>
   </ul></li>
-  <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">2</span> Equations</a></li>
+  <li><a href="#equations" id="toc-equations" class="nav-link" data-scroll-target="#equations"><span class="header-section-number">3</span> Equations</a></li>
   </ul>
 </nav>
     </div>
@@ -424,18 +425,39 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>A FlowBoundary adds water to the model at a specified flow rate. It can be used as a boundary condition like a measured upstream flow rate, or lateral inflow. We require that a link connected to a FlowBoundary is always outgoing, and points towards a Basin.</p>
-<section id="tables" class="level1" data-number="1">
-<h1 data-number="1"><span class="header-section-number">1</span> Tables</h1>
-<section id="static" class="level2" data-number="1.1">
-<h2 data-number="1.1" class="anchored" data-anchor-id="static"><span class="header-section-number">1.1</span> Static</h2>
+<section id="allowed-connectivity" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Allowed connectivity</h1>
 <div id="2" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">include</span>(<span class="st">"../../../utils/gen_docs_table.jl"</span>)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.FlowBoundary.Static;</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(<span class="op">:</span>flow_rate <span class="op">=&gt;</span> <span class="st">"non-negative"</span>),</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">include</span>(<span class="st">"../../../utils/plot_node_connectivity.jl"</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_node_connectivity</span>(<span class="st">"FlowBoundary"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>/home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/xugrid/ugrid/connectivity.py:83: NumbaPerformanceWarning: numba is not installed; running a pure-Python fallback instead. Regridding, interpolation, and snapping may be much slower; install numba to enable acceleration.
+  @numba.njit(inline="always")</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="1">
+<div>
+<figure class="figure">
+<p><img src="flow-boundary_files/figure-html/cell-2-output-2.svg" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="tables" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Tables</h1>
+<section id="static" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="static"><span class="header-section-number">2.1</span> Static</h2>
+<div id="4" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">include</span>(<span class="st">"../../../utils/gen_docs_table.jl"</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.FlowBoundary.Static;</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(<span class="op">:</span>flow_rate <span class="op">=&gt;</span> <span class="st">"non-negative"</span>),</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
 <table class="caption-top table table-sm table-striped small">
@@ -468,16 +490,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section>
-<section id="time" class="level2" data-number="1.2">
-<h2 data-number="1.2" class="anchored" data-anchor-id="time"><span class="header-section-number">1.2</span> Time</h2>
+<section id="time" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="time"><span class="header-section-number">2.2</span> Time</h2>
 <p>This table is the transient form of the <code>FlowBoundary</code> table. The only difference is that a time column is added. With this the flow rates can be updated over time. In between the given times the flow rate is interpolated in a way specified in the <a href="../../reference/usage.html#interpolation-settings">interpolation settings</a> (block interpolation by default), and outside the flow rate is constant given by the nearest time value unless the node is cyclic in time. Note that a <code>node_id</code> can be either in this table or in the static one, but not both.</p>
-<div id="4" class="cell" data-execution_count="1">
+<div id="6" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.FlowBoundary.<span class="dt">Time</span>;</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(<span class="op">:</span>flow_rate <span class="op">=&gt;</span> <span class="st">"non-negative"</span>),</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.FlowBoundary.<span class="dt">Time</span>;</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(<span class="op">:</span>flow_rate <span class="op">=&gt;</span> <span class="st">"non-negative"</span>),</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
 <table class="caption-top table table-sm table-striped small">
@@ -517,16 +539,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section>
-<section id="sec-flow-boundary-conc" class="level2" data-number="1.3">
-<h2 data-number="1.3" class="anchored" data-anchor-id="sec-flow-boundary-conc"><span class="header-section-number">1.3</span> Concentration</h2>
+<section id="sec-flow-boundary-conc" class="level2" data-number="2.3">
+<h2 data-number="2.3" class="anchored" data-anchor-id="sec-flow-boundary-conc"><span class="header-section-number">2.3</span> Concentration</h2>
 <p>This table defines the concentration of substances for the flow from the FlowBoundary.</p>
-<div id="6" class="cell" data-execution_count="1">
+<div id="8" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.FlowBoundary.Concentration;</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(<span class="op">:</span>substance <span class="op">=&gt;</span> <span class="st">"can correspond to known Delwaq substances"</span>),</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table_from_schema</span>(</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    Ribasim.Schema.FlowBoundary.Concentration;</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    restrictions <span class="op">=</span> <span class="fu">Dict</span>(<span class="op">:</span>substance <span class="op">=&gt;</span> <span class="st">"can correspond to known Delwaq substances"</span>),</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
 <table class="caption-top table table-sm table-striped small">
@@ -580,8 +602,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section>
-<section id="area" class="level2" data-number="1.4">
-<h2 data-number="1.4" class="anchored" data-anchor-id="area"><span class="header-section-number">1.4</span> Area</h2>
+<section id="area" class="level2" data-number="2.4">
+<h2 data-number="2.4" class="anchored" data-anchor-id="area"><span class="header-section-number">2.4</span> Area</h2>
 <p>The optional area table is not used during computation, but provides a place to associate areas in the form of polygons to a FlowBoundary. Using this makes it easier to recognize which water or land surfaces are represented by a FlowBoundary.</p>
 <table class="caption-top table">
 <thead>
@@ -606,8 +628,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 </section>
 </section>
-<section id="equations" class="level1" data-number="2">
-<h1 data-number="2"><span class="header-section-number">2</span> Equations</h1>
+<section id="equations" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Equations</h1>
 <p>A FlowBoundary can be connected directly to a Basin and prescribes the flow to that Basin. Since the <code>flow_rate</code> cannot be negative a FlowBoundary can only add water to the model.</p>
 
 

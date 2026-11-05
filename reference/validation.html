@@ -390,7 +390,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#connectivity" id="toc-connectivity" class="nav-link active" data-scroll-target="#connectivity"><span class="header-section-number">1</span> Connectivity</a></li>
+  <li><a href="#allowed-connectivity" id="toc-allowed-connectivity" class="nav-link active" data-scroll-target="#allowed-connectivity"><span class="header-section-number">1</span> Allowed connectivity</a></li>
   <li><a href="#neighbor-amounts" id="toc-neighbor-amounts" class="nav-link" data-scroll-target="#neighbor-amounts"><span class="header-section-number">2</span> Neighbor amounts</a>
   <ul class="collapse">
   <li><a href="#flow-links" id="toc-flow-links" class="nav-link" data-scroll-target="#flow-links"><span class="header-section-number">2.1</span> Flow links</a></li>
@@ -422,828 +422,455 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>The tables below show the validation rules applied to the input to the Julia core before running the model.</p>
-<section id="connectivity" class="level1" data-number="1">
-<h1 data-number="1"><span class="header-section-number">1</span> Connectivity</h1>
-<p>In the table below, each column shows which node types are allowed to be downstream (or ‘down-control’) of the node type at the top of the column.</p>
-<div id="2" class="cell freeze-left" data-execution_count="1">
+<p>The diagram and tables below show the validation rules applied to the input to the Julia core before running the model. Some node types have more complex connectivity validation than shown here. See the <a href="../reference/node/junction.html">Junction</a> and <a href="../reference/node/user-demand.html">UserDemand</a> pages for their additional rules.</p>
+<section id="allowed-connectivity" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Allowed connectivity</h1>
+<p>The diagram below shows every allowed upstream and downstream node type for each node type that can have flow links. Each group has its own nodes, with upstream neighbors on the left, downstream neighbors on the right, and flow directed from left to right. This is a connectivity illustration, not a valid simulation model.</p>
+<div id="04931664" class="cell" data-fig-height="30" data-fig-width="5" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">Ribasim</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">DataFrames</span>: DataFrame</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">MarkdownTables</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>node_names_snake_case <span class="op">=</span> <span class="dt">Symbol</span>[]</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>node_names_camel_case <span class="op">=</span> <span class="dt">Symbol</span>[]</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (node_name, node_type) <span class="kw">in</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">zip</span>(<span class="fu">fieldnames</span>(Ribasim.ParametersIndependent), <span class="fu">fieldtypes</span>(Ribasim.ParametersIndependent))</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> node_type <span class="op">&lt;:</span><span class="dt"> Ribasim.AbstractParameterNode</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>        <span class="fu">push!</span>(node_names_snake_case, node_name)</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        <span class="fu">push!</span>(node_names_camel_case, <span class="fu">nameof</span>(node_type))</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">to_symbol</span>(b<span class="op">::</span><span class="dt">Bool</span>)<span class="op">::</span><span class="dt">String</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> b ? <span class="st">"✓"</span> <span class="op">:</span> <span class="st">"x"</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> <span class="fu">DataFrame</span>()</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>df[!, <span class="op">:</span>downstream] <span class="op">=</span> node_names_snake_case</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> node_name <span class="kw">in</span> node_names_snake_case</span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    df[!, node_name] <span class="op">=</span> [</span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>        (<span class="fu">to_symbol</span>(node_name_ <span class="kw">in</span> Ribasim.<span class="fu">neighbortypes</span>(node_name))) for</span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>        node_name_ <span class="kw">in</span> node_names_snake_case</span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    ]</span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="fu">markdown_table</span>(df)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span>run ..<span class="op">/</span>..<span class="op">/</span>utils<span class="op">/</span>plot_node_connectivity.py</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>fig <span class="op">=</span> plot_all_node_connectivity()</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>plt.show()</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>plt.close(fig)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
-<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
-<table class="caption-top table table-sm table-striped small">
-<colgroup>
-<col style="width: 10%">
-<col style="width: 2%">
-<col style="width: 7%">
-<col style="width: 7%">
-<col style="width: 9%">
-<col style="width: 6%">
-<col style="width: 5%">
-<col style="width: 2%">
-<col style="width: 3%">
-<col style="width: 3%">
-<col style="width: 3%">
-<col style="width: 7%">
-<col style="width: 7%">
-<col style="width: 5%">
-<col style="width: 5%">
-<col style="width: 5%">
-<col style="width: 5%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>downstream</th>
-<th>basin</th>
-<th>linear_resistance</th>
-<th>manning_resistance</th>
-<th>tabulated_rating_curve</th>
-<th>level_boundary</th>
-<th>flow_boundary</th>
-<th>pump</th>
-<th>outlet</th>
-<th>terminal</th>
-<th>junction</th>
-<th>discrete_control</th>
-<th>continuous_control</th>
-<th>pid_control</th>
-<th>user_demand</th>
-<th>level_demand</th>
-<th>flow_demand</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>basin</code></td>
-<td>x</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>x</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>x</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-<td>✓</td>
-<td>x</td>
-</tr>
-<tr class="even">
-<td><code>linear_resistance</code></td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-</tr>
-<tr class="odd">
-<td><code>manning_resistance</code></td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-</tr>
-<tr class="even">
-<td><code>tabulated_rating_curve</code></td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-</tr>
-<tr class="odd">
-<td><code>level_boundary</code></td>
-<td>x</td>
-<td>✓</td>
-<td>x</td>
-<td>✓</td>
-<td>x</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-</tr>
-<tr class="even">
-<td><code>flow_boundary</code></td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-</tr>
-<tr class="odd">
-<td><code>pump</code></td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-</tr>
-<tr class="even">
-<td><code>outlet</code></td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-</tr>
-<tr class="odd">
-<td><code>terminal</code></td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-<td>x</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>x</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-</tr>
-<tr class="even">
-<td><code>junction</code></td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>x</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>x</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-</tr>
-<tr class="odd">
-<td><code>discrete_control</code></td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-</tr>
-<tr class="even">
-<td><code>continuous_control</code></td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-</tr>
-<tr class="odd">
-<td><code>pid_control</code></td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-</tr>
-<tr class="even">
-<td><code>user_demand</code></td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>✓</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-</tr>
-<tr class="odd">
-<td><code>level_demand</code></td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-</tr>
-<tr class="even">
-<td><code>flow_demand</code></td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-<td>x</td>
-</tr>
-</tbody>
-</table>
+<div class="cell-output cell-output-stderr">
+<pre><code>/home/runner/work/Ribasim/Ribasim/.pixi/envs/default/lib/python3.13/site-packages/xugrid/ugrid/connectivity.py:83: NumbaPerformanceWarning: numba is not installed; running a pure-Python fallback instead. Regridding, interpolation, and snapping may be much slower; install numba to enable acceleration.
+  @numba.njit(inline="always")</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="validation_files/figure-html/cell-2-output-2.png" width="801" height="2499" class="figure-img"></p>
+</figure>
+</div>
 </div>
 </div>
 </section>
 <section id="neighbor-amounts" class="level1" data-number="2">
 <h1 data-number="2"><span class="header-section-number">2</span> Neighbor amounts</h1>
-<p>The tables below show for each node type between which bounds the amount of in- and outneighbors must be, per link type.</p>
-<div id="4" class="cell" data-execution_count="1">
+<p>The tables below show the minimum and maximum numbers of incoming and outgoing neighbors for each node type, per link type. <code>∞</code> means there is no upper bound.</p>
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">unbounded</span>(i<span class="op">::</span><span class="dt">Int</span>)<span class="op">::</span><span class="dt">String</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> i <span class="op">==</span> <span class="fu">typemax</span>(<span class="dt">Int</span>) ? <span class="st">"∞"</span> <span class="op">:</span> <span class="fu">string</span>(i)</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">neighbor_bounds_table</span>(node_names_snake_case, node_names_camel_case, bounds_fn)</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    in_min <span class="op">=</span> <span class="dt">String</span>[]</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    in_max <span class="op">=</span> <span class="dt">String</span>[]</span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    out_min <span class="op">=</span> <span class="dt">String</span>[]</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    out_max <span class="op">=</span> <span class="dt">String</span>[]</span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> node_name <span class="kw">in</span> node_names_camel_case</span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>        bounds <span class="op">=</span> <span class="fu">bounds_fn</span>(node_name)</span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        <span class="fu">push!</span>(in_min, <span class="fu">string</span>(bounds.in_min))</span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        <span class="fu">push!</span>(in_max, <span class="fu">unbounded</span>(bounds.in_max))</span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>        <span class="fu">push!</span>(out_min, <span class="fu">string</span>(bounds.out_min))</span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>        <span class="fu">push!</span>(out_max, <span class="fu">unbounded</span>(bounds.out_max))</span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">end</span></span>
-<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="fu">DataFrame</span>(; node_type <span class="op">=</span> node_names_snake_case, in_min, in_max, out_min, out_max)</span>
-<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> ribasim.validation <span class="im">import</span> link_neighbor_amount</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> link_type <span class="kw">in</span> (<span class="st">"flow"</span>, <span class="st">"control"</span>, <span class="st">"listen"</span>):</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    node_bounds <span class="op">=</span> link_neighbor_amount[link_type]</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="ch">\n</span><span class="ss">## </span><span class="sc">{</span>link_type<span class="sc">.</span>title()<span class="sc">}</span><span class="ss"> links</span><span class="ch">\n</span><span class="ss">"</span>)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"| Node type | in_min | in_max | out_min | out_max |"</span>)</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"|:----------|-------:|-------:|--------:|--------:|"</span>)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> node_type, bounds <span class="kw">in</span> node_bounds.items():</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        values <span class="op">=</span> [<span class="st">"∞"</span> <span class="cf">if</span> value <span class="op">==</span> <span class="dv">2</span><span class="op">**</span><span class="dv">63</span> <span class="op">-</span> <span class="dv">1</span> <span class="cf">else</span> <span class="bu">str</span>(value) <span class="cf">for</span> value <span class="kw">in</span> bounds]</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(<span class="ss">f"| </span><span class="sc">{</span>node_type<span class="sc">}</span><span class="ss"> | </span><span class="sc">{</span><span class="st">' | '</span><span class="sc">.</span>join(values)<span class="sc">}</span><span class="ss"> |"</span>)</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
-</div>
 <section id="flow-links" class="level2" data-number="2.1">
 <h2 data-number="2.1" class="anchored" data-anchor-id="flow-links"><span class="header-section-number">2.1</span> Flow links</h2>
-<div id="6" class="cell freeze-left" data-execution_count="1">
-<details class="code-fold">
-<summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">markdown_table</span>(<span class="fu">neighbor_bounds_table</span>(node_names_snake_case, node_names_camel_case, Ribasim.n_neighbor_bounds_flow))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
-<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
-<table class="caption-top table table-sm table-striped small">
+<table class="caption-top table">
 <thead>
 <tr class="header">
-<th>node_type</th>
-<th>in_min</th>
-<th>in_max</th>
-<th>out_min</th>
-<th>out_max</th>
+<th style="text-align: left;">Node type</th>
+<th style="text-align: right;">in_min</th>
+<th style="text-align: right;">in_max</th>
+<th style="text-align: right;">out_min</th>
+<th style="text-align: right;">out_max</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>basin</code></td>
-<td>0</td>
-<td>∞</td>
-<td>0</td>
-<td>∞</td>
+<td style="text-align: left;">Basin</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">∞</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">∞</td>
 </tr>
 <tr class="even">
-<td><code>linear_resistance</code></td>
-<td>1</td>
-<td>1</td>
-<td>1</td>
-<td>1</td>
+<td style="text-align: left;">ContinuousControl</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="odd">
-<td><code>manning_resistance</code></td>
-<td>1</td>
-<td>1</td>
-<td>1</td>
-<td>1</td>
+<td style="text-align: left;">DiscreteControl</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="even">
-<td><code>tabulated_rating_curve</code></td>
-<td>1</td>
-<td>1</td>
-<td>1</td>
-<td>1</td>
+<td style="text-align: left;">FlowBoundary</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
 </tr>
 <tr class="odd">
-<td><code>level_boundary</code></td>
-<td>0</td>
-<td>∞</td>
-<td>0</td>
-<td>∞</td>
+<td style="text-align: left;">FlowDemand</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="even">
-<td><code>flow_boundary</code></td>
-<td>0</td>
-<td>0</td>
-<td>1</td>
-<td>1</td>
+<td style="text-align: left;">Junction</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">∞</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">∞</td>
 </tr>
 <tr class="odd">
-<td><code>pump</code></td>
-<td>1</td>
-<td>1</td>
-<td>1</td>
-<td>1</td>
+<td style="text-align: left;">LevelBoundary</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">∞</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">∞</td>
 </tr>
 <tr class="even">
-<td><code>outlet</code></td>
-<td>1</td>
-<td>1</td>
-<td>1</td>
-<td>1</td>
+<td style="text-align: left;">LevelDemand</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="odd">
-<td><code>terminal</code></td>
-<td>1</td>
-<td>∞</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">LinearResistance</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
 </tr>
 <tr class="even">
-<td><code>junction</code></td>
-<td>1</td>
-<td>∞</td>
-<td>1</td>
-<td>∞</td>
+<td style="text-align: left;">ManningResistance</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
 </tr>
 <tr class="odd">
-<td><code>discrete_control</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">Observation</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="even">
-<td><code>continuous_control</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">Outlet</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
 </tr>
 <tr class="odd">
-<td><code>pid_control</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">PidControl</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="even">
-<td><code>user_demand</code></td>
-<td>1</td>
-<td>∞</td>
-<td>1</td>
-<td>1</td>
+<td style="text-align: left;">Pump</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
 </tr>
 <tr class="odd">
-<td><code>level_demand</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">TabulatedRatingCurve</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
 </tr>
 <tr class="even">
-<td><code>flow_demand</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">Terminal</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">∞</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">UserDemand</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">∞</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
 </tr>
 </tbody>
 </table>
-</div>
-</div>
 </section>
 <section id="control-links" class="level2" data-number="2.2">
 <h2 data-number="2.2" class="anchored" data-anchor-id="control-links"><span class="header-section-number">2.2</span> Control links</h2>
-<div id="8" class="cell freeze-left" data-execution_count="1">
-<details class="code-fold">
-<summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">markdown_table</span>(<span class="fu">neighbor_bounds_table</span>(node_names_snake_case, node_names_camel_case, Ribasim.n_neighbor_bounds_control))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
-<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
-<table class="caption-top table table-sm table-striped small">
+<table class="caption-top table">
 <thead>
 <tr class="header">
-<th>node_type</th>
-<th>in_min</th>
-<th>in_max</th>
-<th>out_min</th>
-<th>out_max</th>
+<th style="text-align: left;">Node type</th>
+<th style="text-align: right;">in_min</th>
+<th style="text-align: right;">in_max</th>
+<th style="text-align: right;">out_min</th>
+<th style="text-align: right;">out_max</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>basin</code></td>
-<td>0</td>
-<td>1</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">Basin</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="even">
-<td><code>linear_resistance</code></td>
-<td>0</td>
-<td>1</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">ContinuousControl</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">∞</td>
 </tr>
 <tr class="odd">
-<td><code>manning_resistance</code></td>
-<td>0</td>
-<td>1</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">DiscreteControl</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">∞</td>
 </tr>
 <tr class="even">
-<td><code>tabulated_rating_curve</code></td>
-<td>0</td>
-<td>1</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">FlowBoundary</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="odd">
-<td><code>level_boundary</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">FlowDemand</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
 </tr>
 <tr class="even">
-<td><code>flow_boundary</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">Junction</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="odd">
-<td><code>pump</code></td>
-<td>0</td>
-<td>2</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">LevelBoundary</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="even">
-<td><code>outlet</code></td>
-<td>0</td>
-<td>2</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">LevelDemand</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">∞</td>
 </tr>
 <tr class="odd">
-<td><code>terminal</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">LinearResistance</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="even">
-<td><code>junction</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">ManningResistance</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="odd">
-<td><code>discrete_control</code></td>
-<td>0</td>
-<td>0</td>
-<td>1</td>
-<td>∞</td>
+<td style="text-align: left;">Observation</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="even">
-<td><code>continuous_control</code></td>
-<td>0</td>
-<td>0</td>
-<td>1</td>
-<td>∞</td>
+<td style="text-align: left;">Outlet</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="odd">
-<td><code>pid_control</code></td>
-<td>0</td>
-<td>1</td>
-<td>1</td>
-<td>1</td>
+<td style="text-align: left;">PidControl</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
 </tr>
 <tr class="even">
-<td><code>user_demand</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">Pump</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="odd">
-<td><code>level_demand</code></td>
-<td>0</td>
-<td>0</td>
-<td>1</td>
-<td>∞</td>
+<td style="text-align: left;">TabulatedRatingCurve</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="even">
-<td><code>flow_demand</code></td>
-<td>0</td>
-<td>0</td>
-<td>1</td>
-<td>1</td>
+<td style="text-align: left;">Terminal</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">UserDemand</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 </tbody>
 </table>
-</div>
-</div>
 </section>
 <section id="listen-links" class="level2" data-number="2.3">
 <h2 data-number="2.3" class="anchored" data-anchor-id="listen-links"><span class="header-section-number">2.3</span> Listen links</h2>
-<div id="10" class="cell freeze-left" data-execution_count="1">
-<details class="code-fold">
-<summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">markdown_table</span>(<span class="fu">neighbor_bounds_table</span>(node_names_snake_case, node_names_camel_case, Ribasim.n_neighbor_bounds_listen))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
-<div class="cell-output cell-output-display cell-output-markdown" data-execution_count="1">
-<table class="caption-top table table-sm table-striped small">
+<table class="caption-top table">
 <thead>
 <tr class="header">
-<th>node_type</th>
-<th>in_min</th>
-<th>in_max</th>
-<th>out_min</th>
-<th>out_max</th>
+<th style="text-align: left;">Node type</th>
+<th style="text-align: right;">in_min</th>
+<th style="text-align: right;">in_max</th>
+<th style="text-align: right;">out_min</th>
+<th style="text-align: right;">out_max</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>basin</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>∞</td>
+<td style="text-align: left;">Basin</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">∞</td>
 </tr>
 <tr class="even">
-<td><code>linear_resistance</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>∞</td>
+<td style="text-align: left;">ContinuousControl</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">∞</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="odd">
-<td><code>manning_resistance</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>∞</td>
+<td style="text-align: left;">DiscreteControl</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">∞</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="even">
-<td><code>tabulated_rating_curve</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>∞</td>
+<td style="text-align: left;">FlowBoundary</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">∞</td>
 </tr>
 <tr class="odd">
-<td><code>level_boundary</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>∞</td>
+<td style="text-align: left;">FlowDemand</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">∞</td>
 </tr>
 <tr class="even">
-<td><code>flow_boundary</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>∞</td>
+<td style="text-align: left;">Junction</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">∞</td>
 </tr>
 <tr class="odd">
-<td><code>pump</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>∞</td>
+<td style="text-align: left;">LevelBoundary</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">∞</td>
 </tr>
 <tr class="even">
-<td><code>outlet</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>∞</td>
+<td style="text-align: left;">LevelDemand</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">∞</td>
 </tr>
 <tr class="odd">
-<td><code>terminal</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>∞</td>
+<td style="text-align: left;">LinearResistance</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">∞</td>
 </tr>
 <tr class="even">
-<td><code>junction</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>∞</td>
+<td style="text-align: left;">ManningResistance</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">∞</td>
 </tr>
 <tr class="odd">
-<td><code>discrete_control</code></td>
-<td>1</td>
-<td>∞</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">Observation</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="even">
-<td><code>continuous_control</code></td>
-<td>1</td>
-<td>∞</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">Outlet</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">∞</td>
 </tr>
 <tr class="odd">
-<td><code>pid_control</code></td>
-<td>1</td>
-<td>∞</td>
-<td>0</td>
-<td>0</td>
+<td style="text-align: left;">PidControl</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">∞</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr class="even">
-<td><code>user_demand</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>∞</td>
+<td style="text-align: left;">Pump</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">∞</td>
 </tr>
 <tr class="odd">
-<td><code>level_demand</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>∞</td>
+<td style="text-align: left;">TabulatedRatingCurve</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">∞</td>
 </tr>
 <tr class="even">
-<td><code>flow_demand</code></td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>∞</td>
+<td style="text-align: left;">Terminal</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">∞</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">UserDemand</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">∞</td>
 </tr>
 </tbody>
 </table>
-</div>
-</div>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
