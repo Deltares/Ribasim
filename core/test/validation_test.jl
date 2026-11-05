@@ -712,6 +712,44 @@ end
     @test valid_unique_rows(variable)
 end
 
+@testitem "Number parameters constant over time" begin
+    using Logging
+    using Ribasim: NodeID, get_parameter_value
+
+    node_id = NodeID(:UserDemand, 1, 1)
+
+    val, valid = get_parameter_value(1:2, [1.0, 1.0], Float64, 0.0, node_id; from_static = false)
+    @test valid
+    @test val == 1.0
+
+    # Constant values over time are fine, also if some are missing and replaced by the default
+    val, valid = get_parameter_value(
+        1:2,
+        [0.0, missing],
+        Float64,
+        0.0,
+        node_id;
+        from_static = false,
+    )
+    @test valid
+
+    logger = TestLogger()
+    with_logger(logger) do
+        _, valid = get_parameter_value(
+            1:2,
+            [1.0, 2.0],
+            Float64,
+            0.0,
+            node_id;
+            from_static = false,
+            parameter_name = :min_level,
+        )
+        @test !valid
+    end
+    @test only(logger.logs).message ==
+        "UserDemand #1 has multiple different values over time for 'min_level', which does not support time-varying values."
+end
+
 @testitem "UserDemand parameters equal per demand priority" begin
     using Logging
     using Dates: DateTime
