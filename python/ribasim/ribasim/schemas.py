@@ -143,10 +143,14 @@ class ContinuousControlVariableSchema(_BaseSchema):
     _node_id_relation: str = "equal"
     fid: Index[np.int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
-    listen_node_id: np.int32 = pa.Field(nullable=False)
+    compound_variable_id: pd.Int32Dtype = pa.Field(nullable=True)
+    listen_node_id: pd.Int32Dtype = pa.Field(nullable=True)
     variable: pd.StringDtype = pa.Field(nullable=False)
     weight: float = pa.Field(nullable=True)
     look_ahead: float = pa.Field(nullable=True)
+    function: pd.StringDtype = pa.Field(nullable=True)
+    coefficient: float = pa.Field(nullable=True)
+    offset: float = pa.Field(nullable=True)
 
 
 class DiscreteControlConditionSchema(_BaseSchema):
@@ -173,10 +177,13 @@ class DiscreteControlVariableSchema(_BaseSchema):
     fid: Index[np.int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     compound_variable_id: np.int32 = pa.Field(nullable=False)
-    listen_node_id: np.int32 = pa.Field(nullable=False)
+    listen_node_id: pd.Int32Dtype = pa.Field(nullable=True)
     variable: pd.StringDtype = pa.Field(nullable=False)
     weight: float = pa.Field(nullable=True)
     look_ahead: float = pa.Field(nullable=True)
+    function: pd.StringDtype = pa.Field(nullable=True)
+    coefficient: float = pa.Field(nullable=True)
+    offset: float = pa.Field(nullable=True)
 
 
 class FlowBoundaryConcentrationSchema(_BaseSchema):

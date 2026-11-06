@@ -1102,6 +1102,26 @@ function get_threshold!(
     return nothing
 end
 
+"Prefix of a `variable` that refers to another compound variable, e.g. `compound_variable.2`"
+const NESTED_VARIABLE_PREFIX = "compound_variable."
+
+"""
+Parse the `function` of a subvariable, one of "identity", "exponential", "inverse",
+"sin" or "power(n)" with n an integer. Returns the function as a Symbol and the power.
+"""
+function parse_subvariable_function(name::AbstractString, node_id::NodeID)::Tuple{Symbol, Int}
+    name = strip(name)
+    if name in ("identity", "exponential", "inverse", "sin")
+        return Symbol(name), 1
+    end
+    m = match(r"^power\(\s*([+-]?\d+)\s*\)$", name)
+    if isnothing(m)
+        @error "Unsupported variable function `$name` for $node_id, must be \"identity\", \"exponential\", \"inverse\", \"power(integer)\" or \"sin\"."
+        error("Invalid `function`.")
+    end
+    return :power, parse(Int, only(m.captures))
+end
+
 """
 Get a CompoundVariable object given its definition in the input data.
 References to listened parameters are added later.
@@ -1113,26 +1133,76 @@ function CompoundVariable(
         conditions_compound_variable = nothing,
         starttime = nothing,
         cyclic_time = false,
+        definitions = Dict{Int32, StructVector}(),
+        stack = Int32[],
     )::CompoundVariable
     # The ID of the node listening to this CompoundVariable
     node_id =
         NodeID(node_type, only(unique(variables_compound_variable.node_id)), node_ids_all)
 
+    # Compound variables without ID (ContinuousControl) get ID 0
+    compound_variable_id =
+        coalesce(first(variables_compound_variable).compound_variable_id, Int32(0))
+    stack = push!(copy(stack), compound_variable_id)
+
     compound_variable = CompoundVariable(; node_id)
-    (; subvariables, threshold_high, threshold_low) = compound_variable
+    (; subvariables, nested, threshold_high, threshold_low) = compound_variable
 
     # Each row defines a subvariable
     for row in variables_compound_variable
-        listen_node_id = NodeID(row.listen_node_id, node_ids_all)
+        variable = row.variable
+        is_nested = startswith(variable, NESTED_VARIABLE_PREFIX)
+        # A variable referring to a compound variable has no listened node
+        if is_nested && !ismissing(row.listen_node_id)
+            @error "A variable referring to a compound variable cannot have a `listen_node_id`." node_id variable
+            error("Invalid `listen_node_id`.")
+        elseif !is_nested && ismissing(row.listen_node_id)
+            @error "Missing `listen_node_id`." node_id variable
+            error("Invalid `listen_node_id`.")
+        end
+        listen_node_id =
+            is_nested ? node_id : NodeID(row.listen_node_id, node_ids_all)
         if listen_node_id.type == NodeType.Junction
             @error "Cannot listen to Junction node" listen_node_id node_id
             error("Invalid `listen_node_id`.")
         end
-        # Placeholder until actual ref is known
-        variable = row.variable
         weight = coalesce(row.weight, schema_default(typeof(row), Val(:weight)))
         look_ahead = coalesce(row.look_ahead, schema_default(typeof(row), Val(:look_ahead)))
-        subvariable = SubVariable(listen_node_id, variable, weight, look_ahead)
+        coefficient =
+            coalesce(row.coefficient, schema_default(typeof(row), Val(:coefficient)))
+        offset = coalesce(row.offset, schema_default(typeof(row), Val(:offset)))
+        func, power = parse_subvariable_function(
+            coalesce(getproperty(row, :function), schema_default(typeof(row), Val(:function))),
+            node_id,
+        )
+
+        nested_idx = 0
+        if is_nested
+            nested_id = tryparse(Int32, chopprefix(variable, NESTED_VARIABLE_PREFIX))
+            if isnothing(nested_id) || !haskey(definitions, nested_id)
+                @error "Variable refers to a compound variable that is not defined." node_id variable
+                error("Invalid `variable`.")
+            elseif nested_id in stack
+                @error "Compound variables refer to each other in a cycle." node_id variable
+                error("Invalid `variable`.")
+            end
+            push!(
+                nested,
+                CompoundVariable(
+                    definitions[nested_id],
+                    node_type,
+                    node_ids_all;
+                    definitions,
+                    stack,
+                ),
+            )
+            nested_idx = length(nested)
+        end
+
+        subvariable = SubVariable(;
+            listen_node_id, variable, weight, look_ahead, func, power, coefficient, offset,
+            nested = nested_idx,
+        )
         push!(subvariables, subvariable)
     end
 
@@ -1200,6 +1270,7 @@ function parse_variables_and_conditions(ids::Vector{Int32}, db::DB, config::Conf
                     conditions_compound_variable,
                     config.starttime,
                     cyclic_time,
+                    definitions = variable_by_compound,
                 ),
             )
         end
@@ -1309,9 +1380,22 @@ function continuous_control_compound_variables(db::DB, config::Config, ids)
     # Loop over the ContinuousControl node IDs
     for id in ids
         variable_data = filter(row -> row.node_id == id, data)
+        # Rows without compound_variable_id define the compound variable used by the node,
+        # rows with an ID define compound variables that those can refer to
+        root_data = filter(row -> ismissing(row.compound_variable_id), variable_data)
+        definitions = Dict{Int32, StructVector}()
+        for row_id in unique(skipmissing(variable_data.compound_variable_id))
+            definitions[row_id] =
+                filter(row -> isequal(row.compound_variable_id, row_id), variable_data)
+        end
         push!(
             compound_variables,
-            CompoundVariable(variable_data, NodeType.ContinuousControl, node_ids_all),
+            CompoundVariable(
+                root_data,
+                NodeType.ContinuousControl,
+                node_ids_all;
+                definitions,
+            ),
         )
     end
     return compound_variables

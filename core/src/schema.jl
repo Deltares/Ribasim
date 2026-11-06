@@ -303,10 +303,13 @@ module Schema
         @schema struct Variable <: Table
             node_id::Int32
             compound_variable_id::Int32
-            listen_node_id::Int32
+            listen_node_id::Union{Missing, Int32}
             variable::String
             weight::Union{Missing, Float64} = 1.0
             look_ahead::Union{Missing, Float64} = 0.0
+            var"function"::Union{Missing, String} = "identity"
+            coefficient::Union{Missing, Float64} = 1.0
+            offset::Union{Missing, Float64} = 0.0
         end
 
         struct Condition <: Table
@@ -332,10 +335,14 @@ module Schema
 
         @schema struct Variable <: Table
             node_id::Int32
-            listen_node_id::Int32
+            compound_variable_id::Union{Missing, Int32}
+            listen_node_id::Union{Missing, Int32}
             variable::String
             weight::Union{Missing, Float64} = 1.0
             look_ahead::Union{Missing, Float64} = 0.0
+            var"function"::Union{Missing, String} = "identity"
+            coefficient::Union{Missing, Float64} = 1.0
+            offset::Union{Missing, Float64} = 0.0
         end
 
         struct Function <: Table
