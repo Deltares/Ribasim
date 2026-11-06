@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import numpy as np
+import pandas as pd
 from ribasim import Model
 from ribasim.config import Allocation, Experimental
 from ribasim.geometry.node import Node
@@ -143,6 +144,40 @@ def pass_down_model() -> Model:
     model.link.add(pd8, t)
     model.link.add(pd9, t)
 
+    return model
+
+
+def pass_down_flow_boundary_model() -> Model:
+    """Create a model with a FlowBoundary time series flowing through a PassDown node into a Basin.
+
+    The flow rate alternates daily between 0 and 1e-2 m³/s with block interpolation, so the
+    flow over the link into the PassDown node, which is a state, jumps at every day.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 2, 1),
+        crs="EPSG:28992",
+    )
+    times = pd.date_range("2020-01-01", "2020-02-01", freq="D")
+    fb = model.flow_boundary.add(
+        Node(1, Point(0, 0)),
+        [
+            flow_boundary.Time(
+                time=times,
+                flow_rate=[0.0 if i % 2 else 1e-2 for i in range(len(times))],
+            )
+        ],
+    )
+    pd_a = model.pass_down.add(Node(2, Point(1, 0)))
+    b1 = model.basin.add(
+        Node(3, Point(2, 0)),
+        [
+            basin.Profile(area=[1e4, 1e4], level=[0.0, 100.0]),
+            basin.State(level=[1.0]),
+        ],
+    )
+    model.link.add(fb, pd_a)
+    model.link.add(pd_a, b1)
     return model
 
 

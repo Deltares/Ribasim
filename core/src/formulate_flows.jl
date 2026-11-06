@@ -1099,14 +1099,31 @@ The flow from a node outside of a PassDown subgraph into the subgraph.
 function get_source_flow(
         flow::FlowCVector{T},
         source_id::NodeID,
-        p_independent::ParametersIndependent,
+        p::Parameters,
         t::Number,
     )::T where {T}
+    (; p_independent, time_dependent_cache) = p
     (; flow_boundary) = p_independent
     return if source_id.type == NodeType.UserDemand
         flow.horizontal.user_demand_outflow[source_id.idx]
+    elseif source_id.type == NodeType.FlowBoundary
+        # Like the other time series in the right hand side: a flow rate set via BMI takes
+        # precedence, and a block series is evaluated left-continuously within the timestep
+        idx = source_id.idx
+        flow_rate_bmi = flow_boundary.flow_rate_bmi[idx]
+        if isnan(flow_rate_bmi)
+            eval_time_interpolation(
+                flow_boundary.flow_rate[idx],
+                time_dependent_cache.flow_boundary.current_flow_rate,
+                idx,
+                p,
+                t,
+            )
+        else
+            flow_rate_bmi
+        end
     else
-        get_node_flow(flow, source_id; flow_boundary, t)[1]
+        get_node_flow(flow, source_id)[1]
     end
 end
 
@@ -1132,9 +1149,13 @@ function formulate_pass_down_flow!(
     (; inflow_links, outflow_state_idx, inflow_state_idx, fraction, pass_down_subgraphs) = pass_down
     (; current_return_factor) = time_dependent_cache.user_demand
 
-    # No-ops if flow === flow_in, but needed for AD
-    flow.horizontal .= flow_in.horizontal
-    flow.vertical .= flow_in.vertical
+    isempty(pass_down_subgraphs) && return nothing
+
+    # Needed for AD, where the output is a different vector than the input
+    if flow !== flow_in
+        flow.horizontal .= flow_in.horizontal
+        flow.vertical .= flow_in.vertical
+    end
 
     # Different PassDown subgraphs are independent from eachother
     @threaded for subgraph in pass_down_subgraphs
@@ -1144,7 +1165,7 @@ function formulate_pass_down_flow!(
                 for (inflow_link, state_idx) in zip(inflow_links[id.idx], inflow_state_idx[id.idx])
                     source_id = inflow_link.link[1]
                     if !in_pass_down_subgraph(source_id, user_demand)
-                        flow.pass_down[state_idx] = get_source_flow(flow, source_id, p_independent, t)
+                        flow.pass_down[state_idx] = get_source_flow(flow, source_id, p, t)
                     end
                     inflow += flow.pass_down[state_idx]
                 end

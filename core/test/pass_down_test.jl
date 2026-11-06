@@ -57,7 +57,7 @@ end
         "Invalid number of connections for certain node types."
     )
     @test messages == [
-        "PassDown #3 cannot just flow out into a PassDown node, the remainder flow needs somewhere to go.",
+        "PassDown #3 cannot only flow out into a UserDemand node, the remainder flow needs somewhere to go.",
     ]
 end
 
@@ -141,6 +141,28 @@ end
     # PassDown #22 divides the flow of FlowBoundary #1 over #2 and #3 by the fractions of these links
     @test flow_rates(22, 2) ≈ 0.25 .* flow_rates(1, 22)
     @test flow_rates(22, 3) ≈ 0.75 .* flow_rates(1, 22)
+end
+
+@testitem "FlowBoundary time series through PassDown" begin
+    import BasicModelInterface as BMI
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pass_down_flow_boundary/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+    # The flow over the link from the FlowBoundary into the PassDown node is a state, so
+    # the block interpolated flow rate must be evaluated like the other time series in the
+    # right hand side: left-continuously within a timestep via the time dependent cache.
+    # Evaluating it directly gives thousands of rejected steps.
+    @test model.integrator.stats.naccept < 300
+    @test model.integrator.stats.nreject < 200
+
+    # A flow rate set via BMI takes precedence over the time series
+    model = BMI.initialize(Ribasim.Model, toml_path)
+    storage = BMI.get_value_ptr(model, "basin.storage")
+    storage_start = only(storage)
+    BMI.get_value_ptr(model, "flow_boundary.flow_rate") .= 5.0e-3
+    BMI.update_until(model, 86400.0)
+    @test only(storage) - storage_start ≈ 5.0e-3 * 86400.0
 end
 
 @testitem "PassDown at subnetwork boundary" setup = [PassDownValidation] begin

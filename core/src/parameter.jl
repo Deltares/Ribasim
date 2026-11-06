@@ -944,7 +944,7 @@ to be of `ForwardDiff.Dual` type. This second version of the cache is created by
 """
 const TimeDependentCache{T} = @NamedTuple{
     basin::ExactVerticalFlowCVector{T},
-    flow_boundary::@NamedTuple{current_cumulative_boundary_flow::Vector{T}},
+    flow_boundary::@NamedTuple{current_cumulative_boundary_flow::Vector{T}, current_flow_rate::Vector{T}},
     pump::@NamedTuple{
         current_flow_rate_setpoint::Vector{T},
         current_min_flow_rate::Vector{T},
@@ -1436,7 +1436,10 @@ function TimeDependentCache(p_independent::ParametersIndependent)::TimeDependent
     basin = zero(p_independent.basin.forcing.exact_cumulative_forcing)
 
     n_flow_boundary = length(p_independent.flow_boundary.node_id)
-    flow_boundary = (; current_cumulative_boundary_flow = zeros(n_flow_boundary))
+    flow_boundary = (;
+        current_cumulative_boundary_flow = zeros(n_flow_boundary),
+        current_flow_rate = zeros(n_flow_boundary),
+    )
 
     n_pump = length(p_independent.pump.node_id)
     pump = (;
