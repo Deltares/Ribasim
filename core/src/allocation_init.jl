@@ -85,8 +85,7 @@ function add_flow_conservation!(
 
     # Define constraints: nodes that flow into a PassDown node pass their flow on to that node
     pass_down_links = Tuple{NodeID, NodeID}[
-        link_metadata.link for id in node_ids if outflow_data[id.idx].to_pass_down for
-            link_metadata in outflow_data[id.idx].outflow_links
+        outflow_link[id.idx].link for id in node_ids if outflow_data[id.idx].to_pass_down
     ]
     problem[Symbol("flow_conservation_pass_down_$node_name")] = JuMP.@constraint(
         problem,
@@ -257,9 +256,8 @@ function add_user_demand!(
 
     # Define constraints: if the return flow goes into a PassDown node it equals the return flow
     pass_down_links = Tuple{NodeID, NodeID}[
-        link_metadata.link for id in user_demand_ids_subnetwork if
-            outflow_data[id.idx].to_pass_down for
-            link_metadata in outflow_data[id.idx].outflow_links
+        outflow_link[id.idx].link for id in user_demand_ids_subnetwork if
+            outflow_data[id.idx].to_pass_down
     ]
     problem[:user_demand_return_flow_pass_down] = JuMP.@constraint(
         problem,

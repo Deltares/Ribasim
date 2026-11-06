@@ -118,14 +118,6 @@ function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
 end
 
 """
-The outflow links of a node: the links to all PassDown nodes if the node flows into PassDown nodes,
-otherwise the single outflow link.
-"""
-function all_outflow_links(outflow_data::OutflowData)::Vector{LinkMetadata}
-    return outflow_data.to_pass_down ? outflow_data.outflow_links : [outflow_data.outflow_link]
-end
-
-"""
 The fraction of the outflow of a node that flows over a link. This is the fraction of the link if it
 leaves a PassDown node, otherwise the node has a single outflow link.
 """

@@ -541,13 +541,9 @@ function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inf
     inflow && map!(node_id -> inflow_link(graph, node_id), node.inflow_link, node.node_id)
 
     for id in node.node_id
-        outflow_links = get_outflow_links(graph, id)
-        to_pass_down = any(link.link[2].is_pass_down for link in outflow_links)
-        node.outflow_data[id.idx] = if to_pass_down
-            OutflowData(; outflow_links, to_pass_down = true)
-        else
-            OutflowData(; outflow_link = only(outflow_links))
-        end
+        outflow_link = only(get_outflow_links(graph, id))
+        node.outflow_data[id.idx] =
+            OutflowData(; outflow_link, to_pass_down = outflow_link.link[2].is_pass_down)
     end
     return nothing
 end

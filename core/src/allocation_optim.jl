@@ -148,15 +148,12 @@ function set_simulation_data!(
 
     for node_id in flow_boundary_ids_subnetwork
         flow_rate = boundary_flow_rate(flow_boundary, node_id.idx, t) / scaling.flow
-        # The flow goes to the PassDown node downstream
-        for link_metadata in all_outflow_links(flow_boundary.outflow_data[node_id.idx])
-            link = link_metadata.link
-            JuMP.fix(
-                flow[link],
-                flow_rate;
-                force = true,
-            )
-        end
+        link = flow_boundary.outflow_data[node_id.idx].outflow_link.link
+        JuMP.fix(
+            flow[link],
+            flow_rate;
+            force = true,
+        )
     end
 
     return nothing
@@ -1509,10 +1506,9 @@ function update_user_demand_flow_bounds!(
             JuMP.set_lower_bound(flow[link_metadata.link], 0.0)
             JuMP.set_upper_bound(flow[link_metadata.link], total_demand)
         end
-        for link_metadata in all_outflow_links(user_demand.outflow_data[node_id.idx])
-            JuMP.set_lower_bound(flow[link_metadata.link], 0.0)
-            JuMP.set_upper_bound(flow[link_metadata.link], total_demand)
-        end
+        outflow_link = user_demand.outflow_data[node_id.idx].outflow_link.link
+        JuMP.set_lower_bound(flow[outflow_link], 0.0)
+        JuMP.set_upper_bound(flow[outflow_link], total_demand)
     end
     return nothing
 end

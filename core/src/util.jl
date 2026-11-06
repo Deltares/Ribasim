@@ -1286,15 +1286,15 @@ end
 
 """
 Mark the UserDemand nodes that are part of a PassDown subgraph, and store for those
-the indices in the `pass_down` flow component of their outflow links.
+the index in the `pass_down` flow component of their outflow link.
 """
 function set_in_pass_down_subgraph!(user_demand::UserDemand, pass_down::PassDown)::Nothing
     for subgraph in pass_down.pass_down_subgraphs, id in subgraph
         id.type == NodeType.UserDemand || continue
         user_demand.in_pass_down_subgraph[id.idx] = true
-        outflow_links = user_demand.outflow_data[id.idx].outflow_links
+        outflow_link = user_demand.outflow_data[id.idx].outflow_link
         user_demand.pass_down_outflow_state_idx[id.idx] =
-            [state_link_index(pass_down.state_links, link) for link in outflow_links]
+            state_link_index(pass_down.state_links, outflow_link)
     end
     return nothing
 end

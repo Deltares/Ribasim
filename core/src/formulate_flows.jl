@@ -1194,10 +1194,8 @@ function formulate_pass_down_flow!(
                 )
                 flow.horizontal.user_demand_outflow[id.idx] = outflow
 
-                for state_idx in user_demand.pass_down_outflow_state_idx[id.idx]
-                    iszero(state_idx) && continue
-                    flow.pass_down[state_idx] = outflow
-                end
+                state_idx = user_demand.pass_down_outflow_state_idx[id.idx]
+                iszero(state_idx) || (flow.pass_down[state_idx] = outflow)
             else
                 error("Unsupported node $id in PassDown subgraph.")
             end

@@ -457,10 +457,12 @@ link: (from node ID, to node ID)
     link::Tuple{NodeID, NodeID}
 end
 
+"""
+The single outflow link of a node that is not a PassDown node, and whether it leads to a PassDown node.
+"""
 @kwdef struct OutflowData
     to_pass_down::Bool = false
     outflow_link::LinkMetadata = LinkMetadata(0, LinkType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
-    outflow_links::Vector{LinkMetadata} = []
 end
 
 Base.length(::LinkMetadata) = 1
@@ -1182,7 +1184,7 @@ concentration_itp: matrix with timeseries interpolations of concentrations per L
 in_pass_down_subgraph: whether the UserDemand node is part of one of the PassDown subgraphs,
     in which case its flows are computed in `formulate_pass_down_flow!`
 pass_down_outflow_state_idx: for the UserDemand nodes in a PassDown subgraph, the index in the `pass_down` flow
-    component of each outflow link, or 0 for outflow links that have no state there
+    component of the outflow link, or 0 if the outflow link has no state there
 return_mass: The mass per substance in the return flow in the last timestep (substance, node), only computed
     if the return flow goes to a Basin or a PassDown node, used for tracers
 """
@@ -1206,7 +1208,7 @@ return_mass: The mass per substance in the return flow in the last timestep (sub
     cumulative_inflow::Vector{Float64} = zeros(length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
     in_pass_down_subgraph::Vector{Bool} = fill(false, length(node_id))
-    pass_down_outflow_state_idx::Vector{Vector{Int}} = [Int[] for _ in node_id]
+    pass_down_outflow_state_idx::Vector{Int} = zeros(Int, length(node_id))
     return_mass::Matrix{Float64} = zeros(0, length(node_id))
 end
 

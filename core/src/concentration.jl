@@ -221,10 +221,8 @@ function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
 
             outflow_data = user_demand.outflow_data[id.idx]
             if outflow_data.to_pass_down
-                for state_idx in user_demand.pass_down_outflow_state_idx[id.idx]
-                    iszero(state_idx) && continue
-                    view(link_mass, :, state_idx) .= return_mass_node
-                end
+                state_idx = user_demand.pass_down_outflow_state_idx[id.idx]
+                view(link_mass, :, state_idx) .= return_mass_node
             else
                 target_id = outflow_id(outflow_data)
                 target_id.is_basin && (view(mass, :, target_id.idx) .+= return_mass_node)
