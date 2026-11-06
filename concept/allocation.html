@@ -48,7 +48,7 @@ ul.task-list li input[type="checkbox"] {
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-11dfed304549e7d9db55013033367f26.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-8d3ad9c781c51ccd60b292c95058b2c2.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -475,7 +475,7 @@ Figure&nbsp;1: The primary network (subnetwork 1, blue) with connected secondary
 <ul>
 <li>The Terminal, where water simply leaves the model</li>
 <li>The LevelBoundary, which yields fixed water levels; <span class="math inline">\(h^{n+1}_{lb}\)</span> is read from the interpolated timeseries <span class="math inline">\(h_{lb}\)</span> of the node or is a constant value</li>
-<li>The FlowBoundary, which specifies a flow rate. Here the average outflow of the FlowBoundary in the physical layer over the previous <span class="math inline">\(\Delta t\)</span> is used as a prediction of the flow rate in the next <span class="math inline">\(\Delta t\)</span> over which the optimization takes place.</li>
+<li>The FlowBoundary, which specifies a flow rate. Here the flow rate at the intervention time <span class="math inline">\(t\)</span> is held constant over the intervention interval (persistence), so allocation does not use future values of the timeseries.</li>
 </ul>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -487,7 +487,7 @@ Note
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>The flow rate of a FlowBoundary is given as a timeseries so we could use the interpolation of that timeseries to compute the average flow in the coming <span class="math inline">\(\Delta t_\text{allocation}\)</span>. However, that would not always be accurate, since FlowBoundary nodes can be deactivated by Discrete Control which can not (easily) be anticipated.</p>
+<p>The flow rate of a FlowBoundary is given as a timeseries, but allocation does not use the interpolation of that timeseries over the coming <span class="math inline">\(\Delta t_\text{allocation}\)</span>: that would be foresight, which allocation does not have at the intervention time. It is also not always accurate, since FlowBoundary nodes can be deactivated by Discrete Control which can not (easily) be anticipated.</p>
 </div>
 </div>
 </section>
@@ -660,7 +660,7 @@ Important
 <p>Because the allocation problem must be bounded, an allocation controlled Pump or Outlet is required to have a finite <code>max_flow_rate</code>. This is validated at the start of the simulation, for the initial parameters as well as for all DiscreteControl states of the node. Note that Pumps and Outlets that connect the primary network to a secondary network are required to be allocation controlled; an error is thrown if <code>allocation_controlled</code> is not set to <code>true</code> for these nodes. Hence they also require a finite <code>max_flow_rate</code>.</p>
 </div>
 </div>
-<p>For a TabulatedRatingCurve, the allocation-determined flow is bounded by the rating curve linearized around the current upstream level, <span class="math inline">\(Q \le Q(h_a^n) + \frac{\partial Q}{\partial h_a}\Delta h_a\)</span>, where <span class="math inline">\(\Delta h_a = \Delta S_a / A_a^n\)</span> is the level change of the upstream Basin over the allocation timestep. If the rating curve changes within the timestep, the one that gives the larger flow is used. In the physical layer, the allocated flow rate replaces the usual <span class="math inline">\(Q(h)\)</span> lookup while still applying the same reduction factors for low storage, level difference, and maximum downstream level (see <a href="../reference/node/tabulated-rating-curve.html#equations">TabulatedRatingCurve equations</a>). After all goals have been optimized for, the flow rate through the allocation controllable node is communicated to the physical layer.</p>
+<p>For a TabulatedRatingCurve, the allocation-determined flow is bounded by the rating curve linearized around the current upstream level, <span class="math inline">\(Q \le Q(h_a^n) + \frac{\partial Q}{\partial h_a}\Delta h_a\)</span>, where <span class="math inline">\(\Delta h_a = \Delta S_a / A_a^n\)</span> is the level change of the upstream Basin over the allocation timestep. In the physical layer, the allocated flow rate replaces the usual <span class="math inline">\(Q(h)\)</span> lookup while still applying the same reduction factors for low storage, level difference, and maximum downstream level (see <a href="../reference/node/tabulated-rating-curve.html#equations">TabulatedRatingCurve equations</a>). After all goals have been optimized for, the flow rate through the allocation controllable node is communicated to the physical layer.</p>
 </section>
 <section id="interaction-of-allocation-with-other-control-systems" class="level3" data-number="3.1.2">
 <h3 data-number="3.1.2" class="anchored" data-anchor-id="interaction-of-allocation-with-other-control-systems"><span class="header-section-number">3.1.2</span> Interaction of allocation with other control systems</h3>
@@ -681,11 +681,11 @@ Important
 </section>
 <section id="boundary-flows" class="level3" data-number="3.2.2">
 <h3 data-number="3.2.2" class="anchored" data-anchor-id="boundary-flows"><span class="header-section-number">3.2.2</span> Boundary flows</h3>
-<p>Links pointing out of a FlowBoundary node carry a known flow rate rather than a decision variable: the corresponding flow variable is fixed to the average flow over the last allocation interval <span class="math inline">\(\Delta t_{\text{alloc}}\)</span> in the physical layer,</p>
+<p>Links pointing out of a FlowBoundary node carry a known flow rate rather than a decision variable: the corresponding flow variable is fixed to the flow rate at the intervention time <span class="math inline">\(t\)</span>, held constant over the intervention interval,</p>
 <p><span class="math display">\[
-    \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^tQ_{ij}(t') dt'.
+    Q_{ij}(t).
 \]</span></p>
-<p>For the definition of <span class="math inline">\(Q_{ij}\)</span> see <a href="../concept/equations.html#formal-model-description">the formal model description</a>. LevelBoundary nodes instead enter the problem through their level, which is a fixed parameter of the optimization (see <a href="#boundary-nodes">Boundary nodes</a>).</p>
+<p>For the definition of <span class="math inline">\(Q_{ij}\)</span> see <a href="../concept/equations.html#formal-model-description">the formal model description</a>. LevelBoundary nodes instead enter the problem through their level, which is evaluated at the end of the allocation timestep and enters the constant terms of the linearized connector nodes (see <a href="#boundary-nodes">Boundary nodes</a>).</p>
 </section>
 <section id="user-demands" class="level3" data-number="3.2.3">
 <h3 data-number="3.2.3" class="anchored" data-anchor-id="user-demands"><span class="header-section-number">3.2.3</span> User demands</h3>
