@@ -1426,6 +1426,16 @@ function parse_demand!(
     return errors
 end
 
+"""
+Replace missing demand priorities by the default, since `demand_priority` is optional in all
+demand node tables. This happens right after loading, so that the parsing can rely on it.
+"""
+function fill_demand_priority!(table::StructVector)::StructVector
+    default = schema_default(Schema.UserDemand.Static, Val(:demand_priority))
+    table.demand_priority .= coalesce.(table.demand_priority, default)
+    return table
+end
+
 function parse_static_demand_data!(
         node::Union{UserDemand, FlowDemand},
         id::NodeID,
@@ -1436,9 +1446,8 @@ function parse_static_demand_data!(
     if node isa UserDemand
         node.demand_from_timeseries[id.idx] = false
     end
-    demand_priority_default = schema_default(Schema.UserDemand.Static, Val(:demand_priority))
     for row in static_group
-        demand_priority_idx = findsorted(demand_priorities, coalesce(row.demand_priority, demand_priority_default))
+        demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
         node.has_demand_priority[id.idx, demand_priority_idx] = true
         demand_row = coalesce(row.demand, schema_default(typeof(row), Val(:demand)))
         demand_interpolation = trivial_constant_itp(; val = demand_row)
@@ -1478,8 +1487,8 @@ function parse_time_demand_data!(
 end
 
 function UserDemand(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, Schema.UserDemand.Static)
-    time = load_structvector(db, config, Schema.UserDemand.Time)
+    static = fill_demand_priority!(load_structvector(db, config, Schema.UserDemand.Static))
+    time = fill_demand_priority!(load_structvector(db, config, Schema.UserDemand.Time))
     concentration_time = load_structvector(db, config, Schema.UserDemand.Concentration)
     node_id = get_node_ids(db, NodeType.UserDemand)
     cyclic_times = get_cyclic_time(db, "UserDemand")
@@ -1596,8 +1605,8 @@ function parse_time_demand_data!(
 end
 
 function LevelDemand(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, Schema.LevelDemand.Static)
-    time = load_structvector(db, config, Schema.LevelDemand.Time)
+    static = fill_demand_priority!(load_structvector(db, config, Schema.LevelDemand.Static))
+    time = fill_demand_priority!(load_structvector(db, config, Schema.LevelDemand.Time))
     node_id = get_node_ids(db, NodeType.LevelDemand)
     cyclic_times = get_cyclic_time(db, "LevelDemand")
     demand_priorities = get_all_demand_priorities(db, config)
@@ -1635,8 +1644,8 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
 end
 
 function FlowDemand(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, Schema.FlowDemand.Static)
-    time = load_structvector(db, config, Schema.FlowDemand.Time)
+    static = fill_demand_priority!(load_structvector(db, config, Schema.FlowDemand.Static))
+    time = fill_demand_priority!(load_structvector(db, config, Schema.FlowDemand.Time))
     node_id = get_node_ids(db, NodeType.FlowDemand)
     cyclic_times = get_cyclic_time(db, "FlowDemand")
     demand_priorities = get_all_demand_priorities(db, config)
