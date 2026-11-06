@@ -197,7 +197,6 @@ function get_level(
         Inf
     else
         error("Node ID $node_id is not a Basin, PassDown, LevelBoundary or Terminal.")
-        Inf
     end
 end
 

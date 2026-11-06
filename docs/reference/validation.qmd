@@ -48,5 +48,9 @@ for link_type in ("flow", "control", "listen"):
 ```
 
 ::: {.callout-note}
+PassDown nodes have additional connectivity rules, which are given on the [PassDown page](/reference/node/pass-down.qmd#connectivity-rules).
+:::
+
+::: {.callout-note}
 Pump and Outlet can receive two control links, in which case one must be from a FlowDemand, and the other from a control node.
 :::

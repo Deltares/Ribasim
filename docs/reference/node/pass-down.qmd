@@ -45,7 +45,7 @@ The algorithm for the PassDown node flow in a subgraph is as follows:
     $$
         q_l = f_l \cdot q_\text{out}.
     $$
-- For UserDemand nodes it works equivalent to the standard UserDemand flow [reference] but without the low storage factor or minimum upstream level.
+- For UserDemand nodes it works like the standard [UserDemand flow](/reference/node/user-demand.qmd#equations), but without the low storage factor or minimum level.
 
 ## Tracers
 
