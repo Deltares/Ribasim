@@ -44,6 +44,7 @@ from ribasim.schemas import (
     ObservationTimeSchema,
     OutletStaticSchema,
     OutletTimeSchema,
+    PassDownStaticSchema,
     PidControlStaticSchema,
     PidControlTimeSchema,
     PumpStaticSchema,
@@ -247,6 +248,13 @@ class Terminal(NodeModel): ...
 
 
 class Junction(NodeModel): ...
+
+
+class PassDown(NodeModel):
+    static: TableModel[PassDownStaticSchema] = Field(
+        default_factory=TableModel[PassDownStaticSchema],
+        json_schema_extra={"sort_keys": ["node_id"]},
+    )
 
 
 class Observation(NodeModel):

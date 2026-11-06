@@ -1,15 +1,15 @@
 from datetime import datetime
 
-from ribasim.config import Allocation, Experimental, Solver
+import numpy as np
+from ribasim.config import Solver
 from ribasim.geometry.node import Node
+from ribasim.input_base import NodeData
 from ribasim.model import Model
 from ribasim.nodes import (
     basin,
     discrete_control,
     flow_boundary,
-    flow_demand,
-    level_boundary,
-    level_demand,
+    pass_down,
     pump,
     tabulated_rating_curve,
     user_demand,
@@ -213,59 +213,6 @@ def invalid_unstable_model() -> Model:
     return model
 
 
-def invalid_priorities_model() -> Model:
-    """Model with allocation active but missing demand_priority parameter(s)."""
-    model = Model(
-        starttime=datetime(2020, 1, 1),
-        endtime=datetime(2021, 1, 1),
-        crs="EPSG:28992",
-        allocation=Allocation(),
-        experimental=Experimental(allocation=True),
-        use_validation=False,
-    )
-
-    model.tabulated_rating_curve.add(
-        Node(2, Point(1, 0), subnetwork_id=2),
-        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 2e-3])],
-    )
-
-    model.level_boundary.add(
-        Node(1, Point(0, 0), subnetwork_id=2),
-        [level_boundary.Static(node_id=[1], level=[1.0])],
-    )
-
-    model.basin.add(
-        Node(3, Point(2, 0), subnetwork_id=2),
-        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
-    )
-
-    model.user_demand.add(
-        Node(4, Point(3, 0), subnetwork_id=2),
-        [user_demand.Static(demand=[1e-3], return_factor=1.0, min_level=0.2)],
-    )
-
-    model.level_demand.add(
-        Node(6, Point(2, -1), subnetwork_id=2),
-        [level_demand.Static(min_level=[1.0], max_level=1.5)],
-    )
-
-    model.flow_demand.add(
-        Node(5, Point(1, -1), subnetwork_id=2),
-        [flow_demand.Static(demand=[2e-3])],
-    )
-
-    model.link.add(
-        model.level_boundary[1],
-        model.tabulated_rating_curve[2],
-    )
-    model.link.add(model.tabulated_rating_curve[2], model.basin[3])
-    model.link.add(model.basin[3], model.user_demand[4])
-    model.link.add(model.level_demand[6], model.basin[3])
-    model.link.add(model.flow_demand[5], model.tabulated_rating_curve[2])
-
-    return model
-
-
 def invalid_no_basin_model() -> Model:
     model = Model(
         starttime=datetime(2020, 1, 1),
@@ -288,4 +235,145 @@ def invalid_no_basin_model() -> Model:
     model.link.add(boundary1, sea)
     model.link.add(boundary2, sea)
 
+    return model
+
+
+def _invalid_pass_down_base() -> tuple[Model, NodeData]:
+    """Create a model with a Basin and a Pump, to which PassDown nodes can be connected."""
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
+        crs="EPSG:28992",
+    )
+    bsn = model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.State(level=[1.0]),
+            basin.Profile(level=[0.0, 2.0], area=[100.0, 200.0]),
+        ],
+    )
+    pmp = model.pump.add(Node(2, Point(1, 0)), [pump.Static(flow_rate=[1e-3])])
+    model.link.add(bsn, pmp)
+    return model, pmp
+
+
+def _pass_down_user_demand_static() -> list:
+    return [
+        user_demand.Static(
+            demand_priority=[1], demand=[1e-4], return_factor=0.5, min_level=[0.0]
+        )
+    ]
+
+
+def invalid_pass_down_missing_fractions_model() -> Model:
+    """Multiple PassDown nodes downstream of the same node with a missing fraction."""
+    model, pmp = _invalid_pass_down_base()
+    trm = model.terminal.add(Node(6, Point(3, 0)))
+    for node_id, y, fraction in [(3, 1, np.nan), (4, 0, np.nan), (5, -1, 0.5)]:
+        pd = model.pass_down.add(
+            Node(node_id, Point(2, y)), [pass_down.Static(fraction=[fraction])]
+        )
+        model.link.add(pmp, pd)
+        model.link.add(pd, trm)
+    return model
+
+
+def invalid_pass_down_fraction_sum_model() -> Model:
+    """PassDown fractions summing to more than 1, while one fraction is missing."""
+    model, pmp = _invalid_pass_down_base()
+    trm = model.terminal.add(Node(6, Point(3, 0)))
+    for node_id, y, fraction in [(3, 1, 0.75), (4, 0, 0.5), (5, -1, np.nan)]:
+        pd = model.pass_down.add(
+            Node(node_id, Point(2, y)), [pass_down.Static(fraction=[fraction])]
+        )
+        model.link.add(pmp, pd)
+        model.link.add(pd, trm)
+    return model
+
+
+def invalid_pass_down_multiple_user_demands_model() -> Model:
+    """PassDown node with multiple UserDemand nodes downstream."""
+    model, pmp = _invalid_pass_down_base()
+    pd = model.pass_down.add(Node(3, Point(2, 0)), [pass_down.Static(fraction=[1.0])])
+    ud1 = model.user_demand.add(Node(4, Point(3, 1)), _pass_down_user_demand_static())
+    ud2 = model.user_demand.add(Node(5, Point(3, -1)), _pass_down_user_demand_static())
+    pd_trm = model.pass_down.add(
+        Node(7, Point(3, 0)), [pass_down.Static(fraction=[1.0])]
+    )
+    trm = model.terminal.add(Node(6, Point(4, 0)))
+    model.link.add(pmp, pd)
+    model.link.add(pd, ud1)
+    model.link.add(pd, ud2)
+    model.link.add(pd, pd_trm)
+    model.link.add(pd_trm, trm)
+    model.link.add(ud1, trm)
+    model.link.add(ud2, trm)
+    return model
+
+
+def invalid_pass_down_user_demand_and_other_model() -> Model:
+    """PassDown node with both a UserDemand and a non-PassDown node downstream."""
+    model, pmp = _invalid_pass_down_base()
+    pd = model.pass_down.add(Node(3, Point(2, 0)), [pass_down.Static(fraction=[1.0])])
+    ud = model.user_demand.add(Node(4, Point(3, 1)), _pass_down_user_demand_static())
+    bsn = model.basin.add(
+        Node(5, Point(3, -1)),
+        [
+            basin.State(level=[1.0]),
+            basin.Profile(level=[0.0, 2.0], area=[100.0, 200.0]),
+        ],
+    )
+    trm = model.terminal.add(Node(6, Point(4, 1)))
+    # Temporary PassDown node, since the link validation does not allow this connectivity
+    pd_tmp = model.pass_down.add(
+        Node(7, Point(3, 0)), [pass_down.Static(fraction=[1.0])]
+    )
+    model.link.add(pmp, pd)
+    model.link.add(pd, ud)
+    model.link.add(pd, pd_tmp)
+    model.link.add(ud, trm)
+    model.link.add(pd_tmp, bsn)
+    assert model.link.df is not None
+    model.link.df.loc[
+        (model.link.df["from_node_id"] == pd.node_id)
+        & (model.link.df["to_node_id"] == pd_tmp.node_id),
+        "to_node_id",
+    ] = bsn.node_id
+    model.remove_node(pd_tmp.node_id)
+    return model
+
+
+def invalid_pass_down_only_user_demand_model() -> Model:
+    """PassDown node with only a UserDemand node downstream, so the remaining flow has nowhere to go."""
+    model, pmp = _invalid_pass_down_base()
+    pd = model.pass_down.add(Node(3, Point(2, 0)), [pass_down.Static(fraction=[1.0])])
+    ud = model.user_demand.add(Node(4, Point(3, 0)), _pass_down_user_demand_static())
+    trm = model.terminal.add(Node(5, Point(4, 0)))
+    model.link.add(pmp, pd)
+    model.link.add(pd, ud)
+    model.link.add(ud, trm)
+    return model
+
+
+def invalid_user_demand_missing_min_level_model() -> Model:
+    """UserDemand abstracting from a Basin without a min_level."""
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
+        crs="EPSG:28992",
+    )
+    bsn = model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.State(level=[1.0]),
+            basin.Profile(level=[0.0, 2.0], area=[100.0, 200.0]),
+        ],
+    )
+    ud = model.user_demand.add(
+        Node(2, Point(1, 0)),
+        [user_demand.Static(demand_priority=[1], demand=[1e-4], return_factor=0.5)],
+    )
+    trm = model.terminal.add(Node(3, Point(2, 0)))
+    model.link.add(bsn, ud)
+    model.link.add(ud, trm)
     return model

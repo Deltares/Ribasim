@@ -35,7 +35,9 @@ from ribasim_testmodels.pid_control import (
 from ribasim_testmodels.time import transient_pump_outlet_model
 from ribasim_testmodels.two_basin import two_basin_model
 
-# Together these cover all node types and input tables, except the NetCDF inputs
+# Together these cover all node types and input tables, except the NetCDF inputs and the
+# PassDown node, which is covered by running pass_down in the workload.
+# (Tracers, which this workload enables, are not supported for PassDown yet.)
 PHYSICAL_COMPONENTS: list[Callable[[], Model]] = [
     basic_model,
     basic_basin_both_area_and_storage_model,

@@ -104,6 +104,7 @@ tables = {
     "Outlet / time",
     "PidControl / static",
     "PidControl / time",
+    "PassDown / static",
     "Pump / static",
     "Pump / time",
     "TabulatedRatingCurve / static",
