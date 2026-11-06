@@ -22,7 +22,7 @@ If your model does not converge, or your performance is lower than expected, it 
 
 The default solver `algorithm = "NordsieckBDF"`, which is an adaptive-order, adaptive-time BDF method on a propagated Nordsieck history array, following SUNDIALS CVODE [@byrne1975polyalgorithm, @hindmarsh2005sundials].
 It is an implicit method that supports the default adaptive timestepping.
-The full list of available solvers is: `NordsieckBDF`, `FBDF`, `QNDF`, `Rosenbrock23`, `Rodas4P`, `Rodas5P`, `TRBDF2`, `KenCarp4`, `Tsit5`, `RK4`, `ImplicitEuler`, `Euler`.
+The full list of available solvers is: `NordsieckBDF`, `FBDF`, `QNDF`, `Rosenbrock23`, `Rodas4P`, `Rodas5P`, `TRBDF2`, `KenCarp4`, `Tsit5`, `RK4`, `ImplicitEuler`, `Euler`. The Rosenbrock methods (`Rosenbrock23`, `Rodas4P`, `Rodas5P`) and the explicit methods (`Tsit5`, `RK4`, `Euler`) do not support `reduced_implicit_solve`; it is internally set to `false` with a warning.
 Information on the solver algorithms can be found on the [ODE solvers page](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/).
 
 By default Ribasim uses adaptive timestepping, though not all algorithms support adaptive timestepping.

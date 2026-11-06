@@ -307,6 +307,11 @@ function validate_config(toml::Toml)::Nothing
         is_valid = false
     end
 
+    if !isnothing(toml.solver.dtmax) && !(toml.solver.dtmax > 0)
+        @error "The solver dtmax must be positive." toml.solver.dtmax
+        is_valid = false
+    end
+
     if toml.solver.discrete_control_interval < 0
         @error "The discrete_control_interval cannot be negative." toml.solver.discrete_control_interval
         is_valid = false
