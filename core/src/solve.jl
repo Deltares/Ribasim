@@ -193,32 +193,41 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
         return nothing
     end
 
-    ∂pass_down_flow_∂flow_prep = @ad_active p prepare_jacobian(
-        pass_down_closure!,
-        pass_down_flow,
-        backend_jac,
-        non_pass_down_flow,
-        Constant(t)
-    )
+    jac_pass_down = if isempty(p_independent.pass_down.node_id)
+        # Without PassDown nodes K is the identity and is never evaluated, see `has_pass_down`
+        SubJacobian(;
+            input = non_pass_down_flow,
+            jac = solver.sparse ? spzeros(0, 0) : zeros(0, 0),
+            jac_func! = Returns(nothing),
+        )
+    else
+        ∂pass_down_flow_∂flow_prep = @ad_active p prepare_jacobian(
+            pass_down_closure!,
+            pass_down_flow,
+            backend_jac,
+            non_pass_down_flow,
+            Constant(t)
+        )
 
-    ∂pass_down_flow_∂flow = solver.sparse ? ∂pass_down_flow_∂flow_prep.sparsity * 1.0 :
-        zeros(length(pass_down_flow), length(non_pass_down_flow))
+        ∂pass_down_flow_∂flow = solver.sparse ? ∂pass_down_flow_∂flow_prep.sparsity * 1.0 :
+            zeros(length(pass_down_flow), length(non_pass_down_flow))
 
-    eval_∂pass_down_flow_∂flow!(t) = @ad_active p jacobian!(
-        pass_down_closure!,
-        pass_down_flow,
-        ∂pass_down_flow_∂flow,
-        ∂pass_down_flow_∂flow_prep,
-        backend_jac,
-        non_pass_down_flow,
-        Constant(t)
-    )
+        eval_∂pass_down_flow_∂flow!(t) = @ad_active p jacobian!(
+            pass_down_closure!,
+            pass_down_flow,
+            ∂pass_down_flow_∂flow,
+            ∂pass_down_flow_∂flow_prep,
+            backend_jac,
+            non_pass_down_flow,
+            Constant(t)
+        )
 
-    jac_pass_down = SubJacobian(;
-        input = non_pass_down_flow,
-        jac = ∂pass_down_flow_∂flow,
-        jac_func! = eval_∂pass_down_flow_∂flow!
-    )
+        SubJacobian(;
+            input = non_pass_down_flow,
+            jac = ∂pass_down_flow_∂flow,
+            jac_func! = eval_∂pass_down_flow_∂flow!
+        )
+    end
 
     return RibasimJacobianEvaluationCache(;
         du_cache = du,
@@ -450,9 +459,10 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
     )
 
     # Dependence via the ContinuousControl compound variables
-    storage_offset = first(continuous_control_input_ranges.storage) - 1
+    # The storage input comes first, and can be empty in a model without Basins
+    storage_offset = 0
     n_storage_input = length(continuous_control_input_ranges.storage)
-    flow_offset = first(continuous_control_input_ranges.flow) - 1
+    flow_offset = n_storage_input
     for input_idx in axes(∂continuous_control_compound_∂continuous_control_input, 2)
         foreach_column_entry(∂continuous_control_compound_∂continuous_control_input, input_idx) do cc_idx, cc_val
             col = flow_input_ranges.continuous_control_compound[cc_idx]
