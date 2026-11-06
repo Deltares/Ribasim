@@ -57,6 +57,7 @@ from ribasim_testmodels.discrete_control import (
     flow_condition_model,
     level_boundary_condition_model,
     level_range_model,
+    manning_resistance_control_model,
     pump_discrete_control_model,
     storage_condition_model,
     tabulated_rating_curve_control_model,
@@ -112,6 +113,7 @@ from ribasim_testmodels.time import (
     flow_boundary_time_model,
     transient_pump_outlet_model,
 )
+from ribasim_testmodels.tracer import tracer_user_demand_model
 from ribasim_testmodels.trivial import trivial_model
 from ribasim_testmodels.two_basin import two_basin_model
 
@@ -169,6 +171,7 @@ __all__ = [
     "linear_resistance_demand_model",
     "linear_resistance_model",
     "local_pidcontrolled_cascade_model",
+    "manning_resistance_control_model",
     "manning_resistance_deep_basin_model",
     "manning_resistance_model",
     "medium_primary_secondary_network_model",
@@ -200,6 +203,7 @@ __all__ = [
     "switch_allocation_control_model",
     "tabulated_rating_curve_control_model",
     "tabulated_rating_curve_model",
+    "tracer_user_demand_model",
     "transient_condition_model",
     "transient_pump_outlet_model",
     "trivial_model",

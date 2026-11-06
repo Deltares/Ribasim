@@ -18,6 +18,17 @@ UserDemands need an outgoing flow link along which they can send their return fl
 The amount of return flow is always a fraction of the inflow into the UserDemand.
 The difference is consumed by the UserDemand.
 
+# Allowed connectivity
+
+The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node.
+This is a connectivity illustration, not a valid simulation model.
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_node_connectivity.jl")
+plot_node_connectivity("UserDemand")
+```
+
 # Tables
 
 ## Static
@@ -70,15 +81,17 @@ table_from_schema(
 UserDemand receive an allocated flow rate $F^p$ per demand priority $p=1,2,\ldots, p_{\max}$, which is either determined by [allocation optimization](/concept/allocation.qmd) or simply equal to the demand at time $t$; $F^p = d^p(t)$.
 The actual (supplied) abstraction rate of a UserDemand is given by
 $$
-    Q_\text{in} = \phi(u, S_{wd0.1})\phi(h-l_{\min}, 0.02)\sum_{p=1}^{p_{\max}} \min\left(F^p, d^p(t)\right).
+    Q_\text{in} = \phi_\text{storage}\phi_\text{level}\sum_{p=1}^{p_{\max}} \min\left(F^p, d^p(t)\right).
 $$
 
 From left to right:
 
-- The first reduction factor lets the UserDemand abstraction go smoothly to $0$ as the source Basin dries out below a storage which is the equivalent of a water depth of $10 \;\text{cm}$ (change with solver setting `depth_threshold`);
-- The second reduction factor lets the UserDemand abstraction go smoothly to $0$ as the source Basin level approaches the minimum source Basin level (from above) (change with solver setting `level_difference_threshold`);
+- $\phi_\text{storage}$ smoothly reduces the UserDemand abstraction from a source Basin water depth of `depth_threshold` to the Basin bottom.
+- $\phi_\text{level}$ smoothly reduces the abstraction as the source Basin level goes from `min_level` + `level_difference_threshold` to `min_level`.
 - The last term is the sum of the allocations over the priorities.
   If the current demand happens to be lower than the allocation at some demand priority, the demand is taken instead.
+
+For `depth_threshold`, `level_difference_threshold` see [Solver settings](/reference/usage.qmd#sec-solver-settings).
 
 UserDemands also have a return factor $0 \le r \le 1$, which determines the return flow (outflow) of the UserDemand:
 
