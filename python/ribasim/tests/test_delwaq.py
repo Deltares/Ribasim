@@ -7,7 +7,9 @@ import pytest
 import xarray as xr
 from ribasim import Model
 from ribasim.delwaq import add_tracer, generate, parse, run_delwaq
+from ribasim.delwaq.generate import _setup_graph
 from ribasim.delwaq.util import check_substance_uniqueness
+from ribasim_testmodels import junction_bidirectional
 
 delwaq_dir = Path(__file__).parent
 
@@ -145,3 +147,41 @@ def test_substance_uniqueness():
     substances = {"AVeryLongSubstanceNameAlpha", "AVeryLongSubstanceNameBeta"}
     with pytest.raises(ValueError, match="not unique when truncated"):
         check_substance_uniqueness(substances)
+
+
+def test_junction_group_one_basin():
+    model = junction_bidirectional()
+    G, merge_links, _, _, basin_mapping = _setup_graph(
+        model.node, model.link, evaporate_mass=False
+    )
+    df_link = model.link.df
+    assert df_link is not None
+
+    def link_id(from_node_id, to_node_id):
+        df = df_link[
+            (df_link.from_node_id == from_node_id) & (df_link.to_node_id == to_node_id)
+        ]
+        return df.index.item()
+
+    # All neighbors of the group connect to Basin 1 with the flow of their own link.
+    # Connectors are removed as well, so an outflow uses the link after the connector.
+    basin_1 = basin_mapping[1]
+    in_ids = {
+        link_id
+        for _, _, data in G.in_edges(basin_1, data=True)
+        for link_id in data["id"]
+    }
+    out_ids = {
+        link_id
+        for _, _, data in G.out_edges(basin_1, data=True)
+        for link_id in data["id"]
+    }
+    assert {link_id(4, 2), link_id(7, 3), link_id(10, 3)} <= in_ids
+    assert {link_id(5, 6), link_id(8, 6)} <= out_ids
+    # A UserDemand in both directions is merged into a single link, as without Junctions
+    user_demand_links = {link_id(3, 9), link_id(9, 3)}
+    assert user_demand_links <= in_ids | out_ids
+    assert set(merge_links) & user_demand_links
+    # The links of the group with the Basin and between its Junctions have no flow of their own
+    assert not {link_id(1, 2), link_id(3, 2)} & (in_ids | out_ids)
+    assert not any(data["type"] == "Junction" for _, data in G.nodes(data=True))

@@ -114,7 +114,7 @@ link_neighbor_amount: dict[str, dict[str, list[int]]] = {
         "DiscreteControl": [0, 0, 0, 0],
         "FlowBoundary": [0, 0, 1, 1],
         "FlowDemand": [0, 0, 0, 0],
-        "Junction": [1, 9223372036854775807, 1, 9223372036854775807],
+        "Junction": [0, 9223372036854775807, 0, 9223372036854775807],
         "LevelBoundary": [0, 9223372036854775807, 0, 9223372036854775807],
         "LevelDemand": [0, 0, 0, 0],
         "LinearResistance": [1, 1, 1, 1],

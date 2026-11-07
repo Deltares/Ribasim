@@ -758,6 +758,8 @@ function compound_variable_value(
                 flow.horizontal.manning_resistance[listen_node_id.idx]
             elseif listen_node_id.type == NodeType.UserDemand
                 sum(get_inflows(flow, user_demand, listen_node_id.idx))
+            elseif listen_node_id.type == NodeType.Junction
+                get_junction_flow(flow, listen_node_id, p, t)
             else
                 error("Cannot obtain variable `$variable` from $listen_node_id.")
             end
