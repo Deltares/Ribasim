@@ -59,11 +59,17 @@ function get_parameter_value(
         parameter,
         T::Type{<:Number},
         default,
-        ::NodeID;
+        node_id::NodeID;
         from_static = true,
+        parameter_name = nothing,
         kwargs...,
     )::Tuple{Union{Missing, T}, Bool}
     val = coalesce(parameter[last(data_group)], default)
+    # Number parameters cannot vary over time, so all rows in a Time table must agree
+    if !from_static && any(i -> !isequal(coalesce(parameter[i], default), val), data_group)
+        @error "$node_id has multiple different values over time for '$parameter_name', which does not support time-varying values."
+        return val, false
+    end
     return val, true
 end
 
@@ -350,7 +356,7 @@ function parse_parameter_values!(
 
         # Obtain the data
         data_args = (T, default, id)
-        data_kwargs = (; config, cyclic_time, node_ids_all)
+        data_kwargs = (; config, cyclic_time, node_ids_all, parameter_name)
 
         if use_default
             @assert has_default
@@ -533,16 +539,7 @@ is_discrete_controlled(graph::MetaGraph, node_id::NodeID)::Bool =
 
 function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inflow = true)
     inflow && map!(node_id -> inflow_link(graph, node_id), node.inflow_link, node.node_id)
-
-    for id in node.node_id
-        outflow_links = get_outflow_links(graph, id)
-        to_pass_down = any(link.link[2].is_pass_down for link in outflow_links)
-        node.outflow_data[id.idx] = if to_pass_down
-            OutflowData(; outflow_links, to_pass_down = true)
-        else
-            OutflowData(; outflow_link = only(outflow_links))
-        end
-    end
+    map!(node_id -> outflow_link(graph, node_id), node.outflow_link, node.node_id)
     return nothing
 end
 
@@ -1420,6 +1417,16 @@ function parse_demand!(
     return errors
 end
 
+"""
+Replace missing demand priorities by the default, since `demand_priority` is optional in all
+demand node tables. This happens right after loading, so that the parsing can rely on it.
+"""
+function fill_demand_priority!(table::StructVector)::StructVector
+    default = schema_default(Schema.UserDemand.Static, Val(:demand_priority))
+    table.demand_priority .= coalesce.(table.demand_priority, default)
+    return table
+end
+
 function parse_static_demand_data!(
         node::Union{UserDemand, FlowDemand},
         id::NodeID,
@@ -1430,9 +1437,8 @@ function parse_static_demand_data!(
     if node isa UserDemand
         node.demand_from_timeseries[id.idx] = false
     end
-    demand_priority_default = schema_default(Schema.UserDemand.Static, Val(:demand_priority))
     for row in static_group
-        demand_priority_idx = findsorted(demand_priorities, coalesce(row.demand_priority, demand_priority_default))
+        demand_priority_idx = findsorted(demand_priorities, row.demand_priority)
         node.has_demand_priority[id.idx, demand_priority_idx] = true
         demand_row = coalesce(row.demand, schema_default(typeof(row), Val(:demand)))
         demand_interpolation = trivial_constant_itp(; val = demand_row)
@@ -1472,8 +1478,8 @@ function parse_time_demand_data!(
 end
 
 function UserDemand(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, Schema.UserDemand.Static)
-    time = load_structvector(db, config, Schema.UserDemand.Time)
+    static = fill_demand_priority!(load_structvector(db, config, Schema.UserDemand.Static))
+    time = fill_demand_priority!(load_structvector(db, config, Schema.UserDemand.Time))
     concentration_time = load_structvector(db, config, Schema.UserDemand.Concentration)
     node_id = get_node_ids(db, NodeType.UserDemand)
     cyclic_times = get_cyclic_time(db, "UserDemand")
@@ -1590,8 +1596,8 @@ function parse_time_demand_data!(
 end
 
 function LevelDemand(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, Schema.LevelDemand.Static)
-    time = load_structvector(db, config, Schema.LevelDemand.Time)
+    static = fill_demand_priority!(load_structvector(db, config, Schema.LevelDemand.Static))
+    time = fill_demand_priority!(load_structvector(db, config, Schema.LevelDemand.Time))
     node_id = get_node_ids(db, NodeType.LevelDemand)
     cyclic_times = get_cyclic_time(db, "LevelDemand")
     demand_priorities = get_all_demand_priorities(db, config)
@@ -1629,8 +1635,8 @@ function LevelDemand(db::DB, config::Config, graph::MetaGraph)
 end
 
 function FlowDemand(db::DB, config::Config, graph::MetaGraph)
-    static = load_structvector(db, config, Schema.FlowDemand.Static)
-    time = load_structvector(db, config, Schema.FlowDemand.Time)
+    static = fill_demand_priority!(load_structvector(db, config, Schema.FlowDemand.Static))
+    time = fill_demand_priority!(load_structvector(db, config, Schema.FlowDemand.Time))
     node_id = get_node_ids(db, NodeType.FlowDemand)
     cyclic_times = get_cyclic_time(db, "FlowDemand")
     demand_priorities = get_all_demand_priorities(db, config)
@@ -2061,8 +2067,8 @@ function Parameters(db::DB, config::Config)::Parameters
     flow_ranges = count_flow_ranges(nodes)
     state_ranges = count_state_ranges(nodes)
 
-    inflow_id, outflow_data, state_id = get_flow_ids(nodes, flow_ranges)
-    incidence_matrix = get_incidence_matrix(inflow_id, outflow_data)
+    inflow_id, outflow_id, state_id = get_flow_ids(nodes, flow_ranges)
+    incidence_matrix = get_incidence_matrix(inflow_id, outflow_id)
 
     p_independent = ParametersIndependent(;
         config.starttime,
@@ -2072,7 +2078,7 @@ function Parameters(db::DB, config::Config)::Parameters
         nodes...,
         subgrid,
         inflow_id,
-        outflow_data,
+        outflow_id,
         state_id,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,

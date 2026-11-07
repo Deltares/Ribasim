@@ -98,6 +98,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
 
         formulate_vertical_flux!(du.flow, flow_input.storage_uplink, p, t)
         formulate_flows!(formulate_flows_args...)
+        formulate_provisional_pass_down_flow!(du.flow, p, t)
         formulate_PID_control!(du.pid_integral, flow_input.storage_uplink, flow_input.storage_downlink, p, t)
         formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.PID)
         formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.Continuous)
@@ -193,32 +194,41 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
         return nothing
     end
 
-    ∂pass_down_flow_∂flow_prep = @ad_active p prepare_jacobian(
-        pass_down_closure!,
-        pass_down_flow,
-        backend_jac,
-        non_pass_down_flow,
-        Constant(t)
-    )
+    jac_pass_down = if isempty(p_independent.pass_down.node_id)
+        # Without PassDown nodes K is the identity and is never evaluated, see `has_pass_down`
+        SubJacobian(;
+            input = non_pass_down_flow,
+            jac = solver.sparse ? spzeros(0, 0) : zeros(0, 0),
+            jac_func! = Returns(nothing),
+        )
+    else
+        ∂pass_down_flow_∂flow_prep = @ad_active p prepare_jacobian(
+            pass_down_closure!,
+            pass_down_flow,
+            backend_jac,
+            non_pass_down_flow,
+            Constant(t)
+        )
 
-    ∂pass_down_flow_∂flow = solver.sparse ? ∂pass_down_flow_∂flow_prep.sparsity * 1.0 :
-        zeros(length(pass_down_flow), length(non_pass_down_flow))
+        ∂pass_down_flow_∂flow = solver.sparse ? ∂pass_down_flow_∂flow_prep.sparsity * 1.0 :
+            zeros(length(pass_down_flow), length(non_pass_down_flow))
 
-    eval_∂pass_down_flow_∂flow!(t) = @ad_active p jacobian!(
-        pass_down_closure!,
-        pass_down_flow,
-        ∂pass_down_flow_∂flow,
-        ∂pass_down_flow_∂flow_prep,
-        backend_jac,
-        non_pass_down_flow,
-        Constant(t)
-    )
+        eval_∂pass_down_flow_∂flow!(t) = @ad_active p jacobian!(
+            pass_down_closure!,
+            pass_down_flow,
+            ∂pass_down_flow_∂flow,
+            ∂pass_down_flow_∂flow_prep,
+            backend_jac,
+            non_pass_down_flow,
+            Constant(t)
+        )
 
-    jac_pass_down = SubJacobian(;
-        input = non_pass_down_flow,
-        jac = ∂pass_down_flow_∂flow,
-        jac_func! = eval_∂pass_down_flow_∂flow!
-    )
+        SubJacobian(;
+            input = non_pass_down_flow,
+            jac = ∂pass_down_flow_∂flow,
+            jac_func! = eval_∂pass_down_flow_∂flow!
+        )
+    end
 
     return RibasimJacobianEvaluationCache(;
         du_cache = du,
@@ -430,13 +440,13 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
     continuous_control_input_ranges = jac_continuous_control.ranges
     ∂continuous_control_compound_∂continuous_control_input = jac_continuous_control.jac
 
-    (; inflow_id, outflow_data) = p_independent
+    (; inflow_id, outflow_id) = p_independent
     n_flow = length(inflow_id)
 
     # Dependence via the up- and downlink storages
-    function foreach_storage_dependence(storage_input_range, get_storage_node_id)
+    function foreach_storage_dependence(storage_input_range, storage_node_id)
         for (storage_flow_idx, col) in enumerate(storage_input_range)
-            basin_id = get_storage_node_id(storage_flow_idx)
+            basin_id = storage_node_id[storage_flow_idx]
             basin_id.is_basin || continue
             foreach_column_entry(∂flow_∂flow_input, col) do flow_idx, val
                 flow_idx <= n_flow && f(flow_idx, basin_id.idx, val)
@@ -444,15 +454,14 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
         end
         return nothing
     end
-    foreach_storage_dependence(flow_input_ranges.storage_uplink, idx -> inflow_id[idx])
-    foreach_storage_dependence(
-        flow_input_ranges.storage_downlink, idx -> outflow_id(outflow_data[idx])
-    )
+    foreach_storage_dependence(flow_input_ranges.storage_uplink, inflow_id)
+    foreach_storage_dependence(flow_input_ranges.storage_downlink, outflow_id)
 
     # Dependence via the ContinuousControl compound variables
-    storage_offset = first(continuous_control_input_ranges.storage) - 1
+    # The storage input comes first, and can be empty in a model without Basins
+    storage_offset = 0
     n_storage_input = length(continuous_control_input_ranges.storage)
-    flow_offset = first(continuous_control_input_ranges.flow) - 1
+    flow_offset = n_storage_input
     for input_idx in axes(∂continuous_control_compound_∂continuous_control_input, 2)
         foreach_column_entry(∂continuous_control_compound_∂continuous_control_input, input_idx) do cc_idx, cc_val
             col = flow_input_ranges.continuous_control_compound[cc_idx]
@@ -464,7 +473,7 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
                 else
                     listen_flow_idx = input_idx - flow_offset
                     id_in_listen = inflow_id[listen_flow_idx]
-                    id_out_listen = outflow_id(outflow_data[listen_flow_idx])
+                    id_out_listen = outflow_id[listen_flow_idx]
                     if id_in_listen.is_basin
                         ∂q_listen_∂storage = ∂flow_∂flow_input[listen_flow_idx, flow_input_ranges.storage_uplink[listen_flow_idx]]
                         f(flow_idx, id_in_listen.idx, val * cc_val * ∂q_listen_∂storage)
@@ -518,7 +527,7 @@ If `structural`, all contributions are set to 1.0 to initialize the sparsity pat
 """
 function update_J_inner_local!(J::RibasimJacobian; structural::Bool = false)
     (; p_independent, J_inner_local) = J
-    (; inflow_id, outflow_data) = p_independent
+    (; inflow_id, outflow_id) = p_independent
 
     J_inner_local .= 0.0
     foreach_∂flow_∂storage(J) do flow_idx, basin_idx, ∂q_np_∂storage
@@ -526,7 +535,7 @@ function update_J_inner_local!(J::RibasimJacobian; structural::Bool = false)
             add_flow_contribution!(
                 J_inner_local,
                 inflow_id[flow_idx_all],
-                outflow_data[flow_idx_all],
+                outflow_id[flow_idx_all],
                 basin_idx,
                 structural ? 1.0 : ∂q_all_∂q_np * ∂q_np_∂storage,
             )
@@ -582,7 +591,7 @@ function build_J_inner!(
         structural::Bool = false,
     )
     (; p_independent, J_inner_local, area_pid_controlled) = J
-    (; pid_control, inflow_id, outflow_data) = p_independent
+    (; pid_control, inflow_id, outflow_id) = p_independent
 
     # Add J_inner_local into J_inner rather than copying it, which would reset the sparsity
     # pattern of J_inner and drop the entries that are only structurally nonzero
@@ -603,7 +612,7 @@ function build_J_inner!(
             add_flow_contribution!(
                 J_inner,
                 inflow_id[flow_idx_all],
-                outflow_data[flow_idx_all],
+                outflow_id[flow_idx_all],
                 listen_node_id.idx,
                 contribution,
             )
@@ -613,23 +622,19 @@ function build_J_inner!(
 end
 
 """
-Add `value` times the column of the incidence matrix M of a flow state to a column of J_inner.
+Add `∂q_∂storage` times the column of the incidence matrix M of a flow state to a column of J_inner.
 A flow into a PassDown node is not credited to a Basin, that is done by the flow states
 over the links out of the PassDown subgraph.
 """
 function add_flow_contribution!(
         J_inner::AbstractMatrix{Float64},
         id_in::NodeID,
-        data_out::OutflowData,
+        id_out::NodeID,
         basin_idx::Int,
         ∂q_∂storage::Float64,
     )
     id_in.is_basin && (J_inner[id_in.idx, basin_idx] -= ∂q_∂storage)
-
-    if !data_out.to_pass_down
-        id_out = outflow_id(data_out)
-        id_out.is_basin && (J_inner[id_out.idx, basin_idx] += ∂q_∂storage)
-    end
+    id_out.is_basin && (J_inner[id_out.idx, basin_idx] += ∂q_∂storage)
     return nothing
 end
 
@@ -637,15 +642,11 @@ end
 function add_flow_contribution!(
         v::AbstractVector{Float64},
         id_in::NodeID,
-        data_out::OutflowData,
+        id_out::NodeID,
         value::Float64,
     )
     id_in.is_basin && (v[id_in.idx] -= value)
-
-    if !data_out.to_pass_down
-        id_out = outflow_id(data_out)
-        id_out.is_basin && (v[id_out.idx] += value)
-    end
+    id_out.is_basin && (v[id_out.idx] += value)
     return nothing
 end
 
@@ -748,7 +749,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
     (; cache_inner, W) = linsolve
     (; gamma, J) = W
     (; p_independent, area_pid_controlled, n_pid) = J
-    (; pid_control, inflow_id, outflow_data) = p_independent
+    (; pid_control, inflow_id, outflow_id) = p_independent
 
     W_inner = cache_inner.A
     J_inner = W_inner.J
@@ -765,7 +766,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
             add_flow_contribution!(
                 b_inner,
                 inflow_id[flow_idx_all],
-                outflow_data[flow_idx_all],
+                outflow_id[flow_idx_all],
                 gamma * ∂q_all_∂q_np * ∂q_np_∂pid_integral * b_pid_integral[pid_idx],
             )
         end
@@ -793,6 +794,9 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
         linu = nothing,
         b = nothing,
     )
+    # Without Basins the inner system is empty, which the sparse factorization reports as
+    # infeasible, while the flows follow from the right hand side alone
+    retcode = iszero(J.n_basin) ? SciMLBase.ReturnCode.Success : linres.retcode
 
     # Compute PID integral component solution
     for pid_idx in 1:n_pid
@@ -826,7 +830,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
         linu,
         linres.resid,
         linres.alg,
-        linres.retcode,
+        retcode,
         linres.iters,
         linsolve,
         linres.stats,

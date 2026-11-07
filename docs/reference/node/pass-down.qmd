@@ -45,7 +45,11 @@ The algorithm for the PassDown node flow in a subgraph is as follows:
     $$
         q_l = f_l \cdot q_\text{out}.
     $$
-- For UserDemand nodes it works equivalent to the standard UserDemand flow [reference] but without the low storage factor or minimum upstream level.
+- For UserDemand nodes it works like the standard [UserDemand flow](/reference/node/user-demand.qmd#equations), but without the low storage factor or minimum level.
+
+Without allocation, a UserDemand abstracting from a PassDown node takes its demand before anything is passed on, regardless of its `demand_priority`: in a chain of PassDown nodes the upstream UserDemand is served first. Demand priorities are only applied by [allocation](#allocation), which bounds the abstraction of each UserDemand by what it allocated.
+
+A model does not need a Basin when all flow comes from FlowBoundary nodes and passes through PassDown nodes, for instance into UserDemand or Terminal nodes. Allocation does require a Basin in each subnetwork.
 
 ## Tracers
 
@@ -59,6 +63,10 @@ With `experimental.concentration` the tracers are propagated through the PassDow
 ## Allocation
 
 PassDown nodes can be used in [allocation](/concept/allocation.qmd#sec-allocation-pass-down) subnetworks, where the UserDemand abstracting from a PassDown node abstracts up to its allocated demand and the rest of the flow is divided over the downstream nodes. A PassDown node must have the same subnetwork ID as the nodes it is connected to: PassDown nodes at the boundary between the primary network and a subnetwork, or between subnetworks, are not supported yet.
+
+## Water quality
+
+The offline [Delwaq coupling](/guide/delwaq.qmd) does not support PassDown nodes yet, `ribasim.delwaq.generate` gives an error for models with PassDown nodes.
 
 # Connectivity rules
 

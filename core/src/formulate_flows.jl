@@ -54,6 +54,10 @@ function water_balance!(
     # Formulate intermediate flows (non continuously controlled)
     formulate_flows!(formulate_flows_args...)
 
+    # Provisional PassDown flows, so that the derivative term of PID control sees the
+    # flow into the listened Basin via PassDown nodes
+    formulate_provisional_pass_down_flow!(du.flow, p, t)
+
     # Formulate the PID control integral term rate
     formulate_PID_control!(
         du.pid_integral,
@@ -170,9 +174,9 @@ function set_current_storage!(
             time_dependent_cache.basin.surface_runoff
 
         for idx in eachindex(flow_boundary.node_id)
-            outflow_data = flow_boundary.outflow_data[idx]
-            outflow_data.to_pass_down && continue
-            downstream_id = outflow_id(outflow_data)
+            downstream_id = flow_boundary.outflow_link[idx].link[2]
+            # The flow into a PassDown node is a state
+            downstream_id.is_pass_down && continue
             storage[downstream_id.idx] += time_dependent_cache.flow_boundary.current_cumulative_boundary_flow[idx]
         end
     else
@@ -481,7 +485,7 @@ function linear_resistance_flow(
     inflow_link = linear_resistance.inflow_link[node_id.idx]
 
     inflow_id = inflow_link.link[1]
-    downstream_id = outflow_id(linear_resistance.outflow_data[node_id.idx])
+    downstream_id = linear_resistance.outflow_link[node_id.idx].link[2]
 
     h_a = get_level(s_a, p, inflow_id, t)
     h_b = get_level(s_b, p, downstream_id, t)
@@ -504,11 +508,11 @@ function tabulated_rating_curve_flow(
     (; current_interpolation_index, interpolations) = tabulated_rating_curve
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
-    outflow_data = tabulated_rating_curve.outflow_data[node_id.idx]
+    downstream_id = tabulated_rating_curve.outflow_link[node_id.idx].link[2]
     inflow_id = inflow_link.link[1]
 
     h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_data, t)
+    h_b = get_level(s_b, p, downstream_id, t)
     Δh = h_a - h_b
 
     factor = apply_low_storage_factor ? get_low_storage_factor(s_a, p, inflow_id) : 1.0
@@ -531,12 +535,12 @@ function allocated_rating_curve_flow(
     )::Number
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
-    outflow_data = tabulated_rating_curve.outflow_data[node_id.idx]
+    downstream_id = tabulated_rating_curve.outflow_link[node_id.idx].link[2]
 
     inflow_id = inflow_link.link[1]
 
     h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_data, t)
+    h_b = get_level(s_b, p, downstream_id, t)
     Δh = h_a - h_b
 
     factor = get_low_storage_factor(s_a, p, inflow_id)
@@ -710,7 +714,7 @@ function manning_resistance_flow(
         apply_low_storage_factor::Bool = true,
     )::Number
     inflow_id = manning_resistance.inflow_link[node_id.idx].link[1]
-    downstream_id = outflow_id(manning_resistance.outflow_data[node_id.idx])
+    downstream_id = manning_resistance.outflow_link[node_id.idx].link[2]
 
     h_a = get_level(s_a, p, inflow_id, t)
     h_b = get_level(s_b, p, downstream_id, t)
@@ -881,14 +885,14 @@ function pump_or_outlet_flow(
 
     node_idx = node_id.idx
     inflow_id = node.inflow_link[node_idx].link[1]
-    outflow_data = node.outflow_data[node_idx]
+    downstream_id = node.outflow_link[node_idx].link[2]
     min_flow_rate = node.min_flow_rate[node_idx]
     max_flow_rate = node.max_flow_rate[node_idx]
     min_upstream_level = node.min_upstream_level[node_idx]
     max_downstream_level = node.max_downstream_level[node_idx]
 
     src_level = get_level(s_a, p, inflow_id, t)
-    dst_level = get_level(s_b, p, outflow_data, t)
+    dst_level = get_level(s_b, p, downstream_id, t)
 
     q = flow_rate
     apply_low_storage_factor && (q *= get_low_storage_factor(s_a, p, inflow_id))
@@ -1099,15 +1103,47 @@ The flow from a node outside of a PassDown subgraph into the subgraph.
 function get_source_flow(
         flow::FlowCVector{T},
         source_id::NodeID,
-        p_independent::ParametersIndependent,
+        p::Parameters,
         t::Number,
     )::T where {T}
+    (; p_independent, time_dependent_cache) = p
     (; flow_boundary) = p_independent
     return if source_id.type == NodeType.UserDemand
         flow.horizontal.user_demand_outflow[source_id.idx]
+    elseif source_id.type == NodeType.FlowBoundary
+        # Like the other time series in the right hand side: a flow rate set via BMI takes
+        # precedence, and a block series is evaluated left-continuously within the timestep
+        idx = source_id.idx
+        flow_rate_bmi = flow_boundary.flow_rate_bmi[idx]
+        if isnan(flow_rate_bmi)
+            eval_time_interpolation(
+                flow_boundary.flow_rate[idx],
+                time_dependent_cache.flow_boundary.current_flow_rate,
+                idx,
+                p,
+                t,
+            )
+        else
+            flow_rate_bmi
+        end
     else
-        get_node_flow(flow, source_id; flow_boundary, t)[1]
+        get_node_flow(flow, source_id)[1]
     end
+end
+
+"""
+The PID derivative term uses the storage rate of the listened Basin, which includes the
+flows into it via PassDown nodes. These are computed after the controlled flows, so they are
+computed provisionally before PID control from the flows known at that point. The flows of
+PID and ContinuousControl controlled nodes are still zero then, so a controlled flow that
+reaches the listened Basin via PassDown nodes is not part of the derivative term.
+"""
+function formulate_provisional_pass_down_flow!(flow::FlowCVector, p::Parameters, t::Number)::Nothing
+    (; pass_down, pid_control) = p.p_independent
+    if !isempty(pass_down.node_id) && !isempty(pid_control.node_id)
+        formulate_pass_down_flow!(flow, p, t)
+    end
+    return nothing
 end
 
 """
@@ -1132,9 +1168,13 @@ function formulate_pass_down_flow!(
     (; inflow_links, outflow_state_idx, inflow_state_idx, fraction, pass_down_subgraphs) = pass_down
     (; current_return_factor) = time_dependent_cache.user_demand
 
-    # No-ops if flow === flow_in, but needed for AD
-    flow.horizontal .= flow_in.horizontal
-    flow.vertical .= flow_in.vertical
+    isempty(pass_down_subgraphs) && return nothing
+
+    # Needed for AD, where the output is a different vector than the input
+    if flow !== flow_in
+        flow.horizontal .= flow_in.horizontal
+        flow.vertical .= flow_in.vertical
+    end
 
     # Different PassDown subgraphs are independent from eachother
     @threaded for subgraph in pass_down_subgraphs
@@ -1144,7 +1184,7 @@ function formulate_pass_down_flow!(
                 for (inflow_link, state_idx) in zip(inflow_links[id.idx], inflow_state_idx[id.idx])
                     source_id = inflow_link.link[1]
                     if !in_pass_down_subgraph(source_id, user_demand)
-                        flow.pass_down[state_idx] = get_source_flow(flow, source_id, p_independent, t)
+                        flow.pass_down[state_idx] = get_source_flow(flow, source_id, p, t)
                     end
                     inflow += flow.pass_down[state_idx]
                 end
@@ -1173,10 +1213,8 @@ function formulate_pass_down_flow!(
                 )
                 flow.horizontal.user_demand_outflow[id.idx] = outflow
 
-                for state_idx in user_demand.pass_down_outflow_state_idx[id.idx]
-                    iszero(state_idx) && continue
-                    flow.pass_down[state_idx] = outflow
-                end
+                state_idx = user_demand.pass_down_outflow_state_idx[id.idx]
+                iszero(state_idx) || (flow.pass_down[state_idx] = outflow)
             else
                 error("Unsupported node $id in PassDown subgraph.")
             end

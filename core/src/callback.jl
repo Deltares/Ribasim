@@ -37,7 +37,7 @@ function create_callbacks(
     tstops = Vector{Float64}[]
     t_end = seconds_since(config.endtime, config.starttime)
     get_timeseries_tstops!(tstops, t_end, basin.forcing.precipitation)
-    tstops = sort(unique(reduce(vcat, tstops)))
+    tstops = sort(unique(reduce(vcat, tstops; init = Float64[])))
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
 
@@ -236,16 +236,16 @@ function update_concentrations!(u, t, integrator)::Nothing
     add_forcing_mass!(mass, loads, dt, t)
 
     # Exact boundary flow over time step
-    for (id, data_out) in zip(flow_boundary.node_id, flow_boundary.outflow_data)
-        if !data_out.to_pass_down
-            to_node = outflow_id(data_out)
-            add_substance_mass!(
-                view(mass, :, to_node.idx),
-                flow_boundary.concentration_itp[id.idx],
-                flow_boundary.cumulative_flow_dt[id.idx],
-                t,
-            )
-        end
+    for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
+        to_node = outflow_link.link[2]
+        # The mass into a PassDown node is handled in `mass_through_pass_down!`
+        to_node.is_pass_down && continue
+        add_substance_mass!(
+            view(mass, :, to_node.idx),
+            flow_boundary.concentration_itp[id.idx],
+            flow_boundary.cumulative_flow_dt[id.idx],
+            t,
+        )
     end
 
     mass_inflows_from_user_demand!(integrator)
@@ -556,8 +556,11 @@ function check_negative_storage(u, t, integrator)::Nothing
     # constant time series take their value after a possible jump at t, see
     # `interpolation_time`. The time dependent cache still holds the values from before the
     # jump, as the last evaluation at t was part of the time step, so it is renewed.
+    # The jumps are at tstops, and the reached tstop is only removed after the callbacks.
     update_cumulative_forcing!(p, t)
-    p.time_dependent_cache.t_prev_call[1] = -1.0
+    if has_tstop(integrator) && first_tstop(integrator) == integrator.tdir * t
+        p.time_dependent_cache.t_prev_call[1] = -1.0
+    end
     water_balance!(du, u, p, t)
 
     if log_negative_storage(basin, current_basin_properties.current_storage)
@@ -827,6 +830,11 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
     apply_parameter_update!.(itp_update_constant)
     apply_parameter_update!.(itp_update_linear)
     apply_parameter_update!.(itp_update_lookup)
+    # The time dependent cache holds the values of the replaced time series, so renew it at
+    # the next call of the right hand side, also at the same t
+    if !(isempty(itp_update_constant) && isempty(itp_update_linear) && isempty(itp_update_lookup))
+        p.time_dependent_cache.t_prev_call[1] = -1.0
+    end
 
     return nothing
 end

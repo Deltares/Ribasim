@@ -424,6 +424,14 @@ def generate(
     if not isinstance(model, Model):
         model = Model.read(model)
 
+    node_df = model.node.df
+    assert node_df is not None
+    if (node_df["node_type"] == "PassDown").any():
+        # The network simplification removes nodes without storage by joining their
+        # inflow and outflow links pairwise, which gives wrong exchanges for a PassDown
+        # node with several inflows or outflows, and loses the abstraction by a UserDemand.
+        raise ValueError("PassDown nodes are not supported by the Delwaq coupling yet.")
+
     evaporate_mass = model.solver.evaporate_mass
 
     basin_fn = model.results_path / "basin.nc"

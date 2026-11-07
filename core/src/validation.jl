@@ -771,7 +771,7 @@ function valid_pass_down_connectivity(graph)
                 @error "$id cannot have more than one UserDemand outflow."
                 errors = true
             elseif isone(n_user_demand_out) && iszero(n_pass_down_out + n_other_out)
-                @error "$id cannot just flow out into a PassDown node, the remainder flow needs somewhere to go."
+                @error "$id cannot only flow out into a UserDemand node, the remainder flow needs somewhere to go."
                 errors = true
             elseif !iszero(n_user_demand_out) && !iszero(n_other_out)
                 @error "$id cannot have both a UserDemand outflow and an outflow into a node that is not a PassDown node, the remainder flow must be passed down to PassDown nodes."

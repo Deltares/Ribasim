@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import ribasim_testmodels
 import xarray as xr
 from ribasim import Model
 from ribasim.delwaq import add_tracer, generate, parse, run_delwaq
@@ -145,3 +146,10 @@ def test_substance_uniqueness():
     substances = {"AVeryLongSubstanceNameAlpha", "AVeryLongSubstanceNameBeta"}
     with pytest.raises(ValueError, match="not unique when truncated"):
         check_substance_uniqueness(substances)
+
+
+def test_pass_down_not_supported():
+    """The network simplification cannot represent PassDown nodes, so generate refuses them."""
+    model = ribasim_testmodels.pass_down_tracer_model()
+    with pytest.raises(ValueError, match="PassDown nodes are not supported"):
+        generate(model)

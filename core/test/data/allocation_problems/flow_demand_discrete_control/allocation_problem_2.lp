@@ -1,9 +1,9 @@
 minimize
 obj: 50 flow_(Pump_#2,_Terminal_#3)_
 subject to
-c1: 1 flow_demand_error_Pump_#2,1,first_ <= 0
-c2: 1 flow_demand_error_Pump_#2,1,second_ <= 0
-c3: -1 low_storage_factor_Basin_#1_ <= -1
+c1: -1 low_storage_factor_Basin_#1_ <= -1
+c2: 1 flow_demand_error_Pump_#2,1,first_ <= 0
+c3: 1 flow_demand_error_Pump_#2,1,second_ <= 0
 flow_demand_relative_error_constraint_Pump_#2,1_: 1 flow_demand_allocated_Pump_#2,1_ + 0.01587846116148003 flow_demand_error_Pump_#2,1,first_ >= 0.01587846116148003
 flow_demand_fairness_error_constraint_Pump_#2,1_: -1 flow_demand_error_Pump_#2,1,first_ + 1 flow_demand_error_Pump_#2,1,second_ + 1 average_flow_unit_error_1_ >= 0
 flow_conservation_pump_Pump_#2_: 1 flow_(Basin_#1,_Pump_#2)_ - 1 flow_(Pump_#2,_Terminal_#3)_ = 0

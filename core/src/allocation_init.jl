@@ -64,18 +64,16 @@ function add_flow_conservation!(
         pass_down::PassDown,
     )::Nothing
     (; problem, subnetwork_id) = allocation_model
-    (; node_id, inflow_link, outflow_data) = node
+    (; node_id, inflow_link, outflow_link) = node
     node_ids = filter(id -> graph[id].subnetwork_id == subnetwork_id, node_id)
     flow = problem[:flow]
-
-    outflow_link = getfield.(outflow_data, :outflow_link)
 
     # Extract node type name from the struct type
     node_name = snake_case(string(typeof(node).name.name))
 
     # Define constraints: inflow is equal to outflow for conservative nodes
     constraint_name = "flow_conservation_$node_name"
-    node_ids_single_outflow = filter(id -> !outflow_data[id.idx].to_pass_down, node_ids)
+    node_ids_single_outflow = filter(id -> !outflow_link[id.idx].link[2].is_pass_down, node_ids)
     problem[Symbol(constraint_name)] = JuMP.@constraint(
         problem,
         [node_id = node_ids_single_outflow],
@@ -85,8 +83,7 @@ function add_flow_conservation!(
 
     # Define constraints: nodes that flow into a PassDown node pass their flow on to that node
     pass_down_links = Tuple{NodeID, NodeID}[
-        link_metadata.link for id in node_ids if outflow_data[id.idx].to_pass_down for
-            link_metadata in outflow_data[id.idx].outflow_links
+        outflow_link[id.idx].link for id in node_ids if outflow_link[id.idx].link[2].is_pass_down
     ]
     problem[Symbol("flow_conservation_pass_down_$node_name")] = JuMP.@constraint(
         problem,
@@ -179,10 +176,8 @@ function add_user_demand!(
     (; problem, cumulative_supplied_volume, node_ids_in_subnetwork) = allocation_model
     (; user_demand_ids_subnetwork) = node_ids_in_subnetwork
     (; user_demand, pass_down) = p_independent
-    (; inflow_links, outflow_data) = user_demand
+    (; inflow_links, outflow_link) = user_demand
     flow = problem[:flow]
-
-    outflow_link = getfield.(outflow_data, :outflow_link)
 
     # Define decision variables: Per UserDemand node the flow allocated to that node
     # per demand priority for which that node has a demand (scaling.flow * m^3/s)
@@ -246,7 +241,7 @@ function add_user_demand!(
     # factor times the total inflow summed across all inflow links.
     return_factor = 0.5 # example return factor
     user_demand_ids_single_outflow =
-        filter(id -> !outflow_data[id.idx].to_pass_down, user_demand_ids_subnetwork)
+        filter(id -> !outflow_link[id.idx].link[2].is_pass_down, user_demand_ids_subnetwork)
     problem[:user_demand_return_flow] = JuMP.@constraint(
         problem,
         [node_id = user_demand_ids_single_outflow],
@@ -257,9 +252,8 @@ function add_user_demand!(
 
     # Define constraints: if the return flow goes into a PassDown node it equals the return flow
     pass_down_links = Tuple{NodeID, NodeID}[
-        link_metadata.link for id in user_demand_ids_subnetwork if
-            outflow_data[id.idx].to_pass_down for
-            link_metadata in outflow_data[id.idx].outflow_links
+        outflow_link[id.idx].link for id in user_demand_ids_subnetwork if
+            outflow_link[id.idx].link[2].is_pass_down
     ]
     problem[:user_demand_return_flow_pass_down] = JuMP.@constraint(
         problem,
@@ -429,24 +423,13 @@ function add_level_demand!(
 end
 
 
-function add_level_boundary!(allocation_model::AllocationModel)::Nothing
-    (; problem, node_ids_in_subnetwork) = allocation_model
-    (; level_boundary_ids_subnetwork) = node_ids_in_subnetwork
-
-    # Add parameters: level boundary levels (m, values to be filled in before optimization)
-    problem[:boundary_level] =
-        JuMP.@variable(problem, boundary_level[level_boundary_ids_subnetwork] == 0)
-
-    return nothing
-end
-
 function add_linearized_connector_node!(
         allocation_model::AllocationModel,
         node::AbstractParameterNode,
         node_ids_subnetwork,
     )::Nothing
     (; problem) = allocation_model
-    (; inflow_link, outflow_data) = node
+    (; inflow_link, outflow_link) = node
 
     flow = problem[:flow]
     storage_change = problem[:basin_storage_change]
@@ -479,7 +462,7 @@ function add_linearized_connector_node!(
                 )
             end
 
-            downstream_node = outflow_id(outflow_data[node_id.idx])
+            downstream_node = outflow_link[node_id.idx].link[2]
             if downstream_node.is_basin
                 JuMP.add_to_expression!(
                     linearization,
@@ -1126,9 +1109,6 @@ function AllocationModel(subnetwork_id::Int32, p_independent::ParametersIndepend
     add_flow!(allocation_model)
     add_conservation!(allocation_model, p_independent)
 
-    # Boundary nodes
-    add_level_boundary!(allocation_model)
-
     # Connector nodes
     add_tabulated_rating_curve!(allocation_model, p_independent)
     add_linear_resistance!(allocation_model, p_independent)
@@ -1154,8 +1134,10 @@ function AllocationModel(subnetwork_id::Int32, p_independent::ParametersIndepend
     end
 
     # Objectives (goals)
-    add_demand_objectives!(allocation_model, p_independent)
+    # The low storage factors come first, so that the demand objectives cannot lower them
+    # to hold back water: they may only reduce outflows to prevent negative storage
     add_low_storage_factor_objective!(allocation_model)
+    add_demand_objectives!(allocation_model, p_independent)
     add_route_priority_objective!(allocation_model, p_independent)
 
     return allocation_model

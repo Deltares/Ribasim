@@ -1,102 +1,55 @@
 ---
 title: "Validation"
-engine: julia
+jupyter: python3
 ---
 
-The tables below show the validation rules applied to the input to the Julia core before running the model.
+The diagram and tables below show the validation rules applied to the input to the Julia core before running the model.
+Some node types have more complex connectivity validation than shown here.
+See the [Junction](node/junction.qmd) and [UserDemand](node/user-demand.qmd) pages for their additional rules.
 
-# Connectivity
+# Allowed connectivity
 
-In the table below, each column shows which node types are allowed to be downstream (or 'down-control') of the node type at the top of the column.
+The diagram below shows every allowed upstream and downstream node type for each node type that can have flow links.
+Each group has its own nodes, with upstream neighbors on the left, downstream neighbors on the right, and flow directed from left to right.
+This is a connectivity illustration, not a valid simulation model.
 
-```{julia}
+```{python}
 # | code-fold: true
-# | classes: freeze-left
-using Ribasim
-using DataFrames: DataFrame
-using MarkdownTables
+# | fig-width: 5
+# | fig-height: 30
+%run ../../utils/plot_node_connectivity.py
+import matplotlib.pyplot as plt
 
-node_names_snake_case = Symbol[]
-node_names_camel_case = Symbol[]
-for (node_name, node_type) in
-    zip(fieldnames(Ribasim.ParametersIndependent), fieldtypes(Ribasim.ParametersIndependent))
-    if node_type <: Ribasim.AbstractParameterNode
-        push!(node_names_snake_case, node_name)
-        push!(node_names_camel_case, nameof(node_type))
-    end
-end
-
-function to_symbol(b::Bool)::String
-    return b ? "✓" : "x"
-end
-
-df = DataFrame()
-df[!, :downstream] = node_names_snake_case
-
-for node_name in node_names_snake_case
-    df[!, node_name] = [
-        (to_symbol(node_name_ in Ribasim.neighbortypes(node_name))) for
-        node_name_ in node_names_snake_case
-    ]
-end
-
-markdown_table(df)
+fig = plot_all_node_connectivity()
+plt.show()
+plt.close(fig)
 ```
 
 # Neighbor amounts
 
-The tables below show for each node type between which bounds the amount of in- and outneighbors must be, per link type.
+The tables below show the minimum and maximum numbers of incoming and outgoing neighbors for each node type, per link type.
+`∞` means there is no upper bound.
 
-```{julia}
+```{python}
 # | code-fold: true
-# | output: false
-function unbounded(i::Int)::String
-    return i == typemax(Int) ? "∞" : string(i)
-end
+# | output: asis
+from ribasim.validation import link_neighbor_amount
 
-function neighbor_bounds_table(node_names_snake_case, node_names_camel_case, bounds_fn)
-    in_min = String[]
-    in_max = String[]
-    out_min = String[]
-    out_max = String[]
-    for node_name in node_names_camel_case
-        bounds = bounds_fn(node_name)
-        push!(in_min, string(bounds.in_min))
-        push!(in_max, unbounded(bounds.in_max))
-        push!(out_min, string(bounds.out_min))
-        push!(out_max, unbounded(bounds.out_max))
-    end
-    return DataFrame(; node_type = node_names_snake_case, in_min, in_max, out_min, out_max)
-end
-```
 
-## Flow links
-
-```{julia}
-# | code-fold: true
-# | classes: freeze-left
-markdown_table(neighbor_bounds_table(node_names_snake_case, node_names_camel_case, Ribasim.n_neighbor_bounds_flow))
+for link_type in ("flow", "control", "listen"):
+    node_bounds = link_neighbor_amount[link_type]
+    print(f"\n## {link_type.title()} links\n")
+    print("| Node type | in_min | in_max | out_min | out_max |")
+    print("|:----------|-------:|-------:|--------:|--------:|")
+    for node_type, bounds in node_bounds.items():
+        values = ["∞" if value == 2**63 - 1 else str(value) for value in bounds]
+        print(f"| {node_type} | {' | '.join(values)} |")
+    print()
 ```
 
 ::: {.callout-note}
-The above table only valid when no PassDown nodes are involved. For PassDown connectivity rules see the [pass_down docs page].
+PassDown nodes have additional connectivity rules, which are given on the [PassDown page](/reference/node/pass-down.qmd#connectivity-rules).
 :::
-
-## Control links
-
-```{julia}
-# | code-fold: true
-# | classes: freeze-left
-markdown_table(neighbor_bounds_table(node_names_snake_case, node_names_camel_case, Ribasim.n_neighbor_bounds_control))
-```
-
-## Listen links
-
-```{julia}
-# | code-fold: true
-# | classes: freeze-left
-markdown_table(neighbor_bounds_table(node_names_snake_case, node_names_camel_case, Ribasim.n_neighbor_bounds_listen))
-```
 
 ::: {.callout-note}
 Pump and Outlet can receive two control links, in which case one must be from a FlowDemand, and the other from a control node.

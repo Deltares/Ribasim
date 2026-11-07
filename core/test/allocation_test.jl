@@ -19,8 +19,12 @@
     user_demand_error = problem[:user_demand_error]
     low_storage_factor = problem[:low_storage_factor]
 
+    # Low storage factor objective, which comes first
+    @test objectives[1].type == AllocationObjectiveType.low_storage_factor
+    @test objectives[1].expressions[1] == -sum(low_storage_factor)
+
     # Demand objective
-    objective = objectives[1]
+    objective = objectives[2]
     @test objective.type == AllocationObjectiveType.demand_flow
     first_expression_terms = keys(objective.expressions[1].terms)
     @test length(first_expression_terms) == 2
@@ -31,9 +35,6 @@
     @test objective.expressions[2] ==
         user_demand_error[NodeID(:UserDemand, 5, p_independent), 1, :second] +
         user_demand_error[NodeID(:UserDemand, 6, p_independent), 1, :second]
-
-    # Low storage factor objective
-    @test objectives[2].expressions[1] == -sum(low_storage_factor)
 end
 
 
@@ -237,6 +238,33 @@ end
     test_extrapolation.(user_demand.demand_interpolation[1][1:2])
 end
 
+@testitem "Low storage factor only prevents negative storage" begin
+    import BasicModelInterface as BMI
+    import JuMP
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/allocation_training/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    # Around day 103 the reservoir is below its LevelDemand min_level, which the demand
+    # objectives could otherwise try to meet by lowering the low storage factors.
+    # Step per day, since each update_until call is an intervention time.
+    for day in 1:103
+        BMI.update_until(model, day * 86400.0)
+    end
+    (; allocation, basin) = model.integrator.p.p_independent
+    (; current_storage) = allocation.current_basin_properties
+
+    # A low storage factor below 1 is only needed when the Basin runs empty
+    for allocation_model in allocation.allocation_models
+        low_storage_factor = allocation_model.problem[:low_storage_factor]
+        for basin_id in only(axes(low_storage_factor))
+            @test JuMP.value(low_storage_factor[basin_id]) ≈ 1 ||
+                current_storage[basin_id.idx] ≤ basin.low_storage_threshold[basin_id.idx]
+        end
+    end
+end
+
 @testitem "infeasibility analysis" begin
     using Logging
     using JuMP
@@ -346,7 +374,7 @@ end
         @test JuMP.lower_bound(flow[link_metadata.link]) == 0
         @test JuMP.upper_bound(flow[link_metadata.link]) ≈ total_demand
     end
-    return_link = user_demand.outflow_data[user_demand_id.idx].outflow_link.link
+    return_link = user_demand.outflow_link[user_demand_id.idx].link
     @test JuMP.lower_bound(flow[return_link]) == 0
     @test JuMP.upper_bound(flow[return_link]) ≈ total_demand
 
@@ -474,6 +502,19 @@ end
     end
 
     @test isempty(failure_reasons)
+end
+
+@testitem "Missing demand priority defaults to 1" begin
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/demand_priority_default/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+    (; user_demand, level_demand, flow_demand) = model.integrator.p.p_independent
+    # UserDemand (time table) and FlowDemand omit the demand priority, LevelDemand has 2
+    @test user_demand.demand_priorities == [1, 2]
+    @test user_demand.has_demand_priority == [true false]
+    @test flow_demand.has_demand_priority == [true false]
+    @test level_demand.has_demand_priority == [false true]
 end
 
 @testitem "Route priorities" begin

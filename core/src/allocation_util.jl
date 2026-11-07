@@ -118,14 +118,6 @@ function get_low_storage_factor(problem::JuMP.Model, node_id::NodeID)
 end
 
 """
-The outflow links of a node: the links to all PassDown nodes if the node flows into PassDown nodes,
-otherwise the single outflow link.
-"""
-function all_outflow_links(outflow_data::OutflowData)::Vector{LinkMetadata}
-    return outflow_data.to_pass_down ? outflow_data.outflow_links : [outflow_data.outflow_link]
-end
-
-"""
 The fraction of the outflow of a node that flows over a link. This is the fraction of the link if it
 leaves a PassDown node, otherwise the node has a single outflow link.
 """
@@ -284,6 +276,9 @@ function ScalingFactors(
         basin.storage_to_level[node_id.idx].t[end] for
             node_id in basin.node_id if graph[node_id].subnetwork_id == subnetwork_id
     ]
+    # The problem is scaled by the Basin storages of the subnetwork
+    isempty(max_storages) &&
+        error("Allocation subnetwork $subnetwork_id has no Basin, which is not supported.")
     return ScalingFactors(; mean_half_storage = sum(max_storages) / (2 * length(max_storages)))
 end
 

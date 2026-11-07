@@ -12,11 +12,11 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
     (; concentration_state, mass) = basin.concentration_data
     (; return_mass) = user_demand
 
-    for (node_idx, outflow_data) in enumerate(user_demand.outflow_data)
+    for (node_idx, outflow_link) in enumerate(user_demand.outflow_link)
         user_demand.in_pass_down_subgraph[node_idx] && continue
 
-        to_basin = !outflow_data.to_pass_down && outflow_id(outflow_data).is_basin
-        (to_basin || outflow_data.to_pass_down) || continue
+        to_node = outflow_link.link[2]
+        (to_node.is_basin || to_node.is_pass_down) || continue
 
         inflow_links = user_demand.inflow_links[node_idx]
         return_mass_node = view(return_mass, :, node_idx)
@@ -27,13 +27,14 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
         # source basins' concentrations.
         inflows = get_inflows(cumulative_flow_dt, user_demand, node_idx)
         total_inflow = sum(inflows)
+        return_flow = cumulative_flow_dt.horizontal.user_demand_outflow[node_idx]
         if total_inflow > 0
             for node_inflow_idx in eachindex(inflow_links)
                 from_node = inflow_links[node_inflow_idx].link[1]
                 link_inflow = inflows[node_inflow_idx]
                 fraction = link_inflow / total_inflow
                 return_mass_node .+=
-                    @view(concentration_state[:, from_node.idx]) .* link_inflow .* fraction
+                    @view(concentration_state[:, from_node.idx]) .* return_flow .* fraction
             end
         end
 
@@ -45,8 +46,8 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
             t,
         )
 
-        if to_basin
-            view(mass, :, outflow_id(outflow_data).idx) .+= return_mass_node
+        if to_node.is_basin
+            view(mass, :, to_node.idx) .+= return_mass_node
         end
     end
     return nothing
@@ -218,15 +219,12 @@ function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
                 t,
             )
 
-            outflow_data = user_demand.outflow_data[id.idx]
-            if outflow_data.to_pass_down
-                for state_idx in user_demand.pass_down_outflow_state_idx[id.idx]
-                    iszero(state_idx) && continue
-                    view(link_mass, :, state_idx) .= return_mass_node
-                end
-            else
-                target_id = outflow_id(outflow_data)
-                target_id.is_basin && (view(mass, :, target_id.idx) .+= return_mass_node)
+            target_id = user_demand.outflow_link[id.idx].link[2]
+            if target_id.is_pass_down
+                state_idx = user_demand.pass_down_outflow_state_idx[id.idx]
+                view(link_mass, :, state_idx) .= return_mass_node
+            elseif target_id.is_basin
+                view(mass, :, target_id.idx) .+= return_mass_node
             end
         end
     end
@@ -238,13 +236,11 @@ Process all mass inflows to basins
 """
 function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
     (; p, t) = integrator
-    (; basin, inflow_id, outflow_data, level_boundary, cumulative_flow_dt, flow_ranges) = p.p_independent
+    (; basin, inflow_id, outflow_id, level_boundary, cumulative_flow_dt, flow_ranges) = p.p_independent
     (; concentration_state, mass) = basin.concentration_data
 
     # Loop over connections that have state
-    @views for (flow_idx, (from_node, to_data)) in enumerate(zip(inflow_id, outflow_data))
-        # For flows into PassDown nodes this is the unset flow link, see below
-        to_node = outflow_id(to_data)
+    @views for (flow_idx, (from_node, to_node)) in enumerate(zip(inflow_id, outflow_id))
 
         if flow_idx in flow_ranges.horizontal.user_demand_outflow
             # UserDemand is handled separately in mass_inflows_from_user_demand
@@ -313,7 +309,7 @@ end
 Process all mass outflows from Basins
 """
 function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
-    (; basin, cumulative_flow_dt, inflow_id, outflow_data, flow_ranges) = integrator.p.p_independent
+    (; basin, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges) = integrator.p.p_independent
     (; mass, concentration_state) = basin.concentration_data
 
     @views for flow_idx in eachindex(cumulative_flow_dt)
@@ -325,9 +321,7 @@ function mass_outflows_basin!(integrator::DEIntegrator)::Nothing
 
         cumulative_flow = cumulative_flow_dt[flow_idx]
         from_node = inflow_id[flow_idx]
-        to_data = outflow_data[flow_idx]
-
-        to_node = outflow_id(to_data)
+        to_node = outflow_id[flow_idx]
 
         if from_node.is_basin && cumulative_flow > 0
             mass[:, from_node.idx] .-= concentration_state[:, from_node.idx] .* cumulative_flow
