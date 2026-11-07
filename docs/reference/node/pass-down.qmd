@@ -66,7 +66,22 @@ PassDown nodes can be used in [allocation](/concept/allocation.qmd#sec-allocatio
 
 ## Water quality
 
-The offline [Delwaq coupling](/guide/delwaq.qmd) does not support PassDown nodes yet, `ribasim.delwaq.generate` gives an error for models with PassDown nodes.
+In the offline [Delwaq coupling](/guide/delwaq.qmd) a PassDown node has no volume, so it is removed from the Delwaq network like the connector nodes: each node that flows into the PassDown node gets an exchange with each node it flows into. The flow over such an exchange is the flow of the link into the PassDown node times the share of the outflow link in the total outflow, per timestep, so the mixing in the PassDown node is the same as in the [tracers](#tracers) of the core. An exchange between two boundary nodes, like a FlowBoundary and the UserDemand that abstracts from the PassDown node, is dropped, since it does not touch a Basin.
+
+# Junction or PassDown {#junction-or-passdown}
+
+Both nodes have no storage, but they play different roles:
+
+| | Junction | PassDown |
+|---|---|---|
+| Role | Draws the network, it is removed before the simulation | A node in the simulation, with a flow state per outflow link |
+| Downstream level seen by a weir or pump upstream | The level of the Basin or LevelBoundary behind the Junction | None: the structure always has free outflow |
+| Splitting flow | Not possible, the flow over each link follows from the nodes it connects | By the fractions of the outflow links |
+| UserDemand abstraction | No | At most one UserDemand per PassDown node |
+| Bidirectional flow | Yes | No, the inflow comes from Pump, Outlet, TabulatedRatingCurve, FlowBoundary, UserDemand or PassDown nodes |
+| Results | No flows of its own | Flows per link in the flow results |
+
+Use a Junction to draw a confluence or bifurcation whose flows are determined by the connected nodes, for instance between a Basin and several resistances. Use a PassDown node where the flow is imposed by the structures upstream and must be divided, abstracted from or passed on without a Basin in between.
 
 # Connectivity rules
 
