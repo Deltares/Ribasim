@@ -22,12 +22,13 @@ If your model does not converge, or your performance is lower than expected, it 
 
 The default solver `algorithm = "NordsieckBDF"`, which is an adaptive-order, adaptive-time BDF method on a propagated Nordsieck history array, following SUNDIALS CVODE [@byrne1975polyalgorithm, @hindmarsh2005sundials].
 It is an implicit method that supports the default adaptive timestepping.
-The full list of available solvers is: `NordsieckBDF`, `FBDF`, `QNDF`, `Rosenbrock23`, `Rodas4P`, `Rodas5P`, `TRBDF2`, `KenCarp4`, `Tsit5`, `RK4`, `ImplicitEuler`, `Euler`. The Rosenbrock methods (`Rosenbrock23`, `Rodas4P`, `Rodas5P`) and the explicit methods (`Tsit5`, `RK4`, `Euler`) do not support `reduced_implicit_solve`; it is internally set to `false` with a warning.
+The full list of available solvers is: `NordsieckBDF`, `FBDF`, `QNDF`, `Rosenbrock23`, `Rodas4P`, `Rodas5P`, `TRBDF2`, `KenCarp4`, `Tsit5`, `RK4`, `ImplicitEuler`, `Euler`.
 Information on the solver algorithms can be found on the [ODE solvers page](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/).
 
 By default Ribasim uses adaptive timestepping, though not all algorithms support adaptive timestepping.
 To use fixed timesteps, provide a timestep size in seconds; `dt = 3600.0` corresponds to an hourly timestep.
 With adaptive timestepping, `dtmin` and `dtmax` control the minimum and maximum allowed `dt`.
+`dtmax` must be positive, and is 86400 seconds (one day) by default.
 If a smaller `dt` than `dtmin` is needed to meet the set error tolerances, the simulation stops, unless `force_dtmin` is set to `true`.
 `force_dtmin` is off by default to ensure an accurate solution.
 
@@ -43,6 +44,7 @@ For output frequencies that are not of fixed length, like months or years, we su
 The water balance error is a measure of the error in the consistency with which the core keeps track of the water resources per Basin, for more details see [here](/concept/equations.qmd#the-water-balance-error).
 `water_balance_abstol` and `water_balance_reltol` give upper bounds on this error, above which an error is thrown.
 A too large error generally indicates an error in the code or floating point truncation errors.
+The floating point resolution of the storage rate is accounted for in `water_balance_abstol`, so very short output intervals (for instance with `saveat = 0` and a tiny first timestep) of Basins with a very large storage do not trigger this error.
 
 The Jacobian matrix provides information about the local sensitivity of the model with respect to changes in the states.
 For implicit solvers it must be calculated often, which can be expensive to do.
@@ -55,9 +57,11 @@ Since each state typically only depends on a small number of other states, this 
 The sparsity structure is detected automatically and exploited both in the Jacobian computation and in the linear solves.
 For small or highly connected models it could be faster to use a dense Jacobian matrix instead by setting `sparse = false`.
 
-By default `reduced_implicit_solve = true`, which means that the Jacobian is evaluated in a form that is particularly cheap to compute, and the linear systems of the implicit solver are reduced to systems with the size of the number of Basins.
+By default the reduced implicit solve is used (`reduced_implicit_solve` is not set) for the algorithms that use a Newton solver: `NordsieckBDF`, `FBDF`, `QNDF`, `TRBDF2`, `KenCarp4` and `ImplicitEuler`.
+It means that the Jacobian is evaluated in a form that is particularly cheap to compute, and the linear systems of the implicit solver are reduced to systems with the size of the number of Basins.
 For more details see [numerical considerations](/concept/numerics.qmd#sec-jacobian).
 Setting `reduced_implicit_solve = false` computes the full Jacobian and solves the full linear systems, which is slower and mainly useful for verification.
+The Rosenbrock methods (`Rosenbrock23`, `Rodas4P`, `Rodas5P`) and the explicit methods (`Tsit5`, `RK4`, `Euler`) always use the full Jacobian, and setting `reduced_implicit_solve = true` for them is an error.
 
 The total maximum number of iterations `maxiters = 1e9`, can normally stay as-is unless doing extremely long simulations.
 

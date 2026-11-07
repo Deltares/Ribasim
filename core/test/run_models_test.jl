@@ -349,51 +349,29 @@ end
     @test last(concentration("UserDemand")) ≈ 0.2 rtol = 1.0e-4
 end
 
-@testitem "Sparse and AD/FDM jac solver options" begin
-    toml_path =
-        normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
-
-    config = Ribasim.Config(toml_path; solver_sparse = true, solver_autodiff = true)
-    sparse_ad = Ribasim.run(config)
-    config = Ribasim.Config(toml_path; solver_sparse = false, solver_autodiff = true)
-    dense_ad = Ribasim.run(config)
-    config = Ribasim.Config(toml_path; solver_sparse = true, solver_autodiff = false)
-    sparse_fdm = Ribasim.run(config)
-    config = Ribasim.Config(toml_path; solver_sparse = false, solver_autodiff = false)
-    dense_fdm = Ribasim.run(config)
-
-    @test success(sparse_ad)
-    @test success(dense_ad)
-    @test success(sparse_fdm)
-    @test success(dense_fdm)
-
-    @test dense_ad.integrator.u ≈ sparse_ad.integrator.u atol = 0.4
-    @test sparse_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
-    @test dense_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
-end
-
-# https://github.com/Deltares/Ribasim/issues/3178
-@testitem "Reduced implicit solve with and without autodiff" begin
+@testitem "Sparse, AD/FDM and reduced implicit solve jac solver options" begin
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
 
     models = Dict(
-        (reduced, autodiff) => Ribasim.run(
+        (reduced, sparse, autodiff) => Ribasim.run(
             Ribasim.Config(
                 toml_path;
                 solver_reduced_implicit_solve = reduced,
+                solver_sparse = sparse,
                 solver_autodiff = autodiff,
             ),
-        ) for reduced in (true, false), autodiff in (true, false)
+        ) for reduced in (true, false), sparse in (true, false), autodiff in (true, false)
     )
+
     for model in values(models)
         @test success(model)
     end
 
-    reference = models[(true, true)].integrator.u
-    @test models[(true, false)].integrator.u ≈ reference atol = 4
-    @test models[(false, true)].integrator.u ≈ reference atol = 4
-    @test models[(false, false)].integrator.u ≈ reference atol = 4
+    reference = models[(true, true, true)].integrator.u
+    for model in values(models)
+        @test model.integrator.u ≈ reference atol = 1.0e-3
+    end
 end
 
 @testitem "TabulatedRatingCurve model" begin

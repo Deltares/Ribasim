@@ -666,18 +666,6 @@ end
 ##### Other
 ###
 
-# Rosenbrock methods need the full Jacobian matrix and explicit methods have no implicit solve
-const NO_REDUCED_IMPLICIT_SOLVE =
-    ("Rosenbrock23", "Rodas4P", "Rodas5P", "Tsit5", "RK4", "Euler")
-
-"""
-Whether the reduced implicit solve is used. The `reduced_implicit_solve` setting is overruled
-(without modifying the config) for algorithms that don't support it.
-"""
-function use_reduced_implicit_solve(solver::Solver)::Bool
-    return solver.reduced_implicit_solve && !(solver.algorithm in NO_REDUCED_IMPLICIT_SOLVE)
-end
-
 """
 The maximum number of accepted steps a Jacobian is reused for, following CVODE's `MSBJ`.
 OrdinaryDiffEq only asks for a new Jacobian after a Newton failure, so without a bound a
