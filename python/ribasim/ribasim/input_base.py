@@ -464,6 +464,11 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
     @classmethod
     def _check_schema(cls, v: DataFrame[TableT]):
         """Allow only extra columns with `meta_` prefix."""
+        if v is None and not cls._df_is_optional():
+            raise ValueError(
+                f"The {cls.tablename()} table cannot be None. To remove all rows, "
+                "keep the table and drop its rows instead: `table.df = table.df.head(0)`"
+            )
         if isinstance(v, pd.DataFrame | gpd.GeoDataFrame):
             # On reading from geopackage, migrate the tables when necessary
             db_path = context_file_loading.get().get("database")
@@ -725,12 +730,20 @@ class TableModel[TableT: _BaseSchema](FileModel, ChildModel):
     def tableschema(cls) -> TableT:
         """Retrieve Pandera Schema.
 
-        The type of the field `df` is known to always be an DataFrame[TableT]]] | None
+        The type of the field `df` is known to be DataFrame[TableT] | None,
+        or DataFrame[TableT] for tables that are always present.
         """
-        optionalfieldtype = cls.model_fields["df"].annotation
-        fieldtype = get_args(optionalfieldtype)[0]
+        fieldtype = cls.model_fields["df"].annotation
+        args = get_args(fieldtype)
+        if type(None) in args:
+            fieldtype = next(arg for arg in args if arg is not type(None))
         T: TableT = get_args(fieldtype)[0]
         return T
+
+    @classmethod
+    def _df_is_optional(cls) -> bool:
+        """Whether the `df` field may be None, unlike the Node and Link tables."""
+        return type(None) in get_args(cls.model_fields["df"].annotation)
 
     @classmethod
     def columns(cls) -> list[str]:
@@ -771,10 +784,16 @@ class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
     Overrides the reading and writing methods of a TableModel.
     """
 
-    # Narrowing the pydantic field to GeoDataFrame is intentional
+    # pandera's GeoDataFrame is a pandas DataFrame, but not a pandera DataFrame.
     df: GeoDataFrame[TableT] | None = Field(  # ty: ignore[invalid-attribute-override]
         default=None, exclude=True, repr=False
     )
+
+    @classmethod
+    def _empty_df(cls) -> GeoDataFrame[TableT]:
+        """Return an empty table with the columns and index of the schema, without CRS."""
+        index = pd.Index([], name=cls.tableschema()._index_name())
+        return GeoDataFrame[cls.tableschema()](index=index, geometry=[])  # ty: ignore[invalid-type-form]
 
     def sort(self):
         # Only sort the index (node_id / link_id) since this needs to be sorted in a GeoPackage.

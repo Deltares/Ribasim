@@ -1,7 +1,6 @@
 from collections.abc import Callable
 from datetime import datetime
 
-import geopandas as gpd
 import pandas as pd
 from ribasim import Model
 from ribasim.config import Experimental, Results
@@ -67,12 +66,6 @@ ALLOCATION_COMPONENTS: list[Callable[[], Model]] = [
 CRS = "EPSG:28992"
 
 
-def _node_df(model: Model) -> gpd.GeoDataFrame:
-    df = model.node.df
-    assert df is not None
-    return df
-
-
 def precompile_workload_model() -> Model:
     """
     Model that runs in the precompile workload of Ribasim, without allocation.
@@ -84,7 +77,7 @@ def precompile_workload_model() -> Model:
     """
     components = [f() for f in PHYSICAL_COMPONENTS]
     for component in components:
-        _node_df(component)["subnetwork_id"] = pd.NA
+        component.node.df["subnetwork_id"] = pd.NA
     model = Model(
         starttime=datetime(2020, 1, 1),
         endtime=datetime(2020, 1, 20),
@@ -105,7 +98,7 @@ def precompile_workload_allocation_model() -> Model:
     components = [f() for f in ALLOCATION_COMPONENTS]
     for component in components:
         # Nodes without a subnetwork ID are in the primary network, make it a subnetwork
-        node = _node_df(component)
+        node = component.node.df
         node["subnetwork_id"] = node["subnetwork_id"].fillna(1).astype("Int32")
     model = Model(
         starttime=datetime(2020, 1, 1),

@@ -180,7 +180,6 @@ def invalid_link_types_model() -> Model:
         model.basin[3],
     )
 
-    assert model.link.df is not None
     model.link.df["link_type"] = ["foo", "bar"]
 
     return model

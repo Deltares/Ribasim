@@ -12,7 +12,7 @@ from matplotlib.axes import Axes
 from numpy.typing import NDArray
 from pandera.typing import Index, Series
 from pandera.typing.geopandas import GeoDataFrame, GeoSeries
-from pydantic import NonNegativeInt, PrivateAttr, model_validator
+from pydantic import Field, NonNegativeInt, PrivateAttr, model_validator
 from shapely.geometry import LineString, MultiLineString, Point
 
 from ribasim.db_utils import _get_db_schema_version
@@ -83,10 +83,14 @@ class LinkSchema(_GeoBaseSchema):
 class LinkTable(SpatialTableModel[LinkSchema]):
     """Defines the connections between nodes."""
 
+    # Unlike the data tables, the Link table is never None, but empty by default.
+    df: GeoDataFrame[LinkSchema] = Field(  # ty: ignore[invalid-mutable-override]
+        default_factory=lambda: LinkTable._empty_df(), exclude=True, repr=False
+    )
     _used_link_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
 
     def _update_used_ids(self) -> "LinkTable":
-        if self.df is not None and len(self.df.index) > 0:
+        if len(self.df.index) > 0:
             self._used_link_ids.node_ids.update(self.df.index)
             self._used_link_ids.max_node_id = self.df.index.max()
         return self
@@ -96,12 +100,13 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         return self._update_used_ids()
 
     @classmethod
-    def _from_db(cls, path: Path, table: str) -> GeoDataFrame | None:
+    def _from_db(cls, path: Path, table: str) -> GeoDataFrame[LinkSchema]:
         schema_version = _get_db_schema_version(path)
         # The table name was changed from "Edge" to "Link" in schema_version 4.
         if schema_version < 4:
             table = "Edge"
-        return cast(GeoDataFrame | None, super()._from_db(path, table))
+        df = super()._from_db(path, table)
+        return cls._empty_df() if df is None else df
 
     def add(
         self,
@@ -144,19 +149,16 @@ class LinkTable(SpatialTableModel[LinkSchema]):
                 f"Listen links must point to a control node, got to_node type '{to_node.node_type}'."
             )
 
-        reverse_link_types = set()
-        if self.df is not None:
-            reverse_link_types = set(
-                self.df.loc[
-                    (self.df.from_node_id == to_node.node_id)
-                    & (self.df.to_node_id == from_node.node_id),
-                    "link_type",
-                ]
-            )
+        reverse_link_types = set(
+            self.df.loc[
+                (self.df.from_node_id == to_node.node_id)
+                & (self.df.to_node_id == from_node.node_id),
+                "link_type",
+            ]
+        )
 
         if (
-            self.df is not None
-            and "UserDemand" not in [from_node.node_type, to_node.node_type]
+            "UserDemand" not in [from_node.node_type, to_node.node_type]
             and reverse_link_types
             and "listen" not in reverse_link_types
             and link_type != "listen"
@@ -171,7 +173,6 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             else [geometry]
         )
         self._validate_link(to_node, from_node, link_type)
-        assert self.df is not None
         if link_id is None:
             link_id = self._used_link_ids.new_id()
         elif link_id in self._used_link_ids:
@@ -254,8 +255,6 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         if not listen_node_ids:
             return
 
-        assert self.df is not None
-        assert model.node.df is not None
         for listen_node_id in sorted(listen_node_ids):
             already_exists = (
                 (self.df["from_node_id"] == listen_node_id)
@@ -274,31 +273,22 @@ class LinkTable(SpatialTableModel[LinkSchema]):
             self.add(listened_node, control_node)
 
     def _remove_link_id(self, link_id: NonNegativeInt):
-        if self.df is not None and link_id in self.df.index:
+        if link_id in self.df.index:
             # Remove from node table
             self.df = self.df.drop(link_id)
             if link_id in self._used_link_ids:
                 self._used_link_ids.node_ids.remove(link_id)
 
-            if self.df.empty:
-                self.df = None
-
     def _remove_node_id(self, node_id: NonNegativeInt):
-        if self.df is not None:
-            mask = (self.df["from_node_id"] != node_id) & (
-                self.df["to_node_id"] != node_id
-            )
-            links_to_remove = self.df.index[~mask]
-            self.df = self.df.loc[mask]
-            self._used_link_ids.node_ids.difference_update(links_to_remove)
-            if self.df.empty:
-                self.df = None
+        mask = (self.df["from_node_id"] != node_id) & (self.df["to_node_id"] != node_id)
+        links_to_remove = self.df.index[~mask]
+        self.df = self.df.loc[mask]
+        self._used_link_ids.node_ids.difference_update(links_to_remove)
 
     def _validate_link(
         self, to_node: NodeData, from_node: NodeData, link_type: str
     ) -> None:
         """Raise ``ValueError`` if adding this link would exceed the neighbor bounds."""
-        assert self.df is not None
         in_neighbor: int = self.df.loc[
             (self.df["to_node_id"] == to_node.node_id)
             & (self.df["link_type"] == link_type)
@@ -323,7 +313,6 @@ class LinkTable(SpatialTableModel[LinkSchema]):
 
     def _get_where_link_type(self, link_type: str) -> NDArray[np.bool_]:
         """Return a boolean mask selecting rows with the given *link_type*."""
-        assert self.df is not None
         return (self.df.link_type == link_type).to_numpy()
 
     def plot(self, **kwargs) -> Axes:
@@ -334,7 +323,6 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         **kwargs : Dict
             Supported: 'ax', 'color_flow', 'color_control', 'color_listen', 'color_observation'
         """
-        assert self.df is not None
         kwargs = kwargs.copy()  # Avoid side-effects
         ax = kwargs.get("ax", None)
         color_flow = kwargs.pop("color_flow", None)
