@@ -148,7 +148,7 @@ function set_simulation_data!(
 
     for node_id in flow_boundary_ids_subnetwork
         flow_rate = boundary_flow_rate(flow_boundary, node_id.idx, t) / scaling.flow
-        link = flow_boundary.outflow_data[node_id.idx].outflow_link.link
+        link = flow_boundary.outflow_link[node_id.idx].link
         JuMP.fix(
             flow[link],
             flow_rate;
@@ -187,7 +187,7 @@ function linearize_connector_node!(
         t_level::Float64,
     )
     (; problem, scaling) = allocation_model
-    (; inflow_link, outflow_data) = connector_node
+    (; inflow_link, outflow_link) = connector_node
     (; current_storage, current_area) = p.current_basin_properties
 
     # Mathematical formulation: Taylor series linearization around current state
@@ -202,7 +202,7 @@ function linearize_connector_node!(
     # Without ad_active, get_level ignores the storage argument, giving zero derivatives
     @ad_active p for node_id in only(flow_constraint.axes)
         inflow_id = inflow_link[node_id.idx].link[1]
-        downstream_id = outflow_id(outflow_data[node_id.idx])
+        downstream_id = outflow_link[node_id.idx].link[2]
 
         # Flow functions expect storage values (not levels) and internally convert to levels
         s_a = inflow_id.is_basin ? current_storage[inflow_id.idx] : 0.0
@@ -1506,7 +1506,7 @@ function update_user_demand_flow_bounds!(
             JuMP.set_lower_bound(flow[link_metadata.link], 0.0)
             JuMP.set_upper_bound(flow[link_metadata.link], total_demand)
         end
-        outflow_link = user_demand.outflow_data[node_id.idx].outflow_link.link
+        outflow_link = user_demand.outflow_link[node_id.idx].link
         JuMP.set_lower_bound(flow[outflow_link], 0.0)
         JuMP.set_upper_bound(flow[outflow_link], total_demand)
     end

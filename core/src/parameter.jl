@@ -457,14 +457,6 @@ link: (from node ID, to node ID)
     link::Tuple{NodeID, NodeID}
 end
 
-"""
-The single outflow link of a node that is not a PassDown node, and whether it leads to a PassDown node.
-"""
-@kwdef struct OutflowData
-    to_pass_down::Bool = false
-    outflow_link::LinkMetadata = LinkMetadata(0, LinkType.flow, (NodeID(:Terminal, 0, 0), NodeID(:Terminal, 0, 0)))
-end
-
 Base.length(::LinkMetadata) = 1
 Base.isless(link_1::LinkMetadata, link_2::LinkMetadata) = link_1.id < link_2.id
 
@@ -676,7 +668,7 @@ interpolation in between. Relations can be updated in time.
 node_id: node ID of the TabulatedRatingCurve node
 inflow_link: incoming flow link metadata
     The ID of the destination node is always the ID of the TabulatedRatingCurve node
-outflow_data: outgoing flow link metadata
+outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the TabulatedRatingCurve node
 max_downstream_level: The downstream level above which the TabulatedRatingCurve flow goes to zero
 interpolations: All Q(h) relationships for the nodes over time
@@ -689,7 +681,7 @@ allocation_controlled: whether this TabulatedRatingCurve is controlled by alloca
 @kwdef struct TabulatedRatingCurve <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    outflow_data::Vector{OutflowData} = Vector{OutflowData}(undef, length(node_id))
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
     interpolations::Vector{ScalarPCHIPInterpolation} = ScalarLinearInterpolation[]
     current_interpolation_index::Vector{IndexLookup} = IndexLookup[]
@@ -707,7 +699,7 @@ end
 node_id: node ID of the LinearResistance node
 inflow_link: incoming flow link metadata
     The ID of the destination node is always the ID of the LinearResistance node
-outflow_data: outgoing flow link metadata
+outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the LinearResistance node
 resistance: the resistance to flow; `Q_unlimited = Δh/resistance`
 max_flow_rate: the maximum flow rate allowed through the node; `Q = clamp(Q_unlimited, -max_flow_rate, max_flow_rate)`
@@ -717,7 +709,7 @@ flow_demand_id: connected flow demand node if applicable
 @kwdef struct LinearResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    outflow_data::Vector{OutflowData} = Vector{OutflowData}(undef, length(node_id))
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     resistance::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = zeros(length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
@@ -732,7 +724,7 @@ This is a simple Manning-Gauckler reach connection.
 node_id: node ID of the ManningResistance node
 inflow_link: incoming flow link metadata
     The ID of the destination node is always the ID of the ManningResistance node
-outflow_data: outgoing flow link metadata
+outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the ManningResistance node
 length: reach length
 manning_n: roughness; Manning's n in (SI units).
@@ -767,7 +759,7 @@ Requirements:
 @kwdef struct ManningResistance <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    outflow_data::Vector{OutflowData} = Vector{OutflowData}(undef, length(node_id))
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     length::Vector{Float64} = zeros(size(node_id))
     manning_n::Vector{Float64} = zeros(size(node_id))
     profile_width::Vector{Float64} = zeros(size(node_id))
@@ -793,7 +785,7 @@ end
 
 """
 node_id: node ID of the FlowBoundary node
-outflow_data: The outgoing flow link metadata
+outflow_link: The outgoing flow link metadata
 flow_rate: flow rate (exact)
 flow_rate_bmi: flow rate set externally via BMI, which takes precedence over `flow_rate`; `NaN` means unset
 cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
@@ -803,7 +795,7 @@ concentration_itp: matrix with boundary concentrations per FlowBoundary per subs
 """
 @kwdef struct FlowBoundary{I} <: AbstractParameterNode
     node_id::Vector{NodeID}
-    outflow_data::Vector{OutflowData} = Vector{OutflowData}(undef, length(node_id))
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     flow_rate::Vector{I}
     flow_rate_bmi::Vector{Float64} = fill(NaN, length(node_id))
     cumulative_flow::Vector{Float64} = zeros(length(node_id))
@@ -848,7 +840,7 @@ end
 node_id: node ID of the Pump node
 inflow_link: incoming flow link metadata
     The ID of the destination node is always the ID of the Pump node
-outflow_data: outgoing flow link metadata
+outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the Pump node
 flow_rate: timeseries for transient flow data if available
 min_flow_rate: The minimal flow rate of the pump
@@ -863,7 +855,7 @@ flow_demand_id: connected flow demand node if applicable
 @kwdef struct Pump <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    outflow_data::Vector{OutflowData} = Vector{OutflowData}(undef, length(node_id))
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     flow_rate::Vector{Float64} = fill(NaN, length(node_id))
     time_dependent_flow_rate::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
@@ -888,7 +880,7 @@ end
 node_id: node ID of the Outlet node
 inflow_link: incoming flow link metadata.
     The ID of the destination node is always the ID of the Outlet node
-outflow_data: outgoing flow link metadata.
+outflow_link: outgoing flow link metadata.
     The ID of the source node is always the ID of the Outlet node
 flow_rate: timeseries for transient flow data if available
 min_flow_rate: The minimal flow rate of the outlet
@@ -903,7 +895,7 @@ flow_demand_id: connected flow demand node if applicable
 @kwdef struct Outlet <: AbstractParameterNode
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    outflow_data::Vector{OutflowData} = Vector{OutflowData}(undef, length(node_id))
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     flow_rate::Vector{Float64} = fill(NaN, length(node_id))
     time_dependent_flow_rate::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
@@ -1060,7 +1052,7 @@ end
 node_id: node IDs of the ContinuousControl nodes
 controlled_node_id: the ID of the structure (Pump/Outlet) controlled by each ContinuousControl node
 inflow_id: the ID of the node upstream of the controlled structure
-outflow_data: the outflow data of the controlled structure
+outflow_id: the ID of the node downstream of the controlled structure
 compound_variable: the compound variable each ContinuousControl node listens to
 controlled_variable: the name of the variable of the controlled structure that is set,
     e.g. "flow_rate"
@@ -1072,7 +1064,7 @@ continuous_control_compound_variables: memory for the current value of the compo
     node_id::Vector{NodeID}
     controlled_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     inflow_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
-    outflow_data::Vector{OutflowData} = Vector{OutflowData}(undef, length(node_id))
+    outflow_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     compound_variable::Vector{CompoundVariable}
     controlled_variable::Vector{String}
     func::Vector{ScalarPCHIPInterpolation}
@@ -1086,7 +1078,7 @@ node_id: node ID of the PidControl node
 controlled_node_id: the id of the structure (pum/outlet) being controlled
 listen_node_id: the id of the basin being controlled
 inflow_id: the id of the node upstream of the controlled structure
-outflow_data: the outflow data of the the controlled structure
+outflow_id: the id of the node downstream of the controlled structure
 target: target level (possibly time dependent)
 target_ref: reference to the controlled flow_rate value
 proportional: proportionality coefficient error
@@ -1099,7 +1091,7 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
     controlled_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     listen_node_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     inflow_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
-    outflow_data::Vector{OutflowData} = Vector{OutflowData}(undef, length(node_id))
+    outflow_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     target::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
     proportional::Vector{ScalarConstantInterpolation} =
@@ -1166,7 +1158,7 @@ inflow_link_allocated: Per inflow link, the absolute flow rate the allocation LP
     that link (m³/s). Updated after each LP solve. When set to Inf (the default), the
     physics falls back to an equal split of the total demand across inflow links —
     this defines behaviour when allocation is not active.
-outflow_data: outgoing flow link metadata
+outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the UserDemand node
 has_demand_priority: boolean matrix stating per UserDemand node per demand priority index whether the (node_idx, demand_priority_idx)
     node will ever have a demand of that priority
@@ -1194,7 +1186,7 @@ return_mass: The mass per substance in the return flow in the last timestep (sub
     inflow_links::Vector{Vector{LinkMetadata}} = [LinkMetadata[] for _ in node_id]
     inflow_link_offsets::Vector{Int} = zeros(Int, length(node_id) + 1)
     inflow_link_allocated::Vector{Vector{Float64}} = [Float64[] for _ in node_id]
-    outflow_data::Vector{OutflowData} = Vector{OutflowData}(undef, length(node_id))
+    outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     has_demand_priority::Matrix{Bool} =
         zeros(Bool, length(node_id), length(demand_priorities))
     demand::Matrix{Float64} = zeros(length(node_id), length(demand_priorities))
@@ -1412,9 +1404,9 @@ an immutable struct.
     # Solver constants
     const level_difference_threshold::Float64
     const max_depth::Float64
-    # Per state the inflow id, outflow data and self id associated with that state (if they exist)
+    # Per state the inflow, outflow and self id associated with that state (if they exist)
     const inflow_id::FlowCVector{NodeID}
-    const outflow_data::FlowCVector{OutflowData}
+    const outflow_id::FlowCVector{NodeID}
     const state_id::FlowCVector{NodeID}
     # The up- and downlink storage per flow
     const storage_uplink::FlowCVector{Float64} = similar(inflow_id, Float64)

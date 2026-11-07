@@ -170,9 +170,9 @@ function set_current_storage!(
             time_dependent_cache.basin.surface_runoff
 
         for idx in eachindex(flow_boundary.node_id)
-            outflow_data = flow_boundary.outflow_data[idx]
-            outflow_data.to_pass_down && continue
-            downstream_id = outflow_id(outflow_data)
+            downstream_id = flow_boundary.outflow_link[idx].link[2]
+            # The flow into a PassDown node is a state
+            downstream_id.is_pass_down && continue
             storage[downstream_id.idx] += time_dependent_cache.flow_boundary.current_cumulative_boundary_flow[idx]
         end
     else
@@ -481,7 +481,7 @@ function linear_resistance_flow(
     inflow_link = linear_resistance.inflow_link[node_id.idx]
 
     inflow_id = inflow_link.link[1]
-    downstream_id = outflow_id(linear_resistance.outflow_data[node_id.idx])
+    downstream_id = linear_resistance.outflow_link[node_id.idx].link[2]
 
     h_a = get_level(s_a, p, inflow_id, t)
     h_b = get_level(s_b, p, downstream_id, t)
@@ -504,11 +504,11 @@ function tabulated_rating_curve_flow(
     (; current_interpolation_index, interpolations) = tabulated_rating_curve
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
-    outflow_data = tabulated_rating_curve.outflow_data[node_id.idx]
+    downstream_id = tabulated_rating_curve.outflow_link[node_id.idx].link[2]
     inflow_id = inflow_link.link[1]
 
     h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_data, t)
+    h_b = get_level(s_b, p, downstream_id, t)
     Δh = h_a - h_b
 
     factor = apply_low_storage_factor ? get_low_storage_factor(s_a, p, inflow_id) : 1.0
@@ -531,12 +531,12 @@ function allocated_rating_curve_flow(
     )::Number
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
-    outflow_data = tabulated_rating_curve.outflow_data[node_id.idx]
+    downstream_id = tabulated_rating_curve.outflow_link[node_id.idx].link[2]
 
     inflow_id = inflow_link.link[1]
 
     h_a = get_level(s_a, p, inflow_id, t)
-    h_b = get_level(s_b, p, outflow_data, t)
+    h_b = get_level(s_b, p, downstream_id, t)
     Δh = h_a - h_b
 
     factor = get_low_storage_factor(s_a, p, inflow_id)
@@ -710,7 +710,7 @@ function manning_resistance_flow(
         apply_low_storage_factor::Bool = true,
     )::Number
     inflow_id = manning_resistance.inflow_link[node_id.idx].link[1]
-    downstream_id = outflow_id(manning_resistance.outflow_data[node_id.idx])
+    downstream_id = manning_resistance.outflow_link[node_id.idx].link[2]
 
     h_a = get_level(s_a, p, inflow_id, t)
     h_b = get_level(s_b, p, downstream_id, t)
@@ -881,14 +881,14 @@ function pump_or_outlet_flow(
 
     node_idx = node_id.idx
     inflow_id = node.inflow_link[node_idx].link[1]
-    outflow_data = node.outflow_data[node_idx]
+    downstream_id = node.outflow_link[node_idx].link[2]
     min_flow_rate = node.min_flow_rate[node_idx]
     max_flow_rate = node.max_flow_rate[node_idx]
     min_upstream_level = node.min_upstream_level[node_idx]
     max_downstream_level = node.max_downstream_level[node_idx]
 
     src_level = get_level(s_a, p, inflow_id, t)
-    dst_level = get_level(s_b, p, outflow_data, t)
+    dst_level = get_level(s_b, p, downstream_id, t)
 
     q = flow_rate
     apply_low_storage_factor && (q *= get_low_storage_factor(s_a, p, inflow_id))

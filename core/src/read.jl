@@ -539,12 +539,7 @@ is_discrete_controlled(graph::MetaGraph, node_id::NodeID)::Bool =
 
 function set_inoutflow_links!(node::AbstractParameterNode, graph::MetaGraph; inflow = true)
     inflow && map!(node_id -> inflow_link(graph, node_id), node.inflow_link, node.node_id)
-
-    for id in node.node_id
-        outflow_link = only(get_outflow_links(graph, id))
-        node.outflow_data[id.idx] =
-            OutflowData(; outflow_link, to_pass_down = outflow_link.link[2].is_pass_down)
-    end
+    map!(node_id -> outflow_link(graph, node_id), node.outflow_link, node.node_id)
     return nothing
 end
 
@@ -2072,8 +2067,8 @@ function Parameters(db::DB, config::Config)::Parameters
     flow_ranges = count_flow_ranges(nodes)
     state_ranges = count_state_ranges(nodes)
 
-    inflow_id, outflow_data, state_id = get_flow_ids(nodes, flow_ranges)
-    incidence_matrix = get_incidence_matrix(inflow_id, outflow_data)
+    inflow_id, outflow_id, state_id = get_flow_ids(nodes, flow_ranges)
+    incidence_matrix = get_incidence_matrix(inflow_id, outflow_id)
 
     p_independent = ParametersIndependent(;
         config.starttime,
@@ -2083,7 +2078,7 @@ function Parameters(db::DB, config::Config)::Parameters
         nodes...,
         subgrid,
         inflow_id,
-        outflow_data,
+        outflow_id,
         state_id,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,

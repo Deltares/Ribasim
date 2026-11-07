@@ -439,13 +439,13 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
     continuous_control_input_ranges = jac_continuous_control.ranges
     ∂continuous_control_compound_∂continuous_control_input = jac_continuous_control.jac
 
-    (; inflow_id, outflow_data) = p_independent
+    (; inflow_id, outflow_id) = p_independent
     n_flow = length(inflow_id)
 
     # Dependence via the up- and downlink storages
-    function foreach_storage_dependence(storage_input_range, get_storage_node_id)
+    function foreach_storage_dependence(storage_input_range, storage_node_id)
         for (storage_flow_idx, col) in enumerate(storage_input_range)
-            basin_id = get_storage_node_id(storage_flow_idx)
+            basin_id = storage_node_id[storage_flow_idx]
             basin_id.is_basin || continue
             foreach_column_entry(∂flow_∂flow_input, col) do flow_idx, val
                 flow_idx <= n_flow && f(flow_idx, basin_id.idx, val)
@@ -453,10 +453,8 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
         end
         return nothing
     end
-    foreach_storage_dependence(flow_input_ranges.storage_uplink, idx -> inflow_id[idx])
-    foreach_storage_dependence(
-        flow_input_ranges.storage_downlink, idx -> outflow_id(outflow_data[idx])
-    )
+    foreach_storage_dependence(flow_input_ranges.storage_uplink, inflow_id)
+    foreach_storage_dependence(flow_input_ranges.storage_downlink, outflow_id)
 
     # Dependence via the ContinuousControl compound variables
     # The storage input comes first, and can be empty in a model without Basins
@@ -474,7 +472,7 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
                 else
                     listen_flow_idx = input_idx - flow_offset
                     id_in_listen = inflow_id[listen_flow_idx]
-                    id_out_listen = outflow_id(outflow_data[listen_flow_idx])
+                    id_out_listen = outflow_id[listen_flow_idx]
                     if id_in_listen.is_basin
                         ∂q_listen_∂storage = ∂flow_∂flow_input[listen_flow_idx, flow_input_ranges.storage_uplink[listen_flow_idx]]
                         f(flow_idx, id_in_listen.idx, val * cc_val * ∂q_listen_∂storage)
@@ -528,7 +526,7 @@ If `structural`, all contributions are set to 1.0 to initialize the sparsity pat
 """
 function update_J_inner_local!(J::RibasimJacobian; structural::Bool = false)
     (; p_independent, J_inner_local) = J
-    (; inflow_id, outflow_data) = p_independent
+    (; inflow_id, outflow_id) = p_independent
 
     J_inner_local .= 0.0
     foreach_∂flow_∂storage(J) do flow_idx, basin_idx, ∂q_np_∂storage
@@ -536,7 +534,7 @@ function update_J_inner_local!(J::RibasimJacobian; structural::Bool = false)
             add_flow_contribution!(
                 J_inner_local,
                 inflow_id[flow_idx_all],
-                outflow_data[flow_idx_all],
+                outflow_id[flow_idx_all],
                 basin_idx,
                 structural ? 1.0 : ∂q_all_∂q_np * ∂q_np_∂storage,
             )
@@ -592,7 +590,7 @@ function build_J_inner!(
         structural::Bool = false,
     )
     (; p_independent, J_inner_local, area_pid_controlled) = J
-    (; pid_control, inflow_id, outflow_data) = p_independent
+    (; pid_control, inflow_id, outflow_id) = p_independent
 
     # Add J_inner_local into J_inner rather than copying it, which would reset the sparsity
     # pattern of J_inner and drop the entries that are only structurally nonzero
@@ -613,7 +611,7 @@ function build_J_inner!(
             add_flow_contribution!(
                 J_inner,
                 inflow_id[flow_idx_all],
-                outflow_data[flow_idx_all],
+                outflow_id[flow_idx_all],
                 listen_node_id.idx,
                 contribution,
             )
@@ -623,23 +621,19 @@ function build_J_inner!(
 end
 
 """
-Add `value` times the column of the incidence matrix M of a flow state to a column of J_inner.
+Add `∂q_∂storage` times the column of the incidence matrix M of a flow state to a column of J_inner.
 A flow into a PassDown node is not credited to a Basin, that is done by the flow states
 over the links out of the PassDown subgraph.
 """
 function add_flow_contribution!(
         J_inner::AbstractMatrix{Float64},
         id_in::NodeID,
-        data_out::OutflowData,
+        id_out::NodeID,
         basin_idx::Int,
         ∂q_∂storage::Float64,
     )
     id_in.is_basin && (J_inner[id_in.idx, basin_idx] -= ∂q_∂storage)
-
-    if !data_out.to_pass_down
-        id_out = outflow_id(data_out)
-        id_out.is_basin && (J_inner[id_out.idx, basin_idx] += ∂q_∂storage)
-    end
+    id_out.is_basin && (J_inner[id_out.idx, basin_idx] += ∂q_∂storage)
     return nothing
 end
 
@@ -647,15 +641,11 @@ end
 function add_flow_contribution!(
         v::AbstractVector{Float64},
         id_in::NodeID,
-        data_out::OutflowData,
+        id_out::NodeID,
         value::Float64,
     )
     id_in.is_basin && (v[id_in.idx] -= value)
-
-    if !data_out.to_pass_down
-        id_out = outflow_id(data_out)
-        id_out.is_basin && (v[id_out.idx] += value)
-    end
+    id_out.is_basin && (v[id_out.idx] += value)
     return nothing
 end
 
@@ -758,7 +748,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
     (; cache_inner, W) = linsolve
     (; gamma, J) = W
     (; p_independent, area_pid_controlled, n_pid) = J
-    (; pid_control, inflow_id, outflow_data) = p_independent
+    (; pid_control, inflow_id, outflow_id) = p_independent
 
     W_inner = cache_inner.A
     J_inner = W_inner.J
@@ -775,7 +765,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
             add_flow_contribution!(
                 b_inner,
                 inflow_id[flow_idx_all],
-                outflow_data[flow_idx_all],
+                outflow_id[flow_idx_all],
                 gamma * ∂q_all_∂q_np * ∂q_np_∂pid_integral * b_pid_integral[pid_idx],
             )
         end
