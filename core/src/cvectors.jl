@@ -47,14 +47,15 @@ function CVector{T, A, NT}(
     # https://github.com/JuliaSmoothOptimizers/Krylov.jl/blob/v0.9.10/src/krylov_solvers.jl#L2500
     # https://github.com/SciML/ComponentArrays.jl/issues/128
     # https://github.com/JuliaSmoothOptimizers/Krylov.jl/issues/701
-    # Instead we use this hack specific to UnitRange{Int} to keep the axes type.
-    @assert NT.types[1] == UnitRange{Int}
-    @assert allequal(NT.types)
-    n_components = length(NT.types)
-    empty_axes = ntuple(Returns(1:0), n_components)
-    axes = NT(empty_axes)
-    return CVector(data, axes)
+    # Instead we use this hack to keep the axes type: all leaf ranges are empty, and the
+    # CVector spans the whole data vector.
+    axes = empty_axes(NT)
+    return CVector(data, axes, 0, n)
 end
+
+# Axes of the same (possibly nested) NamedTuple type, with empty leaf ranges
+empty_axes(::Type{UnitRange{Int}}) = 1:0
+empty_axes(::Type{NT}) where {NT <: NamedTuple} = NT(map(empty_axes, fieldtypes(NT)))
 
 getdata(x::CVector) = getfield(x, :data)
 getaxes(x::CVector) = getfield(x, :axes)

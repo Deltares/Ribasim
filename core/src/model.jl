@@ -121,6 +121,11 @@ function Model(
 
     du0 = zero(u0)
 
+    if config.solver.reduced_implicit_solve && !use_reduced_implicit_solve(config.solver)
+        @warn "The reduced implicit solve is not supported by solver algorithm \
+            $(config.solver.algorithm), using `reduced_implicit_solve = false`."
+    end
+
     # The Solver algorithm
     alg = algorithm(config.solver)
 

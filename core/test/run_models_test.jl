@@ -372,6 +372,30 @@ end
     @test dense_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
 end
 
+# https://github.com/Deltares/Ribasim/issues/3178
+@testitem "Reduced implicit solve with and without autodiff" begin
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
+
+    models = Dict(
+        (reduced, autodiff) => Ribasim.run(
+            Ribasim.Config(
+                toml_path;
+                solver_reduced_implicit_solve = reduced,
+                solver_autodiff = autodiff,
+            ),
+        ) for reduced in (true, false), autodiff in (true, false)
+    )
+    for model in values(models)
+        @test success(model)
+    end
+
+    reference = models[(true, true)].integrator.u
+    @test models[(true, false)].integrator.u ≈ reference atol = 4
+    @test models[(false, true)].integrator.u ≈ reference atol = 4
+    @test models[(false, false)].integrator.u ≈ reference atol = 4
+end
+
 @testitem "TabulatedRatingCurve model" begin
     using DataInterpolations.ExtrapolationType: Constant, Periodic
 
