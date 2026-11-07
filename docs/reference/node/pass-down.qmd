@@ -11,6 +11,8 @@ PassDown nodes can be chained arbitrarily, as long as there are no loops. Multip
 
 Flow cannot be split directly by nodes that are not PassDown nodes: a connector node (e.g. Pump or Outlet), FlowBoundary or UserDemand has a single outflow link. To divide such flow, put a PassDown node in between.
 
+A connector node that flows into a PassDown node always has free outflow: the PassDown node has no level, so it never drowns the structure upstream. For a Pump or Outlet this means that `max_downstream_level` is not applied, and for a TabulatedRatingCurve that the downstream level reduction is not applied, where it would be if the structure flowed into a Basin directly. See also [Junction or PassDown](#junction-or-passdown) below.
+
 # Tables
 
 ## Static
