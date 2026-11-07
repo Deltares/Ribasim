@@ -183,6 +183,41 @@ end
     @test_throws "Allocation subnetwork 2 has no Basin, which is not supported." Ribasim.Model(toml_path)
 end
 
+@testitem "Limiter keeps PassDown subgraphs consistent" begin
+    using SciMLBase: step!
+    using Ribasim: NodeID
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pass_down/ribasim.toml")
+    model = Ribasim.Model(toml_path)
+    (; integrator) = model
+    (; p) = integrator
+    (; p_independent) = p
+    (; pass_down, flow_ranges) = p_independent
+    for _ in 1:5
+        step!(integrator)
+    end
+    (; u, uprev, t) = integrator
+
+    # Pump #5 flows into PassDown #23, which divides its flow over PassDown #6 and #7
+    pump_id = NodeID(:Pump, 5, p_independent)
+    pass_down_id = NodeID(:PassDown, 23, p_independent)
+    pump_state = flow_ranges.horizontal.pump[pump_id.idx]
+    state_idxs = pass_down.outflow_state_idx[pass_down_id.idx]
+    @test all(>(0), u.flow.pass_down[state_idxs] .- uprev.flow.pass_down[state_idxs])
+
+    # A negative Pump flow over the step is clamped to zero by the limiter, and the
+    # PassDown states downstream must follow
+    u.flow[pump_state] = uprev.flow[pump_state] - 1.0
+    Ribasim.limit_flow!(u, integrator, p, t)
+    @test u.flow[pump_state] == uprev.flow[pump_state]
+    @test all(isapprox.(u.flow.pass_down[state_idxs], uprev.flow.pass_down[state_idxs]; atol = 1.0e-12))
+
+    # Without a clamped source the limiter leaves the PassDown states alone
+    pass_down_states = copy(u.flow.pass_down)
+    Ribasim.limit_flow!(u, integrator, p, t)
+    @test u.flow.pass_down == pass_down_states
+end
+
 @testitem "PassDown at subnetwork boundary" setup = [PassDownValidation] begin
     messages = PassDownValidation.error_messages(
         "invalid_pass_down_subnetwork_boundary",
