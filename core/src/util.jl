@@ -650,10 +650,7 @@ function get_ns_flow_vertical(nodes::NamedTuple)
     ]
 end
 
-get_n_flow(nodes::NamedTuple) =
-    sum(get_ns_flow_horizontal(nodes)) +
-    sum(get_ns_flow_vertical(nodes)) +
-    length(nodes.pass_down.state_links)
+get_n_flow(nodes::NamedTuple) = sum(get_ns_flow_horizontal(nodes)) + sum(get_ns_flow_vertical(nodes))
 
 function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::FlowTuple
     ns_flow_horizontal = get_ns_flow_horizontal(nodes)
@@ -667,9 +664,7 @@ function count_flow_ranges(nodes::Union{NamedTuple, ParametersIndependent})::Flo
         state_vertical_flow_components,
         ns_flow_vertical
     )
-    return concatenate_axes(
-        (; horizontal), (; vertical), (; pass_down = 1:length(nodes.pass_down.state_links))
-    )
+    return concatenate_axes((; horizontal), (; vertical))
 end
 
 "Create the axis of the state vector"
@@ -701,16 +696,6 @@ function set_flow_ids!(inflow_id, outflow_id, basin::Basin)
     return nothing
 end
 
-"""
-Every PassDown flow state is the flow over a link out of a PassDown node,
-see `PassDown.state_links`.
-"""
-function set_flow_ids!(inflow_id, outflow_id, pass_down::PassDown)
-    inflow_id .= [link.link[1] for link in pass_down.state_links]
-    outflow_id .= [link.link[2] for link in pass_down.state_links]
-    return nothing
-end
-
 function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
     (;
         pump,
@@ -720,7 +705,6 @@ function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
         manning_resistance,
         user_demand,
         basin,
-        pass_down,
     ) = nodes
     n_flows = get_n_flow(nodes)
     dummy_node = NodeID(:Terminal, 0, 0)
@@ -736,7 +720,6 @@ function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
     set_flow_ids!(inflow_id.horizontal.manning_resistance, outflow_id.horizontal.manning_resistance, manning_resistance)
     set_flow_ids!(inflow_id.horizontal.user_demand_inflow, outflow_id.horizontal.user_demand_outflow, user_demand)
     set_flow_ids!(inflow_id.vertical, outflow_id.vertical, basin)
-    set_flow_ids!(inflow_id.pass_down, outflow_id.pass_down, pass_down)
 
     # The UserDemand node itself is the outflow of its inflow state and the inflow of its outflow state
     outflow_id.horizontal.user_demand_inflow .=
@@ -753,7 +736,6 @@ function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
     state_id.horizontal.user_demand_outflow .= user_demand.node_id
     state_id.vertical.evaporation .= basin.node_id
     state_id.vertical.infiltration .= basin.node_id
-    state_id.pass_down .= [link.link[1] for link in pass_down.state_links]
 
     return inflow_id, outflow_id, state_id
 end
@@ -771,21 +753,129 @@ function get_state_node_id(p_independent::ParametersIndependent, state_idx::Int)
     end
 end
 
-function get_incidence_matrix(inflow_id::FlowCVector{NodeID}, outflow_id::FlowCVector{NodeID})::SparseMatrixCSC
+"""
+The incidence matrix M of the flows: -1 for the Basin a flow comes from, +1 for the Basin it goes to,
+and the routing weights for the Basins a flow reaches via PassDown nodes, see `set_routing!`.
+"""
+function get_incidence_matrix(
+        inflow_id::FlowCVector{NodeID},
+        outflow_id::FlowCVector{NodeID},
+        routed_basins::Vector{Vector{Tuple{Int, Float64}}},
+    )::SparseMatrixCSC
     n_flow = length(inflow_id)
     n_basin = length(inflow_id.vertical.evaporation)
-    incidence_matrix = spzeros(Int, n_basin, n_flow)
+    incidence_matrix = spzeros(Float64, n_basin, n_flow)
 
-    # A flow into a PassDown node has no Basin downstream, the links out of the
-    # PassDown subgraph credit the Basins
     for flow_idx in 1:n_flow
         in_id = inflow_id[flow_idx]
         out_id = outflow_id[flow_idx]
 
-        in_id.is_basin && (incidence_matrix[in_id.idx, flow_idx] = -1)
-        out_id.is_basin && (incidence_matrix[out_id.idx, flow_idx] = 1)
+        in_id.is_basin && (incidence_matrix[in_id.idx, flow_idx] = -1.0)
+        out_id.is_basin && (incidence_matrix[out_id.idx, flow_idx] = 1.0)
+        for (basin_idx, weight) in routed_basins[flow_idx]
+            incidence_matrix[basin_idx, flow_idx] += weight
+        end
     end
     return incidence_matrix
+end
+
+"""
+Set the routing weights of the PassDown subgraphs: the flow over each routed link (see `PassDown.routed_links`)
+and the total inflow of each PassDown node as a weighted sum of the flows that enter the subgraphs
+(the states of connector nodes and UserDemand outflows, and the FlowBoundary flows), with the
+inflows of the UserDemand nodes in the subgraphs subtracted. The weights are products of the
+fractions along the way, and are constant since the fractions are.
+
+Returns per flow state and per FlowBoundary the Basins they flow into via PassDown nodes, with
+the weights, and the indices of the flow states that have such Basins.
+"""
+function set_routing!(nodes::NamedTuple, flow_ranges::FlowTuple)
+    (; pass_down, user_demand, flow_boundary) = nodes
+    (;
+        inflow_links,
+        inflow_link_idx,
+        outflow_link_idx,
+        fraction,
+        link_weights,
+        inflow_weights,
+        routed_links,
+        user_demand_id,
+        pass_down_subgraphs,
+    ) = pass_down
+    n_flow = get_n_flow(nodes)
+    routed_basins = [Tuple{Int, Float64}[] for _ in 1:n_flow]
+    routed_basins_boundary = [Tuple{Int, Float64}[] for _ in flow_boundary.node_id]
+    isempty(pass_down.node_id) && return routed_basins, Int[], routed_basins_boundary
+
+    # The flow state of a node that flows into a PassDown node
+    function entry_state_idx(id::NodeID)::Int
+        return if id.type == NodeType.UserDemand
+            flow_ranges.horizontal.user_demand_outflow[id.idx]
+        else
+            flow_ranges.horizontal[node_type_map[id.type]][id.idx]
+        end
+    end
+    user_demand_inflow_idx(id::NodeID) =
+        flow_ranges.horizontal.user_demand_inflow[user_demand.inflow_link_offsets[id.idx] + 1]
+
+    link_state = [Dict{Int, Float64}() for _ in routed_links]
+    link_boundary = [Dict{Int, Float64}() for _ in routed_links]
+    # The subgraphs are in topological order, so the weights of the links into a PassDown node are known
+    for subgraph in pass_down_subgraphs, id in subgraph
+        id.is_pass_down || continue
+        state = Dict{Int, Float64}()
+        boundary = Dict{Int, Float64}()
+        for (link, idx) in zip(inflow_links[id.idx], inflow_link_idx[id.idx])
+            if iszero(idx)
+                source_id = link.link[1]
+                if source_id.type == NodeType.FlowBoundary
+                    boundary[source_id.idx] = get(boundary, source_id.idx, 0.0) + 1.0
+                else
+                    state_idx = entry_state_idx(source_id)
+                    state[state_idx] = get(state, state_idx, 0.0) + 1.0
+                end
+            else
+                mergewith!(+, state, link_state[idx])
+                mergewith!(+, boundary, link_boundary[idx])
+            end
+        end
+        inflow_weights[id.idx] = RoutingWeights(state, boundary)
+
+        # The UserDemand abstracts before the remainder is divided over the outflow links
+        remainder = copy(state)
+        if user_demand_id[id.idx].type == NodeType.UserDemand
+            state_idx = user_demand_inflow_idx(user_demand_id[id.idx])
+            remainder[state_idx] = get(remainder, state_idx, 0.0) - 1.0
+        end
+        for (idx, link_fraction) in zip(outflow_link_idx[id.idx], fraction[id.idx])
+            iszero(idx) && continue
+            link_state[idx] = Dict(k => link_fraction * v for (k, v) in remainder)
+            link_boundary[idx] = Dict(k => link_fraction * v for (k, v) in boundary)
+            link_weights[idx] = RoutingWeights(link_state[idx], link_boundary[idx])
+        end
+    end
+
+    # The Basins that the routed links flow into
+    basin_state = [Dict{Int, Float64}() for _ in 1:n_flow]
+    basin_boundary = [Dict{Int, Float64}() for _ in flow_boundary.node_id]
+    for (idx, link) in enumerate(routed_links)
+        target_id = link.link[2]
+        target_id.is_basin || continue
+        for (state_idx, weight) in link_state[idx]
+            basin_state[state_idx][target_id.idx] = get(basin_state[state_idx], target_id.idx, 0.0) + weight
+        end
+        for (boundary_idx, weight) in link_boundary[idx]
+            basin_boundary[boundary_idx][target_id.idx] = get(basin_boundary[boundary_idx], target_id.idx, 0.0) + weight
+        end
+    end
+    for flow_idx in 1:n_flow
+        routed_basins[flow_idx] = sort!([(k, v) for (k, v) in basin_state[flow_idx] if !iszero(v)])
+    end
+    for boundary_idx in eachindex(flow_boundary.node_id)
+        routed_basins_boundary[boundary_idx] = sort!([(k, v) for (k, v) in basin_boundary[boundary_idx] if !iszero(v)])
+    end
+    routed_flow_idxs = findall(!isempty, routed_basins)
+    return routed_basins, routed_flow_idxs, routed_basins_boundary
 end
 
 """
@@ -882,7 +972,7 @@ function aggregate_flows!(
         positive_vertical_forcing::Union{ExactVerticalFlowCVector, Nothing} = nothing,
         boundary_flow::Union{Vector{Float64}, Nothing} = nothing
     )
-    (; flow_boundary, inflow_id, outflow_id) = p_independent
+    (; flow_boundary, inflow_id, outflow_id, routed_basins, routed_flow_idxs, routed_basins_boundary) = p_independent
 
     from_zero && (aggregate .= 0)
 
@@ -891,19 +981,27 @@ function aggregate_flows!(
             aggregate, flow.horizontal, inflow_id.horizontal, outflow_id.horizontal,
             do_inflows, do_outflows, weight,
         )
-        # The flows through the PassDown nodes that end up in a Basin
-        aggregate_link_flows!(
-            aggregate, flow.pass_down, inflow_id.pass_down, outflow_id.pass_down,
-            do_inflows, do_outflows, weight,
-        )
+        # The flows that reach Basins via PassDown nodes
+        for flow_idx in routed_flow_idxs
+            flow_ = flow[flow_idx]
+            positive_flow = (flow_ > 0)
+            ((positive_flow && do_inflows) || (!positive_flow && do_outflows)) || continue
+            for (basin_idx, routing_weight) in routed_basins[flow_idx]
+                aggregate[basin_idx] += weight * routing_weight * flow_
+            end
+        end
     end
 
     if do_horizontal_flows && do_inflows && !isnothing(boundary_flow)
         for idx in eachindex(flow_boundary.node_id)
             downstream_id = flow_boundary.outflow_link[idx].link[2]
-            # The flow into a PassDown node is a state
-            downstream_id.is_pass_down && continue
-            aggregate[downstream_id.idx] += boundary_flow[idx]
+            if downstream_id.is_pass_down
+                for (basin_idx, routing_weight) in routed_basins_boundary[idx]
+                    aggregate[basin_idx] += routing_weight * boundary_flow[idx]
+                end
+            else
+                aggregate[downstream_id.idx] += boundary_flow[idx]
+            end
         end
     end
 

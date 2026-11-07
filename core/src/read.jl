@@ -1750,10 +1750,10 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
     inflow_links = [get_inflow_links(graph, id) for id in node_id]
     outflow_links = [get_outflow_links(graph, id) for id in node_id]
 
-    # The links out of PassDown nodes have a state, except the links towards a UserDemand node,
-    # whose flow is the UserDemand inflow state. The flow over a link into a PassDown node from
-    # a node outside the subgraph is the state of that node.
-    state_links = sort!(
+    # The links out of PassDown nodes are routed: their flow is a weighted sum of the flows
+    # into the subgraph, see `set_routing!`. The flow towards a UserDemand node is the UserDemand
+    # inflow state.
+    routed_links = sort!(
         [link for link in Iterators.flatten(outflow_links) if link.link[2].type != NodeType.UserDemand]
     )
 
@@ -1763,10 +1763,10 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
         inflow_links,
         outflow_links,
         pass_down_subgraphs = get_pass_down_subgraphs(graph, node_id),
-        state_links,
-        inflow_state_idx = [[state_link_index(state_links, link) for link in links] for links in inflow_links],
-        outflow_state_idx = [[state_link_index(state_links, link) for link in links] for links in outflow_links],
-        link_mass = zeros(n_substance, length(state_links)),
+        routed_links,
+        inflow_link_idx = [[routed_link_index(routed_links, link) for link in links] for links in inflow_links],
+        outflow_link_idx = [[routed_link_index(routed_links, link) for link in links] for links in outflow_links],
+        link_mass = zeros(n_substance, length(routed_links)),
         source_mass = zeros(n_substance),
         concentration = zeros(n_substance, length(node_id)),
     )
@@ -2068,7 +2068,8 @@ function Parameters(db::DB, config::Config)::Parameters
     state_ranges = count_state_ranges(nodes)
 
     inflow_id, outflow_id, state_id = get_flow_ids(nodes, flow_ranges)
-    incidence_matrix = get_incidence_matrix(inflow_id, outflow_id)
+    routed_basins, routed_flow_idxs, routed_basins_boundary = set_routing!(nodes, flow_ranges)
+    incidence_matrix = get_incidence_matrix(inflow_id, outflow_id, routed_basins)
 
     p_independent = ParametersIndependent(;
         config.starttime,
@@ -2080,6 +2081,9 @@ function Parameters(db::DB, config::Config)::Parameters
         inflow_id,
         outflow_id,
         state_id,
+        routed_basins,
+        routed_flow_idxs,
+        routed_basins_boundary,
         config.solver.water_balance_abstol,
         config.solver.water_balance_reltol,
         flow_ranges,

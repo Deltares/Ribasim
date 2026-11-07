@@ -97,11 +97,12 @@ end
 end
 
 @testitem "Reduced Jacobian with PassDown matches full Jacobian" begin
-    using LinearAlgebra: norm
+    using LinearAlgebra: norm, I
     using Ribasim.SciMLOperators: update_coefficients!
 
-    # PID control via a PassDown node (pass_down_equation) and on a Basin fed by a PassDown node (pass_down_pid)
-    for model_name in ["pass_down_equation", "pass_down_pid"]
+    # PID control via a PassDown node (pass_down_equation), on a Basin fed by a PassDown node
+    # (pass_down_pid), and a UserDemand that is limited by its PassDown inflow (pass_down)
+    for model_name in ["pass_down_equation", "pass_down_pid", "pass_down"]
         toml_path = normpath(@__DIR__, "../../generated_testmodels/$model_name/ribasim.toml")
 
         model = Ribasim.Model(toml_path)
@@ -114,7 +115,8 @@ end
         n_flow = length(u.flow)
         n_pid = length(u.pid_integral)
         @test Ribasim.has_pass_down(J)
-        @test n_pid > 0
+        has_pid = model_name != "pass_down"
+        @test (n_pid > 0) == has_pid
 
         # Q_S = ∂q_∂storage and G = ∂q_∂pid_integral of the flows before the PassDown subgraphs
         Q_S = zeros(n_flow, J.n_basin)
@@ -136,16 +138,18 @@ end
         # The flow and PID integral columns of the flow rows
         J_flow_flow = J_full[1:n_flow, 1:n_flow]
         J_flow_pid = J_full[1:n_flow, (n_flow + 1):end]
-        @test norm(J_flow_flow) > 0
-        @test norm(J_flow_pid) > 0
-
         @test norm(K * Q_S * M - J_flow_flow) <= 1.0e-8 * norm(J_flow_flow)
-        @test norm(K * G - J_flow_pid) <= 1.0e-8 * norm(J_flow_pid)
+        if has_pid
+            @test norm(J_flow_flow) > 0
+            @test norm(J_flow_pid) > 0
+            @test norm(K * G - J_flow_pid) <= 1.0e-8 * norm(J_flow_pid)
+        end
 
-        # Without the PassDown Jacobian the result is different, unless the flows into the
-        # PassDown subgraph do not depend on the storages, as in pass_down_pid
-        if model_name == "pass_down_equation"
-            @test norm(Q_S * M - J_flow_flow) > 1.0e-2 * norm(J_flow_flow)
+        # K is only not the identity where a UserDemand is limited by its PassDown inflow,
+        # as UserDemand #12 in pass_down is. There the flows do not depend on the storages
+        # at the start, so this is checked on K itself.
+        if model_name == "pass_down"
+            @test norm(K - I) > 0.5
         end
     end
 end

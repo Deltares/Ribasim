@@ -30,7 +30,7 @@ The rejection causes are:
 end
 
 const state_components = (:flow, :pid_integral)
-const state_flow_components = (:horizontal, :vertical, :pass_down)
+const state_flow_components = (:horizontal, :vertical)
 const state_horizontal_flow_components = (
     :pump,
     :outlet,
@@ -53,7 +53,7 @@ const HorizontalFlowCVector{T} = CVector{T, Vector{T}, HorizontalFlowTuple}
 const VerticalFlowTuple = cvector_axes_type(state_vertical_flow_components)
 const VerticalFlowCVector{T} = CVector{T, Vector{T}, VerticalFlowTuple}
 
-const FlowTuple = NamedTuple{state_flow_components, Tuple{HorizontalFlowTuple, VerticalFlowTuple, UnitRange{Int}}}
+const FlowTuple = NamedTuple{state_flow_components, Tuple{HorizontalFlowTuple, VerticalFlowTuple}}
 const FlowCVector{T} = CVector{T, Vector{T}, FlowTuple}
 
 const RibasimStateTuple = NamedTuple{state_components, Tuple{FlowTuple, UnitRange{Int}}}
@@ -459,6 +459,42 @@ end
 
 Base.length(::LinkMetadata) = 1
 Base.isless(link_1::LinkMetadata, link_2::LinkMetadata) = link_1.id < link_2.id
+
+"""
+The weights of a flow that is a weighted sum of other flows: of flow states, by their index
+in the flow vector, and of FlowBoundary flows, by the index of the FlowBoundary. The flows
+over the links in PassDown subgraphs are such sums of the flows that enter the subgraphs,
+with the products of the fractions along the way as weights, and the inflows of the
+UserDemand nodes in the subgraphs with negative weights.
+"""
+struct RoutingWeights
+    state_idx::Vector{Int}
+    state_weight::Vector{Float64}
+    boundary_idx::Vector{Int}
+    boundary_weight::Vector{Float64}
+end
+
+RoutingWeights() = RoutingWeights(Int[], Float64[], Int[], Float64[])
+
+function RoutingWeights(state::Dict{Int, Float64}, boundary::Dict{Int, Float64})
+    state_idx = sort!([k for (k, v) in state if !iszero(v)])
+    boundary_idx = sort!([k for (k, v) in boundary if !iszero(v)])
+    return RoutingWeights(
+        state_idx, [state[k] for k in state_idx], boundary_idx, [boundary[k] for k in boundary_idx]
+    )
+end
+
+"Evaluate the weighted sum, with the FlowBoundary flows given per FlowBoundary or as a function of its index."
+function routed_flow(weights::RoutingWeights, flow::AbstractVector, boundary_flow)
+    result = zero(eltype(flow))
+    for (idx, weight) in zip(weights.state_idx, weights.state_weight)
+        result += weight * flow[idx]
+    end
+    for (idx, weight) in zip(weights.boundary_idx, weights.boundary_weight)
+        result += weight * (boundary_flow isa AbstractVector ? boundary_flow[idx] : boundary_flow(idx))
+    end
+    return result
+end
 
 """
 The update of a parameter given by a value and a reference to the target
@@ -1115,15 +1151,18 @@ pass_down_subgraphs: disjoint directed acyclic graphs of flow-connected PassDown
     excluding UserDemand nodes without a PassDown inneighbor. The nodes of each subgraph
     are ordered such that each node comes after all nodes its flow depends on.
 user_demand_id: The ID of the UserDemand node that abstracts from the PassDown node, if present
-state_links: The flow links that have a flow state in the `pass_down` flow component, sorted by link ID: the flow links
-    out of PassDown nodes, except the links towards a UserDemand node, since the flow
-    on those is the UserDemand inflow state. The flow over a link into a PassDown node from a node outside
-    the subgraph is the state of that node.
-inflow_state_idx: Per PassDown node the index in `state_links` of each of its inflow links,
+routed_links: The flow links out of PassDown nodes, except the links towards a UserDemand node, sorted by link ID.
+    These links have no state: their flow is a weighted sum of the flows into the subgraph and the
+    inflows of the UserDemand nodes in it, see `RoutingWeights`. The flow towards a UserDemand node is
+    the UserDemand inflow state, and the flow over a link into a PassDown node from a node outside the
+    subgraph is the state of that node.
+inflow_link_idx: Per PassDown node the index in `routed_links` of each of its inflow links,
     or 0 for a link from a node outside the subgraph
-outflow_state_idx: Per PassDown node the index in `state_links` of each of its outflow links,
+outflow_link_idx: Per PassDown node the index in `routed_links` of each of its outflow links,
     or 0 for the link towards a UserDemand node
-link_mass: The mass per substance that flowed over each link in `state_links` in the last timestep (substance, link)
+link_weights: Per link in `routed_links` the weights of the flows it consists of
+inflow_weights: Per PassDown node the weights of the flows that make up its total inflow
+link_mass: The mass per substance that flowed over each link in `routed_links` in the last timestep (substance, link)
 source_mass: Work vector for the mass that flowed over a link into a PassDown subgraph in the last timestep (substance)
 concentration: The concentration per substance of the flow through each PassDown node in the last timestep (substance, node)
 """
@@ -1134,20 +1173,22 @@ concentration: The concentration per substance of the flow through each PassDown
     fraction::Vector{Vector{Float64}} = [ones(length(links)) for links in outflow_links]
     pass_down_subgraphs::Vector{Vector{NodeID}} = Vector{NodeID}[]
     user_demand_id::Vector{NodeID} = fill(NodeID(:Terminal, 0, 0), length(node_id))
-    state_links::Vector{LinkMetadata} = LinkMetadata[]
-    inflow_state_idx::Vector{Vector{Int}} = [Int[] for _ in node_id]
-    outflow_state_idx::Vector{Vector{Int}} = [Int[] for _ in node_id]
-    link_mass::Matrix{Float64} = zeros(0, length(state_links))
+    routed_links::Vector{LinkMetadata} = LinkMetadata[]
+    inflow_link_idx::Vector{Vector{Int}} = [Int[] for _ in node_id]
+    outflow_link_idx::Vector{Vector{Int}} = [Int[] for _ in node_id]
+    link_weights::Vector{RoutingWeights} = [RoutingWeights() for _ in routed_links]
+    inflow_weights::Vector{RoutingWeights} = [RoutingWeights() for _ in node_id]
+    link_mass::Matrix{Float64} = zeros(0, length(routed_links))
     source_mass::Vector{Float64} = zeros(0)
     concentration::Matrix{Float64} = zeros(0, length(node_id))
 end
 
 """
-The index of a link in `state_links`, or 0 if it has no state in the `pass_down` flow component.
+The index of a link in `routed_links`, or 0 if it is not a routed link.
 """
-function state_link_index(state_links::Vector{LinkMetadata}, link::LinkMetadata)::Int
-    idx = searchsortedfirst(state_links, link)
-    return (idx <= length(state_links) && state_links[idx].id == link.id) ? idx : 0
+function routed_link_index(routed_links::Vector{LinkMetadata}, link::LinkMetadata)::Int
+    idx = searchsortedfirst(routed_links, link)
+    return (idx <= length(routed_links) && routed_links[idx].id == link.id) ? idx : 0
 end
 
 """
@@ -1392,7 +1433,13 @@ an immutable struct.
     # Whether all specialized AD and linear solve code should be used
     const reduced_implicit_solve::Bool
     # Matrix which aggregates flows into the basin storages
-    const incidence_matrix::SparseMatrixCSC{Int, Int}
+    const incidence_matrix::SparseMatrixCSC{Float64, Int}
+    # Per flow state the Basins it flows into via PassDown nodes, with the weights, see `set_routing!`
+    const routed_basins::Vector{Vector{Tuple{Int, Float64}}}
+    # The indices of the flow states with a nonempty `routed_basins`
+    const routed_flow_idxs::Vector{Int}
+    # Per FlowBoundary the Basins it flows into via PassDown nodes, with the weights
+    const routed_basins_boundary::Vector{Vector{Tuple{Int, Float64}}}
     # Water balance tolerances
     const water_balance_abstol::Float64
     const water_balance_reltol::Float64

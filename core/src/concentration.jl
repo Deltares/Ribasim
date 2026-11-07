@@ -147,29 +147,32 @@ The concentration of Basins is used as it was at the end of the previous timeste
 function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
     (; p, t) = integrator
     (; p_independent) = p
-    (; basin, pass_down, user_demand, cumulative_flow_dt) = p_independent
+    (; basin, pass_down, user_demand, flow_boundary, cumulative_flow_dt) = p_independent
     isempty(pass_down.node_id) && return nothing
 
     (; mass) = basin.concentration_data
     (;
         inflow_links,
         outflow_links,
-        inflow_state_idx,
-        outflow_state_idx,
+        inflow_link_idx,
+        outflow_link_idx,
+        link_weights,
         link_mass,
         source_mass,
         concentration,
         pass_down_subgraphs,
     ) = pass_down
     (; inflow_link_offsets, return_mass) = user_demand
+    # The volume that flowed over a routed link in the last timestep
+    link_volume(idx) = routed_flow(link_weights[idx], cumulative_flow_dt, flow_boundary.cumulative_flow_dt)
 
     for subgraph in pass_down_subgraphs, id in subgraph
         if id.is_pass_down
             # Mass in, which is turned into the concentration below
             concentration_node = view(concentration, :, id.idx)
             concentration_node .= 0.0
-            for (inflow_link, state_idx) in zip(inflow_links[id.idx], inflow_state_idx[id.idx])
-                if iszero(state_idx)
+            for (inflow_link, link_idx) in zip(inflow_links[id.idx], inflow_link_idx[id.idx])
+                if iszero(link_idx)
                     # From a node outside the subgraph, whose flow is its own state
                     source_id = inflow_link.link[1]
                     cumulative_flow = get_flow(
@@ -181,17 +184,17 @@ function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
                     set_pass_down_source_mass!(source_mass, p_independent, source_id, cumulative_flow, t)
                     concentration_node .+= source_mass
                 else
-                    concentration_node .+= view(link_mass, :, state_idx)
+                    concentration_node .+= view(link_mass, :, link_idx)
                 end
             end
 
             outflow_volume = 0.0
-            for (outflow_link, state_idx) in zip(outflow_links[id.idx], outflow_state_idx[id.idx])
-                outflow_volume += if iszero(state_idx)
+            for (outflow_link, link_idx) in zip(outflow_links[id.idx], outflow_link_idx[id.idx])
+                outflow_volume += if iszero(link_idx)
                     user_demand_id = outflow_link.link[2]
                     cumulative_flow_dt.horizontal.user_demand_inflow[inflow_link_offsets[user_demand_id.idx] + 1]
                 else
-                    cumulative_flow_dt.pass_down[state_idx]
+                    link_volume(link_idx)
                 end
             end
 
@@ -201,11 +204,11 @@ function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
                 concentration_node ./= outflow_volume
             end
 
-            for (outflow_link, state_idx) in zip(outflow_links[id.idx], outflow_state_idx[id.idx])
+            for (outflow_link, link_idx) in zip(outflow_links[id.idx], outflow_link_idx[id.idx])
                 # The mass abstracted by a UserDemand is handled at the UserDemand
-                iszero(state_idx) && continue
-                link_mass_out = view(link_mass, :, state_idx)
-                link_mass_out .= cumulative_flow_dt.pass_down[state_idx] .* concentration_node
+                iszero(link_idx) && continue
+                link_mass_out = view(link_mass, :, link_idx)
+                link_mass_out .= link_volume(link_idx) .* concentration_node
                 target_id = outflow_link.link[2]
                 target_id.is_basin && (view(mass, :, target_id.idx) .+= link_mass_out)
             end

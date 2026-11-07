@@ -85,6 +85,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
 
     function formulate_flows_closure!(du, flow_input, t)
         check_new_t!(p, t)
+        set_current_boundary_flow_rate!(p_independent.flow_boundary, p, t)
         du .= 0.0
 
         formulate_flows_args = (
@@ -527,15 +528,13 @@ If `structural`, all contributions are set to 1.0 to initialize the sparsity pat
 """
 function update_J_inner_local!(J::RibasimJacobian; structural::Bool = false)
     (; p_independent, J_inner_local) = J
-    (; inflow_id, outflow_id) = p_independent
-
     J_inner_local .= 0.0
     foreach_∂flow_∂storage(J) do flow_idx, basin_idx, ∂q_np_∂storage
         foreach_∂flow_∂flow_np(J, flow_idx) do flow_idx_all, ∂q_all_∂q_np
             add_flow_contribution!(
                 J_inner_local,
-                inflow_id[flow_idx_all],
-                outflow_id[flow_idx_all],
+                p_independent,
+                flow_idx_all,
                 basin_idx,
                 structural ? 1.0 : ∂q_all_∂q_np * ∂q_np_∂storage,
             )
@@ -591,7 +590,7 @@ function build_J_inner!(
         structural::Bool = false,
     )
     (; p_independent, J_inner_local, area_pid_controlled) = J
-    (; pid_control, inflow_id, outflow_id) = p_independent
+    (; pid_control) = p_independent
 
     # Add J_inner_local into J_inner rather than copying it, which would reset the sparsity
     # pattern of J_inner and drop the entries that are only structurally nonzero
@@ -611,8 +610,8 @@ function build_J_inner!(
                 -gamma * ∂q_all_∂q_np * ∂q_np_∂pid_integral / area_pid_controlled[pid_idx]
             add_flow_contribution!(
                 J_inner,
-                inflow_id[flow_idx_all],
-                outflow_id[flow_idx_all],
+                p_independent,
+                flow_idx_all,
                 listen_node_id.idx,
                 contribution,
             )
@@ -622,31 +621,40 @@ function build_J_inner!(
 end
 
 """
-Add `∂q_∂storage` times the column of the incidence matrix M of a flow state to a column of J_inner.
-A flow into a PassDown node is not credited to a Basin, that is done by the flow states
-over the links out of the PassDown subgraph.
+Add `∂q_∂storage` times the column of the incidence matrix M of a flow state to a column of J_inner,
+including the Basins the flow reaches via PassDown nodes.
 """
 function add_flow_contribution!(
         J_inner::AbstractMatrix{Float64},
-        id_in::NodeID,
-        id_out::NodeID,
+        p_independent::ParametersIndependent,
+        flow_idx::Int,
         basin_idx::Int,
         ∂q_∂storage::Float64,
     )
+    id_in = p_independent.inflow_id[flow_idx]
+    id_out = p_independent.outflow_id[flow_idx]
     id_in.is_basin && (J_inner[id_in.idx, basin_idx] -= ∂q_∂storage)
     id_out.is_basin && (J_inner[id_out.idx, basin_idx] += ∂q_∂storage)
+    for (routed_basin_idx, weight) in p_independent.routed_basins[flow_idx]
+        J_inner[routed_basin_idx, basin_idx] += weight * ∂q_∂storage
+    end
     return nothing
 end
 
 "Add `value` times the column of the incidence matrix M of a flow state to a vector in storage space."
 function add_flow_contribution!(
         v::AbstractVector{Float64},
-        id_in::NodeID,
-        id_out::NodeID,
+        p_independent::ParametersIndependent,
+        flow_idx::Int,
         value::Float64,
     )
+    id_in = p_independent.inflow_id[flow_idx]
+    id_out = p_independent.outflow_id[flow_idx]
     id_in.is_basin && (v[id_in.idx] -= value)
     id_out.is_basin && (v[id_out.idx] += value)
+    for (routed_basin_idx, weight) in p_independent.routed_basins[flow_idx]
+        v[routed_basin_idx] += weight * value
+    end
     return nothing
 end
 
@@ -749,7 +757,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
     (; cache_inner, W) = linsolve
     (; gamma, J) = W
     (; p_independent, area_pid_controlled, n_pid) = J
-    (; pid_control, inflow_id, outflow_id) = p_independent
+    (; pid_control) = p_independent
 
     W_inner = cache_inner.A
     J_inner = W_inner.J
@@ -765,8 +773,8 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
         foreach_∂flow_∂flow_np(J, flow_idx) do flow_idx_all, ∂q_all_∂q_np
             add_flow_contribution!(
                 b_inner,
-                inflow_id[flow_idx_all],
-                outflow_id[flow_idx_all],
+                p_independent,
+                flow_idx_all,
                 gamma * ∂q_all_∂q_np * ∂q_np_∂pid_integral * b_pid_integral[pid_idx],
             )
         end

@@ -392,15 +392,22 @@ function get_flow(
 
     from_id, to_id = link
 
-    # Links out of a PassDown node have their own flow state, the link towards a UserDemand
-    # node has the UserDemand inflow state. The flow over a link into a PassDown node is the
-    # state of the node it comes from, found below.
+    # The flow over a link out of a PassDown node is a weighted sum of other flows, the link
+    # towards a UserDemand node has the UserDemand inflow state. The flow over a link into a
+    # PassDown node is the state of the node it comes from, found below.
     if from_id.is_pass_down && (to_id.type == NodeType.UserDemand)
         offset = user_demand.inflow_link_offsets[to_id.idx]
         return flow.horizontal.user_demand_inflow[offset + 1]
     elseif from_id.is_pass_down
-        links, state_idxs = pass_down.outflow_links[from_id.idx], pass_down.outflow_state_idx[from_id.idx]
-        return flow.pass_down[state_idxs[findfirst(l -> l.link == link, links)]]
+        links, link_idxs = pass_down.outflow_links[from_id.idx], pass_down.outflow_link_idx[from_id.idx]
+        weights = pass_down.link_weights[link_idxs[findfirst(l -> l.link == link, links)]]
+        boundary_rate = if isnothing(boundary_flow)
+            @assert !isnothing(t) "Cannot evaluate the flow over $link since t is not provided."
+            idx -> flow_boundary.flow_rate[idx](t)
+        else
+            boundary_flow
+        end
+        return routed_flow(weights, flow, boundary_rate)
     end
 
     # Connector node flow
