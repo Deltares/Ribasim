@@ -276,6 +276,9 @@ function ScalingFactors(
         basin.storage_to_level[node_id.idx].t[end] for
             node_id in basin.node_id if graph[node_id].subnetwork_id == subnetwork_id
     ]
+    # The problem is scaled by the Basin storages of the subnetwork
+    isempty(max_storages) &&
+        error("Allocation subnetwork $subnetwork_id has no Basin, which is not supported.")
     return ScalingFactors(; mean_half_storage = sum(max_storages) / (2 * length(max_storages)))
 end
 

@@ -779,19 +779,6 @@ end
         "The return_factor and min_level of UserDemand #1 must be the same for all demand priorities."
 end
 
-@testitem "Model without Basin" begin
-    using Logging
-
-    toml_path = normpath(@__DIR__, "../../generated_testmodels/invalid_no_basin/ribasim.toml")
-    @test ispath(toml_path)
-    logger = TestLogger()
-    with_logger(logger) do
-        @test_throws "Model has no Basin." Ribasim.Model(toml_path)
-    end
-    @test only(logger.logs).message ==
-        "Models without a Basin node are unsupported, please add a Basin node."
-end
-
 @testitem "UserDemand min_level required for Basin inflow" begin
     using Logging
 

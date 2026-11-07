@@ -110,12 +110,11 @@ function Model(
     end
     @debug "Read database into memory."
 
-    if isempty(p_independent.basin.node_id)
-        # The reduced linear solve is formulated in terms of the Basin storages
-        @error "Models without a Basin node are unsupported, please add a Basin node."
-        error("Model has no Basin.")
-    end
     u0 = build_state_vector(p_independent)
+    if isempty(u0)
+        @error "Models without states are unsupported, please add a Basin or PassDown node."
+        error("Model has no state.")
+    end
     # u_prev_saveat starts undefined; it must match u0 so save_flow computes correct
     # mean flows (otherwise garbage values leak into the first saveat interval).
     p_independent.u_prev_saveat .= u0

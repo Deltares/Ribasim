@@ -794,6 +794,9 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
         linu = nothing,
         b = nothing,
     )
+    # Without Basins the inner system is empty, which the sparse factorization reports as
+    # infeasible, while the flows follow from the right hand side alone
+    retcode = iszero(J.n_basin) ? SciMLBase.ReturnCode.Success : linres.retcode
 
     # Compute PID integral component solution
     for pid_idx in 1:n_pid
@@ -827,7 +830,7 @@ function OrdinaryDiffEqDifferentiation.dolinsolve(
         linu,
         linres.resid,
         linres.alg,
-        linres.retcode,
+        retcode,
         linres.iters,
         linsolve,
         linres.stats,

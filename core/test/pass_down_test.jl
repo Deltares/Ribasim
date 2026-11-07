@@ -165,6 +165,34 @@ end
     @test only(storage) - storage_start ≈ 5.0e-3 * 86400.0
 end
 
+@testitem "PassDown chain without Basin" begin
+    using DataFrames: DataFrame
+    using Statistics: mean
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pass_down_no_basin/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+    @test isempty(model.integrator.p.p_independent.basin.node_id)
+
+    flow_data = Ribasim.flow_data(model) |> DataFrame
+    mean_flow_rate(from_node_id, to_node_id) = mean(
+        filter(row -> row.from_node_id == from_node_id && row.to_node_id == to_node_id, flow_data).flow_rate,
+    )
+    # Without allocation the upstream UserDemand #3 takes its full demand first, although
+    # UserDemand #6 downstream has the higher demand priority
+    @test mean_flow_rate(1, 2) ≈ 1.0e-3
+    @test mean_flow_rate(2, 3) ≈ 1.0e-3
+    @test mean_flow_rate(5, 6) ≈ 0.0 atol = 1.0e-12
+    @test mean_flow_rate(8, 9) ≈ 0.0 atol = 1.0e-12
+
+    # Allocation needs a Basin in the subnetwork
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/invalid_pass_down_no_basin_allocation/ribasim.toml",
+    )
+    @test_throws "Allocation subnetwork 2 has no Basin, which is not supported." Ribasim.Model(toml_path)
+end
+
 @testitem "PassDown at subnetwork boundary" setup = [PassDownValidation] begin
     messages = PassDownValidation.error_messages(
         "invalid_pass_down_subnetwork_boundary",
