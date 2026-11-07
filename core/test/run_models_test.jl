@@ -292,7 +292,7 @@ end
     integrator.u.flow.horizontal.tabulated_rating_curve[1] = Inf
     integrator.cache.nlsolver.cache.linsolve.cache_inner.A.J .= NaN
     diagnostic = log_numerical_instability(integrator)
-    for (basin_id, expected_depth) in ((1, -3.1199999723277004e6), (6, -3.3226334011822836e6), (9, 397006.2329949941))
+    for (basin_id, expected_depth) in ((1, -3.1199999723277004e6), (6, -3.3226377889662893e6), (9, 397006.2329949941))
         depth_match = match(Regex("Basin #$basin_id: ([-+0-9.e]+)"), diagnostic)
         @test !isnothing(depth_match)
         @test parse(Float64, depth_match[1]) ≈ expected_depth rtol = 1.0e-6
@@ -589,6 +589,18 @@ end
     @test all(x -> abs(x) < 1.0e-3, level_2 .- level_4)
     @test all(x -> abs(x - 0.4) < 1.0e-3, level_2)
     @test maximum(abs, basin_table.balance_error) < 1.0e-6
+end
+
+@testitem "Pump pit between two Basins" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pump_pit/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # When the Newton iteration keeps a convergence rate measured for an earlier iteration
+    # matrix, the pit oscillates every time step after the pump stops, and the time step
+    # stays at about 0.2 s for 6 hours: 92,000 time steps instead of 185.
+    @test model.integrator.stats.naccept < 1000
 end
 
 @testitem "mean_flow" begin
