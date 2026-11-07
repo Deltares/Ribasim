@@ -704,8 +704,8 @@ end
     variable = sorted_table!(
         StructVector(
             [
-                Schema.DiscreteControl.Variable(1, 1, 2, "level", missing, 0.0),
-                Schema.DiscreteControl.Variable(1, 1, 2, "level", missing, 1.0),
+                Schema.DiscreteControl.Variable(1, 1, 2, "level", missing, 0.0, missing, missing, missing),
+                Schema.DiscreteControl.Variable(1, 1, 2, "level", missing, 1.0, missing, missing, missing),
             ]
         ),
     )
