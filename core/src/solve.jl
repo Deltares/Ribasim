@@ -1035,10 +1035,13 @@ function get_diff_eval(
             storage_uplink, storage_downlink, compound_variables, storage, time_dependent_cache,
         )
         p = Parameters(p_independent, time_dependent_cache, current_basin_properties, p_mutable)
-        # Make check_new_t! consider t new, since the Dual-typed t_prev_call is not
-        # initialized for this t (it has the same partials, so only the value must differ)
+        # Renew the time dependent cache for this t before the storage is computed from it
         time_dependent_cache.t_prev_call[1] = t + 1
+        check_new_t!(p, t)
+        formulate_cumulative_boundary_flow!(p_independent.flow_boundary, p, t)
         set_current_storage!(p, u.flow, t; storage, with_incidence_matrix = true)
+        # Make the check_new_t! in water_balance! renew the rest of the cache too
+        time_dependent_cache.t_prev_call[1] = t + 1
         water_balance!(du, u, p, t; storage_uplink, storage_downlink, compound_variables, storage)
         return nothing
     end
