@@ -2,7 +2,7 @@
 # See https://prek.j178.dev for more information.
 #:schema https://www.schemastore.org/prek.json
 
-exclude = "core/test/data/allocation_problems"
+exclude = "core/test/data/allocation_problems|docs/presentation/wflow-ribasim-online-coupling"
 
 [[repos]]
 repo = "builtin"
