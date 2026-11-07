@@ -98,6 +98,7 @@ function RibasimJacobianEvaluationCache(p::Parameters, solver::Solver)
 
         formulate_vertical_flux!(du.flow, flow_input.storage_uplink, p, t)
         formulate_flows!(formulate_flows_args...)
+        formulate_provisional_pass_down_flow!(du.flow, p, t)
         formulate_PID_control!(du.pid_integral, flow_input.storage_uplink, flow_input.storage_downlink, p, t)
         formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.PID)
         formulate_flows!(formulate_flows_args...; control_type = ContinuousControlType.Continuous)

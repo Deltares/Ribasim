@@ -54,6 +54,10 @@ function water_balance!(
     # Formulate intermediate flows (non continuously controlled)
     formulate_flows!(formulate_flows_args...)
 
+    # Provisional PassDown flows, so that the derivative term of PID control sees the
+    # flow into the listened Basin via PassDown nodes
+    formulate_provisional_pass_down_flow!(du.flow, p, t)
+
     # Formulate the PID control integral term rate
     formulate_PID_control!(
         du.pid_integral,
@@ -1125,6 +1129,21 @@ function get_source_flow(
     else
         get_node_flow(flow, source_id)[1]
     end
+end
+
+"""
+The PID derivative term uses the storage rate of the listened Basin, which includes the
+flows into it via PassDown nodes. These are computed after the controlled flows, so they are
+computed provisionally before PID control from the flows known at that point. The flows of
+PID and ContinuousControl controlled nodes are still zero then, so a controlled flow that
+reaches the listened Basin via PassDown nodes is not part of the derivative term.
+"""
+function formulate_provisional_pass_down_flow!(flow::FlowCVector, p::Parameters, t::Number)::Nothing
+    (; pass_down, pid_control) = p.p_independent
+    if !isempty(pass_down.node_id) && !isempty(pid_control.node_id)
+        formulate_pass_down_flow!(flow, p, t)
+    end
+    return nothing
 end
 
 """

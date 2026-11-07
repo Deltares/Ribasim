@@ -101,6 +101,7 @@ from ribasim_testmodels.pass_down import (
     pass_down_allocation_model,
     pass_down_flow_boundary_model,
     pass_down_model,
+    pass_down_pid_model,
     pass_down_tracer_model,
 )
 from ribasim_testmodels.pid_control import (
@@ -192,6 +193,7 @@ __all__ = [
     "pass_down_equation_model",
     "pass_down_flow_boundary_model",
     "pass_down_model",
+    "pass_down_pid_model",
     "pass_down_tracer_model",
     "pid_control_equation_model",
     "pid_control_model",
