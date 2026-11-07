@@ -157,6 +157,7 @@ function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
         inflow_state_idx,
         outflow_state_idx,
         link_mass,
+        source_mass,
         concentration,
         pass_down_subgraphs,
     ) = pass_down
@@ -168,18 +169,20 @@ function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
             concentration_node = view(concentration, :, id.idx)
             concentration_node .= 0.0
             for (inflow_link, state_idx) in zip(inflow_links[id.idx], inflow_state_idx[id.idx])
-                source_id = inflow_link.link[1]
-                link_mass_in = view(link_mass, :, state_idx)
-                if !in_pass_down_subgraph(source_id, user_demand)
-                    set_pass_down_source_mass!(
-                        link_mass_in,
-                        p_independent,
-                        source_id,
-                        cumulative_flow_dt.pass_down[state_idx],
-                        t,
+                if iszero(state_idx)
+                    # From a node outside the subgraph, whose flow is its own state
+                    source_id = inflow_link.link[1]
+                    cumulative_flow = get_flow(
+                        cumulative_flow_dt,
+                        inflow_link.link,
+                        p_independent;
+                        boundary_flow = p_independent.flow_boundary.cumulative_flow_dt,
                     )
+                    set_pass_down_source_mass!(source_mass, p_independent, source_id, cumulative_flow, t)
+                    concentration_node .+= source_mass
+                else
+                    concentration_node .+= view(link_mass, :, state_idx)
                 end
-                concentration_node .+= link_mass_in
             end
 
             outflow_volume = 0.0
@@ -219,13 +222,9 @@ function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
                 t,
             )
 
+            # The return mass into a PassDown node is picked up there via `set_pass_down_source_mass!`
             target_id = user_demand.outflow_link[id.idx].link[2]
-            if target_id.is_pass_down
-                state_idx = user_demand.pass_down_outflow_state_idx[id.idx]
-                view(link_mass, :, state_idx) .= return_mass_node
-            elseif target_id.is_basin
-                view(mass, :, target_id.idx) .+= return_mass_node
-            end
+            target_id.is_basin && (view(mass, :, target_id.idx) .+= return_mass_node)
         end
     end
     return nothing

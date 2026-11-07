@@ -106,7 +106,7 @@ $$
 $$
 where $M$ is the $n_\text{basin} \times n_\text{flow}$ signed incidence matrix: $M_{b,k} = -1$ if Basin $b$ is upstream of flow $k$, $M_{b,k} = 1$ if Basin $b$ is downstream of flow $k$ and $M_{b,k} = 0$ otherwise.
 Evaporation and infiltration are flows with their Basin upstream and nothing downstream.
-The flows in the subgraphs of [PassDown](/reference/node/pass-down.qmd) nodes are states per link, and are flows like any other in this definition: the link from a PassDown node to a Basin has the Basin downstream, while the flow into a PassDown node from e.g. a Pump has no Basin downstream, since the Pump flow is passed on via the links out of the PassDown subgraph.
+The flows over the links out of [PassDown](/reference/node/pass-down.qmd) nodes are states per link, and are flows like any other in this definition: the link from a PassDown node to a Basin has the Basin downstream. The flow into a PassDown node from e.g. a Pump is the Pump state, which has no Basin downstream, since the Pump flow is passed on via the links out of the PassDown subgraph.
 These PassDown flows are not computed from the storages directly, see [PassDown](#sec-numerics-pass-down) below.
 
 For every flow $k$ we then take a copy of the storage of its upstream Basin $S^\text{up}_k$ and its downstream Basin $S^\text{down}_k$:
@@ -190,7 +190,7 @@ Here only the direct dependence of listened flows on their own Basin storages is
 
 ### PassDown {#sec-numerics-pass-down}
 
-The flows in the subgraphs of PassDown nodes, i.e. the flows over the links with a PassDown node at either end and the flows of the UserDemand nodes that abstract from a PassDown node, are not a function of the storages and PID integrals directly.
+The flows in the subgraphs of PassDown nodes, i.e. the flows over the links out of PassDown nodes and the flows of the UserDemand nodes that abstract from a PassDown node, are not a function of the storages and PID integrals directly.
 They are computed in the last step of the right-hand side as a function of the other flows $\mathbf{q}^\text{np}$ (np: not computed in a PassDown subgraph), which are computed as described above:
 $$
 	\mathbf{q} = K\mathbf{q}^\text{np}, \quad K = \frac{\partial\mathbf{q}}{\partial\mathbf{q}^\text{np}}.

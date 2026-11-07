@@ -1151,7 +1151,7 @@ Compute the flows over the links in the PassDown subgraphs, see `PassDown.state_
 and the UserDemand flows in the PassDown subgraphs.
 
 - A PassDown node gets the flow from its inflow links, which come from other PassDown nodes (confluences are
-  allowed) or from outside the subgraph, where the flow goes to this PassDown node only.
+  allowed) or from outside the subgraph, where the flow is the state of the source node.
 - The UserDemand node downstream of the PassDown node, if present, takes precedence: it
   abstracts the minimum of the flow into the PassDown node and its demand.
 - The remaining flow is divided over the downstream links of the PassDown node by the fractions of these links.
@@ -1182,11 +1182,12 @@ function formulate_pass_down_flow!(
             if id.is_pass_down
                 inflow = zero(T)
                 for (inflow_link, state_idx) in zip(inflow_links[id.idx], inflow_state_idx[id.idx])
-                    source_id = inflow_link.link[1]
-                    if !in_pass_down_subgraph(source_id, user_demand)
-                        flow.pass_down[state_idx] = get_source_flow(flow, source_id, p, t)
+                    inflow += if iszero(state_idx)
+                        # From a node outside the subgraph, computed before
+                        get_source_flow(flow, inflow_link.link[1], p, t)
+                    else
+                        flow.pass_down[state_idx]
                     end
-                    inflow += flow.pass_down[state_idx]
                 end
 
                 abstraction = zero(T)
@@ -1212,9 +1213,6 @@ function formulate_pass_down_flow!(
                     user_demand.return_factor[id.idx], current_return_factor, id.idx, p, t
                 )
                 flow.horizontal.user_demand_outflow[id.idx] = outflow
-
-                state_idx = user_demand.pass_down_outflow_state_idx[id.idx]
-                iszero(state_idx) || (flow.pass_down[state_idx] = outflow)
             else
                 error("Unsupported node $id in PassDown subgraph.")
             end

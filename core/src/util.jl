@@ -702,7 +702,7 @@ function set_flow_ids!(inflow_id, outflow_id, basin::Basin)
 end
 
 """
-Every PassDown flow state is the flow over a link with a PassDown node at either end,
+Every PassDown flow state is the flow over a link out of a PassDown node,
 see `PassDown.state_links`.
 """
 function set_flow_ids!(inflow_id, outflow_id, pass_down::PassDown)
@@ -753,8 +753,7 @@ function get_flow_ids(nodes::NamedTuple, flow_ranges::FlowTuple)
     state_id.horizontal.user_demand_outflow .= user_demand.node_id
     state_id.vertical.evaporation .= basin.node_id
     state_id.vertical.infiltration .= basin.node_id
-    state_id.pass_down .=
-        [link.link[2].is_pass_down ? link.link[2] : link.link[1] for link in pass_down.state_links]
+    state_id.pass_down .= [link.link[1] for link in pass_down.state_links]
 
     return inflow_id, outflow_id, state_id
 end
@@ -1259,25 +1258,11 @@ function set_controlled_node_ids!(p_independent, node::Union{PidControl, Continu
     return nothing
 end
 
-"""
-Whether the node is part of a PassDown subgraph: a PassDown node, or a UserDemand node that abstracts from one.
-"""
-function in_pass_down_subgraph(id::NodeID, user_demand::UserDemand)::Bool
-    return id.is_pass_down ||
-        (id.type == NodeType.UserDemand && user_demand.in_pass_down_subgraph[id.idx])
-end
-
-"""
-Mark the UserDemand nodes that are part of a PassDown subgraph, and store for those
-the index in the `pass_down` flow component of their outflow link.
-"""
+"Mark the UserDemand nodes that are part of a PassDown subgraph."
 function set_in_pass_down_subgraph!(user_demand::UserDemand, pass_down::PassDown)::Nothing
     for subgraph in pass_down.pass_down_subgraphs, id in subgraph
         id.type == NodeType.UserDemand || continue
         user_demand.in_pass_down_subgraph[id.idx] = true
-        outflow_link = user_demand.outflow_link[id.idx]
-        user_demand.pass_down_outflow_state_idx[id.idx] =
-            state_link_index(pass_down.state_links, outflow_link)
     end
     return nothing
 end

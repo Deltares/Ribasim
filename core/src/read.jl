@@ -1750,13 +1750,12 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
     inflow_links = [get_inflow_links(graph, id) for id in node_id]
     outflow_links = [get_outflow_links(graph, id) for id in node_id]
 
-    # The links towards a UserDemand node are not included, the UserDemand inflow state is their flow state
-    state_links_dict = Dict{Int32, LinkMetadata}()
-    for link in Iterators.flatten((Iterators.flatten(inflow_links), Iterators.flatten(outflow_links)))
-        link.link[2].type == NodeType.UserDemand && continue
-        state_links_dict[link.id] = link
-    end
-    state_links = [state_links_dict[link_id] for link_id in sort!(collect(keys(state_links_dict)))]
+    # The links out of PassDown nodes have a state, except the links towards a UserDemand node,
+    # whose flow is the UserDemand inflow state. The flow over a link into a PassDown node from
+    # a node outside the subgraph is the state of that node.
+    state_links = sort!(
+        [link for link in Iterators.flatten(outflow_links) if link.link[2].type != NodeType.UserDemand]
+    )
 
     n_substance = length(get_substances(db, config))
     pass_down = PassDown(;
@@ -1768,6 +1767,7 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
         inflow_state_idx = [[state_link_index(state_links, link) for link in links] for links in inflow_links],
         outflow_state_idx = [[state_link_index(state_links, link) for link in links] for links in outflow_links],
         link_mass = zeros(n_substance, length(state_links)),
+        source_mass = zeros(n_substance),
         concentration = zeros(n_substance, length(node_id)),
     )
     (; fraction) = pass_down

@@ -1115,13 +1115,16 @@ pass_down_subgraphs: disjoint directed acyclic graphs of flow-connected PassDown
     excluding UserDemand nodes without a PassDown inneighbor. The nodes of each subgraph
     are ordered such that each node comes after all nodes its flow depends on.
 user_demand_id: The ID of the UserDemand node that abstracts from the PassDown node, if present
-state_links: The flow links that have a flow state in the `pass_down` flow component, sorted by link ID: all flow links
-    with a PassDown node at either end, except the links towards a UserDemand node, since the flow
-    on those is the UserDemand inflow state.
-inflow_state_idx: Per PassDown node the index in `state_links` of each of its inflow links
+state_links: The flow links that have a flow state in the `pass_down` flow component, sorted by link ID: the flow links
+    out of PassDown nodes, except the links towards a UserDemand node, since the flow
+    on those is the UserDemand inflow state. The flow over a link into a PassDown node from a node outside
+    the subgraph is the state of that node.
+inflow_state_idx: Per PassDown node the index in `state_links` of each of its inflow links,
+    or 0 for a link from a node outside the subgraph
 outflow_state_idx: Per PassDown node the index in `state_links` of each of its outflow links,
     or 0 for the link towards a UserDemand node
 link_mass: The mass per substance that flowed over each link in `state_links` in the last timestep (substance, link)
+source_mass: Work vector for the mass that flowed over a link into a PassDown subgraph in the last timestep (substance)
 concentration: The concentration per substance of the flow through each PassDown node in the last timestep (substance, node)
 """
 @kwdef struct PassDown <: AbstractParameterNode
@@ -1135,6 +1138,7 @@ concentration: The concentration per substance of the flow through each PassDown
     inflow_state_idx::Vector{Vector{Int}} = [Int[] for _ in node_id]
     outflow_state_idx::Vector{Vector{Int}} = [Int[] for _ in node_id]
     link_mass::Matrix{Float64} = zeros(0, length(state_links))
+    source_mass::Vector{Float64} = zeros(0)
     concentration::Matrix{Float64} = zeros(0, length(node_id))
 end
 
@@ -1175,8 +1179,6 @@ cumulative_inflow: The summed inflow since the start of the simulation
 concentration_itp: matrix with timeseries interpolations of concentrations per LevelBoundary per substance
 in_pass_down_subgraph: whether the UserDemand node is part of one of the PassDown subgraphs,
     in which case its flows are computed in `formulate_pass_down_flow!`
-pass_down_outflow_state_idx: for the UserDemand nodes in a PassDown subgraph, the index in the `pass_down` flow
-    component of the outflow link, or 0 if the outflow link has no state there
 return_mass: The mass per substance in the return flow in the last timestep (substance, node), only computed
     if the return flow goes to a Basin or a PassDown node, used for tracers
 """
@@ -1200,7 +1202,6 @@ return_mass: The mass per substance in the return flow in the last timestep (sub
     cumulative_inflow::Vector{Float64} = zeros(length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
     in_pass_down_subgraph::Vector{Bool} = fill(false, length(node_id))
-    pass_down_outflow_state_idx::Vector{Int} = zeros(Int, length(node_id))
     return_mass::Matrix{Float64} = zeros(0, length(node_id))
 end
 
