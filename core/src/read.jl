@@ -1140,10 +1140,10 @@ function CompoundVariable(
     node_id =
         NodeID(node_type, only(unique(variables_compound_variable.node_id)), node_ids_all)
 
-    # Compound variables without ID (ContinuousControl) get ID 0
-    compound_variable_id =
-        coalesce(first(variables_compound_variable).compound_variable_id, Int32(0))
-    stack = push!(copy(stack), compound_variable_id)
+    # Only numbered compound variables participate in cycle detection.
+    compound_variable_id = first(variables_compound_variable).compound_variable_id
+    stack = copy(stack)
+    !ismissing(compound_variable_id) && push!(stack, compound_variable_id)
 
     compound_variable = CompoundVariable(; node_id)
     (; subvariables, nested, threshold_high, threshold_low) = compound_variable
