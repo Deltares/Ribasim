@@ -180,6 +180,16 @@ This is significantly cheaper than solving in the full state space, since the in
 
 `OrdinaryDiffEqCore.instability_jacobian` returns `J_inner` for diagnostics when a simulation becomes unstable.
 
+# PassDown nodes
+
+The flows in PassDown subgraphs are computed by `formulate_pass_down_flow!` as the last step of `water_balance!`, see the [concept documentation](/concept/numerics.qmd#sec-numerics-pass-down). Three consequences of this design are worth knowing.
+
+**Boundary flows become states.** The flow of a FlowBoundary into a Basin is never a state: its cumulative volume is integrated exactly and added to the storage via the time dependent cache, so the solver never sees the time series. The flow over the link from a FlowBoundary into a PassDown node is a state, like all links in a PassDown subgraph, so every jump of a block series and every kink of a linear series reaches the solver and costs steps. The rate is read through `eval_time_interpolation`, left-continuously within a timestep for a block series, and a flow rate set via BMI takes precedence, like for the other time series in the right hand side. For a daily on/off FlowBoundary over a month this means about 130 accepted and 90 rejected steps through a PassDown node, against 37 steps straight into a Basin. Evaluating the series at `t` directly instead gave thousands of rejected steps.
+
+**PID control.** The derivative term of PID control uses the storage rate of the listened Basin, which includes the flows into it via PassDown nodes. Since those are computed after the controlled flows, `formulate_provisional_pass_down_flow!` computes them once before PID control from the flows known at that point, in `water_balance!` and in the Jacobian closure alike. The flows of PID and ContinuousControl controlled nodes are still zero then, so a controlled flow that reaches the listened Basin via PassDown nodes is not part of the derivative term, in the same way that a controlled flow is only accounted for in the derivative term when it flows into the listened Basin directly.
+
+**The limiter does not clamp the PassDown states.** `limit_flow!` clamps the cumulative states of Pump, Outlet, TabulatedRatingCurve, LinearResistance, UserDemand inflow and the vertical fluxes to physical bounds after an accepted step. The `pass_down` states derived from them, and the UserDemand outflow states, are not clamped. If a source state is clamped, the states of its PassDown subgraph keep the unclamped increment, so the Basins downstream receive more or less than the source gave, and neither water balance check compares the two. This has not been observed on the test models, where the limiter does not fire for these states, but it is a known gap. Possible fixes are to re-propagate the clamped increments through the subgraph in `limit_flow!`, or to drop the state on the link into a subgraph in favor of the state of the source node.
+
 # Callbacks
 
 Ribasim uses SciML's [callback mechanism](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/) to handle events that occur during simulation. These are set up in `core/src/callback.jl`:

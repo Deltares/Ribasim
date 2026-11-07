@@ -47,6 +47,10 @@ The algorithm for the PassDown node flow in a subgraph is as follows:
     $$
 - For UserDemand nodes it works like the standard [UserDemand flow](/reference/node/user-demand.qmd#equations), but without the low storage factor or minimum level.
 
+Without allocation, a UserDemand abstracting from a PassDown node takes its demand before anything is passed on, regardless of its `demand_priority`: in a chain of PassDown nodes the upstream UserDemand is served first. Demand priorities are only applied by [allocation](#allocation), which bounds the abstraction of each UserDemand by what it allocated.
+
+A model does not need a Basin when all flow comes from FlowBoundary nodes and passes through PassDown nodes, for instance into UserDemand or Terminal nodes. Allocation does require a Basin in each subnetwork.
+
 ## Tracers
 
 With `experimental.concentration` the tracers are propagated through the PassDown subgraphs in the same order as the flow is computed, using the mass over the timestep rather than concentrations, so that no mass is lost when a flow is zero:
