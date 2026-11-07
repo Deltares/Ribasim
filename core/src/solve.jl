@@ -930,10 +930,13 @@ function SciMLBase.log_numerical_instability(
 end
 
 function OrdinaryDiffEqCore.instability_jacobian(integrator::ODEIntegrator{<:Any, <:Any, <:RibasimStateCVector})
-    # Explicit algorithms have no nlsolver, in which case no Jacobian diagnostics are available
-    hasproperty(integrator.cache, :nlsolver) || return nothing
-    # Inner 'storage space' Jacobian
-    return integrator.cache.nlsolver.cache.linsolve.cache_inner.A.J
+    return if integrator.p.p_independent.reduced_implicit_solve
+        # Inner 'storage space' Jacobian
+        integrator.cache.nlsolver.cache.linsolve.cache_inner.A.J
+    else
+        # Upstream: Rosenbrock W.J, BDF nlsolver.cache.J, nothing for explicit methods
+        invoke(OrdinaryDiffEqCore.instability_jacobian, Tuple{Any}, integrator)
+    end
 end
 
 """
