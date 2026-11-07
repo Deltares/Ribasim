@@ -538,11 +538,32 @@ once, so that each timestep only the time dependent ones need to be evaluated.
     time_dependent::Vector{CartesianIndex{2}} = CartesianIndex{2}[]
 end
 
+"""
+The linear system for the transport of substances between Basins over a timestep, which all
+substances share. See the section on substance concentrations in `docs/concept/core.qmd` for
+the derivation of the scheme, and [`transport_tracers!`](@ref) for its implementation.
+"""
+struct TracerTransport
+    # Matrix with a fixed sparsity pattern: the diagonal and both directions of each Basin to Basin flow
+    A::SparseMatrixCSC{Float64, Int}
+    # Index into nonzeros(A) of the diagonal entry per Basin
+    diagonal_nz::Vector{Int}
+    # Per flow index into nonzeros(A) of the entry for positive and negative flow, 0 if not Basin to Basin
+    forward_nz::Vector{Int}
+    backward_nz::Vector{Int}
+    # Volume that left each Basin with its mixed concentration over the timestep
+    outflow::Vector{Float64}
+    # Right hand side and solution of the linear system, Basin x substance
+    work::Matrix{Float64}
+    # Per Basin the weight of the concentration at the end of the timestep in its outflows
+    theta::Vector{Float64}
+    # Refactorized with new values each timestep, nothing if there is no system to solve
+    factorization::Union{Nothing, PureKLU.KLUFactorization{Float64, Int, Float64}}
+end
+
 @kwdef struct ConcentrationData
     # Config setting to enable/disable evaporation of mass
     evaporate_mass::Bool = true
-    # Cumulative inflow for each Basin at a given time
-    cumulative_in::Vector{Float64} = zeros(Float64, 0)
     # Matrix with concentrations for each substance and Basin,
     # such that the concentrations of a Basin are contiguous in memory
     concentration_state::Matrix{Float64} = zeros(Float64, 0, 0)  # substance, Basin
@@ -1336,6 +1357,9 @@ an immutable struct.
     const inflow_id::FlowCVector{NodeID}
     const outflow_id::FlowCVector{NodeID}
     const state_id::FlowCVector{NodeID}
+    # Linear system for the implicit tracer transport between Basins
+    const tracer_transport::TracerTransport =
+        TracerTransport(inflow_id, outflow_id, basin, do_concentration)
     # The up- and downlink storage per flow
     const storage_uplink::FlowCVector{Float64} = similar(inflow_id, Float64)
     const storage_downlink::FlowCVector{Float64} = similar(inflow_id, Float64)

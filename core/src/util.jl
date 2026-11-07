@@ -897,6 +897,7 @@ function get_timeseries_tstops(
         tabulated_rating_curve,
         user_demand,
         discrete_control,
+        do_concentration,
     ) = p_independent
     tstops = Vector{Float64}[]
 
@@ -938,7 +939,33 @@ function get_timeseries_tstops(
     get_timeseries_tstops!(tstops, t_end, outlet.min_upstream_level)
     get_timeseries_tstops!(tstops, t_end, outlet.max_downstream_level)
 
+    if do_concentration
+        (; concentration_data) = basin
+        get_concentration_tstops!(tstops, t_end, concentration_data.concentration_drainage.itp)
+        get_concentration_tstops!(tstops, t_end, concentration_data.concentration_precipitation.itp)
+        get_concentration_tstops!(tstops, t_end, concentration_data.concentration_surface_runoff.itp)
+        get_concentration_tstops!(tstops, t_end, concentration_data.loads.itp)
+        get_concentration_tstops!(tstops, t_end, flow_boundary.concentration_itp)
+        get_concentration_tstops!(tstops, t_end, level_boundary.concentration_itp)
+        get_concentration_tstops!(tstops, t_end, user_demand.concentration_itp)
+    end
+
     return tstops
+end
+
+"""
+The tstops from the concentrations per node and substance, so that the concentrations are
+constant over a timestep. Nearly all concentrations are constant, and don't add any tstops.
+"""
+function get_concentration_tstops!(
+        tstops::Vector{Vector{Float64}},
+        t_end::Float64,
+        concentration_itp::Vector{Vector{ScalarConstantInterpolation}},
+    )::Nothing
+    for itp_node in concentration_itp, itp in itp_node
+        all(==(first(itp.u)), itp.u) || push!(tstops, get_timeseries_tstops(itp, t_end))
+    end
+    return nothing
 end
 
 function get_timeseries_tstops!(
