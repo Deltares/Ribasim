@@ -21,7 +21,7 @@ end
         "Errors encountered when parsing PassDown data."
     )
     @test messages == [
-        "PassDown #7 can have at most one outflow link to a PassDown node with an unspecified fraction.",
+        "PassDown #7 can have at most one outflow link with an unspecified fraction.",
     ]
 end
 
@@ -31,7 +31,7 @@ end
         "Errors encountered when parsing PassDown data."
     )
     @test messages == [
-        "The fractions of the outflow links of PassDown #7 to PassDown nodes must sum to at most 1 when one fraction is unspecified (got 1.25).",
+        "The fractions of the outflow links of PassDown #7 must sum to at most 1 when one fraction is unspecified (got 1.25).",
     ]
 end
 
@@ -61,16 +61,6 @@ end
     ]
 end
 
-@testitem "PassDown UserDemand and other outflow" setup = [PassDownValidation] begin
-    messages = PassDownValidation.error_messages(
-        "invalid_pass_down_user_demand_and_other",
-        "Invalid number of connections for certain node types."
-    )
-    @test messages == [
-        "PassDown #3 cannot have both a UserDemand outflow and an outflow into a node that is not a PassDown node, the remainder flow must be passed down to PassDown nodes.",
-    ]
-end
-
 @testitem "PassDown tracers" begin
     using DataFrames: DataFrame
 
@@ -93,7 +83,7 @@ end
 
     # FlowBoundary #1 (0.04 m³/s, Foo = 2) and #2 (0.02 m³/s, no Foo) are mixed in PassDown #3
     # UserDemand #4 abstracts 0.01 m³/s and returns half of it to Basin #6, the remaining
-    # 0.05 m³/s flows via PassDown #5 into Basin #7
+    # 0.05 m³/s flows into Basin #7
     c_foo = 2.0 * 0.04 / 0.06
     @test mass_per_inflow_volume(7, 2, "Foo") ≈ fill(c_foo, 59) rtol = 1.0e-8
     @test mass_per_inflow_volume(7, 2, "FlowBoundary") ≈ fill(1.0, 59) rtol = 1.0e-8
@@ -226,15 +216,13 @@ end
 
     # FlowBoundary #3 (3e-3 m³/s) and Pump #2 (2e-3 m³/s) flow into PassDown #4. UserDemand #5
     # abstracts its full demand of 4e-3 m³/s, and the remaining 1e-3 m³/s is divided 70% / 30%
-    # over PassDown #6 and #7. Half of the abstraction returns via PassDown #10
+    # over Basin #8 and #9. Half of the abstraction returns via PassDown #10
     expected = Dict(
         (2, 4) => 2.0e-3,
         (3, 4) => 3.0e-3,
         (4, 5) => 4.0e-3,
-        (4, 6) => 0.7e-3,
-        (4, 7) => 0.3e-3,
-        (6, 8) => 0.7e-3,
-        (7, 9) => 0.3e-3,
+        (4, 8) => 0.7e-3,
+        (4, 9) => 0.3e-3,
         (5, 10) => 2.0e-3,
         (10, 11) => 2.0e-3,
     )

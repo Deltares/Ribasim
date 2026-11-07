@@ -315,35 +315,8 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         max_in: int = neighbor_bounds[to_node.node_type][1]
         max_out: int = neighbor_bounds[from_node.node_type][3]
 
-        # A PassDown node either flows into PassDown nodes (and optionally one UserDemand), or into a single other node
+        # A UserDemand abstracts from Basins, or from exactly one PassDown node
         model = cast("Model | None", self._parent)
-        if (
-            link_type == "flow"
-            and from_node.node_type == "PassDown"
-            and model is not None
-            and model.node.df is not None
-        ):
-            out_types = set(model.node.df.loc[out_to_node_ids, "node_type"])
-            out_types.add(to_node.node_type)
-            # Junctions obscure the actual connectivity, so leave that to the Julia core
-            junction_involved = "Junction" in out_types
-            if (
-                not junction_involved
-                and "PassDown" in out_types
-                and not out_types <= {"PassDown", "UserDemand"}
-            ):
-                raise ValueError(
-                    f"Node {from_node.node_id} has a PassDown flow link outneighbor, so all its flow link outneighbors must be PassDown or UserDemand"
-                )
-            if (
-                not junction_involved
-                and "UserDemand" in out_types
-                and not out_types <= {"PassDown", "UserDemand"}
-            ):
-                raise ValueError(
-                    f"Node {from_node.node_id} has a UserDemand flow link outneighbor, so all its other flow link outneighbors must be PassDown"
-                )
-
         if (
             link_type == "flow"
             and to_node.node_type == "UserDemand"

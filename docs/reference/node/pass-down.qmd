@@ -7,20 +7,20 @@ The PassDown node can be thought of as a Basin without storage. It fully 'passes
 - The PassDown node receives flow from other nodes which provide flow: connector nodes, FlowBoundary or other PassDown nodes
 - The PassDown node directs this flow to flow receiving nodes: Basins, level boundaries, terminals, user demands or other PassDown nodes
 
-PassDown nodes can be chained arbitrarily, as long as there are no loops. Multiple PassDown nodes can flow into the same PassDown node (a confluence), in which case the inflows are summed. Over such chains, which are subgraphs of the model consisting of PassDown and potentially UserDemand nodes, flow travels instantaneously. PassDown nodes can also distribute flows over multiple PassDown nodes downstream, using the flow fraction of the links.
+PassDown nodes can be chained arbitrarily, as long as there are no loops. Multiple PassDown nodes can flow into the same PassDown node (a confluence), in which case the inflows are summed. Over such chains, which are subgraphs of the model consisting of PassDown and potentially UserDemand nodes, flow travels instantaneously. PassDown nodes can also distribute flows over multiple nodes downstream, using the flow fraction of the links.
 
-Flow cannot be split directly by nodes that are not PassDown nodes: a connector node (e.g. Pump or Outlet), FlowBoundary or UserDemand can only flow into a single PassDown node. To divide such flow over multiple PassDown nodes, put a PassDown node in between.
+Flow cannot be split directly by nodes that are not PassDown nodes: a connector node (e.g. Pump or Outlet), FlowBoundary or UserDemand has a single outflow link. To divide such flow, put a PassDown node in between.
 
 # Tables
 
 ## Static
 
-The fractions are defined per link from the PassDown node `node_id` to the PassDown node `to_node_id`. Only links to other PassDown nodes have a fraction; the flow into a single non-PassDown node is not divided. This table is optional for PassDown nodes that do not divide their flow.
+The fractions are defined per link from the PassDown node `node_id` to the node `to_node_id`. All outflow links have a fraction, except the link to a UserDemand node, which gets the abstraction instead. This table is optional for PassDown nodes that do not divide their flow: a single outflow link gets the whole flow.
 
 ```{python}
 # | code-fold: true
 %run ../../gen_docs_table.py
-table_from_schema("PassDown.Static", restrictions = {"to_node_id": "Must be a PassDown node downstream of `node_id`", "fraction": "Must be in [0,1], and for n parallel outflow links to PassDown nodes n-1 fractions must be supplied which sum to ≤1."})
+table_from_schema("PassDown.Static", restrictions = {"to_node_id": "Must be a node downstream of `node_id` that is not a UserDemand node", "fraction": "Must be in [0,1]. The fractions of the outflow links of a node must sum to 1, where at most one may be unspecified and gets the remainder."})
 ```
 
 # Equations
@@ -41,7 +41,7 @@ The algorithm for the PassDown node flow in a subgraph is as follows:
     $$
         q_\text{ud} = \min(q_\text{total in}, d).
     $$
-    Then the flow over each outflow link $l$ to a PassDown node follows from the fraction $f_l$ of that link:
+    Then the flow over each outflow link $l$, except the link to the UserDemand node, follows from the fraction $f_l$ of that link:
     $$
         q_l = f_l \cdot q_\text{out}.
     $$
@@ -73,9 +73,7 @@ The offline [Delwaq coupling](/guide/delwaq.qmd) does not support PassDown nodes
 The PassDown node has some specific connectivity rules:
 
 - A maximum of 1 UserDemand node can abstract from a PassDown node.
-- A PassDown node with a UserDemand outflow can only flow into other PassDown nodes besides that UserDemand, since the remainder after abstraction is divided over them.
-- A PassDown node flows either into PassDown nodes, or into a single other node.
-- A node that is not a PassDown node (a connector node, FlowBoundary or UserDemand) can flow into at most one PassDown node, and if so, not into other nodes. To divide its flow over multiple PassDown nodes, use a PassDown node in between.
+- A node that is not a PassDown node (a connector node, FlowBoundary or UserDemand) has a single outflow link. To divide its flow, use a PassDown node in between.
 - Multiple nodes can flow into the same PassDown node, but the PassDown nodes and the UserDemand nodes that abstract from them cannot form a loop.
 - A UserDemand node must have either one or more Basin inflow links, or exactly one PassDown inflow link.
-- Since a PassDown node cannot accumulate water, it always needs one or more outflow links. If the PassDown node flows into a UserDemand node, there must be another outflow link to a PassDown node, because the inflow to the PassDown can be larger than the demand and the remainder needs somewhere to go.
+- Since a PassDown node cannot accumulate water, it always needs one or more outflow links. If the PassDown node flows into a UserDemand node, there must be another outflow link, because the inflow to the PassDown can be larger than the demand and the remainder needs somewhere to go.

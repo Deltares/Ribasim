@@ -286,7 +286,7 @@ def pass_down_tracer_model() -> Model:
 
     Two FlowBoundaries flow into PassDown #3, of which only #1 has a concentration for the
     substance Foo. UserDemand #4 abstracts from PassDown #3 and returns to Basin #6, while the
-    remaining flow goes via PassDown #5 to Basin #7.
+    remaining flow goes to Basin #7.
     """
     model = Model(
         starttime=datetime(2020, 1, 1),
@@ -318,16 +318,14 @@ def pass_down_tracer_model() -> Model:
         Node(4, Point(2, 1)),
         [user_demand.Static(demand=[0.01], return_factor=0.5)],
     )
-    pd_b = model.pass_down.add(Node(5, Point(2, -1)))
     b1 = model.basin.add(Node(6, Point(3, 1)), basin_tables())
     b2 = model.basin.add(Node(7, Point(3, -1)), basin_tables())
 
     model.link.add(fb1, pd_a)
     model.link.add(fb2, pd_a)
     model.link.add(pd_a, ud)
-    model.link.add(pd_a, pd_b)
     model.link.add(ud, b1)
-    model.link.add(pd_b, b2)
+    model.link.add(pd_a, b2)
 
     return model
 
@@ -337,8 +335,8 @@ def pass_down_allocation_model() -> Model:
 
     A FlowBoundary (3e-3 m³/s) and a Pump (2e-3 m³/s) flow into PassDown #4. UserDemand #5
     abstracts its demand of 4e-3 m³/s first, and the remaining 1e-3 m³/s is divided over
-    PassDown #6 (70%, flows into Basin #8) and #7 (30%, flows into Basin #9). The return flow
-    of the UserDemand (50%) flows via PassDown #10 into Basin #11.
+    Basin #8 (70%) and Basin #9 (30%). The return flow of the UserDemand (50%) flows via
+    PassDown #10 into Basin #11.
     """
     model = Model(
         starttime=datetime(2020, 1, 1),
@@ -364,14 +362,12 @@ def pass_down_allocation_model() -> Model:
     )
     pd_a = model.pass_down.add(
         node(4, 2, 0),
-        [pass_down.Static(to_node_id=[6, 7], fraction=[0.7, np.nan])],
+        [pass_down.Static(to_node_id=[8, 9], fraction=[0.7, np.nan])],
     )
     ud = model.user_demand.add(
         node(5, 3, 1),
         [user_demand.Static(demand=[4e-3], return_factor=0.5)],
     )
-    pd_b = model.pass_down.add(node(6, 3, 0))
-    pd_c = model.pass_down.add(node(7, 3, -1))
     b1 = model.basin.add(node(8, 4, 0), basin_tables(1.0))
     b2 = model.basin.add(node(9, 4, -1), basin_tables(1.0))
     pd_d = model.pass_down.add(node(10, 4, 1))
@@ -381,10 +377,8 @@ def pass_down_allocation_model() -> Model:
     model.link.add(pmp, pd_a)
     model.link.add(fb, pd_a)
     model.link.add(pd_a, ud)
-    model.link.add(pd_a, pd_b)
-    model.link.add(pd_a, pd_c)
-    model.link.add(pd_b, b1)
-    model.link.add(pd_c, b2)
+    model.link.add(pd_a, b1)
+    model.link.add(pd_a, b2)
     model.link.add(ud, pd_d)
     model.link.add(pd_d, b3)
 
