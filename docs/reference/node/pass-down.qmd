@@ -60,6 +60,10 @@ With `experimental.concentration` the tracers are propagated through the PassDow
 
 PassDown nodes can be used in [allocation](/concept/allocation.qmd#sec-allocation-pass-down) subnetworks, where the UserDemand abstracting from a PassDown node abstracts up to its allocated demand and the rest of the flow is divided over the downstream nodes. A PassDown node must have the same subnetwork ID as the nodes it is connected to: PassDown nodes at the boundary between the primary network and a subnetwork, or between subnetworks, are not supported yet.
 
+## Water quality
+
+The offline [Delwaq coupling](/guide/delwaq.qmd) does not support PassDown nodes yet, `ribasim.delwaq.generate` gives an error for models with PassDown nodes.
+
 # Connectivity rules
 
 The PassDown node has some specific connectivity rules:
