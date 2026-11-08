@@ -176,14 +176,6 @@ function simplify_graph!(
             errors = true
             continue
         end
-        # The rows of a Junction that divides the flow name the nodes it flows into, which must
-        # still be there after the group is replaced by links
-        for junction_id in group, inflow_id in inflow_ids(graph, junction_id)
-            if inflow_id.is_routed
-                errors = true
-                @error "$inflow_id has rows in Junction / static, so it cannot flow into $junction_id without rows in Junction / static. Give $junction_id rows as well, or connect $inflow_id to the nodes behind it directly."
-            end
-        end
         links, flow_link_ids = junction_group_links(graph, group, basin_ids)
         for (junction_id, link_ids) in flow_link_ids
             append!(junction_flow_link_ids[junction_id.idx], link_ids)

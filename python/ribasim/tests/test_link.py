@@ -151,7 +151,7 @@ def test_validate_link_connector_cannot_split_into_junctions():
 
 
 def test_validate_link_junction_can_split_into_junctions():
-    """A Junction with fractions can flow into multiple Junctions, if those have rows as well."""
+    """A Junction with fractions can flow into multiple Junctions, with or without rows."""
     model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
     jct = model.junction.add(
         Node(1, sg.Point(0, 0)),
@@ -162,8 +162,7 @@ def test_validate_link_junction_can_split_into_junctions():
     )
     jct2 = model.junction.add(Node(3, sg.Point(1, -1)))
     model.link.add(jct, jct1)
-    with pytest.raises(ValueError, match="without rows in Junction / static"):
-        model.link.add(jct, jct2)
+    model.link.add(jct, jct2)
 
 
 def test_listen_link_allows_reverse_control(discrete_control_of_pid_control):

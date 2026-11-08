@@ -31,10 +31,12 @@ This table is optional. A Junction without rows only connects its neighbors, see
 
 The fractions are defined per link from the Junction `node_id` to the node `to_node_id`. All outflow links of the Junction have a fraction, except the link to a UserDemand node, which gets the abstraction instead. A single outflow link gets the whole flow, so a row with a fraction of 1 or no fraction is enough to keep a Junction with one outflow in the simulation, for instance to supply a UserDemand from it.
 
+The `to_node_id` can be a Junction without rows. Such a Junction is removed from the network before the simulation, and the row applies to the link that takes its place: the link to the node the Junction passes the flow on to, or to the Basin of its group. A Junction without rows cannot divide the flow it receives from a Junction with rows, since nothing says how: give it rows as well, or name the nodes behind it directly.
+
 ```{python}
 # | code-fold: true
 %run ../../gen_docs_table.py
-table_from_schema("Junction.Static", restrictions = {"to_node_id": "Must be a node directly downstream of `node_id` that is not a UserDemand node, and not a Junction without rows in this table", "fraction": "Must be in [0,1]. The fractions of the outflow links of a node must sum to 1, where at most one may be unspecified and gets the remainder."})
+table_from_schema("Junction.Static", restrictions = {"to_node_id": "Must be a node directly downstream of `node_id` that is not a UserDemand node", "fraction": "Must be in [0,1]. The fractions of the outflow links of a node must sum to 1, where at most one may be unspecified and gets the remainder."})
 ```
 
 # Equations
@@ -115,7 +117,7 @@ In the offline [Delwaq coupling](/guide/delwaq.qmd) a Junction has no volume, so
 A Junction with rows in the Static table has some specific connectivity rules:
 
 - Its inflow comes from a Pump, Outlet, TabulatedRatingCurve, FlowBoundary, UserDemand or Junction with rows, in the direction of the flow.
-- It flows into Basin, LevelBoundary, Terminal, UserDemand or Junction nodes. A Junction it flows into must have rows as well, since the rows name the nodes the flow is divided over, and a Junction without rows is removed from the network.
+- It flows into Basin, LevelBoundary, Terminal, UserDemand or Junction nodes. A Junction without rows that it flows into cannot divide the flow over several nodes.
 - A maximum of 1 UserDemand node can abstract from it.
 - A UserDemand node must have either one or more Basin inflow links, or exactly one inflow link from such a Junction.
 - Since a Junction cannot accumulate water, it always needs one or more outflow links. If the Junction flows into a UserDemand node, there must be another outflow link, because the inflow to the Junction can be larger than the demand and the remainder needs somewhere to go.

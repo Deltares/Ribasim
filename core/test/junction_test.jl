@@ -35,6 +35,39 @@ end
     ]
 end
 
+@testitem "Junction divides without rows" setup = [JunctionValidation] begin
+    messages = JunctionValidation.error_messages(
+        "invalid_junction_divides_without_rows",
+        "Errors encountered when parsing Junction data."
+    )
+    @test messages == [
+        "These rows name a Junction without rows in Junction / static that divides the flow over several nodes. Give that Junction rows with fractions as well, or name those nodes in these rows.",
+    ]
+end
+
+@testitem "Junction with rows into Junctions without rows" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/junction_into_junction/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    flow_data = Ribasim.flow_data(model) |> DataFrame
+    flow_rates(from_node_id, to_node_id) =
+        filter(row -> row.from_node_id == from_node_id && row.to_node_id == to_node_id, flow_data).flow_rate
+
+    # The rows of Junction #2 name Junctions #4 and #5, which have no rows and were replaced by
+    # links to Basin #6 and Basin #7
+    @test flow_rates(2, 4) ≈ fill(0.4e-2, 9)
+    @test flow_rates(2, 5) ≈ fill(0.6e-2, 9)
+    # Junction #4 joins the flow of Junction #2 with FlowBoundary #3
+    @test flow_rates(4, 6) ≈ flow_rates(2, 4) .+ flow_rates(3, 4)
+    # Junction #5 is a group around Basin #7, which drains via the LinearResistance, so its
+    # link to the Basin reports the net flow through the group
+    @test flow_rates(5, 7) ≈ flow_rates(2, 5) .- flow_rates(5, 8)
+    @test all(>(0), flow_rates(5, 8))
+end
+
 @testitem "Junction connector split" setup = [JunctionValidation] begin
     messages = JunctionValidation.error_messages(
         "invalid_junction_connector_split",

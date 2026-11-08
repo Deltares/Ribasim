@@ -293,6 +293,22 @@ def invalid_junction_fraction_sum_model() -> Model:
     return model
 
 
+def invalid_junction_divides_without_rows_model() -> Model:
+    """Flow a Junction with a row into a Junction without rows that divides the flow over two Terminals."""
+    model, pmp = _invalid_junction_base()
+    jct = model.junction.add(
+        Node(3, Point(2, 0)), [junction.Static(to_node_id=[4], fraction=[1.0])]
+    )
+    jct_plain = model.junction.add(Node(4, Point(3, 0)))
+    trm1 = model.terminal.add(Node(5, Point(4, 1)))
+    trm2 = model.terminal.add(Node(6, Point(4, -1)))
+    model.link.add(pmp, jct)
+    model.link.add(jct, jct_plain)
+    model.link.add(jct_plain, trm1)
+    model.link.add(jct_plain, trm2)
+    return model
+
+
 def invalid_junction_connector_split_model() -> Model:
     """Create a Pump that flows directly into two Junctions, instead of via a Junction that divides the flow."""
     model, pmp = _invalid_junction_base()
