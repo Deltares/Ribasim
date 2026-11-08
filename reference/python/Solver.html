@@ -211,9 +211,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="doc-section doc-section-attributes anchored" data-number="1.1" data-anchor-id="attributes"><span class="header-section-number">1.1</span> Attributes</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 12%">
-<col style="width: 3%">
-<col style="width: 84%">
+<col style="width: 11%">
+<col style="width: 2%">
+<col style="width: 86%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -246,7 +246,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td>dtmax</td>
 <td>float</td>
-<td>The maximum allowed timestep size (Optional, defaults to 0.0 which implies the total length of the simulation)</td>
+<td>The maximum allowed timestep size (Optional, defaults to 1 day)</td>
 </tr>
 <tr class="even">
 <td>force_dtmin</td>
@@ -271,7 +271,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="even">
 <td>reduced_implicit_solve</td>
 <td>bool</td>
-<td>Whether to use the implicit solve optimized for Ribasim. Setting this to false bypasses much of the custom numerical code, using a less optimized but potentially more robust algorithm. (Optional, defaults to true)</td>
+<td>Whether to use the implicit solve optimized for Ribasim. Setting this to false bypasses much of the custom numerical code, using a less optimized but potentially more robust algorithm. (Optional, defaults to true if supported by algorithm)</td>
 </tr>
 <tr class="odd">
 <td>sparse</td>

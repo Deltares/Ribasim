@@ -333,6 +333,7 @@ ul.task-list li input[type="checkbox"] {
 <li>Simulations are faster, especially for models with many Basins, and large models use multiple threads if Julia is started with them.</li>
 <li>Tracer calculations with <code>experimental.concentration</code> are much faster for models with many Basins.</li>
 <li>Allocation: The adaptive timestep is now controlled by the success of the optimization. A failed optimization is retried with half the timestep down to <code>allocation.dtmin</code>, and every successful one doubles the timestep up to <code>allocation.dtmax</code>.</li>
+<li>The default <code>solver.dtmax</code> is now 86400 seconds instead of the simulation length, and <code>solver.dtmax</code> must be positive.</li>
 <li>Allocation: Allocation passes its results to the physical layer at a fixed <code>allocation.intervention_interval</code>, representing human intervention, or at every BMI <code>update_until</code> call. Within an intervention interval allocation takes timesteps of its own, and the physical layer uses the time-averaged results. <code>allocation.dt</code> now sets a fixed allocation timestep within the intervention interval. The allocation output is written per intervention interval, or per allocation timestep if <code>solver.saveat</code> is 0.</li>
 <li>Allocation: <code>allocation.dt</code>, <code>allocation.dtmin</code> and <code>allocation.dtmax</code> are limited to <code>allocation.intervention_interval</code> (default 86400 s). Larger values, such as a multi-day <code>dt</code> or <code>dtmin</code> from earlier versions, are reduced to it with a warning; increase <code>intervention_interval</code> to keep a longer allocation timestep.</li>
 <li>Allocation: The simulation now stops when the allocation problem is infeasible, also when the infeasibility analysis finds the problem feasible without its objectives.</li>
@@ -361,6 +362,8 @@ ul.task-list li input[type="checkbox"] {
 <li>Delwaq: Reduce memory use when generating and parsing large results. <a href="https://github.com/Deltares/Ribasim/pull/3132">#3132</a> <a href="https://github.com/Deltares/Ribasim/pull/3248">#3248</a></li>
 <li>Tracers: the mass in a UserDemand return flow is now based on the returned volume instead of the abstracted volume, which made concentrations too high when <code>return_factor</code> is below 1.</li>
 <li>Simulations no longer abort with a tiny timestep when a Basin empties. Outflows now stop at a depth of 1% of <code>solver.depth_threshold</code> (1 mm by default), so an empty Basin keeps a small positive storage that floating point rounding cannot make negative, and the step limiter keeps evaporation and infiltration from overshooting it.</li>
+<li>The Rosenbrock solvers (<code>Rosenbrock23</code>, <code>Rodas4P</code>, <code>Rodas5P</code>) and explicit solvers (<code>Tsit5</code>, <code>RK4</code>, <code>Euler</code>) no longer fail with internal Julia errors. They always use the full Jacobian, and <code>solver.reduced_implicit_solve = true</code> is an error for them.</li>
+<li>No more <code>Too large water balance error</code> caused by floating point resolution of the storage rate over very short output intervals, such as the first timestep with <code>solver.saveat = 0</code>.</li>
 </ul>
 </section>
 <section id="deprecated" class="level3" data-number="1.1.4">

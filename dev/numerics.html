@@ -512,12 +512,19 @@ Note
 <section id="preparation-phase" class="level2" data-number="5.3">
 <h2 data-number="5.3" class="anchored" data-anchor-id="preparation-phase"><span class="header-section-number">5.3</span> Preparation phase</h2>
 <p>At model initialization, <code>get_diff_eval</code> prepares everything the solver will need. What is prepared depends on the solver setting <code>reduced_implicit_solve</code>.</p>
-<p>With <code>reduced_implicit_solve = true</code> (default), <code>RibasimJacobianEvaluationCache</code> prepares two Jacobians:</p>
+<p>Which of these the solver actually uses depends on the algorithm:</p>
+<ul>
+<li>Implicit algorithms with a Newton solver (<code>NordsieckBDF</code>, <code>FBDF</code>, <code>QNDF</code>, <code>TRBDF2</code>, <code>KenCarp4</code>, <code>ImplicitEuler</code>) need the Jacobian in their nonlinear solve;</li>
+<li>Rosenbrock algorithms (<code>Rosenbrock23</code>, <code>Rodas4P</code>, <code>Rodas5P</code>) need the full Jacobian and additionally the time derivative <code>tgrad</code> of the right hand side;</li>
+<li>Explicit algorithms (<code>Tsit5</code>, <code>RK4</code>, <code>Euler</code>) need neither. <code>get_diff_eval</code> is currently called for every algorithm, so the preparation below is also done for them, but the result is not used.</li>
+</ul>
+<p>The Jacobian is prepared in one of two forms, set by <code>reduced_implicit_solve</code>. This is <code>true</code> by default for the implicit algorithms with a Newton solver, and always <code>false</code> for Rosenbrock and explicit algorithms.</p>
+<p>With <code>reduced_implicit_solve = true</code>, <code>RibasimJacobianEvaluationCache</code> prepares two Jacobians:</p>
 <ul>
 <li><code>∂flow_∂flow_input</code>: the Jacobian of the flow formulation (<code>formulate_flows_closure!</code>) with respect to the input vector <code>flow_input = (storage_uplink, storage_downlink, pid_integral, continuous_control_compound)</code>. Its output is the flow rates and the PID errors. This is <span class="math inline">\(\partial\mathbf{q}/\partial\mathbf{v}\)</span> from the <a href="../concept/numerics.html#structure-of-the-right-hand-side">concept documentation</a>;</li>
 <li><code>∂continuous_control_compound_∂continuous_control_input</code>: the Jacobian of the ContinuousControl compound variables with respect to <code>(storage, flow)</code>.</li>
 </ul>
-<p>With <code>reduced_implicit_solve = false</code>, the Jacobian of <code>water_balance!</code> with respect to the full state <span class="math inline">\(\mathbf{u}\)</span> is prepared, and the result is a regular (sparse) matrix that OrdinaryDiffEq uses as is.</p>
+<p>With <code>reduced_implicit_solve = false</code>, the Jacobian of <code>water_balance!</code> with respect to the full state <span class="math inline">\(\mathbf{u}\)</span> is prepared, and the result is a regular (sparse) matrix that OrdinaryDiffEq uses as is. The time derivative <code>tgrad</code> is prepared in the same way, for the Rosenbrock algorithms.</p>
 <p>In both cases the preparation consists of:</p>
 <ol type="1">
 <li><p><strong>Sparsity detection</strong> — <code>TracerSparsityDetector</code> from SparseConnectivityTracer runs the function with tracer inputs to determine which outputs depend on which inputs, producing a sparse boolean matrix.</p></li>
@@ -545,7 +552,7 @@ Note
 <li><strong><code>Cache(x)</code></strong> — “this depends on the differentiation variable; make a copy promoted to dual numbers.” The copy is allocated with the right dual-number element type but is <strong>not initialized</strong> with the original values. The RHS must write meaningful values into it before reading.</li>
 <li><strong><code>Constant(x)</code></strong> — “this is independent of the differentiation variable; pass the original object directly.” No copy, no promotion. But this means AD calls can <strong>mutate shared state</strong>.</li>
 </ul>
-<p>This distinction is a performance optimization (fewer allocations), but it introduces a subtle invariant: any cached value in a <code>Cache()</code> argument must be freshly computed during the AD call, because the copy starts uninitialized. In the <code>reduced_implicit_solve = false</code> path and for the time derivative <code>tgrad</code>, <code>storage_uplink</code>, <code>storage_downlink</code>, the ContinuousControl compound variables and the current Basin storage are passed as <code>Cache()</code>.</p>
+<p>This distinction is a performance optimization (fewer allocations), but it introduces a subtle invariant: any cached value in a <code>Cache()</code> argument must be freshly computed during the AD call, because the copy starts uninitialized. In the <code>reduced_implicit_solve = false</code> path and for the time derivative <code>tgrad</code>, <code>storage_uplink</code>, <code>storage_downlink</code>, the ContinuousControl compound variables and the current Basin storage are passed as <code>Cache()</code>. For <code>tgrad</code> the <code>TimeDependentCache</code> is also passed as <code>Cache()</code>, since the time <code>t</code> is the differentiation variable and the cached time dependent values must be dual numbers too. Therefore the components of <code>Parameters</code> are separate arguments of the wrapped right hand side, which packs them back into a <code>Parameters</code> with the dual <code>TimeDependentCache</code>.</p>
 </section>
 <section id="the-ribasimjacobian-operator" class="level2" data-number="5.5">
 <h2 data-number="5.5" class="anchored" data-anchor-id="the-ribasimjacobian-operator"><span class="header-section-number">5.5</span> The <code>RibasimJacobian</code> operator</h2>
