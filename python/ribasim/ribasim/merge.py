@@ -51,7 +51,6 @@ def _merge_models(
     tables: dict[tuple[str, str], list[pd.DataFrame]] = {}
     next_subnetwork_id = 2
     for k, component in enumerate(components):
-        assert component.node.df is not None
         node = _shift(component.node.df, k, [], crs, id_offset, x_offset)
         node.index = node.index + k * id_offset
         subnetwork_ids = sorted(node["subnetwork_id"].dropna().unique())
@@ -60,7 +59,6 @@ def _merge_models(
         node["subnetwork_id"] = node["subnetwork_id"].map(mapping).astype("Int32")
         nodes.append(node)
 
-        assert component.link.df is not None
         link = _shift(
             component.link.df,
             k,

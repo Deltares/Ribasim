@@ -17,7 +17,6 @@ import tomli_w
 import xarray as xr
 from matplotlib import pyplot as plt
 from packaging import version
-from pandera.typing.geopandas import GeoDataFrame
 from pydantic import (
     DirectoryPath,
     Field,
@@ -54,8 +53,8 @@ from ribasim.config import (
     UserDemand,
 )
 from ribasim.db_utils import _set_db_schema_version
-from ribasim.geometry.link import LinkSchema, LinkTable
-from ribasim.geometry.node import NodeModel, NodeSchema, NodeTable
+from ribasim.geometry.link import LinkTable
+from ribasim.geometry.node import NodeModel, NodeTable
 from ribasim.input_base import (
     FileModel,
     ParentModel,
@@ -178,18 +177,8 @@ class Model(FileModel, ParentModel):
         return self
 
     @model_validator(mode="after")
-    def _ensure_topology_tables_are_present(self) -> Self:
-        if self.link.df is None:
-            self.link.df = GeoDataFrame[LinkSchema](
-                index=pd.Index([], name="link_id"),
-                geometry=[],
-            )
+    def _set_topology_crs(self) -> Self:
         self.link.df = self.link.df.set_geometry("geometry", crs=self.crs)
-        if self.node.df is None:
-            self.node.df = GeoDataFrame[NodeSchema](
-                index=pd.Index([], name="node_id"),
-                geometry=[],
-            )
         self.node.df = self.node.df.set_geometry("geometry", crs=self.crs)
         return self
 
@@ -288,9 +277,7 @@ class Model(FileModel, ParentModel):
             db_path.unlink(missing_ok=True)
 
             self.link.write()
-            node = self.node
-            assert node.df is not None
-            node.write()
+            self.node.write()
 
             # Run after geopackage schema has been created
             _set_db_schema_version(db_path, ribasim.__schema_version__)
@@ -339,7 +326,6 @@ class Model(FileModel, ParentModel):
         node_id : int
             The node ID to remove from the model
         """
-        assert self.node.df is not None
         if node_id in self.node.df.index:
             # Remove from node table
             self.node.df = self.node.df.drop(node_id)
@@ -366,9 +352,6 @@ class Model(FileModel, ParentModel):
         Args:
             control_node_id (int): The ID of the control node to check for dangling listen links.
         """
-        if self.link.df is None or self.node.df is None:
-            return
-
         has_remaining_control_links = (
             (self.link.df["link_type"] == "control")
             & (self.link.df["from_node_id"] == control_node_id)
@@ -390,7 +373,7 @@ class Model(FileModel, ParentModel):
 
     def remove_link(self, link_id: int) -> None:
         """Remove a link from the model."""
-        if self.link.df is None or link_id not in self.link.df.index:
+        if link_id not in self.link.df.index:
             return
 
         removed_link = self.link.df.loc[link_id]
@@ -528,8 +511,6 @@ class Model(FileModel, ParentModel):
 
         df_link = self.link.df
         node = self.node.df
-        assert df_link is not None
-        assert node is not None
 
         existing_listen_pairs = (
             df_link.loc[
@@ -602,8 +583,6 @@ class Model(FileModel, ParentModel):
         """
         df_link = self.link.df
         df_node = self.node.df
-        assert df_link is not None
-        assert df_node is not None
 
         df_graph = df_link
         # Join df_link with df_node to get to_node_type
@@ -999,9 +978,7 @@ class Model(FileModel, ParentModel):
         xugrid = cast(Any, _xugrid)
 
         node_df = self.node.df
-        assert node_df is not None
 
-        assert self.link.df is not None
         # We assume only the flow network is of interest.
         link_df = self.link.df[self.link.df.link_type == "flow"]
 

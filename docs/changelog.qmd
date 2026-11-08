@@ -48,6 +48,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - UserDemand nodes that abstract from Basin(s) now require a `min_level`, a missing `min_level` is no longer silently accepted. A UserDemand node has either one or more Basin inflow links, or exactly one inflow link from a Junction with rows in `Junction / static`, in which case `min_level` is not used.
 - Allocation: for all demand nodes (UserDemand, LevelDemand and FlowDemand) omitting the `demand_priority` is now allowed, also if allocation is active. It defaults to 1.
 - Allocation: a link from a subnetwork into the primary network is now an error, since it is not supported by the allocation algorithm. Before this was not detected.
+- Python (breaking): The Node and Link tables, `model.node.df` and `model.link.df`, are never `None`. A model without nodes or links has empty tables, with the usual columns and CRS. This also holds for a `NodeTable()` or `LinkTable()` created on its own, and after removing the last link. The files on disk are unchanged. What to do:
+  - Remove checks like `if model.node.df is None` and `assert model.node.df is not None`, they are no longer needed. To check for an empty model use `model.node.df.empty`.
+  - Code that sets `model.node.df = None` or `model.link.df = None` now gets an error. To remove all rows, keep the table and drop its rows: `model.link.df = model.link.df.head(0)`.
+  - The data tables, like `model.basin.time.df` and `model.pump.static.df`, are unchanged: they are still `None` when they have no data.
+- Python (breaking): `NodeTable.filter`, like `model.node.filter("Pump")`, never returns `None`. Without nodes of that type it returns an empty table, so `len(df)` and `df.empty` work without a `None` check.
+- Python (breaking): `NodeModel.node`, like `model.basin.node`, is never `None`. In a `Model` it is always a `NodeTable`, which is empty when the model has no nodes of that type. A node model that is not part of a `Model`, like a standalone `Basin()`, raises an `AttributeError` for `.node`, since it has no nodes to look up.
 
 ### Fixed
 - `allocation_flow.nc` now contains the vertical flow of all Basins, before only that of the last Basin was kept. [#2853](https://github.com/Deltares/Ribasim/issues/2853)
