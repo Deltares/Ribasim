@@ -47,7 +47,9 @@ export algorithm,
     table_name,
     sql_table_name,
     table_types,
-    showexperimental
+    showexperimental,
+    use_reduced_implicit_solve,
+    reduced_implicit_solve_algorithms
 
 "Schema.Basin.State -> :Basin"
 node_type(table_type::Type{<:Table})::Symbol = fullname(parentmodule(table_type))[end]
@@ -183,14 +185,14 @@ end
     saveat::Float64 = 86400.0
     dt::Union{Float64, Nothing} = nothing
     dtmin::Float64 = 0.0
-    dtmax::Union{Float64, Nothing} = nothing
+    dtmax::Float64 = 86400.0
     force_dtmin::Bool = false
     abstol::Float64 = 1.0e-4
     reltol::Float64 = 1.0e-4
     water_balance_abstol::Float64 = 1.0e-3
     water_balance_reltol::Float64 = 1.0e-2
     maxiters::Int = 1.0e9
-    reduced_implicit_solve::Bool = true
+    reduced_implicit_solve::Union{Bool, Nothing} = nothing
     sparse::Bool = true
     autodiff::Bool = true
     evaporate_mass::Bool = true
@@ -304,6 +306,11 @@ function validate_config(toml::Toml)::Nothing
         options = join(keys(algorithms), ", ")
         @error("Given solver algorithm $(toml.solver.algorithm) not supported.\n\
             Available options are: ($(options)).")
+        is_valid = false
+    end
+
+    if !(toml.solver.dtmax > 0)
+        @error "The solver dtmax must be positive." toml.solver.dtmax
         is_valid = false
     end
 
@@ -436,12 +443,12 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
         if solver.sparse
             kwargs[:linsolve] = RibasimLinearSolve(
                 KLUFactorization(; check_pattern = false),
-                solver.reduced_implicit_solve,
+                use_reduced_implicit_solve(solver),
             )
         else
             kwargs[:linsolve] = RibasimLinearSolve(
                 LHLFactorization(),
-                solver.reduced_implicit_solve,
+                use_reduced_implicit_solve(solver),
             )
         end
     end
@@ -456,6 +463,27 @@ function algorithm(solver::Solver)::OrdinaryDiffEqAlgorithm
 
     return algotype(; kwargs...)
 end
+
+"""
+Whether the reduced implicit solve is used. The `reduced_implicit_solve` setting is overruled
+(without modifying the config) for algorithms that don't support it.
+"""
+function use_reduced_implicit_solve(solver::Solver)::Bool
+    requested = solver.reduced_implicit_solve
+    supported = (algorithms[solver.algorithm] <: OrdinaryDiffEqNewtonAdaptiveAlgorithm)
+    return if isnothing(requested)
+        supported
+    elseif requested && !supported
+        false
+    else
+        requested
+    end
+end
+
+"The names of the algorithms that support the reduced implicit solve"
+reduced_implicit_solve_algorithms()::Vector{String} = [
+    name for (name, type) in algorithms if type <: OrdinaryDiffEqNewtonAdaptiveAlgorithm
+]
 
 "Convert the saveat Float64 from our Config to SciML's saveat"
 function convert_saveat(saveat::Float64, t_end::Float64)::Union{Float64, Vector{Float64}}

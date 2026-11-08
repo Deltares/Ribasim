@@ -8,6 +8,17 @@ It can be used as a boundary condition like the level of the sea or a lake.
 Since the water level is unaffected by flow, it acts like an infinitely large Basin.
 Connect the LevelBoundary to a node that will look at the level to calculate the flow, like a LinearResistance.
 
+# Allowed connectivity
+
+The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node.
+This is a connectivity illustration, not a valid simulation model.
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_node_connectivity.jl")
+plot_node_connectivity("LevelBoundary")
+```
+
 # Tables
 
 ## Static
