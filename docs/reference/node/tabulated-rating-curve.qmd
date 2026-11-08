@@ -7,6 +7,25 @@ A TabulatedRatingCurve determines outflow from a Basin by looking up the flow ra
 The TabulatedRatingCurve takes a rating curve as input.
 Use it for instance to model flow over a weir.
 
+# Schematic
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_connector_schematic.jl")
+plot_connector_schematic(:TabulatedRatingCurve)
+```
+
+# Allowed connectivity
+
+The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node.
+This is a connectivity illustration, not a valid simulation model.
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_node_connectivity.jl")
+plot_node_connectivity("TabulatedRatingCurve")
+```
+
 # Tables
 
 ## Static
@@ -121,10 +140,12 @@ Where:
 
 - $h$ is the upstream water level
 - $f$ is a function describing the given rating curve $Q(h)$
-- $\phi$ is the reduction factor, which smoothly reduces flow based on all of these criteria:
-  - The upstream volume is below the equivalent of a water depth of $10 \;\text{cm}$ (change with solver setting `depth_threshold`, the others below with `level_difference_threshold`).
-  - The upstream level is less than $0.02 \;\text{m}$ above the downstream level.
-  - The downstream level is above `max_downstream_level` - $0.02 \;\text{m}$
+- $\phi$ is the reduction factor, which smoothly reduces flow from $f(h)$ to $0$ as:
+  - The upstream level goes from a water depth of `depth_threshold`, to the Basin bottom;
+  - The upstream level goes from `downstream_level + level_difference_threshold` to `downstream_level`, see [Solver settings](/reference/usage.qmd#sec-solver-settings);
+  - The downstream level goes from `max_downstream_level - level_difference_threshold` to `max_downstream_level`.
+
+For `depth_threshold`, `level_difference_threshold` see [Solver settings](/reference/usage.qmd#sec-solver-settings).
 
 # Allocation control {#allocation-control}
 

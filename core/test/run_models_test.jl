@@ -334,27 +334,44 @@ end
     @test flow_data_links == allocation_flow_data_links
 end
 
-@testitem "Sparse and AD/FDM jac solver options" begin
+@testitem "Tracers through a UserDemand return flow" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/tracer_user_demand/ribasim.toml")
+    @test ispath(toml_path) skip = true
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    table = Ribasim.concentration_data(model)
+    concentration(substance) = table.concentration[table.substance .== substance]
+    # The return flow carries the concentrations of the abstracted water
+    @test all(isapprox.(concentration("Continuity"), 1.0))
+    @test all(isapprox.(concentration("FlowBoundary") .+ concentration("Initial"), 1.0))
+    # A quarter of the inflow of 1.25 m³/s comes from the UserDemand
+    @test last(concentration("UserDemand")) ≈ 0.2 rtol = 1.0e-4
+end
+
+@testitem "Sparse, AD/FDM and reduced implicit solve jac solver options" begin
     toml_path =
         normpath(@__DIR__, "../../generated_testmodels/basic_transient/ribasim.toml")
 
-    config = Ribasim.Config(toml_path; solver_sparse = true, solver_autodiff = true)
-    sparse_ad = Ribasim.run(config)
-    config = Ribasim.Config(toml_path; solver_sparse = false, solver_autodiff = true)
-    dense_ad = Ribasim.run(config)
-    config = Ribasim.Config(toml_path; solver_sparse = true, solver_autodiff = false)
-    sparse_fdm = Ribasim.run(config)
-    config = Ribasim.Config(toml_path; solver_sparse = false, solver_autodiff = false)
-    dense_fdm = Ribasim.run(config)
+    models = Dict(
+        (reduced, sparse, autodiff) => Ribasim.run(
+            Ribasim.Config(
+                toml_path;
+                solver_reduced_implicit_solve = reduced,
+                solver_sparse = sparse,
+                solver_autodiff = autodiff,
+            ),
+        ) for reduced in (true, false), sparse in (true, false), autodiff in (true, false)
+    )
 
-    @test success(sparse_ad)
-    @test success(dense_ad)
-    @test success(sparse_fdm)
-    @test success(dense_fdm)
+    for model in values(models)
+        @test success(model)
+    end
 
-    @test dense_ad.integrator.u ≈ sparse_ad.integrator.u atol = 0.4
-    @test sparse_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
-    @test dense_fdm.integrator.u ≈ sparse_ad.integrator.u atol = 4
+    reference = models[(true, true, true)].integrator.u
+    for model in values(models)
+        @test model.integrator.u ≈ reference atol = 1.0e-3
+    end
 end
 
 @testitem "TabulatedRatingCurve model" begin
