@@ -1,44 +1,233 @@
 """
 Process mass inflows from UserDemand separately
-as the UserDemand nodes are not conservative
+as the UserDemand nodes are not conservative.
+
+The mass in the return flow is stored in `user_demand.return_mass`. If the return flow goes to a
+Basin that mass is added to the Basin, if it goes to Junction nodes it is passed on by `mass_through_junctions!`.
+UserDemand nodes in a Junction subgraph are also handled there.
 """
 function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
     (; p, t) = integrator
     (; basin, user_demand, cumulative_flow_dt) = p.p_independent
     (; concentration_state, mass) = basin.concentration_data
+    (; return_mass) = user_demand
 
     for (node_idx, outflow_link) in enumerate(user_demand.outflow_link)
+        user_demand.in_routed_subgraph[node_idx] && continue
+
         to_node = outflow_link.link[2]
+        (to_node.is_basin || to_node.is_routed) || continue
+
         inflow_links = user_demand.inflow_links[node_idx]
+        return_mass_node = view(return_mass, :, node_idx)
+        return_mass_node .= 0.0
+
+        # Mix concentrations of all inflow links weighted by each link's cumulative
+        # flow. The return-flow concentration is a mass-weighted average of the
+        # source basins' concentrations.
+        inflows = get_inflows(cumulative_flow_dt, user_demand, node_idx)
+        total_inflow = sum(inflows)
+        return_flow = cumulative_flow_dt.horizontal.user_demand_outflow[node_idx]
+        if total_inflow > 0
+            for node_inflow_idx in eachindex(inflow_links)
+                from_node = inflow_links[node_inflow_idx].link[1]
+                link_inflow = inflows[node_inflow_idx]
+                fraction = link_inflow / total_inflow
+                return_mass_node .+=
+                    @view(concentration_state[:, from_node.idx]) .* return_flow .* fraction
+            end
+        end
+
+        add_user_demand_tracer_mass!(
+            return_mass_node,
+            user_demand,
+            node_idx,
+            cumulative_flow_dt.horizontal.user_demand_outflow[node_idx],
+            t,
+        )
 
         if to_node.is_basin
-            # Mix concentrations of all inflow links weighted by each link's cumulative
-            # flow. The return-flow concentration is a mass-weighted average of the
-            # source basins' concentrations.
-            inflows = get_inflows(cumulative_flow_dt, user_demand, node_idx)
-            total_inflow = sum(inflows)
-            return_flow = cumulative_flow_dt.horizontal.user_demand_outflow[node_idx]
+            view(mass, :, to_node.idx) .+= return_mass_node
+        end
+    end
+    return nothing
+end
 
-            # Exclude the UserDemand tracer from upstream: save before, restore after,
-            # so only the fresh tracer from add_substance_mass! ends up in the return flow.
-            ud_mass_before = mass[Substance.UserDemand, to_node.idx]
-            if total_inflow > 0
-                for node_inflow_idx in eachindex(inflow_links)
-                    from_node = inflow_links[node_inflow_idx].link[1]
-                    link_inflow = inflows[node_inflow_idx]
-                    fraction = link_inflow / total_inflow
-                    view(mass, :, to_node.idx) .+=
-                        @view(concentration_state[:, from_node.idx]) .* return_flow .* fraction
-                end
-            end
-            mass[Substance.UserDemand, to_node.idx] = ud_mass_before
+"""
+Replace the UserDemand tracer in the mass of the return flow, so that the UserDemand tracer from upstream is excluded
+and only the fresh tracer from the concentration of the UserDemand ends up in the return flow.
+"""
+function add_user_demand_tracer_mass!(
+        return_mass_node::AbstractVector{Float64},
+        user_demand::UserDemand,
+        node_idx::Int,
+        cumulative_outflow::Float64,
+        t::Float64,
+    )::Nothing
+    return_mass_node[Substance.UserDemand] = 0.0
+    add_substance_mass!(
+        return_mass_node,
+        user_demand.concentration_itp[node_idx],
+        cumulative_outflow,
+        t,
+    )
+    return nothing
+end
 
+"""
+The ID of the node that the flow of a Pump, Outlet or TabulatedRatingCurve comes from.
+"""
+function connector_inflow_id(p_independent::ParametersIndependent, id::NodeID)::NodeID
+    (; pump, outlet, tabulated_rating_curve) = p_independent
+    return if id.type == NodeType.Pump
+        pump.inflow_link[id.idx].link[1]
+    elseif id.type == NodeType.Outlet
+        outlet.inflow_link[id.idx].link[1]
+    elseif id.type == NodeType.TabulatedRatingCurve
+        tabulated_rating_curve.inflow_link[id.idx].link[1]
+    else
+        error("Unsupported flow from $id into a Junction node.")
+    end
+end
+
+"""
+Set the mass that flows over a link into a Junction subgraph from a node outside of the subgraph:
+- FlowBoundary: the flow times the concentration of the FlowBoundary;
+- UserDemand: the mass in the return flow;
+- Pump, Outlet or TabulatedRatingCurve: the flow times the concentration of the upstream Basin or LevelBoundary.
+"""
+function set_junction_source_mass!(
+        link_mass::AbstractVector{Float64},
+        p_independent::ParametersIndependent,
+        source_id::NodeID,
+        cumulative_flow::Float64,
+        t::Float64,
+    )::Nothing
+    (; basin, flow_boundary, level_boundary, user_demand) = p_independent
+    (; concentration_state) = basin.concentration_data
+
+    link_mass .= 0.0
+    if source_id.type == NodeType.FlowBoundary
+        add_substance_mass!(
+            link_mass,
+            flow_boundary.concentration_itp[source_id.idx],
+            cumulative_flow,
+            t,
+        )
+    elseif source_id.type == NodeType.UserDemand
+        link_mass .= view(user_demand.return_mass, :, source_id.idx)
+    else
+        upstream_id = connector_inflow_id(p_independent, source_id)
+        if upstream_id.is_basin
+            link_mass .= cumulative_flow .* view(concentration_state, :, upstream_id.idx)
+        elseif upstream_id.type == NodeType.LevelBoundary
             add_substance_mass!(
-                view(mass, :, to_node.idx),
-                user_demand.concentration_itp[node_idx],
-                return_flow,
+                link_mass,
+                level_boundary.concentration_itp[upstream_id.idx],
+                cumulative_flow,
                 t,
             )
+        end
+    end
+    return nothing
+end
+
+"""
+Propagate the tracer mass through the Junction subgraphs, in the same order as the flows are computed
+in `formulate_junction_flow!`. The mass that flows over each link is stored in `junction.link_mass`.
+
+- The mass that flows into a Junction node is mixed, so the concentration of the flow out of the Junction node is
+  the total mass in, divided by the total volume out. This concentration holds for all outflow links.
+- A UserDemand abstracting from a Junction node takes mass with the concentration of the Junction node. Like
+  UserDemand nodes abstracting from Basins, all the mass abstracted is in the return flow, see `mass_inflows_from_user_demand!`.
+- The mass that flows from a Junction node or a UserDemand node into a Basin is added to the mass of the Basin.
+
+The concentration of Basins is used as it was at the end of the previous timestep, like in `mass_inflows_basin!`.
+"""
+function mass_through_junctions!(integrator::DEIntegrator)::Nothing
+    (; p, t) = integrator
+    (; p_independent) = p
+    (; basin, junction, user_demand, flow_boundary, cumulative_flow_dt) = p_independent
+    isempty(junction.routed_ids) && return nothing
+
+    (; mass) = basin.concentration_data
+    (;
+        inflow_links,
+        outflow_links,
+        inflow_link_idx,
+        outflow_link_idx,
+        link_weights,
+        link_mass,
+        source_mass,
+        concentration,
+        routed_subgraphs,
+    ) = junction
+    (; inflow_link_offsets, return_mass) = user_demand
+    # The volume that flowed over a routed link in the last timestep
+    link_volume(idx) = routed_flow(link_weights[idx], cumulative_flow_dt, flow_boundary.cumulative_flow_dt)
+
+    for subgraph in routed_subgraphs, id in subgraph
+        if id.is_routed
+            # Mass in, which is turned into the concentration below
+            concentration_node = view(concentration, :, id.idx)
+            concentration_node .= 0.0
+            for (inflow_link, link_idx) in zip(inflow_links[id.idx], inflow_link_idx[id.idx])
+                if iszero(link_idx)
+                    # From a node outside the subgraph, whose flow is its own state
+                    source_id = inflow_link.link[1]
+                    cumulative_flow = get_flow(
+                        cumulative_flow_dt,
+                        inflow_link.link,
+                        p_independent;
+                        boundary_flow = p_independent.flow_boundary.cumulative_flow_dt,
+                    )
+                    set_junction_source_mass!(source_mass, p_independent, source_id, cumulative_flow, t)
+                    concentration_node .+= source_mass
+                else
+                    concentration_node .+= view(link_mass, :, link_idx)
+                end
+            end
+
+            outflow_volume = 0.0
+            for (outflow_link, link_idx) in zip(outflow_links[id.idx], outflow_link_idx[id.idx])
+                outflow_volume += if iszero(link_idx)
+                    user_demand_id = outflow_link.link[2]
+                    cumulative_flow_dt.horizontal.user_demand_inflow[inflow_link_offsets[user_demand_id.idx] + 1]
+                else
+                    link_volume(link_idx)
+                end
+            end
+
+            if iszero(outflow_volume)
+                concentration_node .= 0.0
+            else
+                concentration_node ./= outflow_volume
+            end
+
+            for (outflow_link, link_idx) in zip(outflow_links[id.idx], outflow_link_idx[id.idx])
+                # The mass abstracted by a UserDemand is handled at the UserDemand
+                iszero(link_idx) && continue
+                link_mass_out = view(link_mass, :, link_idx)
+                link_mass_out .= link_volume(link_idx) .* concentration_node
+                target_id = outflow_link.link[2]
+                target_id.is_basin && (view(mass, :, target_id.idx) .+= link_mass_out)
+            end
+        elseif id.type == NodeType.UserDemand
+            junction_id = only(user_demand.inflow_links[id.idx]).link[1]
+            inflow_volume = cumulative_flow_dt.horizontal.user_demand_inflow[inflow_link_offsets[id.idx] + 1]
+            return_mass_node = view(return_mass, :, id.idx)
+            return_mass_node .= inflow_volume .* view(concentration, :, junction_id.idx)
+            add_user_demand_tracer_mass!(
+                return_mass_node,
+                user_demand,
+                id.idx,
+                cumulative_flow_dt.horizontal.user_demand_outflow[id.idx],
+                t,
+            )
+
+            # The return mass into a Junction node is picked up there via `set_junction_source_mass!`
+            target_id = user_demand.outflow_link[id.idx].link[2]
+            target_id.is_basin && (view(mass, :, target_id.idx) .+= return_mass_node)
         end
     end
     return nothing
@@ -96,6 +285,9 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
                 )
             elseif from_node.type == NodeType.Terminal && from_node.value == 0
                 # The unset flow link defaults to Terminal #0
+                nothing
+            elseif from_node.is_routed
+                # The mass from Junction subgraphs is added in `mass_through_junctions!`
                 nothing
             else
                 warn_unsupported_flow(from_node, to_node, cumulative_flow)

@@ -92,6 +92,7 @@ tables = {
     "FlowBoundary / area",
     "FlowDemand / static",
     "FlowDemand / time",
+    "Junction / static",
     "LevelBoundary / concentration",
     "LevelBoundary / static",
     "LevelBoundary / time",

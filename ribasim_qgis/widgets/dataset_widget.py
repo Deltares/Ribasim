@@ -43,6 +43,7 @@ from qgis.PyQt.QtWidgets import (
     QWidget,
 )
 
+from ribasim_qgis.core.junctions import link_towards_basin
 from ribasim_qgis.core.model import (
     get_database_path_from_model_file,
     get_directory_path_from_model_file,
@@ -104,9 +105,8 @@ _FLOW_RATE_FROM_OUTGOING_LINK: frozenset[str] = frozenset(
 _FLOW_RATE_FROM_INCOMING_AND_OUTGOING_LINKS: frozenset[str] = frozenset({"UserDemand"})
 
 # Node types with potentially multiple incoming flow links whose summed
-# inflow we plot. ``Terminal`` only has incoming flow; ``Junction`` is
-# conservative so the inflow sum equals the outflow sum.
-_FLOW_RATE_FROM_INCOMING_LINKS_SUM: frozenset[str] = frozenset({"Terminal", "Junction"})
+# inflow we plot. ``Terminal`` only has incoming flow.
+_FLOW_RATE_FROM_INCOMING_LINKS_SUM: frozenset[str] = frozenset({"Terminal"})
 
 # Node types with potentially multiple incoming and outgoing flow links
 # where inflow and outflow may differ. We plot the sum of incoming and the
@@ -1086,14 +1086,15 @@ class DatasetWidget:
     ) -> None:
         """Add flow.nc flow_rate traces for selected non-Basin nodes.
 
-        Four cases:
+        Five cases:
 
         * Conservative single-link nodes (e.g. ``TabulatedRatingCurve``):
           show the outgoing flow link as the node's flow_rate.
         * Non-conservative single-link nodes (e.g. ``UserDemand``): show
           the incoming and outgoing flow links separately.
-        * Multi-link inflow-only nodes (``Terminal``, ``Junction``): show
-          the sum of all incoming flow links.
+        * Multi-link inflow-only nodes (``Terminal``): show the sum of all
+          incoming flow links.
+        * ``Junction``: see :meth:`_junction_flow_column`.
         * Multi-link non-conservative nodes (``LevelBoundary``): show the
           sum of incoming and the sum of outgoing flow links separately.
         """
@@ -1144,6 +1145,19 @@ class DatasetWidget:
                         time_strings,
                         np.sum(incoming, axis=0),
                     )
+            elif node_type == "Junction":
+                column = self._junction_flow_column(
+                    link_layer,
+                    self.ribasim_widget.node_layer,
+                    node_id,
+                    link_id_to_idx,
+                    flow_arr,
+                )
+                if column is not None:
+                    new_traces[f"{node_type} #{node_id} flow_rate"] = (
+                        time_strings,
+                        column,
+                    )
             elif node_type in _FLOW_RATE_FROM_INCOMING_AND_OUTGOING_LINKS_SUM:
                 incoming = self._connected_flow_columns(
                     link_layer, node_id, "to", link_id_to_idx, flow_arr
@@ -1191,6 +1205,32 @@ class DatasetWidget:
             if idx is not None:
                 columns.append(flow_arr[:, idx])
         return columns
+
+    @classmethod
+    def _junction_flow_column(
+        cls,
+        link_layer: Any,
+        node_layer: Any,
+        node_id: int,
+        link_id_to_idx: dict[int, int],
+        flow_arr: np.ndarray,
+    ) -> np.ndarray | None:
+        """Return the flow_rate of a Junction.
+
+        In a Junction group with exactly one Basin this is the flow on the link that
+        leads to that Basin, positive in the direction of that link. In other groups
+        it is the sum of the flows on the incoming links of the Junction.
+        """
+        link_id = link_towards_basin(
+            link_layer, lambda i: cls._node_type_of(node_layer, i), node_id
+        )
+        if link_id is not None:
+            idx = link_id_to_idx.get(link_id)
+            return None if idx is None else flow_arr[:, idx]
+        incoming = cls._connected_flow_columns(
+            link_layer, node_id, "to", link_id_to_idx, flow_arr
+        )
+        return np.sum(incoming, axis=0) if incoming else None
 
     def _inject_observation_traces(
         self,
@@ -1314,6 +1354,14 @@ class DatasetWidget:
             return np.sum(columns, axis=0) if columns else None
 
         if variable == "flow_rate":
+            if target_type == "Junction":
+                return self._junction_flow_column(
+                    link_layer,
+                    self.ribasim_widget.node_layer,
+                    target_id,
+                    link_id_to_idx,
+                    flow_arr,
+                )
             # A conservative node's flow_rate equals its single connected flow
             # link: outgoing for source-style nodes, incoming for sink-style.
             if target_type in _FLOW_RATE_FROM_OUTGOING_LINK:

@@ -20,6 +20,7 @@ function set_simulation_data!(
         pump,
         outlet,
         user_demand,
+        junction,
         tabulated_rating_curve,
     ) = p.p_independent
 
@@ -35,7 +36,7 @@ function set_simulation_data!(
     set_simulation_data!(allocation_model, tabulated_rating_curve, p, t_level)
     set_simulation_data!(allocation_model, pump, p, u, du, t_level)
     set_simulation_data!(allocation_model, outlet, p, u, du, t_level)
-    set_simulation_data!(allocation_model, user_demand, t)
+    set_simulation_data!(allocation_model, user_demand, junction, t)
 
     if errors
         error(
@@ -146,10 +147,11 @@ function set_simulation_data!(
     flow = problem[:flow]
 
     for node_id in flow_boundary_ids_subnetwork
+        flow_rate = boundary_flow_rate(flow_boundary, node_id.idx, t) / scaling.flow
         link = flow_boundary.outflow_link[node_id.idx].link
         JuMP.fix(
             flow[link],
-            boundary_flow_rate(flow_boundary, link[1].idx, t) / scaling.flow;
+            flow_rate;
             force = true,
         )
     end
@@ -185,7 +187,7 @@ function linearize_connector_node!(
         t_level::Float64,
     )
     (; problem, scaling) = allocation_model
-    (; inflow_link, outflow_link) = connector_node
+    (; inflow_link, downstream_level_id) = connector_node
     (; current_storage, current_area) = p.current_basin_properties
 
     # Mathematical formulation: Taylor series linearization around current state
@@ -200,11 +202,11 @@ function linearize_connector_node!(
     # Without ad_active, get_level ignores the storage argument, giving zero derivatives
     @ad_active p for node_id in only(flow_constraint.axes)
         inflow_id = inflow_link[node_id.idx].link[1]
-        outflow_id = outflow_link[node_id.idx].link[2]
+        downstream_id = downstream_level_id[node_id.idx]
 
         # Flow functions expect storage values (not levels) and internally convert to levels
         s_a = inflow_id.is_basin ? current_storage[inflow_id.idx] : 0.0
-        s_b = outflow_id.is_basin ? current_storage[outflow_id.idx] : 0.0
+        s_b = downstream_id.is_basin ? current_storage[downstream_id.idx] : 0.0
 
         constraint = flow_constraint[node_id]
 
@@ -223,12 +225,12 @@ function linearize_connector_node!(
 
         # The basin whose low_storage_factor governs this flow, matching the
         # upstream/downstream selection in low_storage_factor_resistance_node.
-        relevant_id = q0_raw > 0 ? inflow_id : outflow_id
+        relevant_id = q0_raw > 0 ? inflow_id : downstream_id
         lsf = get_low_storage_factor(problem, relevant_id)
 
         # Reset both candidate coefficients every call: flow direction (and hence
         # which basin's low_storage_factor applies) can flip between allocation steps.
-        for basin_id in (inflow_id, outflow_id)
+        for basin_id in (inflow_id, downstream_id)
             basin_id.is_basin || continue
             JuMP.set_normalized_coefficient(
                 constraint,
@@ -262,17 +264,17 @@ function linearize_connector_node!(
             )
         end
 
-        if outflow_id.is_basin
+        if downstream_id.is_basin
             # partial derivative with respect to downstream storage, converted to ∂q/∂h
             ∂q∂s_b = forward_diff(
                 storage_b ->
                 flow_function(connector_node, node_id, s_a, storage_b, p, t_level),
                 s_b,
             )
-            ∂q∂h_b = ∂q∂s_b * current_area[outflow_id.idx]
+            ∂q∂h_b = ∂q∂s_b * current_area[downstream_id.idx]
             set_partial_derivative_wrt_level!(
                 allocation_model,
-                outflow_id,
+                downstream_id,
                 ∂q∂h_b,
                 p,
                 constraint,
@@ -422,16 +424,29 @@ end
 function set_simulation_data!(
         allocation_model::AllocationModel,
         user_demand::UserDemand,
+        junction::Junction,
         t::Float64,
     )::Nothing
     (; problem) = allocation_model
     constraints = problem[:user_demand_return_flow]
+    constraints_junction = problem[:user_demand_return_flow_junction]
     flow = problem[:flow]
 
     # Set the return factor, a rate, at the start of the time step.
     # The return-flow constraint is: return_flow  = return_factor * Σ inflow
     for node_id in only(constraints.axes)
         constraint = constraints[node_id]
+        return_factor = user_demand.return_factor[node_id.idx](t)
+        for inflow_link_metadata in user_demand.inflow_links[node_id.idx]
+            inflow = flow[inflow_link_metadata.link]
+            JuMP.set_normalized_coefficient(constraint, inflow, -return_factor)
+        end
+    end
+
+    # The return flow into a Junction node is the total return flow
+    for link in only(constraints_junction.axes)
+        constraint = constraints_junction[link]
+        node_id = link[1]
         return_factor = user_demand.return_factor[node_id.idx](t)
         for inflow_link_metadata in user_demand.inflow_links[node_id.idx]
             inflow = flow[inflow_link_metadata.link]
@@ -895,7 +910,7 @@ end
 
 function warm_start!(
         allocation_model::AllocationModel,
-        p::Parameters,
+        p_independent::ParametersIndependent,
         t::Float64,
         Δt_allocation::Float64,
         du,
@@ -904,7 +919,7 @@ function warm_start!(
     (; basin_ids_subnetwork) = node_ids_in_subnetwork
     flow = problem[:flow]
     storage_change = problem[:basin_storage_change]
-    (; flow_link_lookup) = p.p_independent.graph[]
+    (; flow_link_lookup) = p_independent.graph[]
 
     # Extrapolate the current instantaneous flow rates from the physical layer
     for link in only(flow.axes)
@@ -914,7 +929,7 @@ function warm_start!(
                 flow[link], get_flow(
                     du.flow,
                     link,
-                    p;
+                    p_independent;
                     t
                 ) / scaling.flow
             )
@@ -925,7 +940,7 @@ function warm_start!(
     for node_id in basin_ids_subnetwork
         JuMP.set_start_value(
             storage_change[node_id],
-            formulate_dstorage_single_basin(du.flow, p.p_independent, node_id; t) * Δt_allocation / scaling.storage,
+            formulate_dstorage_single_basin(du.flow, p_independent, node_id; t) * Δt_allocation / scaling.storage,
         )
     end
 
@@ -1296,13 +1311,18 @@ function save_flows!(
         flow_value = JuMP.value(flow_variable) * scaling.flow
         hit_lower_bound, hit_upper_bound = get_bounds_hit(flow_variable)
 
-        for external_flow_link_idx in rowvals(flow_link_map)[nzrange(flow_link_map, internal_flow_link_idx)]
-            external_flow_link = external_flow_links[external_flow_link_idx]
+        for nz_idx in nzrange(flow_link_map, internal_flow_link_idx)
+            external_flow_link = external_flow_links[rowvals(flow_link_map)[nz_idx]]
+            # A flow against the direction of the external link swaps its bounds
+            sign = nonzeros(flow_link_map)[nz_idx]
+            external_flow_value = sign * flow_value
+            external_hit_lower_bound = sign > 0 ? hit_lower_bound : hit_upper_bound
+            external_hit_upper_bound = sign > 0 ? hit_upper_bound : hit_lower_bound
             if haskey(horizontal_flow_record, external_flow_link.link)
                 datum = horizontal_flow_record[external_flow_link.link]
-                datum.flow_rate += flow_value
-                datum.lower_bound_hit |= hit_lower_bound
-                datum.upper_bound_hit |= hit_upper_bound
+                datum.flow_rate += external_flow_value
+                datum.lower_bound_hit |= external_hit_lower_bound
+                datum.upper_bound_hit |= external_hit_upper_bound
             else
                 horizontal_flow_record[external_flow_link.link] = FlowRecordDatum(
                     t,
@@ -1312,9 +1332,9 @@ function save_flows!(
                     string(external_flow_link.link[2].type),
                     Int32(external_flow_link.link[2]),
                     subnetwork_id,
-                    flow_value,
-                    hit_lower_bound,
-                    hit_upper_bound,
+                    external_flow_value,
+                    external_hit_lower_bound,
+                    external_hit_upper_bound,
                 )
             end
         end
@@ -1491,8 +1511,9 @@ function update_user_demand_flow_bounds!(
             JuMP.set_lower_bound(flow[link_metadata.link], 0.0)
             JuMP.set_upper_bound(flow[link_metadata.link], total_demand)
         end
-        JuMP.set_lower_bound(flow[user_demand.outflow_link[node_id.idx].link], 0.0)
-        JuMP.set_upper_bound(flow[user_demand.outflow_link[node_id.idx].link], total_demand)
+        outflow_link = user_demand.outflow_link[node_id.idx].link
+        JuMP.set_lower_bound(flow[outflow_link], 0.0)
+        JuMP.set_upper_bound(flow[outflow_link], total_demand)
     end
     return nothing
 end
@@ -1603,7 +1624,7 @@ function update_allocation!(
         normalize_flow_demand_objectives!(secondary_network)
 
         # Use data from the physical layer to set the initial guess
-        warm_start!(secondary_network, p, t, Δt, du)
+        warm_start!(secondary_network, p_independent, t, Δt, du)
     end
 
     if has_primary_network(allocation)
@@ -1638,7 +1659,7 @@ function update_allocation!(
         update_user_demand_flow_bounds!(primary_network, p_independent)
         update_flow_demand_variable_bounds!(primary_network, p_independent)
         normalize_flow_demand_objectives!(primary_network)
-        warm_start!(primary_network, p, t, Δt, du)
+        warm_start!(primary_network, p_independent, t, Δt, du)
     end
 
     # Allocate in all networks, starting with the primary network if it exists

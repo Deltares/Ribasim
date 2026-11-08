@@ -1,15 +1,15 @@
 from datetime import datetime
 
+import numpy as np
 from ribasim.config import Allocation, Experimental, Solver
 from ribasim.geometry.node import Node
+from ribasim.input_base import NodeData
 from ribasim.model import Model
 from ribasim.nodes import (
     basin,
     discrete_control,
     flow_boundary,
-    flow_demand,
-    level_boundary,
-    level_demand,
+    junction,
     pump,
     tabulated_rating_curve,
     user_demand,
@@ -213,59 +213,6 @@ def invalid_unstable_model() -> Model:
     return model
 
 
-def invalid_priorities_model() -> Model:
-    """Model with allocation active but missing demand_priority parameter(s)."""
-    model = Model(
-        starttime=datetime(2020, 1, 1),
-        endtime=datetime(2021, 1, 1),
-        crs="EPSG:28992",
-        allocation=Allocation(),
-        experimental=Experimental(allocation=True),
-        use_validation=False,
-    )
-
-    model.tabulated_rating_curve.add(
-        Node(2, Point(1, 0), subnetwork_id=2),
-        [tabulated_rating_curve.Static(level=[0.0, 1.0], flow_rate=[0.0, 2e-3])],
-    )
-
-    model.level_boundary.add(
-        Node(1, Point(0, 0), subnetwork_id=2),
-        [level_boundary.Static(node_id=[1], level=[1.0])],
-    )
-
-    model.basin.add(
-        Node(3, Point(2, 0), subnetwork_id=2),
-        [basin.Profile(area=1e3, level=[0.0, 1.0]), basin.State(level=[1.0])],
-    )
-
-    model.user_demand.add(
-        Node(4, Point(3, 0), subnetwork_id=2),
-        [user_demand.Static(demand=[1e-3], return_factor=1.0, min_level=0.2)],
-    )
-
-    model.level_demand.add(
-        Node(6, Point(2, -1), subnetwork_id=2),
-        [level_demand.Static(min_level=[1.0], max_level=1.5)],
-    )
-
-    model.flow_demand.add(
-        Node(5, Point(1, -1), subnetwork_id=2),
-        [flow_demand.Static(demand=[2e-3])],
-    )
-
-    model.link.add(
-        model.level_boundary[1],
-        model.tabulated_rating_curve[2],
-    )
-    model.link.add(model.tabulated_rating_curve[2], model.basin[3])
-    model.link.add(model.basin[3], model.user_demand[4])
-    model.link.add(model.level_demand[6], model.basin[3])
-    model.link.add(model.flow_demand[5], model.tabulated_rating_curve[2])
-
-    return model
-
-
 def invalid_no_basin_model() -> Model:
     model = Model(
         starttime=datetime(2020, 1, 1),
@@ -288,4 +235,202 @@ def invalid_no_basin_model() -> Model:
     model.link.add(boundary1, sea)
     model.link.add(boundary2, sea)
 
+    return model
+
+
+def _invalid_junction_base() -> tuple[Model, NodeData]:
+    """Create a model with a Basin and a Pump, to which Junction nodes can be connected."""
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
+        crs="EPSG:28992",
+    )
+    bsn = model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.State(level=[1.0]),
+            basin.Profile(level=[0.0, 2.0], area=[100.0, 200.0]),
+        ],
+    )
+    pmp = model.pump.add(Node(2, Point(1, 0)), [pump.Static(flow_rate=[1e-3])])
+    model.link.add(bsn, pmp)
+    return model, pmp
+
+
+def _junction_user_demand_static() -> list:
+    return [
+        user_demand.Static(
+            demand_priority=[1], demand=[1e-4], return_factor=0.5, min_level=[0.0]
+        )
+    ]
+
+
+def invalid_junction_missing_fractions_model() -> Model:
+    """Divide the flow of a Junction over three Terminals with two missing fractions."""
+    model, pmp = _invalid_junction_base()
+    jct = model.junction.add(
+        Node(7, Point(1.5, 0)),
+        [junction.Static(to_node_id=[3, 4, 5], fraction=[np.nan, np.nan, 0.5])],
+    )
+    model.link.add(pmp, jct)
+    for node_id, y in [(3, 1), (4, 0), (5, -1)]:
+        trm = model.terminal.add(Node(node_id, Point(2, y)))
+        model.link.add(jct, trm)
+    return model
+
+
+def invalid_junction_fraction_sum_model() -> Model:
+    """Junction fractions summing to more than 1, while one fraction is missing."""
+    model, pmp = _invalid_junction_base()
+    jct = model.junction.add(
+        Node(7, Point(1.5, 0)),
+        [junction.Static(to_node_id=[3, 4, 5], fraction=[0.75, 0.5, np.nan])],
+    )
+    model.link.add(pmp, jct)
+    for node_id, y in [(3, 1), (4, 0), (5, -1)]:
+        trm = model.terminal.add(Node(node_id, Point(2, y)))
+        model.link.add(jct, trm)
+    return model
+
+
+def invalid_junction_connector_split_model() -> Model:
+    """Create a Pump that flows directly into two Junctions, instead of via a Junction that divides the flow."""
+    model, pmp = _invalid_junction_base()
+    trm = model.terminal.add(Node(6, Point(3, 0)))
+    # Temporary Junction, since the link validation does not allow this connectivity
+    jct_tmp = model.junction.add(Node(7, Point(1.5, 0)))
+    jct1 = model.junction.add(
+        Node(3, Point(2, 1)), [junction.Static(to_node_id=[6], fraction=[1.0])]
+    )
+    jct2 = model.junction.add(
+        Node(4, Point(2, -1)), [junction.Static(to_node_id=[6], fraction=[1.0])]
+    )
+    model.link.add(pmp, jct1)
+    model.link.add(jct_tmp, jct2)
+    model.link.add(jct1, trm)
+    model.link.add(jct2, trm)
+    assert model.link.df is not None
+    model.link.df.loc[
+        model.link.df["from_node_id"] == jct_tmp.node_id, "from_node_id"
+    ] = pmp.node_id
+    model.remove_node(jct_tmp.node_id)
+    return model
+
+
+def invalid_junction_multiple_user_demands_model() -> Model:
+    """Junction with multiple UserDemand nodes downstream."""
+    model, pmp = _invalid_junction_base()
+    jct = model.junction.add(
+        Node(3, Point(2, 0)), [junction.Static(to_node_id=[6], fraction=[1.0])]
+    )
+    ud1 = model.user_demand.add(Node(4, Point(3, 1)), _junction_user_demand_static())
+    ud2 = model.user_demand.add(Node(5, Point(3, -1)), _junction_user_demand_static())
+    trm = model.terminal.add(Node(6, Point(4, 0)))
+    model.link.add(pmp, jct)
+    model.link.add(jct, ud1)
+    model.link.add(jct, ud2)
+    model.link.add(jct, trm)
+    model.link.add(ud1, trm)
+    model.link.add(ud2, trm)
+    return model
+
+
+def invalid_junction_only_user_demand_model() -> Model:
+    """Junction with only a UserDemand node downstream, so the remaining flow has nowhere to go."""
+    model, pmp = _invalid_junction_base()
+    jct = model.junction.add(
+        Node(3, Point(2, 0)), [junction.Static(to_node_id=[4], fraction=[1.0])]
+    )
+    ud = model.user_demand.add(Node(4, Point(3, 0)), _junction_user_demand_static())
+    trm = model.terminal.add(Node(5, Point(4, 0)))
+    model.link.add(pmp, jct)
+    model.link.add(jct, ud)
+    model.link.add(ud, trm)
+    return model
+
+
+def invalid_user_demand_missing_min_level_model() -> Model:
+    """UserDemand abstracting from a Basin without a min_level."""
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
+        crs="EPSG:28992",
+    )
+    bsn = model.basin.add(
+        Node(1, Point(0, 0)),
+        [
+            basin.State(level=[1.0]),
+            basin.Profile(level=[0.0, 2.0], area=[100.0, 200.0]),
+        ],
+    )
+    ud = model.user_demand.add(
+        Node(2, Point(1, 0)),
+        [user_demand.Static(demand_priority=[1], demand=[1e-4], return_factor=0.5)],
+    )
+    trm = model.terminal.add(Node(3, Point(2, 0)))
+    model.link.add(bsn, ud)
+    model.link.add(ud, trm)
+    return model
+
+
+def _invalid_subnetwork_model() -> Model:
+    """Create an empty model with allocation, to connect the primary network and subnetworks in."""
+    return Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2021, 1, 1),
+        crs="EPSG:28992",
+        allocation=Allocation(),
+        experimental=Experimental(allocation=True),
+    )
+
+
+def _invalid_subnetwork_basin_tables() -> list:
+    return [
+        basin.State(level=[1.0]),
+        basin.Profile(level=[0.0, 2.0], area=[100.0, 200.0]),
+    ]
+
+
+def invalid_junction_subnetwork_boundary_model() -> Model:
+    """Put a Junction that stays in the simulation at the boundary between the primary network and a subnetwork."""
+    model = _invalid_subnetwork_model()
+    bsn1 = model.basin.add(Node(1, Point(0, 0)), _invalid_subnetwork_basin_tables())
+    pmp = model.pump.add(
+        Node(2, Point(1, 0)),
+        [pump.Static(flow_rate=[1e-3], allocation_controlled=[True])],
+    )
+    jct = model.junction.add(
+        Node(3, Point(2, 0), subnetwork_id=2),
+        [junction.Static(to_node_id=[4], fraction=[1.0])],
+    )
+    bsn2 = model.basin.add(
+        Node(4, Point(3, 0), subnetwork_id=2), _invalid_subnetwork_basin_tables()
+    )
+    model.link.add(bsn1, pmp)
+    model.link.add(pmp, jct)
+    model.link.add(jct, bsn2)
+    return model
+
+
+def invalid_junction_no_basin_allocation_model() -> Model:
+    """Allocation subnetwork without a Basin, which allocation does not support."""
+    from ribasim_testmodels.junction import _junction_chain
+
+    model = _invalid_subnetwork_model()
+    _junction_chain(model, 2)
+    return model
+
+
+def invalid_subnetwork_to_primary_model() -> Model:
+    """Flow from a subnetwork into the primary network."""
+    model = _invalid_subnetwork_model()
+    bsn1 = model.basin.add(
+        Node(1, Point(0, 0), subnetwork_id=2), _invalid_subnetwork_basin_tables()
+    )
+    pmp = model.pump.add(
+        Node(2, Point(1, 0), subnetwork_id=2), [pump.Static(flow_rate=[1e-3])]
+    )
+    bsn2 = model.basin.add(Node(3, Point(2, 0)), _invalid_subnetwork_basin_tables())
+    model.link.add(bsn1, pmp)
+    model.link.add(pmp, bsn2)
     return model

@@ -48,5 +48,9 @@ for link_type in ("flow", "control", "listen"):
 ```
 
 ::: {.callout-note}
+Junction nodes with rows in `Junction / static`, which divide the flow or supply a UserDemand, have additional connectivity rules, which are given on the [Junction page](/reference/node/junction.qmd#connectivity-rules).
+:::
+
+::: {.callout-note}
 Pump and Outlet can receive two control links, in which case one must be from a FlowDemand, and the other from a control node.
 :::
