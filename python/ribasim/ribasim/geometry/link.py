@@ -83,7 +83,7 @@ class LinkSchema(_GeoBaseSchema):
 class LinkTable(SpatialTableModel[LinkSchema]):
     """Defines the connections between nodes."""
 
-    # Unlike the data tables, the Link table is never None, but empty by default.
+    # Never None, unlike the area and other data tables.
     df: GeoDataFrame[LinkSchema] = Field(  # ty: ignore[invalid-mutable-override]
         default_factory=lambda: LinkTable._empty_df(), exclude=True, repr=False
     )
@@ -105,8 +105,7 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         # The table name was changed from "Edge" to "Link" in schema_version 4.
         if schema_version < 4:
             table = "Edge"
-        df = super()._from_db(path, table)
-        return cls._empty_df() if df is None else df
+        return cast(GeoDataFrame[LinkSchema], super()._from_db(path, table))
 
     def add(
         self,

@@ -1,7 +1,6 @@
 import numbers
 import warnings
 from collections.abc import Callable, Generator, Sequence
-from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import geopandas as gpd
@@ -71,16 +70,11 @@ class NodeSchema(_GeoBaseSchema):
 class NodeTable(SpatialTableModel[NodeSchema], ChildModel):
     """The Ribasim nodes as Point geometries."""
 
-    # Unlike the data tables, the Node table is never None, but empty by default.
+    # Never None, unlike the area and other data tables.
     df: GeoDataFrame[NodeSchema] = Field(  # ty: ignore[invalid-mutable-override]
         default_factory=lambda: NodeTable._empty_df(), exclude=True, repr=False
     )
     _used_node_ids: UsedIDs = PrivateAttr(default_factory=UsedIDs)
-
-    @classmethod
-    def _from_db(cls, path: Path, table: str) -> GeoDataFrame[NodeSchema]:
-        df = super()._from_db(path, table)
-        return cls._empty_df() if df is None else df
 
     def _update_used_ids(self) -> "NodeTable":
         if len(self.df.index) > 0:

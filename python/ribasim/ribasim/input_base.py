@@ -807,8 +807,10 @@ class SpatialTableModel[TableT: _BaseSchema](TableModel[TableT]):
             if exists(connection, table):
                 # pyogrio hardcodes fid name on reading
                 df = gpd.read_file(path, layer=table, fid_as_index=True, use_arrow=True)
-            else:
+            elif cls._df_is_optional():
                 df = None
+            else:
+                df = cls._empty_df()
 
             return df
 
