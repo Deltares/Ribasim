@@ -103,20 +103,20 @@ For a basin downstream: $h_b^{n+1} - h_b^n \approx \frac{1}{A_b}(S_b^{n+1} - S_b
 **Code implementation:**
 
 ```julia
-# From linearize_connector_node!
-t_after = t + Δt_allocation
+# From linearize_connector_node!, where t_level = t + Δt_allocation is the end of the
+# allocation timestep
 
 # Evaluate flow and derivatives at the linearization point
-h_a = get_level(p, inflow_id, t_after)
-h_b = get_level(p, outflow_id, t_after)
-q0 = flow_function(connector_node, node_id, h_a, h_b, p, t_after)
+h_a = get_level(p, inflow_id, t_level)
+h_b = get_level(p, outflow_id, t_level)
+q0 = flow_function(connector_node, node_id, h_a, h_b, p, t_level)
 
 # Compute partial derivatives with automatic differentiation
 ∂q∂h_a = forward_diff(
-    level_a -> flow_function(connector_node, node_id, level_a, h_b, p, t_after), h_a,
+    level_a -> flow_function(connector_node, node_id, level_a, h_b, p, t_level), h_a,
 )
 ∂q∂h_b = forward_diff(
-    level_b -> flow_function(connector_node, node_id, h_a, level_b, p, t_after), h_b,
+    level_b -> flow_function(connector_node, node_id, h_a, level_b, p, t_level), h_b,
 )
 
 # Update constraint: Q = q0 + ∂q/∂h_a * Δh_a + ∂q/∂h_b * Δh_b
@@ -411,7 +411,7 @@ problem[:user_demand_return_flow] = JuMP.@constraint(
 ```
 
 **Key points:**
-- `return_factor` is a placeholder, updated before optimization with the value at the end of the allocation timestep
+- `return_factor` is a placeholder, updated before optimization with the value at the start of the allocation timestep (a rate)
 - Links the total inflow and the outflow of a UserDemand node
 - Models consumptive use (when the return factor < 1)
 
@@ -627,31 +627,17 @@ function set_simulation_data!(
     allocation_model::AllocationModel,
     basin::Basin,
     p::Parameters,
-    t::Float64,
     Δt_allocation::Float64,
-    du::CVector,
 )::Bool
     # ... setup code ...
 
     for basin_id in basin_ids_subnetwork
         idx = basin_id.idx
         storage_now = current_storage[idx]
-        storage_max = storage_to_level[idx].t[end]
 
-        # Storage may never become negative
-        Δstorage = storage_change[basin_id]
-        JuMP.set_lower_bound(Δstorage, -storage_now / scaling.storage)
-
-        # The upper bound leaves room for the storage change predicted by the physical
-        # layer, so a Basin that is (nearly) full can still receive water
-        Δstorage_predicted =
-            formulate_dstorage_wrt_time(du, p.p_independent, t, basin_id) * Δt_allocation
-        Δstorage_upper = if storage_now > storage_max
-            max(2 * Δstorage_predicted, 0.0)
-        else
-            max(2 * Δstorage_predicted, storage_max - storage_now)
-        end
-        JuMP.set_upper_bound(Δstorage, Δstorage_upper / scaling.storage)
+        # Storage may never become negative. No upper bound: Basin profiles extrapolate
+        # above their top
+        JuMP.set_lower_bound(storage_change[basin_id], -storage_now / scaling.storage)
         # ... rest of constraint updates ...
     end
     return errors
@@ -660,7 +646,7 @@ end
 
 **Key concepts:**
 - Variable bounds are updated each timestep based on the current Basin storage
-- The bounds are conservative: they describe the storage range the Basin can reach within this allocation timestep. The same interval is reused to derive the [flow capacity bounds](#flow-capacity-bounds) of connector nodes
+- Only the lower bound is set, so the storage cannot become negative. There is no upper bound, since Basin profiles extrapolate above their top
 - Forcing terms (precipitation, evaporation) are computed and added to constraints
 - Errors are detected (e.g. storage outside the valid range) and reported
 
@@ -673,24 +659,23 @@ function linearize_connector_node!(
     flow_constraint,
     flow_function::Function,
     p::Parameters,
-    t::Float64,
-    Δt_allocation,
+    t_level::Float64,
 )
     (; problem, scaling) = allocation_model
     (; inflow_link, outflow_link) = connector_node
 
-    # Evaluate at the end of the allocation timestep. This is semi-implicit, not a fully
-    # implicit Euler step: the partial derivatives below are frozen at the start of the
-    # timestep, only the level unknowns being solved for are the end-of-step values.
-    t_after = t + Δt_allocation
+    # Evaluate at t_level = t + Δt_allocation, the end of the allocation timestep. This is
+    # semi-implicit, not a fully implicit Euler step: the partial derivatives below are
+    # frozen at the start of the timestep, only the level unknowns being solved for are the
+    # end-of-step values.
 
     for node_id in only(flow_constraint.axes)
         inflow_id = inflow_link[node_id.idx].link[1]
         outflow_id = outflow_link[node_id.idx].link[2]
 
         # Levels at the linearization point
-        h_a = get_level(p, inflow_id, t_after)
-        h_b = get_level(p, outflow_id, t_after)
+        h_a = get_level(p, inflow_id, t_level)
+        h_b = get_level(p, outflow_id, t_level)
 
         constraint = flow_constraint[node_id]
 
@@ -699,7 +684,7 @@ function linearize_connector_node!(
         # set below. This raw value becomes the coefficient of that variable (or, when
         # neither side of the connector is a Basin, the plain constraint right-hand side).
         q0_raw = flow_function(
-            connector_node, node_id, h_a, h_b, p, t_after;
+            connector_node, node_id, h_a, h_b, p, t_level;
             apply_low_storage_factor = false,
         )
 
@@ -730,7 +715,7 @@ function linearize_connector_node!(
         # linearization point, this yields the correctly-scaled ∂q/∂h for free.
         if inflow_id.type == NodeType.Basin
             ∂q∂h_a = forward_diff(
-                level_a -> flow_function(connector_node, node_id, level_a, h_b, p, t_after),
+                level_a -> flow_function(connector_node, node_id, level_a, h_b, p, t_level),
                 h_a,
             )
             set_partial_derivative_wrt_level!(
@@ -745,7 +730,7 @@ end
 **Key concepts:**
 - Derivatives are computed with automatic differentiation (`forward_diff`) of the same flow functions the physical layer uses, so the allocation layer cannot drift from the physics
 - Only Basin levels are decision variables; LevelBoundary and Terminal levels enter through the `low_storage_factor` coefficient or the constant right-hand side
-- Semi-implicit, not fully implicit: everything is evaluated at the end of the timestep ($t + \Delta t$), but the linearization coefficients (∂q/∂h, and the `q0_raw` used for the `low_storage_factor` coefficient) are all computed from state known at the start of the timestep — no nonlinear solve is performed. For Basins `get_level` returns the level at the start of the timestep, which is exactly the point we want to linearize around
+- Semi-implicit, not fully implicit: Basin levels and LevelBoundary levels are evaluated at the end of the timestep ($t + \Delta t$), but the linearization coefficients (∂q/∂h, and the `q0_raw` used for the `low_storage_factor` coefficient) are all computed from state known at the start of the timestep — no nonlinear solve is performed. Other inputs have their own evaluation times: schedule rates (UserDemand, FlowDemand, return factor) are read at the start of the timestep, FlowBoundary flow rates are read at the intervention time `t_known`, and LevelDemand levels at the end of the timestep. For Basins `get_level` returns the level at the start of the timestep, which is exactly the point we want to linearize around
 - This same mechanism is used for LinearResistance, ManningResistance, TabulatedRatingCurve, Pump and Outlet, so the `low_storage_factor` variable uniformly governs the low-storage reduction of every connector node type instead of being baked into a stale physical-layer scalar
 
 ## Demand Updates
@@ -933,10 +918,10 @@ For allocation controlled Pump and Outlet nodes there is no fallback bound, so a
 
 ```julia
 update_control_states!(allocation_model, p_independent)
-set_simulation_data!(allocation_model, integrator, Δt)
+set_simulation_data!(allocation_model, p, t, Δt, u, du, t_known)
 reset_demand_coefficients(allocation_model)
-set_demands!(allocation_model, integrator, Δt)
-update_flow_variable_bounds!(allocation_model, integrator, Δt)
+set_demands!(allocation_model, p, t, Δt)
+update_flow_variable_bounds!(allocation_model, p, t, Δt)
 update_user_demand_flow_bounds!(allocation_model, p_independent)
 update_flow_demand_variable_bounds!(allocation_model, p_independent)
 normalize_flow_demand_objectives!(allocation_model)
