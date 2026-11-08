@@ -14,6 +14,7 @@ from ribasim_testmodels.allocation import (
     cyclic_demand_model,
     drain_surplus_model,
     fair_distribution_model,
+    flow_demand_discrete_control_model,
     flow_demand_model,
     level_demand_model,
     level_demand_with_rating_curve_model,
@@ -97,7 +98,12 @@ from ribasim_testmodels.time import (
     flow_boundary_time_model,
     transient_pump_outlet_model,
 )
-from ribasim_testmodels.tracer import tracer_chain_model
+from ribasim_testmodels.tracer import (
+    tracer_boundary_pulse_model,
+    tracer_chain_model,
+    tracer_evaporation_model,
+    tracer_user_demand_model,
+)
 from ribasim_testmodels.trivial import trivial_model
 from ribasim_testmodels.two_basin import two_basin_model
 
@@ -128,6 +134,7 @@ __all__ = [
     "flow_boundary_interpolation_model",
     "flow_boundary_time_model",
     "flow_condition_model",
+    "flow_demand_discrete_control_model",
     "flow_demand_model",
     "invalid_control_states_model",
     "invalid_discrete_control_model",
@@ -173,7 +180,10 @@ __all__ = [
     "switch_allocation_control_model",
     "tabulated_rating_curve_control_model",
     "tabulated_rating_curve_model",
+    "tracer_boundary_pulse_model",
     "tracer_chain_model",
+    "tracer_evaporation_model",
+    "tracer_user_demand_model",
     "transient_condition_model",
     "transient_pump_outlet_model",
     "trivial_model",

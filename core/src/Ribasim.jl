@@ -67,6 +67,8 @@ using SciMLBase:
     get_proposed_dt,
     set_proposed_dt!,
     add_tstop!,
+    has_tstop,
+    first_tstop,
     DEIntegrator,
     FullSpecialize,
     NoSpecialize,

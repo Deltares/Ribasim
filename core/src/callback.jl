@@ -223,10 +223,9 @@ function update_concentrations!(u, t, integrator)::Nothing
     (; p, tprev) = integrator
     (; p_independent, current_basin_properties) = p
     (; current_storage) = current_basin_properties
-    (; basin, flow_boundary, do_concentration, cumulative_flow_dt) = p_independent
+    (; basin, flow_boundary, do_concentration) = p_independent
     (; storage_prev_dt, concentration_data, forcing) = basin
     (;
-        cumulative_in,
         concentration_state,
         concentration_drainage,
         concentration_precipitation,
@@ -243,13 +242,16 @@ function update_concentrations!(u, t, integrator)::Nothing
 
     dt = t - tprev
 
+    # The concentrations in the input are constant over the timestep, since these are tstops.
+    # At t they may already have the next value, so they are evaluated at tprev.
+
     # Basin forcings
     (; drainage, precipitation, surface_runoff) = forcing.exact_cumulative_forcing_dt
-    add_forcing_mass!(mass, concentration_drainage, drainage, t)
-    add_forcing_mass!(mass, concentration_precipitation, precipitation, t)
-    add_forcing_mass!(mass, concentration_surface_runoff, surface_runoff, t)
+    add_forcing_mass!(mass, concentration_drainage, drainage, tprev)
+    add_forcing_mass!(mass, concentration_precipitation, precipitation, tprev)
+    add_forcing_mass!(mass, concentration_surface_runoff, surface_runoff, tprev)
     # Loads are per second, not volume, so the flow is just the time step
-    add_forcing_mass!(mass, loads, dt, t)
+    add_forcing_mass!(mass, loads, dt, tprev)
 
     # Exact boundary flow over time step
     for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
@@ -258,23 +260,13 @@ function update_concentrations!(u, t, integrator)::Nothing
             view(mass, :, outflow_id.idx),
             flow_boundary.concentration_itp[id.idx],
             flow_boundary.cumulative_flow_dt[id.idx],
-            t,
+            tprev,
         )
     end
 
     mass_inflows_from_user_demand!(integrator)
 
-    # Transport between Basins with the total inflow volume per Basin
-    aggregate_flows!(
-        cumulative_in,
-        cumulative_flow_dt,
-        p_independent;
-        do_outflows = false,
-        positive_vertical_forcing = forcing.exact_cumulative_forcing_dt,
-        boundary_flow = flow_boundary.cumulative_flow_dt,
-    )
-
-    transport_tracers!(p_independent, t, dt)
+    transport_tracers!(p_independent, current_storage, tprev, dt)
 
     errors = false
 
@@ -508,8 +500,11 @@ function check_negative_storage(u, t, integrator)::Nothing
     # constant time series take their value after a possible jump at t, see
     # `interpolation_time`. The time dependent cache still holds the values from before the
     # jump, as the last evaluation at t was part of the time step, so it is renewed.
+    # The jumps are at tstops, and the reached tstop is only removed after the callbacks.
     update_cumulative_forcing!(p, t)
-    p.time_dependent_cache.t_prev_call[1] = -1.0
+    if has_tstop(integrator) && first_tstop(integrator) == integrator.tdir * t
+        p.time_dependent_cache.t_prev_call[1] = -1.0
+    end
     water_balance!(du, u, p, t)
 
     if log_negative_storage(basin, current_basin_properties.current_storage)
@@ -981,6 +976,11 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
     apply_parameter_update!.(itp_update_constant)
     apply_parameter_update!.(itp_update_linear)
     apply_parameter_update!.(itp_update_lookup)
+    # The time dependent cache holds the values of the replaced time series, so renew it at
+    # the next call of the right hand side, also at the same t
+    if !(isempty(itp_update_constant) && isempty(itp_update_linear) && isempty(itp_update_lookup))
+        p.time_dependent_cache.t_prev_call[1] = -1.0
+    end
 
     return nothing
 end
