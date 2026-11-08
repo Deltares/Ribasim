@@ -206,6 +206,7 @@ def pump_pit_model() -> Model:
         ignore_index=True,
     )
     links = model.link.df
+    assert links is not None
     first_link_id = links.index.max() + 1
     quiet_links = gpd.GeoDataFrame(
         {
