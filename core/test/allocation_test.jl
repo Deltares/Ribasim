@@ -19,8 +19,12 @@
     user_demand_error = problem[:user_demand_error]
     low_storage_factor = problem[:low_storage_factor]
 
+    # Low storage factor objective, which comes first
+    @test objectives[1].type == AllocationObjectiveType.low_storage_factor
+    @test objectives[1].expressions[1] == -sum(low_storage_factor)
+
     # Demand objective
-    objective = objectives[1]
+    objective = objectives[2]
     @test objective.type == AllocationObjectiveType.demand_flow
     first_expression_terms = keys(objective.expressions[1].terms)
     @test length(first_expression_terms) == 2
@@ -31,9 +35,6 @@
     @test objective.expressions[2] ==
         user_demand_error[NodeID(:UserDemand, 5, p_independent), 1, :second] +
         user_demand_error[NodeID(:UserDemand, 6, p_independent), 1, :second]
-
-    # Low storage factor objective
-    @test objectives[2].expressions[1] == -sum(low_storage_factor)
 end
 
 
@@ -193,7 +194,7 @@ end
 
         # Test allocation_control if it exists (may be empty for models without control)
         if isfile(allocation_control_path)
-            NCDDataset(allocation_control_path) do ds
+            NCDataset(allocation_control_path) do ds
                 @test "time" in keys(ds)
                 @test "node_id" in keys(ds)
                 @test "node_type" in keys(ds)
@@ -235,6 +236,33 @@ end
     test_extrapolation(level_demand.max_level[1][3])
     test_extrapolation(flow_demand.demand_interpolation[1][2])
     test_extrapolation.(user_demand.demand_interpolation[1][1:2])
+end
+
+@testitem "Low storage factor only prevents negative storage" begin
+    import BasicModelInterface as BMI
+    import JuMP
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/allocation_training/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    # Around day 103 the reservoir is below its LevelDemand min_level, which the demand
+    # objectives could otherwise try to meet by lowering the low storage factors.
+    # Step per day, since each update_until call is an intervention time.
+    for day in 1:103
+        BMI.update_until(model, day * 86400.0)
+    end
+    (; allocation, basin) = model.integrator.p.p_independent
+    (; current_storage) = allocation.current_basin_properties
+
+    # A low storage factor below 1 is only needed when the Basin runs empty
+    for allocation_model in allocation.allocation_models
+        low_storage_factor = allocation_model.problem[:low_storage_factor]
+        for basin_id in only(axes(low_storage_factor))
+            @test JuMP.value(low_storage_factor[basin_id]) ≈ 1 ||
+                current_storage[basin_id.idx] ≤ basin.low_storage_threshold[basin_id.idx]
+        end
+    end
 end
 
 @testitem "infeasibility analysis" begin
@@ -356,6 +384,13 @@ end
     @test JuMP.lower_bound(flow[outlet_link]) == 0
     @test JuMP.upper_bound(flow[outlet_link]) * scaling.flow ≈
         outlet.max_flow_rate[outlet_id.idx](0.0)
+
+    # Without allocation control the Outlet flow follows from its linearized flow-level
+    # relation, whose reduction factors can bring it below min_flow_rate
+    outlet.allocation_controlled[outlet_id.idx] = false
+    outlet.min_flow_rate[outlet_id.idx].u .= 1.0e-3
+    @test Ribasim.connector_flow_capacity_bounds(outlet_id, model.integrator.p, 0.0, 86400.0) ==
+        (-Inf, Inf)
 
     # ManningResistance flows are only constrained by their linearized flow-level relation,
     # and Basin storage changes only by the storage that is available
@@ -536,6 +571,33 @@ end
     @test !isempty(low_level_flows)
 end
 
+@testitem "FlowDemand on a node with DiscreteControl" begin
+    using DataFrames: DataFrame
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/flow_demand_discrete_control/ribasim.toml",
+    )
+    @test ispath(toml_path)
+
+    # The Pump has two control inneighbors: a FlowDemand and a DiscreteControl
+    model = Ribasim.run(toml_path)
+    @test success(model)
+    @test isfile(normpath(dirname(toml_path), "results/allocation.nc"))
+    @test isfile(normpath(dirname(toml_path), "results/allocation_flow.nc"))
+
+    control_states = Ribasim.discrete_control_data(model).control_state
+    @test "allocation" in control_states
+    @test "prescribed" in control_states
+
+    allocation_table = DataFrame(Ribasim.allocation_data(model))
+    pump_table = filter(:node_id => ==(2), allocation_table)
+    @test !isempty(pump_table)
+    @test all(≈(2.0e-3), pump_table.demand)
+    # The supplied flow of the last intervention interval is computed separately
+    @test isfinite(last(pump_table.supplied))
+end
+
 @testitem "Control constraints are only rebuilt when allocation control changes" begin
     import BasicModelInterface as BMI
     import JuMP
@@ -568,11 +630,11 @@ end
         (; p, u, t) = model.integrator
         allocation_model = only(p.p_independent.allocation.allocation_models)
         du = zero(u)
-        Ribasim.set_simulation_data!(allocation_model, p, t, 86400.0, u, du)
+        Ribasim.set_simulation_data!(allocation_model, p, t, 86400.0, u, du, t)
         kept = control_constraint_data(allocation_model.problem)
         allocation_model.allocation_controlled = Bool[]
         Ribasim.update_control_states!(allocation_model, p.p_independent)
-        Ribasim.set_simulation_data!(allocation_model, p, t, 86400.0, u, du)
+        Ribasim.set_simulation_data!(allocation_model, p, t, 86400.0, u, du, t)
         return kept, control_constraint_data(allocation_model.problem)
     end
 

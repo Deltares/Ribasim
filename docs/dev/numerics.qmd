@@ -100,12 +100,21 @@ However, since the Jacobian is sparse, many columns have no overlapping nonzero 
 
 At model initialization, `get_diff_eval` prepares everything the solver will need. What is prepared depends on the solver setting `reduced_implicit_solve`.
 
-With `reduced_implicit_solve = true` (default), `RibasimJacobianEvaluationCache` prepares two Jacobians:
+Which of these the solver actually uses depends on the algorithm:
+
+- Implicit algorithms with a Newton solver (`NordsieckBDF`, `FBDF`, `QNDF`, `TRBDF2`, `KenCarp4`, `ImplicitEuler`) need the Jacobian in their nonlinear solve;
+- Rosenbrock algorithms (`Rosenbrock23`, `Rodas4P`, `Rodas5P`) need the full Jacobian and additionally the time derivative `tgrad` of the right hand side;
+- Explicit algorithms (`Tsit5`, `RK4`, `Euler`) need neither. `get_diff_eval` is currently called for every algorithm, so the preparation below is also done for them, but the result is not used.
+
+The Jacobian is prepared in one of two forms, set by `reduced_implicit_solve`. This is `true` by default for the implicit algorithms with a Newton solver, and always `false` for Rosenbrock and explicit algorithms.
+
+With `reduced_implicit_solve = true`, `RibasimJacobianEvaluationCache` prepares two Jacobians:
 
 - `∂flow_∂flow_input`: the Jacobian of the flow formulation (`formulate_flows_closure!`) with respect to the input vector `flow_input = (storage_uplink, storage_downlink, pid_integral, continuous_control_compound)`. Its output is the flow rates and the PID errors. This is $\partial\mathbf{q}/\partial\mathbf{v}$ from the [concept documentation](/concept/numerics.qmd#structure-of-the-right-hand-side);
 - `∂continuous_control_compound_∂continuous_control_input`: the Jacobian of the ContinuousControl compound variables with respect to `(storage, flow)`.
 
 With `reduced_implicit_solve = false`, the Jacobian of `water_balance!` with respect to the full state $\mathbf{u}$ is prepared, and the result is a regular (sparse) matrix that OrdinaryDiffEq uses as is.
+The time derivative `tgrad` is prepared in the same way, for the Rosenbrock algorithms.
 
 In both cases the preparation consists of:
 
@@ -141,6 +150,7 @@ When `DifferentiationInterface.jacobian!` calls the RHS, it needs to know how to
 - **`Constant(x)`** — "this is independent of the differentiation variable; pass the original object directly." No copy, no promotion. But this means AD calls can **mutate shared state**.
 
 This distinction is a performance optimization (fewer allocations), but it introduces a subtle invariant: any cached value in a `Cache()` argument must be freshly computed during the AD call, because the copy starts uninitialized. In the `reduced_implicit_solve = false` path and for the time derivative `tgrad`, `storage_uplink`, `storage_downlink`, the ContinuousControl compound variables and the current Basin storage are passed as `Cache()`.
+For `tgrad` the `TimeDependentCache` is also passed as `Cache()`, since the time `t` is the differentiation variable and the cached time dependent values must be dual numbers too. Therefore the components of `Parameters` are separate arguments of the wrapped right hand side, which packs them back into a `Parameters` with the dual `TimeDependentCache`.
 
 ## The `RibasimJacobian` operator
 

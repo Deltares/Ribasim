@@ -394,17 +394,6 @@ function add_level_demand!(
 end
 
 
-function add_level_boundary!(allocation_model::AllocationModel)::Nothing
-    (; problem, node_ids_in_subnetwork) = allocation_model
-    (; level_boundary_ids_subnetwork) = node_ids_in_subnetwork
-
-    # Add parameters: level boundary levels (m, values to be filled in before optimization)
-    problem[:boundary_level] =
-        JuMP.@variable(problem, boundary_level[level_boundary_ids_subnetwork] == 0)
-
-    return nothing
-end
-
 function add_linearized_connector_node!(
         allocation_model::AllocationModel,
         node::AbstractParameterNode,
@@ -1047,9 +1036,6 @@ function AllocationModel(subnetwork_id::Int32, p_independent::ParametersIndepend
     add_flow!(allocation_model)
     add_conservation!(allocation_model, p_independent)
 
-    # Boundary nodes
-    add_level_boundary!(allocation_model)
-
     # Connector nodes
     add_tabulated_rating_curve!(allocation_model, p_independent)
     add_linear_resistance!(allocation_model, p_independent)
@@ -1076,8 +1062,10 @@ function AllocationModel(subnetwork_id::Int32, p_independent::ParametersIndepend
     end
 
     # Objectives (goals)
-    add_demand_objectives!(allocation_model, p_independent)
+    # The low storage factors come first, so that the demand objectives cannot lower them
+    # to hold back water: they may only reduce outflows to prevent negative storage
     add_low_storage_factor_objective!(allocation_model)
+    add_demand_objectives!(allocation_model, p_independent)
     add_route_priority_objective!(allocation_model, p_independent)
 
     return allocation_model
