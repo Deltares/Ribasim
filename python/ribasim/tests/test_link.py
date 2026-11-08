@@ -5,7 +5,7 @@ from pandera.errors import SchemaErrors
 from pydantic import ValidationError
 from ribasim import Model, Node
 from ribasim.geometry.link import LinkTable, NodeData, _infer_link_type
-from ribasim.nodes import basin, pass_down, pump, user_demand
+from ribasim.nodes import basin, junction, pump, user_demand
 
 
 @pytest.fixture(scope="session")
@@ -102,10 +102,10 @@ def test_validate_link_rejects_excess_inneighbors(basic):
 
 @pytest.mark.parametrize(
     "upstream",
-    [("basin", "pass_down"), ("pass_down", "basin"), ("pass_down", "pass_down")],
+    [("basin", "junction"), ("junction", "basin"), ("junction", "junction")],
 )
-def test_validate_link_user_demand_pass_down_inflow(upstream: tuple[str, str]):
-    """A UserDemand has either Basin inflow(s) or exactly one PassDown inflow."""
+def test_validate_link_user_demand_junction_inflow(upstream: tuple[str, str]):
+    """A UserDemand has either Basin inflow(s) or exactly one inflow from a Junction with rows."""
     model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
     nodes = {
         "basin": [
@@ -117,8 +117,11 @@ def test_validate_link_user_demand_pass_down_inflow(upstream: tuple[str, str]):
                 ],
             )
         ],
-        "pass_down": [
-            model.pass_down.add(Node(node_id, sg.Point(0, node_id)))
+        "junction": [
+            model.junction.add(
+                Node(node_id, sg.Point(0, node_id)),
+                [junction.Static(to_node_id=[5], fraction=[1.0])],
+            )
             for node_id in (2, 3)
         ],
     }
@@ -132,32 +135,35 @@ def test_validate_link_user_demand_pass_down_inflow(upstream: tuple[str, str]):
     )
     first, second = (nodes[upstream[0]].pop(), nodes[upstream[1]].pop())
     model.link.add(first, ud)
-    with pytest.raises(ValueError, match="exactly one PassDown inflow link"):
+    with pytest.raises(ValueError, match="exactly one inflow link from a Junction"):
         model.link.add(second, ud)
 
 
-def test_validate_link_connector_cannot_split_into_pass_down():
-    """A connector node cannot flow into multiple PassDown nodes, there must be a PassDown node in between."""
+def test_validate_link_connector_cannot_split_into_junctions():
+    """A connector node cannot flow into multiple Junctions, a Junction with fractions divides its flow."""
     model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
     pmp = model.pump.add(Node(1, sg.Point(0, 0)), [pump.Static(flow_rate=[1e-3])])
-    pd1 = model.pass_down.add(Node(2, sg.Point(1, 1)))
-    pd2 = model.pass_down.add(Node(3, sg.Point(1, -1)))
-    model.link.add(pmp, pd1)
+    jct1 = model.junction.add(Node(2, sg.Point(1, 1)))
+    jct2 = model.junction.add(Node(3, sg.Point(1, -1)))
+    model.link.add(pmp, jct1)
     with pytest.raises(ValueError, match="at most 1 flow link outneighbor"):
-        model.link.add(pmp, pd2)
+        model.link.add(pmp, jct2)
 
 
-def test_validate_link_pass_down_can_split_into_pass_down():
-    """A PassDown node can flow into multiple PassDown nodes."""
+def test_validate_link_junction_can_split_into_junctions():
+    """A Junction with fractions can flow into multiple Junctions, if those have rows as well."""
     model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
-    pd = model.pass_down.add(
+    jct = model.junction.add(
         Node(1, sg.Point(0, 0)),
-        [pass_down.Static(to_node_id=[2, 3], fraction=[0.5, 0.5])],
+        [junction.Static(to_node_id=[2, 3], fraction=[0.5, 0.5])],
     )
-    pd1 = model.pass_down.add(Node(2, sg.Point(1, 1)))
-    pd2 = model.pass_down.add(Node(3, sg.Point(1, -1)))
-    model.link.add(pd, pd1)
-    model.link.add(pd, pd2)
+    jct1 = model.junction.add(
+        Node(2, sg.Point(1, 1)), [junction.Static(to_node_id=[4], fraction=[1.0])]
+    )
+    jct2 = model.junction.add(Node(3, sg.Point(1, -1)))
+    model.link.add(jct, jct1)
+    with pytest.raises(ValueError, match="without rows in Junction / static"):
+        model.link.add(jct, jct2)
 
 
 def test_listen_link_allows_reverse_control(discrete_control_of_pid_control):

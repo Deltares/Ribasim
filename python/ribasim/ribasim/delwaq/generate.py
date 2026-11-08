@@ -115,12 +115,12 @@ def _make_boundary(data, boundary_type, values="concentration"):
     return boundary, substances
 
 
-def _pass_down_term_flows(G, flows: pd.DataFrame) -> pd.DataFrame | None:
-    """Compute the flows over the links that bypass PassDown nodes, see ``_setup_graph``.
+def _junction_term_flows(G, flows: pd.DataFrame) -> pd.DataFrame | None:
+    """Compute the flows over the links that bypass the Junction nodes that divide the flow, see ``_setup_graph``.
 
-    Each term is the flow of a link into a PassDown node, times the share of each
-    PassDown outflow link along the way: the flow of that link divided by the total
-    outflow of the PassDown node, per timestep. The result has the Delwaq link index as
+    Each term is the flow of a link into such a Junction node, times the share of each
+    outflow link of the Junction along the way: the flow of that link divided by the total
+    outflow of the Junction node, per timestep. The result has the Delwaq link index as
     ``link_id``, like the mapped flows.
     """
     wide = flows.pivot_table(
@@ -149,7 +149,13 @@ def _pass_down_term_flows(G, flows: pd.DataFrame) -> pd.DataFrame | None:
     return _concat(dfs, ignore_index=True) if dfs else None
 
 
-def _setup_graph(nodes, link, evaporate_mass=True):
+def _setup_graph(nodes, link, evaporate_mass=True, routed_junction_ids=frozenset()):
+    """Set up the Delwaq network graph from the Ribasim nodes and links.
+
+    ``routed_junction_ids`` are the Junction nodes with rows in `Junction / static`, which
+    divide the flow or supply a UserDemand. They are removed with the flow per source,
+    unlike the other Junction nodes, which only connect their neighbors.
+    """
     nx = cast(Any, _nx)
     G = nx.DiGraph()
 
@@ -159,6 +165,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
             G.add_node(
                 row.Index,
                 type=row.node_type,
+                routed=row.Index in routed_junction_ids,
                 id=row.Index,
                 x=row.geometry.x,
                 y=row.geometry.y,
@@ -179,7 +186,9 @@ def _setup_graph(nodes, link, evaporate_mass=True):
     # Remove Junctions first, as they can be chained
     # A connected group of Junctions with one Basin connects its other neighbors to
     # that Basin, and the flow is the one on the link of the neighbor with the group.
-    junction_ids = [n for n, d in G.nodes(data=True) if d["type"] == "Junction"]
+    junction_ids = [
+        n for n, d in G.nodes(data=True) if d["type"] == "Junction" and not d["routed"]
+    ]
     for group in list(nx.weakly_connected_components(G.subgraph(junction_ids))):
         basin_ids = {
             neighbor
@@ -206,7 +215,7 @@ def _setup_graph(nodes, link, evaporate_mass=True):
 
     remove_nodes = []
     for node_id, out in G.succ.items():
-        if G.nodes[node_id]["type"] == "Junction":
+        if G.nodes[node_id]["type"] == "Junction" and not G.nodes[node_id]["routed"]:
             inneighbor_ids = G.pred[node_id]
             remove_nodes.append(node_id)
 
@@ -235,20 +244,19 @@ def _setup_graph(nodes, link, evaporate_mass=True):
     for node_id in remove_nodes:
         G.remove_node(node_id)
 
-    # Remove PassDown nodes next. They have no storage, so the flow over each link into a
-    # PassDown node is passed on over its outflow links in proportion to their flows. A link
-    # that bypasses a PassDown node therefore carries the flow of the link into the node times
-    # the share of the outflow link, per timestep: see `_pass_down_term_flows`. Such a link has
-    # `terms` instead of `id`: (link_id, [(numerator link ids, denominator link ids), ...], sign).
+    # Remove the Junction nodes that divide the flow or supply a UserDemand next. They have no
+    # storage, so the flow over each link into such a Junction is passed on over its outflow
+    # links in proportion to their flows. A link that bypasses the Junction therefore carries
+    # the flow of the link into the node times the share of the outflow link, per timestep:
+    # see `_junction_term_flows`. Such a link has `terms` instead of `id`:
+    # (link_id, [(numerator link ids, denominator link ids), ...], sign).
     # Upstream nodes are removed first, so that the terms compose along chains.
-    pass_down_ids = [n for n, d in G.nodes(data=True) if d["type"] == "PassDown"]
-    while pass_down_ids:
+    routed_ids = [n for n, d in G.nodes(data=True) if d["routed"]]
+    while routed_ids:
         node_id = next(
-            n
-            for n in pass_down_ids
-            if not any(G.nodes[m]["type"] == "PassDown" for m in G.pred[n])
+            n for n in routed_ids if not any(G.nodes[m]["routed"] for m in G.pred[n])
         )
-        pass_down_ids.remove(node_id)
+        routed_ids.remove(node_id)
         out_edges = list(G.out_edges(node_id, data=True))
         denominator = [link_id for _, _, d in out_edges for link_id in d["id"]]
         for in_id, _, d_in in list(G.in_edges(node_id, data=True)):
@@ -550,7 +558,10 @@ def generate(
 
     # Setup flow network
     G, merge_links, node_mapping, link_mapping, basin_mapping = _setup_graph(
-        model.node, model.link, evaporate_mass=evaporate_mass
+        model.node,
+        model.link,
+        evaporate_mass=evaporate_mass,
+        routed_junction_ids=model.junction._routed_node_ids(),
     )
 
     # Plot
@@ -572,7 +583,7 @@ def generate(
     # Write topology to delwaq pointer file
     pointer = pd.DataFrame(G.edges(), columns=["from_node_id", "to_node_id"])
     write_pointer(output_path / "ribasim.poi", pointer)
-    # For links that bypass PassDown nodes, the links into the PassDown subgraph
+    # For links that bypass Junction nodes that divide the flow, the links into these Junction nodes
     pointer["riba_link_id"] = [
         d["id"] + [base for base, _, _ in d.get("terms", [])]
         for _, _, d in G.edges(data=True)
@@ -618,8 +629,8 @@ def generate(
         (basins["time"] - basins["time"].iloc[0]).dt.total_seconds().astype("int32")
     )
 
-    # The flows over links that bypass PassDown nodes are computed from the original flows
-    term_flows = _pass_down_term_flows(G, flows)
+    # The flows over links that bypass the Junction nodes that divide the flow are computed from the original flows
+    term_flows = _junction_term_flows(G, flows)
 
     # Invert flows for half-link of cycles so later summing is correct
     m = flows.link_id.isin(merge_links)

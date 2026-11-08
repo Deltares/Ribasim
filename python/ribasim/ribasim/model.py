@@ -45,7 +45,6 @@ from ribasim.config import (
     ManningResistance,
     Observation,
     Outlet,
-    PassDown,
     PidControl,
     Pump,
     Results,
@@ -119,7 +118,6 @@ class Model(FileModel, ParentModel):
     manning_resistance: ManningResistance = Field(default_factory=ManningResistance)
     observation: Observation = Field(default_factory=Observation)
     outlet: Outlet = Field(default_factory=Outlet)
-    pass_down: PassDown = Field(default_factory=PassDown)
     pid_control: PidControl = Field(default_factory=PidControl)
     pump: Pump = Field(default_factory=Pump)
     tabulated_rating_curve: TabulatedRatingCurve = Field(
@@ -643,9 +641,10 @@ class Model(FileModel, ParentModel):
         so they need at least one of both.
         """
         node_types = cast(dict[int, str], nodes.to_dict())
+        # The Junction nodes with rows in the static table stay in the simulation
         junction_ids = {
             i for i, node_type in node_types.items() if node_type == "Junction"
-        }
+        } - self.junction._routed_node_ids()
         if not junction_ids:
             return
 

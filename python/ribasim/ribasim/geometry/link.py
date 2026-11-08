@@ -315,28 +315,32 @@ class LinkTable(SpatialTableModel[LinkSchema]):
         max_in: int = neighbor_bounds[to_node.node_type][1]
         max_out: int = neighbor_bounds[from_node.node_type][3]
 
-        # A UserDemand abstracts from Basins, or from exactly one PassDown node
+        # The Junction nodes with rows in `Junction / static` divide the flow or supply a UserDemand
         model = cast("Model | None", self._parent)
-        if (
-            link_type == "flow"
-            and to_node.node_type == "UserDemand"
-            and model is not None
-            and model.node.df is not None
-        ):
-            in_from_node_ids = self.df.loc[
-                (self.df["to_node_id"] == to_node.node_id)
-                & (self.df["link_type"] == link_type),
-                "from_node_id",
-            ]
-            in_types = list(model.node.df.loc[in_from_node_ids, "node_type"])
-            in_types.append(from_node.node_type)
+        if link_type == "flow" and model is not None and model.node.df is not None:
+            routed_ids = model.junction._routed_node_ids()
+            if to_node.node_type == "UserDemand":
+                # A UserDemand abstracts from Basins, or from exactly one such Junction
+                in_from_node_ids = self.df.loc[
+                    (self.df["to_node_id"] == to_node.node_id)
+                    & (self.df["link_type"] == link_type),
+                    "from_node_id",
+                ].tolist()
+                in_from_node_ids.append(from_node.node_id)
+                if len(in_from_node_ids) > 1 and any(
+                    node_id in routed_ids for node_id in in_from_node_ids
+                ):
+                    raise ValueError(
+                        f"Node {to_node.node_id} must have either one or more Basin inflow links, or exactly one inflow link from a Junction with rows in Junction / static"
+                    )
             if (
-                "Junction" not in in_types
-                and "PassDown" in in_types
-                and len(in_types) > 1
+                from_node.node_id in routed_ids
+                and to_node.node_type == "Junction"
+                and to_node.node_id not in routed_ids
             ):
+                # The rows name the nodes the Junction flows into, so these cannot be removed from the network
                 raise ValueError(
-                    f"Node {to_node.node_id} must have either one or more Basin inflow links, or exactly one PassDown inflow link"
+                    f"Junction #{from_node.node_id} has rows in Junction / static, so it cannot flow into Junction #{to_node.node_id} without rows in Junction / static"
                 )
 
         if in_neighbor >= max_in:

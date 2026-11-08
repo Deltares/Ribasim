@@ -26,9 +26,12 @@ from ribasim_testmodels.discrete_control import (
     storage_condition_model,
     transient_condition_model,
 )
-from ribasim_testmodels.junction import junction_combined
+from ribasim_testmodels.junction import (
+    junction_allocation_model,
+    junction_combined,
+    junction_fraction_model,
+)
 from ribasim_testmodels.observation import observation_model
-from ribasim_testmodels.pass_down import pass_down_allocation_model, pass_down_model
 from ribasim_testmodels.pid_control import (
     discrete_control_of_pid_control_model,
     pid_control_model,
@@ -44,7 +47,7 @@ PHYSICAL_COMPONENTS: list[Callable[[], Model]] = [
     two_basin_model,
     junction_combined,
     observation_model,
-    pass_down_model,
+    junction_fraction_model,
     pid_control_model,
     discrete_control_of_pid_control_model,
     level_range_model,
@@ -64,7 +67,7 @@ ALLOCATION_COMPONENTS: list[Callable[[], Model]] = [
     level_demand_model,
     flow_demand_model,
     polder_management_model,
-    pass_down_allocation_model,
+    junction_allocation_model,
 ]
 
 CRS = "EPSG:28992"
