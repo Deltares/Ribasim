@@ -429,7 +429,7 @@ function add_linearized_connector_node!(
         node_ids_subnetwork,
     )::Nothing
     (; problem) = allocation_model
-    (; inflow_link, outflow_link) = node
+    (; inflow_link, downstream_level_id) = node
 
     flow = problem[:flow]
     storage_change = problem[:basin_storage_change]
@@ -462,7 +462,7 @@ function add_linearized_connector_node!(
                 )
             end
 
-            downstream_node = outflow_link[node_id.idx].link[2]
+            downstream_node = downstream_level_id[node_id.idx]
             if downstream_node.is_basin
                 JuMP.add_to_expression!(
                     linearization,

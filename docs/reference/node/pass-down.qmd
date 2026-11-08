@@ -11,7 +11,7 @@ PassDown nodes can be chained arbitrarily, as long as there are no loops. Multip
 
 Flow cannot be split directly by nodes that are not PassDown nodes: a connector node (e.g. Pump or Outlet), FlowBoundary or UserDemand has a single outflow link. To divide such flow, put a PassDown node in between.
 
-A connector node that flows into a PassDown node always has free outflow: the PassDown node has no level, so it never drowns the structure upstream. For a Pump or Outlet this means that `max_downstream_level` is not applied, and for a TabulatedRatingCurve that the downstream level reduction is not applied, where it would be if the structure flowed into a Basin directly. See also [Junction or PassDown](#junction-or-passdown) below.
+A PassDown node has no level of its own. A structure that flows into a PassDown node sees the level of the single Basin or LevelBoundary behind it, if the PassDown node, and the PassDown nodes behind it, do not divide the flow: then the structure behaves as if it flowed into that node directly, so a Pump or Outlet can still be drowned by `max_downstream_level`. Where the flow is divided over several nodes there is no single level, and the structure has free outflow: `max_downstream_level` and the downstream level reduction of a TabulatedRatingCurve are not applied. See also [Junction or PassDown](#junction-or-passdown) below.
 
 # Tables
 
@@ -77,7 +77,7 @@ Both nodes have no storage, but they play different roles:
 | | Junction | PassDown |
 |---|---|---|
 | Role | Draws the network, it is removed before the simulation | A node in the simulation, with a flow state per outflow link |
-| Downstream level seen by a weir or pump upstream | The level of the Basin or LevelBoundary behind the Junction | None: the structure always has free outflow |
+| Downstream level seen by a weir or pump upstream | The level of the Basin or LevelBoundary behind the Junction | The same, if the PassDown nodes behind the structure do not divide the flow; free outflow if they do |
 | Splitting flow | Not possible, the flow over each link follows from the nodes it connects | By the fractions of the outflow links |
 | UserDemand abstraction | No | At most one UserDemand per PassDown node |
 | Bidirectional flow | Yes | No, the inflow comes from Pump, Outlet, TabulatedRatingCurve, FlowBoundary, UserDemand or PassDown nodes |

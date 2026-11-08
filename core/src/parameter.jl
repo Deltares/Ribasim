@@ -706,6 +706,8 @@ inflow_link: incoming flow link metadata
     The ID of the destination node is always the ID of the TabulatedRatingCurve node
 outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the TabulatedRatingCurve node
+downstream_level_id: the node whose level is the downstream level: the node downstream, or the single Basin or
+    LevelBoundary behind PassDown nodes that do not divide the flow, see `set_downstream_level_ids!`
 max_downstream_level: The downstream level above which the TabulatedRatingCurve flow goes to zero
 interpolations: All Q(h) relationships for the nodes over time
 current_interpolation_index: Per node 1 lookup from t to an index in `interpolations`
@@ -718,6 +720,7 @@ allocation_controlled: whether this TabulatedRatingCurve is controlled by alloca
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    downstream_level_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     max_downstream_level::Vector{Float64} = fill(Inf, length(node_id))
     interpolations::Vector{ScalarPCHIPInterpolation} = ScalarLinearInterpolation[]
     current_interpolation_index::Vector{IndexLookup} = IndexLookup[]
@@ -746,6 +749,7 @@ flow_demand_id: connected flow demand node if applicable
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    downstream_level_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     resistance::Vector{Float64} = zeros(length(node_id))
     max_flow_rate::Vector{Float64} = zeros(length(node_id))
     control_mapping::OrderedDict{Tuple{NodeID, String}, ControlStateUpdate} =
@@ -796,6 +800,7 @@ Requirements:
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    downstream_level_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     length::Vector{Float64} = zeros(size(node_id))
     manning_n::Vector{Float64} = zeros(size(node_id))
     profile_width::Vector{Float64} = zeros(size(node_id))
@@ -892,6 +897,7 @@ flow_demand_id: connected flow demand node if applicable
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    downstream_level_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     flow_rate::Vector{Float64} = fill(NaN, length(node_id))
     time_dependent_flow_rate::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
@@ -932,6 +938,7 @@ flow_demand_id: connected flow demand node if applicable
     node_id::Vector{NodeID}
     inflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
+    downstream_level_id::Vector{NodeID} = Vector{NodeID}(undef, length(node_id))
     flow_rate::Vector{Float64} = fill(NaN, length(node_id))
     time_dependent_flow_rate::Vector{ScalarConstantInterpolation} =
         Vector{ScalarConstantInterpolation}(undef, length(node_id))
@@ -1147,6 +1154,9 @@ outflow_links: the outflow links per PassDown node
 fraction: per PassDown node the fraction of its flow (after UserDemand abstraction) that goes over each of its outflow links,
     in the order of `outflow_links`. This is 1 for links that do not lead to a PassDown node, and for the link
     towards a UserDemand node, since that flow is not divided.
+level_node_id: per PassDown node the node whose level is seen by the structures upstream: the single Basin or
+    LevelBoundary behind it if the node and the PassDown nodes behind it do not divide the flow, otherwise the
+    PassDown node itself, whose level is -Inf (free outflow)
 pass_down_subgraphs: disjoint directed acyclic graphs of flow-connected PassDown and UserDemand nodes,
     excluding UserDemand nodes without a PassDown inneighbor. The nodes of each subgraph
     are ordered such that each node comes after all nodes its flow depends on.
@@ -1173,6 +1183,7 @@ concentration: The concentration per substance of the flow through each PassDown
     fraction::Vector{Vector{Float64}} = [ones(length(links)) for links in outflow_links]
     pass_down_subgraphs::Vector{Vector{NodeID}} = Vector{NodeID}[]
     user_demand_id::Vector{NodeID} = fill(NodeID(:Terminal, 0, 0), length(node_id))
+    level_node_id::Vector{NodeID} = copy(node_id)
     routed_links::Vector{LinkMetadata} = LinkMetadata[]
     inflow_link_idx::Vector{Vector{Int}} = [Int[] for _ in node_id]
     outflow_link_idx::Vector{Vector{Int}} = [Int[] for _ in node_id]
@@ -1458,6 +1469,8 @@ an immutable struct.
     # Per state the inflow, outflow and self id associated with that state (if they exist)
     const inflow_id::FlowCVector{NodeID}
     const outflow_id::FlowCVector{NodeID}
+    # Per state the node whose level is the downstream level, see `set_downstream_level_ids!`
+    const downlink_level_id::FlowCVector{NodeID}
     const state_id::FlowCVector{NodeID}
     # The up- and downlink storage per flow
     const storage_uplink::FlowCVector{Float64} = similar(inflow_id, Float64)

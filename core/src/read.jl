@@ -1846,6 +1846,17 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
     end
     errors && error("Errors encountered when parsing PassDown data.")
 
+    # The level seen by structures upstream: the single node behind a chain of PassDown nodes that do
+    # not divide the flow. The subgraphs are in topological order, so go through them backwards.
+    for subgraph in pass_down.pass_down_subgraphs, id in Iterators.reverse(subgraph)
+        id.is_pass_down || continue
+        targets = [link.link[2] for link in outflow_links[id.idx] if link.link[2].type != NodeType.UserDemand]
+        if isone(length(targets))
+            target = only(targets)
+            pass_down.level_node_id[id.idx] = target.is_pass_down ? pass_down.level_node_id[target.idx] : target
+        end
+    end
+
     return pass_down
 end
 
@@ -2062,12 +2073,14 @@ function Parameters(db::DB, config::Config)::Parameters
     )
 
     set_in_pass_down_subgraph!(nodes.user_demand, nodes.pass_down)
+    set_downstream_level_ids!(nodes)
 
     subgrid = Subgrid(db, config, basin)
     flow_ranges = count_flow_ranges(nodes)
     state_ranges = count_state_ranges(nodes)
 
     inflow_id, outflow_id, state_id = get_flow_ids(nodes, flow_ranges)
+    downlink_level_id = get_downlink_level_ids(nodes, outflow_id)
     routed_basins, routed_flow_idxs, routed_basins_boundary = set_routing!(nodes, flow_ranges)
     incidence_matrix = get_incidence_matrix(inflow_id, outflow_id, routed_basins)
 
@@ -2080,6 +2093,7 @@ function Parameters(db::DB, config::Config)::Parameters
         subgrid,
         inflow_id,
         outflow_id,
+        downlink_level_id,
         state_id,
         routed_basins,
         routed_flow_idxs,

@@ -183,6 +183,26 @@ end
     @test_throws "Allocation subnetwork 2 has no Basin, which is not supported." Ribasim.Model(toml_path)
 end
 
+@testitem "Downstream level through PassDown nodes" begin
+    using DataFrames: DataFrame
+    using Statistics: mean
+
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/pass_down_level/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+    flow_data = Ribasim.flow_data(model) |> DataFrame
+    mean_flow_rate(from_node_id, to_node_id) = mean(
+        filter(row -> row.from_node_id == from_node_id && row.to_node_id == to_node_id, flow_data).flow_rate,
+    )
+
+    # Outlet #2 sees the level of Basin #4 behind PassDown #3, which is above its max_downstream_level
+    @test mean_flow_rate(2, 3) ≈ 0.0 atol = 1.0e-10
+    # Outlet #5 has free outflow, since PassDown #6 divides the flow over two Basins
+    @test mean_flow_rate(5, 6) ≈ 1.0e-3
+    @test mean_flow_rate(6, 7) ≈ 0.5e-3
+    @test mean_flow_rate(6, 8) ≈ 0.5e-3
+end
+
 @testitem "PassDown at subnetwork boundary" setup = [PassDownValidation] begin
     messages = PassDownValidation.error_messages(
         "invalid_pass_down_subnetwork_boundary",

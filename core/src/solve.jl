@@ -441,7 +441,7 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
     continuous_control_input_ranges = jac_continuous_control.ranges
     ∂continuous_control_compound_∂continuous_control_input = jac_continuous_control.jac
 
-    (; inflow_id, outflow_id) = p_independent
+    (; inflow_id, downlink_level_id) = p_independent
     n_flow = length(inflow_id)
 
     # Dependence via the up- and downlink storages
@@ -456,7 +456,7 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
         return nothing
     end
     foreach_storage_dependence(flow_input_ranges.storage_uplink, inflow_id)
-    foreach_storage_dependence(flow_input_ranges.storage_downlink, outflow_id)
+    foreach_storage_dependence(flow_input_ranges.storage_downlink, downlink_level_id)
 
     # Dependence via the ContinuousControl compound variables
     # The storage input comes first, and can be empty in a model without Basins
@@ -474,7 +474,7 @@ function foreach_∂flow_∂storage(f::F, J::RibasimJacobian) where {F}
                 else
                     listen_flow_idx = input_idx - flow_offset
                     id_in_listen = inflow_id[listen_flow_idx]
-                    id_out_listen = outflow_id[listen_flow_idx]
+                    id_out_listen = downlink_level_id[listen_flow_idx]
                     if id_in_listen.is_basin
                         ∂q_listen_∂storage = ∂flow_∂flow_input[listen_flow_idx, flow_input_ranges.storage_uplink[listen_flow_idx]]
                         f(flow_idx, id_in_listen.idx, val * cc_val * ∂q_listen_∂storage)

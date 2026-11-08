@@ -1316,11 +1316,11 @@ function set_uplink_downlink_storage!(
         storage::AbstractVector,
         p_independent::ParametersIndependent,
     )
-    (; inflow_id, outflow_id) = p_independent
+    (; inflow_id, downlink_level_id) = p_independent
 
     @threaded CHEAP_LOOP_MIN_CHUNK_SIZE for idx in eachindex(storage_uplink)
         in_id = inflow_id[idx]
-        out_id = outflow_id[idx]
+        out_id = downlink_level_id[idx]
         storage_uplink[idx] = in_id.is_basin ? storage[in_id.idx] : zero(eltype(storage_uplink))
         storage_downlink[idx] = out_id.is_basin ? storage[out_id.idx] : zero(eltype(storage_downlink))
     end
@@ -1354,6 +1354,34 @@ function set_controlled_node_ids!(p_independent, node::Union{PidControl, Continu
         node.outflow_id[id.idx] = outflow_id[flow_idx]
     end
     return nothing
+end
+
+"""
+Set per connector node the node whose level is the downstream level: the node downstream, or
+for a PassDown node downstream the single Basin or LevelBoundary behind it (`PassDown.level_node_id`).
+A structure that flows into a PassDown node that divides the flow has free outflow.
+"""
+function set_downstream_level_ids!(nodes::NamedTuple)::Nothing
+    (; pass_down) = nodes
+    for node in (nodes.pump, nodes.outlet, nodes.tabulated_rating_curve, nodes.linear_resistance, nodes.manning_resistance)
+        for (idx, outflow_link) in enumerate(node.outflow_link)
+            downstream_id = outflow_link.link[2]
+            node.downstream_level_id[idx] =
+                downstream_id.is_pass_down ? pass_down.level_node_id[downstream_id.idx] : downstream_id
+        end
+    end
+    return nothing
+end
+
+"Per flow state the node whose level is the downstream level, see `set_downstream_level_ids!`."
+function get_downlink_level_ids(nodes::NamedTuple, outflow_id::FlowCVector{NodeID})::FlowCVector{NodeID}
+    downlink_level_id = copy(outflow_id)
+    downlink_level_id.horizontal.pump .= nodes.pump.downstream_level_id
+    downlink_level_id.horizontal.outlet .= nodes.outlet.downstream_level_id
+    downlink_level_id.horizontal.tabulated_rating_curve .= nodes.tabulated_rating_curve.downstream_level_id
+    downlink_level_id.horizontal.linear_resistance .= nodes.linear_resistance.downstream_level_id
+    downlink_level_id.horizontal.manning_resistance .= nodes.manning_resistance.downstream_level_id
+    return downlink_level_id
 end
 
 "Mark the UserDemand nodes that are part of a PassDown subgraph."

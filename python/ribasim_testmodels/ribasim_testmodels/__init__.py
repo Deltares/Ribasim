@@ -102,6 +102,7 @@ from ribasim_testmodels.observation import observation_model
 from ribasim_testmodels.pass_down import (
     pass_down_allocation_model,
     pass_down_flow_boundary_model,
+    pass_down_level_model,
     pass_down_model,
     pass_down_no_basin_model,
     pass_down_pid_model,
@@ -197,6 +198,7 @@ __all__ = [
     "pass_down_allocation_model",
     "pass_down_equation_model",
     "pass_down_flow_boundary_model",
+    "pass_down_level_model",
     "pass_down_model",
     "pass_down_no_basin_model",
     "pass_down_pid_model",

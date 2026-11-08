@@ -281,6 +281,51 @@ def pass_down_no_basin_model() -> Model:
     return model
 
 
+def pass_down_level_model() -> Model:
+    """Create a model that shows which downstream level a structure feeding a PassDown node sees.
+
+    Two identical Outlets with a `max_downstream_level` of 1.5 m drain Basin #1. Outlet #2 flows
+    via PassDown #3 into Basin #4 alone, so it sees the level of Basin #4 (2 m) and is drowned.
+    Outlet #5 flows via PassDown #6, which divides the flow over Basins #7 and #8 (also 2 m), so
+    it has free outflow and keeps flowing.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 10),
+        crs="EPSG:28992",
+    )
+
+    def basin_tables(level: float) -> list:
+        return [
+            basin.Profile(area=[1e4, 1e4], level=[0.0, 10.0]),
+            basin.State(level=[level]),
+        ]
+
+    def outlet_tables() -> list:
+        return [outlet.Static(flow_rate=[1e-3], max_downstream_level=[1.5])]
+
+    source = model.basin.add(Node(1, Point(0, 0)), basin_tables(3.0))
+    out_a = model.outlet.add(Node(2, Point(1, 1)), outlet_tables())
+    pd_a = model.pass_down.add(Node(3, Point(2, 1)))
+    b_a = model.basin.add(Node(4, Point(3, 1)), basin_tables(2.0))
+    out_b = model.outlet.add(Node(5, Point(1, -1)), outlet_tables())
+    pd_b = model.pass_down.add(
+        Node(6, Point(2, -1)),
+        [pass_down.Static(to_node_id=[7, 8], fraction=[0.5, np.nan])],
+    )
+    b_b1 = model.basin.add(Node(7, Point(3, -0.5)), basin_tables(2.0))
+    b_b2 = model.basin.add(Node(8, Point(3, -1.5)), basin_tables(2.0))
+
+    model.link.add(source, out_a)
+    model.link.add(out_a, pd_a)
+    model.link.add(pd_a, b_a)
+    model.link.add(source, out_b)
+    model.link.add(out_b, pd_b)
+    model.link.add(pd_b, b_b1)
+    model.link.add(pd_b, b_b2)
+    return model
+
+
 def pass_down_tracer_model() -> Model:
     """Create a model for testing the tracers through PassDown nodes.
 

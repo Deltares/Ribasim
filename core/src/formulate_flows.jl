@@ -497,7 +497,7 @@ function linear_resistance_flow(
     inflow_link = linear_resistance.inflow_link[node_id.idx]
 
     inflow_id = inflow_link.link[1]
-    downstream_id = linear_resistance.outflow_link[node_id.idx].link[2]
+    downstream_id = linear_resistance.downstream_level_id[node_id.idx]
 
     h_a = get_level(s_a, p, inflow_id, t)
     h_b = get_level(s_b, p, downstream_id, t)
@@ -520,7 +520,7 @@ function tabulated_rating_curve_flow(
     (; current_interpolation_index, interpolations) = tabulated_rating_curve
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
-    downstream_id = tabulated_rating_curve.outflow_link[node_id.idx].link[2]
+    downstream_id = tabulated_rating_curve.downstream_level_id[node_id.idx]
     inflow_id = inflow_link.link[1]
 
     h_a = get_level(s_a, p, inflow_id, t)
@@ -547,7 +547,7 @@ function allocated_rating_curve_flow(
     )::Number
     (; level_difference_threshold) = p.p_independent
     inflow_link = tabulated_rating_curve.inflow_link[node_id.idx]
-    downstream_id = tabulated_rating_curve.outflow_link[node_id.idx].link[2]
+    downstream_id = tabulated_rating_curve.downstream_level_id[node_id.idx]
 
     inflow_id = inflow_link.link[1]
 
@@ -726,7 +726,7 @@ function manning_resistance_flow(
         apply_low_storage_factor::Bool = true,
     )::Number
     inflow_id = manning_resistance.inflow_link[node_id.idx].link[1]
-    downstream_id = manning_resistance.outflow_link[node_id.idx].link[2]
+    downstream_id = manning_resistance.downstream_level_id[node_id.idx]
 
     h_a = get_level(s_a, p, inflow_id, t)
     h_b = get_level(s_b, p, downstream_id, t)
@@ -897,7 +897,7 @@ function pump_or_outlet_flow(
 
     node_idx = node_id.idx
     inflow_id = node.inflow_link[node_idx].link[1]
-    downstream_id = node.outflow_link[node_idx].link[2]
+    downstream_id = node.downstream_level_id[node_idx]
     min_flow_rate = node.min_flow_rate[node_idx]
     max_flow_rate = node.max_flow_rate[node_idx]
     min_upstream_level = node.min_upstream_level[node_idx]
