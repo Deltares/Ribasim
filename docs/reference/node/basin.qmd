@@ -23,6 +23,19 @@ These parameters help define how water is stored and managed in the system. Belo
 # Confluence Representation
 A confluence where multiple links converge into a single node can be modeled using a [Junction node](/reference/node/junction.qmd).
 
+# Allowed connectivity
+
+The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node.
+This is a connectivity illustration, not a valid simulation model.
+
+```{python}
+# | code-fold: true
+%run ../../../utils/plot_node_connectivity.py
+fig = plot_node_connectivity("Basin")
+plt.show()
+plt.close(fig)
+```
+
 # Tables
 
 ## Static
@@ -33,8 +46,12 @@ there is no dynamic forcing data for that variable. Specifically, if there is ei
 time table, it is empty, or all timestamps of that variable are missing.
 
 ```{python}
-# | code-fold: true
+# | include: false
 %run ../../gen_docs_table.py
+```
+
+```{python}
+# | code-fold: true
 basin_forcing_restrictions = dict.fromkeys(
     [
         "drainage",

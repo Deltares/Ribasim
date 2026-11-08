@@ -27,13 +27,14 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
         # source basins' concentrations.
         inflows = get_inflows(cumulative_flow_dt, user_demand, node_idx)
         total_inflow = sum(inflows)
+        return_flow = cumulative_flow_dt.horizontal.user_demand_outflow[node_idx]
         if total_inflow > 0
             for node_inflow_idx in eachindex(inflow_links)
                 from_node = inflow_links[node_inflow_idx].link[1]
                 link_inflow = inflows[node_inflow_idx]
                 fraction = link_inflow / total_inflow
                 return_mass_node .+=
-                    @view(concentration_state[:, from_node.idx]) .* link_inflow .* fraction
+                    @view(concentration_state[:, from_node.idx]) .* return_flow .* fraction
             end
         end
 

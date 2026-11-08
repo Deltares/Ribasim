@@ -42,6 +42,163 @@ df = DataFrame(:node => node_names, :controllable_parameters => controllable_par
 markdown_table(df)
 ```
 
+# Schematic
+
+```{julia}
+# | code-fold: true
+include("../../../utils/docs_plots.jl")
+
+control_diagram = plot(;
+    xlims = (0, 11), ylims = (-4, 7), size = (768, 730),
+    aspect_ratio = :equal,
+    axis = false, ticks = false, grid = false, legend = false,
+    margin = 5Plots.mm,
+)
+
+control_states = ["off", "low", "high"]
+active_state = "low"
+state_flow_rates = [0.0, 0.5, 1.0]
+selector_x, selector_y = 2.5, 4.5
+pump_x = 8.35
+basin_xs = [selector_x, pump_x]
+basin_y = -2.2
+radius = 1.6
+
+for (i, state) in enumerate(control_states)
+    active = state == active_state
+    start_angle = -pi / 2 + (i - 1) * 2pi / length(control_states)
+    end_angle = start_angle + 2pi / length(control_states)
+    angles = range(start_angle, end_angle; length = 60)
+    middle_angle = (start_angle + end_angle) / 2
+    plot!(
+        control_diagram,
+        Shape(
+            [selector_x; selector_x .+ radius .* cos.(angles); selector_x],
+            [selector_y; selector_y .+ radius .* sin.(angles); selector_y],
+        );
+        fillcolor = active ? :lightgreen : :lightgrey,
+        linecolor = :white, linewidth = 2,
+    )
+    annotate!(
+        control_diagram,
+        selector_x + 0.7radius * cos(middle_angle),
+        selector_y + 0.7radius * sin(middle_angle),
+        text(state, 11),
+    )
+
+    y = 6.1 - (i - 1) * 1.2
+    plot!(
+        control_diagram,
+        Shape(
+            [6.2, 10.5, 10.5, 6.2],
+            [y - 0.45, y - 0.45, y + 0.45, y + 0.45],
+        );
+        fillcolor = active ? :lightgreen : :white,
+        linecolor = active ? :darkgreen : :grey,
+        linewidth = active ? 2 : 1,
+    )
+    annotate!(
+        control_diagram, pump_x, y,
+        text("$state: flow_rate = $(state_flow_rates[i])", 10),
+    )
+end
+
+plot!(
+    control_diagram, [selector_x, selector_x], [2.9, 1.8];
+    color = :grey, linestyle = :dot,
+)
+plot!(
+    control_diagram, [pump_x, pump_x], [3.25, 1.8];
+    color = :grey, linestyle = :dot,
+)
+plot!(
+    control_diagram, [selector_x, pump_x], [1.4, 1.4];
+    color = "#808080", linewidth = 2,
+)
+for basin_x in basin_xs
+    start_x = basin_x == selector_x ? basin_x : basin_x - 0.18
+    start_y = basin_y + 0.15
+    end_x = selector_x
+    end_y = 1.4
+    middle_x = (start_x + end_x) / 2
+    middle_y = (start_y + end_y) / 2
+    direction_x = end_x - start_x
+    direction_y = end_y - start_y
+    direction_length = hypot(direction_x, direction_y)
+    unit_x = direction_x / direction_length
+    unit_y = direction_y / direction_length
+    perpendicular_x = -unit_y
+    perpendicular_y = unit_x
+    arrow_length = 0.16
+    arrow_half_width = 0.07
+    base_x = middle_x - unit_x * arrow_length / 2
+    base_y = middle_y - unit_y * arrow_length / 2
+    plot!(
+        control_diagram,
+        [start_x, end_x], [start_y, end_y];
+        color = "#808080", linestyle = :dash, linewidth = 2,
+    )
+    plot!(
+        control_diagram,
+        Shape(
+            [
+                middle_x + unit_x * arrow_length / 2,
+                base_x + perpendicular_x * arrow_half_width,
+                base_x - perpendicular_x * arrow_half_width,
+            ],
+            [
+                middle_y + unit_y * arrow_length / 2,
+                base_y + perpendicular_y * arrow_half_width,
+                base_y - perpendicular_y * arrow_half_width,
+            ],
+        );
+        fillcolor = "#808080", linecolor = "#808080",
+    )
+end
+scatter!(
+    control_diagram, [(selector_x + pump_x) / 2], [1.4];
+    markershape = :rtriangle, markersize = 6, color = "#808080",
+)
+scatter!(
+    control_diagram, [selector_x], [1.4];
+    markershape = :star5, markersize = 20, color = "#984EA3",
+)
+scatter!(
+    control_diagram, [pump_x], [1.4];
+    markershape = :hexagon, markersize = 18, color = :grey,
+)
+annotate!(control_diagram, 1.0, 1.4, text("DiscreteControl", 11))
+annotate!(control_diagram, pump_x, 0.65, text("Pump", 11))
+annotate!(
+    control_diagram, (selector_x + pump_x) / 2, 1.8,
+    text("control", 10),
+)
+
+for basin_x in basin_xs
+    annotate!(
+        control_diagram,
+        basin_x == selector_x ? selector_x + 0.35 : 5.45,
+        basin_x == selector_x ? -0.2 : -0.05,
+        text("listen", 10),
+    )
+end
+
+for basin_x in basin_xs
+    plot!(
+        control_diagram,
+        Shape(
+            [basin_x - 0.18, basin_x + 0.18, basin_x + 0.09, basin_x - 0.09],
+            [basin_y + 0.15, basin_y + 0.15, basin_y - 0.15, basin_y - 0.15],
+        );
+        fillcolor = "#0072b2", linecolor = :black, linewidth = 1.5,
+    )
+    annotate!(
+        control_diagram, basin_x, basin_y - 0.4, text("Basin", 10),
+    )
+end
+control_diagram
+```
+
 # Tables
 
 ## Variable
@@ -83,8 +240,8 @@ The condition schema defines conditions of the form the `discrete_control` node 
 
 $$
 \text{condition}=\begin{cases}
-    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots > \text{greater_than}(t), !\text{condition_prev} \\
-    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots >= \text{less_than}(t), \text{condition_prev}
+    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots > \text{greater\_than}(t), !\text{condition\_prev} \\
+    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots \geq \text{less\_than}(t), \text{condition\_prev}
 \end{cases}
 $$
 
