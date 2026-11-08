@@ -152,8 +152,6 @@ function Model(
 
     # Initialize the integrator, providing all solver options as described in
     # https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/
-    # Not all keyword arguments (e.g. `dtmax`) support `nothing`, in which case we follow
-    # https://github.com/SciML/OrdinaryDiffEq.jl/blob/v6.57.0/src/solve.jl#L10
     integrator = init(
         prob,
         alg;
@@ -168,7 +166,7 @@ function Model(
         internalnorm = InternalNorm(; parameters.p_independent),
         config.solver.dt,
         config.solver.dtmin,
-        dtmax = something(config.solver.dtmax, t_end),
+        config.solver.dtmax,
         config.solver.force_dtmin,
         config.solver.abstol,
         config.solver.reltol,
