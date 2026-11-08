@@ -185,7 +185,7 @@ end
     saveat::Float64 = 86400.0
     dt::Union{Float64, Nothing} = nothing
     dtmin::Float64 = 0.0
-    dtmax::Union{Float64} = 86400.0
+    dtmax::Float64 = 86400.0
     force_dtmin::Bool = false
     abstol::Float64 = 1.0e-4
     reltol::Float64 = 1.0e-4
@@ -309,7 +309,7 @@ function validate_config(toml::Toml)::Nothing
         is_valid = false
     end
 
-    if !isnothing(toml.solver.dtmax) && !(toml.solver.dtmax > 0)
+    if !(toml.solver.dtmax > 0)
         @error "The solver dtmax must be positive." toml.solver.dtmax
         is_valid = false
     end
