@@ -564,15 +564,14 @@ end
         :ManningResistance,
         :Observation,
         :Outlet,
-        :Junction,
         :PidControl,
         :Pump,
         :TabulatedRatingCurve,
         :Terminal,
         :UserDemand,
     ]
-    # Junction, Terminal have no tables
-    no_tables = (:Terminal, :Junction)
+    # Terminal has no tables
+    no_tables = (:Terminal,)
     @test unique(node_type.(table_types)) == filter(!in(no_tables), node_types)
     @test collect(keys(node_kinds)) == node_types
     for node_type in node_types
