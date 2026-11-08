@@ -348,6 +348,15 @@ function valid_config(config::Config)::Bool
         @error "The model starttime must be before the endtime."
     end
 
+    (; reduced_implicit_solve) = config.solver
+    if !isnothing(reduced_implicit_solve) &&
+            reduced_implicit_solve &&
+            !use_reduced_implicit_solve(config.solver)
+        errors = true
+        @error "The reduced implicit solve is not supported by solver algorithm \
+            $(config.solver.algorithm), only by $(join(reduced_implicit_solve_algorithms(), ", "))."
+    end
+
     (; intervention_interval, dt, dtmin, dtmax, reltol_linearization) = config.allocation
     if !isnothing(reltol_linearization)
         @warn "The allocation.reltol_linearization setting is deprecated and ignored, it can be removed from the TOML." reltol_linearization

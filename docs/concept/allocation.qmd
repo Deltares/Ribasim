@@ -163,10 +163,10 @@ We have the following boundary nodes in Ribasim:
 
 - The Terminal, where water simply leaves the model
 - The LevelBoundary, which yields fixed water levels; $h^{n+1}_{lb}$ is read from the interpolated timeseries $h_{lb}$ of the node or is a constant value
-- The FlowBoundary, which specifies a flow rate. Here the average outflow of the FlowBoundary in the physical layer over the previous $\Delta t$ is used as a prediction of the flow rate in the next $\Delta t$ over which the optimization takes place.
+- The FlowBoundary, which specifies a flow rate. Here the flow rate at the intervention time $t$ is held constant over the intervention interval (persistence), so allocation does not use future values of the timeseries.
 
 :::{.callout-note}
-The flow rate of a FlowBoundary is given as a timeseries so we could use the interpolation of that timeseries to compute the average flow in the coming $\Delta t_\text{allocation}$. However, that would not always be accurate, since FlowBoundary nodes can be deactivated by Discrete Control which can not (easily) be anticipated.
+The flow rate of a FlowBoundary is given as a timeseries, but allocation does not use the interpolation of that timeseries over the coming $\Delta t_\text{allocation}$: that would be foresight, which allocation does not have at the intervention time. It is also not always accurate, since FlowBoundary nodes can be deactivated by Discrete Control which can not (easily) be anticipated.
 :::
 
 
@@ -174,6 +174,8 @@ The flow rate of a FlowBoundary is given as a timeseries so we could use the int
 # Objectives (goals)
 
 The allocation algorithm optimizes for a sequence of objectives in succession. Before optimizing the next goal, it adds an inequality constraint that retains the preceding result in the direction of improvement. For a minimization objective with optimal value $z^*$, this is $z \le z^*$. This approach is known as [goal programming](https://en.wikipedia.org/wiki/Goal_programming).
+
+The first objective maximizes the sum of the low storage factors of the Basins, which reduce the outflows of a Basin to prevent negative storage, like the low storage factor in the physical layer. Because this objective comes first, these factors are only lowered when a Basin would otherwise run empty, and the demand objectives cannot lower them to hold back water. Then come the demand objectives below, and finally the route priority objective.
 
 
 ### Demand objectives
@@ -378,7 +380,7 @@ When Pumps and Outlets are part of a subnetwork, they can be controlled by alloc
 Because the allocation problem must be bounded, an allocation controlled Pump or Outlet is required to have a finite `max_flow_rate`. This is validated at the start of the simulation, for the initial parameters as well as for all DiscreteControl states of the node. Note that Pumps and Outlets that connect the primary network to a secondary network are required to be allocation controlled; an error is thrown if `allocation_controlled` is not set to `true` for these nodes. Hence they also require a finite `max_flow_rate`.
 :::
 
-For a TabulatedRatingCurve, the allocation-determined flow is bounded by the rating curve linearized around the current upstream level, $Q \le Q(h_a^n) + \frac{\partial Q}{\partial h_a}\Delta h_a$, where $\Delta h_a = \Delta S_a / A_a^n$ is the level change of the upstream Basin over the allocation timestep. If the rating curve changes within the timestep, the one that gives the larger flow is used. In the physical layer, the allocated flow rate replaces the usual $Q(h)$ lookup while still applying the same reduction factors for low storage, level difference, and maximum downstream level (see [TabulatedRatingCurve equations](/reference/node/tabulated-rating-curve.qmd#equations)). After all goals have been optimized for, the flow rate through the allocation controllable node is communicated to the physical layer.
+For a TabulatedRatingCurve, the allocation-determined flow is bounded by the rating curve linearized around the current upstream level, $Q \le Q(h_a^n) + \frac{\partial Q}{\partial h_a}\Delta h_a$, where $\Delta h_a = \Delta S_a / A_a^n$ is the level change of the upstream Basin over the allocation timestep. In the physical layer, the allocated flow rate replaces the usual $Q(h)$ lookup while still applying the same reduction factors for low storage, level difference, and maximum downstream level (see [TabulatedRatingCurve equations](/reference/node/tabulated-rating-curve.qmd#equations)). After all goals have been optimized for, the flow rate through the allocation controllable node is communicated to the physical layer.
 
 
 ### Interaction of allocation with other control systems
@@ -402,13 +404,13 @@ The allocation problem is solved per subnetwork, which is given by a subset $S \
 
 ### Boundary flows
 
-Links pointing out of a FlowBoundary node carry a known flow rate rather than a decision variable: the corresponding flow variable is fixed to the average flow over the last allocation interval $\Delta t_{\text{alloc}}$ in the physical layer,
+Links pointing out of a FlowBoundary node carry a known flow rate rather than a decision variable: the corresponding flow variable is fixed to the flow rate at the intervention time $t$, held constant over the intervention interval,
 
 $$
-    \frac{1}{\Delta t_{\text{alloc}}}\int_{t - \Delta t_{\text{alloc}}}^tQ_{ij}(t') dt'.
+    Q_{ij}(t).
 $$
 
-For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description). If the FlowBoundary flows into PassDown nodes, the boundary flow is divided over the links to these nodes by their fractions. LevelBoundary nodes instead enter the problem through their level, which is a fixed parameter of the optimization (see [Boundary nodes](#boundary-nodes)).
+For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description). If the FlowBoundary flows into PassDown nodes, the boundary flow is divided over the links to these nodes by their fractions. LevelBoundary nodes instead enter the problem through their level, which is evaluated at the end of the allocation timestep and enters the constant terms of the linearized connector nodes (see [Boundary nodes](#boundary-nodes)).
 
 ### User demands
 
