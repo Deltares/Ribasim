@@ -502,13 +502,16 @@ function check_basin_water_balance_error!(
             basin.node_id,
         )
         storage_rate = (s_now - s_prev) / Δt
+        # The storage difference over a short Δt has a resolution of eps(storage) / Δt due to
+        # floating point cancellation (large storages with a tiny first timestep, e.g. with saveat = 0)
+        storage_rate_resolution = eps(max(abs(s_now), abs(s_prev))) / Δt
         total_in = inflow_rate + precipitation + drainage + surface_runoff
         total_out = outflow_rate + evaporation + infiltration
         balance_error = storage_rate - (total_in - total_out)
         mean_flow_rate = (total_in + total_out) / 2
         relative_error = iszero(mean_flow_rate) ? 0.0 : balance_error / mean_flow_rate
 
-        if abs(balance_error) > water_balance_abstol &&
+        if abs(balance_error) > water_balance_abstol + storage_rate_resolution &&
                 abs(relative_error) > water_balance_reltol
             errors = true
             @error "Too large water balance error" id balance_error relative_error storage_rate total_in outflow_rate evaporation infiltration mean_flow_rate
@@ -556,8 +559,11 @@ function check_negative_storage(u, t, integrator)::Nothing
     # constant time series take their value after a possible jump at t, see
     # `interpolation_time`. The time dependent cache still holds the values from before the
     # jump, as the last evaluation at t was part of the time step, so it is renewed.
+    # The jumps are at tstops, and the reached tstop is only removed after the callbacks.
     update_cumulative_forcing!(p, t)
-    p.time_dependent_cache.t_prev_call[1] = -1.0
+    if has_tstop(integrator) && first_tstop(integrator) == integrator.tdir * t
+        p.time_dependent_cache.t_prev_call[1] = -1.0
+    end
     water_balance!(du, u, p, t)
 
     if log_negative_storage(basin, current_basin_properties.current_storage)
@@ -827,6 +833,11 @@ function set_control_params!(p::Parameters, node_id::NodeID, control_state::Stri
     apply_parameter_update!.(itp_update_constant)
     apply_parameter_update!.(itp_update_linear)
     apply_parameter_update!.(itp_update_lookup)
+    # The time dependent cache holds the values of the replaced time series, so renew it at
+    # the next call of the right hand side, also at the same t
+    if !(isempty(itp_update_constant) && isempty(itp_update_linear) && isempty(itp_update_lookup))
+        p.time_dependent_cache.t_prev_call[1] = -1.0
+    end
 
     return nothing
 end

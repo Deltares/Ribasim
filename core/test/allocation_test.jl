@@ -19,8 +19,12 @@
     user_demand_error = problem[:user_demand_error]
     low_storage_factor = problem[:low_storage_factor]
 
+    # Low storage factor objective, which comes first
+    @test objectives[1].type == AllocationObjectiveType.low_storage_factor
+    @test objectives[1].expressions[1] == -sum(low_storage_factor)
+
     # Demand objective
-    objective = objectives[1]
+    objective = objectives[2]
     @test objective.type == AllocationObjectiveType.demand_flow
     first_expression_terms = keys(objective.expressions[1].terms)
     @test length(first_expression_terms) == 2
@@ -31,9 +35,6 @@
     @test objective.expressions[2] ==
         user_demand_error[NodeID(:UserDemand, 5, p_independent), 1, :second] +
         user_demand_error[NodeID(:UserDemand, 6, p_independent), 1, :second]
-
-    # Low storage factor objective
-    @test objectives[2].expressions[1] == -sum(low_storage_factor)
 end
 
 
@@ -235,6 +236,33 @@ end
     test_extrapolation(level_demand.max_level[1][3])
     test_extrapolation(flow_demand.demand_interpolation[1][2])
     test_extrapolation.(user_demand.demand_interpolation[1][1:2])
+end
+
+@testitem "Low storage factor only prevents negative storage" begin
+    import BasicModelInterface as BMI
+    import JuMP
+
+    toml_path =
+        normpath(@__DIR__, "../../generated_testmodels/allocation_training/ribasim.toml")
+    @test ispath(toml_path)
+    model = Ribasim.Model(toml_path)
+    # Around day 103 the reservoir is below its LevelDemand min_level, which the demand
+    # objectives could otherwise try to meet by lowering the low storage factors.
+    # Step per day, since each update_until call is an intervention time.
+    for day in 1:103
+        BMI.update_until(model, day * 86400.0)
+    end
+    (; allocation, basin) = model.integrator.p.p_independent
+    (; current_storage) = allocation.current_basin_properties
+
+    # A low storage factor below 1 is only needed when the Basin runs empty
+    for allocation_model in allocation.allocation_models
+        low_storage_factor = allocation_model.problem[:low_storage_factor]
+        for basin_id in only(axes(low_storage_factor))
+            @test JuMP.value(low_storage_factor[basin_id]) ≈ 1 ||
+                current_storage[basin_id.idx] ≤ basin.low_storage_threshold[basin_id.idx]
+        end
+    end
 end
 
 @testitem "infeasibility analysis" begin

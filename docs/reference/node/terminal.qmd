@@ -7,6 +7,19 @@ Any water that flows into a Terminal node is removed from the model.
 No water can come into the model from a Terminal node.
 For example, Terminal nodes can be used as a downstream boundary.
 
+# Allowed connectivity
+
+The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node.
+This is a connectivity illustration, not a valid simulation model.
+
+```{python}
+# | code-fold: true
+%run ../../../utils/plot_node_connectivity.py
+fig = plot_node_connectivity("Terminal")
+plt.show()
+plt.close(fig)
+```
+
 # Tables
 
 No tables are required for Terminal nodes.

@@ -59,11 +59,17 @@ function get_parameter_value(
         parameter,
         T::Type{<:Number},
         default,
-        ::NodeID;
+        node_id::NodeID;
         from_static = true,
+        parameter_name = nothing,
         kwargs...,
     )::Tuple{Union{Missing, T}, Bool}
     val = coalesce(parameter[last(data_group)], default)
+    # Number parameters cannot vary over time, so all rows in a Time table must agree
+    if !from_static && any(i -> !isequal(coalesce(parameter[i], default), val), data_group)
+        @error "$node_id has multiple different values over time for '$parameter_name', which does not support time-varying values."
+        return val, false
+    end
     return val, true
 end
 
@@ -350,7 +356,7 @@ function parse_parameter_values!(
 
         # Obtain the data
         data_args = (T, default, id)
-        data_kwargs = (; config, cyclic_time, node_ids_all)
+        data_kwargs = (; config, cyclic_time, node_ids_all, parameter_name)
 
         if use_default
             @assert has_default
@@ -2062,7 +2068,7 @@ function Parameters(db::DB, config::Config)::Parameters
         do_concentration = config.experimental.concentration,
         do_subgrid = config.results.subgrid,
         incidence_matrix,
-        config.solver.reduced_implicit_solve,
+        reduced_implicit_solve = use_reduced_implicit_solve(config.solver),
         config.solver.level_difference_threshold,
         config.solver.max_depth,
     )
