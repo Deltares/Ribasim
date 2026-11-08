@@ -334,6 +334,62 @@ end
     @test flow_data_links == allocation_flow_data_links
 end
 
+@testitem "Tracer transport through Basins in series" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/tracer_chain/ribasim.toml")
+    @test ispath(toml_path) skip = true
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # 10 instantaneously mixed Basins in series with a residence time of 1000 s each, so the
+    # FlowBoundary tracer in the last Basin follows the tanks in series solution
+    n_basin = 10
+    residence_time = 1000.0
+    tanks_in_series(t) = 1 - exp(-t / residence_time) *
+        sum((t / residence_time)^k / factorial(k) for k in 0:(n_basin - 1))
+
+    (; basin) = model.integrator.p.p_independent
+    substance_idx = Ribasim.find_index(:FlowBoundary, basin.concentration_data.substances)
+    (; t, saveval) = model.saved.flow
+    concentration = [saved.concentration[end, substance_idx] for saved in saveval]
+    @test maximum(abs.(concentration .- tanks_in_series.(t))) < 1.0e-3
+    # The tracer passes through all Basins
+    @test last(concentration) ≈ 1 atol = 1.0e-3
+end
+
+@testitem "Tracer concentration changes in between timesteps" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/tracer_boundary_pulse/ribasim.toml")
+    @test ispath(toml_path) skip = true
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # The solver stops at the start and end of the pulse, which take 4 h 24 min,
+    # and the timesteps ending there use the concentration from before the change
+    (; concentration_data) = model.integrator.p.p_independent.basin
+    substance_idx = Ribasim.find_index(:Pulse, concentration_data.substances)
+    @test only(concentration_data.mass[substance_idx, :]) ≈ 0.1 * 4.4 * 3600 rtol = 1.0e-10
+end
+
+@testitem "Tracers with evaporation that leaves the mass behind" begin
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/tracer_evaporation/ribasim.toml")
+    @test ispath(toml_path) skip = true
+    model = Ribasim.run(toml_path)
+    @test success(model)
+
+    # With storage S, throughflow q and evaporation e the FlowBoundary concentration follows
+    # from S dC/dt = q (1 - C) + e C with S decreasing linearly over time
+    q = 0.1
+    e = 1000 * 1.0e-6
+    S0 = 1000.0
+    exact(t) = q / (q - e) * (1 - ((S0 - e * t) / S0)^((q - e) / e))
+
+    (; basin) = model.integrator.p.p_independent
+    substance_idx = Ribasim.find_index(:FlowBoundary, basin.concentration_data.substances)
+    (; t, saveval) = model.saved.flow
+    concentration = [only(saved.concentration[:, substance_idx]) for saved in saveval]
+    @test maximum(abs.(concentration .- exact.(t))) < 1.0e-5
+    @test last(concentration) > 1
+end
+
 @testitem "Tracers through a UserDemand return flow" begin
     toml_path = normpath(@__DIR__, "../../generated_testmodels/tracer_user_demand/ribasim.toml")
     @test ispath(toml_path) skip = true

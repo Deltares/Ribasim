@@ -97,7 +97,7 @@ A Junction has no level of its own. A structure that flows into a Junction sees 
 
 With `experimental.concentration` the tracers are propagated through the subgraphs in the same order as the flow is computed, using the mass over the timestep rather than concentrations, so that no mass is lost when a flow is zero:
 
-- For flows into a subgraph the mass is the flow times the concentration of the source: the concentration of the FlowBoundary or LevelBoundary, or of the Basin upstream of a Pump, Outlet or TabulatedRatingCurve. For a UserDemand outside the subgraph it is the mass in its return flow.
+- For flows into a subgraph the mass is the flow times the concentration of the source: the concentration of the FlowBoundary or LevelBoundary, or of the Basin upstream of a Pump, Outlet or TabulatedRatingCurve at the start of the timestep, see the [numerical scheme](/concept/core.qmd#numerical-scheme). For a UserDemand outside the subgraph it is the mass in its return flow.
 - The mass of the inflows of a Junction is mixed: the concentration of the flow out of a Junction, including the flow abstracted by a UserDemand, is the total mass in divided by the total volume out.
 - A UserDemand abstracting from a Junction handles tracers like a UserDemand abstracting from Basins: the mass of the flow it abstracts ends up in its return flow, with the UserDemand tracer replaced by the one of the UserDemand itself.
 - The mass that flows from a subgraph into a Basin is added to the mass of that Basin. A Junction itself does not store water, so tracers do not age in it.
