@@ -957,10 +957,14 @@ function ConcentrationControlTimestep(
         end
     end
 
+    # The rate of change of a compound variable is only predicted from its linear concentration terms
+    is_linear(subvariable::SubVariable) =
+        subvariable.func == :identity && iszero(subvariable.nested)
     discrete_control_terms = [
         [
             [
-                (subvariable.weight, i) for subvariable in compound_variable.subvariables for
+                (subvariable.coefficient * subvariable.weight, i) for
+                    subvariable in compound_variable.subvariables if is_linear(subvariable) for
                     i in (listened_index(subvariable),) if i != 0
             ] for compound_variable in compound_variables
         ] for compound_variables in discrete_control.compound_variables
@@ -1116,13 +1120,16 @@ function DiscreteControlConditions(
                 push!(conditions.truth_value, false)
             end
 
+            # Only linear compound variables, see `set_compound_variable_values!`
             contiguous = all(compound_variable.subvariables) do subvariable
-                (; listen_node_id, type) = subvariable
-                (type in (ListenVariableType.Level, ListenVariableType.Storage) && listen_node_id.is_basin) ||
-                    (
-                    type == ListenVariableType.FlowRate &&
-                        snake_case(listen_node_id.type) in
-                        (:pump, :outlet, :tabulated_rating_curve, :linear_resistance, :manning_resistance)
+                (; listen_node_id, type, func, coefficient, offset, nested) = subvariable
+                func == :identity && isone(coefficient) && iszero(offset) && iszero(nested) && (
+                    (type in (ListenVariableType.Level, ListenVariableType.Storage) && listen_node_id.is_basin) ||
+                        (
+                        type == ListenVariableType.FlowRate &&
+                            snake_case(listen_node_id.type) in
+                            (:pump, :outlet, :tabulated_rating_curve, :linear_resistance, :manning_resistance)
+                    )
                 )
             end
             push!(conditions.contiguous, contiguous)
@@ -1214,7 +1221,15 @@ function compound_variable_value(
     for subvariable in compound_variable.subvariables
         (; listen_node_id, variable, weight, look_ahead, type) = subvariable
 
-        sub_value = if type == ListenVariableType.Level
+        sub_value = if !iszero(subvariable.nested)
+            compound_variable_value(
+                compound_variable.nested[subvariable.nested],
+                storage,
+                flow,
+                p,
+                t,
+            )
+        elseif type == ListenVariableType.Level
             if listen_node_id.is_basin
                 # Basin level
                 get_level(storage[listen_node_id.idx], p, listen_node_id, t)
@@ -1258,9 +1273,28 @@ function compound_variable_value(
             error("Unsupported listen variable $variable.")
         end
 
-        value += weight * sub_value
+        value += subvariable.coefficient *
+            apply_function(subvariable, weight * sub_value + subvariable.offset)
     end
     return value
+end
+
+"Apply the function of a subvariable to the weighted variable plus offset."
+function apply_function(subvariable::SubVariable, x)
+    (; func, power) = subvariable
+    return if func === :identity
+        x
+    elseif func === :exponential
+        exp(x)
+    elseif func === :inverse
+        inv(x)
+    elseif func === :power
+        x^power
+    elseif func === :sin
+        sin(x)
+    else
+        error("Unsupported function $func.")
+    end
 end
 
 function set_control_params!(p::Parameters, node_id::NodeID, control_state::String)::Nothing

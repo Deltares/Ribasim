@@ -500,7 +500,8 @@ class Model(FileModel, ParentModel):
         for table in tables:
             if table is None:
                 continue
-            pairs = table[["node_id", "listen_node_id"]].drop_duplicates()
+            pairs = table[["node_id", "listen_node_id"]].dropna().drop_duplicates()
+            pairs = pairs.astype(np.int32)
             pairs.columns = pd.Index(["to_node_id", "from_node_id"])
             parts.append(pairs)
 

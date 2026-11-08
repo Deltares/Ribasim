@@ -17,13 +17,30 @@ For instance, if one `ContinuousControl` node sets the flow rate of a pump, this
 
 ## Variable
 
-The compound variable schema defines linear combinations of variables which can be used as an input for continuous functions described below. This means that
+The compound variable schema defines combinations of variables which can be used as an input for continuous functions described below. This means that
 this schema defines new variables that look like
 $$
-    \text{weight}_1 * \text{variable}_1 + \text{weight}_2 * \text{variable}_2 + \ldots,
+    \text{coefficient}_1 * f_1(\text{weight}_1 * \text{variable}_1 + \text{offset}_1) + \text{coefficient}_2 * f_2(\text{weight}_2 * \text{variable}_2 + \text{offset}_2) + \ldots,
 $$
 
-which can be for instance an average or a difference of variables. If a variable comes from a timeseries, a look ahead $\Delta t$ can be supplied. There is only one compound variable per `ContinuousControl` node.
+which can be for instance an average or a difference of variables, but also contain non-linear terms. If a variable comes from a timeseries, a look ahead $\Delta t$ can be supplied.
+
+The function $f$ is set per row with `function`, and can be one of
+
+| `function` | $f(x)$ |
+| --- | --- |
+| `identity` (default) | $x$ |
+| `exponential` | $e^x$ |
+| `inverse` | $\frac{1}{x}$ |
+| `power(n)`, with `n` an integer | $x^n$ |
+| `sin` | $\sin(x)$ |
+
+Take care that the argument stays within the domain of the function, e.g. `inverse` is undefined at zero.
+A `variable` can also be `compound_variable.<id>`, which refers to the compound variable with that `compound_variable_id` of the same node, so expressions can be nested. In that case `listen_node_id` must be left empty. Referring to a compound variable cyclically is an error.
+To add a constant to the compound variable, use a row with `weight = 0` and the constant as `offset`.
+
+There is only one top level compound variable per `ContinuousControl` node, the rows that have no `compound_variable_id`. Rows with a `compound_variable_id` define compound variables that can only be used by referring to them from other rows.
+
 
 ```{julia}
 # | code-fold: true
@@ -31,9 +48,11 @@ include("../../../utils/gen_docs_table.jl")
 table_from_schema(
     Ribasim.Schema.ContinuousControl.Variable;
     restrictions = Dict(
-        :listen_node_id => "a Junction only with variable \"flow_rate\"",
-        :variable => "must be \"level\" or \"flow_rate\"",
+        :compound_variable_id => "empty for the compound variable the node listens to, otherwise the ID of a compound variable that other rows refer to",
+        :listen_node_id => "a Junction only with variable `flow_rate`; required unless `variable` is `compound_variable.<id>`, then it must be empty",
+        :variable => "must be \"level\", \"flow_rate\" or `compound_variable.<id>` with the `compound_variable_id` of another compound variable of this node, not creating a cycle",
         :look_ahead => "only on transient boundary conditions, non-negative",
+        :function => "must be \"identity\", \"exponential\", \"inverse\", \"power(n)\" with `n` an integer, or \"sin\"; the argument must be in the domain of the function",
     ),
 )
 ```
@@ -53,3 +72,133 @@ table_from_schema(
     restrictions = Dict(:controlled_variable => "must be \"level\", \"storage\" or \"flow_rate\""),
 )
 ```
+
+# Examples
+
+The examples below use the Python API and go from simple to complex.
+Each one shows the `Variable` table that defines the compound variable and the `Function` table that maps its value to the controlled variable.
+In all examples `ContinuousControl` node 10 controls the flow rate of Pump 20, and outside the range of the `input` values of the `Function` table the function is extrapolated linearly.
+
+## 1. Listen to one variable
+
+The Pump flow rate is proportional to the level of Basin 1: $2$ m³/s per m of level, so $4$ m³/s at a level of $2$ m.
+This uses the defaults `function = "identity"`, `weight = 1`, `coefficient = 1` and `offset = 0`, so only `listen_node_id` and `variable` are needed.
+
+```python
+continuous_control.Variable(node_id=10, listen_node_id=[1], variable="level")
+continuous_control.Function(
+    node_id=10, input=[0.0, 2.0], output=[0.0, 4.0], controlled_variable="flow_rate"
+)
+```
+
+## 2. Difference or average of variables
+
+The Pump flow rate is $2$ m³/s per m of level difference between Basin 1 and Basin 2, using weights $1$ and $-1$: no flow when the levels are equal, $1$ m³/s at a difference of $0.5$ m.
+This assumes that Basin 1 stays higher than Basin 2.
+Use weights $0.5$ and $0.5$ for an average instead.
+
+```python
+continuous_control.Variable(
+    node_id=10, listen_node_id=[1, 2], variable="level", weight=[1.0, -1.0]
+)
+continuous_control.Function(
+    node_id=10, input=[0.0, 0.5], output=[0.0, 1.0], controlled_variable="flow_rate"
+)
+```
+
+## 3. Shift and scale
+
+Use the water depth above a reference level of $-1.2$ m, in cm, so the `Function` table can be given in cm.
+The offset is added inside $f$, so the compound variable is $100 * (\text{level} + (-1.2))$ with $f$ the identity.
+The Pump flow rate is then $0.05$ m³/s per cm above the reference level, so $5$ m³/s at a level of $-0.2$ m.
+
+```python
+continuous_control.Variable(
+    node_id=10, listen_node_id=[1], variable="level", offset=-1.2, coefficient=100.0
+)
+continuous_control.Function(
+    node_id=10, input=[0.0, 100.0], output=[0.0, 5.0], controlled_variable="flow_rate"
+)
+```
+
+## 4. Non-linear relation
+
+The Pump flow rate grows quadratically with the head over a sill at level $0.5$ m: $0.8 * (\text{level} - 0.5)^2$ m³/s, so $0.8$ m³/s at a level of $1.5$ m and $3.2$ m³/s at $2.5$ m.
+Here the `Function` table is the identity, so its output is the value of the compound variable.
+Take care that the level stays above the sill, as the negative side of the parabola would give positive flows.
+
+```python
+continuous_control.Variable(
+    node_id=10,
+    listen_node_id=[1],
+    variable="level",
+    function="power(2)",
+    offset=-0.5,
+    coefficient=0.8,
+)
+continuous_control.Function(
+    node_id=10, input=[0.0, 10.0], output=[0.0, 10.0], controlled_variable="flow_rate"
+)
+```
+
+## 5. Sum of non-linear terms with a constant
+
+Every row is a term of the compound variable.
+Take the salt concentration at an intake in mg/l, estimated from the discharge $Q_a$ of a river (FlowBoundary 3) and the discharge $Q_b$ of a tributary (FlowBoundary 4):
+
+$$
+    c = 20 + 450 e^{-0.012 (Q_a + 25)} + \frac{3000}{Q_b}.
+$$
+
+Since $e^{-0.012 (Q_a + 25)} = e^{-0.012 Q_a - 0.3}$, the first term has `weight = -0.012` and `offset = -0.3`.
+The constant $20$ is made with a weight of zero, as then only the offset remains.
+The `Function` table maps the concentration to a flushing flow rate of the Pump, which is $0$ at $50$ mg/l and $10$ m³/s at $500$ mg/l.
+For $Q_a = 100$ and $Q_b = 1500$ m³/s the concentration is $20 + 450 e^{-1.5} + 2 \approx 122.4$ mg/l, so the Pump flow rate is about $1.6$ m³/s.
+
+```python
+continuous_control.Variable(
+    node_id=10,
+    listen_node_id=[3, 4, 3],
+    variable="flow_rate",
+    weight=[-0.012, 1.0, 0.0],
+    offset=[-0.3, 0.0, 20.0],
+    function=["exponential", "inverse", "identity"],
+    coefficient=[450.0, 3000.0, 1.0],
+)
+continuous_control.Function(
+    node_id=10, input=[50.0, 500.0], output=[0.0, 10.0], controlled_variable="flow_rate"
+)
+```
+
+## 6. Nested compound variables
+
+Rows with a `compound_variable_id` define a compound variable that other rows can use as their `variable`, written as `compound_variable.<id>`.
+The `listen_node_id` of such a row is left empty.
+This example uses the same relation as above, but $Q_a$ is not measured directly.
+It is the sum of the flow rates of Pump 5 and Pump 6, which is compound variable 1.
+Rows without a `compound_variable_id` form the compound variable that the node listens to.
+With flow rates of $60$ and $40$ m³/s for the Pumps and the same $Q_b$ as above, this gives the same Pump flow rate of about $1.6$ m³/s.
+
+```python
+continuous_control.Variable(
+    node_id=10,
+    compound_variable_id=[1, 1, None, None, None],
+    listen_node_id=[5, 6, None, 4, 4],
+    variable=[
+        "flow_rate",
+        "flow_rate",
+        "compound_variable.1",
+        "flow_rate",
+        "flow_rate",
+    ],
+    weight=[1.0, 1.0, -0.012, 1.0, 0.0],
+    offset=[0.0, 0.0, -0.3, 0.0, 20.0],
+    function=["identity", "identity", "exponential", "inverse", "identity"],
+    coefficient=[1.0, 1.0, 450.0, 3000.0, 1.0],
+)
+continuous_control.Function(
+    node_id=10, input=[50.0, 500.0], output=[0.0, 10.0], controlled_variable="flow_rate"
+)
+```
+
+Compound variables can be nested to any depth, but not refer to themselves, directly or indirectly.

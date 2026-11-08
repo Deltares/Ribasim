@@ -1008,7 +1008,7 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
         end
 
         # Validate look_ahead
-        for compound_variable in compound_variables
+        for compound_variable in flatten_compound_variables(compound_variables)
             for subvariable in compound_variable.subvariables
                 if !iszero(subvariable.look_ahead)
                     node_type = subvariable.listen_node_id.type
@@ -1035,6 +1035,16 @@ function valid_discrete_control(p::ParametersIndependent, config::Config)::Bool
     end
 
     return !errors
+end
+
+"The compound variables including all compound variables nested in them."
+function flatten_compound_variables(compound_variables::Vector{CompoundVariable})
+    flat = CompoundVariable[]
+    for compound_variable in compound_variables
+        push!(flat, compound_variable)
+        append!(flat, flatten_compound_variables(compound_variable.nested))
+    end
+    return flat
 end
 
 function valid_demand_priorities(

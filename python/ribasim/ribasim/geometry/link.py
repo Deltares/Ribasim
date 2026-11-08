@@ -237,7 +237,7 @@ class LinkTable(SpatialTableModel[LinkSchema]):
                 continue
             mask = table["node_id"] == control_node.node_id
             listen_node_ids.update(
-                int(x) for x in table.loc[mask, "listen_node_id"].unique()
+                int(x) for x in table.loc[mask, "listen_node_id"].dropna().unique()
             )
         return listen_node_ids
 

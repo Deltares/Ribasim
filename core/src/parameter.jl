@@ -1094,6 +1094,19 @@ end
 
 @enumx ListenVariableType Level Storage FlowRate ConcentrationExternal Concentration Unsupported
 
+"""
+A term of a compound variable: `coefficient * f(weight * variable + offset)`.
+listen_node_id: The node the variable is obtained from, or the listening node itself for a nested compound variable
+variable: The name of the variable
+weight: Factor multiplying the variable inside f
+look_ahead: Look ahead in time for time series variables
+type: The type of `variable`, to not compare strings when evaluating the subvariable
+func: The function f, one of :identity, :exponential, :inverse, :power, :sin
+power: The exponent for f = :power
+coefficient: Factor multiplying the outcome of f
+offset: Constant added to the weighted variable inside f
+nested: If nonzero, the index in `CompoundVariable.nested` of the compound variable used as the variable
+"""
 @kwdef struct SubVariable
     listen_node_id::NodeID
     variable::String
@@ -1101,6 +1114,11 @@ end
     look_ahead::Float64
     # The type of `variable`, to not compare strings when evaluating the subvariable
     type::ListenVariableType.T = listen_variable_type(variable)
+    func::Symbol = :identity
+    power::Int = 1
+    coefficient::Float64 = 1.0
+    offset::Float64 = 0.0
+    nested::Int = 0
 end
 
 SubVariable(listen_node_id, variable, weight, look_ahead) =
@@ -1126,6 +1144,7 @@ end
 The data for a single compound variable for DiscreteControl.
 node_id:: The ID of the DiscreteControl that listens to this variable
 subvariables: data for one single subvariable
+nested: the compound variables that subvariables refer to, see `SubVariable.nested`
 threshold_high: the thresholds this compound variable will be
     compared against when the condition in the previous timestep is false
 threshold_low: the thresholds this compound variable will be
@@ -1134,6 +1153,7 @@ threshold_low: the thresholds this compound variable will be
 @kwdef struct CompoundVariable
     node_id::NodeID
     subvariables::Vector{SubVariable} = SubVariable[]
+    nested::Vector{CompoundVariable} = CompoundVariable[]
     threshold_high::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
     threshold_low::Vector{ScalarConstantInterpolation} = ScalarConstantInterpolation[]
     # The thresholds that are constant in time, NaN for those that vary in time

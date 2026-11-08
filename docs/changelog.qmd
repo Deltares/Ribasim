@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- DiscreteControl and ContinuousControl: compound variable terms now support a `function` (`identity`, `exponential`, `inverse`, `power(n)` or `sin`), `coefficient` and `offset` in the `Variable` table, and a variable can refer to another compound variable with `compound_variable.<id>` to nest expressions. [#2944](https://github.com/Deltares/Ribasim/issues/2944)
 - BMI: Set FlowBoundary flow rates during a simulation and read cumulative flow for online coupling. [#3251](https://github.com/Deltares/Ribasim/pull/3251)
 - Warn on rapidly oscillating DiscreteControl states with the configurable `solver.min_discrete_control_interval`. [#3237](https://github.com/Deltares/Ribasim/pull/3237)
 - Report rejected timesteps by cause and the mean solver order in `results/solver_stats.nc`. [#3269](https://github.com/Deltares/Ribasim/pull/3269)
