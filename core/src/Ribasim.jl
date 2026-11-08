@@ -89,7 +89,8 @@ using SparseArrays: SparseMatrixCSC, sparse, spzeros, nonzeros, nzrange, rowvals
 
 # Linear algebra
 using LinearAlgebra: LinearAlgebra, I, mul!, UniformScaling, dot
-using LinearSolve: OperatorAssumptions, NonstructuralZeros
+using LinearSolve:
+    OperatorAssumptions, NonstructuralZeros, KLUFactorization, LinearAliasSpecifier
 
 # Interpolation functionality, used for e.g.
 # basin profiles and TabulatedRatingCurve. See also the node
@@ -167,7 +168,6 @@ using Accessors: @set, @reset
 
 # Iteration utilities, used to partition and group tables.
 import IterTools
-import PureKLU
 
 # Tables interface that works with SQLite tables.
 using Tables: Tables, AbstractRow, columntable

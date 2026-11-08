@@ -177,19 +177,16 @@ function TracerTransport(
             end
         end
     end
-    # The factorization pivots on the diagonal, like for the matrices of the timesteps, so
-    # identity values give the pivot order and sparsity pattern for all of those
-    nonzeros(A)[diagonal_nz] .= 1.0
-    factorization = iszero(n_basin) ? nothing : PureKLU.klu(A)
+    rhs = zeros(n_basin, n_substance)
     return TracerTransport(
         A,
         diagonal_nz,
         forward_nz,
         backward_nz,
         zeros(n_basin),
-        zeros(n_basin, n_substance),
+        rhs,
         zeros(n_basin),
-        factorization,
+        init_tracer_linear_solve(A, rhs),
     )
 end
 
@@ -208,10 +205,10 @@ function transport_tracers!(
     )::Nothing
     (; tracer_transport, basin, level_boundary, cumulative_flow_dt, inflow_id, outflow_id, flow_ranges) =
         p_independent
-    (; A, diagonal_nz, forward_nz, backward_nz, outflow, work, theta, factorization) = tracer_transport
+    (; A, diagonal_nz, forward_nz, backward_nz, outflow, rhs, theta, linear_solve) = tracer_transport
     (; mass, evaporate_mass, concentration_state) = basin.concentration_data
     (; storage_prev_dt) = basin
-    isnothing(factorization) && return nothing
+    isempty(diagonal_nz) && return nothing
     nzval = nonzeros(A)
     fill!(nzval, 0.0)
     fill!(outflow, 0.0)
@@ -267,7 +264,7 @@ function transport_tracers!(
         # The residence time tracer gets older, integrated with the trapezoidal rule
         mass[Substance.ResidenceTime, i] += dt * (storage + current_storage[i]) / 2
         for substance_idx in axes(mass, 1)
-            work[i, substance_idx] = mass[substance_idx, i] -
+            rhs[i, substance_idx] = mass[substance_idx, i] -
                 (1 - θ) * net_outflow * concentration_state[substance_idx, i]
         end
     end
@@ -283,20 +280,24 @@ function transport_tracers!(
             nzval[nz] = -θ * volume
             if θ < 1
                 for substance_idx in axes(mass, 1)
-                    work[i, substance_idx] +=
+                    rhs[i, substance_idx] +=
                         (1 - θ) * volume * concentration_state[substance_idx, j]
                 end
             end
         end
     end
 
-    # The matrix is diagonally dominant by column, so the diagonal pivots stay stable
-    PureKLU.klu!(factorization, nzval)
-    LinearAlgebra.ldiv!(factorization, work)
+    # Refactorize with the new values. The matrix is diagonally dominant by column, so the
+    # diagonal pivots stay stable.
+    linear_solve.A = A
+    solution = SciMLBase.solve!(linear_solve)
+    successful_retcode(solution) ||
+        error("The linear solve of the tracer transport failed at t = $(tprev + dt) s.")
+    concentration = solution.u
 
     for i in eachindex(diagonal_nz)
         for substance_idx in axes(mass, 1)
-            mass[substance_idx, i] = current_storage[i] * work[i, substance_idx]
+            mass[substance_idx, i] = current_storage[i] * concentration[i, substance_idx]
         end
     end
     return nothing

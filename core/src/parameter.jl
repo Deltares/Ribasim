@@ -539,6 +539,25 @@ once, so that each timestep only the time dependent ones need to be evaluated.
 end
 
 """
+Initialize the linear solve of the tracer transport, for all substances at once. It refers to
+`A` and `rhs`, which are updated in place each timestep.
+"""
+function init_tracer_linear_solve(A::SparseMatrixCSC{Float64, Int}, rhs::Matrix{Float64})
+    alias = LinearAliasSpecifier(; alias_A = true, alias_b = true)
+    # As in the linear solve of the flows, the stored zeros should not be dropped, since the
+    # symbolic factorization is reused without checking the sparsity pattern
+    assumptions = OperatorAssumptions(true; nonstructural_zeros = NonstructuralZeros.None)
+    return init(
+        LinearProblem(A, rhs),
+        KLUFactorization(; check_pattern = false);
+        alias,
+        assumptions,
+    )
+end
+
+const TracerLinearSolve = typeof(init_tracer_linear_solve(spzeros(0, 0), zeros(0, 0)))
+
+"""
 The linear system for the transport of substances between Basins over a timestep, which all
 substances share. See the section on substance concentrations in `docs/concept/core.qmd` for
 the derivation of the scheme, and [`transport_tracers!`](@ref) for its implementation.
@@ -553,12 +572,12 @@ struct TracerTransport
     backward_nz::Vector{Int}
     # Volume that left each Basin with its mixed concentration over the timestep
     outflow::Vector{Float64}
-    # Right hand side and solution of the linear system, Basin x substance
-    work::Matrix{Float64}
+    # Right hand side of the linear system, Basin x substance
+    rhs::Matrix{Float64}
     # Per Basin the weight of the concentration at the end of the timestep in its outflows
     theta::Vector{Float64}
-    # Refactorized with new values each timestep, nothing if there is no system to solve
-    factorization::Union{Nothing, PureKLU.KLUFactorization{Float64, Int, Float64}}
+    # KLU factorization of A, refactorized with new values each timestep
+    linear_solve::TracerLinearSolve
 end
 
 @kwdef struct ConcentrationData
