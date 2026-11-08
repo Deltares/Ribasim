@@ -906,7 +906,7 @@ For allocation controlled Pump and Outlet nodes there is no fallback bound, so a
 
 ### Demand-based bounds
 
-`update_user_demand_flow_bounds!` bounds all inflow links and the outflow link of a UserDemand node between zero and its total demand over all demand priorities. For the outflow the return factor is conservatively assumed to be 1. Since the demand values stored in the problem are already divided by `scaling.flow`, the upper bounds of the allocated variables can be used directly.
+`update_user_demand_flow_bounds!` bounds all inflow links and the outflow link of a UserDemand node between zero and its total demand over all demand priorities. For each inflow link the upper bound is multiplied by the same reduction factor for the source level and the `min_level` as in the physical layer, evaluated at the start of the allocation timestep, or the reduction factor of an allocated inflow into the source Basin if that is larger. Otherwise a UserDemand at its `min_level` would never get a supply, since nothing would ask for the water. The start of the timestep is not representative if the level changes much within the timestep, which can make the allocated flow alternate between timesteps. This would be improved by timestepping based on the linearization error ([#3334](https://github.com/Deltares/Ribasim/issues/3334)). For the outflow the return factor is conservatively assumed to be 1. Since the demand values stored in the problem are already divided by `scaling.flow`, the upper bounds of the allocated variables can be used directly.
 
 `update_flow_demand_variable_bounds!` then takes the (now final) bounds of the flow variable of the node with a flow demand and transfers them to the helper variables: the allocated variable of the earliest demand priority may go down to $\min(0, Q^\min)$ to represent negative flow, and the 'demand priority 0' surplus variable is bounded above by $\max(0, Q^\max)$. If the flow variable has no bound on a side, the corresponding helper variable bound is deleted as well.
 
@@ -922,7 +922,7 @@ set_simulation_data!(allocation_model, p, t, Δt, u, du, t_known)
 reset_demand_coefficients(allocation_model)
 set_demands!(allocation_model, p, t, Δt)
 update_flow_variable_bounds!(allocation_model, p, t, Δt)
-update_user_demand_flow_bounds!(allocation_model, p_independent)
+update_user_demand_flow_bounds!(allocation_model, p, t)
 update_flow_demand_variable_bounds!(allocation_model, p_independent)
 normalize_flow_demand_objectives!(allocation_model)
 ```
