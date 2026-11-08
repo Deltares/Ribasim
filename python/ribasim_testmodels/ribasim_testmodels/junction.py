@@ -11,6 +11,7 @@ from ribasim.nodes import (
     discrete_control,
     flow_boundary,
     junction,
+    level_boundary,
     linear_resistance,
     outlet,
     pid_control,
@@ -735,4 +736,57 @@ def junction_allocation_model() -> Model:
     model.link.add(ud, jct_b)
     model.link.add(jct_b, b3)
 
+    return model
+
+
+def junction_into_junction_model() -> Model:
+    """Create a model where a Junction with fractions flows into Junctions without rows.
+
+    FlowBoundary #1 flows into Junction #2, which sends 40% to Junction #4 and the rest to
+    Junction #5, neither of which has rows. Junction #4 also receives FlowBoundary #3 and
+    passes everything on to Basin #6. Junction #5 connects Basin #7 with LinearResistance #8,
+    which drains into LevelBoundary #9, so it is a Junction group with one Basin.
+    The rows of Junction #2 name #4 and #5, and apply to the links that replace them.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 1, 10),
+        crs="EPSG:28992",
+    )
+
+    def basin_tables() -> list:
+        return [
+            basin.Profile(area=[1e4, 1e4], level=[0.0, 10.0]),
+            basin.State(level=[1.0]),
+        ]
+
+    fb1 = model.flow_boundary.add(
+        Node(1, Point(0, 0)), [flow_boundary.Static(flow_rate=[1e-2])]
+    )
+    jct = model.junction.add(
+        Node(2, Point(1, 0)),
+        [junction.Static(to_node_id=[4, 5], fraction=[0.4, np.nan])],
+    )
+    fb2 = model.flow_boundary.add(
+        Node(3, Point(1, 2)), [flow_boundary.Static(flow_rate=[5e-3])]
+    )
+    jct_conf = model.junction.add(Node(4, Point(2, 1)))
+    jct_group = model.junction.add(Node(5, Point(2, -1)))
+    b1 = model.basin.add(Node(6, Point(3, 1)), basin_tables())
+    b2 = model.basin.add(Node(7, Point(3, -1)), basin_tables())
+    lr = model.linear_resistance.add(
+        Node(8, Point(2, -2)), [linear_resistance.Static(resistance=[1e4])]
+    )
+    lb = model.level_boundary.add(
+        Node(9, Point(2, -3)), [level_boundary.Static(level=[0.5])]
+    )
+
+    model.link.add(fb1, jct)
+    model.link.add(jct, jct_conf)
+    model.link.add(fb2, jct_conf)
+    model.link.add(jct_conf, b1)
+    model.link.add(jct, jct_group)
+    model.link.add(jct_group, b2)
+    model.link.add(jct_group, lr)
+    model.link.add(lr, lb)
     return model

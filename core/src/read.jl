@@ -1774,6 +1774,8 @@ function Junction(db::DB, config::Config, graph::ModelGraph)::Junction
     invalid_fraction_rows = NamedTuple{(:node_id, :to_node_id), Tuple{Int32, Int32}}[]
     unknown_link_rows = NamedTuple{(:node_id, :to_node_id), Tuple{Int32, Int32}}[]
     duplicate_rows = NamedTuple{(:node_id, :to_node_id), Tuple{Int32, Int32}}[]
+    divided_rows = NamedTuple{(:node_id, :to_node_id), Tuple{Int32, Int32}}[]
+    divided_ids = Set{NodeID}()
     for row in static
         row_ids = (; node_id = row.node_id, to_node_id = row.to_node_id)
         id = NodeID(NodeType.Junction, row.node_id, node_id)
@@ -1782,6 +1784,18 @@ function Junction(db::DB, config::Config, graph::ModelGraph)::Junction
             link -> link.link[2].value == row.to_node_id && link.link[2].type != NodeType.UserDemand,
             outflow_links[id.idx],
         )
+        if isnothing(link_idx)
+            # The row may name a Junction without rows, which `simplify_graph!` replaced by links
+            # from this node to the nodes behind it. The row is for that link, if there is one.
+            targets = replaced_link_targets(graph, id, row.to_node_id)
+            if length(targets) == 1
+                link_idx = findfirst(link -> link.link[2] == only(targets), outflow_links[id.idx])
+            elseif length(targets) > 1
+                push!(divided_rows, row_ids)
+                push!(divided_ids, id)
+                continue
+            end
+        end
         if isnothing(link_idx)
             push!(unknown_link_rows, row_ids)
         elseif has_fraction[id.idx][link_idx]
@@ -1799,6 +1813,10 @@ function Junction(db::DB, config::Config, graph::ModelGraph)::Junction
         @error "Junction fractions can only be given for flow links out of the Junction node, except the link to a UserDemand node." unknown_link_rows
         errors = true
     end
+    if !isempty(divided_rows)
+        @error "These rows name a Junction without rows in Junction / static that divides the flow over several nodes. Give that Junction rows with fractions as well, or name those nodes in these rows." divided_rows
+        errors = true
+    end
     if !isempty(duplicate_rows)
         @error "Duplicate Junction fractions for the same link." duplicate_rows
         errors = true
@@ -1809,6 +1827,8 @@ function Junction(db::DB, config::Config, graph::ModelGraph)::Junction
     end
 
     for id in node_id
+        # The fractions of this node are already wrong, so do not report follow-up errors
+        id in divided_ids && continue
         divided_idxs =
             findall(link -> link.link[2].type != NodeType.UserDemand, outflow_links[id.idx])
         isempty(divided_idxs) && continue
@@ -2132,6 +2152,25 @@ function get_node_ids_types(
     # convert from String to NodeType
     node_type = NodeType.T.(table.node_type)
     return (; table.node_id, node_type)
+end
+
+"""
+The nodes behind a Junction without rows in `Junction / static` that `node_id` flows into:
+`simplify_graph!` removed that Junction, and replaced the flow link from `node_id` to it by
+links from `node_id` to these nodes. Empty if there is no such flow link.
+"""
+function replaced_link_targets(graph::ModelGraph, node_id::NodeID, to_node_id::Int32)::Vector{NodeID}
+    (; external_flow_links, internal_flow_links, flow_link_map) = graph[]
+    external_idx = findfirst(
+        link -> link.link[1] == node_id && is_plain_junction(link.link[2]) && link.link[2].value == to_node_id,
+        external_flow_links,
+    )
+    isnothing(external_idx) && return NodeID[]
+    return [
+        internal_flow_links[internal_idx].link[2] for
+            internal_idx in findall(!iszero, flow_link_map[external_idx, :]) if
+            internal_flow_links[internal_idx].link[1] == node_id
+    ]
 end
 
 """

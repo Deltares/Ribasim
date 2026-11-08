@@ -333,15 +333,6 @@ class LinkTable(SpatialTableModel[LinkSchema]):
                     raise ValueError(
                         f"Node {to_node.node_id} must have either one or more Basin inflow links, or exactly one inflow link from a Junction with rows in Junction / static"
                     )
-            if (
-                from_node.node_id in routed_ids
-                and to_node.node_type == "Junction"
-                and to_node.node_id not in routed_ids
-            ):
-                # The rows name the nodes the Junction flows into, so these cannot be removed from the network
-                raise ValueError(
-                    f"Junction #{from_node.node_id} has rows in Junction / static, so it cannot flow into Junction #{to_node.node_id} without rows in Junction / static"
-                )
 
         if in_neighbor >= max_in:
             raise ValueError(
