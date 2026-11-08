@@ -1311,13 +1311,18 @@ function save_flows!(
         flow_value = JuMP.value(flow_variable) * scaling.flow
         hit_lower_bound, hit_upper_bound = get_bounds_hit(flow_variable)
 
-        for external_flow_link_idx in rowvals(flow_link_map)[nzrange(flow_link_map, internal_flow_link_idx)]
-            external_flow_link = external_flow_links[external_flow_link_idx]
+        for nz_idx in nzrange(flow_link_map, internal_flow_link_idx)
+            external_flow_link = external_flow_links[rowvals(flow_link_map)[nz_idx]]
+            # A flow against the direction of the external link swaps its bounds
+            sign = nonzeros(flow_link_map)[nz_idx]
+            external_flow_value = sign * flow_value
+            external_hit_lower_bound = sign > 0 ? hit_lower_bound : hit_upper_bound
+            external_hit_upper_bound = sign > 0 ? hit_upper_bound : hit_lower_bound
             if haskey(horizontal_flow_record, external_flow_link.link)
                 datum = horizontal_flow_record[external_flow_link.link]
-                datum.flow_rate += flow_value
-                datum.lower_bound_hit |= hit_lower_bound
-                datum.upper_bound_hit |= hit_upper_bound
+                datum.flow_rate += external_flow_value
+                datum.lower_bound_hit |= external_hit_lower_bound
+                datum.upper_bound_hit |= external_hit_upper_bound
             else
                 horizontal_flow_record[external_flow_link.link] = FlowRecordDatum(
                     t,
@@ -1327,9 +1332,9 @@ function save_flows!(
                     string(external_flow_link.link[2].type),
                     Int32(external_flow_link.link[2]),
                     subnetwork_id,
-                    flow_value,
-                    hit_lower_bound,
-                    hit_upper_bound,
+                    external_flow_value,
+                    external_hit_lower_bound,
+                    external_hit_upper_bound,
                 )
             end
         end

@@ -93,8 +93,10 @@ from ribasim_testmodels.invalid import (
     invalid_user_demand_missing_min_level_model,
 )
 from ribasim_testmodels.junction import (
+    junction_bidirectional,
     junction_chained,
     junction_combined,
+    junction_control,
 )
 from ribasim_testmodels.observation import observation_model
 from ribasim_testmodels.pass_down import (
@@ -166,8 +168,10 @@ __all__ = [
     "invalid_subnetwork_to_primary_model",
     "invalid_unstable_model",
     "invalid_user_demand_missing_min_level_model",
+    "junction_bidirectional",
     "junction_chained",
     "junction_combined",
+    "junction_control",
     "leaky_bucket_model",
     "level_boundary_condition_model",
     "level_demand_model",

@@ -1328,6 +1328,8 @@ saveat: The time interval between saves of output data (storage, flow, ...)
 internal_flow_links: The metadata of the flow links used in the core without any Junctions.
 external_flow_links: The metadata of all flow links including those with Junctions.
 flow_link_map: A sparse matrix mapping internal_flow_ids to external_flow_ids.
+    A value is 1 if the internal flow goes in the direction of the external link and -1 if against it.
+junction_flows: Per Junction the internal flow links, with their sign, that make up its flow rate.
 """
 const ModelGraph = MetaGraph{
     Int64,
@@ -1340,7 +1342,8 @@ const ModelGraph = MetaGraph{
         saveat::Float64,
         internal_flow_links::Vector{LinkMetadata},
         external_flow_links::Vector{LinkMetadata},
-        flow_link_map::SparseMatrixCSC{Bool, Int},
+        flow_link_map::SparseMatrixCSC{Int8, Int},
+        junction_flows::Vector{Vector{Tuple{Tuple{NodeID, NodeID}, Int8}}},
         flow_link_lookup::Dict{Tuple{NodeID, NodeID}, Int},
     },
     Returns{Float64},

@@ -1123,8 +1123,8 @@ function CompoundVariable(
     # Each row defines a subvariable
     for row in variables_compound_variable
         listen_node_id = NodeID(row.listen_node_id, node_ids_all)
-        if listen_node_id.type == NodeType.Junction
-            @error "Cannot listen to Junction node" listen_node_id node_id
+        if listen_node_id.type == NodeType.Junction && row.variable != "flow_rate"
+            @error "Can only listen to the flow_rate of a Junction node" listen_node_id node_id row.variable
             error("Invalid `listen_node_id`.")
         end
         # Placeholder until actual ref is known
