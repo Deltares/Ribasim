@@ -1,4 +1,4 @@
-using Plots
+include("docs_plots.jl")
 
 function plot_connector_schematic(node_type::Symbol)
     node_type in (:Pump, :Outlet, :TabulatedRatingCurve, :LinearResistance, :ManningResistance) ||

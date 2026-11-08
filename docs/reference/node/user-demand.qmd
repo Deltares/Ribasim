@@ -20,6 +20,9 @@ The difference is consumed by the UserDemand.
 
 # Allowed connectivity
 
+The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node.
+This is a connectivity illustration, not a valid simulation model.
+
 ```{julia}
 # | code-fold: true
 include("../../../utils/plot_node_connectivity.jl")

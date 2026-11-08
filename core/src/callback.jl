@@ -501,13 +501,16 @@ function check_basin_water_balance_error!(
             basin.node_id,
         )
         storage_rate = (s_now - s_prev) / Δt
+        # The storage difference over a short Δt has a resolution of eps(storage) / Δt due to
+        # floating point cancellation (large storages with a tiny first timestep, e.g. with saveat = 0)
+        storage_rate_resolution = eps(max(abs(s_now), abs(s_prev))) / Δt
         total_in = inflow_rate + precipitation + drainage + surface_runoff
         total_out = outflow_rate + evaporation + infiltration
         balance_error = storage_rate - (total_in - total_out)
         mean_flow_rate = (total_in + total_out) / 2
         relative_error = iszero(mean_flow_rate) ? 0.0 : balance_error / mean_flow_rate
 
-        if abs(balance_error) > water_balance_abstol &&
+        if abs(balance_error) > water_balance_abstol + storage_rate_resolution &&
                 abs(relative_error) > water_balance_reltol
             errors = true
             @error "Too large water balance error" id balance_error relative_error storage_rate total_in outflow_rate evaporation infiltration mean_flow_rate

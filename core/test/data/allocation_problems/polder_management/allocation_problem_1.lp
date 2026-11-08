@@ -54,8 +54,6 @@ flow_(Basin_#3,_ManningResistance_#2)_ free
 0 <= flow_(LevelBoundary_#11,_Outlet_#12)_ <= 0.05052593062915704
 0 <= flow_(Outlet_#12,_Basin_#3)_ <= 0.05052593062915704
 0 <= flow_(Outlet_#10,_LevelBoundary_#17)_ <= 0.05052593062915704
-boundary_level_LevelBoundary_#11_ = 10
-boundary_level_LevelBoundary_#17_ = 0.9
 flow_demand_allocated_Pump_#7,2_ = 0
 0 <= flow_demand_extra_Pump_#7_ <= 0.10105186125831409
 0 <= flow_demand_error_Pump_#7,2,first_ <= 1

@@ -16,6 +16,9 @@ plot_connector_schematic(:ManningResistance)
 
 # Allowed connectivity
 
+The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node.
+This is a connectivity illustration, not a valid simulation model.
+
 ```{julia}
 # | code-fold: true
 include("../../../utils/plot_node_connectivity.jl")
@@ -235,12 +238,10 @@ where $s$ is a relaxed square root function:
 $$
 s(x; x_0)
 =
-\begin{align}
-  \begin{cases}
-    \frac{x}{4\sqrt{x_0}}\left(5 - (\frac{x}{x_0})^2\right) &\text{ if } |x| < x_0 \\
-    \textrm{sign}(x)\sqrt{|x|} &\text{ if } |x| \ge x_0
-  \end{cases}
-\end{align}
+\begin{cases}
+  \frac{x}{4\sqrt{x_0}}\left(5 - (\frac{x}{x_0})^2\right) &\text{ if } |x| < x_0 \\
+  \textrm{sign}(x)\sqrt{|x|} &\text{ if } |x| \ge x_0
+\end{cases}
 $$
 
 with $x_0 = 10^{-5}$. This is a numerical regularisation, not a physical laminar transition: for real channels the transition to laminar flow lies many orders of magnitude lower.

@@ -16,7 +16,6 @@ basin_storage_change_Basin_#3_ >= -0.0392156862745098
 0 <= flow_(Outlet_#2,_Basin_#3)_ <= 114.35294117647058
 flow_(Basin_#3,_UserDemand_#4)_ = 0
 flow_(UserDemand_#4,_Basin_#3)_ = 0
-boundary_level_LevelBoundary_#1_ = 5
 user_demand_allocated_UserDemand_#4,1_ = 0
 0 <= user_demand_error_UserDemand_#4,1,first_ <= 1
 0 <= user_demand_error_UserDemand_#4,1,second_ <= 1

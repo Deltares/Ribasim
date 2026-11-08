@@ -9,6 +9,9 @@ Junctions can connect to other Junctions, but are not allowed to form cycles. No
 
 # Allowed connectivity
 
+The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node.
+This is a connectivity illustration, not a valid simulation model.
+
 ```{python}
 # | code-fold: true
 %run ../../../utils/plot_node_connectivity.py

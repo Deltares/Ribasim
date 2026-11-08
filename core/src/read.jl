@@ -2060,7 +2060,7 @@ function Parameters(db::DB, config::Config)::Parameters
         do_concentration = config.experimental.concentration,
         do_subgrid = config.results.subgrid,
         incidence_matrix,
-        config.solver.reduced_implicit_solve,
+        reduced_implicit_solve = use_reduced_implicit_solve(config.solver),
         config.solver.level_difference_threshold,
         config.solver.max_depth,
     )
