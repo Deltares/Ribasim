@@ -908,47 +908,11 @@ function set_demands!(
     return nothing
 end
 
-function warm_start!(
-        allocation_model::AllocationModel,
-        p_independent::ParametersIndependent,
-        t::Float64,
-        Δt_allocation::Float64,
-        du,
-    )::Nothing
-    (; problem, scaling, node_ids_in_subnetwork) = allocation_model
-    (; basin_ids_subnetwork) = node_ids_in_subnetwork
-    flow = problem[:flow]
-    storage_change = problem[:basin_storage_change]
-    (; flow_link_lookup) = p_independent.graph[]
-
-    # Extrapolate the current instantaneous flow rates from the physical layer
-    for link in only(flow.axes)
-        link_idx = get_link_index(link, flow_link_lookup)
-        if !isnothing(link_idx)
-            JuMP.set_start_value(
-                flow[link], get_flow(
-                    du.flow,
-                    link,
-                    p_independent;
-                    t
-                ) / scaling.flow
-            )
-        end
-    end
-
-    # Extrapolate the current instantaneous storage rates from the physical layer
-    for node_id in basin_ids_subnetwork
-        JuMP.set_start_value(
-            storage_change[node_id],
-            formulate_dstorage_single_basin(du.flow, p_independent, node_id; t) * Δt_allocation / scaling.storage,
-        )
-    end
-
-    return nothing
-end
-
 "Relative slack to relax the constraints on previous objectives with when a problem fails to solve"
 const LEXICOGRAPHIC_SLACK = 1.0e-6
+
+"Feasibility tolerance to solve with when a problem fails to solve"
+const RETRY_FEASIBILITY_TOLERANCE = 1.0e-6
 
 function optimize_multi_objective!(
         model::AllocationModel,
@@ -980,7 +944,7 @@ function optimize_multi_objective!(
                 latest_expression_is_constrained = true
             end
             JuMP.@objective(problem, Min, expression)
-            JuMP.optimize!(problem)
+            optimize_cold!(problem)
             if JuMP.termination_status(problem) != JuMP.OPTIMAL && !isempty(temporary_constraints)
                 # The constraints on the previous objectives hold at their optimum only up to
                 # the solver tolerance, which can make this problem infeasible, so relax them
@@ -988,7 +952,13 @@ function optimize_multi_objective!(
                     bound = JuMP.normalized_rhs(constraint)
                     JuMP.set_normalized_rhs(constraint, bound + LEXICOGRAPHIC_SLACK * max(1.0, abs(bound)))
                 end
-                JuMP.optimize!(problem)
+                optimize_cold!(problem)
+            end
+            if JuMP.termination_status(problem) != JuMP.OPTIMAL
+                # A solution can just violate the tolerance after unscaling, which ends in status
+                # Unknown or a solver error, also for the first objective. This is the last resort,
+                # since the next objectives can't reach a bound found with a looser tolerance.
+                optimize_cold!(problem; feasibility_tolerance = RETRY_FEASIBILITY_TOLERANCE)
             end
             @debug objective expression JuMP.solution_summary(problem)
             latest_constraint = isempty(temporary_constraints) ? nothing : last(temporary_constraints)
@@ -1622,9 +1592,6 @@ function update_allocation!(
         update_user_demand_flow_bounds!(secondary_network, p_independent)
         update_flow_demand_variable_bounds!(secondary_network, p_independent)
         normalize_flow_demand_objectives!(secondary_network)
-
-        # Use data from the physical layer to set the initial guess
-        warm_start!(secondary_network, p_independent, t, Δt, du)
     end
 
     if has_primary_network(allocation)
@@ -1659,7 +1626,6 @@ function update_allocation!(
         update_user_demand_flow_bounds!(primary_network, p_independent)
         update_flow_demand_variable_bounds!(primary_network, p_independent)
         normalize_flow_demand_objectives!(primary_network)
-        warm_start!(primary_network, p_independent, t, Δt, du)
     end
 
     # Allocate in all networks, starting with the primary network if it exists

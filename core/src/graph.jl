@@ -132,9 +132,6 @@ function create_graph(db::DB, config::Config)::MetaGraph
         external_flow_links,
         flow_link_map,
         junction_flows,
-        flow_link_lookup = Dict{Tuple{NodeID, NodeID}, Int}(
-            link_meta.link => i for (i, link_meta) in enumerate(internal_flow_links)
-        ),
     )
     @reset graph.graph_data = graph_data
 
