@@ -1116,6 +1116,8 @@ function AllocationModel(subnetwork_id::Int32, p_independent::ParametersIndepend
     add_pump!(allocation_model, p_independent)
     add_outlet!(allocation_model, p_independent)
     add_junction!(allocation_model, p_independent)
+    allocation_model.allocation_controlled =
+        allocation_controlled_flags(allocation_model, p_independent)
 
     # Demand nodes
     add_user_demand!(allocation_model, p_independent)
