@@ -7,6 +7,17 @@ A FlowBoundary adds water to the model at a specified flow rate.
 It can be used as a boundary condition like a measured upstream flow rate, or lateral inflow.
 We require that a link connected to a FlowBoundary is always outgoing, and points towards a Basin.
 
+# Allowed connectivity
+
+The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node.
+This is a connectivity illustration, not a valid simulation model.
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_node_connectivity.jl")
+plot_node_connectivity("FlowBoundary")
+```
+
 # Tables
 
 ## Static

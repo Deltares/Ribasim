@@ -46,7 +46,6 @@ flow_(TabulatedRatingCurve_#2,_Basin_#3)_ free
 0 <= flow_(UserDemand_#8,_Basin_#7)_ <= 0.002158057748026776
 0 <= flow_(Basin_#3,_UserDemand_#6)_ <= 0.001079028874013388
 0 <= flow_(UserDemand_#6,_Basin_#7)_ <= 0.001079028874013388
-boundary_level_LevelBoundary_#1_ = 2
 0 <= user_demand_allocated_UserDemand_#4,3_ <= 0.001079028874013388
 0 <= user_demand_allocated_UserDemand_#6,1_ <= 0.001079028874013388
 0 <= user_demand_allocated_UserDemand_#8,4_ <= 0.002158057748026776

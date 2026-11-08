@@ -22,7 +22,6 @@ flow_(LevelBoundary_#5,_Outlet_#4)_ free
 flow_(Outlet_#4,_Basin_#1)_ free
 flow_(Basin_#1,_Outlet_#3)_ free
 flow_(Outlet_#3,_Terminal_#6)_ free
-boundary_level_LevelBoundary_#5_ = 1
 level_demand_error_Basin_#1,1,lower,first_ >= 0
 level_demand_error_Basin_#1,1,lower,second_ >= 0
 level_demand_error_Basin_#1,1,upper,first_ >= 0

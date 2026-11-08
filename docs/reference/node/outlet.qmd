@@ -8,6 +8,25 @@ It is similar to the Pump, except that water only flows down, by gravity.
 
 When PID controlled, the Outlet must point towards the controlled Basin in terms of links.
 
+# Schematic
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_connector_schematic.jl")
+plot_connector_schematic(:Outlet)
+```
+
+# Allowed connectivity
+
+The diagram below shows which node types are allowed directly upstream (left) and downstream (right) of this node.
+This is a connectivity illustration, not a valid simulation model.
+
+```{julia}
+# | code-fold: true
+include("../../../utils/plot_node_connectivity.jl")
+plot_node_connectivity("Outlet")
+```
+
 # Tables
 
 ## Static
@@ -43,10 +62,12 @@ $$
 - $Q$ is the actual Outlet flow rate.
 - $Q_\text{set}$ is the Outlet's target `flow_rate`.
 - $Q_{\min}$ and $Q_{\max}$ are the Outlet `min_flow_rate` and `max_flow_rate`.
-- $\phi_\text{storage}$ is the reduction factor that smoothly reduces flow when the upstream volume is below the equivalent of a water depth of $10 \;\text{cm}$ (change with solver setting `depth_threshold`).
-- $\phi_\text{level}$ is the product of the reduction factors that smoothly reduce flow based on these criteria (change the $0.02 \;\text{m}$ with solver setting `level_difference_threshold`):
-  - The upstream level is less than $0.02 \;\text{m}$ above the downstream level.
-  - The upstream level is below `min_upstream_level` + $0.02 \;\text{m}$
-  - The downstream level is above `max_downstream_level` - $0.02 \;\text{m}$
+- $\phi_\text{storage}$ is the reduction factor that smoothly reduces flow when the upstream volume is below the equivalent of a water depth of `depth_threshold`.
+- $\phi_\text{level}$ is the product of the reduction factors that smoothly reduce flow based on these criteria:
+  - The upstream level goes from `downstream_level` + `level_difference_threshold` to `downstream_level`.
+  - The upstream level goes from `min_upstream_level` + `level_difference_threshold` to `min_upstream_level`.
+  - The downstream level goes from `max_downstream_level` - `level_difference_threshold` to `max_downstream_level`.
+
+For `depth_threshold`, `level_difference_threshold` see [Solver settings](/reference/usage.qmd#sec-solver-settings).
 
 Since $\phi_\text{level}$ is applied after the clamp, `min_flow_rate` is not a strict minimum: the level criteria can still reduce the flow to zero.

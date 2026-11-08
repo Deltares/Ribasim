@@ -92,6 +92,22 @@ end
     # autodiff is not a kwargs for explicit algorithms, but we use try-catch to bypass
     algorithm(Solver(; algorithm = "Euler", autodiff = true))
 
+    for alg in ("Rosenbrock23", "Rodas4P", "Rodas5P", "Tsit5", "RK4", "Euler")
+        @test !Ribasim.use_reduced_implicit_solve(Solver(; algorithm = alg))
+    end
+    @test Ribasim.use_reduced_implicit_solve(Solver(; algorithm = "QNDF"))
+    @test !Ribasim.use_reduced_implicit_solve(
+        Solver(; algorithm = "QNDF", reduced_implicit_solve = false)
+    )
+
+    toml_path = normpath(@__DIR__, "data", "config_test.toml")
+    for dtmax in (0.0, -1.0)
+        @test_logs (:error, r"dtmax must be positive") match_mode = :any @test_throws ErrorException Ribasim.Config(
+            toml_path; solver_dtmax = dtmax
+        )
+    end
+    @test Ribasim.Config(toml_path; solver_dtmax = 3600.0).solver.dtmax == 3600.0
+
     t_end = 100.0
     @test convert_saveat(0.0, t_end) == Float64[]
     @test convert_saveat(60.0, t_end) == 60.0

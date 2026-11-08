@@ -691,7 +691,9 @@ function OrdinaryDiffEqDifferentiation.do_newJW(
     )
     (; p_mutable) = integrator.p
     (; naccept) = integrator.stats
-    if naccept - p_mutable.jac_naccept >= MAX_JACOBIAN_AGE || nlsolver.nfails > 0
+    # Rosenbrock methods have no nonlinear solver
+    if naccept - p_mutable.jac_naccept >= MAX_JACOBIAN_AGE ||
+            (!isnothing(nlsolver) && nlsolver.nfails > 0)
         new_jac = new_W = true
     end
     if new_jac
@@ -916,8 +918,13 @@ function SciMLBase.log_numerical_instability(
 end
 
 function OrdinaryDiffEqCore.instability_jacobian(integrator::ODEIntegrator{<:Any, <:Any, <:RibasimStateCVector})
-    # Inner 'storage space' Jacobian
-    return integrator.cache.nlsolver.cache.linsolve.cache_inner.A.J
+    return if integrator.p.p_independent.reduced_implicit_solve
+        # Inner 'storage space' Jacobian
+        integrator.cache.nlsolver.cache.linsolve.cache_inner.A.J
+    else
+        # Upstream: Rosenbrock W.J, BDF nlsolver.cache.J, nothing for explicit methods
+        invoke(OrdinaryDiffEqCore.instability_jacobian, Tuple{Any}, integrator)
+    end
 end
 
 """
@@ -965,7 +972,7 @@ function get_diff_eval(
         Cache(current_basin_properties.current_storage),
     )
 
-    if solver.reduced_implicit_solve
+    if use_reduced_implicit_solve(solver)
         cache = RibasimJacobianEvaluationCache(p, solver)
         jac_prototype = RibasimJacobian(; p.p_independent, cache)
         jac = nothing # Jacobian is updated via SciMLOperators.update_coefficients!
@@ -1012,22 +1019,35 @@ function get_diff_eval(
     end
 
     # water_balance! wrapper for DifferentiationInterface without kwargs and with
-    # t as second argument
-    function water_balance!__(du, t, u, p, storage_uplink, storage_downlink, compound_variables, storage)
+    # t as second argument. The components of p are separate arguments so that the time
+    # dependent cache can be a (Dual-typed) Cache, and p is packed back together here.
+    function water_balance!__(
+            du, t, u, p_independent, current_basin_properties, p_mutable,
+            storage_uplink, storage_downlink, compound_variables, storage, time_dependent_cache,
+        )
+        p = Parameters(p_independent, time_dependent_cache, current_basin_properties, p_mutable)
+        # Renew the time dependent cache for this t before the storage is computed from it
+        time_dependent_cache.t_prev_call[1] = t + 1
+        check_new_t!(p, t)
+        formulate_cumulative_boundary_flow!(p_independent.flow_boundary, p, t)
         set_current_storage!(p, u.flow, t; storage, with_incidence_matrix = true)
+        # Make the check_new_t! in water_balance! renew the rest of the cache too
+        time_dependent_cache.t_prev_call[1] = t + 1
         water_balance!(du, u, p, t; storage_uplink, storage_downlink, compound_variables, storage)
         return nothing
     end
 
-    # ∂rhs/∂t always with FiniteDiff
     tgrad_prep = @ad_active p prepare_derivative(
         water_balance!__,
         du,
         backend,
         t,
         Constant(u),
-        Constant(p),
+        Constant(p.p_independent),
+        Constant(p.current_basin_properties),
+        Constant(p.p_mutable),
         ad_caches...,
+        Cache(p.time_dependent_cache),
     )
 
     tgrad(dT, u, p, t) = @ad_active p derivative!(
@@ -1038,8 +1058,11 @@ function get_diff_eval(
         backend,
         t,
         Constant(u),
-        Constant(p),
+        Constant(p.p_independent),
+        Constant(p.current_basin_properties),
+        Constant(p.p_mutable),
         ad_caches...,
+        Cache(p.time_dependent_cache),
     )
 
     return (; jac_prototype, jac, tgrad)

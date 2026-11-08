@@ -93,6 +93,7 @@ Hence the reference used for computing the relative error is the average of the 
 The default tolerances are $0.001 \text{ m}^3$ for the balance error and $0.01$ for the relative error, which should not be exceeded for realistic models.
 
 In extreme cases where the storage rate is many orders of magnitude smaller than the storage itself, these computations can have floating point truncation errors which can lead to large relative errors.  This is however only when the storage is roughly $\geq 10^{15}$ times bigger than the storage rate.
+Since the storage rate is a difference of storages divided by $\Delta t$, its resolution is $\epsilon(S)/\Delta t$ with $\epsilon(S)$ the floating point spacing at the storage. This resolution is added to the absolute tolerance, which matters for very short $\Delta t$ such as the first timestep with `saveat = 0`.
 
 ### Example calculation
 

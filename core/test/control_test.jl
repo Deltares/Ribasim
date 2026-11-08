@@ -163,6 +163,29 @@ end
     @test only(current_interpolation_index)(0.0) == index_low
 end
 
+@testitem "ManningResistance control" begin
+    import BasicModelInterface as BMI
+
+    toml_path = normpath(
+        @__DIR__,
+        "../../generated_testmodels/manning_resistance_control/ribasim.toml",
+    )
+    @test ispath(toml_path)
+    model = Ribasim.run(toml_path)
+    @test success(model)
+    (; discrete_control, manning_resistance) = model.integrator.p.p_independent
+
+    # Initially open, closed once the level of Basin 1 drops below the threshold
+    @test discrete_control.record.control_state == ["open", "closed"]
+    @test discrete_control.record.time[1] == 0.0
+    t_closed = discrete_control.record.time[2]
+    @test 0 < t_closed < model.integrator.t
+
+    # Closed ManningResistance stops draining: the level stays at the threshold
+    level_1 = BMI.get_value_ptr(model, "basin.level")[1]
+    @test 7.8 < level_1 < 8.0
+end
+
 @testitem "Set PID target with DiscreteControl" begin
     using Ribasim: NodeID
 
