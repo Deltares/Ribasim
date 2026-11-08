@@ -349,8 +349,10 @@ end
 
     (; basin) = model.integrator.p.p_independent
     substance_idx = Ribasim.find_index(:FlowBoundary, basin.concentration_data.substances)
-    (; t, saveval) = model.saved.flow
-    concentration = [saved.concentration[end, substance_idx] for saved in saveval]
+    # The concentrations at the end of each saveat interval, which is labeled by its start
+    data = Ribasim.concentration_data(model; table = false)
+    t = [Ribasim.seconds_since.(data.time[2:end], model.config.starttime); model.integrator.t]
+    concentration = data.concentration[end, substance_idx, :]
     @test maximum(abs.(concentration .- tanks_in_series.(t))) < 1.0e-3
     # The tracer passes through all Basins
     @test last(concentration) ≈ 1 atol = 1.0e-3
@@ -384,8 +386,10 @@ end
 
     (; basin) = model.integrator.p.p_independent
     substance_idx = Ribasim.find_index(:FlowBoundary, basin.concentration_data.substances)
-    (; t, saveval) = model.saved.flow
-    concentration = [only(saved.concentration[:, substance_idx]) for saved in saveval]
+    # The concentrations at the end of each saveat interval, which is labeled by its start
+    data = Ribasim.concentration_data(model; table = false)
+    t = [Ribasim.seconds_since.(data.time[2:end], model.config.starttime); model.integrator.t]
+    concentration = data.concentration[only(axes(data.concentration, 1)), substance_idx, :]
     @test maximum(abs.(concentration .- exact.(t))) < 1.0e-5
     @test last(concentration) > 1
 end
@@ -471,7 +475,7 @@ end
     (; level) = level_boundary
     level = level[1]
 
-    t = model.saved.flow.t
+    t = Ribasim.tsaves(model)[2:end]
     flow = DataFrame(Ribasim.flow_data(model))
     outlet_flow =
         filter([:from_node_id, :to_node_id] => (from, to) -> from == 2 && to == 3, flow)

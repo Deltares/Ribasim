@@ -109,11 +109,20 @@ The following entries can be set in the configuration in the `[results]` section
 
 entry             | type   | description
 ----------------- | ------ | -----------
-compression       | Bool   | Whether to apply deflate compression or not.
-compression_level | Int    | Deflate compression level (0-9). Default is 1, higher compresses more.
+compression       | Bool   | Whether to compress the results. Default is true.
+compression_level | Int    | Compression level (0-9). Default is 1, higher compresses more.
+significant_bits  | Int    | Precision of lossy compression in bits (1-52). Default is 20, 0 gives lossless compression.
 subgrid           | Bool   | Compute and output more detailed water levels.
 
 Results are written in NetCDF format with CF conventions.
+
+By default the results are compressed lossy, with a relative error of at most `5e-7`.
+This is well below the solver tolerance, and makes the files about 4 times smaller.
+For lossless compression set `significant_bits = 0`, for instance to compute small differences between large values.
+The `basin_state.nc` file is always lossless.
+
+Results are written during the simulation. If it stops early because of an error or Ctrl-C, they go up to the last accepted timestep.
+If another application has a result file open when Ribasim writes it, the simulation stops with an error. To avoid this, start that application with the environment variable `HDF5_USE_FILE_LOCKING=FALSE`. It can then read wrong values at the moment Ribasim writes.
 
 ## Logging settings
 
@@ -485,7 +494,7 @@ Currently the stored demand and abstraction rate are those at the allocation tim
 
 ## Allocation flow - `allocation_flow.nc`
 
-The allocation flow results contain results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved (see also [here](/concept/allocation.qmd#the-high-level-algorithm)).
+The allocation flow results contain results of the optimized allocation flow on every link in the model that is part of a subnetwork, for each time an optimization problem is solved. The vertical flow of a Basin has `link_id` 0, and the Basin as both `from_node_id` and `to_node_id` (see also [here](/concept/allocation.qmd#the-high-level-algorithm)).
 If in the model a primary network and subnetwork(s) are specified, there are 3 different types of optimization for the subnetwork.
 
 **NetCDF structure:**
@@ -525,7 +534,7 @@ Substances can correspond to known Delwaq substances.
 
 ## Subgrid level - `subgrid_level.nc`
 
-This result file is only written if the model contains a [Basin / subgrid](/reference/node/basin.qmd#subgrid) table.
+This result file is only written if `results.subgrid` is set to `true` and the model contains a [Basin / subgrid](/reference/node/basin.qmd#subgrid) table.
 See there for more information on the meaning of this output.
 
 **NetCDF structure:**

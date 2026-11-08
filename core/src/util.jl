@@ -290,52 +290,6 @@ function expand_logic_mapping(
 end
 
 """
-    struct FlatVector{T} <: AbstractVector{T}
-
-A FlatVector is an AbstractVector that iterates the T of a `Vector{Vector{T}}`.
-
-Each inner vector is assumed to be of equal length.
-
-It is similar to `Iterators.flatten`, though that doesn't work with the `Tables.Column`
-interface, which needs `length` and `getindex` support.
-"""
-struct FlatVector{T, V <: AbstractVector{T}} <: AbstractVector{T}
-    v::Vector{V}
-end
-
-function Base.length(fv::FlatVector)
-    return if isempty(fv.v)
-        0
-    else
-        length(fv.v) * length(first(fv.v))
-    end
-end
-
-Base.size(fv::FlatVector) = (length(fv),)
-
-function Base.getindex(fv::FlatVector, i::Int)
-    veclen = length(first(fv.v))
-    d, r = divrem(i - 1, veclen)
-    v = fv.v[d + 1]
-    return v[r + 1]
-end
-
-"Construct a FlatVector from one of the fields of SavedFlow, following a path of symbols."
-function FlatVector(saveval::Vector{SavedFlow}, syms::Symbol...)
-    v = if isempty(saveval)
-        Vector{Float64}[]
-    else
-        v_ = getfield.(saveval, first(syms))
-        for sym in syms[2:end]
-            v_ = getproperty.(v_, sym)
-        end
-        v_
-    end
-    return FlatVector(v)
-end
-FlatVector(v::Vector{Matrix{Float64}}) = FlatVector(vec.(v))
-
-"""
 Function that goes smoothly from 0 to 1 in the interval [0,threshold],
 and is constant outside this interval.
 """
@@ -477,28 +431,6 @@ function set_control_type!(node::AbstractParameterNode, graph::MetaGraph)::Nothi
     errors && error("Errors encountered when parsing control type of $(typeof(node)).")
 
     return nothing
-end
-
-"""
-Get the time interval between (flow) saves
-"""
-function get_Δt(integrator)::Float64
-    (; p, t, dt) = integrator
-    (; saveat) = p.p_independent.graph[]
-    return if iszero(saveat)
-        dt
-    elseif isinf(saveat)
-        t
-    else
-        t_end = integrator.sol.prob.tspan[end]
-        if t_end - t > saveat
-            saveat
-        else
-            # The last interval might be shorter than saveat
-            rem = t % saveat
-            iszero(rem) ? saveat : rem
-        end
-    end
 end
 
 inflow_link(graph, node_id)::LinkMetadata = graph[inflow_id(graph, node_id), node_id]
