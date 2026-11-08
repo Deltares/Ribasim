@@ -59,15 +59,15 @@ end
     using Ribasim.SciMLOperators: update_coefficients!
     using Ribasim.OrdinaryDiffEqDifferentiation: dolinsolve
 
-    # PID control with derivative term, continuous control, PassDown and a model without control
+    # PID control with derivative term, continuous control, Junction and a model without control
     for model_name in [
             "basic",
             "pid_control",
             "discrete_control_of_pid_control",
             "outlet_continuous_control",
-            "pass_down",
-            "pass_down_equation",
-            "pass_down_pid",
+            "junction_fraction",
+            "junction_equation",
+            "junction_pid",
         ]
         toml_path = normpath(@__DIR__, "../../generated_testmodels/$model_name/ribasim.toml")
 
@@ -96,13 +96,13 @@ end
     end
 end
 
-@testitem "Reduced Jacobian with PassDown matches full Jacobian" begin
+@testitem "Reduced Jacobian with Junction matches full Jacobian" begin
     using LinearAlgebra: norm, I
     using Ribasim.SciMLOperators: update_coefficients!
 
-    # PID control via a PassDown node (pass_down_equation), on a Basin fed by a PassDown node
-    # (pass_down_pid), and a UserDemand that is limited by its PassDown inflow (pass_down)
-    for model_name in ["pass_down_equation", "pass_down_pid", "pass_down"]
+    # PID control via a Junction node (junction_equation), on a Basin fed by a Junction node
+    # (junction_pid), and a UserDemand that is limited by its Junction inflow (junction_fraction)
+    for model_name in ["junction_equation", "junction_pid", "junction_fraction"]
         toml_path = normpath(@__DIR__, "../../generated_testmodels/$model_name/ribasim.toml")
 
         model = Ribasim.Model(toml_path)
@@ -114,11 +114,11 @@ end
 
         n_flow = length(u.flow)
         n_pid = length(u.pid_integral)
-        @test Ribasim.has_pass_down(J)
-        has_pid = model_name != "pass_down"
+        @test Ribasim.has_routed_junctions(J)
+        has_pid = model_name != "junction_fraction"
         @test (n_pid > 0) == has_pid
 
-        # Q_S = ∂q_∂storage and G = ∂q_∂pid_integral of the flows before the PassDown subgraphs
+        # Q_S = ∂q_∂storage and G = ∂q_∂pid_integral of the flows before the Junction subgraphs
         Q_S = zeros(n_flow, J.n_basin)
         Ribasim.foreach_∂flow_∂storage(J) do flow_idx, basin_idx, val
             Q_S[flow_idx, basin_idx] += val
@@ -127,7 +127,7 @@ end
         Ribasim.foreach_∂flow_∂pid_integral(J) do flow_idx, pid_idx, val
             G[flow_idx, pid_idx] += val
         end
-        K = Matrix(J.cache.jac_pass_down.jac)
+        K = Matrix(J.cache.jac_junction.jac)
         M = Matrix(p.p_independent.incidence_matrix)
 
         config_full = Ribasim.Config(toml_path; solver_reduced_implicit_solve = false)
@@ -145,10 +145,10 @@ end
             @test norm(K * G - J_flow_pid) <= 1.0e-8 * norm(J_flow_pid)
         end
 
-        # K is only not the identity where a UserDemand is limited by its PassDown inflow,
-        # as UserDemand #12 in pass_down is. There the flows do not depend on the storages
+        # K is only not the identity where a UserDemand is limited by its Junction inflow,
+        # as UserDemand #12 in junction_fraction is. There the flows do not depend on the storages
         # at the start, so this is checked on K itself.
-        if model_name == "pass_down"
+        if model_name == "junction_fraction"
             @test norm(K - I) > 0.5
         end
     end

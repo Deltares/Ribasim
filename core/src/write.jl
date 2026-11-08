@@ -487,7 +487,7 @@ function flow_data(model::Model; table::Bool = true)
                 internal_flow_rate[fi] =
                     saved_flow.boundary_flow[link.link[1].idx]
                 internal_convergence[fi] = missing
-            elseif link.link[1].is_pass_down && link.link[2].type != NodeType.UserDemand
+            elseif link.link[1].is_routed && link.link[2].type != NodeType.UserDemand
                 # A weighted sum of other flows, so it has no convergence of its own
                 internal_flow_rate[fi] = get_flow(
                     saved_flow.flow, link.link, p_independent; boundary_flow = saved_flow.boundary_flow

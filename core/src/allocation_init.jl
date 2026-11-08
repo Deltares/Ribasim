@@ -61,7 +61,7 @@ function add_flow_conservation!(
         allocation_model::AllocationModel,
         node::AbstractParameterNode,
         graph::MetaGraph,
-        pass_down::PassDown,
+        junction::Junction,
     )::Nothing
     (; problem, subnetwork_id) = allocation_model
     (; node_id, inflow_link, outflow_link) = node
@@ -73,7 +73,7 @@ function add_flow_conservation!(
 
     # Define constraints: inflow is equal to outflow for conservative nodes
     constraint_name = "flow_conservation_$node_name"
-    node_ids_single_outflow = filter(id -> !outflow_link[id.idx].link[2].is_pass_down, node_ids)
+    node_ids_single_outflow = filter(id -> !outflow_link[id.idx].link[2].is_routed, node_ids)
     problem[Symbol(constraint_name)] = JuMP.@constraint(
         problem,
         [node_id = node_ids_single_outflow],
@@ -81,15 +81,15 @@ function add_flow_conservation!(
         base_name = "flow_conservation_$node_name"
     )
 
-    # Define constraints: nodes that flow into a PassDown node pass their flow on to that node
-    pass_down_links = Tuple{NodeID, NodeID}[
-        outflow_link[id.idx].link for id in node_ids if outflow_link[id.idx].link[2].is_pass_down
+    # Define constraints: nodes that flow into a Junction node pass their flow on to that node
+    junction_links = Tuple{NodeID, NodeID}[
+        outflow_link[id.idx].link for id in node_ids if outflow_link[id.idx].link[2].is_routed
     ]
-    problem[Symbol("flow_conservation_pass_down_$node_name")] = JuMP.@constraint(
+    problem[Symbol("flow_conservation_junction_$node_name")] = JuMP.@constraint(
         problem,
-        [link = pass_down_links],
+        [link = junction_links],
         flow[link] == flow[inflow_link[link[1].idx].link],
-        base_name = "flow_conservation_pass_down_$node_name"
+        base_name = "flow_conservation_junction_$node_name"
     )
     return nothing
 end
@@ -118,13 +118,13 @@ function add_conservation!(
         manning_resistance,
         tabulated_rating_curve,
         basin,
-        pass_down,
+        junction,
     ) = p_independent
-    add_flow_conservation!(allocation_model, pump, graph, pass_down)
-    add_flow_conservation!(allocation_model, outlet, graph, pass_down)
-    add_flow_conservation!(allocation_model, linear_resistance, graph, pass_down)
-    add_flow_conservation!(allocation_model, manning_resistance, graph, pass_down)
-    add_flow_conservation!(allocation_model, tabulated_rating_curve, graph, pass_down)
+    add_flow_conservation!(allocation_model, pump, graph, junction)
+    add_flow_conservation!(allocation_model, outlet, graph, junction)
+    add_flow_conservation!(allocation_model, linear_resistance, graph, junction)
+    add_flow_conservation!(allocation_model, manning_resistance, graph, junction)
+    add_flow_conservation!(allocation_model, tabulated_rating_curve, graph, junction)
 
     # Define constraints: Basin water balance (volume conservation)
     # Mathematical formulation: dS/dt = Σ Q_in - Σ Q_out + f_pos - f_neg
@@ -175,7 +175,7 @@ function add_user_demand!(
     )::Nothing
     (; problem, cumulative_supplied_volume, node_ids_in_subnetwork) = allocation_model
     (; user_demand_ids_subnetwork) = node_ids_in_subnetwork
-    (; user_demand, pass_down) = p_independent
+    (; user_demand, junction) = p_independent
     (; inflow_links, outflow_link) = user_demand
     flow = problem[:flow]
 
@@ -241,7 +241,7 @@ function add_user_demand!(
     # factor times the total inflow summed across all inflow links.
     return_factor = 0.5 # example return factor
     user_demand_ids_single_outflow =
-        filter(id -> !outflow_link[id.idx].link[2].is_pass_down, user_demand_ids_subnetwork)
+        filter(id -> !outflow_link[id.idx].link[2].is_routed, user_demand_ids_subnetwork)
     problem[:user_demand_return_flow] = JuMP.@constraint(
         problem,
         [node_id = user_demand_ids_single_outflow],
@@ -250,17 +250,17 @@ function add_user_demand!(
         base_name = "user_demand_return_flow"
     )
 
-    # Define constraints: if the return flow goes into a PassDown node it equals the return flow
-    pass_down_links = Tuple{NodeID, NodeID}[
+    # Define constraints: if the return flow goes into a Junction node it equals the return flow
+    junction_links = Tuple{NodeID, NodeID}[
         outflow_link[id.idx].link for id in user_demand_ids_subnetwork if
-            outflow_link[id.idx].link[2].is_pass_down
+            outflow_link[id.idx].link[2].is_routed
     ]
-    problem[:user_demand_return_flow_pass_down] = JuMP.@constraint(
+    problem[:user_demand_return_flow_junction] = JuMP.@constraint(
         problem,
-        [link = pass_down_links],
+        [link = junction_links],
         flow[link] ==
             return_factor * sum(flow[lm.link] for lm in inflow_links[link[1].idx]),
-        base_name = "user_demand_return_flow_pass_down"
+        base_name = "user_demand_return_flow_junction"
     )
 
     # Add the links for which the supplied volume is required for output
@@ -579,44 +579,44 @@ function add_outlet!(
 end
 
 """
-Add the constraints defining the flow out of PassDown nodes. The flows into PassDown nodes are
+Add the constraints defining the flow out of Junction nodes. The flows into Junction nodes are
 constrained at the nodes they come from: see `add_flow_conservation!`, `add_user_demand!` and the
 FlowBoundary in `set_simulation_data!`.
 
-The flow in a PassDown node is passed on, except for the flow that is abstracted by the UserDemand node
+The flow in a Junction node is passed on, except for the flow that is abstracted by the UserDemand node
 that abstracts from it, if present. That is a decision variable, bounded by the allocated demand, so the
-remaining flow is divided over the downstream PassDown nodes by their fractions, or flows into the one
-downstream node that is not a PassDown node.
+remaining flow is divided over the downstream Junction nodes by their fractions, or flows into the one
+downstream node that is not a Junction node.
 """
-function add_pass_down!(
+function add_junction!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
     )::Nothing
     (; problem, node_ids_in_subnetwork) = allocation_model
-    (; pass_down_ids_subnetwork) = node_ids_in_subnetwork
-    (; pass_down) = p_independent
-    (; inflow_links, outflow_links, user_demand_id) = pass_down
+    (; junction_ids_subnetwork) = node_ids_in_subnetwork
+    (; junction) = p_independent
+    (; inflow_links, outflow_links, user_demand_id) = junction
     flow = problem[:flow]
 
-    # The links out of PassDown nodes, except for the UserDemand abstraction
-    outflow_links_pass_down = Tuple{NodeID, NodeID}[
-        link_metadata.link for id in pass_down_ids_subnetwork for
+    # The links out of Junction nodes, except for the UserDemand abstraction
+    outflow_links_junction = Tuple{NodeID, NodeID}[
+        link_metadata.link for id in junction_ids_subnetwork for
             link_metadata in outflow_links[id.idx] if
             link_metadata.link[2].type != NodeType.UserDemand
     ]
 
-    problem[:pass_down_outflow] = JuMP.@constraint(
+    problem[:junction_outflow] = JuMP.@constraint(
         problem,
-        [link = outflow_links_pass_down],
+        [link = outflow_links_junction],
         flow[link] ==
-            outflow_link_fraction(pass_down, link) * (
+            outflow_link_fraction(junction, link) * (
             sum(flow[lm.link] for lm in inflow_links[link[1].idx]) -
                 (
                 user_demand_id[link[1].idx].type == NodeType.UserDemand ?
                     flow[(link[1], user_demand_id[link[1].idx])] : 0.0
             )
         ),
-        base_name = "pass_down_outflow"
+        base_name = "junction_outflow"
     )
     return nothing
 end
@@ -1014,7 +1014,7 @@ function NodeIDsInSubnetwork(
                     NodeType.ManningResistance,
                     NodeType.Pump,
                     NodeType.Outlet,
-                    NodeType.PassDown,
+                    NodeType.Junction,
                 )
         )...,
         # basin_ids_subnetwork_with_level_demand
@@ -1115,7 +1115,7 @@ function AllocationModel(subnetwork_id::Int32, p_independent::ParametersIndepend
     add_manning_resistance!(allocation_model, p_independent)
     add_pump!(allocation_model, p_independent)
     add_outlet!(allocation_model, p_independent)
-    add_pass_down!(allocation_model, p_independent)
+    add_junction!(allocation_model, p_independent)
 
     # Demand nodes
     add_user_demand!(allocation_model, p_independent)

@@ -238,8 +238,8 @@ function update_concentrations!(u, t, integrator)::Nothing
     # Exact boundary flow over time step
     for (id, outflow_link) in zip(flow_boundary.node_id, flow_boundary.outflow_link)
         to_node = outflow_link.link[2]
-        # The mass into a PassDown node is handled in `mass_through_pass_down!`
-        to_node.is_pass_down && continue
+        # The mass into a Junction node is handled in `mass_through_junctions!`
+        to_node.is_routed && continue
         add_substance_mass!(
             view(mass, :, to_node.idx),
             flow_boundary.concentration_itp[id.idx],
@@ -249,7 +249,7 @@ function update_concentrations!(u, t, integrator)::Nothing
     end
 
     mass_inflows_from_user_demand!(integrator)
-    mass_through_pass_down!(integrator)
+    mass_through_junctions!(integrator)
     mass_inflows_basin!(integrator)
     aggregate_flows!(
         cumulative_in,
@@ -419,7 +419,7 @@ function save_flow(u, t, integrator)
         t,
     )
     check_basin_water_balance_error!(saved_flow, p, t, Δt)
-    check_pass_down_water_balance_error!(p, t, flow_mean, boundary_flow_mean)
+    check_junction_water_balance_error!(p, t, flow_mean, boundary_flow_mean)
     u_prev_saveat .= u
     basin.storage_prev_saveat .= current_basin_properties.current_storage
     basin.forcing.exact_cumulative_forcing_prev_saveat .= basin.forcing.exact_cumulative_forcing_since_reset
@@ -427,19 +427,19 @@ function save_flow(u, t, integrator)
     return saved_flow
 end
 
-function check_pass_down_water_balance_error!(
+function check_junction_water_balance_error!(
         p::Parameters,
         t::Float64,
         flow_mean::FlowCVector{Float64},
         boundary_flow_mean::Vector{Float64},
     )::Nothing
     (; p_independent) = p
-    (; pass_down, water_balance_abstol, water_balance_reltol, starttime) = p_independent
-    (; node_id, inflow_links, outflow_links) = pass_down
+    (; junction, water_balance_abstol, water_balance_reltol, starttime) = p_independent
+    (; routed_ids, inflow_links, outflow_links) = junction
 
     errors = false
 
-    for id in node_id
+    for id in routed_ids
         inflow_rate = sum(
             get_flow(flow_mean, link.link, p_independent; boundary_flow = boundary_flow_mean, t)
                 for link in inflow_links[id.idx]
@@ -456,12 +456,12 @@ function check_pass_down_water_balance_error!(
         if abs(balance_error) > water_balance_abstol &&
                 abs(relative_error) > water_balance_reltol
             errors = true
-            @error "Too large PassDown water balance error" id balance_error relative_error inflow_rate outflow_rate
+            @error "Too large Junction water balance error" id balance_error relative_error inflow_rate outflow_rate
         end
     end
     if errors
         t = datetime_since(t, starttime)
-        error("Too large PassDown water balance error(s) detected at t = $t")
+        error("Too large Junction water balance error(s) detected at t = $t")
     end
     return nothing
 end

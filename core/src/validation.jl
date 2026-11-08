@@ -1,9 +1,9 @@
 # Allowed types for downstream (to_node_id) nodes given the type of the upstream (from_node_id) node
 neighbortypes(nodetype::Symbol) = neighbortypes(Val(config.snake_case(nodetype)))
-neighbortypes(::Val{:pump}) = OrderedSet((:basin, :terminal, :level_boundary, :pass_down, :junction))
-neighbortypes(::Val{:outlet}) = OrderedSet((:basin, :terminal, :level_boundary, :pass_down, :junction))
+neighbortypes(::Val{:pump}) = OrderedSet((:basin, :terminal, :level_boundary, :junction))
+neighbortypes(::Val{:outlet}) = OrderedSet((:basin, :terminal, :level_boundary, :junction))
 neighbortypes(::Val{:user_demand}) =
-    OrderedSet((:basin, :terminal, :level_boundary, :pass_down, :junction))
+    OrderedSet((:basin, :terminal, :level_boundary, :junction))
 neighbortypes(::Val{:level_demand}) = OrderedSet((:basin,))
 neighbortypes(::Val{:basin}) = OrderedSet(
     (
@@ -28,11 +28,11 @@ neighbortypes(::Val{:junction}) = OrderedSet(
         :outlet,
         :user_demand,
         :terminal,
-        :pass_down,
+        :level_boundary,
     )
 )
 neighbortypes(::Val{:flow_boundary}) =
-    OrderedSet((:basin, :terminal, :level_boundary, :junction, :pass_down))
+    OrderedSet((:basin, :terminal, :level_boundary, :junction))
 neighbortypes(::Val{:level_boundary}) =
     OrderedSet((:linear_resistance, :pump, :outlet, :tabulated_rating_curve))
 neighbortypes(::Val{:linear_resistance}) = OrderedSet((:basin, :level_boundary, :junction))
@@ -50,7 +50,7 @@ neighbortypes(::Val{:discrete_control}) = OrderedSet(
 )
 neighbortypes(::Val{:pid_control}) = OrderedSet((:pump, :outlet))
 neighbortypes(::Val{:tabulated_rating_curve}) =
-    OrderedSet((:basin, :terminal, :level_boundary, :junction, :pass_down))
+    OrderedSet((:basin, :terminal, :level_boundary, :junction))
 neighbortypes(::Val{:flow_demand}) = OrderedSet(
     (
         :linear_resistance,
@@ -61,7 +61,6 @@ neighbortypes(::Val{:flow_demand}) = OrderedSet(
     )
 )
 neighbortypes(::Val{:observation}) = OrderedSet{Symbol}()
-neighbortypes(::Val{:pass_down}) = OrderedSet((:basin, :level_boundary, :terminal, :junction, :user_demand, :pass_down))
 neighbortypes(::Any) = OrderedSet{Symbol}()
 
 # Allowed number of inneighbors and outneighbors per node type
@@ -94,7 +93,6 @@ n_neighbor_bounds_flow(::Val{:UserDemand}) = n_neighbor_bounds(1, M, 1, 1)
 n_neighbor_bounds_flow(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:FlowDemand}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_flow(::Val{:Observation}) = n_neighbor_bounds(0, 0, 0, 0)
-n_neighbor_bounds_flow(::Val{:PassDown}) = n_neighbor_bounds(1, M, 1, M)
 n_neighbor_bounds_flow(nodetype) =
     error("'n_neighbor_bounds_flow' not defined for $nodetype.")
 
@@ -116,7 +114,6 @@ n_neighbor_bounds_control(::Val{:UserDemand}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 1, M)
 n_neighbor_bounds_control(::Val{:FlowDemand}) = n_neighbor_bounds(0, 0, 1, 1)
 n_neighbor_bounds_control(::Val{:Observation}) = n_neighbor_bounds(0, 0, 0, 0)
-n_neighbor_bounds_control(::Val{:PassDown}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_control(nodetype) =
     error("'n_neighbor_bounds_control' not defined for $nodetype.")
 
@@ -138,7 +135,6 @@ n_neighbor_bounds_listen(::Val{:UserDemand}) = n_neighbor_bounds(0, 0, 0, M)
 n_neighbor_bounds_listen(::Val{:LevelDemand}) = n_neighbor_bounds(0, 0, 0, M)
 n_neighbor_bounds_listen(::Val{:FlowDemand}) = n_neighbor_bounds(0, 0, 0, M)
 n_neighbor_bounds_listen(::Val{:Observation}) = n_neighbor_bounds(0, 0, 0, 0)
-n_neighbor_bounds_listen(::Val{:PassDown}) = n_neighbor_bounds(0, 0, 0, 0)
 n_neighbor_bounds_listen(nodetype) =
     error("'n_neighbor_bounds_listen' not defined for $nodetype.")
 
@@ -160,7 +156,6 @@ n_neighbor_bounds_observation(::Val{:UserDemand}) = n_neighbor_bounds(0, M, 0, 0
 n_neighbor_bounds_observation(::Val{:LevelDemand}) = n_neighbor_bounds(0, M, 0, 0)
 n_neighbor_bounds_observation(::Val{:FlowDemand}) = n_neighbor_bounds(0, M, 0, 0)
 n_neighbor_bounds_observation(::Val{:Observation}) = n_neighbor_bounds(0, 0, 0, 1)
-n_neighbor_bounds_observation(::Val{:PassDown}) = n_neighbor_bounds(0, M, 0, 0)
 n_neighbor_bounds_observation(nodetype) =
     error("'n_neighbor_bounds_observation' not defined for $nodetype.")
 
@@ -205,7 +200,7 @@ sort_key(::Type{Schema.Basin.Subgrid}) = (:subgrid_id, :basin_level)
 sort_key(::Type{Schema.Basin.SubgridTime}) = (:subgrid_id, :time, :basin_level)
 sort_key(::Type{Schema.Basin.Time}) = (:node_id, :time)
 
-sort_key(::Type{Schema.PassDown.Static}) = (:node_id, :to_node_id)
+sort_key(::Type{Schema.Junction.Static}) = (:node_id, :to_node_id)
 
 sort_key(::Type{Schema.ContinuousControl.Function}) = (:node_id, :input)
 sort_key(::Type{Schema.ContinuousControl.Variable}) = (:node_id, :listen_node_id, :variable)
@@ -326,7 +321,7 @@ end
 
 """
 Check that a min_level is provided for the UserDemand nodes that abstract from Basin(s),
-since the abstraction is reduced below this level. It is not needed for PassDown inflow,
+since the abstraction is reduced below this level. It is not needed for Junction inflow,
 which has no level.
 """
 function valid_user_demand_min_level(user_demand::UserDemand)::Bool
@@ -437,7 +432,7 @@ function valid_junction_group(
         for neighbor in inflow_ids(graph, junction_id)
             n_in += 1
             n_tree_links +=
-                (neighbor.type == NodeType.Junction) ||
+                is_plain_junction(neighbor) ||
                 (has_one_basin && neighbor.type == NodeType.Basin)
         end
         for neighbor in outflow_ids(graph, junction_id)
@@ -734,11 +729,11 @@ function incomplete_subnetwork(
     )::Bool
     errors = false
 
-    # analyze the subnetwork without junctions
+    # analyze the subnetwork without the Junction nodes that were removed from the graph
     node_ids_without_junctions = OrderedDict{Int32, OrderedSet{NodeID}}()
     for (subnetwork_id, node_ids_in_subnetwork) in node_ids
         node_ids_without_junctions[subnetwork_id] =
-            OrderedSet(filter(x -> x.type != NodeType.Junction, node_ids_in_subnetwork))
+            OrderedSet(filter(!is_plain_junction, node_ids_in_subnetwork))
     end
 
 
@@ -777,43 +772,70 @@ function valid_n_neighbors(graph::MetaGraph)::Bool
         errors |= !valid_n_neighbors(node_type, graph)
     end
 
-    errors |= !valid_pass_down_connectivity(graph)
+    errors |= !valid_junction_connectivity(graph)
 
     return !errors
 end
 
-function valid_pass_down_connectivity(graph)
+"""
+Validate the connectivity of the Junction nodes that divide the flow or supply a UserDemand
+(the routed Junction nodes, which have rows in `Junction / static`), and of the UserDemand nodes
+that abstract from them. The other Junction nodes were removed from the graph already.
+"""
+function valid_junction_connectivity(graph)
     errors = false
+    source_types = (
+        NodeType.Pump,
+        NodeType.Outlet,
+        NodeType.TabulatedRatingCurve,
+        NodeType.FlowBoundary,
+        NodeType.UserDemand,
+    )
+    target_types =
+        (NodeType.Basin, NodeType.LevelBoundary, NodeType.Terminal, NodeType.UserDemand)
 
     for id in labels(graph)
         if id.type == NodeType.UserDemand
-            n_pass_down_in = 0
+            n_routed_in = 0
             n_other_in = 0
             for inflow_id in inflow_ids(graph, id)
-                if inflow_id.is_pass_down
-                    n_pass_down_in += 1
+                if inflow_id.is_routed
+                    n_routed_in += 1
                 else
                     n_other_in += 1
                 end
             end
-            if !iszero(n_pass_down_in) && (n_pass_down_in + n_other_in > 1)
-                @error "$id must have either one or more Basin inflow links, or exactly one PassDown inflow link."
+            if !iszero(n_routed_in) && (n_routed_in + n_other_in > 1)
+                @error "$id must have either one or more Basin inflow links, or exactly one inflow link from a Junction that divides the flow or supplies a UserDemand."
                 errors = true
             end
-        elseif id.is_pass_down
+        elseif id.is_routed
             n_user_demand_out = 0
             n_other_out = 0
             for outflow_id in outflow_ids(graph, id)
                 if outflow_id.type == NodeType.UserDemand
                     n_user_demand_out += 1
-                else
+                elseif outflow_id.is_routed || outflow_id.type in target_types
                     n_other_out += 1
+                else
+                    @error "$id divides the flow or supplies a UserDemand, so it cannot flow into $outflow_id: it has no level, and it can only flow into Basin, LevelBoundary, Terminal, UserDemand or Junction nodes."
+                    errors = true
                 end
+            end
+            for inflow_id in inflow_ids(graph, id)
+                if !(inflow_id.is_routed || inflow_id.type in source_types)
+                    @error "$id divides the flow or supplies a UserDemand, so its inflow must come from a Pump, Outlet, TabulatedRatingCurve, FlowBoundary, UserDemand or such a Junction, not from $inflow_id."
+                    errors = true
+                end
+            end
+            if isempty(inflow_ids(graph, id))
+                @error "$id has rows in Junction / static but no inflow link."
+                errors = true
             end
             if n_user_demand_out > 1
                 @error "$id cannot have more than one UserDemand outflow."
                 errors = true
-            elseif isone(n_user_demand_out) && iszero(n_other_out)
+            elseif iszero(n_other_out)
                 @error "$id cannot only flow out into a UserDemand node, the remainder flow needs somewhere to go."
                 errors = true
             end

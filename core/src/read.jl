@@ -862,11 +862,6 @@ function Terminal(db::DB)::Terminal
     return Terminal(node_id)
 end
 
-function Junction(db::DB)::Junction
-    node_id = get_node_ids(db, NodeType.Junction)
-    return Junction(; node_id)
-end
-
 # Constant interpolation that is always 0, used
 # e.g. for unspecified standard tracers
 const zero_constant_itp = ConstantInterpolation(
@@ -1656,25 +1651,25 @@ function FlowDemand(db::DB, config::Config, graph::MetaGraph)
 end
 
 """
-Find the connected components of PassDown and UserDemand nodes connected by flow links.
-UserDemand nodes without a PassDown inneighbor (i.e. at the start of a tree) are excluded.
+Find the connected components of Junction and UserDemand nodes connected by flow links.
+UserDemand nodes without a Junction inneighbor (i.e. at the start of a tree) are excluded.
 """
-function get_pass_down_subgraphs(
+function get_routed_subgraphs(
         graph::ModelGraph,
-        pass_down_ids::Vector{NodeID},
+        routed_ids::Vector{NodeID},
     )::Vector{Vector{NodeID}}
     in_subgraph(id::NodeID) =
-        id.is_pass_down || (
+        id.is_routed || (
         id.type == NodeType.UserDemand && any(
-            inneighbor_id -> inneighbor_id.is_pass_down,
+            inneighbor_id -> inneighbor_id.is_routed,
             inneighbor_labels_type(graph, id, LinkType.flow),
         )
     )
 
     visited = Set{NodeID}()
     subgraphs = Vector{NodeID}[]
-    # Every subgraph contains a PassDown node, so starting from those finds all subgraphs
-    for start_id in pass_down_ids
+    # Every subgraph contains a Junction node, so starting from those finds all subgraphs
+    for start_id in routed_ids
         start_id in visited && continue
         subgraph = NodeID[]
         stack = [start_id]
@@ -1703,8 +1698,8 @@ end
 Sort the nodes of a subgraph (Kahn's algorithm) such that every node comes after all nodes
 its flow depends on:
 - the upstream nodes in the subgraph;
-- for a PassDown node, the UserDemand nodes downstream of its upstream PassDown nodes,
-  since those UserDemand nodes take precedence and the PassDown nodes divide the remaining flow.
+- for a Junction node, the UserDemand nodes downstream of its upstream Junction nodes,
+  since those UserDemand nodes take precedence and the Junction nodes divide the remaining flow.
 Ties are broken by NodeID for a deterministic order.
 """
 function topological_sort_subgraph(graph::ModelGraph, subgraph::Vector{NodeID})::Vector{NodeID}
@@ -1713,7 +1708,7 @@ function topological_sort_subgraph(graph::ModelGraph, subgraph::Vector{NodeID}):
     for id in subgraph, upstream_id in inflow_ids(graph, id)
         upstream_id in node_set || continue
         push!(dependencies[id], upstream_id)
-        if id.is_pass_down && upstream_id.is_pass_down
+        if id.is_routed && upstream_id.is_routed
             for sibling_id in outflow_ids(graph, upstream_id)
                 sibling_id.type == NodeType.UserDemand && push!(dependencies[id], sibling_id)
             end
@@ -1739,18 +1734,20 @@ function topological_sort_subgraph(graph::ModelGraph, subgraph::Vector{NodeID}):
         end
     end
     if length(sorted) != length(subgraph)
-        error("Cyclic flow dependency detected in PassDown subgraph containing nodes $(sort(subgraph)).")
+        error("Cyclic flow dependency detected in Junction subgraph containing nodes $(sort(subgraph)).")
     end
     return sorted
 end
 
-function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
-    static = load_structvector(db, config, Schema.PassDown.Static)
-    node_id = get_node_ids(db, NodeType.PassDown)
-    inflow_links = [get_inflow_links(graph, id) for id in node_id]
-    outflow_links = [get_outflow_links(graph, id) for id in node_id]
+function Junction(db::DB, config::Config, graph::ModelGraph)::Junction
+    static = load_structvector(db, config, Schema.Junction.Static)
+    node_id = get_node_ids(db, NodeType.Junction)
+    # Only the routed Junction nodes are in the graph, the others were removed by `simplify_graph!`
+    routed_ids = filter(id -> id.is_routed, node_id)
+    inflow_links = [id.is_routed ? get_inflow_links(graph, id) : LinkMetadata[] for id in node_id]
+    outflow_links = [id.is_routed ? get_outflow_links(graph, id) : LinkMetadata[] for id in node_id]
 
-    # The links out of PassDown nodes are routed: their flow is a weighted sum of the flows
+    # The links out of Junction nodes are routed: their flow is a weighted sum of the flows
     # into the subgraph, see `set_routing!`. The flow towards a UserDemand node is the UserDemand
     # inflow state.
     routed_links = sort!(
@@ -1758,11 +1755,11 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
     )
 
     n_substance = length(get_substances(db, config))
-    pass_down = PassDown(;
+    junction = Junction(;
         node_id,
         inflow_links,
         outflow_links,
-        pass_down_subgraphs = get_pass_down_subgraphs(graph, node_id),
+        routed_subgraphs = get_routed_subgraphs(graph, routed_ids),
         routed_links,
         inflow_link_idx = [[routed_link_index(routed_links, link) for link in links] for links in inflow_links],
         outflow_link_idx = [[routed_link_index(routed_links, link) for link in links] for links in outflow_links],
@@ -1770,7 +1767,7 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
         source_mass = zeros(n_substance),
         concentration = zeros(n_substance, length(node_id)),
     )
-    (; fraction) = pass_down
+    (; fraction) = junction
     has_fraction = [falses(length(links)) for links in outflow_links]
 
     errors = false
@@ -1779,7 +1776,7 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
     duplicate_rows = NamedTuple{(:node_id, :to_node_id), Tuple{Int32, Int32}}[]
     for row in static
         row_ids = (; node_id = row.node_id, to_node_id = row.to_node_id)
-        id = NodeID(NodeType.PassDown, row.node_id, node_id)
+        id = NodeID(NodeType.Junction, row.node_id, node_id)
         # The fractions divide the flow over the outflow links, except the link to a UserDemand node
         link_idx = findfirst(
             link -> link.link[2].value == row.to_node_id && link.link[2].type != NodeType.UserDemand,
@@ -1799,15 +1796,15 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
         end
     end
     if !isempty(unknown_link_rows)
-        @error "PassDown fractions can only be given for flow links out of the PassDown node, except the link to a UserDemand node." unknown_link_rows
+        @error "Junction fractions can only be given for flow links out of the Junction node, except the link to a UserDemand node." unknown_link_rows
         errors = true
     end
     if !isempty(duplicate_rows)
-        @error "Duplicate PassDown fractions for the same link." duplicate_rows
+        @error "Duplicate Junction fractions for the same link." duplicate_rows
         errors = true
     end
     if !isempty(invalid_fraction_rows)
-        @error "PassDown fractions must be between 0 and 1 (inclusive)." invalid_fraction_rows
+        @error "Junction fractions must be between 0 and 1 (inclusive)." invalid_fraction_rows
         errors = true
     end
 
@@ -1836,28 +1833,28 @@ function PassDown(db::DB, config::Config, graph::ModelGraph)::PassDown
         end
     end
 
-    # A UserDemand downstream of a PassDown node takes precedence over the other outneighbors,
+    # A UserDemand downstream of a Junction node takes precedence over the other outneighbors,
     # which receive the flow that is not abstracted
-    for id in node_id
+    for id in routed_ids
         user_demand_ids = filter(id -> id.type == NodeType.UserDemand, outflow_ids(graph, id) |> collect)
         if isone(length(user_demand_ids))
-            pass_down.user_demand_id[id.idx] = only(user_demand_ids)
+            junction.user_demand_id[id.idx] = only(user_demand_ids)
         end
     end
-    errors && error("Errors encountered when parsing PassDown data.")
+    errors && error("Errors encountered when parsing Junction data.")
 
-    # The level seen by structures upstream: the single node behind a chain of PassDown nodes that do
+    # The level seen by structures upstream: the single node behind a chain of Junction nodes that do
     # not divide the flow. The subgraphs are in topological order, so go through them backwards.
-    for subgraph in pass_down.pass_down_subgraphs, id in Iterators.reverse(subgraph)
-        id.is_pass_down || continue
+    for subgraph in junction.routed_subgraphs, id in Iterators.reverse(subgraph)
+        id.is_routed || continue
         targets = [link.link[2] for link in outflow_links[id.idx] if link.link[2].type != NodeType.UserDemand]
         if isone(length(targets))
             target = only(targets)
-            pass_down.level_node_id[id.idx] = target.is_pass_down ? pass_down.level_node_id[target.idx] : target
+            junction.level_node_id[id.idx] = target.is_routed ? junction.level_node_id[target.idx] : target
         end
     end
 
-    return pass_down
+    return junction
 end
 
 "Create and push a ConstantInterpolation to the constant_interpolations."
@@ -2054,7 +2051,6 @@ function Parameters(db::DB, config::Config)::Parameters
     basin = Basin(db, config, graph)
     nodes = (;
         basin,
-        pass_down = PassDown(db, config, graph),
         linear_resistance = LinearResistance(db, config, graph),
         manning_resistance = ManningResistance(db, config, graph, basin),
         tabulated_rating_curve = TabulatedRatingCurve(db, config, graph),
@@ -2063,7 +2059,7 @@ function Parameters(db::DB, config::Config)::Parameters
         pump = Pump(db, config, graph),
         outlet = Outlet(db, config, graph),
         terminal = Terminal(db),
-        junction = Junction(db),
+        junction = Junction(db, config, graph),
         discrete_control = DiscreteControl(db, config, graph),
         continuous_control = ContinuousControl(db, config),
         pid_control = PidControl(db, config, graph),
@@ -2072,7 +2068,7 @@ function Parameters(db::DB, config::Config)::Parameters
         flow_demand = FlowDemand(db, config, graph),
     )
 
-    set_in_pass_down_subgraph!(nodes.user_demand, nodes.pass_down)
+    set_in_routed_subgraph!(nodes.user_demand, nodes.junction)
     set_downstream_level_ids!(nodes)
 
     subgrid = Subgrid(db, config, basin)
@@ -2138,13 +2134,26 @@ function get_node_ids_types(
     return (; table.node_id, node_type)
 end
 
+"""
+The IDs of the Junction nodes that divide the flow or supply a UserDemand: those with rows in
+`Junction / static`. They stay in the simulation as nodes, see `NodeID.is_routed`.
+"""
+function routed_junction_ids(db::DB)::Set{Int32}
+    table_name = "Junction / static"
+    sql_exists = "SELECT name FROM sqlite_master WHERE type = 'table' AND name = '$table_name'"
+    isempty(only(execute(columntable, db, sql_exists))) && return Set{Int32}()
+    sql = "SELECT DISTINCT node_id FROM $(esc_id(table_name))"
+    return Set{Int32}(only(execute(columntable, db, sql)))
+end
+
 function get_node_ids(db::DB)::Vector{NodeID}
     nt = get_node_ids_types(db)
+    routed = routed_junction_ids(db)
     node_ids = Vector{NodeID}(undef, length(nt.node_id))
     count = counter(NodeType.T)
     for (i, (; node_id, node_type)) in enumerate(Tables.rows(nt))
         index = inc!(count, node_type)
-        node_ids[i] = NodeID(node_type, node_id, index)
+        node_ids[i] = NodeID(node_type, node_id, index, node_type == NodeType.Junction && node_id in routed)
     end
     return node_ids
 end
@@ -2162,9 +2171,10 @@ end
 function get_node_ids(db::DB, node_type)::Vector{NodeID}
     node_type = NodeType.T(node_type)
     node_ints = get_node_ids_int32(db, node_type)
+    routed = node_type == NodeType.Junction ? routed_junction_ids(db) : Set{Int32}()
     node_ids = Vector{NodeID}(undef, length(node_ints))
     for (index, node_int) in enumerate(node_ints)
-        node_ids[index] = NodeID(node_type, node_int, index)
+        node_ids[index] = NodeID(node_type, node_int, index, node_int in routed)
     end
     return node_ids
 end

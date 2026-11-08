@@ -20,7 +20,7 @@ function set_simulation_data!(
         pump,
         outlet,
         user_demand,
-        pass_down,
+        junction,
         tabulated_rating_curve,
     ) = p.p_independent
 
@@ -36,7 +36,7 @@ function set_simulation_data!(
     set_simulation_data!(allocation_model, tabulated_rating_curve, p, t_level)
     set_simulation_data!(allocation_model, pump, p, u, du, t_level)
     set_simulation_data!(allocation_model, outlet, p, u, du, t_level)
-    set_simulation_data!(allocation_model, user_demand, pass_down, t)
+    set_simulation_data!(allocation_model, user_demand, junction, t)
 
     if errors
         error(
@@ -424,12 +424,12 @@ end
 function set_simulation_data!(
         allocation_model::AllocationModel,
         user_demand::UserDemand,
-        pass_down::PassDown,
+        junction::Junction,
         t::Float64,
     )::Nothing
     (; problem) = allocation_model
     constraints = problem[:user_demand_return_flow]
-    constraints_pass_down = problem[:user_demand_return_flow_pass_down]
+    constraints_junction = problem[:user_demand_return_flow_junction]
     flow = problem[:flow]
 
     # Set the return factor, a rate, at the start of the time step.
@@ -443,9 +443,9 @@ function set_simulation_data!(
         end
     end
 
-    # The return flow into a PassDown node is the total return flow
-    for link in only(constraints_pass_down.axes)
-        constraint = constraints_pass_down[link]
+    # The return flow into a Junction node is the total return flow
+    for link in only(constraints_junction.axes)
+        constraint = constraints_junction[link]
         node_id = link[1]
         return_factor = user_demand.return_factor[node_id.idx](t)
         for inflow_link_metadata in user_demand.inflow_links[node_id.idx]

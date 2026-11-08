@@ -159,7 +159,7 @@ end
 
 """
 Get the current water level of a node ID.
-The ID can belong to either a Basin, PassDown or a LevelBoundary.
+The ID can belong to either a Basin, Junction or a LevelBoundary.
 """
 function get_level(
         storage::Number,
@@ -192,12 +192,12 @@ function get_level(
         # Terminal is like a bottomless pit.
         # A level at -Inf ensures we don't hit `max_downstream_level` reduction factors.
         -Inf
-    elseif node_id.is_pass_down
-        # A PassDown node is only downstream of connector nodes. Like Terminal it does not
+    elseif node_id.is_routed
+        # A Junction node is only downstream of connector nodes. Like Terminal it does not
         # limit the flow, and its inflow is passed on regardless of the level downstream.
         -Inf
     else
-        error("Node ID $node_id is not a Basin, PassDown, LevelBoundary or Terminal.")
+        error("Node ID $node_id is not a Basin, Junction, LevelBoundary or Terminal.")
     end
 end
 
@@ -630,7 +630,6 @@ function get_ns_flow_horizontal(nodes::NamedTuple)
         linear_resistance,
         manning_resistance,
         user_demand,
-        pass_down,
     ) = nodes
     return [
         length(pump),
@@ -755,7 +754,7 @@ end
 
 """
 The incidence matrix M of the flows: -1 for the Basin a flow comes from, +1 for the Basin it goes to,
-and the routing weights for the Basins a flow reaches via PassDown nodes, see `set_routing!`.
+and the routing weights for the Basins a flow reaches via Junction nodes, see `set_routing!`.
 """
 function get_incidence_matrix(
         inflow_id::FlowCVector{NodeID},
@@ -780,17 +779,17 @@ function get_incidence_matrix(
 end
 
 """
-Set the routing weights of the PassDown subgraphs: the flow over each routed link (see `PassDown.routed_links`)
-and the total inflow of each PassDown node as a weighted sum of the flows that enter the subgraphs
+Set the routing weights of the Junction subgraphs: the flow over each routed link (see `Junction.routed_links`)
+and the total inflow of each Junction node as a weighted sum of the flows that enter the subgraphs
 (the states of connector nodes and UserDemand outflows, and the FlowBoundary flows), with the
 inflows of the UserDemand nodes in the subgraphs subtracted. The weights are products of the
 fractions along the way, and are constant since the fractions are.
 
-Returns per flow state and per FlowBoundary the Basins they flow into via PassDown nodes, with
+Returns per flow state and per FlowBoundary the Basins they flow into via Junction nodes, with
 the weights, and the indices of the flow states that have such Basins.
 """
 function set_routing!(nodes::NamedTuple, flow_ranges::FlowTuple)
-    (; pass_down, user_demand, flow_boundary) = nodes
+    (; junction, user_demand, flow_boundary) = nodes
     (;
         inflow_links,
         inflow_link_idx,
@@ -800,14 +799,14 @@ function set_routing!(nodes::NamedTuple, flow_ranges::FlowTuple)
         inflow_weights,
         routed_links,
         user_demand_id,
-        pass_down_subgraphs,
-    ) = pass_down
+        routed_subgraphs,
+    ) = junction
     n_flow = get_n_flow(nodes)
     routed_basins = [Tuple{Int, Float64}[] for _ in 1:n_flow]
     routed_basins_boundary = [Tuple{Int, Float64}[] for _ in flow_boundary.node_id]
-    isempty(pass_down.node_id) && return routed_basins, Int[], routed_basins_boundary
+    isempty(junction.routed_ids) && return routed_basins, Int[], routed_basins_boundary
 
-    # The flow state of a node that flows into a PassDown node
+    # The flow state of a node that flows into a Junction node
     function entry_state_idx(id::NodeID)::Int
         return if id.type == NodeType.UserDemand
             flow_ranges.horizontal.user_demand_outflow[id.idx]
@@ -820,9 +819,9 @@ function set_routing!(nodes::NamedTuple, flow_ranges::FlowTuple)
 
     link_state = [Dict{Int, Float64}() for _ in routed_links]
     link_boundary = [Dict{Int, Float64}() for _ in routed_links]
-    # The subgraphs are in topological order, so the weights of the links into a PassDown node are known
-    for subgraph in pass_down_subgraphs, id in subgraph
-        id.is_pass_down || continue
+    # The subgraphs are in topological order, so the weights of the links into a Junction node are known
+    for subgraph in routed_subgraphs, id in subgraph
+        id.is_routed || continue
         state = Dict{Int, Float64}()
         boundary = Dict{Int, Float64}()
         for (link, idx) in zip(inflow_links[id.idx], inflow_link_idx[id.idx])
@@ -981,7 +980,7 @@ function aggregate_flows!(
             aggregate, flow.horizontal, inflow_id.horizontal, outflow_id.horizontal,
             do_inflows, do_outflows, weight,
         )
-        # The flows that reach Basins via PassDown nodes
+        # The flows that reach Basins via Junction nodes
         for flow_idx in routed_flow_idxs
             flow_ = flow[flow_idx]
             positive_flow = (flow_ > 0)
@@ -995,7 +994,7 @@ function aggregate_flows!(
     if do_horizontal_flows && do_inflows && !isnothing(boundary_flow)
         for idx in eachindex(flow_boundary.node_id)
             downstream_id = flow_boundary.outflow_link[idx].link[2]
-            if downstream_id.is_pass_down
+            if downstream_id.is_routed
                 for (basin_idx, routing_weight) in routed_basins_boundary[idx]
                     aggregate[basin_idx] += routing_weight * boundary_flow[idx]
                 end
@@ -1358,16 +1357,16 @@ end
 
 """
 Set per connector node the node whose level is the downstream level: the node downstream, or
-for a PassDown node downstream the single Basin or LevelBoundary behind it (`PassDown.level_node_id`).
-A structure that flows into a PassDown node that divides the flow has free outflow.
+for a Junction node downstream the single Basin or LevelBoundary behind it (`Junction.level_node_id`).
+A structure that flows into a Junction node that divides the flow has free outflow.
 """
 function set_downstream_level_ids!(nodes::NamedTuple)::Nothing
-    (; pass_down) = nodes
+    (; junction) = nodes
     for node in (nodes.pump, nodes.outlet, nodes.tabulated_rating_curve, nodes.linear_resistance, nodes.manning_resistance)
         for (idx, outflow_link) in enumerate(node.outflow_link)
             downstream_id = outflow_link.link[2]
             node.downstream_level_id[idx] =
-                downstream_id.is_pass_down ? pass_down.level_node_id[downstream_id.idx] : downstream_id
+                downstream_id.is_routed ? junction.level_node_id[downstream_id.idx] : downstream_id
         end
     end
     return nothing
@@ -1384,11 +1383,11 @@ function get_downlink_level_ids(nodes::NamedTuple, outflow_id::FlowCVector{NodeI
     return downlink_level_id
 end
 
-"Mark the UserDemand nodes that are part of a PassDown subgraph."
-function set_in_pass_down_subgraph!(user_demand::UserDemand, pass_down::PassDown)::Nothing
-    for subgraph in pass_down.pass_down_subgraphs, id in subgraph
+"Mark the UserDemand nodes that are part of a Junction subgraph."
+function set_in_routed_subgraph!(user_demand::UserDemand, junction::Junction)::Nothing
+    for subgraph in junction.routed_subgraphs, id in subgraph
         id.type == NodeType.UserDemand || continue
-        user_demand.in_pass_down_subgraph[id.idx] = true
+        user_demand.in_routed_subgraph[id.idx] = true
     end
     return nothing
 end

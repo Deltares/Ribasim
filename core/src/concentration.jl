@@ -3,8 +3,8 @@ Process mass inflows from UserDemand separately
 as the UserDemand nodes are not conservative.
 
 The mass in the return flow is stored in `user_demand.return_mass`. If the return flow goes to a
-Basin that mass is added to the Basin, if it goes to PassDown nodes it is passed on by `mass_through_pass_down!`.
-UserDemand nodes in a PassDown subgraph are also handled there.
+Basin that mass is added to the Basin, if it goes to Junction nodes it is passed on by `mass_through_junctions!`.
+UserDemand nodes in a Junction subgraph are also handled there.
 """
 function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
     (; p, t) = integrator
@@ -13,10 +13,10 @@ function mass_inflows_from_user_demand!(integrator::DEIntegrator)::Nothing
     (; return_mass) = user_demand
 
     for (node_idx, outflow_link) in enumerate(user_demand.outflow_link)
-        user_demand.in_pass_down_subgraph[node_idx] && continue
+        user_demand.in_routed_subgraph[node_idx] && continue
 
         to_node = outflow_link.link[2]
-        (to_node.is_basin || to_node.is_pass_down) || continue
+        (to_node.is_basin || to_node.is_routed) || continue
 
         inflow_links = user_demand.inflow_links[node_idx]
         return_mass_node = view(return_mass, :, node_idx)
@@ -86,17 +86,17 @@ function connector_inflow_id(p_independent::ParametersIndependent, id::NodeID)::
     elseif id.type == NodeType.TabulatedRatingCurve
         tabulated_rating_curve.inflow_link[id.idx].link[1]
     else
-        error("Unsupported flow from $id into a PassDown node.")
+        error("Unsupported flow from $id into a Junction node.")
     end
 end
 
 """
-Set the mass that flows over a link into a PassDown subgraph from a node outside of the subgraph:
+Set the mass that flows over a link into a Junction subgraph from a node outside of the subgraph:
 - FlowBoundary: the flow times the concentration of the FlowBoundary;
 - UserDemand: the mass in the return flow;
 - Pump, Outlet or TabulatedRatingCurve: the flow times the concentration of the upstream Basin or LevelBoundary.
 """
-function set_pass_down_source_mass!(
+function set_junction_source_mass!(
         link_mass::AbstractVector{Float64},
         p_independent::ParametersIndependent,
         source_id::NodeID,
@@ -133,22 +133,22 @@ function set_pass_down_source_mass!(
 end
 
 """
-Propagate the tracer mass through the PassDown subgraphs, in the same order as the flows are computed
-in `formulate_pass_down_flow!`. The mass that flows over each link is stored in `pass_down.link_mass`.
+Propagate the tracer mass through the Junction subgraphs, in the same order as the flows are computed
+in `formulate_junction_flow!`. The mass that flows over each link is stored in `junction.link_mass`.
 
-- The mass that flows into a PassDown node is mixed, so the concentration of the flow out of the PassDown node is
+- The mass that flows into a Junction node is mixed, so the concentration of the flow out of the Junction node is
   the total mass in, divided by the total volume out. This concentration holds for all outflow links.
-- A UserDemand abstracting from a PassDown node takes mass with the concentration of the PassDown node. Like
+- A UserDemand abstracting from a Junction node takes mass with the concentration of the Junction node. Like
   UserDemand nodes abstracting from Basins, all the mass abstracted is in the return flow, see `mass_inflows_from_user_demand!`.
-- The mass that flows from a PassDown node or a UserDemand node into a Basin is added to the mass of the Basin.
+- The mass that flows from a Junction node or a UserDemand node into a Basin is added to the mass of the Basin.
 
 The concentration of Basins is used as it was at the end of the previous timestep, like in `mass_inflows_basin!`.
 """
-function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
+function mass_through_junctions!(integrator::DEIntegrator)::Nothing
     (; p, t) = integrator
     (; p_independent) = p
-    (; basin, pass_down, user_demand, flow_boundary, cumulative_flow_dt) = p_independent
-    isempty(pass_down.node_id) && return nothing
+    (; basin, junction, user_demand, flow_boundary, cumulative_flow_dt) = p_independent
+    isempty(junction.routed_ids) && return nothing
 
     (; mass) = basin.concentration_data
     (;
@@ -160,14 +160,14 @@ function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
         link_mass,
         source_mass,
         concentration,
-        pass_down_subgraphs,
-    ) = pass_down
+        routed_subgraphs,
+    ) = junction
     (; inflow_link_offsets, return_mass) = user_demand
     # The volume that flowed over a routed link in the last timestep
     link_volume(idx) = routed_flow(link_weights[idx], cumulative_flow_dt, flow_boundary.cumulative_flow_dt)
 
-    for subgraph in pass_down_subgraphs, id in subgraph
-        if id.is_pass_down
+    for subgraph in routed_subgraphs, id in subgraph
+        if id.is_routed
             # Mass in, which is turned into the concentration below
             concentration_node = view(concentration, :, id.idx)
             concentration_node .= 0.0
@@ -181,7 +181,7 @@ function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
                         p_independent;
                         boundary_flow = p_independent.flow_boundary.cumulative_flow_dt,
                     )
-                    set_pass_down_source_mass!(source_mass, p_independent, source_id, cumulative_flow, t)
+                    set_junction_source_mass!(source_mass, p_independent, source_id, cumulative_flow, t)
                     concentration_node .+= source_mass
                 else
                     concentration_node .+= view(link_mass, :, link_idx)
@@ -213,10 +213,10 @@ function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
                 target_id.is_basin && (view(mass, :, target_id.idx) .+= link_mass_out)
             end
         elseif id.type == NodeType.UserDemand
-            pass_down_id = only(user_demand.inflow_links[id.idx]).link[1]
+            junction_id = only(user_demand.inflow_links[id.idx]).link[1]
             inflow_volume = cumulative_flow_dt.horizontal.user_demand_inflow[inflow_link_offsets[id.idx] + 1]
             return_mass_node = view(return_mass, :, id.idx)
-            return_mass_node .= inflow_volume .* view(concentration, :, pass_down_id.idx)
+            return_mass_node .= inflow_volume .* view(concentration, :, junction_id.idx)
             add_user_demand_tracer_mass!(
                 return_mass_node,
                 user_demand,
@@ -225,7 +225,7 @@ function mass_through_pass_down!(integrator::DEIntegrator)::Nothing
                 t,
             )
 
-            # The return mass into a PassDown node is picked up there via `set_pass_down_source_mass!`
+            # The return mass into a Junction node is picked up there via `set_junction_source_mass!`
             target_id = user_demand.outflow_link[id.idx].link[2]
             target_id.is_basin && (view(mass, :, target_id.idx) .+= return_mass_node)
         end
@@ -286,8 +286,8 @@ function mass_inflows_basin!(integrator::DEIntegrator)::Nothing
             elseif from_node.type == NodeType.Terminal && from_node.value == 0
                 # The unset flow link defaults to Terminal #0
                 nothing
-            elseif from_node.is_pass_down
-                # The mass from PassDown subgraphs is added in `mass_through_pass_down!`
+            elseif from_node.is_routed
+                # The mass from Junction subgraphs is added in `mass_through_junctions!`
                 nothing
             else
                 warn_unsupported_flow(from_node, to_node, cumulative_flow)

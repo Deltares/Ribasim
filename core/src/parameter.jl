@@ -72,7 +72,6 @@ Base.to_index(id::Substance.T) = Int(id)  # used to index into concentration mat
 
 const node_type_map::Dict{NodeType.T, Symbol} = Dict(
     NodeType.Basin => :basin,
-    NodeType.PassDown => :pass_down,
     NodeType.TabulatedRatingCurve => :tabulated_rating_curve,
     NodeType.Pump => :pump,
     NodeType.Outlet => :outlet,
@@ -127,15 +126,12 @@ This index can be passed directly, or calculated from the database or parameters
     value::Int32
     "Index into the internal node type struct"
     idx::Int
-    "Fast lookup of whether this node is a Basin or PassDown"
+    "Fast lookup of whether this node is a Basin"
     is_basin::Bool
-    is_pass_down::Bool
-    function NodeID(type, value, idx)
-        new(
-            type, value, idx,
-            type ∈ (NodeType.Basin, :Basin),
-            type ∈ (NodeType.PassDown, :PassDown)
-        )
+    "Whether this is a Junction that divides the flow or supplies a UserDemand, and stays in the simulation"
+    is_routed::Bool
+    function NodeID(type, value, idx, routed::Bool = false)
+        new(type, value, idx, type ∈ (NodeType.Basin, :Basin), routed)
     end
 end
 
@@ -168,6 +164,9 @@ Base.convert(::Type{Int32}, id::NodeID) = id.value
 Base.convert(::Type{NodeID}, value::Integer) = NodeID(NodeType.Basin, value, 0)
 Base.broadcastable(id::NodeID) = Ref(id)
 Base.show(io::IO, id::NodeID) = print(io, id.type, " #", id.value)
+
+"A Junction that only draws the network, and is removed from the graph before the simulation."
+is_plain_junction(id::NodeID)::Bool = id.type == NodeType.Junction && !id.is_routed
 config.snake_case(id::NodeID) = config.snake_case(id.type)
 Base.to_index(id::NodeID) = Int(id.value)
 
@@ -286,7 +285,7 @@ struct NodeIDsInSubnetwork
     manning_resistance_ids_subnetwork::Vector{NodeID}
     pump_ids_subnetwork::Vector{NodeID}
     outlet_ids_subnetwork::Vector{NodeID}
-    pass_down_ids_subnetwork::Vector{NodeID}
+    junction_ids_subnetwork::Vector{NodeID}
     basin_ids_subnetwork_with_level_demand::Vector{NodeID}
     node_ids_subnetwork_with_flow_demand::Vector{NodeID}
 end
@@ -463,7 +462,7 @@ Base.isless(link_1::LinkMetadata, link_2::LinkMetadata) = link_1.id < link_2.id
 """
 The weights of a flow that is a weighted sum of other flows: of flow states, by their index
 in the flow vector, and of FlowBoundary flows, by the index of the FlowBoundary. The flows
-over the links in PassDown subgraphs are such sums of the flows that enter the subgraphs,
+over the links in Junction subgraphs are such sums of the flows that enter the subgraphs,
 with the products of the fractions along the way as weights, and the inflows of the
 UserDemand nodes in the subgraphs with negative weights.
 """
@@ -707,7 +706,7 @@ inflow_link: incoming flow link metadata
 outflow_link: outgoing flow link metadata
     The ID of the source node is always the ID of the TabulatedRatingCurve node
 downstream_level_id: the node whose level is the downstream level: the node downstream, or the single Basin or
-    LevelBoundary behind PassDown nodes that do not divide the flow, see `set_downstream_level_ids!`
+    LevelBoundary behind Junction nodes that do not divide the flow, see `set_downstream_level_ids!`
 max_downstream_level: The downstream level above which the TabulatedRatingCurve flow goes to zero
 interpolations: All Q(h) relationships for the nodes over time
 current_interpolation_index: Per node 1 lookup from t to an index in `interpolations`
@@ -968,10 +967,6 @@ end
 """
 node_id: node ID of the Junction node
 """
-@kwdef struct Junction <: AbstractParameterNode
-    node_id::Vector{NodeID}
-end
-
 @enumx CacheType flow_rate_pump flow_rate_outlet basin_level basin_storage
 
 """
@@ -1148,40 +1143,44 @@ control_mapping: dictionary from (node_id, control_state) to target flow rate
 end
 
 """
-node_id: node IDs of the PassDown nodes
-inflow_links: the inflow links per PassDown node
-outflow_links: the outflow links per PassDown node
-fraction: per PassDown node the fraction of its flow (after UserDemand abstraction) that goes over each of its outflow links,
-    in the order of `outflow_links`. This is 1 for links that do not lead to a PassDown node, and for the link
+node_id: node IDs of all Junction nodes
+routed_ids: the Junction nodes that divide the flow or supply a UserDemand (they have rows in `Junction / static`).
+    These stay in the simulation as nodes without storage, the other Junction nodes are removed from the
+    graph and only draw the network. The fields below hold data for the routed Junction nodes only.
+inflow_links: the inflow links per Junction node
+outflow_links: the outflow links per Junction node
+fraction: per Junction node the fraction of its flow (after UserDemand abstraction) that goes over each of its outflow links,
+    in the order of `outflow_links`. This is 1 for links that do not lead to a Junction node, and for the link
     towards a UserDemand node, since that flow is not divided.
-level_node_id: per PassDown node the node whose level is seen by the structures upstream: the single Basin or
-    LevelBoundary behind it if the node and the PassDown nodes behind it do not divide the flow, otherwise the
-    PassDown node itself, whose level is -Inf (free outflow)
-pass_down_subgraphs: disjoint directed acyclic graphs of flow-connected PassDown and UserDemand nodes,
-    excluding UserDemand nodes without a PassDown inneighbor. The nodes of each subgraph
+level_node_id: per Junction node the node whose level is seen by the structures upstream: the single Basin or
+    LevelBoundary behind it if the node and the Junction nodes behind it do not divide the flow, otherwise the
+    Junction node itself, whose level is -Inf (free outflow)
+routed_subgraphs: disjoint directed acyclic graphs of flow-connected Junction and UserDemand nodes,
+    excluding UserDemand nodes without a Junction inneighbor. The nodes of each subgraph
     are ordered such that each node comes after all nodes its flow depends on.
-user_demand_id: The ID of the UserDemand node that abstracts from the PassDown node, if present
-routed_links: The flow links out of PassDown nodes, except the links towards a UserDemand node, sorted by link ID.
+user_demand_id: The ID of the UserDemand node that abstracts from the Junction node, if present
+routed_links: The flow links out of Junction nodes, except the links towards a UserDemand node, sorted by link ID.
     These links have no state: their flow is a weighted sum of the flows into the subgraph and the
     inflows of the UserDemand nodes in it, see `RoutingWeights`. The flow towards a UserDemand node is
-    the UserDemand inflow state, and the flow over a link into a PassDown node from a node outside the
+    the UserDemand inflow state, and the flow over a link into a Junction node from a node outside the
     subgraph is the state of that node.
-inflow_link_idx: Per PassDown node the index in `routed_links` of each of its inflow links,
+inflow_link_idx: Per Junction node the index in `routed_links` of each of its inflow links,
     or 0 for a link from a node outside the subgraph
-outflow_link_idx: Per PassDown node the index in `routed_links` of each of its outflow links,
+outflow_link_idx: Per Junction node the index in `routed_links` of each of its outflow links,
     or 0 for the link towards a UserDemand node
 link_weights: Per link in `routed_links` the weights of the flows it consists of
-inflow_weights: Per PassDown node the weights of the flows that make up its total inflow
+inflow_weights: Per Junction node the weights of the flows that make up its total inflow
 link_mass: The mass per substance that flowed over each link in `routed_links` in the last timestep (substance, link)
-source_mass: Work vector for the mass that flowed over a link into a PassDown subgraph in the last timestep (substance)
-concentration: The concentration per substance of the flow through each PassDown node in the last timestep (substance, node)
+source_mass: Work vector for the mass that flowed over a link into a Junction subgraph in the last timestep (substance)
+concentration: The concentration per substance of the flow through each Junction node in the last timestep (substance, node)
 """
-@kwdef struct PassDown <: AbstractParameterNode
+@kwdef struct Junction <: AbstractParameterNode
     node_id::Vector{NodeID}
+    routed_ids::Vector{NodeID} = filter(id -> id.is_routed, node_id)
     inflow_links::Vector{Vector{LinkMetadata}} = [LinkMetadata[] for _ in node_id]
     outflow_links::Vector{Vector{LinkMetadata}} = [LinkMetadata[] for _ in node_id]
     fraction::Vector{Vector{Float64}} = [ones(length(links)) for links in outflow_links]
-    pass_down_subgraphs::Vector{Vector{NodeID}} = Vector{NodeID}[]
+    routed_subgraphs::Vector{Vector{NodeID}} = Vector{NodeID}[]
     user_demand_id::Vector{NodeID} = fill(NodeID(:Terminal, 0, 0), length(node_id))
     level_node_id::Vector{NodeID} = copy(node_id)
     routed_links::Vector{LinkMetadata} = LinkMetadata[]
@@ -1226,13 +1225,13 @@ demand_from_timeseries: If false the demand comes from the BMI or is fixed
 allocated: water flux currently allocated to UserDemand per demand priority (node_idx, demand_priority_idx)
 return_factor: the factor in [0,1] of how much of the abstracted water is given back to the system
 min_level: The level of the source Basin below which the UserDemand does not abstract
-    (not applied to inflow from PassDown nodes, which have no level)
+    (not applied to inflow from Junction nodes, which have no level)
 cumulative_inflow: The summed inflow since the start of the simulation
 concentration_itp: matrix with timeseries interpolations of concentrations per LevelBoundary per substance
-in_pass_down_subgraph: whether the UserDemand node is part of one of the PassDown subgraphs,
-    in which case its flows are computed in `formulate_pass_down_flow!`
+in_routed_subgraph: whether the UserDemand node is part of one of the Junction subgraphs,
+    in which case its flows are computed in `formulate_junction_flow!`
 return_mass: The mass per substance in the return flow in the last timestep (substance, node), only computed
-    if the return flow goes to a Basin or a PassDown node, used for tracers
+    if the return flow goes to a Basin or a Junction node, used for tracers
 """
 @kwdef struct UserDemand <: AbstractDemandNode
     node_id::Vector{NodeID}
@@ -1253,7 +1252,7 @@ return_mass: The mass per substance in the return flow in the last timestep (sub
     min_level::Vector{Float64} = zeros(length(node_id))
     cumulative_inflow::Vector{Float64} = zeros(length(node_id))
     concentration_itp::Vector{Vector{ScalarConstantInterpolation}}
-    in_pass_down_subgraph::Vector{Bool} = fill(false, length(node_id))
+    in_routed_subgraph::Vector{Bool} = fill(false, length(node_id))
     return_mass::Matrix{Float64} = zeros(0, length(node_id))
 end
 
@@ -1442,17 +1441,16 @@ an immutable struct.
     const user_demand::UserDemand
     const level_demand::LevelDemand
     const flow_demand::FlowDemand
-    const pass_down::PassDown
     const subgrid::Subgrid
     # Whether all specialized AD and linear solve code should be used
     const reduced_implicit_solve::Bool
     # Matrix which aggregates flows into the basin storages
     const incidence_matrix::SparseMatrixCSC{Float64, Int}
-    # Per flow state the Basins it flows into via PassDown nodes, with the weights, see `set_routing!`
+    # Per flow state the Basins it flows into via Junction nodes, with the weights, see `set_routing!`
     const routed_basins::Vector{Vector{Tuple{Int, Float64}}}
     # The indices of the flow states with a nonempty `routed_basins`
     const routed_flow_idxs::Vector{Int}
-    # Per FlowBoundary the Basins it flows into via PassDown nodes, with the weights
+    # Per FlowBoundary the Basins it flows into via Junction nodes, with the weights
     const routed_basins_boundary::Vector{Vector{Tuple{Int, Float64}}}
     # Water balance tolerances
     const water_balance_abstol::Float64

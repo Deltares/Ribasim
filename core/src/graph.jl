@@ -66,7 +66,7 @@ function create_graph(db::DB, config::Config)::MetaGraph
         if !haskey(node_ids, subnetwork_id)
             node_ids[subnetwork_id] = OrderedSet{NodeID}()
         end
-        (node_id.type != NodeType.Junction) && push!(node_ids[subnetwork_id], node_id)
+        is_plain_junction(node_id) || push!(node_ids[subnetwork_id], node_id)
         # Process route priority
         route_priority =
             coalesce(row.route_priority, get(route_priority_dict, row.node_type, 0))
@@ -151,7 +151,7 @@ function simplify_graph!(
     for link_metadata in external_flow_links
         id_src = link_metadata.link[1]
         id_dst = link_metadata.link[2]
-        if id_src.type != NodeType.Junction && id_dst.type != NodeType.Junction
+        if !is_plain_junction(id_src) && !is_plain_junction(id_dst)
             push!(internal_flow_links, link_metadata)
         end
     end
@@ -162,10 +162,12 @@ function simplify_graph!(
     V = ones(Int8, length(I))
     errors = false
 
-    junction_ids = get_node_ids(db, NodeType.Junction)
+    all_junction_ids = get_node_ids(db, NodeType.Junction)
+    # The Junction nodes that divide the flow or supply a UserDemand stay in the graph
+    junction_ids = filter(is_plain_junction, all_junction_ids)
 
     # Per Junction the external flow links that define its flow rate
-    junction_flow_link_ids = [Int32[] for _ in junction_ids]
+    junction_flow_link_ids = [Int32[] for _ in all_junction_ids]
 
     # Replace each group of Junctions by links between its neighbors
     for group in junction_groups(graph, junction_ids)
@@ -173,6 +175,14 @@ function simplify_graph!(
         if !valid_junction_group(graph, group, basin_ids)
             errors = true
             continue
+        end
+        # The rows of a Junction that divides the flow name the nodes it flows into, which must
+        # still be there after the group is replaced by links
+        for junction_id in group, inflow_id in inflow_ids(graph, junction_id)
+            if inflow_id.is_routed
+                errors = true
+                @error "$inflow_id has rows in Junction / static, so it cannot flow into $junction_id without rows in Junction / static. Give $junction_id rows as well, or connect $inflow_id to the nodes behind it directly."
+            end
         end
         links, flow_link_ids = junction_group_links(graph, group, basin_ids)
         for (junction_id, link_ids) in flow_link_ids
@@ -220,6 +230,11 @@ function simplify_graph!(
         external_flow_link_ids,
         internal_flow_links,
     )
+    # The flow rate of a Junction that stays in the graph is its total inflow
+    for id in all_junction_ids
+        id.is_routed || continue
+        junction_flows[id.idx] = [(graph[n, id].link, Int8(1)) for n in inflow_ids(graph, id)]
+    end
 
     return flow_link_map, internal_flow_links, junction_flows, errors
 end
@@ -263,13 +278,13 @@ function junction_groups(graph::MetaGraph, junction_ids::Vector{NodeID})::Vector
             id = pop!(stack)
             push!(group, id)
             for neighbor in inflow_ids(graph, id)
-                if neighbor.type == NodeType.Junction && neighbor ∉ visited
+                if is_plain_junction(neighbor) && neighbor ∉ visited
                     push!(visited, neighbor)
                     push!(stack, neighbor)
                 end
             end
             for neighbor in outflow_ids(graph, id)
-                if neighbor.type == NodeType.Junction && neighbor ∉ visited
+                if is_plain_junction(neighbor) && neighbor ∉ visited
                     push!(visited, neighbor)
                     push!(stack, neighbor)
                 end
@@ -567,19 +582,19 @@ function get_flow(
         boundary_flow::Union{Nothing, Vector{Float64}} = nothing,
         t::Union{Number, Nothing} = nothing
     )
-    (; pass_down, user_demand, flow_boundary) = p_independent
+    (; junction, user_demand, flow_boundary) = p_independent
 
     from_id, to_id = link
 
-    # The flow over a link out of a PassDown node is a weighted sum of other flows, the link
+    # The flow over a link out of a Junction node is a weighted sum of other flows, the link
     # towards a UserDemand node has the UserDemand inflow state. The flow over a link into a
-    # PassDown node is the state of the node it comes from, found below.
-    if from_id.is_pass_down && (to_id.type == NodeType.UserDemand)
+    # Junction node is the state of the node it comes from, found below.
+    if from_id.is_routed && (to_id.type == NodeType.UserDemand)
         offset = user_demand.inflow_link_offsets[to_id.idx]
         return flow.horizontal.user_demand_inflow[offset + 1]
-    elseif from_id.is_pass_down
-        links, link_idxs = pass_down.outflow_links[from_id.idx], pass_down.outflow_link_idx[from_id.idx]
-        weights = pass_down.link_weights[link_idxs[findfirst(l -> l.link == link, links)]]
+    elseif from_id.is_routed
+        links, link_idxs = junction.outflow_links[from_id.idx], junction.outflow_link_idx[from_id.idx]
+        weights = junction.link_weights[link_idxs[findfirst(l -> l.link == link, links)]]
         boundary_rate = if isnothing(boundary_flow)
             @assert !isnothing(t) "Cannot evaluate the flow over $link since t is not provided."
             idx -> flow_boundary.flow_rate[idx](t)
