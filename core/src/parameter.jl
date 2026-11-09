@@ -243,7 +243,7 @@ const IndexLookup = ConstantInterpolation{
     SearchProperties{Float64},
 }
 
-@enumx AllocationObjectiveType demand_flow demand_storage low_storage_factor route_priorities none
+@enumx AllocationObjectiveType demand_flow demand_storage low_storage_factor route_priorities flow_change none
 
 """
 The data associated with a single objective. Only demand objectives have demand priorities.
@@ -696,7 +696,7 @@ allocation_controlled: whether this TabulatedRatingCurve is controlled by alloca
     flow_demand_id::Vector{NodeID} =
         fill(NodeID(NodeType.FlowDemand, 0, 0), length(node_id))
     allocation_controlled::Vector{Bool} = fill(false, length(node_id))
-    flow_rate::Vector{Float64} = Vector{Float64}(undef, length(node_id))
+    flow_rate::Vector{Float64} = zeros(length(node_id))
 end
 
 """

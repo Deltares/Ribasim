@@ -1,5 +1,5 @@
 minimize
-obj: 1 flow_(Outlet_#3,_Basin_#13)_ + 1 flow_(Pump_#6,_Basin_#13)_
+obj: 1 flow_(Outlet_#3,_Basin_#13)_
 subject to
 c1: -1 low_storage_factor_Basin_#13_ <= -1
 c2: 1 level_demand_error_Basin_#13,2,lower,first_ + 1 level_demand_error_Basin_#13,2,upper,first_ <= 0

@@ -434,9 +434,9 @@ def medium_primary_secondary_network_model() -> Model:
     # first basin
     model.basin.add(Node(2, Point(1, 0), subnetwork_id=1, route_priority=0), basin_data)
 
-    # outlet towards first subnetwork
+    # outlet towards first subnetwork, with a route priority so the Pump next to it is preferred
     model.outlet.add(
-        Node(3, Point(1, 1), subnetwork_id=1),
+        Node(3, Point(1, 1), subnetwork_id=1, route_priority=1),
         [outlet_data_2],
     )
 
@@ -466,7 +466,7 @@ def medium_primary_secondary_network_model() -> Model:
 
     # outlet towards second subnetwork
     model.outlet.add(
-        Node(8, Point(3, 1), subnetwork_id=1),
+        Node(8, Point(3, 1), subnetwork_id=1, route_priority=1),
         [outlet_data_2],
     )
 
@@ -1453,6 +1453,69 @@ def multiple_route_priorities_model() -> Model:
     model.link.add(bsn, ud)
     model.link.add(ud, bsn)
     model.link.add(ld, bsn)
+
+    return model
+
+
+def tied_routes_model() -> Model:
+    """Set up a model where two reservoirs supply a UserDemand over Pumps with the same route priority.
+
+    How the supply is divided over the Pumps makes no difference for the objectives,
+    so allocation should stay close to the division of the previous timestep.
+    """
+    model = Model(
+        starttime=datetime(2020, 1, 1),
+        endtime=datetime(2020, 3, 1),
+        crs="EPSG:28992",
+        experimental=Experimental(allocation=True),
+    )
+    time = pd.date_range(model.starttime, model.endtime)
+    day = np.arange(len(time))
+
+    bsn = model.basin.add(
+        Node(1, Point(2, 0), subnetwork_id=1),
+        [basin.Profile(area=1e5, level=[0, 100]), basin.State(level=[0.5])],
+    )
+    ud = model.user_demand.add(
+        Node(2, Point(3, 0), subnetwork_id=1),
+        [
+            user_demand.Time(
+                demand_priority=1,
+                time=time,
+                demand=1 + 0.1 * np.sin(day / 5),
+                return_factor=0,
+                min_level=-5,
+            )
+        ],
+    )
+    model.link.add(bsn, ud)
+    model.link.add(ud, bsn)
+
+    for i in range(2):
+        # The inflow varies, so what a reservoir can supply differs per allocation timestep
+        fb = model.flow_boundary.add(
+            Node(3 + i, Point(-1, i), subnetwork_id=1),
+            [
+                flow_boundary.Time(
+                    time=time, flow_rate=0.6 + 0.3 * np.sin(day * (1 + i))
+                )
+            ],
+        )
+        reservoir = model.basin.add(
+            Node(5 + i, Point(0, i), subnetwork_id=1),
+            [basin.Profile(area=2e4, level=[0, 100]), basin.State(level=[2.0])],
+        )
+        pmp = model.pump.add(
+            Node(7 + i, Point(1, i), subnetwork_id=1),
+            [
+                pump.Static(
+                    flow_rate=[0.0], max_flow_rate=[2.0], allocation_controlled=True
+                )
+            ],
+        )
+        model.link.add(fb, reservoir)
+        model.link.add(reservoir, pmp)
+        model.link.add(pmp, bsn)
 
     return model
 

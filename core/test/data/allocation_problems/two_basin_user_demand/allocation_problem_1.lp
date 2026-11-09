@@ -1,11 +1,12 @@
 minimize
-obj: 1 flow_(Basin_#3,_Outlet_#7)_ + 1 flow_(Basin_#3,_UserDemand_#5)_ + 2 flow_(Basin_#4,_Outlet_#9)_ + 2 flow_(Basin_#4,_UserDemand_#5)_ + 40 flow_(Outlet_#7,_Terminal_#8)_ + 40 flow_(Outlet_#9,_Terminal_#10)_
+obj: 1 flow_change_Outlet_#7_ + 1 flow_change_Outlet_#9_
 subject to
 c1: -1 low_storage_factor_Basin_#3_ - 1 low_storage_factor_Basin_#4_ <= -2
 c2: 1 level_demand_error_Basin_#3,1,lower,first_ + 1 level_demand_error_Basin_#3,1,upper,first_ + 1 level_demand_error_Basin_#4,1,lower,first_ + 1 level_demand_error_Basin_#4,1,upper,first_ <= 0
 c3: 1 level_demand_error_Basin_#3,1,lower,second_ + 1 level_demand_error_Basin_#3,1,upper,second_ + 1 level_demand_error_Basin_#4,1,lower,second_ + 1 level_demand_error_Basin_#4,1,upper,second_ <= 0
 c4: 1 user_demand_error_UserDemand_#5,2,first_ <= 0
 c5: 1 user_demand_error_UserDemand_#5,2,second_ <= 0
+c6: 1 flow_(Basin_#3,_UserDemand_#5)_ + 2 flow_(Basin_#4,_UserDemand_#5)_ + 1 flow_(Basin_#3,_Outlet_#7)_ + 40 flow_(Outlet_#7,_Terminal_#8)_ + 2 flow_(Basin_#4,_Outlet_#9)_ + 40 flow_(Outlet_#9,_Terminal_#10)_ <= 3.8880000000000003
 user_demand_relative_error_constraint_UserDemand_#5,2_: 1 user_demand_allocated_UserDemand_#5,2_ + 0.1728 user_demand_error_UserDemand_#5,2,first_ >= 0.1728
 storage_constraint_lower_Basin_#3,1_: 1 basin_storage_change_Basin_#3_ + 1 level_demand_error_Basin_#3,1,lower,first_ >= 0
 storage_constraint_lower_Basin_#4,1_: 1 basin_storage_change_Basin_#4_ + 1 level_demand_error_Basin_#4,1,lower,first_ >= 0
@@ -16,6 +17,10 @@ level_demand_fairness_error_constraint_Basin_#3,1,lower_: -1 level_demand_error_
 level_demand_fairness_error_constraint_Basin_#3,1,upper_: -1 level_demand_error_Basin_#3,1,upper,first_ + 1 level_demand_error_Basin_#3,1,upper,second_ + 1 average_storage_unit_error_1,upper_ >= 0
 level_demand_fairness_error_constraint_Basin_#4,1,lower_: -1 level_demand_error_Basin_#4,1,lower,first_ + 1 level_demand_error_Basin_#4,1,lower,second_ + 1 average_storage_unit_error_1,lower_ >= 0
 level_demand_fairness_error_constraint_Basin_#4,1,upper_: -1 level_demand_error_Basin_#4,1,upper,first_ + 1 level_demand_error_Basin_#4,1,upper,second_ + 1 average_storage_unit_error_1,upper_ >= 0
+flow_change_constraint_Outlet_#7,_1_: 1 flow_(Basin_#3,_Outlet_#7)_ + 1 flow_change_Outlet_#7_ >= 0
+flow_change_constraint_Outlet_#9,_1_: 1 flow_(Basin_#4,_Outlet_#9)_ + 1 flow_change_Outlet_#9_ >= 0
+flow_change_constraint_Outlet_#7,1_: -1 flow_(Basin_#3,_Outlet_#7)_ + 1 flow_change_Outlet_#7_ >= 0
+flow_change_constraint_Outlet_#9,1_: -1 flow_(Basin_#4,_Outlet_#9)_ + 1 flow_change_Outlet_#9_ >= 0
 flow_conservation_outlet_Outlet_#7_: 1 flow_(Basin_#3,_Outlet_#7)_ - 1 flow_(Outlet_#7,_Terminal_#8)_ = 0
 flow_conservation_outlet_Outlet_#9_: 1 flow_(Basin_#4,_Outlet_#9)_ - 1 flow_(Outlet_#9,_Terminal_#10)_ = 0
 volume_conservation_Basin_#3_: 1 basin_storage_change_Basin_#3_ - 1 flow_(FlowBoundary_#1,_Basin_#3)_ + 1 flow_(Basin_#3,_UserDemand_#5)_ + 1 flow_(Basin_#3,_Outlet_#7)_ = 0
@@ -53,4 +58,6 @@ level_demand_error_Basin_#4,1,upper,second_ >= 0
 0 <= average_flow_unit_error_2_ <= 1
 average_storage_unit_error_1,lower_ >= 0
 average_storage_unit_error_1,upper_ >= 0
+flow_change_Outlet_#7_ >= 0
+flow_change_Outlet_#9_ >= 0
 End

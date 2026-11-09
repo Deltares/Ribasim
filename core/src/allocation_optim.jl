@@ -1518,9 +1518,12 @@ function update_control_states!(
     delete_control_constraints!(allocation_model, :outlet_constraint)
     delete_control_constraints!(allocation_model, :tabulated_rating_curve_constraint)
     delete_control_constraints!(allocation_model, :tabulated_rating_curve_capacity_constraint)
+    delete_control_constraints!(allocation_model, :flow_change_constraint)
+    delete_control_constraints!(allocation_model, :flow_change)
     add_pump!(allocation_model, p_independent)
     add_outlet!(allocation_model, p_independent)
     add_tabulated_rating_curve!(allocation_model, p_independent)
+    add_flow_change!(allocation_model, p_independent)
     return nothing
 end
 

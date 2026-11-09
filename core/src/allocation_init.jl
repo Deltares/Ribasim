@@ -918,6 +918,71 @@ function add_route_priority_objective!(
     return nothing
 end
 
+"""
+Add the objective to stay close to the flows of the previous allocation timestep. It is the
+last objective, so it only chooses between solutions that are equally good for all other
+objectives. Without it the solver can return a different one of those every timestep, which
+makes flow switch between equally good routes. Its expression is set in `add_flow_change!`.
+"""
+function add_flow_change_objective!(allocation_model::AllocationModel)::Nothing
+    push!(
+        allocation_model.objectives,
+        AllocationObjective(;
+            type = AllocationObjectiveType.flow_change,
+            expressions = [JuMP.AffExpr()],
+        ),
+    )
+    return nothing
+end
+
+"""
+Add a variable for the absolute change of the flow through each allocation controlled node
+since the previous allocation timestep, and minimize their sum in the last objective.
+The previous flow is the flow rate last set by allocation, or at the start of the simulation
+the one from the input.
+"""
+function add_flow_change!(
+        allocation_model::AllocationModel,
+        p_independent::ParametersIndependent,
+    )::Nothing
+    (; problem, objectives, scaling, node_ids_in_subnetwork) = allocation_model
+    (; pump, outlet, tabulated_rating_curve, graph) = p_independent
+    (; pump_ids_subnetwork, outlet_ids_subnetwork, tabulated_rating_curve_ids_subnetwork) =
+        node_ids_in_subnetwork
+    flow = problem[:flow]
+
+    previous_flow = OrderedDict{NodeID, Float64}()
+    for (node, node_ids) in (
+            (pump, pump_ids_subnetwork),
+            (outlet, outlet_ids_subnetwork),
+            (tabulated_rating_curve, tabulated_rating_curve_ids_subnetwork),
+        )
+        for node_id in node_ids
+            if node.allocation_controlled[node_id.idx]
+                previous_flow[node_id] = node.flow_rate[node_id.idx] / scaling.flow
+            end
+        end
+    end
+
+    node_ids = collect(keys(previous_flow))
+    flow_change =
+        problem[:flow_change] = JuMP.@variable(
+        problem,
+        [node_ids],
+        lower_bound = 0.0,
+        base_name = "flow_change"
+    )
+    problem[:flow_change_constraint] = JuMP.@constraint(
+        problem,
+        [node_id = node_ids, sign = (-1, 1)],
+        flow_change[node_id] ≥
+            sign * (flow[inflow_link(graph, node_id).link] - previous_flow[node_id]),
+        base_name = "flow_change_constraint"
+    )
+    last(objectives).expressions[1] = variable_sum(flow_change)
+    return nothing
+end
+
 function NodeIDsInSubnetwork(
         p_independent::ParametersIndependent,
         subnetwork_id::Int32,
@@ -1065,6 +1130,7 @@ function AllocationModel(subnetwork_id::Int32, p_independent::ParametersIndepend
     add_low_storage_factor_objective!(allocation_model)
     add_demand_objectives!(allocation_model, p_independent)
     add_route_priority_objective!(allocation_model, p_independent)
+    add_flow_change_objective!(allocation_model)
 
     return allocation_model
 end

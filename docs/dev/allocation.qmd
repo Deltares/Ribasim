@@ -586,6 +586,32 @@ end
 - Only affects routing, not how much is allocated
 - Higher weight = less preferred route (higher cost)
 
+### Flow Change Objective
+
+**Mathematical formulation:**
+$$\min \sum_i \left| Q_i - Q_i^\text{prev} \right|$$
+
+over the allocation controlled nodes $i$.
+
+**Code implementation:**
+
+```julia
+# From add_flow_change!, which update_control_states! calls every allocation timestep
+flow_change = JuMP.@variable(problem, [node_ids], lower_bound = 0.0)
+JuMP.@constraint(
+    problem,
+    [node_id = node_ids, sign = (-1, 1)],
+    flow_change[node_id] ≥
+        sign * (flow[inflow_link(graph, node_id).link] - previous_flow[node_id]),
+)
+last(objectives).expressions[1] = variable_sum(flow_change)
+```
+
+**Key points:**
+- Optimized last, so it only chooses between solutions that are equally good for all other objectives
+- The previous flow is `flow_rate` of the node, which is where allocation writes its result
+- Rebuilt every timestep, since DiscreteControl can switch allocation control on and off
+
 ### Low Storage Factor Objective
 
 **Mathematical formulation:**
