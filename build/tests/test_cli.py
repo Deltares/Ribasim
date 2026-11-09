@@ -1,11 +1,15 @@
 import os
 import re
+import signal
 import subprocess
+import time
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 import ribasim
 import ribasim_testmodels
+import xarray as xr
 from ribasim.cli import run_ribasim
 
 ribasim_home = Path(__file__).parents[1] / "ribasim"
@@ -310,3 +314,39 @@ def test_run_ribasim_in_spyder(tmp_path, monkeypatch):
     # Check that results were produced
     results_path = tmp_path / "results" / "basin.nc"
     assert results_path.exists()
+
+
+def test_interrupt(tmp_path):
+    """Ctrl-C stops the simulation, with all results so far."""
+    model = ribasim_testmodels.basic_model()
+    model.endtime = datetime(2400, 1, 1)
+    model.solver.saveat = 3600.0
+    toml_path = tmp_path / "ribasim.toml"
+    model.write(toml_path)
+    results_dir = tmp_path / "results"
+
+    if os.name == "nt":
+        # Ctrl-C can't be sent to a single process, but Ctrl-Break gives the same in Julia
+        kwargs = {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+        interrupt = signal.CTRL_BREAK_EVENT
+    else:
+        kwargs = {}
+        interrupt = signal.SIGINT
+
+    process = subprocess.Popen([executable, toml_path], **kwargs)
+    try:
+        # This is one of the last files of the first write, after which it continues solving
+        while process.poll() is None and not (results_dir / "solver_stats.nc").exists():
+            time.sleep(0.1)
+        time.sleep(1)
+        assert process.poll() is None
+        process.send_signal(interrupt)
+        assert process.wait(timeout=120) == 1
+    finally:
+        process.kill()
+
+    assert (results_dir / "basin_state.nc").exists()
+    basin = xr.open_dataset(results_dir / "basin.nc")
+    flow = xr.open_dataset(results_dir / "flow.nc")
+    assert basin.sizes["time"] == flow.sizes["time"]
+    assert basin.sizes["time"] > 131072

@@ -167,7 +167,7 @@ end
     @test config.solver.dt === model.integrator.dt
     Ribasim.solve!(model)
     @test success(model)
-    @test any(ismissing, model.saved.flow.saveval[end].flow_convergence)
+    @test any(ismissing, model.saved.mean_flows.flow_convergence)
     @test isnothing(Ribasim.log_bottlenecks(model))
     (; p_independent) = model.integrator.p
     (; flow_boundary, pump) = p_independent
