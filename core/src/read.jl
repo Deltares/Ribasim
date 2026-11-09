@@ -87,24 +87,17 @@ function get_parameter_value(
 end
 
 # Map interpolation type -> constructor
-make_itp(::Type{<:LinearInterpolation}, u, t; extrapolation, kwargs...) =
-    LinearInterpolation(u, t; cache_parameters = true, extrapolation)
 make_itp(::Type{<:ConstantInterpolation}, u, t; extrapolation, kwargs...) =
     ConstantInterpolation(u, t; cache_parameters = true, extrapolation)
 make_itp(
-    ::Type{<:SmoothedConstantInterpolation},
+    ::Type{ScalarTimeInterpolation},
     u,
     t;
     extrapolation,
-    block_transition_period,
+    interpolation_type = InterpolationType.block,
+    block_transition_period = 0.0,
     kwargs...,
-) = SmoothedConstantInterpolation(
-    u,
-    t;
-    cache_parameters = true,
-    extrapolation,
-    d_max = block_transition_period,
-)
+) = time_interpolation(u, t, interpolation_type, block_transition_period, extrapolation)
 
 # Get interpolation parameter value
 function get_parameter_value(
@@ -118,6 +111,7 @@ function get_parameter_value(
         time_column = nothing,
         config::Union{Nothing, Config} = nothing,
         cyclic_time::Bool = false,
+        interpolation_type::InterpolationType.T = InterpolationType.block,
         kwargs...,
     )::Tuple{T, Bool} where {T <: AbstractInterpolation}
     u, t = if from_static
@@ -144,6 +138,7 @@ function get_parameter_value(
         u,
         t;
         extrapolation = cyclic_time ? Periodic : ConstantExtrapolation,
+        interpolation_type,
         config.interpolation.block_transition_period,
     )
     return itp, valid
@@ -203,6 +198,7 @@ Keyword arguments:
 - is_controllable: Whether the parameter value can be updated by DiscreteControl
 - node_id: The node IDs associated with the node. Defaults to node.node_id
 - cyclic_times: A boolean per node whether the timeseries should be extrapolated periodically. Defaults to all false
+- interpolation_types: The `InterpolationType` per node, for a parameter of type `ScalarTimeInterpolation`
 - field_name: The `Val` of the name of the field of node if it differs from the parameter name in the input.
 - take_first: The `Val` of a tuple of column names. If a certain parameter has to be duplicated because of the
    long input table format even though it cannot depend on other parameters that cause the need for repeating, list them here.
@@ -219,6 +215,7 @@ function parse_parameter!(
         is_controllable::Bool = true,
         node_id = node.node_id,
         cyclic_times = zeros(Bool, length(node)),
+        interpolation_types::Vector{InterpolationType.T} = InterpolationType.T[],
         field_name::Val = Val(parameter_name),
         take_first::Val = Val(()),
         node_ids_all::Union{Vector{NodeID}, Nothing} = nothing,
@@ -253,6 +250,7 @@ function parse_parameter!(
         getfield(node, val_value(field_name)),
         node_id,
         cyclic_times,
+        interpolation_types,
         static_columns,
         time_columns,
         control_states,
@@ -284,6 +282,7 @@ function parse_parameter_values!(
         param_vec::AbstractVector{T},
         node_id::Vector{NodeID},
         cyclic_times::Vector{Bool},
+        interpolation_types::Vector{InterpolationType.T},
         static_columns::Union{Tuple, Nothing},
         time_columns::Union{Tuple, Nothing},
         control_states::Union{Tuple, Nothing},
@@ -355,8 +354,10 @@ function parse_parameter_values!(
         end
 
         # Obtain the data
+        interpolation_type =
+            isempty(interpolation_types) ? InterpolationType.block : interpolation_types[id.idx]
         data_args = (T, default, id)
-        data_kwargs = (; config, cyclic_time, node_ids_all, parameter_name)
+        data_kwargs = (; config, cyclic_time, interpolation_type, node_ids_all, parameter_name)
 
         if use_default
             @assert has_default
@@ -763,16 +764,23 @@ function FlowBoundary(db::DB, config::Config, graph::MetaGraph)
         config,
     )
 
-    flow_rate = get_interpolation_vec(
-        config.interpolation.flow_boundary,
-        config.interpolation.block_transition_period,
-        node_id,
-    )
+    # The interpolation type from the config, validated in `validate_config`
+    interpolation_type =
+        parse_interpolation_type(config.interpolation.flow_boundary)::InterpolationType.T
+    interpolation_types = fill(interpolation_type, length(node_id))
 
-    flow_boundary = FlowBoundary(; node_id, concentration_itp, flow_rate)
+    flow_boundary = FlowBoundary(; node_id, concentration_itp)
 
     set_inoutflow_links!(flow_boundary, graph; inflow = false)
-    errors = parse_parameter!(flow_boundary, config, Val(:flow_rate); static, time, cyclic_times)
+    errors = parse_parameter!(
+        flow_boundary,
+        config,
+        Val(:flow_rate);
+        static,
+        time,
+        cyclic_times,
+        interpolation_types,
+    )
 
     if any(itp -> any(<(0.0), itp.u), flow_boundary.flow_rate)
         @error "Currently negative flow rates for FlowBoundary are not supported."

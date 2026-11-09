@@ -2,7 +2,7 @@
 Create the different callbacks that are used to store results
 and feed the simulation with new data. The different callbacks
 are combined to a CallbackSet that goes to the integrator.
-Returns the CallbackSet and the SavedValues for flow.
+Returns the CallbackSet and the SavedResults.
 """
 function create_callbacks(
         p_independent::ParametersIndependent,
@@ -17,11 +17,6 @@ function create_callbacks(
     # to make sure all parameter data is up to date with the state
     negative_storage_cb = FunctionCallingCallback(check_negative_storage)
     push!(callbacks, negative_storage_cb)
-
-    # Save storages and levels
-    saved_basin_states = SavedValues(Float64, SavedBasinState)
-    save_basin_state_cb = SavingCallback(save_basin_state!, saved_basin_states; saveat)
-    push!(callbacks, save_basin_state_cb)
 
     # Update cumulative flows (exact integration and for allocation)
     cumulative_flows_cb =
@@ -41,27 +36,15 @@ function create_callbacks(
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
 
-    # If saveat is a vector which contains 0.0 this callback will still be called
-    # at t = 0.0 despite save_start = false
-    saveat = saveat isa Vector ? filter(x -> x != 0.0, saveat) : saveat
-
-    # save the flows averaged over the saveat intervals
-    saved_flow = SavedValues(Float64, SavedFlow)
-    save_flow_cb = SavingCallback(save_flow, saved_flow; saveat, save_start = false)
-    push!(callbacks, save_flow_cb)
-
-    # save solver stats
-    saved_solver_stats = SavedValues(Float64, SolverStats)
-    solver_stats_cb =
-        SavingCallback(save_solver_stats, saved_solver_stats; saveat, save_start = true)
-    push!(callbacks, solver_stats_cb)
-
-    # interpolate the levels
-    saved_subgrid_level = SavedValues(Float64, Vector{Float64})
-
-    export_cb =
-        SavingCallback(save_subgrid_level, saved_subgrid_level; saveat, save_start = true)
-    push!(callbacks, export_cb)
+    # Save all results over time, and write them to file each time a time chunk is complete
+    saved = SavedResults(p_independent, config, saveat)
+    save_results_cb = SavingCallback(
+        SaveResults(saved, config, t_end),
+        SavedValues(Float64, Nothing);
+        saveat,
+        save_start = true,
+    )
+    push!(callbacks, save_results_cb)
 
     # Not a FunctionCallingCallback, because that reports the derivative as continuous,
     # which hides the right hand side discontinuity of a control state change
@@ -93,12 +76,6 @@ function create_callbacks(
     )
     push!(callbacks, reset_cb)
 
-    saved = SavedResults(
-        saved_flow,
-        saved_basin_states,
-        saved_subgrid_level,
-        saved_solver_stats,
-    )
     callback = CallbackSet(callbacks...)
 
     return callback, saved
@@ -327,61 +304,158 @@ end
 end
 
 """
-Save the storages and levels at the latest t.
+Callback that adds to the results in memory at each saveat, and writes them to file each time
+a time chunk is complete. The last chunk stays in memory and is written by `write_results`.
 """
-function save_basin_state!(u, t, integrator)
-    (; current_storage, current_level) = integrator.p.current_basin_properties
-    return SavedBasinState(; storage = copy(current_storage), level = copy(current_level), t)
+struct SaveResults{S <: SavedResults}
+    saved::S
+    config::Config
+    t_end::Float64
+end
+
+function (save_results::SaveResults)(u, t, integrator)::Nothing
+    (; saved, config, t_end) = save_results
+    errors = save_results!(saved, u, t, integrator)
+
+    if length(saved.basin.time) >= saved.chunk_time && t != t_end
+        write_chunk!(saved, config)
+    end
+
+    if errors
+        t = datetime_since(t, integrator.p.p_independent.starttime)
+        error("Too large water balance error(s) detected at t = $t")
+    end
+    return nothing
 end
 
 """
-Save all flow rates (averaged over the saveat interval) and vertical fluxes.
+Add the results at time t to the results in memory. Everything is saved together, such that all
+results always cover the same time, also if an error occurs while saving. Returns whether there
+are too large water balance errors.
 """
-function save_flow(u, t, integrator)
+function save_results!(saved::SavedResults, u, t::Float64, integrator)::Bool
+    (; p_independent, current_basin_properties) = integrator.p
+    # There is no period over which to compute flows at the start
+    is_start = isnan(saved.t_prev)
+    errors = false
+
+    save_allocation_records!(saved, p_independent)
+    if !is_start
+        errors = save_mean_flows!(saved, u, t, integrator)
+        save_concentrations!(saved, integrator)
+        save_solver_stats!(saved, t, integrator)
+    end
+    save_subgrid_level!(saved, t, integrator)
+
+    saved.level_prev .= current_basin_properties.current_level
+    saved.solver_stats_prev = get_solver_stats(t, integrator)
+    saved.t_prev = t
+    return errors
+end
+
+"""
+If the simulation stopped in between two saveats, because of an error, because it was interrupted
+or because a coupled simulation stopped there, save the results up to the last accepted time step.
+The state of the integrator can be from a time step in progress, and is not used.
+"""
+function save_until_last_time_step!(model::Model)::Nothing
+    (; integrator, saved) = model
     (; p) = integrator
-    (; p_independent, current_basin_properties) = p
-    (; basin, flow_boundary, u_prev_saveat, cumulative_flow_dt, state_ranges) = p_independent
-    Δt = get_Δt(integrator)
+    t = p.p_mutable.tprev
+    t > saved.t_prev || return nothing
+    (; u_accepted) = p.p_independent
+    # Any water balance error is already logged, and shouldn't stop the results from being written
+    try
+        set_current_basin_properties!(u_accepted.flow, p, t)
+        save_results!(saved, u_accepted, t, integrator)
+    catch e
+        @error "Could not save the results after the last saveat, at t = $t s." exception = e
+    end
+    return nothing
+end
+
+"""
+Save the Basin and flow results over the saveat interval that ends at t: the storages and levels
+at the start of the interval, and the flow rates and vertical fluxes averaged over it.
+Returns whether there are too large water balance errors.
+"""
+function save_mean_flows!(saved::SavedResults, u, t::Float64, integrator)::Bool
+    (; t_prev, mean_flows, level_prev) = saved
+    (; p_independent, current_basin_properties) = integrator.p
+    (; basin, flow_boundary, u_prev_saveat) = p_independent
+    (; flow, boundary_flow, exact_vertical_forcing, inflow, outflow) = mean_flows
+    (; forcing) = basin
+    Δt = t - t_prev
 
     # Compute mean flow rate per internal link from cumulative flows
-    flow_mean = similar(cumulative_flow_dt)
-    @. flow_mean = (u.flow - u_prev_saveat.flow) / Δt
+    @. flow = (u.flow - u_prev_saveat.flow) / Δt
 
     # FlowBoundary
-    boundary_flow_mean =
+    @. boundary_flow =
         (flow_boundary.cumulative_flow_since_reset - flow_boundary.cumulative_flow_prev_saveat) / Δt
 
-    n_basin = length(basin)
-    inflow_mean = zeros(n_basin)
-    outflow_mean = zeros(n_basin)
     # Flow contributions from horizontal flow links
     aggregate_flows!(
-        inflow_mean,
-        flow_mean,
+        inflow,
+        flow,
         p_independent;
         do_vertical_flows = false,
         do_outflows = false,
-        boundary_flow = boundary_flow_mean,
+        boundary_flow,
     )
     aggregate_flows!(
-        outflow_mean,
-        flow_mean,
+        outflow,
+        flow,
         p_independent;
         do_vertical_flows = false,
         do_inflows = false,
         weight = -1,
     )
 
-    exact_vertical_forcing_mean = (
-        basin.forcing.exact_cumulative_forcing_since_reset -
-            basin.forcing.exact_cumulative_forcing_prev_saveat
-    ) / Δt
+    @. exact_vertical_forcing =
+        (forcing.exact_cumulative_forcing_since_reset - forcing.exact_cumulative_forcing_prev_saveat) / Δt
 
-    concentration = permutedims(basin.concentration_data.concentration_state)
+    save_mean_convergence!(mean_flows, p_independent)
+    errors = check_basin_water_balance_error!(mean_flows, integrator, Δt)
+    errors |= check_pass_down_water_balance_error!(p_independent, t, flow, boundary_flow)
 
-    # Compute mean convergence over the saveat interval (missing if no nlsolver calls)
-    flow_convergence = CVector(fill(missing, length(u)) |> Vector{Union{Missing, Float64}}, state_ranges)
-    basin_convergence = fill(missing, n_basin) |> Vector{Union{Missing, Float64}}
+    # Basin results
+    (; variables) = saved.basin
+    push!(saved.basin.time, t_prev)
+    append!(variables.level, level_prev)
+    append!(variables.storage, basin.storage_prev_saveat)
+    append!(variables.inflow_rate, inflow)
+    append!(variables.outflow_rate, outflow)
+    append!(variables.storage_rate, mean_flows.storage_rate)
+    append!(variables.precipitation, exact_vertical_forcing.precipitation)
+    append!(variables.surface_runoff, exact_vertical_forcing.surface_runoff)
+    append!(variables.evaporation, flow.vertical.evaporation)
+    append!(variables.drainage, exact_vertical_forcing.drainage)
+    append!(variables.infiltration, flow.vertical.infiltration)
+    append!(variables.balance_error, mean_flows.balance_error)
+    append!(variables.relative_error, mean_flows.relative_error)
+    append!(variables.convergence, mean_flows.basin_convergence)
+
+    # Flow results
+    push!(saved.flow.time, t_prev)
+    save_external_flows!(saved.flow, mean_flows, integrator.p)
+
+    u_prev_saveat .= u
+    basin.storage_prev_saveat .= current_basin_properties.current_storage
+    forcing.exact_cumulative_forcing_prev_saveat .= forcing.exact_cumulative_forcing_since_reset
+    flow_boundary.cumulative_flow_prev_saveat .= flow_boundary.cumulative_flow_since_reset
+    return errors
+end
+
+"""
+Compute the mean convergence over the saveat interval (missing if no nlsolver calls),
+and start over for the next interval.
+"""
+function save_mean_convergence!(mean_flows::MeanFlows, p_independent::ParametersIndependent)::Nothing
+    (; flow_convergence, basin_convergence) = mean_flows
+    fill!(flow_convergence, missing)
+    fill!(basin_convergence, missing)
+
     ncalls = p_independent.convergence_ncalls[1]
     if ncalls > 0
         @. flow_convergence = p_independent.convergence / ncalls
@@ -405,35 +479,19 @@ function save_flow(u, t, integrator)
         fill!(p_independent.convergence, 0.0)
         p_independent.convergence_ncalls[1] = 0
     end
-
-    saved_flow = SavedFlow(;
-        flow = flow_mean,
-        exact_vertical_forcing = exact_vertical_forcing_mean,
-        boundary_flow = boundary_flow_mean,
-        inflow = inflow_mean,
-        outflow = outflow_mean,
-        concentration,
-        flow_convergence,
-        basin_convergence,
-        t,
-    )
-    check_basin_water_balance_error!(saved_flow, p, t, Δt)
-    check_pass_down_water_balance_error!(p, t, flow_mean, boundary_flow_mean)
-    u_prev_saveat .= u
-    basin.storage_prev_saveat .= current_basin_properties.current_storage
-    basin.forcing.exact_cumulative_forcing_prev_saveat .= basin.forcing.exact_cumulative_forcing_since_reset
-    flow_boundary.cumulative_flow_prev_saveat .= flow_boundary.cumulative_flow_since_reset
-    return saved_flow
+    return nothing
 end
 
+"""
+Check the water balance per PassDown node, and return whether there are too large errors.
+"""
 function check_pass_down_water_balance_error!(
-        p::Parameters,
+        p_independent::ParametersIndependent,
         t::Float64,
         flow_mean::FlowCVector{Float64},
         boundary_flow_mean::Vector{Float64},
-    )::Nothing
-    (; p_independent) = p
-    (; pass_down, water_balance_abstol, water_balance_reltol, starttime) = p_independent
+    )::Bool
+    (; pass_down, water_balance_abstol, water_balance_reltol) = p_independent
     (; node_id, inflow_links, outflow_links) = pass_down
 
     errors = false
@@ -458,23 +516,23 @@ function check_pass_down_water_balance_error!(
             @error "Too large PassDown water balance error" id balance_error relative_error inflow_rate outflow_rate
         end
     end
-    if errors
-        t = datetime_since(t, starttime)
-        error("Too large PassDown water balance error(s) detected at t = $t")
-    end
-    return nothing
+    return errors
 end
 
+"""
+Check the water balance per Basin, and return whether there are too large errors. The
+error is thrown after saving the results, so that the results show them.
+"""
 function check_basin_water_balance_error!(
-        saved_flow::SavedFlow,
-        p::Parameters,
-        t::Float64,
+        mean_flows::MeanFlows,
+        integrator::DEIntegrator,
         Δt::Float64,
-    )::Nothing
+    )::Bool
+    (; p) = integrator
     (; p_independent, current_basin_properties) = p
     (; current_storage) = current_basin_properties
 
-    (; basin, water_balance_abstol, water_balance_reltol, starttime) = p_independent
+    (; basin, water_balance_abstol, water_balance_reltol) = p_independent
     errors = false
 
     for (
@@ -489,13 +547,13 @@ function check_basin_water_balance_error!(
             s_prev,
             id,
         ) in zip(
-            saved_flow.inflow,
-            saved_flow.outflow,
-            saved_flow.exact_vertical_forcing.precipitation,
-            saved_flow.exact_vertical_forcing.surface_runoff,
-            saved_flow.exact_vertical_forcing.drainage,
-            saved_flow.flow.vertical.evaporation,
-            saved_flow.flow.vertical.infiltration,
+            mean_flows.inflow,
+            mean_flows.outflow,
+            mean_flows.exact_vertical_forcing.precipitation,
+            mean_flows.exact_vertical_forcing.surface_runoff,
+            mean_flows.exact_vertical_forcing.drainage,
+            mean_flows.flow.vertical.evaporation,
+            mean_flows.flow.vertical.infiltration,
             current_storage,
             basin.storage_prev_saveat,
             basin.node_id,
@@ -516,18 +574,51 @@ function check_basin_water_balance_error!(
             @error "Too large water balance error" id balance_error relative_error storage_rate total_in outflow_rate evaporation infiltration mean_flow_rate
         end
 
-        saved_flow.storage_rate[id.idx] = storage_rate
-        saved_flow.balance_error[id.idx] = balance_error
-        saved_flow.relative_error[id.idx] = relative_error
+        mean_flows.storage_rate[id.idx] = storage_rate
+        mean_flows.balance_error[id.idx] = balance_error
+        mean_flows.relative_error[id.idx] = relative_error
     end
-    if errors
-        t = datetime_since(t, starttime)
-        error("Too large Basin water balance error(s) detected at t = $t")
+    return errors
+end
+
+"Add the mean flow rate and convergence per external flow link to the flow results."
+function save_external_flows!(file::SavedFile, mean_flows::MeanFlows, p::Parameters)::Nothing
+    (; flow, boundary_flow, flow_convergence, internal_flow_rate, internal_convergence) = mean_flows
+    (; internal_flow_links, flow_link_map) = p.p_independent.graph[]
+    (; flow_rate, convergence) = file.variables
+    n = length(flow_rate)
+    n_new = n + only(file.size)
+
+    for (fi, link) in enumerate(internal_flow_links)
+        if link.link[1].type == NodeType.FlowBoundary && !link.link[2].is_pass_down
+            internal_flow_rate[fi] = boundary_flow[link.link[1].idx]
+            internal_convergence[fi] = missing
+        else
+            internal_flow_rate[fi] = get_flow(flow, link.link, p.p_independent)
+            internal_convergence[fi] = get_flow(flow_convergence.flow, link.link, p.p_independent)
+        end
     end
+    resize!(flow_rate, n_new)
+    resize!(convergence, n_new)
+    mul!(view(flow_rate, (n + 1):n_new), flow_link_map, internal_flow_rate)
+    mul!(view(convergence, (n + 1):n_new), flow_link_map, internal_convergence)
     return nothing
 end
 
-function save_solver_stats(u, t, integrator)
+"Add the concentrations per Basin and substance at the end of the saveat interval."
+function save_concentrations!(saved::SavedResults, integrator)::Nothing
+    (; p_independent) = integrator.p
+    p_independent.do_concentration || return nothing
+    (; concentration_state) = p_independent.basin.concentration_data
+    file = saved.concentration
+    push!(file.time, saved.t_prev)
+    # From substance, Basin to Basin, substance
+    append!(file.variables.concentration, permutedims(concentration_state))
+    return nothing
+end
+
+"The cumulative solver stats at time t."
+function get_solver_stats(t::Float64, integrator)::SolverStats
     (; stats) = integrator.sol
     (; step_stats) = integrator.p.p_independent
     return (;
@@ -547,11 +638,58 @@ function save_solver_stats(u, t, integrator)
     )
 end
 
+"Solver stats before the first save, which are not part of the results."
+zero_solver_stats()::SolverStats = (;
+    time = 0.0,
+    time_ns = UInt64(0),
+    rhs_calls = 0,
+    linear_solves = 0,
+    accepted_timesteps = 0,
+    rejected_timesteps = 0,
+    rejected_nonlinear_solve = 0,
+    rejected_local_error = 0,
+    rejected_out_of_domain = 0,
+    order_sum = 0,
+)
+
+"Add the solver stats of the saveat interval that ends at time t."
+function save_solver_stats!(saved::SavedResults, t::Float64, integrator)::Nothing
+    (; solver_stats_prev) = saved
+    file = saved.solver_stats
+    (; variables) = file
+    stats = get_solver_stats(t, integrator)
+    accepted_timesteps = stats.accepted_timesteps - solver_stats_prev.accepted_timesteps
+
+    push!(file.time, solver_stats_prev.time)
+    # convert nanosecond to millisecond
+    push!(variables.computation_time, (stats.time_ns - solver_stats_prev.time_ns) * 1.0e-6)
+    push!(variables.rhs_calls, stats.rhs_calls - solver_stats_prev.rhs_calls)
+    push!(variables.linear_solves, stats.linear_solves - solver_stats_prev.linear_solves)
+    push!(variables.accepted_timesteps, accepted_timesteps)
+    push!(variables.rejected_timesteps, stats.rejected_timesteps - solver_stats_prev.rejected_timesteps)
+    push!(
+        variables.rejected_nonlinear_solve,
+        stats.rejected_nonlinear_solve - solver_stats_prev.rejected_nonlinear_solve,
+    )
+    push!(
+        variables.rejected_local_error,
+        stats.rejected_local_error - solver_stats_prev.rejected_local_error,
+    )
+    push!(
+        variables.rejected_out_of_domain,
+        stats.rejected_out_of_domain - solver_stats_prev.rejected_out_of_domain,
+    )
+    push!(variables.mean_order, (stats.order_sum - solver_stats_prev.order_sum) / accepted_timesteps)
+    push!(variables.dt, (t - solver_stats_prev.time) / accepted_timesteps)
+    return nothing
+end
+
 function check_negative_storage(u, t, integrator)::Nothing
     (; p) = integrator
     (; p_independent, current_basin_properties) = p
-    (; basin) = p_independent
+    (; basin, u_accepted) = p_independent
     du = get_du(integrator)
+    u_accepted .= u
 
     # The accepted time step ends at t, which is the start of the next one. Integrate the
     # forcings over the time step and set p_mutable.tprev to t. From here on, piecewise
@@ -874,14 +1012,120 @@ function update_subgrid_level!(integrator)::Nothing
     return
 end
 
-"Interpolate the levels and save them to SavedValues"
-function save_subgrid_level(u, t, integrator)
-    return if integrator.p.p_independent.do_concentration
-        update_subgrid_level!(integrator)
-        copy(integrator.p.p_independent.subgrid.level)
-    else
-        integrator.p.p_independent.subgrid.level
+"Add a time step to the results of a file, without values yet."
+function add_time_step!(file::SavedFile, t::Float64)::Nothing
+    push!(file.time, t)
+    n = prod(file.size)
+    foreach(file.variables) do variable
+        # Flags are false, the values that are not set stay NaN
+        append!(variable, fill(eltype(variable) <: Integer ? zero(eltype(variable)) : NaN, n))
     end
+    return nothing
+end
+
+is_new_time(file::SavedFile, t::Float64)::Bool = isempty(file.time) || t != last(file.time)
+
+"""
+Move the allocation records to the allocation results. The records are the same for each time,
+so the coordinates can be set from the first ones.
+"""
+function save_allocation_records!(saved::SavedResults, p_independent::ParametersIndependent)::Nothing
+    (; record_demand, record_flow, record_control, demand_priorities_all) = p_independent.allocation
+    save_records!(saved.allocation, record_demand, demand_priorities_all)
+    save_records!(saved.allocation_flow, record_flow)
+    save_records!(saved.allocation_control, record_control)
+    return nothing
+end
+
+function save_records!(
+        file::SavedFile,
+        records::Vector{DemandRecordDatum},
+        demand_priorities_all::Vector{Int32},
+    )::Nothing
+    isempty(records) && return nothing
+    (; subnetwork_id, node_type, node_id, demand_priority) = file.coordinates
+    (; demand, allocated, supplied) = file.variables
+    if isempty(node_id)
+        append!(demand_priority, demand_priorities_all)
+        append!(node_id, sort!(unique(datum.node_id for datum in records)))
+        append!(subnetwork_id, zeros(Int32, length(node_id)))
+        append!(node_type, fill("", length(node_id)))
+        file.size = (length(demand_priority), length(node_id))
+    end
+    nvalue = prod(file.size)
+
+    for datum in records
+        is_new_time(file, datum.time) && add_time_step!(file, datum.time)
+        i = searchsortedfirst(demand_priority, datum.demand_priority)
+        j = searchsortedfirst(node_id, datum.node_id)
+        index = (length(file.time) - 1) * nvalue + (j - 1) * first(file.size) + i
+        demand[index] = datum.demand
+        allocated[index] = datum.allocated
+        # The supplied flow is known at the start of the next interval
+        if length(file.time) > 1
+            supplied[index - nvalue] = datum.supplied
+        end
+        subnetwork_id[j] = datum.subnetwork_id
+        node_type[j] = datum.node_type
+    end
+    empty!(records)
+    return nothing
+end
+
+function save_records!(file::SavedFile, records::Vector{FlowRecordDatum})::Nothing
+    isempty(records) && return nothing
+    (; link_id, from_node_type, from_node_id, to_node_type, to_node_id, subnetwork_id) = file.coordinates
+    (; flow_rate, lower_bound_hit, upper_bound_hit) = file.variables
+    record_row(datum) = (datum.link_id, datum.from_node_id, datum.to_node_id)
+    if isempty(link_id)
+        # The vertical flows of all Basins have link_id 0
+        for datum in sort!(unique(record_row, records); by = record_row)
+            push!(link_id, datum.link_id)
+            push!(from_node_type, datum.from_node_type)
+            push!(from_node_id, datum.from_node_id)
+            push!(to_node_type, datum.to_node_type)
+            push!(to_node_id, datum.to_node_id)
+            push!(subnetwork_id, datum.subnetwork_id)
+        end
+        file.size = (length(link_id),)
+    end
+    rows = zip(link_id, from_node_id, to_node_id)
+    row_index = Dict{Tuple{Int32, Int32, Int32}, Int}(row => i for (i, row) in enumerate(rows))
+    nvalue = prod(file.size)
+
+    for datum in records
+        is_new_time(file, datum.time) && add_time_step!(file, datum.time)
+        index = (length(file.time) - 1) * nvalue + row_index[record_row(datum)]
+        flow_rate[index] = datum.flow_rate
+        lower_bound_hit[index] = datum.lower_bound_hit
+        upper_bound_hit[index] = datum.upper_bound_hit
+    end
+    empty!(records)
+    return nothing
+end
+
+function save_records!(file::SavedFile, records::Vector{AllocationControlRecordDatum})::Nothing
+    (; node_id) = file.coordinates
+    (; flow_rate) = file.variables
+    nvalue = prod(file.size)
+    for datum in records
+        is_new_time(file, datum.time) && add_time_step!(file, datum.time)
+        index = (length(file.time) - 1) * nvalue + searchsortedfirst(node_id, datum.node_id)
+        flow_rate[index] = datum.flow_rate
+    end
+    empty!(records)
+    return nothing
+end
+
+"Interpolate the levels and add them to the subgrid level results."
+function save_subgrid_level!(saved::SavedResults, t::Float64, integrator)::Nothing
+    (; do_subgrid, subgrid) = integrator.p.p_independent
+    (do_subgrid && !isempty(subgrid.level)) || return nothing
+    update_subgrid_level!(integrator)
+    file = saved.subgrid_level
+    push!(file.time, t)
+    append!(file.variables.subgrid_level, subgrid.level)
+    return nothing
 end
 
 "Update one current vertical flux from an interpolation at time t."
