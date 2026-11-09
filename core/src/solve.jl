@@ -708,6 +708,8 @@ end
 Forget the convergence rate θ of the Newton iteration, so that the next nonlinear solve
 measures it again for the new iteration matrix W, like CVODE does (`crate = 1` in
 `cvNlsLSetup`). See https://ribasim.org/concept/numerics.html#sec-newton-convergence
+
+This can be removed once https://github.com/SciML/OrdinaryDiffEq.jl/issues/4983 is fixed.
 """
 function reset_convergence_rate!(nlsolver::T)::Nothing where {T}
     if hasfield(T, :prev_θ)

@@ -198,36 +198,12 @@ This is mainly useful for verification, as it is considerably slower for larger 
 
 # Convergence of the Newton iterations {#sec-newton-convergence}
 
-Computing the Jacobian and factorizing the matrix $W = J - \gamma^{-1}I$ of the linear solve are the most expensive parts of a Newton iteration, so the solver reuses them over many iterations and timesteps.
-$W$ is only rebuilt when the timestep changed by more than 20%, after a rejected timestep or a failed nonlinear solve, or when the Jacobian is renewed, which Ribasim does at least every 50 timesteps.
-With an outdated $W$ the iterations converge linearly instead of quadratically:
-$$
-	\|\Delta^{k+1}\| \approx \theta \|\Delta^k\|,
-$$
-where $\Delta^k = \mathbf{w}^{k+1} - \mathbf{w}^k$ is the increment of iteration $k$, $\theta$ is the convergence rate, and $\|\cdot\|$ is the root mean square of the increments scaled by the tolerances, see [error control](#sec-error-control).
-The convergence rate is small when $W$ describes the problem at the current state well, and approaches 1 when it does not, for instance after the state has changed a lot or where the flows depend strongly nonlinearly on the levels.
-
-If the iterations converge with rate $\theta$, the error that remains after iteration $k$ is about the sum of all later increments:
-$$
-	\|\mathbf{w}^* - \mathbf{w}^{k+1}\| \approx \sum_{j=1}^\infty \theta^j \|\Delta^k\| = \frac{\theta}{1-\theta}\|\Delta^k\|.
-$$
-The nonlinear solve is accepted when this estimate is below $\kappa = 0.01$, i.e. when the remaining error is at most a hundredth of the tolerance.
-From the second iteration on, $\theta$ is estimated as the ratio $\|\Delta^k\| / \|\Delta^{k-1}\|$ of the last two increments, but not lower than 0.3 times the previous estimate.
-In the first iteration there is no such ratio, so the $\theta$ of an earlier solve is used.
-This lets easy solves stop after a single iteration, which saves a right hand side evaluation and a linear solve per timestep.
-
-A solve that stops after one iteration does not measure $\theta$ again, so a small $\theta$ can be used for many timesteps after the $W$ and the state it was measured for have changed.
-Therefore Ribasim resets $\theta$ to 1 whenever $W$ is rebuilt, like CVODE does.
-The first solve with a new $W$ then takes at least two iterations and measures $\theta$ again.
-
-Without this reset, large models could take tiny timesteps for hours, which the `pump_pit` test model reproduces.
-A small pump pit is connected to two large Basins by ManningResistance nodes.
-When the pump stops the pit fills up, and close to the level of the large Basins the Manning flow, which goes with the square root of the level difference, makes the pit very stiff.
-A single Newton iteration then leaves an error in the level of the pit that changes sign every timestep.
-The BDF methods start the Newton iterations from an extrapolation of the solutions of the previous timesteps, which amplifies such an alternating error: with order $q$ and a constant timestep by a factor $2^{q+1}-1$.
-For order 2 that is a factor 7, so a single iteration with a true convergence rate above 1/7 leaves an error larger than that of the previous timestep, and the oscillation does not die out.
-Its error of 10 to 40 times the tolerance prevents the timestep from growing, but it does not fail the error test, which uses the root mean square over all states, in which a few states weigh little in a large model.
-In the test model the timestep stays at about 0.2 s for 6 hours: 92,000 timesteps without the reset, and 185 with it.
+The solver reuses the Jacobian and the factorization of $W = J - \gamma^{-1}I$ over many timesteps, so the Newton iterations converge linearly: each increment $\Delta^k$ is about $\theta$ times the previous one.
+The error that remains after iteration $k$ is then about $\frac{\theta}{1-\theta}\|\Delta^k\|$, and the solve is accepted when that is below 1% of the tolerance.
+The convergence rate $\theta$ is measured from successive increments, so the first iteration uses the $\theta$ of an earlier solve, which lets easy solves stop after one iteration.
+Such a solve does not measure $\theta$ again, so a small $\theta$ could otherwise be used for many timesteps after $W$ has changed.
+Ribasim therefore resets $\theta$ to 1 whenever $W$ is rebuilt, like CVODE does.
+Without this reset, a stiff Basin can oscillate slightly every timestep, which keeps the timestep small for hours, as in the `pump_pit` test model.
 
 # Continuity considerations
 
@@ -263,7 +239,7 @@ Negative storage needs to be avoided since it is not a real solution, and would 
 Another tool used to avoid negative storage is the [`isoutoutofdomain`](https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/) option, which Ribasim makes use of.
 This rejects timesteps that lead to negative storage, instead retrying with a smaller timestep.
 
-# Error control for cumulative flows {#sec-error-control}
+# Error control for cumulative flows
 
 The states in $\mathbf{u}$ are cumulative quantities that grow monotonically over time.
 With the default SciML error control the tolerance per state would be roughly
