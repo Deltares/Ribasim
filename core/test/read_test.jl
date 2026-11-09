@@ -238,15 +238,19 @@ end
         interpolation_flow_boundary = "block",
         interpolation_block_transition_period = 0.0,
     )
-    @test Ribasim.Model(config).integrator.p.p_independent.flow_boundary.flow_rate isa
-        Vector{<:ConstantInterpolation}
+    @test all(
+        itp -> itp isa ConstantInterpolation,
+        Ribasim.Model(config).integrator.p.p_independent.flow_boundary.flow_rate,
+    )
     config = Ribasim.Config(
         toml_path;
         interpolation_flow_boundary = "block",
         interpolation_block_transition_period = 1.0,
     )
-    @test Ribasim.Model(config).integrator.p.p_independent.flow_boundary.flow_rate isa
-        Vector{<:SmoothedConstantInterpolation}
+    @test all(
+        itp -> itp isa SmoothedConstantInterpolation,
+        Ribasim.Model(config).integrator.p.p_independent.flow_boundary.flow_rate,
+    )
 end
 
 @testitem "pregroup_by_node_id: empty input" begin

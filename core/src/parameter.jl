@@ -206,6 +206,23 @@ const ScalarBlockInterpolation = SmoothedConstantInterpolation{
     SearchProperties{Float64},
 }
 
+"The interpolation type of a timeseries that users can choose"
+@enumx InterpolationType block linear
+
+"""
+An interpolation over time from a Float64 to a Float64 of an `InterpolationType`, see
+`time_interpolation`. Block interpolation without a transition period is a
+`ScalarConstantInterpolation`, and with one a `ScalarBlockInterpolation`.
+
+This is a small `Union` instead of a type parameter, such that the compiled code is the same
+for every interpolation type, and calls on it are resolved statically by union splitting.
+"""
+const ScalarTimeInterpolation = Union{
+    ScalarConstantInterpolation,
+    ScalarBlockInterpolation,
+    ScalarLinearInterpolation,
+}
+
 "PCHIPInterpolation (a special type of CubicHermiteSpline) from a Float64 to a Float64"
 const ScalarPCHIPInterpolation = CubicHermiteSpline{
     Vector{Float64},
@@ -481,41 +498,35 @@ The parameter update associated with a certain control state for discrete contro
 end
 
 """
-In-memory storage of saved mean flows for writing to results.
+The mean flows over the saveat interval that is being saved. These are only buffers, the
+results are in `SavedResults`.
 
 - `flow`: The mean flows on all links and Basin forcings which aren't integrated exactly
-- `boundary_flow`: The mean boundary fl
+- `boundary_flow`: The mean boundary flows
+- `exact_vertical_forcing`: The mean Basin forcings which are integrated exactly
 - `inflow`: The sum of the mean flows coming into each Basin
 - `outflow`: The sum of the mean flows going out of each Basin
-- `concentration`: Concentrations for each Basin and substance
 - `storage_rate`: The mean rate of change of the Basin storages
 - `balance_error`: The (absolute) water balance error
 - `relative_error`: The relative water balance error
-- `t`: Endtime of the interval over which is averaged
+- `flow_convergence`: The mean convergence of each state
+- `basin_convergence`: The mean convergence of each Basin
+- `internal_flow_rate`, `internal_convergence`: The flow and convergence per internal flow link
 """
-@kwdef struct SavedFlow
-    # Mean flow rates per internal flow link
+@kwdef struct MeanFlows
     flow::FlowCVector{Float64}
     boundary_flow::Vector{Float64}
     exact_vertical_forcing::ExactVerticalFlowCVector{Float64}
-    inflow::Vector{Float64}
-    outflow::Vector{Float64}
-    concentration::Matrix{Float64}
+    inflow::Vector{Float64} = zeros(length(exact_vertical_forcing.precipitation))
+    outflow::Vector{Float64} = zero(inflow)
     storage_rate::Vector{Float64} = zero(inflow)
     balance_error::Vector{Float64} = zero(inflow)
     relative_error::Vector{Float64} = zero(inflow)
     flow_convergence::RibasimStateCVector{Union{Missing, Float64}}
-    basin_convergence::Vector{Union{Missing, Float64}}
-    t::Float64
-end
-
-"""
-In-memory storage of saved instantaneous storages and levels for writing to results.
-"""
-@kwdef struct SavedBasinState
-    storage::Vector{Float64}
-    level::Vector{Float64}
-    t::Float64
+    basin_convergence::Vector{Union{Missing, Float64}} = Vector{Union{Missing, Float64}}(missing, length(inflow))
+    internal_flow_rate::Vector{Float64}
+    internal_convergence::Vector{Union{Missing, Float64}} =
+        Vector{Union{Missing, Float64}}(missing, length(internal_flow_rate))
 end
 
 abstract type AbstractParameterNode end
@@ -779,17 +790,18 @@ end
 """
 node_id: node ID of the FlowBoundary node
 outflow_link: The outgoing flow link metadata
-flow_rate: flow rate (exact)
+flow_rate: flow rate (exact), interpolated over time with the interpolation type of the node
 flow_rate_bmi: flow rate set externally via BMI, which takes precedence over `flow_rate`; `NaN` means unset
 cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
 cumulative_flow_prev_saveat: `cumulative_flow` at the previous saveat
 cumulative_flow_dt: The exact cumulative flow over the latest timestep
 concentration_itp: matrix with boundary concentrations per FlowBoundary per substance
 """
-@kwdef struct FlowBoundary{I} <: AbstractParameterNode
+@kwdef struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    flow_rate::Vector{I}
+    flow_rate::Vector{ScalarTimeInterpolation} =
+        Vector{ScalarTimeInterpolation}(undef, length(node_id))
     flow_rate_bmi::Vector{Float64} = fill(NaN, length(node_id))
     cumulative_flow::Vector{Float64} = zeros(length(node_id))
     cumulative_flow_since_reset::Vector{Float64} = zeros(length(node_id))
@@ -1248,6 +1260,7 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
    quantities are not cached but computed on-demand, to maintain a differentiable computational pipeline
 - `tprev`: The start of the current time step, set as soon as a time step is accepted, see
    [`update_cumulative_forcing!`](@ref) and [`interpolation_time`](@ref)
+- `defer_interrupt`: Whether Ctrl-C is only handled in between time steps, see [`solve!`](@ref)
 """
 @kwdef mutable struct ParametersMutable
     new_time_dependent_cache::Bool = true
@@ -1256,6 +1269,7 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
     jac_version::Int = 0
     ad_active::Bool = false
     tprev::Float64 = 0.0
+    defer_interrupt::Bool = false
 end
 
 """
@@ -1294,7 +1308,7 @@ inline. Storing this large struct inline makes code that uses it, such as everyt
 takes the integrator, much slower to compile. The const fields keep loads as fast as for
 an immutable struct.
 """
-@kwdef mutable struct ParametersIndependent{C1}
+@kwdef mutable struct ParametersIndependent
     const starttime::DateTime
     const reltol::Float64
     const graph::ModelGraph
@@ -1304,7 +1318,7 @@ an immutable struct.
     const manning_resistance::ManningResistance
     const tabulated_rating_curve::TabulatedRatingCurve
     const level_boundary::LevelBoundary
-    const flow_boundary::FlowBoundary{C1}
+    const flow_boundary::FlowBoundary
     const pump::Pump
     const outlet::Outlet
     const terminal::Terminal
@@ -1343,6 +1357,8 @@ an immutable struct.
     const cumulative_flow_dt::FlowCVector{Float64} = zero(storage_uplink)
     # State at previous saveat
     const u_prev_saveat::RibasimStateCVector{Float64} = cvector_from_axes(state_ranges)
+    # State at the last accepted time step, the state in the integrator can be in between
+    const u_accepted::RibasimStateCVector{Float64} = zero(u_prev_saveat)
     # Cumulative flow over last allocation times
     const cumulative_flow_prev_allocation_dt::FlowCVector{Float64} = zero(storage_uplink)
     # How much of the solver error is attributed to each state, see [`accumulate_residual!`](@ref).
@@ -1408,8 +1424,8 @@ The collection of all parameters that are passed to the rhs (`water_balance!`) a
 
 A mutable struct with only const fields, like [`ParametersIndependent`](@ref).
 """
-@kwdef mutable struct Parameters{C, T}
-    const p_independent::ParametersIndependent{C}
+@kwdef mutable struct Parameters{T}
+    const p_independent::ParametersIndependent
     const time_dependent_cache::TimeDependentCache{T} = TimeDependentCache(p_independent)
     const current_basin_properties::CurrentBasinProperties =
         CurrentBasinProperties(; n = length(p_independent.basin))
