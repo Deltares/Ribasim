@@ -821,8 +821,8 @@ end
     (; interpolation) = model.config
 
     @test interpolation.flow_boundary == "block"
-    @test flow_rate isa Vector{<:ConstantInterpolation}
     itp = only(flow_rate)
+    @test itp isa ConstantInterpolation
     Ribasim.solve!(model)
 
     flow_rates_input = itp.u
@@ -837,7 +837,12 @@ end
     (; interpolation) = model.config
 
     @test interpolation.flow_boundary == "linear"
-    @test flow_rate isa Vector{<:LinearInterpolation}
+    @test only(flow_rate) isa LinearInterpolation
+
+    @test_throws "Invalid TOML config." Ribasim.Config(
+        toml_path;
+        interpolation_flow_boundary = "cubic",
+    )
 end
 
 @testitem "Init basin only storage" begin

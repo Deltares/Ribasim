@@ -1025,23 +1025,40 @@ function ranges(lengths::Vector{<:Integer})
     return ranges
 end
 
-function get_interpolation_vec(
-        interpolation_type::String,
+"""
+Interpolate the values `u` over the times `t` (in seconds) with the given interpolation type.
+Block interpolation is smoothed over `block_transition_period` seconds on either side of each
+data point, see `SmoothedConstantInterpolation`.
+"""
+function time_interpolation(
+        u::Vector{Float64},
+        t::Vector{Float64},
+        interpolation_type::InterpolationType.T,
         block_transition_period::Float64,
-        node_id::Vector{NodeID},
-    )::Vector
-    type = if interpolation_type == "linear"
-        ScalarLinearInterpolation
-    elseif interpolation_type == "block"
-        if iszero(block_transition_period)
-            ScalarConstantInterpolation # Doesn't support smoothing
-        else
-            ScalarBlockInterpolation # Does support smoothing
-        end
+        extrapolation::ExtrapolationType.T,
+    )::ScalarTimeInterpolation
+    return if interpolation_type == InterpolationType.linear
+        LinearInterpolation(u, t; cache_parameters = true, extrapolation)
+    elseif iszero(block_transition_period)
+        # Without smoothing, ConstantInterpolation gives the same result faster
+        ConstantInterpolation(u, t; cache_parameters = true, extrapolation)
     else
-        error("Invalid interpolation type specified: $interpolation_type.")
+        SmoothedConstantInterpolation(
+            u,
+            t;
+            cache_parameters = true,
+            extrapolation,
+            d_max = block_transition_period,
+        )
     end
-    return Vector{type}(undef, length(node_id))
+end
+
+"The interpolation type with the given name, or `nothing` if there is none."
+function parse_interpolation_type(name::AbstractString)::Union{InterpolationType.T, Nothing}
+    for interpolation_type in instances(InterpolationType.T)
+        name == String(Symbol(interpolation_type)) && return interpolation_type
+    end
+    return nothing
 end
 
 function check_new_t!(p::Parameters, t::Number)::Nothing
