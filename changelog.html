@@ -341,6 +341,7 @@ ul.task-list li input[type="checkbox"] {
 <li>Duplicate rows in input tables are now an error, for instance two rows for the same node and control state in a static table. <a href="https://github.com/Deltares/Ribasim/pull/3316">#3316</a></li>
 <li>A node with multiple control states that is not controlled by DiscreteControl needs a row without <code>control_state</code>, which defines its parameters. Nodes with multiple control states get their initial parameter values from the row without <code>control_state</code>, or else from the last control state. Before, time-interpolated parameters like Pump <code>min_flow_rate</code> used the first control state. <a href="https://github.com/Deltares/Ribasim/pull/3316">#3316</a></li>
 <li>UserDemand <code>return_factor</code> and <code>min_level</code> must be the same for all demand priorities of a node (at the same time). <a href="https://github.com/Deltares/Ribasim/pull/3316">#3316</a></li>
+<li>Python (breaking): <code>model.node.df</code>, <code>model.link.df</code>, <code>NodeTable.filter</code> and <code>model.&lt;node_type&gt;.node</code> are never <code>None</code>, but empty tables when there are no nodes or links. Assigning <code>None</code> to the Node or Link table is an error. The data tables, like <code>model.basin.time.df</code>, are unchanged. <a href="https://github.com/Deltares/Ribasim/pull/3347">#3347</a></li>
 </ul>
 </section>
 <section id="fixed" class="level3" data-number="1.1.3">
