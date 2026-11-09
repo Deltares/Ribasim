@@ -1260,6 +1260,7 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
    quantities are not cached but computed on-demand, to maintain a differentiable computational pipeline
 - `tprev`: The start of the current time step, set as soon as a time step is accepted, see
    [`update_cumulative_forcing!`](@ref) and [`interpolation_time`](@ref)
+- `defer_interrupt`: Whether Ctrl-C is only handled in between time steps, see [`solve!`](@ref)
 """
 @kwdef mutable struct ParametersMutable
     new_time_dependent_cache::Bool = true
@@ -1268,6 +1269,7 @@ The part of the parameters passed to the rhs and callbacks that are mutable.
     jac_version::Int = 0
     ad_active::Bool = false
     tprev::Float64 = 0.0
+    defer_interrupt::Bool = false
 end
 
 """
@@ -1355,6 +1357,8 @@ an immutable struct.
     const cumulative_flow_dt::FlowCVector{Float64} = zero(storage_uplink)
     # State at previous saveat
     const u_prev_saveat::RibasimStateCVector{Float64} = cvector_from_axes(state_ranges)
+    # State at the last accepted time step, the state in the integrator can be in between
+    const u_accepted::RibasimStateCVector{Float64} = zero(u_prev_saveat)
     # Cumulative flow over last allocation times
     const cumulative_flow_prev_allocation_dt::FlowCVector{Float64} = zero(storage_uplink)
     # How much of the solver error is attributed to each state, see [`accumulate_residual!`](@ref).

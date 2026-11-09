@@ -36,10 +36,10 @@ function create_callbacks(
     basin_cb = PresetTimeCallback(tstops, update_basin!; save_positions = (false, false))
     push!(callbacks, basin_cb)
 
-    # Save all results over time
-    saved = SavedResults(p_independent)
+    # Save all results over time, and write them to file each time a time chunk is complete
+    saved = SavedResults(p_independent, config, saveat)
     save_results_cb = SavingCallback(
-        SaveResults(saved),
+        SaveResults(saved, config, t_end),
         SavedValues(Float64, Nothing);
         saveat,
         save_start = true,
@@ -302,15 +302,36 @@ end
 end
 
 """
-Callback that adds to the results in memory at each saveat. Everything is saved together, such
-that all results always cover the same time, also if an error occurs while saving.
+Callback that adds to the results in memory at each saveat, and writes them to file each time
+a time chunk is complete. The last chunk stays in memory and is written by `write_results`.
 """
 struct SaveResults{S <: SavedResults}
     saved::S
+    config::Config
+    t_end::Float64
 end
 
 function (save_results::SaveResults)(u, t, integrator)::Nothing
-    (; saved) = save_results
+    (; saved, config, t_end) = save_results
+    errors = save_results!(saved, u, t, integrator)
+
+    if length(saved.basin.time) >= saved.chunk_time && t != t_end
+        write_chunk!(saved, config)
+    end
+
+    if errors
+        t = datetime_since(t, integrator.p.p_independent.starttime)
+        error("Too large water balance error(s) detected at t = $t")
+    end
+    return nothing
+end
+
+"""
+Add the results at time t to the results in memory. Everything is saved together, such that all
+results always cover the same time, also if an error occurs while saving. Returns whether there
+are too large water balance errors.
+"""
+function save_results!(saved::SavedResults, u, t::Float64, integrator)::Bool
     (; p_independent, current_basin_properties) = integrator.p
     # There is no period over which to compute flows at the start
     is_start = isnan(saved.t_prev)
@@ -327,10 +348,26 @@ function (save_results::SaveResults)(u, t, integrator)::Nothing
     saved.level_prev .= current_basin_properties.current_level
     saved.solver_stats_prev = get_solver_stats(t, integrator)
     saved.t_prev = t
+    return errors
+end
 
-    if errors
-        t = datetime_since(t, p_independent.starttime)
-        error("Too large water balance error(s) detected at t = $t")
+"""
+If the simulation stopped in between two saveats, because of an error, because it was interrupted
+or because a coupled simulation stopped there, save the results up to the last accepted time step.
+The state of the integrator can be from a time step in progress, and is not used.
+"""
+function save_until_last_time_step!(model::Model)::Nothing
+    (; integrator, saved) = model
+    (; p) = integrator
+    t = p.p_mutable.tprev
+    t > saved.t_prev || return nothing
+    (; u_accepted) = p.p_independent
+    # Any water balance error is already logged, and shouldn't stop the results from being written
+    try
+        set_current_basin_properties!(u_accepted.flow, p, t)
+        save_results!(saved, u_accepted, t, integrator)
+    catch e
+        @error "Could not save the results after the last saveat, at t = $t s." exception = e
     end
     return nothing
 end
@@ -610,8 +647,9 @@ end
 function check_negative_storage(u, t, integrator)::Nothing
     (; p) = integrator
     (; p_independent, current_basin_properties) = p
-    (; basin) = p_independent
+    (; basin, u_accepted) = p_independent
     du = get_du(integrator)
+    u_accepted .= u
 
     # The accepted time step ends at t, which is the start of the next one. Integrate the
     # forcings over the time step and set p_mutable.tprev to t. From here on, piecewise
