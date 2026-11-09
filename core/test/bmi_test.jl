@@ -43,9 +43,9 @@ end
     step_stats = stepped.integrator.p.p_independent.step_stats
     @test step_stats.order_sum > 0
     @test fields(step_stats) == fields(solved.integrator.p.p_independent.step_stats)
-    without_time_ns(model) =
-        [Base.structdiff(s, (; time_ns = 0)) for s in model.saved.solver_stats.saveval]
-    @test without_time_ns(stepped) == without_time_ns(solved)
+    without_computation_time(model) =
+        Base.structdiff(Ribasim.solver_stats_data(model), (; computation_time = 0))
+    @test isequal(without_computation_time(stepped), without_computation_time(solved))
     @test stepped.integrator.u == solved.integrator.u
 end
 
