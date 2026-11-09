@@ -605,39 +605,29 @@ Note
 <td>Detects and handles negative basin storage at every accepted step</td>
 </tr>
 <tr class="even">
-<td>Basin state saving</td>
-<td><code>SavingCallback</code></td>
-<td>Records basin storage/level at output times</td>
-</tr>
-<tr class="odd">
 <td>Cumulative flow update</td>
 <td><code>FunctionCallingCallback</code></td>
 <td>Tracks cumulative flows for mass balance</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Basin forcing update</td>
 <td><code>PresetTimeCallback</code></td>
 <td>Injects new forcing data at prescribed times</td>
 </tr>
-<tr class="odd">
-<td>Flow saving</td>
-<td><code>SavingCallback</code></td>
-<td>Records averaged flows at output times</td>
-</tr>
 <tr class="even">
+<td>Result saving</td>
+<td><code>SavingCallback</code></td>
+<td>Records all results over time at output times</td>
+</tr>
+<tr class="odd">
 <td>Discrete control</td>
 <td><code>FunctionCallingCallback</code></td>
 <td>Evaluates and applies discrete control rules</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Tolerance decrease</td>
 <td><code>FunctionCallingCallback</code></td>
 <td>Compensates for growing cumulative state magnitudes (see <a href="../concept/numerics.html#compensating-for-cumulative-flows">numerical considerations</a>)</td>
-</tr>
-<tr class="even">
-<td>Subgrid interpolation</td>
-<td><code>SavingCallback</code></td>
-<td>Interpolates subgrid levels for output</td>
 </tr>
 </tbody>
 </table>
