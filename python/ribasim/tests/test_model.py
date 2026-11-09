@@ -2,6 +2,7 @@ import datetime
 import re
 from sqlite3 import connect
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pytest
@@ -18,8 +19,9 @@ except ImportError:
 from pydantic import ValidationError
 from pyproj import CRS
 from ribasim import Node
-from ribasim.config import Allocation, Solver
-from ribasim.geometry.node import NodeData
+from ribasim.config import Allocation, Basin, Solver
+from ribasim.geometry.link import LinkTable
+from ribasim.geometry.node import NodeData, NodeTable
 from ribasim.input_base import esc_id
 from ribasim.model import Model
 from ribasim.nodes import basin, pid_control
@@ -142,7 +144,6 @@ def test_control_link_adds_listen_links(discrete_control_of_pid_control):
     """
     model = discrete_control_of_pid_control
 
-    assert model.link.df is not None
     listen_mask = model.link.df["link_type"] == "listen"
     control_mask = model.link.df["link_type"] == "control"
 
@@ -172,7 +173,6 @@ def test_write_adds_missing_listen_links(discrete_control_of_pid_control, tmp_pa
     """Removing auto-added listen links and writing restores them."""
     model = discrete_control_of_pid_control
 
-    assert model.link.df is not None
     listen_mask = model.link.df["link_type"] == "listen"
     assert listen_mask.sum() == 2  # auto-added by link.add
 
@@ -197,7 +197,6 @@ def test_write_adds_missing_listen_links(discrete_control_of_pid_control, tmp_pa
 def test_remove_control_link_removes_listen_links(discrete_control_of_pid_control):
     """Removing a control link removes listen links attached to that control node."""
     model = discrete_control_of_pid_control
-    assert model.link.df is not None
 
     listen_pairs_before = set(
         zip(
@@ -218,7 +217,6 @@ def test_remove_control_link_removes_listen_links(discrete_control_of_pid_contro
     assert len(control_link_ids) == 1
     model.remove_link(control_link_ids[0])
 
-    assert model.link.df is not None
     remaining_control_pairs = set(
         zip(
             model.link.df.loc[model.link.df["link_type"] == "control", "from_node_id"],
@@ -260,7 +258,6 @@ def test_ensure_listen_links_idempotent(discrete_control_of_pid_control):
     (auto-added by link.add) should not duplicate links.
     """
     model = discrete_control_of_pid_control
-    assert model.link.df is not None
     count_before = len(model.link.df)
 
     model.ensure_listen_links()
@@ -295,7 +292,6 @@ def test_manually_add_listen_link(trivial):
         ],
     )
 
-    assert model.link.df is not None
     n_links_before = len(model.link.df)
 
     # Explicitly add a listen link from Basin(6) -> PidControl(100)
@@ -363,6 +359,69 @@ def test_link_table(basic):
     assert df.geometry.is_unique
     assert df.from_node_id.dtype == np.int32
     assert df.crs == CRS.from_epsg(28992)
+
+
+def empty_model() -> Model:
+    return Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+
+
+def test_empty_model_tables():
+    model = empty_model()
+    for df in (model.node.df, model.link.df):
+        assert isinstance(df, gpd.GeoDataFrame)
+        assert df.empty
+        assert df.crs == CRS.from_epsg(28992)
+    assert model.node.df.index.name == "node_id"
+    assert model.node.df.index.dtype == np.int32
+    assert list(model.node.df.columns) == NodeTable.columns()
+    assert model.link.df.index.name == "link_id"
+    assert model.link.df.index.dtype == np.int32
+    assert list(model.link.df.columns) == LinkTable.columns()
+
+    # The topology tables cannot be set to None, but can be emptied
+    with pytest.raises(ValidationError, match="Node table cannot be None"):
+        model.node.df = None  # ty: ignore[invalid-assignment]
+    with pytest.raises(ValidationError, match="Link table cannot be None"):
+        model.link.df = None  # ty: ignore[invalid-assignment]
+    model.node.df = model.node.df.head(0)
+    assert model.node.df.empty
+    assert model.node.df.crs == CRS.from_epsg(28992)
+
+
+def test_empty_model_roundtrip(tmp_path):
+    model = empty_model()
+    toml_path = model.write(tmp_path / "ribasim.toml")
+    with connect(tmp_path / "input/database.gpkg") as connection:
+        tables = connection.execute("select table_name from gpkg_contents").fetchall()
+    # Only the topology tables are written, not tables of absent node types
+    assert {t for (t,) in tables} == {
+        "Link",
+        "Node",
+        "layer_styles",
+        "ribasim_metadata",
+    }
+
+    model_loaded = Model.read(toml_path)
+    assert model_loaded == model
+    assert model_loaded.node.df.empty
+    assert model_loaded.link.df.empty
+    assert model_loaded.node.df.crs == CRS.from_epsg(28992)
+
+
+def test_detached_node_model():
+    basin = Basin()
+    with pytest.raises(AttributeError, match="only has nodes when attached to a Model"):
+        _ = basin.node
+    assert not hasattr(basin, "node")
+
+
+def test_filter_absent_node_type(basic):
+    df = basic.node.filter("PidControl")
+    assert isinstance(df, gpd.GeoDataFrame)
+    assert df.empty
+    assert list(df.columns) == list(basic.node.df.columns)
+    assert basic.pid_control.node.df.empty
+    assert basic.pid_control.node.df.crs == CRS.from_epsg(28992)
 
 
 def test_indexing(basic):
@@ -617,7 +676,6 @@ def test_path_serialization_uses_forward_slashes(drought, tmp_path):
 
 
 def test_model_compatibility(basic):
-    assert basic.basin.node is not None
     assert len(basic.basin.node.df) < len(basic.node.df)
     assert (basic.basin.node.df["node_type"] == "Basin").all()
 

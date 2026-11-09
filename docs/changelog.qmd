@@ -34,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Duplicate rows in input tables are now an error, for instance two rows for the same node and control state in a static table. [#3316](https://github.com/Deltares/Ribasim/pull/3316)
 - A node with multiple control states that is not controlled by DiscreteControl needs a row without `control_state`, which defines its parameters. Nodes with multiple control states get their initial parameter values from the row without `control_state`, or else from the last control state. Before, time-interpolated parameters like Pump `min_flow_rate` used the first control state. [#3316](https://github.com/Deltares/Ribasim/pull/3316)
 - UserDemand `return_factor` and `min_level` must be the same for all demand priorities of a node (at the same time). [#3316](https://github.com/Deltares/Ribasim/pull/3316)
+- Python (breaking): `model.node.df`, `model.link.df`, `NodeTable.filter` and `model.<node_type>.node` are never `None`, but empty tables when there are no nodes or links. Assigning `None` to the Node or Link table is an error. The data tables, like `model.basin.time.df`, are unchanged. [#3347](https://github.com/Deltares/Ribasim/pull/3347)
 
 ### Fixed
 - Allocation: The low storage factors are now optimized before the demands, so they only reduce Basin outflows to prevent negative storage. Before, the demand objectives could lower them to hold back water, for instance to meet a LevelDemand by reducing the flow over an uncontrolled weir, which the physical layer then did not follow.
