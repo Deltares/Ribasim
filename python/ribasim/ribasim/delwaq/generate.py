@@ -119,7 +119,6 @@ def _setup_graph(nodes, link, evaporate_mass=True):
     nx = cast(Any, _nx)
     G = nx.DiGraph()
 
-    assert nodes.df is not None
     for row in nodes.df.itertuples():
         if row.node_type not in SPATIALCONTROLNODETYPES:
             G.add_node(
@@ -130,7 +129,6 @@ def _setup_graph(nodes, link, evaporate_mass=True):
                 y=row.geometry.y,
                 pos=(row.geometry.x, row.geometry.y),
             )
-    assert link.df is not None
     for row in link.df.itertuples():
         if row.link_type == "flow":
             G.add_edge(
