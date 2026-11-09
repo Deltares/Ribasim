@@ -206,6 +206,23 @@ const ScalarBlockInterpolation = SmoothedConstantInterpolation{
     SearchProperties{Float64},
 }
 
+"The interpolation type of a timeseries that users can choose"
+@enumx InterpolationType block linear
+
+"""
+An interpolation over time from a Float64 to a Float64 of an `InterpolationType`, see
+`time_interpolation`. Block interpolation without a transition period is a
+`ScalarConstantInterpolation`, and with one a `ScalarBlockInterpolation`.
+
+This is a small `Union` instead of a type parameter, such that the compiled code is the same
+for every interpolation type, and calls on it are resolved statically by union splitting.
+"""
+const ScalarTimeInterpolation = Union{
+    ScalarConstantInterpolation,
+    ScalarBlockInterpolation,
+    ScalarLinearInterpolation,
+}
+
 "PCHIPInterpolation (a special type of CubicHermiteSpline) from a Float64 to a Float64"
 const ScalarPCHIPInterpolation = CubicHermiteSpline{
     Vector{Float64},
@@ -779,17 +796,18 @@ end
 """
 node_id: node ID of the FlowBoundary node
 outflow_link: The outgoing flow link metadata
-flow_rate: flow rate (exact)
+flow_rate: flow rate (exact), interpolated over time with the interpolation type of the node
 flow_rate_bmi: flow rate set externally via BMI, which takes precedence over `flow_rate`; `NaN` means unset
 cumulative_flow: The exactly integrated cumulative boundary flow since the start of the simulation
 cumulative_flow_prev_saveat: `cumulative_flow` at the previous saveat
 cumulative_flow_dt: The exact cumulative flow over the latest timestep
 concentration_itp: matrix with boundary concentrations per FlowBoundary per substance
 """
-@kwdef struct FlowBoundary{I} <: AbstractParameterNode
+@kwdef struct FlowBoundary <: AbstractParameterNode
     node_id::Vector{NodeID}
     outflow_link::Vector{LinkMetadata} = Vector{LinkMetadata}(undef, length(node_id))
-    flow_rate::Vector{I}
+    flow_rate::Vector{ScalarTimeInterpolation} =
+        Vector{ScalarTimeInterpolation}(undef, length(node_id))
     flow_rate_bmi::Vector{Float64} = fill(NaN, length(node_id))
     cumulative_flow::Vector{Float64} = zeros(length(node_id))
     cumulative_flow_since_reset::Vector{Float64} = zeros(length(node_id))
@@ -1294,7 +1312,7 @@ inline. Storing this large struct inline makes code that uses it, such as everyt
 takes the integrator, much slower to compile. The const fields keep loads as fast as for
 an immutable struct.
 """
-@kwdef mutable struct ParametersIndependent{C1}
+@kwdef mutable struct ParametersIndependent
     const starttime::DateTime
     const reltol::Float64
     const graph::ModelGraph
@@ -1304,7 +1322,7 @@ an immutable struct.
     const manning_resistance::ManningResistance
     const tabulated_rating_curve::TabulatedRatingCurve
     const level_boundary::LevelBoundary
-    const flow_boundary::FlowBoundary{C1}
+    const flow_boundary::FlowBoundary
     const pump::Pump
     const outlet::Outlet
     const terminal::Terminal
@@ -1408,8 +1426,8 @@ The collection of all parameters that are passed to the rhs (`water_balance!`) a
 
 A mutable struct with only const fields, like [`ParametersIndependent`](@ref).
 """
-@kwdef mutable struct Parameters{C, T}
-    const p_independent::ParametersIndependent{C}
+@kwdef mutable struct Parameters{T}
+    const p_independent::ParametersIndependent
     const time_dependent_cache::TimeDependentCache{T} = TimeDependentCache(p_independent)
     const current_basin_properties::CurrentBasinProperties =
         CurrentBasinProperties(; n = length(p_independent.basin))
