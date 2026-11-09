@@ -706,22 +706,8 @@ end
 
 """
 Forget the convergence rate θ of the Newton iteration, so that the next nonlinear solve
-measures it again for the new iteration matrix W = I - γhJ.
-
-OrdinaryDiffEq accepts a nonlinear solve after a single iteration when θ / (1 - θ) times
-the increment is below κ, with θ estimated from the ratio of successive increments of the
-last solve that took more than one iteration. Solves that converge in one iteration never
-update θ, so a small θ from one iteration matrix keeps being used for the next, while it
-only holds for the matrix it was measured with. CVODE therefore resets its convergence
-rate estimate whenever it sets up a new iteration matrix (`crate = 1` in `cvNlsLSetup`).
-
-Without this, a single iteration on a θ that is far too small can be accepted for every
-time step. For a stiff state with a strongly nonlinear flow, such as a small Basin between
-two ManningResistance nodes, the BDF predictor extrapolates what that iteration leaves
-unsolved, so that the state flips sign every time step with an error of 10 to 40 times its
-tolerance. That is too little to fail the RMS error test over many states, and too much
-for the time step to grow, so the time step stays fixed for hours. See the
-`pump_pit` test model.
+measures it again for the new iteration matrix W, like CVODE does (`crate = 1` in
+`cvNlsLSetup`). See https://ribasim.org/concept/numerics.html#sec-newton-convergence
 """
 function reset_convergence_rate!(nlsolver::T)::Nothing where {T}
     if hasfield(T, :prev_θ)
