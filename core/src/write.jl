@@ -1,69 +1,119 @@
 """
     write_results(model::Model)::Model
 
-Write all results to NetCDF files as specified in the model configuration.
+Write all results that are not written yet to NetCDF files as specified in the model
+configuration, up to the last accepted time step. Most of the results are already written during
+the simulation, see [`SaveResults`](@ref). If a file can't be written, the others still are, and
+then this throws an error that names the file.
 """
 function write_results(model::Model)::Model
-    (; config) = model
-    (; results, experimental) = model.config
-    deflatelevel = results.compression ? results.compression_level : 0
+    (; config, saved) = model
+    (; results) = config
 
     @info "Writing results."
 
-    # state
-    data = basin_state_data(model; table = false)
-    path = results_path(config, RESULTS_FILENAME.basin_state)
-    write_netcdf(path, data; deflatelevel)
+    save_until_last_time_step!(model)
 
-    # basin
-    data = basin_data(model; table = false)
-    path = results_path(config, RESULTS_FILENAME.basin)
-    write_netcdf(path, data; deflatelevel)
-
-    # flow
-    data = flow_data(model; table = false)
-    path = results_path(config, RESULTS_FILENAME.flow)
-    write_netcdf(path, data; deflatelevel)
-
-    # concentrations
-    if experimental.concentration
-        data = concentration_data(model; table = false)
-        path = results_path(config, RESULTS_FILENAME.concentration)
-        write_netcdf(path, data; deflatelevel)
+    finish_allocation_results!(model)
+    try
+        write_saved_files(saved, config)
+    finally
+        # state, not quantized since it can be used as the initial state of another simulation
+        data = basin_state_data(model; table = false)
+        path = results_path(config, RESULTS_FILENAME.basin_state)
+        write_netcdf(path, data, results; significant_bits = 0)
     end
-
-    # discrete control
-    data = discrete_control_data(model; table = false)
-    path = results_path(config, RESULTS_FILENAME.control)
-    write_netcdf(path, data; deflatelevel)
-
-    # allocation
-    data = allocation_data(model; table = false)
-    path = results_path(config, RESULTS_FILENAME.allocation)
-    write_netcdf(path, data; deflatelevel)
-
-    # allocation flow
-    data = allocation_flow_data(model; table = false)
-    path = results_path(config, RESULTS_FILENAME.allocation_flow)
-    write_netcdf(path, data; deflatelevel)
-
-    # allocation control
-    data = allocation_control_data(model; table = false)
-    path = results_path(config, RESULTS_FILENAME.allocation_control)
-    write_netcdf(path, data; deflatelevel)
-
-    # exported levels
-    data = subgrid_level_data(model; table = false)
-    path = results_path(config, RESULTS_FILENAME.subgrid_level)
-    write_netcdf(path, data; deflatelevel)
-
-    # solver stats
-    data = solver_stats_data(model; table = false)
-    path = results_path(config, RESULTS_FILENAME.solver_stats)
-    write_netcdf(path, data; deflatelevel)
 
     @debug "Wrote results."
     return model
+end
+
+# The chunk size along time of the control results, which have a varying number per time step
+const NC_CONTROL_CHUNK_TIME = 1024
+
+"""
+Write the results of all files with a time dimension that are in memory, after the time steps
+that the files already have. It is safe to do this again, for instance if it failed halfway.
+If a file can't be written, the others still are, and then this throws an error that names it.
+
+During the simulation the last time step of some files is not written with `nkeep = 1`: the
+supplied flows in `allocation.nc` are set by the next time step, and `subgrid_level.nc` has a
+time step more than the others because it includes the end of the last interval. This way the
+writes stay aligned with the chunks, and the files only get complete time steps.
+"""
+function write_saved_files(saved::SavedResults, config::Config; nkeep::Int = 0)::Nothing
+    (; chunk_time) = saved
+    failed = String[]
+    write_saved_file!(failed, saved.basin, RESULTS_FILENAME.basin, config, chunk_time)
+    write_saved_file!(failed, saved.flow, RESULTS_FILENAME.flow, config, chunk_time)
+    write_saved_file!(failed, saved.concentration, RESULTS_FILENAME.concentration, config, chunk_time)
+    write_saved_file!(failed, saved.subgrid_level, RESULTS_FILENAME.subgrid_level, config, chunk_time; nkeep)
+    write_saved_file!(failed, saved.solver_stats, RESULTS_FILENAME.solver_stats, config, chunk_time)
+    write_saved_file!(failed, saved.control, RESULTS_FILENAME.control, config, NC_CONTROL_CHUNK_TIME)
+    write_saved_file!(failed, saved.allocation, RESULTS_FILENAME.allocation, config, chunk_time; nkeep)
+    write_saved_file!(failed, saved.allocation_flow, RESULTS_FILENAME.allocation_flow, config, chunk_time)
+    write_saved_file!(failed, saved.allocation_control, RESULTS_FILENAME.allocation_control, config, chunk_time)
+    isempty(failed) && return nothing
+    error(
+        "Cannot write these result NetCDF files, are they open in another application?\n" *
+            join("- " .* failed, "\n"),
+    )
+end
+
+function write_saved_file!(
+        failed::Vector{String},
+        file::SavedFile,
+        filename::String,
+        config::Config,
+        chunk_time::Int;
+        nkeep::Int = 0,
+    )::Nothing
+    data = netcdf_data(file, config.starttime; nkeep)
+    path = results_path(config, filename)
+    try
+        write_netcdf(path, data, config.results; chunk_time, file.ntime_written)
+    catch e
+        e isa Union{NCDatasets.NetCDFError, Base.IOError} || rethrow()
+        push!(failed, "$path (error code: $(e.code))")
+    end
+    return nothing
+end
+
+"""
+Write the results that are in memory to file and remove them from memory. If a file can't be
+written this throws an error, and they stay in memory such that `write_results` can write the
+other files up to the last accepted time step.
+"""
+function write_chunk!(saved::SavedResults, config::Config)::Nothing
+    write_saved_files(saved, config; nkeep = 1)
+    remove_written!(saved.basin)
+    remove_written!(saved.flow)
+    remove_written!(saved.concentration)
+    remove_written!(saved.subgrid_level; nkeep = 1)
+    remove_written!(saved.solver_stats)
+    remove_written!(saved.control)
+    remove_written!(saved.allocation; nkeep = 1)
+    remove_written!(saved.allocation_flow)
+    remove_written!(saved.allocation_control)
+    return nothing
+end
+
+"Remove all but the last `nkeep` time steps of a file from memory, these are written to file."
+function remove_written!(file::SavedFile; nkeep::Int = 0)::Nothing
+    (; time, variables, size) = file
+    ntime = length(time)
+    nkeep = min(nkeep, ntime)
+    keep_last!(time, nkeep)
+    foreach(variable -> keep_last!(variable, nkeep * prod(size)), variables)
+    file.ntime_written += ntime - nkeep
+    return nothing
+end
+
+"Remove all but the last `n` elements, keeping the memory for reuse."
+function keep_last!(v::Vector, n::Int)::Nothing
+    copyto!(v, 1, v, length(v) - n + 1, n)
+    resize!(v, n)
+    return nothing
 end
 
 const RESULTS_FILENAME = (
@@ -343,6 +393,208 @@ const CF = OrderedDict{String, OrderedDict{String, String}}(
     ),
 )
 
+"""
+Create the structures for the results over time, in the shape of the NetCDF files.
+
+The coordinates of allocation and allocation flow are set once the first results are there.
+"""
+function SavedResults(p_independent::ParametersIndependent, config::Config, saveat)::SavedResults
+    (; basin, subgrid, graph, state_ranges, flow_boundary, cumulative_flow_dt, discrete_control) = p_independent
+    (; internal_flow_links, external_flow_links) = graph[]
+    (; record) = discrete_control
+    node_id = Int32.(basin.node_id)
+    nbasin = length(node_id)
+
+    from_node_id = Int32[]
+    to_node_id = Int32[]
+    link_id = Union{Int32, Missing}[]
+    for flow_link in external_flow_links
+        push!(from_node_id, flow_link.link[1].value)
+        push!(to_node_id, flow_link.link[2].value)
+        push!(link_id, flow_link.id)
+    end
+
+    substance = String.(basin.concentration_data.substances)
+    subgrid_id = sort(vcat(subgrid.subgrid_id_static, subgrid.subgrid_id_time))
+    allocation_control_id = allocation_control_node_ids(p_independent)
+    chunk_time = result_chunk_time(p_independent, config, saveat)
+
+    saved = SavedResults(;
+        chunk_time,
+        basin = SavedFile(;
+            coordinates = (; node_id),
+            variables = (;
+                level = Float64[],
+                storage = Float64[],
+                inflow_rate = Float64[],
+                outflow_rate = Float64[],
+                storage_rate = Float64[],
+                precipitation = Float64[],
+                surface_runoff = Float64[],
+                evaporation = Float64[],
+                drainage = Float64[],
+                infiltration = Float64[],
+                balance_error = Float64[],
+                relative_error = Float64[],
+                convergence = Union{Missing, Float64}[],
+            ),
+            size = (nbasin,),
+        ),
+        flow = SavedFile(;
+            coordinates = (; link_id, from_node_id, to_node_id),
+            variables = (; flow_rate = Float64[], convergence = Union{Missing, Float64}[]),
+            size = (length(link_id),),
+        ),
+        concentration = SavedFile(;
+            coordinates = (; node_id, substance),
+            variables = (; concentration = Float64[]),
+            size = (nbasin, length(substance)),
+        ),
+        subgrid_level = SavedFile(;
+            coordinates = (; subgrid_id),
+            variables = (; subgrid_level = Float64[]),
+            size = (length(subgrid_id),),
+        ),
+        solver_stats = SavedFile(;
+            coordinates = (;),
+            variables = (;
+                computation_time = Float64[],
+                rhs_calls = Int[],
+                linear_solves = Int[],
+                accepted_timesteps = Int[],
+                rejected_timesteps = Int[],
+                rejected_nonlinear_solve = Int[],
+                rejected_local_error = Int[],
+                rejected_out_of_domain = Int[],
+                mean_order = Float64[],
+                dt = Float64[],
+            ),
+            size = (),
+        ),
+        # This shares the vectors with the record that is added to during the simulation
+        control = SavedFile(;
+            record.time,
+            coordinates = (;),
+            variables = (; record.control_node_id, record.truth_state, record.control_state),
+            size = (),
+        ),
+        allocation = SavedFile(;
+            coordinates = (;
+                subnetwork_id = Int32[],
+                node_type = String[],
+                node_id = Int32[],
+                demand_priority = Int32[],
+            ),
+            variables = (; demand = Float64[], allocated = Float64[], supplied = Float64[]),
+            size = (0, 0),
+        ),
+        allocation_flow = SavedFile(;
+            coordinates = (;
+                link_id = Int32[],
+                from_node_type = String[],
+                from_node_id = Int32[],
+                to_node_type = String[],
+                to_node_id = Int32[],
+                subnetwork_id = Int32[],
+            ),
+            variables = (;
+                flow_rate = Float64[],
+                # NetCDF doesn't support Bool, use Int8 (0/1)
+                lower_bound_hit = Int8[],
+                upper_bound_hit = Int8[],
+            ),
+            size = (0,),
+        ),
+        allocation_control = SavedFile(;
+            coordinates = (;
+                node_id = Int32.(allocation_control_id),
+                node_type = [string(id.type) for id in allocation_control_id],
+            ),
+            variables = (; flow_rate = Float64[]),
+            size = (length(allocation_control_id),),
+        ),
+        mean_flows = MeanFlows(;
+            flow = similar(cumulative_flow_dt),
+            boundary_flow = zeros(length(flow_boundary.node_id)),
+            exact_vertical_forcing = zero(basin.forcing.exact_cumulative_forcing_since_reset),
+            flow_convergence = CVector(
+                Vector{Union{Missing, Float64}}(missing, length(p_independent.u_prev_saveat)),
+                state_ranges,
+            ),
+            internal_flow_rate = zeros(length(internal_flow_links)),
+        ),
+        level_prev = zeros(nbasin),
+    )
+
+    # The memory of the first time chunk is reused for all next ones
+    reserve_time_chunk!(saved.basin, chunk_time)
+    reserve_time_chunk!(saved.flow, chunk_time)
+    reserve_time_chunk!(saved.solver_stats, chunk_time)
+    p_independent.do_concentration && reserve_time_chunk!(saved.concentration, chunk_time)
+    p_independent.do_subgrid && reserve_time_chunk!(saved.subgrid_level, chunk_time)
+    return saved
+end
+
+function reserve_time_chunk!(file::SavedFile, chunk_time::Int)::Nothing
+    sizehint!(file.time, chunk_time)
+    foreach(variable -> sizehint!(variable, prod(file.size) * chunk_time), file.variables)
+    return nothing
+end
+
+"""
+The nodes that are in a subnetwork and can be controlled by allocation at some point, sorted.
+"""
+function allocation_control_node_ids(p_independent::ParametersIndependent)::Vector{NodeID}
+    (; pump, outlet, tabulated_rating_curve, graph, allocation) = p_independent
+    node_ids = NodeID[]
+    add_node_ids!(node) = begin
+        append!(node_ids, node.node_id[node.allocation_controlled])
+        for ((node_id, _), control_state_update) in node.control_mapping
+            control_state_update.allocation_controlled && push!(node_ids, node_id)
+        end
+    end
+    add_node_ids!(pump)
+    add_node_ids!(outlet)
+    add_node_ids!(tabulated_rating_curve)
+    filter!(id -> graph[id].subnetwork_id in allocation.subnetwork_ids, node_ids)
+    return sort!(unique!(node_ids))
+end
+
+"The results of a file in the shape of the NetCDF file, without the last `nkeep` time steps."
+function netcdf_data(file::SavedFile, starttime::DateTime; nkeep::Int = 0)::NamedTuple
+    (; time, coordinates, variables, size) = file
+    ntime = max(length(time) - nkeep, 0)
+    nvalue = prod(size) * ntime
+    return (;
+        time = datetime_since.(view(time, 1:ntime), starttime),
+        coordinates...,
+        map(variable -> reshape(view(variable, 1:nvalue), size..., ntime), variables)...,
+    )
+end
+
+"""
+The results of a file in the shape of the NetCDF file, or as one long column per variable.
+"""
+function saved_data(file::SavedFile, file_name::String, model::Model; table::Bool)::NamedTuple
+    data = netcdf_data(file, model.config.starttime)
+    table || return data
+    # The last variable depends on all dimensions
+    dim_names = nc_dims(file_name, String(last(keys(data))))
+    dim_lengths = [length(data[Symbol(dim_name)]) for dim_name in dim_names]
+    columns = map(keys(data), values(data)) do var_name, var_data
+        var_dims = nc_dims(file_name, String(var_name))
+        if length(var_dims) == length(dim_names)
+            vec(var_data)
+        else
+            i = findfirst(==(only(var_dims)), dim_names)
+            inner = prod(dim_lengths[begin:(i - 1)])
+            outer = prod(dim_lengths[(i + 1):end])
+            repeat(var_data; inner, outer)
+        end
+    end
+    return NamedTuple{keys(data)}(columns)
+end
+
 "Get the storage and level of all basins as matrices of nbasin × ntime"
 function get_storages_and_levels(
         model::Model,
@@ -352,504 +604,315 @@ function get_storages_and_levels(
         storage::Matrix{Float64},
         level::Matrix{Float64},
     }
-    (; config, integrator, saved) = model
-    (; p_independent) = integrator.p
-
-    node_id = p_independent.basin.node_id::Vector{NodeID}
-    tsteps = datetime_since.(tsaves(model), config.starttime)
-
-    storage = zeros(length(node_id), length(tsteps))
-    level = zero(storage)
-    for (i, cvec) in enumerate(saved.basin_state.saveval)
-        i > length(tsteps) && break
-        storage[:, i] .= cvec.storage
-        level[:, i] .= cvec.level
-    end
-
-    return (; time = tsteps, node_id, storage, level)
+    (; integrator, saved) = model
+    (; basin) = integrator.p.p_independent
+    (; storage, level) = saved.basin.variables
+    nbasin = length(basin.node_id)
+    return (;
+        time = datetimes(model),
+        node_id = basin.node_id,
+        storage = [reshape(storage, nbasin, :) basin.storage_prev_saveat],
+        level = [reshape(level, nbasin, :) saved.level_prev],
+    )
 end
 
 "Create the basin state table from the saved data"
 function basin_state_data(model::Model; table::Bool = true)
-    (; u, p, t) = model.integrator
-    (; basin) = p.p_independent
-    set_current_basin_properties!(u.flow, p, t)
+    (; p) = model.integrator
+    (; basin, u_accepted) = p.p_independent
+    set_current_basin_properties!(u_accepted.flow, p, p.p_mutable.tprev)
     return (; node_id = Int32.(basin.node_id), level = copy(p.current_basin_properties.current_level))
 end
 
 "Create the basin result table from the saved data"
-function basin_data(model::Model; table::Bool = true)
-    (; saved) = model
+basin_data(model::Model; table::Bool = true) =
+    saved_data(model.saved.basin, "basin", model; table)
 
-    # The last timestep is not included; there is no period over which to compute flows.
-    data = get_storages_and_levels(model)
-    storage = vec(data.storage[:, begin:(end - 1)])
-    level = vec(data.level[:, begin:(end - 1)])
-
-    nbasin = length(data.node_id)
-    ntsteps = length(data.time) - 1
-
-    inflow_rate = FlatVector(saved.flow.saveval, :inflow)
-    outflow_rate = FlatVector(saved.flow.saveval, :outflow)
-    drainage = FlatVector(saved.flow.saveval, :exact_vertical_forcing, :drainage)
-    precipitation = FlatVector(saved.flow.saveval, :exact_vertical_forcing, :precipitation)
-    surface_runoff = FlatVector(saved.flow.saveval, :exact_vertical_forcing, :surface_runoff)
-    evaporation = FlatVector(saved.flow.saveval, :flow, :vertical, :evaporation)
-    infiltration = FlatVector(saved.flow.saveval, :flow, :vertical, :infiltration)
-    storage_rate = FlatVector(saved.flow.saveval, :storage_rate)
-    balance_error = FlatVector(saved.flow.saveval, :balance_error)
-    relative_error = FlatVector(saved.flow.saveval, :relative_error)
-    convergence = FlatVector(saved.flow.saveval, :basin_convergence)
-
-    time = data.time[begin:(end - 1)]
-    node_id = Int32.(data.node_id)
-
-    if table
-        time = repeat(time; inner = nbasin)
-        node_id = repeat(node_id; outer = ntsteps)
-    else
-        level = reshape(level, nbasin, ntsteps)
-        storage = reshape(storage, nbasin, ntsteps)
-        evaporation = reshape(evaporation, nbasin, ntsteps)
-        infiltration = reshape(infiltration, nbasin, ntsteps)
-    end
-
-    return (;
-        time,
-        node_id,
-        level,
-        storage,
-        inflow_rate,
-        outflow_rate,
-        storage_rate,
-        precipitation,
-        surface_runoff,
-        evaporation,
-        drainage,
-        infiltration,
-        balance_error,
-        relative_error,
-        convergence,
-    )
-end
-
-function solver_stats_data(model::Model; table::Bool = true)
-    solver_stats = StructVector(model.saved.solver_stats.saveval)
-    accepted_timesteps = diff(solver_stats.accepted_timesteps)
-    return (;
-        time = datetime_since.(
-            solver_stats.time[1:(end - 1)],
-            model.integrator.p.p_independent.starttime,
-        ),
-        # convert nanosecond to millisecond
-        computation_time = diff(solver_stats.time_ns) .* 1.0e-6,
-        rhs_calls = diff(solver_stats.rhs_calls),
-        linear_solves = diff(solver_stats.linear_solves),
-        accepted_timesteps,
-        rejected_timesteps = diff(solver_stats.rejected_timesteps),
-        rejected_nonlinear_solve = diff(solver_stats.rejected_nonlinear_solve),
-        rejected_local_error = diff(solver_stats.rejected_local_error),
-        rejected_out_of_domain = diff(solver_stats.rejected_out_of_domain),
-        mean_order = diff(solver_stats.order_sum) ./ accepted_timesteps,
-        dt = diff(solver_stats.time) ./ accepted_timesteps,
-    )
-end
+"Create the solver stats result table from the saved data"
+solver_stats_data(model::Model; table::Bool = true) =
+    saved_data(model.saved.solver_stats, "solver_stats", model; table)
 
 "Create a flow result table from the saved data"
-function flow_data(model::Model; table::Bool = true)
-    (; config, saved, integrator) = model
-    (; t, saveval) = saved.flow
-    (; p) = integrator
-    (; p_independent) = p
-    (; graph) = p_independent
-    (; internal_flow_links, external_flow_links, flow_link_map) = graph[]
-
-    from_node_id = Int32[]
-    to_node_id = Int32[]
-    unique_link_ids_flow = Union{Int32, Missing}[]
-
-    for flow_link in external_flow_links
-        push!(from_node_id, flow_link.link[1].value)
-        push!(to_node_id, flow_link.link[2].value)
-        push!(unique_link_ids_flow, flow_link.id)
-    end
-
-    nflow = length(unique_link_ids_flow)
-    ntsteps = length(t)
-    flow_rate = zeros(nflow * ntsteps)
-    convergence = zeros(nflow * ntsteps) |> Vector{Union{Missing, Float64}}
-    internal_flow_rate = zeros(length(internal_flow_links))
-    internal_convergence = zeros(length(internal_flow_links)) |> Vector{Union{Missing, Float64}}
-
-    for (ti, saved_flow) in enumerate(saveval)
-        for (fi, link) in enumerate(internal_flow_links)
-            if link.link[1].type == NodeType.FlowBoundary
-                internal_flow_rate[fi] =
-                    saved_flow.boundary_flow[link.link[1].idx]
-                internal_convergence[fi] = missing
-            else
-                internal_flow_rate[fi] =
-                    get_flow(saved_flow.flow, link.link, p_independent)
-                internal_convergence[fi] =
-                    get_flow(saved_flow.flow_convergence.flow, link.link, p_independent)
-            end
-        end
-        mul!(
-            view(flow_rate, (1 + (ti - 1) * nflow):(ti * nflow)),
-            flow_link_map,
-            internal_flow_rate,
-        )
-        mul!(
-            view(convergence, (1 + (ti - 1) * nflow):(ti * nflow)),
-            flow_link_map,
-            internal_convergence
-        )
-    end
-
-    # the timestamp should represent the start of the period, not the end
-    t_starts = circshift(t, 1)
-    if !isempty(t)
-        t_starts[1] = 0.0
-    end
-
-    time = datetime_since.(t_starts, config.starttime)
-    link_id = unique_link_ids_flow
-    from_node_id = from_node_id
-    to_node_id = to_node_id
-
-    if table
-        time = repeat(time; inner = nflow)
-        link_id = repeat(link_id; outer = ntsteps)
-        from_node_id = repeat(from_node_id; outer = ntsteps)
-        to_node_id = repeat(to_node_id; outer = ntsteps)
-    else
-        flow_rate = reshape(flow_rate, nflow, ntsteps)
-        convergence = reshape(convergence, nflow, ntsteps)
-    end
-
-    return (;
-        time,
-        link_id,
-        from_node_id,
-        to_node_id,
-        flow_rate,
-        convergence,
-    )
-end
+flow_data(model::Model; table::Bool = true) =
+    saved_data(model.saved.flow, "flow", model; table)
 
 "Create a concentration result table from the saved data"
-function concentration_data(model::Model; table::Bool = true)
-    (; saved, integrator) = model
-    (; p_independent) = integrator.p
-    (; basin) = p_independent
-
-    # The last timestep is not included; there is no period over which to compute flows.
-    data = get_storages_and_levels(model)
-
-    ntsteps = length(data.time) - 1
-    nbasin = length(data.node_id)
-    nsubstance = length(basin.concentration_data.substances)
-
-    substances = String.(basin.concentration_data.substances)
-    concentration = FlatVector(saved.flow.saveval, :concentration)
-
-    time = data.time[begin:(end - 1)]
-    substance = substances
-    node_id = Int32.(data.node_id)
-
-    if table
-        time = repeat(time; inner = nbasin * nsubstance)
-        substance = repeat(substance; inner = nbasin, outer = ntsteps)
-        node_id = repeat(node_id; outer = ntsteps * nsubstance)
-    else
-        concentration = reshape(concentration, nbasin, nsubstance, ntsteps)
-    end
-
-    return (; time, node_id, substance, concentration)
-end
+concentration_data(model::Model; table::Bool = true) =
+    saved_data(model.saved.concentration, "concentration", model; table)
 
 "Create a discrete control result table from the saved data"
-function discrete_control_data(model::Model; table::Bool = true)
-    (; config) = model
-    (; record) = model.integrator.p.p_independent.discrete_control
+discrete_control_data(model::Model; table::Bool = true) =
+    saved_data(model.saved.control, "control", model; table)
 
-    time = datetime_since.(record.time, config.starttime)
-    return (; time, record.control_node_id, record.truth_state, record.control_state)
+"""
+Make the allocation results complete: move the last records to the results, and set the
+supplied flows of the last intervention interval, which are normally set by the next one.
+"""
+function finish_allocation_results!(model::Model)::Nothing
+    (; integrator, saved) = model
+    (; p_independent, current_basin_properties) = integrator.p
+    (; current_storage) = current_basin_properties
+    (; allocation, user_demand, flow_demand, level_demand) = p_independent
+    (; allocation_models) = allocation
+    save_allocation_records!(saved, p_independent)
+
+    file = saved.allocation
+    (; node_id) = file.coordinates
+    isempty(file.time) && return nothing
+    nvalue = prod(file.size)
+    last_values(variable) = reshape(view(variable, (length(variable) - nvalue + 1):length(variable)), file.size)
+    supplied = last_values(file.variables.supplied)
+    has_priority = .!isnan.(last_values(file.variables.allocated))
+    Δt = integrator.t - allocation.time.t_intervention
+
+    for allocation_model in allocation_models
+        (; cumulative_supplied_volume, node_ids_in_subnetwork) = allocation_model
+        (;
+            user_demand_ids_subnetwork,
+            node_ids_subnetwork_with_flow_demand,
+            basin_ids_subnetwork_with_level_demand,
+        ) = node_ids_in_subnetwork
+
+        # UserDemand: sum supplied volumes across all inflow links for each node
+        for id in user_demand_ids_subnetwork
+            j = searchsortedfirst(node_id, id)
+            total_supplied = sum(
+                cumulative_supplied_volume[lm.link] for
+                    lm in user_demand.inflow_links[id.idx]
+            )
+            supplied[view(has_priority, :, j), j] .= total_supplied / Δt
+        end
+
+        # FlowDemand
+        for id in node_ids_subnetwork_with_flow_demand
+            j = searchsortedfirst(node_id, id)
+            # The node can also have other control inneighbors, such as a DiscreteControl
+            flow_demand_id = get_external_demand_id(p_independent, id)
+            supplied[view(has_priority, :, j), j] .=
+                cumulative_supplied_volume[flow_demand.inflow_link[flow_demand_id.idx].link] /
+                Δt
+        end
+
+        # LevelDemand
+        for id in basin_ids_subnetwork_with_level_demand
+            j = searchsortedfirst(node_id, id)
+            supplied[view(has_priority, :, j), j] .=
+                (current_storage[id.idx] - level_demand.storage_prev[id]) / Δt
+        end
+    end
+    return nothing
 end
 
 "Create an allocation result table for the saved data"
 function allocation_data(model::Model; table::Bool = true)
-    (; config, integrator) = model
-    (; p_independent, current_basin_properties) = integrator.p
-    (; current_storage) = current_basin_properties
-    (; allocation, user_demand, flow_demand, level_demand) = p_independent
-    (; demand_priorities_all, allocation_models) = allocation
-    record_demand = StructVector(model.integrator.p.p_independent.allocation.record_demand)
-
-    datetimes = datetime_since.(record_demand.time, config.starttime)
-
-    time = unique(datetimes)
-    node_id = sort!(unique(record_demand.node_id))
-
-    nrows = length(record_demand)
-    ntsteps = length(time)
-    nnodes = length(node_id)
-    nprio = length(demand_priorities_all)
-
-    # record_demand only stores existing node_id and demand_priority combination
-    # e.g. node #3 has only prio 1, node #6 has only prio 3
-    # here we need to create the 2x2 matrix ourselves and fill in this case half
-    demand = fill(NaN, nprio, nnodes, ntsteps)
-    allocated = fill(NaN, nprio, nnodes, ntsteps)
-    supplied = fill(NaN, nprio, nnodes, ntsteps)
-
-    # coordinate variables are similarly filled in
-    subnetwork_id = zeros(Int32, nnodes)
-    node_type = ["" for _ in 1:nnodes]
-
-    has_priority = zeros(Bool, nprio, nnodes)
-
-    for row_idx in 1:nrows
-        row = record_demand[row_idx]
-        prio = row.demand_priority
-        node = row.node_id
-        t = datetime_since(row.time, config.starttime)
-
-        i = searchsortedfirst(demand_priorities_all, prio)
-        j = searchsortedfirst(node_id, node)
-        k = searchsortedfirst(time, t)
-        demand[i, j, k] = row.demand
-        allocated[i, j, k] = row.allocated
-
-        if k > 1
-            supplied[i, j, k - 1] = row.supplied
-        end
-        subnetwork_id[j] = row.subnetwork_id
-        node_type[j] = row.node_type
-        has_priority[i, j] = true
-    end
-
-    # Handle supplied flows in the last intervention interval
-    if !isempty(record_demand)
-        Δt = integrator.t - allocation.time.t_intervention
-        for allocation_model in allocation_models
-            (; cumulative_supplied_volume, node_ids_in_subnetwork) = allocation_model
-            (;
-                user_demand_ids_subnetwork,
-                node_ids_subnetwork_with_flow_demand,
-                basin_ids_subnetwork_with_level_demand,
-            ) = node_ids_in_subnetwork
-
-            # UserDemand: sum supplied volumes across all inflow links for each node
-            for id in user_demand_ids_subnetwork
-                j = searchsortedfirst(node_id, id)
-                total_supplied = sum(
-                    cumulative_supplied_volume[lm.link] for
-                        lm in user_demand.inflow_links[id.idx]
-                )
-                supplied[view(has_priority, :, j), j, end] .= total_supplied / Δt
-            end
-
-            # FlowDemand
-            for id in node_ids_subnetwork_with_flow_demand
-                j = searchsortedfirst(node_id, id)
-                # The node can also have other control inneighbors, such as a DiscreteControl
-                flow_demand_id = get_external_demand_id(p_independent, id)
-                supplied[view(has_priority, :, j), j, end] .=
-                    cumulative_supplied_volume[flow_demand.inflow_link[flow_demand_id.idx].link] /
-                    Δt
-            end
-
-            # LevelDemand
-            for id in basin_ids_subnetwork_with_level_demand
-                j = searchsortedfirst(node_id, id)
-                supplied[view(has_priority, :, j), j, end] .=
-                    (current_storage[id.idx] - level_demand.storage_prev[id]) / Δt
-            end
-        end
-    end
-
-    return if table
-        (;
-            time = repeat(time; inner = nprio * nnodes),
-            subnetwork_id = repeat(subnetwork_id; inner = nprio, outer = ntsteps),
-            node_type = repeat(node_type; inner = nprio, outer = ntsteps),
-            node_id = repeat(node_id; inner = nprio, outer = ntsteps),
-            demand_priority = repeat(demand_priorities_all; outer = nnodes * ntsteps),
-            demand = vec(demand),
-            allocated = vec(allocated),
-            supplied = vec(supplied),
-        )
-    else
-        (;
-            time,
-            subnetwork_id,
-            node_type,
-            node_id,
-            demand_priority = demand_priorities_all,
-            demand,
-            allocated,
-            supplied,
-        )
-    end
+    finish_allocation_results!(model)
+    return saved_data(model.saved.allocation, "allocation", model; table)
 end
 
 function allocation_flow_data(model::Model; table::Bool = true)
-    (; config) = model
-    record_flow = StructVector(model.integrator.p.p_independent.allocation.record_flow)
-
-    if table
-        time = datetime_since.(record_flow.time, config.starttime)
-        link_id = record_flow.link_id
-        from_node_type = record_flow.from_node_type
-        from_node_id = record_flow.from_node_id
-        to_node_type = record_flow.to_node_type
-        to_node_id = record_flow.to_node_id
-        subnetwork_id = record_flow.subnetwork_id
-        flow_rate = record_flow.flow_rate
-        lower_bound_hit = record_flow.lower_bound_hit
-        upper_bound_hit = record_flow.upper_bound_hit
-    else
-        # For NetCDF, organize data by unique link_id and time
-        time = unique(datetime_since.(record_flow.time, config.starttime))
-        link_id = sort!(unique(record_flow.link_id))
-
-        nlinks = length(link_id)
-        ntsteps = length(time)
-
-        # Initialize matrices
-        flow_rate = fill(NaN, nlinks, ntsteps)
-
-        # NetCDF doesn't support Bool, use Int8 (0/1)
-        lower_bound_hit = zeros(Int8, nlinks, ntsteps)
-        upper_bound_hit = zeros(Int8, nlinks, ntsteps)
-
-        # Coordinate variables (static per link)
-        from_node_id = zeros(Int32, nlinks)
-        to_node_id = zeros(Int32, nlinks)
-        from_node_type = fill("", nlinks)
-        to_node_type = fill("", nlinks)
-        subnetwork_id = zeros(Int32, nlinks)
-
-        # Fill in the data
-        for row in record_flow
-            i = searchsortedfirst(link_id, row.link_id)
-            j = searchsortedfirst(time, datetime_since(row.time, config.starttime))
-
-            flow_rate[i, j] = row.flow_rate
-            lower_bound_hit[i, j] = Int8(row.lower_bound_hit)
-            upper_bound_hit[i, j] = Int8(row.upper_bound_hit)
-
-            # Coordinate variables (same for all timesteps)
-            from_node_id[i] = row.from_node_id
-            to_node_id[i] = row.to_node_id
-            from_node_type[i] = row.from_node_type
-            to_node_type[i] = row.to_node_type
-            subnetwork_id[i] = row.subnetwork_id
-        end
-    end
-
-    return (;
-        time,
-        link_id,
-        from_node_type,
-        from_node_id,
-        to_node_type,
-        to_node_id,
-        subnetwork_id,
-        flow_rate,
-        lower_bound_hit,
-        upper_bound_hit,
+    finish_allocation_results!(model)
+    data = saved_data(model.saved.allocation_flow, "allocation_flow", model; table)
+    table || return data
+    return merge(
+        data,
+        (; lower_bound_hit = Bool.(data.lower_bound_hit), upper_bound_hit = Bool.(data.upper_bound_hit)),
     )
 end
 
 function allocation_control_data(model::Model; table::Bool = true)
-    (; integrator, config) = model
-    record_control =
-        StructVector(model.integrator.p.p_independent.allocation.record_control)
-
-    if table
-        time = datetime_since.(record_control.time, config.starttime)
-        node_id = record_control.node_id
-        node_type = record_control.node_type
-        flow_rate = record_control.flow_rate
-    else
-        # For NetCDF, organize data by unique node_id and time
-        time = unique(datetime_since.(record_control.time, config.starttime))
-        node_id = sort!(unique(record_control.node_id))
-
-        nnodes = length(node_id)
-        ntsteps = length(time)
-
-        # Initialize matrices
-        flow_rate = fill(NaN, nnodes, ntsteps)
-
-        # Coordinate variable (static per node)
-        node_type = fill("", nnodes)
-
-        # Fill in the data
-        for row in record_control
-            i = searchsortedfirst(node_id, row.node_id)
-            j = searchsortedfirst(time, datetime_since(row.time, config.starttime))
-
-            flow_rate[i, j] = row.flow_rate
-
-            # Coordinate variable (same for all timesteps)
-            node_type[i] = row.node_type
-        end
-    end
-
-    return (; time, node_id, node_type, flow_rate)
+    finish_allocation_results!(model)
+    return saved_data(model.saved.allocation_control, "allocation_control", model; table)
 end
 
-function subgrid_level_data(model::Model; table::Bool = true)
-    (; config, saved, integrator) = model
-    (; t, saveval) = saved.subgrid_level
-    subgrid = integrator.p.p_independent.subgrid
+subgrid_level_data(model::Model; table::Bool = true) =
+    saved_data(model.saved.subgrid_level, "subgrid_level", model; table)
 
-    nelem = length(subgrid.level)
-    ntsteps = length(t)
+"""
+Write a result table to disk as a NetCDF file.
 
-    time = datetime_since.(t, config.starttime)
-    subgrid_id = sort(vcat(subgrid.subgrid_id_static, subgrid.subgrid_id_time))
-
-    if table
-        time = repeat(time; inner = nelem)
-        subgrid_id = repeat(subgrid_id; outer = ntsteps)
-        subgrid_level = FlatVector(saveval)
-    else
-        subgrid_level = reshape(FlatVector(saveval), nelem, ntsteps)
-    end
-    return (; time, subgrid_id, subgrid_level)
-end
-
-"Write a result table to disk as a NetCDF file"
+If `chunk_time` is given, the time dimension is unlimited and this is the time chunk size.
+The `data` then holds the time steps after the `ntime_written` that are already in the file.
+"""
 function write_netcdf(
         path::AbstractString,
-        data::NamedTuple;
-        deflatelevel::Int = 0,
+        data::NamedTuple,
+        results::Results = Results();
+        significant_bits::Int = results.significant_bits,
+        chunk_time::Union{Int, Nothing} = nothing,
+        ntime_written::Int = 0,
     )::Nothing
     mkpath(dirname(path))
     # Don't write empty files
     haskey(data, :time) && isempty(data.time) && return nothing
     file_name = splitext(basename(path))[1]
     attrib = merge(CF_GLOBAL_ATTRIB, OrderedDict("title" => "Ribasim results: $file_name"))
-    NCDataset(path, "c"; attrib) do ds
+    is_new = iszero(ntime_written)
+    # Creating a file that is open in another application would empty it before failing
+    is_new && rm(path; force = true)
+    NCDataset(path, is_new ? "c" : "a"; attrib = is_new ? attrib : empty(attrib)) do ds
         for (var_name, var_data) in pairs(data)
             var_name = String(var_name)
             var_dims = Tuple(nc_dims(file_name, var_name))
-            # FlatVector contents can easily be stacked to a matrix
-            # Normal Vectors should be reshape to a matrix already
-            if var_data isa FlatVector && length(var_dims) > 1
-                var_data = stack(var_data.v)
+            has_time = "time" in var_dims
+            # The location coordinates are already in the file
+            !is_new && !has_time && continue
+            v = if is_new
+                define_netcdf_variable(ds, var_name, var_data, var_dims, results, significant_bits, chunk_time)
+            else
+                ds[var_name]
             end
-            attrib = CF[var_name]
-            defVar(ds, var_name, var_data, var_dims; attrib, deflatelevel)
+            if has_time
+                ntime = size(var_data, ndims(var_data))
+                v[axes(var_data)[begin:(end - 1)]..., (ntime_written + 1):(ntime_written + ntime)] = var_data
+            else
+                v[axes(var_data)...] = var_data
+            end
         end
     end
     return nothing
 end
 
+# From netcdf.h
+const NC_QUANTIZE_BITROUND = Cint(3)
+
+# Number of values in a chunk, 1 MiB of Float64
+const NC_CHUNK_LENGTH = 131072
+
+"""
+Chunk sizes along the location and time dimensions, shaped such that reading all locations at
+one time, and reading one location at all times, read about the same amount of data.
+"""
+function balanced_chunksizes(nlocation::Int, ntime::Int)::Tuple{Int, Int}
+    chunk_location = clamp(round(Int, sqrt(NC_CHUNK_LENGTH * nlocation / ntime)), 1, nlocation)
+    chunk_time = clamp(NC_CHUNK_LENGTH ÷ chunk_location, 1, ntime)
+    return chunk_location, chunk_time
+end
+
+# The expected number of time steps if results are saved at each solver time step
+const NC_NTIME_SAVE_EVERY_STEP = 8192
+
+"""
+The time chunk size of all results that are written during the simulation, which is balanced
+for the result with the most locations. The other results are then faster to read at one time.
+"""
+function result_chunk_time(p_independent::ParametersIndependent, config::Config, saveat)::Int
+    (; basin, subgrid, graph) = p_independent
+    nlocation = max(length(basin), length(graph[].external_flow_links), length(subgrid.level), 1)
+    t_end = seconds_since(config.endtime, config.starttime)
+    ntime = if saveat isa Float64
+        max(ceil(Int, t_end / saveat), 1)
+    else
+        isempty(saveat) ? NC_NTIME_SAVE_EVERY_STEP : 1
+    end
+    return last(balanced_chunksizes(nlocation, ntime))
+end
+
+"""
+Chunk sizes for a variable with a time dimension. Dimensions other than location and time, like
+substance, get a chunk size of 1, since they are typically read one at a time.
+
+If `chunk_time` is given, the time dimension is unlimited and this is the time chunk size.
+Otherwise the chunks are balanced, see `balanced_chunksizes`.
+"""
+function nc_chunksizes(
+        var_dims::Tuple,
+        var_size::Tuple,
+        chunk_time::Union{Int, Nothing} = nothing,
+    )::Union{Vector{Int}, Nothing}
+    i_time = findfirst(==("time"), var_dims)
+    i_location = findfirst(in(("node_id", "link_id", "subgrid_id")), var_dims)
+    isnothing(i_time) && return nothing
+    if isnothing(i_location)
+        # All chunks are complete after a write, like those of the variables with a location
+        return isnothing(chunk_time) ? nothing : [chunk_time]
+    end
+    any(iszero, var_size) && return nothing
+    nlocation = var_size[i_location]
+    chunk_location, chunk_time = if isnothing(chunk_time)
+        balanced_chunksizes(nlocation, var_size[i_time])
+    else
+        clamp(NC_CHUNK_LENGTH ÷ chunk_time, 1, nlocation), chunk_time
+    end
+    chunksizes = ones(Int, length(var_dims))
+    chunksizes[i_time] = chunk_time
+    chunksizes[i_location] = chunk_location
+    return chunksizes
+end
+
+"""
+Define a NetCDF variable.
+
+The quantization needs to be set between defining the variable and writing the data, so
+this splits up what `defVar(ds, var_name, var_data, var_dims)` does. If compression is on and
+`significant_bits` is positive, floating point data is quantized with BitRound, and shuffled
+before compression.
+
+If `chunk_time` is given, the time dimension is unlimited and this is the time chunk size.
+"""
+function define_netcdf_variable(
+        ds::NCDataset,
+        var_name::String,
+        var_data::AbstractArray,
+        var_dims::Tuple,
+        results::Results,
+        significant_bits::Int,
+        chunk_time::Union{Int, Nothing},
+    )
+    (; compression, compression_level) = results
+    for (i, dim_name) in enumerate(var_dims)
+        if !haskey(ds.dim, dim_name)
+            unlimited = dim_name == "time" && !isnothing(chunk_time)
+            defDim(ds, dim_name, unlimited ? Inf : size(var_data, i))
+        end
+    end
+
+    attrib = OrderedDict{String, Any}(CF[var_name])
+    T = eltype(var_data)
+    nctype = nonmissingtype(T)
+    # don't quantize time, which is stored as a Float64
+    quantize = compression && nctype <: AbstractFloat && significant_bits > 0
+    if nctype <: DateTime
+        nctype = Float64
+        attrib["units"] = "days since 1900-01-01 00:00:00"
+    end
+    if Missing <: T
+        attrib["_FillValue"] = NCDatasets.fillvalue(nctype)
+    end
+
+    chunksizes = nc_chunksizes(var_dims, size(var_data), chunk_time)
+    v = if compression
+        defVar(
+            ds,
+            var_name,
+            nctype,
+            var_dims;
+            attrib,
+            deflatelevel = compression_level,
+            shuffle = quantize,
+            chunksizes,
+        )
+    elseif isnothing(chunk_time)
+        defVar(ds, var_name, nctype, var_dims; attrib)
+    else
+        defVar(ds, var_name, nctype, var_dims; attrib, chunksizes)
+    end
+    if quantize
+        # NCDatasets.quantize is on main, and will be in the release after v0.14.15
+        NCDatasets.check(
+            ccall(
+                (:nc_def_var_quantize, NCDatasets.libnetcdf),
+                Cint,
+                (Cint, Cint, Cint, Cint),
+                ds.ncid,
+                v.var.varid,
+                NC_QUANTIZE_BITROUND,
+                significant_bits,
+            ),
+        )
+    end
+
+    return v
+end
 
 function output_basin_profiles(
         all_levels::Vector{Vector{Float64}},
