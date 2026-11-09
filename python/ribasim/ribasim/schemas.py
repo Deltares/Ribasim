@@ -201,6 +201,7 @@ class FlowBoundaryTimeSchema(_BaseSchema):
     node_id: np.int32 = pa.Field(nullable=False, default=0)
     time: pd.Timestamp = pa.Field(nullable=False)
     flow_rate: float = pa.Field(nullable=False)
+    interpolation: pd.StringDtype = pa.Field(nullable=True)
 
 
 class FlowDemandStaticSchema(_BaseSchema):

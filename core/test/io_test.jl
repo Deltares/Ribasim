@@ -402,6 +402,26 @@ end
     @test length(unique(table[:time])) == n_time
     @test !any(ismissing, table[:flow_rate])
     @test !any(==(-999.0f0), table[:flow_rate])
+    # The optional interpolation variable is not in the file
+    @test table[:interpolation] isa Vector{Union{Missing, String}}
+    @test all(ismissing, table[:interpolation])
+
+    # NetCDF has no missing strings, Python writes empty strings, or NaN if all are missing
+    ncpath = normpath(mktempdir(), "flow_boundary_time.nc")
+    for (interpolation, expected) in (
+            (["linear" "linear"; "" ""], ["linear", missing, "linear", missing]),
+            (fill(NaN, 2, 2), fill(missing, 4)),
+        )
+        NCDataset(ncpath, "c") do ds
+            defVar(ds, "node_id", Int32[1, 2], ("node_id",))
+            defVar(ds, "time", [DateTime(2020), DateTime(2021)], ("time",))
+            defVar(ds, "flow_rate", [1.0 2.0; 3.0 4.0], ("node_id", "time"))
+            defVar(ds, "interpolation", interpolation, ("node_id", "time"))
+        end
+        python_table = load_netcdf(ncpath, Schema.FlowBoundary.Time)
+        @test python_table[:flow_rate] == [1.0, 3.0, 2.0, 4.0]
+        @test isequal(python_table[:interpolation], expected)
+    end
 
     # Test FlowDemand / time loading
     ncpath = normpath(ncdir, "flow_demand.nc")

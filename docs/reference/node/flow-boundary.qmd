@@ -34,17 +34,24 @@ table_from_schema(
 ## Time
 
 This table is the transient form of the `FlowBoundary` table.
-The only difference is that a time column is added.
+The difference is that a time column is added, and an optional interpolation column.
 With this the flow rates can be updated over time. In between the given times the
-flow rate is interpolated in a way specified in the [interpolation settings](/reference/usage.qmd#interpolation-settings) (block interpolation by default), and outside the flow rate is constant given by the
+flow rate is interpolated, and outside the flow rate is constant given by the
 nearest time value unless the node is cyclic in time.
 Note that a `node_id` can be either in this table or in the static one, but not both.
+
+The `interpolation` column sets the interpolation type per node, either `block` or `linear`.
+It cannot change over time, so it must have the same value in all rows of a node.
+If it is missing, the `flow_boundary` interpolation type from the [interpolation settings](/reference/usage.qmd#interpolation-settings) is used, which is `block` by default.
 
 ```{julia}
 # | code-fold: true
 table_from_schema(
     Ribasim.Schema.FlowBoundary.Time;
-    restrictions = Dict(:flow_rate => "non-negative"),
+    restrictions = Dict(
+        :flow_rate => "non-negative",
+        :interpolation => "block or linear, constant per node",
+    ),
 )
 ```
 

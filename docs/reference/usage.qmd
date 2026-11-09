@@ -86,7 +86,7 @@ This makes control state changes coincide and can make simulations much faster, 
 ## Interpolation settings
 There are the following interpolation settings:
 
-- `flow_boundary`: The interpolation type of flow boundary timeseries. This is `block` by default, but can also be set to `linear`.
+- `flow_boundary`: The interpolation type of flow boundary timeseries. This is `block` by default, but can also be set to `linear`. FlowBoundary nodes can override this with the `interpolation` column of the `FlowBoundary / time` table.
 - `block_transition_period`: When an interpolation type is set to `block`, this parameter determines an interval in time on either side of each data point which is used to smooth the transition between data points. See also the [documentation](https://docs.sciml.ai/DataInterpolations/dev/methods/#Smoothed-Constant-Interpolation) for this interpolation type.
 
 ## Allocation settings {#sec-allocation-settings}
