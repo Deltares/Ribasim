@@ -11,10 +11,10 @@ from matplotlib.patches import Circle, FancyBboxPatch
 
 # The Wflow SBM update sequence as split in online.jl
 COMPONENTS = [
-    "Interception",
+    "Inter-\nception",
     "Snow",
     "Glacier",
-    "Open-water\nrunoff",
+    "Open-\nwater\nrunoff",
     "Water\ndemand",
     "Water\nallocation",
     "Soil",
@@ -87,7 +87,7 @@ def toggle(ax, x, y, on, color):
     ax.add_patch(
         FancyBboxPatch(
             (x, y),
-            0.9,
+            0.7,
             0.36,
             boxstyle="round,pad=0,rounding_size=0.18",
             facecolor=color if on else "#D0D5DD",
@@ -97,7 +97,7 @@ def toggle(ax, x, y, on, color):
     )
     ax.add_patch(
         Circle(
-            (x + (0.72 if on else 0.18), y + 0.18), 0.14, facecolor="white", zorder=6
+            (x + (0.52 if on else 0.18), y + 0.18), 0.14, facecolor="white", zorder=6
         )
     )
 
@@ -272,8 +272,8 @@ ax.text(
 # Config file with toggles
 ax.add_patch(
     FancyBboxPatch(
-        (0.3, y - 1.25),
-        2.2,
+        (0.1, y - 1.25),
+        2.55,
         3.55,
         boxstyle="round,pad=0,rounding_size=0.2",
         facecolor="white",
@@ -295,8 +295,8 @@ for k, (label, on) in enumerate(
     [("soil", True), ("allocation", False), ("rivers", False)]
 ):
     yy = y + 1.25 - k * 0.95
-    ax.text(0.5, yy, label, fontsize=12, color=C["dark"], va="center")
-    toggle(ax, 1.45, yy - 0.18, on, C["wflow"])
-arrow(ax, (2.55, y + H / 2), (X0 - 0.3, y + H / 2), C["muted"], lw=3)
+    ax.text(0.3, yy, label, fontsize=12, color=C["dark"], va="center")
+    toggle(ax, 1.8, yy - 0.18, on, C["wflow"])
+arrow(ax, (2.7, y + H / 2), (X0 - 0.3, y + H / 2), C["muted"], lw=3)
 
-save(fig, "07_modular_wflow.png")
+save(fig, "backup/b2_modular_wflow.png")

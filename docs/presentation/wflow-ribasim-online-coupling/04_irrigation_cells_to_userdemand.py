@@ -86,8 +86,8 @@ gs = fig.add_gridspec(
 )
 slide_title(
     fig,
-    "Irrigation: from Wflow cells to Ribasim UserDemands",
-    "One UserDemand per Basin ∩ Wflow allocation area containing irrigated cells (PR #3333)",
+    "Irrigated cells become Ribasim UserDemands",
+    "Irrigated Wflow cells are grouped per Basin and allocation area; each group gets one UserDemand",
 )
 
 # Left: overview
@@ -97,11 +97,15 @@ ax.imshow(
     extent=extent,
     interpolation="nearest",
 )
+# Keep the area labels clear of the irrigated cells
+ii, jj = np.nonzero(irrigated)
+irrigated_cells = gpd.points_from_xy(lon[jj], lat[ii]).buffer(0.04).union_all()
 for k, area in enumerate(allocation_areas.itertuples()):
     gpd.GeoSeries([area.geometry]).plot(
         ax=ax, color=AREA_COLORS[k % 4], alpha=0.6, edgecolor=C["dark"], lw=1.5, ls="--"
     )
-    p = area.geometry.representative_point()
+    free = area.geometry.difference(irrigated_cells)
+    p = (free if not free.is_empty else area.geometry).representative_point()
     ax.text(
         p.x,
         p.y,
@@ -225,7 +229,8 @@ for node_id, ud in user_demands.iterrows():
         )
     )
     ax.annotate(
-        f"UserDemand #{node_id}\nBasin #{source} ∩ area {int(ud.meta_allocation_area_id)}",
+        f"UserDemand #{node_id}\ntakes from Basin #{source}\n"
+        f"for allocation area {int(ud.meta_allocation_area_id)}",
         (ud.geometry.x, ud.geometry.y),
         xytext=(14, 14),
         textcoords="offset points",
@@ -243,7 +248,7 @@ for node_id, ud in user_demands.iterrows():
     ax.annotate(
         f"#{source}",
         (basin.x, basin.y),
-        xytext=(-12, -18),
+        xytext=(-28, -28),
         textcoords="offset points",
         fontsize=12,
         color=C["water_dark"],
@@ -267,7 +272,7 @@ ax.add_patch(
         zorder=10,
     )
 )
-ax.set_title("Zoom: cells grouped per UserDemand", loc="left", color=C["dark"])
+ax.set_title("Zoom: cells grouped into UserDemands", loc="left", color=C["dark"])
 
 handles = [
     Patch(facecolor=ud_color[n], label=f"irrigated → UserDemand #{n}")
@@ -318,4 +323,4 @@ ax.legend(
 )
 arrow_between(fig, ax_overview, ax)
 
-save(fig, "03_irrigation_cells_to_userdemand.png")
+save(fig, "04_irrigation_cells_to_userdemand.png")

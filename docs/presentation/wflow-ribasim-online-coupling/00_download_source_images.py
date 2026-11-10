@@ -1,6 +1,6 @@
 """Download the original figures from the GitHub issues / pull requests into source_images/.
 
-Run once; the images are reused by 09_original_pr_figures.py.
+Run once; the images are reused by b3_original_pr_figures.py.
 """
 
 import ssl

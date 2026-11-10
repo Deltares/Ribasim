@@ -159,7 +159,7 @@ def draw(variant: str) -> None:
         zorder=0,
     )
     ax.add_patch(
-        Circle((14.9, 6.6), 0.5, facecolor="#FFD166", edgecolor="none", zorder=1)
+        Circle((10.9, 7.5), 0.5, facecolor="#FFD166", edgecolor="none", zorder=1)
     )
 
     mountain = Polygon(
@@ -296,6 +296,18 @@ def draw(variant: str) -> None:
             ),
             "Wflow river cell",
         ),
+        (
+            Line2D(
+                [],
+                [],
+                ls="",
+                marker="s",
+                markersize=20,
+                markerfacecolor="#C9DC5C" if irrigation else "#D8CF7A",
+                markeredgecolor="white",
+            ),
+            "irrigated Wflow cell" if irrigation else "Wflow cell with crops",
+        ),
     ]
 
     if not coupled:
@@ -421,26 +433,11 @@ def draw(variant: str) -> None:
             x, y = project(10.4 + 0.6 * k, 6.2 / N_ROWS)
             droplet(ax, x, y + 0.35 + 0.12 * (k % 2), 0.12, C["water"], zorder=8)
         legend.append((make_icon_box("UserDemand", size=70), "Ribasim UserDemand"))
-    legend.append(
-        (
-            Line2D(
-                [],
-                [],
-                ls="",
-                marker="s",
-                markersize=20,
-                markerfacecolor="#C9DC5C" if irrigation else "#D8CF7A",
-                markeredgecolor="white",
-            ),
-            "Wflow cell with crops" if not irrigation else "irrigated Wflow cell",
-        )
-    )
-
-    # Legend panel with the real Ribasim icons, in two columns when it gets long
-    n = len(legend)
+    # Legend panel with the real Ribasim icons. The panel has the same size in all three
+    # variants, so the slides read as one image that gains elements.
     row = 0.47
-    ncols = 1 if n <= 4 else 2
-    nrows = -(-n // ncols)
+    ncols = 2
+    nrows = 4
     col_width = 4.3
     ax.add_patch(
         FancyBboxPatch(
@@ -509,9 +506,9 @@ def draw(variant: str) -> None:
     save(
         fig,
         {
-            "standalone": "01a_concept_wflow.png",
-            "river": "01b_concept_coupled.png",
-            "irrigation": "01c_concept_irrigation.png",
+            "standalone": "02a_concept_wflow.png",
+            "river": "02b_concept_coupled.png",
+            "irrigation": "02c_concept_irrigation.png",
         }[variant],
     )
 

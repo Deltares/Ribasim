@@ -190,30 +190,13 @@ cell_colors = [
 ax.scatter(
     rivers.longitude,
     rivers.latitude,
-    s=26,
+    s=34,
     marker="s",
     c=cell_colors,
     edgecolor=C["dark"],
     linewidth=0.5,
     zorder=4,
 )
-basins = nodes[nodes.node_type.isin(["Basin", "FlowBoundary"])]
-for node_id, node in basins.iterrows():
-    ax.annotate(
-        f"#{node_id}",
-        (node.geometry.x, node.geometry.y),
-        fontsize=13,
-        ha="center",
-        va="center",
-        color=C["dark"],
-        bbox={
-            "boxstyle": "round,pad=0.15",
-            "facecolor": "white",
-            "edgecolor": "none",
-            "alpha": 0.8,
-        },
-        zorder=6,
-    )
 map_axis(ax)
 ax.set_xlim(extent[:2])
 ax.set_ylim(extent[2:])
@@ -223,7 +206,7 @@ ax.set_title(
 ax.text(
     0,
     1.01,
-    "coupler logic",
+    "built automatically by the coupler",
     transform=ax.transAxes,
     fontsize=19,
     color=C["dark"],
@@ -245,4 +228,4 @@ badge(
 for x in (0.338, 0.664):
     fig_arrow(fig, x - 0.018, 0.47, x + 0.018)
 
-save(fig, "02_piave_grid_to_network.png")
+save(fig, "03_piave_grid_to_network.png")

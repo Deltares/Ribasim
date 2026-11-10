@@ -11,7 +11,7 @@ from common import SOURCE_IMAGES, C, save, setup_style, slide_title
 SLIDES = [
     (
         "pr3324_qgis_mapping.png",
-        "09a_pr3324_mapping.png",
+        "backup/b3a_pr3324_mapping.png",
         "Mapping Wflow river cells to Ribasim",
         "QGIS view of the Piave proof of concept (PR #3324)",
         [
@@ -43,7 +43,7 @@ SLIDES = [
     ),
     (
         "pr3333_schematization.png",
-        "09b_pr3333_schematization.png",
+        "backup/b3b_pr3333_schematization.png",
         "Irrigation in the coupled model",
         "Test schematization in Ribasim's QGIS plugin (PR #3333)",
         [
@@ -83,7 +83,7 @@ SLIDES = [
     ),
     (
         "pr3333_userdemand_results.png",
-        "09c_pr3333_results.png",
+        "backup/b3c_pr3333_results.png",
         "Demand, allocated and realized irrigation",
         "Result of the coupled Piave run, July 2010 (PR #3333)",
         [

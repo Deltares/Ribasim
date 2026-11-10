@@ -11,6 +11,7 @@ import pandas as pd
 import xarray as xr
 from common import (
     DATABASE,
+    DIAGNOSTICS,
     RESULTS,
     C,
     load_ribasim_network,
@@ -39,6 +40,9 @@ dt = (time[1] - time[0]).total_seconds()
 edges = np.r_[time.values, (time[-1] + (time[1] - time[0])).to_datetime64()]
 node_ids = [int(n) for n in allocation.node_id.values]
 
+diagnostics = pd.read_csv(DIAGNOSTICS)
+max_error = diagnostics.error_m3s.abs().max()
+
 demand_total = float((allocation.demand * dt).sum()) / 1e3
 supplied_total = float((allocation.supplied * dt).sum()) / 1e3
 shortage_total = demand_total - supplied_total
@@ -46,7 +50,7 @@ shortage_total = demand_total - supplied_total
 fig = plt.figure(figsize=(19, 10.5))
 slide_title(
     fig,
-    "Irrigation results: when the river cannot deliver",
+    "Results: water is conserved, irrigation is short when the river cannot deliver",
     "Piave, July 2010: Ribasim allocates the Wflow demand, but physics decides what is really abstracted",
 )
 gs = fig.add_gridspec(
@@ -66,26 +70,32 @@ gs = fig.add_gridspec(
 kpi = fig.add_subplot(gs[0, :])
 kpi.set_axis_off()
 cards = [
-    ("Irrigation demand", f"{demand_total:,.0f}", "thousand m³", C["dark"]),
+    ("Irrigation demand  [thousand m³]", f"{demand_total:,.0f}", "", C["dark"]),
     (
-        "Realized supply",
+        "Realized supply  [thousand m³]",
         f"{supplied_total:,.0f}",
-        f"thousand m³  ({supplied_total / demand_total:.0%})",
+        f"({supplied_total / demand_total:.0%})",
         C["irrigation"],
     ),
     (
-        "Shortage",
+        "Shortage  [thousand m³]",
         f"{shortage_total:,.0f}",
-        f"thousand m³  ({shortage_total / demand_total:.0%})",
+        f"({shortage_total / demand_total:.0%})",
         C["shortage"],
+    ),
+    (
+        "Water balance error",
+        f"{max_error:.0e}",
+        "m³/s  (max)",
+        C["ribasim"],
     ),
 ]
 for k, (label, value, unit, color) in enumerate(cards):
-    x = 0.02 + k * 0.335
+    x = 0.0 + k * 0.255
     kpi.add_patch(
         plt.Rectangle(
             (x, 0.0),
-            0.3,
+            0.235,
             1.0,
             transform=kpi.transAxes,
             facecolor=C["light"],
@@ -122,7 +132,7 @@ for k, (label, value, unit, color) in enumerate(cards):
         va="center",
     )
     kpi.text(
-        x + 0.03 + 0.022 * len(value),
+        x + 0.03 + 0.019 * len(value),
         0.27,
         unit,
         transform=kpi.transAxes,
@@ -185,12 +195,12 @@ for row, node_id in enumerate(node_ids, start=1):
     )
     ax_level.axhline(min_level, color=C["shortage"], lw=2, ls="--")
     ax_level.text(
-        edges[-1],
+        edges[len(edges) // 2],
         min_level,
-        "min_level  ",
+        "min_level",
         color=C["shortage"],
-        ha="right",
-        va="bottom",
+        ha="center",
+        va="top",
         fontsize=12,
         fontweight="bold",
     )
@@ -201,9 +211,8 @@ for row, node_id in enumerate(node_ids, start=1):
     ax_level.grid(axis="y", color=C["light"])
 
 for ax in fig.axes[1:]:
-    ax.xaxis.set_major_locator(
-        plt.matplotlib.dates.DayLocator(bymonthday=[1, 8, 15, 22, 29])
-    )
+    # Weekly ticks within the run only, so the end of the run (1 Aug) gets no colliding label
+    ax.set_xticks(pd.date_range(time[0], time[-1], freq="7D"))
     ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter("%d %b"))
 for ax in fig.axes[1:-2]:
     ax.tick_params(labelbottom=False)
@@ -227,4 +236,4 @@ fig.legend(
     handles=handles, loc="lower center", ncols=6, fontsize=13, bbox_to_anchor=(0.5, 0.0)
 )
 
-save(fig, "05_irrigation_results.png")
+save(fig, "06_irrigation_results.png")

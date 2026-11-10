@@ -52,7 +52,7 @@ exchanges = [
     ("allocated", C["ribasim"], "-"),
     ("realized", C["irrigation"], "-"),
     ("soil update", C["wflow"], "-"),
-    ("runoff (+1 day)", C["wflow"], "--"),
+    ("next day", C["muted"], "--"),
 ]
 
 setup_style()
@@ -60,7 +60,7 @@ fig, ax = plt.subplots(figsize=(16, 9))
 fig.subplots_adjust(left=0, right=1, top=0.86, bottom=0.02)
 slide_title(
     fig,
-    "One coupled timestep (1 day)",
+    "One coupled day",
     "Wflow and Ribasim take turns; only data is exchanged, each model keeps its own state",
 )
 ax.set_xlim(-14.2, 14.2)
@@ -174,4 +174,4 @@ ax.text(
     fontweight="bold",
 )
 
-save(fig, "04_coupled_timestep_cycle.png", tight=False)
+save(fig, "05_coupled_timestep_cycle.png", tight=False)

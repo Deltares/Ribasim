@@ -7,7 +7,14 @@ Right: a Ribasim network with control and prioritized allocation, using `ribasim
 import matplotlib.pyplot as plt
 from common import C, arrow, cloud, save, setup_style, slide_title
 from matplotlib.offsetbox import AnnotationBbox
-from matplotlib.patches import Circle, FancyBboxPatch, Polygon, Rectangle
+from matplotlib.patches import (
+    Circle,
+    FancyArrowPatch,
+    FancyBboxPatch,
+    Polygon,
+    Rectangle,
+)
+from matplotlib.path import Path as MplPath
 from ribasim.node_icons import make_icon_box
 
 LINK = "#3690c0"
@@ -87,7 +94,7 @@ ax.set_aspect("equal")
 ax.set_axis_off()
 
 # ------------------------------------------------------------------ Wflow
-panel(ax, 0.2, 3.3, 9.1, 7.5, "#EAF2FA")
+panel(ax, 0.2, 3.0, 9.1, 7.8, "#EAF2FA")
 ax.text(0.6, 10.25, "Wflow", fontsize=26, fontweight="bold", color=C["wflow"])
 ax.text(
     2.55,
@@ -98,174 +105,216 @@ ax.text(
     va="baseline",
 )
 
-# Grid of columns in oblique view; the middle one is cut open to show the layers
-ox, oy, cw, ch, dx, dy = 1.2, 4.3, 1.15, 3.4, 0.55, 0.4
-layers = [
-    ("unsaturated\nzone", "#C8A97E", 1.1),
-    ("saturated\nzone", "#9C7B55", 1.3),
-    ("", "#7A5C3E", 1.0),
-]
-for j in range(4):
-    x0 = ox + j * cw
-    top = oy + ch
+# Wflow SBM in oblique view: one soil column per grid cell on a slope towards a river cell.
+# Each column has a finite soil thickness, an unsaturated zone above and a saturated zone
+# below a dynamic water table. Lateral subsurface flow (kinematic wave) runs through the
+# saturated zone, follows the slope and drains into the river; below the soil there is no
+# separate groundwater layer (only an optional leakage).
+ox, cw, dx, dy = 0.8, 1.75, 0.55, 0.4
+n_cells = 4
+surface = [8.0 - 0.5 * j for j in range(n_cells)]
+thickness = 2.5
+# The water table drops towards the river, but less than the surface: it gets shallower
+water_table_depth = [1.1, 0.85, 0.65, 0.3]
+UNSAT, SAT = "#C8A97E", "#7C8C9C"
+OPEN = 1  # the column drawn fully opaque, where the vertical processes are shown
+
+
+def x_left(j):
+    return ox + j * cw
+
+
+def column_alpha(j):
+    return 1.0 if j == OPEN else 0.6
+
+
+for j in range(n_cells):
+    x0, top = x_left(j), surface[j]
+    bottom, wt = top - thickness, top - water_table_depth[j]
+    alpha = column_alpha(j)
+    # Step between this cell and its lower neighbour (or the outer side of the block)
+    lower = surface[j + 1] if j + 1 < n_cells else bottom
+    for y0, y1, color in [(wt, top, UNSAT), (bottom, wt, SAT)]:
+        lo, hi = max(y0, lower), y1
+        if hi > lo:
+            ax.add_patch(
+                Polygon(
+                    [
+                        (x0 + cw, lo),
+                        (x0 + cw, hi),
+                        (x0 + cw + dx, hi + dy),
+                        (x0 + cw + dx, lo + dy),
+                    ],
+                    closed=True,
+                    facecolor=color,
+                    edgecolor="white",
+                    lw=1,
+                    alpha=alpha,
+                    zorder=2,
+                )
+            )
+    for y0, y1, color in [(wt, top, UNSAT), (bottom, wt, SAT)]:
+        ax.add_patch(
+            Rectangle(
+                (x0, y0),
+                cw,
+                y1 - y0,
+                facecolor=color,
+                edgecolor="white",
+                lw=1.5,
+                alpha=alpha,
+                zorder=3,
+            )
+        )
+    river = j == n_cells - 1
     ax.add_patch(
         Polygon(
             [(x0, top), (x0 + cw, top), (x0 + cw + dx, top + dy), (x0 + dx, top + dy)],
             closed=True,
-            facecolor="#A7CF7E" if j != 3 else C["wflow_light"],
+            facecolor=C["wflow_light"] if river else "#A7CF7E",
             edgecolor="white",
             lw=1.5,
-            zorder=3,
+            zorder=4,
         )
     )
-    y = top
-    for name, color, h in layers:
-        ax.add_patch(
-            Rectangle(
-                (x0, y - h),
-                cw,
-                h,
-                facecolor=color,
-                edgecolor="white",
-                lw=1.5,
-                zorder=3,
-                alpha=1.0 if j == 1 else 0.55,
-            )
-        )
-        if False:
-            ax.text(
-                x0 + cw / 2,
-                y - h / 2,
-                name,
-                ha="center",
-                va="center",
-                fontsize=10.5,
-                color="white",
-                fontweight="bold",
-                zorder=4,
-            )
-        y -= h
-xr = ox + 4 * cw
+    # Soil bottom: no separate groundwater layer below the soil column
+    ax.plot([x0, x0 + cw], [bottom, bottom], color=C["dark"], lw=2.5, zorder=5)
+    # Water table, dashed
+    ax.plot(
+        [x0, x0 + cw], [wt, wt], color=C["water_dark"], lw=2.5, ls="--", zorder=5
+    )
+
+x_river = x_left(n_cells - 1)
 ax.add_patch(
-    Polygon(
-        [(xr, oy), (xr, oy + ch), (xr + dx, oy + ch + dy), (xr + dx, oy + dy)],
-        closed=True,
-        facecolor="#8E7350",
+    Rectangle(
+        (x_river, surface[-1] - 0.3),
+        cw,
+        0.3,
+        facecolor=C["water"],
         edgecolor="white",
-        zorder=2,
+        lw=1.5,
+        zorder=4,
     )
 )
 ax.text(
-    ox + 3.5 * cw + 0.3,
-    oy + ch + dy + 0.1,
+    x_river + cw / 2 + dx / 2,
+    surface[-1] + dy + 0.12,
     "river cell",
     ha="center",
-    fontsize=11,
+    fontsize=12,
     color=C["wflow"],
     fontweight="bold",
 )
 
+
+def label(x, y, text, color="white", fontsize=11, **kw):
+    ax.text(
+        x, y, text, fontsize=fontsize, color=color, fontweight="bold", zorder=8, **kw
+    )
+
+
 # Vertical processes on the open column
-cx = ox + 1.5 * cw
-cloud(ax, cx + 0.2, 9.4, 0.45, color="#D0D5DD", zorder=6)
+cx = x_left(OPEN) + 0.2
+top = surface[OPEN]
+wt = top - water_table_depth[OPEN]
+cloud(ax, cx + 0.2, 9.75, 0.45, color="#D0D5DD", zorder=6)
 for k in range(4):
     ax.plot(
         [cx - 0.3 + 0.2 * k, cx - 0.4 + 0.2 * k],
-        [9.0, 8.6],
+        [9.35, 8.95],
         color=C["water"],
         lw=2.5,
         zorder=6,
     )
-ax.add_patch(Circle((ox + 2.9 * cw, 9.35), 0.35, facecolor="#FFD166", zorder=6))
-arrow(ax, (ox + 2.9 * cw, 8.1), (ox + 2.9 * cw, 8.9), C["irrigation"], lw=2.5, scale=16)
 ax.text(
-    cx - 0.75,
-    8.75,
-    "rain\n& snow",
-    ha="right",
-    va="center",
-    fontsize=12,
+    cx - 0.75, 9.15, "rain\n& snow", ha="right", va="center", fontsize=12,
     color=C["water_dark"],
 )
+arrow(ax, (cx, top - 0.05), (cx, top - 0.5), C["wflow"], lw=3, scale=18, zorder=7)
+label(cx + 0.12, top - 0.3, "infiltration", va="center")
+arrow(ax, (cx, wt + 0.25), (cx, wt - 0.45), C["wflow"], lw=3, scale=18, zorder=7)
+label(cx + 0.12, wt - 0.08, "recharge", va="top")
+# Capillary rise on the next cell
+cx2 = x_left(OPEN + 1) + 0.2
+wt2 = surface[OPEN + 1] - water_table_depth[OPEN + 1]
+arrow(ax, (cx2, wt2 - 0.3), (cx2, wt2 + 0.3), C["wflow"], lw=2.5, scale=16, zorder=7)
+label(cx2 + 0.12, wt2 - 0.06, "capillary\nrise", va="top", fontsize=10)
+
+# Evaporation and transpiration from the next cell
+ex = x_left(OPEN + 1) + 0.9
+ax.add_patch(Circle((ex, 9.55), 0.35, facecolor="#FFD166", zorder=6))
+arrow(ax, (ex, surface[OPEN + 1] + dy / 2 + 0.05), (ex, 9.05), C["irrigation"], lw=2.5, scale=16)
 ax.text(
-    ox + 2.9 * cw + 0.15,
-    8.45,
-    "evaporation",
-    ha="left",
-    va="center",
-    fontsize=12,
-    color="#9A4D00",
+    ex + 0.15, 8.6, "evaporation &\ntranspiration", ha="left", va="center",
+    fontsize=12, color="#9A4D00",
 )
-ax.text(
-    cx + 0.12,
-    oy + ch - 0.55,
-    "infiltration",
-    ha="left",
-    va="center",
-    fontsize=11,
-    color="white",
-    fontweight="bold",
-    zorder=6,
-)
-ax.text(
-    cx + 0.42,
-    oy + ch - 1.55,
-    "percolation",
-    ha="left",
-    va="center",
-    fontsize=11,
-    color="white",
-    fontweight="bold",
-    zorder=6,
-)
-ax.text(
-    ox + 0.2,
-    oy + ch + 0.42,
-    "overland flow",
-    fontsize=12,
-    color=C["water_dark"],
-    fontweight="bold",
-)
-ax.text(
-    ox + 0.1,
-    oy + ch - 2.05,
-    "subsurface flow",
-    fontsize=12,
-    color="white",
-    fontweight="bold",
-    zorder=6,
-)
-arrow(ax, (cx, oy + ch - 0.05), (cx, oy + ch - 0.95), C["wflow"], lw=3, scale=18)
-arrow(
-    ax, (cx + 0.3, oy + ch - 1.2), (cx + 0.3, oy + ch - 1.9), C["wflow"], lw=3, scale=18
-)
-for k, (yy, label) in enumerate(
-    [(oy + ch + 0.15, "overland flow"), (oy + ch - 1.7, "subsurface flow")]
-):
-    arrow(
-        ax,
-        (ox + 0.2, yy),
-        (ox + 3.9 * cw, yy - 0.05),
-        C["water_dark"],
+
+# Lateral flows towards the river: overland flow on the surface, subsurface flow through
+# the saturated zone, both downslope
+# Both paths step down with the cells instead of cutting through them
+overland = []
+for j, top in enumerate(surface[:-1]):
+    y = top + dy / 2
+    overland += [(x_left(j) + 0.25 + dx / 2, y), (x_left(j + 1) + dx / 2, y)]
+overland.append((x_left(n_cells - 1) + 0.55, surface[-1] + dy / 2))
+ax.add_patch(
+    FancyArrowPatch(
+        path=MplPath(overland),
+        arrowstyle="-|>",
+        mutation_scale=20,
         lw=3,
-        scale=20,
-        rad=0.0,
+        color=C["water_dark"],
+        zorder=9,
     )
-labels = ["rain & snow", "interception", "evaporation", "infiltration", "percolation"]
-icons_x = 8.55
+)
 ax.text(
-    ox + 4.35 * cw + 0.75,
-    oy + 1.6,
-    "vertical\n+\nlateral",
-    ha="left",
+    x_left(0) + 0.05, surface[0] + dy + 0.12, "overland flow", fontsize=12,
+    color=C["water_dark"], fontweight="bold",
+)
+subsurface = []
+for j in range(n_cells - 1):
+    y = surface[j] - water_table_depth[j] - 0.7
+    subsurface += [(x_left(j) + (0.15 if j == 0 else 0.0), y), (x_left(j + 1), y)]
+# In the river cell the subsurface flow drains into the river
+x_drain = x_left(n_cells - 1) + 0.5
+subsurface += [(x_drain, subsurface[-1][1]), (x_drain, surface[-1] - 0.32)]
+ax.add_patch(
+    FancyArrowPatch(
+        path=MplPath(subsurface),
+        arrowstyle="-|>",
+        mutation_scale=20,
+        lw=3,
+        color=C["water_dark"],
+        zorder=7,
+    )
+)
+label(
+    x_left(0) + 0.12,
+    surface[0] - thickness + 0.25,
+    "lateral subsurface flow",
     va="center",
+)
+label(
+    x_left(0) + 0.12,
+    surface[0] - water_table_depth[0] + 0.15,
+    "water table",
+    va="bottom",
+    fontsize=10,
+)
+ax.text(
+    ox,
+    surface[-1] - thickness - 0.3,
+    "every grid cell: one soil column with a moving water table;\n"
+    "water flows downslope over and through the soil to the river",
+    ha="left",
+    va="top",
     fontsize=14,
     color=C["wflow"],
     fontweight="bold",
 )
 
 # ------------------------------------------------------------------ Ribasim
-panel(ax, 10.7, 3.3, 9.1, 7.5, "#EAF6EC")
+panel(ax, 10.7, 3.0, 9.1, 7.8, "#EAF6EC")
 ax.text(11.1, 10.25, "Ribasim", fontsize=26, fontweight="bold", color=C["ribasim"])
 ax.text(
     13.55,
@@ -334,7 +383,7 @@ ax.text(
 )
 for name, (prio, label, frac) in zip(
     ("ud1", "ud2", "ud3"),
-    [(1, "drinking\nwater", 1.0), (2, "irrigation", 0.7), (3, "industry", 0.3)],
+    [(1, "drinking\nwater", 1.0), (2, "irrigation", 1.0), (3, "industry", 0.3)],
 ):
     x, y = nodes[name]
     ax.text(x, y - 0.55, label, ha="center", va="top", fontsize=12, color=C["dark"])
@@ -359,9 +408,11 @@ for name, (prio, label, frac) in zip(
         )
     )
     ax.text(
-        x + 0.38,
-        y + 0.3,
+        x - 0.55,
+        y - 1.46,
         f"P{prio}",
+        ha="right",
+        va="center",
         fontsize=12,
         fontweight="bold",
         color=C["shortage"],
@@ -425,4 +476,4 @@ ax.text(
 )
 
 
-save(fig, "10_combined_strengths.png")
+save(fig, "01_combined_strengths.png")

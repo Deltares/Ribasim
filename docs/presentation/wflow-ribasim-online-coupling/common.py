@@ -106,9 +106,26 @@ def setup_style() -> None:
     )
 
 
+SLIDE_WIDTH = 13.33  # in, a 16:9 slide; figures are scaled to this width
+MIN_SLIDE_FONTSIZE = 12.0  # pt, smallest text size as it appears on the slide
+
+
+def enforce_min_fontsize(fig, tight: bool = True) -> None:
+    """Enlarge texts that would be smaller than MIN_SLIDE_FONTSIZE when the figure fills a slide."""
+    for _ in range(2):  # the saved width can change after enlarging
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+        width = fig.get_tightbbox(renderer).width if tight else fig.get_figwidth()
+        minimum = MIN_SLIDE_FONTSIZE * width / SLIDE_WIDTH
+        for text in fig.findobj(mpl.text.Text):
+            if text.get_text().strip() and text.get_fontsize() < minimum:
+                text.set_fontsize(minimum)
+
+
 def save(fig, name: str, tight: bool = True) -> Path:
-    OUT_DIR.mkdir(exist_ok=True)
     path = OUT_DIR / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    enforce_min_fontsize(fig, tight)
     # OneDrive or an image viewer can briefly lock the file; retry a few times
     for attempt in range(10):
         try:

@@ -48,13 +48,13 @@ ax.scatter(
 )
 ax.set_ylabel("runoff  [m³/s]")
 ax.set_title("Wflow → Ribasim runoff", loc="left", color=C["wflow"])
-ax.legend(loc="upper right", fontsize=13)
+ax.legend(loc="upper right", bbox_to_anchor=(1.0, 0.85), fontsize=13)
 ax.grid(axis="y", color=C["light"])
-ax.set_ylim(0, diag.wflow_export_m3s.max() * 1.3)
+ax.set_ylim(0, diag.wflow_export_m3s.max() * 1.55)
 badge(
     ax,
     0.03,
-    0.9,
+    0.93,
     f"conserved: max mismatch {max_error:.0e} m³/s",
     C["ribasim"],
     fontsize=15,
@@ -118,4 +118,4 @@ fig.text(
     color=C["muted"],
 )
 
-save(fig, "06_coupling_water_balance.png")
+save(fig, "backup/b1_coupling_water_balance.png")
