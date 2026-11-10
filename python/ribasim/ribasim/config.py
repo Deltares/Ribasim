@@ -254,7 +254,7 @@ class Junction(NodeModel): ...
 class PassDown(NodeModel):
     static: TableModel[PassDownStaticSchema] = Field(
         default_factory=TableModel[PassDownStaticSchema],
-        json_schema_extra={"sort_keys": ["node_id"]},
+        json_schema_extra={"sort_keys": ["node_id", "to_node_id"]},
     )
 
 

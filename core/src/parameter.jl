@@ -1166,8 +1166,10 @@ end
 node_id: node IDs of the PassDown nodes
 inflow_links: the inflow links per PassDown node
 outflow_links: the outflow links per PassDown node
-fraction: the fraction of the upstream flow that goes through each PassDown node
-pass_down_subgraphs: disjoint trees of flow-connected PassDown and UserDemand nodes,
+fraction: per PassDown node the fraction of its flow (after UserDemand abstraction) that goes over each of its outflow links,
+    in the order of `outflow_links`. This is 1 for links that do not lead to a PassDown node, and for the link
+    towards a UserDemand node, since that flow is not divided.
+pass_down_subgraphs: disjoint directed acyclic graphs of flow-connected PassDown and UserDemand nodes,
     excluding UserDemand nodes without a PassDown inneighbor. The nodes of each subgraph
     are ordered such that each node comes after all nodes its flow depends on.
 user_demand_id: The ID of the UserDemand node that abstracts from the PassDown node, if present
@@ -1184,7 +1186,7 @@ concentration: The concentration per substance of the flow through each PassDown
     node_id::Vector{NodeID}
     inflow_links::Vector{Vector{LinkMetadata}} = [LinkMetadata[] for _ in node_id]
     outflow_links::Vector{Vector{LinkMetadata}} = [LinkMetadata[] for _ in node_id]
-    fraction::Vector{Float64} = zeros(length(node_id))
+    fraction::Vector{Vector{Float64}} = [ones(length(links)) for links in outflow_links]
     pass_down_subgraphs::Vector{Vector{NodeID}} = Vector{NodeID}[]
     user_demand_id::Vector{NodeID} = fill(NodeID(:Terminal, 0, 0), length(node_id))
     state_links::Vector{LinkMetadata} = LinkMetadata[]

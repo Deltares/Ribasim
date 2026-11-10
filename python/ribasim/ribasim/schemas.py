@@ -318,9 +318,10 @@ class OutletTimeSchema(_BaseSchema):
 
 
 class PassDownStaticSchema(_BaseSchema):
-    _node_id_relation: str = "equal"
+    _node_id_relation: str = "subset"
     fid: Index[np.int32] = pa.Field(default=1, check_name=True, coerce=True)
     node_id: np.int32 = pa.Field(nullable=False, default=0)
+    to_node_id: np.int32 = pa.Field(nullable=False)
     fraction: float = pa.Field(nullable=True)
 
 

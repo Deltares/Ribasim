@@ -195,7 +195,7 @@ They are computed in the last step of the right-hand side as a function of the o
 $$
 	\mathbf{q} = K\mathbf{q}^\text{np}, \quad K = \frac{\partial\mathbf{q}}{\partial\mathbf{q}^\text{np}}.
 $$
-This is where the fractions of the PassDown nodes and the minimum of the flow and the demand of the UserDemand nodes enter.
+This is where the fractions of the PassDown links and the minimum of the flow and the demand of the UserDemand nodes enter.
 $K$ is the identity for the flows that are not computed in a PassDown subgraph (this is redundant, but saves bookkeeping), and for a flow that is computed in a PassDown subgraph its row holds the dependence on the flows entering the subgraph.
 It is computed with automatic differentiation like the other Jacobians, and only if the model has PassDown nodes.
 
@@ -208,7 +208,7 @@ $$
 	\left(M K Q_S - \gamma M K G E - \gamma^{-1}I_{n_\text{basin}}\right)\mathbf{s} = M\mathbf{b}^\text{flow} + \gamma M K G \mathbf{b}^\text{pid}.
 $$
 The matrix $MK$ is the effect of a flow on the Basin storages after it is routed through the PassDown subgraph.
-For instance, a Pump upstream of a Basin $b_1$ which flows into two PassDown nodes that flow into Basins $b_2$ and $b_3$ with fractions $f$ and $1-f$ has the column $-e_{b_1} + f e_{b_2} + (1-f) e_{b_3}$ in $MK$, where the Pump flow itself has no Basin downstream in $M$.
+For instance, a Pump upstream of a Basin $b_1$ which flows into a PassDown node that divides its flow over two PassDown nodes that flow into Basins $b_2$ and $b_3$ with link fractions $f$ and $1-f$ has the column $-e_{b_1} + f e_{b_2} + (1-f) e_{b_3}$ in $MK$, where the Pump flow itself has no Basin downstream in $M$.
 Note that $\mathbf{b}^\text{flow}$ is not multiplied by $K$, since the right-hand side of the linear system is given in terms of the states. The dimension of the inner system remains the number of Basins.
 
 ### Exactness

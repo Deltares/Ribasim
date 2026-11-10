@@ -410,7 +410,7 @@ $$
     Q_{ij}(t).
 $$
 
-For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description). If the FlowBoundary flows into PassDown nodes, the boundary flow is divided over the links to these nodes by their fractions. LevelBoundary nodes instead enter the problem through their level, which is evaluated at the end of the allocation timestep and enters the constant terms of the linearized connector nodes (see [Boundary nodes](#boundary-nodes)).
+For the definition of $Q_{ij}$ see [the formal model description](/concept/equations.qmd#formal-model-description). If the FlowBoundary flows into a PassDown node, the boundary flow goes to that node. LevelBoundary nodes instead enter the problem through their level, which is evaluated at the end of the allocation timestep and enters the constant terms of the linearized connector nodes (see [Boundary nodes](#boundary-nodes)).
 
 ### User demands
 
@@ -443,8 +443,8 @@ UserDemand nodes dictate proportional relationships between flows over links in 
 ### PassDown nodes {#sec-allocation-pass-down}
 A PassDown node does not store water, so all flow into a [PassDown](/reference/node/pass-down.qmd) node $i \in P_S$ is passed on, except for the flow abstracted by the UserDemand node $u$ that abstracts from it, if there is one. All these relations are linear equalities with constant coefficients, so the problem remains a linear optimization problem:
 
-- A node $j$ that flows into PassDown nodes (a Pump, Outlet, TabulatedRatingCurve, FlowBoundary or UserDemand) divides its outflow $Q_j$ over these by the fraction $f_i$ of each PassDown node $i$ downstream: $Q_{ji} = f_i Q_j$. For a UserDemand $Q_j$ is the return flow, see above, and for a FlowBoundary it is the boundary flow.
-- The flow from a PassDown node $i$ over a link to a node $k$ is $Q_{ik} = f_k \left(\sum_j Q_{ji} - Q_{iu}\right)$, where $f_k = 1$ if $k$ is not a PassDown node and $Q_{iu} = 0$ if there is no UserDemand abstracting from $i$.
+- A node $j$ that flows into a PassDown node (a Pump, Outlet, TabulatedRatingCurve, FlowBoundary or UserDemand) passes its full outflow $Q_j$ on to that PassDown node $i$: $Q_{ji} = Q_j$. For a UserDemand $Q_j$ is the return flow, see above, and for a FlowBoundary it is the boundary flow.
+- The flow from a PassDown node $i$ over a link to a node $k$ is $Q_{ik} = f_{ik} \left(\sum_j Q_{ji} - Q_{iu}\right)$, where $f_{ik}$ is the fraction of the link, $f_{ik} = 1$ if $k$ is not a PassDown node and $Q_{iu} = 0$ if there is no UserDemand abstracting from $i$.
 
 The abstraction $Q_{iu}$ is a decision variable, like the inflow of a UserDemand from a Basin. It is bounded by the allocated demand of the UserDemand, and the allocation algorithm can allocate less than is available to leave more for demands further downstream.
 

@@ -265,14 +265,17 @@ def _pass_down_user_demand_static() -> list:
 
 
 def invalid_pass_down_missing_fractions_model() -> Model:
-    """Multiple PassDown nodes downstream of the same node with a missing fraction."""
+    """Multiple PassDown nodes downstream of the same PassDown node with a missing fraction."""
     model, pmp = _invalid_pass_down_base()
     trm = model.terminal.add(Node(6, Point(3, 0)))
-    for node_id, y, fraction in [(3, 1, np.nan), (4, 0, np.nan), (5, -1, 0.5)]:
-        pd = model.pass_down.add(
-            Node(node_id, Point(2, y)), [pass_down.Static(fraction=[fraction])]
-        )
-        model.link.add(pmp, pd)
+    pd_split = model.pass_down.add(
+        Node(7, Point(1.5, 0)),
+        [pass_down.Static(to_node_id=[3, 4, 5], fraction=[np.nan, np.nan, 0.5])],
+    )
+    model.link.add(pmp, pd_split)
+    for node_id, y in [(3, 1), (4, 0), (5, -1)]:
+        pd = model.pass_down.add(Node(node_id, Point(2, y)))
+        model.link.add(pd_split, pd)
         model.link.add(pd, trm)
     return model
 
@@ -281,24 +284,45 @@ def invalid_pass_down_fraction_sum_model() -> Model:
     """PassDown fractions summing to more than 1, while one fraction is missing."""
     model, pmp = _invalid_pass_down_base()
     trm = model.terminal.add(Node(6, Point(3, 0)))
-    for node_id, y, fraction in [(3, 1, 0.75), (4, 0, 0.5), (5, -1, np.nan)]:
-        pd = model.pass_down.add(
-            Node(node_id, Point(2, y)), [pass_down.Static(fraction=[fraction])]
-        )
-        model.link.add(pmp, pd)
+    pd_split = model.pass_down.add(
+        Node(7, Point(1.5, 0)),
+        [pass_down.Static(to_node_id=[3, 4, 5], fraction=[0.75, 0.5, np.nan])],
+    )
+    model.link.add(pmp, pd_split)
+    for node_id, y in [(3, 1), (4, 0), (5, -1)]:
+        pd = model.pass_down.add(Node(node_id, Point(2, y)))
+        model.link.add(pd_split, pd)
         model.link.add(pd, trm)
+    return model
+
+
+def invalid_pass_down_connector_split_model() -> Model:
+    """Create a Pump that flows directly into multiple PassDown nodes, instead of via a PassDown node."""
+    model, pmp = _invalid_pass_down_base()
+    trm = model.terminal.add(Node(6, Point(3, 0)))
+    # Temporary PassDown node, since the link validation does not allow this connectivity
+    pd_tmp = model.pass_down.add(Node(7, Point(1.5, 0)))
+    pd1 = model.pass_down.add(Node(3, Point(2, 1)))
+    pd2 = model.pass_down.add(Node(4, Point(2, -1)))
+    model.link.add(pmp, pd1)
+    model.link.add(pd_tmp, pd2)
+    model.link.add(pd1, trm)
+    model.link.add(pd2, trm)
+    assert model.link.df is not None
+    model.link.df.loc[
+        model.link.df["from_node_id"] == pd_tmp.node_id, "from_node_id"
+    ] = pmp.node_id
+    model.remove_node(pd_tmp.node_id)
     return model
 
 
 def invalid_pass_down_multiple_user_demands_model() -> Model:
     """PassDown node with multiple UserDemand nodes downstream."""
     model, pmp = _invalid_pass_down_base()
-    pd = model.pass_down.add(Node(3, Point(2, 0)), [pass_down.Static(fraction=[1.0])])
+    pd = model.pass_down.add(Node(3, Point(2, 0)))
     ud1 = model.user_demand.add(Node(4, Point(3, 1)), _pass_down_user_demand_static())
     ud2 = model.user_demand.add(Node(5, Point(3, -1)), _pass_down_user_demand_static())
-    pd_trm = model.pass_down.add(
-        Node(7, Point(3, 0)), [pass_down.Static(fraction=[1.0])]
-    )
+    pd_trm = model.pass_down.add(Node(7, Point(3, 0)))
     trm = model.terminal.add(Node(6, Point(4, 0)))
     model.link.add(pmp, pd)
     model.link.add(pd, ud1)
@@ -313,7 +337,7 @@ def invalid_pass_down_multiple_user_demands_model() -> Model:
 def invalid_pass_down_user_demand_and_other_model() -> Model:
     """PassDown node with both a UserDemand and a non-PassDown node downstream."""
     model, pmp = _invalid_pass_down_base()
-    pd = model.pass_down.add(Node(3, Point(2, 0)), [pass_down.Static(fraction=[1.0])])
+    pd = model.pass_down.add(Node(3, Point(2, 0)))
     ud = model.user_demand.add(Node(4, Point(3, 1)), _pass_down_user_demand_static())
     bsn = model.basin.add(
         Node(5, Point(3, -1)),
@@ -324,9 +348,7 @@ def invalid_pass_down_user_demand_and_other_model() -> Model:
     )
     trm = model.terminal.add(Node(6, Point(4, 1)))
     # Temporary PassDown node, since the link validation does not allow this connectivity
-    pd_tmp = model.pass_down.add(
-        Node(7, Point(3, 0)), [pass_down.Static(fraction=[1.0])]
-    )
+    pd_tmp = model.pass_down.add(Node(7, Point(3, 0)))
     model.link.add(pmp, pd)
     model.link.add(pd, ud)
     model.link.add(pd, pd_tmp)
@@ -345,7 +367,7 @@ def invalid_pass_down_user_demand_and_other_model() -> Model:
 def invalid_pass_down_only_user_demand_model() -> Model:
     """PassDown node with only a UserDemand node downstream, so the remaining flow has nowhere to go."""
     model, pmp = _invalid_pass_down_base()
-    pd = model.pass_down.add(Node(3, Point(2, 0)), [pass_down.Static(fraction=[1.0])])
+    pd = model.pass_down.add(Node(3, Point(2, 0)))
     ud = model.user_demand.add(Node(4, Point(3, 0)), _pass_down_user_demand_static())
     trm = model.terminal.add(Node(5, Point(4, 0)))
     model.link.add(pmp, pd)
@@ -404,9 +426,7 @@ def invalid_pass_down_subnetwork_boundary_model() -> Model:
         Node(2, Point(1, 0)),
         [pump.Static(flow_rate=[1e-3], allocation_controlled=[True])],
     )
-    pd = model.pass_down.add(
-        Node(3, Point(2, 0), subnetwork_id=2), [pass_down.Static(fraction=[1.0])]
-    )
+    pd = model.pass_down.add(Node(3, Point(2, 0), subnetwork_id=2))
     bsn2 = model.basin.add(
         Node(4, Point(3, 0), subnetwork_id=2), _invalid_subnetwork_basin_tables()
     )

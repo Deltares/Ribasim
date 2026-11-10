@@ -447,6 +447,7 @@ module Schema
         using ...Ribasim: Table
         struct Static <: Table
             node_id::Int32
+            to_node_id::Int32
             fraction::Union{Missing, Float64}
         end
     end

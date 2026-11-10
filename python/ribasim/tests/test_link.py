@@ -117,10 +117,7 @@ def test_validate_link_user_demand_pass_down_inflow(upstream: tuple[str, str]):
             )
         ],
         "pass_down": [
-            model.pass_down.add(
-                Node(node_id, sg.Point(0, node_id)),
-                [pass_down.Static(fraction=[0.5])],
-            )
+            model.pass_down.add(Node(node_id, sg.Point(0, node_id)))
             for node_id in (2, 3)
         ],
     }
@@ -141,9 +138,7 @@ def test_validate_link_user_demand_pass_down_inflow(upstream: tuple[str, str]):
 def test_validate_link_pass_down_user_demand_and_other_outflow():
     """A PassDown node with a UserDemand outflow can only flow into other PassDown nodes."""
     model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
-    pd = model.pass_down.add(
-        Node(1, sg.Point(0, 0)), [pass_down.Static(fraction=[1.0])]
-    )
+    pd = model.pass_down.add(Node(1, sg.Point(0, 0)))
     ud = model.user_demand.add(
         Node(2, sg.Point(1, 1)),
         [
@@ -158,26 +153,45 @@ def test_validate_link_pass_down_user_demand_and_other_outflow():
         model.link.add(pd, trm)
 
 
+def test_validate_link_connector_cannot_split_into_pass_down():
+    """A connector node cannot flow into multiple PassDown nodes, there must be a PassDown node in between."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    pmp = model.pump.add(Node(1, sg.Point(0, 0)), [pump.Static(flow_rate=[1e-3])])
+    pd1 = model.pass_down.add(Node(2, sg.Point(1, 1)))
+    pd2 = model.pass_down.add(Node(3, sg.Point(1, -1)))
+    model.link.add(pmp, pd1)
+    with pytest.raises(ValueError, match="at most 1 flow link outneighbor"):
+        model.link.add(pmp, pd2)
+
+
+def test_validate_link_pass_down_can_split_into_pass_down():
+    """A PassDown node can flow into multiple PassDown nodes."""
+    model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
+    pd = model.pass_down.add(
+        Node(1, sg.Point(0, 0)),
+        [pass_down.Static(to_node_id=[2, 3], fraction=[0.5, 0.5])],
+    )
+    pd1 = model.pass_down.add(Node(2, sg.Point(1, 1)))
+    pd2 = model.pass_down.add(Node(3, sg.Point(1, -1)))
+    model.link.add(pd, pd1)
+    model.link.add(pd, pd2)
+
+
 def test_validate_link_pass_down_skipped_with_junction():
     """PassDown connectivity involving a Junction is left to the Julia core."""
     model = Model(starttime="2020-01-01", endtime="2021-01-01", crs="EPSG:28992")
-    pmp = model.pump.add(Node(1, sg.Point(0, 0)), [pump.Static(flow_rate=[1e-3])])
-    pd = model.pass_down.add(
-        Node(2, sg.Point(1, 1)), [pass_down.Static(fraction=[0.5])]
-    )
-    jct = model.junction.add(Node(3, sg.Point(1, -1)))
+    pd = model.pass_down.add(Node(1, sg.Point(0, 0)))
     ud = model.user_demand.add(
-        Node(4, sg.Point(2, 0)),
+        Node(2, sg.Point(1, 1)),
         [
             user_demand.Static(
                 demand_priority=[1], demand=[1e-4], return_factor=0.5, min_level=[0.0]
             )
         ],
     )
-    model.link.add(pmp, pd)
-    model.link.add(pmp, jct)
+    jct = model.junction.add(Node(3, sg.Point(1, -1)))
     model.link.add(pd, ud)
-    model.link.add(jct, ud)
+    model.link.add(pd, jct)
 
 
 def test_listen_link_allows_reverse_control(discrete_control_of_pid_control):
