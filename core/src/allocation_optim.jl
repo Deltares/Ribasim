@@ -1428,6 +1428,42 @@ function delete_control_constraints!(
 end
 
 """
+Store the current allocation_controlled flags of the Pumps, Outlets and TabulatedRatingCurves
+in the subnetwork in the allocation model, and return whether any of them changed.
+"""
+function update_allocation_controlled!(
+        allocation_model::AllocationModel,
+        p_independent::ParametersIndependent,
+    )::Bool
+    (; pump, outlet, tabulated_rating_curve) = p_independent
+    (; allocation_controlled, node_ids_in_subnetwork) = allocation_model
+    (; pump_ids_subnetwork, outlet_ids_subnetwork, tabulated_rating_curve_ids_subnetwork) =
+        node_ids_in_subnetwork
+
+    n_flag =
+        length(pump_ids_subnetwork) + length(outlet_ids_subnetwork) +
+        length(tabulated_rating_curve_ids_subnetwork)
+    # The flags are still empty when the allocation model is initialized
+    changed = length(allocation_controlled) != n_flag
+    resize!(allocation_controlled, n_flag)
+
+    i = 0
+    for (flags, node_ids) in (
+            (pump.allocation_controlled, pump_ids_subnetwork),
+            (outlet.allocation_controlled, outlet_ids_subnetwork),
+            (tabulated_rating_curve.allocation_controlled, tabulated_rating_curve_ids_subnetwork),
+        )
+        for node_id in node_ids
+            i += 1
+            flag = flags[node_id.idx]
+            changed |= allocation_controlled[i] != flag
+            allocation_controlled[i] = flag
+        end
+    end
+    return changed
+end
+
+"""
 Flow capacity imposed on a link by one of the nodes it connects.
 Flows set by a linearized flow-level relation get no bounds, since these would only
 follow from the same linearization.
@@ -1566,6 +1602,21 @@ function update_flow_demand_variable_bounds!(
 end
 
 function update_control_states!(
+        allocation_model::AllocationModel,
+        p_independent::ParametersIndependent,
+    )::Nothing
+    # Control states can switch nodes between allocation control and their linearized
+    # flow-level relation. Rebuilding the constraints is expensive for large subnetworks,
+    # so only do so if that changed. The coefficients are updated in set_simulation_data!.
+    update_allocation_controlled!(allocation_model, p_independent) || return nothing
+    rebuild_control_constraints!(allocation_model, p_independent)
+    return nothing
+end
+
+"""
+Delete the control constraints and add them again for the current allocation_controlled flags.
+"""
+function rebuild_control_constraints!(
         allocation_model::AllocationModel,
         p_independent::ParametersIndependent,
     )::Nothing
