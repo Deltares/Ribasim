@@ -122,10 +122,13 @@ end
     @test mass_per_inflow_volume(7, 2, "FlowBoundary") ≈ fill(1.0, 59) rtol = 1.0e-8
     @test all(isapprox.(mass_per_inflow_volume(7, 2, "UserDemand"), 0.0; atol = 1.0e-12))
 
-    # All the mass of the abstracted water is in the return flow, which is only half of the volume
-    @test mass_per_inflow_volume(6, 1, "Foo") ≈ fill(2 * c_foo, 59) rtol = 1.0e-8
-    @test mass_per_inflow_volume(6, 1, "FlowBoundary") ≈ fill(2.0, 59) rtol = 1.0e-8
+    # The return flow has the concentration of the abstracted water, like for a UserDemand
+    # abstracting from a Basin, so the mass in the consumed half leaves the model
+    @test mass_per_inflow_volume(6, 1, "Foo") ≈ fill(c_foo, 59) rtol = 1.0e-8
+    @test mass_per_inflow_volume(6, 1, "FlowBoundary") ≈ fill(1.0, 59) rtol = 1.0e-8
     @test mass_per_inflow_volume(6, 1, "UserDemand") ≈ fill(1.0, 59) rtol = 1.0e-8
+    # The Continuity tracer stays 1, as the initial water has it as well
+    @test concentration[1, findfirst(==("Continuity"), substances), :] ≈ fill(1.0, 60) rtol = 1.0e-8
 end
 
 @testitem "Junction tracers in all configurations" begin
@@ -288,4 +291,15 @@ end
         # The physical layer, which follows the allocated UserDemand flow
         @test mean_flow_rate(flow_data, from_node_id, to_node_id) ≈ flow_rate rtol = 1.0e-5
     end
+
+    # With a demand of 8e-3 m³/s UserDemand #5 gets at most the 5e-3 m³/s inflow of Junction #4,
+    # without negative flows to Basin #8 and #9
+    toml_path = normpath(@__DIR__, "../../generated_testmodels/junction_allocation_shortage/ribasim.toml")
+    model = Ribasim.run(toml_path)
+    @test success(model)
+    allocation_data = Ribasim.allocation_data(model) |> DataFrame
+    @test all(allocation_data.allocated .≈ 5.0e-3)
+    allocation_flow_data = Ribasim.allocation_flow_data(model) |> DataFrame
+    @test all(>=(0), allocation_flow_data.flow_rate)
+    @test mean_flow_rate(allocation_flow_data, 4, 5) ≈ 5.0e-3 rtol = 1.0e-5
 end

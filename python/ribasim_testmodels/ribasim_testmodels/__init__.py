@@ -95,6 +95,7 @@ from ribasim_testmodels.invalid import (
 )
 from ribasim_testmodels.junction import (
     junction_allocation_model,
+    junction_allocation_shortage_model,
     junction_bidirectional,
     junction_chained,
     junction_combined,
@@ -171,6 +172,7 @@ __all__ = [
     "invalid_unstable_model",
     "invalid_user_demand_missing_min_level_model",
     "junction_allocation_model",
+    "junction_allocation_shortage_model",
     "junction_bidirectional",
     "junction_chained",
     "junction_combined",

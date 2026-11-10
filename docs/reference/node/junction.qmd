@@ -232,7 +232,7 @@ With `experimental.concentration` the tracers are propagated through the subgrap
 
 - For flows into a subgraph the mass is the flow times the concentration of the source: the concentration of the FlowBoundary or LevelBoundary, or of the Basin upstream of a Pump, Outlet or TabulatedRatingCurve. For a UserDemand outside the subgraph it is the mass in its return flow.
 - The mass of the inflows of a Junction is mixed: the concentration of the flow out of a Junction, including the flow abstracted by a UserDemand, is the total mass in divided by the total volume out.
-- A UserDemand abstracting from a Junction handles tracers like a UserDemand abstracting from Basins: the mass of the flow it abstracts ends up in its return flow, with the UserDemand tracer replaced by the one of the UserDemand itself.
+- A UserDemand abstracting from a Junction handles tracers like a UserDemand abstracting from Basins: its return flow has the concentration of the water it abstracts, with the UserDemand tracer replaced by the one of the UserDemand itself. The mass in the water it consumes leaves the model.
 - The mass that flows from a subgraph into a Basin is added to the mass of that Basin. A Junction itself does not store water, so tracers do not age in it.
 
 ### Allocation

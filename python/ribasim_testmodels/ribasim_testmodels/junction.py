@@ -682,7 +682,7 @@ def junction_tracer_model() -> Model:
     return model
 
 
-def junction_allocation_model() -> Model:
+def junction_allocation_model(demand: float = 4e-3) -> Model:
     """Create a model for testing allocation with Junction nodes that divide the flow.
 
     A FlowBoundary (3e-3 m³/s) and a Pump (2e-3 m³/s) flow into Junction #4. UserDemand #5
@@ -718,7 +718,7 @@ def junction_allocation_model() -> Model:
     )
     ud = model.user_demand.add(
         node(5, 3, 1),
-        [user_demand.Static(demand=[4e-3], return_factor=0.5)],
+        [user_demand.Static(demand=[demand], return_factor=0.5)],
     )
     b1 = model.basin.add(node(8, 4, 0), basin_tables(1.0))
     b2 = model.basin.add(node(9, 4, -1), basin_tables(1.0))
@@ -737,6 +737,15 @@ def junction_allocation_model() -> Model:
     model.link.add(jct_b, b3)
 
     return model
+
+
+def junction_allocation_shortage_model() -> Model:
+    """Create the Junction allocation model with a demand above the 5e-3 m³/s inflow.
+
+    UserDemand #5 asks for 8e-3 m³/s, so it can get at most the inflow of Junction #4 and
+    nothing is left for Basin #8 and #9.
+    """
+    return junction_allocation_model(demand=8e-3)
 
 
 def junction_into_junction_model() -> Model:

@@ -138,8 +138,9 @@ in `formulate_junction_flow!`. The mass that flows over each link is stored in `
 
 - The mass that flows into a Junction node is mixed, so the concentration of the flow out of the Junction node is
   the total mass in, divided by the total volume out. This concentration holds for all outflow links.
-- A UserDemand abstracting from a Junction node takes mass with the concentration of the Junction node. Like
-  UserDemand nodes abstracting from Basins, all the mass abstracted is in the return flow, see `mass_inflows_from_user_demand!`.
+- A UserDemand abstracting from a Junction node returns water with the concentration of the Junction node, like
+  UserDemand nodes abstracting from Basins return water with the concentration of the Basins, see
+  `mass_inflows_from_user_demand!`. The mass in the water it consumes leaves the model.
 - The mass that flows from a Junction node or a UserDemand node into a Basin is added to the mass of the Basin.
 
 The concentration of Basins is used as it was at the end of the previous timestep, like in `mass_inflows_basin!`.
@@ -214,16 +215,10 @@ function mass_through_junctions!(integrator::DEIntegrator)::Nothing
             end
         elseif id.type == NodeType.UserDemand
             junction_id = only(user_demand.inflow_links[id.idx]).link[1]
-            inflow_volume = cumulative_flow_dt.horizontal.user_demand_inflow[inflow_link_offsets[id.idx] + 1]
+            return_flow = cumulative_flow_dt.horizontal.user_demand_outflow[id.idx]
             return_mass_node = view(return_mass, :, id.idx)
-            return_mass_node .= inflow_volume .* view(concentration, :, junction_id.idx)
-            add_user_demand_tracer_mass!(
-                return_mass_node,
-                user_demand,
-                id.idx,
-                cumulative_flow_dt.horizontal.user_demand_outflow[id.idx],
-                t,
-            )
+            return_mass_node .= return_flow .* view(concentration, :, junction_id.idx)
+            add_user_demand_tracer_mass!(return_mass_node, user_demand, id.idx, return_flow, t)
 
             # The return mass into a Junction node is picked up there via `set_junction_source_mass!`
             target_id = user_demand.outflow_link[id.idx].link[2]

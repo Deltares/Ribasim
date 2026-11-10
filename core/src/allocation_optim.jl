@@ -1461,6 +1461,10 @@ function connector_flow_capacity_bounds(
     elseif node_id.type == NodeType.UserDemand
         # The actual upper bound follows from the demands, see update_user_demand_flow_bounds!
         return (0.0, Inf)
+    elseif node_id.is_routed
+        # The flows into and out of a Junction that divides the flow are never negative,
+        # so a UserDemand abstracting from it cannot get more than its inflow
+        return (0.0, Inf)
     end
 
     return (-Inf, Inf)
